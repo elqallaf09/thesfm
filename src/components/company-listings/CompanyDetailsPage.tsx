@@ -7,6 +7,7 @@ import {
   Archive,
   ArrowRight,
   BadgeCheck,
+  BarChart3,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -14,12 +15,15 @@ import {
   Clock3,
   Edit3,
   Eye,
+  ExternalLink,
   FileText,
   Globe2,
   Instagram,
   Linkedin,
   Mail,
   MapPin,
+  MessageCircle,
+  Navigation,
   Phone,
   ShieldAlert,
   ShieldCheck,
@@ -69,7 +73,7 @@ const STATUS_ICONS: Record<CompanyStatus, typeof ShieldCheck> = {
 
 function isMissing(value?: string | number | null) {
   const text = String(value ?? '').trim();
-  return !text || ['null', 'undefined', 'no', 'n/a', 'na', '-'].includes(text.toLowerCase());
+  return !text || ['null', 'undefined', 'no', 'n/a', 'na', '-', 'for review'].includes(text.toLowerCase());
 }
 
 function displayValue(value?: string | number | null, fallback = 'غير محدد') {
@@ -90,6 +94,56 @@ function formatDate(value?: string | null, locale = 'ar-KW') {
 
 function safeTel(value: string) {
   return value.replace(/[^\d+]/g, '');
+}
+
+function cleanWebsiteLabel(value?: string | null) {
+  if (isMissing(value)) return '';
+  try {
+    const url = new URL(value!.startsWith('http') ? value! : `https://${value}`);
+    return url.hostname.replace(/^www\./, '');
+  } catch {
+    return 'زيارة الموقع';
+  }
+}
+
+function normalizeExternalUrl(value?: string | null) {
+  if (isMissing(value)) return null;
+  const text = value!.trim();
+  if (/^(https?:|mailto:|tel:)/i.test(text)) return text;
+  return `https://${text.replace(/^\/+/, '')}`;
+}
+
+function socialHandle(value?: string | null) {
+  if (isMissing(value)) return '';
+  const text = value!.trim();
+  if (text.startsWith('@')) return text;
+  try {
+    const url = new URL(text.startsWith('http') ? text : `https://${text}`);
+    const parts = url.pathname.split('/').filter(Boolean);
+    return parts.length ? `@${parts[parts.length - 1]}` : url.hostname.replace(/^www\./, '');
+  } catch {
+    return text;
+  }
+}
+
+function socialUrl(value: string | null | undefined, platform: 'instagram' | 'linkedin' | 'twitter') {
+  if (isMissing(value)) return null;
+  const text = value!.trim();
+  if (/^https?:\/\//i.test(text)) return text;
+  const handle = text.replace(/^@/, '').replace(/^\/+/, '');
+  if (!handle) return null;
+  if (platform === 'instagram') return `https://instagram.com/${handle}`;
+  if (platform === 'twitter') return `https://x.com/${handle}`;
+  return `https://www.linkedin.com/in/${handle}`;
+}
+
+function buildMapsHref(item: CompanyListing, location: string) {
+  if (!isMissing(item.google_maps_url)) return normalizeExternalUrl(item.google_maps_url);
+  if (typeof item.latitude === 'number' && typeof item.longitude === 'number') {
+    return `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`;
+  }
+  const query = [item.full_address, location].filter(value => !isMissing(value)).join(' ');
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
 }
 
 async function trackCompanyEvent(companyId: string, eventType: CompanyAnalyticsEventType, accessToken?: string) {
@@ -134,6 +188,22 @@ function ProfileLogo({ item }: { item: CompanyListing }) {
   return <Image src={imageUrl} alt={`${item.company_name} logo`} width={196} height={196} unoptimized onError={() => setFailed(true)} />;
 }
 
+function ProfileCover({ item }: { item: CompanyListing }) {
+  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.cover_image_url);
+  if (!item.cover_image_url || failed || loading || !imageUrl) return null;
+  return (
+    <Image
+      src={imageUrl}
+      alt={`صورة غلاف ${item.company_name}`}
+      fill
+      sizes="(max-width: 768px) 100vw, 1400px"
+      className="hero-cover-image"
+      unoptimized
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function DetailTile({ icon, label, value, fallback }: { icon: ReactNode; label: string; value?: string | number | null; fallback?: string }) {
   return (
     <div className="detail-tile">
@@ -151,12 +221,14 @@ function ContactAction({
   icon,
   label,
   value,
+  display,
   onClick,
 }: {
   href?: string | null;
   icon: ReactNode;
   label: string;
   value?: string | null;
+  display?: string;
   onClick?: () => void;
 }) {
   if (!href || isMissing(value)) return null;
@@ -165,9 +237,22 @@ function ContactAction({
       <span>{icon}</span>
       <div>
         <small>{label}</small>
-        <strong dir="ltr">{value}</strong>
+        <strong dir="ltr">{display || value}</strong>
       </div>
+      {href.startsWith('http') ? <ExternalLink size={14} className="contact-external" aria-hidden="true" /> : null}
     </a>
+  );
+}
+
+function HighlightCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="highlight-card">
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+      </div>
+    </div>
   );
 }
 
@@ -261,6 +346,11 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const coordinates = [item?.latitude, item?.longitude].filter(value => typeof value === 'number').join(', ');
   const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
   const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/services') : '/services';
+  const websiteHref = item ? normalizeExternalUrl(item.website_url) : null;
+  const instagramHref = item ? socialUrl(item.instagram_url, 'instagram') : null;
+  const linkedinHref = item ? socialUrl(item.linkedin_url, 'linkedin') : null;
+  const twitterHref = item ? socialUrl(item.twitter_url, 'twitter') : null;
+  const mapsHref = item ? buildMapsHref(item, location) : null;
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const canSeeDetailedAnalytics = Boolean(viewer?.canReview || viewer?.isOwner);
   const numberFormat = useMemo(() => new Intl.NumberFormat(locale), [locale]);
@@ -333,7 +423,19 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
         {!loading && item ? (
           <article className="company-profile" dir={dir}>
+            <div className="profile-back-row">
+              <ActionButtonLink
+                href={backHref}
+                icon={<ChevronRight size={17} />}
+                label="العودة إلى الخدمات"
+                ariaLabel="العودة إلى صفحة الخدمات"
+                variant="secondary"
+              />
+            </div>
+
             <section className="company-hero-card">
+              <ProfileCover item={item} />
+              <div className="hero-shade" aria-hidden="true" />
               <div className="hero-main">
                 <div className="company-logo">
                   <ProfileLogo item={item} />
@@ -348,13 +450,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     <span><Building2 size={15} />{categoryLabel}</span>
                     {location ? <span><MapPin size={15} />{location}</span> : null}
                   </div>
-                  <p>{displayValue(item.short_description, 'لم يتم إضافة وصف مختصر بعد.')}</p>
+                  <p>{displayValue(item.short_description, 'لم تتم إضافة نبذة مختصرة بعد.')}</p>
                 </div>
               </div>
               <div className="hero-actions">
-                {item.website_url ? (
+                {websiteHref ? (
                   <ActionButtonLink
-                    href={item.website_url}
+                    href={websiteHref}
                     icon={<Globe2 size={17} />}
                     label="زيارة الموقع"
                     ariaLabel={`زيارة موقع ${item.company_name}`}
@@ -383,6 +485,16 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     external
                     onClick={() => trackInteraction('company_contact_click')}
                   />
+                ) : item.whatsapp ? (
+                  <ActionButtonLink
+                    href={`https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}`}
+                    icon={<MessageCircle size={17} />}
+                    label="واتساب"
+                    ariaLabel={`التواصل مع ${item.company_name} عبر واتساب`}
+                    variant="ghost"
+                    external
+                    onClick={() => trackInteraction('company_contact_click')}
+                  />
                 ) : null}
                 <ActionButtonLink
                   href={backHref}
@@ -394,15 +506,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               </div>
             </section>
 
-            {status !== 'approved' ? (
-              <section className="review-warning">
-                <ShieldAlert size={20} />
-                <div>
-                  <strong>المعلومات مقدمة من الشركة وتخضع للمراجعة قبل النشر.</strong>
-                  {shouldShowReviewNote(status) && item.admin_notes ? <p>{item.admin_notes}</p> : null}
-                </div>
-              </section>
-            ) : null}
+            <section className="highlight-row" aria-label="ملخص الشركة">
+              <HighlightCard icon={<StatusIcon size={18} />} label="حالة الاعتماد" value={STATUS_LABELS[status] ?? status} />
+              <HighlightCard icon={<CalendarDays size={18} />} label="سنة التأسيس" value={displayValue(item.founded_year, 'غير مضاف')} />
+              <HighlightCard icon={<MapPin size={18} />} label="الموقع" value={displayValue(location, 'غير محدد')} />
+              <HighlightCard icon={<Building2 size={18} />} label="نوع الشركة" value={categoryLabel} />
+              <HighlightCard icon={<Eye size={18} />} label="زيارات الصفحة" value={numberFormat.format(analytics?.profileViews ?? 0)} />
+            </section>
 
             <div className="company-layout">
               <main className="company-main-column">
@@ -410,11 +520,11 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <div className="overview-block">
                     <div>
                       <span>وصف مختصر</span>
-                      <p>{displayValue(item.short_description, 'لم يتم إضافة وصف مختصر بعد.')}</p>
+                      <p>{displayValue(item.short_description, 'لم تتم إضافة نبذة مختصرة بعد.')}</p>
                     </div>
                     <div>
                       <span>وصف تفصيلي</span>
-                      <p>{displayValue(item.long_description, 'لم يتم إضافة وصف تفصيلي بعد.')}</p>
+                      <p>{displayValue(item.long_description, 'لم تتم إضافة وصف تفصيلي بعد.')}</p>
                     </div>
                   </div>
                   <div className="details-grid">
@@ -442,12 +552,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   ) : (
                     <div className="empty-card">
                       <Sparkles size={22} />
+                      <strong>لا توجد خدمات منشورة حالياً</strong>
                       <p>لم يتم إضافة خدمات لهذه الشركة بعد.</p>
                     </div>
                   )}
                 </SectionCard>
 
-                <SectionCard eyebrow="Company Data" title="بيانات إضافية" icon={<BadgeCheck size={19} />}>
+                <SectionCard eyebrow="Regulatory" title="المعلومات النظامية" icon={<BadgeCheck size={19} />}>
                   <div className="details-grid">
                     <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الإضافة" value={formatDate(item.created_at, locale)} />
                     <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الاعتماد" value={formatDate(item.approved_at, locale)} />
@@ -455,6 +566,27 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                     <DetailTile icon={<Sparkles size={17} />} label="شركة مميزة" value={item.is_featured ? 'نعم' : 'لا'} />
                   </div>
                 </SectionCard>
+
+                {(mapsHref || item.full_address || location) ? (
+                  <SectionCard eyebrow="Location" title="الموقع والعنوان" icon={<Navigation size={19} />}>
+                    <div className="location-card">
+                      <div>
+                        <span>عنوان الشركة</span>
+                        <strong>{displayValue(item.full_address || location, 'لم يتم إضافة عنوان كامل بعد.')}</strong>
+                      </div>
+                      {mapsHref ? (
+                        <ActionButtonLink
+                          href={mapsHref}
+                          icon={<MapPin size={17} />}
+                          label="فتح الموقع على الخريطة"
+                          ariaLabel={`فتح موقع ${item.company_name} على الخريطة`}
+                          variant="secondary"
+                          external
+                        />
+                      ) : null}
+                    </div>
+                  </SectionCard>
+                ) : null}
               </main>
 
               <aside className="company-side-column">
@@ -469,31 +601,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                         trackInteraction(href.startsWith('http') && !href.includes('wa.me') ? 'company_website_click' : 'company_contact_click');
                       }}
                     >
-                      <ContactAction href={item.website_url} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} />
+                      <ContactAction href={websiteHref} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} display={cleanWebsiteLabel(item.website_url)} />
                       <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
                       <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
-                      <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<Phone size={16} />} label="واتساب" value={item.whatsapp} />
-                      <ContactAction href={item.instagram_url} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} />
-                      <ContactAction href={item.linkedin_url} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} />
-                      <ContactAction href={item.google_maps_url} icon={<MapPin size={16} />} label="Google Maps" value={item.full_address || item.google_maps_url} />
-                      {!item.google_maps_url && item.full_address ? (
-                        <div className="contact-action static">
-                          <span><MapPin size={16} /></span>
-                          <div>
-                            <small>العنوان الكامل</small>
-                            <strong>{item.full_address}</strong>
-                          </div>
-                        </div>
-                      ) : null}
-                      {location ? (
-                        <div className="contact-action static">
-                          <span><MapPin size={16} /></span>
-                          <div>
-                            <small>الموقع</small>
-                            <strong>{location}</strong>
-                          </div>
-                        </div>
-                      ) : null}
+                      <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<MessageCircle size={16} />} label="واتساب" value={item.whatsapp} />
+                      <ContactAction href={instagramHref} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} display={socialHandle(item.instagram_url)} />
+                      <ContactAction href={linkedinHref} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} display={socialHandle(item.linkedin_url)} />
+                      <ContactAction href={twitterHref} icon={<ExternalLink size={16} />} label="X / Twitter" value={item.twitter_url} display={socialHandle(item.twitter_url)} />
+                      <ContactAction href={mapsHref} icon={<MapPin size={16} />} label="الموقع على الخريطة" value={item.full_address || location || item.google_maps_url} display="فتح الموقع على الخريطة" />
                     </div>
                   ) : (
                     <div className="empty-card compact">
@@ -503,8 +618,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   )}
                 </SectionCard>
 
-                <SectionCard eyebrow="Analytics" title="إحصائيات الشركة" icon={<Eye size={19} />} className="side-card">
-                  <div className="analytics-grid">
+                <SectionCard eyebrow="Analytics" title="إحصائيات الشركة" icon={<BarChart3 size={19} />} className="side-card">
+                  <div className="analytics-grid metric-grid">
                     <DetailTile icon={<Eye size={16} />} label="زيارات الصفحة" value={numberFormat.format(analytics?.profileViews ?? 0)} />
                     {canSeeDetailedAnalytics ? (
                       <>
@@ -528,12 +643,32 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <div className="status-list">
                     <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الإرسال" value={formatDate(item.created_at, locale)} />
                     <DetailTile icon={<CalendarDays size={16} />} label="تاريخ المراجعة" value={formatDate(item.reviewed_at, locale)} />
+                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الاعتماد" value={formatDate(item.approved_at, locale)} />
                   </div>
                   <p className={`status-message ${status}`}>{statusMessage(status, item.admin_notes)}</p>
                   {viewer?.canReview && shouldShowReviewNote(status) && item.admin_notes ? (
                     <p className="admin-note"><strong>ملاحظة المراجعة:</strong> {item.admin_notes}</p>
                   ) : null}
                 </SectionCard>
+
+                {viewer?.isOwner ? (
+                  <SectionCard eyebrow="Owner" title="إدارة شركتي" icon={<Building2 size={19} />} className="side-card admin-card">
+                    <ActionButtonLink
+                      href="/profile/companies"
+                      icon={<Edit3 size={16} />}
+                      label="تعديل البيانات"
+                      ariaLabel="فتح صفحة شركاتي لتعديل بيانات الشركة"
+                      variant="secondary"
+                    />
+                    <ActionButtonLink
+                      href={`/companies/${item.id}`}
+                      icon={<Eye size={16} />}
+                      label="عرض الصفحة العامة"
+                      ariaLabel="عرض الصفحة العامة للشركة"
+                      variant="secondary"
+                    />
+                  </SectionCard>
+                ) : null}
 
                 {viewer?.canReview ? (
                   <SectionCard eyebrow="Admin" title="إجراءات المراجعة" icon={<ShieldCheck size={19} />} className="side-card admin-card">
@@ -1091,6 +1226,557 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .dark .admin-card button,
           .dark .admin-card a {
             color: #F8FAFC;
+          }
+
+          :global(.company-details-content) {
+            width: min(100%, 1500px) !important;
+            max-width: 1500px;
+            margin-inline: auto;
+            padding-inline: clamp(16px, 2vw, 32px);
+          }
+
+          .company-profile {
+            gap: 22px;
+          }
+
+          .profile-back-row {
+            display: flex;
+            justify-content: flex-start;
+          }
+
+          .profile-back-row :global(.sfm-action-link) {
+            min-height: 44px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #0b4f8a;
+            border-color: rgba(11, 118, 224, 0.16);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+          }
+
+          .company-hero-card {
+            position: relative;
+            isolation: isolate;
+            min-height: 300px;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
+            align-items: center;
+            border-radius: 30px;
+            padding: clamp(22px, 3vw, 34px);
+            border-color: rgba(47, 214, 192, 0.26);
+            background:
+              radial-gradient(circle at 16% 12%, rgba(47, 214, 192, 0.28), transparent 30%),
+              linear-gradient(135deg, #07172a 0%, #0a2646 55%, #0d6375 135%);
+          }
+
+          .company-hero-card :global(.hero-cover-image) {
+            object-fit: cover;
+            opacity: 0.26;
+            z-index: 0;
+          }
+
+          .hero-shade {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+              linear-gradient(90deg, rgba(7, 23, 42, 0.78), rgba(7, 23, 42, 0.92)),
+              radial-gradient(circle at 88% 70%, rgba(24, 212, 212, 0.18), transparent 34%);
+            pointer-events: none;
+          }
+
+          .hero-main,
+          .hero-actions {
+            position: relative;
+            z-index: 2;
+          }
+
+          .hero-main {
+            gap: 22px;
+          }
+
+          .company-logo {
+            width: clamp(88px, 8vw, 112px);
+            height: clamp(88px, 8vw, 112px);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(10px);
+          }
+
+          .company-logo :global(img) {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.94);
+          }
+
+          :global(.company-avatar-fallback) {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+            color: #07172a;
+            background: linear-gradient(135deg, #d9fbff 0%, #22d3ee 48%, #0b76e0 100%);
+            font-size: 34px;
+            font-weight: 950;
+            letter-spacing: 0;
+          }
+
+          :global(.company-avatar-fallback.resolving) {
+            opacity: 0.72;
+          }
+
+          .hero-copy h1 {
+            max-width: 860px;
+            font-size: clamp(34px, 3.8vw, 58px);
+            letter-spacing: 0;
+          }
+
+          .hero-copy p {
+            max-width: 780px;
+            font-size: 15px;
+            color: rgba(234, 246, 255, 0.84);
+          }
+
+          .hero-actions {
+            align-self: stretch;
+            align-content: center;
+            justify-content: flex-end;
+            min-width: 280px;
+          }
+
+          .hero-actions :global(.sfm-action-link) {
+            min-width: 150px;
+            min-height: 48px;
+          }
+
+          .highlight-row {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          :global(.highlight-card) {
+            min-width: 0;
+            min-height: 92px;
+            border: 1px solid rgba(11, 118, 224, 0.11);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+          }
+
+          :global(.highlight-card > span) {
+            width: 40px;
+            height: 40px;
+            flex: 0 0 auto;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: #0b76e0;
+            background: linear-gradient(135deg, rgba(11, 118, 224, 0.10), rgba(24, 212, 212, 0.14));
+          }
+
+          :global(.highlight-card small) {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          :global(.highlight-card strong) {
+            display: block;
+            margin-top: 4px;
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 950;
+            overflow-wrap: anywhere;
+          }
+
+          .company-layout {
+            grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
+            gap: 22px;
+          }
+
+          .company-main-column,
+          .company-side-column {
+            gap: 22px;
+          }
+
+          :global(.profile-card) {
+            border: 1px solid rgba(11, 118, 224, 0.10);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.055);
+            padding: 22px;
+            min-width: 0;
+          }
+
+          :global(.side-card) {
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+          }
+
+          :global(.section-head) {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 18px;
+          }
+
+          :global(.section-icon) {
+            width: 42px;
+            height: 42px;
+            border-radius: 15px;
+            display: grid;
+            place-items: center;
+            color: #0b9ead;
+            background: linear-gradient(135deg, rgba(24, 212, 212, 0.13), rgba(11, 118, 224, 0.09));
+            flex: 0 0 auto;
+          }
+
+          :global(.section-head small) {
+            display: block;
+            color: #0b9ead;
+            font-size: 12px;
+            font-weight: 950;
+            letter-spacing: 0.01em;
+          }
+
+          :global(.section-head h2) {
+            margin: 3px 0 0;
+            color: #0f172a;
+            font-size: 23px;
+            line-height: 1.2;
+            font-weight: 950;
+          }
+
+          .overview-block {
+            grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+            gap: 14px;
+          }
+
+          .overview-block div {
+            background: linear-gradient(180deg, #f8fbff, #ffffff);
+            padding: 16px;
+          }
+
+          .overview-block p {
+            font-size: 15px;
+            line-height: 1.9;
+          }
+
+          :global(.details-grid) {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          :global(.status-list) {
+            display: grid;
+            gap: 10px;
+          }
+
+          :global(.detail-tile) {
+            min-width: 0;
+            border: 1px solid rgba(11, 118, 224, 0.10);
+            border-radius: 17px;
+            background: #f8fbff;
+            padding: 13px;
+            display: flex;
+            gap: 11px;
+            align-items: flex-start;
+          }
+
+          :global(.detail-icon) {
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(11, 118, 224, 0.09);
+            color: #0b76e0;
+            flex: 0 0 auto;
+          }
+
+          :global(.detail-tile span:not(.detail-icon)),
+          :global(.contact-action small),
+          :global(.status-card span) {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          :global(.detail-tile strong),
+          :global(.contact-action strong),
+          :global(.status-card strong) {
+            display: block;
+            margin-top: 4px;
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 950;
+            overflow-wrap: anywhere;
+          }
+
+          .services-grid {
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+          }
+
+          .service-card {
+            min-height: 96px;
+            border-radius: 20px;
+            border-color: rgba(11, 118, 224, 0.14);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+          }
+
+          .service-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(24, 212, 212, 0.34);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+          }
+
+          .empty-card {
+            min-height: 112px;
+            place-items: center;
+            align-content: center;
+          }
+
+          .empty-card strong {
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 950;
+          }
+
+          .empty-card p {
+            margin: 0;
+          }
+
+          :global(.contact-list),
+          :global(.analytics-grid),
+          :global(.admin-card) {
+            display: grid;
+            gap: 10px;
+          }
+
+          :global(.contact-action) {
+            min-height: 58px;
+            border: 1px solid rgba(11, 118, 224, 0.10);
+            border-radius: 17px;
+            background: #f8fbff;
+            color: #0f172a;
+            padding: 11px 12px;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            text-decoration: none;
+            font-weight: 900;
+            transition: transform .16s ease, border-color .16s ease, background .16s ease;
+          }
+
+          :global(.contact-action:hover),
+          :global(.contact-action:focus-visible) {
+            outline: none;
+            transform: translateY(-1px);
+            border-color: rgba(24, 212, 212, 0.38);
+            background: #f0fdff;
+          }
+
+          :global(.contact-action > span) {
+            width: 36px;
+            height: 36px;
+            border-radius: 13px;
+            display: grid;
+            place-items: center;
+            background: rgba(24, 212, 212, 0.12);
+            color: #0b9ead;
+          }
+
+          :global(.contact-external) {
+            color: #94a3b8;
+          }
+
+          :global(.metric-grid) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          :global(.metric-grid .detail-tile:first-child) {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10));
+          }
+
+          :global(.metric-grid .detail-tile:first-child strong) {
+            font-size: 24px;
+          }
+
+          :global(.status-card) {
+            border-radius: 19px;
+            padding: 15px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+          }
+
+          :global(.status-message) {
+            margin: 12px 0 0;
+            border-radius: 15px;
+            padding: 13px;
+            line-height: 1.8;
+            font-weight: 900;
+          }
+
+          :global(.admin-note) {
+            margin: 12px 0 0;
+            border-radius: 15px;
+            background: #fff7ed;
+            color: #9a3412;
+            padding: 12px;
+            line-height: 1.7;
+            font-weight: 850;
+          }
+
+          :global(.admin-card button),
+          :global(.admin-card a),
+          :global(.admin-card .sfm-action-link) {
+            width: 100%;
+            min-height: 46px;
+            border-radius: 15px;
+          }
+
+          .location-card {
+            border: 1px solid rgba(11, 118, 224, 0.10);
+            border-radius: 20px;
+            background: linear-gradient(135deg, #f8fbff, #ffffff);
+            padding: 16px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: center;
+          }
+
+          .location-card span {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 900;
+          }
+
+          .location-card strong {
+            display: block;
+            margin-top: 5px;
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 950;
+            overflow-wrap: anywhere;
+          }
+
+          @media (max-width: 1180px) {
+            .highlight-row {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .company-layout {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 820px) {
+            :global(.company-details-content) {
+              padding-inline: 14px;
+            }
+
+            .company-hero-card {
+              grid-template-columns: 1fr;
+              min-height: 0;
+            }
+
+            .hero-actions {
+              min-width: 0;
+              display: grid;
+              grid-template-columns: 1fr;
+              width: 100%;
+            }
+
+            .highlight-row {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .overview-block,
+            :global(.details-grid),
+            .location-card {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 560px) {
+            .company-hero-card,
+            :global(.profile-card) {
+              border-radius: 22px;
+              padding: 16px;
+            }
+
+            .hero-main {
+              align-items: flex-start;
+              flex-direction: column;
+            }
+
+            .company-logo {
+              width: 82px;
+              height: 82px;
+              border-radius: 22px;
+            }
+
+            .hero-copy h1 {
+              font-size: 34px;
+            }
+
+            .highlight-row,
+            :global(.metric-grid) {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          :global(.dark) :global(.highlight-card),
+          :global(.dark) :global(.profile-card),
+          :global(.dark) :global(.details-state) {
+            background: #0b2a4a;
+            border-color: rgba(47, 214, 192, 0.15);
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+          }
+
+          :global(.dark) :global(.section-head h2),
+          :global(.dark) :global(.highlight-card strong),
+          :global(.dark) :global(.detail-tile strong),
+          :global(.dark) :global(.contact-action strong),
+          :global(.dark) :global(.status-card strong),
+          :global(.dark) .overview-block p,
+          :global(.dark) .location-card strong,
+          :global(.dark) .empty-card strong {
+            color: #f8fafc;
+          }
+
+          :global(.dark) :global(.highlight-card small),
+          :global(.dark) :global(.detail-tile span:not(.detail-icon)),
+          :global(.dark) :global(.contact-action small),
+          :global(.dark) .location-card span,
+          :global(.dark) .empty-card {
+            color: #cbd5e1;
+          }
+
+          :global(.dark) :global(.detail-tile),
+          :global(.dark) :global(.contact-action),
+          :global(.dark) .overview-block div,
+          :global(.dark) .location-card,
+          :global(.dark) .empty-card,
+          :global(.dark) :global(.status-message),
+          :global(.dark) :global(.admin-card button),
+          :global(.dark) :global(.admin-card a) {
+            background: #0a1f36;
+            border-color: rgba(47, 214, 192, 0.14);
           }
         `}</style>
       </DashboardPageShell>
