@@ -5,13 +5,19 @@ import type { ReactNode } from 'react';
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   Bot,
   BrainCircuit,
   ChevronDown,
+  CheckCircle2,
   Clock3,
+  Database,
   Gauge,
+  Info,
   LineChart,
+  ListChecks,
   Loader2,
+  Radio,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -88,6 +94,32 @@ const COPY = {
     date: 'التاريخ',
     actionColumn: 'إجراء',
     reuse: 'إعادة التحليل',
+    workspaceTitle: 'مساحة القراءة الحالية',
+    snapshotTitle: 'لقطة السوق',
+    chartTitle: 'مخطط مستويات السعر',
+    chartUnavailable: 'بيانات الرسم البياني التاريخية غير متاحة في الاستجابة الحالية. يتم عرض مستويات السوق المحسوبة فقط.',
+    dataStatusTitle: 'حالة البيانات',
+    connected: 'متصلة',
+    available: 'متاحة',
+    lastUpdate: 'آخر تحديث',
+    marketLevels: 'مستويات السوق',
+    confidenceBasis: 'كيف تم احتساب الثقة؟',
+    evidenceTitle: 'الأدلة الفنية',
+    positiveFactors: 'العوامل الداعمة',
+    cautionFactors: 'عوامل الحذر',
+    readingSummary: 'ملخص القراءة',
+    bullishScenario: 'السيناريو الصاعد',
+    bearishScenario: 'السيناريو الهابط',
+    whatChanges: 'ما الذي قد يغير القراءة؟',
+    currentReading: 'القراءة الحالية',
+    potentialEntry: 'نطاق دخول محتمل',
+    invalidation: 'إبطال القراءة',
+    volume: 'حجم التداول',
+    pivot: 'النقطة المحورية',
+    refreshAnalysis: 'تحديث التحليل',
+    searchHistory: 'ابحث في آخر التحليلات',
+    shownHistory: 'المعروض',
+    noChartData: 'لا توجد سلسلة أسعار كافية لرسم شموع حقيقية لهذا الأصل حالياً.',
     unavailable: 'لا توجد بيانات كافية لإصدار قراءة موثوقة لهذا الأصل حالياً.',
   },
   en: {
@@ -152,6 +184,32 @@ const COPY = {
     date: 'Date',
     actionColumn: 'Action',
     reuse: 'Analyze again',
+    workspaceTitle: 'Current reading workspace',
+    snapshotTitle: 'Market snapshot',
+    chartTitle: 'Price levels chart',
+    chartUnavailable: 'Historical chart data is not included in the current response. The computed market levels are shown instead.',
+    dataStatusTitle: 'Data status',
+    connected: 'Connected',
+    available: 'Available',
+    lastUpdate: 'Last update',
+    marketLevels: 'Market levels',
+    confidenceBasis: 'How confidence was calculated',
+    evidenceTitle: 'Technical evidence',
+    positiveFactors: 'Supporting factors',
+    cautionFactors: 'Caution factors',
+    readingSummary: 'Reading summary',
+    bullishScenario: 'Bullish scenario',
+    bearishScenario: 'Bearish scenario',
+    whatChanges: 'What could change the reading?',
+    currentReading: 'Current reading',
+    potentialEntry: 'Potential entry range',
+    invalidation: 'Reading invalidation',
+    volume: 'Volume',
+    pivot: 'Pivot point',
+    refreshAnalysis: 'Refresh analysis',
+    searchHistory: 'Search recent analyses',
+    shownHistory: 'Showing',
+    noChartData: 'There is not enough price-series data to draw real candles for this asset right now.',
     unavailable: 'There is not enough reliable data for this asset at the moment.',
   },
   fr: {
@@ -216,11 +274,37 @@ const COPY = {
     date: 'Date',
     actionColumn: 'Action',
     reuse: 'Analyser à nouveau',
+    workspaceTitle: 'Espace de lecture actuel',
+    snapshotTitle: 'Instantané du marché',
+    chartTitle: 'Graphique des niveaux',
+    chartUnavailable: 'Les données historiques du graphique ne sont pas incluses dans la réponse actuelle. Les niveaux calculés sont affichés.',
+    dataStatusTitle: 'État des données',
+    connected: 'Connecté',
+    available: 'Disponible',
+    lastUpdate: 'Dernière mise à jour',
+    marketLevels: 'Niveaux du marché',
+    confidenceBasis: 'Comment la confiance est calculée',
+    evidenceTitle: 'Éléments techniques',
+    positiveFactors: 'Facteurs favorables',
+    cautionFactors: 'Facteurs de prudence',
+    readingSummary: 'Résumé de la lecture',
+    bullishScenario: 'Scénario haussier',
+    bearishScenario: 'Scénario baissier',
+    whatChanges: 'Ce qui peut changer la lecture',
+    currentReading: 'Lecture actuelle',
+    potentialEntry: 'Zone d’entrée potentielle',
+    invalidation: 'Invalidation de la lecture',
+    volume: 'Volume',
+    pivot: 'Point pivot',
+    refreshAnalysis: 'Actualiser l’analyse',
+    searchHistory: 'Rechercher dans les analyses récentes',
+    shownHistory: 'Affiché',
+    noChartData: 'Les données de série de prix sont insuffisantes pour afficher de vraies bougies actuellement.',
     unavailable: 'Les données fiables sont insuffisantes pour cet actif actuellement.',
   },
 } as const;
 
-type Copy = typeof COPY.ar;
+type Copy = (typeof COPY)[keyof typeof COPY];
 
 type HistoryItem = {
   id: string;
@@ -233,6 +317,21 @@ type HistoryItem = {
   current_price: number | null;
   summary: string | null;
   created_at: string;
+};
+
+type MarketAgentAnalysisResult = Extract<MarketAgentResponse, { ok: true }>;
+
+type ConfidenceFactor = {
+  label: string;
+  score: number;
+  detail: string;
+};
+
+type IndicatorView = {
+  label: string;
+  value: string;
+  status: string;
+  tone: 'positive' | 'negative' | 'neutral' | 'warning';
 };
 
 const ASSET_OPTIONS: Array<{ value: MarketAgentAssetType; labelKey: keyof Copy }> = [
@@ -285,6 +384,107 @@ function actionToneClass(value: 'buy' | 'sell' | 'wait') {
   return 'wait';
 }
 
+function clampPercent(value: number) {
+  return Math.max(4, Math.min(96, value));
+}
+
+function formatValueOrFallback(value: number | null | undefined, fallback: string) {
+  const formatted = formatNumber(value);
+  return formatted || fallback;
+}
+
+function getTrendTone(value: 'bullish' | 'bearish' | 'neutral') {
+  if (value === 'bullish') return 'positive';
+  if (value === 'bearish') return 'negative';
+  return 'neutral';
+}
+
+function buildConfidenceFactors(result: MarketAgentAnalysisResult, text: Copy): ConfidenceFactor[] {
+  const signals = result.debugSignals;
+  const signalScore = signals?.totalSignals
+    ? Math.round((signals.alignedSignals / Math.max(signals.totalSignals, 1)) * 100)
+    : result.confidence;
+  const indicatorValues = [
+    result.indicators.rsi,
+    result.indicators.macd,
+    result.indicators.ema20,
+    result.indicators.ema50,
+    result.indicators.ema200,
+    result.indicators.atr,
+    result.indicators.volume,
+  ];
+  const dataCompleteness = Math.round((indicatorValues.filter(value => value !== null && value !== undefined).length / indicatorValues.length) * 100);
+  const trendAlignment = [result.trends.shortTerm, result.trends.mediumTerm, result.trends.longTerm]
+    .filter(value => value === result.direction).length;
+  const trendScore = Math.round((trendAlignment / 3) * 100);
+
+  return [
+    {
+      label: text.evidenceTitle,
+      score: Math.max(0, Math.min(100, signalScore)),
+      detail: `${Math.round(signals?.alignedSignals ?? result.confidence)} / ${Math.round(signals?.totalSignals ?? 100)}`,
+    },
+    {
+      label: text.trends,
+      score: trendScore,
+      detail: `${trendAlignment}/3`,
+    },
+    {
+      label: text.indicators,
+      score: dataCompleteness,
+      detail: `${indicatorValues.filter(value => value !== null && value !== undefined).length}/${indicatorValues.length}`,
+    },
+  ];
+}
+
+function buildIndicatorRows(result: MarketAgentAnalysisResult, text: Copy): IndicatorView[] {
+  const rsi = result.indicators.rsi;
+  const rsiTone: IndicatorView['tone'] = rsi === null ? 'neutral' : rsi > 70 || rsi < 30 ? 'warning' : rsi >= 45 && rsi <= 70 ? 'positive' : 'negative';
+  const macdTone = getTrendTone(result.indicators.macd);
+  const emaTone: IndicatorView['tone'] = result.indicators.ema20 && result.indicators.ema50
+    ? result.indicators.ema20 > result.indicators.ema50 ? 'positive' : 'negative'
+    : 'neutral';
+
+  return [
+    {
+      label: 'RSI',
+      value: rsi === null ? text.noValue : String(rsi),
+      status: rsi === null ? text.noValue : rsi > 70 ? text.high : rsi < 30 ? text.low : text.neutral,
+      tone: rsiTone,
+    },
+    {
+      label: 'MACD',
+      value: result.indicators.macdValue === null ? text.noValue : formatNumber(result.indicators.macdValue),
+      status: text[result.indicators.macd],
+      tone: macdTone,
+    },
+    {
+      label: 'EMA 20 / EMA 50',
+      value: `${formatValueOrFallback(result.indicators.ema20, text.noValue)} / ${formatValueOrFallback(result.indicators.ema50, text.noValue)}`,
+      status: emaTone === 'positive' ? text.bullish : emaTone === 'negative' ? text.bearish : text.neutral,
+      tone: emaTone,
+    },
+    {
+      label: 'EMA 200',
+      value: formatValueOrFallback(result.indicators.ema200, text.noValue),
+      status: result.indicators.ema200 ? (result.currentPrice > result.indicators.ema200 ? text.bullish : text.bearish) : text.noValue,
+      tone: result.indicators.ema200 ? (result.currentPrice > result.indicators.ema200 ? 'positive' : 'negative') : 'neutral',
+    },
+    {
+      label: 'ATR',
+      value: formatValueOrFallback(result.indicators.atr, text.noValue),
+      status: result.indicators.atr ? text.available : text.noValue,
+      tone: result.indicators.atr ? 'neutral' : 'warning',
+    },
+    {
+      label: text.volume,
+      value: formatValueOrFallback(result.indicators.volume, text.noValue),
+      status: result.indicators.volume ? text.available : text.noValue,
+      tone: result.indicators.volume ? 'neutral' : 'warning',
+    },
+  ];
+}
+
 export default function MarketAgentPage() {
   const { dir, lang } = useLanguage();
   const text = COPY[lang] ?? COPY.ar;
@@ -296,6 +496,7 @@ export default function MarketAgentPage() {
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyQuery, setHistoryQuery] = useState('');
   const [error, setError] = useState('');
 
   const actionTone = useMemo(() => {
@@ -377,12 +578,31 @@ export default function MarketAgentPage() {
     requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
-  const labelDirection = (value: 'bullish' | 'bearish' | 'neutral') => text[value];
-  const labelAction = (value: 'buy' | 'sell' | 'wait') => text[value];
-  const labelRisk = (value: 'low' | 'medium' | 'high') => text[value];
-  const labelAsset = (value: MarketAgentAssetType) => text[ASSET_LABEL_KEYS[value]] ?? value;
+  const labelDirection = useCallback((value: 'bullish' | 'bearish' | 'neutral') => text[value], [text]);
+  const labelAction = useCallback((value: 'buy' | 'sell' | 'wait') => text[value], [text]);
+  const labelRisk = useCallback((value: 'low' | 'medium' | 'high') => text[value], [text]);
+  const labelAsset = useCallback((value: MarketAgentAssetType) => text[ASSET_LABEL_KEYS[value]] ?? value, [text]);
   const currentSource = result?.source || text.sourceReady;
   const isAnalyzeDisabled = loading || !symbol.trim();
+  const successResult = result?.ok ? result : null;
+  const confidenceFactors = useMemo(
+    () => successResult ? buildConfidenceFactors(successResult, text) : [],
+    [successResult, text],
+  );
+  const indicatorRows = useMemo(
+    () => successResult ? buildIndicatorRows(successResult, text) : [],
+    [successResult, text],
+  );
+  const filteredHistory = useMemo(() => {
+    const query = historyQuery.trim().toLowerCase();
+    if (!query) return history;
+    return history.filter(item => {
+      return item.symbol.toLowerCase().includes(query)
+        || labelAsset(item.asset_type).toLowerCase().includes(query)
+        || labelAction(item.suggested_action).toLowerCase().includes(query);
+    });
+  }, [history, historyQuery, labelAction, labelAsset]);
+  const visibleHistory = filteredHistory.slice(0, 8);
 
   return (
     <div className="market-agent-page" dir={dir}>
@@ -493,56 +713,148 @@ export default function MarketAgentPage() {
               <span />
             </div>
           </section>
-        ) : result?.ok ? (
-          <section className={`agent-result-panel ${actionTone}`}>
-            <header>
+        ) : successResult ? (
+          <section className="agent-workspace" aria-labelledby="agent-workspace-title">
+            <header className="agent-workspace-header">
               <div>
-                <span>{result.symbol} · {labelAsset(result.assetType)} · {result.timeframe}</span>
-                <h2>{labelAction(result.suggestedAction)}</h2>
+                <span>{successResult.symbol} · {labelAsset(successResult.assetType)} · {successResult.timeframe}</span>
+                <h2 id="agent-workspace-title">{text.workspaceTitle}</h2>
               </div>
-              <div className="agent-score-ring">
-                <strong>{result.confidence}%</strong>
-                <span>{text.confidence}</span>
-              </div>
+              <b className={`agent-signal-badge ${actionToneClass(successResult.suggestedAction)}`}>
+                {text.currentReading}: {labelAction(successResult.suggestedAction)}
+              </b>
             </header>
 
-            <div className="agent-metric-grid">
-              <Metric icon={<LineChart size={18} />} label={text.currentPrice} value={formatNumber(result.currentPrice)} />
-              <Metric icon={<TrendingUp size={18} />} label={text.direction} value={labelDirection(result.direction)} />
-              <Metric icon={<Gauge size={18} />} label={text.risk} value={labelRisk(result.riskLevel)} />
-              <Metric icon={<Target size={18} />} label={text.entryZone} value={`${formatNumber(result.entryZone.from)} - ${formatNumber(result.entryZone.to)}`} />
-              <Metric icon={<ShieldAlert size={18} />} label={text.stopLoss} value={result.stopLoss ? formatNumber(result.stopLoss) : text.noValue} />
-              <Metric icon={<TrendingUp size={18} />} label={text.takeProfit} value={joinLevels(result.takeProfit, text.noValue)} />
-              <Metric icon={<TrendingDown size={18} />} label={text.support} value={joinLevels(result.support, text.noValue)} />
-              <Metric icon={<TrendingUp size={18} />} label={text.resistance} value={joinLevels(result.resistance, text.noValue)} />
-            </div>
+            <div className="agent-workspace-grid">
+              <div className="agent-main-column">
+                <section className="agent-section-card agent-snapshot-card">
+                  <div className="agent-section-heading">
+                    <div>
+                      <span><Activity size={16} aria-hidden="true" /> {text.snapshotTitle}</span>
+                      <p>{successResult.source} · {formatDate(successResult.updatedAt, lang) || text.noValue}</p>
+                    </div>
+                  </div>
+                  <div className="agent-metric-grid compact">
+                    <Metric icon={<LineChart size={18} />} label={text.currentPrice} value={formatNumber(successResult.currentPrice)} />
+                    <Metric icon={<TrendingUp size={18} />} label={text.direction} value={labelDirection(successResult.direction)} />
+                    <Metric icon={<Gauge size={18} />} label={text.risk} value={labelRisk(successResult.riskLevel)} />
+                    <Metric icon={<Database size={18} />} label={text.volume} value={formatValueOrFallback(successResult.indicators.volume, text.noValue)} />
+                    <Metric icon={<Target size={18} />} label={text.potentialEntry} value={`${formatNumber(successResult.entryZone.from)} - ${formatNumber(successResult.entryZone.to)}`} />
+                    <Metric icon={<ShieldAlert size={18} />} label={text.invalidation} value={successResult.stopLoss ? formatNumber(successResult.stopLoss) : text.noValue} />
+                  </div>
+                </section>
 
-            <div className="agent-detail-grid">
-              <section>
-                <h3>{text.trends}</h3>
-                <dl>
-                  <div><dt>{text.shortTerm}</dt><dd>{labelDirection(result.trends.shortTerm)}</dd></div>
-                  <div><dt>{text.mediumTerm}</dt><dd>{labelDirection(result.trends.mediumTerm)}</dd></div>
-                  <div><dt>{text.longTerm}</dt><dd>{labelDirection(result.trends.longTerm)}</dd></div>
-                </dl>
-              </section>
-              <section>
-                <h3>{text.indicators}</h3>
-                <dl>
-                  <div><dt>RSI</dt><dd>{result.indicators.rsi ?? text.noValue}</dd></div>
-                  <div><dt>MACD</dt><dd>{result.indicators.macd}</dd></div>
-                  <div><dt>EMA 20</dt><dd>{formatNumber(result.indicators.ema20)}</dd></div>
-                  <div><dt>EMA 50</dt><dd>{formatNumber(result.indicators.ema50)}</dd></div>
-                  <div><dt>EMA 200</dt><dd>{result.indicators.ema200 ? formatNumber(result.indicators.ema200) : text.noValue}</dd></div>
-                  <div><dt>ATR</dt><dd>{result.indicators.atr ? formatNumber(result.indicators.atr) : text.noValue}</dd></div>
-                </dl>
-              </section>
-            </div>
+                <MarketLevelChart result={successResult} text={text} />
 
-            <section className="agent-explanation">
-              <h3><BrainCircuit size={18} aria-hidden="true" /> {text.explanation}</h3>
-              <p>{result.summaryArabic}</p>
-            </section>
+                <section className="agent-section-card agent-evidence-card">
+                  <div className="agent-section-heading">
+                    <div>
+                      <span><ListChecks size={16} aria-hidden="true" /> {text.evidenceTitle}</span>
+                      <p>{text.noChartData}</p>
+                    </div>
+                  </div>
+                  <div className="agent-evidence-grid">
+                    <TrendPill label={text.shortTerm} value={labelDirection(successResult.trends.shortTerm)} tone={getTrendTone(successResult.trends.shortTerm)} />
+                    <TrendPill label={text.mediumTerm} value={labelDirection(successResult.trends.mediumTerm)} tone={getTrendTone(successResult.trends.mediumTerm)} />
+                    <TrendPill label={text.longTerm} value={labelDirection(successResult.trends.longTerm)} tone={getTrendTone(successResult.trends.longTerm)} />
+                    <TrendPill label="MACD" value={text[successResult.indicators.macd]} tone={getTrendTone(successResult.indicators.macd)} />
+                  </div>
+                </section>
+
+                <section className="agent-section-card agent-indicators-card">
+                  <div className="agent-section-heading">
+                    <div>
+                      <span><BarChart3 size={16} aria-hidden="true" /> {text.indicators}</span>
+                      <p>{text.marketLevels}</p>
+                    </div>
+                  </div>
+                  <div className="agent-indicator-grid">
+                    {indicatorRows.map(item => (
+                      <IndicatorCard key={item.label} item={item} />
+                    ))}
+                  </div>
+                </section>
+
+                <section className="agent-section-card agent-explanation-card">
+                  <div className="agent-section-heading">
+                    <div>
+                      <span><BrainCircuit size={16} aria-hidden="true" /> {text.explanation}</span>
+                      <p>{text.legalTitle}</p>
+                    </div>
+                  </div>
+                  <div className="agent-analysis-notes">
+                    <article>
+                      <h3>{text.readingSummary}</h3>
+                      <p>{successResult.summaryArabic}</p>
+                    </article>
+                    <article>
+                      <h3>{text.bullishScenario}</h3>
+                      <p>{text.resistance}: {joinLevels(successResult.resistance, text.noValue)} · {text.takeProfit}: {joinLevels(successResult.takeProfit, text.noValue)}</p>
+                    </article>
+                    <article>
+                      <h3>{text.bearishScenario}</h3>
+                      <p>{text.support}: {joinLevels(successResult.support, text.noValue)} · {text.stopLoss}: {successResult.stopLoss ? formatNumber(successResult.stopLoss) : text.noValue}</p>
+                    </article>
+                    <article>
+                      <h3>{text.whatChanges}</h3>
+                      <p>{text.risk}: {labelRisk(successResult.riskLevel)} · {text.confidence}: {successResult.confidence}%</p>
+                    </article>
+                  </div>
+                </section>
+              </div>
+
+              <aside className={`agent-side-rail ${actionTone}`} aria-label={text.currentReading}>
+                <section className="agent-side-card agent-signal-card">
+                  <span className="agent-side-kicker">{successResult.symbol}</span>
+                  <h3>{labelAction(successResult.suggestedAction)}</h3>
+                  <div className="agent-score-ring">
+                    <strong>{successResult.confidence}%</strong>
+                    <span>{text.confidence}</span>
+                  </div>
+                  <dl>
+                    <div><dt>{text.timeframe}</dt><dd>{successResult.timeframe}</dd></div>
+                    <div><dt>{text.direction}</dt><dd>{labelDirection(successResult.direction)}</dd></div>
+                    <div><dt>{text.risk}</dt><dd>{labelRisk(successResult.riskLevel)}</dd></div>
+                  </dl>
+                </section>
+
+                <section className="agent-side-card">
+                  <h3><Radio size={16} aria-hidden="true" /> {text.dataStatusTitle}</h3>
+                  <dl className="agent-data-list">
+                    <div><dt>{text.provider}</dt><dd>{successResult.source}</dd></div>
+                    <div><dt>{text.dataStatusTitle}</dt><dd><CheckCircle2 size={15} aria-hidden="true" /> {text.connected}</dd></div>
+                    <div><dt>{text.lastUpdate}</dt><dd>{formatDate(successResult.updatedAt, lang) || text.noValue}</dd></div>
+                  </dl>
+                </section>
+
+                <section className="agent-side-card">
+                  <h3><Info size={16} aria-hidden="true" /> {text.confidenceBasis}</h3>
+                  <div className="agent-factor-list">
+                    {confidenceFactors.map(item => (
+                      <div className="agent-factor" key={item.label}>
+                        <div>
+                          <span>{item.label}</span>
+                          <strong>{item.score}%</strong>
+                        </div>
+                        <i style={{ inlineSize: `${clampPercent(item.score)}%` }} />
+                        <small>{item.detail}</small>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="agent-side-card agent-quick-actions">
+                  <button type="button" onClick={() => void analyze()}>
+                    <RefreshCw size={15} aria-hidden="true" />
+                    {text.refreshAnalysis}
+                  </button>
+                  <button type="button" onClick={() => focusSearch()}>
+                    <Search size={15} aria-hidden="true" />
+                    {text.focusSearch}
+                  </button>
+                </section>
+              </aside>
+            </div>
           </section>
         ) : (
           <section className={`agent-empty-state ${error || result ? 'error' : ''}`} aria-live="polite">
@@ -574,11 +886,20 @@ export default function MarketAgentPage() {
           <header>
             <div>
               <span><Clock3 size={16} aria-hidden="true" /> {text.recentTitle}</span>
-              <p>{text.recentSubtitle}</p>
+              <p>{text.recentSubtitle} · {text.shownHistory}: {visibleHistory.length}/{history.length}</p>
             </div>
+            <label className="agent-history-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                value={historyQuery}
+                onChange={event => setHistoryQuery(event.target.value)}
+                placeholder={text.searchHistory}
+                aria-label={text.searchHistory}
+              />
+            </label>
             {historyLoading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : null}
           </header>
-          {history.length ? (
+          {visibleHistory.length ? (
             <div className="agent-history-grid" role="table" aria-label={text.recentTitle}>
               <div className="agent-history-head" role="row">
                 <span role="columnheader">{text.asset}</span>
@@ -590,7 +911,7 @@ export default function MarketAgentPage() {
                 <span role="columnheader">{text.date}</span>
                 <span role="columnheader">{text.actionColumn}</span>
               </div>
-              {history.map(item => (
+              {visibleHistory.map(item => (
                 <article className="agent-history-row" role="row" key={item.id}>
                   <div role="cell" data-label={text.asset} className="agent-history-asset">
                     <strong>{item.symbol}</strong>
@@ -619,7 +940,7 @@ export default function MarketAgentPage() {
         </section>
       </main>
 
-      <style jsx>{`
+      <style jsx global>{`
         .market-agent-page{
           --agent-page-max:1360px;
           --agent-gutter:clamp(18px,2vw,32px);
@@ -1236,6 +1557,500 @@ export default function MarketAgentPage() {
           overflow-wrap:anywhere;
         }
 
+        .agent-workspace{
+          border:1px solid var(--agent-border);
+          background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(247,251,255,.96));
+          border-radius:26px;
+          padding:22px;
+          box-shadow:var(--agent-shadow);
+        }
+
+        :global(.dark) .agent-workspace{
+          background:linear-gradient(180deg,rgba(15,29,49,.96),rgba(11,25,43,.98));
+        }
+
+        .agent-workspace-header{
+          display:flex;
+          align-items:flex-start;
+          justify-content:space-between;
+          gap:16px;
+          margin-bottom:18px;
+        }
+
+        .agent-workspace-header span{
+          color:var(--agent-muted);
+          font-size:12px;
+          font-weight:950;
+          letter-spacing:0;
+        }
+
+        .agent-workspace-header h2{
+          margin:5px 0 0;
+          color:var(--agent-heading);
+          font-size:clamp(24px,2.5vw,34px);
+          line-height:1.2;
+          font-weight:950;
+        }
+
+        .agent-workspace-grid{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) minmax(300px,360px);
+          gap:18px;
+          align-items:start;
+        }
+
+        .agent-main-column,
+        .agent-side-rail{
+          min-width:0;
+          display:grid;
+          gap:16px;
+        }
+
+        .agent-side-rail{
+          position:sticky;
+          top:20px;
+        }
+
+        .agent-section-card,
+        .agent-side-card{
+          min-width:0;
+          border:1px solid var(--agent-border);
+          background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
+          border-radius:22px;
+          padding:18px;
+          box-shadow:var(--agent-shadow-soft);
+        }
+
+        .agent-section-heading{
+          display:flex;
+          align-items:flex-start;
+          justify-content:space-between;
+          gap:14px;
+          margin-bottom:14px;
+        }
+
+        .agent-section-heading span{
+          display:flex;
+          align-items:center;
+          gap:8px;
+          color:var(--agent-heading);
+          font-size:16px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-section-heading span svg{
+          color:var(--agent-primary);
+        }
+
+        .agent-section-heading p{
+          margin:4px 0 0;
+          color:var(--agent-muted);
+          font-size:12px;
+          font-weight:850;
+          line-height:1.65;
+        }
+
+        .agent-metric-grid.compact{
+          grid-template-columns:repeat(3,minmax(0,1fr));
+        }
+
+        .agent-chart-card{
+          overflow:hidden;
+        }
+
+        .agent-level-chart{
+          display:grid;
+          gap:12px;
+          min-width:0;
+        }
+
+        .agent-chart-track{
+          position:relative;
+          min-height:210px;
+          border:1px solid rgba(29,140,255,.14);
+          border-radius:20px;
+          background:
+            linear-gradient(90deg,rgba(29,140,255,.08) 1px,transparent 1px),
+            linear-gradient(0deg,rgba(29,140,255,.08) 1px,transparent 1px),
+            linear-gradient(180deg,rgba(24,212,212,.08),rgba(29,140,255,.04));
+          background-size:64px 64px,64px 64px,100% 100%;
+          overflow:hidden;
+        }
+
+        .agent-chart-track::before{
+          content:"";
+          position:absolute;
+          inset-inline:22px;
+          inset-block-start:50%;
+          height:3px;
+          border-radius:999px;
+          background:linear-gradient(90deg,rgba(29,140,255,.18),rgba(24,212,212,.8),rgba(29,140,255,.18));
+        }
+
+        .agent-entry-zone{
+          position:absolute;
+          inset-block:38px 32px;
+          border-radius:999px;
+          border:1px solid rgba(24,212,212,.32);
+          background:linear-gradient(180deg,rgba(24,212,212,.18),rgba(29,140,255,.08));
+          box-shadow:0 0 0 4px rgba(24,212,212,.06);
+        }
+
+        .agent-level-marker{
+          position:absolute;
+          inset-block-start:24px;
+          transform:translateX(-50%);
+          display:grid;
+          justify-items:center;
+          gap:5px;
+          min-width:76px;
+          max-width:118px;
+          text-align:center;
+          pointer-events:none;
+        }
+
+        .market-agent-page[dir="rtl"] .agent-level-marker{
+          transform:translateX(50%);
+        }
+
+        .agent-level-marker.price{
+          inset-block-start:84px;
+        }
+
+        .agent-level-marker.target{
+          inset-block-start:136px;
+        }
+
+        .agent-level-marker.stop{
+          inset-block-start:160px;
+        }
+
+        .agent-level-marker i{
+          width:11px;
+          height:11px;
+          border-radius:999px;
+          border:2px solid var(--agent-surface);
+          box-shadow:0 0 0 3px rgba(29,140,255,.12);
+          background:var(--agent-primary);
+        }
+
+        .agent-level-marker.support i{background:var(--agent-success)}
+        .agent-level-marker.resistance i{background:var(--agent-warning)}
+        .agent-level-marker.target i{background:var(--agent-primary)}
+        .agent-level-marker.stop i{background:var(--agent-danger)}
+
+        .agent-level-marker b{
+          color:var(--agent-muted);
+          font-size:11px;
+          font-weight:950;
+          line-height:1.25;
+        }
+
+        .agent-level-marker em{
+          padding:3px 7px;
+          border-radius:999px;
+          background:rgba(255,255,255,.9);
+          border:1px solid rgba(29,140,255,.14);
+          color:var(--agent-heading);
+          font-style:normal;
+          font-size:11px;
+          font-weight:950;
+          line-height:1.25;
+          box-shadow:0 8px 18px rgba(3,18,37,.06);
+        }
+
+        :global(.dark) .agent-level-marker em{
+          background:rgba(15,29,49,.92);
+        }
+
+        .agent-level-scale{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+          color:var(--agent-muted);
+          font-size:12px;
+          font-weight:950;
+        }
+
+        .agent-evidence-grid,
+        .agent-indicator-grid{
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:10px;
+        }
+
+        .agent-indicator-grid{
+          grid-template-columns:repeat(3,minmax(0,1fr));
+        }
+
+        .agent-trend-pill,
+        .agent-indicator-card{
+          min-width:0;
+          display:grid;
+          gap:8px;
+          padding:13px;
+          border:1px solid var(--agent-border);
+          border-radius:16px;
+          background:var(--agent-surface);
+        }
+
+        .agent-trend-pill span,
+        .agent-indicator-card span{
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:950;
+          line-height:1.3;
+        }
+
+        .agent-trend-pill strong,
+        .agent-indicator-card strong{
+          color:var(--agent-heading);
+          font-size:14px;
+          font-weight:950;
+          line-height:1.35;
+          overflow-wrap:anywhere;
+        }
+
+        .agent-indicator-card{
+          min-height:108px;
+          align-content:space-between;
+        }
+
+        .agent-indicator-card div{
+          display:grid;
+          gap:5px;
+        }
+
+        .agent-indicator-card b{
+          width:max-content;
+          max-width:100%;
+          min-height:28px;
+          display:inline-flex;
+          align-items:center;
+          padding:0 9px;
+          border-radius:999px;
+          font-size:11px;
+          font-weight:950;
+          color:var(--agent-muted);
+          background:rgba(100,116,139,.10);
+        }
+
+        .agent-trend-pill.positive,
+        .agent-indicator-card.positive{
+          border-color:rgba(4,120,87,.22);
+          background:linear-gradient(180deg,rgba(236,253,245,.92),var(--agent-surface));
+        }
+
+        .agent-trend-pill.negative,
+        .agent-indicator-card.negative{
+          border-color:rgba(185,28,28,.20);
+          background:linear-gradient(180deg,rgba(254,242,242,.92),var(--agent-surface));
+        }
+
+        .agent-trend-pill.warning,
+        .agent-indicator-card.warning{
+          border-color:rgba(180,83,9,.22);
+          background:linear-gradient(180deg,rgba(255,251,235,.92),var(--agent-surface));
+        }
+
+        :global(.dark) .agent-trend-pill.positive,
+        :global(.dark) .agent-indicator-card.positive{
+          background:linear-gradient(180deg,rgba(4,120,87,.16),var(--agent-surface));
+        }
+
+        :global(.dark) .agent-trend-pill.negative,
+        :global(.dark) .agent-indicator-card.negative{
+          background:linear-gradient(180deg,rgba(185,28,28,.16),var(--agent-surface));
+        }
+
+        :global(.dark) .agent-trend-pill.warning,
+        :global(.dark) .agent-indicator-card.warning{
+          background:linear-gradient(180deg,rgba(180,83,9,.16),var(--agent-surface));
+        }
+
+        .agent-analysis-notes{
+          display:grid;
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:12px;
+        }
+
+        .agent-analysis-notes article{
+          min-width:0;
+          padding:15px;
+          border:1px solid var(--agent-border);
+          border-radius:16px;
+          background:var(--agent-surface);
+        }
+
+        .agent-analysis-notes h3{
+          margin:0 0 8px;
+          color:var(--agent-heading);
+          font-size:15px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-analysis-notes p{
+          margin:0;
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:850;
+          line-height:1.8;
+        }
+
+        .agent-side-card{
+          display:grid;
+          gap:13px;
+        }
+
+        .agent-side-card h3{
+          margin:0;
+          display:flex;
+          align-items:center;
+          gap:8px;
+          color:var(--agent-heading);
+          font-size:15px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-side-card h3 svg{
+          color:var(--agent-primary);
+        }
+
+        .agent-side-kicker{
+          width:max-content;
+          max-width:100%;
+          display:inline-flex;
+          min-height:30px;
+          align-items:center;
+          border-radius:999px;
+          padding:0 10px;
+          color:var(--agent-primary);
+          background:rgba(29,140,255,.10);
+          font-size:12px;
+          font-weight:950;
+        }
+
+        .agent-signal-card h3{
+          margin:0;
+          color:var(--agent-heading);
+          font-size:28px;
+          font-weight:950;
+          line-height:1.15;
+        }
+
+        .agent-side-rail.buy .agent-signal-card h3,
+        .agent-side-rail.buy .agent-score-ring strong{color:var(--agent-success)}
+
+        .agent-side-rail.sell .agent-signal-card h3,
+        .agent-side-rail.sell .agent-score-ring strong{color:var(--agent-danger)}
+
+        .agent-side-rail.wait .agent-signal-card h3,
+        .agent-side-rail.wait .agent-score-ring strong{color:var(--agent-warning)}
+
+        .agent-signal-card dl,
+        .agent-data-list{
+          display:grid;
+          gap:9px;
+          margin:0;
+        }
+
+        .agent-signal-card dl div,
+        .agent-data-list div{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          padding-bottom:9px;
+          border-bottom:1px solid rgba(29,140,255,.12);
+        }
+
+        .agent-signal-card dl div:last-child,
+        .agent-data-list div:last-child{
+          border-bottom:0;
+          padding-bottom:0;
+        }
+
+        .agent-data-list dd{
+          display:flex;
+          align-items:center;
+          gap:6px;
+        }
+
+        .agent-data-list dd svg{
+          color:var(--agent-success);
+        }
+
+        .agent-factor-list{
+          display:grid;
+          gap:12px;
+        }
+
+        .agent-factor{
+          display:grid;
+          gap:7px;
+        }
+
+        .agent-factor div{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+        }
+
+        .agent-factor span,
+        .agent-factor small{
+          color:var(--agent-muted);
+          font-size:12px;
+          font-weight:850;
+          line-height:1.55;
+        }
+
+        .agent-factor strong{
+          color:var(--agent-heading);
+          font-size:13px;
+          font-weight:950;
+        }
+
+        .agent-factor i{
+          display:block;
+          max-width:100%;
+          height:7px;
+          border-radius:999px;
+          background:linear-gradient(90deg,var(--agent-primary),var(--agent-accent));
+        }
+
+        .agent-quick-actions{
+          grid-template-columns:1fr;
+        }
+
+        .agent-quick-actions button{
+          min-height:44px;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:8px;
+          border:1px solid var(--agent-border);
+          border-radius:14px;
+          background:var(--agent-surface);
+          color:var(--agent-heading);
+          font:950 12px Tajawal,Arial,sans-serif;
+          cursor:pointer;
+          transition:transform .18s ease,border-color .18s ease,background .18s ease;
+        }
+
+        .agent-quick-actions button:hover,
+        .agent-quick-actions button:focus-visible{
+          outline:0;
+          transform:translateY(-1px);
+          border-color:var(--agent-border-strong);
+          background:rgba(24,212,212,.12);
+          box-shadow:0 0 0 4px rgba(24,212,212,.10);
+        }
+
         .agent-detail-grid{
           display:grid;
           grid-template-columns:1fr 1fr;
@@ -1251,7 +2066,7 @@ export default function MarketAgentPage() {
           padding:16px;
         }
 
-        h3{
+        .market-agent-page h3{
           margin:0 0 12px;
           color:var(--agent-heading);
           font-size:16px;
@@ -1261,15 +2076,15 @@ export default function MarketAgentPage() {
           gap:8px;
         }
 
-        h3 svg{color:var(--agent-primary)}
+        .market-agent-page h3 svg{color:var(--agent-primary)}
 
-        dl{
+        .market-agent-page dl{
           margin:0;
           display:grid;
           gap:8px;
         }
 
-        dl div{
+        .market-agent-page dl div{
           display:flex;
           align-items:center;
           justify-content:space-between;
@@ -1278,18 +2093,18 @@ export default function MarketAgentPage() {
           padding-bottom:8px;
         }
 
-        dl div:last-child{
+        .market-agent-page dl div:last-child{
           border-bottom:0;
           padding-bottom:0;
         }
 
-        dt{
+        .market-agent-page dt{
           color:var(--agent-muted-soft);
           font-size:12px;
           font-weight:950;
         }
 
-        dd{
+        .market-agent-page dd{
           margin:0;
           color:var(--agent-heading);
           font-size:13px;
@@ -1340,6 +2155,43 @@ export default function MarketAgentPage() {
           color:var(--agent-muted);
           font-size:13px;
           font-weight:850;
+        }
+
+        .agent-history-search{
+          min-height:42px;
+          min-width:min(280px,100%);
+          display:flex;
+          align-items:center;
+          gap:9px;
+          padding:0 12px;
+          border:1px solid var(--agent-border);
+          border-radius:14px;
+          background:var(--agent-surface-soft);
+          color:var(--agent-muted);
+        }
+
+        .agent-history-search svg{
+          flex:0 0 auto;
+          color:var(--agent-primary);
+        }
+
+        .agent-history-search input{
+          width:100%;
+          min-width:0;
+          border:0;
+          outline:0;
+          background:transparent;
+          color:var(--agent-heading);
+          font:900 13px Tajawal,Arial,sans-serif;
+        }
+
+        .agent-history-search input::placeholder{
+          color:var(--agent-muted-soft);
+        }
+
+        .agent-history-search:focus-within{
+          border-color:var(--agent-border-strong);
+          box-shadow:0 0 0 4px rgba(24,212,212,.12);
         }
 
         .agent-history-grid{
@@ -1527,6 +2379,16 @@ export default function MarketAgentPage() {
           .agent-history-row{
             grid-template-columns:minmax(120px,1fr) minmax(96px,.75fr) 76px 90px 88px 96px minmax(128px,.9fr) minmax(120px,.7fr);
           }
+          .agent-workspace-grid{
+            grid-template-columns:minmax(0,1fr) minmax(280px,320px);
+          }
+          .agent-metric-grid.compact{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+          }
+          .agent-evidence-grid,
+          .agent-indicator-grid{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+          }
         }
 
         @media(max-width:1024px){
@@ -1566,6 +2428,19 @@ export default function MarketAgentPage() {
           .agent-history-row [role="cell"]::before{
             content:attr(data-label);
           }
+          .agent-workspace-grid{
+            grid-template-columns:1fr;
+          }
+          .agent-side-rail{
+            position:static;
+          }
+          .agent-history-panel>header{
+            display:grid;
+            align-items:stretch;
+          }
+          .agent-history-search{
+            width:100%;
+          }
         }
 
         @media(max-width:768px){
@@ -1578,13 +2453,18 @@ export default function MarketAgentPage() {
           .agent-control-panel,
           .agent-loading-state,
           .agent-empty-state,
+          .agent-workspace,
           .agent-result-panel,
           .agent-history-panel{
             border-radius:20px;
             padding:18px;
           }
+          .agent-workspace-header{
+            display:grid;
+          }
           .agent-control-panel,
-          .agent-detail-grid{
+          .agent-detail-grid,
+          .agent-analysis-notes{
             grid-template-columns:1fr;
           }
           .agent-timeframe-group,
@@ -1609,8 +2489,23 @@ export default function MarketAgentPage() {
           }
           .agent-skeleton-grid,
           .agent-metric-grid,
+          .agent-metric-grid.compact,
+          .agent-evidence-grid,
+          .agent-indicator-grid,
           .agent-history-row{
             grid-template-columns:1fr;
+          }
+          .agent-chart-track{
+            min-height:245px;
+          }
+          .agent-level-marker{
+            min-width:66px;
+          }
+          .agent-level-marker.target{
+            inset-block-start:150px;
+          }
+          .agent-level-marker.stop{
+            inset-block-start:178px;
           }
           .agent-result-panel>header{
             align-items:flex-start;
@@ -1666,7 +2561,116 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
     <div className="agent-metric">
       {icon}
       <span>{label}</span>
-      <strong>{value || '-'}</strong>
+      <strong dir="ltr">{value || '-'}</strong>
     </div>
+  );
+}
+
+function TrendPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'positive' | 'negative' | 'neutral' | 'warning';
+}) {
+  return (
+    <div className={`agent-trend-pill ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function IndicatorCard({ item }: { item: IndicatorView }) {
+  return (
+    <article className={`agent-indicator-card ${item.tone}`}>
+      <div>
+        <span>{item.label}</span>
+        <strong dir="ltr">{item.value}</strong>
+      </div>
+      <b>{item.status}</b>
+    </article>
+  );
+}
+
+function MarketLevelChart({ result, text }: { result: MarketAgentAnalysisResult; text: Copy }) {
+  const levels = [
+    ...result.support.map((value, index) => ({
+      label: `${text.support} ${index + 1}`,
+      value,
+      type: 'support' as const,
+    })),
+    {
+      label: text.currentPrice,
+      value: result.currentPrice,
+      type: 'price' as const,
+    },
+    ...result.resistance.map((value, index) => ({
+      label: `${text.resistance} ${index + 1}`,
+      value,
+      type: 'resistance' as const,
+    })),
+    ...result.takeProfit.map((value, index) => ({
+      label: `TP${index + 1}`,
+      value,
+      type: 'target' as const,
+    })),
+    ...(result.stopLoss
+      ? [{
+          label: text.stopLoss,
+          value: result.stopLoss,
+          type: 'stop' as const,
+        }]
+      : []),
+  ].filter(item => Number.isFinite(item.value));
+
+  const rawMin = Math.min(...levels.map(item => item.value), result.entryZone.from, result.entryZone.to);
+  const rawMax = Math.max(...levels.map(item => item.value), result.entryZone.from, result.entryZone.to);
+  const padding = Math.max((rawMax - rawMin) * 0.08, Math.abs(result.currentPrice) * 0.005, 0.01);
+  const min = rawMin - padding;
+  const max = rawMax + padding;
+  const range = Math.max(max - min, 0.01);
+  const position = (value: number) => clampPercent(((value - min) / range) * 100);
+  const entryStart = Math.min(position(result.entryZone.from), position(result.entryZone.to));
+  const entryEnd = Math.max(position(result.entryZone.from), position(result.entryZone.to));
+
+  return (
+    <section className="agent-section-card agent-chart-card">
+      <div className="agent-section-heading">
+        <div>
+          <span><LineChart size={16} aria-hidden="true" /> {text.chartTitle}</span>
+          <p>{text.chartUnavailable}</p>
+        </div>
+      </div>
+      <div className="agent-level-chart" role="img" aria-label={`${text.chartTitle}: ${result.symbol}`}>
+        <div className="agent-chart-track">
+          <span
+            className="agent-entry-zone"
+            style={{
+              insetInlineStart: `${entryStart}%`,
+              inlineSize: `${Math.max(4, entryEnd - entryStart)}%`,
+            }}
+          />
+          {levels.map(item => (
+            <span
+              className={`agent-level-marker ${item.type}`}
+              key={`${item.type}-${item.label}-${item.value}`}
+              style={{ insetInlineStart: `${position(item.value)}%` }}
+            >
+              <i aria-hidden="true" />
+              <b>{item.label}</b>
+              <em dir="ltr">{formatNumber(item.value)}</em>
+            </span>
+          ))}
+        </div>
+        <div className="agent-level-scale">
+          <span dir="ltr">{formatNumber(min)}</span>
+          <span>{text.potentialEntry}</span>
+          <span dir="ltr">{formatNumber(max)}</span>
+        </div>
+      </div>
+    </section>
   );
 }
