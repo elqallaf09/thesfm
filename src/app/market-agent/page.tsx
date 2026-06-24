@@ -1,30 +1,56 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Bot, BrainCircuit, Gauge, LineChart, Loader2, Search, ShieldAlert, Sparkles, Target, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  Bot,
+  BrainCircuit,
+  ChevronDown,
+  Clock3,
+  Gauge,
+  LineChart,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Target,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import type { MarketAgentAssetType, MarketAgentResponse, MarketAgentTimeframe } from '@/lib/market/marketAgent';
 
-const DISCLAIMER_AR = 'هذا التحليل مجرد قراءة آلية للسوق وليس توصية مالية أو دعوة للشراء أو البيع. قرارات الاستثمار والتداول تقع على مسؤوليتك الشخصية.';
-const DISCLAIMER_EN = 'This analysis is an automated market reading only and is not financial advice or a recommendation to buy or sell. Trading and investment decisions are your own responsibility.';
-
 const COPY = {
   ar: {
     title: 'وكيل تحليل الأسواق',
-    subtitle: 'تحليل آلي للأسهم والفوركس والمعادن والعملات الرقمية — للقراءة فقط وليس توصية مالية.',
+    subtitle: 'مساحة تحليل آلية تقرأ الأسهم والفوركس والمؤشرات والمعادن والعملات الرقمية باستخدام بيانات السوق المتاحة.',
+    badge: 'THE SFM AI',
+    provider: 'مزود البيانات',
+    sourceReady: 'Yahoo Finance عند توفر البيانات',
+    legalTitle: 'تنبيه مهم',
+    legal:
+      'هذا التحليل عبارة عن قراءة آلية للسوق لأغراض تعليمية ومعلوماتية فقط، ولا يعد نصيحة مالية أو توصية بشراء أو بيع أي أصل. تقع قرارات الاستثمار والتداول على مسؤولية المستخدم.',
     symbol: 'رمز الأصل',
-    symbolPlaceholder: 'مثال: AAPL, TSLA, EURUSD, XAUUSD, BTCUSD, KFH.KW',
+    symbolPlaceholder: 'مثال: AAPL أو GOOGL أو EUR/USD',
+    symbolHelp: 'اكتب رمزاً مثل AAPL, NVDA, EUR/USD, XAU/USD.',
     assetType: 'نوع الأصل',
     timeframe: 'الإطار الزمني',
     analyze: 'تحليل الأصل',
     analyzing: 'جاري التحليل...',
+    focusSearch: 'البحث عن أصل',
+    loadingTitle: 'جاري تجهيز القراءة',
+    loadingBody: 'نراجع الأسعار والمؤشرات الفنية المتاحة لهذا الأصل.',
     emptyTitle: 'ابدأ بإدخال رمز أصل',
-    emptyBody: 'يعتمد الوكيل على بيانات السوق المتاحة من المزود. إذا لم تتوفر بيانات كافية، لن يعرض قراءة مصطنعة.',
+    emptyBody: 'اختر أصلاً مالياً وإطاراً زمنياً لبدء التحليل.',
+    examples: 'أمثلة سريعة',
     errorTitle: 'تعذر إصدار قراءة موثوقة',
     recentTitle: 'آخر التحليلات',
+    recentSubtitle: 'سجل القراءات المحفوظة من الحساب عند توفرها.',
     noHistory: 'لا توجد تحليلات محفوظة بعد.',
     currentPrice: 'السعر الحالي',
     direction: 'اتجاه السوق',
@@ -57,20 +83,38 @@ const COPY = {
     low: 'منخفضة',
     medium: 'متوسطة',
     high: 'مرتفعة',
+    asset: 'الأصل',
+    market: 'السوق',
+    date: 'التاريخ',
+    actionColumn: 'إجراء',
+    reuse: 'إعادة التحليل',
+    unavailable: 'لا توجد بيانات كافية لإصدار قراءة موثوقة لهذا الأصل حالياً.',
   },
   en: {
     title: 'Market Analysis Agent',
-    subtitle: 'Automated analysis for stocks, forex, metals, and crypto — for reading only, not financial advice.',
-    symbol: 'Symbol',
-    symbolPlaceholder: 'Example: AAPL, TSLA, EURUSD, XAUUSD, BTCUSD, KFH.KW',
+    subtitle: 'An automated research workspace for stocks, forex, indices, metals, and crypto using available market data.',
+    badge: 'THE SFM AI',
+    provider: 'Data provider',
+    sourceReady: 'Yahoo Finance when data is available',
+    legalTitle: 'Important notice',
+    legal:
+      'This analysis is an automated market reading for educational and informational purposes only. It is not financial advice or a recommendation to buy or sell any asset. Trading and investment decisions are your own responsibility.',
+    symbol: 'Asset symbol',
+    symbolPlaceholder: 'Example: AAPL, GOOGL, or EUR/USD',
+    symbolHelp: 'Enter a symbol such as AAPL, NVDA, EUR/USD, XAU/USD.',
     assetType: 'Asset type',
     timeframe: 'Timeframe',
     analyze: 'Analyze asset',
     analyzing: 'Analyzing...',
-    emptyTitle: 'Enter a market symbol',
-    emptyBody: 'The agent uses available provider market data. If data is not sufficient, it will not invent a reading.',
+    focusSearch: 'Search for an asset',
+    loadingTitle: 'Preparing the reading',
+    loadingBody: 'Reviewing available prices and technical indicators for this asset.',
+    emptyTitle: 'Start by entering an asset symbol',
+    emptyBody: 'Choose a financial asset and timeframe to begin the analysis.',
+    examples: 'Quick examples',
     errorTitle: 'A reliable reading is not available',
     recentTitle: 'Recent analyses',
+    recentSubtitle: 'Saved readings from your account when available.',
     noHistory: 'No saved analyses yet.',
     currentPrice: 'Current price',
     direction: 'Market direction',
@@ -103,20 +147,38 @@ const COPY = {
     low: 'Low',
     medium: 'Medium',
     high: 'High',
+    asset: 'Asset',
+    market: 'Market',
+    date: 'Date',
+    actionColumn: 'Action',
+    reuse: 'Analyze again',
+    unavailable: 'There is not enough reliable data for this asset at the moment.',
   },
   fr: {
     title: 'Agent d’analyse des marchés',
-    subtitle: 'Analyse automatisée des actions, du forex, des métaux et des cryptos — lecture uniquement, pas un conseil financier.',
+    subtitle: 'Un espace de recherche automatisé pour actions, forex, indices, métaux et cryptos avec les données disponibles.',
+    badge: 'THE SFM AI',
+    provider: 'Fournisseur',
+    sourceReady: 'Yahoo Finance lorsque les données sont disponibles',
+    legalTitle: 'Avis important',
+    legal:
+      'Cette analyse est une lecture automatisée du marché à des fins éducatives et informatives uniquement. Elle ne constitue pas un conseil financier ni une recommandation d’achat ou de vente. Les décisions de trading et d’investissement relèvent de votre responsabilité.',
     symbol: 'Symbole',
-    symbolPlaceholder: 'Exemple : AAPL, TSLA, EURUSD, XAUUSD, BTCUSD, KFH.KW',
+    symbolPlaceholder: 'Exemple : AAPL, GOOGL ou EUR/USD',
+    symbolHelp: 'Saisissez un symbole comme AAPL, NVDA, EUR/USD, XAU/USD.',
     assetType: 'Type d’actif',
     timeframe: 'Horizon',
     analyze: 'Analyser l’actif',
     analyzing: 'Analyse en cours...',
-    emptyTitle: 'Saisissez un symbole',
-    emptyBody: 'L’agent utilise les données de marché disponibles. Si elles sont insuffisantes, aucune lecture inventée ne sera affichée.',
+    focusSearch: 'Rechercher un actif',
+    loadingTitle: 'Préparation de la lecture',
+    loadingBody: 'Vérification des prix et indicateurs techniques disponibles.',
+    emptyTitle: 'Commencez par saisir un symbole',
+    emptyBody: 'Choisissez un actif financier et un horizon pour lancer l’analyse.',
+    examples: 'Exemples rapides',
     errorTitle: 'Lecture fiable indisponible',
     recentTitle: 'Analyses récentes',
+    recentSubtitle: 'Lectures enregistrées depuis votre compte lorsque disponibles.',
     noHistory: 'Aucune analyse enregistrée.',
     currentPrice: 'Prix actuel',
     direction: 'Direction du marché',
@@ -149,8 +211,16 @@ const COPY = {
     low: 'Faible',
     medium: 'Moyen',
     high: 'Élevé',
+    asset: 'Actif',
+    market: 'Marché',
+    date: 'Date',
+    actionColumn: 'Action',
+    reuse: 'Analyser à nouveau',
+    unavailable: 'Les données fiables sont insuffisantes pour cet actif actuellement.',
   },
 } as const;
+
+type Copy = typeof COPY.ar;
 
 type HistoryItem = {
   id: string;
@@ -165,7 +235,7 @@ type HistoryItem = {
   created_at: string;
 };
 
-const ASSET_OPTIONS: Array<{ value: MarketAgentAssetType; labelKey: keyof typeof COPY.ar }> = [
+const ASSET_OPTIONS: Array<{ value: MarketAgentAssetType; labelKey: keyof Copy }> = [
   { value: 'stock', labelKey: 'stocks' },
   { value: 'forex', labelKey: 'forex' },
   { value: 'index', labelKey: 'indices' },
@@ -173,7 +243,7 @@ const ASSET_OPTIONS: Array<{ value: MarketAgentAssetType; labelKey: keyof typeof
   { value: 'crypto', labelKey: 'crypto' },
 ];
 
-const ASSET_LABEL_KEYS: Record<MarketAgentAssetType, keyof typeof COPY.ar> = {
+const ASSET_LABEL_KEYS: Record<MarketAgentAssetType, keyof Copy> = {
   stock: 'stocks',
   forex: 'forex',
   index: 'indices',
@@ -182,6 +252,7 @@ const ASSET_LABEL_KEYS: Record<MarketAgentAssetType, keyof typeof COPY.ar> = {
 };
 
 const TIMEFRAMES: MarketAgentTimeframe[] = ['15m', '1h', '4h', '1D', '1W'];
+const EXAMPLE_SYMBOLS = ['AAPL', 'GOOGL', 'NVDA', 'EUR/USD', 'XAU/USD'];
 
 function formatNumber(value: number | null | undefined) {
   if (!Number.isFinite(Number(value))) return '';
@@ -190,14 +261,35 @@ function formatNumber(value: number | null | undefined) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(number);
 }
 
+function formatDate(value: string | null | undefined, lang: keyof typeof COPY) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 function joinLevels(values: number[], fallback: string) {
   return values.length ? values.map(formatNumber).join(' / ') : fallback;
+}
+
+function actionToneClass(value: 'buy' | 'sell' | 'wait') {
+  if (value === 'buy') return 'buy';
+  if (value === 'sell') return 'sell';
+  return 'wait';
 }
 
 export default function MarketAgentPage() {
   const { dir, lang } = useLanguage();
   const text = COPY[lang] ?? COPY.ar;
-  const [symbol, setSymbol] = useState('AAPL');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [symbol, setSymbol] = useState('');
   const [assetType, setAssetType] = useState<MarketAgentAssetType>('stock');
   const [timeframe, setTimeframe] = useState<MarketAgentTimeframe>('1D');
   const [result, setResult] = useState<MarketAgentResponse | null>(null);
@@ -237,8 +329,12 @@ export default function MarketAgentPage() {
     void loadHistory();
   }, [loadHistory]);
 
-  async function analyze() {
-    const cleanSymbol = symbol.trim();
+  const runAnalysis = useCallback(async (
+    rawSymbol: string,
+    selectedAssetType: MarketAgentAssetType,
+    selectedTimeframe: MarketAgentTimeframe,
+  ) => {
+    const cleanSymbol = rawSymbol.trim();
     if (!cleanSymbol || loading) return;
     setLoading(true);
     setError('');
@@ -250,49 +346,74 @@ export default function MarketAgentPage() {
           'Content-Type': 'application/json',
           ...headers,
         },
-        body: JSON.stringify({ symbol: cleanSymbol, assetType, timeframe }),
+        body: JSON.stringify({ symbol: cleanSymbol, assetType: selectedAssetType, timeframe: selectedTimeframe }),
       });
       const payload = await response.json().catch(() => null) as MarketAgentResponse | null;
       if (!payload) throw new Error('Invalid response');
       setResult(payload);
-      if (!payload.ok) setError(payload.message);
+      if (!payload.ok) setError(payload.message || text.unavailable);
       if (payload.ok) void loadHistory();
     } catch {
-      setError('لا توجد بيانات كافية لإصدار قراءة موثوقة لهذا الأصل حالياً.');
+      setError(text.unavailable);
       setResult(null);
     } finally {
       setLoading(false);
     }
+  }, [authHeaders, loadHistory, loading, text.unavailable]);
+
+  async function analyze() {
+    await runAnalysis(symbol, assetType, timeframe);
+  }
+
+  async function rerunHistory(item: HistoryItem) {
+    setSymbol(item.symbol);
+    setAssetType(item.asset_type);
+    setTimeframe(item.timeframe);
+    await runAnalysis(item.symbol, item.asset_type, item.timeframe);
+  }
+
+  function focusSearch(nextSymbol?: string) {
+    if (nextSymbol) setSymbol(nextSymbol);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
   const labelDirection = (value: 'bullish' | 'bearish' | 'neutral') => text[value];
   const labelAction = (value: 'buy' | 'sell' | 'wait') => text[value];
   const labelRisk = (value: 'low' | 'medium' | 'high') => text[value];
   const labelAsset = (value: MarketAgentAssetType) => text[ASSET_LABEL_KEYS[value]] ?? value;
+  const currentSource = result?.source || text.sourceReady;
+  const isAnalyzeDisabled = loading || !symbol.trim();
 
   return (
     <div className="market-agent-page" dir={dir}>
       <Sidebar />
       <main className="market-agent-main">
-        <section className="market-agent-hero">
-          <div>
-            <span className="market-agent-kicker"><Bot size={16} /> THE SFM AI</span>
-            <h1>{text.title}</h1>
+        <section className="agent-page-header" aria-labelledby="market-agent-title">
+          <div className="agent-header-copy">
+            <span className="agent-ai-badge">
+              <Bot size={16} aria-hidden="true" />
+              {text.badge}
+            </span>
+            <h1 id="market-agent-title">{text.title}</h1>
             <p>{text.subtitle}</p>
           </div>
-          <div className="market-agent-disclaimer">
-            <ShieldAlert size={18} />
-            <p>{DISCLAIMER_AR}</p>
-            <p dir="ltr">{DISCLAIMER_EN}</p>
+          <div className="agent-service-chip" aria-live="polite">
+            <span className="agent-live-dot" aria-hidden="true" />
+            <div>
+              <small>{text.provider}</small>
+              <strong>{currentSource}</strong>
+            </div>
           </div>
         </section>
 
-        <section className="market-agent-toolbar" aria-label={text.title}>
-          <label>
+        <section className="agent-control-panel" aria-label={text.title}>
+          <label className="agent-field agent-field-symbol" htmlFor="market-agent-symbol">
             <span>{text.symbol}</span>
-            <div className="market-agent-input">
-              <Search size={18} />
+            <div className={`agent-input-shell${error && !result?.ok ? ' has-error' : ''}`}>
+              <Search size={18} aria-hidden="true" />
               <input
+                id="market-agent-symbol"
+                ref={searchInputRef}
                 value={symbol}
                 onChange={event => setSymbol(event.target.value.toUpperCase())}
                 onKeyDown={event => {
@@ -300,25 +421,38 @@ export default function MarketAgentPage() {
                 }}
                 placeholder={text.symbolPlaceholder}
                 inputMode="text"
+                aria-describedby="market-agent-symbol-help"
               />
+              {loading ? <Loader2 className="spin" size={17} aria-hidden="true" /> : null}
+            </div>
+            <small id="market-agent-symbol-help">{text.symbolHelp}</small>
+          </label>
+
+          <label className="agent-field agent-field-type" htmlFor="market-agent-asset-type">
+            <span>{text.assetType}</span>
+            <div className="agent-select-shell">
+              <select
+                id="market-agent-asset-type"
+                value={assetType}
+                onChange={event => setAssetType(event.target.value as MarketAgentAssetType)}
+              >
+                {ASSET_OPTIONS.map(option => (
+                  <option value={option.value} key={option.value}>{text[option.labelKey]}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} aria-hidden="true" />
             </div>
           </label>
-          <label>
-            <span>{text.assetType}</span>
-            <select value={assetType} onChange={event => setAssetType(event.target.value as MarketAgentAssetType)}>
-              {ASSET_OPTIONS.map(option => (
-                <option value={option.value} key={option.value}>{text[option.labelKey]}</option>
-              ))}
-            </select>
-          </label>
-          <div className="market-agent-timeframes">
+
+          <div className="agent-timeframe-group" role="group" aria-label={text.timeframe}>
             <span>{text.timeframe}</span>
-            <div>
+            <div className="agent-timeframe-options">
               {TIMEFRAMES.map(item => (
                 <button
                   type="button"
                   className={timeframe === item ? 'active' : ''}
                   onClick={() => setTimeframe(item)}
+                  aria-pressed={timeframe === item}
                   key={item}
                 >
                   {item}
@@ -326,26 +460,53 @@ export default function MarketAgentPage() {
               ))}
             </div>
           </div>
-          <button className="market-agent-primary" type="button" onClick={analyze} disabled={loading}>
-            {loading ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} />}
+
+          <button className="agent-primary-action" type="button" onClick={analyze} disabled={isAnalyzeDisabled} aria-disabled={isAnalyzeDisabled}>
+            {loading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
             {loading ? text.analyzing : text.analyze}
           </button>
         </section>
 
-        {result?.ok ? (
-          <section className={`market-agent-result ${actionTone}`}>
+        <section className="agent-legal-notice" role="note" aria-label={text.legalTitle}>
+          <span>
+            <ShieldAlert size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{text.legalTitle}</strong>
+            <p>{text.legal}</p>
+          </div>
+        </section>
+
+        {loading ? (
+          <section className="agent-loading-state" aria-live="polite" aria-busy="true">
+            <div className="agent-empty-icon">
+              <Activity size={26} aria-hidden="true" />
+            </div>
+            <div>
+              <h2>{text.loadingTitle}</h2>
+              <p>{text.loadingBody}</p>
+            </div>
+            <div className="agent-skeleton-grid" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          </section>
+        ) : result?.ok ? (
+          <section className={`agent-result-panel ${actionTone}`}>
             <header>
               <div>
-                <span>{result.symbol} · {result.timeframe}</span>
+                <span>{result.symbol} · {labelAsset(result.assetType)} · {result.timeframe}</span>
                 <h2>{labelAction(result.suggestedAction)}</h2>
               </div>
-              <div className="market-agent-score">
+              <div className="agent-score-ring">
                 <strong>{result.confidence}%</strong>
                 <span>{text.confidence}</span>
               </div>
             </header>
 
-            <div className="market-agent-metrics">
+            <div className="agent-metric-grid">
               <Metric icon={<LineChart size={18} />} label={text.currentPrice} value={formatNumber(result.currentPrice)} />
               <Metric icon={<TrendingUp size={18} />} label={text.direction} value={labelDirection(result.direction)} />
               <Metric icon={<Gauge size={18} />} label={text.risk} value={labelRisk(result.riskLevel)} />
@@ -356,7 +517,7 @@ export default function MarketAgentPage() {
               <Metric icon={<TrendingUp size={18} />} label={text.resistance} value={joinLevels(result.resistance, text.noValue)} />
             </div>
 
-            <div className="market-agent-detail-grid">
+            <div className="agent-detail-grid">
               <section>
                 <h3>{text.trends}</h3>
                 <dl>
@@ -378,143 +539,1123 @@ export default function MarketAgentPage() {
               </section>
             </div>
 
-            <section className="market-agent-explanation">
-              <h3><BrainCircuit size={18} /> {text.explanation}</h3>
+            <section className="agent-explanation">
+              <h3><BrainCircuit size={18} aria-hidden="true" /> {text.explanation}</h3>
               <p>{result.summaryArabic}</p>
-              <div>
-                <p>{result.disclaimerArabic}</p>
-                <p dir="ltr">{result.disclaimerEnglish}</p>
-              </div>
             </section>
           </section>
         ) : (
-          <section className={`market-agent-empty ${error || result ? 'error' : ''}`}>
-            {error || result ? <AlertTriangle size={24} /> : <BrainCircuit size={24} />}
-            <h2>{error || result ? text.errorTitle : text.emptyTitle}</h2>
-            <p>{error || result ? (result && !result.ok ? result.message : error) : text.emptyBody}</p>
-            <div>
-              <p>{DISCLAIMER_AR}</p>
-              <p dir="ltr">{DISCLAIMER_EN}</p>
+          <section className={`agent-empty-state ${error || result ? 'error' : ''}`} aria-live="polite">
+            <div className="agent-empty-icon">
+              {error || result ? <AlertTriangle size={26} aria-hidden="true" /> : <BrainCircuit size={26} aria-hidden="true" />}
+            </div>
+            <div className="agent-empty-copy">
+              <h2>{error || result ? text.errorTitle : text.emptyTitle}</h2>
+              <p>{error || result ? (result && !result.ok ? result.message : error) : text.emptyBody}</p>
+              {!error && !result ? (
+                <div className="agent-example-row" aria-label={text.examples}>
+                  <span>{text.examples}</span>
+                  {EXAMPLE_SYMBOLS.map(item => (
+                    <button type="button" key={item} onClick={() => focusSearch(item)}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <button type="button" className="agent-secondary-action" onClick={() => focusSearch()}>
+                <Search size={16} aria-hidden="true" />
+                {text.focusSearch}
+              </button>
             </div>
           </section>
         )}
 
-        <section className="market-agent-history">
+        <section className="agent-history-panel">
           <header>
-            <h2>{text.recentTitle}</h2>
-            {historyLoading ? <Loader2 className="spin" size={18} /> : null}
+            <div>
+              <span><Clock3 size={16} aria-hidden="true" /> {text.recentTitle}</span>
+              <p>{text.recentSubtitle}</p>
+            </div>
+            {historyLoading ? <Loader2 className="spin" size={18} aria-hidden="true" /> : null}
           </header>
           {history.length ? (
-            <div className="market-agent-history-list">
+            <div className="agent-history-grid" role="table" aria-label={text.recentTitle}>
+              <div className="agent-history-head" role="row">
+                <span role="columnheader">{text.asset}</span>
+                <span role="columnheader">{text.market}</span>
+                <span role="columnheader">{text.timeframe}</span>
+                <span role="columnheader">{text.action}</span>
+                <span role="columnheader">{text.confidence}</span>
+                <span role="columnheader">{text.risk}</span>
+                <span role="columnheader">{text.date}</span>
+                <span role="columnheader">{text.actionColumn}</span>
+              </div>
               {history.map(item => (
-                <article key={item.id}>
-                  <div>
+                <article className="agent-history-row" role="row" key={item.id}>
+                  <div role="cell" data-label={text.asset} className="agent-history-asset">
                     <strong>{item.symbol}</strong>
-                    <span>{item.timeframe} · {labelAsset(item.asset_type)}</span>
+                    {item.current_price ? <small>{formatNumber(item.current_price)}</small> : null}
                   </div>
-                  <b className={item.suggested_action}>{labelAction(item.suggested_action)}</b>
-                  <small>{Math.round(Number(item.confidence) || 0)}% · {labelRisk(item.risk_level)}</small>
+                  <span role="cell" data-label={text.market}>{labelAsset(item.asset_type)}</span>
+                  <span role="cell" data-label={text.timeframe} className="agent-pill neutral">{item.timeframe}</span>
+                  <span role="cell" data-label={text.action}>
+                    <b className={`agent-signal-badge ${actionToneClass(item.suggested_action)}`}>{labelAction(item.suggested_action)}</b>
+                  </span>
+                  <span role="cell" data-label={text.confidence}>{Math.round(Number(item.confidence) || 0)}%</span>
+                  <span role="cell" data-label={text.risk} className={`agent-risk risk-${item.risk_level}`}>{labelRisk(item.risk_level)}</span>
+                  <span role="cell" data-label={text.date}>{formatDate(item.created_at, lang)}</span>
+                  <span role="cell" data-label={text.actionColumn}>
+                    <button type="button" className="agent-row-action" onClick={() => void rerunHistory(item)}>
+                      <RefreshCw size={14} aria-hidden="true" />
+                      {text.reuse}
+                    </button>
+                  </span>
                 </article>
               ))}
             </div>
           ) : (
-            <p className="market-agent-history-empty">{text.noHistory}</p>
+            <p className="agent-history-empty">{text.noHistory}</p>
           )}
         </section>
       </main>
 
       <style jsx>{`
-        .market-agent-page{--agent-bg:radial-gradient(circle at 18% 8%,rgba(29,140,255,.10),transparent 30%),linear-gradient(160deg,#EEF6FF 0%,#F8FBFF 56%,#E7F1FF 100%);--agent-panel:#FFFFFF;--agent-panel-soft:#F8FBFF;--agent-border:rgba(29,140,255,.16);--agent-border-strong:rgba(29,140,255,.28);--agent-text:#0B172A;--agent-heading:#061B33;--agent-muted:#475569;--agent-muted-soft:#64748B;--agent-primary:#1D8CFF;--agent-accent:#18D4D4;--agent-shadow:0 18px 46px rgba(3,18,37,.08);width:100%;max-width:100%;min-height:100vh;background:var(--agent-bg);color:var(--agent-text);font-family:Tajawal,Arial,sans-serif;color-scheme:light;overflow-x:clip}
-        :global(.dark) .market-agent-page{--agent-bg:radial-gradient(circle at 16% 7%,rgba(47,214,192,.14),transparent 28%),radial-gradient(circle at 86% 18%,rgba(29,140,255,.14),transparent 30%),linear-gradient(180deg,#0A1422 0%,#0F1D31 48%,#08111F 100%);--agent-panel:rgba(15,29,49,.96);--agent-panel-soft:rgba(11,42,74,.92);--agent-border:#1D3050;--agent-border-strong:rgba(47,214,192,.26);--agent-text:#E8EEF6;--agent-heading:#F8FBFF;--agent-muted:#B8C7D9;--agent-muted-soft:#94A9C2;--agent-primary:#2A98FF;--agent-accent:#2FD6C0;--agent-shadow:0 20px 54px rgba(0,0,0,.30);color-scheme:dark}
+        .market-agent-page{
+          --agent-page-max:1360px;
+          --agent-gutter:clamp(18px,2vw,32px);
+          --agent-bg:
+            radial-gradient(circle at 16% 6%,rgba(24,212,212,.15),transparent 30%),
+            linear-gradient(180deg,#eef7ff 0%,#f8fcff 48%,#edf6ff 100%);
+          --agent-surface:#ffffff;
+          --agent-surface-soft:#f7fbff;
+          --agent-border:rgba(29,140,255,.16);
+          --agent-border-strong:rgba(29,140,255,.28);
+          --agent-text:#0b172a;
+          --agent-heading:#061b33;
+          --agent-muted:#475569;
+          --agent-muted-soft:#64748b;
+          --agent-primary:#1d8cff;
+          --agent-accent:#18d4d4;
+          --agent-success:#047857;
+          --agent-warning:#b45309;
+          --agent-danger:#b91c1c;
+          --agent-shadow:0 18px 46px rgba(3,18,37,.08);
+          --agent-shadow-soft:0 10px 28px rgba(3,18,37,.055);
+          width:100%;
+          max-width:100%;
+          min-height:100vh;
+          background:var(--agent-bg);
+          color:var(--agent-text);
+          font-family:Tajawal,Arial,sans-serif;
+          color-scheme:light;
+          overflow-x:clip;
+        }
+
+        :global(.dark) .market-agent-page{
+          --agent-bg:
+            radial-gradient(circle at 18% 6%,rgba(24,212,212,.10),transparent 30%),
+            linear-gradient(180deg,#081625 0%,#0a1a2d 52%,#071421 100%);
+          --agent-surface:#0f1d31;
+          --agent-surface-soft:#13243a;
+          --agent-border:#1d3050;
+          --agent-border-strong:rgba(47,214,192,.36);
+          --agent-text:#e8eef6;
+          --agent-heading:#f8fbff;
+          --agent-muted:#b8c7d9;
+          --agent-muted-soft:#94a9c2;
+          --agent-primary:#2a98ff;
+          --agent-accent:#2fd6c0;
+          --agent-shadow:0 20px 54px rgba(0,0,0,.28);
+          --agent-shadow-soft:0 12px 30px rgba(0,0,0,.22);
+          color-scheme:dark;
+        }
+
         .market-agent-page *{box-sizing:border-box}
-        .market-agent-main{width:100%;max-width:100%;min-height:100vh;margin:0;padding:28px;display:grid;gap:18px;overflow-x:clip;box-sizing:border-box}
-        .market-agent-main>*{width:100%;max-width:1400px;min-width:0;margin-inline:auto;box-sizing:border-box}
-        .market-agent-page[dir="rtl"] .market-agent-main{padding-inline-start:calc(var(--sidebar-w,230px) + 28px);padding-inline-end:28px}
-        .market-agent-page[dir="ltr"] .market-agent-main{padding-inline-start:calc(var(--sidebar-w,230px) + 28px);padding-inline-end:28px}
-        .market-agent-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,430px);gap:18px;align-items:end;max-width:100%;overflow-x:clip}
-        .market-agent-hero>*{min-width:0;max-width:100%}
-        .market-agent-kicker{width:max-content;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(24,212,212,.28);background:linear-gradient(135deg,rgba(29,140,255,.10),rgba(24,212,212,.16));color:var(--agent-heading);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950}
-        .market-agent-hero h1{margin:14px 0 8px;color:var(--agent-heading);font-size:clamp(30px,5vw,56px);line-height:1.02;font-weight:950;letter-spacing:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
-        .market-agent-hero p{margin:0;color:var(--agent-muted);font-size:15px;line-height:1.8;font-weight:800}
-        .market-agent-hero p,.market-agent-disclaimer p,.market-agent-empty p{max-width:100%;white-space:normal;overflow-wrap:anywhere}
-        .market-agent-disclaimer{display:grid;gap:8px;border:1px solid var(--agent-border);background:linear-gradient(180deg,var(--agent-panel),var(--agent-panel-soft));border-radius:18px;padding:16px;box-shadow:var(--agent-shadow);min-width:0;max-width:100%}
-        .market-agent-disclaimer svg{color:var(--agent-primary)}
-        .market-agent-disclaimer p{font-size:12px;line-height:1.65}
-        .market-agent-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(170px,.7fr) minmax(220px,.9fr) auto;gap:12px;align-items:end;border:1px solid var(--agent-border);background:var(--agent-panel);border-radius:20px;padding:16px;box-shadow:var(--agent-shadow);backdrop-filter:blur(18px);max-width:100%;overflow-x:clip}
-        label,.market-agent-timeframes{display:grid;gap:8px;min-width:0}
-        label span,.market-agent-timeframes>span{color:var(--agent-muted);font-size:12px;font-weight:950}
-        .market-agent-input,select{height:48px;border:1px solid var(--agent-border-strong);background:var(--agent-panel-soft)!important;color:var(--agent-text)!important;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 12px;-webkit-text-fill-color:var(--agent-text)!important}
-        .market-agent-input svg{color:var(--agent-primary)}
-        .market-agent-input:focus-within,select:focus{border-color:var(--agent-accent);box-shadow:0 0 0 4px rgba(24,212,212,.16);outline:0}
-        input{border:0;outline:0;background:transparent!important;color:var(--agent-text)!important;width:100%;height:100%;font:900 14px Tajawal,Arial,sans-serif;min-width:0;text-transform:uppercase;-webkit-text-fill-color:var(--agent-text)!important}
-        input::placeholder{color:var(--agent-muted-soft)!important;text-transform:none;-webkit-text-fill-color:var(--agent-muted-soft)!important}
-        select{width:100%;font:900 14px Tajawal,Arial,sans-serif;border-color:var(--agent-border-strong)!important}
-        option{background:var(--agent-panel);color:var(--agent-text)}
-        .market-agent-timeframes div{display:flex;gap:6px;flex-wrap:wrap}
-        .market-agent-timeframes button{height:48px;min-width:50px;border:1px solid var(--agent-border);background:var(--agent-panel-soft);color:var(--agent-muted);border-radius:13px;font:950 12px Arial,sans-serif;cursor:pointer}
-        .market-agent-timeframes button.active{background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));color:#FFFFFF;border-color:transparent;box-shadow:0 12px 26px rgba(29,140,255,.20)}
-        .market-agent-primary{height:48px;border:0;border-radius:14px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));color:#FFFFFF;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 14px 34px rgba(29,140,255,.22)}
-        .market-agent-primary:disabled{opacity:.65;cursor:wait}
+
+        .market-agent-main{
+          width:100%;
+          max-width:100%;
+          min-height:100vh;
+          margin:0;
+          padding:var(--agent-gutter);
+          display:grid;
+          align-content:start;
+          gap:22px;
+          overflow-x:clip;
+        }
+
+        .market-agent-main>*{
+          width:100%;
+          max-width:var(--agent-page-max);
+          min-width:0;
+          margin-inline:auto;
+        }
+
+        .market-agent-page[dir="rtl"] .market-agent-main{
+          padding-inline-start:calc(var(--sidebar-w,230px) + var(--agent-gutter));
+          padding-inline-end:var(--agent-gutter);
+        }
+
+        .market-agent-page[dir="ltr"] .market-agent-main{
+          padding-inline-start:var(--agent-gutter);
+          padding-inline-end:calc(var(--sidebar-w,230px) + var(--agent-gutter));
+        }
+
+        .agent-page-header{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) minmax(230px,320px);
+          align-items:end;
+          gap:18px;
+          padding:26px 28px;
+          border:1px solid rgba(167,243,240,.18);
+          border-radius:26px;
+          background:
+            radial-gradient(circle at 12% 8%,rgba(24,212,212,.18),transparent 32%),
+            linear-gradient(135deg,#061b33 0%,#08243f 56%,#0d4b61 100%);
+          box-shadow:var(--agent-shadow);
+          color:#fff;
+        }
+
+        .agent-header-copy{
+          display:grid;
+          gap:10px;
+          min-width:0;
+        }
+
+        .agent-ai-badge{
+          width:max-content;
+          max-width:100%;
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          padding:7px 13px;
+          border-radius:999px;
+          border:1px solid rgba(119,232,229,.35);
+          background:rgba(32,212,207,.12);
+          color:#9ff6f0;
+          font-size:12px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-page-header h1{
+          margin:0;
+          color:#fff;
+          font-size:clamp(32px,3.2vw,44px);
+          line-height:1.12;
+          font-weight:950;
+          letter-spacing:0;
+        }
+
+        .agent-page-header p{
+          margin:0;
+          max-width:780px;
+          color:#d8e8f4;
+          font-size:15px;
+          line-height:1.8;
+          font-weight:800;
+        }
+
+        .agent-service-chip{
+          justify-self:end;
+          width:100%;
+          display:flex;
+          align-items:center;
+          gap:12px;
+          min-height:64px;
+          padding:12px 14px;
+          border-radius:18px;
+          border:1px solid rgba(167,243,240,.20);
+          background:rgba(255,255,255,.08);
+          color:#f8fcff;
+        }
+
+        .agent-live-dot{
+          width:11px;
+          height:11px;
+          border-radius:50%;
+          background:#34d399;
+          box-shadow:0 0 0 6px rgba(52,211,153,.14);
+        }
+
+        .agent-service-chip small{
+          display:block;
+          color:#b9d7e7;
+          font-size:12px;
+          font-weight:900;
+          line-height:1.2;
+        }
+
+        .agent-service-chip strong{
+          display:block;
+          margin-top:4px;
+          color:#fff;
+          font-size:13px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-control-panel{
+          display:grid;
+          grid-template-columns:minmax(280px,1.35fr) minmax(190px,.5fr) minmax(300px,.72fr) minmax(170px,.4fr);
+          align-items:end;
+          gap:14px;
+          padding:22px;
+          border:1px solid var(--agent-border);
+          border-radius:22px;
+          background:rgba(255,255,255,.96);
+          box-shadow:var(--agent-shadow);
+        }
+
+        :global(.dark) .agent-control-panel{
+          background:var(--agent-surface);
+        }
+
+        .agent-field,
+        .agent-timeframe-group{
+          display:grid;
+          gap:8px;
+          min-width:0;
+        }
+
+        .agent-field>span,
+        .agent-timeframe-group>span{
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-field small{
+          min-height:16px;
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:800;
+          line-height:1.35;
+        }
+
+        .agent-input-shell,
+        .agent-select-shell{
+          min-height:52px;
+          display:flex;
+          align-items:center;
+          gap:10px;
+          border:1px solid var(--agent-border-strong);
+          background:var(--agent-surface-soft);
+          color:var(--agent-text);
+          border-radius:14px;
+          padding:0 13px;
+          transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+        }
+
+        .agent-input-shell.has-error{
+          border-color:rgba(185,28,28,.32);
+        }
+
+        .agent-input-shell svg,
+        .agent-select-shell svg{
+          flex:0 0 auto;
+          color:var(--agent-primary);
+        }
+
+        .agent-input-shell:focus-within,
+        .agent-select-shell:focus-within{
+          border-color:var(--agent-accent);
+          box-shadow:0 0 0 4px rgba(24,212,212,.16);
+          background:var(--agent-surface);
+        }
+
+        input,
+        select{
+          width:100%;
+          min-width:0;
+          height:100%;
+          border:0;
+          outline:0;
+          background:transparent;
+          color:var(--agent-text);
+          font:900 14px Tajawal,Arial,sans-serif;
+          -webkit-text-fill-color:var(--agent-text);
+        }
+
+        input{text-transform:uppercase}
+
+        input::placeholder{
+          color:var(--agent-muted-soft);
+          text-transform:none;
+          -webkit-text-fill-color:var(--agent-muted-soft);
+        }
+
+        select{
+          min-height:50px;
+          appearance:none;
+          cursor:pointer;
+        }
+
+        option{
+          background:var(--agent-surface);
+          color:var(--agent-text);
+        }
+
+        .agent-timeframe-options{
+          display:grid;
+          grid-template-columns:repeat(5,minmax(48px,1fr));
+          gap:6px;
+          padding:4px;
+          border:1px solid var(--agent-border);
+          border-radius:16px;
+          background:var(--agent-surface-soft);
+        }
+
+        .agent-timeframe-options button{
+          min-height:42px;
+          min-width:0;
+          border:1px solid transparent;
+          background:transparent;
+          color:var(--agent-muted);
+          border-radius:12px;
+          font:950 13px Arial,sans-serif;
+          cursor:pointer;
+          transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+        }
+
+        .agent-timeframe-options button:hover,
+        .agent-timeframe-options button:focus-visible{
+          outline:0;
+          background:rgba(29,140,255,.10);
+          color:var(--agent-heading);
+        }
+
+        .agent-timeframe-options button.active{
+          background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));
+          color:#fff;
+          box-shadow:0 10px 22px rgba(29,140,255,.20);
+        }
+
+        .agent-primary-action,
+        .agent-secondary-action,
+        .agent-row-action{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:8px;
+          border-radius:14px;
+          font-family:Tajawal,Arial,sans-serif;
+          font-weight:950;
+          line-height:1.2;
+          cursor:pointer;
+          transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease;
+        }
+
+        .agent-primary-action{
+          min-height:52px;
+          width:100%;
+          border:0;
+          padding:0 18px;
+          background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));
+          color:#fff;
+          font-size:14px;
+          box-shadow:0 14px 34px rgba(29,140,255,.24);
+          white-space:nowrap;
+        }
+
+        .agent-primary-action:not(:disabled):hover,
+        .agent-primary-action:not(:disabled):focus-visible{
+          outline:0;
+          transform:translateY(-1px);
+          box-shadow:0 18px 42px rgba(29,140,255,.30),0 0 0 4px rgba(24,212,212,.15);
+        }
+
+        .agent-primary-action:disabled{
+          opacity:.58;
+          cursor:not-allowed;
+          box-shadow:none;
+        }
+
+        .agent-legal-notice{
+          display:grid;
+          grid-template-columns:auto minmax(0,1fr);
+          gap:12px;
+          align-items:start;
+          padding:14px 16px;
+          border:1px solid rgba(180,83,9,.18);
+          border-radius:18px;
+          background:linear-gradient(135deg,rgba(255,247,237,.92),rgba(255,255,255,.96));
+          box-shadow:0 10px 28px rgba(3,18,37,.045);
+        }
+
+        :global(.dark) .agent-legal-notice{
+          background:rgba(245,158,11,.10);
+          border-color:rgba(245,158,11,.24);
+        }
+
+        .agent-legal-notice>span{
+          width:38px;
+          height:38px;
+          display:grid;
+          place-items:center;
+          border-radius:14px;
+          background:rgba(245,158,11,.12);
+          color:var(--agent-warning);
+        }
+
+        .agent-legal-notice strong{
+          display:block;
+          color:var(--agent-heading);
+          font-size:13px;
+          font-weight:950;
+          margin-bottom:2px;
+        }
+
+        .agent-legal-notice p{
+          margin:0;
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:850;
+          line-height:1.75;
+        }
+
         .spin{animation:agentSpin 1s linear infinite}
         @keyframes agentSpin{to{transform:rotate(360deg)}}
-        .market-agent-result,.market-agent-empty,.market-agent-history{border:1px solid var(--agent-border);background:linear-gradient(180deg,var(--agent-panel),var(--agent-panel-soft));border-radius:22px;padding:18px;box-shadow:var(--agent-shadow)}
-        .market-agent-result>header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
-        .market-agent-result>header span{color:var(--agent-muted);font-size:12px;font-weight:950}
-        .market-agent-result h2{margin:4px 0 0;color:var(--agent-heading);font-size:34px;line-height:1.1;font-weight:950}
-        .market-agent-result.positive h2,.market-agent-result.positive .market-agent-score strong{color:#047857}
-        .market-agent-result.negative h2,.market-agent-result.negative .market-agent-score strong{color:#B91C1C}
-        .market-agent-result.neutral h2,.market-agent-result.neutral .market-agent-score strong{color:#B45309}
-        .market-agent-score{width:98px;height:98px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(24,212,212,.28);background:linear-gradient(145deg,rgba(29,140,255,.08),rgba(24,212,212,.12));text-align:center}
-        .market-agent-score strong{display:block;font-size:26px;font-weight:950}
-        .market-agent-score span{font-size:11px}
-        .market-agent-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-        .market-agent-metric{min-height:104px;border:1px solid var(--agent-border);background:var(--agent-panel);border-radius:16px;padding:13px;display:grid;align-content:space-between;gap:10px;min-width:0;box-shadow:0 10px 24px rgba(3,18,37,.05)}
-        .market-agent-metric svg{color:var(--agent-primary)}
-        .market-agent-metric span{color:var(--agent-muted-soft);font-size:12px;font-weight:950}
-        .market-agent-metric strong{color:var(--agent-heading);font-size:15px;font-weight:950;line-height:1.35;overflow-wrap:anywhere}
-        .market-agent-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-        .market-agent-detail-grid section,.market-agent-explanation{border:1px solid var(--agent-border);background:var(--agent-panel-soft);border-radius:16px;padding:15px}
-        h3{margin:0 0 12px;color:var(--agent-heading);font-size:16px;font-weight:950;display:flex;align-items:center;gap:8px}
+
+        .agent-loading-state,
+        .agent-result-panel,
+        .agent-empty-state,
+        .agent-history-panel{
+          border:1px solid var(--agent-border);
+          background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
+          border-radius:24px;
+          padding:22px;
+          box-shadow:var(--agent-shadow);
+        }
+
+        .agent-loading-state,
+        .agent-empty-state{
+          display:grid;
+          grid-template-columns:auto minmax(0,1fr);
+          align-items:center;
+          gap:18px;
+          min-height:190px;
+        }
+
+        .agent-empty-icon{
+          width:58px;
+          height:58px;
+          display:grid;
+          place-items:center;
+          border-radius:20px;
+          background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.16));
+          color:var(--agent-primary);
+          border:1px solid rgba(24,212,212,.20);
+        }
+
+        .agent-empty-state.error .agent-empty-icon{
+          background:rgba(239,68,68,.10);
+          color:var(--agent-danger);
+          border-color:rgba(239,68,68,.20);
+        }
+
+        .agent-empty-copy{
+          display:grid;
+          gap:10px;
+          min-width:0;
+        }
+
+        .agent-loading-state h2,
+        .agent-empty-state h2{
+          margin:0;
+          color:var(--agent-heading);
+          font-size:clamp(20px,2vw,25px);
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-loading-state p,
+        .agent-empty-state p{
+          margin:0;
+          max-width:760px;
+          color:var(--agent-muted);
+          font-size:14px;
+          font-weight:850;
+          line-height:1.8;
+        }
+
+        .agent-example-row{
+          display:flex;
+          align-items:center;
+          flex-wrap:wrap;
+          gap:8px;
+          margin-top:4px;
+        }
+
+        .agent-example-row>span{
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:950;
+        }
+
+        .agent-example-row button,
+        .agent-secondary-action{
+          min-height:38px;
+          border:1px solid var(--agent-border);
+          background:var(--agent-surface);
+          color:var(--agent-heading);
+          padding:0 12px;
+          border-radius:999px;
+          font:950 12px Tajawal,Arial,sans-serif;
+          cursor:pointer;
+        }
+
+        .agent-secondary-action{
+          width:max-content;
+          min-height:42px;
+          padding:0 16px;
+          border-color:rgba(24,212,212,.26);
+          background:rgba(24,212,212,.10);
+          color:#047a8f;
+        }
+
+        .agent-example-row button:hover,
+        .agent-example-row button:focus-visible,
+        .agent-secondary-action:hover,
+        .agent-secondary-action:focus-visible{
+          outline:0;
+          border-color:var(--agent-border-strong);
+          background:rgba(24,212,212,.14);
+          box-shadow:0 0 0 4px rgba(24,212,212,.12);
+        }
+
+        .agent-skeleton-grid{
+          grid-column:1/-1;
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:10px;
+        }
+
+        .agent-skeleton-grid span{
+          height:84px;
+          border-radius:16px;
+          background:linear-gradient(90deg,rgba(29,140,255,.08),rgba(24,212,212,.14),rgba(29,140,255,.08));
+          background-size:220% 100%;
+          animation:agentSkeleton 1.1s ease-in-out infinite;
+        }
+
+        @keyframes agentSkeleton{
+          to{background-position:-220% 0}
+        }
+
+        .agent-result-panel>header{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:16px;
+          margin-bottom:18px;
+        }
+
+        .agent-result-panel>header span{
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:950;
+        }
+
+        .agent-result-panel h2{
+          margin:5px 0 0;
+          color:var(--agent-heading);
+          font-size:clamp(28px,3vw,38px);
+          line-height:1.1;
+          font-weight:950;
+        }
+
+        .agent-result-panel.positive h2,
+        .agent-result-panel.positive .agent-score-ring strong{color:var(--agent-success)}
+
+        .agent-result-panel.negative h2,
+        .agent-result-panel.negative .agent-score-ring strong{color:var(--agent-danger)}
+
+        .agent-result-panel.neutral h2,
+        .agent-result-panel.neutral .agent-score-ring strong{color:var(--agent-warning)}
+
+        .agent-score-ring{
+          width:100px;
+          height:100px;
+          flex:0 0 auto;
+          border-radius:50%;
+          display:grid;
+          place-items:center;
+          text-align:center;
+          border:1px solid rgba(24,212,212,.28);
+          background:linear-gradient(145deg,rgba(29,140,255,.08),rgba(24,212,212,.12));
+        }
+
+        .agent-score-ring strong{
+          display:block;
+          font-size:27px;
+          font-weight:950;
+          line-height:1.1;
+        }
+
+        .agent-score-ring span{
+          display:block;
+          color:var(--agent-muted);
+          font-size:11px;
+          font-weight:950;
+        }
+
+        .agent-metric-grid{
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:12px;
+        }
+
+        .agent-metric{
+          min-height:112px;
+          display:grid;
+          align-content:space-between;
+          gap:10px;
+          padding:14px;
+          border:1px solid var(--agent-border);
+          background:var(--agent-surface);
+          border-radius:18px;
+          box-shadow:var(--agent-shadow-soft);
+        }
+
+        .agent-metric svg{color:var(--agent-primary)}
+
+        .agent-metric span{
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-metric strong{
+          color:var(--agent-heading);
+          font-size:15px;
+          font-weight:950;
+          line-height:1.35;
+          overflow-wrap:anywhere;
+        }
+
+        .agent-detail-grid{
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:14px;
+          margin-top:14px;
+        }
+
+        .agent-detail-grid section,
+        .agent-explanation{
+          border:1px solid var(--agent-border);
+          background:var(--agent-surface-soft);
+          border-radius:18px;
+          padding:16px;
+        }
+
+        h3{
+          margin:0 0 12px;
+          color:var(--agent-heading);
+          font-size:16px;
+          font-weight:950;
+          display:flex;
+          align-items:center;
+          gap:8px;
+        }
+
         h3 svg{color:var(--agent-primary)}
-        dl{margin:0;display:grid;gap:8px}
-        dl div{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(29,140,255,.12);padding-bottom:8px}
-        dl div:last-child{border-bottom:0;padding-bottom:0}
-        dt{color:var(--agent-muted-soft);font-size:12px;font-weight:950}
-        dd{margin:0;color:var(--agent-heading);font-size:13px;font-weight:950}
-        .market-agent-explanation{margin-top:12px;display:grid;gap:10px}
-        .market-agent-explanation p{margin:0;color:var(--agent-muted);line-height:1.85;font-size:13px;font-weight:800}
-        .market-agent-explanation div{border-top:1px solid rgba(29,140,255,.12);padding-top:10px;display:grid;gap:5px}
-        .market-agent-empty{min-height:250px;display:grid;place-items:center;text-align:center;gap:10px}
-        .market-agent-empty svg{color:var(--agent-primary)}
-        .market-agent-empty.error svg{color:#B91C1C}
-        .market-agent-empty h2{margin:0;color:var(--agent-heading);font-size:22px;font-weight:950}
-        .market-agent-empty p{margin:0;max-width:720px;color:var(--agent-muted);line-height:1.8;font-weight:850}
-        .market-agent-empty div{display:grid;gap:5px;margin-top:4px}
-        .market-agent-history header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-        .market-agent-history h2{margin:0;color:var(--agent-heading);font-size:19px;font-weight:950}
-        .market-agent-history-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-        .market-agent-history-list article{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;border:1px solid var(--agent-border);background:var(--agent-panel);border-radius:14px;padding:12px}
-        .market-agent-history-list strong{display:block;color:var(--agent-heading);font-size:13px;font-weight:950}
-        .market-agent-history-list span,.market-agent-history-list small{color:var(--agent-muted-soft);font-size:11px;font-weight:900}
-        .market-agent-history-list b{border-radius:999px;padding:6px 9px;font-size:11px;font-weight:950}
-        .market-agent-history-list b.buy{background:#ECFDF5;color:#047857;border:1px solid rgba(4,120,87,.18)}
-        .market-agent-history-list b.sell{background:#FEF2F2;color:#B91C1C;border:1px solid rgba(185,28,28,.16)}
-        .market-agent-history-list b.wait{background:#FFF7ED;color:#B45309;border:1px solid rgba(180,83,9,.18)}
-        .market-agent-history-empty{margin:0;color:var(--agent-muted);font-weight:850}
-        :global(.dark) .market-agent-page .market-agent-toolbar,:global(.dark) .market-agent-page .market-agent-result,:global(.dark) .market-agent-page .market-agent-empty,:global(.dark) .market-agent-page .market-agent-history,:global(.dark) .market-agent-page .market-agent-disclaimer{box-shadow:var(--agent-shadow)}
-        :global(.dark) .market-agent-page .market-agent-kicker{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.22);color:var(--agent-heading)}
-        :global(.dark) .market-agent-page .market-agent-input,:global(.dark) .market-agent-page select{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
-        :global(.dark) .market-agent-page .market-agent-metric{box-shadow:0 10px 24px rgba(0,0,0,.18)}
-        :global(.dark) .market-agent-page dl div,:global(.dark) .market-agent-page .market-agent-explanation div{border-color:rgba(47,214,192,.14)}
-        :global(.dark) .market-agent-page .market-agent-result.positive h2,:global(.dark) .market-agent-page .market-agent-result.positive .market-agent-score strong{color:#34D399}
-        :global(.dark) .market-agent-page .market-agent-result.negative h2,:global(.dark) .market-agent-page .market-agent-result.negative .market-agent-score strong{color:#F87171}
-        :global(.dark) .market-agent-page .market-agent-result.neutral h2,:global(.dark) .market-agent-page .market-agent-result.neutral .market-agent-score strong{color:#FBBF24}
-        :global(.dark) .market-agent-page .market-agent-history-list b.buy{background:rgba(16,185,129,.14);color:#34D399;border-color:rgba(52,211,153,.22)}
-        :global(.dark) .market-agent-page .market-agent-history-list b.sell{background:rgba(248,113,113,.12);color:#F87171;border-color:rgba(248,113,113,.22)}
-        :global(.dark) .market-agent-page .market-agent-history-list b.wait{background:rgba(251,191,36,.12);color:#FBBF24;border-color:rgba(251,191,36,.22)}
-        @media(max-width:1180px){.market-agent-toolbar{grid-template-columns:1fr 1fr}.market-agent-primary{width:100%}.market-agent-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.market-agent-hero{grid-template-columns:1fr}}
-        @media(max-width:1024px){.market-agent-page{width:100%;max-width:100%;overflow-x:clip}.market-agent-page[dir="rtl"] .market-agent-main,.market-agent-page[dir="ltr"] .market-agent-main,.market-agent-main{margin:0;padding:18px!important;width:100%;max-width:100%;overflow-x:clip}.market-agent-main>*{width:100%;max-width:100%;min-width:0;margin-inline:0}.market-agent-hero{grid-template-columns:1fr}}
-        @media(max-width:720px){.market-agent-page[dir="rtl"] .market-agent-main,.market-agent-page[dir="ltr"] .market-agent-main,.market-agent-main{padding:14px!important}.market-agent-toolbar,.market-agent-detail-grid,.market-agent-history-list{grid-template-columns:1fr}.market-agent-metrics{grid-template-columns:1fr}.market-agent-result>header{align-items:flex-start}.market-agent-score{width:84px;height:84px}.market-agent-history-list article{grid-template-columns:1fr}.market-agent-hero h1{font-size:clamp(28px,8vw,34px);line-height:1.16;text-wrap:balance;overflow-wrap:anywhere}.market-agent-hero p{font-size:13px;line-height:1.75}.market-agent-disclaimer{padding:14px}.market-agent-timeframes div{justify-content:flex-start}.market-agent-timeframes button{min-width:44px}}
+
+        dl{
+          margin:0;
+          display:grid;
+          gap:8px;
+        }
+
+        dl div{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          border-bottom:1px solid rgba(29,140,255,.12);
+          padding-bottom:8px;
+        }
+
+        dl div:last-child{
+          border-bottom:0;
+          padding-bottom:0;
+        }
+
+        dt{
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:950;
+        }
+
+        dd{
+          margin:0;
+          color:var(--agent-heading);
+          font-size:13px;
+          font-weight:950;
+          text-align:end;
+        }
+
+        .agent-explanation{
+          margin-top:14px;
+          display:grid;
+          gap:10px;
+        }
+
+        .agent-explanation p{
+          margin:0;
+          color:var(--agent-muted);
+          line-height:1.85;
+          font-size:14px;
+          font-weight:850;
+        }
+
+        .agent-history-panel{
+          display:grid;
+          gap:14px;
+        }
+
+        .agent-history-panel>header{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:14px;
+        }
+
+        .agent-history-panel>header span{
+          display:flex;
+          align-items:center;
+          gap:8px;
+          color:var(--agent-heading);
+          font-size:20px;
+          font-weight:950;
+          line-height:1.35;
+        }
+
+        .agent-history-panel>header span svg{color:var(--agent-primary)}
+
+        .agent-history-panel>header p{
+          margin:4px 0 0;
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:850;
+        }
+
+        .agent-history-grid{
+          display:grid;
+          gap:8px;
+        }
+
+        .agent-history-head,
+        .agent-history-row{
+          display:grid;
+          grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 82px 92px 92px 100px minmax(150px,1fr) minmax(130px,.9fr);
+          align-items:center;
+          gap:10px;
+        }
+
+        .agent-history-head{
+          min-height:40px;
+          padding:0 14px;
+          color:var(--agent-muted-soft);
+          font-size:12px;
+          font-weight:950;
+        }
+
+        .agent-history-row{
+          min-height:70px;
+          padding:12px 14px;
+          border:1px solid var(--agent-border);
+          border-radius:16px;
+          background:var(--agent-surface);
+          color:var(--agent-text);
+          box-shadow:0 8px 20px rgba(3,18,37,.04);
+          transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+        }
+
+        .agent-history-row:hover{
+          transform:translateY(-1px);
+          border-color:var(--agent-border-strong);
+          box-shadow:0 14px 30px rgba(3,18,37,.08);
+        }
+
+        .agent-history-row span,
+        .agent-history-row small{
+          color:var(--agent-muted);
+          font-size:13px;
+          font-weight:900;
+          line-height:1.45;
+        }
+
+        .agent-history-asset{
+          display:grid;
+          gap:3px;
+        }
+
+        .agent-history-asset strong{
+          color:var(--agent-heading);
+          font-size:15px;
+          font-weight:950;
+          line-height:1.25;
+        }
+
+        .agent-pill,
+        .agent-signal-badge,
+        .agent-risk{
+          width:max-content;
+          max-width:100%;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          min-height:30px;
+          border-radius:999px;
+          padding:0 10px;
+          font-size:12px;
+          font-weight:950;
+          line-height:1.2;
+          border:1px solid transparent;
+        }
+
+        .agent-pill.neutral{
+          background:rgba(29,140,255,.10);
+          border-color:rgba(29,140,255,.16);
+          color:#075985;
+        }
+
+        .agent-signal-badge.buy{
+          background:#ecfdf5;
+          color:#047857;
+          border-color:rgba(4,120,87,.18);
+        }
+
+        .agent-signal-badge.sell{
+          background:#fef2f2;
+          color:#b91c1c;
+          border-color:rgba(185,28,28,.16);
+        }
+
+        .agent-signal-badge.wait{
+          background:#fff7ed;
+          color:#b45309;
+          border-color:rgba(180,83,9,.18);
+        }
+
+        .agent-risk.risk-low{
+          background:rgba(16,185,129,.10);
+          border-color:rgba(16,185,129,.18);
+          color:#047857;
+        }
+
+        .agent-risk.risk-medium{
+          background:rgba(245,158,11,.12);
+          border-color:rgba(245,158,11,.20);
+          color:#b45309;
+        }
+
+        .agent-risk.risk-high{
+          background:rgba(239,68,68,.10);
+          border-color:rgba(239,68,68,.18);
+          color:#b91c1c;
+        }
+
+        .agent-row-action{
+          min-height:38px;
+          border:1px solid rgba(24,212,212,.24);
+          background:rgba(24,212,212,.10);
+          color:#047a8f;
+          padding:0 12px;
+          font-size:12px;
+        }
+
+        .agent-row-action:hover,
+        .agent-row-action:focus-visible{
+          outline:0;
+          background:rgba(24,212,212,.16);
+          box-shadow:0 0 0 4px rgba(24,212,212,.12);
+        }
+
+        .agent-history-empty{
+          margin:0;
+          padding:18px;
+          border:1px dashed var(--agent-border-strong);
+          border-radius:16px;
+          background:var(--agent-surface-soft);
+          color:var(--agent-muted);
+          font-size:14px;
+          font-weight:900;
+          text-align:center;
+        }
+
+        :global(.dark) .agent-pill.neutral{
+          color:#a7d8ff;
+        }
+
+        :global(.dark) .agent-signal-badge.buy,
+        :global(.dark) .agent-risk.risk-low{
+          background:rgba(16,185,129,.16);
+          color:#86efac;
+          border-color:rgba(16,185,129,.26);
+        }
+
+        :global(.dark) .agent-signal-badge.sell,
+        :global(.dark) .agent-risk.risk-high{
+          background:rgba(239,68,68,.16);
+          color:#fca5a5;
+          border-color:rgba(239,68,68,.26);
+        }
+
+        :global(.dark) .agent-signal-badge.wait,
+        :global(.dark) .agent-risk.risk-medium{
+          background:rgba(245,158,11,.16);
+          color:#fcd34d;
+          border-color:rgba(245,158,11,.26);
+        }
+
+        @media(max-width:1280px){
+          .agent-control-panel{
+            grid-template-columns:minmax(0,1fr) minmax(180px,.55fr);
+          }
+          .agent-timeframe-group,
+          .agent-primary-action{
+            grid-column:1/-1;
+          }
+          .agent-metric-grid{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+          }
+          .agent-history-head,
+          .agent-history-row{
+            grid-template-columns:minmax(120px,1fr) minmax(96px,.75fr) 76px 90px 88px 96px minmax(128px,.9fr) minmax(120px,.7fr);
+          }
+        }
+
+        @media(max-width:1024px){
+          .market-agent-page{
+            overflow-x:clip;
+          }
+          .market-agent-page[dir="rtl"] .market-agent-main,
+          .market-agent-page[dir="ltr"] .market-agent-main,
+          .market-agent-main{
+            width:100%;
+            max-width:100%;
+            margin:0;
+            padding:calc(22px + env(safe-area-inset-top)) 18px 42px!important;
+          }
+          .market-agent-main>*{
+            max-width:100%;
+            margin-inline:0;
+          }
+          .agent-page-header{
+            grid-template-columns:1fr;
+            align-items:start;
+          }
+          .agent-service-chip{
+            justify-self:stretch;
+          }
+          .agent-history-head{
+            display:none;
+          }
+          .agent-history-row{
+            grid-template-columns:1fr 1fr;
+            align-items:start;
+          }
+          .agent-history-row [role="cell"]{
+            display:grid;
+            gap:3px;
+          }
+          .agent-history-row [role="cell"]::before{
+            content:attr(data-label);
+          }
+        }
+
+        @media(max-width:768px){
+          .market-agent-page[dir="rtl"] .market-agent-main,
+          .market-agent-page[dir="ltr"] .market-agent-main,
+          .market-agent-main{
+            padding-inline:14px!important;
+          }
+          .agent-page-header,
+          .agent-control-panel,
+          .agent-loading-state,
+          .agent-empty-state,
+          .agent-result-panel,
+          .agent-history-panel{
+            border-radius:20px;
+            padding:18px;
+          }
+          .agent-control-panel,
+          .agent-detail-grid{
+            grid-template-columns:1fr;
+          }
+          .agent-timeframe-group,
+          .agent-primary-action{
+            grid-column:auto;
+          }
+          .agent-timeframe-options{
+            display:flex;
+            overflow-x:auto;
+            scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;
+          }
+          .agent-timeframe-options::-webkit-scrollbar{display:none}
+          .agent-timeframe-options button{
+            min-width:62px;
+            flex:0 0 auto;
+          }
+          .agent-loading-state,
+          .agent-empty-state{
+            grid-template-columns:1fr;
+            justify-items:start;
+          }
+          .agent-skeleton-grid,
+          .agent-metric-grid,
+          .agent-history-row{
+            grid-template-columns:1fr;
+          }
+          .agent-result-panel>header{
+            align-items:flex-start;
+          }
+          .agent-score-ring{
+            width:84px;
+            height:84px;
+          }
+          .agent-secondary-action,
+          .agent-primary-action{
+            width:100%;
+          }
+        }
+
+        @media(max-width:420px){
+          .agent-page-header h1{
+            font-size:30px;
+          }
+          .agent-page-header p,
+          .agent-legal-notice p,
+          .agent-empty-state p{
+            font-size:13px;
+          }
+          .agent-control-panel{
+            gap:12px;
+          }
+        }
+
+        @media(prefers-reduced-motion:reduce){
+          .spin,
+          .agent-skeleton-grid span{
+            animation:none!important;
+          }
+          .agent-primary-action,
+          .agent-secondary-action,
+          .agent-row-action,
+          .agent-timeframe-options button,
+          .agent-history-row{
+            transition:none!important;
+          }
+          .agent-primary-action:hover,
+          .agent-history-row:hover{
+            transform:none!important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -522,7 +1663,7 @@ export default function MarketAgentPage() {
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="market-agent-metric">
+    <div className="agent-metric">
       {icon}
       <span>{label}</span>
       <strong>{value || '-'}</strong>
