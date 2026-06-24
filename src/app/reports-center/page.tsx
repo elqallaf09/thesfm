@@ -1816,7 +1816,7 @@ export default function ReportsCenterPage() {
   const [expandedRequirements, setExpandedRequirements] = useState<Record<string, boolean>>({});
   const [previewFit, setPreviewFit] = useState<'width' | 'page'>('width');
   const [openCategories, setOpenCategories] = useState<Record<ReportCategory, boolean>>({
-    financial: true,
+    financial: false,
     projects: false,
     charity: false,
     investment: false,
@@ -1904,15 +1904,6 @@ export default function ReportsCenterPage() {
     if (isLoading || reportViewTouched) return;
     setReportView(readyCount > 0 ? 'ready' : 'all');
   }, [isLoading, readyCount, reportViewTouched]);
-
-  useEffect(() => {
-    setOpenCategories({
-      financial: true,
-      projects: reportView !== 'all',
-      charity: reportView !== 'all',
-      investment: reportView !== 'all',
-    });
-  }, [reportView]);
 
   const missingActionForKey = useCallback((key: TableKey): MissingAction => {
     if (key === 'income') return { label: tr.addIncome, href: '/income/add' };
@@ -2203,9 +2194,10 @@ export default function ReportsCenterPage() {
                       <strong>{tr[labelKey]}</strong>
                     </span>
                     <span className="category-counts">
+                      <em>{tr.allReports}: {items.length}</em>
                       <em>{tr.ready}: {categoryReadyCount}</em>
                       <em>{tr.needsData}: {categoryNeedsCount}</em>
-                      <ChevronDown size={17} aria-hidden="true" />
+                      <ChevronDown className="category-chevron" size={18} aria-hidden="true" />
                     </span>
                   </button>
                   {isOpen && (
@@ -2483,7 +2475,7 @@ const pageStyles = `
   .filters-panel,.history-panel,.ready-panel{padding:16px}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:var(--sfm-primary)}.section-title h2{margin:0;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}
   .filters-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}.filters-grid label{display:grid;gap:6px;min-width:0}.filters-grid span{font-size:11px;font-weight:950;color:var(--sfm-muted)}.filters-grid input,.filters-grid select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-primary-dark);padding:10px 11px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.filters-grid input:focus,.filters-grid select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}.filters-project-selector{grid-column:span 2;min-width:0}
   .ready-panel p{margin:0;color:var(--sfm-muted);font-weight:900;line-height:1.7}.ready-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:8px}.ready-list button{min-width:0;border:1px solid rgba(21,128,61,.14);border-radius:15px;background:#F2FAEA;color:#047857;padding:10px 12px;text-align:start;display:grid;gap:4px;font-family:inherit;cursor:pointer}.ready-list button.view-all-ready{background:#FFFFFF;border-color:rgba(29,140,255,.18);color:var(--sfm-primary-dark)}.ready-list button span{font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ready-list button strong{font-size:11px;color:#4D6B32}
-  .reports-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:18px;align-items:start;min-width:0}.report-categories{display:grid;gap:14px;min-width:0}.category-section{padding:0;overflow:visible}.category-summary{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--sfm-primary-dark);font-family:inherit;cursor:pointer;text-align:start}.category-title{display:inline-flex;align-items:center;gap:9px;min-width:0}.category-title svg{color:var(--sfm-primary)}.category-title strong{font-size:18px;font-weight:950;overflow-wrap:anywhere}.category-counts{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.category-counts em{font-style:normal;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:999px;padding:5px 8px;color:var(--sfm-muted);font-size:11px;font-weight:950}.category-summary svg:last-child{transition:transform .18s ease}.category-summary[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}.reports-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px;min-width:0;padding:0 18px 18px}
+  .reports-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:18px;align-items:start;min-width:0}.report-categories{display:grid;gap:14px;min-width:0}.category-section{padding:0;overflow:visible}.category-summary{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--sfm-primary-dark);font-family:inherit;cursor:pointer;text-align:start;min-height:60px;border-radius:22px;transition:background .18s ease,box-shadow .18s ease,color .18s ease}.category-summary:hover{background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(24,212,212,.08));box-shadow:inset 0 0 0 1px rgba(24,212,212,.18)}.category-summary:focus-visible{outline:3px solid rgba(24,212,212,.28);outline-offset:3px}.category-title{display:inline-flex;align-items:center;gap:9px;min-width:0}.category-title svg{color:var(--sfm-primary)}.category-title strong{font-size:18px;font-weight:950;overflow-wrap:anywhere}.category-counts{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.category-counts em{font-style:normal;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:999px;padding:5px 8px;color:var(--sfm-muted);font-size:11px;font-weight:950}.category-chevron{flex:0 0 auto;color:var(--sfm-primary);transition:transform .18s ease}.category-summary[aria-expanded="true"] .category-chevron{transform:rotate(180deg)}.reports-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px;min-width:0;padding:0 18px 18px}
   .report-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.13);border-radius:18px;padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;min-width:0;min-height:218px}.report-card.ready{border-color:rgba(21,128,61,.18)}.report-card.needs_data{border-color:rgba(154,94,13,.22)}.report-card.unavailable,.report-card.error{background:var(--sfm-light-card)}.report-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.report-card h3{margin:0 0 5px;color:var(--sfm-primary-dark);font-size:16px;font-weight:950;line-height:1.35}.report-card p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .status-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.sources,.missing-requirements{display:grid;gap:7px}.sources strong,.missing-requirements strong{font-size:11px;color:var(--sfm-primary)}.sources div{display:flex;flex-wrap:wrap;gap:5px}.sources span{font-size:11px;font-weight:900;color:var(--sfm-muted);background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);border-radius:999px;padding:4px 7px}.missing-requirements{background:#FFF7ED;border:1px solid rgba(154,94,13,.16);border-radius:13px;padding:10px}.missing-requirements ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px}.missing-requirements li{font-size:11px;font-weight:950;color:#7A4B09;background:#FFFFFF;border:1px solid rgba(154,94,13,.16);border-radius:999px;padding:4px 8px}
   .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--sfm-muted);font-size:11px;font-weight:900}.requirements-compact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.14);border-radius:13px;padding:10px}.requirements-compact div{min-width:0;display:grid;gap:3px}.requirements-compact strong{color:#7A4B09;font-size:12px}.requirements-compact span{color:#7A4B09;font-size:11px;font-weight:850;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.requirements-compact button,.missing-actions button{border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:7px 10px;font:950 11px Tajawal,Arial,sans-serif;cursor:pointer}.missing-actions{display:flex;flex-wrap:wrap;gap:6px}
