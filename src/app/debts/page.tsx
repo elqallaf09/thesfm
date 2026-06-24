@@ -33,7 +33,7 @@ import { useCurrency } from '@/lib/useCurrency';
 
 import type { Lang, DebtRow, DebtPaymentRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { TEXT } from './_text';
-import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, monthlyInterestAmount, calculateDebtPayment, estimatePayoffMonths, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails } from './_utils';
+import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, calculateDebtPayment, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails, debtAmortization } from './_utils';
 import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, RequiredMark, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
 
 export default function DebtsPage() {
@@ -167,13 +167,28 @@ export default function DebtsPage() {
     const originalAmount = toNumber(debt.original_amount);
     const paidFromStoredRemaining = Math.max(0, originalAmount - storedRemaining);
     const canTrustStoredTotals = !firstPaymentDate || firstPaymentDate <= today;
-    const totalPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_paid_amount) : 0, recordedTotalPaid, schedule.totalPaidAmount, canTrustStoredTotals ? paidFromStoredRemaining : 0);
-    const totalPrincipalPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_principal_paid) : 0, recordedTotalPrincipal, schedule.totalPrincipalPaid, canTrustStoredTotals ? paidFromStoredRemaining : 0);
-    const totalInterestPaid = Math.max(canTrustStoredTotals ? toNumber(debt.total_interest_paid) : 0, recordedTotalInterest, schedule.totalInterestPaid);
+    const hasRecordedPayments = debtPayments.length > 0;
+    const storedTotalPaid = canTrustStoredTotals ? toNumber(debt.total_paid_amount) : 0;
+    const storedTotalPrincipal = canTrustStoredTotals ? toNumber(debt.total_principal_paid) : 0;
+    const storedTotalInterest = canTrustStoredTotals ? toNumber(debt.total_interest_paid) : 0;
+    const totalPrincipalPaid = hasRecordedPayments && recordedTotalPrincipal > 0
+      ? recordedTotalPrincipal
+      : Math.max(storedTotalPrincipal, canTrustStoredTotals ? paidFromStoredRemaining : 0);
+    const totalPaid = hasRecordedPayments
+      ? recordedTotalPaid
+      : Math.max(storedTotalPaid, totalPrincipalPaid + storedTotalInterest);
+    const totalInterestPaid = hasRecordedPayments && recordedTotalInterest > 0
+      ? recordedTotalInterest
+      : Math.max(storedTotalInterest, totalPaid - totalPrincipalPaid, 0);
     const computedRemaining = Math.max(0, originalAmount - totalPrincipalPaid);
-    const effectiveRemaining = Math.max(0, Math.min(canTrustStoredTotals ? storedRemaining : originalAmount, schedule.remainingAmount, computedRemaining));
-    const paidPaymentsCount = Math.max(debtPayments.length, schedule.duePaymentsCount);
-    const lastPaymentDate = debtPayments[0]?.payment_date ?? schedule.lastDuePaymentDate ?? '';
+    const effectiveRemaining = Math.max(0, canTrustStoredTotals ? storedRemaining : computedRemaining);
+    const monthlyPayment = toNumber(debt.monthly_payment);
+    const estimatedPaidCount = monthlyPayment > 0 ? Math.floor((totalPaid + 0.000001) / monthlyPayment) : 0;
+    const paidPaymentsCount = hasRecordedPayments ? debtPayments.length : estimatedPaidCount;
+    const lastPaymentDate = debtPayments[0]?.payment_date
+      ?? (paidPaymentsCount > 0 ? estimatePayoffDateFromNextPayment(firstPaymentDate, paidPaymentsCount) ?? '' : '')
+      ?? schedule.lastDuePaymentDate
+      ?? '';
     const displayDebt: DebtRow = {
       ...debt,
       remaining_amount: effectiveRemaining,
@@ -190,6 +205,7 @@ export default function DebtsPage() {
       effectiveRemaining,
       totalPaid,
       totalInterestPaid,
+      totalPrincipalPaid,
       paidPaymentsCount,
       lastPaymentDate,
     };
@@ -214,7 +230,7 @@ export default function DebtsPage() {
   const activeDisplayDebts = useMemo(() => activeDebts.map(debt => debtDisplaySummary(debt).displayDebt), [activeDebts, debtDisplaySummary]);
 
   const payoffMonths = useMemo(() => {
-    const estimates = activeDisplayDebts.map(estimatePayoffMonths).filter((item): item is number => typeof item === 'number');
+    const estimates = activeDisplayDebts.map(debt => debtAmortization(debt).remainingPayments).filter((item): item is number => typeof item === 'number');
     return estimates.length > 0 ? Math.max(...estimates) : null;
   }, [activeDisplayDebts]);
 
@@ -613,20 +629,29 @@ export default function DebtsPage() {
                   const {
                     schedule,
                     displayDebt,
+                    debtPayments,
                     effectiveRemaining,
                     totalPaid,
                     totalInterestPaid,
                     paidPaymentsCount,
                     lastPaymentDate,
                   } = debtDisplaySummary(debt);
-                  const originalAmount = toNumber(debt.original_amount);
-                  const progress = originalAmount > 0 ? Math.min(100, Math.max(0, ((originalAmount - effectiveRemaining) / originalAmount) * 100)) : 0;
                   const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
                   const nextPayment = schedule.nextPaymentDate ?? '';
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);
                   const isExpanded = expandedDebtIds.has(debt.id);
-                  const remainingPaymentsCount = estimatePayoffMonths(displayDebt);
-                  const payoffDate = estimatePayoffDateFromNextPayment(nextPayment, remainingPaymentsCount);
+                  const amortization = debtAmortization(displayDebt, {
+                    nextPaymentDate: nextPayment,
+                    paymentHistory: debtPayments.map(payment => ({
+                      amount: payment.amount,
+                      interestAmount: payment.interest_amount,
+                      principalAmount: payment.principal_amount,
+                      paymentDate: payment.payment_date,
+                    })),
+                  });
+                  const progress = Math.min(100, Math.max(0, amortization.repaymentProgressPercent));
+                  const remainingPaymentsCount = amortization.remainingPayments;
+                  const payoffDate = amortization.expectedPayoffDate;
                   return (
                     <article className={`debt-card ${isExpanded ? 'expanded' : ''}`} key={debt.id}>
                       <div className="debt-card-top">
@@ -673,6 +698,8 @@ export default function DebtsPage() {
                             <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
                             <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
                             <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
+                            <DebtMetric label={t('finalPaymentAmount')} value={amortization.finalPaymentAmount === null ? t('unavailable') : money(amortization.finalPaymentAmount, debt.currency)} />
+                            <DebtMetric label={t('totalRemainingInterest')} value={money(amortization.totalRemainingInterest, debt.currency)} />
                             <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
                             {debt.status !== 'paid' && (
                               <DebtMetric
@@ -682,8 +709,8 @@ export default function DebtsPage() {
                               />
                             )}
                           </div>
-                          {(schedule.warning || calculateDebtPayment(displayDebt).warning) && (
-                            <div className="debt-warning"><AlertTriangle size={15} />{t('interestWarning')}</div>
+                          {(!amortization.isPaymentSufficient || schedule.warning || calculateDebtPayment(displayDebt).warning) && (
+                            <div className="debt-warning"><AlertTriangle size={15} />{!amortization.isPaymentSufficient ? t('paymentInsufficient') : t('interestWarning')}</div>
                           )}
                           {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
                           <div className="debt-actions">

@@ -2,6 +2,12 @@
 import { TEXT } from './_text';
 import type { Lang, DebtRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { calculateDebtSchedule, debtPaymentMonth, deriveFirstPaymentDate } from '@/lib/debts/calculateDebtSchedule';
+import {
+  addMonthsToDebtDate,
+  calculateDebtAmortization,
+  debtMonthlyInterestRate,
+  type DebtAmortizationPayment,
+} from '@/lib/debts/calculateDebtAmortization';
 export { debtPaymentMonth, deriveFirstPaymentDate };
 
 export const SUPPORTED_CURRENCIES = ['KWD', 'USD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', 'EUR', 'GBP'];
@@ -124,9 +130,7 @@ export function formatDate(value: string | null | undefined, lang: Lang) {
 
 export function monthlyInterestAmount(debt: DebtRow) {
   const remaining = remainingForDebt(debt);
-  const rate = toNumber(debt.interest_rate);
-  const type = debt.interest_type || 'annual';
-  const monthlyRate = type === 'none' ? 0 : type === 'monthly' ? rate / 100 : rate / 100 / 12;
+  const monthlyRate = debtMonthlyInterestRate(debt.interest_rate, debt.interest_type || 'annual');
   return remaining * monthlyRate;
 }
 
@@ -148,48 +152,41 @@ export function calculateDebtPayment(debt: DebtRow, overrideAmount?: number) {
 }
 
 export function payoffProgress(debt: DebtRow) {
-  const original = toNumber(debt.original_amount);
-  if (original <= 0) return 0;
-  const paid = Math.max(0, original - remainingForDebt(debt));
-  return Math.min(100, Math.max(0, (paid / original) * 100));
+  return Math.min(100, Math.max(0, debtAmortization(debt).repaymentProgressPercent));
+}
+
+export function debtAmortization(
+  debt: DebtRow,
+  options: {
+    nextPaymentDate?: string | null;
+    paymentHistory?: DebtAmortizationPayment[];
+  } = {},
+) {
+  return calculateDebtAmortization({
+    originalPrincipal: debt.original_amount,
+    remainingBalance: remainingForDebt(debt),
+    annualInterestRate: debt.interest_rate,
+    interestType: debt.interest_type || 'annual',
+    monthlyPayment: debt.monthly_payment,
+    nextPaymentDate: options.nextPaymentDate ?? debtSchedule(debt).nextPaymentDate ?? debtFirstPaymentDate(debt),
+    paymentHistory: options.paymentHistory,
+    totalPaidAmount: debt.total_paid_amount,
+    totalInterestPaid: debt.total_interest_paid,
+    totalPrincipalPaid: debt.total_principal_paid,
+  });
 }
 
 export function estimatePayoffMonths(debt: DebtRow) {
-  let remaining = remainingForDebt(debt);
-  const payment = toNumber(debt.monthly_payment);
-  if (remaining <= 0) return 0;
-  if (payment <= 0) return null;
-  for (let month = 1; month <= 600; month += 1) {
-    const interest = monthlyInterestAmount({ ...debt, remaining_amount: remaining });
-    const principal = payment - interest;
-    if (principal <= 0) return null;
-    remaining = Math.max(0, remaining - principal);
-    if (remaining <= 0) return month;
-  }
-  return null;
+  return debtAmortization(debt).remainingPayments;
 }
 
 export function estimatePayoffDateFromNextPayment(nextPaymentDate: string | null | undefined, remainingPaymentsCount: number | null) {
   if (remainingPaymentsCount === null || remainingPaymentsCount <= 0) return null;
-  const match = String(nextPaymentDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const monthIndex = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  const monthsToAdd = Math.ceil(remainingPaymentsCount);
-  const targetMonthIndex = monthIndex + monthsToAdd;
-  const targetYear = year + Math.floor(targetMonthIndex / 12);
-  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
-  const lastDay = new Date(Date.UTC(targetYear, normalizedMonth + 1, 0)).getUTCDate();
-  const payoffDate = new Date(Date.UTC(targetYear, normalizedMonth, Math.min(day, lastDay)));
-  return payoffDate.toISOString().slice(0, 10);
+  return addMonthsToDebtDate(nextPaymentDate, Math.ceil(remainingPaymentsCount) - 1);
 }
 
 export function estimatePayoffDate(debt: DebtRow): string | null {
-  const months = estimatePayoffMonths(debt);
-  const nextPaymentDate = debtSchedule(debt).nextPaymentDate || debtFirstPaymentDate(debt);
-  return estimatePayoffDateFromNextPayment(nextPaymentDate, months);
+  return debtAmortization(debt).expectedPayoffDate;
 }
 
 export type StrategyEntry = { debt: DebtRow; payoffMonth: number; interestPaid: number };
