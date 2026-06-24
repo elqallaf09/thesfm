@@ -82,6 +82,7 @@ import {
 import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/MarketPanelPrimitives';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
+import { getMarketToolRequirements } from '@/components/market-analysis/toolRequirements';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
   return (
@@ -245,6 +246,10 @@ export default function MarketAnalysisPage() {
   const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
   const hasAutoRunUrlAnalysisRef = useRef(false);
   const [traderToolTab, setTraderToolTab] = useState<TraderToolsSubTab>('risk');
+  const activeToolRequirements = useMemo(
+    () => getMarketToolRequirements(activeTab, traderToolTab),
+    [activeTab, traderToolTab],
+  );
   const [performance, setPerformance] = useState<ApiListState<MarketPerformanceItem>>({ loading: false, items: [], message: '' });
   const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [centralBankNews, setCentralBankNews] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
@@ -1797,6 +1802,13 @@ export default function MarketAnalysisPage() {
                 <em className="market-hero-card-meta" dir="ltr">{selectedMoney(selected.latestPrice)} / {selectedDataStatusLabel}</em>
                 <b className={`risk ${selected.riskLevel}`}>{t(`market_risk_${selected.riskLevel}`)}</b>
               </>
+            ) : !activeToolRequirements.requiresAsset ? (
+              <>
+                <div className="market-hero-card-icon"><Calculator size={22} /></div>
+                <span>{t('market_active_tool')}</span>
+                <strong>{t('market_tool_no_asset_needed_title')}</strong>
+                <p>{activeTab === 'traderTools' && traderToolTab === 'risk' ? t('market_position_size_tool_empty_body') : t('market_tool_no_asset_needed_body')}</p>
+              </>
             ) : (
               <>
                 <div className="market-hero-card-icon"><LineChart size={22} /></div>
@@ -1810,36 +1822,71 @@ export default function MarketAnalysisPage() {
         </section>
 
         <section className="market-status-grid">
-          <MarketStatusCard
-            icon={<Activity size={18} />}
-            label={t('market_data_source')}
-            value={selected ? (selected.cached ? t('market_cached_data') : selectedSourceLabel) : 'Yahoo Finance'}
-            helper={t('market_status_source_hint')}
-            valueDir={selected?.cached ? undefined : 'ltr'}
-          />
-          <MarketStatusCard
-            icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
-            label={t('market_service_status')}
-            value={serviceStatusValue}
-            helper={serviceState === 'connected' ? t('market_status_service_connected_hint') : t('market_status_service_pending_hint')}
-            tone={serviceStatusTone}
-          />
-          <MarketStatusCard
-            icon={<WalletCards size={18} />}
-            label={t('market_selected_asset')}
-            value={selected?.symbol ?? selectedAsset?.symbol ?? t('market_no_asset_selected_yet')}
-            helper={selected?.symbol || selectedAsset?.symbol ? localizedAssetName ?? selected?.name ?? selectedAsset?.name ?? t('market_selected_asset') : t('market_status_select_asset_hint')}
-            tone={selected?.symbol || selectedAsset?.symbol ? undefined : 'muted'}
-            valueDir={selected?.symbol || selectedAsset?.symbol ? 'ltr' : undefined}
-          />
-          <MarketStatusCard
-            icon={<Clock3 size={18} />}
-            label={t('market_last_updated')}
-            value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
-            helper={selected && lastUpdated ? t('market_status_update_current_hint') : t('market_status_update_after_fetch')}
-            tone={selected && lastUpdated ? undefined : 'muted'}
-            valueDir={selected && lastUpdated ? 'ltr' : undefined}
-          />
+          {activeToolRequirements.requiresMarketData ? (
+            <>
+              <MarketStatusCard
+                icon={<Activity size={18} />}
+                label={t('market_data_source')}
+                value={selected ? (selected.cached ? t('market_cached_data') : selectedSourceLabel) : 'Yahoo Finance'}
+                helper={t('market_status_source_hint')}
+                valueDir={selected?.cached ? undefined : 'ltr'}
+              />
+              <MarketStatusCard
+                icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
+                label={t('market_service_status')}
+                value={serviceStatusValue}
+                helper={serviceState === 'connected' ? t('market_status_service_connected_hint') : t('market_status_service_pending_hint')}
+                tone={serviceStatusTone}
+              />
+              <MarketStatusCard
+                icon={<WalletCards size={18} />}
+                label={t('market_selected_asset')}
+                value={selected?.symbol ?? selectedAsset?.symbol ?? t('market_no_asset_selected_yet')}
+                helper={selected?.symbol || selectedAsset?.symbol ? localizedAssetName ?? selected?.name ?? selectedAsset?.name ?? t('market_selected_asset') : t('market_status_select_asset_hint')}
+                tone={selected?.symbol || selectedAsset?.symbol ? undefined : 'muted'}
+                valueDir={selected?.symbol || selectedAsset?.symbol ? 'ltr' : undefined}
+              />
+              <MarketStatusCard
+                icon={<Clock3 size={18} />}
+                label={t('market_last_updated')}
+                value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
+                helper={selected && lastUpdated ? t('market_status_update_current_hint') : t('market_status_update_after_fetch')}
+                tone={selected && lastUpdated ? undefined : 'muted'}
+                valueDir={selected && lastUpdated ? 'ltr' : undefined}
+              />
+            </>
+          ) : (
+            <>
+              <MarketStatusCard
+                icon={<Calculator size={18} />}
+                label={t('market_tool_scope')}
+                value={t('market_independent_tool')}
+                helper={t('market_independent_tool_hint')}
+                tone="info"
+              />
+              <MarketStatusCard
+                icon={<WalletCards size={18} />}
+                label={t('market_account_balance')}
+                value={activeToolRequirements.requiresAccountBalance ? t('market_required') : t('market_not_required')}
+                helper={t('market_calculator_account_hint')}
+                tone={activeToolRequirements.requiresAccountBalance ? 'warning' : 'muted'}
+              />
+              <MarketStatusCard
+                icon={<Activity size={18} />}
+                label={t('market_data_source')}
+                value={t('market_market_data_not_required')}
+                helper={t('market_market_data_not_required_hint')}
+                tone="muted"
+              />
+              <MarketStatusCard
+                icon={<ShieldAlert size={18} />}
+                label={t('market_monthly_income_requirement')}
+                value={activeToolRequirements.requiresMonthlyIncome ? t('market_required') : t('market_not_required')}
+                helper={t('market_income_not_required_hint')}
+                tone="muted"
+              />
+            </>
+          )}
         </section>
 
         <PageTabs
@@ -1850,7 +1897,7 @@ export default function MarketAnalysisPage() {
           className="market-dashboard-tabs"
         />
 
-        {serviceState !== 'connected' && (
+        {activeToolRequirements.requiresMarketData && serviceState !== 'connected' && (
           <MarketStatusBanner t={t} state={serviceState} serviceNotice={serviceNotice} />
         )}
 
@@ -1948,7 +1995,6 @@ export default function MarketAnalysisPage() {
             t={t}
             locale={lang}
             currency={baseScenarioCurrency}
-            userId={!isGuest ? user?.id : undefined}
             subTab={traderToolTab}
             setSubTab={setTraderToolTab}
             performance={performance}
@@ -2648,8 +2694,20 @@ export default function MarketAnalysisPage() {
               </>
             )}
           </section>
+        ) : activeToolRequirements.requiresAsset ? (
+          <MarketEmptyState
+            icon={<LineChart size={22} />}
+            title={t('market_choose_asset_to_start')}
+            description={t('market_selected_asset_empty_body')}
+            actionLabel={t('market_search_asset_action')}
+            onAction={focusMarketSearch}
+          />
         ) : (
-          <div className="market-empty">{t('market_no_data')}</div>
+          <MarketEmptyState
+            icon={<Calculator size={22} />}
+            title={t('market_independent_tool_empty_title')}
+            description={t('market_independent_tool_empty_body')}
+          />
         )}
         </section>
 

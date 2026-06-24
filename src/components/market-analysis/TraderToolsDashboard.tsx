@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Landmark, LineChart, Percent, PieChart, Plus, RefreshCw, ShieldAlert, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, BarChart3, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Landmark, LineChart, Percent, PieChart, RefreshCw, ShieldAlert, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { currencyDisplaySymbol } from '@/lib/currencies';
-import { supabase } from '@/integrations/supabase/client';
 import type { ApiListState, MarketAssetFilter, MarketAiInsightView, MarketResultWithMeta,
   MarketSearchSuggestion, MarketServiceState, MarketViewAnalysis, PipCalculatorAsset,
   PipCalculatorAssetType, ScenarioCurrencyCode, AccountCurrencyCode, TraderToolsSubTab,
@@ -25,7 +24,6 @@ export function TraderToolsDashboard({
   t,
   locale,
   currency,
-  userId,
   subTab,
   setSubTab,
   performance,
@@ -33,7 +31,6 @@ export function TraderToolsDashboard({
   t: (key: string) => string;
   locale: string;
   currency: string;
-  userId?: string;
   subTab: TraderToolsSubTab;
   setSubTab: (tab: TraderToolsSubTab) => void;
   performance: ApiListState<MarketPerformanceItem>;
@@ -81,10 +78,8 @@ export function TraderToolsDashboard({
     return normalizeAccountCurrency(currency);
   });
   const [accountCurrencyTouched, setAccountCurrencyTouched] = useState(false);
-  const [savingCurrency, setSavingCurrency] = useState(false);
   const [currencyMessage, setCurrencyMessage] = useState('');
   const [currencyError, setCurrencyError] = useState('');
-  const [showIncomePrompt, setShowIncomePrompt] = useState(true);
 
   useEffect(() => {
     if (!accountCurrencyTouched) {
@@ -143,9 +138,46 @@ export function TraderToolsDashboard({
           : parseNumber(pipsInput.lotSize) <= 0
             ? t('market_valid_lot_size_required')
             : '';
-  const lotValue = position.lotSize === null ? t('market_unavailable') : `${formatNumber(position.lotSize, 2)} ${t('market_lot_unit')}`;
+  const positionBalance = parseNumber(positionInput.accountBalance);
+  const positionRiskPercentage = parseNumber(positionInput.riskPercentage);
+  const positionStopDistance = position.stopLossDistance;
+  const positionCanCalculate = positionBalance > 0 && positionRiskPercentage > 0 && positionStopDistance > 0;
+  const positionUnitValue = `${formatNumber(position.positionSize, positionInput.instrumentType === 'stocks' ? 0 : 2)} ${t('market_units')}`;
+  const lotValue = position.lotSize === null ? positionUnitValue : `${formatNumber(position.lotSize, 2)} ${t('market_lot_unit')}`;
   const riskPercentDisplay = `${formatNumber(parseNumber(positionInput.riskPercentage), 2)}%`;
   const stopLossDisplay = `${formatNumber(parseNumber(positionInput.stopLossDistance), 0)} ${pipUnit}`;
+  const positionInputStatus = positionBalance <= 0
+    ? t('market_valid_account_balance_required')
+    : positionRiskPercentage <= 0
+      ? t('market_valid_risk_percentage_required')
+      : positionStopDistance <= 0
+        ? t('market_valid_stop_loss_required')
+        : t('market_inputs_ready');
+  const positionSummaryRows: Array<[string, string, 'ltr' | 'auto', ReactNode]> = [
+    [t('market_account_currency'), accountCurrency, 'ltr' as const, <WalletCards key="side-currency" size={16} />],
+    [t('market_account_balance'), money(positionBalance, accountCurrency), 'ltr' as const, <WalletCards key="side-balance" size={16} />],
+    [t('market_risk_percentage'), riskPercentDisplay, 'ltr' as const, <Percent key="side-risk" size={16} />],
+    [t('market_input_status'), positionInputStatus, 'auto' as const, <CheckCircle2 key="side-status" size={16} />],
+  ];
+  const activeSummaryRows: Array<[string, string, 'ltr' | 'auto', ReactNode]> = subTab === 'pips'
+    ? [
+      [t('market_asset_symbol'), selectedPipAsset.symbol, 'ltr', <LineChart key="side-pips-symbol" size={16} />],
+      [t('market_number_of_pips'), `${formatNumber(pips.pips, 1)} ${pipUnit}`, 'ltr', <Gauge key="side-pips-count" size={16} />],
+      [t('market_profit_loss'), money(pips.profitLoss, accountCurrency), 'ltr', <TrendingUp key="side-pips-pl" size={16} />],
+    ]
+    : subTab === 'lot'
+      ? [
+        [t('market_recommended_lot_size'), `${formatNumber(lots.recommendedLotSize, 4)} ${t('market_lot_unit')}`, 'ltr', <PieChart key="side-lot-size" size={16} />],
+        [t('market_cash_risk'), money(lots.riskAmount, accountCurrency), 'ltr', <ShieldAlert key="side-lot-risk" size={16} />],
+        [t('market_stop_loss_pips'), `${formatNumber(parseNumber(lotInput.stopLossPips), 1)} ${pipUnit}`, 'ltr', <Gauge key="side-lot-stop" size={16} />],
+      ]
+      : subTab === 'margin'
+        ? [
+          [t('market_required_margin'), money(margin.required, accountCurrency), 'ltr', <Landmark key="side-margin-required" size={16} />],
+          [t('market_trade_size'), formatNumber(margin.tradeSize, 2), 'ltr', <TrendingUp key="side-margin-size" size={16} />],
+          [t('market_leverage'), `1:${formatNumber(margin.leverage, 0)}`, 'ltr', <Gauge key="side-margin-leverage" size={16} />],
+        ]
+        : positionSummaryRows;
 
   const handleSaveDefaultCurrency = () => {
     setCurrencyMessage('');
@@ -243,18 +275,22 @@ export function TraderToolsDashboard({
               <span>{t('market_suitable_position_size')}</span>
               <strong dir="ltr">{lotValue}</strong>
               <p>
-                {t('market_risk_result_explanation_start')}{' '}
-                <b dir="ltr">{money(position.riskAmount, accountCurrency)}</b>{' '}
-                {t('market_risk_result_explanation_middle')}{' '}
-                <b dir="ltr">{riskPercentDisplay}</b>{' '}
-                {t('market_risk_result_explanation_end')}{' '}
-                <b dir="ltr">{stopLossDisplay}</b>.
+                {positionCanCalculate ? (
+                  <>
+                    {t('market_risk_result_explanation_start')}{' '}
+                    <b dir="ltr">{money(position.riskAmount, accountCurrency)}</b>{' '}
+                    {t('market_risk_result_explanation_middle')}{' '}
+                    <b dir="ltr">{riskPercentDisplay}</b>{' '}
+                    {t('market_risk_result_explanation_end')}{' '}
+                    <b dir="ltr">{stopLossDisplay}</b>.
+                  </>
+                ) : positionInputStatus}
               </p>
             </section>
             <ResultGrid title={t('market_calculation_results')} subtitle={t('market_live_calculation_note')} rows={[
               [t('market_risk_amount'), money(position.riskAmount, accountCurrency), 'ltr', <CircleDollarSign key="risk-amount" size={16} />],
-              [t('market_suggested_position_size'), formatNumber(position.positionSize, 4), 'ltr', <TrendingUp key="position-size" size={16} />],
-              [t('market_lot_size'), lotValue, 'ltr', <PieChart key="lot-size" size={16} />],
+              [t('market_suggested_position_size'), positionUnitValue, 'ltr', <TrendingUp key="position-size" size={16} />],
+              [positionInput.instrumentType === 'forex' ? t('market_lot_size') : t('market_units'), lotValue, 'ltr', <PieChart key="lot-size" size={16} />],
               [t('market_expected_loss'), money(position.estimatedLoss, accountCurrency), 'ltr', <ShieldAlert key="expected-loss" size={16} />],
             ]} />
             <FormulaCard
@@ -263,6 +299,7 @@ export function TraderToolsDashboard({
               example={`${accountCurrency} ${formatNumber(parseNumber(positionInput.accountBalance), 2)} × ${formatNumber(parseNumber(positionInput.riskPercentage), 2)}% = ${money(position.riskAmount, accountCurrency)}`}
             />
             {position.riskWarning && <p className="tool-warning">{t('market_risk_above_two_warning')}</p>}
+            {!positionCanCalculate && <p className="tool-warning">{positionInputStatus}</p>}
           </aside>
         </div>
       );
@@ -473,9 +510,9 @@ export function TraderToolsDashboard({
 
           <TraderSupportCard icon={<Calculator size={18} />} title={t('market_calculation_results')} highlight>
             <div className="trader-side-result-grid">
-              <TraderSideStat icon={<BarChart3 size={16} />} label={t('market_lot_size')} value={lotValue} />
-              <TraderSideStat icon={<WalletCards size={16} />} label={t('market_cash_risk')} value={money(position.riskAmount, accountCurrency)} />
-              <TraderSideStat icon={<Percent size={16} />} label={t('market_risk_percentage')} value={riskPercentDisplay} />
+              {activeSummaryRows.map(([label, value, dir, icon]) => (
+                <TraderSideStat key={label} icon={icon} label={label} value={value} valueDir={dir} />
+              ))}
             </div>
           </TraderSupportCard>
 
@@ -487,32 +524,6 @@ export function TraderToolsDashboard({
             </ol>
           </TraderSupportCard>
 
-          {showIncomePrompt ? (
-            <article className="trader-income-prompt-card" aria-label={t('market_income_prompt_title')}>
-              <span className="trader-income-prompt-icon" aria-hidden="true">
-                <WalletCards size={30} />
-              </span>
-              <div className="trader-income-prompt-copy">
-                <h3>{t('market_income_prompt_title')}</h3>
-                <p>{t('market_income_prompt_body')}</p>
-              </div>
-              <div className="trader-income-actions">
-                <a className="trader-income-action primary" href="/income/add" aria-label={t('market_income_prompt_primary')}>
-                  <Plus size={17} aria-hidden="true" />
-                  <span>{t('market_income_prompt_primary')}</span>
-                  {isRtlLocale ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}
-                </a>
-                <button
-                  type="button"
-                  className="trader-income-action secondary"
-                  onClick={() => setShowIncomePrompt(false)}
-                  aria-label={t('market_income_prompt_secondary')}
-                >
-                  {t('market_income_prompt_secondary')}
-                </button>
-              </div>
-            </article>
-          ) : null}
         </aside>
         ) : null}
 
@@ -530,9 +541,9 @@ export function TraderToolsDashboard({
                 <strong>{t('market_save_account_currency_default')}</strong>
                 <small>{t('market_account_currency_hint')}</small>
               </div>
-              <button type="button" onClick={handleSaveDefaultCurrency} disabled={savingCurrency}>
+              <button type="button" onClick={handleSaveDefaultCurrency}>
                 <CheckCircle2 size={14} />
-                {savingCurrency ? t('market_saving') : t('market_save_preference')}
+                {t('market_save_preference')}
               </button>
               {currencyMessage ? <small className="success">{currencyMessage}</small> : null}
               {currencyError ? <small className="error">{currencyError}</small> : null}
@@ -598,8 +609,7 @@ export function TraderToolsDashboard({
           gap: 18px;
         }
 
-        .trader-support-card,
-        .trader-income-prompt-card {
+        .trader-support-card {
           position: relative;
           min-width: 0;
           overflow: hidden;
@@ -740,108 +750,7 @@ export function TraderToolsDashboard({
           box-shadow: 0 10px 20px rgba(29, 140, 255, .18);
         }
 
-        .trader-income-prompt-card {
-          display: grid;
-          justify-items: center;
-          text-align: center;
-          gap: 22px;
-          padding: clamp(18px, 3vw, 28px) 18px;
-        }
-
-        .trader-income-prompt-icon {
-          width: 96px;
-          height: 96px;
-          border-radius: 999px;
-          display: grid;
-          place-items: center;
-          color: var(--sfm-soft-cyan);
-          background:
-            radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .96), rgba(234, 246, 255, .74)),
-            rgba(47, 214, 192, .08);
-          border: 1px solid rgba(47, 214, 192, .28);
-          box-shadow: 0 18px 42px rgba(29, 140, 255, .12);
-        }
-
-        .trader-income-prompt-copy {
-          display: grid;
-          gap: 14px;
-          max-width: 31rem;
-        }
-
-        .trader-income-prompt-copy h3 {
-          margin: 0;
-          color: var(--sfm-foreground);
-          font-size: clamp(18px, 2.2vw, 24px);
-          font-weight: 950;
-          line-height: 1.4;
-        }
-
-        .trader-income-prompt-copy p {
-          margin: 0;
-          color: var(--sfm-muted);
-          font-size: 15px;
-          font-weight: 800;
-          line-height: 2;
-        }
-
-        .trader-income-actions {
-          width: 100%;
-          display: grid;
-          gap: 14px;
-        }
-
-        .trader-income-action {
-          min-height: 50px;
-          width: 100%;
-          border-radius: 18px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 12px 18px;
-          font: 950 15px Tajawal, Arial, sans-serif;
-          text-decoration: none;
-          cursor: pointer;
-          transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
-        }
-
-        .trader-income-action:focus-visible {
-          outline: 3px solid rgba(24, 212, 212, .34);
-          outline-offset: 3px;
-        }
-
-        .trader-income-action.primary {
-          border: 0;
-          color: #fff;
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          box-shadow: 0 16px 32px rgba(29, 140, 255, .22);
-        }
-
-        .trader-income-action.primary:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 20px 38px rgba(29, 140, 255, .28);
-        }
-
-        .trader-income-action.primary:active,
-        .trader-income-action.secondary:active {
-          transform: scale(.985);
-        }
-
-        .trader-income-action.secondary {
-          border: 1px solid rgba(29, 140, 255, .32);
-          color: var(--sfm-primary-hover);
-          background: rgba(255, 255, 255, .70);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .60);
-        }
-
-        .trader-income-action.secondary:hover {
-          color: var(--sfm-foreground);
-          background: rgba(29, 140, 255, .08);
-          border-color: rgba(47, 214, 192, .45);
-        }
-
-        .dark .trader-support-card,
-        .dark .trader-income-prompt-card {
+        .dark .trader-support-card {
           background:
             linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .07)),
             #0f1d31;
@@ -857,8 +766,7 @@ export function TraderToolsDashboard({
         }
 
         .dark .trader-support-icon,
-        .dark .trader-side-stat-icon,
-        .dark .trader-income-prompt-icon {
+        .dark .trader-side-stat-icon {
           color: #2FD6C0;
           background: rgba(47, 214, 192, .12);
           border-color: rgba(47, 214, 192, .24);
@@ -872,26 +780,6 @@ export function TraderToolsDashboard({
 
         .dark .trader-side-stat b {
           color: #f8fbff;
-        }
-
-        .dark .trader-income-action.secondary {
-          color: #d8f7f3;
-          background: rgba(10, 20, 34, .72);
-          border-color: rgba(47, 214, 192, .26);
-          box-shadow: none;
-        }
-
-        .dark .trader-income-action.secondary:hover {
-          color: #fff;
-          background: rgba(47, 214, 192, .12);
-          border-color: rgba(47, 214, 192, .42);
-        }
-
-        @media (min-width: 1181px) {
-          .trader-income-prompt-card {
-            min-height: 420px;
-            align-content: center;
-          }
         }
 
         @media (max-width: 720px) {
@@ -911,20 +799,6 @@ export function TraderToolsDashboard({
             white-space: normal;
           }
 
-          .trader-income-prompt-card {
-            border-radius: 24px;
-            padding: 24px 18px;
-          }
-
-          .trader-income-prompt-icon {
-            width: 78px;
-            height: 78px;
-          }
-
-          .trader-income-action {
-            min-height: 48px;
-            font-size: 14px;
-          }
         }
       `}</style>
     </section>
@@ -953,12 +827,12 @@ export function TraderSupportCard({
   );
 }
 
-export function TraderSideStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+export function TraderSideStat({ icon, label, value, valueDir = 'ltr' }: { icon: ReactNode; label: string; value: string; valueDir?: 'ltr' | 'auto' }) {
   return (
     <div className="trader-side-stat">
       <span className="trader-side-stat-icon" aria-hidden="true">{icon}</span>
       <span>{label}</span>
-      <b dir="ltr">{value}</b>
+      <b dir={valueDir}>{value}</b>
     </div>
   );
 }

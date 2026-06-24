@@ -57,6 +57,14 @@ const CONTRACT_SIZES: Record<TradingInstrumentType, number> = {
   stocks: 1,
 };
 
+const DEFAULT_POINT_VALUES_PER_CONTRACT: Record<TradingInstrumentType, number> = {
+  forex: 10,
+  metals: 1,
+  indices: 1,
+  crypto: 1,
+  stocks: 1,
+};
+
 export function safeNumber(value: unknown, fallback = 0) {
   const parsed = typeof value === 'number'
     ? value
@@ -74,15 +82,24 @@ export function calculatePositionSize(input: PositionSizeInput): PositionSizeRes
   const stopLossDistance = derivedDistance || explicitDistance;
   const riskAmount = accountBalance * (riskPercentage / 100);
   const contractSize = CONTRACT_SIZES[input.instrumentType] ?? 1;
-  const positionSize = stopLossDistance > 0 ? riskAmount / stopLossDistance : 0;
-  const lotSize = input.instrumentType === 'forex' && contractSize > 0 ? positionSize / contractSize : null;
+  const pointValue = DEFAULT_POINT_VALUES_PER_CONTRACT[input.instrumentType] ?? 1;
+  const canCalculate = accountBalance > 0 && riskPercentage > 0 && stopLossDistance > 0 && pointValue > 0;
+  const cashRiskPerContract = stopLossDistance * pointValue;
+  const lotSize = input.instrumentType === 'forex' && contractSize > 0 && canCalculate
+    ? riskAmount / cashRiskPerContract
+    : null;
+  const positionSize = canCalculate
+    ? input.instrumentType === 'forex'
+      ? (lotSize ?? 0) * contractSize
+      : riskAmount / cashRiskPerContract
+    : 0;
 
   return {
     riskAmount,
     stopLossDistance,
     positionSize,
     lotSize,
-    estimatedLoss: riskAmount,
+    estimatedLoss: accountBalance > 0 && riskPercentage > 0 ? riskAmount : 0,
     riskWarning: riskPercentage > 2,
   };
 }
