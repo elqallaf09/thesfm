@@ -13,6 +13,14 @@ const opportunityCount = document.querySelector("#opportunity-count");
 const buyCount = document.querySelector("#buy-count");
 const sellCount = document.querySelector("#sell-count");
 const avgConfidence = document.querySelector("#avg-confidence");
+const aiAgentStatus = document.querySelector("#ai-agent-status");
+const aiMarketCount = document.querySelector("#ai-market-count");
+const aiAssetCount = document.querySelector("#ai-asset-count");
+const aiBuyCount = document.querySelector("#ai-buy-count");
+const aiSellCount = document.querySelector("#ai-sell-count");
+const aiAverageConfidence = document.querySelector("#ai-average-confidence");
+const aiMarketBias = document.querySelector("#ai-market-bias");
+const aiMarketUpdate = document.querySelector("#ai-market-update");
 const dataProvider = document.querySelector("#data-provider");
 const bestBuy = document.querySelector("#best-buy");
 const bestSell = document.querySelector("#best-sell");
@@ -37,6 +45,7 @@ const notificationList = document.querySelector("#notification-list");
 const notificationClearButton = document.querySelector("#notification-clear-button");
 const notificationCloseButton = document.querySelector("#notification-close-button");
 const settingsButton = document.querySelector("#settings-button");
+const railSettingsButton = document.querySelector("#rail-settings-button");
 const settingsPanel = document.querySelector("#settings-panel");
 const settingsCloseButton = document.querySelector("#settings-close-button");
 const settingsForm = document.querySelector("#settings-form");
@@ -50,6 +59,8 @@ const settingsLanguageLabel = document.querySelector("#settings-language-label")
 const settingsNameLabel = document.querySelector("#settings-name-label");
 const settingsPreviewLabel = document.querySelector("#settings-preview-label");
 const settingsSaveButton = document.querySelector("#settings-save-button");
+const terminalSearch = document.querySelector(".terminal-search");
+const terminalSymbolSearch = document.querySelector("#terminal-symbol-search");
 const disclaimer = document.querySelector("#disclaimer");
 const template = document.querySelector("#card-template");
 const tickerTape = document.querySelector("#ticker-tape");
@@ -155,6 +166,15 @@ const TRANSLATION_LANGUAGE_FALLBACK = {
 };
 const APP_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
 const UI_TEXT_TRANSLATIONS = {
+  "تنبيهات داخلية مؤقتة": "Temporary internal notices",
+  "تنبيه المخاطر": "Risk notice",
+  "جميع التحليلات والمؤشرات والتوقعات المعروضة داخل SFM Trading Terminal هي لأغراض تعليمية ومعلوماتية فقط ولا تشكل نصيحة استثمارية أو توصية مالية.": "All analysis, indicators, and forecasts shown inside SFM Trading Terminal are for educational and informational purposes only and do not constitute investment advice or a financial recommendation.",
+  "قد يؤدي التداول والاستثمار إلى خسارة جزء أو كامل رأس المال.": "Trading and investing may result in the loss of part or all of your capital.",
+  "تنبيه الذكاء الاصطناعي": "AI notice",
+  "يتم إنشاء بعض التحليلات والتوقعات باستخدام تقنيات الذكاء الاصطناعي.": "Some analysis and forecasts are generated using artificial intelligence technologies.",
+  "قد تحتوي النتائج على أخطاء أو تقديرات غير دقيقة، ويجب عدم الاعتماد عليها وحدها لاتخاذ القرارات الاستثمارية.": "Results may contain errors or inaccurate estimates and should not be relied upon alone when making investment decisions.",
+  "إغلاق تنبيه المخاطر": "Close risk notice",
+  "إغلاق تنبيه الذكاء الاصطناعي": "Close AI notice",
   "الرئيسية": "Home",
   "الأسواق": "Markets",
   "التوصيات": "Recommendations",
@@ -902,10 +922,11 @@ const SYMBOL_ALIASES = {
 
 const STORAGE_PREFIX = "the-sfm-trader-";
 const LEGACY_STORAGE_PREFIX = "the-sfm-";
+const TEMPORARY_LEGAL_NOTICE_STORAGE_KEY = "the-sfm-trader-dismissed-legal-notices";
 const APP_VIEW_GROUPS = {
-  home: ["#sfm-live-floor", "#markets-section", "#command-center-section", "#home-heatmap-section", "#home-deck-section"],
+  home: ["#sfm-live-floor", "#markets-section", "#command-center-section", "#home-heatmap-section", "#home-deck-section", "#economic-news-section", "#recommendations-section", "#temporary-legal-notices"],
   markets: ["#sfm-live-floor", "#markets-section", "#command-center-section", "#home-heatmap-section", "#home-deck-section", ".market-hours-band", "#economic-news-section", "#radar-section"],
-  recommendations: ["#markets-section", "#command-center-section", "#recommendations-section", "#us-dashboard-section", "#us-outlook-section"],
+  recommendations: ["#markets-section", "#command-center-section", "#recommendations-section", "#temporary-legal-notices", "#us-dashboard-section", "#us-outlook-section"],
   history: ["#markets-section", "#history-section", "#watchlist-section", "#portfolio-section"],
   alerts: ["#markets-section", "#history-section"],
   scalp: ["#markets-section", "#scalping-section"],
@@ -1015,6 +1036,40 @@ Object.assign(MARKET_PRIMARY_LABELS_EN, {
   world: "All markets"
 });
 
+const REQUIRED_MARKET_CATEGORY_DEFINITIONS = [
+  { key: "forex", labelAr: "الفوركس", labelEn: "Forex", fallbackCount: 8 },
+  { key: "us", labelAr: "الأسهم الأمريكية", labelEn: "US stocks", fallbackCount: 20 },
+  { key: "crypto", labelAr: "العملات الرقمية", labelEn: "Crypto", fallbackCount: 10 },
+  { key: "commodities", labelAr: "السلع", labelEn: "Commodities", fallbackCount: 7 },
+  { key: "gcc", labelAr: "أسواق الخليج", labelEn: "Gulf markets", fallbackCount: 8 },
+  { key: "saudi", labelAr: "السوق السعودي", labelEn: "Saudi market", fallbackCount: 9 },
+  { key: "kuwait", labelAr: "بورصة الكويت", labelEn: "Kuwait market", fallbackCount: 9 },
+  { key: "uae", labelAr: "السوق الإماراتي", labelEn: "UAE market", fallbackCount: 8 },
+  { key: "qatar", labelAr: "السوق القطري", labelEn: "Qatar market", fallbackCount: 5 },
+  { key: "bahrain", labelAr: "السوق البحريني", labelEn: "Bahrain market", fallbackCount: 4 },
+  { key: "oman", labelAr: "السوق العماني", labelEn: "Oman market", fallbackCount: 5 },
+  { key: "europe", labelAr: "الأسهم الأوروبية", labelEn: "European stocks", fallbackCount: 9 },
+  { key: "asia", labelAr: "الأسهم الآسيوية", labelEn: "Asian stocks", fallbackCount: 9 },
+  { key: "tech", labelAr: "أسهم التقنية", labelEn: "Technology stocks", fallbackCount: 12 },
+  { key: "food", labelAr: "الأسهم الغذائية", labelEn: "Food / staples", fallbackCount: 10 },
+  { key: "healthcare", labelAr: "الأسهم الدوائية", labelEn: "Pharma / healthcare", fallbackCount: 10 },
+  { key: "banking", labelAr: "أسهم البنوك", labelEn: "Banking stocks", fallbackCount: 8 },
+  { key: "energy", labelAr: "أسهم الطاقة", labelEn: "Energy stocks", fallbackCount: 7 },
+  { key: "ai", labelAr: "أسهم الذكاء الاصطناعي", labelEn: "AI stocks", fallbackCount: 8 },
+  { key: "semiconductors", labelAr: "أشباه الموصلات", labelEn: "Semiconductors", fallbackCount: 8 },
+  { key: "dividends", labelAr: "أسهم توزيعات الأرباح", labelEn: "Dividend stocks", fallbackCount: 11 },
+  { key: "world", labelAr: "جميع الأسواق", labelEn: "All markets", fallbackCount: 12 }
+];
+
+const MARKET_CATEGORY_DEFINITION_BY_KEY = new Map(REQUIRED_MARKET_CATEGORY_DEFINITIONS.map((item, index) => [item.key, { ...item, index }]));
+
+REQUIRED_MARKET_CATEGORY_DEFINITIONS.forEach((item, index) => {
+  PRIMARY_MARKET_KEYS.add(item.key);
+  PRIMARY_MARKET_ORDER[item.key] = index;
+  MARKET_PRIMARY_LABELS_AR[item.key] = item.labelAr;
+  MARKET_PRIMARY_LABELS_EN[item.key] = item.labelEn;
+});
+
 let activeMarket = "us";
 let activeAppView = "home";
 let timer = null;
@@ -1119,9 +1174,34 @@ function registerPwaServiceWorker() {
   });
 }
 
+function initTerminalSearch() {
+  if (!terminalSearch || !terminalSymbolSearch) return;
+
+  terminalSearch.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const symbol = normalizeSymbol(terminalSymbolSearch.value);
+    if (!symbol) {
+      terminalSymbolSearch.focus();
+      return;
+    }
+
+    openDetailPage(symbol);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    const isSearchShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+    if (!isSearchShortcut) return;
+    event.preventDefault();
+    terminalSymbolSearch.focus();
+    terminalSymbolSearch.select();
+  });
+}
+
 async function init() {
   initSettingsPanel();
+  initTerminalSearch();
   initInterfaceTranslator();
+  initTemporaryLegalNotices();
   initLiveFloor();
   initAppNavigation();
   watchlist = normalizeWatchlist(watchlist);
@@ -1205,6 +1285,56 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushSharedTradeStateOnExit();
   });
+}
+
+// Temporary legal notices for internal SFM Trading Terminal testing.
+// Full legal pages will be added before public release.
+function initTemporaryLegalNotices() {
+  const noticeRegion = document.querySelector("#temporary-legal-notices");
+  if (!noticeRegion) return;
+
+  const dismissed = new Set(loadDismissedLegalNotices());
+  for (const notice of noticeRegion.querySelectorAll("[data-legal-notice]")) {
+    const noticeKey = notice.dataset.legalNotice;
+    if (dismissed.has(noticeKey)) notice.hidden = true;
+  }
+
+  syncTemporaryLegalNoticeRegion(noticeRegion);
+
+  noticeRegion.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-dismiss-legal-notice]");
+    if (!button) return;
+
+    const noticeKey = button.dataset.dismissLegalNotice;
+    const notice = noticeRegion.querySelector(`[data-legal-notice="${CSS.escape(noticeKey)}"]`);
+    if (!notice) return;
+
+    notice.hidden = true;
+    dismissed.add(noticeKey);
+    saveDismissedLegalNotices([...dismissed]);
+    syncTemporaryLegalNoticeRegion(noticeRegion);
+  });
+}
+
+function syncTemporaryLegalNoticeRegion(noticeRegion) {
+  const hasVisibleNotice = Boolean(noticeRegion.querySelector("[data-legal-notice]:not([hidden])"));
+  noticeRegion.hidden = !hasVisibleNotice;
+}
+
+function loadDismissedLegalNotices() {
+  try {
+    const raw = localStorage.getItem(TEMPORARY_LEGAL_NOTICE_STORAGE_KEY);
+    const value = JSON.parse(raw || "[]");
+    return Array.isArray(value) ? value.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDismissedLegalNotices(values) {
+  try {
+    localStorage.setItem(TEMPORARY_LEGAL_NOTICE_STORAGE_KEY, JSON.stringify(values));
+  } catch {}
 }
 
 function initLiveFloor() {
@@ -1468,6 +1598,7 @@ function initSettingsPanel() {
   if (!settingsButton || !settingsPanel || !settingsForm) return;
 
   settingsButton.addEventListener("click", () => setSettingsPanelOpen(settingsPanel.hidden));
+  railSettingsButton?.addEventListener("click", () => setSettingsPanelOpen(settingsPanel.hidden));
   settingsCloseButton?.addEventListener("click", () => setSettingsPanelOpen(false));
   settingsLanguage?.addEventListener("change", handleSettingsLanguageChange);
   for (const choice of settingsLanguageChoices) {
@@ -1528,6 +1659,8 @@ function setSettingsPanelOpen(open) {
   settingsPanel.hidden = !isOpen;
   settingsButton.setAttribute("aria-expanded", String(isOpen));
   settingsButton.classList.toggle("is-open", isOpen);
+  railSettingsButton?.setAttribute("aria-expanded", String(isOpen));
+  railSettingsButton?.classList.toggle("is-open", isOpen);
   mobileSettingsButton?.setAttribute("aria-expanded", String(isOpen));
   mobileSettingsButton?.classList.toggle("is-open", isOpen);
   if (isOpen) {
@@ -2157,8 +2290,49 @@ function getPrimaryMarketKey(market) {
 
 function getMarketDisplayLabel(market) {
   const primaryKey = getPrimaryMarketKey(market);
-  if (!primaryKey) return market.label;
+  if (!primaryKey) return isEnglishLanguage() ? (market.labelEn || market.label || market.id) : (market.label || market.labelEn || market.id);
+  const definition = MARKET_CATEGORY_DEFINITION_BY_KEY.get(primaryKey);
+  if (definition) return isEnglishLanguage() ? definition.labelEn : definition.labelAr;
   return isEnglishLanguage() ? MARKET_PRIMARY_LABELS_EN[primaryKey] : MARKET_PRIMARY_LABELS_AR[primaryKey];
+}
+
+function getMarketSymbolCount(market) {
+  const primaryKey = getPrimaryMarketKey(market);
+  const fallback = MARKET_CATEGORY_DEFINITION_BY_KEY.get(primaryKey)?.fallbackCount || 0;
+  const count = Number(market?.count ?? market?.symbols?.length ?? fallback);
+  return Number.isFinite(count) && count > 0 ? count : fallback;
+}
+
+function getMarketCountLabel(market) {
+  const count = getMarketSymbolCount(market);
+  return isEnglishLanguage() ? `${count} symbols` : `${count} رمز`;
+}
+
+function buildCompleteMarketList(markets = []) {
+  const byId = new Map();
+  for (const market of markets) {
+    if (!market?.id) continue;
+    byId.set(String(market.id).toLowerCase(), market);
+  }
+
+  const required = REQUIRED_MARKET_CATEGORY_DEFINITIONS.map((definition) => {
+    const existing = byId.get(definition.key);
+    if (existing) return { ...existing, id: definition.key };
+    return {
+      id: definition.key,
+      label: definition.labelAr,
+      labelEn: definition.labelEn,
+      count: definition.fallbackCount,
+      symbols: []
+    };
+  });
+
+  const extras = markets.filter((market) => {
+    const id = String(market?.id || "").toLowerCase();
+    return id && !MARKET_CATEGORY_DEFINITION_BY_KEY.has(id);
+  });
+
+  return [...required, ...extras];
 }
 
 async function loadMarkets() {
@@ -2172,7 +2346,7 @@ async function loadMarkets() {
 function renderMarketTabs(markets = []) {
   marketTabs.innerHTML = "";
 
-  const orderedMarkets = [...markets].sort((a, b) => getMarketSortIndex(a) - getMarketSortIndex(b));
+  const orderedMarkets = buildCompleteMarketList(markets).sort((a, b) => getMarketSortIndex(a) - getMarketSortIndex(b));
 
   for (const market of orderedMarkets) {
     const button = document.createElement("button");
@@ -2189,6 +2363,8 @@ function renderMarketTabs(markets = []) {
         <span>${localizeUiText(`${market.count} رمز`)}</span>
       </span>
     `;
+    const countNode = button.querySelector(".market-button-copy span");
+    if (countNode) countNode.textContent = getMarketCountLabel(market);
     button.addEventListener("click", () => {
       activeMarket = market.id;
       activeShariaFilter = "all";
@@ -2281,6 +2457,36 @@ function getConnectionStatusText(data) {
   return localizeUiText("متصل - بيانات جديدة");
 }
 
+function updateAiTradingAgentSummary(data, all = [], buys = [], sells = [], avg = 0) {
+  const marketsCount = buildCompleteMarketList(lastMarkets).length || REQUIRED_MARKET_CATEGORY_DEFINITIONS.length;
+  const analyzed = Number(data?.analyzedCount || all.length || 0);
+  const total = Number(data?.market?.totalSymbols || data?.market?.count || all.length || 0);
+  const marketMove = all.length
+    ? all.reduce((sum, item) => sum + Number(item.expectedMovePct || 0), 0) / all.length
+    : 0;
+  const bias =
+    buys.length > sells.length && marketMove >= 0 ? "Bullish" :
+    sells.length > buys.length && marketMove < 0 ? "Bearish" :
+    "Mixed";
+
+  if (aiAgentStatus) aiAgentStatus.textContent = isEnglishLanguage() ? "Active" : "نشط";
+  if (aiMarketCount) aiMarketCount.textContent = formatNumber(marketsCount);
+  if (aiAssetCount) aiAssetCount.textContent = total ? `${formatNumber(analyzed)}/${formatNumber(total)}` : formatNumber(analyzed);
+  if (aiBuyCount) aiBuyCount.textContent = formatNumber(buys.length);
+  if (aiSellCount) aiSellCount.textContent = formatNumber(sells.length);
+  if (aiAverageConfidence) aiAverageConfidence.textContent = all.length ? `${formatNumber(avg)}%` : "--";
+  if (aiMarketBias) {
+    aiMarketBias.textContent = isEnglishLanguage()
+      ? bias
+      : bias === "Bullish" ? "صاعد" : bias === "Bearish" ? "هابط" : "مختلط";
+    aiMarketBias.className = bias.toLowerCase();
+  }
+  if (aiMarketUpdate) {
+    const generated = data?.generatedAt ? formatDateTime(data.generatedAt) : "--";
+    aiMarketUpdate.textContent = isEnglishLanguage() ? `Last update ${generated}` : `آخر تحديث ${generated}`;
+  }
+}
+
 function renderRecommendations(data) {
   if (!data) return;
 
@@ -2297,6 +2503,7 @@ function renderRecommendations(data) {
   buyCount.textContent = buys.length;
   sellCount.textContent = sells.length;
   avgConfidence.textContent = all.length ? `${avg}%` : "--";
+  updateAiTradingAgentSummary(data, all, buys, sells, avg);
   const providerLabel = data.dataProvider?.active || all[0]?.dataProvider || "--";
   dataProvider.textContent = data.partial || Number(data.pendingCount || 0) > 0
     ? `${providerLabel} · ${formatNumber(data.analyzedCount || all.length)}/${formatNumber(data.market.totalSymbols || all.length)}`
@@ -2749,10 +2956,10 @@ const ASSET_VISUAL_RULES = [
   { symbols: ["AMZN"], names: ["amazon"], className: "asset-logo-amazon", kind: "amazon", label: "AM" },
   { symbols: ["META"], names: ["meta"], className: "asset-logo-meta", kind: "meta", label: "ME" },
   { symbols: ["TSLA"], names: ["tesla"], className: "asset-logo-tesla", kind: "tesla", label: "TS" },
-  { symbols: ["NVDA"], names: ["nvidia"], className: "asset-logo-nvidia", kind: "text", label: "NV" },
-  { symbols: ["AMD"], names: ["amd"], className: "asset-logo-amd", kind: "text", label: "AMD" },
-  { symbols: ["INTC"], names: ["intel"], className: "asset-logo-intel", kind: "text", label: "IN" },
-  { symbols: ["NFLX"], names: ["netflix"], className: "asset-logo-netflix", kind: "text", label: "N" },
+  { symbols: ["NVDA"], names: ["nvidia"], className: "asset-logo-nvidia", kind: "nvidia", label: "NV" },
+  { symbols: ["AMD"], names: ["amd"], className: "asset-logo-amd", kind: "amd", label: "AMD" },
+  { symbols: ["INTC"], names: ["intel"], className: "asset-logo-intel", kind: "intel", label: "IN" },
+  { symbols: ["NFLX"], names: ["netflix"], className: "asset-logo-netflix", kind: "netflix", label: "N" },
   { symbols: ["CRM"], names: ["salesforce"], className: "asset-logo-salesforce", kind: "text", label: "CRM" },
   { symbols: ["ORCL"], names: ["oracle"], className: "asset-logo-oracle", kind: "text", label: "OR" },
   { symbols: ["JPM"], names: ["jpmorgan", "jpmorgan chase"], className: "asset-logo-bank asset-logo-jpm", kind: "bank", label: "JPM" },
@@ -2894,6 +3101,36 @@ function renderAssetIcon(kind, label) {
     return `
       <svg class="asset-logo-svg asset-logo-svg-avalanche" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M12 4 21 20h-6.1L12 14.8 9.1 20H3Z"></path><path d="M14.5 13.3 17 9l2.5 4.3Z"></path>
+      </svg>
+    `;
+  }
+  if (kind === "nvidia") {
+    return `
+      <svg class="asset-logo-svg asset-logo-svg-nvidia" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 12.2c3.7-4.1 9.5-4.8 16-1.9-3.6-.4-6.1.1-8 1.5 1.7-.4 3.4-.2 5 .6-2.8 2.9-7.1 3.4-10.6 1.3 1.2-.7 2.4-1.2 3.8-1.4-1.9-.3-3.9 0-6.2-.1Z"></path>
+        <circle cx="12.6" cy="12.6" r="1.35"></circle>
+      </svg>
+    `;
+  }
+  if (kind === "amd") {
+    return `
+      <svg class="asset-logo-svg asset-logo-svg-amd" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 5h6v4H9v2H5Z"></path>
+        <path d="M13 5h6v6h-4V9h-2Z"></path>
+        <path d="M5 13h4v2h2v4H5Z"></path>
+        <path d="M15 13h4v6h-6v-4h2Z"></path>
+      </svg>
+    `;
+  }
+  if (kind === "intel") {
+    return `<span class="asset-logo-wordmark asset-logo-wordmark-intel">intel</span>`;
+  }
+  if (kind === "netflix") {
+    return `
+      <svg class="asset-logo-svg asset-logo-svg-netflix" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 4h4.1l5.9 16h-4.1Z"></path>
+        <path d="M7 4h4v16H7Z"></path>
+        <path d="M13 4h4v16h-4Z"></path>
       </svg>
     `;
   }

@@ -12,51 +12,11 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/the-sfm-trader-icon-256.png" />
     <link rel="icon" type="image/png" sizes="256x256" href="/the-sfm-trader-icon-256.png" />
-    <link rel="stylesheet" href="/styles.css?v=20260623-language-hover-1" />
-    <link rel="stylesheet" href="/desktop-balance.css?v=20260623-language-hover-1" />
+    <link rel="stylesheet" href="/desktop-balance.css?v=20260623-premium-terminal-1" />
+    <link rel="stylesheet" href="/styles.css?v=20260624-no-welcome-hero" />
   </head>
   <body class="notranslate" translate="no">
     <canvas id="market-bg" class="market-bg" aria-hidden="true"></canvas>
-
-    <section id="intro-overlay" class="intro-overlay" aria-live="polite">
-      <div class="intro-scanline" aria-hidden="true"></div>
-      <div class="intro-card">
-        <div class="intro-copy">
-          <p class="eyebrow">the-sfm trader startup</p>
-          <h2 id="intro-greeting">أهلاً سيدي محمد</h2>
-          <p id="intro-message">مساعدك SFM جاهز للتحليل ومتابعة الأسهم.</p>
-          <div class="intro-status">
-            <span></span>
-            <strong>جاري فتح منصة التحليل</strong>
-          </div>
-          <button id="intro-audio-button" class="intro-audio-button" type="button">تشغيل التحية الصوتية</button>
-          <button id="intro-skip" class="intro-skip" type="button">دخول سريع</button>
-        </div>
-        <div class="intro-agent-wrap" aria-hidden="true">
-          <div class="intro-agent">
-            <div class="agent-cap"></div>
-            <div class="agent-head">
-              <span class="agent-visor"></span>
-              <span class="agent-face-light"></span>
-            </div>
-            <div class="agent-neck"></div>
-            <div class="agent-body">
-              <span class="agent-badge">SFM</span>
-              <span class="agent-tie"></span>
-            </div>
-            <div class="agent-arm agent-arm-left"></div>
-            <div class="agent-arm agent-arm-right"></div>
-            <div class="agent-hand"></div>
-            <div class="agent-base"></div>
-          </div>
-          <div class="intro-rings">
-            <i></i>
-            <i></i>
-            <i></i>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <div class="app-shell">
       <header class="topbar">
@@ -65,6 +25,11 @@
           <h1>the-sfm trader</h1>
           <p class="brand-subtitle">منصة تداول وتحليل ذكية</p>
         </div>
+        <form class="terminal-search" role="search" action="javascript:void(0)">
+          <span aria-hidden="true">⌕</span>
+          <input id="terminal-symbol-search" type="search" autocomplete="off" inputmode="search" placeholder="ابحث عن أصل، سهم، رمز أو سوق..." aria-label="بحث عن رمز أو سوق">
+          <kbd>Ctrl K</kbd>
+        </form>
         <div class="header-session-mini" aria-live="polite">
           <span></span>
           <em id="header-session-zone">London FX</em>
@@ -145,6 +110,39 @@
           </span>
           <b>المفضلات</b>
         </a>
+        <a href="#portfolio-section" class="rail-link" data-nav-key="portfolio" aria-label="المحفظة">
+          <span class="rail-icon rail-portfolio" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="M4 7h16v13H4Z"></path>
+              <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <path d="M4 12h16"></path>
+            </svg>
+          </span>
+          <b>المحفظة</b>
+        </a>
+        <a href="#history-section" class="rail-link" data-nav-key="trades" aria-label="الصفقات">
+          <span class="rail-icon rail-trades" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="M7 7h10"></path>
+              <path d="M7 12h10"></path>
+              <path d="M7 17h6"></path>
+              <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+            </svg>
+          </span>
+          <b>الصفقات</b>
+        </a>
+        <a href="#home-heatmap-section" class="rail-link" data-nav-key="opportunities" aria-label="الفرص">
+          <span class="rail-icon rail-opportunities" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="M12 2v4"></path>
+              <path d="M12 18v4"></path>
+              <path d="m4.9 4.9 2.8 2.8"></path>
+              <path d="m16.3 16.3 2.8 2.8"></path>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+          </span>
+          <b>الفرص</b>
+        </a>
         <a href="#notification-panel" class="rail-link" data-nav-key="alerts" aria-label="التنبيهات">
           <span class="rail-icon rail-bell" aria-hidden="true">
             <svg class="rail-lucide-icon" viewBox="0 0 24 24">
@@ -165,6 +163,36 @@
           </span>
           <b>الأخبار</b>
         </a>
+        <a href="#economic-news-section" class="rail-link" data-nav-key="calendar" aria-label="التقويم">
+          <span class="rail-icon rail-calendar" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="M8 2v4"></path>
+              <path d="M16 2v4"></path>
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <path d="M3 10h18"></path>
+            </svg>
+          </span>
+          <b>التقويم</b>
+        </a>
+        <a href="#command-center-section" class="rail-link" data-nav-key="tools" aria-label="الأدوات">
+          <span class="rail-icon rail-tools" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="m14.7 6.3 3 3"></path>
+              <path d="M5 19 19 5"></path>
+              <path d="M9 5h10v10"></path>
+            </svg>
+          </span>
+          <b>الأدوات</b>
+        </a>
+        <button class="rail-link rail-settings" id="rail-settings-button" type="button" aria-label="الإعدادات">
+          <span class="rail-icon rail-cog" aria-hidden="true">
+            <svg class="rail-lucide-icon" viewBox="0 0 24 24">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3.4-.2-.1a1.7 1.7 0 0 0-1.9.3l-.4.2-3.3-1.9-.1-.4a1.7 1.7 0 0 0-1.6-1.1h-.5l-3.3 1.9-.4-.2a1.7 1.7 0 0 0-1.9-.3l-.2.1-2-3.4.1-.1a1.7 1.7 0 0 0 .3-1.9l-.2-.4V9l.2-.4a1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3.4.2.1a1.7 1.7 0 0 0 1.9-.3l.4-.2 3.3 1.9.1.4a1.7 1.7 0 0 0 1.6 1.1h.5l3.3-1.9.4.2a1.7 1.7 0 0 0 1.9.3l.2-.1 2 3.4-.1.1a1.7 1.7 0 0 0-.3 1.9l.2.4v4.2Z"></path>
+            </svg>
+          </span>
+          <b>الإعدادات</b>
+        </button>
         <a href="#voice-section" class="rail-link rail-voice" data-nav-key="voice" aria-label="الصوت">
           <span class="rail-icon rail-wave" aria-hidden="true">
             <svg class="rail-lucide-icon" viewBox="0 0 24 24">
@@ -178,6 +206,10 @@
           </span>
           <b>Voice</b>
         </a>
+        <div class="rail-ai-card" aria-label="AI Assistant">
+          <span></span>
+          <strong>AI Assistant</strong>
+        </div>
       </aside>
 
       <aside id="settings-panel" class="settings-panel" hidden>
@@ -364,21 +396,38 @@
 
       <main>
         <section id="sfm-live-floor" class="sfm-live-floor" aria-label="لوحة التداول الحية">
-          <div class="floor-aurora" aria-hidden="true"></div>
-          <div class="floor-head">
-            <div>
-              <p class="eyebrow">SFM LIVE FLOOR</p>
-              <h2>لوحة النبض الحية</h2>
-              <p id="sfm-floor-brief">SFM يقرأ السوق الآن ويحوّل الإشارات إلى قرارات واضحة.</p>
-            </div>
-            <div class="floor-agent" aria-live="polite">
-              <span class="floor-agent-core" aria-hidden="true"></span>
-              <div>
-                <span>حالة المساعد</span>
-                <strong id="floor-agent-mood">جاهز يراقب السوق</strong>
-                <em id="trading-mood">--</em>
-              </div>
-            </div>
+
+          <div class="ai-agent-kpi-strip" aria-label="ملخص حالة وكيل التداول">
+            <article>
+              <span>حالة الوكيل</span>
+              <strong id="ai-agent-status">نشط</strong>
+              <em>Scanning markets</em>
+            </article>
+            <article>
+              <span>الأسواق المتابعة</span>
+              <strong id="ai-market-count">--</strong>
+              <em>Connected markets</em>
+            </article>
+            <article>
+              <span>الأصول المحللة</span>
+              <strong id="ai-asset-count">--</strong>
+              <em>Analyzed assets</em>
+            </article>
+            <article class="is-buy">
+              <span>توصيات الشراء</span>
+              <strong id="ai-buy-count">--</strong>
+              <em>Buy signals</em>
+            </article>
+            <article class="is-sell">
+              <span>توصيات البيع</span>
+              <strong id="ai-sell-count">--</strong>
+              <em>Sell signals</em>
+            </article>
+            <article>
+              <span>متوسط الثقة</span>
+              <strong id="ai-average-confidence">--</strong>
+              <em>AI confidence</em>
+            </article>
           </div>
 
           <div class="live-pulse-strip" aria-label="Live Market Pulse">
@@ -429,6 +478,39 @@
               </small>
               <em id="pulse-session-event">العد التنازلي</em>
             </div>
+          </div>
+
+          <div class="ai-global-overview" aria-label="خريطة الأسواق العالمية">
+            <div class="ai-world-map" aria-hidden="true">
+              <span class="market-node node-new-york"><b>New York</b></span>
+              <span class="market-node node-london"><b>London</b></span>
+              <span class="market-node node-frankfurt"><b>Frankfurt</b></span>
+              <span class="market-node node-kuwait"><b>Kuwait</b></span>
+              <span class="market-node node-riyadh"><b>Riyadh</b></span>
+              <span class="market-node node-dubai"><b>Dubai</b></span>
+              <span class="market-node node-tokyo"><b>Tokyo</b></span>
+              <span class="market-node node-hongkong"><b>Hong Kong</b></span>
+              <svg viewBox="0 0 900 360" preserveAspectRatio="none">
+                <path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path>
+                <path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path>
+                <path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path>
+              </svg>
+            </div>
+            <aside class="ai-analysis-console" aria-live="polite">
+              <p class="eyebrow">AI AGENT WORKFLOW</p>
+              <h3>تحليل السوق الآن</h3>
+              <ul>
+                <li><span></span>Scanning Markets</li>
+                <li><span></span>Analyzing Volume</li>
+                <li><span></span>Evaluating Sentiment</li>
+                <li><span></span>Generating Signals</li>
+              </ul>
+              <div class="ai-market-bias">
+                <span>اتجاه السوق العام</span>
+                <strong id="ai-market-bias">--</strong>
+                <em id="ai-market-update">آخر تحديث --</em>
+              </div>
+            </aside>
           </div>
 
           <div class="floor-stage">
@@ -931,6 +1013,46 @@
           <div id="unavailable" class="unavailable"></div>
         </section>
 
+        <section id="temporary-legal-notices" class="temporary-legal-notices" aria-label="تنبيهات داخلية مؤقتة">
+          <article class="terminal-legal-notice" data-legal-notice="risk">
+            <span class="notice-icon notice-icon-shield" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3 5 6v5c0 4.4 2.8 8.4 7 10 4.2-1.6 7-5.6 7-10V6l-7-3Z"></path>
+                <path d="M9 12.2 11 14l4-4.5"></path>
+              </svg>
+            </span>
+            <div>
+              <h3>تنبيه المخاطر</h3>
+              <p>جميع التحليلات والمؤشرات والتوقعات المعروضة داخل SFM Trading Terminal هي لأغراض تعليمية ومعلوماتية فقط ولا تشكل نصيحة استثمارية أو توصية مالية.</p>
+              <p>قد يؤدي التداول والاستثمار إلى خسارة جزء أو كامل رأس المال.</p>
+            </div>
+            <button class="notice-close" type="button" data-dismiss-legal-notice="risk" aria-label="إغلاق تنبيه المخاطر">×</button>
+          </article>
+
+          <article class="terminal-legal-notice" data-legal-notice="ai">
+            <span class="notice-icon notice-icon-ai" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v3"></path>
+                <path d="M12 18v3"></path>
+                <path d="M4.8 7.2 7 9.4"></path>
+                <path d="M17 14.6l2.2 2.2"></path>
+                <path d="M3 12h3"></path>
+                <path d="M18 12h3"></path>
+                <path d="M4.8 16.8 7 14.6"></path>
+                <path d="M17 9.4l2.2-2.2"></path>
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M10.8 12.8h2.4"></path>
+              </svg>
+            </span>
+            <div>
+              <h3>تنبيه الذكاء الاصطناعي</h3>
+              <p>يتم إنشاء بعض التحليلات والتوقعات باستخدام تقنيات الذكاء الاصطناعي.</p>
+              <p>قد تحتوي النتائج على أخطاء أو تقديرات غير دقيقة، ويجب عدم الاعتماد عليها وحدها لاتخاذ القرارات الاستثمارية.</p>
+            </div>
+            <button class="notice-close" type="button" data-dismiss-legal-notice="ai" aria-label="إغلاق تنبيه الذكاء الاصطناعي">×</button>
+          </article>
+        </section>
+
         <section id="history-section" class="history-band">
           <div class="section-head">
             <div>
@@ -1096,7 +1218,7 @@
       </article>
     </template>
 
-    <script src="/app.js?v=20260623-language-hover-1" type="module"></script>
+    <script src="/app.js?v=20260624-no-welcome-hero" type="module"></script>
   </body>
 </html>
 
