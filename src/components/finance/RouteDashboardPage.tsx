@@ -57,6 +57,7 @@ import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 import { parseMoneyValue } from '@/lib/money';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { trackEvent } from '@/lib/analytics';
+import { recordAccountActivity } from '@/lib/accountActivity';
 
 // --- Types and helpers extracted to lib ---
 import type {
@@ -1704,6 +1705,20 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               amount,
             }).select('id,name,amount,created_at').single();
             if (error) throw error;
+            if (kind === 'invest') {
+              void recordAccountActivity(supabase, {
+                userId: user.id,
+                eventType: 'investment_added',
+                entityType: 'investment',
+                entityId: created.id,
+                metadata: {
+                  amount,
+                  source: 'route_dashboard',
+                },
+              }).catch(error => {
+                if (process.env.NODE_ENV === 'development') console.error('[account-activity] investment insert failed', error);
+              });
+            }
             applyEntryToSnapshot(kind, { id: created.id, name: created.name, amount: Number(created.amount) || amount, created_at: created.created_at }, mode);
           } else {
             const { error } = await supabase.from(table).update({ name, amount }).eq('id', id);
@@ -1905,6 +1920,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         }
         const { data: created, error } = insertResult;
         if (error) throw error;
+        void recordAccountActivity(supabase, {
+          userId: user.id,
+          eventType: 'goal_added',
+          entityType: 'financial_goal',
+          entityId: typeof created?.id === 'string' ? created.id : null,
+          metadata: {
+            category: goalForm.category || 'general',
+            source: 'route_dashboard',
+          },
+        }).catch(error => {
+          if (process.env.NODE_ENV === 'development') console.error('[account-activity] goal insert failed', error);
+        });
         void trackEvent('add_goal', { module: 'goals', metadata: { category: goalForm.category || 'general' } });
         setSnapshot(prev => ({
           ...prev,

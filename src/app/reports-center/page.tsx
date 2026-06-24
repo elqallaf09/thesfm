@@ -33,6 +33,7 @@ import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData'
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
 import { formatDate, formatNumber } from '@/lib/locale';
 import { trackEvent } from '@/lib/analytics';
+import { recordAccountActivity } from '@/lib/accountActivity';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -1948,8 +1949,23 @@ export default function ReportsCenterPage() {
     if (!rows.length) return showToast(tr.noRowsForExport);
     downloadCsv(`sfm-${slug(report.title.en)}-${filters.year}.csv`, rows, lang as Lang);
     void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'csv', report_id: report.id } });
+    if (user?.id && !isGuest) {
+      void recordAccountActivity(supabase, {
+        userId: user.id,
+        eventType: 'report_exported',
+        entityType: 'report',
+        metadata: {
+          export_type: 'csv',
+          report_id: report.id,
+          rows: rows.length,
+          source: 'reports_center',
+        },
+      }).catch(error => {
+        if (process.env.NODE_ENV === 'development') console.error('[account-activity] report csv export insert failed', error);
+      });
+    }
     showToast(tr.csvDownloaded);
-  }, [filters, lang, loadErrors, records, showToast, tr.csvDownloaded, tr.noRowsForExport]);
+  }, [filters, isGuest, lang, loadErrors, records, showToast, tr.csvDownloaded, tr.noRowsForExport, user?.id]);
 
   const printReport = useCallback((report: ReportDefinition) => {
     const status = reportStatus(report, records, loadErrors);
@@ -1964,6 +1980,21 @@ export default function ReportsCenterPage() {
           dir: dir as 'rtl' | 'ltr',
         });
         void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'pdf', report_id: report.id } });
+        if (user?.id && !isGuest) {
+          void recordAccountActivity(supabase, {
+            userId: user.id,
+            eventType: 'report_exported',
+            entityType: 'report',
+            metadata: {
+              export_type: 'pdf',
+              report_id: report.id,
+              rows: rows.length,
+              source: 'reports_center',
+            },
+          }).catch(error => {
+            if (process.env.NODE_ENV === 'development') console.error('[account-activity] report pdf export insert failed', error);
+          });
+        }
         showToast(tr.printOpened);
       } catch (error) {
         console.error('Feasibility PDF export failed', error);
@@ -1984,9 +2015,24 @@ export default function ReportsCenterPage() {
       window.print();
       window.setTimeout(restoreTitle, 1500);
       void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'print', report_id: report.id } });
+      if (user?.id && !isGuest) {
+        void recordAccountActivity(supabase, {
+          userId: user.id,
+          eventType: 'report_exported',
+          entityType: 'report',
+          metadata: {
+            export_type: 'print',
+            report_id: report.id,
+            rows: rows.length,
+            source: 'reports_center',
+          },
+        }).catch(error => {
+          if (process.env.NODE_ENV === 'development') console.error('[account-activity] report print export insert failed', error);
+        });
+      }
       showToast(tr.printOpened);
     }, 120);
-  }, [dir, filters, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened]);
+  }, [dir, filters, isGuest, lang, loadErrors, records, showToast, tr.exportsDisabled, tr.printOpened, user?.id]);
 
   const statusLabel = (status: ReportStatus) => {
     if (status === 'ready') return tr.ready;

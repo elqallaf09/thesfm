@@ -7,6 +7,7 @@ import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { recordAccountActivity } from '@/lib/accountActivity';
 import { moneyNumber, normalizeNumberInput } from '@/lib/money';
 
 const DURATIONS = [
@@ -140,6 +141,22 @@ export default function AddGoalPage() {
       setMessage(result.error.message || text('تعذر حفظ الهدف', 'Could not save goal', "Impossible d'enregistrer l'objectif"));
       return;
     }
+
+    void recordAccountActivity(supabase, {
+      userId: user.id,
+      eventType: 'goal_added',
+      entityType: 'financial_goal',
+      metadata: {
+        source: 'goals_add_page',
+      },
+    }).catch(error => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[account-activity] goal insert failed', {
+          userId: user.id,
+          error,
+        });
+      }
+    });
 
     setGoal('');
     setAmount('');

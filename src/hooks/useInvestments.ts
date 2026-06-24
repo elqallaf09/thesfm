@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { recordAccountActivity } from '@/lib/accountActivity';
 import type { Investment, InvestmentInput, InvestmentType } from '@/types/investment';
 import {
   GUEST_KEY, OLD_GUEST_KEY, SNAPSHOT_PREFIX, MARKET_LINKED_TYPES, PRICE_REFRESH_UPDATE_KEYS,
@@ -169,6 +170,25 @@ export function useInvestments() {
     const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
     writeJson(userMetaKey, { ...meta, [next.id]: metaFromInvestment(data) });
     setItems(prev => [next, ...prev]);
+    void recordAccountActivity(supabase, {
+      userId: user.id,
+      eventType: 'investment_added',
+      entityType: 'investment',
+      entityId: next.id,
+      metadata: {
+        source: 'investments_hook',
+        type: next.type,
+        symbol: next.symbol || null,
+      },
+    }).catch(error => {
+      if (DEBUG_INVESTMENTS) {
+        console.warn('[account-activity] investment insert failed', {
+          userId: user.id,
+          investmentId: next.id,
+          error,
+        });
+      }
+    });
     return next;
   }, [isGuest, items, persistGuest, user, userMetaKey]);
 
