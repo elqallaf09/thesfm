@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -9,13 +9,16 @@ import {
   Bot,
   BrainCircuit,
   BriefcaseBusiness,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Cloud,
   Cpu,
   ExternalLink,
-  HeartPulse,
+  Filter,
   Info,
   Layers3,
+  LineChart,
   Newspaper,
   RefreshCcw,
   Search,
@@ -25,25 +28,36 @@ import {
   TrendingDown,
   TrendingUp,
   Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
-import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import styles from '@/components/defensive-stocks/DefensiveStocksNews.module.css';
 
 type LangCode = 'ar' | 'en' | 'fr';
-type GrowthFilterId =
+type GrowthTab = 'overview' | 'stocks' | 'news' | 'sectors';
+type SectorId =
   | 'all'
   | 'ai'
-  | 'technology'
   | 'semiconductors'
-  | 'ecommerce'
   | 'cloud'
   | 'cybersecurity'
-  | 'innovative_healthcare'
-  | 'earnings'
-  | 'analysis';
+  | 'ecommerce'
+  | 'fintech'
+  | 'ev'
+  | 'healthcare'
+  | 'digital_platforms';
+type NewsTimeFilter = 'all' | 'day' | 'week' | 'month';
+type NewsSort = 'latest' | 'oldest' | 'strongestMove';
+type StockSort = 'momentum' | 'leastVolatile' | 'name' | 'sector';
+type DisclosureId =
+  | 'what'
+  | 'metrics'
+  | 'growth-value'
+  | 'growth-momentum'
+  | 'valuation-risk'
+  | 'rates'
+  | 'peg';
 
 type GrowthTickerItem = {
   symbol: string;
@@ -53,27 +67,27 @@ type GrowthTickerItem = {
   change: number | null;
   changePercent: number | null;
   source: string;
-  delayed: true;
+  delayed: boolean;
 };
 
 type GrowthTickerResponse =
   | {
-    ok: true;
-    source: string;
-    updated_at: string;
-    items: GrowthTickerItem[];
-  }
+      ok: true;
+      source: string;
+      updated_at: string;
+      items: GrowthTickerItem[];
+    }
   | {
-    ok: false;
-    code?: string;
-    source: string | null;
-    updated_at: string | null;
-    items: GrowthTickerItem[];
-  };
+      ok: false;
+      code: string;
+      source: string | null;
+      updated_at: string | null;
+      items: GrowthTickerItem[];
+    };
 
 type GrowthNewsItem = {
   id: string;
-  title?: string;
+  title: string;
   headline?: string;
   summary?: string;
   titleOriginal?: string;
@@ -83,1208 +97,2515 @@ type GrowthNewsItem = {
   url: string;
   publishedAt: string;
   isTranslated?: boolean;
-  translatedTo?: string;
-  companyName?: string;
-  ticker?: string;
-  sector?: string;
-  sectors?: string[];
+  translatedTo?: string | null;
+  companyName?: string | null;
+  ticker?: string | null;
+  sector?: string | null;
+  sectors?: string[] | null;
   price?: number | null;
   change?: number | null;
   changePercent?: number | null;
   priceSource?: string | null;
-  delayed?: true;
+  delayed?: boolean;
 };
 
 type GrowthNewsResponse =
   | {
-    success: true;
-    category: 'growth';
-    source: string;
-    priceSource: string;
-    lastUpdated: string;
-    language: string;
-    translationEnabled: boolean;
-    prices: TechStockPrice[];
-    items: GrowthNewsItem[];
-    limit: number;
-    message?: string;
-  }
+      success: true;
+      category: string;
+      source: string;
+      priceSource?: string | null;
+      lastUpdated: string;
+      language: string;
+      translationEnabled: boolean;
+      items: GrowthNewsItem[];
+      limit: number;
+      message?: string;
+    }
   | {
-    success: false;
-    error?: string;
-    reason?: string;
-  };
+      success: false;
+      error: string;
+      reason?: string;
+    };
 
-const NEWS_PAGE_SIZE = 9;
-const AUTO_REFRESH_MS = 5 * 60 * 1000;
-const FEATURED_SYMBOLS = ['NVDA', 'MSFT', 'AAPL', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AVGO', 'AMD', 'PLTR', 'SNOW', 'NOW'] as const;
+type GrowthStockRow = GrowthTickerItem & {
+  sectorId: Exclude<SectorId, 'all'>;
+  sectorLabel: string;
+  momentumLabel: string;
+  momentumTone: Tone;
+  valuationRiskLabel: string;
+  qualityLabel: string;
+  growthClassification: string;
+  dataCompleteness: number;
+};
 
-const TEXT = {
+type Tone = 'positive' | 'negative' | 'warning' | 'neutral' | 'info';
+
+const COPY = {
   ar: {
-    title: 'أخبار أسهم النمو',
-    subtitle: 'تغطية شاملة لأخبار وتحليلات أسهم النمو في قطاعات التقنية، الذكاء الاصطناعي، التجارة الإلكترونية، الرعاية الصحية المبتكرة، والبرمجيات السحابية.',
+    badge: 'مركز أبحاث النمو',
+    title: 'أسهم النمو',
+    subtitle: 'اكتشف الشركات التي تحقق نمواً مرتفعاً، وقارن فرصها بمخاطر التقييم والتذبذب اعتماداً على البيانات المتاحة فقط.',
     refresh: 'تحديث البيانات',
     refreshing: 'جارٍ التحديث...',
-    lastUpdated: 'آخر تحديث',
-    notUpdated: 'لم يتم التحديث بعد',
-    delayed: 'بيانات سوق مؤجلة أو آخر سعر متاح',
-    liveStatus: 'آخر سعر متاح من مزود بيانات حقيقي',
-    tickerTitle: 'شريط أسهم النمو المباشر',
-    tickerSubtitle: 'أسعار حقيقية لأسهم النمو الأمريكية المختارة مع التغير اليومي.',
-    tickerEmpty: 'لا توجد بيانات أسعار متاحة حالياً من مصادر السوق الحقيقية.',
-    whatTitle: 'ما هي أسهم النمو؟',
-    whatBody: 'أسهم النمو هي شركات يتوقع أن تنمو إيراداتها أو أرباحها بوتيرة أسرع من السوق، وغالباً تعيد استثمار أرباحها بدلاً من دفع توزيعات كبيرة.',
-    revenueGrowth: 'نمو الإيرادات',
-    rapidExpansion: 'توسع سريع',
-    higherVolatility: 'تقلب أعلى',
-    futureFocus: 'تركيز على المستقبل',
-    sectorTitle: 'أبرز قطاعات النمو',
-    comparisonTitle: 'أسهم النمو مقارنة بأسهم القيمة',
-    growthStocks: 'أسهم النمو',
-    valueStocks: 'أسهم القيمة',
-    movementTitle: 'حركة أسهم النمو',
-    movementSubtitle: 'أبرز التحركات اليومية المتاحة من بيانات السوق الحقيقية.',
-    newsTitle: 'أخبار أسهم النمو',
-    newsSubtitle: 'تابع أحدث أخبار الشركات عالية النمو والقطاعات المرتبطة بها.',
-    searchPlaceholder: 'ابحث عن خبر أو رمز أو تصنيف...',
-    filtersLabel: 'التصنيفات',
-    showMore: 'تحميل المزيد',
-    showing: 'المعروض',
-    results: 'خبر',
-    readArticle: 'قراءة الخبر',
+    live: 'بيانات مباشرة',
+    delayed: 'متأخرة أو مخزنة مؤقتاً',
+    cached: 'بيانات مخزنة مؤقتاً',
+    connected: 'الخدمة متصلة',
+    partial: 'بيانات جزئية',
+    unavailable: 'غير متاح',
+    lastQuoteUpdate: 'آخر تحديث للأسعار',
+    lastNewsUpdate: 'آخر تحديث للأخبار',
     source: 'المصدر',
-    noLink: 'الرابط غير متاح',
-    emptyTitle: 'لا توجد أخبار متاحة حالياً لهذا التصنيف',
-    emptyHint: 'جرّب بحثاً آخر أو اختر تصنيفاً مختلفاً.',
-    errorTitle: 'تعذر تحميل البيانات حالياً',
-    errorBody: 'تعذر جلب أخبار أسهم النمو من المصادر الحقيقية حالياً.',
+    quoteSource: 'مصدر الأسعار',
+    newsSource: 'مصدر الأخبار',
+    marketClosedNote: 'قد تكون الأسعار متأخرة حسب مزود البيانات وحالة السوق.',
+    tabs: {
+      overview: 'نظرة عامة',
+      stocks: 'الأسهم',
+      news: 'الأخبار',
+      sectors: 'القطاعات',
+    },
+    summaryTitle: 'ملخص أسهم النمو اليوم',
+    risingStocks: 'أسهم مرتفعة',
+    fallingStocks: 'أسهم منخفضة',
+    bestSector: 'أفضل قطاع نمو',
+    strongestStock: 'أقوى أداء',
+    calmestStock: 'أقل تذبذب اليوم',
+    trackedStocks: 'أسهم مراقبة',
+    comparisonTitle: 'مقارنة أسهم النمو',
+    comparisonDescription: 'مقارنة الأداء اليومي المتاح من مزود الأسعار. البيانات التاريخية أو الأساسيات تظهر فقط عند توفرها من مصدر حقيقي.',
+    chartUnavailable: 'البيانات التاريخية غير متاحة لهذا المسار حالياً، لذلك تظهر المقارنة من الأسعار الحالية فقط.',
+    selectForCompare: 'اختر للمقارنة',
+    educationTitle: 'دليل أسهم النمو',
+    educationDescription: 'بطاقات مختصرة تشرح المنهجية والمخاطر بدون إطالة الصفحة.',
+    highlightedTitle: 'أسهم نمو للمتابعة',
+    highlightedDescription: 'قائمة مراقبة مبنية على الكون الحالي للصفحة وأسعار حقيقية عند توفرها.',
+    stocksTitle: 'مصفاة أسهم النمو',
+    stocksDescription: 'ابحث وفرز أسهم النمو حسب القطاع والزخم المتاح. مقاييس الأساسيات غير المتوفرة لا تُستبدل بأرقام وهمية.',
+    newsTitle: 'أخبار أسهم النمو',
+    newsDescription: 'أخبار مرتبطة بأسهم وقطاعات النمو مع عرض عربي عند توفر الترجمة، والنص الأصلي عند الحاجة.',
+    sectorsTitle: 'دليل قطاعات النمو',
+    sectorsDescription: 'تنظيم القطاعات حسب محركات النمو والمخاطر والشركات المتاحة داخل الصفحة.',
+    searchStocks: 'ابحث عن شركة أو رمز...',
+    searchNews: 'ابحث في الأخبار أو الرموز...',
+    sector: 'القطاع',
+    allSectors: 'كل القطاعات',
+    sort: 'الترتيب',
+    clearFilters: 'مسح الفلاتر',
+    filter: 'تصفية',
+    resultCount: 'عدد النتائج',
+    latest: 'الأحدث',
+    oldest: 'الأقدم',
+    strongestMove: 'أقوى حركة مرتبطة',
+    momentumSort: 'أقوى زخم',
+    leastVolatile: 'الأقل تذبذباً',
+    nameSort: 'الاسم',
+    sectorSort: 'القطاع',
+    timeRange: 'الفترة',
+    allTime: 'كل الفترات',
+    lastDay: 'آخر 24 ساعة',
+    lastWeek: 'آخر 7 أيام',
+    lastMonth: 'آخر 30 يوماً',
+    sourceFilter: 'المصدر',
+    symbolFilter: 'الشركة / الرمز',
+    loadMore: 'عرض المزيد',
+    noStocks: 'لا توجد أسهم مطابقة للفلاتر الحالية.',
+    noNews: 'لا توجد أخبار مطابقة للفلاتر الحالية.',
     retry: 'إعادة المحاولة',
-    featuredTitle: 'أبرز أسهم النمو',
-    featuredSubtitle: 'بطاقات مختصرة مبنية على الأسعار الحقيقية المتاحة حالياً.',
-    details: 'عرض التفاصيل',
-    unavailable: 'غير متوفر',
-    priceSource: 'مصدر السعر',
-    sectorGuideTitle: 'دليل قطاعات النمو',
-    viewMore: 'عرض المزيد',
-    examples: 'أمثلة',
-    disclaimerTitle: 'تنبيه استثماري',
-    disclaimerBody: 'هذه الصفحة لأغراض تعليمية ومعلومات عامة فقط، وليست توصية شراء أو بيع. أسهم النمو قد تكون أكثر تقلباً من الأسهم الدفاعية، وقد تتأثر بتغير أسعار الفائدة، نتائج الأرباح، والتقييمات السوقية. يرجى إجراء بحثك الخاص أو استشارة مستشار مالي قبل اتخاذ أي قرار استثماري.',
-    autoRefresh: 'تحديث تلقائي كل 5 دقائق',
-    translated: 'مترجم',
-    originalLanguage: 'باللغة الأصلية',
-    published: 'النشر',
-    noMore: 'تم عرض كل الأخبار المتاحة',
+    providerError: 'تعذر تحديث البيانات حالياً. يتم عرض آخر بيانات متاحة إن وجدت.',
+    readArticle: 'قراءة الخبر',
+    save: 'حفظ',
+    share: 'مشاركة',
+    originalText: 'عرض النص الأصلي',
+    translatedText: 'عرض الترجمة',
+    machineTranslation: 'ترجمة آلية',
+    originalAvailable: 'النص الأصلي',
+    relatedSymbol: 'الرمز المرتبط',
+    marketContext: 'حركة السهم المرتبط',
+    quoteDelayed: 'سعر متأخر',
+    priceUnavailable: 'سعر السهم غير متاح حالياً',
+    addWatchlist: 'إضافة للمراقبة',
+    compare: 'مقارنة',
+    viewAnalysis: 'عرض التحليل',
+    currentPrice: 'السعر',
+    dailyChange: 'التغير',
+    revenueGrowth: 'نمو الإيرادات',
+    earningsGrowth: 'نمو الأرباح',
+    forwardGrowth: 'النمو المتوقع',
+    grossMargin: 'الهامش الإجمالي',
+    freeCashFlow: 'التدفق النقدي الحر',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    peg: 'PEG',
+    priceSales: 'Price/Sales',
+    roic: 'ROIC',
+    volatility: 'التذبذب',
+    drawdown: 'أعلى هبوط',
+    marketCap: 'القيمة السوقية',
+    valuationRisk: 'مخاطر التقييم',
+    fundamentalsUnavailable: 'البيانات الأساسية غير متاحة',
+    notEnoughFundamentals: 'لا تتوفر بيانات أساسية كافية',
+    qualityGrowth: 'نمو عالي الجودة',
+    profitableGrowth: 'نمو ربحي',
+    speculativeGrowth: 'نمو مضاربي',
+    matureGrowth: 'نمو ناضج',
+    momentumPositive: 'زخم إيجابي',
+    momentumNegative: 'زخم سلبي',
+    momentumNeutral: 'زخم محايد',
+    unknownValuation: 'غير متاح',
+    methodology: 'المنهجية',
+    howCalculated: 'كيف تم احتساب الدرجة؟',
+    insufficientMethodology: 'التصنيف الأساسي يتطلب بيانات نمو الإيرادات والأرباح والهوامش والتدفق النقدي. عند غيابها نعرض حالة عدم كفاية البيانات بدلاً من درجة وهمية.',
+    sourceNotice: 'الأخبار والبيانات مجمعة من مصادر مالية خارجية. التصنيفات المعروضة آلية عند توفرها ولأغراض معلوماتية فقط، ولا تُعد نصيحة استثمارية.',
+    disclaimer: 'هذه الصفحة لأغراض تعليمية ومعلوماتية فقط، ولا تمثل توصية بشراء أو بيع أي سهم. قرارات الاستثمار تقع على مسؤولية المستخدم.',
+    dataStatusTitle: 'شفافية البيانات',
+    noPortfolioTab: 'لا تظهر تبويبة المحفظة إلا عند وجود مطابقة حقيقية مع بيانات المستخدم.',
+    historicalUnavailable: 'البيانات التاريخية غير متاحة لهذا الأصل حالياً.',
+    expanded: 'إخفاء التفاصيل',
+    collapsed: 'عرض التفاصيل',
   },
   en: {
-    title: 'Growth Stocks News',
-    subtitle: 'Comprehensive coverage of growth stock news and analysis across technology, AI, e-commerce, innovative healthcare, and cloud software.',
+    badge: 'Growth research hub',
+    title: 'Growth Stocks',
+    subtitle: 'Explore high-growth companies and compare opportunity, valuation risk, and volatility using only available market data.',
     refresh: 'Refresh data',
     refreshing: 'Refreshing...',
-    lastUpdated: 'Last updated',
-    notUpdated: 'Not updated yet',
-    delayed: 'Delayed market data or last available price',
-    liveStatus: 'Last available price from a real data provider',
-    tickerTitle: 'Live growth stock ticker',
-    tickerSubtitle: 'Real prices for selected US growth stocks with daily change.',
-    tickerEmpty: 'No real market prices are available right now.',
-    whatTitle: 'What are growth stocks?',
-    whatBody: 'Growth stocks are companies expected to grow revenue or earnings faster than the market, often reinvesting profits instead of paying large dividends.',
-    revenueGrowth: 'Revenue growth',
-    rapidExpansion: 'Rapid expansion',
-    higherVolatility: 'Higher volatility',
-    futureFocus: 'Future focus',
-    sectorTitle: 'Key growth sectors',
-    comparisonTitle: 'Growth stocks versus value stocks',
-    growthStocks: 'Growth stocks',
-    valueStocks: 'Value stocks',
-    movementTitle: 'Growth stock movers',
-    movementSubtitle: 'Daily movers from real market data.',
-    newsTitle: 'Growth stocks news',
-    newsSubtitle: 'Follow the latest news around high-growth companies and related sectors.',
-    searchPlaceholder: 'Search news, ticker, or category...',
-    filtersLabel: 'Categories',
-    showMore: 'Load more',
-    showing: 'Showing',
-    results: 'news',
-    readArticle: 'Read article',
-    source: 'Source',
-    noLink: 'Link unavailable',
-    emptyTitle: 'No news available for this filter',
-    emptyHint: 'Try another search or choose a different category.',
-    errorTitle: 'Unable to load data right now',
-    errorBody: 'Real growth stock news could not be loaded right now.',
-    retry: 'Retry',
-    featuredTitle: 'Featured growth stocks',
-    featuredSubtitle: 'Compact cards built from currently available real prices.',
-    details: 'View details',
+    live: 'Live data',
+    delayed: 'Delayed or cached',
+    cached: 'Cached data',
+    connected: 'Service connected',
+    partial: 'Partial data',
     unavailable: 'Unavailable',
-    priceSource: 'Price source',
-    sectorGuideTitle: 'Growth sector guide',
-    viewMore: 'View more',
-    examples: 'Examples',
-    disclaimerTitle: 'Investment notice',
-    disclaimerBody: 'This page is for educational and general information only, not a buy or sell recommendation. Growth stocks can be more volatile than defensive stocks and may be affected by interest rates, earnings results, and market valuations. Do your own research or consult a financial advisor before investing.',
-    autoRefresh: 'Auto-refreshes every 5 minutes',
-    translated: 'Translated',
-    originalLanguage: 'Original language',
-    published: 'Published',
-    noMore: 'All available news is visible',
+    lastQuoteUpdate: 'Quote update',
+    lastNewsUpdate: 'News update',
+    source: 'Source',
+    quoteSource: 'Quote source',
+    newsSource: 'News source',
+    marketClosedNote: 'Quotes may be delayed depending on provider and market status.',
+    tabs: { overview: 'Overview', stocks: 'Stocks', news: 'News', sectors: 'Sectors' },
+    summaryTitle: 'Growth stocks today',
+    risingStocks: 'Risers',
+    fallingStocks: 'Fallers',
+    bestSector: 'Best growth sector',
+    strongestStock: 'Strongest move',
+    calmestStock: 'Lowest volatility today',
+    trackedStocks: 'Tracked stocks',
+    comparisonTitle: 'Growth comparison',
+    comparisonDescription: 'Compares the real daily performance currently available from the quote provider.',
+    chartUnavailable: 'Historical data is unavailable in this route, so the chart uses current quotes only.',
+    selectForCompare: 'Select for comparison',
+    educationTitle: 'Growth stock guide',
+    educationDescription: 'Concise methodology and risk cards without making the page long.',
+    highlightedTitle: 'Growth watchlist',
+    highlightedDescription: 'Companies from the current growth universe with real quotes when available.',
+    stocksTitle: 'Growth stock screener',
+    stocksDescription: 'Search and sort growth stocks by sector and available momentum. Missing fundamentals are not replaced with fake values.',
+    newsTitle: 'Growth stock news',
+    newsDescription: 'News tied to growth companies and sectors, with translations when available.',
+    sectorsTitle: 'Growth sector guide',
+    sectorsDescription: 'Sector drivers, risks, and companies available in the current page.',
+    searchStocks: 'Search company or symbol...',
+    searchNews: 'Search news or symbols...',
+    sector: 'Sector',
+    allSectors: 'All sectors',
+    sort: 'Sort',
+    clearFilters: 'Clear filters',
+    filter: 'Filter',
+    resultCount: 'Results',
+    latest: 'Latest',
+    oldest: 'Oldest',
+    strongestMove: 'Strongest related move',
+    momentumSort: 'Strongest momentum',
+    leastVolatile: 'Lowest volatility',
+    nameSort: 'Name',
+    sectorSort: 'Sector',
+    timeRange: 'Time range',
+    allTime: 'All time',
+    lastDay: 'Last 24 hours',
+    lastWeek: 'Last 7 days',
+    lastMonth: 'Last 30 days',
+    sourceFilter: 'Source',
+    symbolFilter: 'Company / symbol',
+    loadMore: 'Load more',
+    noStocks: 'No stocks match the current filters.',
+    noNews: 'No news match the current filters.',
+    retry: 'Retry',
+    providerError: 'Unable to refresh data right now. Showing the latest available data when present.',
+    readArticle: 'Read article',
+    save: 'Save',
+    share: 'Share',
+    originalText: 'Show original',
+    translatedText: 'Show translation',
+    machineTranslation: 'Machine translation',
+    originalAvailable: 'Original text',
+    relatedSymbol: 'Related symbol',
+    marketContext: 'Related stock move',
+    quoteDelayed: 'Delayed quote',
+    priceUnavailable: 'Stock quote unavailable',
+    addWatchlist: 'Add to watchlist',
+    compare: 'Compare',
+    viewAnalysis: 'View analysis',
+    currentPrice: 'Price',
+    dailyChange: 'Change',
+    revenueGrowth: 'Revenue growth',
+    earningsGrowth: 'Earnings growth',
+    forwardGrowth: 'Forward growth',
+    grossMargin: 'Gross margin',
+    freeCashFlow: 'Free cash flow',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    peg: 'PEG',
+    priceSales: 'Price/Sales',
+    roic: 'ROIC',
+    volatility: 'Volatility',
+    drawdown: 'Max drawdown',
+    marketCap: 'Market cap',
+    valuationRisk: 'Valuation risk',
+    fundamentalsUnavailable: 'Fundamentals unavailable',
+    notEnoughFundamentals: 'Insufficient fundamentals',
+    qualityGrowth: 'Quality growth',
+    profitableGrowth: 'Profitable growth',
+    speculativeGrowth: 'Speculative growth',
+    matureGrowth: 'Mature growth',
+    momentumPositive: 'Positive momentum',
+    momentumNegative: 'Negative momentum',
+    momentumNeutral: 'Neutral momentum',
+    unknownValuation: 'Unavailable',
+    methodology: 'Methodology',
+    howCalculated: 'How is this calculated?',
+    insufficientMethodology: 'Fundamental classification needs revenue growth, earnings growth, margins, and cash-flow data. When missing, the UI shows insufficient data instead of a fake score.',
+    sourceNotice: 'News and data are aggregated from external financial sources. Automated labels are informational only and are not investment advice.',
+    disclaimer: 'This page is for educational and informational purposes only and is not a recommendation to buy or sell securities.',
+    dataStatusTitle: 'Data transparency',
+    noPortfolioTab: 'Portfolio tab appears only when a real user-data match exists.',
+    historicalUnavailable: 'Historical data is currently unavailable for this asset.',
+    expanded: 'Hide details',
+    collapsed: 'Show details',
   },
   fr: {
-    title: 'Actualités des actions de croissance',
-    subtitle: 'Couverture des actions de croissance dans la technologie, l’IA, l’e-commerce, la santé innovante et les logiciels cloud.',
+    badge: 'Centre croissance',
+    title: 'Actions de croissance',
+    subtitle: 'Comparez les sociétés de croissance avec les risques de valorisation et de volatilité à partir des données disponibles.',
     refresh: 'Actualiser',
     refreshing: 'Actualisation...',
-    lastUpdated: 'Dernière mise à jour',
-    notUpdated: 'Pas encore actualisé',
-    delayed: 'Données différées ou dernier prix disponible',
-    liveStatus: 'Dernier prix disponible depuis un fournisseur réel',
-    tickerTitle: 'Bandeau actions de croissance',
-    tickerSubtitle: 'Prix réels des actions de croissance sélectionnées.',
-    tickerEmpty: 'Aucun prix réel disponible pour le moment.',
-    whatTitle: 'Que sont les actions de croissance ?',
-    whatBody: 'Ce sont des sociétés dont les revenus ou bénéfices devraient croître plus vite que le marché, souvent avec réinvestissement des profits.',
-    revenueGrowth: 'Croissance des revenus',
-    rapidExpansion: 'Expansion rapide',
-    higherVolatility: 'Volatilité plus élevée',
-    futureFocus: 'Orientation future',
-    sectorTitle: 'Principaux secteurs de croissance',
-    comparisonTitle: 'Croissance et valeur',
-    growthStocks: 'Croissance',
-    valueStocks: 'Valeur',
-    movementTitle: 'Mouvements des actions de croissance',
-    movementSubtitle: 'Mouvements quotidiens issus de données réelles.',
-    newsTitle: 'Actualités des actions de croissance',
-    newsSubtitle: 'Suivez les dernières nouvelles des entreprises à forte croissance.',
-    searchPlaceholder: 'Rechercher une actualité, un symbole ou une catégorie...',
-    filtersLabel: 'Catégories',
-    showMore: 'Afficher plus',
-    showing: 'Affiché',
-    results: 'actualités',
-    readArticle: 'Lire l’article',
-    source: 'Source',
-    noLink: 'Lien indisponible',
-    emptyTitle: 'Aucune actualité disponible pour ce filtre',
-    emptyHint: 'Essayez une autre recherche ou catégorie.',
-    errorTitle: 'Impossible de charger les données',
-    errorBody: 'Les actualités réelles ne peuvent pas être chargées pour le moment.',
-    retry: 'Réessayer',
-    featuredTitle: 'Actions de croissance en vedette',
-    featuredSubtitle: 'Cartes basées sur les prix réels disponibles.',
-    details: 'Voir détails',
+    live: 'Données en direct',
+    delayed: 'Retardées ou en cache',
+    cached: 'Données en cache',
+    connected: 'Service connecté',
+    partial: 'Données partielles',
     unavailable: 'Indisponible',
-    priceSource: 'Source du prix',
-    sectorGuideTitle: 'Guide des secteurs de croissance',
-    viewMore: 'Voir plus',
-    examples: 'Exemples',
-    disclaimerTitle: 'Avertissement d’investissement',
-    disclaimerBody: 'Cette page est éducative et informative uniquement, pas une recommandation d’achat ou de vente. Les actions de croissance peuvent être plus volatiles et sensibles aux taux, résultats et valorisations.',
-    autoRefresh: 'Actualisation automatique toutes les 5 minutes',
-    translated: 'Traduit',
-    originalLanguage: 'Langue originale',
-    published: 'Publié',
-    noMore: 'Toutes les actualités disponibles sont visibles',
+    lastQuoteUpdate: 'Mise à jour des cours',
+    lastNewsUpdate: 'Mise à jour des actualités',
+    source: 'Source',
+    quoteSource: 'Source des cours',
+    newsSource: 'Source des actualités',
+    marketClosedNote: 'Les cours peuvent être retardés selon le fournisseur et l’état du marché.',
+    tabs: { overview: 'Vue générale', stocks: 'Actions', news: 'Actualités', sectors: 'Secteurs' },
+    summaryTitle: 'Actions de croissance aujourd’hui',
+    risingStocks: 'En hausse',
+    fallingStocks: 'En baisse',
+    bestSector: 'Meilleur secteur',
+    strongestStock: 'Plus forte variation',
+    calmestStock: 'Moins volatile',
+    trackedStocks: 'Actions suivies',
+    comparisonTitle: 'Comparaison croissance',
+    comparisonDescription: 'Compare la performance quotidienne réelle disponible auprès du fournisseur de cours.',
+    chartUnavailable: 'Les données historiques ne sont pas disponibles ici; la comparaison utilise les cours actuels.',
+    selectForCompare: 'Sélectionner',
+    educationTitle: 'Guide des actions de croissance',
+    educationDescription: 'Cartes méthodologiques compactes.',
+    highlightedTitle: 'Liste de suivi croissance',
+    highlightedDescription: 'Sociétés de l’univers croissance avec cours réels si disponibles.',
+    stocksTitle: 'Filtre actions de croissance',
+    stocksDescription: 'Recherche et tri par secteur et momentum disponible. Les fondamentaux manquants ne sont pas remplacés par de fausses valeurs.',
+    newsTitle: 'Actualités croissance',
+    newsDescription: 'Actualités liées aux sociétés et secteurs de croissance.',
+    sectorsTitle: 'Guide des secteurs de croissance',
+    sectorsDescription: 'Moteurs, risques et sociétés disponibles.',
+    searchStocks: 'Rechercher société ou symbole...',
+    searchNews: 'Rechercher actualités ou symboles...',
+    sector: 'Secteur',
+    allSectors: 'Tous les secteurs',
+    sort: 'Tri',
+    clearFilters: 'Effacer',
+    filter: 'Filtrer',
+    resultCount: 'Résultats',
+    latest: 'Récentes',
+    oldest: 'Anciennes',
+    strongestMove: 'Plus forte variation liée',
+    momentumSort: 'Meilleur momentum',
+    leastVolatile: 'Moins volatile',
+    nameSort: 'Nom',
+    sectorSort: 'Secteur',
+    timeRange: 'Période',
+    allTime: 'Toutes',
+    lastDay: '24 dernières heures',
+    lastWeek: '7 derniers jours',
+    lastMonth: '30 derniers jours',
+    sourceFilter: 'Source',
+    symbolFilter: 'Société / symbole',
+    loadMore: 'Afficher plus',
+    noStocks: 'Aucune action ne correspond aux filtres.',
+    noNews: 'Aucune actualité ne correspond aux filtres.',
+    retry: 'Réessayer',
+    providerError: 'Impossible d’actualiser les données. Les dernières données disponibles restent affichées.',
+    readArticle: 'Lire',
+    save: 'Enregistrer',
+    share: 'Partager',
+    originalText: 'Texte original',
+    translatedText: 'Traduction',
+    machineTranslation: 'Traduction automatique',
+    originalAvailable: 'Texte original',
+    relatedSymbol: 'Symbole lié',
+    marketContext: 'Mouvement lié',
+    quoteDelayed: 'Cours retardé',
+    priceUnavailable: 'Cours indisponible',
+    addWatchlist: 'Ajouter à la liste',
+    compare: 'Comparer',
+    viewAnalysis: 'Voir analyse',
+    currentPrice: 'Prix',
+    dailyChange: 'Variation',
+    revenueGrowth: 'Croissance CA',
+    earningsGrowth: 'Croissance bénéfices',
+    forwardGrowth: 'Croissance prévue',
+    grossMargin: 'Marge brute',
+    freeCashFlow: 'Flux libre',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    peg: 'PEG',
+    priceSales: 'Price/Sales',
+    roic: 'ROIC',
+    volatility: 'Volatilité',
+    drawdown: 'Drawdown max',
+    marketCap: 'Capitalisation',
+    valuationRisk: 'Risque valorisation',
+    fundamentalsUnavailable: 'Fondamentaux indisponibles',
+    notEnoughFundamentals: 'Données fondamentales insuffisantes',
+    qualityGrowth: 'Croissance qualité',
+    profitableGrowth: 'Croissance rentable',
+    speculativeGrowth: 'Croissance spéculative',
+    matureGrowth: 'Croissance mature',
+    momentumPositive: 'Momentum positif',
+    momentumNegative: 'Momentum négatif',
+    momentumNeutral: 'Momentum neutre',
+    unknownValuation: 'Indisponible',
+    methodology: 'Méthodologie',
+    howCalculated: 'Comment est-ce calculé ?',
+    insufficientMethodology: 'La classification fondamentale exige croissance du CA, bénéfices, marges et cash-flow. Si absent, on affiche données insuffisantes.',
+    sourceNotice: 'Actualités et données proviennent de sources financières externes. Les libellés automatiques sont informatifs uniquement.',
+    disclaimer: 'Cette page est informative et éducative, sans recommandation d’achat ou de vente.',
+    dataStatusTitle: 'Transparence des données',
+    noPortfolioTab: 'L’onglet portefeuille n’apparaît qu’avec une correspondance réelle.',
+    historicalUnavailable: 'Données historiques indisponibles.',
+    expanded: 'Masquer',
+    collapsed: 'Afficher',
   },
-} satisfies Record<LangCode, Record<string, string>>;
+} as const;
 
-const FILTERS: Array<{ id: GrowthFilterId; label: Record<LangCode, string>; keywords: string[]; sectors: string[] }> = [
-  { id: 'all', label: { ar: 'الكل', en: 'All', fr: 'Tout' }, keywords: [], sectors: [] },
-  { id: 'ai', label: { ar: 'الذكاء الاصطناعي', en: 'AI', fr: 'IA' }, keywords: ['ai', 'artificial intelligence', 'machine learning', 'generative ai', 'nvidia', 'palantir'], sectors: ['artificial_intelligence'] },
-  { id: 'technology', label: { ar: 'التكنولوجيا', en: 'Technology', fr: 'Technologie' }, keywords: ['technology', 'software', 'apple', 'microsoft', 'alphabet', 'meta'], sectors: ['software', 'digital_consumption'] },
-  { id: 'semiconductors', label: { ar: 'أشباه الموصلات', en: 'Semiconductors', fr: 'Semi-conducteurs' }, keywords: ['semiconductor', 'chip', 'gpu', 'processor', 'nvidia', 'amd', 'broadcom'], sectors: ['semiconductors'] },
-  { id: 'ecommerce', label: { ar: 'التجارة الإلكترونية', en: 'E-commerce', fr: 'E-commerce' }, keywords: ['e-commerce', 'ecommerce', 'online retail', 'marketplace', 'amazon', 'shopify', 'mercadolibre'], sectors: ['ecommerce'] },
-  { id: 'cloud', label: { ar: 'البرمجيات السحابية', en: 'Cloud software', fr: 'Logiciels cloud' }, keywords: ['cloud', 'saas', 'enterprise software', 'snowflake', 'servicenow', 'datadog', 'cloudflare'], sectors: ['cloud', 'software'] },
-  { id: 'cybersecurity', label: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' }, keywords: ['cybersecurity', 'security software', 'zero trust', 'crowdstrike', 'zscaler'], sectors: ['cybersecurity'] },
-  { id: 'innovative_healthcare', label: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' }, keywords: ['medical technology', 'robotic surgery', 'dexcom', 'intuitive surgical'], sectors: ['innovative_healthcare'] },
-  { id: 'earnings', label: { ar: 'أرباح وتوقعات', en: 'Earnings & outlooks', fr: 'Résultats et perspectives' }, keywords: ['earnings', 'revenue', 'guidance', 'forecast', 'outlook', 'profit'], sectors: [] },
-  { id: 'analysis', label: { ar: 'تحليلات وتقارير', en: 'Analysis & reports', fr: 'Analyses et rapports' }, keywords: ['analysis', 'analyst', 'rating', 'report', 'target', 'upgrade', 'downgrade'], sectors: [] },
-];
-
-const SECTOR_GUIDES = [
-  {
-    id: 'ai' as GrowthFilterId,
+const SECTORS: Record<Exclude<SectorId, 'all'>, {
+  icon: LucideIcon;
+  labels: Record<LangCode, string>;
+  description: Record<LangCode, string>;
+  drivers: Record<LangCode, string>;
+  risks: Record<LangCode, string>;
+  symbols: string[];
+}> = {
+  ai: {
     icon: BrainCircuit,
-    symbols: ['NVDA', 'MSFT', 'GOOGL', 'PLTR'],
-    title: { ar: 'التكنولوجيا والذكاء الاصطناعي', en: 'Technology and AI', fr: 'Technologie et IA' },
-    body: {
-      ar: 'شركات تستفيد من الطلب على نماذج الذكاء الاصطناعي، البنية السحابية، وتحليل البيانات.',
-      en: 'Companies tied to AI models, cloud infrastructure, and data analysis demand.',
-      fr: 'Sociétés liées à l’IA, au cloud et à l’analyse de données.',
+    labels: { ar: 'الذكاء الاصطناعي والتقنية', en: 'AI and platforms', fr: 'IA et plateformes' },
+    description: {
+      ar: 'شركات تستفيد من البنية التحتية للذكاء الاصطناعي ونماذج البرمجيات والمنصات.',
+      en: 'Companies exposed to AI infrastructure, software models, and platform economics.',
+      fr: 'Sociétés exposées à l’IA, aux logiciels et aux plateformes.',
     },
+    drivers: { ar: 'الإنفاق السحابي، الطلب على المسرعات، الاشتراكات المؤسسية.', en: 'Cloud spending, accelerators, enterprise subscriptions.', fr: 'Cloud, accélérateurs, abonnements entreprises.' },
+    risks: { ar: 'تقييمات مرتفعة، دورات إنفاق، منافسة تقنية سريعة.', en: 'High valuations, spending cycles, rapid competition.', fr: 'Valorisations élevées, cycles d’investissement, concurrence.' },
+    symbols: ['NVDA', 'MSFT', 'GOOGL', 'META', 'PLTR'],
   },
-  {
-    id: 'platforms',
-    icon: Bot,
-    symbols: ['AAPL', 'AMZN', 'GOOGL', 'META', 'NFLX'],
-    title: { ar: 'التقنية والمنصات الكبرى', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-    body: {
-      ar: 'منصات تقنية واسعة تعتمد على الأجهزة، الإعلانات الرقمية، المحتوى، والسحابة لقيادة نمو الإيرادات.',
-      en: 'Large technology platforms driven by devices, digital ads, content, and cloud revenue growth.',
-      fr: 'Grandes plateformes portées par les appareils, la publicité numérique, le contenu et le cloud.',
-    },
-  },
-  {
-    id: 'semiconductors' as GrowthFilterId,
+  semiconductors: {
     icon: Cpu,
-    symbols: ['NVDA', 'AMD', 'AVGO', 'INTC', 'TSM'],
-    title: { ar: 'أشباه الموصلات', en: 'Semiconductors', fr: 'Semi-conducteurs' },
-    body: {
-      ar: 'شركات رقائق ومعالجات تستفيد من دورات الذكاء الاصطناعي ومراكز البيانات.',
-      en: 'Chip and processor companies exposed to AI and data-center cycles.',
-      fr: 'Puces et processeurs exposés à l’IA et aux centres de données.',
+    labels: { ar: 'أشباه الموصلات', en: 'Semiconductors', fr: 'Semi-conducteurs' },
+    description: {
+      ar: 'مزودو الرقائق والمسرعات والبنية اللازمة للحوسبة المتقدمة.',
+      en: 'Chip, accelerator, and infrastructure providers for advanced computing.',
+      fr: 'Puce, accélérateurs et infrastructure de calcul avancé.',
     },
+    drivers: { ar: 'مراكز البيانات، الذكاء الاصطناعي، السيارات، الهواتف.', en: 'Data centers, AI, autos, devices.', fr: 'Centres de données, IA, autos, appareils.' },
+    risks: { ar: 'دورات مخزون، قيود توريد، حساسية جيوسياسية.', en: 'Inventory cycles, supply limits, geopolitics.', fr: 'Cycles de stock, offre, géopolitique.' },
+    symbols: ['NVDA', 'AVGO', 'AMD'],
   },
-  {
-    id: 'future_mobility',
-    icon: Zap,
-    symbols: ['TSLA', 'RIVN', 'LCID'],
-    title: { ar: 'المركبات الكهربائية والتنقل المستقبلي', en: 'EV and future mobility', fr: 'VE et mobilité future' },
-    body: {
-      ar: 'شركات سيارات كهربائية وتنقل جديد تتأثر بنمو الطلب، سلاسل التوريد، والتمويل طويل الأجل.',
-      en: 'Electric vehicle and mobility companies tied to demand growth, supply chains, and long-term funding.',
-      fr: 'Entreprises de véhicules électriques et mobilité liées à la demande, aux chaînes d’approvisionnement et au financement.',
-    },
-  },
-  {
-    id: 'ecommerce' as GrowthFilterId,
-    icon: ShoppingBag,
-    symbols: ['AMZN', 'SHOP', 'MELI', 'ABNB'],
-    title: { ar: 'التجارة الإلكترونية', en: 'E-commerce', fr: 'E-commerce' },
-    body: {
-      ar: 'منصات أسواق رقمية وخدمات بيع عبر الإنترنت تعتمد على نمو الإنفاق الرقمي.',
-      en: 'Digital marketplace and online commerce platforms tied to digital spending growth.',
-      fr: 'Places de marché numériques liées aux dépenses en ligne.',
-    },
-  },
-  {
-    id: 'cloud' as GrowthFilterId,
+  cloud: {
     icon: Cloud,
-    symbols: ['MSFT', 'CRM', 'NOW', 'SNOW', 'PLTR'],
-    title: { ar: 'البرمجيات السحابية', en: 'Cloud software', fr: 'Logiciels cloud' },
-    body: {
-      ar: 'برمجيات اشتراكية وبنية سحابية ذات إيرادات متكررة وقابلة للتوسع.',
-      en: 'Subscription software and cloud platforms with scalable recurring revenue.',
-      fr: 'Logiciels par abonnement et plateformes cloud évolutives.',
+    labels: { ar: 'الحوسبة السحابية والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
+    description: {
+      ar: 'برمجيات اشتراكية وسحابة مؤسسية ذات قابلية توسع عالية.',
+      en: 'Subscription software and enterprise cloud with scalable economics.',
+      fr: 'Logiciels d’abonnement et cloud d’entreprise.',
     },
+    drivers: { ar: 'تحول رقمي، احتفاظ العملاء، توسع هوامش البرمجيات.', en: 'Digital transformation, retention, margin expansion.', fr: 'Transformation numérique, rétention, marges.' },
+    risks: { ar: 'تباطؤ عقود المؤسسات، ضغط أسعار، منافسة.', en: 'Enterprise slowdown, pricing pressure, competition.', fr: 'Ralentissement entreprises, prix, concurrence.' },
+    symbols: ['CRM', 'NOW', 'SNOW', 'DDOG', 'NET'],
   },
-  {
-    id: 'cybersecurity' as GrowthFilterId,
+  cybersecurity: {
     icon: ShieldCheck,
-    symbols: ['CRWD', 'PANW', 'NET'],
-    title: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
-    body: {
-      ar: 'حلول حماية رقمية تتوسع مع زيادة المخاطر والاعتماد على البنية السحابية.',
-      en: 'Security platforms expanding with cyber risk and cloud adoption.',
-      fr: 'Plateformes de sécurité liées aux risques cyber et au cloud.',
+    labels: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
+    description: {
+      ar: 'شركات حماية الشبكات والهوية والبنية السحابية.',
+      en: 'Network, identity, and cloud security companies.',
+      fr: 'Sécurité réseau, identité et cloud.',
     },
+    drivers: { ar: 'التهديدات الرقمية، الامتثال، إنفاق الأمن المؤسسي.', en: 'Digital threats, compliance, enterprise security spend.', fr: 'Menaces, conformité, dépenses sécurité.' },
+    risks: { ar: 'تنافس حاد، دمج الموردين، تقييمات النمو.', en: 'Competition, vendor consolidation, growth valuations.', fr: 'Concurrence, consolidation, valorisations.' },
+    symbols: ['CRWD', 'NET'],
   },
-  {
-    id: 'innovative_healthcare' as GrowthFilterId,
-    icon: HeartPulse,
+  ecommerce: {
+    icon: ShoppingBag,
+    labels: { ar: 'التجارة الإلكترونية والاستهلاك الرقمي', en: 'E-commerce and digital consumption', fr: 'E-commerce et consommation numérique' },
+    description: {
+      ar: 'منصات تجارة وخدمات رقمية تستفيد من توسع الاستهلاك عبر الإنترنت.',
+      en: 'Commerce and digital service platforms tied to online consumption growth.',
+      fr: 'Plateformes de commerce et services numériques.',
+    },
+    drivers: { ar: 'نمو المستخدمين، الإعلانات، المدفوعات، السوق العالمي.', en: 'User growth, ads, payments, global marketplaces.', fr: 'Utilisateurs, publicité, paiements, marchés.' },
+    risks: { ar: 'هوامش ضغط، دورات المستهلك، منافسة المنصات.', en: 'Margin pressure, consumer cycles, platform competition.', fr: 'Pression marges, cycles consommateurs, concurrence.' },
+    symbols: ['AMZN', 'SHOP', 'MELI', 'ABNB', 'RBLX'],
+  },
+  fintech: {
+    icon: Zap,
+    labels: { ar: 'التقنية المالية', en: 'Fintech', fr: 'Fintech' },
+    description: {
+      ar: 'مدفوعات، منصات وساطة وخدمات مالية رقمية ذات نمو هيكلي.',
+      en: 'Payments, brokerage platforms, and digital finance with structural growth.',
+      fr: 'Paiements, courtage et finance numérique.',
+    },
+    drivers: { ar: 'تبني المدفوعات الرقمية، التداول، خدمات الشركات الصغيرة.', en: 'Digital payments, trading, SMB services.', fr: 'Paiements numériques, trading, PME.' },
+    risks: { ar: 'تنظيم، ائتمان، دورات شهية المخاطرة.', en: 'Regulation, credit, risk appetite cycles.', fr: 'Réglementation, crédit, cycles de risque.' },
+    symbols: ['COIN', 'SQ', 'PYPL'],
+  },
+  ev: {
+    icon: LineChart,
+    labels: { ar: 'السيارات الكهربائية والطاقة النظيفة', en: 'EV and clean energy', fr: 'VE et énergie propre' },
+    description: {
+      ar: 'شركات مرتبطة بالتحول الكهربائي والطاقة والبنية النظيفة.',
+      en: 'Companies tied to electrification, energy transition, and clean infrastructure.',
+      fr: 'Électrification, transition énergétique et infrastructure propre.',
+    },
+    drivers: { ar: 'دعم حكومي، تصنيع، بطاريات، بنية شحن.', en: 'Policy support, manufacturing, batteries, charging.', fr: 'Soutien public, batteries, recharge.' },
+    risks: { ar: 'هوامش سيارات، أسعار فائدة، تأخر الطلب.', en: 'Auto margins, rates, demand delays.', fr: 'Marges auto, taux, demande.' },
+    symbols: ['TSLA', 'RIVN', 'ENPH'],
+  },
+  healthcare: {
+    icon: BriefcaseBusiness,
+    labels: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
+    description: {
+      ar: 'أجهزة وتقنيات صحية ذات مسارات نمو طويلة عند توفر بياناتها.',
+      en: 'Medical devices and health technology with long-duration growth paths.',
+      fr: 'Dispositifs médicaux et technologies santé.',
+    },
+    drivers: { ar: 'ابتكار علاجي، توسع أسواق، تبني تقنيات طبية.', en: 'Therapeutic innovation, market expansion, medical adoption.', fr: 'Innovation thérapeutique, expansion, adoption.' },
+    risks: { ar: 'تجارب سريرية، تنظيم، تعويضات التأمين.', en: 'Trials, regulation, reimbursement.', fr: 'Essais, réglementation, remboursement.' },
     symbols: ['ISRG', 'DXCM'],
-    title: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
-    body: {
-      ar: 'تقنيات طبية ورعاية رقمية تعتمد على الابتكار والاعتماد السريري.',
-      en: 'Medical technology tied to innovation and clinical adoption.',
-      fr: 'Technologies médicales portées par l’innovation.',
-    },
   },
-];
-
-const FEATURED_META: Record<string, { sector: Record<LangCode, string> }> = {
-  NVDA: { sector: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' } },
-  MSFT: { sector: { ar: 'الذكاء الاصطناعي والسحابة', en: 'AI and cloud', fr: 'IA et cloud' } },
-  AAPL: { sector: { ar: 'التقنية والاستهلاك الرقمي', en: 'Technology and digital consumption', fr: 'Technologie et consommation numérique' } },
-  AMZN: { sector: { ar: 'التجارة الإلكترونية والسحابة', en: 'E-commerce and cloud', fr: 'E-commerce et cloud' } },
-  GOOGL: { sector: { ar: 'الذكاء الاصطناعي والإعلانات الرقمية', en: 'AI and digital ads', fr: 'IA et publicité numérique' } },
-  META: { sector: { ar: 'الذكاء الاصطناعي والمنصات الاجتماعية', en: 'AI and social platforms', fr: 'IA et plateformes sociales' } },
-  TSLA: { sector: { ar: 'المركبات الكهربائية', en: 'Electric vehicles', fr: 'Véhicules électriques' } },
-  AVGO: { sector: { ar: 'أشباه الموصلات والبنية التحتية', en: 'Semiconductors and infrastructure', fr: 'Semi-conducteurs et infrastructure' } },
-  AMD: { sector: { ar: 'أشباه الموصلات', en: 'Semiconductors', fr: 'Semi-conducteurs' } },
-  PLTR: { sector: { ar: 'الذكاء الاصطناعي وتحليل البيانات', en: 'AI and data analytics', fr: 'IA et analyse de données' } },
-  SNOW: { sector: { ar: 'البيانات السحابية', en: 'Cloud data', fr: 'Données cloud' } },
-  NOW: { sector: { ar: 'برمجيات المؤسسات السحابية', en: 'Enterprise cloud software', fr: 'Logiciels cloud d’entreprise' } },
+  digital_platforms: {
+    icon: Layers3,
+    labels: { ar: 'المنصات الرقمية الكبرى', en: 'Large digital platforms', fr: 'Grandes plateformes numériques' },
+    description: {
+      ar: 'شركات منصة تجمع بين نمو الإعلانات، الاشتراكات، السحابة، أو السوق الرقمي.',
+      en: 'Platform companies combining ads, subscriptions, cloud, or digital marketplaces.',
+      fr: 'Plateformes combinant publicité, abonnements, cloud ou marketplaces.',
+    },
+    drivers: { ar: 'شبكات مستخدمين، بيانات، نظام بيئي، هوامش تشغيل.', en: 'Networks, data, ecosystems, operating leverage.', fr: 'Réseaux, données, écosystèmes, levier opérationnel.' },
+    risks: { ar: 'تنظيم، تركّز إيرادات، تباطؤ نمو ناضج.', en: 'Regulation, revenue concentration, mature growth slowdown.', fr: 'Réglementation, concentration, maturité.' },
+    symbols: ['AAPL', 'META', 'GOOGL', 'NFLX', 'UBER'],
+  },
 };
 
-const GROWTH_SYMBOL_NAMES: Record<string, string> = {
-  NVDA: 'NVIDIA',
-  AMD: 'Advanced Micro Devices',
-  AVGO: 'Broadcom',
-  INTC: 'Intel',
-  TSM: 'Taiwan Semiconductor',
-  MSFT: 'Microsoft',
-  CRM: 'Salesforce',
-  NOW: 'ServiceNow',
-  SNOW: 'Snowflake',
-  PLTR: 'Palantir',
-  AAPL: 'Apple',
-  AMZN: 'Amazon',
-  GOOGL: 'Alphabet',
-  META: 'Meta Platforms',
-  NFLX: 'Netflix',
-  TSLA: 'Tesla',
-  RIVN: 'Rivian',
-  LCID: 'Lucid Group',
-  CRWD: 'CrowdStrike',
-  PANW: 'Palo Alto Networks',
-  NET: 'Cloudflare',
-  SHOP: 'Shopify',
-  MELI: 'MercadoLibre',
-  ABNB: 'Airbnb',
-  DDOG: 'Datadog',
-  UBER: 'Uber',
-  RBLX: 'Roblox',
-  ISRG: 'Intuitive Surgical',
-  DXCM: 'DexCom',
-};
+const STOCK_SECTOR: Record<string, Exclude<SectorId, 'all'>> = Object.entries(SECTORS).reduce((acc, [sectorId, sector]) => {
+  sector.symbols.forEach(symbol => {
+    acc[symbol] = sectorId as Exclude<SectorId, 'all'>;
+  });
+  return acc;
+}, {} as Record<string, Exclude<SectorId, 'all'>>);
 
-const GROWTH_SYMBOL_SECTORS: Record<string, Record<LangCode, string>> = {
-  NVDA: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
-  AMD: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
-  AVGO: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
-  INTC: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
-  TSM: { ar: 'الذكاء الاصطناعي وأشباه الموصلات', en: 'AI and semiconductors', fr: 'IA et semi-conducteurs' },
-  MSFT: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  CRM: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  NOW: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  SNOW: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  PLTR: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  AAPL: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-  AMZN: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-  GOOGL: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-  META: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-  NFLX: { ar: 'التقنية والمنصات', en: 'Big tech and platforms', fr: 'Grandes plateformes tech' },
-  TSLA: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
-  RIVN: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
-  LCID: { ar: 'المركبات الكهربائية والتنقل', en: 'EV and future mobility', fr: 'VE et mobilité future' },
-  CRWD: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
-  PANW: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
-  NET: { ar: 'الأمن السيبراني', en: 'Cybersecurity', fr: 'Cybersécurité' },
-  SHOP: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
-  MELI: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
-  ABNB: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
-  UBER: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
-  RBLX: { ar: 'التجارة الرقمية', en: 'E-commerce and digital economy', fr: 'E-commerce et économie numérique' },
-  DDOG: { ar: 'السحابة والبرمجيات', en: 'Cloud and software', fr: 'Cloud et logiciels' },
-  ISRG: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
-  DXCM: { ar: 'الرعاية الصحية المبتكرة', en: 'Innovative healthcare', fr: 'Santé innovante' },
-};
+const TAB_IDS: GrowthTab[] = ['overview', 'stocks', 'news', 'sectors'];
+const INITIAL_NEWS_LIMIT = 9;
+const NEWS_PAGE_SIZE = 9;
+const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW', en: 'en-US', fr: 'fr-FR' };
 
-function growthSymbolName(symbol: string) {
-  return GROWTH_SYMBOL_NAMES[symbol] ?? symbol;
+function getLang(lang: string): LangCode {
+  return lang === 'en' || lang === 'fr' ? lang : 'ar';
 }
 
-function growthSymbolSector(symbol: string, lang: LangCode, fallback: string) {
-  return GROWTH_SYMBOL_SECTORS[symbol]?.[lang] ?? FEATURED_META[symbol]?.sector[lang] ?? fallback;
+function safeUrl(url: string | null | undefined) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
-function localeFor(lang: string) {
-  if (lang === 'en') return 'en-US';
-  if (lang === 'fr') return 'fr-FR';
-  return 'ar-KW';
+function normalizeTitle(value: string | null | undefined) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store' });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.reason || payload?.error || `Request failed with ${response.status}`);
-  return payload as T;
+function dedupeNews(items: GrowthNewsItem[]) {
+  const seen = new Set<string>();
+  const result: GrowthNewsItem[] = [];
+  for (const item of items) {
+    const canonical = safeUrl(item.url);
+    const titleKey = normalizeTitle(item.titleOriginal || item.title || item.headline);
+    const key = canonical ? `url:${canonical}` : item.id ? `id:${item.id}` : `${item.source}:${titleKey}`;
+    if (!titleKey && !canonical) continue;
+    if (seen.has(key) || seen.has(`title:${titleKey}`)) continue;
+    seen.add(key);
+    if (titleKey) seen.add(`title:${titleKey}`);
+    result.push(item);
+  }
+  return result;
 }
 
-function changeTone(value: number | null | undefined) {
-  if (typeof value !== 'number' || value === 0) return 'neutral';
-  return value > 0 ? 'up' : 'down';
+function numberFormatter(lang: LangCode, options?: Intl.NumberFormatOptions) {
+  return new Intl.NumberFormat(LOCALE_BY_LANG[lang], options);
 }
 
-function formatMoney(value: number | null | undefined, currency = 'USD', locale = 'ar-KW') {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: currency === 'KWD' ? 3 : 2,
-    maximumFractionDigits: currency === 'KWD' ? 3 : 2,
-  }).format(value);
+function formatNumber(value: number | null | undefined, lang: LangCode, options?: Intl.NumberFormatOptions) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  return numberFormatter(lang, options).format(value);
 }
 
-function formatPercent(value: number | null | undefined, locale = 'ar-KW') {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '0.00%';
+function formatCurrency(value: number | null | undefined, currency: string | null | undefined, lang: LangCode) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  try {
+    return numberFormatter(lang, {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: value < 10 ? 2 : 2,
+      maximumFractionDigits: value < 10 ? 3 : 2,
+    }).format(value);
+  } catch {
+    return `${formatNumber(value, lang, { maximumFractionDigits: 2 })} ${currency ?? 'USD'}`;
+  }
+}
+
+function formatPercent(value: number | null | undefined, lang: LangCode) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
   const sign = value > 0 ? '+' : '';
-  return `${sign}${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
+  return `${sign}${numberFormatter(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
 }
 
-function formatDateTime(value: string, locale: string) {
+function formatCompact(value: number | null | undefined, lang: LangCode) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  return numberFormatter(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
+function formatDateTime(value: string | null | undefined, lang: LangCode) {
+  if (!value) return COPY[lang].unavailable;
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  if (Number.isNaN(date.getTime())) return COPY[lang].unavailable;
+  return new Intl.DateTimeFormat(LOCALE_BY_LANG[lang], {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kuwait',
+  }).format(date);
 }
 
-function relativeTime(value: string, lang: LangCode) {
+function formatRelative(value: string | null | undefined, lang: LangCode) {
+  if (!value) return COPY[lang].unavailable;
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '';
-  const diffMinutes = Math.round((date.getTime() - Date.now()) / 60000);
-  const abs = Math.abs(diffMinutes);
-  const locale = localeFor(lang);
-  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-  if (abs < 60) return formatter.format(diffMinutes, 'minute');
-  const hours = Math.round(diffMinutes / 60);
-  if (Math.abs(hours) < 24) return formatter.format(hours, 'hour');
-  return formatter.format(Math.round(hours / 24), 'day');
+  if (Number.isNaN(date.getTime())) return COPY[lang].unavailable;
+  const diffMs = date.getTime() - Date.now();
+  const diffMinutes = Math.round(diffMs / 60000);
+  const rtf = new Intl.RelativeTimeFormat(LOCALE_BY_LANG[lang], { numeric: 'auto' });
+  if (Math.abs(diffMinutes) < 60) return rtf.format(diffMinutes, 'minute');
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 48) return rtf.format(diffHours, 'hour');
+  return rtf.format(Math.round(diffHours / 24), 'day');
 }
 
-function newestTimestamp(values: Array<string | null | undefined>) {
-  return values
-    .map(value => value ? new Date(value).getTime() : 0)
-    .filter(value => Number.isFinite(value) && value > 0)
-    .sort((a, b) => b - a)[0]
-    ? new Date(values.map(value => value ? new Date(value).getTime() : 0).sort((a, b) => b - a)[0]).toISOString()
-    : '';
+function toneForChange(value: number | null | undefined): Tone {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'neutral';
+  if (value > 0.15) return 'positive';
+  if (value < -0.15) return 'negative';
+  return 'neutral';
 }
 
-function displayTitle(item: GrowthNewsItem) {
+function sectorLabel(id: SectorId, lang: LangCode) {
+  if (id === 'all') return COPY[lang].allSectors;
+  return SECTORS[id].labels[lang];
+}
+
+function sectorForSymbol(symbol: string): Exclude<SectorId, 'all'> {
+  return STOCK_SECTOR[symbol.toUpperCase()] ?? 'digital_platforms';
+}
+
+function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockRow[] {
+  return items.map(item => {
+    const sectorId = sectorForSymbol(item.symbol);
+    const tone = toneForChange(item.changePercent);
+    const momentumLabel = tone === 'positive'
+      ? COPY[lang].momentumPositive
+      : tone === 'negative'
+        ? COPY[lang].momentumNegative
+        : COPY[lang].momentumNeutral;
+    return {
+      ...item,
+      sectorId,
+      sectorLabel: sectorLabel(sectorId, lang),
+      momentumLabel,
+      momentumTone: tone,
+      valuationRiskLabel: COPY[lang].unknownValuation,
+      qualityLabel: COPY[lang].fundamentalsUnavailable,
+      growthClassification: COPY[lang].notEnoughFundamentals,
+      dataCompleteness: 35,
+    };
+  });
+}
+
+function stockMatchesSearch(row: GrowthStockRow, query: string) {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase();
+  return row.symbol.toLowerCase().includes(q)
+    || row.name.toLowerCase().includes(q)
+    || row.sectorLabel.toLowerCase().includes(q);
+}
+
+function newsMatchesSearch(item: GrowthNewsItem, query: string) {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase();
+  return [
+    item.title,
+    item.headline,
+    item.summary,
+    item.titleOriginal,
+    item.summaryOriginal,
+    item.source,
+    item.companyName,
+    item.ticker,
+    item.sector,
+    ...(item.sectors ?? []),
+  ].filter(Boolean).some(value => String(value).toLowerCase().includes(q));
+}
+
+function isWithinTimeFilter(value: string, filter: NewsTimeFilter) {
+  if (filter === 'all') return true;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const ageMs = Date.now() - date.getTime();
+  if (filter === 'day') return ageMs <= 24 * 60 * 60 * 1000;
+  if (filter === 'week') return ageMs <= 7 * 24 * 60 * 60 * 1000;
+  return ageMs <= 30 * 24 * 60 * 60 * 1000;
+}
+
+function classifyNewsSector(item: GrowthNewsItem): SectorId {
+  const symbol = item.ticker?.toUpperCase();
+  if (symbol && STOCK_SECTOR[symbol]) return STOCK_SECTOR[symbol];
+  const text = `${item.title} ${item.summary ?? ''} ${item.sector ?? ''} ${(item.sectors ?? []).join(' ')}`.toLowerCase();
+  if (/ai|artificial|nvidia|palantir|ذكاء/.test(text)) return 'ai';
+  if (/semiconductor|chip|amd|broadcom|رقائق|موصل/.test(text)) return 'semiconductors';
+  if (/cloud|software|salesforce|snowflake|datadog|سحابة|برمج/.test(text)) return 'cloud';
+  if (/cyber|security|crowdstrike|أمن/.test(text)) return 'cybersecurity';
+  if (/commerce|shopify|amazon|mercado|ecommerce|تجارة/.test(text)) return 'ecommerce';
+  if (/fintech|coinbase|paypal|block|مدفوعات/.test(text)) return 'fintech';
+  if (/tesla|ev|electric|vehicle|طاقة|سيارات/.test(text)) return 'ev';
+  if (/health|medical|biotech|صحة/.test(text)) return 'healthcare';
+  return 'digital_platforms';
+}
+
+function sortStocks(rows: GrowthStockRow[], sort: StockSort) {
+  const sorted = rows.slice();
+  if (sort === 'momentum') {
+    return sorted.sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity));
+  }
+  if (sort === 'leastVolatile') {
+    return sorted.sort((a, b) => Math.abs(a.changePercent ?? Infinity) - Math.abs(b.changePercent ?? Infinity));
+  }
+  if (sort === 'sector') {
+    return sorted.sort((a, b) => a.sectorLabel.localeCompare(b.sectorLabel));
+  }
+  return sorted.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function sortNews(items: GrowthNewsItem[], sort: NewsSort) {
+  const sorted = items.slice();
+  if (sort === 'oldest') {
+    return sorted.sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime());
+  }
+  if (sort === 'strongestMove') {
+    return sorted.sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0));
+  }
+  return sorted.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+}
+
+function getInitialTab(): GrowthTab {
+  if (typeof window === 'undefined') return 'overview';
+  const tab = new URLSearchParams(window.location.search).get('tab') as GrowthTab | null;
+  return tab && TAB_IDS.includes(tab) ? tab : 'overview';
+}
+
+function updateTabParam(tab: GrowthTab) {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', tab);
+  window.history.replaceState(null, '', url);
+}
+
+function uniqueOptions(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
+}
+
+function metricAverage(rows: GrowthStockRow[]) {
+  const usable = rows.map(row => row.changePercent).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  if (!usable.length) return null;
+  return usable.reduce((sum, value) => sum + value, 0) / usable.length;
+}
+
+function buildSectorStats(rows: GrowthStockRow[], lang: LangCode) {
+  return Object.entries(SECTORS).map(([id, meta]) => {
+    const sectorRows = rows.filter(row => row.sectorId === id);
+    const averageChange = metricAverage(sectorRows);
+    const top = sectorRows.slice().sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity))[0];
+    return {
+      id: id as Exclude<SectorId, 'all'>,
+      label: meta.labels[lang],
+      description: meta.description[lang],
+      drivers: meta.drivers[lang],
+      risks: meta.risks[lang],
+      symbols: meta.symbols,
+      count: sectorRows.length,
+      averageChange,
+      top,
+      icon: meta.icon,
+    };
+  });
+}
+
+function badgeClass(tone: Tone) {
+  return `badge tone-${tone}`;
+}
+
+function safeArticleTitle(item: GrowthNewsItem, showOriginal: boolean) {
+  if (showOriginal && item.titleOriginal) return item.titleOriginal;
   return item.title || item.headline || item.titleOriginal || '';
 }
 
-function displaySummary(item: GrowthNewsItem) {
-  const summary = item.summary || item.summaryOriginal || '';
-  if (summary) return summary;
-  return displayTitle(item).length > 150 ? `${displayTitle(item).slice(0, 147).trim()}...` : '';
+function safeArticleSummary(item: GrowthNewsItem, showOriginal: boolean) {
+  if (showOriginal && item.summaryOriginal) return item.summaryOriginal;
+  return item.summary || item.summaryOriginal || '';
 }
 
-function textForSearch(item: GrowthNewsItem) {
-  return [
-    displayTitle(item),
-    displaySummary(item),
-    item.source,
-    item.ticker,
-    item.companyName,
-    item.sector,
-    ...(item.sectors ?? []),
-  ].join(' ').toLowerCase();
-}
+export function GrowthStocksNewsPage() {
+  const { lang, dir } = useLanguage();
+  const activeLang = getLang(lang);
+  const text = COPY[activeLang];
+  const [tab, setTab] = useState<GrowthTab>(() => getInitialTab());
+  const [ticker, setTicker] = useState<GrowthTickerResponse | null>(null);
+  const [news, setNews] = useState<GrowthNewsResponse | null>(null);
+  const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockSector, setStockSector] = useState<SectorId>('all');
+  const [stockSort, setStockSort] = useState<StockSort>('momentum');
+  const [newsSearch, setNewsSearch] = useState('');
+  const [newsSector, setNewsSector] = useState<SectorId>('all');
+  const [newsSource, setNewsSource] = useState('all');
+  const [newsSymbol, setNewsSymbol] = useState('all');
+  const [newsTime, setNewsTime] = useState<NewsTimeFilter>('all');
+  const [newsSort, setNewsSort] = useState<NewsSort>('latest');
+  const [visibleNewsCount, setVisibleNewsCount] = useState(INITIAL_NEWS_LIMIT);
+  const [comparisonSymbols, setComparisonSymbols] = useState<string[]>([]);
+  const [openGuide, setOpenGuide] = useState<DisclosureId[]>([]);
+  const [originalVisibleIds, setOriginalVisibleIds] = useState<string[]>([]);
 
-function itemMatchesSearch(item: GrowthNewsItem, query: string) {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  return textForSearch(item).includes(needle);
-}
+  const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setLoading(true);
+    if (mode === 'refresh') setRefreshing(true);
+    setError(null);
 
-function itemMatchesFilter(item: GrowthNewsItem, filterId: GrowthFilterId) {
-  if (filterId === 'all') return true;
-  const filter = FILTERS.find(candidate => candidate.id === filterId);
-  if (!filter) return true;
-  const sectors = new Set([item.sector, ...(item.sectors ?? [])].filter(Boolean));
-  if (filter.sectors.some(sector => sectors.has(sector))) return true;
-  const text = textForSearch(item);
-  return filter.keywords.some(keyword => text.includes(keyword.toLowerCase()));
-}
+    try {
+      const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
+        fetch('/api/growth-stocks/ticker', { cache: 'no-store' }).then(response => response.json() as Promise<GrowthTickerResponse>),
+        fetch(`/api/growth-stocks/news?lang=${activeLang}&limit=48`, { cache: 'no-store' }).then(response => response.json() as Promise<GrowthNewsResponse>),
+        fetch('/api/growth-stocks/movers?limit=5', { cache: 'no-store' }).then(response => response.json() as Promise<StockCategoryMoversResponse>),
+      ]);
 
-function categoryLabelForItem(item: GrowthNewsItem, lang: LangCode) {
-  const sector = item.sectors?.[0] ?? item.sector ?? '';
-  const filter = FILTERS.find(candidate => candidate.sectors.includes(sector) || candidate.id === sector);
-  return filter?.label[lang] ?? FILTERS[0].label[lang];
-}
+      if (tickerResult.status === 'fulfilled') setTicker(tickerResult.value);
+      if (newsResult.status === 'fulfilled') setNews(newsResult.value);
+      if (moversResult.status === 'fulfilled') setMovers(moversResult.value);
 
-function useDebouncedValue<T>(value: T, delay: number) {
-  const [debounced, setDebounced] = useState(value);
+      if (tickerResult.status === 'rejected' && newsResult.status === 'rejected') {
+        setError(text.providerError);
+      }
+    } catch {
+      setError(text.providerError);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [activeLang, text.providerError]);
+
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timeout);
-  }, [delay, value]);
-  return debounced;
-}
+    void loadData('initial');
+  }, [loadData]);
 
-function SkeletonLine({ wide = false }: { wide?: boolean }) {
-  return <span className={`${styles.skeletonLine} ${wide ? styles.skeletonWide : ''}`} />;
-}
+  useEffect(() => {
+    updateTabParam(tab);
+  }, [tab]);
 
-function PanelTitle({
-  icon: Icon,
-  title,
-  subtitle,
-}: {
-  icon: typeof Sparkles;
-  title: string;
-  subtitle?: string;
-}) {
+  const stockRows = useMemo(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang), [activeLang, ticker]);
+  const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
+  const sectorStats = useMemo(() => buildSectorStats(stockRows, activeLang), [activeLang, stockRows]);
+
+  useEffect(() => {
+    if (comparisonSymbols.length === 0 && stockRows.length > 0) {
+      setComparisonSymbols(stockRows.slice(0, 4).map(row => row.symbol));
+    }
+  }, [comparisonSymbols.length, stockRows]);
+
+  const filteredStocks = useMemo(() => {
+    const rows = stockRows.filter(row => {
+      const sectorMatch = stockSector === 'all' || row.sectorId === stockSector;
+      return sectorMatch && stockMatchesSearch(row, stockSearch);
+    });
+    return sortStocks(rows, stockSort);
+  }, [stockRows, stockSearch, stockSector, stockSort]);
+
+  const newsSources = useMemo(() => uniqueOptions(dedupedNews.map(item => item.source)), [dedupedNews]);
+  const newsSymbols = useMemo(() => uniqueOptions(dedupedNews.map(item => item.ticker?.toUpperCase())), [dedupedNews]);
+
+  const filteredNews = useMemo(() => {
+    const items = dedupedNews.filter(item => {
+      const itemSector = classifyNewsSector(item);
+      const sectorMatch = newsSector === 'all' || itemSector === newsSector;
+      const sourceMatch = newsSource === 'all' || item.source === newsSource;
+      const symbolMatch = newsSymbol === 'all' || item.ticker?.toUpperCase() === newsSymbol;
+      return sectorMatch
+        && sourceMatch
+        && symbolMatch
+        && isWithinTimeFilter(item.publishedAt, newsTime)
+        && newsMatchesSearch(item, newsSearch);
+    });
+    return sortNews(items, newsSort);
+  }, [dedupedNews, newsSearch, newsSector, newsSort, newsSource, newsSymbol, newsTime]);
+
+  const featuredNews = filteredNews.slice(0, 3);
+  const regularNews = filteredNews.slice(3, visibleNewsCount);
+  const comparisonRows = comparisonSymbols
+    .map(symbol => stockRows.find(row => row.symbol === symbol))
+    .filter((row): row is GrowthStockRow => Boolean(row));
+
+  const summary = useMemo(() => {
+    const rising = stockRows.filter(row => (row.changePercent ?? 0) > 0).length;
+    const falling = stockRows.filter(row => (row.changePercent ?? 0) < 0).length;
+    const strongest = stockRows.slice().sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity))[0] ?? null;
+    const calmest = stockRows
+      .filter(row => typeof row.changePercent === 'number')
+      .sort((a, b) => Math.abs(a.changePercent ?? Infinity) - Math.abs(b.changePercent ?? Infinity))[0] ?? null;
+    const bestSector = sectorStats
+      .filter(sector => typeof sector.averageChange === 'number')
+      .sort((a, b) => (b.averageChange ?? -Infinity) - (a.averageChange ?? -Infinity))[0] ?? null;
+    return { rising, falling, strongest, calmest, bestSector };
+  }, [sectorStats, stockRows]);
+
+  const resetStockFilters = () => {
+    setStockSearch('');
+    setStockSector('all');
+    setStockSort('momentum');
+  };
+
+  const resetNewsFilters = () => {
+    setNewsSearch('');
+    setNewsSector('all');
+    setNewsSource('all');
+    setNewsSymbol('all');
+    setNewsTime('all');
+    setNewsSort('latest');
+    setVisibleNewsCount(INITIAL_NEWS_LIMIT);
+  };
+
+  const toggleComparisonSymbol = (symbol: string) => {
+    setComparisonSymbols(current => {
+      if (current.includes(symbol)) return current.filter(item => item !== symbol);
+      return [...current, symbol].slice(-5);
+    });
+  };
+
+  const toggleGuide = (id: DisclosureId) => {
+    setOpenGuide(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const toggleOriginal = (id: string) => {
+    setOriginalVisibleIds(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const hasActiveStockFilters = stockSearch.trim() || stockSector !== 'all' || stockSort !== 'momentum';
+  const hasActiveNewsFilters = newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsTime !== 'all' || newsSort !== 'latest';
+
   return (
-    <div className={styles.panelTitle}>
-      <span><Icon size={18} /></span>
-      <div>
-        <h2>{title}</h2>
-        {subtitle ? <p>{subtitle}</p> : null}
-      </div>
+    <div className="page" dir={dir}>
+      <Sidebar />
+      <main className="main">
+        <div className="container">
+          <header className="hero">
+            <div className="hero-copy">
+              <span className="eyebrow"><Sparkles size={16} />{text.badge}</span>
+              <h1>{text.title}</h1>
+              <p>{text.subtitle}</p>
+              <div className="hero-meta" aria-label={text.dataStatusTitle}>
+                <span><Clock3 size={15} />{text.lastQuoteUpdate}: {formatDateTime(ticker?.ok ? ticker.updated_at : null, activeLang)}</span>
+                <span><Newspaper size={15} />{text.lastNewsUpdate}: {formatDateTime(news?.success ? news.lastUpdated : null, activeLang)}</span>
+                <span className={ticker?.ok ? 'status-dot status-ok' : 'status-dot status-warn'}>
+                  {ticker?.ok ? text.connected : text.partial}
+                </span>
+              </div>
+            </div>
+            <div className="hero-panel">
+              <div>
+                <span>{text.methodology}</span>
+                <strong>{text.notEnoughFundamentals}</strong>
+                <p>{text.insufficientMethodology}</p>
+              </div>
+              <button className="refresh-button" type="button" onClick={() => void loadData('refresh')} disabled={refreshing}>
+                <RefreshCcw size={17} className={refreshing ? 'spin' : undefined} />
+                {refreshing ? text.refreshing : text.refresh}
+              </button>
+            </div>
+          </header>
+
+          {error ? (
+            <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} actionLabel={text.retry} onAction={() => void loadData('refresh')} />
+          ) : null}
+
+          <TickerStrip items={stockRows} loading={loading} lang={activeLang} />
+
+          <nav className="tabs" role="tablist" aria-label={text.title}>
+            {TAB_IDS.map(item => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                className={tab === item ? 'tab active' : 'tab'}
+                aria-selected={tab === item}
+                onClick={() => setTab(item)}
+              >
+                {text.tabs[item]}
+              </button>
+            ))}
+          </nav>
+
+          {tab === 'overview' ? (
+            <OverviewTab
+              text={text}
+              lang={activeLang}
+              loading={loading}
+              stockRows={stockRows}
+              summary={summary}
+              sectorStats={sectorStats}
+              comparisonRows={comparisonRows}
+              comparisonSymbols={comparisonSymbols}
+              toggleComparisonSymbol={toggleComparisonSymbol}
+              guideOpen={openGuide}
+              toggleGuide={toggleGuide}
+              movers={movers}
+            />
+          ) : null}
+
+          {tab === 'stocks' ? (
+            <StocksTab
+              text={text}
+              lang={activeLang}
+              rows={filteredStocks}
+              allRows={stockRows}
+              search={stockSearch}
+              sector={stockSector}
+              sort={stockSort}
+              setSearch={setStockSearch}
+              setSector={setStockSector}
+              setSort={setStockSort}
+              reset={resetStockFilters}
+              hasActiveFilters={Boolean(hasActiveStockFilters)}
+              loading={loading}
+              comparisonSymbols={comparisonSymbols}
+              toggleComparisonSymbol={toggleComparisonSymbol}
+            />
+          ) : null}
+
+          {tab === 'news' ? (
+            <NewsTab
+              text={text}
+              lang={activeLang}
+              loading={loading}
+              featured={featuredNews}
+              regular={regularNews}
+              total={filteredNews.length}
+              visibleCount={visibleNewsCount}
+              setVisibleCount={setVisibleNewsCount}
+              search={newsSearch}
+              sector={newsSector}
+              source={newsSource}
+              symbol={newsSymbol}
+              time={newsTime}
+              sort={newsSort}
+              sources={newsSources}
+              symbols={newsSymbols}
+              setSearch={setNewsSearch}
+              setSector={setNewsSector}
+              setSource={setNewsSource}
+              setSymbol={setNewsSymbol}
+              setTime={setNewsTime}
+              setSort={setNewsSort}
+              reset={resetNewsFilters}
+              hasActiveFilters={Boolean(hasActiveNewsFilters)}
+              originalVisibleIds={originalVisibleIds}
+              toggleOriginal={toggleOriginal}
+            />
+          ) : null}
+
+          {tab === 'sectors' ? (
+            <SectorsTab text={text} lang={activeLang} stats={sectorStats} loading={loading} />
+          ) : null}
+
+          <footer className="footer-note">
+            <Info size={18} />
+            <div>
+              <strong>{text.sourceNotice}</strong>
+              <p>{text.disclaimer}</p>
+              <p>{text.noPortfolioTab}</p>
+            </div>
+          </footer>
+        </div>
+      </main>
+
+      <style jsx>{`
+        .page {
+          min-height: 100dvh;
+          background:
+            radial-gradient(circle at top left, rgba(30, 184, 214, 0.14), transparent 34rem),
+            linear-gradient(180deg, #f5fbff 0%, #eef7ff 46%, #f8fbff 100%);
+          color: #0f1f35;
+        }
+        .main {
+          min-width: 0;
+          padding: 24px clamp(16px, 2vw, 32px) 56px;
+          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+        }
+        :global([dir="ltr"]) .main {
+          padding-inline-start: clamp(16px, 2vw, 32px);
+          padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+        }
+        .container {
+          width: min(100%, 1500px);
+          margin-inline: auto;
+          display: grid;
+          gap: 22px;
+        }
+        .hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 360px;
+          gap: 22px;
+          align-items: stretch;
+          padding: 26px;
+          border: 1px solid rgba(63, 127, 158, 0.22);
+          border-radius: 24px;
+          background:
+            linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(9, 78, 101, 0.9)),
+            radial-gradient(circle at 12% 20%, rgba(42, 213, 235, 0.32), transparent 22rem);
+          color: #f8fdff;
+          box-shadow: 0 24px 60px rgba(10, 42, 75, 0.16);
+          overflow: hidden;
+        }
+        .hero-copy {
+          display: grid;
+          align-content: center;
+          gap: 13px;
+          min-width: 0;
+        }
+        .eyebrow,
+        .hero-meta,
+        .status-dot,
+        .mini-meta,
+        .article-meta,
+        .metric-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .eyebrow {
+          width: fit-content;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(35, 211, 231, 0.14);
+          border: 1px solid rgba(141, 242, 255, 0.28);
+          color: #b8f6ff;
+          font-size: 13px;
+          font-weight: 800;
+        }
+        .hero h1 {
+          margin: 0;
+          font-size: clamp(32px, 4vw, 46px);
+          line-height: 1.08;
+          letter-spacing: 0;
+        }
+        .hero p {
+          margin: 0;
+          max-width: 860px;
+          color: rgba(239, 251, 255, 0.82);
+          font-size: 15px;
+          line-height: 1.85;
+        }
+        .hero-meta {
+          flex-wrap: wrap;
+          gap: 9px;
+          margin-top: 4px;
+        }
+        .hero-meta span {
+          min-height: 34px;
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.09);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          color: rgba(255, 255, 255, 0.88);
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .status-dot::before {
+          content: '';
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #94a3b8;
+        }
+        .status-ok::before { background: #2dd4bf; }
+        .status-warn::before { background: #f59e0b; }
+        .hero-panel {
+          display: grid;
+          gap: 18px;
+          align-content: space-between;
+          padding: 20px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.11);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+        }
+        .hero-panel span {
+          color: #a8f3ff;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .hero-panel strong {
+          display: block;
+          margin-top: 7px;
+          font-size: 19px;
+        }
+        .refresh-button,
+        .primary-button,
+        .ghost-button,
+        .chip,
+        .tab,
+        .filter-select,
+        .filter-input,
+        .link-button,
+        .icon-button,
+        .guide-button {
+          min-height: 44px;
+          border-radius: 14px;
+          border: 1px solid rgba(53, 116, 146, 0.18);
+          font: inherit;
+          transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+        .refresh-button,
+        .primary-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: linear-gradient(135deg, #1f7eea, #18c4d4);
+          color: #fff;
+          border: 0;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow: 0 14px 26px rgba(24, 139, 202, 0.25);
+        }
+        .refresh-button:hover,
+        .primary-button:hover,
+        .card-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 18px 34px rgba(20, 78, 118, 0.14);
+        }
+        .refresh-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.68;
+        }
+        .spin {
+          animation: spin 850ms linear infinite;
+        }
+        .tabs {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding: 8px;
+          border: 1px solid rgba(69, 132, 159, 0.16);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.78);
+          box-shadow: 0 14px 36px rgba(15, 61, 92, 0.08);
+        }
+        .tab {
+          flex: 0 0 auto;
+          padding: 0 18px;
+          background: #fff;
+          color: #456176;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .tab.active {
+          color: #fff;
+          border-color: transparent;
+          background: linear-gradient(135deg, #1768d4, #19c7d6);
+          box-shadow: 0 12px 24px rgba(25, 138, 204, 0.22);
+        }
+        .section,
+        .panel,
+        .card,
+        .footer-note,
+        .ticker-panel,
+        .state-box {
+          border: 1px solid rgba(58, 124, 154, 0.16);
+          background: rgba(255, 255, 255, 0.88);
+          border-radius: 22px;
+          box-shadow: 0 16px 40px rgba(24, 62, 92, 0.08);
+        }
+        .section,
+        .panel {
+          padding: 22px;
+        }
+        .section-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .section-title {
+          display: grid;
+          gap: 6px;
+        }
+        .section-title h2,
+        .section-title h3 {
+          margin: 0;
+          color: #102742;
+          font-size: clamp(20px, 2.4vw, 26px);
+          line-height: 1.25;
+        }
+        .section-title p {
+          margin: 0;
+          color: #5f7388;
+          font-size: 14px;
+          line-height: 1.8;
+        }
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .metric-card {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+          padding: 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          background: linear-gradient(180deg, #ffffff, #f8fcff);
+        }
+        .metric-icon {
+          display: inline-grid;
+          place-items: center;
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          background: rgba(25, 190, 213, 0.12);
+          color: #138da6;
+        }
+        .metric-label {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .metric-value {
+          color: #0f253f;
+          font-size: 24px;
+          font-weight: 950;
+          line-height: 1.1;
+        }
+        .metric-help {
+          color: #64748b;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+        .ticker-panel {
+          padding: 12px;
+          overflow: hidden;
+        }
+        .ticker-scroll {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+        .ticker-item {
+          flex: 0 0 210px;
+          display: grid;
+          gap: 7px;
+          padding: 14px;
+          border-radius: 16px;
+          background: #fff;
+          border: 1px solid rgba(58, 124, 154, 0.13);
+        }
+        .ticker-top,
+        .stock-head,
+        .card-actions,
+        .row-between,
+        .article-actions,
+        .filter-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .ticker-symbol,
+        .symbol {
+          direction: ltr;
+          unicode-bidi: isolate;
+          color: #0f253f;
+          font-weight: 950;
+          letter-spacing: 0;
+        }
+        .ticker-name,
+        .muted {
+          color: #64748b;
+        }
+        .numeric {
+          direction: ltr;
+          unicode-bidi: isolate;
+          font-variant-numeric: tabular-nums;
+        }
+        .tone-positive { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.22); }
+        .tone-negative { color: #b42318; background: rgba(239, 68, 68, 0.09); border-color: rgba(239, 68, 68, 0.2); }
+        .tone-warning { color: #a16207; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.24); }
+        .tone-neutral { color: #526579; background: rgba(100, 116, 139, 0.1); border-color: rgba(100, 116, 139, 0.18); }
+        .tone-info { color: #075985; background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.22); }
+        .badge,
+        .pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: fit-content;
+          min-height: 28px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(58, 124, 154, 0.16);
+          font-size: 12px;
+          font-weight: 850;
+          white-space: nowrap;
+        }
+        .workspace-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.7fr);
+          gap: 18px;
+          align-items: start;
+        }
+        .stack {
+          display: grid;
+          gap: 18px;
+        }
+        .compare-list,
+        .stock-grid,
+        .news-grid,
+        .sector-grid,
+        .guide-grid {
+          display: grid;
+          gap: 14px;
+        }
+        .stock-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .news-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .sector-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .guide-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .compare-row {
+          display: grid;
+          grid-template-columns: 120px minmax(0, 1fr) 82px;
+          gap: 12px;
+          align-items: center;
+        }
+        .bar-shell {
+          height: 12px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #e8f2f8;
+        }
+        .bar-fill {
+          height: 100%;
+          min-width: 4px;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #1768d4, #19c7d6);
+        }
+        .card {
+          display: grid;
+          gap: 14px;
+          min-width: 0;
+          padding: 18px;
+        }
+        .stock-logo {
+          display: grid;
+          place-items: center;
+          width: 52px;
+          height: 52px;
+          flex: 0 0 52px;
+          border-radius: 17px;
+          color: #0e7490;
+          background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          font-weight: 950;
+        }
+        .stock-title {
+          min-width: 0;
+        }
+        .stock-title h3,
+        .article-title,
+        .sector-title {
+          margin: 0;
+          color: #102742;
+          font-size: 17px;
+          line-height: 1.45;
+          font-weight: 950;
+        }
+        .stock-title p {
+          margin: 4px 0 0;
+          color: #64748b;
+          font-size: 13px;
+        }
+        .metric-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .mini-metric {
+          min-width: 0;
+          padding: 12px;
+          border-radius: 14px;
+          background: #f7fbff;
+          border: 1px solid rgba(58, 124, 154, 0.12);
+        }
+        .mini-metric span {
+          display: block;
+          color: #697b8d;
+          font-size: 11px;
+          font-weight: 850;
+        }
+        .mini-metric strong {
+          display: block;
+          margin-top: 5px;
+          color: #102742;
+          font-size: 14px;
+          font-weight: 950;
+        }
+        .filter-panel {
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, 220px)) auto;
+          gap: 10px;
+          align-items: end;
+          padding: 16px;
+          border-radius: 20px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          background: #fff;
+        }
+        .field {
+          display: grid;
+          gap: 7px;
+          min-width: 0;
+        }
+        .field label {
+          color: #50677c;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .input-wrap {
+          position: relative;
+          min-width: 0;
+        }
+        .input-wrap svg {
+          position: absolute;
+          inset-inline-start: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #7b90a4;
+          pointer-events: none;
+        }
+        .filter-input,
+        .filter-select {
+          width: 100%;
+          background: #f8fbff;
+          color: #102742;
+          padding: 0 13px;
+          outline: none;
+        }
+        .filter-input {
+          padding-inline-start: 40px;
+        }
+        .filter-input:focus,
+        .filter-select:focus,
+        .tab:focus-visible,
+        .refresh-button:focus-visible,
+        .primary-button:focus-visible,
+        .ghost-button:focus-visible,
+        .guide-button:focus-visible,
+        .link-button:focus-visible,
+        .icon-button:focus-visible,
+        .chip:focus-visible {
+          outline: 3px solid rgba(20, 184, 216, 0.24);
+          outline-offset: 2px;
+          border-color: rgba(20, 184, 216, 0.55);
+        }
+        .ghost-button,
+        .chip,
+        .link-button,
+        .icon-button,
+        .guide-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          background: #fff;
+          color: #1768a8;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .chip {
+          min-height: 38px;
+          padding: 0 13px;
+        }
+        .chip.active {
+          color: #fff;
+          border-color: transparent;
+          background: linear-gradient(135deg, #1768d4, #19c7d6);
+        }
+        .article-card {
+          min-height: 100%;
+        }
+        .article-title {
+          display: -webkit-box;
+          overflow: hidden;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+        .article-summary {
+          display: -webkit-box;
+          overflow: hidden;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          margin: 0;
+          color: #5b7085;
+          font-size: 14px;
+          line-height: 1.75;
+        }
+        .article-meta {
+          flex-wrap: wrap;
+          color: #60758a;
+          font-size: 12px;
+          font-weight: 750;
+        }
+        .article-actions {
+          margin-top: auto;
+          flex-wrap: wrap;
+        }
+        .featured-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+          gap: 14px;
+        }
+        .lead-card {
+          padding: 22px;
+          background:
+            linear-gradient(135deg, rgba(15, 42, 73, 0.97), rgba(16, 112, 135, 0.88)),
+            radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.2), transparent 20rem);
+          color: #fff;
+        }
+        .lead-card .article-title {
+          color: #fff;
+          font-size: clamp(20px, 2.2vw, 28px);
+        }
+        .lead-card .article-summary,
+        .lead-card .article-meta {
+          color: rgba(239, 251, 255, 0.82);
+        }
+        .side-news {
+          display: grid;
+          gap: 12px;
+        }
+        .compact-row {
+          display: grid;
+          gap: 8px;
+          padding: 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          background: #fff;
+        }
+        .movers-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .mover-list {
+          display: grid;
+          gap: 8px;
+        }
+        .mover-row {
+          display: grid;
+          grid-template-columns: 30px minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          padding: 10px;
+          border-radius: 13px;
+          background: #f8fbff;
+          border: 1px solid rgba(58, 124, 154, 0.1);
+        }
+        .rank {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 10px;
+          background: rgba(24, 196, 212, 0.11);
+          color: #0e7490;
+          font-weight: 950;
+          font-size: 12px;
+        }
+        .guide-button {
+          width: 100%;
+          justify-content: space-between;
+          padding: 0 14px;
+          text-align: start;
+        }
+        .guide-content {
+          margin-top: 10px;
+          color: #5b7085;
+          font-size: 14px;
+          line-height: 1.8;
+        }
+        .sector-card {
+          align-content: start;
+        }
+        .sector-icon {
+          display: grid;
+          place-items: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 16px;
+          background: rgba(20, 184, 216, 0.12);
+          color: #0e7490;
+        }
+        .footer-note {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 18px;
+          color: #50677c;
+          line-height: 1.8;
+        }
+        .footer-note strong {
+          display: block;
+          color: #102742;
+          margin-bottom: 2px;
+        }
+        .footer-note p {
+          margin: 0;
+        }
+        .state-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 18px;
+        }
+        .skeleton {
+          position: relative;
+          overflow: hidden;
+          min-height: 120px;
+          border-radius: 18px;
+          background: #eaf4fb;
+        }
+        .skeleton::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          transform: translateX(-100%);
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+          animation: shimmer 1.4s infinite;
+        }
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+          }
+        }
+        @media (max-width: 1280px) {
+          .hero,
+          .workspace-grid,
+          .featured-layout {
+            grid-template-columns: 1fr;
+          }
+          .summary-grid,
+          .stock-grid,
+          .news-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .filter-panel {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 900px) {
+          .main {
+            padding-inline: 16px;
+            padding-top: 18px;
+          }
+          :global([dir="ltr"]) .main {
+            padding-inline: 16px;
+          }
+          .hero {
+            padding: 20px;
+            border-radius: 20px;
+          }
+          .section,
+          .panel {
+            padding: 16px;
+          }
+          .summary-grid,
+          .stock-grid,
+          .news-grid,
+          .sector-grid,
+          .guide-grid,
+          .movers-grid {
+            grid-template-columns: 1fr;
+          }
+          .filter-panel {
+            grid-template-columns: 1fr;
+          }
+          .section-header,
+          .ticker-top,
+          .card-actions,
+          .row-between,
+          .filter-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+          .primary-button,
+          .ghost-button,
+          .refresh-button {
+            width: 100%;
+          }
+          .compare-row {
+            grid-template-columns: 92px minmax(0, 1fr);
+          }
+          .compare-row > .numeric:last-child {
+            grid-column: 1 / -1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-function GrowthTicker({
-  items,
-  loading,
-  error,
-  lang,
-  text,
-  locale,
-}: {
-  items: GrowthTickerItem[];
-  loading: boolean;
-  error: string;
-  lang: LangCode;
-  text: typeof TEXT[LangCode];
-  locale: string;
-}) {
-  const tickerSet = items.length > 0 ? items : [];
+function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loading: boolean; lang: LangCode }) {
+  if (loading) {
+    return (
+      <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
+        <div className="ticker-scroll">
+          {Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
-      <PanelTitle icon={Zap} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
-      {loading ? (
-        <div className={styles.tickerSkeletonRow} aria-hidden="true">
-          {Array.from({ length: 7 }).map((_, index) => <span key={index} />)}
-        </div>
-      ) : error || tickerSet.length === 0 ? (
-        <div className={styles.inlineState}>
-          <AlertTriangle size={18} />
-          <span>{error || text.tickerEmpty}</span>
-        </div>
-      ) : (
-        <div className={styles.tickerStrip}>
-          <span className={styles.tickerStatus}>{text.liveStatus}</span>
-          <div className={styles.tickerViewport}>
-            <div className={styles.tickerTrack}>
-              {[0, 1].map(setIndex => (
-                <div className={styles.tickerSet} key={setIndex} aria-hidden={setIndex === 1}>
-                  {tickerSet.map(item => {
-                    const tone = changeTone(item.changePercent);
-                    const displayName = growthSymbolName(item.symbol) === item.symbol ? item.name : growthSymbolName(item.symbol);
-                    return (
-                      <article className={styles.tickerItem} key={`${setIndex}-${item.symbol}`}>
-                        <div>
-                          <strong dir="ltr">{item.symbol}</strong>
-                          <span>{displayName}</span>
-                          <span>{growthSymbolSector(item.symbol, lang, text.unavailable)}</span>
-                        </div>
-                        <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-                        <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                      </article>
-                    );
-                  })}
-                </div>
-              ))}
+    <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
+      <div className="ticker-scroll">
+        {items.map(item => (
+          <article className="ticker-item" key={item.symbol}>
+            <div className="ticker-top">
+              <span className="ticker-symbol">{item.symbol}</span>
+              <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>
             </div>
-          </div>
-        </div>
-      )}
+            <strong className="numeric">{formatCurrency(item.price, item.currency, lang)}</strong>
+            <span className="ticker-name">{item.name}</span>
+            <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
 
-function WhatGrowthCard({ text }: { text: typeof TEXT[LangCode] }) {
-  return (
-    <article className={`${styles.summaryCard} ${styles.infoCard}`}>
-      <PanelTitle icon={Sparkles} title={text.whatTitle} />
-      <p>{text.whatBody}</p>
-      <ul>
-        {[text.revenueGrowth, text.rapidExpansion, text.higherVolatility, text.futureFocus].map(point => (
-          <li key={point}><span />{point}</li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-function GrowthSectorsCard({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  return (
-    <article className={styles.summaryCard}>
-      <PanelTitle icon={BookOpen} title={text.sectorTitle} />
-      <div className={styles.sectorMiniList}>
-        {SECTOR_GUIDES.map(sector => {
-          const Icon = sector.icon;
-          return (
-            <div className={styles.sectorMiniRow} key={sector.id}>
-              <span><Icon size={17} /></span>
-              <div>
-                <strong>{sector.title[lang]}</strong>
-                <p>{sector.body[lang]}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-function ComparisonCard({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  const growth = {
-    ar: ['نمو أسرع', 'تقييمات أعلى', 'تقلب أكبر', 'مناسبة للمستثمر طويل الأجل'],
-    en: ['Faster growth', 'Higher valuations', 'Higher volatility', 'Suited to long-term investors'],
-    fr: ['Croissance plus rapide', 'Valorisations plus élevées', 'Volatilité plus élevée', 'Adaptées aux investisseurs long terme'],
-  };
-  const value = {
-    ar: ['تقييم أقل', 'أرباح حالية أقوى', 'توزيعات محتملة', 'مناسبة للمستثمر المحافظ'],
-    en: ['Lower valuation', 'Stronger current earnings', 'Potential dividends', 'Suited to conservative investors'],
-    fr: ['Valorisation plus faible', 'Bénéfices actuels plus solides', 'Dividendes possibles', 'Adaptées aux investisseurs prudents'],
-  };
-  return (
-    <article className={`${styles.summaryCard} ${styles.comparisonCard}`}>
-      <PanelTitle icon={Layers3} title={text.comparisonTitle} />
-      <div className={styles.comparisonGrid}>
-        <div className={styles.defensiveColumn}>
-          <strong>{text.growthStocks}</strong>
-          {growth[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-        <div className={styles.cyclicalColumn}>
-          <strong>{text.valueStocks}</strong>
-          {value[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function MovementCard({
+function OverviewTab({
+  text,
+  lang,
+  loading,
+  stockRows,
+  summary,
+  sectorStats,
+  comparisonRows,
+  comparisonSymbols,
+  toggleComparisonSymbol,
+  guideOpen,
+  toggleGuide,
   movers,
-  tickerItems,
-  loading,
-  text,
-  locale,
 }: {
-  movers: StockCategoryMoverItem[];
-  tickerItems: GrowthTickerItem[];
+  text: typeof COPY[LangCode];
+  lang: LangCode;
   loading: boolean;
-  text: typeof TEXT[LangCode];
-  locale: string;
+  stockRows: GrowthStockRow[];
+  summary: {
+    rising: number;
+    falling: number;
+    strongest: GrowthStockRow | null;
+    calmest: GrowthStockRow | null;
+    bestSector: ReturnType<typeof buildSectorStats>[number] | null;
+  };
+  sectorStats: ReturnType<typeof buildSectorStats>;
+  comparisonRows: GrowthStockRow[];
+  comparisonSymbols: string[];
+  toggleComparisonSymbol: (symbol: string) => void;
+  guideOpen: DisclosureId[];
+  toggleGuide: (id: DisclosureId) => void;
+  movers: StockCategoryMoversResponse | null;
 }) {
-  const rows = movers.length > 0
-    ? movers.map(item => ({ ...item, sourceName: item.name }))
-    : tickerItems
-      .filter(item => typeof item.changePercent === 'number')
-      .slice()
-      .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))
-      .slice(0, 5)
-      .map((item, index) => ({
-        rank: index + 1,
-        symbol: item.symbol,
-        name: item.name,
-        price: item.price,
-        currency: item.currency,
-        changePercent: item.changePercent,
-        volume: null,
-        sourceName: item.name,
-      }));
-
   return (
-    <article className={styles.summaryCard}>
-      <PanelTitle icon={BarChart3} title={text.movementTitle} subtitle={text.movementSubtitle} />
-      <div className={styles.topStocksList}>
-        {loading ? (
-          Array.from({ length: 5 }).map((_, index) => (
-            <div className={styles.topStockRow} key={index}>
-              <SkeletonLine />
-              <SkeletonLine />
-            </div>
-          ))
-        ) : rows.length > 0 ? (
-          rows.map(item => {
-            const tone = changeTone(item.changePercent);
-            return (
-              <div className={styles.topStockRow} key={item.symbol}>
-                <div>
-                  <strong dir="ltr">#{item.rank} {item.symbol}</strong>
-                  <span>{item.name}</span>
-                </div>
-                <div className={styles.topStockValue}>
-                  <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-                  <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                </div>
+    <div className="stack">
+      <section className="section">
+        <SectionHeader title={text.summaryTitle} description={text.marketClosedNote} />
+        <div className="summary-grid">
+          <MetricCard icon={TrendingUp} label={text.risingStocks} value={String(summary.rising)} help={`${text.trackedStocks}: ${stockRows.length}`} loading={loading} tone="positive" />
+          <MetricCard icon={TrendingDown} label={text.fallingStocks} value={String(summary.falling)} help={`${text.trackedStocks}: ${stockRows.length}`} loading={loading} tone="negative" />
+          <MetricCard icon={BarChart3} label={text.bestSector} value={summary.bestSector?.label ?? text.unavailable} help={summary.bestSector ? formatPercent(summary.bestSector.averageChange, lang) : text.unavailable} loading={loading} tone="info" />
+          <MetricCard icon={Zap} label={text.strongestStock} value={summary.strongest?.symbol ?? text.unavailable} help={summary.strongest ? formatPercent(summary.strongest.changePercent, lang) : text.unavailable} loading={loading} tone="warning" />
+        </div>
+      </section>
+
+      <div className="workspace-grid">
+        <div className="stack">
+          <section className="section">
+            <SectionHeader title={text.comparisonTitle} description={text.comparisonDescription} />
+            <div className="filter-actions" style={{ marginBottom: 14 }}>
+              <div className="ticker-scroll" aria-label={text.selectForCompare}>
+                {stockRows.slice(0, 14).map(row => (
+                  <button
+                    key={row.symbol}
+                    type="button"
+                    className={comparisonSymbols.includes(row.symbol) ? 'chip active' : 'chip'}
+                    onClick={() => toggleComparisonSymbol(row.symbol)}
+                  >
+                    <span className="symbol">{row.symbol}</span>
+                  </button>
+                ))}
               </div>
-            );
-          })
-        ) : (
-          <p className={styles.cardMuted}>{text.unavailable}</p>
-        )}
+            </div>
+            <ComparisonChart rows={comparisonRows} lang={lang} text={text} />
+          </section>
+
+          <section className="section">
+            <SectionHeader title={text.highlightedTitle} description={text.highlightedDescription} />
+            <div className="stock-grid">
+              {stockRows.slice(0, 6).map(row => (
+                <GrowthStockCard key={row.symbol} row={row} text={text} lang={lang} compact />
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="stack">
+          <DataStatusPanel text={text} lang={lang} rows={stockRows} />
+          <MoversPanel text={text} lang={lang} movers={movers} />
+          <EducationGuide text={text} open={guideOpen} toggle={toggleGuide} />
+        </aside>
       </div>
-    </article>
+
+      <section className="section">
+        <SectionHeader title={text.sectorsTitle} description={text.sectorsDescription} />
+        <div className="sector-grid">
+          {sectorStats.slice(0, 4).map(sector => <SectorCard key={sector.id} sector={sector} lang={lang} />)}
+        </div>
+      </section>
+    </div>
   );
 }
 
-function NewsCard({
-  item,
-  lang,
-  locale,
+function StocksTab({
   text,
-}: {
-  item: GrowthNewsItem;
-  lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
-}) {
-  const title = displayTitle(item);
-  const summary = displaySummary(item);
-  const tone = changeTone(item.changePercent);
-  const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
-  const contentDir = item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : 'auto';
-  const hasUrl = Boolean(item.url);
-
-  return (
-    <article className={styles.newsCard}>
-      <div className={styles.newsCardTop}>
-        <span className={styles.categoryTag}>{categoryLabelForItem(item, lang)}</span>
-        <span className={styles.newsTime}><Clock3 size={13} />{relativeTime(item.publishedAt, lang)}</span>
-      </div>
-      <h3 dir={contentDir}>{title}</h3>
-      {summary ? <p dir={contentDir}>{summary}</p> : null}
-      <div className={styles.newsMetaGrid}>
-        <span>{text.source}: <b>{item.source || text.source}</b></span>
-        {item.ticker ? <span dir="ltr">{item.ticker}</span> : null}
-        {typeof item.price === 'number' ? (
-          <span className={styles.newsPrice} dir="ltr">
-            {formatMoney(item.price, 'USD', locale)}
-            {typeof item.changePercent === 'number' ? (
-              <em className={styles[tone]}>
-                <TrendIcon size={12} />
-                {formatPercent(item.changePercent, locale)}
-              </em>
-            ) : null}
-          </span>
-        ) : null}
-        <span>{item.isTranslated ? text.translated : text.originalLanguage}</span>
-      </div>
-      <div className={styles.newsFooter}>
-        <span title={formatDateTime(item.publishedAt, locale)}>
-          <Clock3 size={13} />
-          {formatDateTime(item.publishedAt, locale)}
-        </span>
-        {hasUrl ? (
-          <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${text.readArticle}: ${title}`}>
-            {text.readArticle}
-            <ExternalLink size={14} />
-          </a>
-        ) : (
-          <span className={styles.disabledLink}>
-            {text.noLink}
-            <ExternalLink size={14} />
-          </span>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function NewsSection({
-  items,
+  lang,
+  rows,
+  allRows,
+  search,
+  sector,
+  sort,
+  setSearch,
+  setSector,
+  setSort,
+  reset,
+  hasActiveFilters,
   loading,
-  error,
-  activeFilter,
-  setActiveFilter,
-  query,
-  setQuery,
-  visibleCount,
-  setVisibleCount,
-  counts,
-  lang,
-  locale,
-  text,
-  retry,
+  comparisonSymbols,
+  toggleComparisonSymbol,
 }: {
-  items: GrowthNewsItem[];
-  loading: boolean;
-  error: string;
-  activeFilter: GrowthFilterId;
-  setActiveFilter: (filter: GrowthFilterId) => void;
-  query: string;
-  setQuery: (query: string) => void;
-  visibleCount: number;
-  setVisibleCount: (updater: (count: number) => number) => void;
-  counts: Record<GrowthFilterId, number>;
+  text: typeof COPY[LangCode];
   lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
-  retry: () => void;
+  rows: GrowthStockRow[];
+  allRows: GrowthStockRow[];
+  search: string;
+  sector: SectorId;
+  sort: StockSort;
+  setSearch: (value: string) => void;
+  setSector: (value: SectorId) => void;
+  setSort: (value: StockSort) => void;
+  reset: () => void;
+  hasActiveFilters: boolean;
+  loading: boolean;
+  comparisonSymbols: string[];
+  toggleComparisonSymbol: (symbol: string) => void;
 }) {
-  const visibleItems = items.slice(0, visibleCount);
-  const hasMore = visibleCount < items.length;
-
   return (
-    <section className={styles.newsPanel} aria-label={text.newsTitle}>
-      <div className={styles.newsHead}>
-        <PanelTitle icon={Newspaper} title={text.newsTitle} subtitle={text.newsSubtitle} />
-        <div className={styles.resultsCount}>
-          <span>{text.showing}</span>
-          <b>{Math.min(visibleCount, items.length)} / {items.length}</b>
-          <span>{text.results}</span>
+    <section className="section">
+      <SectionHeader title={text.stocksTitle} description={text.stocksDescription} action={<span className="pill">{text.resultCount}: {rows.length}</span>} />
+      <div className="filter-panel">
+        <div className="field">
+          <label htmlFor="growth-stock-search">{text.filter}</label>
+          <div className="input-wrap">
+            <Search size={17} />
+            <input id="growth-stock-search" className="filter-input" value={search} onChange={event => setSearch(event.target.value)} placeholder={text.searchStocks} />
+          </div>
         </div>
-      </div>
-
-      <div className={styles.newsControls}>
-        <label className={styles.searchBox}>
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder={text.searchPlaceholder}
-            aria-label={text.searchPlaceholder}
-          />
-        </label>
-        <div className={styles.filterScroller} aria-label={text.filtersLabel}>
-          {FILTERS.map(filter => (
-            <button
-              type="button"
-              key={filter.id}
-              className={activeFilter === filter.id ? styles.activeFilter : ''}
-              onClick={() => setActiveFilter(filter.id)}
-            >
-              {filter.label[lang]}
-              <span>{counts[filter.id] ?? 0}</span>
-            </button>
-          ))}
+        <div className="field">
+          <label htmlFor="growth-stock-sector">{text.sector}</label>
+          <select id="growth-stock-sector" className="filter-select" value={sector} onChange={event => setSector(event.target.value as SectorId)}>
+            <option value="all">{text.allSectors}</option>
+            {Object.keys(SECTORS).map(id => <option key={id} value={id}>{sectorLabel(id as SectorId, lang)}</option>)}
+          </select>
         </div>
+        <div className="field">
+          <label htmlFor="growth-stock-sort">{text.sort}</label>
+          <select id="growth-stock-sort" className="filter-select" value={sort} onChange={event => setSort(event.target.value as StockSort)}>
+            <option value="momentum">{text.momentumSort}</option>
+            <option value="leastVolatile">{text.leastVolatile}</option>
+            <option value="name">{text.nameSort}</option>
+            <option value="sector">{text.sectorSort}</option>
+          </select>
+        </div>
+        <button className="ghost-button" type="button" onClick={reset} disabled={!hasActiveFilters}>
+          <Filter size={16} />{text.clearFilters}
+        </button>
       </div>
 
       {loading ? (
-        <div className={styles.newsGrid}>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <article className={styles.newsSkeleton} key={index}>
-              <SkeletonLine />
-              <SkeletonLine wide />
-              <SkeletonLine wide />
-              <SkeletonLine />
-            </article>
-          ))}
-        </div>
-      ) : error ? (
-        <div className={`${styles.stateBox} ${styles.errorState}`} role="alert">
-          <AlertTriangle size={24} />
-          <strong>{text.errorTitle}</strong>
-          <p>{error || text.errorBody}</p>
-          <button type="button" onClick={retry}>
-            <RefreshCcw size={15} />
-            {text.retry}
-          </button>
-        </div>
-      ) : items.length === 0 ? (
-        <div className={styles.stateBox}>
-          <Newspaper size={24} />
-          <strong>{text.emptyTitle}</strong>
-          <p>{text.emptyHint}</p>
-        </div>
+        <SkeletonGrid count={6} />
+      ) : rows.length === 0 ? (
+        <StateBox tone="info" icon={Search} title={text.noStocks} actionLabel={hasActiveFilters ? text.clearFilters : undefined} onAction={hasActiveFilters ? reset : undefined} />
       ) : (
         <>
-          <div className={styles.newsGrid}>
-            {visibleItems.map(item => (
-              <NewsCard key={item.id} item={item} lang={lang} locale={locale} text={text} />
+          <div className="stock-grid" style={{ marginTop: 16 }}>
+            {rows.map(row => (
+              <GrowthStockCard
+                key={row.symbol}
+                row={row}
+                text={text}
+                lang={lang}
+                selectedForComparison={comparisonSymbols.includes(row.symbol)}
+                onCompare={() => toggleComparisonSymbol(row.symbol)}
+              />
             ))}
           </div>
-          <div className={styles.loadMoreWrap}>
-            {hasMore ? (
-              <button type="button" onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}>
-                {text.showMore}
-                <ArrowUpRight size={15} />
-              </button>
-            ) : (
-              <span>{text.noMore}</span>
-            )}
-          </div>
+          {allRows.length > 0 ? (
+            <p className="muted" style={{ marginTop: 16 }}>{text.insufficientMethodology}</p>
+          ) : null}
         </>
       )}
     </section>
   );
 }
 
-function FeaturedStocks({
-  items,
+function NewsTab({
+  text,
+  lang,
   loading,
-  lang,
-  locale,
-  text,
+  featured,
+  regular,
+  total,
+  visibleCount,
+  setVisibleCount,
+  search,
+  sector,
+  source,
+  symbol,
+  time,
+  sort,
+  sources,
+  symbols,
+  setSearch,
+  setSector,
+  setSource,
+  setSymbol,
+  setTime,
+  setSort,
+  reset,
+  hasActiveFilters,
+  originalVisibleIds,
+  toggleOriginal,
 }: {
-  items: GrowthTickerItem[];
+  text: typeof COPY[LangCode];
+  lang: LangCode;
   loading: boolean;
-  lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
-}) {
-  const bySymbol = new Map(items.map(item => [item.symbol, item]));
-
-  return (
-    <section className={styles.sectorGuidePanel} aria-label={text.featuredTitle}>
-      <PanelTitle icon={BriefcaseBusiness} title={text.featuredTitle} subtitle={text.featuredSubtitle} />
-      <div className={styles.sectorCards}>
-        {loading ? (
-          Array.from({ length: 8 }).map((_, index) => (
-            <article className={styles.sectorCard} key={index}>
-              <SkeletonLine />
-              <SkeletonLine wide />
-              <SkeletonLine wide />
-            </article>
-          ))
-        ) : FEATURED_SYMBOLS.map(symbol => {
-          const quote = bySymbol.get(symbol);
-          const tone = changeTone(quote?.changePercent);
-          const displayName = growthSymbolName(symbol) === symbol ? quote?.name ?? symbol : growthSymbolName(symbol);
-          const marketHref = `/market-analysis?symbol=${encodeURIComponent(symbol)}`;
-          return (
-            <article className={styles.sectorCard} key={symbol}>
-              <span className={styles.sectorIcon}><Sparkles size={21} /></span>
-              <h3>{quote?.name ?? symbol}</h3>
-              <div className={styles.symbolChips}>
-                <a
-                  href={marketHref}
-                  title={`${displayName} · ${symbol}`}
-                  aria-label={`${displayName} ${symbol}`}
-                  dir="ltr"
-                >
-                  <span className={styles.symbolCompany}>{displayName}</span>
-                  <span className={styles.symbolDivider} aria-hidden="true">·</span>
-                  <strong>{symbol}</strong>
-                </a>
-                <span>{growthSymbolSector(symbol, lang, text.unavailable)}</span>
-              </div>
-              {quote ? (
-                <>
-                  <p dir="ltr">
-                    <strong>{formatMoney(quote.price, quote.currency, locale)}</strong>
-                    {' '}
-                    <em className={styles[tone]}>{formatPercent(quote.changePercent, locale)}</em>
-                  </p>
-                  <p>{text.priceSource}: {quote.source}</p>
-                </>
-              ) : (
-                <p>{text.unavailable}</p>
-              )}
-              <a href={marketHref}>
-                {text.details}
-                <ArrowUpRight size={14} />
-              </a>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function SectorGuide({
-  lang,
-  text,
-}: {
-  lang: LangCode;
-  text: typeof TEXT[LangCode];
+  featured: GrowthNewsItem[];
+  regular: GrowthNewsItem[];
+  total: number;
+  visibleCount: number;
+  setVisibleCount: (value: number) => void;
+  search: string;
+  sector: SectorId;
+  source: string;
+  symbol: string;
+  time: NewsTimeFilter;
+  sort: NewsSort;
+  sources: string[];
+  symbols: string[];
+  setSearch: (value: string) => void;
+  setSector: (value: SectorId) => void;
+  setSource: (value: string) => void;
+  setSymbol: (value: string) => void;
+  setTime: (value: NewsTimeFilter) => void;
+  setSort: (value: NewsSort) => void;
+  reset: () => void;
+  hasActiveFilters: boolean;
+  originalVisibleIds: string[];
+  toggleOriginal: (id: string) => void;
 }) {
   return (
-    <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
-      <PanelTitle icon={BookOpen} title={text.sectorGuideTitle} />
-      <div className={styles.sectorCards}>
-        {SECTOR_GUIDES.map(sector => {
-          const Icon = sector.icon;
-          return (
-            <article className={styles.sectorCard} key={sector.id}>
-              <span className={styles.sectorIcon}><Icon size={21} /></span>
-              <h3>{sector.title[lang]}</h3>
-              <p>{sector.body[lang]}</p>
-              <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => {
-                  const name = growthSymbolName(symbol);
-                  return (
-                    <a
-                      key={symbol}
-                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
-                      title={`${name} · ${symbol}`}
-                      aria-label={`${name} ${symbol}`}
-                      dir="ltr"
-                    >
-                      <span className={styles.symbolCompany}>{name}</span>
-                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
-                      <strong>{symbol}</strong>
-                    </a>
-                  );
-                })}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-export function GrowthStocksNewsPage() {
-  const { dir, lang } = useLanguage();
-  const activeLang = (lang === 'en' || lang === 'fr' ? lang : 'ar') as LangCode;
-  const text = TEXT[activeLang];
-  const locale = localeFor(activeLang);
-  const [tickerItems, setTickerItems] = useState<GrowthTickerItem[]>([]);
-  const [newsItems, setNewsItems] = useState<GrowthNewsItem[]>([]);
-  const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
-  const [tickerUpdatedAt, setTickerUpdatedAt] = useState('');
-  const [newsUpdatedAt, setNewsUpdatedAt] = useState('');
-  const [moversUpdatedAt, setMoversUpdatedAt] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [newsError, setNewsError] = useState('');
-  const [marketError, setMarketError] = useState('');
-  const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<GrowthFilterId>('all');
-  const [visibleCount, setVisibleCount] = useState(NEWS_PAGE_SIZE);
-  const debouncedQuery = useDebouncedValue(query, 250);
-
-  const loadData = useCallback(async (showLoader = true) => {
-    if (showLoader) setLoading(true);
-    setRefreshing(!showLoader);
-    setNewsError('');
-    setMarketError('');
-
-    const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
-      fetchJson<GrowthTickerResponse>('/api/growth-stocks/ticker'),
-      fetchJson<GrowthNewsResponse>(`/api/growth-stocks/news?lang=${encodeURIComponent(activeLang)}&limit=72`),
-      fetchJson<StockCategoryMoversResponse>('/api/growth-stocks/movers?limit=5'),
-    ]);
-
-    if (tickerResult.status === 'fulfilled' && tickerResult.value.ok) {
-      setTickerItems(tickerResult.value.items);
-      setTickerUpdatedAt(tickerResult.value.updated_at);
-    } else {
-      setTickerItems([]);
-      setTickerUpdatedAt('');
-      setMarketError(text.tickerEmpty);
-    }
-
-    if (newsResult.status === 'fulfilled' && newsResult.value.success) {
-      setNewsItems(newsResult.value.items);
-      setNewsUpdatedAt(newsResult.value.lastUpdated);
-    } else {
-      setNewsItems([]);
-      setNewsUpdatedAt('');
-      const reason = newsResult.status === 'fulfilled'
-        ? !newsResult.value.success ? newsResult.value.reason || newsResult.value.error : ''
-        : newsResult.reason instanceof Error ? newsResult.reason.message : '';
-      setNewsError(reason || text.errorBody);
-    }
-
-    if (moversResult.status === 'fulfilled') {
-      setMovers(moversResult.value);
-      setMoversUpdatedAt(moversResult.value.ok ? moversResult.value.updated_at : '');
-    } else {
-      setMovers(null);
-      setMoversUpdatedAt('');
-    }
-
-    setLoading(false);
-    setRefreshing(false);
-  }, [activeLang, text.errorBody, text.tickerEmpty]);
-
-  useEffect(() => {
-    void loadData(true);
-  }, [loadData]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      void loadData(false);
-    }, AUTO_REFRESH_MS);
-    return () => window.clearInterval(interval);
-  }, [loadData]);
-
-  useEffect(() => {
-    setVisibleCount(NEWS_PAGE_SIZE);
-  }, [activeFilter, debouncedQuery]);
-
-  const lastUpdated = useMemo(
-    () => newestTimestamp([tickerUpdatedAt, newsUpdatedAt, moversUpdatedAt]),
-    [moversUpdatedAt, newsUpdatedAt, tickerUpdatedAt],
-  );
-
-  const searchableItems = useMemo(
-    () => newsItems.filter(item => itemMatchesSearch(item, debouncedQuery)),
-    [debouncedQuery, newsItems],
-  );
-
-  const counts = useMemo(() => {
-    return FILTERS.reduce((acc, filter) => {
-      acc[filter.id] = searchableItems.filter(item => itemMatchesFilter(item, filter.id)).length;
-      return acc;
-    }, {} as Record<GrowthFilterId, number>);
-  }, [searchableItems]);
-
-  const filteredNews = useMemo(() => {
-    return searchableItems
-      .filter(item => itemMatchesFilter(item, activeFilter))
-      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-  }, [activeFilter, searchableItems]);
-
-  const topMoverRows = useMemo(() => {
-    if (!movers?.ok) return [];
-    return movers.data.topGainers.length > 0 ? movers.data.topGainers : movers.data.highestPrice;
-  }, [movers]);
-
-  return (
-    <div className={styles.page} dir={dir}>
-      <Sidebar />
-      <main className={styles.main}>
-        <div className={styles.container}>
-          <header className={styles.header}>
-            <div className={styles.headerCopy}>
-              <span className={styles.eyebrow}><Bot size={15} />{text.delayed}</span>
-              <h1>{text.title}</h1>
-              <p>{text.subtitle}</p>
-            </div>
-            <div className={styles.headerActions}>
-              <button type="button" onClick={() => void loadData(false)} disabled={refreshing}>
-                <RefreshCcw size={16} className={refreshing ? styles.spin : ''} />
-                {refreshing ? text.refreshing : text.refresh}
-              </button>
-              <span>
-                <Clock3 size={14} />
-                {text.lastUpdated}: {lastUpdated ? formatDateTime(lastUpdated, locale) : text.notUpdated}
-              </span>
-              <small>{text.autoRefresh}</small>
-            </div>
-          </header>
-
-          <GrowthTicker items={tickerItems} loading={loading} error={marketError} lang={activeLang} text={text} locale={locale} />
-
-          <section className={styles.summaryGrid} aria-label={text.sectorTitle}>
-            <WhatGrowthCard text={text} />
-            <GrowthSectorsCard lang={activeLang} text={text} />
-            <ComparisonCard lang={activeLang} text={text} />
-            <MovementCard movers={topMoverRows} tickerItems={tickerItems} loading={loading} text={text} locale={locale} />
-          </section>
-
-          <NewsSection
-            items={filteredNews}
-            loading={loading}
-            error={newsError}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            query={query}
-            setQuery={setQuery}
-            visibleCount={visibleCount}
-            setVisibleCount={setVisibleCount}
-            counts={counts}
-            lang={activeLang}
-            locale={locale}
-            text={text}
-            retry={() => void loadData(true)}
-          />
-
-          <FeaturedStocks items={tickerItems} loading={loading} lang={activeLang} locale={locale} text={text} />
-
-          <SectorGuide
-            lang={activeLang}
-            text={text}
-          />
-
-          <section className={styles.disclaimer}>
-            <span><Info size={20} /></span>
-            <div>
-              <h2>{text.disclaimerTitle}</h2>
-              <p>{text.disclaimerBody}</p>
-            </div>
-          </section>
+    <section className="section">
+      <SectionHeader title={text.newsTitle} description={text.newsDescription} action={<span className="pill">{text.resultCount}: {total}</span>} />
+      <div className="filter-panel">
+        <div className="field">
+          <label htmlFor="growth-news-search">{text.filter}</label>
+          <div className="input-wrap">
+            <Search size={17} />
+            <input id="growth-news-search" className="filter-input" value={search} onChange={event => setSearch(event.target.value)} placeholder={text.searchNews} />
+          </div>
         </div>
-      </main>
+        <SelectField id="growth-news-sector" label={text.sector} value={sector} onChange={value => setSector(value as SectorId)}>
+          <option value="all">{text.allSectors}</option>
+          {Object.keys(SECTORS).map(id => <option key={id} value={id}>{sectorLabel(id as SectorId, lang)}</option>)}
+        </SelectField>
+        <SelectField id="growth-news-symbol" label={text.symbolFilter} value={symbol} onChange={setSymbol}>
+          <option value="all">{text.allSectors}</option>
+          {symbols.map(option => <option key={option} value={option}>{option}</option>)}
+        </SelectField>
+        <SelectField id="growth-news-source" label={text.sourceFilter} value={source} onChange={setSource}>
+          <option value="all">{text.allSectors}</option>
+          {sources.map(option => <option key={option} value={option}>{option}</option>)}
+        </SelectField>
+        <SelectField id="growth-news-time" label={text.timeRange} value={time} onChange={value => setTime(value as NewsTimeFilter)}>
+          <option value="all">{text.allTime}</option>
+          <option value="day">{text.lastDay}</option>
+          <option value="week">{text.lastWeek}</option>
+          <option value="month">{text.lastMonth}</option>
+        </SelectField>
+        <SelectField id="growth-news-sort" label={text.sort} value={sort} onChange={value => setSort(value as NewsSort)}>
+          <option value="latest">{text.latest}</option>
+          <option value="oldest">{text.oldest}</option>
+          <option value="strongestMove">{text.strongestMove}</option>
+        </SelectField>
+        <button className="ghost-button" type="button" onClick={reset} disabled={!hasActiveFilters}>
+          <Filter size={16} />{text.clearFilters}
+        </button>
+      </div>
+
+      {loading ? (
+        <SkeletonGrid count={6} />
+      ) : total === 0 ? (
+        <StateBox tone="info" icon={Search} title={text.noNews} actionLabel={hasActiveFilters ? text.clearFilters : undefined} onAction={hasActiveFilters ? reset : undefined} />
+      ) : (
+        <div className="stack" style={{ marginTop: 16 }}>
+          <FeaturedNews items={featured} text={text} lang={lang} originalVisibleIds={originalVisibleIds} toggleOriginal={toggleOriginal} />
+          <div className="news-grid">
+            {regular.map(item => (
+              <NewsCard
+                key={item.id || item.url}
+                item={item}
+                text={text}
+                lang={lang}
+                showOriginal={originalVisibleIds.includes(item.id)}
+                toggleOriginal={() => toggleOriginal(item.id)}
+              />
+            ))}
+          </div>
+          {visibleCount < total ? (
+            <button className="primary-button" type="button" onClick={() => setVisibleCount(visibleCount + NEWS_PAGE_SIZE)}>
+              {text.loadMore}
+            </button>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SectorsTab({ text, lang, stats, loading }: { text: typeof COPY[LangCode]; lang: LangCode; stats: ReturnType<typeof buildSectorStats>; loading: boolean }) {
+  return (
+    <section className="section">
+      <SectionHeader title={text.sectorsTitle} description={text.sectorsDescription} />
+      {loading ? <SkeletonGrid count={4} /> : (
+        <div className="sector-grid">
+          {stats.map(sector => <SectorCard key={sector.id} sector={sector} lang={lang} expanded />)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SectionHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+  return (
+    <div className="section-header">
+      <div className="section-title">
+        <h2>{title}</h2>
+        {description ? <p>{description}</p> : null}
+      </div>
+      {action}
     </div>
   );
 }
 
-export default GrowthStocksNewsPage;
+function MetricCard({ icon: Icon, label, value, help, loading, tone }: { icon: LucideIcon; label: string; value: string; help?: string; loading?: boolean; tone: Tone }) {
+  if (loading) return <div className="metric-card skeleton" />;
+  return (
+    <article className="metric-card">
+      <span className="metric-icon"><Icon size={19} /></span>
+      <span className="metric-label">{label}</span>
+      <strong className="metric-value">{value}</strong>
+      {help ? <span className={`metric-help tone-${tone}`}>{help}</span> : null}
+    </article>
+  );
+}
+
+function ComparisonChart({ rows, lang, text }: { rows: GrowthStockRow[]; lang: LangCode; text: typeof COPY[LangCode] }) {
+  const maxMove = Math.max(1, ...rows.map(row => Math.abs(row.changePercent ?? 0)));
+  if (rows.length === 0) return <StateBox tone="info" icon={LineChart} title={text.chartUnavailable} />;
+  return (
+    <div className="compare-list" role="img" aria-label={text.comparisonTitle}>
+      {rows.map(row => {
+        const width = Math.max(4, (Math.abs(row.changePercent ?? 0) / maxMove) * 100);
+        return (
+          <div className="compare-row" key={row.symbol}>
+            <span className="symbol">{row.symbol}</span>
+            <div className="bar-shell"><div className={`bar-fill tone-${toneForChange(row.changePercent)}`} style={{ width: `${width}%` }} /></div>
+            <strong className="numeric">{formatPercent(row.changePercent, lang)}</strong>
+          </div>
+        );
+      })}
+      <p className="muted">{text.chartUnavailable}</p>
+    </div>
+  );
+}
+
+function GrowthStockCard({
+  row,
+  text,
+  lang,
+  compact,
+  selectedForComparison,
+  onCompare,
+}: {
+  row: GrowthStockRow;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  compact?: boolean;
+  selectedForComparison?: boolean;
+  onCompare?: () => void;
+}) {
+  return (
+    <article className="card card-hover">
+      <div className="stock-head">
+        <div className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</div>
+        <div className="stock-title">
+          <h3>{row.name}</h3>
+          <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
+        </div>
+      </div>
+      <div className="row-between">
+        <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
+        <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>
+      </div>
+      <div className="metric-grid">
+        <MiniMetric label={text.methodology} value={row.growthClassification} />
+        <MiniMetric label={text.valuationRisk} value={row.valuationRiskLabel} />
+        <MiniMetric label={text.revenueGrowth} value={text.unavailable} />
+        <MiniMetric label={text.peg} value={text.unavailable} />
+        {!compact ? (
+          <>
+            <MiniMetric label={text.freeCashFlow} value={text.unavailable} />
+            <MiniMetric label={text.volatility} value={row.momentumLabel} />
+          </>
+        ) : null}
+      </div>
+      <p className="muted">{text.insufficientMethodology}</p>
+      {!compact ? (
+        <div className="card-actions">
+          <button className="primary-button" type="button" onClick={onCompare} aria-pressed={selectedForComparison}>
+            <BarChart3 size={16} />{selectedForComparison ? text.compare : text.compare}
+          </button>
+          <button className="ghost-button" type="button">
+            <BookOpen size={16} />{text.viewAnalysis}
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mini-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function FeaturedNews({ items, text, lang, originalVisibleIds, toggleOriginal }: { items: GrowthNewsItem[]; text: typeof COPY[LangCode]; lang: LangCode; originalVisibleIds: string[]; toggleOriginal: (id: string) => void }) {
+  if (items.length === 0) return null;
+  const [lead, ...secondary] = items;
+  return (
+    <div className="featured-layout">
+      <NewsCard item={lead} text={text} lang={lang} showOriginal={originalVisibleIds.includes(lead.id)} toggleOriginal={() => toggleOriginal(lead.id)} lead />
+      <div className="side-news">
+        {secondary.map(item => (
+          <CompactNewsRow key={item.id || item.url} item={item} text={text} lang={lang} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NewsCard({ item, text, lang, showOriginal, toggleOriginal, lead }: { item: GrowthNewsItem; text: typeof COPY[LangCode]; lang: LangCode; showOriginal: boolean; toggleOriginal: () => void; lead?: boolean }) {
+  const url = safeUrl(item.url);
+  const title = safeArticleTitle(item, showOriginal);
+  const summary = safeArticleSummary(item, showOriginal);
+  const sector = sectorLabel(classifyNewsSector(item), lang);
+  return (
+    <article className={`card article-card ${lead ? 'lead-card' : ''}`}>
+      <div className="article-meta">
+        <span>{item.source}</span>
+        <span>{formatRelative(item.publishedAt, lang)}</span>
+        <span>{sector}</span>
+        {item.isTranslated && !showOriginal ? <span className="badge tone-info"><Bot size={13} />{text.machineTranslation}</span> : null}
+      </div>
+      <h3 className="article-title" dir="auto">{title}</h3>
+      {summary ? <p className="article-summary" dir="auto">{summary}</p> : null}
+      <div className="metric-grid">
+        <MiniMetric label={text.relatedSymbol} value={item.ticker ? item.ticker.toUpperCase() : text.unavailable} />
+        <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.priceUnavailable} />
+      </div>
+      <div className="article-actions">
+        {url ? (
+          <a className="primary-button" href={url} target="_blank" rel="noopener noreferrer nofollow">
+            {text.readArticle}<ExternalLink size={16} />
+          </a>
+        ) : null}
+        {item.titleOriginal && item.titleOriginal !== item.title ? (
+          <button className="ghost-button" type="button" onClick={toggleOriginal}>
+            {showOriginal ? text.translatedText : text.originalText}
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function CompactNewsRow({ item, text, lang }: { item: GrowthNewsItem; text: typeof COPY[LangCode]; lang: LangCode }) {
+  const url = safeUrl(item.url);
+  return (
+    <article className="compact-row">
+      <div className="article-meta">
+        <span>{item.source}</span>
+        <span>{formatRelative(item.publishedAt, lang)}</span>
+      </div>
+      <h3 className="article-title" dir="auto">{safeArticleTitle(item, false)}</h3>
+      <div className="row-between">
+        <span className="badge tone-info">{item.ticker?.toUpperCase() ?? sectorLabel(classifyNewsSector(item), lang)}</span>
+        {url ? <a className="link-button" href={url} target="_blank" rel="noopener noreferrer nofollow">{text.readArticle}<ArrowUpRight size={15} /></a> : null}
+      </div>
+    </article>
+  );
+}
+
+function MoversPanel({ text, lang, movers }: { text: typeof COPY[LangCode]; lang: LangCode; movers: StockCategoryMoversResponse | null }) {
+  const data = movers?.ok ? movers.data : null;
+  return (
+    <section className="panel">
+      <SectionHeader title={text.strongestMove} description={movers?.ok ? `${text.source}: ${movers.source}` : text.providerError} />
+      {data ? (
+        <div className="movers-grid">
+          <MoverList title={text.risingStocks} rows={data.topGainers} lang={lang} tone="positive" />
+          <MoverList title={text.fallingStocks} rows={data.topLosers} lang={lang} tone="negative" />
+        </div>
+      ) : (
+        <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} />
+      )}
+    </section>
+  );
+}
+
+function MoverList({ title, rows, lang, tone }: { title: string; rows: StockCategoryMoverItem[]; lang: LangCode; tone: Tone }) {
+  return (
+    <div className="mover-list">
+      <strong>{title}</strong>
+      {rows.length === 0 ? <span className="muted">{COPY[lang].unavailable}</span> : rows.map(row => (
+        <div className="mover-row" key={row.symbol}>
+          <span className="rank">{row.rank}</span>
+          <div>
+            <strong className="symbol">{row.symbol}</strong>
+            <div className="muted">{row.name}</div>
+          </div>
+          <span className={badgeClass(tone)}>{formatPercent(row.changePercent, lang)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DataStatusPanel({ text, lang, rows }: { text: typeof COPY[LangCode]; lang: LangCode; rows: GrowthStockRow[] }) {
+  const sources = uniqueOptions(rows.map(row => row.source));
+  const delayedCount = rows.filter(row => row.delayed).length;
+  return (
+    <section className="panel">
+      <SectionHeader title={text.dataStatusTitle} description={text.marketClosedNote} />
+      <div className="metric-grid">
+        <MiniMetric label={text.quoteSource} value={sources.join(', ') || text.unavailable} />
+        <MiniMetric label={text.delayed} value={String(delayedCount)} />
+        <MiniMetric label={text.trackedStocks} value={String(rows.length)} />
+        <MiniMetric label={text.fundamentalsUnavailable} value={text.unavailable} />
+      </div>
+    </section>
+  );
+}
+
+function EducationGuide({ text, open, toggle }: { text: typeof COPY[LangCode]; open: DisclosureId[]; toggle: (id: DisclosureId) => void }) {
+  const items: Array<{ id: DisclosureId; title: string; body: string }> = [
+    { id: 'what', title: text.educationTitle, body: text.subtitle },
+    { id: 'metrics', title: text.revenueGrowth, body: `${text.revenueGrowth}، ${text.earningsGrowth}، ${text.forwardGrowth}، ${text.grossMargin}، ${text.freeCashFlow}. ${text.insufficientMethodology}` },
+    { id: 'growth-value', title: text.tabs.stocks, body: text.stocksDescription },
+    { id: 'growth-momentum', title: text.momentumSort, body: text.comparisonDescription },
+    { id: 'valuation-risk', title: text.valuationRisk, body: text.insufficientMethodology },
+    { id: 'rates', title: text.marketClosedNote, body: text.disclaimer },
+    { id: 'peg', title: text.peg, body: text.insufficientMethodology },
+  ];
+  return (
+    <section className="panel">
+      <SectionHeader title={text.educationTitle} description={text.educationDescription} />
+      <div className="guide-grid">
+        {items.map(item => {
+          const isOpen = open.includes(item.id);
+          return (
+            <article key={item.id}>
+              <button className="guide-button" type="button" aria-expanded={isOpen} aria-controls={`guide-${item.id}`} onClick={() => toggle(item.id)}>
+                <span>{item.title}</span>
+                {isOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+              </button>
+              {isOpen ? <div id={`guide-${item.id}`} className="guide-content">{item.body}</div> : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SectorCard({ sector, lang, expanded }: { sector: ReturnType<typeof buildSectorStats>[number]; lang: LangCode; expanded?: boolean }) {
+  const Icon = sector.icon;
+  return (
+    <article className="card sector-card">
+      <span className="sector-icon"><Icon size={20} /></span>
+      <h3 className="sector-title">{sector.label}</h3>
+      <p className="muted">{sector.description}</p>
+      <div className="metric-grid">
+        <MiniMetric label={COPY[lang].trackedStocks} value={String(sector.count || sector.symbols.length)} />
+        <MiniMetric label={COPY[lang].dailyChange} value={formatPercent(sector.averageChange, lang)} />
+        {expanded ? (
+          <>
+            <MiniMetric label={COPY[lang].strongestStock} value={sector.top?.symbol ?? COPY[lang].unavailable} />
+            <MiniMetric label={COPY[lang].valuationRisk} value={COPY[lang].unavailable} />
+          </>
+        ) : null}
+      </div>
+      {expanded ? (
+        <>
+          <p className="muted"><strong>{COPY[lang].methodology}:</strong> {sector.drivers}</p>
+          <p className="muted"><strong>{COPY[lang].valuationRisk}:</strong> {sector.risks}</p>
+          <div className="ticker-scroll">
+            {sector.symbols.map(symbol => <span key={symbol} className="badge tone-info symbol">{symbol}</span>)}
+          </div>
+        </>
+      ) : null}
+    </article>
+  );
+}
+
+function SelectField({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select id={id} className="filter-select" value={value} onChange={event => onChange(event.target.value)}>
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function StateBox({ tone, icon: Icon, title, actionLabel, onAction }: { tone: Tone; icon: LucideIcon; title: string; actionLabel?: string; onAction?: () => void }) {
+  return (
+    <div className={`state-box tone-${tone}`} role={tone === 'warning' || tone === 'negative' ? 'alert' : 'status'}>
+      <div className="row-between">
+        <Icon size={20} />
+        <strong>{title}</strong>
+      </div>
+      {actionLabel && onAction ? <button className="ghost-button" type="button" onClick={onAction}>{actionLabel}</button> : null}
+    </div>
+  );
+}
+
+function SkeletonGrid({ count }: { count: number }) {
+  return (
+    <div className="stock-grid" style={{ marginTop: 16 }}>
+      {Array.from({ length: count }).map((_, index) => <div className="card skeleton" key={index} />)}
+    </div>
+  );
+}
