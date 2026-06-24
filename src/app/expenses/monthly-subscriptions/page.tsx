@@ -1,85 +1,69 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  BarChart3,
   Bot,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  Cloud,
   CreditCard,
   Edit3,
+  ExternalLink,
   Film,
+  Filter,
+  Gamepad2,
+  GraduationCap,
+  HeartPulse,
+  Layers3,
   MessageCircle,
   MoreHorizontal,
+  PauseCircle,
   Plus,
   Printer,
-  ReceiptText,
+  Search,
   Sparkles,
   Trash2,
+  WalletCards,
   Wifi,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Sidebar } from '@/components/Sidebar';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
-import { convertCurrencyAmount, approximateFxRate, fxKey, normalizeMoneyCurrencyCode } from '@/lib/currencyConversion';
+import { approximateFxRate, convertCurrencyAmount, fxKey, normalizeMoneyCurrencyCode } from '@/lib/currencyConversion';
 import { formatMoney } from '@/lib/formatMoney';
 import { useCurrency } from '@/lib/useCurrency';
+import {
+  BILLING_CYCLES,
+  SUBSCRIPTION_CATEGORIES,
+  SUBSCRIPTION_EXAMPLES,
+  SUBSCRIPTION_STATUSES,
+  TELECOM_REGIONS,
+  annualEquivalent,
+  isSpendActiveStatus,
+  monthlyEquivalent,
+  nextRenewalDate,
+  normalizeSubscriptionSearch,
+  type BillingCycle,
+  type SubscriptionCategory,
+  type SubscriptionExample,
+  type SubscriptionRegion,
+  type SubscriptionStatus,
+} from '@/lib/subscriptions/monthlySubscriptions';
 
 type Lang = 'ar' | 'en' | 'fr';
-type SubscriptionType = 'entertainment' | 'ai' | 'social' | 'telecom' | 'other';
-type BillingFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
-
-type Text = {
-  title: string;
-  subtitle: string;
-  eyebrow: string;
-  add: string;
-  update: string;
-  cancel: string;
-  save: string;
-  saving: string;
-  backToExpenses: string;
-  formTitle: string;
-  formSubtitle: string;
-  subscriptionType: string;
-  service: string;
-  customService: string;
-  date: string;
-  amount: string;
-  currency: string;
-  frequency: string;
-  notes: string;
-  monthlyImpact: string;
-  yearlyImpact: string;
-  totalMonthly: string;
-  totalYearly: string;
-  activeCount: string;
-  highest: string;
-  listTitle: string;
-  listSubtitle: string;
-  emptyTitle: string;
-  emptyBody: string;
-  saved: string;
-  deleted: string;
-  error: string;
-  authRequired: string;
-  nameRequired: string;
-  amountRequired: string;
-  dateRequired: string;
-  deleteConfirm: string;
-  expenseNote: string;
-  examplesTitle: string;
-  examplesSubtitle: string;
-  showExamples: string;
-  hideExamples: string;
-  category: Record<SubscriptionType, string>;
-  frequencyLabel: Record<BillingFrequency, string>;
-};
+type FilterValue = 'all';
+type RenewalFilter = FilterValue | 'today' | '7' | '30' | 'missing';
+type SortKey = 'renewal_soon' | 'cost_desc' | 'cost_asc' | 'newest' | 'name';
 
 type SubscriptionRow = {
   id: string;
@@ -93,6 +77,10 @@ type SubscriptionRow = {
   payment_method?: string | null;
   source?: string | null;
   enhanced?: Record<string, unknown> | null;
+  is_recurring?: boolean | null;
+  frequency?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -106,446 +94,352 @@ type FxRateResponse = {
 
 type FormState = {
   id?: string;
-  type: SubscriptionType;
-  service: string;
-  customService: string;
-  startedAt: string;
+  name: string;
+  category: SubscriptionCategory;
+  provider: string;
   amount: string;
   currency: string;
-  frequency: BillingFrequency;
+  billingCycle: BillingCycle;
+  startDate: string;
+  nextRenewalDate: string;
+  paymentMethod: string;
+  status: SubscriptionStatus;
+  isTrial: boolean;
+  trialEndsAt: string;
+  serviceUrl: string;
   notes: string;
 };
 
-const TEXT: Record<Lang, Text> = {
+type SubscriptionView = {
+  row: SubscriptionRow;
+  id: string;
+  name: string;
+  category: SubscriptionCategory;
+  status: SubscriptionStatus;
+  billingCycle: BillingCycle;
+  originalAmount: number;
+  monthlyNative: number;
+  annualNative: number;
+  monthlyBase: number | null;
+  currency: string;
+  startDate: string;
+  nextRenewalDate: string;
+  paymentMethod: string;
+  serviceUrl: string;
+  notes: string;
+  isTrial: boolean;
+  trialEndsAt: string;
+  daysUntilRenewal: number | null;
+  createdAt: string;
+};
+
+const TEXT = {
   ar: {
     title: 'الاشتراكات الشهرية',
-    subtitle: 'سجّل اشتراكاتك المتكررة واحسب أثرها الشهري داخل المصاريف.',
-    eyebrow: 'THE SFM / المصاريف',
+    subtitle: 'مساحة عملية لمتابعة الاشتراكات المتكررة، مواعيد التجديد، وفرص تقليل المصروفات بدون فوضى.',
+    eyebrow: 'THE SFM / إدارة المصاريف',
     add: 'إضافة اشتراك',
+    firstAdd: 'إضافة أول اشتراك',
+    export: 'تصدير التقرير',
+    exportDisabled: 'أضف اشتراكاً واحداً على الأقل لتصدير التقرير.',
+    back: 'العودة إلى المصاريف',
+    summaryMonthly: 'إجمالي الاشتراكات الشهرية',
+    summaryAnnual: 'التكلفة السنوية المتوقعة',
+    activeCount: 'عدد الاشتراكات النشطة',
+    highest: 'أعلى اشتراك شهري',
+    renewals30: 'التجديدات خلال 30 يوماً',
+    upcoming: 'التجديدات القادمة',
+    noRenewals: 'لا توجد تجديدات قريبة بتواريخ واضحة.',
+    filters: 'البحث والتصفية',
+    search: 'ابحث باسم الخدمة أو المزود',
+    categoryFilter: 'الفئة',
+    statusFilter: 'الحالة',
+    cycleFilter: 'دورة الدفع',
+    renewalFilter: 'فترة التجديد',
+    sort: 'الترتيب',
+    clear: 'مسح الفلاتر',
+    results: 'نتيجة',
+    listTitle: 'قائمة الاشتراكات',
+    listHint: 'البطاقات مطوية افتراضياً لتبقى الصفحة قصيرة وقابلة للمراجعة.',
+    emptyTitle: 'لا توجد اشتراكات بعد',
+    emptyBody: 'أضف اشتراكك الأول لمعرفة تكلفته الشهرية والسنوية ومتابعة موعد التجديد.',
+    examples: 'استعراض أمثلة الاشتراكات',
+    examplesTitle: 'أمثلة حسب نوع الاشتراك',
+    exampleSearch: 'ابحث عن خدمة أو مزود',
+    loadMore: 'عرض المزيد',
+    formTitleAdd: 'إضافة اشتراك',
+    formTitleEdit: 'تعديل الاشتراك',
+    name: 'اسم الاشتراك',
+    provider: 'المزود',
+    category: 'الفئة',
+    amount: 'المبلغ',
+    currency: 'العملة',
+    billingCycle: 'دورة الدفع',
+    startDate: 'تاريخ البداية',
+    nextRenewal: 'تاريخ التجديد القادم',
+    paymentMethod: 'وسيلة الدفع',
+    status: 'حالة الاشتراك',
+    freeTrial: 'تجربة مجانية',
+    trialEnds: 'تاريخ نهاية التجربة',
+    serviceUrl: 'رابط الخدمة',
+    notes: 'ملاحظات',
+    save: 'حفظ الاشتراك',
     update: 'تحديث الاشتراك',
     cancel: 'إلغاء',
-    save: 'حفظ الاشتراك',
     saving: 'جارٍ الحفظ...',
-    backToExpenses: 'العودة إلى المصاريف',
-    formTitle: 'بيانات الاشتراك',
-    formSubtitle: 'اختر نوع الاشتراك والخدمة والتكرار ليتم احتسابه كمصروف اشتراك.',
-    subscriptionType: 'نوع الاشتراك',
-    service: 'الخدمة',
-    customService: 'اسم الاشتراك',
-    date: 'تاريخ الاشتراك',
-    amount: 'مبلغ الاشتراك',
-    currency: 'العملة',
-    frequency: 'تكرار الدفع',
-    notes: 'ملاحظات',
-    monthlyImpact: 'الأثر الشهري',
-    yearlyImpact: 'الأثر السنوي',
-    totalMonthly: 'إجمالي الاشتراكات الشهرية',
-    totalYearly: 'التكلفة السنوية المتوقعة',
-    activeCount: 'عدد الاشتراكات',
-    highest: 'أعلى اشتراك شهري',
-    listTitle: 'قائمة الاشتراكات',
-    listSubtitle: 'هذه السجلات محفوظة أيضاً ضمن المصاريف بتصنيف الاشتراكات.',
-    emptyTitle: 'لا توجد اشتراكات بعد',
-    emptyBody: 'أضف أول اشتراك مثل Netflix أو ChatGPT أو باقة الإنترنت لمعرفة أثره الشهري.',
-    saved: 'تم حفظ الاشتراك وإضافته إلى المصاريف.',
-    deleted: 'تم حذف الاشتراك من المصاريف.',
-    error: 'تعذر تنفيذ العملية. يرجى المحاولة مرة أخرى.',
+    saved: 'تم حفظ الاشتراك.',
+    deleted: 'تم حذف الاشتراك.',
+    error: 'تعذر تنفيذ العملية. حاول مرة أخرى.',
     authRequired: 'يجب تسجيل الدخول لإدارة الاشتراكات.',
-    nameRequired: 'يرجى اختيار أو إدخال اسم الاشتراك.',
-    amountRequired: 'يرجى إدخال مبلغ صحيح.',
-    dateRequired: 'يرجى اختيار تاريخ الاشتراك.',
-    deleteConfirm: 'هل تريد حذف هذا الاشتراك من المصاريف؟',
-    expenseNote: 'يتم حفظ القيمة كأثر شهري داخل المصاريف مع حفظ مبلغ الدفع الأصلي داخل التفاصيل.',
-    examplesTitle: 'أمثلة حسب نوع الاشتراك',
-    examplesSubtitle: 'اختيار النوع يغيّر قائمة الخدمات المقترحة في الخانة التالية.',
-    showExamples: 'عرض الأمثلة',
-    hideExamples: 'إخفاء الأمثلة',
-    category: {
+    nameRequired: 'أدخل اسم الاشتراك.',
+    amountRequired: 'أدخل مبلغاً صحيحاً.',
+    renewalRequired: 'أدخل تاريخ تجديد صحيح.',
+    deleteConfirm: 'هل تريد حذف هذا الاشتراك؟',
+    monthlyEquivalent: 'المعادِل الشهري',
+    annualEquivalent: 'المعادِل السنوي',
+    remaining: 'متبقي',
+    day: 'يوم',
+    today: 'اليوم',
+    tomorrow: 'غداً',
+    missingDate: 'بدون تاريخ تجديد',
+    edit: 'تعديل',
+    pause: 'إيقاف مؤقت',
+    resume: 'استئناف',
+    markCancelled: 'تسجيل إلغاء',
+    delete: 'حذف',
+    openSite: 'فتح الموقع',
+    insights: 'رؤى التوفير',
+    noInsights: 'أضف اشتراكين أو أكثر للحصول على رؤى مقارنة أوضح.',
+    categoryBreakdown: 'التكلفة حسب الفئة',
+    steps: ['أضف الاشتراك', 'حدد المبلغ وموعد التجديد', 'تابع التكلفة والتنبيهات'],
+    duplicateHint: 'قد يكون من المفيد مراجعة الاشتراكات المتقاربة.',
+    reviewHint: 'قد يكون من المفيد مراجعة هذا الاشتراك.',
+    statuses: { active: 'نشط', paused: 'متوقف مؤقتاً', cancelled: 'ملغي', trial: 'تجربة مجانية', expired: 'منتهي' },
+    cycles: { daily: 'يومي', weekly: 'أسبوعي', monthly: 'شهري', quarterly: 'ربع سنوي', yearly: 'سنوي' },
+    categories: {
       entertainment: 'وسائل الترفيه',
       ai: 'الذكاء الاصطناعي',
       social: 'وسائل التواصل الاجتماعي',
-      telecom: 'اتصالات أو إنترنت',
+      telecom: 'اتصالات وإنترنت',
+      productivity: 'إنتاجية وبرمجيات',
+      cloud: 'تخزين سحابي',
+      health: 'صحة ولياقة',
+      education: 'تعليم',
+      gaming: 'ألعاب',
       other: 'أخرى',
     },
-    frequencyLabel: {
-      daily: 'يومي',
-      weekly: 'أسبوعي',
-      monthly: 'شهري',
-      yearly: 'سنوي',
-    },
+    regions: { gulf: 'الخليج', arab: 'الدول العربية', asia: 'آسيا', europe: 'أوروبا', global: 'عالمي', other: 'أخرى' },
+    renewalFilters: { all: 'كل التجديدات', today: 'اليوم', '7': 'خلال 7 أيام', '30': 'خلال 30 يوماً', missing: 'بدون تاريخ' },
+    sorts: { renewal_soon: 'الأقرب للتجديد', cost_desc: 'الأعلى تكلفة', cost_asc: 'الأقل تكلفة', newest: 'الأحدث إضافة', name: 'الاسم' },
   },
   en: {
     title: 'Monthly Subscriptions',
-    subtitle: 'Track recurring subscriptions and include their monthly impact in expenses.',
+    subtitle: 'Track recurring services, renewal dates, and savings opportunities without turning the page into a long catalog.',
     eyebrow: 'THE SFM / Expenses',
     add: 'Add subscription',
+    firstAdd: 'Add first subscription',
+    export: 'Export report',
+    exportDisabled: 'Add at least one subscription to export the report.',
+    back: 'Back to expenses',
+    summaryMonthly: 'Total monthly subscriptions',
+    summaryAnnual: 'Expected annual cost',
+    activeCount: 'Active subscriptions',
+    highest: 'Highest monthly subscription',
+    renewals30: 'Renewals in 30 days',
+    upcoming: 'Upcoming renewals',
+    noRenewals: 'No upcoming renewals with clear dates.',
+    filters: 'Search and filters',
+    search: 'Search service or provider',
+    categoryFilter: 'Category',
+    statusFilter: 'Status',
+    cycleFilter: 'Billing cycle',
+    renewalFilter: 'Renewal window',
+    sort: 'Sort',
+    clear: 'Clear filters',
+    results: 'results',
+    listTitle: 'Subscription list',
+    listHint: 'Cards stay collapsed by default so the page remains scannable.',
+    emptyTitle: 'No subscriptions yet',
+    emptyBody: 'Add your first subscription to see monthly and annual cost plus renewal alerts.',
+    examples: 'Browse subscription examples',
+    examplesTitle: 'Examples by subscription type',
+    exampleSearch: 'Search service or provider',
+    loadMore: 'Load more',
+    formTitleAdd: 'Add subscription',
+    formTitleEdit: 'Edit subscription',
+    name: 'Subscription name',
+    provider: 'Provider',
+    category: 'Category',
+    amount: 'Amount',
+    currency: 'Currency',
+    billingCycle: 'Billing cycle',
+    startDate: 'Start date',
+    nextRenewal: 'Next renewal date',
+    paymentMethod: 'Payment method',
+    status: 'Status',
+    freeTrial: 'Free trial',
+    trialEnds: 'Trial end date',
+    serviceUrl: 'Service link',
+    notes: 'Notes',
+    save: 'Save subscription',
     update: 'Update subscription',
     cancel: 'Cancel',
-    save: 'Save subscription',
     saving: 'Saving...',
-    backToExpenses: 'Back to expenses',
-    formTitle: 'Subscription details',
-    formSubtitle: 'Choose the type, service, and billing cycle to count it as a subscription expense.',
-    subscriptionType: 'Subscription type',
-    service: 'Service',
-    customService: 'Subscription name',
-    date: 'Subscription date',
-    amount: 'Subscription amount',
-    currency: 'Currency',
-    frequency: 'Billing cycle',
-    notes: 'Notes',
-    monthlyImpact: 'Monthly impact',
-    yearlyImpact: 'Yearly impact',
-    totalMonthly: 'Total monthly subscriptions',
-    totalYearly: 'Expected yearly cost',
-    activeCount: 'Subscriptions count',
-    highest: 'Highest monthly subscription',
-    listTitle: 'Subscriptions list',
-    listSubtitle: 'These records are also saved under expenses as subscriptions.',
-    emptyTitle: 'No subscriptions yet',
-    emptyBody: 'Add Netflix, ChatGPT, internet, or any recurring service to see its monthly impact.',
-    saved: 'Subscription saved and added to expenses.',
-    deleted: 'Subscription removed from expenses.',
-    error: 'Could not complete the action. Please try again.',
+    saved: 'Subscription saved.',
+    deleted: 'Subscription deleted.',
+    error: 'Could not complete the action. Try again.',
     authRequired: 'Please sign in to manage subscriptions.',
-    nameRequired: 'Please choose or enter a subscription name.',
-    amountRequired: 'Please enter a valid amount.',
-    dateRequired: 'Please choose the subscription date.',
-    deleteConfirm: 'Delete this subscription from expenses?',
-    expenseNote: 'The value is saved as a monthly expense impact while the original billing amount stays in the details.',
-    examplesTitle: 'Examples by subscription type',
-    examplesSubtitle: 'Changing the type updates the suggested services in the next field.',
-    showExamples: 'Show examples',
-    hideExamples: 'Hide examples',
-    category: {
+    nameRequired: 'Enter a subscription name.',
+    amountRequired: 'Enter a valid amount.',
+    renewalRequired: 'Enter a valid renewal date.',
+    deleteConfirm: 'Delete this subscription?',
+    monthlyEquivalent: 'Monthly equivalent',
+    annualEquivalent: 'Annual equivalent',
+    remaining: 'remaining',
+    day: 'days',
+    today: 'today',
+    tomorrow: 'tomorrow',
+    missingDate: 'No renewal date',
+    edit: 'Edit',
+    pause: 'Pause',
+    resume: 'Resume',
+    markCancelled: 'Mark cancelled',
+    delete: 'Delete',
+    openSite: 'Open site',
+    insights: 'Savings insights',
+    noInsights: 'Add two or more subscriptions for clearer comparison insights.',
+    categoryBreakdown: 'Cost by category',
+    steps: ['Add subscription', 'Set amount and renewal', 'Track cost and alerts'],
+    duplicateHint: 'It may be useful to review similar subscriptions.',
+    reviewHint: 'It may be useful to review this subscription.',
+    statuses: { active: 'Active', paused: 'Paused', cancelled: 'Cancelled', trial: 'Free trial', expired: 'Expired' },
+    cycles: { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' },
+    categories: {
       entertainment: 'Entertainment',
       ai: 'Artificial intelligence',
       social: 'Social media',
-      telecom: 'Telecom or internet',
+      telecom: 'Telecom and internet',
+      productivity: 'Productivity and software',
+      cloud: 'Cloud storage',
+      health: 'Health and fitness',
+      education: 'Education',
+      gaming: 'Gaming',
       other: 'Other',
     },
-    frequencyLabel: {
-      daily: 'Daily',
-      weekly: 'Weekly',
-      monthly: 'Monthly',
-      yearly: 'Yearly',
-    },
+    regions: { gulf: 'Gulf', arab: 'Arab countries', asia: 'Asia', europe: 'Europe', global: 'Global', other: 'Other' },
+    renewalFilters: { all: 'All renewals', today: 'Today', '7': 'Within 7 days', '30': 'Within 30 days', missing: 'No date' },
+    sorts: { renewal_soon: 'Closest renewal', cost_desc: 'Highest cost', cost_asc: 'Lowest cost', newest: 'Newest', name: 'Name' },
   },
   fr: {
     title: 'Abonnements mensuels',
-    subtitle: 'Suivez les abonnements récurrents et ajoutez leur impact mensuel aux dépenses.',
-    eyebrow: 'THE SFM / Dépenses',
+    subtitle: 'Suivez les services r\u00e9currents, les renouvellements et les pistes d\u2019\u00e9conomie dans un espace compact.',
+    eyebrow: 'THE SFM / D\u00e9penses',
     add: 'Ajouter un abonnement',
-    update: 'Mettre à jour',
-    cancel: 'Annuler',
-    save: 'Enregistrer',
-    saving: 'Enregistrement...',
-    backToExpenses: 'Retour aux dépenses',
-    formTitle: 'Détails de l’abonnement',
-    formSubtitle: 'Choisissez le type, le service et le cycle pour l’ajouter aux dépenses.',
-    subscriptionType: 'Type d’abonnement',
-    service: 'Service',
-    customService: 'Nom de l’abonnement',
-    date: 'Date d’abonnement',
+    firstAdd: 'Ajouter le premier',
+    export: 'Exporter',
+    exportDisabled: 'Ajoutez au moins un abonnement pour exporter le rapport.',
+    back: 'Retour aux d\u00e9penses',
+    summaryMonthly: 'Total mensuel',
+    summaryAnnual: 'Co\u00fbt annuel pr\u00e9vu',
+    activeCount: 'Abonnements actifs',
+    highest: 'Plus \u00e9lev\u00e9',
+    renewals30: 'Renouvellements sous 30 jours',
+    upcoming: 'Renouvellements \u00e0 venir',
+    noRenewals: 'Aucun renouvellement proche avec date claire.',
+    filters: 'Recherche et filtres',
+    search: 'Rechercher un service',
+    categoryFilter: 'Cat\u00e9gorie',
+    statusFilter: 'Statut',
+    cycleFilter: 'Cycle',
+    renewalFilter: 'Renouvellement',
+    sort: 'Tri',
+    clear: 'Effacer',
+    results: 'r\u00e9sultats',
+    listTitle: 'Liste des abonnements',
+    listHint: 'Les cartes restent compactes par d\u00e9faut.',
+    emptyTitle: 'Aucun abonnement',
+    emptyBody: 'Ajoutez votre premier abonnement pour suivre le co\u00fbt et les renouvellements.',
+    examples: 'Parcourir des exemples',
+    examplesTitle: 'Exemples par type',
+    exampleSearch: 'Rechercher un service',
+    loadMore: 'Afficher plus',
+    formTitleAdd: 'Ajouter un abonnement',
+    formTitleEdit: 'Modifier l\u2019abonnement',
+    name: 'Nom',
+    provider: 'Fournisseur',
+    category: 'Cat\u00e9gorie',
     amount: 'Montant',
     currency: 'Devise',
-    frequency: 'Cycle',
+    billingCycle: 'Cycle',
+    startDate: 'D\u00e9but',
+    nextRenewal: 'Prochain renouvellement',
+    paymentMethod: 'Paiement',
+    status: 'Statut',
+    freeTrial: 'Essai gratuit',
+    trialEnds: 'Fin d\u2019essai',
+    serviceUrl: 'Lien',
     notes: 'Notes',
-    monthlyImpact: 'Impact mensuel',
-    yearlyImpact: 'Impact annuel',
-    totalMonthly: 'Total mensuel',
-    totalYearly: 'Coût annuel prévu',
-    activeCount: 'Nombre d’abonnements',
-    highest: 'Abonnement mensuel le plus élevé',
-    listTitle: 'Liste des abonnements',
-    listSubtitle: 'Ces enregistrements sont aussi sauvegardés dans les dépenses.',
-    emptyTitle: 'Aucun abonnement',
-    emptyBody: 'Ajoutez Netflix, ChatGPT, internet ou un autre service récurrent.',
-    saved: 'Abonnement enregistré dans les dépenses.',
-    deleted: 'Abonnement supprimé des dépenses.',
-    error: 'Action impossible. Veuillez réessayer.',
-    authRequired: 'Connectez-vous pour gérer les abonnements.',
-    nameRequired: 'Choisissez ou saisissez un nom.',
+    save: 'Enregistrer',
+    update: 'Mettre \u00e0 jour',
+    cancel: 'Annuler',
+    saving: 'Enregistrement...',
+    saved: 'Abonnement enregistr\u00e9.',
+    deleted: 'Abonnement supprim\u00e9.',
+    error: 'Action impossible. R\u00e9essayez.',
+    authRequired: 'Connectez-vous pour g\u00e9rer les abonnements.',
+    nameRequired: 'Saisissez un nom.',
     amountRequired: 'Saisissez un montant valide.',
-    dateRequired: 'Choisissez une date.',
-    deleteConfirm: 'Supprimer cet abonnement des dépenses ?',
-    expenseNote: 'La valeur est enregistrée comme impact mensuel, avec le montant original dans les détails.',
-    examplesTitle: 'Exemples par type',
-    examplesSubtitle: 'Le type choisi met à jour les services suggérés.',
-    showExamples: 'Afficher les exemples',
-    hideExamples: 'Masquer les exemples',
-    category: {
+    renewalRequired: 'Saisissez une date valide.',
+    deleteConfirm: 'Supprimer cet abonnement ?',
+    monthlyEquivalent: '\u00c9quivalent mensuel',
+    annualEquivalent: '\u00c9quivalent annuel',
+    remaining: 'restants',
+    day: 'jours',
+    today: 'aujourd\u2019hui',
+    tomorrow: 'demain',
+    missingDate: 'Sans date',
+    edit: 'Modifier',
+    pause: 'Pause',
+    resume: 'Reprendre',
+    markCancelled: 'Marquer annul\u00e9',
+    delete: 'Supprimer',
+    openSite: 'Ouvrir',
+    insights: 'Pistes d\u2019\u00e9conomie',
+    noInsights: 'Ajoutez au moins deux abonnements pour plus d\u2019analyse.',
+    categoryBreakdown: 'Co\u00fbt par cat\u00e9gorie',
+    steps: ['Ajoutez', 'D\u00e9finissez le co\u00fbt', 'Suivez les alertes'],
+    duplicateHint: 'Il peut \u00eatre utile de revoir les abonnements similaires.',
+    reviewHint: 'Il peut \u00eatre utile de revoir cet abonnement.',
+    statuses: { active: 'Actif', paused: 'Suspendu', cancelled: 'Annul\u00e9', trial: 'Essai gratuit', expired: 'Expir\u00e9' },
+    cycles: { daily: 'Quotidien', weekly: 'Hebdomadaire', monthly: 'Mensuel', quarterly: 'Trimestriel', yearly: 'Annuel' },
+    categories: {
       entertainment: 'Divertissement',
-      ai: 'Intelligence artificielle',
-      social: 'Réseaux sociaux',
-      telecom: 'Télécom ou internet',
+      ai: 'IA',
+      social: 'R\u00e9seaux sociaux',
+      telecom: 'T\u00e9l\u00e9com et internet',
+      productivity: 'Productivit\u00e9',
+      cloud: 'Cloud',
+      health: 'Sant\u00e9',
+      education: '\u00c9ducation',
+      gaming: 'Jeux',
       other: 'Autre',
     },
-    frequencyLabel: {
-      daily: 'Quotidien',
-      weekly: 'Hebdomadaire',
-      monthly: 'Mensuel',
-      yearly: 'Annuel',
-    },
+    regions: { gulf: 'Golfe', arab: 'Pays arabes', asia: 'Asie', europe: 'Europe', global: 'Global', other: 'Autre' },
+    renewalFilters: { all: 'Tous', today: 'Aujourd\u2019hui', '7': 'Sous 7 jours', '30': 'Sous 30 jours', missing: 'Sans date' },
+    sorts: { renewal_soon: 'Renouvellement proche', cost_desc: 'Co\u00fbt \u00e9lev\u00e9', cost_asc: 'Co\u00fbt bas', newest: 'R\u00e9cent', name: 'Nom' },
   },
-};
+} as const;
 
-type ServiceOption = { id: string; label: string };
-type ServiceGroup = { label: string; options: ServiceOption[] };
-
-const TELECOM_SERVICE_GROUPS: ServiceGroup[] = [
-  {
-    label: 'Gulf / الخليج',
-    options: [
-      { id: 'kw-zain', label: 'Zain Kuwait' },
-      { id: 'kw-stc', label: 'stc Kuwait' },
-      { id: 'kw-ooredoo', label: 'Ooredoo Kuwait' },
-      { id: 'sa-stc', label: 'stc Saudi Arabia' },
-      { id: 'sa-mobily', label: 'Mobily' },
-      { id: 'sa-zain', label: 'Zain Saudi Arabia' },
-      { id: 'sa-salam', label: 'Salam' },
-      { id: 'sa-virgin', label: 'Virgin Mobile KSA' },
-      { id: 'sa-lebara', label: 'Lebara KSA' },
-      { id: 'ae-etisalat', label: 'e& UAE / Etisalat' },
-      { id: 'ae-du', label: 'du UAE' },
-      { id: 'ae-virgin', label: 'Virgin Mobile UAE' },
-      { id: 'qa-ooredoo', label: 'Ooredoo Qatar' },
-      { id: 'qa-vodafone', label: 'Vodafone Qatar' },
-      { id: 'bh-batelco', label: 'Batelco Bahrain' },
-      { id: 'bh-stc', label: 'stc Bahrain' },
-      { id: 'bh-zain', label: 'Zain Bahrain' },
-      { id: 'om-omantel', label: 'Omantel' },
-      { id: 'om-ooredoo', label: 'Ooredoo Oman' },
-      { id: 'om-vodafone', label: 'Vodafone Oman' },
-      { id: 'om-awa', label: 'Awasr Oman' },
-    ],
-  },
-  {
-    label: 'Arab countries / الدول العربية',
-    options: [
-      { id: 'eg-vodafone', label: 'Vodafone Egypt' },
-      { id: 'eg-orange', label: 'Orange Egypt' },
-      { id: 'eg-etisalat', label: 'Etisalat Egypt' },
-      { id: 'eg-we', label: 'WE / Telecom Egypt' },
-      { id: 'jo-zain', label: 'Zain Jordan' },
-      { id: 'jo-orange', label: 'Orange Jordan' },
-      { id: 'jo-umniah', label: 'Umniah Jordan' },
-      { id: 'lb-alfa', label: 'Alfa Lebanon' },
-      { id: 'lb-touch', label: 'Touch Lebanon' },
-      { id: 'ps-jawwal', label: 'Jawwal Palestine' },
-      { id: 'ps-paltel', label: 'Paltel' },
-      { id: 'ma-maroc-telecom', label: 'Maroc Telecom' },
-      { id: 'ma-orange', label: 'Orange Morocco' },
-      { id: 'ma-inwi', label: 'inwi Morocco' },
-      { id: 'tn-tunisie-telecom', label: 'Tunisie Telecom' },
-      { id: 'tn-ooredoo', label: 'Ooredoo Tunisia' },
-      { id: 'tn-orange', label: 'Orange Tunisia' },
-      { id: 'dz-mobilis', label: 'Mobilis Algeria' },
-      { id: 'dz-djezzy', label: 'Djezzy Algeria' },
-      { id: 'dz-ooredoo', label: 'Ooredoo Algeria' },
-      { id: 'dz-algerie-telecom', label: 'Algerie Telecom' },
-      { id: 'iq-asiacell', label: 'Asiacell Iraq' },
-      { id: 'iq-zain', label: 'Zain Iraq' },
-      { id: 'iq-korek', label: 'Korek Telecom' },
-      { id: 'iq-earthlink', label: 'EarthLink Iraq' },
-      { id: 'ly-libyana', label: 'Libyana' },
-      { id: 'ly-almadar', label: 'Almadar' },
-      { id: 'sd-zain', label: 'Zain Sudan' },
-      { id: 'sd-sudani', label: 'Sudani' },
-      { id: 'sd-mtn', label: 'MTN Sudan' },
-      { id: 'sd-canar', label: 'Canar Telecom' },
-      { id: 'sy-syriatel', label: 'Syriatel' },
-      { id: 'sy-mtn', label: 'MTN Syria' },
-      { id: 'ye-yemen-mobile', label: 'Yemen Mobile' },
-      { id: 'ye-sabafon', label: 'Sabafon' },
-      { id: 'ye-mtn', label: 'MTN Yemen' },
-      { id: 'ye-y-telecom', label: 'Y Telecom' },
-      { id: 'mr-mauritel', label: 'Mauritel' },
-      { id: 'mr-chinguitel', label: 'Chinguitel' },
-    ],
-  },
-  {
-    label: 'Global / عالمي',
-    options: [
-      { id: 'us-att', label: 'AT&T' },
-      { id: 'us-verizon', label: 'Verizon' },
-      { id: 'us-tmobile', label: 'T-Mobile' },
-      { id: 'us-xfinity', label: 'Xfinity Internet' },
-      { id: 'us-spectrum', label: 'Spectrum' },
-      { id: 'us-cox', label: 'Cox Communications' },
-      { id: 'ca-rogers', label: 'Rogers Canada' },
-      { id: 'ca-bell', label: 'Bell Canada' },
-      { id: 'ca-telus', label: 'TELUS' },
-      { id: 'au-telstra', label: 'Telstra' },
-      { id: 'au-optus', label: 'Optus' },
-      { id: 'au-tpg', label: 'TPG Telecom' },
-      { id: 'global-vodafone', label: 'Vodafone' },
-      { id: 'global-orange', label: 'Orange' },
-      { id: 'global-mtn', label: 'MTN Group' },
-      { id: 'global-airtel', label: 'Airtel' },
-      { id: 'global-jio', label: 'Jio' },
-      { id: 'global-telefonica', label: 'Telefonica / Movistar' },
-      { id: 'global-deutsche-telekom', label: 'Deutsche Telekom / T-Mobile' },
-    ],
-  },
-  {
-    label: 'Asia / آسيا',
-    options: [
-      { id: 'jp-docomo', label: 'NTT Docomo' },
-      { id: 'jp-kddi', label: 'KDDI au' },
-      { id: 'jp-softbank', label: 'SoftBank Japan' },
-      { id: 'jp-rakuten', label: 'Rakuten Mobile' },
-      { id: 'kr-sk', label: 'SK Telecom' },
-      { id: 'kr-kt', label: 'KT' },
-      { id: 'kr-lgu', label: 'LG U+' },
-      { id: 'cn-mobile', label: 'China Mobile' },
-      { id: 'cn-unicom', label: 'China Unicom' },
-      { id: 'cn-telecom', label: 'China Telecom' },
-      { id: 'tw-chunghwa', label: 'Chunghwa Telecom' },
-      { id: 'tw-taiwan-mobile', label: 'Taiwan Mobile' },
-      { id: 'tw-fareastone', label: 'Far EasTone' },
-      { id: 'sg-singtel', label: 'Singtel' },
-      { id: 'sg-starhub', label: 'StarHub' },
-      { id: 'sg-m1', label: 'M1 Singapore' },
-      { id: 'my-maxis', label: 'Maxis Malaysia' },
-      { id: 'my-celcomdigi', label: 'CelcomDigi' },
-      { id: 'my-u-mobile', label: 'U Mobile' },
-      { id: 'my-unifi', label: 'Unifi / Telekom Malaysia' },
-      { id: 'th-ais', label: 'AIS Thailand' },
-      { id: 'th-true', label: 'True Thailand' },
-      { id: 'th-dtac', label: 'dtac Thailand' },
-      { id: 'id-telkomsel', label: 'Telkomsel' },
-      { id: 'id-indosat', label: 'Indosat Ooredoo Hutchison' },
-      { id: 'id-xl', label: 'XL Axiata' },
-      { id: 'ph-globe', label: 'Globe Telecom' },
-      { id: 'ph-smart', label: 'Smart Communications' },
-      { id: 'ph-pldt', label: 'PLDT' },
-      { id: 'ph-converge', label: 'Converge ICT' },
-      { id: 'vn-viettel', label: 'Viettel' },
-      { id: 'vn-vinaphone', label: 'Vinaphone' },
-      { id: 'vn-mobifone', label: 'MobiFone' },
-      { id: 'vn-fpt', label: 'FPT Telecom' },
-      { id: 'in-jio', label: 'Jio India' },
-      { id: 'in-airtel', label: 'Airtel India' },
-      { id: 'in-vi', label: 'Vi / Vodafone Idea' },
-      { id: 'in-bsnl', label: 'BSNL' },
-      { id: 'pk-jazz', label: 'Jazz Pakistan' },
-      { id: 'pk-zong', label: 'Zong Pakistan' },
-      { id: 'pk-telenor', label: 'Telenor Pakistan' },
-      { id: 'pk-ptcl', label: 'PTCL' },
-      { id: 'bd-grameenphone', label: 'Grameenphone' },
-      { id: 'bd-robi', label: 'Robi' },
-      { id: 'bd-banglalink', label: 'Banglalink' },
-      { id: 'lk-dialog', label: 'Dialog Sri Lanka' },
-      { id: 'lk-slt', label: 'SLT-Mobitel' },
-      { id: 'np-ntc', label: 'Nepal Telecom' },
-      { id: 'np-ncell', label: 'Ncell' },
-    ],
-  },
-  {
-    label: 'Europe / أوروبا',
-    options: [
-      { id: 'uk-bt', label: 'BT' },
-      { id: 'uk-ee', label: 'EE' },
-      { id: 'uk-vodafone', label: 'Vodafone UK' },
-      { id: 'uk-o2', label: 'O2 UK' },
-      { id: 'uk-three', label: 'Three UK' },
-      { id: 'uk-virgin-media', label: 'Virgin Media O2' },
-      { id: 'fr-orange', label: 'Orange France' },
-      { id: 'fr-sfr', label: 'SFR' },
-      { id: 'fr-bouygues', label: 'Bouygues Telecom' },
-      { id: 'fr-free', label: 'Free Mobile' },
-      { id: 'de-telekom', label: 'Telekom Germany' },
-      { id: 'de-vodafone', label: 'Vodafone Germany' },
-      { id: 'de-o2', label: 'O2 Germany' },
-      { id: 'es-movistar', label: 'Movistar Spain' },
-      { id: 'es-orange', label: 'Orange Spain' },
-      { id: 'es-vodafone', label: 'Vodafone Spain' },
-      { id: 'es-masmovil', label: 'MasMovil / Yoigo' },
-      { id: 'it-tim', label: 'TIM Italy' },
-      { id: 'it-vodafone', label: 'Vodafone Italy' },
-      { id: 'it-windtre', label: 'WindTre' },
-      { id: 'it-iliad', label: 'Iliad Italy' },
-      { id: 'nl-kpn', label: 'KPN Netherlands' },
-      { id: 'nl-vodafoneziggo', label: 'VodafoneZiggo' },
-      { id: 'be-proximus', label: 'Proximus Belgium' },
-      { id: 'be-orange', label: 'Orange Belgium' },
-      { id: 'ch-swisscom', label: 'Swisscom' },
-      { id: 'ch-sunrise', label: 'Sunrise Switzerland' },
-      { id: 'at-a1', label: 'A1 Telekom Austria' },
-      { id: 'at-magenta', label: 'Magenta Telekom Austria' },
-      { id: 'pt-meo', label: 'MEO / Altice Portugal' },
-      { id: 'pt-nos', label: 'NOS Portugal' },
-      { id: 'se-telia', label: 'Telia Sweden' },
-      { id: 'se-tele2', label: 'Tele2 Sweden' },
-      { id: 'no-telenor', label: 'Telenor Norway' },
-      { id: 'dk-tdc', label: 'TDC Denmark' },
-      { id: 'fi-elisa', label: 'Elisa Finland' },
-      { id: 'fi-dna', label: 'DNA Finland' },
-      { id: 'tr-turkcell', label: 'Turkcell' },
-      { id: 'tr-turktelekom', label: 'Turk Telekom' },
-      { id: 'tr-vodafone', label: 'Vodafone Turkey' },
-    ],
-  },
-  {
-    label: 'Other / أخرى',
-    options: [
-      { id: 'home-internet', label: 'Home Internet' },
-      { id: 'fiber', label: 'Fiber Internet' },
-      { id: 'mobile-data', label: 'Mobile Data' },
-      { id: 'other', label: 'Other provider' },
-    ],
-  },
-];
-
-const SERVICE_OPTIONS: Record<SubscriptionType, ServiceOption[]> = {
-  entertainment: [
-    { id: 'netflix', label: 'Netflix' },
-    { id: 'shahid', label: 'Shahid' },
-    { id: 'osn', label: 'OSN+' },
-    { id: 'disney', label: 'Disney+' },
-    { id: 'youtube', label: 'YouTube Premium' },
-    { id: 'spotify', label: 'Spotify' },
-    { id: 'anghami', label: 'Anghami' },
-    { id: 'apple-tv', label: 'Apple TV+' },
-    { id: 'other', label: 'Other' },
-  ],
-  ai: [
-    { id: 'chatgpt', label: 'ChatGPT' },
-    { id: 'claude', label: 'Claude' },
-    { id: 'gemini', label: 'Gemini' },
-    { id: 'perplexity', label: 'Perplexity' },
-    { id: 'midjourney', label: 'Midjourney' },
-    { id: 'canva-ai', label: 'Canva AI' },
-    { id: 'cursor', label: 'Cursor' },
-    { id: 'github-copilot', label: 'GitHub Copilot' },
-    { id: 'other', label: 'Other' },
-  ],
-  social: [
-    { id: 'x-premium', label: 'X Premium' },
-    { id: 'snapchat-plus', label: 'Snapchat+' },
-    { id: 'meta-verified', label: 'Meta Verified' },
-    { id: 'linkedin-premium', label: 'LinkedIn Premium' },
-    { id: 'telegram-premium', label: 'Telegram Premium' },
-    { id: 'other', label: 'Other' },
-  ],
-  telecom: TELECOM_SERVICE_GROUPS.flatMap(group => group.options),
-  other: [
-    { id: 'gym', label: 'Gym' },
-    { id: 'icloud', label: 'iCloud' },
-    { id: 'google-one', label: 'Google One' },
-    { id: 'microsoft-365', label: 'Microsoft 365' },
-    { id: 'adobe', label: 'Adobe' },
-    { id: 'domain-hosting', label: 'Domain / Hosting' },
-    { id: 'other', label: 'Other' },
-  ],
-};
-
-const TYPE_ICONS: Record<SubscriptionType, LucideIcon> = {
+const CATEGORY_ICONS: Record<SubscriptionCategory, LucideIcon> = {
   entertainment: Film,
   ai: Bot,
   social: MessageCircle,
   telecom: Wifi,
+  productivity: Layers3,
+  cloud: Cloud,
+  health: HeartPulse,
+  education: GraduationCap,
+  gaming: Gamepad2,
   other: MoreHorizontal,
 };
 
@@ -565,7 +459,11 @@ const OPTIONAL_EXPENSE_COLUMNS = [
 ] as const;
 
 function todayInputDate() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function cleanNumber(value: string) {
@@ -581,11 +479,59 @@ function roundMoney(value: number) {
   return Math.round(value * 1000) / 1000;
 }
 
-function monthlyAmount(amount: number, frequency: BillingFrequency) {
-  if (frequency === 'daily') return amount * 30.4375;
-  if (frequency === 'weekly') return amount * 52 / 12;
-  if (frequency === 'yearly') return amount / 12;
-  return amount;
+function metadata(row: SubscriptionRow) {
+  return row.enhanced && typeof row.enhanced === 'object' ? row.enhanced : {};
+}
+
+function safeCategory(value: unknown): SubscriptionCategory {
+  return SUBSCRIPTION_CATEGORIES.includes(value as SubscriptionCategory) ? value as SubscriptionCategory : 'other';
+}
+
+function safeCycle(value: unknown): BillingCycle {
+  if (value === 'weekly' || value === 'monthly' || value === 'quarterly' || value === 'yearly' || value === 'daily') return value;
+  return 'monthly';
+}
+
+function safeStatus(value: unknown): SubscriptionStatus {
+  return SUBSCRIPTION_STATUSES.includes(value as SubscriptionStatus) ? value as SubscriptionStatus : 'active';
+}
+
+function localDate(value: string) {
+  if (!value) return null;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function daysUntil(value: string, now = new Date()) {
+  const date = localDate(value);
+  if (!date) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.ceil((date.getTime() - today.getTime()) / 86400000);
+}
+
+function formatDate(value: string, locale: Lang) {
+  const date = localDate(value);
+  if (!date) return '';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatSubscriptionMoney(amount: number, currencyCode: string, locale: Lang) {
+  const normalized = normalizeMoneyCurrencyCode(currencyCode, 'KWD');
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  if (normalized === 'KWD') {
+    return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+      style: 'currency',
+      currency: 'KWD',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    }).format(safeAmount);
+  }
+  return formatMoney(safeAmount, normalized, locale);
 }
 
 function missingColumnFromError(message: string) {
@@ -601,36 +547,22 @@ function isSchemaColumnError(error: unknown) {
   return /column|schema cache|pgrst204|does not exist|could not find/i.test(message);
 }
 
-function metadata(row: SubscriptionRow) {
-  return row.enhanced && typeof row.enhanced === 'object' ? row.enhanced : {};
-}
-
-function safeType(value: unknown): SubscriptionType {
-  return value === 'entertainment' || value === 'ai' || value === 'social' || value === 'telecom' || value === 'other'
-    ? value
-    : 'other';
-}
-
-function safeFrequency(value: unknown): BillingFrequency {
-  return value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'yearly'
-    ? value
-    : 'monthly';
-}
-
-function serviceLabel(type: SubscriptionType, serviceId: string, custom = '') {
-  if (custom.trim()) return custom.trim();
-  return SERVICE_OPTIONS[type].find(item => item.id === serviceId)?.label ?? serviceId;
-}
-
 function emptyForm(currency = 'KWD'): FormState {
+  const today = todayInputDate();
   return {
-    type: 'entertainment',
-    service: SERVICE_OPTIONS.entertainment[0].id,
-    customService: '',
-    startedAt: todayInputDate(),
+    name: '',
+    category: 'entertainment',
+    provider: '',
     amount: '',
     currency,
-    frequency: 'monthly',
+    billingCycle: 'monthly',
+    startDate: today,
+    nextRenewalDate: nextRenewalDate(today, 'monthly') ?? today,
+    paymentMethod: 'card',
+    status: 'active',
+    isTrial: false,
+    trialEndsAt: '',
+    serviceUrl: '',
     notes: '',
   };
 }
@@ -646,15 +578,25 @@ export default function MonthlySubscriptionsPage() {
   const [form, setForm] = useState<FormState>(() => emptyForm(baseCurrency));
   const [formOpen, setFormOpen] = useState(false);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [exampleCategory, setExampleCategory] = useState<SubscriptionCategory>('entertainment');
+  const [exampleRegion, setExampleRegion] = useState<SubscriptionRegion>('gulf');
+  const [exampleSearch, setExampleSearch] = useState('');
+  const [exampleLimit, setExampleLimit] = useState(12);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<SubscriptionCategory | FilterValue>('all');
+  const [statusFilter, setStatusFilter] = useState<SubscriptionStatus | FilterValue>('all');
+  const [cycleFilter, setCycleFilter] = useState<BillingCycle | FilterValue>('all');
+  const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('renewal_soon');
   const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const currency = normalizeMoneyCurrencyCode(form.currency, baseCurrency);
-  const billingAmount = toNumber(form.amount);
-  const projectedMonthly = roundMoney(monthlyAmount(billingAmount, form.frequency));
-  const projectedYearly = roundMoney(projectedMonthly * 12);
+  const examplesTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const examplesDialogRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user) {
@@ -671,7 +613,7 @@ export default function MonthlySubscriptionsPage() {
         .select('*')
         .eq('user_id', user.id)
         .eq('category', 'subscriptions')
-        .order('date', { ascending: false })
+        .order('date', { ascending: true })
         .order('created_at', { ascending: false });
       if (queryError) throw queryError;
       setRows((data ?? []) as SubscriptionRow[]);
@@ -698,7 +640,6 @@ export default function MonthlySubscriptionsPage() {
     ));
 
     if (!sourceCurrencies.length) return;
-
     let cancelled = false;
 
     const fallbackRates = sourceCurrencies.reduce<Record<string, number>>((next, from) => {
@@ -706,9 +647,7 @@ export default function MonthlySubscriptionsPage() {
       if (rate) next[fxKey(from, baseCurrency)] = rate;
       return next;
     }, {});
-    if (Object.keys(fallbackRates).length) {
-      setFxRates(current => ({ ...current, ...fallbackRates }));
-    }
+    if (Object.keys(fallbackRates).length) setFxRates(current => ({ ...current, ...fallbackRates }));
 
     const timeout = window.setTimeout(async () => {
       try {
@@ -716,9 +655,7 @@ export default function MonthlySubscriptionsPage() {
           method: 'POST',
           cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pairs: sourceCurrencies.map(from => ({ from, to: baseCurrency })),
-          }),
+          body: JSON.stringify({ pairs: sourceCurrencies.map(from => ({ from, to: baseCurrency })) }),
         });
         const payload = await response.json() as { rates?: FxRateResponse[] };
         if (cancelled) return;
@@ -726,16 +663,12 @@ export default function MonthlySubscriptionsPage() {
           const from = normalizeMoneyCurrencyCode(item.from, '');
           const to = normalizeMoneyCurrencyCode(item.to, '');
           const rate = Number(item.rate);
-          if (item.available && from && to && Number.isFinite(rate) && rate > 0) {
-            next[fxKey(from, to)] = rate;
-          }
+          if (item.available && from && to && Number.isFinite(rate) && rate > 0) next[fxKey(from, to)] = rate;
           return next;
         }, {});
-        if (Object.keys(liveRates).length) {
-          setFxRates(current => ({ ...current, ...liveRates }));
-        }
+        if (Object.keys(liveRates).length) setFxRates(current => ({ ...current, ...liveRates }));
       } catch {
-        // Keep the local fallback conversion so mixed-currency totals are not summed as raw numbers.
+        // Keep local fallback rates when live FX is unavailable.
       }
     }, 250);
 
@@ -745,55 +678,178 @@ export default function MonthlySubscriptionsPage() {
     };
   }, [baseCurrency, rows]);
 
+  useEffect(() => {
+    if (!examplesOpen) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    window.setTimeout(() => {
+      const first = examplesDialogRef.current?.querySelector<HTMLElement>('button, input, [href], [tabindex]:not([tabindex="-1"])');
+      first?.focus();
+    }, 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExamplesOpen(false);
+        window.setTimeout(() => examplesTriggerRef.current?.focus(), 0);
+      }
+      if (event.key !== 'Tab' || !examplesDialogRef.current) return;
+      const focusable = Array.from(examplesDialogRef.current.querySelectorAll<HTMLElement>('button, input, [href], [tabindex]:not([tabindex="-1"])'))
+        .filter(item => !item.hasAttribute('disabled'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previous?.focus();
+    };
+  }, [examplesOpen]);
+
+  const views = useMemo<SubscriptionView[]>(() => rows.map(row => {
+    const meta = metadata(row);
+    const category = safeCategory(meta.subscription_category ?? meta.subscription_type);
+    const status = safeStatus(meta.subscription_status);
+    const billingCycle = safeCycle(meta.billing_frequency);
+    const currency = normalizeMoneyCurrencyCode(row.currency, baseCurrency);
+    const originalAmount = toNumber(meta.billing_amount ?? row.amount);
+    const monthlyNative = toNumber(meta.monthly_amount ?? row.amount ?? monthlyEquivalent(originalAmount, billingCycle));
+    const annualNative = toNumber(meta.yearly_amount ?? annualEquivalent(originalAmount, billingCycle));
+    const startDate = String(meta.subscription_start_date ?? row.start_date ?? row.date ?? '').slice(0, 10);
+    const renewal = String(meta.next_renewal_date ?? row.date ?? nextRenewalDate(startDate, billingCycle) ?? '').slice(0, 10);
+    const convertedMonthly = convertCurrencyAmount(monthlyNative, currency, baseCurrency, fxRates);
+    return {
+      row,
+      id: row.id,
+      name: row.name || String(meta.service_label ?? ''),
+      category,
+      status,
+      billingCycle,
+      originalAmount,
+      monthlyNative: roundMoney(monthlyNative),
+      annualNative: roundMoney(annualNative),
+      monthlyBase: convertedMonthly === null ? null : roundMoney(convertedMonthly),
+      currency,
+      startDate,
+      nextRenewalDate: renewal,
+      paymentMethod: row.payment_method || String(meta.payment_method ?? ''),
+      serviceUrl: String(meta.service_url ?? ''),
+      notes: row.notes || '',
+      isTrial: Boolean(meta.is_trial) || status === 'trial',
+      trialEndsAt: String(meta.trial_end_date ?? '').slice(0, 10),
+      daysUntilRenewal: daysUntil(renewal),
+      createdAt: row.created_at || '',
+    };
+  }), [baseCurrency, fxRates, rows]);
+
+  const activeViews = useMemo(() => views.filter(view => isSpendActiveStatus(view.status)), [views]);
   const totals = useMemo(() => {
-    const convertedRows = rows.map(row => {
-      const rowCurrency = normalizeMoneyCurrencyCode(row.currency, baseCurrency);
-      const monthlyNative = toNumber(row.amount);
-      return {
-        row,
-        monthlyNative,
-        convertedMonthly: convertCurrencyAmount(monthlyNative, rowCurrency, baseCurrency, fxRates),
-      };
-    });
-    const monthly = convertedRows.reduce((sum, item) => sum + (item.convertedMonthly ?? 0), 0);
-    const highest = convertedRows.reduce<typeof convertedRows[number] | null>((current, item) => {
-      if (item.convertedMonthly === null) return current;
-      if (!current || item.convertedMonthly > (current.convertedMonthly ?? 0)) return item;
+    const monthly = activeViews.reduce((sum, view) => sum + (view.monthlyBase ?? 0), 0);
+    const highest = activeViews.reduce<SubscriptionView | null>((current, view) => {
+      if (view.monthlyBase === null) return current;
+      if (!current || view.monthlyBase > (current.monthlyBase ?? 0)) return view;
       return current;
     }, null);
-    return { monthly: roundMoney(monthly), yearly: roundMoney(monthly * 12), highest: highest?.row ?? null };
-  }, [baseCurrency, fxRates, rows]);
+    const renewals30 = views.filter(view => view.daysUntilRenewal !== null && view.daysUntilRenewal >= 0 && view.daysUntilRenewal <= 30 && view.status !== 'cancelled' && view.status !== 'expired').length;
+    return {
+      monthly: roundMoney(monthly),
+      yearly: roundMoney(monthly * 12),
+      activeCount: activeViews.length,
+      highest,
+      renewals30,
+    };
+  }, [activeViews, views]);
 
-  function changeType(type: SubscriptionType) {
-    setForm(current => ({
-      ...current,
-      type,
-      service: SERVICE_OPTIONS[type][0].id,
-      customService: '',
-    }));
-  }
+  const filteredViews = useMemo(() => {
+    const query = normalizeSubscriptionSearch(search);
+    return views
+      .filter(view => {
+        if (query && !normalizeSubscriptionSearch(`${view.name} ${view.paymentMethod} ${view.notes}`).includes(query)) return false;
+        if (categoryFilter !== 'all' && view.category !== categoryFilter) return false;
+        if (statusFilter !== 'all' && view.status !== statusFilter) return false;
+        if (cycleFilter !== 'all' && view.billingCycle !== cycleFilter) return false;
+        if (renewalFilter === 'today' && view.daysUntilRenewal !== 0) return false;
+        if (renewalFilter === '7' && (view.daysUntilRenewal === null || view.daysUntilRenewal < 0 || view.daysUntilRenewal > 7)) return false;
+        if (renewalFilter === '30' && (view.daysUntilRenewal === null || view.daysUntilRenewal < 0 || view.daysUntilRenewal > 30)) return false;
+        if (renewalFilter === 'missing' && view.nextRenewalDate) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortKey === 'cost_desc') return (b.monthlyBase ?? 0) - (a.monthlyBase ?? 0);
+        if (sortKey === 'cost_asc') return (a.monthlyBase ?? 0) - (b.monthlyBase ?? 0);
+        if (sortKey === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        if (sortKey === 'name') return a.name.localeCompare(b.name);
+        const aDays = a.daysUntilRenewal ?? 99999;
+        const bDays = b.daysUntilRenewal ?? 99999;
+        return aDays - bDays;
+      });
+  }, [categoryFilter, cycleFilter, renewalFilter, search, sortKey, statusFilter, views]);
 
-  function editRow(row: SubscriptionRow) {
-    const meta = metadata(row);
-    const type = safeType(meta.subscription_type);
-    const storedService = String(meta.subscription_service ?? '');
-    const serviceExists = SERVICE_OPTIONS[type].some(item => item.id === storedService);
-    const label = String(meta.service_label ?? row.name ?? '');
-    setForm({
-      id: row.id,
-      type,
-      service: serviceExists ? storedService : 'other',
-      customService: serviceExists ? '' : label,
-      startedAt: String(meta.subscription_start_date ?? row.date ?? todayInputDate()).slice(0, 10),
-      amount: String(meta.billing_amount ?? row.amount ?? ''),
-      currency: row.currency || userCurrency || 'KWD',
-      frequency: safeFrequency(meta.billing_frequency),
-      notes: row.notes || '',
-    });
-    setFormOpen(true);
-    setNotice('');
-    setError('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const upcomingRenewals = useMemo(() => views
+    .filter(view => view.daysUntilRenewal !== null && view.daysUntilRenewal >= 0 && view.daysUntilRenewal <= 30 && view.status !== 'cancelled' && view.status !== 'expired')
+    .sort((a, b) => (a.daysUntilRenewal ?? 0) - (b.daysUntilRenewal ?? 0))
+    .slice(0, 4), [views]);
+
+  const categoryBreakdown = useMemo(() => {
+    const totalsByCategory = activeViews.reduce<Record<SubscriptionCategory, number>>((next, view) => {
+      next[view.category] = (next[view.category] ?? 0) + (view.monthlyBase ?? 0);
+      return next;
+    }, {} as Record<SubscriptionCategory, number>);
+    const entries = Object.entries(totalsByCategory)
+      .map(([category, amount]) => ({ category: category as SubscriptionCategory, amount: roundMoney(amount) }))
+      .filter(item => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+    const max = entries[0]?.amount || 0;
+    return entries.map(item => ({ ...item, percent: max ? Math.max(8, Math.round((item.amount / max) * 100)) : 0 }));
+  }, [activeViews]);
+
+  const insightItems = useMemo(() => {
+    const insights: string[] = [];
+    const topCategory = categoryBreakdown[0];
+    if (topCategory) {
+      insights.push(`${copy.categories[topCategory.category]}: ${formatSubscriptionMoney(topCategory.amount, baseCurrency, locale)} ${locale === 'ar' ? 'شهرياً' : 'monthly'}.`);
+    }
+    const duplicateGroups = Object.values(activeViews.reduce<Record<string, SubscriptionView[]>>((next, view) => {
+      const key = view.category;
+      next[key] = [...(next[key] ?? []), view];
+      return next;
+    }, {})).filter(group => group.length >= 3);
+    if (duplicateGroups.length) insights.push(copy.duplicateHint);
+    const oldReview = activeViews.find(view => view.createdAt && Date.now() - new Date(view.createdAt).getTime() > 180 * 86400000);
+    if (oldReview) insights.push(`${copy.reviewHint}: ${oldReview.name}`);
+    return insights;
+  }, [activeViews, baseCurrency, categoryBreakdown, copy, locale]);
+
+  const filteredExamples = useMemo(() => {
+    const query = normalizeSubscriptionSearch(exampleSearch);
+    return SUBSCRIPTION_EXAMPLES
+      .filter(example => example.category === exampleCategory)
+      .filter(example => example.category !== 'telecom' || example.region === exampleRegion)
+      .filter(example => {
+        if (!query) return true;
+        return normalizeSubscriptionSearch([example.name, ...(example.aliases ?? [])].join(' ')).includes(query);
+      });
+  }, [exampleCategory, exampleRegion, exampleSearch]);
+
+  const pageError = error || supabaseConfigError;
+  const hasActiveFilters = Boolean(search || categoryFilter !== 'all' || statusFilter !== 'all' || cycleFilter !== 'all' || renewalFilter !== 'all');
+  const formCurrency = normalizeMoneyCurrencyCode(form.currency, baseCurrency);
+  const formAmount = toNumber(form.amount);
+  const projectedMonthly = roundMoney(monthlyEquivalent(formAmount, form.billingCycle));
+  const projectedYearly = roundMoney(annualEquivalent(formAmount, form.billingCycle));
+
+  function clearFilters() {
+    setSearch('');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setCycleFilter('all');
+    setRenewalFilter('all');
+    setSortKey('renewal_soon');
   }
 
   function openNewForm() {
@@ -801,13 +857,53 @@ export default function MonthlySubscriptionsPage() {
     setFormOpen(true);
     setNotice('');
     setError('');
+    window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
-  function resetForm() {
-    setForm(emptyForm(baseCurrency));
-    setFormOpen(false);
+  function closeExamples() {
+    setExamplesOpen(false);
+    window.setTimeout(() => examplesTriggerRef.current?.focus(), 0);
+  }
+
+  function selectExample(example: SubscriptionExample) {
+    const today = todayInputDate();
+    const cycle = example.defaultBillingCycle ?? 'monthly';
+    setForm({
+      ...emptyForm(baseCurrency),
+      name: example.name,
+      provider: example.name,
+      category: example.category,
+      billingCycle: cycle,
+      nextRenewalDate: nextRenewalDate(today, cycle) ?? today,
+    });
+    setFormOpen(true);
+    closeExamples();
+    window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  }
+
+  function editRow(view: SubscriptionView) {
+    const meta = metadata(view.row);
+    setForm({
+      id: view.id,
+      name: view.name,
+      category: view.category,
+      provider: String(meta.subscription_provider ?? view.name),
+      amount: String(view.originalAmount || ''),
+      currency: view.currency,
+      billingCycle: view.billingCycle,
+      startDate: view.startDate || todayInputDate(),
+      nextRenewalDate: view.nextRenewalDate || nextRenewalDate(todayInputDate(), view.billingCycle) || todayInputDate(),
+      paymentMethod: view.paymentMethod || 'card',
+      status: view.status,
+      isTrial: view.isTrial,
+      trialEndsAt: view.trialEndsAt,
+      serviceUrl: view.serviceUrl,
+      notes: view.notes,
+    });
+    setFormOpen(true);
     setNotice('');
     setError('');
+    window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
   async function writeExpense(payload: Record<string, unknown>, id?: string) {
@@ -828,9 +924,7 @@ export default function MonthlySubscriptionsPage() {
         !missingColumn ||
         !OPTIONAL_EXPENSE_COLUMNS.includes(missingColumn as typeof OPTIONAL_EXPENSE_COLUMNS[number]) ||
         !(missingColumn in nextPayload)
-      ) {
-        throw saveError;
-      }
+      ) throw saveError;
       const { [missingColumn]: _removed, ...remainingPayload } = nextPayload;
       nextPayload = remainingPayload;
     }
@@ -843,59 +937,54 @@ export default function MonthlySubscriptionsPage() {
     if (saving) return;
     setNotice('');
     setError('');
-    if (!user) {
-      setError(copy.authRequired);
-      return;
-    }
-    const name = serviceLabel(form.type, form.service, form.customService);
-    if (!name || name === 'other') {
-      setError(copy.nameRequired);
-      return;
-    }
-    if (!billingAmount || billingAmount <= 0 || !projectedMonthly) {
-      setError(copy.amountRequired);
-      return;
-    }
-    if (!form.startedAt) {
-      setError(copy.dateRequired);
-      return;
-    }
+    if (!user) return setError(copy.authRequired);
+    if (!form.name.trim()) return setError(copy.nameRequired);
+    if (!formAmount || formAmount <= 0 || !projectedMonthly) return setError(copy.amountRequired);
+    if (!localDate(form.nextRenewalDate)) return setError(copy.renewalRequired);
 
     setSaving(true);
     const now = new Date().toISOString();
     const payload = {
       user_id: user.id,
-      name,
+      name: form.name.trim(),
       amount: projectedMonthly,
-      currency,
+      currency: formCurrency,
       category: 'subscriptions',
-      date: form.startedAt,
-      payment_method: 'card',
+      date: form.nextRenewalDate,
+      payment_method: form.paymentMethod || null,
       notes: form.notes || null,
       source: 'subscription',
       is_recurring: true,
       frequency: 'monthly',
-      start_date: form.startedAt,
-      end_date: null,
+      start_date: form.startDate || form.nextRenewalDate,
+      end_date: form.status === 'cancelled' || form.status === 'expired' ? now.slice(0, 10) : null,
       enhanced: {
         source: 'subscription',
-        subscription_type: form.type,
-        subscription_service: form.service,
-        service_label: name,
-        billing_frequency: form.frequency,
-        billing_amount: billingAmount,
-        billing_currency: currency,
+        subscription_category: form.category,
+        subscription_type: form.category,
+        subscription_provider: form.provider || form.name.trim(),
+        subscription_service: form.name.trim(),
+        service_label: form.name.trim(),
+        subscription_status: form.status,
+        billing_frequency: form.billingCycle,
+        billing_amount: formAmount,
+        billing_currency: formCurrency,
         monthly_amount: projectedMonthly,
         yearly_amount: projectedYearly,
-        subscription_start_date: form.startedAt,
+        subscription_start_date: form.startDate || form.nextRenewalDate,
+        next_renewal_date: form.nextRenewalDate,
+        payment_method: form.paymentMethod || null,
+        is_trial: form.isTrial,
+        trial_end_date: form.isTrial ? form.trialEndsAt || null : null,
+        service_url: form.serviceUrl || null,
         created_from: 'monthly_subscriptions_page',
       },
       updated_at: now,
     };
 
     try {
-      await writeExpense(payload, form.id);
-      await loadData();
+      const saved = await writeExpense(payload, form.id);
+      setRows(current => form.id ? current.map(row => row.id === form.id ? saved : row) : [saved, ...current]);
       setForm(emptyForm(baseCurrency));
       setFormOpen(false);
       setNotice(copy.saved);
@@ -907,295 +996,424 @@ export default function MonthlySubscriptionsPage() {
     }
   }
 
-  async function deleteRow(row: SubscriptionRow) {
+  async function updateStatus(view: SubscriptionView, status: SubscriptionStatus) {
+    if (!user) return;
+    setNotice('');
+    setError('');
+    const meta = metadata(view.row);
+    try {
+      const saved = await writeExpense({
+        enhanced: { ...meta, subscription_status: status },
+        end_date: status === 'cancelled' || status === 'expired' ? todayInputDate() : null,
+        updated_at: new Date().toISOString(),
+      }, view.id);
+      setRows(current => current.map(row => row.id === view.id ? { ...row, ...saved } : row));
+    } catch (err) {
+      console.error('Monthly subscription status update failed:', err);
+      setError(copy.error);
+    }
+  }
+
+  async function deleteRow(view: SubscriptionView) {
     if (!user) return;
     if (!window.confirm(copy.deleteConfirm)) return;
     setNotice('');
     setError('');
     const db = supabase as any;
-    const { error: deleteError } = await db
-      .from('expense_items')
-      .delete()
-      .eq('id', row.id)
-      .eq('user_id', user.id);
+    const { error: deleteError } = await db.from('expense_items').delete().eq('id', view.id).eq('user_id', user.id);
     if (deleteError) {
       setError(copy.error);
       return;
     }
-    setRows(current => current.filter(item => item.id !== row.id));
+    setRows(current => current.filter(item => item.id !== view.id));
     setNotice(copy.deleted);
   }
 
   function printSubscriptionsReport() {
+    if (!rows.length) {
+      setError(copy.exportDisabled);
+      return;
+    }
     window.setTimeout(() => window.print(), 80);
   }
 
-  const pageError = error || supabaseConfigError;
+  function renewalText(view: SubscriptionView) {
+    if (view.daysUntilRenewal === null) return copy.missingDate;
+    if (view.daysUntilRenewal === 0) return copy.today;
+    if (view.daysUntilRenewal === 1) return copy.tomorrow;
+    return `${copy.remaining} ${view.daysUntilRenewal} ${copy.day}`;
+  }
+
+  function onExamplesBackdropMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) closeExamples();
+  }
+
+  function onExampleDialogKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') closeExamples();
+  }
 
   return (
     <div className="subscriptions-shell" dir={dir}>
       <Sidebar />
-      <main className="subscriptions-main">
+      <DashboardPageShell ariaLabel={copy.title} className="subscriptions-main" contentClassName="subscriptions-content">
         <section className="subscriptions-hero">
-          <div>
+          <div className="subscriptions-hero-copy">
             <span className="subscriptions-eyebrow"><CreditCard size={16} /> {copy.eyebrow}</span>
             <h1>{copy.title}</h1>
             <p>{copy.subtitle}</p>
           </div>
           <div className="subscriptions-hero-actions">
-            <Link href="/expenses" className="subscriptions-secondary">
-              {copy.backToExpenses}
-            </Link>
-            <button type="button" className="subscriptions-secondary" onClick={printSubscriptionsReport}>
-              <Printer size={18} />
-              {locale === 'ar' ? 'تصدير PDF' : locale === 'fr' ? 'Exporter PDF' : 'Export PDF'}
-            </button>
             <button type="button" className="subscriptions-primary" onClick={openNewForm}>
               <Plus size={18} />
               {copy.add}
             </button>
+            <button
+              type="button"
+              className="subscriptions-secondary"
+              onClick={printSubscriptionsReport}
+              disabled={!rows.length}
+              title={!rows.length ? copy.exportDisabled : undefined}
+            >
+              <Printer size={18} />
+              {copy.export}
+            </button>
+            <Link href="/expenses" className="subscriptions-tertiary">{copy.back}</Link>
           </div>
         </section>
 
         {(notice || pageError) && (
-          <section className={`subscriptions-notice ${pageError ? 'error' : 'success'}`}>
+          <section className={`subscriptions-notice ${pageError ? 'error' : 'success'}`} role={pageError ? 'alert' : 'status'} aria-live="polite">
             {pageError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
             <span>{pageError || notice}</span>
           </section>
         )}
 
-        <section className="subscriptions-summary-grid">
-          <article>
-            <span><ReceiptText size={18} /></span>
-            <small>{copy.totalMonthly}</small>
-            <strong dir="ltr">{formatMoney(totals.monthly, baseCurrency, locale)}</strong>
-          </article>
-          <article>
-            <span><CalendarDays size={18} /></span>
-            <small>{copy.totalYearly}</small>
-            <strong dir="ltr">{formatMoney(totals.yearly, baseCurrency, locale)}</strong>
-          </article>
-          <article>
-            <span><CreditCard size={18} /></span>
-            <small>{copy.activeCount}</small>
-            <strong dir="ltr">{rows.length}</strong>
-          </article>
-          <article>
-            <span><Sparkles size={18} /></span>
-            <small>{copy.highest}</small>
-            <strong dir="auto">{totals.highest ? `${totals.highest.name} | ${formatMoney(toNumber(totals.highest.amount), totals.highest.currency || currency, locale)}` : '-'}</strong>
-          </article>
+        <section className="subscriptions-kpis" aria-label={copy.summaryMonthly}>
+          <Kpi icon={ReceiptIcon} label={copy.summaryMonthly} value={formatSubscriptionMoney(totals.monthly, baseCurrency, locale)} />
+          <Kpi icon={CalendarDays} label={copy.summaryAnnual} value={formatSubscriptionMoney(totals.yearly, baseCurrency, locale)} />
+          <Kpi icon={CreditCard} label={copy.activeCount} value={String(totals.activeCount)} />
+          <Kpi icon={Sparkles} label={copy.highest} value={totals.highest ? `${totals.highest.name} ? ${formatSubscriptionMoney(totals.highest.monthlyBase ?? 0, baseCurrency, locale)}` : formatSubscriptionMoney(0, baseCurrency, locale)} />
         </section>
 
         {formOpen && (
-        <section className="subscriptions-form-wrap">
-          <form className="subscriptions-form-card" onSubmit={saveSubscription}>
-            <div className="subscriptions-section-head">
+          <section ref={formRef} className="subscriptions-form-card" aria-labelledby="subscription-form-title">
+            <div className="subscriptions-card-head">
               <div>
                 <span>{form.id ? copy.update : copy.add}</span>
-                <h2>{copy.formTitle}</h2>
-                <p>{copy.formSubtitle}</p>
+                <h2 id="subscription-form-title">{form.id ? copy.formTitleEdit : copy.formTitleAdd}</h2>
               </div>
+              <button type="button" className="subscriptions-icon-button" onClick={() => { setFormOpen(false); setForm(emptyForm(baseCurrency)); }} aria-label={copy.cancel}>
+                <X size={18} />
+              </button>
             </div>
-
-            <div className="subscriptions-type-grid">
-              {(Object.keys(copy.category) as SubscriptionType[]).map(type => {
-                const Icon = TYPE_ICONS[type];
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    className={form.type === type ? 'active' : ''}
-                    onClick={() => changeType(type)}
-                  >
-                    <Icon size={18} />
-                    <span>{copy.category[type]}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="subscriptions-form-grid">
+            <form onSubmit={saveSubscription} className="subscriptions-form-grid">
               <label>
-                <span>{copy.service}</span>
-                <select value={form.service} onChange={event => setForm(current => ({ ...current, service: event.target.value }))}>
-                  {form.type === 'telecom' ? TELECOM_SERVICE_GROUPS.map(group => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.options.map(option => (
-                        <option key={option.id} value={option.id}>{option.label}</option>
-                      ))}
-                    </optgroup>
-                  )) : SERVICE_OPTIONS[form.type].map(option => (
-                    <option key={option.id} value={option.id}>{option.label}</option>
-                  ))}
+                <span>{copy.name}</span>
+                <input value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} />
+              </label>
+              <label>
+                <span>{copy.provider}</span>
+                <input value={form.provider} onChange={event => setForm(current => ({ ...current, provider: event.target.value }))} />
+              </label>
+              <label>
+                <span>{copy.category}</span>
+                <select value={form.category} onChange={event => setForm(current => ({ ...current, category: event.target.value as SubscriptionCategory }))}>
+                  {SUBSCRIPTION_CATEGORIES.map(category => <option key={category} value={category}>{copy.categories[category]}</option>)}
                 </select>
               </label>
-
-              {(form.service === 'other' || form.type === 'other') && (
-                <label>
-                  <span>{copy.customService}</span>
-                  <input value={form.customService} onChange={event => setForm(current => ({ ...current, customService: event.target.value }))} placeholder="Netflix, ChatGPT..." />
-                </label>
-              )}
-
               <label>
-                <span>{copy.date}</span>
-                <input type="date" value={form.startedAt} onChange={event => setForm(current => ({ ...current, startedAt: event.target.value }))} />
+                <span>{copy.status}</span>
+                <select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value as SubscriptionStatus }))}>
+                  {SUBSCRIPTION_STATUSES.map(status => <option key={status} value={status}>{copy.statuses[status]}</option>)}
+                </select>
               </label>
-
               <label>
                 <span>{copy.amount}</span>
                 <input inputMode="decimal" dir="ltr" value={form.amount} onChange={event => setForm(current => ({ ...current, amount: cleanNumber(event.target.value) }))} />
               </label>
-
               <label>
                 <span>{copy.currency}</span>
-                <CurrencySelect value={currency} onChange={code => setForm(current => ({ ...current, currency: code }))} lang={locale} ariaLabel={copy.currency} />
+                <CurrencySelect value={formCurrency} onChange={code => setForm(current => ({ ...current, currency: code }))} lang={locale} ariaLabel={copy.currency} />
               </label>
-
               <label>
-                <span>{copy.frequency}</span>
-                <select value={form.frequency} onChange={event => setForm(current => ({ ...current, frequency: event.target.value as BillingFrequency }))}>
-                  {(Object.keys(copy.frequencyLabel) as BillingFrequency[]).map(key => (
-                    <option key={key} value={key}>{copy.frequencyLabel[key]}</option>
-                  ))}
+                <span>{copy.billingCycle}</span>
+                <select value={form.billingCycle} onChange={event => setForm(current => ({ ...current, billingCycle: event.target.value as BillingCycle }))}>
+                  {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{copy.cycles[cycle]}</option>)}
                 </select>
               </label>
-            </div>
-
-            <label className="subscriptions-notes-field">
-              <span>{copy.notes}</span>
-              <textarea value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} />
-            </label>
-
-            <div className="subscriptions-impact-card">
-              <div>
-                <span>{copy.monthlyImpact}</span>
-                <strong dir="ltr">{formatMoney(projectedMonthly, currency, locale)}</strong>
+              <label>
+                <span>{copy.paymentMethod}</span>
+                <input value={form.paymentMethod} onChange={event => setForm(current => ({ ...current, paymentMethod: event.target.value }))} />
+              </label>
+              <label>
+                <span>{copy.startDate}</span>
+                <input type="date" value={form.startDate} onChange={event => setForm(current => ({ ...current, startDate: event.target.value }))} />
+              </label>
+              <label>
+                <span>{copy.nextRenewal}</span>
+                <input type="date" value={form.nextRenewalDate} onChange={event => setForm(current => ({ ...current, nextRenewalDate: event.target.value }))} />
+              </label>
+              <label className="subscriptions-checkbox-row">
+                <input type="checkbox" checked={form.isTrial} onChange={event => setForm(current => ({ ...current, isTrial: event.target.checked, status: event.target.checked ? 'trial' : current.status }))} />
+                <span>{copy.freeTrial}</span>
+              </label>
+              <label>
+                <span>{copy.trialEnds}</span>
+                <input type="date" value={form.trialEndsAt} onChange={event => setForm(current => ({ ...current, trialEndsAt: event.target.value }))} disabled={!form.isTrial} />
+              </label>
+              <label>
+                <span>{copy.serviceUrl}</span>
+                <input type="url" dir="ltr" value={form.serviceUrl} onChange={event => setForm(current => ({ ...current, serviceUrl: event.target.value }))} placeholder="https://example.com" />
+              </label>
+              <label className="subscriptions-notes-field">
+                <span>{copy.notes}</span>
+                <textarea value={form.notes} onChange={event => setForm(current => ({ ...current, notes: event.target.value }))} />
+              </label>
+              <div className="subscriptions-impact-card">
+                <div><span>{copy.monthlyEquivalent}</span><strong dir="ltr">{formatSubscriptionMoney(projectedMonthly, formCurrency, locale)}</strong></div>
+                <div><span>{copy.annualEquivalent}</span><strong dir="ltr">{formatSubscriptionMoney(projectedYearly, formCurrency, locale)}</strong></div>
               </div>
-              <div>
-                <span>{copy.yearlyImpact}</span>
-                <strong dir="ltr">{formatMoney(projectedYearly, currency, locale)}</strong>
+              <div className="subscriptions-form-actions">
+                <button type="button" className="subscriptions-secondary light" onClick={() => { setFormOpen(false); setForm(emptyForm(baseCurrency)); }}>{copy.cancel}</button>
+                <button type="submit" className="subscriptions-primary" disabled={saving || authLoading || loading}>{saving ? copy.saving : form.id ? copy.update : copy.save}</button>
               </div>
-              <p>{copy.expenseNote}</p>
-            </div>
-
-            <div className="subscriptions-form-actions">
-              {form.id && <button type="button" className="subscriptions-secondary" onClick={resetForm}>{copy.cancel}</button>}
-              <button type="submit" className="subscriptions-primary" disabled={saving || authLoading || loading}>
-                {saving ? copy.saving : form.id ? copy.update : copy.save}
-              </button>
-            </div>
-          </form>
-        </section>
+            </form>
+          </section>
         )}
 
-        <section className="subscriptions-examples-card subscriptions-examples-card--wide">
-            <div className="subscriptions-section-head subscriptions-section-head--interactive">
-              <div>
-                <span>THE SFM</span>
-                <h2>{copy.examplesTitle}</h2>
-                <p>{copy.examplesSubtitle}</p>
-              </div>
-              <button
-                type="button"
-                className="subscriptions-examples-toggle"
-                aria-expanded={examplesOpen}
-                aria-controls="subscription-examples-list"
-                onClick={() => setExamplesOpen(current => !current)}
-              >
-                {examplesOpen ? copy.hideExamples : copy.showExamples}
-                <ChevronDown size={16} className={examplesOpen ? 'open' : ''} />
-              </button>
-            </div>
-            {examplesOpen && (
-            <div id="subscription-examples-list" className="subscriptions-examples-list">
-              {(Object.keys(SERVICE_OPTIONS) as SubscriptionType[]).map(type => {
-                const Icon = TYPE_ICONS[type];
-                return (
-                  <article key={type} className={type === 'telecom' ? 'telecom-example' : undefined}>
-                    <strong><Icon size={16} /> {copy.category[type]}</strong>
-                    {type === 'telecom' ? (
-                      <div className="subscriptions-provider-groups">
-                        {TELECOM_SERVICE_GROUPS.map(group => (
-                          <p key={group.label}>
-                            <b>{group.label}</b>
-                            <span>{group.options.map(item => item.label).join(' · ')}</span>
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <p>{SERVICE_OPTIONS[type].map(item => item.label).join(' · ')}</p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-            )}
-        </section>
-
-        <section className="subscriptions-list-card">
-          <div className="subscriptions-section-head">
+        <section className="subscriptions-alerts">
+          <div className="subscriptions-card-head">
             <div>
-              <span>{copy.listSubtitle}</span>
-              <h2>{copy.listTitle}</h2>
+              <span>{copy.renewals30}: {totals.renewals30}</span>
+              <h2>{copy.upcoming}</h2>
             </div>
+            <CalendarClock size={22} />
           </div>
-
-          {authLoading || loading ? (
-            <div className="subscriptions-empty">{copy.saving}</div>
-          ) : !user ? (
-            <div className="subscriptions-empty">
-              <AlertTriangle size={28} />
-              <h3>{copy.authRequired}</h3>
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="subscriptions-empty">
-              <CreditCard size={30} />
-              <h3>{copy.emptyTitle}</h3>
-              <p>{copy.emptyBody}</p>
+          {upcomingRenewals.length ? (
+            <div className="subscriptions-alert-list">
+              {upcomingRenewals.map(view => (
+                <article key={view.id}>
+                  <strong>{view.name}</strong>
+                  <p>
+                    {renewalText(view)} · {formatSubscriptionMoney(view.originalAmount, view.currency, locale)}
+                  </p>
+                  <div>
+                    <button type="button" onClick={() => editRow(view)}>{copy.edit}</button>
+                    <button type="button" onClick={() => void updateStatus(view, 'cancelled')}>{copy.markCancelled}</button>
+                  </div>
+                </article>
+              ))}
             </div>
           ) : (
-            <div className="subscriptions-table">
-              {rows.map(row => {
-                const meta = metadata(row);
-                const type = safeType(meta.subscription_type);
-                const frequency = safeFrequency(meta.billing_frequency);
-                const Icon = TYPE_ICONS[type];
-                const originalAmount = toNumber(meta.billing_amount ?? row.amount);
-                return (
-                  <article key={row.id} className="subscription-row-card">
-                    <div className="subscription-row-main">
-                      <span className="subscription-row-icon"><Icon size={18} /></span>
-                      <div>
-                        <h3>{row.name}</h3>
-                        <p>{copy.category[type]} · {copy.frequencyLabel[frequency]}</p>
-                      </div>
-                    </div>
-                    <div className="subscription-row-metrics">
-                      <div>
-                        <span>{copy.amount}</span>
-                        <b dir="ltr">{formatMoney(originalAmount, row.currency || currency, locale)}</b>
-                      </div>
-                      <div>
-                        <span>{copy.monthlyImpact}</span>
-                        <b dir="ltr">{formatMoney(toNumber(row.amount), row.currency || currency, locale)}</b>
-                      </div>
-                      <div>
-                        <span>{copy.date}</span>
-                        <b>{row.date || '-'}</b>
-                      </div>
-                    </div>
-                    <div className="subscription-row-actions">
-                      <button type="button" onClick={() => editRow(row)}><Edit3 size={15} />{copy.update}</button>
-                      <button type="button" className="danger" onClick={() => void deleteRow(row)}><Trash2 size={15} />{locale === 'ar' ? 'حذف' : locale === 'fr' ? 'Supprimer' : 'Delete'}</button>
-                    </div>
-                  </article>
-                );
-              })}
+            <p className="subscriptions-muted">{copy.noRenewals}</p>
+          )}
+        </section>
+
+        <section className="subscriptions-filter-card">
+          <div className="subscriptions-card-head">
+            <div>
+              <span>{filteredViews.length} {copy.results}</span>
+              <h2>{copy.filters}</h2>
+            </div>
+            <Filter size={21} />
+          </div>
+          <div className="subscriptions-filter-grid">
+            <label className="subscriptions-search-field">
+              <Search size={17} />
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder={copy.search} />
+            </label>
+            <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value as SubscriptionCategory | FilterValue)} aria-label={copy.categoryFilter}>
+              <option value="all">{copy.categoryFilter}</option>
+              {SUBSCRIPTION_CATEGORIES.map(category => <option key={category} value={category}>{copy.categories[category]}</option>)}
+            </select>
+            <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as SubscriptionStatus | FilterValue)} aria-label={copy.statusFilter}>
+              <option value="all">{copy.statusFilter}</option>
+              {SUBSCRIPTION_STATUSES.map(status => <option key={status} value={status}>{copy.statuses[status]}</option>)}
+            </select>
+            <select value={cycleFilter} onChange={event => setCycleFilter(event.target.value as BillingCycle | FilterValue)} aria-label={copy.cycleFilter}>
+              <option value="all">{copy.cycleFilter}</option>
+              {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{copy.cycles[cycle]}</option>)}
+            </select>
+            <select value={renewalFilter} onChange={event => setRenewalFilter(event.target.value as RenewalFilter)} aria-label={copy.renewalFilter}>
+              {Object.entries(copy.renewalFilters).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <select value={sortKey} onChange={event => setSortKey(event.target.value as SortKey)} aria-label={copy.sort}>
+              {Object.entries(copy.sorts).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </div>
+          {hasActiveFilters && (
+            <div className="subscriptions-active-filters">
+              {search && <span>{search}</span>}
+              {categoryFilter !== 'all' && <span>{copy.categories[categoryFilter]}</span>}
+              {statusFilter !== 'all' && <span>{copy.statuses[statusFilter]}</span>}
+              {cycleFilter !== 'all' && <span>{copy.cycles[cycleFilter]}</span>}
+              {renewalFilter !== 'all' && <span>{copy.renewalFilters[renewalFilter]}</span>}
+              <button type="button" onClick={clearFilters}>{copy.clear}</button>
             </div>
           )}
         </section>
+
+        <section className="subscriptions-content-grid">
+          <div className="subscriptions-list-card">
+            <div className="subscriptions-card-head">
+              <div>
+                <span>{copy.listHint}</span>
+                <h2>{copy.listTitle}</h2>
+              </div>
+              <button ref={examplesTriggerRef} type="button" className="subscriptions-secondary light" onClick={() => setExamplesOpen(true)}>
+                <Sparkles size={17} />
+                {copy.examples}
+              </button>
+            </div>
+
+            {authLoading || loading ? (
+              <div className="subscriptions-skeleton-list">
+                {Array.from({ length: 3 }).map((_, index) => <span key={index} />)}
+              </div>
+            ) : !user ? (
+              <EmptyState title={copy.authRequired} body="" action={copy.add} onPrimary={openNewForm} />
+            ) : views.length === 0 ? (
+              <EmptyState title={copy.emptyTitle} body={copy.emptyBody} action={copy.firstAdd} secondary={copy.examples} steps={copy.steps} onPrimary={openNewForm} onSecondary={() => setExamplesOpen(true)} />
+            ) : filteredViews.length === 0 ? (
+              <EmptyState title={locale === 'ar' ? 'لا توجد نتائج مطابقة' : locale === 'fr' ? 'Aucun résultat' : 'No matching subscriptions'} body={copy.emptyBody} action={copy.clear} onPrimary={clearFilters} />
+            ) : (
+              <div className="subscriptions-card-list">
+                {filteredViews.map(view => {
+                  const Icon = CATEGORY_ICONS[view.category];
+                  const expanded = expandedIds.includes(view.id);
+                  return (
+                    <article key={view.id} className={`subscription-card ${view.status}`}>
+                      <div className="subscription-summary">
+                        <button
+                          type="button"
+                          className="subscription-expand"
+                          aria-expanded={expanded}
+                          aria-controls={`subscription-details-${view.id}`}
+                          onClick={() => setExpandedIds(current => current.includes(view.id) ? current.filter(id => id !== view.id) : [...current, view.id])}
+                        >
+                          <ChevronDown size={18} className={expanded ? 'open' : ''} />
+                        </button>
+                        <span className="subscription-logo"><Icon size={19} /></span>
+                        <div className="subscription-title">
+                          <h3>{view.name}</h3>
+                          <p>{copy.categories[view.category]} · {copy.cycles[view.billingCycle]}</p>
+                        </div>
+                        <div className="subscription-money">
+                          <span>{copy.monthlyEquivalent}</span>
+                          <strong dir="ltr">{formatSubscriptionMoney(view.monthlyNative, view.currency, locale)}</strong>
+                        </div>
+                        <div className="subscription-renewal">
+                          <span>{copy.nextRenewal}</span>
+                          <strong>{view.nextRenewalDate ? formatDate(view.nextRenewalDate, locale) : copy.missingDate}</strong>
+                          <small>{renewalText(view)}</small>
+                        </div>
+                        <span className={`subscription-status ${view.status}`}>{copy.statuses[view.status]}</span>
+                      </div>
+                      {expanded && (
+                        <div id={`subscription-details-${view.id}`} className="subscription-details">
+                          <dl>
+                            <div><dt>{copy.amount}</dt><dd dir="ltr">{formatSubscriptionMoney(view.originalAmount, view.currency, locale)}</dd></div>
+                            <div><dt>{copy.annualEquivalent}</dt><dd dir="ltr">{formatSubscriptionMoney(view.annualNative, view.currency, locale)}</dd></div>
+                            <div><dt>{copy.paymentMethod}</dt><dd>{view.paymentMethod || '-'}</dd></div>
+                            <div><dt>{copy.startDate}</dt><dd>{view.startDate ? formatDate(view.startDate, locale) : '-'}</dd></div>
+                            {view.isTrial && <div><dt>{copy.trialEnds}</dt><dd>{view.trialEndsAt ? formatDate(view.trialEndsAt, locale) : '-'}</dd></div>}
+                            {view.notes && <div><dt>{copy.notes}</dt><dd>{view.notes}</dd></div>}
+                          </dl>
+                          <div className="subscription-actions">
+                            <button type="button" onClick={() => editRow(view)}><Edit3 size={15} />{copy.edit}</button>
+                            {view.status === 'paused' ? (
+                              <button type="button" onClick={() => void updateStatus(view, 'active')}><CheckCircle2 size={15} />{copy.resume}</button>
+                            ) : (
+                              <button type="button" onClick={() => void updateStatus(view, 'paused')}><PauseCircle size={15} />{copy.pause}</button>
+                            )}
+                            <button type="button" onClick={() => void updateStatus(view, 'cancelled')}><X size={15} />{copy.markCancelled}</button>
+                            {view.serviceUrl && <a href={view.serviceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} />{copy.openSite}</a>}
+                            <button type="button" className="danger" onClick={() => void deleteRow(view)}><Trash2 size={15} />{copy.delete}</button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <aside className="subscriptions-insights">
+            <section>
+              <div className="subscriptions-card-head compact"><h2>{copy.insights}</h2><Sparkles size={20} /></div>
+              {insightItems.length ? insightItems.map(item => <p key={item}>{item}</p>) : <p>{copy.noInsights}</p>}
+            </section>
+            {categoryBreakdown.length > 0 && (
+              <section>
+                <div className="subscriptions-card-head compact"><h2>{copy.categoryBreakdown}</h2><BarChart3 size={20} /></div>
+                <div className="subscription-bars">
+                  {categoryBreakdown.map(item => (
+                    <div key={item.category}>
+                      <span>{copy.categories[item.category]}</span>
+                      <strong dir="ltr">{formatSubscriptionMoney(item.amount, baseCurrency, locale)}</strong>
+                      <i style={{ inlineSize: `${item.percent}%` }} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </aside>
+        </section>
+
+        {examplesOpen && (
+          <div className="subscriptions-drawer-backdrop" role="presentation" onMouseDown={onExamplesBackdropMouseDown}>
+            <div
+              ref={examplesDialogRef}
+              className="subscriptions-examples-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="subscription-examples-title"
+              onKeyDown={onExampleDialogKeyDown}
+            >
+              <header>
+                <div>
+                  <span>THE SFM</span>
+                  <h2 id="subscription-examples-title">{copy.examplesTitle}</h2>
+                </div>
+                <button type="button" onClick={closeExamples} aria-label={copy.cancel}><X size={18} /></button>
+              </header>
+              <label className="subscriptions-search-field examples-search">
+                <Search size={17} />
+                <input value={exampleSearch} onChange={event => { setExampleSearch(event.target.value); setExampleLimit(12); }} placeholder={copy.exampleSearch} />
+              </label>
+              <div className="examples-tabs" role="tablist" aria-label={copy.category}>
+                {SUBSCRIPTION_CATEGORIES.map(category => (
+                  <button key={category} type="button" className={exampleCategory === category ? 'active' : ''} onClick={() => { setExampleCategory(category); setExampleLimit(12); }}>
+                    {copy.categories[category]}
+                  </button>
+                ))}
+              </div>
+              {exampleCategory === 'telecom' && (
+                <div className="examples-tabs regions" role="tablist" aria-label={copy.provider}>
+                  {TELECOM_REGIONS.map(region => (
+                    <button key={region} type="button" className={exampleRegion === region ? 'active' : ''} onClick={() => { setExampleRegion(region); setExampleLimit(12); }}>
+                      {copy.regions[region]}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="examples-grid">
+                {filteredExamples.slice(0, exampleLimit).map(example => (
+                  <button key={example.id} type="button" onClick={() => selectExample(example)}>
+                    <strong>{example.name}</strong>
+                    <span>{copy.categories[example.category]}</span>
+                  </button>
+                ))}
+              </div>
+              {filteredExamples.length > exampleLimit && (
+                <button type="button" className="subscriptions-secondary light load-more" onClick={() => setExampleLimit(current => current + 12)}>
+                  {copy.loadMore}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <section className="subscriptions-print-report" aria-hidden="true">
           <header>
@@ -1204,142 +1422,108 @@ export default function MonthlySubscriptionsPage() {
             <p>{copy.subtitle}</p>
           </header>
           <div className="subscriptions-print-summary">
-            <article>
-              <small>{copy.totalMonthly}</small>
-              <strong dir="ltr">{formatMoney(totals.monthly, baseCurrency, locale)}</strong>
-            </article>
-            <article>
-              <small>{copy.totalYearly}</small>
-              <strong dir="ltr">{formatMoney(totals.yearly, baseCurrency, locale)}</strong>
-            </article>
-            <article>
-              <small>{copy.activeCount}</small>
-              <strong>{rows.length}</strong>
-            </article>
-            <article>
-              <small>{copy.highest}</small>
-              <strong>{totals.highest ? totals.highest.name : '-'}</strong>
-            </article>
+            <article><small>{copy.summaryMonthly}</small><strong>{formatSubscriptionMoney(totals.monthly, baseCurrency, locale)}</strong></article>
+            <article><small>{copy.summaryAnnual}</small><strong>{formatSubscriptionMoney(totals.yearly, baseCurrency, locale)}</strong></article>
+            <article><small>{copy.activeCount}</small><strong>{totals.activeCount}</strong></article>
+            <article><small>{copy.renewals30}</small><strong>{totals.renewals30}</strong></article>
           </div>
           <div className="subscriptions-print-table">
-            <div className="subscriptions-print-head">
-              <span>{copy.service}</span>
-              <span>{copy.frequency}</span>
-              <span>{copy.amount}</span>
-              <span>{copy.monthlyImpact}</span>
-              <span>{copy.date}</span>
-            </div>
-            {rows.length ? rows.map(row => {
-              const meta = metadata(row);
-              const type = safeType(meta.subscription_type);
-              const frequency = safeFrequency(meta.billing_frequency);
-              const originalAmount = toNumber(meta.billing_amount ?? row.amount);
-              return (
-                <div key={row.id} className="subscriptions-print-row">
-                  <span>{row.name} · {copy.category[type]}</span>
-                  <span>{copy.frequencyLabel[frequency]}</span>
-                  <span dir="ltr">{formatMoney(originalAmount, row.currency || currency, locale)}</span>
-                  <span dir="ltr">{formatMoney(toNumber(row.amount), row.currency || currency, locale)}</span>
-                  <span>{row.date || '-'}</span>
-                </div>
-              );
-            }) : (
-              <div className="subscriptions-print-empty">{copy.emptyTitle}</div>
-            )}
+            <div className="subscriptions-print-head"><span>{copy.name}</span><span>{copy.billingCycle}</span><span>{copy.amount}</span><span>{copy.monthlyEquivalent}</span><span>{copy.nextRenewal}</span></div>
+            {views.map(view => (
+              <div key={view.id} className="subscriptions-print-row">
+                <span>{view.name}</span>
+                <span>{copy.cycles[view.billingCycle]}</span>
+                <span>{formatSubscriptionMoney(view.originalAmount, view.currency, locale)}</span>
+                <span>{formatSubscriptionMoney(view.monthlyNative, view.currency, locale)}</span>
+                <span>{view.nextRenewalDate ? formatDate(view.nextRenewalDate, locale) : copy.missingDate}</span>
+              </div>
+            ))}
           </div>
           <footer>{new Date().toLocaleDateString(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US')}</footer>
         </section>
-      </main>
+      </DashboardPageShell>
 
       <style jsx global>{`
-        .subscriptions-shell{min-height:100vh;background:var(--sfm-page-gradient);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif}
-        .subscriptions-main{width:100%;max-width:100%;min-height:100vh;margin:0;padding:28px clamp(18px,3vw,38px) 70px;display:grid;gap:18px;min-width:0;overflow-x:hidden;box-sizing:border-box}
-        .subscriptions-main>*{width:100%;max-width:1400px;min-width:0;margin-inline:auto;box-sizing:border-box}
-        .subscriptions-shell[dir="rtl"] .subscriptions-main{padding-inline-start:calc(var(--sidebar-w,230px) + clamp(18px,3vw,38px));padding-inline-end:clamp(18px,3vw,38px)}
-        .subscriptions-shell[dir="ltr"] .subscriptions-main{padding-inline-start:calc(var(--sidebar-w,230px) + clamp(18px,3vw,38px));padding-inline-end:clamp(18px,3vw,38px)}
-        .subscriptions-hero,.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card,.subscriptions-summary-grid article{border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#fff,#f8fbff);border-radius:26px;box-shadow:0 18px 46px rgba(3,18,37,.08)}
-        .subscriptions-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:26px;background:radial-gradient(circle at 12% 10%,rgba(47,214,192,.18),transparent 30%),linear-gradient(135deg,#071427,#10294c 60%,#0b5a75);color:#fff}
-        .subscriptions-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);background:rgba(255,255,255,.09);border-radius:999px;padding:8px 12px;color:#a7f3f0;font-weight:950;font-size:12px}
-        .subscriptions-hero h1{margin:14px 0 8px;font-size:clamp(34px,5vw,58px);line-height:1.1;color:#fff;font-weight:950;letter-spacing:0}
-        .subscriptions-hero p{margin:0;max-width:760px;color:#d7e8f7;font-weight:850;line-height:1.8}
-        .subscriptions-hero-actions,.subscriptions-form-actions,.subscription-row-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-        .subscriptions-primary,.subscriptions-secondary,.subscription-row-actions button{min-height:44px;border-radius:15px;border:1px solid transparent;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer;transition:.18s ease}
-        .subscriptions-primary{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;box-shadow:0 14px 32px rgba(29,140,255,.22)}
-        .subscriptions-primary:disabled{opacity:.58;cursor:not-allowed}
-        .subscriptions-secondary,.subscription-row-actions button{background:rgba(255,255,255,.08);color:#eaf6ff;border-color:rgba(255,255,255,.20)}
-        .subscriptions-notice{border-radius:18px;padding:13px 15px;display:flex;align-items:center;gap:10px;font-weight:900;border:1px solid rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#047857}
-        .subscriptions-notice.error{border-color:rgba(239,68,68,.24);background:rgba(239,68,68,.10);color:#b91c1c}
-        .subscriptions-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-        .subscriptions-summary-grid article{padding:16px;display:grid;gap:8px}
-        .subscriptions-summary-grid article>span{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;color:#0f766e;background:#ccfbf1;border:1px solid rgba(15,118,110,.18)}
-        .subscriptions-summary-grid small,.subscriptions-section-head span,.subscriptions-form-card label span,.subscriptions-impact-card span,.subscription-row-metrics span{color:#64748b;font-weight:950;font-size:12px}
-        .subscriptions-summary-grid strong{color:#061a2e;font-size:20px;font-weight:950;line-height:1.25;overflow-wrap:anywhere}
-        .subscriptions-layout,.subscriptions-form-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
-        .subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:20px;display:grid;gap:16px}
-        .subscriptions-section-head--interactive{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
-        .subscriptions-section-head h2{margin:4px 0 0;color:#061a2e;font-size:28px;font-weight:950}
-        .subscriptions-section-head p{margin:6px 0 0;color:#64748b;font-weight:800;line-height:1.75}
-        .subscriptions-examples-toggle{min-height:42px;border:1px solid rgba(29,140,255,.16);border-radius:15px;background:#f8fbff;color:#0f1d31;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:.18s ease}
-        .subscriptions-examples-toggle:hover{border-color:rgba(47,214,192,.46);box-shadow:0 0 0 4px rgba(47,214,192,.10)}
-        .subscriptions-examples-toggle svg{transition:transform .18s ease}
-        .subscriptions-examples-toggle svg.open{transform:rotate(180deg)}
-        .subscriptions-type-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
-        .subscriptions-type-grid button{min-height:74px;border:1px solid rgba(29,140,255,.14);border-radius:18px;background:#f8fbff;color:#0f1d31;display:grid;place-items:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
-        .subscriptions-type-grid button.active{background:linear-gradient(135deg,rgba(29,140,255,.15),rgba(47,214,192,.18));border-color:rgba(47,214,192,.42);color:#0f766e;box-shadow:0 12px 28px rgba(29,140,255,.12)}
-        .subscriptions-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-        .subscriptions-form-card label,.subscriptions-notes-field{display:grid;gap:7px}
-        .subscriptions-form-card input,.subscriptions-form-card select,.subscriptions-form-card textarea,.subscriptions-form-card .currency-trigger{width:100%;min-height:46px;border:1px solid rgba(29,140,255,.16);border-radius:15px;background:#f8fbff;color:#061a2e;padding:0 12px;font:900 14px Tajawal,Arial,sans-serif;outline:0}
-        .subscriptions-form-card textarea{min-height:92px;padding:12px;resize:vertical}
-        .subscriptions-form-card input:focus,.subscriptions-form-card select:focus,.subscriptions-form-card textarea:focus{border-color:rgba(47,214,192,.58);box-shadow:0 0 0 4px rgba(47,214,192,.12)}
-        .subscriptions-impact-card{border:1px solid rgba(47,214,192,.18);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.10));border-radius:20px;padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-        .subscriptions-impact-card div{border-radius:15px;background:rgba(255,255,255,.72);border:1px solid rgba(29,140,255,.10);padding:12px}
-        .subscriptions-impact-card strong{display:block;margin-top:5px;color:#061a2e;font-size:22px;font-weight:950}
-        .subscriptions-impact-card p{grid-column:1/-1;margin:0;color:#475569;font-weight:850;line-height:1.7}
-        .subscriptions-form-actions{justify-content:flex-end}
-        .subscriptions-form-actions .subscriptions-secondary{background:#f8fbff;color:#0f1d31;border-color:rgba(29,140,255,.16)}
-        .subscriptions-examples-list{display:grid;gap:10px}
-        .subscriptions-examples-card--wide .subscriptions-examples-list{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .subscriptions-examples-list article{border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:18px;padding:13px}
-        .subscriptions-examples-list article.telecom-example{grid-column:1/-1}
-        .subscriptions-examples-list strong{display:flex;align-items:center;gap:8px;color:#061a2e;font-weight:950}
-        .subscriptions-examples-list p{margin:8px 0 0;color:#64748b;font-weight:800;line-height:1.7}
-        .subscriptions-provider-groups{display:grid;gap:8px;margin-top:10px}
-        .subscriptions-provider-groups p{margin:0;border:1px solid rgba(29,140,255,.10);border-radius:14px;background:#fff;padding:10px;display:grid;gap:5px}
-        .subscriptions-provider-groups b{color:#0f766e;font-size:12px;font-weight:950;line-height:1.35}
-        .subscriptions-provider-groups span{color:#64748b;font-size:12px;font-weight:850;line-height:1.7;overflow-wrap:anywhere}
-        .subscriptions-table{display:grid;gap:10px}
-        .subscription-row-card{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,1.4fr) auto;gap:12px;align-items:center;border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:20px;padding:14px}
-        .subscription-row-main{display:flex;align-items:center;gap:12px;min-width:0}
-        .subscription-row-icon{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;color:#0f766e;background:#ccfbf1;border:1px solid rgba(15,118,110,.18);flex:0 0 auto}
-        .subscription-row-main h3{margin:0;color:#061a2e;font-size:18px;font-weight:950}
-        .subscription-row-main p{margin:4px 0 0;color:#64748b;font-weight:850}
-        .subscription-row-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-        .subscription-row-metrics div{border:1px solid rgba(29,140,255,.10);background:#fff;border-radius:14px;padding:10px}
-        .subscription-row-metrics b{display:block;margin-top:4px;color:#061a2e;font-weight:950;overflow-wrap:anywhere}
-        .subscription-row-actions{justify-content:flex-end}
-        .subscription-row-actions button{background:#fff;color:#0f1d31;border-color:rgba(29,140,255,.16)}
-        .subscription-row-actions button.danger{color:#b91c1c;border-color:rgba(239,68,68,.18);background:#fff7f7}
-        .subscriptions-empty{min-height:180px;border:1px dashed rgba(29,140,255,.22);border-radius:22px;display:grid;place-items:center;text-align:center;gap:8px;color:#64748b;font-weight:900;padding:24px}
-        .subscriptions-empty h3{margin:0;color:#061a2e;font-size:24px}
-        .subscriptions-empty p{margin:0;max-width:520px;line-height:1.8}
+        .subscriptions-shell{min-height:100vh;background:var(--sfm-page-gradient);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
+        .subscriptions-main{max-width:1480px!important;padding:24px clamp(16px,2vw,32px) 64px!important}
+        .subscriptions-content{display:grid;gap:18px;max-width:1400px!important;margin-inline:auto!important}
+        .subscriptions-hero,.subscriptions-kpis article,.subscriptions-form-card,.subscriptions-alerts,.subscriptions-filter-card,.subscriptions-list-card,.subscriptions-insights section{border:1px solid rgba(29,140,255,.13);background:linear-gradient(180deg,#fff,#f8fbff);border-radius:22px;box-shadow:0 16px 38px rgba(3,18,37,.07)}
+        .subscriptions-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:22px;background:radial-gradient(circle at 14% 10%,rgba(47,214,192,.20),transparent 30%),linear-gradient(135deg,#071427,#10294c 58%,#0b5a75);color:#fff}
+        .subscriptions-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.24);background:rgba(255,255,255,.09);border-radius:999px;padding:7px 11px;color:#a7f3f0;font-weight:950;font-size:12px}
+        .subscriptions-hero h1{margin:12px 0 7px;color:#fff;font-size:clamp(30px,4vw,46px);line-height:1.1;font-weight:950;letter-spacing:0}
+        .subscriptions-hero p{margin:0;max-width:760px;color:#d7e8f7;font-weight:850;line-height:1.75}
+        .subscriptions-hero-actions,.subscriptions-form-actions,.subscription-actions,.subscriptions-alert-list article div{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+        .subscriptions-primary,.subscriptions-secondary,.subscriptions-tertiary,.subscription-actions button,.subscription-actions a,.subscriptions-alert-list button{min-height:44px;border-radius:14px;border:1px solid transparent;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:950 13px Tajawal,Arial,sans-serif;text-decoration:none;cursor:pointer;transition:.18s ease}
+        .subscriptions-primary{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;box-shadow:0 14px 30px rgba(29,140,255,.22)}
+        .subscriptions-secondary,.subscriptions-tertiary{background:rgba(255,255,255,.09);color:#eaf6ff;border-color:rgba(255,255,255,.20)}
+        .subscriptions-secondary.light,.subscription-actions button,.subscription-actions a,.subscriptions-alert-list button{background:#fff;color:#0f1d31;border-color:rgba(29,140,255,.16)}
+        .subscriptions-secondary:disabled{opacity:.55;cursor:not-allowed}
+        .subscriptions-notice{border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:900;border:1px solid rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#047857}.subscriptions-notice.error{border-color:rgba(239,68,68,.24);background:rgba(239,68,68,.10);color:#b91c1c}
+        .subscriptions-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.subscriptions-kpis article{padding:15px;display:grid;gap:8px}.kpi-icon{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;color:#0f766e;background:#ccfbf1;border:1px solid rgba(15,118,110,.18)}.subscriptions-kpis small,.subscriptions-card-head span,.subscriptions-form-card label span,.subscriptions-impact-card span,.subscription-card span,.subscription-card dt{color:#64748b;font-weight:950;font-size:12px}.subscriptions-kpis strong{color:#061a2e;font-size:19px;font-weight:950;line-height:1.3;overflow-wrap:anywhere}
+        .subscriptions-card-head{display:flex;align-items:center;justify-content:space-between;gap:14px}.subscriptions-card-head h2{margin:4px 0 0;color:#061a2e;font-size:22px;font-weight:950}.subscriptions-card-head.compact h2{font-size:18px;margin:0}.subscriptions-icon-button{width:40px;height:40px;border:1px solid rgba(29,140,255,.16);border-radius:13px;background:#fff;color:#0f1d31;display:grid;place-items:center;cursor:pointer}
+        .subscriptions-form-card,.subscriptions-alerts,.subscriptions-filter-card,.subscriptions-list-card,.subscriptions-insights section{padding:18px;display:grid;gap:15px}.subscriptions-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.subscriptions-form-grid label{display:grid;gap:7px}.subscriptions-form-grid input,.subscriptions-form-grid select,.subscriptions-form-grid textarea,.subscriptions-form-grid .currency-trigger,.subscriptions-filter-grid select,.subscriptions-search-field input{width:100%;min-height:44px;border:1px solid rgba(29,140,255,.16);border-radius:13px;background:#f8fbff;color:#061a2e;padding:0 11px;font:900 14px Tajawal,Arial,sans-serif;outline:0}.subscriptions-form-grid textarea{min-height:86px;padding:11px;resize:vertical}.subscriptions-notes-field{grid-column:1/-1}.subscriptions-checkbox-row{align-content:center;grid-template-columns:auto minmax(0,1fr);align-items:center}.subscriptions-checkbox-row input{width:18px;min-height:18px}.subscriptions-impact-card{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:1px solid rgba(47,214,192,.18);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.10));border-radius:18px;padding:12px}.subscriptions-impact-card div{border-radius:14px;background:rgba(255,255,255,.76);border:1px solid rgba(29,140,255,.10);padding:11px}.subscriptions-impact-card strong{display:block;margin-top:5px;color:#061a2e;font-size:20px;font-weight:950}
+        .subscriptions-alert-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.subscriptions-alert-list article{border:1px solid rgba(245,158,11,.22);background:#fffbeb;border-radius:17px;padding:12px}.subscriptions-alert-list strong{color:#061a2e}.subscriptions-alert-list p,.subscriptions-muted,.subscriptions-insights p{margin:7px 0;color:#64748b;font-weight:850;line-height:1.65}
+        .subscriptions-filter-grid{display:grid;grid-template-columns:1.5fr repeat(5,minmax(130px,1fr));gap:10px}.subscriptions-search-field{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid rgba(29,140,255,.16);border-radius:13px;background:#f8fbff;color:#64748b;padding:0 11px}.subscriptions-search-field input{border:0;background:transparent;padding:0;min-height:40px}.subscriptions-active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.subscriptions-active-filters span{border-radius:999px;background:rgba(29,140,255,.10);color:#0f3b62;padding:6px 10px;font-weight:900;font-size:12px}.subscriptions-active-filters button{border:0;background:#0f1d31;color:#fff;border-radius:999px;min-height:32px;padding:0 11px;font-weight:900;cursor:pointer}
+        .subscriptions-content-grid{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px;align-items:start}.subscriptions-insights{display:grid;gap:16px;position:sticky;top:16px}.subscriptions-card-list,.subscriptions-skeleton-list{display:grid;gap:10px}.subscriptions-skeleton-list span{height:86px;border-radius:18px;background:linear-gradient(90deg,rgba(148,163,184,.12),rgba(34,211,238,.13),rgba(148,163,184,.12));background-size:200% 100%;animation:subShimmer 1.2s linear infinite}@keyframes subShimmer{to{background-position:-200% 0}}
+        .subscription-card{border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:18px;padding:12px}.subscription-summary{display:grid;grid-template-columns:auto auto minmax(190px,1fr) minmax(135px,.7fr) minmax(155px,.8fr) auto;gap:11px;align-items:center}.subscription-expand{width:36px;height:36px;border:1px solid rgba(29,140,255,.14);border-radius:12px;background:#fff;color:#0f1d31;display:grid;place-items:center;cursor:pointer}.subscription-expand svg{transition:.18s ease}.subscription-expand svg.open{transform:rotate(180deg)}.subscription-logo{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;color:#0f766e;background:#ccfbf1;border:1px solid rgba(15,118,110,.18)}.subscription-title h3{margin:0;color:#061a2e;font-size:17px;font-weight:950}.subscription-title p{margin:4px 0 0;color:#64748b;font-weight:850}.subscription-money strong,.subscription-renewal strong{display:block;margin-top:4px;color:#061a2e;font-weight:950}.subscription-renewal small{display:block;margin-top:3px;color:#0f766e;font-weight:900}.subscription-status{border-radius:999px;padding:7px 10px;background:rgba(29,140,255,.10);color:#0f3b62;font-weight:950;text-align:center}.subscription-status.active{background:#ecfdf5;color:#047857}.subscription-status.paused,.subscription-status.trial{background:#fff7ed;color:#b45309}.subscription-status.cancelled,.subscription-status.expired{background:#fef2f2;color:#b91c1c}.subscription-details{margin-top:12px;border-top:1px solid rgba(29,140,255,.10);padding-top:12px;display:grid;gap:12px}.subscription-details dl{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.subscription-details div{border:1px solid rgba(29,140,255,.10);background:#fff;border-radius:13px;padding:10px}.subscription-details dd{margin:4px 0 0;color:#061a2e;font-weight:900;overflow-wrap:anywhere}.subscription-actions .danger{color:#b91c1c;border-color:rgba(239,68,68,.18);background:#fff7f7}
+        .subscriptions-empty{border:1px dashed rgba(29,140,255,.24);background:#f8fbff;border-radius:18px;padding:22px;text-align:center;display:grid;gap:12px;justify-items:center}.subscriptions-empty h3{margin:0;color:#061a2e;font-size:23px}.subscriptions-empty p{margin:0;max-width:560px;color:#64748b;font-weight:850;line-height:1.75}.subscriptions-empty-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:720px}.subscriptions-empty-steps span{border:1px solid rgba(29,140,255,.12);background:#fff;border-radius:13px;padding:10px;color:#0f1d31;font-weight:900}.subscriptions-empty-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+        .subscription-bars{display:grid;gap:10px}.subscription-bars div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.subscription-bars span{color:#0f1d31;font-weight:900}.subscription-bars strong{color:#64748b;font-size:12px}.subscription-bars i{grid-column:1/-1;height:9px;border-radius:999px;background:linear-gradient(90deg,#1D8CFF,#18D4D4);display:block}
+        .subscriptions-drawer-backdrop{position:fixed;z-index:80;inset:0;background:rgba(3,18,37,.45);display:flex;justify-content:flex-end}.subscriptions-examples-drawer{width:min(560px,100%);height:100%;background:#fff;color:#061a2e;padding:20px;box-shadow:-20px 0 50px rgba(3,18,37,.20);display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr) auto;gap:13px;overflow:auto}.subscriptions-examples-drawer header{display:flex;align-items:center;justify-content:space-between;gap:12px}.subscriptions-examples-drawer header span{color:#0f766e;font-weight:950;font-size:12px}.subscriptions-examples-drawer h2{margin:4px 0 0;font-size:24px}.subscriptions-examples-drawer header button{width:40px;height:40px;border:1px solid rgba(29,140,255,.16);border-radius:13px;background:#f8fbff;color:#0f1d31;display:grid;place-items:center;cursor:pointer}.examples-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px}.examples-tabs button{flex:0 0 auto;min-height:38px;border:1px solid rgba(29,140,255,.16);border-radius:999px;background:#f8fbff;color:#0f1d31;padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;cursor:pointer}.examples-tabs button.active{background:#0f1d31;color:#a7f3f0;border-color:#0f1d31}.examples-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;align-content:start}.examples-grid button{min-height:72px;text-align:start;border:1px solid rgba(29,140,255,.12);background:#f8fbff;border-radius:15px;padding:11px;cursor:pointer}.examples-grid strong{display:block;color:#061a2e;font-weight:950}.examples-grid span{display:block;margin-top:5px;color:#64748b;font-weight:850;font-size:12px}.load-more{width:100%}
         .subscriptions-print-report{display:none}
-        .dark .subscriptions-shell{background:radial-gradient(circle at 14% 8%,rgba(47,214,192,.12),transparent 30%),linear-gradient(160deg,#0a1422 0%,#0b1728 56%,#08111f 100%);color:#e8eef6}
-        .dark .subscriptions-form-card,.dark .subscriptions-examples-card,.dark .subscriptions-list-card,.dark .subscriptions-summary-grid article{background:linear-gradient(180deg,#0f1d31,#0b1728);border-color:#1d3050;box-shadow:0 18px 46px rgba(0,0,0,.28);color:#e8eef6}
-        .dark .subscriptions-section-head h2,.dark .subscriptions-summary-grid strong,.dark .subscriptions-examples-list strong,.dark .subscription-row-main h3,.dark .subscription-row-metrics b,.dark .subscriptions-impact-card strong,.dark .subscriptions-empty h3{color:#e8eef6}
-        .dark .subscriptions-section-head p,.dark .subscriptions-summary-grid small,.dark .subscriptions-section-head span,.dark .subscriptions-form-card label span,.dark .subscriptions-impact-card span,.dark .subscriptions-impact-card p,.dark .subscription-row-main p,.dark .subscription-row-metrics span,.dark .subscriptions-examples-list p,.dark .subscriptions-empty{color:#b8c7d9}
-        .dark .subscriptions-type-grid button,.dark .subscriptions-form-card input,.dark .subscriptions-form-card select,.dark .subscriptions-form-card textarea,.dark .subscriptions-form-card .currency-trigger,.dark .subscriptions-examples-toggle,.dark .subscriptions-examples-list article,.dark .subscriptions-provider-groups p,.dark .subscription-row-card,.dark .subscription-row-metrics div,.dark .subscriptions-impact-card div,.dark .subscriptions-form-actions .subscriptions-secondary,.dark .subscription-row-actions button{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}
-        .dark .subscriptions-provider-groups b{color:#7ddbd3}
-        .dark .subscriptions-provider-groups span{color:#b8c7d9}
-        .dark .subscriptions-type-grid button.active{background:linear-gradient(135deg,rgba(29,140,255,.22),rgba(47,214,192,.18))!important;border-color:rgba(47,214,192,.48)!important;color:#7ddbd3!important}
-        .dark .subscriptions-secondary{background:#13243a;color:#e8eef6;border-color:#1d3050}
-        .dark .subscription-row-actions button.danger{background:rgba(127,29,29,.22)!important;color:#fecaca!important;border-color:rgba(248,113,113,.28)!important}
-        .dark .subscriptions-notice.error{color:#fecaca;background:rgba(127,29,29,.20);border-color:rgba(248,113,113,.28)}
-        .dark .subscriptions-notice.success{color:#86efac;background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.28)}
-        @media(max-width:1180px){.subscriptions-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-layout,.subscriptions-examples-card--wide .subscriptions-examples-list,.subscription-row-card{grid-template-columns:1fr}.subscription-row-actions{justify-content:stretch}.subscription-row-actions button{flex:1}}
-        @media(max-width:1024px){.subscriptions-main{margin-inline:0;padding:18px 14px 46px}.subscriptions-main>*{max-width:100%}.subscriptions-hero{margin-top:0}}
-        @media(max-width:720px){.subscriptions-hero{grid-template-columns:1fr;padding:22px;border-radius:24px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary{width:100%}.subscriptions-summary-grid,.subscriptions-form-grid,.subscriptions-type-grid,.subscriptions-impact-card,.subscription-row-metrics,.subscriptions-section-head--interactive{grid-template-columns:1fr}.subscriptions-examples-toggle{width:100%}.subscriptions-form-card,.subscriptions-examples-card,.subscriptions-list-card{padding:15px;border-radius:22px}.subscriptions-section-head h2{font-size:24px}.subscriptions-hero h1{font-size:36px}}
-        @media print{@page{size:A4;margin:12mm}body *{visibility:hidden!important}.subscriptions-print-report,.subscriptions-print-report *{visibility:visible!important}.subscriptions-print-report{display:block!important;position:absolute;inset:0;width:100%;min-height:100%;padding:0;background:#fff;color:#061a2e;font-family:Tajawal,Arial,sans-serif}.subscriptions-print-report header{border-radius:18px;background:linear-gradient(135deg,#071427,#10294c 62%,#0b5a75);color:#fff;padding:24px;margin-bottom:18px}.subscriptions-print-report header span{color:#a7f3f0;font-weight:950}.subscriptions-print-report h1{margin:8px 0 6px;font-size:30px}.subscriptions-print-report p{margin:0;color:#d7e8f7;font-weight:800}.subscriptions-print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.subscriptions-print-summary article{border:1px solid #d8e8f5;border-radius:14px;padding:12px;background:#f8fbff}.subscriptions-print-summary small,.subscriptions-print-head{display:block;color:#64748b;font-weight:900;font-size:11px}.subscriptions-print-summary strong{display:block;margin-top:7px;color:#061a2e;font-size:17px;overflow-wrap:anywhere}.subscriptions-print-table{border:1px solid #d8e8f5;border-radius:16px;overflow:hidden}.subscriptions-print-head,.subscriptions-print-row{display:grid;grid-template-columns:1.5fr .75fr .9fr .9fr .8fr;gap:8px;align-items:center;padding:10px 12px}.subscriptions-print-head{background:#eef8fb;color:#0f1d31}.subscriptions-print-row{border-top:1px solid #d8e8f5;font-weight:850;color:#0f1d31}.subscriptions-print-empty{padding:18px;text-align:center;color:#64748b;font-weight:900}.subscriptions-print-report footer{margin-top:14px;color:#64748b;font-weight:900;text-align:center}}
+        .dark .subscriptions-shell{background:radial-gradient(circle at 14% 8%,rgba(47,214,192,.12),transparent 30%),linear-gradient(160deg,#0a1422 0%,#0b1728 56%,#08111f 100%);color:#e8eef6}.dark .subscriptions-kpis article,.dark .subscriptions-form-card,.dark .subscriptions-alerts,.dark .subscriptions-filter-card,.dark .subscriptions-list-card,.dark .subscriptions-insights section,.dark .subscription-card,.dark .subscriptions-examples-drawer{background:linear-gradient(180deg,#0f1d31,#0b1728);border-color:#1d3050;color:#e8eef6}.dark h2,.dark .subscriptions-kpis strong,.dark .subscription-title h3,.dark .subscription-money strong,.dark .subscription-renewal strong,.dark .subscription-details dd,.dark .subscriptions-empty h3{color:#e8eef6}.dark .subscriptions-card-head span,.dark .subscriptions-form-card label span,.dark .subscriptions-impact-card span,.dark .subscriptions-kpis small,.dark .subscriptions-muted,.dark .subscriptions-insights p,.dark .subscription-title p,.dark .subscription-card span,.dark .subscription-card dt,.dark .subscriptions-empty p{color:#b8c7d9}.dark input,.dark select,.dark textarea,.dark .subscriptions-search-field,.dark .subscription-details div,.dark .subscriptions-empty,.dark .subscriptions-empty-steps span,.dark .examples-grid button,.dark .examples-tabs button,.dark .subscriptions-icon-button,.dark .subscription-expand,.dark .subscriptions-secondary.light,.dark .subscription-actions button,.dark .subscription-actions a{background:#13243a!important;border-color:#1d3050!important;color:#e8eef6!important}.dark .subscription-bars span,.dark .examples-grid strong{color:#e8eef6}.dark .examples-grid span,.dark .subscription-bars strong{color:#b8c7d9}
+        @media(max-width:1180px){.subscriptions-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-content-grid{grid-template-columns:1fr}.subscriptions-insights{position:static}.subscriptions-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.subscriptions-search-field{grid-column:1/-1}.subscriptions-alert-list{grid-template-columns:repeat(2,minmax(0,1fr))}.subscription-summary{grid-template-columns:auto auto minmax(0,1fr);}.subscription-money,.subscription-renewal,.subscription-status{grid-column:auto / span 1}.subscription-details dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:720px){.subscriptions-main{padding:calc(74px + env(safe-area-inset-top)) 14px 72px!important}.subscriptions-content{gap:14px}.subscriptions-hero{grid-template-columns:1fr;padding:20px}.subscriptions-hero-actions,.subscriptions-form-actions{display:grid;grid-template-columns:1fr}.subscriptions-primary,.subscriptions-secondary,.subscriptions-tertiary{width:100%}.subscriptions-kpis,.subscriptions-form-grid,.subscriptions-impact-card,.subscriptions-filter-grid,.subscriptions-alert-list,.subscription-details dl,.subscriptions-empty-steps,.examples-grid{grid-template-columns:1fr}.subscription-summary{grid-template-columns:auto minmax(0,1fr) auto}.subscription-logo{grid-row:1}.subscription-title{grid-column:2}.subscription-expand{grid-column:3}.subscription-money,.subscription-renewal,.subscription-status{grid-column:1/-1}.subscription-actions{display:grid;grid-template-columns:1fr}.subscription-actions button,.subscription-actions a{width:100%}.subscriptions-drawer-backdrop{align-items:flex-end}.subscriptions-examples-drawer{width:100%;height:min(88dvh,760px);border-radius:24px 24px 0 0;box-shadow:0 -20px 50px rgba(3,18,37,.22)}}
+        @media print{@page{size:A4;margin:12mm}body *{visibility:hidden!important}.subscriptions-print-report,.subscriptions-print-report *{visibility:visible!important}.subscriptions-print-report{display:block!important;position:absolute;inset:0;width:100%;padding:0;background:#fff;color:#061a2e;font-family:Tajawal,Arial,sans-serif}.subscriptions-print-report header{border-radius:18px;background:linear-gradient(135deg,#071427,#10294c 62%,#0b5a75);color:#fff;padding:22px;margin-bottom:16px}.subscriptions-print-report header span{color:#a7f3f0;font-weight:950}.subscriptions-print-report h1{margin:8px 0 6px;font-size:29px}.subscriptions-print-report p{margin:0;color:#d7e8f7;font-weight:800}.subscriptions-print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.subscriptions-print-summary article{border:1px solid #d8e8f5;border-radius:14px;padding:12px;background:#f8fbff}.subscriptions-print-summary small,.subscriptions-print-head{display:block;color:#64748b;font-weight:900;font-size:11px}.subscriptions-print-summary strong{display:block;margin-top:7px;color:#061a2e;font-size:16px}.subscriptions-print-table{border:1px solid #d8e8f5;border-radius:16px;overflow:hidden}.subscriptions-print-head,.subscriptions-print-row{display:grid;grid-template-columns:1.3fr .8fr .8fr .8fr .9fr;gap:8px;align-items:center;padding:10px 12px}.subscriptions-print-head{background:#eef8fb;color:#0f1d31}.subscriptions-print-row{border-top:1px solid #d8e8f5;font-weight:850;color:#0f1d31}.subscriptions-print-report footer{margin-top:14px;color:#64748b;font-weight:900;text-align:center}}
       `}</style>
+    </div>
+  );
+}
+
+function ReceiptIcon({ size = 18 }: { size?: number }) {
+  return <WalletCards size={size} />;
+}
+
+function Kpi({ icon: Icon, label, value }: { icon: LucideIcon | typeof ReceiptIcon; label: string; value: string }) {
+  return (
+    <article>
+      <span className="kpi-icon"><Icon size={18} /></span>
+      <small>{label}</small>
+      <strong dir="auto">{value}</strong>
+    </article>
+  );
+}
+
+function EmptyState({
+  title,
+  body,
+  action,
+  secondary,
+  steps,
+  onPrimary,
+  onSecondary,
+}: {
+  title: string;
+  body: string;
+  action: string;
+  secondary?: string;
+  steps?: readonly string[];
+  onPrimary: () => void;
+  onSecondary?: () => void;
+}) {
+  return (
+    <div className="subscriptions-empty">
+      <CreditCard size={32} />
+      <h3>{title}</h3>
+      {body && <p>{body}</p>}
+      {steps && (
+        <div className="subscriptions-empty-steps">
+          {steps.map(step => <span key={step}>{step}</span>)}
+        </div>
+      )}
+      <div className="subscriptions-empty-actions">
+        <button type="button" className="subscriptions-primary" onClick={onPrimary}>{action}</button>
+        {secondary && onSecondary && <button type="button" className="subscriptions-secondary light" onClick={onSecondary}>{secondary}</button>}
+      </div>
     </div>
   );
 }
