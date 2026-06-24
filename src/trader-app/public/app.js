@@ -280,28 +280,30 @@ const i18n = {
 };
 
 const marketCategories = [
-  { id: "forex", route: "markets/forex", apiMarket: "forex", labelAr: "الفوركس", labelEn: "Forex", labelFr: "Forex", subtitleAr: "أزواج رئيسية", subtitleEn: "Major pairs", icon: "fx", currency: "" },
-  { id: "indices", route: "markets/indices", apiMarket: "indices", labelAr: "المؤشرات", labelEn: "Indices", labelFr: "Indices", subtitleAr: "مؤشرات عالمية", subtitleEn: "Global indices", icon: "indices", currency: "USD" },
-  { id: "stocks", route: "markets/stocks", apiMarket: "us", labelAr: "الأسهم الأمريكية", labelEn: "US Stocks", labelFr: "Actions US", subtitleAr: "ناسداك ونيويورك", subtitleEn: "US market", icon: "us", currency: "USD" },
-  { id: "crypto", route: "markets/crypto", apiMarket: "crypto", labelAr: "العملات الرقمية", labelEn: "Crypto", labelFr: "Crypto", subtitleAr: "أصول رقمية", subtitleEn: "Digital assets", icon: "crypto", currency: "USD" },
-  { id: "commodities", route: "markets/commodities", apiMarket: "commodities", labelAr: "السلع", labelEn: "Commodities", labelFr: "Matieres", subtitleAr: "ذهب، نفط، فضة", subtitleEn: "Gold, oil, silver", icon: "gold", currency: "USD" },
-  { id: "etfs", route: "markets/etfs", apiMarket: "etfs", labelAr: "الصناديق المتداولة", labelEn: "ETFs", labelFr: "ETF", subtitleAr: "صناديق متداولة", subtitleEn: "Exchange traded", icon: "etf", currency: "USD" },
-  { id: "gcc", route: "markets", apiMarket: "gcc", labelAr: "أسواق الخليج", labelEn: "Gulf Markets", labelFr: "Golfe", subtitleAr: "نظرة خليجية", subtitleEn: "GCC overview", icon: "gcc", currency: "" },
-  { id: "saudi", route: "markets", apiMarket: "saudi", labelAr: "السوق السعودي", labelEn: "Saudi", labelFr: "Arabie", subtitleAr: "تداول", subtitleEn: "Tadawul", icon: "saudi", currency: "SAR" },
-  { id: "kuwait", route: "markets", apiMarket: "kuwait", labelAr: "بورصة الكويت", labelEn: "Kuwait", labelFr: "Koweit", subtitleAr: "بورصة الكويت", subtitleEn: "Boursa Kuwait", icon: "kuwait", currency: "KWD" },
-  { id: "uae", route: "markets", apiMarket: "uae", labelAr: "السوق الإماراتي", labelEn: "UAE", labelFr: "EAU", subtitleAr: "ADX وDFM", subtitleEn: "ADX & DFM", icon: "uae", currency: "AED" },
-  { id: "qatar", route: "markets", apiMarket: "qatar", labelAr: "السوق القطري", labelEn: "Qatar", labelFr: "Qatar", subtitleAr: "QSE", subtitleEn: "QSE", icon: "qatar", currency: "QAR" },
-  { id: "bahrain", route: "markets", apiMarket: "bahrain", labelAr: "السوق البحريني", labelEn: "Bahrain", labelFr: "Bahrein", subtitleAr: "BHB", subtitleEn: "BHB", icon: "bahrain", currency: "BHD" },
-  { id: "oman", route: "markets", apiMarket: "oman", labelAr: "السوق العماني", labelEn: "Oman", labelFr: "Oman", subtitleAr: "MSX", subtitleEn: "MSX", icon: "oman", currency: "OMR" },
-  { id: "europe", route: "markets", apiMarket: "europe", labelAr: "الأسهم الأوروبية", labelEn: "Europe", labelFr: "Europe", subtitleAr: "أسواق أوروبية", subtitleEn: "European", icon: "europe", currency: "EUR" },
-  { id: "asia", route: "markets", apiMarket: "asia", labelAr: "الأسهم الآسيوية", labelEn: "Asia", labelFr: "Asie", subtitleAr: "آسيا والمحيط", subtitleEn: "Asia Pacific", icon: "asia", currency: "" },
-  { id: "tech", route: "markets", apiMarket: "tech", labelAr: "أسهم التقنية", labelEn: "Technology", labelFr: "Technologie", subtitleAr: "تقنية", subtitleEn: "Technology", icon: "chip", currency: "USD" },
-  { id: "food", route: "markets", apiMarket: "food", labelAr: "الأسهم الغذائية", labelEn: "Food / Staples", labelFr: "Consommation", subtitleAr: "سلع غذائية", subtitleEn: "Consumer staples", icon: "food", currency: "USD" },
-  { id: "healthcare", route: "markets", apiMarket: "healthcare", labelAr: "الأسهم الدوائية", labelEn: "Healthcare", labelFr: "Sante", subtitleAr: "دواء وصحة", subtitleEn: "Pharma & health", icon: "health", currency: "USD" },
-  { id: "banking", route: "markets", apiMarket: "banking", labelAr: "أسهم البنوك", labelEn: "Banking", labelFr: "Banques", subtitleAr: "بنوك", subtitleEn: "Banks", icon: "bank", currency: "USD" },
-  { id: "energy", route: "markets", apiMarket: "energy", labelAr: "أسهم الطاقة", labelEn: "Energy", labelFr: "Energie", subtitleAr: "طاقة ونفط", subtitleEn: "Oil & energy", icon: "energy", currency: "USD" },
-  { id: "ai", route: "markets", apiMarket: "ai", labelAr: "أسهم الذكاء الاصطناعي", labelEn: "AI Stocks", labelFr: "IA", subtitleAr: "ذكاء اصطناعي", subtitleEn: "AI leaders", icon: "ai", currency: "USD" },
-  { id: "semiconductors", route: "markets", apiMarket: "semiconductors", labelAr: "أشباه الموصلات", labelEn: "Semiconductors", labelFr: "Semi-conducteurs", subtitleAr: "رقائق", subtitleEn: "Chip makers", icon: "semi", currency: "USD" },
+  { id: "forex", route: "markets/forex", apiMarket: "forex", labelAr: "الفوركس", labelEn: "Forex", labelFr: "Forex", subtitleAr: "أزواج العملات الرئيسية", subtitleEn: "Major currency pairs", exchange: "FX", countryCode: "FX", currency: "Pairs", icon: "fx", type: "market", symbols: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD", "XAU/USD"] },
+  { id: "stocks", route: "markets/stocks", apiMarket: "us", labelAr: "الأسهم الأمريكية", labelEn: "US Stocks", labelFr: "Actions US", subtitleAr: "NYSE / NASDAQ", subtitleEn: "NYSE / NASDAQ", exchange: "NYSE / NASDAQ", countryCode: "US", currency: "USD", icon: "us", type: "market", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "QQQ", "SPY"] },
+  { id: "crypto", route: "markets/crypto", apiMarket: "crypto", labelAr: "العملات الرقمية", labelEn: "Crypto", labelFr: "Crypto", subtitleAr: "أصول رقمية مقابل الدولار", subtitleEn: "Digital assets", exchange: "Crypto", countryCode: "CRYPTO", currency: "USD", icon: "crypto", type: "market", symbols: ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD", "ADAUSD", "AVAXUSD"] },
+  { id: "commodities", route: "markets/commodities", apiMarket: "commodities", labelAr: "السلع", labelEn: "Commodities", labelFr: "Matieres", subtitleAr: "ذهب، فضة، نفط وغاز", subtitleEn: "Metals and energy", exchange: "Commodities", countryCode: "CMDTY", currency: "USD", icon: "gold", type: "market", symbols: ["XAUUSD", "XAGUSD", "USOIL", "UKOIL", "NATGAS", "COPPER"] },
+  { id: "gcc", route: "markets/gcc", apiMarket: "gcc", labelAr: "السوق الخليجي", labelEn: "GCC Markets", labelFr: "Golfe", subtitleAr: "السعودية، الكويت، الإمارات، قطر، البحرين، عُمان", subtitleEn: "GCC overview", exchange: "GCC", countryCode: "GCC", currency: "Mixed", icon: "gcc", type: "market", symbols: ["2222.SR", "NBK.KW", "EMAAR.AE", "QNBK.QA", "NBB.BH", "BKMB.OM"] },
+  { id: "saudi", route: "markets/saudi", apiMarket: "saudi", labelAr: "السوق السعودي", labelEn: "Saudi Market", labelFr: "Arabie", subtitleAr: "تداول", subtitleEn: "Tadawul", exchange: "Tadawul", countryCode: "SA", currency: "SAR", icon: "saudi", type: "exchange", symbols: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "2010.SR", "1211.SR", "7203.SR"] },
+  { id: "kuwait", route: "markets/kuwait", apiMarket: "kuwait", labelAr: "بورصة الكويت", labelEn: "Boursa Kuwait", labelFr: "Koweit", subtitleAr: "السوق الكويتي", subtitleEn: "Boursa Kuwait", exchange: "Boursa Kuwait", countryCode: "KW", currency: "KWD", icon: "kuwait", type: "exchange", symbols: ["NBK.KW", "KFH.KW", "ZAIN.KW", "AUB.KW", "GBK.KW", "BOUBYAN.KW", "AGILITY.KW"] },
+  { id: "uae", route: "markets/uae", apiMarket: "uae", labelAr: "السوق الإماراتي", labelEn: "UAE Market", labelFr: "EAU", subtitleAr: "ADX / DFM", subtitleEn: "ADX / DFM", exchange: "ADX / DFM", countryCode: "AE", currency: "AED", icon: "uae", type: "exchange", symbols: ["EMAAR.AE", "DIB.AE", "FAB.AD", "EAND.AD", "ADNOCGAS.AD", "DEWA.DU"] },
+  { id: "qatar", route: "markets/qatar", apiMarket: "qatar", labelAr: "السوق القطري", labelEn: "Qatar Market", labelFr: "Qatar", subtitleAr: "بورصة قطر", subtitleEn: "QSE", exchange: "QSE", countryCode: "QA", currency: "QAR", icon: "qatar", type: "exchange", symbols: ["QNBK.QA", "IQCD.QA", "MARK.QA", "QIBK.QA", "ORDS.QA"] },
+  { id: "bahrain", route: "markets/bahrain", apiMarket: "bahrain", labelAr: "السوق البحريني", labelEn: "Bahrain Market", labelFr: "Bahrein", subtitleAr: "بورصة البحرين", subtitleEn: "BHB", exchange: "BHB", countryCode: "BH", currency: "BHD", icon: "bahrain", type: "exchange", symbols: ["NBB.BH", "ALBH.BH", "BEYON.BH", "SALAM.BH"] },
+  { id: "oman", route: "markets/oman", apiMarket: "oman", labelAr: "السوق العماني", labelEn: "Oman Market", labelFr: "Oman", subtitleAr: "بورصة مسقط", subtitleEn: "MSX", exchange: "MSX", countryCode: "OM", currency: "OMR", icon: "oman", type: "exchange", symbols: ["BKMB.OM", "OMANTEL.OM", "NBO.OM", "OMINVEST.OM"] },
+  { id: "europe", route: "markets/europe", apiMarket: "europe", labelAr: "الأسهم الأوروبية", labelEn: "European Stocks", labelFr: "Europe", subtitleAr: "أسواق الاتحاد الأوروبي والمملكة المتحدة", subtitleEn: "European equities", exchange: "EU Stocks", countryCode: "EU", currency: "EUR", icon: "europe", type: "market", symbols: ["ASML", "SAP", "SHEL", "TTE", "LVMH", "SIE.DE", "AIR.PA", "NESN.SW"] },
+  { id: "asia", route: "markets/asia", apiMarket: "asia", labelAr: "الأسهم الآسيوية", labelEn: "Asian Stocks", labelFr: "Asie", subtitleAr: "آسيا والمحيط الهادئ", subtitleEn: "Asia Pacific", exchange: "Asia Markets", countryCode: "ASIA", currency: "Mixed", icon: "asia", type: "market", symbols: ["TSM", "BABA", "TCEHY", "SONY", "TM", "005930.KS", "9988.HK"] },
+  { id: "indices", route: "markets/indices", apiMarket: "indices", labelAr: "المؤشرات العالمية", labelEn: "Global Indices", labelFr: "Indices", subtitleAr: "مؤشرات عالمية", subtitleEn: "Global indices", exchange: "Indices", countryCode: "INDEX", currency: "USD", icon: "indices", type: "category", symbols: ["SPY", "QQQ", "DIA", "IWM", "VTI"] },
+  { id: "etfs", route: "markets/etfs", apiMarket: "etfs", labelAr: "الصناديق المتداولة", labelEn: "ETFs", labelFr: "ETF", subtitleAr: "صناديق مؤشرات متداولة", subtitleEn: "Exchange traded funds", exchange: "ETFs", countryCode: "US", currency: "USD", icon: "etf", type: "category", symbols: ["SPY", "QQQ", "VTI", "VOO", "GLD", "SLV"] },
+  { id: "ai", route: "markets/ai", apiMarket: "ai", labelAr: "أسهم الذكاء الاصطناعي", labelEn: "AI Stocks", labelFr: "IA", subtitleAr: "شركات الذكاء الاصطناعي", subtitleEn: "AI leaders", exchange: "AI Category", countryCode: "US", currency: "USD", icon: "ai", type: "theme", symbols: ["NVDA", "MSFT", "GOOGL", "AMD", "PLTR", "META", "AVGO", "ORCL"] },
+  { id: "tech", route: "markets/tech", apiMarket: "tech", labelAr: "أسهم التكنولوجيا", labelEn: "Technology Stocks", labelFr: "Technologie", subtitleAr: "شركات التقنية الكبرى", subtitleEn: "Technology leaders", exchange: "Tech Category", countryCode: "US", currency: "USD", icon: "chip", type: "theme", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMD", "INTC", "ORCL", "CRM", "AVGO"] },
+  { id: "energy", route: "markets/energy", apiMarket: "energy", labelAr: "أسهم الطاقة", labelEn: "Energy Stocks", labelFr: "Energie", subtitleAr: "نفط وطاقة", subtitleEn: "Energy and oil", exchange: "Energy Category", countryCode: "US", currency: "USD", icon: "energy", type: "theme", symbols: ["XOM", "CVX", "COP", "SLB", "BP", "SHEL", "TTE"] },
+  { id: "defensive", route: "markets/defensive", apiMarket: "defensive", labelAr: "الأسهم الدفاعية", labelEn: "Defensive Stocks", labelFr: "Defensives", subtitleAr: "شركات مستقرة ودفاعية", subtitleEn: "Defensive equities", exchange: "Defensive Category", countryCode: "US", currency: "USD", icon: "shield", type: "theme", symbols: ["PG", "KO", "PEP", "WMT", "COST", "JNJ", "MRK"] },
+  { id: "dividends", route: "markets/dividends", apiMarket: "dividends", labelAr: "أسهم التوزيعات", labelEn: "Dividend Stocks", labelFr: "Dividendes", subtitleAr: "شركات توزيعات أرباح", subtitleEn: "Dividend payers", exchange: "Dividend Category", countryCode: "US", currency: "USD", icon: "dividend", type: "theme", symbols: ["JPM", "KO", "PEP", "PG", "JNJ", "XOM", "CVX"] },
+  { id: "semiconductors", route: "markets/semiconductors", apiMarket: "semiconductors", labelAr: "أشباه الموصلات", labelEn: "Semiconductors", labelFr: "Semi-conducteurs", subtitleAr: "شركات الرقائق", subtitleEn: "Chip makers", exchange: "Semiconductors", countryCode: "SEMI", currency: "USD", icon: "semi", type: "theme", symbols: ["NVDA", "AMD", "INTC", "AVGO", "TSM", "QCOM", "ASML", "MU"] },
+  { id: "food", route: "markets/food", apiMarket: "food", labelAr: "الأسهم الغذائية", labelEn: "Food / Staples", labelFr: "Consommation", subtitleAr: "الأغذية والسلع الاستهلاكية", subtitleEn: "Consumer staples", exchange: "Staples Category", countryCode: "US", currency: "USD", icon: "food", type: "theme", symbols: ["KO", "PEP", "MCD", "COST", "WMT", "PG", "MDLZ", "KHC", "SBUX"] },
+  { id: "healthcare", route: "markets/healthcare", apiMarket: "healthcare", labelAr: "الأسهم الدوائية", labelEn: "Healthcare / Pharma", labelFr: "Sante", subtitleAr: "الصحة والدواء", subtitleEn: "Healthcare and pharma", exchange: "Healthcare Category", countryCode: "HLTH", currency: "USD", icon: "health", type: "theme", symbols: ["LLY", "JNJ", "PFE", "MRK", "ABBV", "NVO", "UNH", "AMGN"] },
+  { id: "banking", route: "markets/banking", apiMarket: "banking", labelAr: "أسهم البنوك", labelEn: "Banking Stocks", labelFr: "Banques", subtitleAr: "البنوك والخدمات المالية", subtitleEn: "Banks and financials", exchange: "Banking Category", countryCode: "BANK", currency: "USD", icon: "bank", type: "theme", symbols: ["JPM", "BAC", "WFC", "C", "GS", "MS", "HSBC"] },
 ];
 
 const sidebarItems = [
@@ -349,9 +351,19 @@ const routeMeta = {
   settings: { title: "Settings", pageKey: "settings" },
 };
 
+marketCategories.forEach((market) => {
+  routeMeta[market.route] = {
+    title: market.labelEn,
+    pageKey: "markets",
+    marketId: market.apiMarket,
+    marketCategoryId: market.id,
+  };
+});
+
 const state = {
   route: normalizeRoute(new URLSearchParams(location.search).get("route") || "dashboard"),
   language: loadSettings().language || "ar",
+  selectedMarketId: loadSettings().selectedMarketId || "stocks",
   drawerOpen: false,
   marketsOpen: loadSettings().marketsOpen ?? true,
   data: {
@@ -416,6 +428,16 @@ function apiMarketForRoute(route) {
   return routeMeta[route]?.marketId || "us";
 }
 
+function marketById(id) {
+  return marketCategories.find((market) => market.id === id) || marketCategories.find((market) => market.id === "stocks") || marketCategories[0];
+}
+
+function marketForCurrentRoute() {
+  const routeMarketId = routeMeta[state.route]?.marketCategoryId;
+  if (routeMarketId) return marketById(routeMarketId);
+  return marketById(state.selectedMarketId);
+}
+
 const TRADER_API_PREFIX = ["", "api", "trader"].join("/");
 
 function traderApi(path) {
@@ -470,15 +492,17 @@ function marketIcon(kind) {
     oman: "🇴🇲",
     europe: "🇪🇺",
     asia: "🌐",
-    chip: "⌁",
-    food: "◌",
+    chip: "CPU",
+    food: "●",
     health: "+",
     bank: "▥",
-    energy: "◖",
+    energy: "◆",
     ai: "AI",
     semi: "▦",
     indices: "↗",
     etf: "ETF",
+    shield: "◈",
+    dividend: "%",
   }[kind] || "●";
   return `<span class="market-icon market-icon-${kind}" aria-hidden="true">${label}</span>`;
 }
@@ -842,48 +866,218 @@ function renderSmartWatchlist(recs = []) {
   `;
 }
 
+function isUsBackedMarket(market) {
+  return ["us", "tech", "ai", "energy", "defensive", "dividends", "semiconductors", "food", "healthcare", "banking", "etfs", "indices"].includes(market?.apiMarket);
+}
+
+function marketCopy(key, market) {
+  const copy = {
+    heroEyebrow: { ar: "مركز الأسواق العالمية", en: "Global markets hub", fr: "Hub marches" },
+    heroTitle: { ar: "استكشف الأسواق العالمية عبر وكيل SFM الذكي", en: "Explore global markets with SFM AI intelligence", fr: "Explorez les marches avec SFM AI" },
+    heroText: { ar: "تابع الخليج، أمريكا، أوروبا، العملات الرقمية والسلع من واجهة واحدة مهيأة للتحديث اللحظي والربط مع مزودي البيانات.", en: "Track GCC, US, Europe, crypto, forex and commodities from one terminal ready for live provider feeds.", fr: "Suivez les marches depuis un terminal pret pour les donnees live." },
+    startScan: { ar: "بدء تحليل السوق", en: "Start market analysis", fr: "Analyser le marche" },
+    selectedMarket: { ar: "السوق المختار", en: "Selected market", fr: "Marche selectionne" },
+    marketUniverse: { ar: "قائمة الأصول", en: "Asset universe", fr: "Univers" },
+    quickStats: { ar: "ملخص سريع", en: "Quick market stats", fr: "Statistiques" },
+    assetCount: { ar: "عدد الأصول", en: "Assets", fr: "Actifs" },
+    marketState: { ar: "حالة السوق", en: "Market state", fr: "Etat" },
+    primaryCurrency: { ar: "العملة الرئيسية", en: "Primary currency", fr: "Devise" },
+    dataQuality: { ar: "جودة البيانات", en: "Data quality", fr: "Qualite donnees" },
+    topGainers: { ar: "أبرز الرابحين", en: "Top gainers", fr: "Meilleures hausses" },
+    topLosers: { ar: "أبرز الخاسرين", en: "Top losers", fr: "Meilleures baisses" },
+    providerReady: { ar: "متاح عند توفر المزود", en: "Available when provider is connected", fr: "Selon fournisseur" },
+    liveProvider: { ar: "بيانات مزود حقيقي", en: "Real provider data", fr: "Donnees fournisseur" },
+    overviewTitle: { ar: "نظرة السوق", en: "Market overview", fr: "Vue du marche" },
+    overviewText: { ar: "تعرض هذه المنطقة معلومات السوق المختار، رموزه، عملته، وحالة التحليل المتاحة حالياً.", en: "This section reflects the selected market, its symbols, currency, and currently available analysis state.", fr: "Cette section resume le marche selectionne." },
+    opportunities: { ar: "الفرص والأصول البارزة", en: "Featured opportunities", fr: "Opportunites" },
+    watchPreview: { ar: "معاينة قائمة المراقبة", en: "Watchlist preview", fr: "Watchlist" },
+    newsPreview: { ar: "أخبار السوق", en: "Market news", fr: "Actualites" },
+    noProviderMarket: { ar: "لا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.", en: "No live provider data is available for this market yet. Results will appear when a data provider is connected.", fr: "Aucune donnee live disponible pour ce marche." },
+    configuredSymbols: { ar: "رموز مهيأة للتحليل", en: "Configured symbols", fr: "Symboles configures" },
+    routeAction: { ar: "فتح صفحة السوق", en: "Open market page", fr: "Ouvrir" },
+    delayedNotice: { ar: "لا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي.", en: "No fake prices or recommendations are shown. Values appear only when real provider data is available.", fr: "Aucune donnee fictive n'est affichee." },
+    newsUnavailable: { ar: "تغذية الأخبار الخاصة بهذا السوق غير متصلة حالياً.", en: "Market-specific news feed is not connected yet.", fr: "Flux actualites non connecte." },
+  };
+  return copy[key]?.[state.language] || copy[key]?.en || key;
+}
+
+function recommendationsForMarket(market) {
+  if (!isUsBackedMarket(market)) return [];
+  const source = [
+    ...(state.data.usStocks?.recommendations || []),
+    ...(state.data.dashboardRecommendations || []),
+    ...(state.data.recommendations || []),
+  ];
+  const seen = new Set();
+  const symbols = new Set((market.symbols || []).map((symbol) => String(symbol).replace(/[^A-Z0-9]/gi, "").toUpperCase()));
+  const filtered = source.filter((item) => {
+    const key = String(item.symbol || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    if (!key || seen.has(key)) return false;
+    if (market.id !== "stocks" && symbols.size && !symbols.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return filtered.length || market.id !== "stocks" ? filtered : topRecommendations(source, 8);
+}
+
+function marketStatusValue(market) {
+  if (!isUsBackedMarket(market)) return marketCopy("providerReady");
+  if (state.data.errors.dashboard || state.data.errors.route) return t("unavailable");
+  return state.data.loadedAt ? marketCopy("liveProvider") : t("loading");
+}
+
 function renderMarketPage(marketId) {
-  const market = marketCategories.find((item) => item.apiMarket === marketId || item.id === marketId) || marketCategories[2];
-  const recs = marketId === "us" ? (state.data.usStocks?.recommendations || state.data.recommendations) : state.data.recommendations;
-  const summary = marketId === "us" ? state.data.usStocks?.summary : null;
-  const modules = marketId === "us"
-    ? [
-        ["Analyzed assets", summary?.total ?? "--", "Yahoo Finance delayed provider"],
-        ["Buy signals", summary?.buy ?? 0, "technical rules"],
-        ["Sell signals", summary?.sell ?? 0, "technical rules"],
-        ["Average confidence", summary?.averageConfidence !== null && summary?.averageConfidence !== undefined ? `${summary.averageConfidence}%` : "--", "data-quality adjusted"],
-      ]
-    : [
-        ["Market screener", t("unavailable"), t("routeUnavailable")],
-        ["Top movers", "--", t("routeUnavailable")],
-        ["Signals", "--", t("routeUnavailable")],
-        ["Provider status", "--", t("routeUnavailable")],
-      ];
+  const market = marketCategories.find((item) => item.apiMarket === marketId || item.id === marketId) || marketForCurrentRoute();
+  state.selectedMarketId = market.id;
+  return renderMarketsHub(market);
+}
+
+function renderMarketsOverviewPage() {
+  return renderMarketsHub(marketForCurrentRoute());
+}
+
+function renderMarketsHub(selectedMarket) {
+  const market = selectedMarket || marketById("stocks");
+  const recs = recommendationsForMarket(market);
   return `
-    ${renderPageHeader(localMarketLabel(market), localMarketSubtitle(market), market)}
-    <div class="feature-grid">
-      ${modules.map(([label, value, note]) => metricCard(label, value, note)).join("")}
+    <div class="markets-hub-page">
+      ${renderMarketsHeroBanner(market)}
+      ${renderMarketsSelectorGrid(market)}
+      ${renderMarketQuickStats(market, recs)}
+      ${renderSelectedMarketOverview(market)}
+      ${renderMarketOpportunities(market, recs)}
+      ${renderMarketNewsPreview(market)}
+      ${renderMarketsQualityStrip(market)}
     </div>
-    <section class="terminal-card">
-      <div class="section-header compact"><div><h2>${marketId === "us" ? "US stock scanner" : t("smartWatchlist")}</h2><p>${marketId === "us" ? "Real delayed quote data with explainable technical-rule analysis." : t("routeUnavailable")}</p></div></div>
-      ${recs.length ? `<div class="recommendation-grid">${topRecommendations(recs, 8).map(renderRecommendationCard).join("")}</div>` : emptyState(t("noLiveData"))}
+  `;
+}
+
+function renderMarketsHeroBanner(market) {
+  return `
+    <section class="markets-hero terminal-card">
+      <div class="markets-hero-copy">
+        <span>${marketCopy("heroEyebrow")}</span>
+        <h1>${marketCopy("heroTitle")}</h1>
+        <p>${marketCopy("heroText")}</p>
+        <div class="markets-hero-actions">
+          <a href="${publicHref(market.route)}" target="_top">${marketCopy("routeAction")}</a>
+          <button type="button" data-market-select="${escapeHtml(market.id)}">${marketCopy("startScan")}</button>
+        </div>
+      </div>
+      <div class="markets-hero-visual" aria-hidden="true">
+        <i></i><i></i><i></i>
+        <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
+        <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+      </div>
     </section>
   `;
 }
 
-function renderMarketsOverviewPage() {
+function renderMarketsSelectorGrid(activeMarket) {
   return `
-    ${renderPageHeader(t("markets"), t("routeUnavailable"))}
-    <section class="terminal-card">
-      <div class="market-directory">
+    <section class="terminal-card markets-selector-card">
+      <div class="section-header compact">
+        <div><h2>${t("markets")}</h2><p>${marketCopy("selectedMarket")}: ${escapeHtml(localMarketLabel(activeMarket))}</p></div>
+      </div>
+      <div class="markets-grid" role="list">
         ${marketCategories.map((market) => `
-          <a class="market-directory-card" href="${publicHref(market.route)}" target="_top">
-            ${marketIcon(market.icon)}
-            <div><strong>${escapeHtml(localMarketLabel(market))}</strong><span>${escapeHtml(localMarketSubtitle(market))}</span></div>
-            <em>${normalizeCurrency(market.currency) || "GLOBAL"}</em>
-          </a>
+          <button class="market-hub-tile ${market.id === activeMarket.id ? "active" : ""}" type="button" role="listitem" data-market-select="${escapeHtml(market.id)}">
+            <span class="market-tile-icon">${marketIcon(market.icon)}</span>
+            <span class="market-tile-body">
+              <strong>${escapeHtml(localMarketLabel(market))}</strong>
+              <em>${escapeHtml(market.exchange || localMarketSubtitle(market))}</em>
+              <small>${escapeHtml(localMarketSubtitle(market))}</small>
+            </span>
+            <span class="market-tile-meta">
+              <b>${escapeHtml(market.countryCode || market.type || "")}</b>
+              <i>${escapeHtml(normalizeCurrency(market.currency) || (market.currency === "Pairs" ? "Pairs" : "Mixed"))}</i>
+            </span>
+          </button>
         `).join("")}
       </div>
+    </section>
+  `;
+}
+
+function renderMarketQuickStats(market, recs) {
+  const symbols = market.symbols || [];
+  const gainers = recs.filter((item) => Number(item.expectedMovePct || item.changePct || 0) > 0).length;
+  const losers = recs.filter((item) => Number(item.expectedMovePct || item.changePct || 0) < 0).length;
+  const lastUpdate = state.data.loadedAt ? new Date(state.data.loadedAt).toLocaleTimeString("en-US", { hour12: false }) : "--";
+  return `
+    <section class="markets-stats-grid" aria-label="${marketCopy("quickStats")}">
+      ${metricCard(marketCopy("assetCount"), symbols.length, marketCopy("configuredSymbols"))}
+      ${metricCard(marketCopy("marketState"), marketStatusValue(market), market.exchange || market.type)}
+      ${metricCard(marketCopy("primaryCurrency"), normalizeCurrency(market.currency) || "Mixed", market.countryCode || "")}
+      ${metricCard(marketCopy("dataQuality"), isUsBackedMarket(market) && recs.length ? `${recs.length} signals` : t("unavailable"), lastUpdate)}
+      ${metricCard(marketCopy("topGainers"), gainers || "--", marketCopy("providerReady"))}
+      ${metricCard(marketCopy("topLosers"), losers || "--", marketCopy("providerReady"))}
+    </section>
+  `;
+}
+
+function renderSelectedMarketOverview(market) {
+  return `
+    <section class="terminal-card selected-market-overview">
+      <div class="section-header">
+        <div>
+          <span>${marketCopy("selectedMarket")}</span>
+          <h2>${escapeHtml(localMarketLabel(market))}</h2>
+          <p>${marketCopy("overviewText")}</p>
+        </div>
+        <a href="${publicHref(market.route)}" target="_top">${marketCopy("routeAction")}</a>
+      </div>
+      <div class="selected-market-layout">
+        <div class="selected-market-profile">
+          ${marketIcon(market.icon)}
+          <div>
+            <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
+            <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+            <p>${escapeHtml(localMarketSubtitle(market))}</p>
+          </div>
+        </div>
+        <div class="market-symbol-strip">
+          ${(market.symbols || []).slice(0, 12).map((symbol) => `<span dir="ltr">${escapeHtml(symbol)}</span>`).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderMarketOpportunities(market, recs) {
+  const watchlist = loadWatchlist().slice(0, 5);
+  return `
+    <div class="market-opportunity-layout">
+      <section class="terminal-card market-opportunities-card">
+        <div class="section-header compact"><div><h2>${marketCopy("opportunities")}</h2><p>${isUsBackedMarket(market) ? marketCopy("liveProvider") : marketCopy("noProviderMarket")}</p></div></div>
+        ${recs.length ? `<div class="recommendation-grid compact-market-recs">${topRecommendations(recs, 6).map(renderRecommendationCard).join("")}</div>` : emptyState(marketCopy("noProviderMarket"))}
+      </section>
+      <section class="terminal-card market-watch-preview">
+        <div class="section-header compact"><div><h2>${marketCopy("watchPreview")}</h2><p>${marketCopy("configuredSymbols")}</p></div></div>
+        <div class="watch-preview-list">
+          ${(watchlist.length ? watchlist.map((item) => item.symbol) : (market.symbols || []).slice(0, 6)).map((symbol) => `<div><span dir="ltr">${escapeHtml(symbol)}</span><em>${escapeHtml(normalizeCurrency(market.currency) || market.countryCode || "")}</em></div>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderMarketNewsPreview(market) {
+  return `
+    <section class="terminal-card market-news-preview">
+      <div class="section-header compact"><div><h2>${marketCopy("newsPreview")}</h2><p>${escapeHtml(localMarketLabel(market))}</p></div><a href="${publicHref("news")}" target="_top">${t("viewAll")}</a></div>
+      <div class="market-news-empty">${emptyState(marketCopy("newsUnavailable"), "news")}</div>
+    </section>
+  `;
+}
+
+function renderMarketsQualityStrip(market) {
+  return `
+    <section class="markets-quality-strip">
+      <span>${marketIcon(market.icon)} ${escapeHtml(localMarketLabel(market))}</span>
+      <span>${marketCopy("assetCount")}: ${(market.symbols || []).length}</span>
+      <span>${marketCopy("primaryCurrency")}: ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+      <strong>${marketCopy("delayedNotice")}</strong>
     </section>
   `;
 }
@@ -1210,6 +1404,17 @@ function bindEvents() {
     saveSettings({ marketsOpen: state.marketsOpen });
     render();
   });
+  root.querySelectorAll("[data-market-select]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const market = marketById(button.dataset.marketSelect);
+      state.selectedMarketId = market.id;
+      saveSettings({ selectedMarketId: market.id });
+      if (isUsBackedMarket(market) && !state.data.usStocks && !state.data.errors.route) {
+        loadRouteRecommendations().then(render);
+      }
+      render();
+    });
+  });
   root.querySelectorAll("[data-dismiss-notice]").forEach((button) => {
     button.addEventListener("click", () => {
       const dismissed = new Set(loadDismissedNotices());
@@ -1313,8 +1518,8 @@ async function loadDashboardRecommendations() {
 }
 
 async function loadRouteRecommendations() {
-  const market = apiMarketForRoute(state.route);
-  if (market !== "us") {
+  const market = state.route === "markets" ? marketForCurrentRoute() : marketCategories.find((item) => item.apiMarket === apiMarketForRoute(state.route) || item.id === routeMeta[state.route]?.marketCategoryId);
+  if (!isUsBackedMarket(market)) {
     state.data.recommendations = [];
     delete state.data.errors.route;
     return;
