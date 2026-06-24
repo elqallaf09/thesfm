@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, Clock3, TrendingDown, TrendingUp } from 'lucide-react';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
@@ -12,6 +12,7 @@ type TechTickerStripProps = {
   labels: {
     priceUnavailable: string;
     delayedGlobal: string;
+    lastUpdated: string;
   };
 };
 
@@ -35,24 +36,35 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
       viewportClassName="tech-ticker-viewport"
       trackClassName="tech-ticker-track"
       setClassName="tech-ticker-set"
-      status={<span className="tech-ticker-delay-badge">{labels.delayedGlobal}</span>}
+      status={(
+        <span className="tech-ticker-delay-badge">
+          <Clock3 size={13} />
+          {labels.delayedGlobal}
+        </span>
+      )}
     >
-        {tickerItems.map(item => {
-          const tone = item.changePercent === null || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
-          const Icon = tone === 'down' ? TrendingDown : TrendingUp;
-          return (
-            <div className="tech-ticker-item" key={item.symbol}>
-              <strong>{item.symbol}</strong>
-              <span>{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
-              {item.price !== null && item.changePercent !== null ? (
-                  <b className={tone}>
-                    <Icon size={13} />
-                    {`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}
-                  </b>
-              ) : null}
+      {tickerItems.map(item => {
+        const tone = item.changePercent === null || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
+        const Icon = tone === 'down' ? TrendingDown : TrendingUp;
+        return (
+          <div className={`tech-ticker-item ${tone}`} key={item.symbol}>
+            <div>
+              <strong dir="ltr">{item.symbol}</strong>
+              <small>
+                <Activity size={12} />
+                {item.available ? labels.lastUpdated : labels.priceUnavailable}
+              </small>
             </div>
-          );
-        })}
+            <span dir="ltr">{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
+            {item.price !== null && item.changePercent !== null ? (
+              <b className={tone}>
+                <Icon size={13} />
+                <span dir="ltr">{`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}</span>
+              </b>
+            ) : null}
+          </div>
+        );
+      })}
     </MarketTickerStrip>
   );
 }
