@@ -3131,3 +3131,1456 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
     max-width: calc(100vw - 28px) !important;
   }
 }
+/* Shared app header fallback */
+        body.energy-route-active .sfm-global-header {
+          display: none;
+        }
+
+        @media (max-width: 1024px) {
+          body.energy-route-active .sfm-global-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9998;
+            height: calc(74px + env(safe-area-inset-top));
+            padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            max-width: 100%;
+            overflow: visible;
+            background: rgba(248, 251, 255, 0.94);
+            border-bottom: 1px solid rgba(167, 243, 240, 0.22);
+            box-shadow: 0 12px 34px rgba(3, 18, 37, 0.12);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            font-family: Tajawal, Arial, sans-serif;
+          }
+
+          body.energy-route-active .sfm-global-brand {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: min(42vw, 220px);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--sfm-foreground);
+            text-decoration: none;
+            overflow: hidden;
+          }
+
+          body.energy-route-active .sfm-global-brand > div {
+            min-width: 0;
+            max-width: 100%;
+          }
+
+          body.energy-route-active .sfm-global-brand img {
+            flex: 0 0 auto;
+            object-fit: cover;
+          }
+
+          body.energy-route-active .sfm-global-brand strong {
+            display: block;
+            color: var(--sfm-foreground);
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: 0;
+          }
+
+          body.energy-route-active .sfm-global-brand span {
+            display: block;
+            max-width: 46vw;
+            overflow: hidden;
+            color: var(--sfm-muted);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          body.energy-route-active .sfm-global-actions {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            max-width: calc(100vw - 112px);
+          }
+
+          body.energy-route-active .sfm-global-menu-button {
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(167, 243, 240, 0.34);
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+            color: var(--sfm-primary-dark);
+            box-shadow: 0 8px 20px rgba(3, 18, 37, 0.12);
+            cursor: pointer;
+          }
+
+          .dark body.energy-route-active .sfm-global-header,
+          body.energy-route-active.dark .sfm-global-header {
+            background: rgba(10, 20, 34, 0.94);
+            border-bottom-color: rgba(47, 214, 192, 0.18);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+          }
+
+          .dark body.energy-route-active .sfm-global-brand,
+          .dark body.energy-route-active .sfm-global-brand strong,
+          body.energy-route-active.dark .sfm-global-brand,
+          body.energy-route-active.dark .sfm-global-brand strong {
+            color: #F8FBFF;
+          }
+
+          .dark body.energy-route-active .sfm-global-brand span,
+          body.energy-route-active.dark .sfm-global-brand span {
+            color: #B8C7D9;
+          }
+
+          .dark body.energy-route-active .sfm-global-menu-button,
+          .dark body.energy-route-active .sfm-global-actions .sfm-command-trigger.compact,
+          .dark body.energy-route-active .sfm-global-actions .sfm-language-trigger,
+          body.energy-route-active.dark .sfm-global-menu-button,
+          body.energy-route-active.dark .sfm-global-actions .sfm-command-trigger.compact,
+          body.energy-route-active.dark .sfm-global-actions .sfm-language-trigger {
+            background: #0F1D31 !important;
+            background-image: none !important;
+            border-color: #1D3050 !important;
+            color: #E8EEF6 !important;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22) !important;
+          }
+
+          .dark body.energy-route-active .sfm-global-menu-button:hover,
+          .dark body.energy-route-active .sfm-global-actions .sfm-command-trigger.compact:hover,
+          .dark body.energy-route-active .sfm-global-actions .sfm-language-trigger:hover,
+          body.energy-route-active.dark .sfm-global-menu-button:hover,
+          body.energy-route-active.dark .sfm-global-actions .sfm-command-trigger.compact:hover,
+          body.energy-route-active.dark .sfm-global-actions .sfm-language-trigger:hover {
+            border-color: #2FD6C0 !important;
+            color: #2FD6C0 !important;
+            box-shadow: 0 0 0 4px rgba(47, 214, 192, 0.14), 0 10px 24px rgba(0, 0, 0, 0.24) !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          body.energy-route-active .sfm-global-header {
+            padding: calc(10px + env(safe-area-inset-top)) 10px 10px;
+            gap: 6px;
+          }
+
+          body.energy-route-active .sfm-global-brand {
+            max-width: min(120px, 31vw);
+            gap: 7px;
+          }
+
+          body.energy-route-active .sfm-brand-mark--header {
+            width: 30px !important;
+            height: 30px !important;
+          }
+
+          body.energy-route-active .sfm-global-brand strong {
+            font-size: 12px;
+          }
+
+          body.energy-route-active .sfm-global-brand span {
+            max-width: 74px;
+            font-size: 10px;
+          }
+
+          body.energy-route-active .sfm-global-actions {
+            gap: 5px;
+            max-width: calc(100vw - 126px);
+          }
+
+          body.energy-route-active .sfm-global-actions .sfm-command-trigger.compact,
+          body.energy-route-active .sfm-global-actions .sfm-theme-toggle,
+          body.energy-route-active .sfm-global-menu-button {
+            width: 40px;
+            min-width: 40px;
+            height: 40px;
+            border-radius: 13px;
+          }
+        }
+
+
+/* Shared app layout fallback */
+        @media (max-width: 1024px) {
+          body.energy-route-active .sfm-app-layout:not(.sfm-app-layout-public) {
+            min-height: 100vh;
+            padding-top: calc(74px + env(safe-area-inset-top));
+          }
+        }
+
+
+/* Energy markets center */
+        .energyShell {
+          min-height: 100vh;
+          height: 100dvh;
+          width: 100%;
+          background:
+            radial-gradient(circle at 18% 0%, rgba(47, 214, 192, 0.14), transparent 28%),
+            linear-gradient(180deg, #f6fbff 0%, #edf6fb 48%, #f8fbff 100%);
+          color: #07182f;
+          font-family: Tajawal, Arial, sans-serif;
+          overflow-x: clip;
+        }
+        .energyShell,
+        .energyShell * {
+          box-sizing: border-box;
+        }
+        .energyWorkspace {
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+          padding-block: 24px 56px;
+          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+          padding-inline-end: clamp(16px, 2vw, 32px);
+          overflow-x: clip;
+        }
+        .energyContainer {
+          width: min(100%, 1480px);
+          margin-inline: auto;
+          display: grid;
+          gap: 20px;
+        }
+        .energyHero,
+        .energyPanel,
+        .energyTickerPanel,
+        .energyDisclaimer {
+          min-width: 0;
+          border: 1px solid rgba(29, 140, 255, 0.14);
+          background: rgba(255, 255, 255, 0.94);
+          border-radius: 22px;
+          box-shadow: 0 18px 44px rgba(3, 18, 37, 0.075);
+        }
+        .energyHero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 18px;
+          align-items: start;
+          padding: 22px;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 251, 255, 0.92)),
+            #fff;
+        }
+        .energyHeroCopy {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+        }
+        .energyHeroBadge {
+          width: fit-content;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(14, 165, 233, 0.18);
+          background: #f7fcff;
+          color: #0f7891;
+          padding: 7px 12px;
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .energyHero h1 {
+          margin: 0;
+          color: #081a33;
+          font-size: clamp(30px, 3.8vw, 42px);
+          line-height: 1.12;
+          font-weight: 950;
+          letter-spacing: 0;
+        }
+        .energyHero p {
+          margin: 0;
+          max-width: 980px;
+          color: #587089;
+          font-size: 15px;
+          font-weight: 800;
+          line-height: 1.8;
+        }
+        .energyHeroMeta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: center;
+        }
+        .energyHeroMeta > span:not(.energyBadge) {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #61758d;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .energyHeroActions {
+          min-width: min(100%, 250px);
+          display: grid;
+          justify-items: end;
+          gap: 8px;
+        }
+        .energyHeroActions small {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .energyPrimaryButton,
+        .energySecondaryButton,
+        .energyTableAction,
+        .energyLoadMore button,
+        .energyMobileCompanyCard button,
+        .energyStandaloneAction {
+          min-height: 44px;
+          border-radius: 14px;
+          border: 1px solid transparent;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 16px;
+          font: 950 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .energyPrimaryButton,
+        .energyLoadMore button,
+        .energyMobileCompanyCard button,
+        .energyStandaloneAction {
+          color: #fff;
+          background: linear-gradient(135deg, #0b8fb3, #18d4d4);
+          box-shadow: 0 14px 30px rgba(14, 116, 144, 0.22);
+        }
+        .energySecondaryButton,
+        .energyTableAction {
+          color: #0f7891;
+          background: #f7fcff;
+          border-color: rgba(14, 165, 233, 0.2);
+        }
+        .energyPrimaryButton:hover,
+        .energySecondaryButton:hover,
+        .energyTableAction:hover,
+        .energyLoadMore button:hover,
+        .energyMobileCompanyCard button:hover,
+        .energyPrimaryButton:focus-visible,
+        .energySecondaryButton:focus-visible,
+        .energyTableAction:focus-visible,
+        .energyLoadMore button:focus-visible,
+        .energyMobileCompanyCard button:focus-visible {
+          outline: none;
+          transform: translateY(-1px);
+          box-shadow: 0 18px 38px rgba(14, 116, 144, 0.22);
+        }
+        .energyPrimaryButton:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .energySpin {
+          animation: energySpin 1s linear infinite;
+        }
+        .energyTickerPanel {
+          padding: 12px;
+          overflow: hidden;
+        }
+        .energyTickerTrack {
+          min-width: 0;
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding: 2px 2px 8px;
+          scrollbar-width: thin;
+          direction: ltr;
+        }
+        .energyTickerItem,
+        .energyTickerSkeleton {
+          flex: 0 0 220px;
+          min-height: 86px;
+          border-radius: 17px;
+        }
+        .energyTickerSkeleton,
+        .energyCommoditySkeleton,
+        .energyStatSkeleton,
+        .energySkeletonStack span {
+          background: linear-gradient(90deg, rgba(148, 163, 184, 0.12), rgba(34, 211, 238, 0.18), rgba(148, 163, 184, 0.12));
+          background-size: 220% 100%;
+          animation: shimmer 1.2s linear infinite;
+        }
+        .energyTickerItem {
+          display: grid;
+          gap: 4px;
+          padding: 12px;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          background: #fff;
+        }
+        .energyTickerItem span {
+          color: #0f7891;
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .energyTickerItem strong {
+          color: #07182f;
+          font-size: 13px;
+          font-weight: 950;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .energyTickerItem b,
+        .energyTickerItem em {
+          font-style: normal;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyTickerItem small {
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 800;
+        }
+        .energyTabs {
+          min-width: 0;
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding: 8px;
+          border: 1px solid rgba(29, 140, 255, 0.14);
+          background: rgba(255, 255, 255, 0.82);
+          border-radius: 18px;
+          box-shadow: 0 14px 32px rgba(3, 18, 37, 0.055);
+          scrollbar-width: thin;
+        }
+        .energyTabs button {
+          flex: 0 0 auto;
+          min-height: 44px;
+          border: 1px solid transparent;
+          border-radius: 13px;
+          background: transparent;
+          color: #51677f;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 13px;
+          font: 950 13px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+        .energyTabs button:hover,
+        .energyTabs button:focus-visible {
+          outline: none;
+          color: #0f7891;
+          border-color: rgba(14, 165, 233, 0.18);
+          background: #f7fcff;
+        }
+        .energyTabs button.active {
+          color: #fff;
+          background: linear-gradient(135deg, #0b8fb3, #18d4d4);
+          box-shadow: 0 12px 26px rgba(14, 116, 144, 0.2);
+        }
+        .energyTabStack {
+          display: grid;
+          gap: 20px;
+        }
+        .energyPanel {
+          padding: 20px;
+          display: grid;
+          gap: 16px;
+        }
+        .energySectionHeader {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 14px;
+          min-width: 0;
+        }
+        .energySectionHeader > div:first-child {
+          min-width: 0;
+          display: flex;
+          gap: 11px;
+          align-items: flex-start;
+        }
+        .energySectionIcon {
+          width: 40px;
+          height: 40px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          color: #0f7891;
+          background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(29, 140, 255, 0.08));
+          border: 1px solid rgba(34, 211, 238, 0.22);
+        }
+        .energySectionHeader h2 {
+          margin: 0;
+          color: #081a33;
+          font-size: 20px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+        .energySectionHeader p {
+          margin: 5px 0 0;
+          color: #64748b;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.6;
+        }
+        .energySectionAction {
+          flex: 0 0 auto;
+        }
+        .energyStatsGrid,
+        .energyCommodityGrid,
+        .energyFeaturedGrid,
+        .energyNewsGrid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 14px;
+          min-width: 0;
+        }
+        .energyCommodityGrid.compact {
+          grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        }
+        .energyStat,
+        .energyCommodityCard,
+        .energyCompanyFeature,
+        .energyNewsCard,
+        .energyMoverList,
+        .energyMobileCompanyCard {
+          min-width: 0;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 18px;
+          background: #fff;
+          box-shadow: 0 12px 26px rgba(3, 18, 37, 0.045);
+        }
+        .energyStat {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          padding: 15px;
+        }
+        .energyStatIcon {
+          width: 38px;
+          height: 38px;
+          border-radius: 13px;
+          display: grid;
+          place-items: center;
+          background: #f0fbff;
+          color: #0f7891;
+          flex: 0 0 auto;
+        }
+        .energyStat div {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+        .energyStat span:not(.energyStatIcon) {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .energyStat strong {
+          color: #07182f;
+          font-size: 22px;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyStat small {
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 800;
+        }
+        .energyStatSkeleton {
+          min-height: 96px;
+          border-radius: 18px;
+        }
+        .energyCommodityCard {
+          display: grid;
+          gap: 10px;
+          padding: 16px;
+        }
+        .energyCommodityCard div {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+        .energyCommodityType {
+          width: fit-content;
+          color: #0f7891;
+          background: #f0fbff;
+          border-radius: 999px;
+          padding: 4px 8px;
+          font-size: 11px;
+          font-weight: 950;
+        }
+        .energyCommodityCard strong,
+        .energyCompanyFeature strong,
+        .energyNewsCard h3 {
+          color: #081a33;
+          font-weight: 950;
+        }
+        .energyCommodityCard small {
+          color: #64748b;
+          font-weight: 900;
+        }
+        .energyCommodityCard b {
+          color: #07182f;
+          font-size: 22px;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyCommodityCard em {
+          font-style: normal;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyCommodityCard footer {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 850;
+        }
+        .energyCommoditySkeleton {
+          min-height: 154px;
+          border-radius: 18px;
+        }
+        .energyOverviewGrid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(300px, 0.76fr);
+          gap: 20px;
+          align-items: start;
+        }
+        .energySectorRows,
+        .energySkeletonStack {
+          display: grid;
+          gap: 10px;
+        }
+        .energySectorRow {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(120px, 0.6fr) auto;
+          gap: 12px;
+          align-items: center;
+          padding: 12px;
+          border: 1px solid rgba(29, 140, 255, 0.1);
+          border-radius: 14px;
+          background: #fff;
+        }
+        .energySectorRow strong {
+          display: block;
+          color: #081a33;
+          font-size: 13px;
+          font-weight: 950;
+        }
+        .energySectorRow span {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .energySectorRow b {
+          font-variant-numeric: tabular-nums;
+        }
+        .energySectorMeter {
+          height: 9px;
+          border-radius: 999px;
+          background: #e8f2f8;
+          overflow: hidden;
+        }
+        .energySectorMeter span {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: currentColor;
+        }
+        .energyMoversGrid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 14px;
+        }
+        .energyMoverList {
+          padding: 14px;
+          display: grid;
+          gap: 9px;
+        }
+        .energyMoverList h3 {
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #081a33;
+          font-size: 14px;
+          font-weight: 950;
+        }
+        .energyMoverRow {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: 52px minmax(0, 1fr) auto auto;
+          gap: 8px;
+          align-items: center;
+          min-height: 44px;
+          border-top: 1px solid #edf4f8;
+          padding-top: 8px;
+          font-size: 12px;
+        }
+        .energyMoverRow span {
+          color: #0f7891;
+          font-weight: 950;
+        }
+        .energyMoverRow strong {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: #07182f;
+        }
+        .energyMoverRow b,
+        .energyMoverRow em {
+          font-style: normal;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyFeaturedGrid {
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        .energyCompanyFeature {
+          padding: 16px;
+          display: grid;
+          gap: 13px;
+        }
+        .energyCompanyFeature header {
+          display: flex;
+          align-items: flex-start;
+          gap: 11px;
+          min-width: 0;
+        }
+        .energyCompanyFeature header > span {
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          background: #f0fbff;
+          color: #0f7891;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+        }
+        .energyCompanyFeature header div {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+        }
+        .energyCompanyFeature strong {
+          font-size: 15px;
+          overflow-wrap: anywhere;
+        }
+        .energyCompanyFeature small,
+        .energyCompanyFeature p {
+          margin: 0;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .energyCompanyMetrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .energyCompanyMetrics span {
+          display: grid;
+          gap: 3px;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 900;
+        }
+        .energyCompanyMetrics b {
+          color: #07182f;
+          font-size: 15px;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energyCompanyFeature footer {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+        }
+        .energyMethodology {
+          position: relative;
+          max-width: 460px;
+        }
+        .energyMethodology summary {
+          min-height: 40px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          cursor: pointer;
+          border-radius: 12px;
+          color: #0f7891;
+          font-weight: 950;
+          font-size: 12px;
+          list-style: none;
+        }
+        .energyMethodology summary::-webkit-details-marker {
+          display: none;
+        }
+        .energyMethodology[open] summary svg:last-child {
+          transform: rotate(180deg);
+        }
+        .energyMethodology div {
+          margin-top: 8px;
+          padding: 12px;
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          border-radius: 14px;
+          background: #f7fcff;
+        }
+        .energyMethodology strong {
+          color: #081a33;
+          font-size: 13px;
+          font-weight: 950;
+        }
+        .energyMethodology p {
+          margin: 6px 0 0;
+          color: #5d6f86;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.6;
+        }
+        .energyFilterPanel {
+          display: grid;
+          gap: 12px;
+          padding: 14px;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 18px;
+          background: #f8fcff;
+        }
+        .energyFilterGrid {
+          display: grid;
+          grid-template-columns: minmax(260px, 1.4fr) minmax(190px, 0.7fr) minmax(180px, 0.6fr) auto;
+          gap: 12px;
+          align-items: end;
+        }
+        .energyFilterGridNews {
+          grid-template-columns: minmax(250px, 1.4fr) repeat(3, minmax(160px, 0.55fr)) auto;
+        }
+        .energyFilterGrid label {
+          display: grid;
+          gap: 6px;
+          min-width: 0;
+          color: #42566f;
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .energySearchField,
+        .energyFilterGrid select {
+          min-height: 44px;
+          border-radius: 14px;
+          border: 1px solid rgba(29, 140, 255, 0.16);
+          background: #fff;
+          color: #07182f;
+          font: 850 14px Tajawal, Arial, sans-serif;
+        }
+        .energySearchField {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 12px;
+        }
+        .energySearchField svg {
+          color: #0f7891;
+          flex: 0 0 auto;
+        }
+        .energySearchField input {
+          width: 100%;
+          min-width: 0;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #07182f;
+          font: inherit;
+        }
+        .energyFilterGrid select {
+          width: 100%;
+          padding: 0 12px;
+        }
+        .energyResultPill {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border-radius: 14px;
+          background: #eef9fd;
+          color: #0f7891;
+          padding: 0 13px;
+          font-size: 12px;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+        .energyActiveFilters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .energyActiveFilters button {
+          min-height: 34px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          border: 1px solid rgba(14, 165, 233, 0.18);
+          border-radius: 999px;
+          background: #fff;
+          color: #0f7891;
+          padding: 0 10px;
+          font: 900 12px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+        .energyActiveFilters button.clear {
+          color: #b42318;
+          border-color: rgba(244, 63, 94, 0.2);
+        }
+        .energyCompanyTableWrap {
+          overflow-x: auto;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 18px;
+          background: #fff;
+        }
+        .energyCompanyTable {
+          width: 100%;
+          min-width: 900px;
+          border-collapse: separate;
+          border-spacing: 0;
+          text-align: start;
+        }
+        .energyCompanyTable th {
+          position: sticky;
+          top: 0;
+          background: #f2f8fc;
+          color: #42566f;
+          font-size: 12px;
+          font-weight: 950;
+          padding: 13px 14px;
+          border-bottom: 1px solid #dfecf3;
+        }
+        .energyCompanyTable td {
+          padding: 13px 14px;
+          border-bottom: 1px solid #edf4f8;
+          color: #23364d;
+          font-size: 13px;
+          font-weight: 850;
+          vertical-align: middle;
+        }
+        .energyCompanyTable tr:last-child td {
+          border-bottom: 0;
+        }
+        .energyCompanyCell {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+        .energyCompanyCell > span {
+          width: 38px;
+          height: 38px;
+          border-radius: 13px;
+          background: #edfaff;
+          color: #0f7891;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          font-weight: 950;
+        }
+        .energyCompanyCell div {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+        .energyCompanyCell strong {
+          color: #07182f;
+          font-size: 14px;
+          font-weight: 950;
+        }
+        .energyCompanyCell small {
+          color: #64748b;
+          font-weight: 900;
+        }
+        .energyMobileCompanyList,
+        .energyMobileHint {
+          display: none;
+        }
+        .energyNewsGrid {
+          grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+        }
+        .energyNewsPreviewGrid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+          gap: 14px;
+        }
+        .energyNewsCard {
+          padding: 16px;
+          display: grid;
+          gap: 11px;
+        }
+        .energyNewsCard.compact:first-child {
+          min-height: 230px;
+        }
+        .energyNewsCard header {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          align-items: center;
+        }
+        .energyNewsCard header > div {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .energyNewsCard time {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .energyNewsCard h3 {
+          margin: 0;
+          font-size: 17px;
+          line-height: 1.55;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .energyNewsCard p {
+          margin: 0;
+          color: #5d6f86;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.65;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .energyNewsMeta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          align-items: center;
+        }
+        .energyNewsMeta span {
+          border-radius: 999px;
+          background: #f3f8fb;
+          color: #42566f;
+          padding: 5px 9px;
+          font-size: 11px;
+          font-weight: 950;
+        }
+        .energyNewsCard footer a,
+        .energyNewsCard footer span {
+          min-height: 38px;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          color: #0f7891;
+          font-size: 13px;
+          font-weight: 950;
+          text-decoration: none;
+        }
+        .energyNewsCard footer a:hover,
+        .energyNewsCard footer a:focus-visible {
+          outline: none;
+          text-decoration: underline;
+        }
+        .energyLoadMore {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          color: #64748b;
+          font-size: 13px;
+          font-weight: 900;
+        }
+        .energyCalendarShell {
+          min-height: 180px;
+          display: grid;
+          place-items: center;
+          border: 1px dashed rgba(14, 165, 233, 0.24);
+          border-radius: 18px;
+          background: #f8fcff;
+        }
+        .energyComparison {
+          display: grid;
+          gap: 0;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 18px;
+          overflow: hidden;
+          background: #fff;
+        }
+        .energyComparisonHead,
+        .energyComparisonRow {
+          display: grid;
+          grid-template-columns: 170px repeat(2, minmax(0, 1fr));
+          gap: 0;
+        }
+        .energyComparisonHead {
+          background: #f2f8fc;
+          color: #081a33;
+          font-weight: 950;
+        }
+        .energyComparisonHead::before {
+          content: "";
+        }
+        .energyComparisonHead strong,
+        .energyComparisonRow > * {
+          padding: 13px;
+          border-inline-start: 1px solid #e2eef5;
+        }
+        .energyComparisonRow {
+          border-top: 1px solid #e2eef5;
+        }
+        .energyComparisonRow span {
+          color: #0f7891;
+          font-weight: 950;
+          background: #fbfdff;
+        }
+        .energyComparisonRow p {
+          margin: 0;
+          color: #42566f;
+          font-size: 13px;
+          font-weight: 850;
+          line-height: 1.55;
+        }
+        .energyLessons {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 12px;
+        }
+        .energyLessons details {
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 16px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .energyLessons summary {
+          min-height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 0 14px;
+          cursor: pointer;
+          color: #081a33;
+          font-weight: 950;
+          list-style: none;
+        }
+        .energyLessons summary::-webkit-details-marker {
+          display: none;
+        }
+        .energyLessons details[open] summary svg {
+          transform: rotate(180deg);
+        }
+        .energyLessons p {
+          margin: 0;
+          padding: 0 14px 14px;
+          color: #5d6f86;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.7;
+        }
+        .energyExplainerGrid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .energyExplainerGrid article {
+          display: flex;
+          gap: 11px;
+          padding: 14px;
+          border-radius: 16px;
+          background: #f8fcff;
+          border: 1px solid rgba(29, 140, 255, 0.1);
+        }
+        .energyExplainerGrid span {
+          width: 38px;
+          height: 38px;
+          border-radius: 13px;
+          display: grid;
+          place-items: center;
+          background: #edfaff;
+          color: #0f7891;
+          flex: 0 0 auto;
+        }
+        .energyExplainerGrid strong {
+          display: block;
+          color: #081a33;
+          font-weight: 950;
+          margin-bottom: 4px;
+        }
+        .energyExplainerGrid p {
+          margin: 0;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .energyBadge {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 116, 139, 0.14);
+          background: #f7fafc;
+          color: #42566f;
+          padding: 0 9px;
+          font-size: 11px;
+          font-weight: 950;
+        }
+        .energyTone-positive {
+          color: #047857;
+        }
+        .energyTone-positive .energyStatIcon,
+        .energyBadge.energyTone-positive {
+          color: #047857;
+          background: #ecfdf5;
+          border-color: rgba(16, 185, 129, 0.2);
+        }
+        .energyTone-negative {
+          color: #b42318;
+        }
+        .energyTone-negative .energyStatIcon,
+        .energyBadge.energyTone-negative {
+          color: #b42318;
+          background: #fff1f2;
+          border-color: rgba(244, 63, 94, 0.2);
+        }
+        .energyTone-warning,
+        .energyBadge.energyTone-warning {
+          color: #a16207;
+        }
+        .energyBadge.energyTone-warning {
+          background: #fffbeb;
+          border-color: rgba(245, 158, 11, 0.24);
+        }
+        .energyInlineWarning {
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 10px 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(245, 158, 11, 0.24);
+          background: #fffbeb;
+          color: #a16207;
+          font-size: 13px;
+          font-weight: 900;
+        }
+        .energyEmptyState {
+          min-height: 150px;
+          display: grid;
+          place-items: center;
+          text-align: center;
+          gap: 8px;
+          padding: 24px;
+          color: #64748b;
+        }
+        .energyEmptyState span {
+          width: 46px;
+          height: 46px;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          background: #f0fbff;
+          color: #0f7891;
+        }
+        .energyEmptyState strong {
+          color: #081a33;
+          font-size: 16px;
+          font-weight: 950;
+        }
+        .energyEmptyState p {
+          margin: 0;
+          max-width: 520px;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.65;
+        }
+        .energySkeletonStack span {
+          height: 72px;
+          border-radius: 16px;
+        }
+        .energyDisclaimer {
+          display: flex;
+          gap: 13px;
+          align-items: flex-start;
+          padding: 18px;
+          background: #fbfdff;
+        }
+        .energyDisclaimer > svg {
+          flex: 0 0 auto;
+          color: #0f7891;
+        }
+        .energyDisclaimer h2 {
+          margin: 0;
+          color: #081a33;
+          font-size: 16px;
+          font-weight: 950;
+        }
+        .energyDisclaimer p {
+          margin: 7px 0 0;
+          color: #5d6f86;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.7;
+        }
+        .energyStandaloneAction {
+          justify-self: start;
+        }
+        @keyframes shimmer {
+          to { background-position: -220% 0; }
+        }
+        @keyframes energySpin {
+          to { transform: rotate(360deg); }
+        }
+        @media (max-width: 1180px) {
+          .energyOverviewGrid,
+          .energyNewsPreviewGrid {
+            grid-template-columns: 1fr;
+          }
+          .energyHero {
+            grid-template-columns: 1fr;
+          }
+          .energyHeroActions {
+            justify-items: stretch;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .energyHeroActions small {
+            grid-column: 1 / -1;
+          }
+          .energyFilterGrid,
+          .energyFilterGridNews {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .energyResultPill {
+            justify-content: flex-start;
+          }
+        }
+        @media (max-width: 1024px) {
+          .energyWorkspace {
+            padding: calc(90px + env(safe-area-inset-top)) 16px 44px;
+          }
+        }
+        @media (max-width: 760px) {
+          .energyWorkspace {
+            padding: 12px;
+          }
+          .energyContainer {
+            gap: 14px;
+          }
+          .energyHero,
+          .energyPanel,
+          .energyDisclaimer {
+            border-radius: 18px;
+            padding: 16px;
+          }
+          .energyHero h1 {
+            font-size: 30px;
+          }
+          .energyHeroActions {
+            grid-template-columns: 1fr;
+          }
+          .energySectionHeader,
+          .energySectionHeader > div:first-child {
+            flex-direction: column;
+          }
+          .energyStatsGrid,
+          .energyCommodityGrid,
+          .energyFeaturedGrid,
+          .energyNewsGrid,
+          .energyLessons,
+          .energyExplainerGrid,
+          .energyMoversGrid {
+            grid-template-columns: 1fr;
+          }
+          .energyFilterGrid,
+          .energyFilterGridNews {
+            grid-template-columns: 1fr;
+          }
+          .energyCompanyTableWrap {
+            display: none;
+          }
+          .energyMobileCompanyList {
+            display: grid;
+            gap: 12px;
+          }
+          .energyMobileHint {
+            display: block;
+            margin: 0;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 850;
+          }
+          .energyMobileCompanyCard {
+            display: grid;
+            gap: 12px;
+            padding: 14px;
+          }
+          .energyMobileCompanyCard header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+          }
+          .energyMobileCompanyCard strong {
+            color: #07182f;
+            font-weight: 950;
+          }
+          .energyMobileCompanyCard small {
+            color: #64748b;
+            font-weight: 900;
+          }
+          .energyMobileCompanyCard dl {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin: 0;
+          }
+          .energyMobileCompanyCard div {
+            min-width: 0;
+          }
+          .energyMobileCompanyCard dt {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 900;
+          }
+          .energyMobileCompanyCard dd {
+            margin: 3px 0 0;
+            color: #07182f;
+            font-size: 13px;
+            font-weight: 950;
+            overflow-wrap: anywhere;
+          }
+          .energyComparisonHead,
+          .energyComparisonRow {
+            grid-template-columns: 1fr;
+          }
+          .energyComparisonHead::before {
+            content: none;
+          }
+          .energyComparisonHead strong,
+          .energyComparisonRow > * {
+            border-inline-start: 0;
+            border-top: 1px solid #e2eef5;
+          }
+          .energyMoverRow {
+            grid-template-columns: 48px minmax(0, 1fr);
+          }
+          .energyMoverRow b,
+          .energyMoverRow em {
+            grid-column: 2;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .energyShell *,
+          .energyShell *::before,
+          .energyShell *::after {
+            animation-duration: 0.001ms !important;
+            transition-duration: 0.001ms !important;
+          }
+        }
