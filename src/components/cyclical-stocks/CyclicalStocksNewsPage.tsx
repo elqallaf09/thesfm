@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Activity,
   AlertTriangle,
   ArrowUpRight,
   BarChart3,
@@ -10,45 +9,49 @@ import {
   BriefcaseBusiness,
   Building2,
   Car,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   ExternalLink,
   Factory,
-  Gem,
-  Hammer,
+  Filter,
   Hotel,
   Info,
   Layers3,
+  LineChart,
   Newspaper,
   Plane,
   RefreshCcw,
   Search,
   ShieldCheck,
-  ShoppingCart,
-  Sparkles,
+  ShoppingBag,
   TrendingDown,
   TrendingUp,
   Utensils,
-  Wallet,
-  Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
-import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import styles from '@/components/defensive-stocks/DefensiveStocksNews.module.css';
 
 type LangCode = 'ar' | 'en' | 'fr';
-type CyclicalFilterId =
+type CyclicalTab = 'overview' | 'stocks' | 'news' | 'sectors' | 'economic-cycle';
+type SectorId =
   | 'all'
   | 'autos'
-  | 'travel_airlines'
+  | 'airlines_travel'
   | 'hotels_entertainment'
   | 'industrials'
   | 'construction_real_estate'
   | 'luxury_goods'
-  | 'restaurants'
-  | 'earnings'
-  | 'analysis';
+  | 'nonessential_retail'
+  | 'basic_materials'
+  | 'transport';
+type NewsTimeFilter = 'all' | 'day' | 'week' | 'month';
+type NewsSort = 'latest' | 'oldest' | 'strongestMove';
+type StockSort = 'sensitivity' | 'leastVolatile' | 'momentum' | 'name' | 'sector';
+type EducationId = 'what' | 'sectors' | 'defensive' | 'cycle' | 'rates' | 'employment' | 'debt' | 'decline' | 'balance';
+type Tone = 'positive' | 'negative' | 'warning' | 'neutral' | 'info';
 
 type CyclicalTickerItem = {
   symbol: string;
@@ -59,23 +62,23 @@ type CyclicalTickerItem = {
   change: number | null;
   changePercent: number | null;
   source: string;
-  delayed: true;
+  delayed: boolean;
 };
 
 type CyclicalTickerResponse =
   | {
-    ok: true;
-    source: string;
-    updated_at: string;
-    items: CyclicalTickerItem[];
-  }
+      ok: true;
+      source: string;
+      updated_at: string;
+      items: CyclicalTickerItem[];
+    }
   | {
-    ok: false;
-    code?: string;
-    source: string | null;
-    updated_at: string | null;
-    items: CyclicalTickerItem[];
-  };
+      ok: false;
+      code?: string;
+      source: string | null;
+      updated_at: string | null;
+      items: CyclicalTickerItem[];
+    };
 
 type CyclicalNewsItem = {
   id: string;
@@ -89,377 +92,722 @@ type CyclicalNewsItem = {
   url: string;
   publishedAt: string;
   isTranslated?: boolean;
-  translatedTo?: string;
-  companyName?: string;
-  ticker?: string;
-  sector?: string;
-  sectors?: string[];
+  translatedTo?: string | null;
+  companyName?: string | null;
+  ticker?: string | null;
+  sector?: string | null;
+  sectors?: string[] | null;
   price?: number | null;
   change?: number | null;
   changePercent?: number | null;
   priceSource?: string | null;
-  delayed?: true;
+  delayed?: boolean;
 };
 
 type CyclicalNewsResponse =
   | {
-    success: true;
-    category: 'cyclical';
-    source: string;
-    priceSource: string;
-    lastUpdated: string;
-    language: string;
-    translationEnabled: boolean;
-    prices: TechStockPrice[];
-    items: CyclicalNewsItem[];
-    limit: number;
-    message?: string;
-  }
+      success: true;
+      category: string;
+      source: string;
+      priceSource?: string | null;
+      lastUpdated: string;
+      language: string;
+      translationEnabled: boolean;
+      items: CyclicalNewsItem[];
+      limit: number;
+      message?: string;
+    }
   | {
-    success: false;
-    error?: string;
-    reason?: string;
-  };
+      success: false;
+      error?: string;
+      reason?: string;
+    };
 
-const NEWS_PAGE_SIZE = 9;
+type CyclicalStockRow = CyclicalTickerItem & {
+  sectorId: Exclude<SectorId, 'all'>;
+  sectorLabel: string;
+  sectorSensitivity: string;
+  sensitivityTone: Tone;
+  methodologyNote: string;
+  qualityLabel: string;
+  leverageLabel: string;
+  valuationLabel: string;
+  dataCompleteness: number;
+};
+
+type SectorDefinition = {
+  id: Exclude<SectorId, 'all'>;
+  label: Record<LangCode, string>;
+  description: Record<LangCode, string>;
+  drivers: Record<LangCode, string[]>;
+  icon: LucideIcon;
+  sensitivity: 'high' | 'medium' | 'mixed';
+};
+
+type SectorStat = SectorDefinition & {
+  count: number;
+  averageChange: number | null;
+  rising: number;
+  falling: number;
+};
+
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
-const FEATURED_SYMBOLS = ['TSLA', 'GM', 'F', 'RACE', 'NKE', 'SBUX', 'HD', 'LOW', 'MCD', 'MAR', 'HLT', 'DAL', 'UAL', 'AAL', 'BA', 'CAT', 'DE'] as const;
+const INITIAL_NEWS_LIMIT = 12;
 
-const TEXT = {
+const TAB_IDS: CyclicalTab[] = ['overview', 'stocks', 'news', 'sectors', 'economic-cycle'];
+
+const SYMBOL_SECTOR: Record<string, Exclude<SectorId, 'all'>> = {
+  TSLA: 'autos',
+  GM: 'autos',
+  F: 'autos',
+  RACE: 'luxury_goods',
+  NKE: 'luxury_goods',
+  SBUX: 'nonessential_retail',
+  HD: 'construction_real_estate',
+  LOW: 'construction_real_estate',
+  MCD: 'nonessential_retail',
+  MAR: 'hotels_entertainment',
+  HLT: 'hotels_entertainment',
+  DAL: 'airlines_travel',
+  UAL: 'airlines_travel',
+  AAL: 'airlines_travel',
+  BA: 'industrials',
+  CAT: 'industrials',
+  DE: 'industrials',
+  DHI: 'construction_real_estate',
+  LEN: 'construction_real_estate',
+  WYNN: 'hotels_entertainment',
+  LVS: 'hotels_entertainment',
+  RCL: 'airlines_travel',
+  CCL: 'airlines_travel',
+  NCLH: 'airlines_travel',
+  LVMUY: 'luxury_goods',
+};
+
+const COPY = {
   ar: {
-    title: 'أخبار الأسهم الدورية',
-    subtitle: 'تغطية شاملة لأخبار وتحليلات الأسهم الدورية في قطاعات مثل السيارات، السفر والطيران، الفنادق والترفيه، الصناعة، البناء والعقار، والسلع الكمالية.',
+    badge: 'مركز أبحاث الدورة الاقتصادية',
+    title: 'الأسهم الدورية',
+    subtitle: 'تابع الشركات والقطاعات التي تتأثر بالنمو الاقتصادي والإنفاق الاستهلاكي، وقارن فرصها بمخاطر الدورة والتذبذب.',
     refresh: 'تحديث البيانات',
     refreshing: 'جارٍ التحديث...',
-    lastUpdated: 'آخر تحديث',
-    notUpdated: 'لم يتم التحديث بعد',
-    delayed: 'آخر سعر متاح من مزود بيانات حقيقي',
-    liveStatus: 'آخر سعر متاح',
-    tickerTitle: 'شريط الأسهم الدورية المباشر',
-    tickerSubtitle: 'أسعار حقيقية لأسهم دورية مختارة مع التغير اليومي والقطاع المرتبط بالدورة الاقتصادية.',
-    tickerEmpty: 'لا توجد بيانات أسعار متاحة حالياً من مصادر السوق الحقيقية.',
-    sector: 'القطاع',
-    whatTitle: 'ما هي الأسهم الدورية؟',
-    whatBody: 'الأسهم الدورية هي أسهم شركات يرتبط أداؤها بقوة بالدورة الاقتصادية، فتتحسن غالباً مع التوسع الاقتصادي وقد تضعف عند التباطؤ أو الركود.',
-    growthSensitive: 'حساسة للنمو الاقتصادي',
-    spendingBoost: 'ترتفع مع زيادة الإنفاق',
-    rateSensitive: 'تتأثر بالركود والفائدة',
-    expansionInvestor: 'مناسبة للمستثمر الباحث عن النمو وقت التوسع',
-    sectorTitle: 'أبرز قطاعات الأسهم الدورية',
-    comparisonTitle: 'الأسهم الدورية مقارنة بالأسهم الدفاعية',
-    cyclicalStocks: 'الأسهم الدورية',
-    defensiveStocks: 'الأسهم الدفاعية',
-    movementTitle: 'حركة الأسهم الدورية',
-    movementSubtitle: 'أبرز التحركات اليومية المتاحة من بيانات السوق الحقيقية.',
-    driversTitle: 'العوامل التي تحرك الأسهم الدورية',
-    driversSubtitle: 'مؤشرات الاقتصاد والإنفاق التي تساعد على فهم تقلبات القطاعات الدورية.',
-    newsTitle: 'أخبار الأسهم الدورية',
-    newsSubtitle: 'تابع أحدث أخبار الشركات والقطاعات المرتبطة بالدورة الاقتصادية والإنفاق الاستهلاكي.',
-    searchPlaceholder: 'ابحث عن خبر أو رمز أو تصنيف...',
-    filtersLabel: 'التصنيفات',
-    showMore: 'تحميل المزيد',
-    showing: 'المعروض',
-    results: 'خبر',
-    readArticle: 'قراءة الخبر',
+    connected: 'بيانات السوق متصلة',
+    partial: 'بيانات جزئية',
+    delayed: 'متأخرة أو مخزنة مؤقتاً',
     source: 'المصدر',
-    noLink: 'الرابط غير متاح',
-    emptyTitle: 'لا توجد أخبار متاحة حالياً لهذا التصنيف',
-    emptyHint: 'جرّب بحثاً آخر أو اختر تصنيفاً مختلفاً.',
-    errorTitle: 'تعذر تحميل البيانات حالياً',
-    errorBody: 'تعذر جلب أخبار الأسهم الدورية من المصادر الحقيقية حالياً.',
-    retry: 'إعادة المحاولة',
-    featuredTitle: 'أبرز الأسهم الدورية',
-    featuredSubtitle: 'بطاقات مختصرة مبنية على الأسعار الحقيقية المتاحة حالياً دون مؤشرات مصطنعة.',
-    details: 'عرض التفاصيل',
     unavailable: 'غير متاح',
-    priceSource: 'مصدر السعر',
-    sectorGuideTitle: 'دليل قطاعات الأسهم الدورية',
-    examples: 'أمثلة',
-    cycleTitle: 'متى تكون الأسهم الدورية قوية؟',
-    riskTitle: 'متى ترتفع المخاطر؟',
+    lastQuoteUpdate: 'آخر تحديث للأسعار',
+    lastNewsUpdate: 'آخر تحديث للأخبار',
+    lastMacroUpdate: 'آخر تحديث اقتصادي',
+    macroNotConnected: 'بيانات الدورة الاقتصادية المباشرة غير مربوطة حالياً.',
+    insufficientMacro: 'بيانات غير كافية',
+    tabs: {
+      overview: 'نظرة عامة',
+      stocks: 'الأسهم الدورية',
+      news: 'الأخبار',
+      sectors: 'القطاعات',
+      'economic-cycle': 'الدورة الاقتصادية',
+    },
+    tickerTitle: 'شريط الأسهم الدورية',
+    overviewSummary: 'ملخص الأسهم الدورية اليوم',
+    economicDashboard: 'مؤشرات الدورة الاقتصادية',
+    cyclePhase: 'مرحلة الدورة المحتملة',
+    howPhase: 'كيف تم تحديد المرحلة؟',
+    macroUnavailableBody: 'لا يوجد مزود اقتصادي مباشر مرتبط بهذه الصفحة، لذلك لا يتم عرض قيم GDP أو PMI أو البطالة أو ثقة المستهلك كأرقام إنتاجية.',
+    macroEducationalOnly: 'تعليمي فقط',
+    risingStocks: 'أسهم مرتفعة',
+    fallingStocks: 'أسهم منخفضة',
+    bestSector: 'أفضل قطاع متاح',
+    strongestMover: 'أقوى حركة',
+    highestVolatility: 'أعلى تذبذب يومي',
+    trackedStocks: 'أسهم مراقبة',
+    comparisonTitle: 'مقارنة الأداء المتاح',
+    comparisonDescription: 'يعرض الرسم الحركة اليومية المتاحة فقط من مزود الأسعار. البيانات التاريخية غير متاحة لهذا المحور حالياً.',
+    historicalUnavailable: 'البيانات التاريخية غير متاحة حالياً.',
+    highlightedTitle: 'أسهم دورية بارزة',
+    highlightedDescription: 'عرض موجز لأبرز الأسهم المتاحة من مزود الأسعار. القائمة الكاملة في تبويب الأسهم الدورية.',
+    viewAllStocks: 'عرض جميع الأسهم',
+    educationPreview: 'دليل الأسهم الدورية',
+    educationPreviewBody: 'بطاقات تعليمية مختصرة ومغلقة افتراضياً حتى تبقى الصفحة سهلة التصفح.',
+    stocksTitle: 'مستكشف الأسهم الدورية',
+    stocksDescription: 'جدول بحث وفرز للأسهم الدورية المتاحة. القيم غير المتوفرة من المزود تظهر بوضوح ولا تتحول إلى صفر.',
+    search: 'البحث',
+    searchPlaceholder: 'ابحث عن شركة أو رمز أو قطاع...',
+    sector: 'القطاع',
+    allSectors: 'كل القطاعات',
+    sort: 'الترتيب',
+    resultCount: 'عدد النتائج',
+    clearFilters: 'مسح عوامل التصفية',
+    activeFilters: 'الفلاتر النشطة',
+    company: 'الشركة',
+    symbol: 'الرمز',
+    currentPrice: 'السعر الحالي',
+    change: 'التغير',
+    beta: 'Beta',
+    volatility: 'التذبذب',
+    drawdown: 'أعلى هبوط',
+    revenueGrowth: 'نمو الإيرادات',
+    earningsGrowth: 'نمو الأرباح',
+    operatingMargin: 'الهامش التشغيلي',
+    netDebt: 'صافي الدين',
+    debtToEbitda: 'الدين إلى EBITDA',
+    interestCoverage: 'تغطية الفائدة',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    marketCap: 'القيمة السوقية',
+    economicSensitivity: 'الحساسية الاقتصادية',
+    portfolioStatus: 'المحفظة / المراقبة',
+    notEnoughFundamentals: 'لا تتوفر بيانات أساسية كافية',
+    sensitivityMethodology: 'التصنيف هنا قطاعي أولي فقط. احتساب حساسية كمية يتطلب Beta، تقلب الإيرادات، تقلب الأرباح، الهبوط الأقصى، والرافعة المالية.',
+    highSectorSensitivity: 'قطاع عالي الحساسية',
+    mediumSectorSensitivity: 'قطاع متوسط الحساسية',
+    mixedSectorSensitivity: 'نشاط مختلط الحساسية',
+    qualityUnavailable: 'جودة الأعمال غير متاحة',
+    leverageUnavailable: 'المديونية غير متاحة',
+    valuationUnavailable: 'التقييم غير متاح',
+    compare: 'مقارنة',
+    viewAnalysis: 'عرض التحليل',
+    addWatchlist: 'إضافة للمراقبة',
+    noStockResults: 'لا توجد أسهم مطابقة للفلاتر الحالية.',
+    newsTitle: 'أخبار الأسهم الدورية',
+    newsDescription: 'أخبار مرتبطة بالسيارات، السفر، الصناعات، العقارات، الإنفاق الاختياري، ونتائج الشركات الدورية.',
+    newsSearchPlaceholder: 'ابحث في الأخبار أو الرمز أو الشركة...',
+    timeRange: 'الفترة الزمنية',
+    sourceFilter: 'المصدر',
+    symbolFilter: 'الشركة / الرمز',
+    latest: 'الأحدث',
+    oldest: 'الأقدم',
+    strongestMoveSort: 'أقوى حركة سعرية',
+    day: 'اليوم',
+    week: 'آخر 7 أيام',
+    month: 'آخر 30 يوماً',
+    all: 'الكل',
+    featuredNews: 'أخبار مؤثرة',
+    translated: 'ترجمة آلية',
+    showOriginal: 'عرض النص الأصلي',
+    hideOriginal: 'إخفاء النص الأصلي',
+    readArticle: 'قراءة الخبر',
+    loadMore: 'عرض المزيد',
+    noNewsResults: 'لا توجد أخبار مطابقة للفلاتر الحالية.',
+    providerError: 'تعذر تحديث البيانات حالياً. يتم عرض آخر بيانات متاحة عند توفرها.',
+    retry: 'إعادة المحاولة',
+    sectorsTitle: 'دليل القطاعات الدورية',
+    sectorsDescription: 'تفصل هذه الصفحة القطاعات الدورية عن التعليم العام، وتعرض فقط المقاييس المحسوبة من الأسعار المتاحة.',
+    sectorPerformance: 'أداء القطاع المتاح',
+    mainDrivers: 'محركات القطاع',
+    economicCycleTitle: 'تحليل الدورة الاقتصادية',
+    economicCycleDescription: 'مساحة شفافة لربط الأسهم الدورية بالمؤشرات الاقتصادية. عندما يتم ربط مزود Macro موثوق ستظهر القيم والتفسيرات هنا.',
+    phaseRecovery: 'تعافٍ',
+    phaseExpansion: 'توسع',
+    phasePeak: 'ذروة',
+    phaseSlowdown: 'تباطؤ',
+    phaseContraction: 'انكماش',
+    phaseInsufficient: 'بيانات غير كافية',
+    macroIndicators: {
+      gdp: 'نمو الناتج المحلي',
+      pmi: 'PMI',
+      industrial: 'الإنتاج الصناعي',
+      unemployment: 'البطالة',
+      confidence: 'ثقة المستهلك',
+      retail: 'مبيعات التجزئة',
+      policyRate: 'سعر الفائدة',
+      yieldCurve: 'منحنى العائد',
+      housing: 'نشاط الإسكان',
+    },
+    educationCards: {
+      what: 'ما هي الأسهم الدورية؟',
+      sectors: 'أبرز القطاعات الدورية',
+      defensive: 'الفرق بينها وبين الدفاعية',
+      cycle: 'مراحل الدورة الاقتصادية',
+      rates: 'تأثير أسعار الفائدة',
+      employment: 'البطالة وثقة المستهلك',
+      debt: 'مخاطر المديونية',
+      decline: 'متى تتراجع؟',
+      balance: 'كيف توازنها مع الدفاعية؟',
+    },
+    educationBody: {
+      what: 'هي شركات تتحسن عادةً مع قوة النمو والإنفاق، وتتضرر أكثر عندما ينكمش الطلب أو ترتفع تكلفة التمويل.',
+      sectors: 'السيارات، السفر، الفنادق، الصناعات، البناء، المواد، النقل، التجزئة غير الأساسية والسلع الفاخرة.',
+      defensive: 'الدفاعية ترتبط بطلب أكثر استقراراً، أما الدورية فحساسيتها أكبر للدخل، الائتمان، وثقة المستهلك.',
+      cycle: 'التعافي والتوسع قد يدعمان الطلب، بينما التباطؤ والانكماش يضغطان على الأرباح والهوامش.',
+      rates: 'ارتفاع الفائدة قد يخفض الإنفاق والتمويل، خاصة في السيارات والعقار والشركات عالية المديونية.',
+      employment: 'الوظائف وثقة المستهلك تؤثر في السفر والمطاعم والسلع غير الأساسية.',
+      debt: 'الشركات ذات الرافعة العالية قد تتأثر بشدة عند ضعف الإيرادات أو ارتفاع تكلفة الدين.',
+      decline: 'تتراجع عادةً مع ضعف الطلب، مفاجآت الأرباح السلبية، ارتفاع الفائدة، أو إشارات ركود واضحة.',
+      balance: 'الجمع بين دورية ودفاعية قد يقلل الاعتماد على سيناريو اقتصادي واحد، لكنه لا يلغي المخاطر.',
+    },
     disclaimerTitle: 'تنبيه استثماري',
-    disclaimerBody: 'هذه الصفحة لأغراض تعليمية ومعلومات عامة فقط، وليست توصية شراء أو بيع. الأسهم الدورية قد تكون أكثر حساسية لتغيرات النمو الاقتصادي، أسعار الفائدة، التضخم، وثقة المستهلك. يرجى إجراء بحثك الخاص أو استشارة مستشار مالي قبل اتخاذ أي قرار استثماري.',
-    autoRefresh: 'تحديث تلقائي كل 5 دقائق',
-    translated: 'مترجم',
-    originalLanguage: 'باللغة الأصلية',
-    noMore: 'تم عرض كل الأخبار المتاحة',
+    disclaimer: 'البيانات والتصنيفات المعروضة لأغراض تعليمية ومعلوماتية فقط، ولا تُعد نصيحة استثمارية أو توصية بشراء أو بيع أي سهم. التصنيفات القطاعية أولية ولا تستبدل التحليل المالي الكامل.',
   },
   en: {
-    title: 'Cyclical Stocks News',
-    subtitle: 'Comprehensive coverage of cyclical stock news and analysis across autos, travel, airlines, hotels, entertainment, industrials, construction, real estate, and luxury goods.',
+    badge: 'Economic-cycle research center',
+    title: 'Cyclical Stocks',
+    subtitle: 'Track companies and sectors tied to economic growth and consumer spending, while separating opportunity from cycle and volatility risk.',
     refresh: 'Refresh data',
     refreshing: 'Refreshing...',
-    lastUpdated: 'Last updated',
-    notUpdated: 'Not updated yet',
-    delayed: 'Last available price from a real data provider',
-    liveStatus: 'Last available price',
-    tickerTitle: 'Live cyclical stock ticker',
-    tickerSubtitle: 'Real prices for selected cyclical stocks with daily change and economic-cycle sector context.',
-    tickerEmpty: 'No real market prices are available right now.',
-    sector: 'Sector',
-    whatTitle: 'What are cyclical stocks?',
-    whatBody: 'Cyclical stocks are companies whose performance is strongly linked to the economic cycle. They often perform better during expansion and may weaken during slowdowns or recessions.',
-    growthSensitive: 'Sensitive to economic growth',
-    spendingBoost: 'Rise with higher spending',
-    rateSensitive: 'Affected by recessions and rates',
-    expansionInvestor: 'Suited to investors seeking growth during expansion',
-    sectorTitle: 'Key cyclical sectors',
-    comparisonTitle: 'Cyclical stocks versus defensive stocks',
-    cyclicalStocks: 'Cyclical stocks',
-    defensiveStocks: 'Defensive stocks',
-    movementTitle: 'Cyclical stock movers',
-    movementSubtitle: 'Daily movers from real market data.',
-    driversTitle: 'What moves cyclical stocks',
-    driversSubtitle: 'Economic and spending indicators that help explain cyclical sector volatility.',
-    newsTitle: 'Cyclical stocks news',
-    newsSubtitle: 'Follow the latest news around companies and sectors tied to the economic cycle and consumer spending.',
-    searchPlaceholder: 'Search news, ticker, or category...',
-    filtersLabel: 'Categories',
-    showMore: 'Load more',
-    showing: 'Showing',
-    results: 'news',
-    readArticle: 'Read article',
+    connected: 'Market data connected',
+    partial: 'Partial data',
+    delayed: 'Delayed or cached',
     source: 'Source',
-    noLink: 'Link unavailable',
-    emptyTitle: 'No news available for this filter',
-    emptyHint: 'Try another search or choose a different category.',
-    errorTitle: 'Unable to load data right now',
-    errorBody: 'Real cyclical stock news could not be loaded right now.',
-    retry: 'Retry',
-    featuredTitle: 'Featured cyclical stocks',
-    featuredSubtitle: 'Compact cards built from currently available real prices without invented metrics.',
-    details: 'View details',
     unavailable: 'Unavailable',
-    priceSource: 'Price source',
-    sectorGuideTitle: 'Cyclical sector guide',
-    examples: 'Examples',
-    cycleTitle: 'When are cyclicals strong?',
-    riskTitle: 'When do risks rise?',
+    lastQuoteUpdate: 'Last quote update',
+    lastNewsUpdate: 'Last news update',
+    lastMacroUpdate: 'Last macro update',
+    macroNotConnected: 'Live economic-cycle data is not connected yet.',
+    insufficientMacro: 'Insufficient data',
+    tabs: {
+      overview: 'Overview',
+      stocks: 'Cyclical Stocks',
+      news: 'News',
+      sectors: 'Sectors',
+      'economic-cycle': 'Economic Cycle',
+    },
+    tickerTitle: 'Cyclical stock ticker',
+    overviewSummary: 'Cyclical market summary',
+    economicDashboard: 'Economic-cycle indicators',
+    cyclePhase: 'Potential cycle phase',
+    howPhase: 'How was the phase determined?',
+    macroUnavailableBody: 'No live macro provider is connected to this page, so GDP, PMI, unemployment, or confidence are not shown as production values.',
+    macroEducationalOnly: 'Educational only',
+    risingStocks: 'Rising stocks',
+    fallingStocks: 'Falling stocks',
+    bestSector: 'Best available sector',
+    strongestMover: 'Strongest move',
+    highestVolatility: 'Highest daily volatility',
+    trackedStocks: 'Tracked stocks',
+    comparisonTitle: 'Available performance comparison',
+    comparisonDescription: 'The chart uses only current daily change from the quote provider. Historical data is not available here yet.',
+    historicalUnavailable: 'Historical data is unavailable right now.',
+    highlightedTitle: 'Highlighted cyclical stocks',
+    highlightedDescription: 'A concise view of available quote-provider stocks. The complete list is in the cyclical stocks tab.',
+    viewAllStocks: 'View all stocks',
+    educationPreview: 'Cyclical stocks guide',
+    educationPreviewBody: 'Short educational cards start collapsed to keep the page compact.',
+    stocksTitle: 'Cyclical stock screener',
+    stocksDescription: 'Search and sort available cyclical stocks. Missing provider fields are shown clearly and never converted to zero.',
+    search: 'Search',
+    searchPlaceholder: 'Search company, symbol, or sector...',
+    sector: 'Sector',
+    allSectors: 'All sectors',
+    sort: 'Sort',
+    resultCount: 'Results',
+    clearFilters: 'Clear filters',
+    activeFilters: 'Active filters',
+    company: 'Company',
+    symbol: 'Symbol',
+    currentPrice: 'Current price',
+    change: 'Change',
+    beta: 'Beta',
+    volatility: 'Volatility',
+    drawdown: 'Max drawdown',
+    revenueGrowth: 'Revenue growth',
+    earningsGrowth: 'Earnings growth',
+    operatingMargin: 'Operating margin',
+    netDebt: 'Net debt',
+    debtToEbitda: 'Debt / EBITDA',
+    interestCoverage: 'Interest coverage',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    marketCap: 'Market cap',
+    economicSensitivity: 'Economic sensitivity',
+    portfolioStatus: 'Portfolio / watchlist',
+    notEnoughFundamentals: 'Not enough fundamentals',
+    sensitivityMethodology: 'This is sector context only. Quantitative sensitivity requires beta, revenue volatility, earnings volatility, max drawdown, and leverage.',
+    highSectorSensitivity: 'High-sensitivity sector',
+    mediumSectorSensitivity: 'Medium-sensitivity sector',
+    mixedSectorSensitivity: 'Mixed sensitivity',
+    qualityUnavailable: 'Business quality unavailable',
+    leverageUnavailable: 'Leverage unavailable',
+    valuationUnavailable: 'Valuation unavailable',
+    compare: 'Compare',
+    viewAnalysis: 'View analysis',
+    addWatchlist: 'Add to watchlist',
+    noStockResults: 'No stocks match the current filters.',
+    newsTitle: 'Cyclical stocks news',
+    newsDescription: 'News tied to autos, travel, industrials, property, discretionary spending, and cyclical earnings.',
+    newsSearchPlaceholder: 'Search news, symbol, or company...',
+    timeRange: 'Time range',
+    sourceFilter: 'Source',
+    symbolFilter: 'Company / symbol',
+    latest: 'Latest',
+    oldest: 'Oldest',
+    strongestMoveSort: 'Strongest price move',
+    day: 'Today',
+    week: 'Last 7 days',
+    month: 'Last 30 days',
+    all: 'All',
+    featuredNews: 'Important news',
+    translated: 'Machine translation',
+    showOriginal: 'Show original',
+    hideOriginal: 'Hide original',
+    readArticle: 'Read article',
+    loadMore: 'Load more',
+    noNewsResults: 'No news matches the current filters.',
+    providerError: 'Data could not be refreshed right now. Last available data remains visible when present.',
+    retry: 'Retry',
+    sectorsTitle: 'Cyclical sector guide',
+    sectorsDescription: 'Education is separated from market research, with only price-derived metrics shown where available.',
+    sectorPerformance: 'Available sector performance',
+    mainDrivers: 'Sector drivers',
+    economicCycleTitle: 'Economic-cycle analysis',
+    economicCycleDescription: 'A transparent area for connecting cyclical stocks to macro indicators. Values will appear when a trusted macro provider is connected.',
+    phaseRecovery: 'Recovery',
+    phaseExpansion: 'Expansion',
+    phasePeak: 'Peak',
+    phaseSlowdown: 'Slowdown',
+    phaseContraction: 'Contraction',
+    phaseInsufficient: 'Insufficient data',
+    macroIndicators: {
+      gdp: 'GDP growth',
+      pmi: 'PMI',
+      industrial: 'Industrial production',
+      unemployment: 'Unemployment',
+      confidence: 'Consumer confidence',
+      retail: 'Retail sales',
+      policyRate: 'Policy rate',
+      yieldCurve: 'Yield curve',
+      housing: 'Housing activity',
+    },
+    educationCards: {
+      what: 'What are cyclical stocks?',
+      sectors: 'Key cyclical sectors',
+      defensive: 'Cyclical vs defensive',
+      cycle: 'Economic-cycle phases',
+      rates: 'Interest-rate impact',
+      employment: 'Jobs and confidence',
+      debt: 'Leverage risk',
+      decline: 'When cyclicals fall',
+      balance: 'Balancing with defensives',
+    },
+    educationBody: {
+      what: 'Companies that often improve with stronger growth and spending, and weaken faster when demand contracts or financing tightens.',
+      sectors: 'Autos, travel, hotels, industrials, construction, materials, transport, discretionary retail, and luxury goods.',
+      defensive: 'Defensives are linked to steadier demand, while cyclicals are more sensitive to income, credit, and confidence.',
+      cycle: 'Recovery and expansion can support demand; slowdown and contraction can pressure margins and earnings.',
+      rates: 'Higher rates may reduce spending and financing, especially in autos, housing, and leveraged businesses.',
+      employment: 'Jobs and confidence influence travel, restaurants, and discretionary goods.',
+      debt: 'Highly levered companies can suffer more when revenue weakens or debt costs rise.',
+      decline: 'They often fall with weaker demand, negative earnings surprises, higher rates, or recession signals.',
+      balance: 'Combining cyclicals and defensives may reduce reliance on one macro scenario, but does not remove risk.',
+    },
     disclaimerTitle: 'Investment notice',
-    disclaimerBody: 'This page is for educational and general information only, not a buy or sell recommendation. Cyclical stocks can be more sensitive to economic growth, interest rates, inflation, and consumer confidence. Do your own research or consult a financial advisor before investing.',
-    autoRefresh: 'Auto-refreshes every 5 minutes',
-    translated: 'Translated',
-    originalLanguage: 'Original language',
-    noMore: 'All available news is visible',
+    disclaimer: 'Data and classifications are for educational and informational purposes only and are not investment advice. Sector classifications are preliminary and do not replace full financial analysis.',
   },
   fr: {
-    title: 'Actualités des actions cycliques',
-    subtitle: 'Couverture des actions cycliques dans l’automobile, le voyage, l’aérien, l’hôtellerie, le divertissement, l’industrie, la construction, l’immobilier et le luxe.',
+    badge: 'Centre de recherche du cycle économique',
+    title: 'Actions cycliques',
+    subtitle: 'Suivez les sociétés et secteurs liés à la croissance économique et aux dépenses des consommateurs, en séparant opportunité, cycle et volatilité.',
     refresh: 'Actualiser',
     refreshing: 'Actualisation...',
-    lastUpdated: 'Dernière mise à jour',
-    notUpdated: 'Pas encore actualisé',
-    delayed: 'Dernier prix disponible depuis un fournisseur réel',
-    liveStatus: 'Dernier prix disponible',
-    tickerTitle: 'Bandeau actions cycliques',
-    tickerSubtitle: 'Prix réels des actions cycliques sélectionnées avec variation quotidienne.',
-    tickerEmpty: 'Aucun prix réel disponible pour le moment.',
-    sector: 'Secteur',
-    whatTitle: 'Que sont les actions cycliques ?',
-    whatBody: 'Ce sont des sociétés dont les résultats sont fortement liés au cycle économique, souvent meilleures en expansion et plus faibles en ralentissement.',
-    growthSensitive: 'Sensibles à la croissance',
-    spendingBoost: 'Portées par la dépense',
-    rateSensitive: 'Sensibles aux récessions et aux taux',
-    expansionInvestor: 'Adaptées à la recherche de croissance en expansion',
-    sectorTitle: 'Secteurs cycliques clés',
-    comparisonTitle: 'Cycliques et défensives',
-    cyclicalStocks: 'Actions cycliques',
-    defensiveStocks: 'Actions défensives',
-    movementTitle: 'Mouvements des cycliques',
-    movementSubtitle: 'Mouvements quotidiens issus de données réelles.',
-    driversTitle: 'Facteurs des actions cycliques',
-    driversSubtitle: 'Indicateurs économiques et de dépenses qui expliquent la volatilité.',
-    newsTitle: 'Actualités des actions cycliques',
-    newsSubtitle: 'Suivez les entreprises et secteurs liés au cycle économique et à la consommation.',
-    searchPlaceholder: 'Rechercher une actualité, un symbole ou une catégorie...',
-    filtersLabel: 'Catégories',
-    showMore: 'Afficher plus',
-    showing: 'Affiché',
-    results: 'actualités',
-    readArticle: 'Lire l’article',
+    connected: 'Données de marché connectées',
+    partial: 'Données partielles',
+    delayed: 'Retardées ou mises en cache',
     source: 'Source',
-    noLink: 'Lien indisponible',
-    emptyTitle: 'Aucune actualité disponible pour ce filtre',
-    emptyHint: 'Essayez une autre recherche ou catégorie.',
-    errorTitle: 'Impossible de charger les données',
-    errorBody: 'Les actualités réelles ne peuvent pas être chargées pour le moment.',
-    retry: 'Réessayer',
-    featuredTitle: 'Actions cycliques en vedette',
-    featuredSubtitle: 'Cartes basées sur les prix réels disponibles, sans métriques inventées.',
-    details: 'Voir détails',
     unavailable: 'Indisponible',
-    priceSource: 'Source du prix',
-    sectorGuideTitle: 'Guide des secteurs cycliques',
-    examples: 'Exemples',
-    cycleTitle: 'Quand les cycliques sont fortes ?',
-    riskTitle: 'Quand les risques montent ?',
-    disclaimerTitle: 'Avertissement d’investissement',
-    disclaimerBody: 'Cette page est éducative et informative uniquement, pas une recommandation. Les actions cycliques peuvent être sensibles à la croissance, aux taux, à l’inflation et à la confiance des consommateurs.',
-    autoRefresh: 'Actualisation automatique toutes les 5 minutes',
-    translated: 'Traduit',
-    originalLanguage: 'Langue originale',
-    noMore: 'Toutes les actualités disponibles sont visibles',
+    lastQuoteUpdate: 'Dernière mise à jour des cours',
+    lastNewsUpdate: 'Dernière mise à jour des actualités',
+    lastMacroUpdate: 'Dernière mise à jour macro',
+    macroNotConnected: 'Les données directes du cycle économique ne sont pas encore connectées.',
+    insufficientMacro: 'Données insuffisantes',
+    tabs: {
+      overview: 'Aperçu',
+      stocks: 'Actions cycliques',
+      news: 'Actualités',
+      sectors: 'Secteurs',
+      'economic-cycle': 'Cycle économique',
+    },
+    tickerTitle: 'Ticker des actions cycliques',
+    overviewSummary: 'Résumé des actions cycliques',
+    economicDashboard: 'Indicateurs du cycle économique',
+    cyclePhase: 'Phase potentielle du cycle',
+    howPhase: 'Comment la phase est-elle déterminée ?',
+    macroUnavailableBody: 'Aucun fournisseur macro direct n’est connecté à cette page. Les valeurs GDP, PMI, chômage ou confiance ne sont donc pas affichées comme données de production.',
+    macroEducationalOnly: 'Éducatif seulement',
+    risingStocks: 'Actions en hausse',
+    fallingStocks: 'Actions en baisse',
+    bestSector: 'Meilleur secteur disponible',
+    strongestMover: 'Plus forte variation',
+    highestVolatility: 'Plus forte volatilité journalière',
+    trackedStocks: 'Actions suivies',
+    comparisonTitle: 'Comparaison disponible',
+    comparisonDescription: 'Le graphique utilise uniquement la variation journalière disponible. Les données historiques ne sont pas disponibles ici.',
+    historicalUnavailable: 'Les données historiques sont indisponibles.',
+    highlightedTitle: 'Actions cycliques en évidence',
+    highlightedDescription: 'Vue concise des actions disponibles via le fournisseur de cours. La liste complète se trouve dans l’onglet actions.',
+    viewAllStocks: 'Voir toutes les actions',
+    educationPreview: 'Guide des actions cycliques',
+    educationPreviewBody: 'Des cartes éducatives courtes sont fermées par défaut pour garder la page compacte.',
+    stocksTitle: 'Screener des actions cycliques',
+    stocksDescription: 'Recherchez et triez les actions disponibles. Les champs manquants sont signalés clairement et jamais convertis en zéro.',
+    search: 'Recherche',
+    searchPlaceholder: 'Rechercher une société, un symbole ou un secteur...',
+    sector: 'Secteur',
+    allSectors: 'Tous les secteurs',
+    sort: 'Tri',
+    resultCount: 'Résultats',
+    clearFilters: 'Effacer les filtres',
+    activeFilters: 'Filtres actifs',
+    company: 'Société',
+    symbol: 'Symbole',
+    currentPrice: 'Cours actuel',
+    change: 'Variation',
+    beta: 'Beta',
+    volatility: 'Volatilité',
+    drawdown: 'Drawdown max',
+    revenueGrowth: 'Croissance du CA',
+    earningsGrowth: 'Croissance des bénéfices',
+    operatingMargin: 'Marge opérationnelle',
+    netDebt: 'Dette nette',
+    debtToEbitda: 'Dette / EBITDA',
+    interestCoverage: 'Couverture intérêts',
+    pe: 'P/E',
+    forwardPe: 'Forward P/E',
+    marketCap: 'Capitalisation',
+    economicSensitivity: 'Sensibilité économique',
+    portfolioStatus: 'Portefeuille / watchlist',
+    notEnoughFundamentals: 'Fondamentaux insuffisants',
+    sensitivityMethodology: 'Ce contexte est sectoriel uniquement. Une sensibilité quantitative exige beta, volatilité des revenus, volatilité des bénéfices, drawdown et levier.',
+    highSectorSensitivity: 'Secteur très sensible',
+    mediumSectorSensitivity: 'Secteur moyennement sensible',
+    mixedSectorSensitivity: 'Sensibilité mixte',
+    qualityUnavailable: 'Qualité indisponible',
+    leverageUnavailable: 'Levier indisponible',
+    valuationUnavailable: 'Valorisation indisponible',
+    compare: 'Comparer',
+    viewAnalysis: 'Voir l’analyse',
+    addWatchlist: 'Ajouter à la watchlist',
+    noStockResults: 'Aucune action ne correspond aux filtres.',
+    newsTitle: 'Actualités des actions cycliques',
+    newsDescription: 'Actualités liées aux automobiles, voyages, industries, immobilier, consommation discrétionnaire et résultats cycliques.',
+    newsSearchPlaceholder: 'Rechercher actualité, symbole ou société...',
+    timeRange: 'Période',
+    sourceFilter: 'Source',
+    symbolFilter: 'Société / symbole',
+    latest: 'Plus récent',
+    oldest: 'Plus ancien',
+    strongestMoveSort: 'Plus forte variation',
+    day: 'Aujourd’hui',
+    week: '7 derniers jours',
+    month: '30 derniers jours',
+    all: 'Tout',
+    featuredNews: 'Actualités importantes',
+    translated: 'Traduction automatique',
+    showOriginal: 'Afficher l’original',
+    hideOriginal: 'Masquer l’original',
+    readArticle: 'Lire l’article',
+    loadMore: 'Afficher plus',
+    noNewsResults: 'Aucune actualité ne correspond aux filtres.',
+    providerError: 'Impossible d’actualiser les données. Les dernières données disponibles restent visibles.',
+    retry: 'Réessayer',
+    sectorsTitle: 'Guide des secteurs cycliques',
+    sectorsDescription: 'L’éducation est séparée de la recherche de marché et seules les métriques issues des prix disponibles sont affichées.',
+    sectorPerformance: 'Performance sectorielle disponible',
+    mainDrivers: 'Moteurs du secteur',
+    economicCycleTitle: 'Analyse du cycle économique',
+    economicCycleDescription: 'Espace transparent reliant les actions cycliques aux indicateurs macro. Les valeurs apparaîtront lorsqu’un fournisseur macro fiable sera connecté.',
+    phaseRecovery: 'Reprise',
+    phaseExpansion: 'Expansion',
+    phasePeak: 'Pic',
+    phaseSlowdown: 'Ralentissement',
+    phaseContraction: 'Contraction',
+    phaseInsufficient: 'Données insuffisantes',
+    macroIndicators: {
+      gdp: 'Croissance PIB',
+      pmi: 'PMI',
+      industrial: 'Production industrielle',
+      unemployment: 'Chômage',
+      confidence: 'Confiance des consommateurs',
+      retail: 'Ventes au détail',
+      policyRate: 'Taux directeur',
+      yieldCurve: 'Courbe des taux',
+      housing: 'Logement',
+    },
+    educationCards: {
+      what: 'Que sont les actions cycliques ?',
+      sectors: 'Principaux secteurs cycliques',
+      defensive: 'Cycliques vs défensives',
+      cycle: 'Phases du cycle',
+      rates: 'Impact des taux',
+      employment: 'Emploi et confiance',
+      debt: 'Risque de levier',
+      decline: 'Quand elles baissent',
+      balance: 'Équilibrer avec les défensives',
+    },
+    educationBody: {
+      what: 'Sociétés souvent favorisées par la croissance et les dépenses, mais plus fragiles quand la demande ou le financement se contractent.',
+      sectors: 'Automobile, voyage, hôtels, industrie, construction, matériaux, transport, distribution discrétionnaire et luxe.',
+      defensive: 'Les défensives reposent sur une demande plus stable ; les cycliques dépendent davantage du revenu, du crédit et de la confiance.',
+      cycle: 'Reprise et expansion peuvent soutenir la demande ; ralentissement et contraction peuvent peser sur les marges.',
+      rates: 'Des taux élevés peuvent réduire les dépenses et le financement, surtout dans l’auto, l’immobilier et les sociétés endettées.',
+      employment: 'Emploi et confiance influencent les voyages, restaurants et biens discrétionnaires.',
+      debt: 'Les entreprises très endettées peuvent souffrir davantage lorsque les revenus baissent ou les coûts de dette montent.',
+      decline: 'Elles baissent souvent avec une demande plus faible, des résultats décevants, des taux plus élevés ou des signaux de récession.',
+      balance: 'Combiner cycliques et défensives peut réduire la dépendance à un seul scénario macro, sans supprimer le risque.',
+    },
+    disclaimerTitle: 'Avis investissement',
+    disclaimer: 'Les données et classifications sont informatives et éducatives, sans constituer un conseil d’investissement. Les classifications sectorielles sont préliminaires et ne remplacent pas une analyse financière complète.',
   },
-} satisfies Record<LangCode, Record<string, string>>;
+} as const;
 
-const FILTERS: Array<{ id: CyclicalFilterId; label: Record<LangCode, string>; keywords: string[]; sectors: string[] }> = [
-  { id: 'all', label: { ar: 'الكل', en: 'All', fr: 'Tout' }, keywords: [], sectors: [] },
-  { id: 'autos', label: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, keywords: ['auto', 'automaker', 'vehicle', 'tesla', 'ford', 'gm', 'ferrari'], sectors: ['autos'] },
-  { id: 'travel_airlines', label: { ar: 'السفر والطيران', en: 'Travel & airlines', fr: 'Voyage et aérien' }, keywords: ['airline', 'travel', 'cruise', 'delta', 'united airlines', 'american airlines', 'royal caribbean', 'carnival', 'norwegian cruise'], sectors: ['airlines_travel', 'transport'] },
-  { id: 'hotels_entertainment', label: { ar: 'الفنادق والترفيه', en: 'Hotels & entertainment', fr: 'Hôtels et loisirs' }, keywords: ['hotel', 'resort', 'casino', 'entertainment', 'marriott', 'hilton', 'wynn', 'las vegas sands'], sectors: ['hotels_entertainment'] },
-  { id: 'industrials', label: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' }, keywords: ['industrial', 'machinery', 'aerospace', 'boeing', 'caterpillar', 'deere'], sectors: ['industrials'] },
-  { id: 'construction_real_estate', label: { ar: 'البناء والعقار', en: 'Construction & real estate', fr: 'Construction et immobilier' }, keywords: ['housing', 'homebuilder', 'construction', 'real estate', 'home depot', 'lennar', 'd.r. horton'], sectors: ['construction_real_estate'] },
-  { id: 'luxury_goods', label: { ar: 'السلع الكمالية', en: 'Luxury goods', fr: 'Luxe' }, keywords: ['luxury', 'premium goods', 'nike', 'ferrari', 'consumer discretionary'], sectors: ['luxury_goods'] },
-  { id: 'restaurants', label: { ar: 'المطاعم', en: 'Restaurants', fr: 'Restaurants' }, keywords: ['restaurant', 'coffee', 'mcdonald', 'starbucks', 'dining'], sectors: ['nonessential_retail', 'restaurants'] },
-  { id: 'earnings', label: { ar: 'أرباح وتوقعات', en: 'Earnings & outlooks', fr: 'Résultats et perspectives' }, keywords: ['earnings', 'revenue', 'guidance', 'forecast', 'outlook', 'profit'], sectors: [] },
-  { id: 'analysis', label: { ar: 'تحليلات وتقارير', en: 'Analysis & reports', fr: 'Analyses et rapports' }, keywords: ['analysis', 'analyst', 'rating', 'report', 'target', 'upgrade', 'downgrade'], sectors: [] },
-];
-
-const SECTOR_GUIDES = [
+const SECTORS: SectorDefinition[] = [
   {
-    id: 'autos' as CyclicalFilterId,
+    id: 'autos',
+    label: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' },
+    description: {
+      ar: 'حساسة للائتمان وثقة المستهلك والطلب على السلع المعمرة.',
+      en: 'Sensitive to credit, confidence, and durable-goods demand.',
+      fr: 'Sensible au crédit, à la confiance et aux biens durables.',
+    },
+    drivers: {
+      ar: ['الفائدة على القروض', 'ثقة المستهلك', 'أسعار الوقود', 'سلاسل الإمداد'],
+      en: ['Loan rates', 'Consumer confidence', 'Fuel prices', 'Supply chains'],
+      fr: ['Taux de crédit', 'Confiance', 'Carburant', 'Chaînes d’approvisionnement'],
+    },
     icon: Car,
-    symbols: ['TSLA', 'GM', 'F', 'RACE'],
-    title: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' },
-    body: {
-      ar: 'مبيعات السيارات والهوامش تتأثر بثقة المستهلك، الائتمان، الفائدة، وتكاليف المواد.',
-      en: 'Vehicle sales and margins react to consumer confidence, credit, rates, and material costs.',
-      fr: 'Les ventes et marges réagissent à la confiance, au crédit, aux taux et aux coûts.',
-    },
+    sensitivity: 'high',
   },
   {
-    id: 'travel_airlines' as CyclicalFilterId,
+    id: 'airlines_travel',
+    label: { ar: 'السفر والطيران', en: 'Travel and airlines', fr: 'Voyage et compagnies aériennes' },
+    description: {
+      ar: 'يرتبط بإنفاق المستهلك والشركات وأسعار الوقود والقدرة الاستيعابية.',
+      en: 'Tied to consumer/business travel, fuel costs, and capacity.',
+      fr: 'Lié aux voyages, au carburant et à la capacité.',
+    },
+    drivers: {
+      ar: ['السفر الترفيهي', 'سفر الأعمال', 'أسعار الوقود', 'السعة التشغيلية'],
+      en: ['Leisure travel', 'Business travel', 'Fuel prices', 'Capacity'],
+      fr: ['Loisir', 'Affaires', 'Carburant', 'Capacité'],
+    },
     icon: Plane,
-    symbols: ['DAL', 'UAL', 'AAL', 'RCL'],
-    title: { ar: 'السفر والطيران', en: 'Travel and airlines', fr: 'Voyage et aérien' },
-    body: {
-      ar: 'يتحرك الطلب على السفر مع الدخل المتاح، أسعار الوقود، وحالة الاقتصاد والسياحة.',
-      en: 'Travel demand moves with disposable income, fuel costs, tourism, and economic activity.',
-      fr: 'La demande dépend du revenu disponible, du carburant, du tourisme et de l’activité.',
-    },
+    sensitivity: 'high',
   },
   {
-    id: 'hotels_entertainment' as CyclicalFilterId,
+    id: 'hotels_entertainment',
+    label: { ar: 'الفنادق والترفيه', en: 'Hotels and entertainment', fr: 'Hôtels et loisirs' },
+    description: {
+      ar: 'يتأثر بالطلب السياحي، الفعاليات، والإنفاق الاختياري.',
+      en: 'Affected by tourism demand, events, and discretionary spending.',
+      fr: 'Affecté par le tourisme, les événements et les dépenses discrétionnaires.',
+    },
+    drivers: {
+      ar: ['الإشغال', 'متوسط سعر الغرفة', 'السياحة', 'الدخل المتاح'],
+      en: ['Occupancy', 'Room rates', 'Tourism', 'Disposable income'],
+      fr: ['Occupation', 'Prix chambre', 'Tourisme', 'Revenu disponible'],
+    },
     icon: Hotel,
-    symbols: ['MAR', 'HLT', 'WYNN', 'LVS'],
-    title: { ar: 'الفنادق والترفيه', en: 'Hotels and entertainment', fr: 'Hôtels et loisirs' },
-    body: {
-      ar: 'الإشغال والإنفاق الترفيهي يتحسنان غالباً مع قوة المستهلك والسفر.',
-      en: 'Occupancy and leisure spending often improve with stronger consumers and travel.',
-      fr: 'L’occupation et les loisirs progressent avec la solidité du consommateur.',
-    },
+    sensitivity: 'high',
   },
   {
-    id: 'industrials' as CyclicalFilterId,
+    id: 'industrials',
+    label: { ar: 'الصناعات', en: 'Industrials', fr: 'Industrie' },
+    description: {
+      ar: 'تعتمد على الإنفاق الرأسمالي والطلبات الصناعية ومشاريع البنية التحتية.',
+      en: 'Driven by capex, industrial orders, and infrastructure projects.',
+      fr: 'Dépend des investissements, commandes industrielles et infrastructures.',
+    },
+    drivers: {
+      ar: ['الطلبات الصناعية', 'البنية التحتية', 'الهوامش', 'الدورة الرأسمالية'],
+      en: ['Industrial orders', 'Infrastructure', 'Margins', 'Capex cycle'],
+      fr: ['Commandes', 'Infrastructure', 'Marges', 'Cycle d’investissement'],
+    },
     icon: Factory,
-    symbols: ['BA', 'CAT', 'DE'],
-    title: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' },
-    body: {
-      ar: 'الشركات الصناعية ترتبط بالإنفاق الرأسمالي، الطلب العالمي، وسلاسل التوريد.',
-      en: 'Industrials are tied to capital spending, global demand, and supply chains.',
-      fr: 'L’industrie dépend de l’investissement, de la demande mondiale et des chaînes logistiques.',
-    },
+    sensitivity: 'medium',
   },
   {
-    id: 'construction_real_estate' as CyclicalFilterId,
-    icon: Hammer,
-    symbols: ['HD', 'LOW', 'DHI', 'LEN'],
-    title: { ar: 'البناء والعقار', en: 'Construction and real estate', fr: 'Construction et immobilier' },
-    body: {
-      ar: 'البناء والمساكن أكثر حساسية للفائدة، الرهن العقاري، وثقة المشترين.',
-      en: 'Construction and housing are sensitive to rates, mortgages, and buyer confidence.',
-      fr: 'Le logement est sensible aux taux, au crédit immobilier et à la confiance.',
+    id: 'construction_real_estate',
+    label: { ar: 'البناء والعقار', en: 'Construction and real estate', fr: 'Construction et immobilier' },
+    description: {
+      ar: 'حساس للفائدة، الرهن العقاري، الإسكان، والإنفاق على تحسين المنازل.',
+      en: 'Sensitive to rates, mortgages, housing, and home-improvement spending.',
+      fr: 'Sensible aux taux, hypothèques, logement et rénovation.',
     },
+    drivers: {
+      ar: ['الفائدة', 'الرهن العقاري', 'تصاريح البناء', 'مبيعات المنازل'],
+      en: ['Rates', 'Mortgages', 'Building permits', 'Home sales'],
+      fr: ['Taux', 'Hypothèques', 'Permis', 'Ventes de logements'],
+    },
+    icon: Building2,
+    sensitivity: 'high',
   },
   {
-    id: 'luxury_goods' as CyclicalFilterId,
-    icon: Gem,
-    symbols: ['NKE', 'RACE'],
-    title: { ar: 'السلع الكمالية', en: 'Luxury goods', fr: 'Luxe' },
-    body: {
-      ar: 'الطلب على السلع الكمالية يتأثر بالثروة، الدخل المتاح، ومعنويات المستهلك.',
-      en: 'Luxury demand is influenced by wealth, disposable income, and consumer sentiment.',
-      fr: 'La demande de luxe dépend de la richesse, du revenu disponible et du moral.',
+    id: 'luxury_goods',
+    label: { ar: 'السلع الفاخرة', en: 'Luxury goods', fr: 'Luxe' },
+    description: {
+      ar: 'يتأثر بثروة المستهلك، السياحة، وقوة الطلب العالمي على المنتجات الممتازة.',
+      en: 'Sensitive to wealth effects, tourism, and premium-goods demand.',
+      fr: 'Sensible à l’effet richesse, au tourisme et à la demande premium.',
     },
+    drivers: {
+      ar: ['ثروة المستهلك', 'السياحة', 'الدولار', 'الطلب العالمي'],
+      en: ['Wealth effect', 'Tourism', 'USD', 'Global demand'],
+      fr: ['Effet richesse', 'Tourisme', 'Dollar', 'Demande mondiale'],
+    },
+    icon: ShoppingBag,
+    sensitivity: 'medium',
   },
   {
-    id: 'restaurants' as CyclicalFilterId,
+    id: 'nonessential_retail',
+    label: { ar: 'التجزئة غير الأساسية', en: 'Discretionary retail', fr: 'Distribution discrétionnaire' },
+    description: {
+      ar: 'يرتبط بالدخل المتاح، الأجور، ثقة المستهلك، والتضخم.',
+      en: 'Linked to disposable income, wages, confidence, and inflation.',
+      fr: 'Lié au revenu disponible, salaires, confiance et inflation.',
+    },
+    drivers: {
+      ar: ['الدخل المتاح', 'الأجور', 'التضخم', 'ثقة المستهلك'],
+      en: ['Disposable income', 'Wages', 'Inflation', 'Confidence'],
+      fr: ['Revenu disponible', 'Salaires', 'Inflation', 'Confiance'],
+    },
     icon: Utensils,
-    symbols: ['MCD', 'SBUX'],
-    title: { ar: 'المطاعم والإنفاق الاستهلاكي', en: 'Restaurants and consumer spending', fr: 'Restaurants et consommation' },
-    body: {
-      ar: 'الإنفاق خارج المنزل وحركة المتاجر يعكسان قدرة المستهلك واستعداده للإنفاق.',
-      en: 'Dining traffic and store spending reflect consumer capacity and willingness to spend.',
-      fr: 'La fréquentation reflète la capacité et la volonté de dépenser.',
+    sensitivity: 'medium',
+  },
+  {
+    id: 'basic_materials',
+    label: { ar: 'المواد الأساسية', en: 'Basic materials', fr: 'Matériaux' },
+    description: {
+      ar: 'تعتمد على الطلب الصناعي، أسعار السلع، والبناء العالمي.',
+      en: 'Driven by industrial demand, commodity prices, and global construction.',
+      fr: 'Dépend de la demande industrielle, des matières premières et construction.',
     },
+    drivers: {
+      ar: ['أسعار السلع', 'الصناعة', 'الصين', 'الدولار'],
+      en: ['Commodities', 'Industry', 'China', 'USD'],
+      fr: ['Matières premières', 'Industrie', 'Chine', 'Dollar'],
+    },
+    icon: Layers3,
+    sensitivity: 'medium',
+  },
+  {
+    id: 'transport',
+    label: { ar: 'النقل والشحن', en: 'Transport and freight', fr: 'Transport et fret' },
+    description: {
+      ar: 'يرتبط بحركة التجارة، المخزونات، وأسعار الوقود.',
+      en: 'Tied to trade activity, inventories, and fuel prices.',
+      fr: 'Lié au commerce, stocks et carburant.',
+    },
+    drivers: {
+      ar: ['حركة التجارة', 'المخزونات', 'الوقود', 'الشحن'],
+      en: ['Trade activity', 'Inventories', 'Fuel', 'Freight'],
+      fr: ['Commerce', 'Stocks', 'Carburant', 'Fret'],
+    },
+    icon: BriefcaseBusiness,
+    sensitivity: 'medium',
   },
 ];
 
-const CYCLICAL_SYMBOL_NAMES: Record<string, string> = {
-  RACE: 'Ferrari',
-  F: 'Ford',
-  GM: 'General Motors',
-  TSLA: 'Tesla',
-  RCL: 'Royal Caribbean',
-  AAL: 'American Airlines',
-  UAL: 'United Airlines',
-  DAL: 'Delta Air Lines',
-  LVS: 'Las Vegas Sands',
-  WYNN: 'Wynn Resorts',
-  HLT: 'Hilton',
-  MAR: 'Marriott International',
-  DE: 'Deere',
-  CAT: 'Caterpillar',
-  BA: 'Boeing',
-  SBUX: 'Starbucks',
-  MCD: "McDonald's",
-  NKE: 'Nike',
-  LEN: 'Lennar',
-  DHI: 'D.R. Horton',
-  LOW: "Lowe's",
-  HD: 'Home Depot',
-};
+const EDUCATION_IDS: EducationId[] = ['what', 'sectors', 'defensive', 'cycle', 'rates', 'employment', 'debt', 'decline', 'balance'];
 
-const FEATURED_META: Record<string, { sector: Record<LangCode, string>; body: Record<LangCode, string> }> = {
-  TSLA: { sector: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'شركة سيارات كهربائية وتقنيات نقل تتأثر بدورات الطلب والتمويل.', en: 'Electric vehicle and mobility company exposed to demand and financing cycles.', fr: 'Véhicules électriques exposés aux cycles de demande et financement.' } },
-  GM: { sector: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'شركة سيارات تقليدية تتأثر بالمبيعات، الائتمان، وتكاليف الإنتاج.', en: 'Automaker affected by sales, credit, and production costs.', fr: 'Constructeur sensible aux ventes, au crédit et aux coûts.' } },
-  F: { sector: { ar: 'السيارات', en: 'Autos', fr: 'Automobile' }, body: { ar: 'شركة سيارات كبيرة مرتبطة بدورة الإنفاق على المركبات.', en: 'Large automaker linked to vehicle spending cycles.', fr: 'Constructeur lié au cycle des dépenses automobiles.' } },
-  RACE: { sector: { ar: 'السلع الكمالية', en: 'Luxury goods', fr: 'Luxe' }, body: { ar: 'سيارات فاخرة ذات طلب مرتبط بالثروة والإنفاق الكمالي.', en: 'Luxury automaker linked to wealth and premium spending.', fr: 'Automobile de luxe liée à la richesse et au premium.' } },
-  NKE: { sector: { ar: 'السلع الكمالية', en: 'Luxury goods', fr: 'Luxe' }, body: { ar: 'ملابس وأحذية رياضية تتأثر بإنفاق المستهلك العالمي.', en: 'Athletic apparel and footwear tied to global consumer spending.', fr: 'Articles de sport liés à la consommation mondiale.' } },
-  SBUX: { sector: { ar: 'المطاعم', en: 'Restaurants', fr: 'Restaurants' }, body: { ar: 'قهوة ومطاعم تعتمد على حركة المتاجر والإنفاق خارج المنزل.', en: 'Coffee and dining traffic tied to discretionary spending.', fr: 'Café et restauration liés aux dépenses discrétionnaires.' } },
-  HD: { sector: { ar: 'البناء والعقار', en: 'Construction & real estate', fr: 'Construction' }, body: { ar: 'تحسين المنازل مرتبط بسوق الإسكان وثقة المستهلك.', en: 'Home improvement tied to housing and consumer confidence.', fr: 'Rénovation liée au logement et à la confiance.' } },
-  LOW: { sector: { ar: 'البناء والعقار', en: 'Construction & real estate', fr: 'Construction' }, body: { ar: 'تجزئة تحسين المنازل تتأثر بالفائدة ونشاط الإسكان.', en: 'Home improvement retail affected by rates and housing activity.', fr: 'Rénovation affectée par les taux et le logement.' } },
-  MCD: { sector: { ar: 'المطاعم', en: 'Restaurants', fr: 'Restaurants' }, body: { ar: 'مطاعم عالمية تراقبها الأسواق كمؤشر على إنفاق المستهلك.', en: 'Global restaurant chain watched as a consumer-spending signal.', fr: 'Restauration mondiale, signal de consommation.' } },
-  MAR: { sector: { ar: 'الفنادق والترفيه', en: 'Hotels & entertainment', fr: 'Hôtels' }, body: { ar: 'فنادق وضيافة مرتبطة بالسفر والطلب السياحي.', en: 'Hospitality company tied to travel and tourism demand.', fr: 'Hôtellerie liée au voyage et au tourisme.' } },
-  HLT: { sector: { ar: 'الفنادق والترفيه', en: 'Hotels & entertainment', fr: 'Hôtels' }, body: { ar: 'فنادق عالمية تتأثر بالإشغال والإنفاق على السفر.', en: 'Global hotels affected by occupancy and travel spending.', fr: 'Hôtels mondiaux sensibles à l’occupation.' } },
-  DAL: { sector: { ar: 'السفر والطيران', en: 'Travel & airlines', fr: 'Aérien' }, body: { ar: 'شركة طيران تتأثر بالطلب على السفر وأسعار الوقود.', en: 'Airline affected by travel demand and fuel prices.', fr: 'Compagnie sensible à la demande et au carburant.' } },
-  UAL: { sector: { ar: 'السفر والطيران', en: 'Travel & airlines', fr: 'Aérien' }, body: { ar: 'طيران تجاري مرتبط بحركة المسافرين والطلب العالمي.', en: 'Commercial airline tied to passenger traffic and global demand.', fr: 'Aérien lié au trafic passagers.' } },
-  AAL: { sector: { ar: 'السفر والطيران', en: 'Travel & airlines', fr: 'Aérien' }, body: { ar: 'طيران يتأثر بالتذاكر، الوقود، والقدرة الشرائية.', en: 'Airline exposed to fares, fuel, and consumer spending power.', fr: 'Compagnie exposée aux tarifs, carburant et pouvoir d’achat.' } },
-  BA: { sector: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' }, body: { ar: 'طيران وصناعة دفاعية تتأثر بدورات الطلب وسلاسل التوريد.', en: 'Aerospace and defense manufacturer affected by demand and supply cycles.', fr: 'Aérospatial sensible à la demande et aux chaînes.' } },
-  CAT: { sector: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' }, body: { ar: 'معدات ثقيلة مرتبطة بالبناء والتعدين والإنفاق الرأسمالي.', en: 'Heavy equipment tied to construction, mining, and capital spending.', fr: 'Équipements liés à la construction et au capex.' } },
-  DE: { sector: { ar: 'الصناعة', en: 'Industrials', fr: 'Industrie' }, body: { ar: 'معدات زراعية وصناعية تتأثر بالسلع والإنفاق الرأسمالي.', en: 'Agricultural and industrial equipment tied to commodities and capex.', fr: 'Équipements agricoles liés aux matières premières.' } },
-};
-
-const DRIVER_GROUPS = [
-  {
-    icon: Activity,
-    title: { ar: 'مؤشرات الاقتصاد', en: 'Economic indicators', fr: 'Indicateurs économiques' },
-    points: {
-      ar: ['أسعار الفائدة', 'بيانات التضخم', 'ثقة المستهلك', 'مبيعات التجزئة'],
-      en: ['Interest rates', 'Inflation data', 'Consumer confidence', 'Retail sales'],
-      fr: ['Taux d’intérêt', 'Inflation', 'Confiance du consommateur', 'Ventes au détail'],
-    },
-  },
-  {
-    icon: Wallet,
-    title: { ar: 'الإنفاق والطلب', en: 'Spending and demand', fr: 'Dépense et demande' },
-    points: {
-      ar: ['أسعار الطاقة', 'السفر والطلب السياحي', 'الإنفاق الرأسمالي للشركات', 'نتائج الأرباح والتوجيهات المستقبلية'],
-      en: ['Energy prices', 'Travel and tourism demand', 'Corporate capital spending', 'Earnings results and guidance'],
-      fr: ['Prix de l’énergie', 'Demande touristique', 'Investissement des entreprises', 'Résultats et perspectives'],
-    },
-  },
-];
+function normalizeSector(value: string | null | undefined, symbol?: string): Exclude<SectorId, 'all'> {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'travel_airlines') return 'airlines_travel';
+  if (normalized === 'consumer_goods' || normalized === 'restaurants') return 'nonessential_retail';
+  if (normalized === 'materials') return 'basic_materials';
+  if (normalized === 'transportation') return 'transport';
+  if (SECTORS.some(sector => sector.id === normalized)) return normalized as Exclude<SectorId, 'all'>;
+  const bySymbol = symbol ? SYMBOL_SECTOR[symbol.toUpperCase()] : undefined;
+  return bySymbol ?? 'industrials';
+}
 
 function localeFor(lang: LangCode) {
   if (lang === 'ar') return 'ar-KW';
@@ -467,607 +815,505 @@ function localeFor(lang: LangCode) {
   return 'en-US';
 }
 
-function formatMoney(value: number | null | undefined, currency: string | null | undefined, locale: string) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency || 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+function formatNumber(value: number | null | undefined, lang: LangCode, digits = 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  return new Intl.NumberFormat(localeFor(lang), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(value);
 }
 
-function formatPercent(value: number | null | undefined, locale: string) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `${value > 0 ? '+' : ''}${new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+function formatCurrency(value: number | null | undefined, currency: string | null | undefined, lang: LangCode) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  const safeCurrency = currency || 'USD';
+  return new Intl.NumberFormat(localeFor(lang), {
+    style: 'currency',
+    currency: safeCurrency,
+    minimumFractionDigits: value >= 100 ? 2 : 3,
+    maximumFractionDigits: value >= 100 ? 2 : 3,
+  }).format(value);
+}
+
+function formatPercent(value: number | null | undefined, lang: LangCode, digits = 2) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${new Intl.NumberFormat(localeFor(lang), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(value)}%`;
 }
 
-function formatDateTime(value: string, locale: string) {
+function formatDateTime(value: string | null | undefined, lang: LangCode) {
+  if (!value) return COPY[lang].unavailable;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, {
+  if (Number.isNaN(date.getTime())) return COPY[lang].unavailable;
+  return new Intl.DateTimeFormat(localeFor(lang), {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
 }
 
-function relativeTime(value: string, lang: LangCode) {
+function relativeTime(value: string | null | undefined, lang: LangCode) {
+  if (!value) return COPY[lang].unavailable;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const diffMs = date.getTime() - Date.now();
-  const absMs = Math.abs(diffMs);
-  const rtf = new Intl.RelativeTimeFormat(localeFor(lang), { numeric: 'auto' });
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ['day', 24 * 60 * 60 * 1000],
-    ['hour', 60 * 60 * 1000],
-    ['minute', 60 * 1000],
-  ];
-  for (const [unit, ms] of units) {
-    if (absMs >= ms) return rtf.format(Math.round(diffMs / ms), unit);
-  }
-  return rtf.format(Math.round(diffMs / 1000), 'second');
-}
-
-function changeTone(value: number | null | undefined): 'up' | 'down' | 'neutral' {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value === 0) return 'neutral';
-  return value > 0 ? 'up' : 'down';
+  const diff = date.getTime() - Date.now();
+  if (Number.isNaN(diff)) return COPY[lang].unavailable;
+  const abs = Math.abs(diff);
+  const formatter = new Intl.RelativeTimeFormat(localeFor(lang), { numeric: 'auto' });
+  if (abs < 60_000) return formatter.format(Math.round(diff / 1000), 'second');
+  if (abs < 3_600_000) return formatter.format(Math.round(diff / 60_000), 'minute');
+  if (abs < 86_400_000) return formatter.format(Math.round(diff / 3_600_000), 'hour');
+  return formatter.format(Math.round(diff / 86_400_000), 'day');
 }
 
 function newestTimestamp(values: Array<string | null | undefined>) {
-  return values
-    .filter((value): value is string => Boolean(value))
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? '';
+  const dates = values
+    .map(value => value ? new Date(value).getTime() : NaN)
+    .filter(value => Number.isFinite(value));
+  if (dates.length === 0) return null;
+  return new Date(Math.max(...dates)).toISOString();
 }
 
-async function fetchJson<T>(url: string) {
-  const response = await fetch(url);
-  const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(typeof body?.reason === 'string' ? body.reason : `HTTP ${response.status}`);
-  return body as T;
+function safeExternalUrl(value: string | null | undefined) {
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return url.toString();
+  } catch {
+    return '';
+  }
 }
 
-function useDebouncedValue<T>(value: T, delayMs: number) {
+function textValue(value: string | null | undefined) {
+  return String(value ?? '').trim();
+}
+
+function articleTitle(item: CyclicalNewsItem) {
+  return textValue(item.title) || textValue(item.headline) || textValue(item.titleOriginal);
+}
+
+function articleSummary(item: CyclicalNewsItem) {
+  return textValue(item.summary) || textValue(item.summaryOriginal);
+}
+
+function normalizeTitle(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeNews(items: CyclicalNewsItem[]) {
+  const seen = new Set<string>();
+  const deduped: CyclicalNewsItem[] = [];
+  for (const item of items) {
+    const url = safeExternalUrl(item.url);
+    const title = normalizeTitle(articleTitle(item));
+    const key = url || `${item.source}-${title}`;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
+}
+
+function isWithinTimeFilter(value: string, filter: NewsTimeFilter) {
+  if (filter === 'all') return true;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const age = Date.now() - date.getTime();
+  if (filter === 'day') return age <= 24 * 60 * 60 * 1000;
+  if (filter === 'week') return age <= 7 * 24 * 60 * 60 * 1000;
+  return age <= 30 * 24 * 60 * 60 * 1000;
+}
+
+function uniqueOptions(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map(value => textValue(value)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function useDebouncedValue<T>(value: T, delay = 250) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    const timer = window.setTimeout(() => setDebounced(value), delay);
     return () => window.clearTimeout(timer);
-  }, [delayMs, value]);
+  }, [delay, value]);
   return debounced;
 }
 
-function textForSearch(item: CyclicalNewsItem) {
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { cache: 'no-store' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  return payload as T;
+}
+
+function sectorDefinition(id: Exclude<SectorId, 'all'>) {
+  return SECTORS.find(sector => sector.id === id) ?? SECTORS[3];
+}
+
+function toStockRow(item: CyclicalTickerItem, lang: LangCode): CyclicalStockRow {
+  const sectorId = normalizeSector(item.sector, item.symbol);
+  const sector = sectorDefinition(sectorId);
+  const sensitivityTone: Tone = sector.sensitivity === 'high' ? 'warning' : sector.sensitivity === 'medium' ? 'info' : 'neutral';
+  const sectorSensitivity = sector.sensitivity === 'high'
+    ? COPY[lang].highSectorSensitivity
+    : sector.sensitivity === 'medium'
+      ? COPY[lang].mediumSectorSensitivity
+      : COPY[lang].mixedSectorSensitivity;
+  const availableFields = [
+    item.price,
+    item.changePercent,
+    item.change,
+    item.source,
+    item.sector,
+  ].filter(value => value !== null && value !== undefined && value !== '').length;
+  return {
+    ...item,
+    sectorId,
+    sectorLabel: sector.label[lang],
+    sectorSensitivity,
+    sensitivityTone,
+    methodologyNote: COPY[lang].sensitivityMethodology,
+    qualityLabel: COPY[lang].qualityUnavailable,
+    leverageLabel: COPY[lang].leverageUnavailable,
+    valuationLabel: COPY[lang].valuationUnavailable,
+    dataCompleteness: Math.round((availableFields / 5) * 100),
+  };
+}
+
+function stockMatchesSearch(row: CyclicalStockRow, search: string) {
+  const query = search.trim().toLowerCase();
+  if (!query) return true;
+  return [row.name, row.symbol, row.sectorLabel, row.sectorId]
+    .join(' ')
+    .toLowerCase()
+    .includes(query);
+}
+
+function newsMatchesSearch(item: CyclicalNewsItem, search: string) {
+  const query = search.trim().toLowerCase();
+  if (!query) return true;
   return [
-    item.title,
-    item.headline,
-    item.summary,
-    item.titleOriginal,
-    item.summaryOriginal,
+    articleTitle(item),
+    articleSummary(item),
     item.source,
     item.companyName,
     item.ticker,
     item.sector,
     ...(item.sectors ?? []),
-  ].filter(Boolean).join(' ').toLowerCase();
+  ].join(' ').toLowerCase().includes(query);
 }
 
-function itemMatchesSearch(item: CyclicalNewsItem, query: string) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-  return textForSearch(item).includes(normalized);
+function newsSector(item: CyclicalNewsItem): Exclude<SectorId, 'all'> {
+  return normalizeSector(item.sector ?? item.sectors?.[0], item.ticker ?? undefined);
 }
 
-function itemMatchesFilter(item: CyclicalNewsItem, filterId: CyclicalFilterId) {
-  if (filterId === 'all') return true;
-  const filter = FILTERS.find(entry => entry.id === filterId);
-  if (!filter) return true;
-  const sectors = new Set([item.sector, ...(item.sectors ?? [])].filter(Boolean));
-  if (filter.sectors.some(sector => sectors.has(sector))) return true;
-  const text = textForSearch(item);
-  return filter.keywords.some(keyword => text.includes(keyword.toLowerCase()));
+function sortStocks(rows: CyclicalStockRow[], sort: StockSort) {
+  const list = [...rows];
+  if (sort === 'leastVolatile') return list.sort((a, b) => Math.abs(a.changePercent ?? Infinity) - Math.abs(b.changePercent ?? Infinity));
+  if (sort === 'momentum') return list.sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity));
+  if (sort === 'name') return list.sort((a, b) => a.name.localeCompare(b.name));
+  if (sort === 'sector') return list.sort((a, b) => a.sectorLabel.localeCompare(b.sectorLabel) || a.name.localeCompare(b.name));
+  return list.sort((a, b) => {
+    const order = { high: 3, medium: 2, mixed: 1 } as const;
+    return order[sectorDefinition(b.sectorId).sensitivity] - order[sectorDefinition(a.sectorId).sensitivity] || a.name.localeCompare(b.name);
+  });
 }
 
-function displayTitle(item: CyclicalNewsItem) {
-  return item.title || item.headline || item.titleOriginal || '';
+function sortNews(items: CyclicalNewsItem[], sort: NewsSort) {
+  const list = [...items];
+  if (sort === 'oldest') return list.sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime());
+  if (sort === 'strongestMove') return list.sort((a, b) => Math.abs(b.changePercent ?? -Infinity) - Math.abs(a.changePercent ?? -Infinity));
+  return list.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
 
-function displaySummary(item: CyclicalNewsItem) {
-  return item.summary || item.summaryOriginal || '';
+function readInitialUrlState() {
+  if (typeof window === 'undefined') {
+    return {
+      tab: 'overview' as CyclicalTab,
+      stockSearch: '',
+      stockSector: 'all' as SectorId,
+      stockSort: 'sensitivity' as StockSort,
+      newsSearch: '',
+      newsSectorValue: 'all' as SectorId,
+      newsSourceValue: 'all',
+      newsSymbolValue: 'all',
+      newsTimeValue: 'all' as NewsTimeFilter,
+      newsSortValue: 'latest' as NewsSort,
+    };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const tab = TAB_IDS.includes(params.get('tab') as CyclicalTab) ? params.get('tab') as CyclicalTab : 'overview';
+  const stockSector = ['all', ...SECTORS.map(item => item.id)].includes(params.get('sector') ?? '')
+    ? params.get('sector') as SectorId
+    : 'all';
+  const stockSort = ['sensitivity', 'leastVolatile', 'momentum', 'name', 'sector'].includes(params.get('sort') ?? '')
+    ? params.get('sort') as StockSort
+    : 'sensitivity';
+  const newsSectorValue = ['all', ...SECTORS.map(item => item.id)].includes(params.get('nsector') ?? '')
+    ? params.get('nsector') as SectorId
+    : 'all';
+  const newsTimeValue = ['all', 'day', 'week', 'month'].includes(params.get('time') ?? '')
+    ? params.get('time') as NewsTimeFilter
+    : 'all';
+  const newsSortValue = ['latest', 'oldest', 'strongestMove'].includes(params.get('nsort') ?? '')
+    ? params.get('nsort') as NewsSort
+    : 'latest';
+  return {
+    tab,
+    stockSearch: params.get('q') ?? '',
+    stockSector,
+    stockSort,
+    newsSearch: params.get('nq') ?? '',
+    newsSectorValue,
+    newsSourceValue: params.get('source') ?? 'all',
+    newsSymbolValue: params.get('symbol') ?? 'all',
+    newsTimeValue,
+    newsSortValue,
+  };
 }
 
-function categoryLabelForItem(item: CyclicalNewsItem, lang: LangCode) {
-  const sectors = [item.sector, ...(item.sectors ?? [])].filter(Boolean);
-  const filter = FILTERS.find(entry => entry.id !== 'all' && entry.sectors.some(sector => sectors.includes(sector)))
-    ?? FILTERS.find(entry => entry.id !== 'all' && entry.keywords.some(keyword => textForSearch(item).includes(keyword.toLowerCase())));
-  return filter?.label[lang] ?? FILTERS[0].label[lang];
+function ToneBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return <span className={`badge tone-${tone}`}>{children}</span>;
 }
 
-function sectorLabel(sector: string | undefined, lang: LangCode) {
-  if (!sector) return '';
-  const match = FILTERS.find(filter => filter.sectors.includes(sector) || filter.id === sector);
-  return match?.label[lang] ?? sector;
-}
-
-function SkeletonLine({ wide = false }: { wide?: boolean }) {
-  return <span className={`${styles.skeletonLine} ${wide ? styles.skeletonWide : ''}`} />;
-}
-
-function PanelTitle({
-  icon: Icon,
-  title,
-  subtitle,
-}: {
-  icon: ComponentType<{ size?: number }>;
+function SectionHeader({ icon: Icon, title, description, action }: {
+  icon: LucideIcon;
   title: string;
-  subtitle?: string;
+  description?: string;
+  action?: ReactNode;
 }) {
   return (
-    <div className={styles.panelTitle}>
-      <span><Icon size={19} /></span>
+    <div className="section-header">
       <div>
+        <span className="section-icon"><Icon size={18} /></span>
         <h2>{title}</h2>
-        {subtitle ? <p>{subtitle}</p> : null}
+        {description ? <p>{description}</p> : null}
+      </div>
+      {action ? <div className="section-action">{action}</div> : null}
+    </div>
+  );
+}
+
+function StateBox({ icon: Icon, title, body, actionLabel, onAction, tone = 'info' }: {
+  icon: LucideIcon;
+  title: string;
+  body?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  tone?: Tone;
+}) {
+  return (
+    <div className={`state-box state-${tone}`}>
+      <span><Icon size={22} /></span>
+      <div>
+        <strong>{title}</strong>
+        {body ? <p>{body}</p> : null}
+      </div>
+      {actionLabel && onAction ? <button type="button" onClick={onAction}>{actionLabel}</button> : null}
+    </div>
+  );
+}
+
+function MetricCard({ icon: Icon, label, value, helper, tone = 'info' }: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  helper?: string;
+  tone?: Tone;
+}) {
+  return (
+    <div className={`metric-card tone-${tone}`}>
+      <span><Icon size={20} /></span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        {helper ? <em>{helper}</em> : null}
       </div>
     </div>
   );
 }
 
-function CyclicalTicker({
-  items,
-  loading,
-  error,
-  text,
-  lang,
-  locale,
-}: {
-  items: CyclicalTickerItem[];
-  loading: boolean;
-  error: string;
-  text: typeof TEXT[LangCode];
-  lang: LangCode;
-  locale: string;
-}) {
+function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loading: boolean; lang: LangCode }) {
+  if (loading) {
+    return (
+      <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
+        {Array.from({ length: 6 }).map((_, index) => <div className="ticker-skeleton" key={index} />)}
+      </section>
+    );
+  }
+  if (rows.length === 0) {
+    return <StateBox icon={AlertTriangle} title={COPY[lang].providerError} tone="warning" />;
+  }
   return (
-    <section className={`${styles.tickerPanel} ${styles.compactTickerPanel}`} aria-label={text.tickerTitle}>
-      <PanelTitle icon={Activity} title={text.tickerTitle} subtitle={text.tickerSubtitle} />
-      {loading ? (
-        <div className={styles.tickerSkeletonRow} aria-hidden="true">
-          {Array.from({ length: 8 }).map((_, index) => <span key={index} />)}
-        </div>
-      ) : items.length > 0 ? (
-        <div className={styles.tickerStrip}>
-          <span className={styles.tickerStatus}>{text.liveStatus}</span>
-          <div className={styles.tickerViewport}>
-            <div className={styles.tickerTrack}>
-              {[0, 1].map(setIndex => (
-                <div className={styles.tickerSet} aria-hidden={setIndex === 1} key={setIndex}>
-                  {items.map(item => {
-                    const tone = changeTone(item.changePercent);
-                    return (
-                      <article className={styles.tickerItem} key={`${setIndex}-${item.symbol}`}>
-                        <div>
-                          <strong dir="ltr">{item.symbol}</strong>
-                          <span>{item.name}</span>
-                          <span>{sectorLabel(item.sector, lang)}</span>
-                        </div>
-                        <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-                        <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                      </article>
-                    );
-                  })}
-                </div>
-              ))}
+    <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
+      {rows.map(row => {
+        const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
+        return (
+          <article className="ticker-item" key={row.symbol}>
+            <div>
+              <strong dir="ltr">{row.symbol}</strong>
+              <span>{row.name}</span>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className={styles.inlineState} role="status">
-          <AlertTriangle size={18} />
-          <span>{error || text.tickerEmpty}</span>
-        </div>
-      )}
+            <div className="ticker-values">
+              <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
+              <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
+            </div>
+          </article>
+        );
+      })}
     </section>
   );
 }
 
-function WhatCyclicalCard({ text }: { text: typeof TEXT[LangCode] }) {
-  const points = [text.growthSensitive, text.spendingBoost, text.rateSensitive, text.expansionInvestor];
+function EconomicCycleDashboard({ text, lang, compact = false }: { text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
+  const macroKeys = Object.keys(text.macroIndicators) as Array<keyof typeof text.macroIndicators>;
   return (
-    <article className={`${styles.summaryCard} ${styles.infoCard}`}>
-      <PanelTitle icon={TrendingUp} title={text.whatTitle} />
-      <p>{text.whatBody}</p>
-      <ul>
-        {points.map(point => (
-          <li key={point}><span />{point}</li>
+    <section className="panel">
+      <SectionHeader
+        icon={BarChart3}
+        title={text.economicDashboard}
+        description={compact ? text.macroNotConnected : text.economicCycleDescription}
+      />
+      <div className="cycle-phase">
+        <div>
+          <span className="phase-label">{text.cyclePhase}</span>
+          <strong>{text.phaseInsufficient}</strong>
+          <p>{text.macroUnavailableBody}</p>
+        </div>
+        <ToneBadge tone="warning">{text.macroEducationalOnly}</ToneBadge>
+      </div>
+      <div className="macro-grid">
+        {macroKeys.map(key => (
+          <div className="macro-item" key={key}>
+            <span>{text.macroIndicators[key]}</span>
+            <strong>{text.unavailable}</strong>
+            <small>{text.macroNotConnected}</small>
+          </div>
         ))}
-      </ul>
-    </article>
-  );
-}
-
-function SectorMiniCard({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  return (
-    <article className={styles.summaryCard}>
-      <PanelTitle icon={BookOpen} title={text.sectorTitle} />
-      <div className={styles.sectorMiniList}>
-        {SECTOR_GUIDES.map(sector => {
-          const Icon = sector.icon;
-          return (
-            <div className={styles.sectorMiniRow} key={sector.id}>
-              <span><Icon size={17} /></span>
-              <div>
-                <strong>{sector.title[lang]}</strong>
-                <p>{sector.body[lang]}</p>
-              </div>
-            </div>
-          );
-        })}
       </div>
-    </article>
+    </section>
   );
 }
 
-function ComparisonCard({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  const cyclical = {
-    ar: ['تستفيد من النمو الاقتصادي', 'أكثر تقلبًا وقت الركود', 'ترتبط بإنفاق المستهلك', 'مناسبة للبحث عن النمو'],
-    en: ['Benefit from economic growth', 'More volatile in recessions', 'Linked to consumer spending', 'Suited to growth seeking'],
-    fr: ['Profitent de la croissance', 'Plus volatiles en récession', 'Liées à la consommation', 'Adaptées à la croissance'],
-  };
-  const defensive = {
-    ar: ['طلب أكثر استقرارًا', 'أقل تأثرًا بالركود', 'مناسبة للمستثمر المحافظ', 'تشمل قطاعات أساسية مثل الغذاء والدواء والمرافق'],
-    en: ['Steadier demand', 'Less affected by recessions', 'Suited to conservative investors', 'Include essentials such as food, medicine, and utilities'],
-    fr: ['Demande plus stable', 'Moins affectées par les récessions', 'Adaptées aux prudents', 'Secteurs essentiels comme alimentation, santé et services publics'],
-  };
-  return (
-    <article className={`${styles.summaryCard} ${styles.comparisonCard}`}>
-      <PanelTitle icon={Layers3} title={text.comparisonTitle} />
-      <div className={styles.comparisonGrid}>
-        <div className={styles.cyclicalColumn}>
-          <strong>{text.cyclicalStocks}</strong>
-          {cyclical[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-        <div className={styles.defensiveColumn}>
-          <strong>{text.defensiveStocks}</strong>
-          {defensive[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function MovementCard({
-  movers,
-  tickerItems,
-  loading,
-  text,
-  lang,
-  locale,
-}: {
-  movers: StockCategoryMoverItem[];
-  tickerItems: CyclicalTickerItem[];
-  loading: boolean;
-  text: typeof TEXT[LangCode];
+function SummaryCards({ text, lang, rows, stats }: {
+  text: typeof COPY[LangCode];
   lang: LangCode;
-  locale: string;
+  rows: CyclicalStockRow[];
+  stats: SectorStat[];
 }) {
-  const tickerBySymbol = new Map(tickerItems.map(item => [item.symbol, item]));
-  const rows = movers.length > 0
-    ? movers.map(item => ({ ...item, sourceName: item.name }))
-    : tickerItems
-      .filter(item => typeof item.changePercent === 'number')
-      .slice()
-      .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))
-      .slice(0, 5)
-      .map((item, index) => ({
-        rank: index + 1,
-        symbol: item.symbol,
-        name: item.name,
-        price: item.price,
-        currency: item.currency,
-        changePercent: item.changePercent,
-        volume: null,
-        sourceName: item.name,
-      }));
+  const rising = rows.filter(row => (row.changePercent ?? 0) > 0).length;
+  const falling = rows.filter(row => (row.changePercent ?? 0) < 0).length;
+  const strongest = rows.slice().sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity))[0];
+  const bestSector = stats
+    .filter(stat => typeof stat.averageChange === 'number')
+    .sort((a, b) => (b.averageChange ?? -Infinity) - (a.averageChange ?? -Infinity))[0];
+  const volatile = rows
+    .filter(row => typeof row.changePercent === 'number')
+    .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))[0];
 
   return (
-    <article className={styles.summaryCard}>
-      <PanelTitle icon={BarChart3} title={text.movementTitle} subtitle={text.movementSubtitle} />
-      <div className={styles.topStocksList}>
-        {loading ? (
-          Array.from({ length: 5 }).map((_, index) => (
-            <div className={styles.topStockRow} key={index}>
-              <SkeletonLine />
-              <SkeletonLine />
-            </div>
-          ))
-        ) : rows.length > 0 ? (
-          rows.map(item => {
-            const tone = changeTone(item.changePercent);
-            const quote = tickerBySymbol.get(item.symbol);
+    <section className="metrics-grid" aria-label={text.overviewSummary}>
+      <MetricCard icon={TrendingUp} label={text.risingStocks} value={formatNumber(rising, lang)} helper={text.trackedStocks} tone="positive" />
+      <MetricCard icon={TrendingDown} label={text.fallingStocks} value={formatNumber(falling, lang)} helper={text.trackedStocks} tone="negative" />
+      <MetricCard icon={Layers3} label={text.bestSector} value={bestSector ? bestSector.label[lang] : text.unavailable} helper={bestSector ? formatPercent(bestSector.averageChange, lang) : undefined} />
+      <MetricCard icon={LineChart} label={text.strongestMover} value={strongest ? strongest.symbol : text.unavailable} helper={strongest ? formatPercent(strongest.changePercent, lang) : undefined} tone={(strongest?.changePercent ?? 0) >= 0 ? 'positive' : 'negative'} />
+      <MetricCard icon={AlertTriangle} label={text.highestVolatility} value={volatile ? volatile.symbol : text.unavailable} helper={volatile ? formatPercent(volatile.changePercent, lang) : undefined} tone="warning" />
+    </section>
+  );
+}
+
+function ComparisonChart({ rows, text, lang }: { rows: CyclicalStockRow[]; text: typeof COPY[LangCode]; lang: LangCode }) {
+  const comparison = rows
+    .filter(row => typeof row.changePercent === 'number')
+    .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))
+    .slice(0, 5);
+  const max = Math.max(1, ...comparison.map(row => Math.abs(row.changePercent ?? 0)));
+  return (
+    <section className="panel">
+      <SectionHeader icon={BarChart3} title={text.comparisonTitle} description={text.comparisonDescription} />
+      {comparison.length ? (
+        <div className="bar-chart" role="img" aria-label={text.comparisonDescription}>
+          {comparison.map(row => {
+            const value = row.changePercent ?? 0;
+            const width = Math.max(8, (Math.abs(value) / max) * 100);
             return (
-              <div className={styles.topStockRow} key={item.symbol}>
-                <div>
-                  <strong dir="ltr">#{item.rank} {item.symbol}</strong>
-                  <span>{item.name}</span>
-                  <span>{sectorLabel(quote?.sector, lang)}</span>
+              <div className="bar-row" key={row.symbol}>
+                <div className="bar-label">
+                  <strong dir="ltr">{row.symbol}</strong>
+                  <span>{row.name}</span>
                 </div>
-                <div className={styles.topStockValue}>
-                  <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-                  <em className={styles[tone]} dir="ltr">{formatPercent(item.changePercent, locale)}</em>
+                <div className="bar-track">
+                  <span
+                    className={value >= 0 ? 'bar positive' : 'bar negative'}
+                    style={{ inlineSize: `${width}%` }}
+                  />
                 </div>
+                <b dir="ltr">{formatPercent(value, lang)}</b>
               </div>
             );
-          })
-        ) : (
-          <p className={styles.cardMuted}>{text.unavailable}</p>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function DriversSection({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  return (
-    <section className={styles.sectorGuidePanel} aria-label={text.driversTitle}>
-      <PanelTitle icon={Zap} title={text.driversTitle} subtitle={text.driversSubtitle} />
-      <div className={styles.sectorCards}>
-        {DRIVER_GROUPS.map(group => {
-          const Icon = group.icon;
-          return (
-            <article className={`${styles.sectorCard} ${styles.infoCard}`} key={group.title[lang]}>
-              <span className={styles.sectorIcon}><Icon size={21} /></span>
-              <h3>{group.title[lang]}</h3>
-              <ul>
-                {group.points[lang].map(point => <li key={point}><span />{point}</li>)}
-              </ul>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function NewsCard({
-  item,
-  lang,
-  locale,
-  text,
-}: {
-  item: CyclicalNewsItem;
-  lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
-}) {
-  const title = displayTitle(item);
-  const summary = displaySummary(item);
-  const tone = changeTone(item.changePercent);
-  const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
-  const contentDir = item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : 'auto';
-  const hasUrl = Boolean(item.url);
-
-  return (
-    <article className={styles.newsCard}>
-      <div className={styles.newsCardTop}>
-        <span className={styles.categoryTag}>{categoryLabelForItem(item, lang)}</span>
-        <span className={styles.newsTime}><Clock3 size={13} />{relativeTime(item.publishedAt, lang)}</span>
-      </div>
-      <h3 dir={contentDir}>{title}</h3>
-      {summary ? <p dir={contentDir}>{summary}</p> : null}
-      <div className={styles.newsMetaGrid}>
-        <span>{text.source}: <b>{item.source || text.source}</b></span>
-        {item.ticker ? <span dir="ltr">{item.ticker}</span> : null}
-        {typeof item.price === 'number' ? (
-          <span className={styles.newsPrice} dir="ltr">
-            {formatMoney(item.price, 'USD', locale)}
-            {typeof item.changePercent === 'number' ? (
-              <em className={styles[tone]}>
-                <TrendIcon size={12} />
-                {formatPercent(item.changePercent, locale)}
-              </em>
-            ) : null}
-          </span>
-        ) : null}
-        <span>{item.isTranslated ? text.translated : text.originalLanguage}</span>
-      </div>
-      <div className={styles.newsFooter}>
-        <span title={formatDateTime(item.publishedAt, locale)}>
-          <Clock3 size={13} />
-          {formatDateTime(item.publishedAt, locale)}
-        </span>
-        {hasUrl ? (
-          <a href={item.url} target="_blank" rel="noreferrer" aria-label={`${text.readArticle}: ${title}`}>
-            {text.readArticle}
-            <ExternalLink size={14} />
-          </a>
-        ) : (
-          <span className={styles.disabledLink}>
-            {text.noLink}
-            <ExternalLink size={14} />
-          </span>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function NewsSection({
-  items,
-  loading,
-  error,
-  activeFilter,
-  setActiveFilter,
-  query,
-  setQuery,
-  visibleCount,
-  setVisibleCount,
-  counts,
-  lang,
-  locale,
-  text,
-  retry,
-}: {
-  items: CyclicalNewsItem[];
-  loading: boolean;
-  error: string;
-  activeFilter: CyclicalFilterId;
-  setActiveFilter: (filter: CyclicalFilterId) => void;
-  query: string;
-  setQuery: (query: string) => void;
-  visibleCount: number;
-  setVisibleCount: (updater: (count: number) => number) => void;
-  counts: Record<CyclicalFilterId, number>;
-  lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
-  retry: () => void;
-}) {
-  const visibleItems = items.slice(0, visibleCount);
-  const hasMore = visibleCount < items.length;
-
-  return (
-    <section className={styles.newsPanel} aria-label={text.newsTitle}>
-      <div className={styles.newsHead}>
-        <PanelTitle icon={Newspaper} title={text.newsTitle} subtitle={text.newsSubtitle} />
-        <div className={styles.resultsCount}>
-          <span>{text.showing}</span>
-          <b>{Math.min(visibleCount, items.length)} / {items.length}</b>
-          <span>{text.results}</span>
-        </div>
-      </div>
-
-      <div className={styles.newsControls}>
-        <label className={styles.searchBox}>
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder={text.searchPlaceholder}
-            aria-label={text.searchPlaceholder}
-          />
-        </label>
-        <div className={styles.filterScroller} aria-label={text.filtersLabel}>
-          {FILTERS.map(filter => (
-            <button
-              type="button"
-              key={filter.id}
-              className={activeFilter === filter.id ? styles.activeFilter : ''}
-              onClick={() => setActiveFilter(filter.id)}
-            >
-              {filter.label[lang]}
-              <span>{counts[filter.id] ?? 0}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className={styles.newsGrid}>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <article className={styles.newsSkeleton} key={index}>
-              <SkeletonLine />
-              <SkeletonLine wide />
-              <SkeletonLine wide />
-              <SkeletonLine />
-            </article>
-          ))}
-        </div>
-      ) : error ? (
-        <div className={`${styles.stateBox} ${styles.errorState}`} role="alert">
-          <AlertTriangle size={24} />
-          <strong>{text.errorTitle}</strong>
-          <p>{error || text.errorBody}</p>
-          <button type="button" onClick={retry}>
-            <RefreshCcw size={15} />
-            {text.retry}
-          </button>
-        </div>
-      ) : items.length === 0 ? (
-        <div className={styles.stateBox}>
-          <Newspaper size={24} />
-          <strong>{text.emptyTitle}</strong>
-          <p>{text.emptyHint}</p>
+          })}
         </div>
       ) : (
-        <>
-          <div className={styles.newsGrid}>
-            {visibleItems.map(item => (
-              <NewsCard key={item.id} item={item} lang={lang} locale={locale} text={text} />
-            ))}
-          </div>
-          <div className={styles.loadMoreWrap}>
-            {hasMore ? (
-              <button type="button" onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}>
-                {text.showMore}
-                <ArrowUpRight size={15} />
-              </button>
-            ) : (
-              <span>{text.noMore}</span>
-            )}
-          </div>
-        </>
+        <StateBox icon={Info} title={text.historicalUnavailable} tone="info" />
       )}
     </section>
   );
 }
 
-function FeaturedStocks({
-  items,
-  loading,
-  lang,
-  locale,
-  text,
-}: {
-  items: CyclicalTickerItem[];
-  loading: boolean;
+function HighlightedStocks({ rows, text, lang, onViewAll }: {
+  rows: CyclicalStockRow[];
+  text: typeof COPY[LangCode];
   lang: LangCode;
-  locale: string;
-  text: typeof TEXT[LangCode];
+  onViewAll: () => void;
 }) {
-  const bySymbol = new Map(items.map(item => [item.symbol, item]));
-
+  const highlighted = rows
+    .slice()
+    .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))
+    .slice(0, 8);
   return (
-    <section className={styles.sectorGuidePanel} aria-label={text.featuredTitle}>
-      <PanelTitle icon={BriefcaseBusiness} title={text.featuredTitle} subtitle={text.featuredSubtitle} />
-      <div className={styles.sectorCards}>
-        {loading ? (
-          Array.from({ length: 8 }).map((_, index) => (
-            <article className={styles.sectorCard} key={index}>
-              <SkeletonLine />
-              <SkeletonLine wide />
-              <SkeletonLine wide />
-            </article>
-          ))
-        ) : FEATURED_SYMBOLS.map(symbol => {
-          const quote = bySymbol.get(symbol);
-          const tone = changeTone(quote?.changePercent);
+    <section className="panel">
+      <SectionHeader
+        icon={BriefcaseBusiness}
+        title={text.highlightedTitle}
+        description={text.highlightedDescription}
+        action={<button className="ghost-action" type="button" onClick={onViewAll}>{text.viewAllStocks}</button>}
+      />
+      <div className="stock-card-grid">
+        {highlighted.map(row => <StockCard key={row.symbol} row={row} text={text} lang={lang} compact />)}
+      </div>
+    </section>
+  );
+}
+
+function EducationGuide({ text, open, toggle, preview = false }: {
+  text: typeof COPY[LangCode];
+  open: EducationId[];
+  toggle: (id: EducationId) => void;
+  preview?: boolean;
+}) {
+  const ids = preview ? EDUCATION_IDS.slice(0, 4) : EDUCATION_IDS;
+  return (
+    <section className="panel">
+      <SectionHeader icon={BookOpen} title={text.educationPreview} description={text.educationPreviewBody} />
+      <div className="accordion-list">
+        {ids.map(id => {
+          const expanded = open.includes(id);
           return (
-            <article className={styles.sectorCard} key={symbol}>
-              <span className={styles.sectorIcon}><Sparkles size={21} /></span>
-              <h3>{quote?.name ?? symbol}</h3>
-              <div className={styles.symbolChips}>
-                <span dir="ltr">{symbol}</span>
-                <span>{FEATURED_META[symbol]?.sector[lang] ?? text.unavailable}</span>
-              </div>
-              <p>{FEATURED_META[symbol]?.body[lang] ?? text.unavailable}</p>
-              {quote ? (
-                <>
-                  <div className={styles.newsMetaGrid}>
-                    <span dir="ltr">{formatMoney(quote.price, quote.currency, locale)}</span>
-                    <span className={styles[tone]} dir="ltr">{formatPercent(quote.changePercent, locale)}</span>
-                    <span>{text.sector}: <b>{sectorLabel(quote.sector, lang)}</b></span>
-                  </div>
-                  <p>{text.priceSource}: {quote.source}</p>
-                </>
-              ) : (
-                <p>{text.unavailable}</p>
-              )}
-              <a href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}>
-                {text.details}
-                <ArrowUpRight size={14} />
-              </a>
+            <article className="accordion-card" key={id}>
+              <button
+                type="button"
+                onClick={() => toggle(id)}
+                aria-expanded={expanded}
+                aria-controls={`cyclical-guide-${id}`}
+              >
+                <span>{text.educationCards[id]}</span>
+                {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {expanded ? <p id={`cyclical-guide-${id}`}>{text.educationBody[id]}</p> : null}
             </article>
           );
         })}
@@ -1076,41 +1322,496 @@ function FeaturedStocks({
   );
 }
 
-function SectorGuide({
-  lang,
-  text,
-}: {
+function OverviewTab({ text, lang, rows, stats, movers, openGuide, toggleGuide, onViewAllStocks }: {
+  text: typeof COPY[LangCode];
   lang: LangCode;
-  text: typeof TEXT[LangCode];
+  rows: CyclicalStockRow[];
+  stats: SectorStat[];
+  movers: StockCategoryMoversResponse | null;
+  openGuide: EducationId[];
+  toggleGuide: (id: EducationId) => void;
+  onViewAllStocks: () => void;
 }) {
   return (
-    <section className={styles.sectorGuidePanel} aria-label={text.sectorGuideTitle}>
-      <PanelTitle icon={BookOpen} title={text.sectorGuideTitle} />
-      <div className={styles.sectorCards}>
-        {SECTOR_GUIDES.map(sector => {
-          const Icon = sector.icon;
+    <div className="tab-stack">
+      <EconomicCycleDashboard text={text} lang={lang} compact />
+      <SummaryCards text={text} lang={lang} rows={rows} stats={stats} />
+      <div className="overview-grid">
+        <ComparisonChart rows={rows} text={text} lang={lang} />
+        <MoversPanel movers={movers} text={text} lang={lang} />
+      </div>
+      <HighlightedStocks rows={rows} text={text} lang={lang} onViewAll={onViewAllStocks} />
+      <EducationGuide text={text} open={openGuide} toggle={toggleGuide} preview />
+    </div>
+  );
+}
+
+function MoversPanel({ movers, text, lang }: {
+  movers: StockCategoryMoversResponse | null;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+}) {
+  const gainers = movers?.ok ? movers.data.topGainers : [];
+  const losers = movers?.ok ? movers.data.topLosers : [];
+  const volume = movers?.ok ? movers.data.highestVolume : [];
+  return (
+    <section className="panel">
+      <SectionHeader icon={TrendingUp} title={text.strongestMover} description={movers?.ok ? `${text.source}: ${movers.source}` : text.providerError} />
+      <div className="mover-tabs">
+        <MoverList title={text.risingStocks} items={gainers} lang={lang} tone="positive" />
+        <MoverList title={text.fallingStocks} items={losers} lang={lang} tone="negative" />
+        <MoverList title={text.trackedStocks} items={volume} lang={lang} tone="info" />
+      </div>
+    </section>
+  );
+}
+
+function MoverList({ title, items, lang, tone }: { title: string; items: StockCategoryMoverItem[]; lang: LangCode; tone: Tone }) {
+  return (
+    <div className="mover-list">
+      <h3>{title}</h3>
+      {items.length ? items.map(item => (
+        <div className="mover-row" key={`${title}-${item.symbol}`}>
+          <span>{item.rank}</span>
+          <div>
+            <strong dir="ltr">{item.symbol}</strong>
+            <small>{item.name}</small>
+          </div>
+          <ToneBadge tone={tone}>{formatPercent(item.changePercent, lang)}</ToneBadge>
+        </div>
+      )) : <small className="muted">{COPY[lang].unavailable}</small>}
+    </div>
+  );
+}
+
+function StockCard({ row, text, lang, compact = false }: {
+  row: CyclicalStockRow;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  compact?: boolean;
+}) {
+  const changeTone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
+  return (
+    <article className={compact ? 'stock-card compact' : 'stock-card'}>
+      <div className="stock-card-head">
+        <span className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+        <div>
+          <strong>{row.name}</strong>
+          <span dir="ltr">{row.symbol}</span>
+        </div>
+        <ToneBadge tone={row.sensitivityTone}>{row.sectorSensitivity}</ToneBadge>
+      </div>
+      <div className="stock-metrics">
+        <div>
+          <small>{text.currentPrice}</small>
+          <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
+        </div>
+        <div>
+          <small>{text.change}</small>
+          <b dir="ltr" className={`num-${changeTone}`}>{formatPercent(row.changePercent, lang)}</b>
+        </div>
+        <div>
+          <small>{text.sector}</small>
+          <b>{row.sectorLabel}</b>
+        </div>
+        <div>
+          <small>{text.economicSensitivity}</small>
+          <b>{text.notEnoughFundamentals}</b>
+        </div>
+      </div>
+      {!compact ? (
+        <div className="stock-note">
+          <Info size={15} />
+          <span>{row.methodologyNote}</span>
+        </div>
+      ) : null}
+      <div className="stock-actions">
+        <button type="button">{text.viewAnalysis}</button>
+        <button type="button" className="secondary">{text.compare}</button>
+      </div>
+    </article>
+  );
+}
+
+function StocksTab({
+  text,
+  lang,
+  rows,
+  allRows,
+  search,
+  sector,
+  sort,
+  setSearch,
+  setSector,
+  setSort,
+  reset,
+  hasActiveFilters,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  rows: CyclicalStockRow[];
+  allRows: CyclicalStockRow[];
+  search: string;
+  sector: SectorId;
+  sort: StockSort;
+  setSearch: (value: string) => void;
+  setSector: (value: SectorId) => void;
+  setSort: (value: StockSort) => void;
+  reset: () => void;
+  hasActiveFilters: boolean;
+}) {
+  return (
+    <div className="tab-stack">
+      <section className="panel">
+        <SectionHeader icon={Filter} title={text.stocksTitle} description={text.stocksDescription} />
+        <FilterBar
+          text={text}
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder={text.searchPlaceholder}
+          sector={sector}
+          setSector={setSector}
+          sort={sort}
+          setSort={setSort}
+          sortOptions={[
+            ['sensitivity', text.economicSensitivity],
+            ['leastVolatile', text.volatility],
+            ['momentum', text.strongestMover],
+            ['name', text.company],
+            ['sector', text.sector],
+          ]}
+          hasActiveFilters={hasActiveFilters}
+          reset={reset}
+        />
+        <div className="results-toolbar">
+          <strong>{text.resultCount}: {formatNumber(rows.length, lang)}</strong>
+          {hasActiveFilters ? <button type="button" onClick={reset}>{text.clearFilters}</button> : null}
+        </div>
+        {rows.length ? (
+          <>
+            <div className="stock-table-wrap">
+              <table className="stock-table">
+                <thead>
+                  <tr>
+                    <th>{text.company}</th>
+                    <th>{text.sector}</th>
+                    <th>{text.currentPrice}</th>
+                    <th>{text.change}</th>
+                    <th>{text.beta}</th>
+                    <th>{text.debtToEbitda}</th>
+                    <th>{text.economicSensitivity}</th>
+                    <th>{text.portfolioStatus}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={row.symbol}>
+                      <td>
+                        <div className="company-cell">
+                          <span className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+                          <div>
+                            <strong>{row.name}</strong>
+                            <span dir="ltr">{row.symbol}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{row.sectorLabel}</td>
+                      <td dir="ltr">{formatCurrency(row.price, row.currency, lang)}</td>
+                      <td dir="ltr" className={(row.changePercent ?? 0) >= 0 ? 'num-positive' : 'num-negative'}>{formatPercent(row.changePercent, lang)}</td>
+                      <td>{text.unavailable}</td>
+                      <td>{text.unavailable}</td>
+                      <td><ToneBadge tone={row.sensitivityTone}>{row.sectorSensitivity}</ToneBadge></td>
+                      <td>{text.unavailable}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="stock-mobile-grid">
+              {rows.map(row => <StockCard key={`mobile-${row.symbol}`} row={row} text={text} lang={lang} />)}
+            </div>
+          </>
+        ) : (
+          <StateBox icon={Search} title={text.noStockResults} actionLabel={text.clearFilters} onAction={reset} />
+        )}
+      </section>
+      <section className="panel">
+        <SectionHeader icon={Info} title={text.howPhase} description={text.sensitivityMethodology} />
+        <div className="method-grid">
+          {[text.beta, text.revenueGrowth, text.earningsGrowth, text.drawdown, text.netDebt, text.interestCoverage].map(item => (
+            <span key={item}>{item}: {text.unavailable}</span>
+          ))}
+        </div>
+        <p className="muted paragraph">{allRows.length ? text.notEnoughFundamentals : text.providerError}</p>
+      </section>
+    </div>
+  );
+}
+
+function FilterBar({ text, search, setSearch, searchPlaceholder, sector, setSector, sort, setSort, sortOptions, hasActiveFilters, reset }: {
+  text: typeof COPY[LangCode];
+  search: string;
+  setSearch: (value: string) => void;
+  searchPlaceholder: string;
+  sector: SectorId;
+  setSector: (value: SectorId) => void;
+  sort: string;
+  setSort: (value: never) => void;
+  sortOptions: Array<[string, string]>;
+  hasActiveFilters: boolean;
+  reset: () => void;
+}) {
+  return (
+    <div className="filter-bar">
+      <label className="search-field">
+        <span>{text.search}</span>
+        <div>
+          <Search size={17} />
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={searchPlaceholder} />
+        </div>
+      </label>
+      <label>
+        <span>{text.sector}</span>
+        <select value={sector} onChange={event => setSector(event.target.value as SectorId)}>
+          <option value="all">{text.allSectors}</option>
+          {SECTORS.map(item => <option value={item.id} key={item.id}>{item.label.ar}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>{text.sort}</span>
+        <select value={sort} onChange={event => setSort(event.target.value as never)}>
+          {sortOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+        </select>
+      </label>
+      {hasActiveFilters ? <button type="button" className="clear-button" onClick={reset}>{text.clearFilters}</button> : null}
+    </div>
+  );
+}
+
+function NewsTab({
+  text,
+  lang,
+  featured,
+  regular,
+  total,
+  visibleCount,
+  setVisibleCount,
+  search,
+  sector,
+  source,
+  symbol,
+  time,
+  sort,
+  sources,
+  symbols,
+  setSearch,
+  setSector,
+  setSource,
+  setSymbol,
+  setTime,
+  setSort,
+  reset,
+  hasActiveFilters,
+  originalVisibleIds,
+  toggleOriginal,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  featured: CyclicalNewsItem[];
+  regular: CyclicalNewsItem[];
+  total: number;
+  visibleCount: number;
+  setVisibleCount: (value: number) => void;
+  search: string;
+  sector: SectorId;
+  source: string;
+  symbol: string;
+  time: NewsTimeFilter;
+  sort: NewsSort;
+  sources: string[];
+  symbols: string[];
+  setSearch: (value: string) => void;
+  setSector: (value: SectorId) => void;
+  setSource: (value: string) => void;
+  setSymbol: (value: string) => void;
+  setTime: (value: NewsTimeFilter) => void;
+  setSort: (value: NewsSort) => void;
+  reset: () => void;
+  hasActiveFilters: boolean;
+  originalVisibleIds: string[];
+  toggleOriginal: (id: string) => void;
+}) {
+  return (
+    <div className="tab-stack">
+      <section className="panel">
+        <SectionHeader icon={Newspaper} title={text.newsTitle} description={text.newsDescription} />
+        <div className="filter-bar news-filter-bar">
+          <label className="search-field wide">
+            <span>{text.search}</span>
+            <div>
+              <Search size={17} />
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder={text.newsSearchPlaceholder} />
+            </div>
+          </label>
+          <label>
+            <span>{text.sector}</span>
+            <select value={sector} onChange={event => setSector(event.target.value as SectorId)}>
+              <option value="all">{text.allSectors}</option>
+              {SECTORS.map(item => <option value={item.id} key={item.id}>{item.label[lang]}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>{text.sourceFilter}</span>
+            <select value={source} onChange={event => setSource(event.target.value)}>
+              <option value="all">{text.all}</option>
+              {sources.map(item => <option value={item} key={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>{text.symbolFilter}</span>
+            <select value={symbol} onChange={event => setSymbol(event.target.value)}>
+              <option value="all">{text.all}</option>
+              {symbols.map(item => <option value={item} key={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>{text.timeRange}</span>
+            <select value={time} onChange={event => setTime(event.target.value as NewsTimeFilter)}>
+              <option value="all">{text.all}</option>
+              <option value="day">{text.day}</option>
+              <option value="week">{text.week}</option>
+              <option value="month">{text.month}</option>
+            </select>
+          </label>
+          <label>
+            <span>{text.sort}</span>
+            <select value={sort} onChange={event => setSort(event.target.value as NewsSort)}>
+              <option value="latest">{text.latest}</option>
+              <option value="oldest">{text.oldest}</option>
+              <option value="strongestMove">{text.strongestMoveSort}</option>
+            </select>
+          </label>
+          {hasActiveFilters ? <button type="button" className="clear-button" onClick={reset}>{text.clearFilters}</button> : null}
+        </div>
+        <div className="results-toolbar">
+          <strong>{text.resultCount}: {formatNumber(total, lang)}</strong>
+          {hasActiveFilters ? <span>{text.activeFilters}</span> : null}
+        </div>
+      </section>
+
+      {total === 0 ? (
+        <StateBox icon={Search} title={text.noNewsResults} actionLabel={text.clearFilters} onAction={reset} />
+      ) : (
+        <>
+          <section className="featured-news">
+            <SectionHeader icon={Newspaper} title={text.featuredNews} />
+            <div className="featured-news-grid">
+              {featured.map((item, index) => (
+                <NewsCard
+                  key={item.id}
+                  item={item}
+                  text={text}
+                  lang={lang}
+                  featured={index === 0}
+                  showOriginal={originalVisibleIds.includes(item.id)}
+                  toggleOriginal={() => toggleOriginal(item.id)}
+                />
+              ))}
+            </div>
+          </section>
+          <section className="news-list">
+            {regular.map(item => (
+              <NewsRow
+                key={item.id}
+                item={item}
+                text={text}
+                lang={lang}
+                showOriginal={originalVisibleIds.includes(item.id)}
+                toggleOriginal={() => toggleOriginal(item.id)}
+              />
+            ))}
+            {visibleCount < total ? (
+              <button className="load-more" type="button" onClick={() => setVisibleCount(visibleCount + INITIAL_NEWS_LIMIT)}>
+                {text.loadMore}
+              </button>
+            ) : null}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function NewsCard({ item, text, lang, featured = false, showOriginal, toggleOriginal }: {
+  item: CyclicalNewsItem;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  featured?: boolean;
+  showOriginal: boolean;
+  toggleOriginal: () => void;
+}) {
+  const title = articleTitle(item);
+  const summary = articleSummary(item);
+  const url = safeExternalUrl(item.url);
+  return (
+    <article className={featured ? 'news-card featured' : 'news-card'}>
+      <div className="article-meta">
+        <span>{item.source}</span>
+        <span>{relativeTime(item.publishedAt, lang)}</span>
+        {item.ticker ? <span dir="ltr">{item.ticker}</span> : null}
+        {item.isTranslated ? <ToneBadge tone="info">{text.translated}</ToneBadge> : null}
+      </div>
+      <h3 dir="auto">{title}</h3>
+      {summary ? <p dir="auto">{summary}</p> : null}
+      {showOriginal && item.titleOriginal ? (
+        <blockquote dir="auto">{item.titleOriginal}</blockquote>
+      ) : null}
+      <div className="article-footer">
+        {item.titleOriginal && item.titleOriginal !== title ? (
+          <button type="button" onClick={toggleOriginal}>{showOriginal ? text.hideOriginal : text.showOriginal}</button>
+        ) : <span />}
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer nofollow">
+            {text.readArticle}
+            <ExternalLink size={15} />
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function NewsRow(props: Parameters<typeof NewsCard>[0]) {
+  return <NewsCard {...props} />;
+}
+
+function SectorsTab({ text, lang, stats }: { text: typeof COPY[LangCode]; lang: LangCode; stats: SectorStat[] }) {
+  return (
+    <section className="panel">
+      <SectionHeader icon={Layers3} title={text.sectorsTitle} description={text.sectorsDescription} />
+      <div className="sector-grid">
+        {stats.map(stat => {
+          const Icon = stat.icon;
           return (
-            <article className={styles.sectorCard} key={sector.id}>
-              <span className={styles.sectorIcon}><Icon size={21} /></span>
-              <h3>{sector.title[lang]}</h3>
-              <p>{sector.body[lang]}</p>
-              <div className={styles.symbolChips} aria-label={text.examples}>
-                {sector.symbols.map(symbol => {
-                  const name = CYCLICAL_SYMBOL_NAMES[symbol] ?? symbol;
-                  return (
-                    <a
-                      key={symbol}
-                      href={`/market-analysis?symbol=${encodeURIComponent(symbol)}`}
-                      title={`${name} · ${symbol}`}
-                      aria-label={`${name} ${symbol}`}
-                      dir="ltr"
-                    >
-                      <span className={styles.symbolCompany}>{name}</span>
-                      <span className={styles.symbolDivider} aria-hidden="true">·</span>
-                      <strong>{symbol}</strong>
-                    </a>
-                  );
-                })}
+            <article className="sector-card" key={stat.id}>
+              <div className="sector-head">
+                <span><Icon size={19} /></span>
+                <div>
+                  <h3>{stat.label[lang]}</h3>
+                  <p>{stat.description[lang]}</p>
+                </div>
+              </div>
+              <div className="sector-stat-row">
+                <span>{text.trackedStocks}</span>
+                <strong>{formatNumber(stat.count, lang)}</strong>
+              </div>
+              <div className="sector-stat-row">
+                <span>{text.sectorPerformance}</span>
+                <strong dir="ltr">{formatPercent(stat.averageChange, lang)}</strong>
+              </div>
+              <div className="sector-drivers">
+                <strong>{text.mainDrivers}</strong>
+                {stat.drivers[lang].map(driver => <span key={driver}>{driver}</span>)}
               </div>
             </article>
           );
@@ -1120,60 +1821,108 @@ function SectorGuide({
   );
 }
 
-function CycleRiskSection({ lang, text }: { lang: LangCode; text: typeof TEXT[LangCode] }) {
-  const strong = {
-    ar: ['عند تحسن النمو الاقتصادي', 'عند انخفاض أسعار الفائدة أو توقع خفضها', 'عند ارتفاع ثقة المستهلك', 'عند زيادة السفر والإنفاق', 'عند تحسن أرباح الشركات'],
-    en: ['Economic growth improves', 'Rates fall or cuts are expected', 'Consumer confidence rises', 'Travel and spending increase', 'Corporate earnings improve'],
-    fr: ['Croissance en amélioration', 'Taux en baisse ou anticipations de baisse', 'Confiance en hausse', 'Voyage et dépenses en hausse', 'Bénéfices en amélioration'],
-  };
-  const risks = {
-    ar: ['ارتفاع أسعار الفائدة', 'تباطؤ النمو الاقتصادي', 'تراجع إنفاق المستهلك', 'ضعف نتائج الأرباح', 'مخاوف الركود'],
-    en: ['Higher interest rates', 'Slowing economic growth', 'Lower consumer spending', 'Weak earnings results', 'Recession concerns'],
-    fr: ['Hausse des taux', 'Ralentissement économique', 'Dépense en baisse', 'Résultats faibles', 'Craintes de récession'],
-  };
-
+function EconomicCycleTab({ text, lang, openGuide, toggleGuide }: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  openGuide: EducationId[];
+  toggleGuide: (id: EducationId) => void;
+}) {
   return (
-    <section className={styles.sectorGuidePanel} aria-label={text.cycleTitle}>
-      <PanelTitle icon={ShieldCheck} title={text.cycleTitle} />
-      <div className={styles.comparisonGrid}>
-        <div className={styles.defensiveColumn}>
-          <strong>{text.cycleTitle}</strong>
-          {strong[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-        <div className={styles.cyclicalColumn}>
-          <strong>{text.riskTitle}</strong>
-          {risks[lang].map(point => <span key={point}>{point}</span>)}
-        </div>
-      </div>
-    </section>
+    <div className="tab-stack">
+      <EconomicCycleDashboard text={text} lang={lang} />
+      <EducationGuide text={text} open={openGuide} toggle={toggleGuide} />
+    </div>
   );
 }
 
 export function CyclicalStocksNewsPage() {
   const { dir, lang } = useLanguage();
   const activeLang = (lang === 'en' || lang === 'fr' ? lang : 'ar') as LangCode;
-  const text = TEXT[activeLang];
-  const locale = localeFor(activeLang);
-  const [tickerItems, setTickerItems] = useState<CyclicalTickerItem[]>([]);
-  const [newsItems, setNewsItems] = useState<CyclicalNewsItem[]>([]);
+  const text = COPY[activeLang];
+  const initialState = useMemo(readInitialUrlState, []);
+
+  const [tab, setTab] = useState<CyclicalTab>(initialState.tab);
+  const [ticker, setTicker] = useState<CyclicalTickerResponse | null>(null);
+  const [news, setNews] = useState<CyclicalNewsResponse | null>(null);
   const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
-  const [tickerUpdatedAt, setTickerUpdatedAt] = useState('');
-  const [newsUpdatedAt, setNewsUpdatedAt] = useState('');
-  const [moversUpdatedAt, setMoversUpdatedAt] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [newsError, setNewsError] = useState('');
-  const [marketError, setMarketError] = useState('');
-  const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<CyclicalFilterId>('all');
-  const [visibleCount, setVisibleCount] = useState(NEWS_PAGE_SIZE);
-  const debouncedQuery = useDebouncedValue(query, 250);
+  const [error, setError] = useState('');
+  const [stockSearch, setStockSearch] = useState(initialState.stockSearch);
+  const [stockSector, setStockSector] = useState<SectorId>(initialState.stockSector);
+  const [stockSort, setStockSort] = useState<StockSort>(initialState.stockSort);
+  const [newsSearch, setNewsSearch] = useState(initialState.newsSearch);
+  const [newsSectorValue, setNewsSectorValue] = useState<SectorId>(initialState.newsSectorValue);
+  const [newsSourceValue, setNewsSourceValue] = useState(initialState.newsSourceValue);
+  const [newsSymbolValue, setNewsSymbolValue] = useState(initialState.newsSymbolValue);
+  const [newsTimeValue, setNewsTimeValue] = useState<NewsTimeFilter>(initialState.newsTimeValue);
+  const [newsSortValue, setNewsSortValue] = useState<NewsSort>(initialState.newsSortValue);
+  const [visibleNewsCount, setVisibleNewsCount] = useState(INITIAL_NEWS_LIMIT);
+  const [openGuide, setOpenGuide] = useState<EducationId[]>([]);
+  const [originalVisibleIds, setOriginalVisibleIds] = useState<string[]>([]);
 
-  const loadData = useCallback(async (showLoader = true) => {
-    if (showLoader) setLoading(true);
-    setRefreshing(!showLoader);
-    setNewsError('');
-    setMarketError('');
+  const debouncedStockSearch = useDebouncedValue(stockSearch);
+  const debouncedNewsSearch = useDebouncedValue(newsSearch);
+
+  const writeUrl = useCallback((overrides: Partial<ReturnType<typeof readInitialUrlState>> = {}, mode: 'replace' | 'push' = 'replace') => {
+    if (typeof window === 'undefined') return;
+    const state = {
+      tab,
+      stockSearch,
+      stockSector,
+      stockSort,
+      newsSearch,
+      newsSectorValue,
+      newsSourceValue,
+      newsSymbolValue,
+      newsTimeValue,
+      newsSortValue,
+      ...overrides,
+    };
+    const url = new URL(window.location.href);
+    const setOrDelete = (key: string, value: string, defaultValue: string) => {
+      if (!value || value === defaultValue) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+    };
+    setOrDelete('tab', state.tab, 'overview');
+    setOrDelete('q', state.stockSearch, '');
+    setOrDelete('sector', state.stockSector, 'all');
+    setOrDelete('sort', state.stockSort, 'sensitivity');
+    setOrDelete('nq', state.newsSearch, '');
+    setOrDelete('nsector', state.newsSectorValue, 'all');
+    setOrDelete('source', state.newsSourceValue, 'all');
+    setOrDelete('symbol', state.newsSymbolValue, 'all');
+    setOrDelete('time', state.newsTimeValue, 'all');
+    setOrDelete('nsort', state.newsSortValue, 'latest');
+    window.history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+  }, [newsSearch, newsSectorValue, newsSortValue, newsSourceValue, newsSymbolValue, newsTimeValue, stockSearch, stockSector, stockSort, tab]);
+
+  useEffect(() => {
+    const handler = () => {
+      const next = readInitialUrlState();
+      setTab(next.tab);
+      setStockSearch(next.stockSearch);
+      setStockSector(next.stockSector);
+      setStockSort(next.stockSort);
+      setNewsSearch(next.newsSearch);
+      setNewsSectorValue(next.newsSectorValue);
+      setNewsSourceValue(next.newsSourceValue);
+      setNewsSymbolValue(next.newsSymbolValue);
+      setNewsTimeValue(next.newsTimeValue);
+      setNewsSortValue(next.newsSortValue);
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  useEffect(() => {
+    writeUrl();
+  }, [writeUrl]);
+
+  const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setLoading(true);
+    else setRefreshing(true);
+    setError('');
 
     const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
       fetchJson<CyclicalTickerResponse>('/api/cyclical-stocks/ticker'),
@@ -1181,152 +1930,1292 @@ export function CyclicalStocksNewsPage() {
       fetchJson<StockCategoryMoversResponse>('/api/cyclical-stocks/movers?limit=5'),
     ]);
 
-    if (tickerResult.status === 'fulfilled' && tickerResult.value.ok) {
-      setTickerItems(tickerResult.value.items);
-      setTickerUpdatedAt(tickerResult.value.updated_at);
-    } else {
-      setTickerItems([]);
-      setTickerUpdatedAt('');
-      setMarketError(text.tickerEmpty);
-    }
+    if (tickerResult.status === 'fulfilled') setTicker(tickerResult.value);
+    else setTicker({ ok: false, code: 'CYCLICAL_TICKER_UNAVAILABLE', source: null, updated_at: null, items: [] });
 
-    if (newsResult.status === 'fulfilled' && newsResult.value.success) {
-      setNewsItems(newsResult.value.items);
-      setNewsUpdatedAt(newsResult.value.lastUpdated);
-    } else {
-      setNewsItems([]);
-      setNewsUpdatedAt('');
-      const reason = newsResult.status === 'fulfilled'
-        ? !newsResult.value.success ? newsResult.value.reason || newsResult.value.error : ''
-        : newsResult.reason instanceof Error ? newsResult.reason.message : '';
-      setNewsError(reason || text.errorBody);
-    }
+    if (newsResult.status === 'fulfilled') setNews(newsResult.value);
+    else setNews({ success: false, error: 'news_unavailable', reason: newsResult.reason instanceof Error ? newsResult.reason.message : 'unknown' });
 
-    if (moversResult.status === 'fulfilled') {
-      setMovers(moversResult.value);
-      setMoversUpdatedAt(moversResult.value.ok ? moversResult.value.updated_at : '');
-    } else {
-      setMovers(null);
-      setMoversUpdatedAt('');
-    }
+    if (moversResult.status === 'fulfilled') setMovers(moversResult.value);
+    else setMovers(null);
 
+    if (tickerResult.status === 'rejected' || newsResult.status === 'rejected') setError(text.providerError);
     setLoading(false);
     setRefreshing(false);
-  }, [activeLang, text.errorBody, text.tickerEmpty]);
+  }, [activeLang, text.providerError]);
 
   useEffect(() => {
-    void loadData(true);
+    void loadData('initial');
   }, [loadData]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      void loadData(false);
-    }, AUTO_REFRESH_MS);
-    return () => window.clearInterval(interval);
+    const timer = window.setInterval(() => void loadData('refresh'), AUTO_REFRESH_MS);
+    return () => window.clearInterval(timer);
   }, [loadData]);
 
   useEffect(() => {
-    setVisibleCount(NEWS_PAGE_SIZE);
-  }, [activeFilter, debouncedQuery]);
+    setVisibleNewsCount(INITIAL_NEWS_LIMIT);
+  }, [debouncedNewsSearch, newsSectorValue, newsSortValue, newsSourceValue, newsSymbolValue, newsTimeValue]);
 
-  const lastUpdated = useMemo(
-    () => newestTimestamp([tickerUpdatedAt, newsUpdatedAt, moversUpdatedAt]),
-    [moversUpdatedAt, newsUpdatedAt, tickerUpdatedAt],
+  const stockRows = useMemo(
+    () => (ticker?.ok ? ticker.items.map(item => toStockRow(item, activeLang)) : []),
+    [activeLang, ticker],
   );
 
-  const searchableItems = useMemo(
-    () => newsItems.filter(item => itemMatchesSearch(item, debouncedQuery)),
-    [debouncedQuery, newsItems],
-  );
+  const sectorStats = useMemo<SectorStat[]>(() => {
+    return SECTORS.map(sector => {
+      const rows = stockRows.filter(row => row.sectorId === sector.id);
+      const changes = rows.map(row => row.changePercent).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      return {
+        ...sector,
+        count: rows.length,
+        averageChange: changes.length ? changes.reduce((sum, value) => sum + value, 0) / changes.length : null,
+        rising: rows.filter(row => (row.changePercent ?? 0) > 0).length,
+        falling: rows.filter(row => (row.changePercent ?? 0) < 0).length,
+      };
+    });
+  }, [stockRows]);
 
-  const counts = useMemo(() => {
-    return FILTERS.reduce((acc, filter) => {
-      acc[filter.id] = searchableItems.filter(item => itemMatchesFilter(item, filter.id)).length;
-      return acc;
-    }, {} as Record<CyclicalFilterId, number>);
-  }, [searchableItems]);
+  const filteredStocks = useMemo(() => {
+    const rows = stockRows.filter(row => {
+      const sectorMatch = stockSector === 'all' || row.sectorId === stockSector;
+      return sectorMatch && stockMatchesSearch(row, debouncedStockSearch);
+    });
+    return sortStocks(rows, stockSort);
+  }, [debouncedStockSearch, stockRows, stockSector, stockSort]);
+
+  const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
+  const newsSources = useMemo(() => uniqueOptions(dedupedNews.map(item => item.source)), [dedupedNews]);
+  const newsSymbols = useMemo(() => uniqueOptions(dedupedNews.map(item => item.ticker?.toUpperCase())), [dedupedNews]);
 
   const filteredNews = useMemo(() => {
-    return searchableItems
-      .filter(item => itemMatchesFilter(item, activeFilter))
-      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-  }, [activeFilter, searchableItems]);
+    const items = dedupedNews.filter(item => {
+      const sectorMatch = newsSectorValue === 'all' || newsSector(item) === newsSectorValue;
+      const sourceMatch = newsSourceValue === 'all' || item.source === newsSourceValue;
+      const symbolMatch = newsSymbolValue === 'all' || item.ticker?.toUpperCase() === newsSymbolValue;
+      return sectorMatch
+        && sourceMatch
+        && symbolMatch
+        && isWithinTimeFilter(item.publishedAt, newsTimeValue)
+        && newsMatchesSearch(item, debouncedNewsSearch);
+    });
+    return sortNews(items, newsSortValue);
+  }, [debouncedNewsSearch, dedupedNews, newsSectorValue, newsSortValue, newsSourceValue, newsSymbolValue, newsTimeValue]);
 
-  const topMoverRows = useMemo(() => {
-    if (!movers?.ok) return [];
-    return movers.data.topGainers.length > 0 ? movers.data.topGainers : movers.data.highestPrice;
-  }, [movers]);
+  const featuredNews = filteredNews.slice(0, 3);
+  const regularNews = filteredNews.slice(3, visibleNewsCount);
+
+  const lastQuoteUpdate = ticker?.ok ? ticker.updated_at : null;
+  const lastNewsUpdate = news?.success ? news.lastUpdated : null;
+  const lastUpdate = newestTimestamp([lastQuoteUpdate, lastNewsUpdate, movers?.ok ? movers.updated_at : null]);
+
+  const resetStockFilters = () => {
+    setStockSearch('');
+    setStockSector('all');
+    setStockSort('sensitivity');
+  };
+
+  const resetNewsFilters = () => {
+    setNewsSearch('');
+    setNewsSectorValue('all');
+    setNewsSourceValue('all');
+    setNewsSymbolValue('all');
+    setNewsTimeValue('all');
+    setNewsSortValue('latest');
+  };
+
+  const toggleGuide = (id: EducationId) => {
+    setOpenGuide(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const toggleOriginal = (id: string) => {
+    setOriginalVisibleIds(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+  };
+
+  const selectTab = (next: CyclicalTab) => {
+    setTab(next);
+    writeUrl({ tab: next }, 'push');
+  };
+
+  const hasActiveStockFilters = stockSearch.trim() || stockSector !== 'all' || stockSort !== 'sensitivity';
+  const hasActiveNewsFilters = newsSearch.trim() || newsSectorValue !== 'all' || newsSourceValue !== 'all' || newsSymbolValue !== 'all' || newsTimeValue !== 'all' || newsSortValue !== 'latest';
 
   return (
-    <div className={styles.page} dir={dir}>
+    <div className="page" dir={dir}>
       <Sidebar />
-      <main className={styles.main}>
-        <div className={styles.container}>
-          <header className={styles.header}>
-            <div className={styles.headerCopy}>
-              <span className={styles.eyebrow}><Activity size={15} />{text.delayed}</span>
+      <main id="main-content" className="main">
+        <div className="container">
+          <header className="hero">
+            <div className="hero-copy">
+              <span className="eyebrow"><LineChart size={16} />{text.badge}</span>
               <h1>{text.title}</h1>
               <p>{text.subtitle}</p>
+              <div className="hero-meta">
+                <span><Clock3 size={15} />{text.lastQuoteUpdate}: {formatDateTime(lastQuoteUpdate, activeLang)}</span>
+                <span><Newspaper size={15} />{text.lastNewsUpdate}: {formatDateTime(lastNewsUpdate, activeLang)}</span>
+                <span><BarChart3 size={15} />{text.lastMacroUpdate}: {text.unavailable}</span>
+              </div>
             </div>
-            <div className={styles.headerActions}>
-              <button type="button" onClick={() => void loadData(false)} disabled={refreshing}>
-                <RefreshCcw size={16} className={refreshing ? styles.spin : ''} />
+            <div className="hero-panel">
+              <div>
+                <ToneBadge tone={ticker?.ok ? 'positive' : 'warning'}>{ticker?.ok ? text.connected : text.partial}</ToneBadge>
+                <strong>{lastUpdate ? relativeTime(lastUpdate, activeLang) : text.unavailable}</strong>
+                <p>{text.delayed}</p>
+              </div>
+              <button className="refresh-button" type="button" onClick={() => void loadData('refresh')} disabled={refreshing}>
+                <RefreshCcw size={17} className={refreshing ? 'spin' : undefined} />
                 {refreshing ? text.refreshing : text.refresh}
               </button>
-              <span>
-                <Clock3 size={14} />
-                {text.lastUpdated}: {lastUpdated ? formatDateTime(lastUpdated, locale) : text.notUpdated}
-              </span>
-              <small>{text.autoRefresh}</small>
             </div>
           </header>
 
-          <CyclicalTicker items={tickerItems} loading={loading} error={marketError} text={text} lang={activeLang} locale={locale} />
+          {error ? <StateBox icon={AlertTriangle} title={error} tone="warning" actionLabel={text.retry} onAction={() => void loadData('refresh')} /> : null}
 
-          <section className={styles.summaryGrid} aria-label={text.sectorTitle}>
-            <WhatCyclicalCard text={text} />
-            <SectorMiniCard lang={activeLang} text={text} />
-            <ComparisonCard lang={activeLang} text={text} />
-            <MovementCard movers={topMoverRows} tickerItems={tickerItems} loading={loading} text={text} lang={activeLang} locale={locale} />
-          </section>
+          <TickerStrip rows={stockRows} loading={loading} lang={activeLang} />
 
-          <DriversSection lang={activeLang} text={text} />
+          <nav className="tabs" role="tablist" aria-label={text.title}>
+            {TAB_IDS.map(item => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                className={tab === item ? 'tab active' : 'tab'}
+                aria-selected={tab === item}
+                onClick={() => selectTab(item)}
+              >
+                {text.tabs[item]}
+              </button>
+            ))}
+          </nav>
 
-          <NewsSection
-            items={filteredNews}
-            loading={loading}
-            error={newsError}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            query={query}
-            setQuery={setQuery}
-            visibleCount={visibleCount}
-            setVisibleCount={setVisibleCount}
-            counts={counts}
-            lang={activeLang}
-            locale={locale}
-            text={text}
-            retry={() => void loadData(true)}
-          />
+          {loading ? (
+            <section className="loading-grid" aria-live="polite">
+              {Array.from({ length: 6 }).map((_, index) => <div className="skeleton-card" key={index} />)}
+            </section>
+          ) : null}
 
-          <FeaturedStocks items={tickerItems} loading={loading} lang={activeLang} locale={locale} text={text} />
+          {!loading && tab === 'overview' ? (
+            <OverviewTab
+              text={text}
+              lang={activeLang}
+              rows={stockRows}
+              stats={sectorStats}
+              movers={movers}
+              openGuide={openGuide}
+              toggleGuide={toggleGuide}
+              onViewAllStocks={() => selectTab('stocks')}
+            />
+          ) : null}
 
-          <SectorGuide
-            lang={activeLang}
-            text={text}
-          />
+          {!loading && tab === 'stocks' ? (
+            <StocksTab
+              text={text}
+              lang={activeLang}
+              rows={filteredStocks}
+              allRows={stockRows}
+              search={stockSearch}
+              sector={stockSector}
+              sort={stockSort}
+              setSearch={setStockSearch}
+              setSector={setStockSector}
+              setSort={setStockSort}
+              reset={resetStockFilters}
+              hasActiveFilters={Boolean(hasActiveStockFilters)}
+            />
+          ) : null}
 
-          <CycleRiskSection lang={activeLang} text={text} />
+          {!loading && tab === 'news' ? (
+            <NewsTab
+              text={text}
+              lang={activeLang}
+              featured={featuredNews}
+              regular={regularNews}
+              total={filteredNews.length}
+              visibleCount={visibleNewsCount}
+              setVisibleCount={setVisibleNewsCount}
+              search={newsSearch}
+              sector={newsSectorValue}
+              source={newsSourceValue}
+              symbol={newsSymbolValue}
+              time={newsTimeValue}
+              sort={newsSortValue}
+              sources={newsSources}
+              symbols={newsSymbols}
+              setSearch={setNewsSearch}
+              setSector={setNewsSectorValue}
+              setSource={setNewsSourceValue}
+              setSymbol={setNewsSymbolValue}
+              setTime={setNewsTimeValue}
+              setSort={setNewsSortValue}
+              reset={resetNewsFilters}
+              hasActiveFilters={Boolean(hasActiveNewsFilters)}
+              originalVisibleIds={originalVisibleIds}
+              toggleOriginal={toggleOriginal}
+            />
+          ) : null}
 
-          <section className={styles.disclaimer}>
-            <span><Info size={20} /></span>
+          {!loading && tab === 'sectors' ? <SectorsTab text={text} lang={activeLang} stats={sectorStats} /> : null}
+
+          {!loading && tab === 'economic-cycle' ? (
+            <EconomicCycleTab text={text} lang={activeLang} openGuide={openGuide} toggleGuide={toggleGuide} />
+          ) : null}
+
+          <footer className="footer-note">
+            <Info size={18} />
             <div>
-              <h2>{text.disclaimerTitle}</h2>
-              <p>{text.disclaimerBody}</p>
+              <strong>{text.disclaimerTitle}</strong>
+              <p>{text.disclaimer}</p>
             </div>
-          </section>
+          </footer>
         </div>
       </main>
+
+      <style jsx>{`
+        .page {
+          min-height: 100dvh;
+          background:
+            radial-gradient(circle at top left, rgba(30, 184, 214, 0.13), transparent 34rem),
+            linear-gradient(180deg, #f5fbff 0%, #edf7ff 48%, #f8fbff 100%);
+          color: #10233d;
+        }
+        .main {
+          min-width: 0;
+          padding: 24px clamp(16px, 2vw, 32px) 56px;
+          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+        }
+        :global([dir="ltr"]) .main {
+          padding-inline-start: clamp(16px, 2vw, 32px);
+          padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+        }
+        .container {
+          width: min(100%, 1500px);
+          margin-inline: auto;
+          display: grid;
+          gap: 22px;
+        }
+        .hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 360px;
+          gap: 22px;
+          align-items: stretch;
+          padding: 26px;
+          border: 1px solid rgba(63, 127, 158, 0.22);
+          border-radius: 24px;
+          background:
+            linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(9, 78, 101, 0.9)),
+            radial-gradient(circle at 12% 20%, rgba(42, 213, 235, 0.32), transparent 22rem);
+          color: #f8fdff;
+          box-shadow: 0 24px 60px rgba(10, 42, 75, 0.16);
+          overflow: hidden;
+        }
+        .hero-copy,
+        .hero-panel,
+        .tab-stack,
+        .panel,
+        .stock-card,
+        .news-card,
+        .sector-card,
+        .accordion-card {
+          min-width: 0;
+        }
+        .hero-copy {
+          display: grid;
+          align-content: center;
+          gap: 13px;
+        }
+        .eyebrow,
+        .hero-meta,
+        .article-meta,
+        .section-icon,
+        .badge,
+        .footer-note,
+        .stock-note,
+        .results-toolbar {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .eyebrow {
+          width: max-content;
+          max-width: 100%;
+          border: 1px solid rgba(120, 230, 239, 0.24);
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.08);
+          color: #b7fbff;
+          font-weight: 900;
+          font-size: 13px;
+        }
+        .hero h1 {
+          margin: 0;
+          font-size: clamp(30px, 4vw, 46px);
+          line-height: 1.08;
+          letter-spacing: 0;
+          font-weight: 950;
+        }
+        .hero p {
+          margin: 0;
+          max-width: 820px;
+          color: rgba(235, 250, 255, 0.84);
+          font-size: 16px;
+          line-height: 1.85;
+          font-weight: 750;
+        }
+        .hero-meta {
+          display: flex;
+          flex-wrap: wrap;
+          color: rgba(235, 250, 255, 0.78);
+          font-size: 13px;
+          font-weight: 800;
+        }
+        .hero-panel {
+          display: grid;
+          align-content: space-between;
+          gap: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 20px;
+          padding: 18px;
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .hero-panel strong {
+          display: block;
+          margin-top: 12px;
+          color: #ffffff;
+          font-size: 20px;
+          line-height: 1.35;
+        }
+        .refresh-button,
+        .ghost-action,
+        .clear-button,
+        .load-more,
+        .stock-actions button,
+        .article-footer button,
+        .article-footer a,
+        .state-box button {
+          min-height: 44px;
+          border-radius: 13px;
+          border: 1px solid rgba(29, 140, 255, 0.18);
+          padding: 0 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font: 900 14px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          text-decoration: none;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+        .refresh-button {
+          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          border: 0;
+          color: #ffffff;
+          box-shadow: 0 16px 34px rgba(29, 140, 255, 0.25);
+        }
+        .refresh-button:disabled {
+          cursor: progress;
+          opacity: 0.78;
+        }
+        .refresh-button:hover,
+        .ghost-action:hover,
+        .clear-button:hover,
+        .load-more:hover,
+        .stock-actions button:hover,
+        .article-footer a:hover,
+        .article-footer button:hover,
+        .state-box button:hover {
+          transform: translateY(-1px);
+        }
+        .refresh-button:focus-visible,
+        .ghost-action:focus-visible,
+        .clear-button:focus-visible,
+        .load-more:focus-visible,
+        .stock-actions button:focus-visible,
+        .article-footer a:focus-visible,
+        .article-footer button:focus-visible,
+        .tabs button:focus-visible,
+        .accordion-card button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+          outline: 3px solid rgba(24, 212, 212, 0.35);
+          outline-offset: 3px;
+        }
+        .spin {
+          animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .ticker-strip {
+          display: grid;
+          grid-auto-flow: column;
+          grid-auto-columns: minmax(230px, 1fr);
+          gap: 14px;
+          overflow-x: auto;
+          padding-block-end: 4px;
+          scrollbar-width: thin;
+        }
+        .ticker-item,
+        .ticker-skeleton {
+          min-height: 92px;
+          border: 1px solid rgba(41, 104, 139, 0.16);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.88);
+          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.07);
+        }
+        .ticker-item {
+          padding: 15px;
+          display: grid;
+          gap: 12px;
+        }
+        .ticker-item strong {
+          color: #0b2442;
+          font-size: 17px;
+          font-weight: 950;
+        }
+        .ticker-item span {
+          color: #637991;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .ticker-values {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .ticker-values b,
+        .metric-card strong,
+        .stock-metrics b,
+        .bar-row b {
+          font-variant-numeric: tabular-nums;
+        }
+        .tabs {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding: 8px;
+          border: 1px solid rgba(41, 104, 139, 0.14);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.74);
+          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.06);
+        }
+        .tab {
+          min-height: 44px;
+          white-space: nowrap;
+          border: 0;
+          border-radius: 13px;
+          background: transparent;
+          color: #45637e;
+          padding: 0 16px;
+          font: 900 14px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+        }
+        .tab.active {
+          color: #ffffff;
+          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          box-shadow: 0 12px 28px rgba(29, 140, 255, 0.22);
+        }
+        .tab-stack {
+          display: grid;
+          gap: 22px;
+        }
+        .panel,
+        .featured-news,
+        .news-list,
+        .state-box,
+        .footer-note {
+          border: 1px solid rgba(41, 104, 139, 0.15);
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.92);
+          box-shadow: 0 16px 38px rgba(8, 38, 73, 0.07);
+        }
+        .panel,
+        .featured-news,
+        .news-list {
+          padding: 22px;
+        }
+        .section-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .section-header > div:first-child {
+          display: grid;
+          gap: 8px;
+          min-width: 0;
+        }
+        .section-icon {
+          width: 38px;
+          height: 38px;
+          justify-content: center;
+          border-radius: 12px;
+          background: rgba(29, 140, 255, 0.09);
+          color: #1477d4;
+        }
+        .section-header h2 {
+          margin: 0;
+          color: #0b2442;
+          font-size: clamp(20px, 2vw, 25px);
+          font-weight: 950;
+          line-height: 1.25;
+        }
+        .section-header p,
+        .paragraph,
+        .sector-card p,
+        .news-card p,
+        .accordion-card p {
+          margin: 0;
+          color: #5d7288;
+          font-size: 14px;
+          line-height: 1.85;
+          font-weight: 750;
+        }
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .metric-card {
+          border: 1px solid rgba(41, 104, 139, 0.15);
+          border-radius: 18px;
+          background: #ffffff;
+          padding: 16px;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 12px;
+          align-items: center;
+          min-height: 116px;
+        }
+        .metric-card > span {
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: rgba(29, 140, 255, 0.08);
+          color: #1477d4;
+        }
+        .metric-card small {
+          display: block;
+          color: #688096;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .metric-card strong {
+          display: block;
+          margin-top: 4px;
+          color: #0b2442;
+          font-size: 22px;
+          line-height: 1.2;
+          font-weight: 950;
+        }
+        .metric-card em {
+          display: block;
+          margin-top: 5px;
+          color: #7890a5;
+          font-size: 12px;
+          font-style: normal;
+          font-weight: 800;
+        }
+        .overview-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+          gap: 22px;
+        }
+        .cycle-phase {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          border: 1px solid rgba(245, 158, 11, 0.22);
+          border-radius: 18px;
+          background: rgba(255, 251, 235, 0.68);
+          padding: 16px;
+          margin-bottom: 16px;
+        }
+        .phase-label {
+          display: block;
+          color: #8a5b0a;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .cycle-phase strong {
+          display: block;
+          margin-block: 5px;
+          color: #0b2442;
+          font-size: 20px;
+          font-weight: 950;
+        }
+        .macro-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .macro-item,
+        .sector-stat-row,
+        .method-grid span {
+          border: 1px solid rgba(41, 104, 139, 0.12);
+          border-radius: 14px;
+          background: #f8fbff;
+          padding: 12px;
+        }
+        .macro-item span,
+        .sector-stat-row span {
+          display: block;
+          color: #60778e;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .macro-item strong,
+        .sector-stat-row strong {
+          display: block;
+          margin-top: 5px;
+          color: #0b2442;
+          font-weight: 950;
+        }
+        .macro-item small {
+          display: block;
+          margin-top: 5px;
+          color: #7b8fa3;
+          font-weight: 750;
+        }
+        .bar-chart {
+          display: grid;
+          gap: 14px;
+        }
+        .bar-row {
+          display: grid;
+          grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+        }
+        .bar-label {
+          display: grid;
+          min-width: 0;
+        }
+        .bar-label strong {
+          color: #0b2442;
+          font-weight: 950;
+        }
+        .bar-label span {
+          overflow: hidden;
+          color: #60778e;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .bar-track {
+          block-size: 12px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #e6f0f8;
+        }
+        .bar {
+          display: block;
+          block-size: 100%;
+          border-radius: inherit;
+        }
+        .bar.positive {
+          background: linear-gradient(90deg, #14b87a, #7de3ba);
+        }
+        .bar.negative {
+          background: linear-gradient(90deg, #ef4444, #fca5a5);
+        }
+        .mover-tabs {
+          display: grid;
+          gap: 14px;
+        }
+        .mover-list {
+          display: grid;
+          gap: 9px;
+        }
+        .mover-list h3 {
+          margin: 0;
+          color: #0b2442;
+          font-size: 15px;
+          font-weight: 950;
+        }
+        .mover-row {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          border-radius: 14px;
+          background: #f8fbff;
+          padding: 10px;
+        }
+        .mover-row > span:first-child {
+          width: 28px;
+          height: 28px;
+          display: grid;
+          place-items: center;
+          border-radius: 9px;
+          background: #eaf6ff;
+          color: #1477d4;
+          font-weight: 950;
+        }
+        .mover-row strong {
+          display: block;
+          color: #0b2442;
+          font-weight: 950;
+        }
+        .mover-row small,
+        .muted {
+          color: #72879b;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .stock-card-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .stock-card {
+          display: grid;
+          gap: 15px;
+          border: 1px solid rgba(41, 104, 139, 0.14);
+          border-radius: 18px;
+          background: #ffffff;
+          padding: 16px;
+        }
+        .stock-card.compact {
+          align-content: start;
+        }
+        .stock-card-head,
+        .company-cell,
+        .sector-head {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+        .stock-card-head {
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .stock-card-head > div,
+        .company-cell > div {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+        }
+        .stock-card-head strong,
+        .company-cell strong {
+          overflow: hidden;
+          color: #0b2442;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 16px;
+          font-weight: 950;
+        }
+        .stock-card-head span,
+        .company-cell span {
+          color: #62778d;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .stock-logo {
+          flex: 0 0 auto;
+          width: 46px;
+          height: 46px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #eff8ff, #dff9fb);
+          color: #0c6fb3;
+          font-weight: 950;
+        }
+        .stock-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .stock-metrics div {
+          border-radius: 13px;
+          background: #f7fbff;
+          padding: 10px;
+          min-width: 0;
+        }
+        .stock-metrics small {
+          display: block;
+          color: #637991;
+          font-size: 11px;
+          font-weight: 850;
+        }
+        .stock-metrics b {
+          display: block;
+          margin-top: 4px;
+          overflow-wrap: anywhere;
+          color: #0b2442;
+          font-size: 14px;
+          font-weight: 950;
+        }
+        .stock-note {
+          align-items: flex-start;
+          color: #60778e;
+          border-radius: 13px;
+          background: #f8fbff;
+          padding: 10px;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.65;
+        }
+        .stock-actions,
+        .article-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-top: auto;
+        }
+        .stock-actions button {
+          flex: 1;
+          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          color: #ffffff;
+          border: 0;
+        }
+        .stock-actions button.secondary,
+        .article-footer button,
+        .ghost-action,
+        .clear-button,
+        .load-more,
+        .state-box button {
+          background: #ffffff;
+          color: #1477d4;
+        }
+        .filter-bar {
+          display: grid;
+          grid-template-columns: minmax(260px, 1.3fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr) auto;
+          gap: 12px;
+          align-items: end;
+          border: 1px solid rgba(41, 104, 139, 0.12);
+          border-radius: 18px;
+          background: #f8fbff;
+          padding: 14px;
+        }
+        .news-filter-bar {
+          grid-template-columns: minmax(240px, 1.5fr) repeat(5, minmax(150px, 1fr)) auto;
+        }
+        .filter-bar label {
+          display: grid;
+          gap: 7px;
+          min-width: 0;
+        }
+        .filter-bar label > span {
+          color: #506982;
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .search-field div {
+          position: relative;
+        }
+        .search-field svg {
+          position: absolute;
+          inset-inline-start: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #7c95aa;
+        }
+        input,
+        select {
+          min-height: 44px;
+          width: 100%;
+          border: 1px solid rgba(41, 104, 139, 0.18);
+          border-radius: 13px;
+          background: #ffffff;
+          color: #0b2442;
+          padding: 0 12px;
+          font: 850 14px Tajawal, Arial, sans-serif;
+        }
+        .search-field input {
+          padding-inline-start: 38px;
+        }
+        .results-toolbar {
+          justify-content: space-between;
+          margin-top: 14px;
+          color: #506982;
+          font-weight: 900;
+        }
+        .stock-table-wrap {
+          margin-top: 16px;
+          overflow-x: auto;
+          border: 1px solid rgba(41, 104, 139, 0.13);
+          border-radius: 18px;
+        }
+        .stock-table {
+          width: 100%;
+          min-width: 980px;
+          border-collapse: separate;
+          border-spacing: 0;
+          background: #ffffff;
+        }
+        .stock-table th,
+        .stock-table td {
+          padding: 14px;
+          border-bottom: 1px solid rgba(41, 104, 139, 0.10);
+          text-align: start;
+          vertical-align: middle;
+          font-size: 13px;
+        }
+        .stock-table th {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          background: #f0f8ff;
+          color: #24465f;
+          font-weight: 950;
+        }
+        .stock-table td {
+          color: #263f58;
+          font-weight: 800;
+        }
+        .stock-mobile-grid {
+          display: none;
+        }
+        .method-grid,
+        .sector-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .method-grid span {
+          color: #506982;
+          font-weight: 850;
+        }
+        .featured-news-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.82fr);
+          gap: 16px;
+        }
+        .news-card {
+          display: grid;
+          gap: 12px;
+          padding: 18px;
+        }
+        .news-card.featured {
+          background:
+            linear-gradient(135deg, rgba(15, 39, 66, 0.97), rgba(14, 92, 112, 0.88)),
+            radial-gradient(circle at 12% 20%, rgba(42, 213, 235, 0.24), transparent 18rem);
+          color: #ffffff;
+        }
+        .article-meta {
+          flex-wrap: wrap;
+          color: #6c8297;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .news-card.featured .article-meta,
+        .news-card.featured p {
+          color: rgba(235, 250, 255, 0.82);
+        }
+        .news-card h3 {
+          margin: 0;
+          color: #0b2442;
+          font-size: 18px;
+          line-height: 1.55;
+          font-weight: 950;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .news-card.featured h3 {
+          color: #ffffff;
+          font-size: clamp(20px, 2vw, 25px);
+        }
+        .news-card p {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        blockquote {
+          margin: 0;
+          border-inline-start: 3px solid #18d4d4;
+          border-radius: 10px;
+          background: rgba(29, 140, 255, 0.08);
+          padding: 10px 12px;
+          color: #38566e;
+          font-size: 13px;
+          line-height: 1.7;
+        }
+        .news-card.featured blockquote {
+          color: #ecfbff;
+          background: rgba(255, 255, 255, 0.09);
+        }
+        .article-footer a {
+          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          color: #ffffff;
+          border: 0;
+        }
+        .news-list {
+          display: grid;
+          gap: 14px;
+        }
+        .news-list .news-card {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .load-more {
+          justify-self: center;
+          min-width: 190px;
+        }
+        .sector-card {
+          padding: 18px;
+        }
+        .sector-head {
+          align-items: flex-start;
+          margin-bottom: 14px;
+        }
+        .sector-head > span {
+          flex: 0 0 auto;
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: rgba(29, 140, 255, 0.09);
+          color: #1477d4;
+        }
+        .sector-card h3 {
+          margin: 0 0 6px;
+          color: #0b2442;
+          font-size: 17px;
+          font-weight: 950;
+        }
+        .sector-stat-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 10px;
+        }
+        .sector-drivers {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 14px;
+        }
+        .sector-drivers strong {
+          width: 100%;
+          color: #0b2442;
+          font-size: 13px;
+          font-weight: 950;
+        }
+        .sector-drivers span {
+          border-radius: 999px;
+          background: #edf7ff;
+          color: #42617c;
+          padding: 6px 9px;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .accordion-list {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .accordion-card {
+          border: 1px solid rgba(41, 104, 139, 0.13);
+          border-radius: 16px;
+          background: #ffffff;
+          overflow: hidden;
+        }
+        .accordion-card button {
+          width: 100%;
+          min-height: 52px;
+          border: 0;
+          background: transparent;
+          color: #0b2442;
+          padding: 14px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          font: 950 14px Tajawal, Arial, sans-serif;
+          cursor: pointer;
+          text-align: start;
+        }
+        .accordion-card p {
+          padding: 0 14px 14px;
+        }
+        .footer-note,
+        .state-box {
+          padding: 16px;
+          align-items: flex-start;
+        }
+        .footer-note strong,
+        .state-box strong {
+          display: block;
+          color: #0b2442;
+          font-size: 15px;
+          font-weight: 950;
+        }
+        .footer-note p,
+        .state-box p {
+          margin: 4px 0 0;
+          color: #60778e;
+          font-size: 13px;
+          line-height: 1.75;
+          font-weight: 750;
+        }
+        .state-box {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 13px;
+        }
+        .state-box > span {
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: rgba(29, 140, 255, 0.09);
+          color: #1477d4;
+        }
+        .state-warning > span {
+          background: rgba(245, 158, 11, 0.12);
+          color: #b45309;
+        }
+        .badge {
+          width: max-content;
+          max-width: 100%;
+          border-radius: 999px;
+          padding: 6px 10px;
+          font-size: 12px;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+        .tone-positive {
+          background: rgba(20, 184, 122, 0.12);
+          color: #0f8b5b;
+        }
+        .tone-negative {
+          background: rgba(239, 68, 68, 0.12);
+          color: #c23131;
+        }
+        .tone-warning {
+          background: rgba(245, 158, 11, 0.14);
+          color: #a76405;
+        }
+        .tone-neutral,
+        .tone-info {
+          background: rgba(29, 140, 255, 0.10);
+          color: #1477d4;
+        }
+        .num-positive {
+          color: #0f8b5b !important;
+        }
+        .num-negative {
+          color: #c23131 !important;
+        }
+        .loading-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .skeleton-card,
+        .ticker-skeleton {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(90deg, #eef6fc, #ffffff, #eef6fc);
+          background-size: 220% 100%;
+          animation: shimmer 1.4s ease infinite;
+        }
+        .skeleton-card {
+          min-height: 180px;
+          border-radius: 22px;
+          border: 1px solid rgba(41, 104, 139, 0.12);
+        }
+        @keyframes shimmer {
+          0% { background-position: 100% 0; }
+          100% { background-position: -100% 0; }
+        }
+        @media (max-width: 1280px) {
+          .main {
+            padding-inline: 18px;
+          }
+          :global([dir="ltr"]) .main {
+            padding-inline: 18px;
+          }
+          .hero,
+          .overview-grid {
+            grid-template-columns: 1fr;
+          }
+          .metrics-grid,
+          .stock-card-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .featured-news-grid,
+          .method-grid,
+          .sector-grid,
+          .accordion-list,
+          .macro-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .filter-bar,
+          .news-filter-bar {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 780px) {
+          .main {
+            padding: 16px 14px 42px;
+          }
+          .container {
+            gap: 16px;
+          }
+          .hero,
+          .panel,
+          .featured-news,
+          .news-list {
+            border-radius: 18px;
+            padding: 16px;
+          }
+          .hero {
+            gap: 16px;
+          }
+          .hero-meta,
+          .section-header,
+          .stock-actions,
+          .article-footer,
+          .cycle-phase {
+            display: grid;
+            justify-items: stretch;
+          }
+          .metrics-grid,
+          .stock-card-grid,
+          .featured-news-grid,
+          .method-grid,
+          .sector-grid,
+          .accordion-list,
+          .macro-grid,
+          .filter-bar,
+          .news-filter-bar,
+          .loading-grid {
+            grid-template-columns: 1fr;
+          }
+          .stock-table-wrap {
+            display: none;
+          }
+          .stock-mobile-grid {
+            display: grid;
+            gap: 14px;
+            margin-top: 16px;
+          }
+          .bar-row {
+            grid-template-columns: 1fr;
+          }
+          .state-box {
+            grid-template-columns: 1fr;
+          }
+          .ticker-strip {
+            grid-auto-columns: minmax(210px, 82vw);
+          }
+        }
+      `}</style>
     </div>
   );
 }
