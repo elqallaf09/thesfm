@@ -4,6 +4,10 @@
     {
       "path": "/api/debts/generate-monthly-expenses",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/trader/scanner/run",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

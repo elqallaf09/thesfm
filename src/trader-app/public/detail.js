@@ -566,7 +566,8 @@ async function loadDetail() {
   try {
     elements.status.textContent = detailText("جاري تحليل السهم", "Analyzing the stock");
     applyDetailLanguage();
-    const response = await fetch(`/api/asset?symbol=${encodeURIComponent(symbol)}`);
+    const traderAnalysisPrefix = ["", "api", "trader", "analysis"].join("/");
+    const response = await fetch(`${traderAnalysisPrefix}/${encodeURIComponent(symbol)}`, { cache: "no-store" });
     const data = await response.json();
 
     if (!response.ok) {

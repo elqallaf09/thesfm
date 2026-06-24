@@ -358,6 +358,10 @@ const state = {
     markets: [],
     recommendations: [],
     dashboardRecommendations: [],
+    scannerStatus: null,
+    scannerSummary: null,
+    usStocks: null,
+    scannerFilters: { signalType: "all", minimumConfidence: "0", riskLevel: "all", timeHorizon: "all" },
     errors: {},
     loadedAt: null,
   },
@@ -410,6 +414,12 @@ function publicHref(route) {
 
 function apiMarketForRoute(route) {
   return routeMeta[route]?.marketId || "us";
+}
+
+const TRADER_API_PREFIX = ["", "api", "trader"].join("/");
+
+function traderApi(path) {
+  return `${TRADER_API_PREFIX}/${String(path || "").replace(/^\/+/, "")}`;
 }
 
 function setLanguage(language) {
@@ -834,22 +844,28 @@ function renderSmartWatchlist(recs = []) {
 
 function renderMarketPage(marketId) {
   const market = marketCategories.find((item) => item.apiMarket === marketId || item.id === marketId) || marketCategories[2];
-  const recs = state.data.recommendations;
-  const modules = {
-    forex: ["Currency strength meter", "Trading-session status", "Pair correlations", "Economic events"],
-    indices: ["Global index list", "Regional performance", "Market breadth", "Index futures"],
-    us: ["Stock screener", "Sector selector", "Top gainers", "Company fundamentals"],
-    crypto: ["Market capitalization", "BTC dominance", "Liquidity", "Exchange status"],
-    commodities: ["Metals", "Energy", "Price curves", "Supply notes"],
-    etfs: ["ETF screener", "Expense ratio", "Fund flows", "AUM"],
-  }[marketId] || ["Market screener", "Top movers", "Signals", "Provider status"];
+  const recs = marketId === "us" ? (state.data.usStocks?.recommendations || state.data.recommendations) : state.data.recommendations;
+  const summary = marketId === "us" ? state.data.usStocks?.summary : null;
+  const modules = marketId === "us"
+    ? [
+        ["Analyzed assets", summary?.total ?? "--", "Yahoo Finance delayed provider"],
+        ["Buy signals", summary?.buy ?? 0, "technical rules"],
+        ["Sell signals", summary?.sell ?? 0, "technical rules"],
+        ["Average confidence", summary?.averageConfidence !== null && summary?.averageConfidence !== undefined ? `${summary.averageConfidence}%` : "--", "data-quality adjusted"],
+      ]
+    : [
+        ["Market screener", t("unavailable"), t("routeUnavailable")],
+        ["Top movers", "--", t("routeUnavailable")],
+        ["Signals", "--", t("routeUnavailable")],
+        ["Provider status", "--", t("routeUnavailable")],
+      ];
   return `
     ${renderPageHeader(localMarketLabel(market), localMarketSubtitle(market), market)}
     <div class="feature-grid">
-      ${modules.map((name, index) => metricCard(name, index === 0 ? t("unavailable") : "--", t("routeUnavailable"))).join("")}
+      ${modules.map(([label, value, note]) => metricCard(label, value, note)).join("")}
     </div>
     <section class="terminal-card">
-      <div class="section-header compact"><div><h2>${t("smartWatchlist")}</h2><p>${t("routeUnavailable")}</p></div></div>
+      <div class="section-header compact"><div><h2>${marketId === "us" ? "US stock scanner" : t("smartWatchlist")}</h2><p>${marketId === "us" ? "Real delayed quote data with explainable technical-rule analysis." : t("routeUnavailable")}</p></div></div>
       ${recs.length ? `<div class="recommendation-grid">${topRecommendations(recs, 8).map(renderRecommendationCard).join("")}</div>` : emptyState(t("noLiveData"))}
     </section>
   `;
@@ -872,21 +888,38 @@ function renderMarketsOverviewPage() {
   `;
 }
 
+function scannerSelected(key, value) {
+  return String(state.data.scannerFilters?.[key] ?? "") === String(value) ? "selected" : "";
+}
+
 function renderAiScannerPage() {
-  const recs = topRecommendations(state.data.dashboardRecommendations, 8);
+  const recs = topRecommendations(state.data.dashboardRecommendations, 12);
   return `
-    ${renderPageHeader(t("aiScanner"), "Scanner filters, confidence thresholds, saved presets.")}
+    ${renderPageHeader(t("aiScanner"), "Real provider scan results, confidence thresholds, risk filters, and explainable signals.")}
     <section class="terminal-card scanner-panel">
       <div class="scanner-controls">
-        ${["Signal type", "Minimum confidence", "Risk level", "Time horizon"].map((label) => `<label><span>${label}</span><select><option>${t("unavailable")}</option></select></label>`).join("")}
+        <label><span>Signal type</span><select data-scanner-filter="signalType"><option value="all" ${scannerSelected("signalType", "all")}>All</option><option value="buy" ${scannerSelected("signalType", "buy")}>${t("buy")}</option><option value="sell" ${scannerSelected("signalType", "sell")}>${t("sell")}</option><option value="hold" ${scannerSelected("signalType", "hold")}>${t("hold")}</option></select></label>
+        <label><span>Minimum confidence</span><select data-scanner-filter="minimumConfidence"><option value="0" ${scannerSelected("minimumConfidence", "0")}>All</option><option value="50" ${scannerSelected("minimumConfidence", "50")}>50%</option><option value="60" ${scannerSelected("minimumConfidence", "60")}>60%</option><option value="70" ${scannerSelected("minimumConfidence", "70")}>70%</option><option value="80" ${scannerSelected("minimumConfidence", "80")}>80%</option></select></label>
+        <label><span>Risk level</span><select data-scanner-filter="riskLevel"><option value="all" ${scannerSelected("riskLevel", "all")}>All</option><option value="low" ${scannerSelected("riskLevel", "low")}>Low</option><option value="medium" ${scannerSelected("riskLevel", "medium")}>Medium</option><option value="high" ${scannerSelected("riskLevel", "high")}>High</option></select></label>
+        <label><span>Time horizon</span><select data-scanner-filter="timeHorizon"><option value="all" ${scannerSelected("timeHorizon", "all")}>All</option><option value="days" ${scannerSelected("timeHorizon", "days")}>Days</option><option value="weeks" ${scannerSelected("timeHorizon", "weeks")}>Weeks</option><option value="months" ${scannerSelected("timeHorizon", "months")}>Months</option></select></label>
+        <button type="button" data-refresh-scanner>${t("refresh") || "Refresh"}</button>
       </div>
-      ${recs.length ? `<div class="recommendation-grid">${recs.map(renderRecommendationCard).join("")}</div>` : emptyState(t("noLiveData"))}
+      ${recs.length ? `
+        <div class="terminal-table-wrap">
+          <table class="terminal-table">
+            <thead><tr><th>${t("symbol")}</th><th>${t("price")}</th><th>${t("signal")}</th><th>${t("confidence")}</th><th>${t("target")}</th><th>${t("stopLoss")}</th><th>${t("timeframe")}</th><th>${t("risk")}</th><th>${t("aiScore")}</th><th>${t("action")}</th></tr></thead>
+            <tbody>${recs.map(renderScannerRow).join("")}</tbody>
+          </table>
+        </div>
+      ` : emptyState(state.data.errors.dashboard ? "Provider scan failed or is still connecting." : t("noLiveData"))}
     </section>
   `;
 }
 
 function renderWatchlistPage() {
   const watchlist = loadWatchlist();
+  const latest = state.data.dashboardRecommendations || [];
+  const rows = watchlist.map((item) => findBySymbol(latest, item.symbol) || item);
   return `
     ${renderPageHeader(t("watchlist"), "User-created watchlists, notes, sorting, and asset detail drawer.")}
     <section class="terminal-card watchlist-manager">
@@ -895,7 +928,7 @@ function renderWatchlistPage() {
         <input name="notes" placeholder="${t("notes")}" />
         <button type="submit">${t("add")}</button>
       </form>
-      ${watchlist.length ? `<div class="watchlist-list">${watchlist.map((item) => `<div><strong dir="ltr">${escapeHtml(item.symbol)}</strong><span>${escapeHtml(item.notes || "")}</span></div>`).join("")}</div>` : emptyState(t("noLiveData"))}
+      ${watchlist.length ? `<div class="terminal-table-wrap"><table class="terminal-table"><thead><tr><th>${t("symbol")}</th><th>${t("price")}</th><th>${t("change")}</th><th>${t("signal")}</th><th>${t("confidence")}</th><th>${t("target")}</th><th>${t("risk")}</th><th>${t("lastUpdate")}</th></tr></thead><tbody>${rows.map(renderWatchlistSignalRow).join("")}</tbody></table></div>` : emptyState("Add stocks to your watchlist to show prices and analysis.")}
     </section>
   `;
 }
@@ -1025,6 +1058,41 @@ function renderWatchlistRow(item) {
   `;
 }
 
+function renderScannerRow(item) {
+  const action = actionOf(item);
+  return `
+    <tr>
+      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span></div></div></td>
+      <td>${money(item.currentPrice, item.currency)}</td>
+      <td><b class="signal-badge ${action}">${actionLabel(action)}</b></td>
+      <td>${formatNumber(item.confidence || 0, 0)}%</td>
+      <td>${item.expectedPrice ? money(item.expectedPrice, item.currency) : "--"}</td>
+      <td>${item.stopLoss ? money(item.stopLoss, item.currency) : "--"}</td>
+      <td>${escapeHtml(item.duration || "--")}</td>
+      <td>${escapeHtml(item.risk?.label || item.riskLevel || "--")}</td>
+      <td>${formatNumber(item.finalScore || item.score || 0, 1)}/10</td>
+      <td><a class="row-action" href="/thesfm-trader-own/app/detail.html?symbol=${encodeURIComponent(item.symbol || "")}" target="_top">View</a></td>
+    </tr>
+  `;
+}
+
+function renderWatchlistSignalRow(item) {
+  const hasSignal = Boolean(item.currentPrice);
+  const action = actionOf(item);
+  return `
+    <tr>
+      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || item.notes || "")}</span></div></div></td>
+      <td>${hasSignal ? money(item.currentPrice, item.currency) : "--"}</td>
+      <td class="${Number(item.expectedMovePct || 0) >= 0 ? "positive" : "negative"}">${hasSignal ? pct(item.expectedMovePct || 0) : "--"}</td>
+      <td>${hasSignal ? `<b class="signal-badge ${action}">${actionLabel(action)}</b>` : "--"}</td>
+      <td>${hasSignal ? `${formatNumber(item.confidence || 0, 0)}%` : "--"}</td>
+      <td>${hasSignal && item.expectedPrice ? money(item.expectedPrice, item.currency) : "--"}</td>
+      <td>${hasSignal ? escapeHtml(item.risk?.label || item.riskLevel || "--") : "--"}</td>
+      <td>${hasSignal ? escapeHtml(item.dataTimestamp ? new Date(item.dataTimestamp).toLocaleString("en-US") : "--") : "Not scanned"}</td>
+    </tr>
+  `;
+}
+
 function metricCard(label, value, note) {
   return `<article class="metric-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong><small>${escapeHtml(note || "")}</small></article>`;
 }
@@ -1073,14 +1141,19 @@ function renderTemporaryLegalNotices() {
 
 function renderStatusBar() {
   const loadedAt = state.data.loadedAt ? new Date(state.data.loadedAt).toLocaleTimeString("en-US", { hour12: false }) : t("unavailable");
+  const status = state.data.scannerStatus;
+  const marketData = status?.marketData;
+  const scanner = status?.scanner;
+  const dataLabel = !marketData ? t("unavailable") : marketData.connected ? (marketData.delayed ? "Delayed data" : t("liveData")) : "Connecting";
+  const systemStatus = scanner?.running ? "Scanning" : scanner?.lastScanCompletedAt ? "Operational" : t("unavailable");
   return `
     <footer class="terminal-statusbar">
-      <div><span>${t("statusBarData")}</span><strong>${state.data.errors.dashboard ? t("error") : t("liveData")}</strong></div>
+      <div><span>${t("statusBarData")}</span><strong>${state.data.errors.dashboard ? t("error") : dataLabel}</strong></div>
       <div><span>${t("totalMarkets")}</span><strong>${marketCategories.length}</strong></div>
-      <div><span>${t("activeAssets")}</span><strong>${state.data.dashboardRecommendations.length || t("unavailable")}</strong></div>
-      <div><span>${t("scans")}</span><strong>${t("unavailable")}</strong></div>
+      <div><span>${t("activeAssets")}</span><strong>${scanner?.scannedAssets ?? state.data.dashboardRecommendations.length ?? t("unavailable")}</strong></div>
+      <div><span>${t("scans")}</span><strong>${scanner?.generatedSignals ?? 0}</strong></div>
       <div><span>${t("lastUpdate")}</span><strong>${loadedAt}</strong></div>
-      <div><span>${t("systemStatus")}</span><strong>${state.data.errors.dashboard ? t("unavailable") : "Operational"}</strong></div>
+      <div><span>${t("systemStatus")}</span><strong>${state.data.errors.dashboard ? t("unavailable") : systemStatus}</strong></div>
     </footer>
   `;
 }
@@ -1145,6 +1218,18 @@ function bindEvents() {
       render();
     });
   });
+  root.querySelectorAll("[data-scanner-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.data.scannerFilters = {
+        ...state.data.scannerFilters,
+        [select.dataset.scannerFilter]: select.value,
+      };
+      loadScannerWithFilters();
+    });
+  });
+  root.querySelector("[data-refresh-scanner]")?.addEventListener("click", () => {
+    loadScannerWithFilters();
+  });
   root.querySelector("[data-watchlist-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1191,24 +1276,35 @@ async function fetchJson(path, options = {}) {
 
 async function loadData() {
   render();
-  await Promise.allSettled([loadMarkets(), loadDashboardRecommendations(), loadRouteRecommendations()]);
+  await Promise.allSettled([loadMarkets(), loadTraderStatus(), loadDashboardRecommendations(), loadRouteRecommendations()]);
   render();
 }
 
 async function loadMarkets() {
   try {
-    const data = await fetchJson("/api/markets");
-    state.data.markets = Array.isArray(data.markets) ? data.markets : [];
+    state.data.markets = marketCategories;
     delete state.data.errors.markets;
   } catch (error) {
     state.data.errors.markets = String(error?.message || error);
   }
 }
 
+async function loadTraderStatus() {
+  try {
+    const data = await fetchJson(traderApi("status"));
+    state.data.scannerStatus = data;
+    delete state.data.errors.status;
+  } catch (error) {
+    state.data.errors.status = String(error?.message || error);
+  }
+}
+
 async function loadDashboardRecommendations() {
   try {
-    const data = await fetchJson("/api/recommendations?market=us");
+    const data = await fetchJson(traderApi("scanner/results?market=US"), { timeout: 45000 });
     state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.scannerSummary = data.summary || null;
+    state.data.scannerStatus = data.status || state.data.scannerStatus;
     state.data.loadedAt = data.generatedAt || Date.now();
     delete state.data.errors.dashboard;
   } catch (error) {
@@ -1218,15 +1314,45 @@ async function loadDashboardRecommendations() {
 
 async function loadRouteRecommendations() {
   const market = apiMarketForRoute(state.route);
+  if (market !== "us") {
+    state.data.recommendations = [];
+    delete state.data.errors.route;
+    return;
+  }
+
   try {
-    const data = await fetchJson(`/api/recommendations?market=${encodeURIComponent(market)}`);
+    const data = await fetchJson(traderApi("us-stocks"), { timeout: 45000 });
     state.data.recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.usStocks = data;
+    state.data.scannerStatus = data.status || state.data.scannerStatus;
     state.data.loadedAt = data.generatedAt || Date.now();
     delete state.data.errors.route;
   } catch (error) {
     state.data.errors.route = String(error?.message || error);
     state.data.recommendations = [];
   }
+}
+
+async function loadScannerWithFilters() {
+  const filters = state.data.scannerFilters || {};
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value) !== "" && String(value) !== "0") {
+      params.set(key, String(value));
+    }
+  });
+  try {
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
+    state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.scannerSummary = data.summary || null;
+    state.data.scannerStatus = data.status || state.data.scannerStatus;
+    state.data.loadedAt = data.generatedAt || Date.now();
+    delete state.data.errors.dashboard;
+  } catch (error) {
+    state.data.errors.dashboard = String(error?.message || error);
+  }
+  render();
 }
 
 function initBackground() {
