@@ -9,6 +9,8 @@ import {
   Bot,
   Bell as BellIcon,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   ChartPie,
   CreditCard,
@@ -353,6 +355,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [goalError, setGoalError] = useState('');
   const [goalDeleteTarget, setGoalDeleteTarget] = useState<GoalItem | null>(null);
   const [goalDeleting, setGoalDeleting] = useState(false);
+  const [expandedGoalIds, setExpandedGoalIds] = useState<string[]>([]);
   const [rowSearch, setRowSearch] = useState('');
   const [rowSort, setRowSort] = useState<'dateDesc' | 'dateAsc' | 'amountDesc' | 'amountAsc'>('dateDesc');
   const [rowRange, setRowRange] = useState<'all' | 'month' | 'last3' | 'year'>('all');
@@ -1762,6 +1765,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     }
   }
 
+  function toggleGoalExpanded(goalId: string) {
+    setExpandedGoalIds(prev =>
+      prev.includes(goalId) ? prev.filter(id => id !== goalId) : [...prev, goalId],
+    );
+  }
+
   function openEditGoal(goal: GoalItem) {
     setGoalError('');
     const notes = parseGoalNotes(goal.notes);
@@ -2889,8 +2898,15 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 const goalProgress = calculateGoalProgress(goal);
                 const done = goalProgress.progressPercent;
                 const visualDone = done > 0 && done < 2 ? 2 : done;
+                const isExpanded = expandedGoalIds.includes(goal.id);
+                const detailsId = `goal-details-${goal.id}`;
+                const toggleLabel = isExpanded ? 'إخفاء تفاصيل الهدف' : 'عرض تفاصيل الهدف';
+                const deadlineDate = localDateFromInput(goal.deadline);
+                const deadlineLabel = deadlineDate
+                  ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium' }).format(deadlineDate)
+                  : t('goal_deadline_missing');
                 return (
-                  <article className="goal-card" key={goal.id}>
+                  <article className={`goal-card${isExpanded ? ' is-expanded' : ''}`} key={goal.id}>
                     <div className="goal-card-head">
                       <div className="goal-title-wrap">
                         <span className="goal-icon">{goal.icon || '🎯'}</span>
@@ -2899,14 +2915,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                           <span>{t('goal_remaining_amount')}: {money(analysis.remainingAmount, lang, goal.currency || currency)}</span>
                         </div>
                       </div>
-                      <div className="goal-card-actions">
-                        <button type="button" className="goal-edit-btn" onClick={() => openEditGoal(goal)}>
-                          <Edit3 size={15} />
-                          {t('goal_edit_button')}
-                        </button>
-                        <button type="button" className="goal-delete-btn" onClick={() => setGoalDeleteTarget(goal)}>
-                          <Trash2 size={15} />
-                          {t('goal_delete_button')}
+                      <div className="goal-summary-actions">
+                        <span className={`risk-pill ${analysis.riskClass}`}>{analysis.statusLabel}</span>
+                        <button
+                          type="button"
+                          className="goal-expand-btn"
+                          onClick={() => toggleGoalExpanded(goal.id)}
+                          aria-expanded={isExpanded}
+                          aria-controls={detailsId}
+                          aria-label={toggleLabel}
+                          title={toggleLabel}
+                        >
+                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </button>
                       </div>
                     </div>
@@ -2919,10 +2939,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     <div className="goal-meta-grid">
                       <div><span>{t('goal_target_amount')}</span><strong>{goalProgress.targetAmount > 0 ? money(goalProgress.targetAmount, lang, goal.currency || currency) : t('goal_missing_target_hint')}</strong></div>
                       <div><span>{t('goal_current_amount')}</span><strong>{goalProgress.hasCurrentAmount ? money(goalProgress.currentAmount, lang, goal.currency || currency) : t('goal_missing_current_hint')}</strong></div>
-                      <div><span>{t('goal_remaining_amount')}</span><strong>{money(goalProgress.remainingAmount, lang, goal.currency || currency)}</strong></div>
                       <div><span>{t('goal_monthly_contribution')}</span><strong>{goalProgress.hasMonthlyContribution ? money(goalProgress.monthlyContribution, lang, goal.currency || currency) : t('goal_missing_contribution_hint')}</strong></div>
+                      <div><span>{t('goal_deadline')}</span><strong>{deadlineLabel}</strong></div>
                     </div>
-                    <div className="goal-ai-card">
+                    {isExpanded && (
+                      <div id={detailsId} className="goal-expanded-panel">
+                        <div className="goal-detail-grid">
+                          <div><span>{t('goal_remaining_amount')}</span><strong>{money(goalProgress.remainingAmount, lang, goal.currency || currency)}</strong></div>
+                          <div><span>{t('goal_required_monthly')}</span><strong>{money(analysis.requiredMonthlySaving, lang, goal.currency || currency)}</strong></div>
+                          <div><span>{t('goal_adjustment_label')}</span><strong>{money(analysis.adjustment, lang, goal.currency || currency)}</strong></div>
+                          <div><span>{t('goal_estimated_completion')}</span><strong>{analysis.estimatedCompletion}</strong></div>
+                        </div>
+                        <div className="goal-ai-card">
                       <div className="goal-ai-head">
                         <Bot size={18} />
                         <strong>{t('goal_ai_title')}</strong>
@@ -2945,6 +2973,18 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         </ol>
                       </div>
                     </div>
+                        <div className="goal-details-actions">
+                          <button type="button" className="goal-edit-btn" onClick={() => openEditGoal(goal)}>
+                            <Edit3 size={15} />
+                            {t('goal_edit_button')}
+                          </button>
+                          <button type="button" className="goal-delete-btn" onClick={() => setGoalDeleteTarget(goal)}>
+                            <Trash2 size={15} />
+                            {t('goal_delete_button')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </article>
                 );
               })}
