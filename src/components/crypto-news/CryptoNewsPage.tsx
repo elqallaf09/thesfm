@@ -1,24 +1,52 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { AlertTriangle, BarChart3, CircleDollarSign, Clock3, Coins, ExternalLink, Filter, Newspaper, RefreshCcw, Search, Star, Tags, TrendingDown, TrendingUp } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BarChart3,
+  Clock3,
+  Coins,
+  ExternalLink,
+  Filter,
+  Info,
+  Layers3,
+  LineChart,
+  Newspaper,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Signal,
+  Sparkles,
+  Tags,
+  TrendingDown,
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
 import type { CryptoMarketCoin, CryptoMarketPayload } from '@/lib/market/fetchCryptoMarketData';
 
+type LangCode = 'ar' | 'en' | 'fr';
 type ApiResponse = CryptoNewsPayload | { success: false; error?: string; code?: string };
 type CryptoMarketApiResponse = CryptoMarketPayload | { ok: false; code?: string; message?: string };
 type CategoryFilter = 'all' | CryptoNewsCategory;
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
-type SortFilter = 'recent' | 'relevance';
+type AssetFilter = 'all' | CryptoNewsSymbol;
+type TimeFilter = 'all' | 'hour' | 'day' | 'week' | 'month';
+type SortFilter = 'latest' | 'oldest' | 'relevance';
 
 const NEWS_PAGE_SIZE = 12;
-const FEATURED_NEWS_COUNT = 3;
+const FEATURED_NEWS_COUNT = 4;
+const REFRESH_INTERVAL_MS = 90_000;
 const CATEGORY_ORDER: CategoryFilter[] = ['all', 'bitcoin', 'ethereum', 'altcoins', 'etfs', 'regulation', 'exchanges', 'blockchain'];
-const TIME_FILTERS: TimeFilter[] = ['all', 'today', 'week', 'month'];
-const SORT_FILTERS: SortFilter[] = ['recent', 'relevance'];
+const ASSET_ORDER: AssetFilter[] = ['all', 'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE'];
+const TIME_FILTERS: TimeFilter[] = ['all', 'hour', 'day', 'week', 'month'];
+const SORT_FILTERS: SortFilter[] = ['latest', 'oldest', 'relevance'];
+
 const SYMBOL_TO_MARKET_SYMBOL: Record<CryptoNewsSymbol, string> = {
   BTC: 'BTCUSD',
   ETH: 'ETHUSD',
@@ -27,6 +55,277 @@ const SYMBOL_TO_MARKET_SYMBOL: Record<CryptoNewsSymbol, string> = {
   BNB: 'BNBUSD',
   DOGE: 'DOGEUSD',
 };
+
+const COPY = {
+  ar: {
+    title: 'أخبار العملات الرقمية',
+    subtitle: 'تغطية مستمرة لأهم أخبار العملات الرقمية والأسواق والتشريعات والتقنيات المرتبطة بها.',
+    badge: 'مركز أخبار كريبتو',
+    connected: 'الخدمة متصلة',
+    delayed: 'بيانات سوق متأخرة',
+    unavailable: 'غير متاح',
+    refresh: 'تحديث الأخبار',
+    refreshing: 'جارٍ التحديث...',
+    newStories: 'خبراً جديداً',
+    lastUpdate: 'آخر تحديث',
+    notUpdated: 'لم يتم التحديث بعد',
+    sourceNote: 'الأخبار مجمعة من مصادر مالية خارجية، ويُنصح بالرجوع إلى المصدر الأصلي قبل اتخاذ أي قرار.',
+    marketSnapshot: 'لمحة سوق العملات الرقمية',
+    snapshotHint: 'ملخص حقيقي من مزود السوق المتاح، بدون قيم افتراضية.',
+    totalMarketCap: 'القيمة السوقية الإجمالية',
+    volume24h: 'حجم التداول 24 ساعة',
+    btcDominance: 'هيمنة Bitcoin',
+    marketChange: 'تغير السوق 24 ساعة',
+    risingCoins: 'عملات صاعدة',
+    fallingCoins: 'عملات هابطة',
+    featured: 'قصص بارزة',
+    featuredHint: 'أحدث الأخبار بعد إزالة التكرار، ولا تتكرر داخل القائمة الرئيسية.',
+    read: 'قراءة الخبر',
+    source: 'المصدر',
+    originalSource: 'فتح المصدر الأصلي',
+    machineTranslated: 'ترجمة آلية',
+    originalText: 'نص أصلي',
+    aiBadge: 'تحليل آلي',
+    categories: {
+      all: 'الكل',
+      bitcoin: 'Bitcoin',
+      ethereum: 'Ethereum',
+      altcoins: 'Altcoins',
+      etfs: 'صناديق ETF',
+      regulation: 'التنظيمات',
+      exchanges: 'البورصات',
+      blockchain: 'البلوك تشين',
+    },
+    marketMovers: 'محركات سوق العملات الرقمية',
+    gainers: 'أكبر العملات ارتفاعاً',
+    losers: 'أكبر العملات انخفاضاً',
+    mostTraded: 'الأعلى تداولاً',
+    trending: 'العملات الرائجة',
+    price: 'السعر',
+    volume: 'الحجم',
+    change24h: 'تغير 24 ساعة',
+    openAnalysis: 'فتح تحليل الأصل',
+    filters: 'البحث والتصفية',
+    searchPlaceholder: 'ابحث عن خبر أو عملة أو مصدر...',
+    asset: 'العملة',
+    category: 'التصنيف',
+    sourceFilter: 'المصدر',
+    timeRange: 'الفترة',
+    sort: 'الترتيب',
+    allAssets: 'كل العملات',
+    allSources: 'كل المصادر',
+    timeAll: 'كل الفترات',
+    timeHour: 'آخر ساعة',
+    timeDay: 'آخر 24 ساعة',
+    timeWeek: 'آخر 7 أيام',
+    timeMonth: 'آخر 30 يوماً',
+    sortLatest: 'الأحدث',
+    sortOldest: 'الأقدم',
+    sortRelevant: 'الأكثر ارتباطاً',
+    clearFilters: 'مسح عوامل التصفية',
+    results: 'نتائج الأخبار',
+    resultCount: 'خبر مطابق',
+    showing: 'المعروض',
+    activeFilters: 'الفلاتر النشطة',
+    mainFeed: 'تدفق الأخبار',
+    compactFeed: 'تحديثات مختصرة',
+    latestUpdates: 'آخر الأخبار غير المعروضة',
+    mentionedAssets: 'العملات الأكثر ذكراً',
+    sources: 'أبرز المصادر',
+    articles: 'أخبار',
+    mentions: 'ذكر',
+    loadMore: 'عرض المزيد من الأخبار',
+    allLoaded: 'تم عرض كل الأخبار المتاحة',
+    noResultsTitle: 'لم يتم العثور على أخبار',
+    noResultsBody: 'جرّب تغيير كلمات البحث أو إزالة بعض عوامل التصفية.',
+    noProviderTitle: 'الأخبار غير متاحة حالياً',
+    noProviderBody: 'تعذر جلب أحدث الأخبار. يرجى المحاولة مرة أخرى.',
+    marketError: 'تعذر تحديث بيانات السوق حالياً. يتم عرض آخر بيانات متاحة عند توفرها.',
+    newsError: 'تعذر تحميل أخبار العملات الرقمية حالياً. حاول مرة أخرى لاحقاً.',
+    loading: 'جارٍ تحميل مركز أخبار العملات الرقمية...',
+    disclaimer: 'الأخبار والملخصات والتحليلات المعروضة لأغراض معلوماتية وتعليمية فقط، ولا تُعد نصيحة استثمارية. قد تتضمن بعض التصنيفات والملخصات نتائج مولدة آلياً.',
+  },
+  en: {
+    title: 'Crypto News',
+    subtitle: 'Continuous coverage of cryptocurrency markets, regulation, exchanges, and blockchain technology.',
+    badge: 'Crypto newsroom',
+    connected: 'Service connected',
+    delayed: 'Delayed market data',
+    unavailable: 'Unavailable',
+    refresh: 'Refresh news',
+    refreshing: 'Refreshing...',
+    newStories: 'new stories',
+    lastUpdate: 'Last update',
+    notUpdated: 'Not updated yet',
+    sourceNote: 'News is aggregated from external financial sources. Check the original source before acting.',
+    marketSnapshot: 'Crypto market snapshot',
+    snapshotHint: 'A real provider summary with no placeholder values.',
+    totalMarketCap: 'Total market cap',
+    volume24h: '24h volume',
+    btcDominance: 'Bitcoin dominance',
+    marketChange: '24h market move',
+    risingCoins: 'Rising coins',
+    fallingCoins: 'Falling coins',
+    featured: 'Featured stories',
+    featuredHint: 'Latest deduplicated stories; featured items are removed from the main feed.',
+    read: 'Read article',
+    source: 'Source',
+    originalSource: 'Open original source',
+    machineTranslated: 'Machine translation',
+    originalText: 'Original text',
+    aiBadge: 'AI analysis',
+    categories: {
+      all: 'All',
+      bitcoin: 'Bitcoin',
+      ethereum: 'Ethereum',
+      altcoins: 'Altcoins',
+      etfs: 'ETFs',
+      regulation: 'Regulation',
+      exchanges: 'Exchanges',
+      blockchain: 'Blockchain',
+    },
+    marketMovers: 'Crypto market movers',
+    gainers: 'Top gainers',
+    losers: 'Top losers',
+    mostTraded: 'Highest volume',
+    trending: 'Trending coins',
+    price: 'Price',
+    volume: 'Volume',
+    change24h: '24h change',
+    openAnalysis: 'Open asset analysis',
+    filters: 'Search and filters',
+    searchPlaceholder: 'Search news, asset, or source...',
+    asset: 'Asset',
+    category: 'Category',
+    sourceFilter: 'Source',
+    timeRange: 'Time range',
+    sort: 'Sort',
+    allAssets: 'All assets',
+    allSources: 'All sources',
+    timeAll: 'All time',
+    timeHour: 'Last hour',
+    timeDay: 'Last 24 hours',
+    timeWeek: 'Last 7 days',
+    timeMonth: 'Last 30 days',
+    sortLatest: 'Latest',
+    sortOldest: 'Oldest',
+    sortRelevant: 'Most relevant',
+    clearFilters: 'Clear filters',
+    results: 'News results',
+    resultCount: 'matching stories',
+    showing: 'Showing',
+    activeFilters: 'Active filters',
+    mainFeed: 'News feed',
+    compactFeed: 'Compact updates',
+    latestUpdates: 'Latest unshown stories',
+    mentionedAssets: 'Most-mentioned assets',
+    sources: 'Top sources',
+    articles: 'articles',
+    mentions: 'mentions',
+    loadMore: 'Load more news',
+    allLoaded: 'All available news is visible',
+    noResultsTitle: 'No news found',
+    noResultsBody: 'Try changing your search terms or removing filters.',
+    noProviderTitle: 'News is unavailable',
+    noProviderBody: 'Could not fetch the latest news. Please try again.',
+    marketError: 'Market data could not be refreshed right now. Last available data is shown when available.',
+    newsError: 'Could not load crypto news right now. Try again later.',
+    loading: 'Loading crypto news center...',
+    disclaimer: 'News, summaries, and analysis are for information and education only and are not investment advice. Some classifications or summaries may be machine-generated.',
+  },
+  fr: {
+    title: 'Actualités crypto',
+    subtitle: 'Couverture continue des cryptomonnaies, marchés, régulation, plateformes et technologies blockchain.',
+    badge: 'Salle de presse crypto',
+    connected: 'Service connecté',
+    delayed: 'Données différées',
+    unavailable: 'Indisponible',
+    refresh: 'Actualiser',
+    refreshing: 'Actualisation...',
+    newStories: 'nouvelles actualités',
+    lastUpdate: 'Dernière mise à jour',
+    notUpdated: 'Pas encore mis à jour',
+    sourceNote: 'Les actualités proviennent de sources financières externes. Consultez la source originale avant d’agir.',
+    marketSnapshot: 'Aperçu du marché crypto',
+    snapshotHint: 'Résumé réel du fournisseur, sans valeurs fictives.',
+    totalMarketCap: 'Capitalisation totale',
+    volume24h: 'Volume 24 h',
+    btcDominance: 'Dominance Bitcoin',
+    marketChange: 'Variation 24 h',
+    risingCoins: 'Cryptos en hausse',
+    fallingCoins: 'Cryptos en baisse',
+    featured: 'À la une',
+    featuredHint: 'Actualités récentes dédupliquées, retirées du flux principal.',
+    read: 'Lire l’article',
+    source: 'Source',
+    originalSource: 'Ouvrir la source',
+    machineTranslated: 'Traduction automatique',
+    originalText: 'Texte original',
+    aiBadge: 'Analyse IA',
+    categories: {
+      all: 'Tout',
+      bitcoin: 'Bitcoin',
+      ethereum: 'Ethereum',
+      altcoins: 'Altcoins',
+      etfs: 'ETF',
+      regulation: 'Réglementation',
+      exchanges: 'Plateformes',
+      blockchain: 'Blockchain',
+    },
+    marketMovers: 'Mouvements du marché crypto',
+    gainers: 'Plus fortes hausses',
+    losers: 'Plus fortes baisses',
+    mostTraded: 'Volumes élevés',
+    trending: 'Cryptos tendances',
+    price: 'Prix',
+    volume: 'Volume',
+    change24h: 'Variation 24 h',
+    openAnalysis: 'Ouvrir l’analyse',
+    filters: 'Recherche et filtres',
+    searchPlaceholder: 'Rechercher actualité, actif ou source...',
+    asset: 'Actif',
+    category: 'Catégorie',
+    sourceFilter: 'Source',
+    timeRange: 'Période',
+    sort: 'Tri',
+    allAssets: 'Tous les actifs',
+    allSources: 'Toutes les sources',
+    timeAll: 'Toute période',
+    timeHour: 'Dernière heure',
+    timeDay: 'Dernières 24 h',
+    timeWeek: '7 derniers jours',
+    timeMonth: '30 derniers jours',
+    sortLatest: 'Plus récent',
+    sortOldest: 'Plus ancien',
+    sortRelevant: 'Plus pertinent',
+    clearFilters: 'Effacer les filtres',
+    results: 'Résultats',
+    resultCount: 'actualités',
+    showing: 'Affichées',
+    activeFilters: 'Filtres actifs',
+    mainFeed: 'Flux d’actualités',
+    compactFeed: 'Mises à jour compactes',
+    latestUpdates: 'Dernières non affichées',
+    mentionedAssets: 'Actifs les plus cités',
+    sources: 'Sources principales',
+    articles: 'articles',
+    mentions: 'mentions',
+    loadMore: 'Charger plus',
+    allLoaded: 'Toutes les actualités disponibles sont visibles',
+    noResultsTitle: 'Aucune actualité trouvée',
+    noResultsBody: 'Modifiez la recherche ou supprimez certains filtres.',
+    noProviderTitle: 'Actualités indisponibles',
+    noProviderBody: 'Impossible de récupérer les dernières actualités. Réessayez.',
+    marketError: 'Les données de marché ne peuvent pas être actualisées. La dernière donnée disponible est affichée.',
+    newsError: 'Impossible de charger les actualités crypto pour le moment.',
+    loading: 'Chargement du centre d’actualités crypto...',
+    disclaimer: 'Les actualités, résumés et analyses sont fournis à titre informatif et éducatif et ne constituent pas un conseil d’investissement. Certaines classifications peuvent être générées automatiquement.',
+  },
+} as const;
+
+function languageKey(lang: string): LangCode {
+  return lang === 'en' || lang === 'fr' ? lang : 'ar';
+}
 
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
@@ -40,7 +339,18 @@ function minutesAgo(value: string) {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
 }
 
-function itemSearchText(item: CryptoNewsItem) {
+function relativeUpdate(value: string, lang: LangCode, locale: string, fallback: string) {
+  const minutes = minutesAgo(value);
+  if (minutes === null) return fallback;
+  if (minutes < 1) return lang === 'ar' ? 'الآن' : lang === 'fr' ? 'maintenant' : 'now';
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (minutes < 60) return formatter.format(-minutes, 'minute');
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return formatter.format(-hours, 'hour');
+  return formatter.format(-Math.floor(hours / 24), 'day');
+}
+
+function itemText(item: CryptoNewsItem) {
   return [
     item.source,
     item.title,
@@ -52,74 +362,196 @@ function itemSearchText(item: CryptoNewsItem) {
   ].join(' ').toLowerCase();
 }
 
+function normalizeTitle(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function canonicalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    url.hash = '';
+    url.search = '';
+    return url.toString().replace(/\/$/, '').toLowerCase();
+  } catch {
+    return value.trim().toLowerCase();
+  }
+}
+
+function safeExternalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!['https:', 'http:'].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function dedupeNews(items: CryptoNewsItem[]) {
+  const seenUrls = new Set<string>();
+  const seenTitles = new Set<string>();
+  return items.filter(item => {
+    const urlKey = canonicalUrl(item.url);
+    const titleKey = normalizeTitle(item.titleOriginal || item.title || item.headline);
+    if (!urlKey || !titleKey || seenUrls.has(urlKey) || seenTitles.has(titleKey)) return false;
+    seenUrls.add(urlKey);
+    seenTitles.add(titleKey);
+    return true;
+  });
+}
+
 function itemMatchesSearch(item: CryptoNewsItem, query: string) {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return itemSearchText(item).includes(needle);
-}
-
-function categoryMatches(item: CryptoNewsItem, category: CategoryFilter) {
-  return category === 'all' || item.categories.includes(category);
+  return itemText(item).includes(needle);
 }
 
 function timeMatches(item: CryptoNewsItem, filter: TimeFilter) {
   if (filter === 'all') return true;
   const date = new Date(item.publishedAt);
   if (Number.isNaN(date.getTime())) return false;
-  const diffDays = (Date.now() - date.getTime()) / 86400000;
-  if (filter === 'today') return diffDays <= 1;
-  if (filter === 'week') return diffDays <= 7;
-  return diffDays <= 31;
+  const diffHours = (Date.now() - date.getTime()) / 3_600_000;
+  if (filter === 'hour') return diffHours <= 1;
+  if (filter === 'day') return diffHours <= 24;
+  if (filter === 'week') return diffHours <= 24 * 7;
+  return diffHours <= 24 * 30;
 }
 
-function relevanceScore(item: CryptoNewsItem, query: string) {
+function relevanceScore(item: CryptoNewsItem, query: string, asset: AssetFilter) {
   const needle = query.trim().toLowerCase();
-  if (!needle) return new Date(item.publishedAt).getTime() / 1000000000;
-  let score = 0;
-  if (item.symbols.some(symbol => symbol.toLowerCase() === needle)) score += 80;
-  if (item.categories.some(category => category.toLowerCase().includes(needle))) score += 35;
-  if (item.title.toLowerCase().includes(needle)) score += 30;
-  if (item.summary.toLowerCase().includes(needle)) score += 15;
-  return score + new Date(item.publishedAt).getTime() / 10000000000;
+  let score = new Date(item.publishedAt).getTime() / 10_000_000_000;
+  if (asset !== 'all' && item.symbols.includes(asset)) score += 75;
+  if (needle) {
+    if (item.symbols.some(symbol => symbol.toLowerCase() === needle)) score += 90;
+    if (item.title.toLowerCase().includes(needle)) score += 35;
+    if (item.summary.toLowerCase().includes(needle)) score += 15;
+    if (item.source.toLowerCase().includes(needle)) score += 10;
+  }
+  return score;
+}
+
+function cryptoMarketHref(coin: CryptoMarketCoin) {
+  return `/market-analysis?symbol=${encodeURIComponent(coin.marketSymbol)}`;
+}
+
+function symbolHref(symbol: CryptoNewsSymbol) {
+  return `/market-analysis?symbol=${encodeURIComponent(SYMBOL_TO_MARKET_SYMBOL[symbol])}`;
+}
+
+function changeTone(value: number | null) {
+  if (value === null || value === 0) return 'neutral';
+  return value > 0 ? 'up' : 'down';
+}
+
+function formatCompactUsd(value: number | null, locale: string) {
+  if (value === null) return '—';
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatCryptoPrice(value: number, locale: string) {
+  const abs = Math.abs(value);
+  const digits = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 8;
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: Math.min(2, digits),
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+function formatPercent(value: number | null, locale: string) {
+  if (value === null) return '—';
+  const formatted = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+  return `${value > 0 ? '+' : ''}${formatted}%`;
+}
+
+function formatDateTime(value: string, locale: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function useDebouncedValue(value: string, delay = 250) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timeout);
+  }, [delay, value]);
+  return debounced;
 }
 
 export function CryptoNewsPage() {
   const { dir, lang, t } = useLanguage();
+  const activeLang = languageKey(lang);
+  const text = COPY[activeLang];
+  const locale = localeFor(activeLang);
   const [items, setItems] = useState<CryptoNewsItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [newStoryCount, setNewStoryCount] = useState(0);
   const [error, setError] = useState('');
   const [marketData, setMarketData] = useState<CryptoMarketPayload | null>(null);
   const [marketLoading, setMarketLoading] = useState(true);
   const [marketError, setMarketError] = useState('');
   const [query, setQuery] = useState('');
+  const [assetFilter, setAssetFilter] = useState<AssetFilter>('all');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
-  const [sort, setSort] = useState<SortFilter>('recent');
+  const [sort, setSort] = useState<SortFilter>('latest');
   const [visibleCount, setVisibleCount] = useState(NEWS_PAGE_SIZE);
-  const locale = localeFor(lang);
+  const [urlReady, setUrlReady] = useState(false);
+  const itemIdsRef = useRef<Set<string>>(new Set());
+  const refreshingRef = useRef(false);
+  const debouncedQuery = useDebouncedValue(query);
 
   const load = useCallback(async (showLoader = true) => {
+    if (!showLoader && refreshingRef.current) return;
     if (showLoader) setLoading(true);
-    setRefreshing(!showLoader);
+    if (!showLoader) {
+      refreshingRef.current = true;
+      setRefreshing(true);
+    }
     setError('');
     try {
-      const response = await fetch(`/api/crypto-news?lang=${encodeURIComponent(lang)}&limit=60`);
+      const response = await fetch(`/api/crypto-news?lang=${encodeURIComponent(activeLang)}&limit=60`);
       const json = await response.json().catch(() => ({})) as ApiResponse;
       if (!response.ok || !json.success) throw new Error(t('crypto_news_error'));
-      setItems(json.items);
+      const nextItems = dedupeNews(json.items);
+      const previousIds = itemIdsRef.current;
+      setNewStoryCount(showLoader ? 0 : nextItems.filter(item => !previousIds.has(item.id)).length);
+      itemIdsRef.current = new Set(nextItems.map(item => item.id));
+      setItems(nextItems);
       setLastUpdated(json.lastUpdated);
     } catch {
-      setItems([]);
-      setLastUpdated('');
-      setError(t('crypto_news_error'));
+      if (showLoader) setItems([]);
+      setLastUpdated(current => showLoader ? '' : current);
+      setError(text.newsError);
     } finally {
       if (showLoader) setLoading(false);
-      setRefreshing(false);
+      if (!showLoader) {
+        refreshingRef.current = false;
+        setRefreshing(false);
+      }
     }
-  }, [lang, t]);
+  }, [activeLang, t, text.newsError]);
 
   const loadMarket = useCallback(async (showLoader = true) => {
     if (showLoader) setMarketLoading(true);
@@ -127,15 +559,15 @@ export function CryptoNewsPage() {
     try {
       const response = await fetch('/api/crypto-news/market');
       const json = await response.json().catch(() => ({})) as CryptoMarketApiResponse;
-      if (!response.ok || !json.ok) throw new Error((json as {message?: string}).message || t('crypto_news_market_unavailable_body'));
+      if (!response.ok || !json.ok) throw new Error((json as { message?: string }).message || text.marketError);
       setMarketData(json);
     } catch {
-      setMarketData(null);
-      setMarketError(t('crypto_news_market_unavailable_body'));
+      if (showLoader) setMarketData(null);
+      setMarketError(text.marketError);
     } finally {
       if (showLoader) setMarketLoading(false);
     }
-  }, [t]);
+  }, [text.marketError]);
 
   useEffect(() => {
     void load();
@@ -146,349 +578,860 @@ export function CryptoNewsPage() {
   }, [loadMarket]);
 
   useEffect(() => {
+    const interval = window.setInterval(() => {
+      void load(false);
+      void loadMarket(false);
+    }, REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [load, loadMarket]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextQuery = params.get('q') ?? '';
+    const nextAsset = params.get('asset') as AssetFilter | null;
+    const nextCategory = params.get('category') as CategoryFilter | null;
+    const nextSource = params.get('source') ?? 'all';
+    const nextTime = params.get('time') as TimeFilter | null;
+    const nextSort = params.get('sort') as SortFilter | null;
+    setQuery(nextQuery);
+    if (nextAsset && ASSET_ORDER.includes(nextAsset)) setAssetFilter(nextAsset);
+    if (nextCategory && CATEGORY_ORDER.includes(nextCategory)) setCategory(nextCategory);
+    setSourceFilter(nextSource || 'all');
+    if (nextTime && TIME_FILTERS.includes(nextTime)) setTimeFilter(nextTime);
+    if (nextSort && SORT_FILTERS.includes(nextSort)) setSort(nextSort);
+    setUrlReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('q', query.trim());
+    if (assetFilter !== 'all') params.set('asset', assetFilter);
+    if (category !== 'all') params.set('category', category);
+    if (sourceFilter !== 'all') params.set('source', sourceFilter);
+    if (timeFilter !== 'all') params.set('time', timeFilter);
+    if (sort !== 'latest') params.set('sort', sort);
+    const next = params.toString() ? `/crypto-news?${params.toString()}` : '/crypto-news';
+    window.history.replaceState(null, '', next);
+  }, [assetFilter, category, query, sort, sourceFilter, timeFilter, urlReady]);
+
+  useEffect(() => {
     setVisibleCount(NEWS_PAGE_SIZE);
-  }, [category, query, sort, sourceFilter, timeFilter]);
+  }, [assetFilter, category, debouncedQuery, sort, sourceFilter, timeFilter]);
 
   const sourceOptions = useMemo(() => (
     Array.from(new Set(items.map(item => item.source).filter(Boolean))).sort((a, b) => a.localeCompare(b))
   ), [items]);
 
-  const baseFilteredItems = useMemo(() => (
-    items
-      .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
-      .filter(item => timeMatches(item, timeFilter))
-      .filter(item => itemMatchesSearch(item, query))
-  ), [items, query, sourceFilter, timeFilter]);
-
-  const categoryCounts = useMemo(() => (
-    CATEGORY_ORDER.reduce((acc, item) => {
-      acc[item] = baseFilteredItems.filter(newsItem => categoryMatches(newsItem, item)).length;
-      return acc;
-    }, {} as Record<CategoryFilter, number>)
-  ), [baseFilteredItems]);
-
   const filteredItems = useMemo(() => {
-    const nextItems = baseFilteredItems.filter(item => categoryMatches(item, category));
-    return [...nextItems].sort((a, b) => {
+    const next = items
+      .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
+      .filter(item => assetFilter === 'all' || item.symbols.includes(assetFilter))
+      .filter(item => category === 'all' || item.categories.includes(category))
+      .filter(item => timeMatches(item, timeFilter))
+      .filter(item => itemMatchesSearch(item, debouncedQuery));
+
+    return [...next].sort((a, b) => {
+      if (sort === 'oldest') return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
       if (sort === 'relevance') {
-        const relevanceDiff = relevanceScore(b, query) - relevanceScore(a, query);
-        if (relevanceDiff !== 0) return relevanceDiff;
+        const diff = relevanceScore(b, debouncedQuery, assetFilter) - relevanceScore(a, debouncedQuery, assetFilter);
+        if (diff !== 0) return diff;
       }
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-  }, [baseFilteredItems, category, query, sort]);
+  }, [assetFilter, category, debouncedQuery, items, sort, sourceFilter, timeFilter]);
+
+  const categoryCounts = useMemo(() => (
+    CATEGORY_ORDER.reduce((acc, item) => {
+      acc[item] = items
+        .filter(newsItem => sourceFilter === 'all' || newsItem.source === sourceFilter)
+        .filter(newsItem => assetFilter === 'all' || newsItem.symbols.includes(assetFilter))
+        .filter(newsItem => timeMatches(newsItem, timeFilter))
+        .filter(newsItem => itemMatchesSearch(newsItem, debouncedQuery))
+        .filter(newsItem => item === 'all' || newsItem.categories.includes(item)).length;
+      return acc;
+    }, {} as Record<CategoryFilter, number>)
+  ), [assetFilter, debouncedQuery, items, sourceFilter, timeFilter]);
 
   const featuredItems = filteredItems.slice(0, FEATURED_NEWS_COUNT);
-  const listItems = filteredItems.slice(featuredItems.length);
-  const visibleNewsItems = listItems.slice(0, visibleCount);
-  const hasMoreItems = visibleCount < listItems.length;
+  const feedItems = filteredItems.slice(FEATURED_NEWS_COUNT);
+  const visibleFeedItems = feedItems.slice(0, visibleCount);
+  const enhancedFeedItems = visibleFeedItems.slice(0, 4);
+  const compactFeedItems = visibleFeedItems.slice(4);
+  const hasMoreItems = visibleCount < feedItems.length;
+  const shownIds = useMemo(() => new Set([...featuredItems, ...visibleFeedItems].map(item => item.id)), [featuredItems, visibleFeedItems]);
+  const sidebarLatest = filteredItems.filter(item => !shownIds.has(item.id)).slice(0, 5);
 
   const symbolCounts = useMemo(() => {
     const counts = new Map<CryptoNewsSymbol, number>();
-    filteredItems.forEach(item => {
-      item.symbols.forEach(symbol => counts.set(symbol, (counts.get(symbol) ?? 0) + 1));
-    });
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    filteredItems.forEach(item => item.symbols.forEach(symbol => counts.set(symbol, (counts.get(symbol) ?? 0) + 1)));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [filteredItems]);
 
   const sourceCounts = useMemo(() => {
     const counts = new Map<string, number>();
     filteredItems.forEach(item => {
-      if (!item.source) return;
-      counts.set(item.source, (counts.get(item.source) ?? 0) + 1);
+      if (item.source) counts.set(item.source, (counts.get(item.source) ?? 0) + 1);
     });
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [filteredItems]);
 
-  const categoryLabels: Record<CategoryFilter, string> = {
-    all: t('crypto_news_category_all'),
-    bitcoin: t('crypto_news_category_bitcoin'),
-    ethereum: t('crypto_news_category_ethereum'),
-    altcoins: t('crypto_news_category_altcoins'),
-    etfs: t('crypto_news_category_etfs'),
-    regulation: t('crypto_news_category_regulation'),
-    exchanges: t('crypto_news_category_exchanges'),
-    blockchain: t('crypto_news_category_blockchain'),
-  };
-  const timeLabels: Record<TimeFilter, string> = {
-    all: t('tech_news_time_all'),
-    today: t('tech_news_time_today'),
-    week: t('tech_news_time_week'),
-    month: t('tech_news_time_month'),
-  };
-  const sortLabels: Record<SortFilter, string> = {
-    recent: t('tech_news_sort_recent'),
-    relevance: t('tech_news_sort_relevance'),
-  };
-
-  const formatDateTime = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return new Intl.DateTimeFormat(locale, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(date);
-  };
-
-  const formatCryptoPrice = (value: number) => {
-    const abs = Math.abs(value);
-    const digits = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 8;
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: Math.min(2, digits),
-      maximumFractionDigits: digits,
-    }).format(value);
-  };
-
-  const formatVolume = (value: number | null) => {
-    if (value === null) return '-';
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'USD',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(value);
-  };
-
-  const formatPercent = (value: number | null) => {
-    if (value === null) return '-';
-    const formatted = new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-    return `${value > 0 ? '+' : ''}${formatted}%`;
-  };
+  const activeFilters = [
+    query.trim() ? { key: 'q', label: query.trim(), clear: () => setQuery('') } : null,
+    assetFilter !== 'all' ? { key: 'asset', label: assetFilter, clear: () => setAssetFilter('all') } : null,
+    category !== 'all' ? { key: 'category', label: text.categories[category], clear: () => setCategory('all') } : null,
+    sourceFilter !== 'all' ? { key: 'source', label: sourceFilter, clear: () => setSourceFilter('all') } : null,
+    timeFilter !== 'all' ? { key: 'time', label: timeLabel(timeFilter, text), clear: () => setTimeFilter('all') } : null,
+  ].filter((filter): filter is { key: string; label: string; clear: () => void } => Boolean(filter));
 
   const resetFilters = () => {
     setQuery('');
+    setAssetFilter('all');
     setCategory('all');
     setSourceFilter('all');
     setTimeFilter('all');
-    setSort('recent');
+    setSort('latest');
   };
 
   const refreshAll = () => {
+    if (refreshing) return;
     void load(false);
     void loadMarket(false);
   };
 
-  const updatedMinutes = minutesAgo(lastUpdated);
-  const headerSubtitle = updatedMinutes === null
-    ? `${t('crypto_news_subtitle')} - ${t('crypto_news_updated_real_sources')}`
-    : `${t('crypto_news_subtitle')} - ${t('tech_news_last_updated_before')} ${updatedMinutes} ${t('tech_news_minutes')}`;
-  const resultsCountLabel = t('tech_news_results_count').replace('{count}', String(filteredItems.length));
-  const shownCountLabel = t('tech_news_showing_count').replace('{count}', String(featuredItems.length + visibleNewsItems.length));
+  const serviceConnected = !error && !marketError;
+  const lastUpdateText = relativeUpdate(lastUpdated || marketData?.updatedAt || '', activeLang, locale, text.notUpdated);
+  const shownCount = featuredItems.length + visibleFeedItems.length;
 
   return (
     <div className="crypto-news-shell" dir={dir}>
       <Sidebar />
       <main className="crypto-news-main">
-        <header className="crypto-news-header">
-          <div className="crypto-news-title-row">
-            <div className="crypto-news-title-icon" aria-hidden="true">
-              <CircleDollarSign size={25} />
-            </div>
-            <div>
-              <h1>{t('crypto_news_title')}</h1>
-              <p><span aria-hidden="true" />{headerSubtitle}</p>
+        <header className="crypto-hero">
+          <div className="crypto-hero-copy">
+            <span className="crypto-kicker"><ShieldCheck size={15} />{text.badge}</span>
+            <h1>{text.title}</h1>
+            <p>{text.subtitle}</p>
+            <div className="crypto-hero-meta">
+              <span className={serviceConnected ? 'ok' : 'warn'}><Signal size={14} />{serviceConnected ? text.connected : text.unavailable}</span>
+              <span><Clock3 size={14} />{text.lastUpdate}: {lastUpdateText}</span>
+              {newStoryCount > 0 ? <span><Sparkles size={14} />{newStoryCount} {text.newStories}</span> : null}
             </div>
           </div>
-          <button type="button" className="crypto-news-icon-btn" aria-label={t('crypto_news_refresh')} onClick={refreshAll} disabled={refreshing}>
-            <RefreshCcw size={18} className={refreshing ? 'spinning' : ''} />
+          <button type="button" className="crypto-refresh-btn" onClick={refreshAll} disabled={refreshing} aria-label={text.refresh}>
+            <RefreshCcw size={17} className={refreshing ? 'spinning' : ''} />
+            {refreshing ? text.refreshing : text.refresh}
           </button>
         </header>
 
-        {!loading && !error && featuredItems.length > 0 ? (
-          <FeaturedCryptoNews items={featuredItems} labels={{
-            title: t('tech_news_featured_title'),
-            readNews: t('tech_news_read_news'),
-            source: t('tech_news_source'),
-            openArticle: t('tech_news_open_article'),
-          }} formatDateTime={formatDateTime} categoryLabels={categoryLabels} />
-        ) : null}
-
-        <CryptoMarketOverview
+        <CryptoMarketSnapshot
           data={marketData}
           loading={marketLoading}
           error={marketError}
-          labels={{
-            tickerTitle: t('crypto_news_market_ticker_title'),
-            tickerSubtitle: t('crypto_news_market_ticker_subtitle'),
-            marketRankings: t('crypto_news_market_rankings_title'),
-            marketRankingsSubtitle: t('crypto_news_market_rankings_subtitle'),
-            highestPriced: t('crypto_news_highest_priced'),
-            lowestPriced: t('crypto_news_lowest_priced'),
-            mostTraded: t('crypto_news_most_traded'),
-            leastTraded: t('crypto_news_least_traded'),
-            price: t('crypto_news_price_label'),
-            volume: t('crypto_news_volume_label'),
-            change24h: t('crypto_news_change_24h_label'),
-            source: t('tech_news_source'),
-            liveData: t('crypto_news_live_market_data'),
-            loading: t('crypto_news_market_loading'),
-            unavailableTitle: t('crypto_news_market_unavailable_title'),
-            unavailableBody: t('crypto_news_market_unavailable_body'),
-            openAnalysis: t('crypto_news_open_analysis'),
-          }}
-          formatPrice={formatCryptoPrice}
-          formatVolume={formatVolume}
-          formatPercent={formatPercent}
+          text={text}
+          locale={locale}
         />
 
-        <section className="crypto-news-controls" aria-label={t('crypto_news_filter_news')}>
-          <label className="crypto-news-search">
-            <Search size={17} />
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('crypto_news_search_placeholder')} type="search" autoComplete="off" />
-          </label>
+        <FeaturedNewsSection
+          items={featuredItems}
+          loading={loading}
+          text={text}
+          locale={locale}
+        />
 
-          <div className="crypto-news-filter-row">
-            <span className="crypto-news-filter-label"><Filter size={15} />{t('crypto_news_filter_news')}</span>
-            <label>
-              <span>{t('tech_news_source_filter')}</span>
-              <select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}>
-                <option value="all">{t('tech_news_source_all')}</option>
-                {sourceOptions.map(source => <option key={source} value={source}>{source}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>{t('tech_news_time_filter')}</span>
-              <select value={timeFilter} onChange={event => setTimeFilter(event.target.value as TimeFilter)}>
-                {TIME_FILTERS.map(item => <option key={item} value={item}>{timeLabels[item]}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>{t('tech_news_sort')}</span>
-              <select value={sort} onChange={event => setSort(event.target.value as SortFilter)}>
-                {SORT_FILTERS.map(item => <option key={item} value={item}>{sortLabels[item]}</option>)}
-              </select>
-            </label>
-          </div>
+        <CryptoMarketMovers
+          data={marketData}
+          loading={marketLoading}
+          error={marketError}
+          text={text}
+          locale={locale}
+        />
 
-          <div className="crypto-news-chip-row" role="tablist" aria-label={t('crypto_news_categories')}>
-            {CATEGORY_ORDER.map(item => (
-              <button key={item} type="button" role="tab" aria-selected={category === item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>
-                <span>{categoryLabels[item]}</span>
-                <b>{categoryCounts[item] ?? 0}</b>
-              </button>
-            ))}
-          </div>
-        </section>
+        <NewsFilters
+          text={text}
+          query={query}
+          setQuery={setQuery}
+          assetFilter={assetFilter}
+          setAssetFilter={setAssetFilter}
+          category={category}
+          setCategory={setCategory}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          sourceOptions={sourceOptions}
+          timeFilter={timeFilter}
+          setTimeFilter={setTimeFilter}
+          sort={sort}
+          setSort={setSort}
+          categoryCounts={categoryCounts}
+          activeFilters={activeFilters}
+          resetFilters={resetFilters}
+        />
 
         {loading ? (
-          <CryptoNewsSkeleton />
+          <NewsLoadingSkeleton />
         ) : error ? (
-          <section className="crypto-news-state error" role="alert">
-            <AlertTriangle size={24} />
-            <strong>{t('crypto_news_error_title')}</strong>
-            <p>{t('crypto_news_error_body')}</p>
-            <button type="button" onClick={() => void load()}>
-              <RefreshCcw size={16} />
-              {t('market_retry')}
-            </button>
-          </section>
+          <NewsState
+            tone="error"
+            icon={AlertTriangle}
+            title={text.noProviderTitle}
+            body={text.noProviderBody}
+            actionLabel={text.refresh}
+            onAction={() => void load()}
+          />
         ) : filteredItems.length === 0 ? (
-          <section className="crypto-news-state">
-            <Newspaper size={24} />
-            <strong>{t('crypto_news_empty_title')}</strong>
-            <p>{items.length === 0 ? t('crypto_news_no_source_items') : t('crypto_news_empty_body')}</p>
-            <div className="crypto-news-state-actions">
-              <button type="button" onClick={() => void load()}>
-                <RefreshCcw size={16} />
-                {t('market_retry')}
-              </button>
-              <button type="button" onClick={resetFilters}>{t('crypto_news_clear_filters')}</button>
-            </div>
-          </section>
+          <NewsState
+            tone="empty"
+            icon={Search}
+            title={text.noResultsTitle}
+            body={items.length === 0 ? text.noProviderBody : text.noResultsBody}
+            actionLabel={items.length === 0 ? text.refresh : text.clearFilters}
+            onAction={items.length === 0 ? () => void load() : resetFilters}
+          />
         ) : (
-          <section className="crypto-news-layout" aria-label={t('crypto_news_title')}>
-            <div className="crypto-news-content-column">
-              <div className="crypto-news-results-bar">
-                <span>{resultsCountLabel}</span>
-                <b>{shownCountLabel}</b>
-              </div>
-              <section className="crypto-news-grid" aria-label={t('crypto_news_title')}>
-                {visibleNewsItems.map(item => (
-                  <CryptoNewsCard
-                    key={item.id}
-                    item={item}
-                    labels={{
-                      source: t('tech_news_source'),
-                      readMore: t('tech_news_read_more'),
-                      openArticle: t('tech_news_open_article'),
-                      translated: t('news_translated_badge'),
-                      originalLanguage: t('news_original_language_badge'),
-                    }}
-                    categoryLabels={categoryLabels}
-                    formatDateTime={formatDateTime}
-                  />
-                ))}
-              </section>
-              <div className="crypto-news-load-more-wrap">
+          <section className="crypto-content-grid" aria-label={text.results}>
+            <div className="crypto-feed-column">
+              <NewsResultsToolbar text={text} count={filteredItems.length} shown={shownCount} sort={sort} />
+              {enhancedFeedItems.length > 0 ? (
+                <section className="crypto-card-grid" aria-label={text.mainFeed}>
+                  {enhancedFeedItems.map(item => (
+                    <NewsCard key={item.id} item={item} text={text} locale={locale} variant="card" />
+                  ))}
+                </section>
+              ) : null}
+              {compactFeedItems.length > 0 ? (
+                <section className="crypto-compact-list" aria-label={text.compactFeed}>
+                  {compactFeedItems.map(item => (
+                    <CompactNewsRow key={item.id} item={item} text={text} locale={locale} />
+                  ))}
+                </section>
+              ) : null}
+              <div className="crypto-load-more-wrap">
                 {hasMoreItems ? (
-                  <button type="button" className="crypto-news-load-more" onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}>
-                    {t('tech_news_load_more')}
+                  <button type="button" className="crypto-load-more" onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}>
+                    {text.loadMore}
                   </button>
                 ) : (
-                  <span>{t('tech_news_all_loaded')}</span>
+                  <span>{text.allLoaded}</span>
                 )}
               </div>
             </div>
-            <CryptoNewsSidePanel
-              latestItems={filteredItems.slice(0, 5)}
+            <NewsSidebar
+              latestItems={sidebarLatest}
               symbolCounts={symbolCounts}
               sourceCounts={sourceCounts}
-              labels={{
-                latest: t('tech_news_side_latest'),
-                symbols: t('crypto_news_side_symbols'),
-                sources: t('tech_news_side_sources'),
-                articles: t('tech_news_articles_count'),
-                mentions: t('tech_news_mentions_count'),
-                source: t('tech_news_source'),
-              }}
-              formatDateTime={formatDateTime}
+              text={text}
+              locale={locale}
             />
           </section>
         )}
 
-        <p className="crypto-news-disclaimer">{t('crypto_news_disclaimer')}</p>
+        <footer className="crypto-disclaimer">
+          <Info size={17} />
+          <p>{text.disclaimer}</p>
+        </footer>
       </main>
 
       <style jsx global>{`
-        .crypto-news-shell{--crypto-bg:#F4F8FC;--crypto-panel:var(--sfm-card);--crypto-panel-soft:var(--sfm-light-card);--crypto-border:rgba(29,140,255,.14);--crypto-border-strong:rgba(29,140,255,.22);--crypto-text:var(--sfm-primary-dark);--crypto-muted:var(--sfm-muted);--crypto-accent:var(--sfm-soft-cyan);min-height:100dvh;background:var(--crypto-bg);color:var(--crypto-text);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
-        .crypto-news-shell,.crypto-news-shell *{box-sizing:border-box}.dark .crypto-news-shell{--crypto-bg:#0A1422;--crypto-panel:#0F1D31;--crypto-panel-soft:#0B1829;--crypto-border:#1D3050;--crypto-border-strong:#2A456C;--crypto-text:#E8EEF6;--crypto-muted:#8EA6C3;--crypto-accent:#2FD6C0}
-        .crypto-news-main{width:100%;max-width:100%;margin:0;padding:18px 22px 32px;display:grid;gap:20px;overflow-x:hidden;min-width:0}
-        @media(min-width:1025px){[dir="rtl"].crypto-news-shell .crypto-news-main{padding-right:calc(var(--sidebar-w,230px) + 32px);padding-left:32px}[dir="ltr"].crypto-news-shell .crypto-news-main{padding-left:calc(var(--sidebar-w,230px) + 32px);padding-right:32px}.crypto-news-main>*{width:100%;max-width:1280px;margin-inline:auto}}
-        .crypto-news-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:4px 0 2px;min-width:0}.crypto-news-title-row{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 420px}.crypto-news-title-row>div:last-child{min-width:0;text-align:start}.crypto-news-title-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(47,214,192,.22),rgba(47,214,192,.06));border:1px solid rgba(47,214,192,.34);color:var(--crypto-accent);box-shadow:0 12px 34px rgba(47,214,192,.10);flex:0 0 auto}.crypto-news-header h1{margin:0;color:var(--crypto-text);font-size:clamp(28px,4vw,42px);line-height:1.1;font-weight:950}.crypto-news-header p{margin:8px 0 0;color:var(--crypto-muted);font-size:13px;font-weight:850;display:flex;align-items:center;gap:8px;line-height:1.6}.crypto-news-header p span{width:8px;height:8px;border-radius:50%;background:var(--crypto-accent);box-shadow:0 0 0 4px rgba(47,214,192,.14);flex:0 0 auto}.crypto-news-icon-btn{width:46px;height:46px;border-radius:15px;border:1px solid var(--crypto-border);background:var(--crypto-panel);color:var(--crypto-text);display:grid;place-items:center;cursor:pointer}.crypto-news-icon-btn:hover,.crypto-news-icon-btn:focus-visible{outline:none;color:var(--crypto-accent);border-color:rgba(47,214,192,.48);box-shadow:0 0 0 4px rgba(47,214,192,.10)}.crypto-news-icon-btn:disabled{opacity:.62;cursor:not-allowed}.spinning{animation:cryptoSpin .9s linear infinite}@keyframes cryptoSpin{to{transform:rotate(360deg)}}
-        .crypto-news-featured{display:grid;gap:14px;border:1px solid var(--crypto-border);background:linear-gradient(135deg,rgba(29,140,255,.055),rgba(47,214,192,.085)),var(--crypto-panel);border-radius:26px;padding:18px;box-shadow:0 18px 48px rgba(3,18,37,.10);min-width:0;overflow:hidden}.crypto-news-featured-head{display:flex;align-items:center;gap:10px;color:var(--crypto-accent)}.crypto-news-featured-head span{width:36px;height:36px;border-radius:14px;display:grid;place-items:center;background:rgba(47,214,192,.12);border:1px solid rgba(47,214,192,.24)}.crypto-news-featured-head h2{margin:0;color:var(--crypto-text);font-size:20px;font-weight:950}.crypto-news-featured-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:14px}.crypto-featured-main,.crypto-featured-mini{min-width:0;border:1px solid var(--crypto-border);background:linear-gradient(180deg,var(--crypto-panel),var(--crypto-panel-soft));border-radius:22px;box-shadow:0 12px 34px rgba(3,18,37,.08)}.crypto-featured-main{display:grid;gap:13px;padding:18px}.crypto-featured-badges,.crypto-symbol-row,.crypto-category-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.crypto-featured-badges span,.crypto-category-badge,.crypto-symbol-badge,.crypto-featured-mini span,.crypto-news-source-badge{border:1px solid #A7F3D0;background:#D1FAE5;color:#065F46;border-radius:999px;padding:6px 10px;font-size:11.5px;font-weight:950;line-height:1.25;text-decoration:none;box-shadow:0 8px 18px rgba(6,95,70,.08)}.crypto-symbol-badge{direction:ltr;unicode-bidi:isolate}.crypto-symbol-badge:hover,.crypto-symbol-badge:focus-visible{outline:none;border-color:rgba(47,214,192,.72);box-shadow:0 0 0 4px rgba(47,214,192,.14)}.crypto-featured-main h3{margin:0;color:var(--crypto-text);font-size:clamp(22px,3vw,32px);font-weight:950;line-height:1.25;overflow-wrap:anywhere}.crypto-featured-main p{margin:0;color:var(--crypto-muted);font-size:14px;font-weight:800;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.crypto-featured-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--crypto-border);padding-top:12px}.crypto-featured-meta span,.crypto-featured-mini small{display:inline-flex;align-items:center;gap:6px;color:var(--crypto-muted);font-size:12px;font-weight:900}.crypto-news-read-link{width:max-content;max-width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(47,214,192,.36);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#061A2E;border-radius:999px;min-height:42px;padding:0 16px;text-decoration:none;font-size:12.5px;font-weight:950;box-shadow:0 14px 30px rgba(29,140,255,.18)}.crypto-news-read-link:hover,.crypto-news-read-link:focus-visible{outline:none;filter:saturate(1.1);transform:translateY(-1px);border-color:rgba(47,214,192,.72);box-shadow:0 0 0 4px rgba(47,214,192,.14),0 16px 36px rgba(29,140,255,.24)}.crypto-featured-side{display:grid;gap:10px}.crypto-featured-mini{display:grid;gap:8px;padding:13px;text-decoration:none;color:inherit}.crypto-featured-mini strong{color:var(--crypto-text);font-size:13px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-        .crypto-market-overview{display:grid;gap:14px;min-width:0}.crypto-market-panel,.crypto-ranking-section,.crypto-market-state{border:1px solid var(--crypto-border);background:linear-gradient(180deg,var(--crypto-panel),var(--crypto-panel-soft));border-radius:22px;box-shadow:0 16px 42px rgba(3,18,37,.09);min-width:0;overflow:hidden}.crypto-market-panel{padding:12px}.crypto-market-head,.crypto-ranking-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}.crypto-market-head>div,.crypto-ranking-head>div{min-width:0;text-align:start}.crypto-market-head-icon{width:34px;height:34px;border-radius:13px;display:grid;place-items:center;background:rgba(47,214,192,.12);border:1px solid rgba(47,214,192,.26);color:var(--crypto-accent);flex:0 0 auto}.crypto-market-head h2,.crypto-ranking-head h2{margin:0;color:var(--crypto-text);font-size:16px;font-weight:950;line-height:1.25}.crypto-market-head p,.crypto-ranking-head p{margin:3px 0 0;color:var(--crypto-muted);font-size:11.5px;font-weight:850;line-height:1.45}.crypto-market-head small,.crypto-ranking-head span,.crypto-ticker-status{border:1px solid #A7F3D0;background:#D1FAE5;color:#065F46;border-radius:999px;padding:5px 9px;font-size:10.5px;font-weight:950;white-space:nowrap;box-shadow:0 8px 18px rgba(6,95,70,.07)}.crypto-live-ticker{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;direction:ltr}.crypto-ticker-status{grid-column:2;grid-row:1;justify-self:end}.crypto-ticker-viewport{grid-column:1;grid-row:1;min-width:0;overflow:hidden;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.crypto-ticker-viewport::-webkit-scrollbar{display:none}.crypto-ticker-track{width:max-content;display:flex;align-items:stretch}.crypto-ticker-set{display:flex;align-items:stretch;gap:8px;padding-inline:5px;flex:0 0 auto}.crypto-ticker-item{width:196px;min-height:62px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name change" "price change";align-items:center;gap:4px 8px;border:1px solid rgba(29,140,255,.14);background:rgba(255,255,255,.88);border-radius:14px;padding:7px 9px;text-decoration:none;color:inherit;box-shadow:0 8px 20px rgba(3,18,37,.055)}.crypto-ticker-item:hover,.crypto-ticker-item:focus-visible,.crypto-ranking-row:hover,.crypto-ranking-row:focus-visible{outline:none;border-color:rgba(47,214,192,.52);box-shadow:0 0 0 4px rgba(47,214,192,.10),0 12px 26px rgba(3,18,37,.10)}.crypto-ticker-item div{grid-area:name;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"symbol name" "volume volume";align-items:center;gap:1px 6px}.crypto-ticker-item strong{grid-area:symbol;color:#0B1830;font-size:12px;font-weight:950;line-height:1.15}.crypto-ticker-item span{grid-area:name;min-width:0;color:#64748B;font-size:10.5px;font-weight:850;line-height:1.15;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.crypto-ticker-item small{grid-area:volume;min-width:0;color:#7C8DA5;font-size:9.5px;font-weight:850;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.crypto-ticker-item b{grid-area:price;color:#0F172A;font-size:11.5px;font-weight:950;line-height:1.15;white-space:nowrap}.crypto-ticker-item em,.crypto-ranking-values em{width:fit-content;display:inline-flex;align-items:center;justify-content:center;gap:4px;border-radius:999px;padding:3px 6px;font-style:normal;font-size:10px;font-weight:950;line-height:1.2;white-space:nowrap}.crypto-ticker-item em{grid-area:change;justify-self:end}.crypto-ticker-item em.up,.crypto-ranking-values em.up{color:#047857;background:#D1FAE5;border:1px solid #A7F3D0}.crypto-ticker-item em.down,.crypto-ranking-values em.down{color:#B91C1C;background:#FEE2E2;border:1px solid #FECACA}.crypto-ticker-item em.neutral,.crypto-ranking-values em.neutral{color:#475569;background:#F1F5F9;border:1px solid #E2E8F0}
-        .crypto-live-ticker{width:100%;max-width:100%;overflow:hidden}.crypto-ticker-viewport{width:100%;max-width:100%;overflow:hidden}.crypto-ticker-track{gap:0;animation:cryptoTickerScrollLtr 42s linear infinite;will-change:transform}.crypto-live-ticker:hover .crypto-ticker-track,.crypto-live-ticker:focus-within .crypto-ticker-track{animation-play-state:paused}[dir="rtl"].crypto-news-shell .crypto-ticker-track{animation-name:cryptoTickerScrollRtl}@keyframes cryptoTickerScrollLtr{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}@keyframes cryptoTickerScrollRtl{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}
-        .crypto-ranking-section{padding:14px}.crypto-ranking-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px;min-width:0}.crypto-ranking-card{min-width:0;display:grid;align-content:start;gap:10px;border:1px solid var(--crypto-border);background:rgba(255,255,255,.56);border-radius:18px;padding:12px}.crypto-ranking-card h3{margin:0;color:var(--crypto-text);font-size:14px;font-weight:950;line-height:1.35}.crypto-ranking-list{display:grid;gap:7px;min-width:0}.crypto-ranking-row{min-width:0;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:9px;border:1px solid rgba(29,140,255,.10);background:var(--crypto-panel-soft);border-radius:14px;padding:8px;text-decoration:none;color:inherit}.crypto-ranking-index{width:24px;height:24px;border-radius:9px;display:grid;place-items:center;background:rgba(47,214,192,.12);color:var(--crypto-accent);font-size:11px;font-weight:950}.crypto-ranking-identity{min-width:0;display:grid;gap:2px;text-align:start}.crypto-ranking-identity strong{min-width:0;color:var(--crypto-text);font-size:12px;font-weight:950;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.crypto-ranking-identity small{color:var(--crypto-muted);font-size:10px;font-weight:950;line-height:1.1}.crypto-ranking-values{display:grid;justify-items:end;gap:3px;text-align:end}.crypto-ranking-values b{color:var(--crypto-text);font-size:11.5px;font-weight:950;white-space:nowrap}.crypto-ranking-values small{color:var(--crypto-muted);font-size:10px;font-weight:900;white-space:nowrap}.crypto-market-state,.crypto-market-inline-state{display:grid;place-items:center;gap:8px;text-align:center;color:var(--crypto-muted);border:1px dashed var(--crypto-border-strong);background:rgba(255,255,255,.46)}.crypto-market-state{padding:26px 16px}.crypto-market-state svg,.crypto-market-inline-state svg{color:var(--crypto-accent)}.crypto-market-state strong{color:var(--crypto-text);font-size:16px;font-weight:950}.crypto-market-state p{margin:0;max-width:620px;font-size:13px;font-weight:850;line-height:1.65}.crypto-market-inline-state{min-height:58px;margin-top:10px;border-radius:14px;padding:10px;font-size:12px;font-weight:900}.crypto-market-skeleton-row{display:flex;gap:8px;overflow:hidden;margin-top:10px}.crypto-market-skeleton-row span{flex:0 0 176px;height:58px;border-radius:14px}.crypto-market-skeleton i,.crypto-market-skeleton b,.crypto-market-skeleton small,.crypto-market-skeleton span,.crypto-market-skeleton-row span{display:block;background:linear-gradient(90deg,rgba(142,166,195,.10),rgba(47,214,192,.20),rgba(142,166,195,.10));background-size:220% 100%;animation:cryptoShimmer 1.2s linear infinite}.crypto-market-skeleton i{width:170px;height:18px;border-radius:999px}.crypto-market-skeleton small{width:240px;height:12px;border-radius:999px;margin-top:6px}.crypto-market-skeleton b{width:110px;height:26px;border-radius:999px}.crypto-market-skeleton .crypto-ranking-card i{width:52%;height:16px;border-radius:999px}.crypto-market-skeleton .crypto-ranking-card span{height:42px;border-radius:14px}
-        .crypto-news-controls{display:grid;gap:14px;min-width:0}.crypto-news-search{display:flex;align-items:center;gap:10px;border:1px solid var(--crypto-border);background:var(--crypto-panel);border-radius:18px;padding:0 16px;min-height:58px;color:var(--crypto-accent);box-shadow:0 16px 44px rgba(3,18,37,.08)}.crypto-news-search:focus-within{border-color:rgba(47,214,192,.62);box-shadow:0 0 0 4px rgba(47,214,192,.10),0 16px 44px rgba(3,18,37,.12)}.crypto-news-search input{width:100%;min-width:0;border:0;background:transparent;outline:0;color:var(--crypto-text);font:900 14px Tajawal,Arial,sans-serif;text-align:start}.crypto-news-search input::placeholder{color:var(--crypto-muted);opacity:1}.crypto-news-filter-row{display:grid;grid-template-columns:auto minmax(150px,1fr) minmax(150px,1fr) minmax(150px,1fr);gap:10px;align-items:end;border:1px solid var(--crypto-border);background:var(--crypto-panel);border-radius:18px;padding:12px;box-shadow:0 14px 38px rgba(3,18,37,.06)}.crypto-news-filter-label{min-height:42px;display:inline-flex;align-items:center;gap:8px;color:var(--crypto-accent);font-size:12px;font-weight:950;white-space:nowrap}.crypto-news-filter-row label{display:grid;gap:6px;min-width:0}.crypto-news-filter-row label span{color:var(--crypto-muted);font-size:11px;font-weight:950}.crypto-news-filter-row select{width:100%;height:42px;border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-panel-soft);color:var(--crypto-text);padding:0 12px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.crypto-news-chip-row{display:flex;flex-wrap:wrap;gap:9px;overflow-x:visible}.crypto-news-chip-row button{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--crypto-border);background:var(--crypto-panel);color:var(--crypto-muted);border-radius:999px;min-height:40px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap}.crypto-news-chip-row button.active{background:#CCFBF1;border-color:rgba(15,118,110,.25);color:#0F766E;box-shadow:0 10px 24px rgba(15,118,110,.12)}.crypto-news-chip-row button b{min-width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;padding:0 6px;background:rgba(29,140,255,.10);font-size:11px}
-        .crypto-news-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}.crypto-news-content-column{display:grid;gap:14px;min-width:0}.crypto-news-results-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--crypto-border);background:var(--crypto-panel);border-radius:18px;padding:12px 14px;color:var(--crypto-muted);box-shadow:0 12px 32px rgba(3,18,37,.06)}.crypto-news-results-bar span,.crypto-news-results-bar b{font-size:12px;font-weight:950}.crypto-news-results-bar b{color:var(--crypto-accent)}.crypto-news-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-width:0}.crypto-news-card{background:linear-gradient(180deg,var(--crypto-panel),var(--crypto-panel-soft));border:1px solid var(--crypto-border);border-radius:20px;padding:18px;display:grid;gap:14px;box-shadow:0 18px 48px rgba(3,18,37,.13);min-width:0;overflow:hidden}.crypto-news-card:hover{transform:translateY(-2px);border-color:rgba(47,214,192,.46);box-shadow:0 24px 60px rgba(3,18,37,.18)}.crypto-news-card-top{display:grid;gap:9px}.crypto-news-card h2{margin:0;color:var(--crypto-text);font-size:clamp(17px,1.7vw,20px);font-weight:950;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.crypto-news-card p{margin:0;color:var(--crypto-muted);font-size:13.5px;font-weight:820;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.crypto-news-card-footer{border-top:1px solid var(--crypto-border);padding-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.crypto-news-meta{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;color:var(--crypto-muted);font-size:12px;font-weight:900}.crypto-news-meta span{display:inline-flex;align-items:center;gap:6px}
-        .crypto-news-side-panel{position:sticky;top:24px;display:grid;gap:12px}.crypto-side-card{display:grid;gap:12px;border:1px solid var(--crypto-border);background:linear-gradient(180deg,var(--crypto-panel),var(--crypto-panel-soft));border-radius:22px;padding:15px;box-shadow:0 16px 42px rgba(3,18,37,.10)}.crypto-side-card h3{margin:0;display:flex;align-items:center;gap:8px;color:var(--crypto-text);font-size:15px;font-weight:950}.crypto-side-card h3 svg{color:var(--crypto-accent)}.crypto-side-list{display:grid;gap:10px}.crypto-side-list a,.crypto-side-news-item{display:grid;gap:5px;text-decoration:none;color:inherit;border:1px solid var(--crypto-border);background:var(--crypto-panel-soft);border-radius:16px;padding:11px}.crypto-side-list strong{color:var(--crypto-text);font-size:12.5px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.crypto-side-list small{display:inline-flex;align-items:center;gap:5px;color:var(--crypto-muted);font-size:11px;font-weight:850}.crypto-side-symbols,.crypto-side-source-list{display:grid;gap:8px}.crypto-side-symbols a,.crypto-side-source-list span{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--crypto-border);background:var(--crypto-panel-soft);border-radius:14px;padding:10px 11px;text-decoration:none;color:inherit}.crypto-side-symbols b,.crypto-side-source-list b{color:var(--crypto-text);font-size:12px;font-weight:950}.crypto-side-symbols small,.crypto-side-source-list small{border:1px solid #A7F3D0;background:#D1FAE5;color:#065F46;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:950}
-        .crypto-news-state{display:grid;place-items:center;gap:10px;text-align:center;padding:58px 20px;color:var(--crypto-muted);background:linear-gradient(180deg,var(--crypto-panel),var(--crypto-panel-soft));border:1px dashed var(--crypto-border-strong);border-radius:22px}.crypto-news-state svg{color:var(--crypto-accent)}.crypto-news-state strong{display:block;color:var(--crypto-text);font-size:19px;font-weight:950}.crypto-news-state p{margin:0;max-width:620px;color:var(--crypto-muted);font-weight:850;line-height:1.75}.crypto-news-state button,.crypto-news-load-more{border:0;border-radius:14px;background:var(--crypto-accent);color:#061A2E;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 15px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.crypto-news-state-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}.crypto-news-load-more-wrap{display:grid;place-items:center;min-height:46px}.crypto-news-load-more{border-radius:999px;padding:0 22px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));box-shadow:0 14px 32px rgba(29,140,255,.18)}.crypto-news-load-more-wrap span,.crypto-news-disclaimer{color:var(--crypto-muted);font-size:12px;font-weight:850;text-align:center}.crypto-news-skeleton span,.crypto-news-skeleton i,.crypto-news-skeleton b,.crypto-news-skeleton small{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.10),rgba(47,214,192,.20),rgba(142,166,195,.10));background-size:220% 100%;animation:cryptoShimmer 1.2s linear infinite}.crypto-news-skeleton span{width:42%;height:18px}.crypto-news-skeleton i{width:100%;height:15px}.crypto-news-skeleton i:nth-child(3){width:76%}.crypto-news-skeleton i:nth-child(4){width:64%}.crypto-news-skeleton b{width:58%;height:38px;border-radius:14px}.crypto-news-skeleton small{width:35%;height:14px}@keyframes cryptoShimmer{to{background-position:-220% 0}}
-        .dark .crypto-featured-badges span,.dark .crypto-category-badge,.dark .crypto-symbol-badge,.dark .crypto-featured-mini span,.dark .crypto-news-source-badge,.dark .crypto-side-symbols small,.dark .crypto-side-source-list small,.dark .crypto-market-head small,.dark .crypto-ranking-head span,.dark .crypto-ticker-status{border-color:rgba(16,185,129,.45);background:rgba(6,78,59,.52);color:#D1FAE5;box-shadow:none}.dark .crypto-news-chip-row button.active{background:#2FD6C0;border-color:#2FD6C0;color:#061A2E}.dark .crypto-news-chip-row button.active b{background:rgba(6,26,46,.16);color:#061A2E}.dark .crypto-ticker-item,.dark .crypto-ranking-card,.dark .crypto-ranking-row,.dark .crypto-market-state,.dark .crypto-market-inline-state{background:rgba(11,24,41,.72);border-color:#1D3050}.dark .crypto-ticker-item strong,.dark .crypto-ticker-item b,.dark .crypto-ranking-identity strong,.dark .crypto-ranking-values b{color:#E8EEF6}.dark .crypto-ticker-item span,.dark .crypto-ticker-item small,.dark .crypto-ranking-identity small,.dark .crypto-ranking-values small{color:#8EA6C3}.dark .crypto-ranking-index{background:rgba(47,214,192,.16);color:#2FD6C0}
-        @media(max-width:1180px){.crypto-ranking-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:1024px){[dir].crypto-news-shell .crypto-news-main{padding:92px 22px 32px}.crypto-news-featured-grid,.crypto-news-layout{grid-template-columns:1fr}.crypto-news-side-panel{position:static}.crypto-news-grid{grid-template-columns:1fr}}
-        @media(max-width:860px){.crypto-news-filter-row{grid-template-columns:1fr 1fr}.crypto-news-filter-label{grid-column:1/-1}}
-        @media(max-width:720px){[dir].crypto-news-shell .crypto-news-main{padding-inline:14px;gap:16px}.crypto-news-header{display:flex;flex-direction:column;gap:12px}.crypto-news-title-icon{width:50px;height:50px}.crypto-news-header h1{font-size:28px}.crypto-news-featured{border-radius:22px;padding:14px}.crypto-featured-main{padding:15px}.crypto-featured-main h3{font-size:20px}.crypto-market-panel,.crypto-ranking-section{border-radius:18px;padding:11px}.crypto-market-head,.crypto-ranking-head{align-items:flex-start}.crypto-market-head small,.crypto-ranking-head span{display:none}.crypto-live-ticker{grid-template-columns:1fr}.crypto-ticker-status{display:none}.crypto-ticker-viewport{grid-column:1;grid-row:1}.crypto-ticker-item{width:182px;min-height:58px}.crypto-ranking-grid{grid-template-columns:1fr;gap:10px}.crypto-news-card{padding:16px}.crypto-news-chip-row{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:10px;scrollbar-width:none}.crypto-news-chip-row::-webkit-scrollbar{display:none}}
-        @media(max-width:640px){[dir].crypto-news-shell .crypto-news-main{padding-inline:12px;padding-top:84px}.crypto-news-filter-row{grid-template-columns:1fr;padding:10px}.crypto-news-title-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.crypto-news-header h1{font-size:25px}.crypto-news-title-icon{width:44px;height:44px;border-radius:15px}.crypto-market-head-icon{width:30px;height:30px}.crypto-market-head h2,.crypto-ranking-head h2{font-size:14px}.crypto-market-head p,.crypto-ranking-head p{font-size:11px}.crypto-ranking-row{grid-template-columns:22px minmax(0,1fr);grid-template-areas:"rank identity" "rank values";align-items:center}.crypto-ranking-index{grid-area:rank}.crypto-ranking-identity{grid-area:identity}.crypto-ranking-values{grid-area:values;justify-items:start;text-align:start;grid-auto-flow:column;justify-content:start;align-items:center}.crypto-news-card{border-radius:18px;padding:15px}.crypto-news-read-link{width:100%}.crypto-news-results-bar{display:grid;justify-content:stretch}.crypto-news-state-actions{display:grid;width:100%}.crypto-news-state-actions button{width:100%}}
-        @media(prefers-reduced-motion:reduce){.crypto-news-card:hover,.crypto-news-read-link:hover{transform:none}}
+        .crypto-news-shell{
+          --crypto-bg:#F4F8FC;
+          --crypto-surface:#FFFFFF;
+          --crypto-soft:#F8FCFF;
+          --crypto-border:rgba(29,78,116,.13);
+          --crypto-border-strong:rgba(29,78,116,.23);
+          --crypto-text:#061A2E;
+          --crypto-muted:#5C728A;
+          --crypto-primary:#1D8CFF;
+          --crypto-accent:#24D5C5;
+          --crypto-success:#047857;
+          --crypto-danger:#B91C1C;
+          --crypto-warning:#B7791F;
+          --crypto-shadow:0 18px 44px rgba(6,26,46,.09);
+          min-height:100dvh;
+          background:radial-gradient(circle at 8% 0%,rgba(36,213,197,.19),transparent 34%),linear-gradient(180deg,var(--crypto-bg),#EEF7FB);
+          color:var(--crypto-text);
+          font-family:Tajawal,Arial,sans-serif;
+          overflow-x:hidden;
+        }
+        .dark .crypto-news-shell{
+          --crypto-bg:#07111F;
+          --crypto-surface:#0F1D31;
+          --crypto-soft:#0B1829;
+          --crypto-border:#1D3050;
+          --crypto-border-strong:#2A456C;
+          --crypto-text:#E8EEF6;
+          --crypto-muted:#8EA6C3;
+          --crypto-shadow:0 18px 44px rgba(0,0,0,.22);
+        }
+        .crypto-news-shell *{box-sizing:border-box}
+        .crypto-news-main{
+          width:min(1440px,calc(100vw - var(--sidebar-w,230px) - 64px));
+          margin-inline-start:calc(var(--sidebar-w,230px) + 32px);
+          margin-inline-end:32px;
+          padding-block:24px 44px;
+          display:grid;
+          gap:24px;
+          min-width:0;
+        }
+        [dir="ltr"].crypto-news-shell .crypto-news-main{
+          margin-inline-start:calc(var(--sidebar-w,230px) + 32px);
+          margin-inline-end:32px;
+        }
+        .crypto-hero,.crypto-panel,.crypto-featured,.crypto-movers,.crypto-filter-panel,.crypto-results-bar,.crypto-news-card,.crypto-compact-row,.crypto-side-card,.crypto-disclaimer,.crypto-state{
+          border:1px solid var(--crypto-border);
+          background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,252,255,.94));
+          border-radius:22px;
+          box-shadow:var(--crypto-shadow);
+        }
+        .dark .crypto-hero,.dark .crypto-panel,.dark .crypto-featured,.dark .crypto-movers,.dark .crypto-filter-panel,.dark .crypto-results-bar,.dark .crypto-news-card,.dark .crypto-compact-row,.dark .crypto-side-card,.dark .crypto-disclaimer,.dark .crypto-state{
+          background:linear-gradient(180deg,rgba(15,29,49,.94),rgba(11,24,41,.94));
+        }
+        .crypto-hero{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) auto;
+          gap:22px;
+          align-items:center;
+          padding:26px;
+          background:radial-gradient(circle at 12% 15%,rgba(36,213,197,.25),transparent 32%),linear-gradient(135deg,#061A2E,#0E4A5C);
+          color:#fff;
+        }
+        .crypto-kicker,.crypto-hero-meta span,.crypto-source-pill,.crypto-badge,.crypto-active-chip{
+          display:inline-flex;
+          align-items:center;
+          gap:7px;
+          width:max-content;
+          max-width:100%;
+          border-radius:999px;
+          padding:6px 10px;
+          font-size:12px;
+          font-weight:950;
+          line-height:1.25;
+        }
+        .crypto-kicker{border:1px solid rgba(36,213,197,.28);background:rgba(36,213,197,.13);color:#A7FFF4}
+        .crypto-hero h1{margin:12px 0 8px;color:#fff;font-size:clamp(34px,4vw,58px);font-weight:950;line-height:1.08;letter-spacing:0}
+        .crypto-hero p{max-width:780px;margin:0;color:#DDF9FF;font-size:16px;font-weight:850;line-height:1.75}
+        .crypto-hero-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px}
+        .crypto-hero-meta span{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#E6FBFF}
+        .crypto-hero-meta span.ok{color:#BDFBE8}
+        .crypto-hero-meta span.warn{color:#FFE8A3}
+        .crypto-refresh-btn,.crypto-load-more,.crypto-state button{
+          min-height:44px;
+          border:0;
+          border-radius:14px;
+          background:linear-gradient(135deg,var(--crypto-primary),var(--crypto-accent));
+          color:#061A2E;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:8px;
+          padding:0 16px;
+          font:950 13px Tajawal,Arial,sans-serif;
+          cursor:pointer;
+          text-decoration:none;
+          box-shadow:0 14px 32px rgba(29,140,255,.18);
+        }
+        .crypto-refresh-btn:disabled{opacity:.65;cursor:not-allowed}
+        .crypto-refresh-btn:hover,.crypto-refresh-btn:focus-visible,.crypto-load-more:hover,.crypto-load-more:focus-visible,.crypto-news-link:hover,.crypto-news-link:focus-visible,.crypto-state button:focus-visible{
+          outline:none;
+          box-shadow:0 0 0 4px rgba(36,213,197,.16),0 16px 36px rgba(29,140,255,.22);
+        }
+        .spinning{animation:cryptoSpin 900ms linear infinite}
+        @keyframes cryptoSpin{to{transform:rotate(360deg)}}
+
+        .crypto-snapshot-grid{display:grid;grid-template-columns:1.25fr repeat(3,minmax(0,1fr));gap:14px}
+        .crypto-panel{padding:18px}
+        .crypto-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+        .crypto-section-head h2{margin:0;color:var(--crypto-text);font-size:22px;font-weight:950}
+        .crypto-section-head p{margin:5px 0 0;color:var(--crypto-muted);font-size:13px;font-weight:850;line-height:1.65}
+        .crypto-section-head span{display:inline-flex;align-items:center;gap:7px;color:#075985;background:#E0F2FE;border:1px solid rgba(14,165,233,.18);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950}
+        .crypto-snapshot-card{min-height:116px;display:grid;gap:8px;align-content:center;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);padding:14px}
+        .crypto-snapshot-card small{color:var(--crypto-muted);font-size:12px;font-weight:900}
+        .crypto-snapshot-card strong{color:var(--crypto-text);font-size:clamp(20px,2.2vw,28px);font-weight:950;line-height:1.15}
+        .crypto-snapshot-card em{font-style:normal;color:var(--crypto-muted);font-size:12px;font-weight:850}
+        .crypto-snapshot-card.hero{background:linear-gradient(135deg,#061A2E,#0E4A5C);color:#fff}
+        .crypto-snapshot-card.hero small,.crypto-snapshot-card.hero em{color:#BEEBF1}.crypto-snapshot-card.hero strong{color:#fff}
+
+        .crypto-featured{padding:18px;display:grid;gap:14px}
+        .crypto-featured-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:14px}
+        .crypto-lead-card{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:stretch;padding:18px;border:1px solid var(--crypto-border);border-radius:20px;background:var(--crypto-soft);min-width:0}
+        .crypto-lead-art{min-height:210px;border-radius:18px;background:radial-gradient(circle at 25% 20%,rgba(36,213,197,.3),transparent 34%),linear-gradient(135deg,#061A2E,#0B3955);display:grid;place-items:center;color:#A7FFF4}
+        .crypto-lead-body,.crypto-mini-list,.crypto-news-card,.crypto-compact-row{min-width:0}
+        .crypto-meta-row,.crypto-symbol-row,.crypto-category-row,.crypto-card-actions,.crypto-active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .crypto-source-pill,.crypto-badge{border:1px solid var(--crypto-border);background:#EFF8FF;color:#075985;text-decoration:none}
+        .crypto-source-pill.ai{background:#FFF7ED;color:#9A3412;border-color:#FED7AA}
+        .crypto-symbol-badge{direction:ltr;unicode-bidi:isolate}
+        .crypto-title-link{color:inherit;text-decoration:none}
+        .crypto-title-link:hover,.crypto-title-link:focus-visible{outline:none;color:#075985;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+        .crypto-lead-card h3,.crypto-news-card h3{margin:0;color:var(--crypto-text);font-weight:950;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+        .crypto-lead-card h3{font-size:clamp(22px,2.4vw,30px);-webkit-line-clamp:2}
+        .crypto-news-card h3{font-size:18px;-webkit-line-clamp:2}
+        .crypto-lead-card p,.crypto-news-card p,.crypto-compact-row p{margin:0;color:var(--crypto-muted);font-size:14px;font-weight:820;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .crypto-news-link{min-height:40px;border-radius:999px;background:linear-gradient(135deg,var(--crypto-primary),var(--crypto-accent));color:#061A2E;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px;font-size:12px;font-weight:950}
+        .crypto-mini-list{display:grid;gap:10px}
+        .crypto-mini-story{display:grid;gap:8px;padding:14px;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);text-decoration:none;color:inherit}
+        .crypto-mini-story strong{color:var(--crypto-text);font-size:14px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .crypto-mini-story small,.crypto-meta-row span,.crypto-compact-row small{display:inline-flex;align-items:center;gap:5px;color:var(--crypto-muted);font-size:12px;font-weight:850}
+
+        .crypto-movers{padding:18px;display:grid;gap:14px}
+        .crypto-movers-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+        .crypto-mover-card{display:grid;gap:10px;align-content:start;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);padding:13px;min-width:0}
+        .crypto-mover-card h3{margin:0;color:var(--crypto-text);font-size:15px;font-weight:950}
+        .crypto-coin-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;min-height:58px;border:1px solid rgba(29,78,116,.1);border-radius:15px;background:var(--crypto-surface);padding:8px;text-decoration:none;color:inherit}
+        .crypto-coin-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#E0F2FE;color:#075985;font-size:12px;font-weight:950;overflow:hidden}
+        .crypto-coin-id{display:grid;gap:2px;min-width:0}
+        .crypto-coin-id strong{color:var(--crypto-text);font-size:13px;font-weight:950;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+        .crypto-coin-id small{color:var(--crypto-muted);font-size:11px;font-weight:850}
+        .crypto-coin-values{display:grid;gap:3px;justify-items:end;text-align:end}
+        .crypto-coin-values b{color:var(--crypto-text);font-size:12px;font-weight:950;white-space:nowrap}
+        .crypto-tone{border-radius:999px;padding:4px 7px;font-size:11px;font-weight:950}
+        .crypto-tone.up{background:#DCFCE7;color:#166534}.crypto-tone.down{background:#FEE2E2;color:#991B1B}.crypto-tone.neutral{background:#E2E8F0;color:#334155}
+
+        .crypto-filter-panel{padding:16px;display:grid;gap:13px}
+        .crypto-filter-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .crypto-filter-title h2{margin:0;color:var(--crypto-text);font-size:20px;font-weight:950}
+        .crypto-filter-grid{display:grid;grid-template-columns:minmax(280px,1.3fr) repeat(5,minmax(140px,.6fr));gap:10px;align-items:end}
+        .crypto-field{display:grid;gap:6px;min-width:0;color:var(--crypto-muted);font-size:12px;font-weight:900}
+        .crypto-search{position:relative}
+        .crypto-search svg{position:absolute;inset-inline-start:14px;bottom:13px;color:#7890A7}
+        .crypto-field input,.crypto-field select{width:100%;min-height:44px;border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);color:var(--crypto-text);padding:0 13px;font:900 13px Tajawal,Arial,sans-serif;outline:none}
+        .crypto-search input{padding-inline-start:42px}
+        .crypto-field input:focus,.crypto-field select:focus{border-color:var(--crypto-accent);box-shadow:0 0 0 4px rgba(36,213,197,.13)}
+        .crypto-category-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+        .crypto-category-tabs button{flex:0 0 auto;min-height:40px;border:1px solid var(--crypto-border);border-radius:999px;background:var(--crypto-surface);color:var(--crypto-muted);display:inline-flex;align-items:center;gap:7px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
+        .crypto-category-tabs button.active{background:#E0F2FE;color:#075985;border-color:rgba(14,165,233,.24)}
+        .crypto-category-tabs b{min-width:22px;height:22px;border-radius:999px;background:rgba(29,140,255,.1);display:grid;place-items:center;padding:0 6px}
+        .crypto-active-filters{min-height:32px}
+        .crypto-active-chip{border:1px solid var(--crypto-border);background:var(--crypto-soft);color:var(--crypto-text);cursor:pointer}
+        .crypto-clear-btn{border:1px solid var(--crypto-border);background:var(--crypto-surface);color:var(--crypto-text);border-radius:999px;min-height:36px;padding:0 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
+
+        .crypto-content-grid{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(280px,.8fr);gap:24px;align-items:start}
+        .crypto-feed-column,.crypto-side-panel{display:grid;gap:14px;min-width:0}
+        .crypto-side-panel{position:sticky;top:88px}
+        .crypto-results-bar{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+        .crypto-results-bar h2{margin:0;color:var(--crypto-text);font-size:20px;font-weight:950}
+        .crypto-results-bar span{color:var(--crypto-muted);font-size:13px;font-weight:850}
+        .crypto-results-bar b{color:#075985}
+        .crypto-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        .crypto-news-card{padding:17px;display:grid;gap:12px}
+        .crypto-card-actions{justify-content:flex-end;border-top:1px solid var(--crypto-border);padding-top:12px}
+        .crypto-compact-list{display:grid;gap:10px}
+        .crypto-compact-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px;text-decoration:none;color:inherit}
+        .crypto-compact-row h3{margin:0;color:var(--crypto-text);font-size:16px;font-weight:950;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .crypto-compact-action{color:#075985;font-weight:950;font-size:12px;display:inline-flex;align-items:center;gap:5px}
+        .crypto-load-more-wrap{display:grid;place-items:center;min-height:48px}
+        .crypto-load-more-wrap span{color:var(--crypto-muted);font-size:13px;font-weight:850}
+
+        .crypto-side-card{padding:15px;display:grid;gap:12px}
+        .crypto-side-card h3{margin:0;color:var(--crypto-text);font-size:15px;font-weight:950;display:flex;align-items:center;gap:8px}
+        .crypto-side-card h3 svg{color:#075985}
+        .crypto-side-list{display:grid;gap:9px}
+        .crypto-side-item,.crypto-side-symbol,.crypto-side-source{border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);padding:10px;text-decoration:none;color:inherit}
+        .crypto-side-item{display:grid;gap:5px}
+        .crypto-side-item strong{color:var(--crypto-text);font-size:12.5px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .crypto-side-symbol,.crypto-side-source{display:flex;align-items:center;justify-content:space-between;gap:10px}
+        .crypto-side-symbol b,.crypto-side-source b{color:var(--crypto-text);font-size:12px;font-weight:950}
+        .crypto-side-symbol small,.crypto-side-source small{color:var(--crypto-muted);font-size:11px;font-weight:850}
+
+        .crypto-state{min-height:240px;padding:34px;display:grid;place-items:center;gap:10px;text-align:center;color:var(--crypto-muted)}
+        .crypto-state svg{color:#075985}
+        .crypto-state strong{color:var(--crypto-text);font-size:20px;font-weight:950}
+        .crypto-state p{max-width:640px;margin:0;color:var(--crypto-muted);font-size:14px;font-weight:850;line-height:1.75}
+        .crypto-skeleton-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .crypto-skeleton{min-height:210px;padding:18px;display:grid;gap:12px}
+        .crypto-skeleton span,.crypto-skeleton i,.crypto-skeleton b{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.12),rgba(36,213,197,.2),rgba(142,166,195,.12));background-size:220% 100%;animation:cryptoShimmer 1.2s linear infinite}
+        .crypto-skeleton span{height:22px;width:45%}.crypto-skeleton i{height:14px;width:100%}.crypto-skeleton i:nth-child(3){width:78%}.crypto-skeleton b{height:40px;width:62%;border-radius:14px}
+        @keyframes cryptoShimmer{to{background-position:-220% 0}}
+        .crypto-disclaimer{display:flex;align-items:flex-start;gap:10px;padding:16px}
+        .crypto-disclaimer svg{color:var(--crypto-warning)}
+        .crypto-disclaimer p{margin:0;color:var(--crypto-muted);font-size:13px;font-weight:850;line-height:1.7}
+
+        @media(max-width:1280px){
+          .crypto-news-main{width:calc(100vw - var(--sidebar-w,230px) - 48px);margin-inline-start:calc(var(--sidebar-w,230px) + 24px);margin-inline-end:24px}
+          .crypto-snapshot-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+          .crypto-movers-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+          .crypto-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+        }
+        @media(max-width:1024px){
+          .crypto-news-shell .crypto-news-main{width:calc(100% - 32px);margin-inline-start:auto;margin-inline-end:auto;padding-top:92px}
+          .crypto-hero,.crypto-featured-grid,.crypto-content-grid{grid-template-columns:1fr}
+          .crypto-side-panel{position:static}
+          .crypto-lead-card{grid-template-columns:1fr}
+          .crypto-lead-art{min-height:150px}
+          .crypto-card-grid{grid-template-columns:1fr}
+        }
+        @media(max-width:760px){
+          .crypto-news-shell .crypto-news-main{width:calc(100% - 24px);gap:18px;padding-top:84px}
+          .crypto-hero{grid-template-columns:1fr;padding:20px;border-radius:24px}
+          .crypto-refresh-btn{width:100%}
+          .crypto-snapshot-grid,.crypto-movers-grid,.crypto-filter-grid,.crypto-skeleton-grid{grid-template-columns:1fr}
+          .crypto-section-head,.crypto-filter-title,.crypto-results-bar{display:grid}
+          .crypto-compact-row{grid-template-columns:1fr}
+          .crypto-compact-action{justify-content:flex-start}
+          .crypto-category-tabs{padding-bottom:8px}
+          .crypto-field input,.crypto-field select{font-size:16px}
+        }
+        @media(max-width:460px){
+          .crypto-news-shell .crypto-news-main{width:calc(100% - 20px)}
+          .crypto-hero h1{font-size:32px}
+          .crypto-snapshot-card strong{font-size:21px}
+          .crypto-lead-card,.crypto-news-card,.crypto-compact-row{padding:14px}
+        }
+        @media(prefers-reduced-motion:reduce){
+          .spinning,.crypto-skeleton span,.crypto-skeleton i,.crypto-skeleton b{animation:none}
+          .crypto-news-link:hover,.crypto-refresh-btn:hover,.crypto-load-more:hover{transform:none}
+        }
       `}</style>
     </div>
   );
 }
 
-function symbolHref(symbol: CryptoNewsSymbol) {
-  return `/market-analysis?symbol=${encodeURIComponent(SYMBOL_TO_MARKET_SYMBOL[symbol])}`;
+function timeLabel(value: TimeFilter, text: typeof COPY[LangCode]) {
+  if (value === 'hour') return text.timeHour;
+  if (value === 'day') return text.timeDay;
+  if (value === 'week') return text.timeWeek;
+  if (value === 'month') return text.timeMonth;
+  return text.timeAll;
 }
 
-function CategoryBadges({ item, labels }: { item: CryptoNewsItem; labels: Record<CategoryFilter, string> }) {
+function sortLabel(value: SortFilter, text: typeof COPY[LangCode]) {
+  if (value === 'oldest') return text.sortOldest;
+  if (value === 'relevance') return text.sortRelevant;
+  return text.sortLatest;
+}
+
+function MarketValueCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'up' | 'down' | 'neutral' }) {
+  return (
+    <article className={`crypto-snapshot-card ${tone ?? ''}`}>
+      <small>{label}</small>
+      <strong dir="ltr">{value}</strong>
+      {hint ? <em>{hint}</em> : null}
+    </article>
+  );
+}
+
+function CryptoMarketSnapshot({ data, loading, error, text, locale }: {
+  data: CryptoMarketPayload | null;
+  loading: boolean;
+  error: string;
+  text: typeof COPY[LangCode];
+  locale: string;
+}) {
+  if (loading) {
+    return (
+      <section className="crypto-panel" aria-label={text.marketSnapshot}>
+        <div className="crypto-section-head">
+          <div>
+            <h2>{text.marketSnapshot}</h2>
+            <p>{text.snapshotHint}</p>
+          </div>
+        </div>
+        <div className="crypto-skeleton-grid" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, index) => <article className="crypto-skeleton crypto-panel" key={index}><span /><i /><b /></article>)}
+        </div>
+      </section>
+    );
+  }
+
+  if (!data) {
+    return (
+      <NewsState tone="error" icon={AlertTriangle} title={text.unavailable} body={error || text.marketError} />
+    );
+  }
+
+  const summary = data.summary;
+  return (
+    <section className="crypto-panel" aria-label={text.marketSnapshot}>
+      <div className="crypto-section-head">
+        <div>
+          <h2>{text.marketSnapshot}</h2>
+          <p>{text.snapshotHint}</p>
+        </div>
+        <span><Coins size={14} />{data.source}</span>
+      </div>
+      <div className="crypto-snapshot-grid">
+        <article className="crypto-snapshot-card hero">
+          <small>{text.totalMarketCap}</small>
+          <strong dir="ltr">{formatCompactUsd(summary.totalMarketCapUsd, locale)}</strong>
+          <em>{text.delayed}</em>
+        </article>
+        <MarketValueCard label={text.volume24h} value={formatCompactUsd(summary.totalVolume24hUsd, locale)} />
+        <MarketValueCard label={text.btcDominance} value={formatPercent(summary.bitcoinDominance, locale)} />
+        <MarketValueCard label={text.marketChange} value={formatPercent(summary.marketChange24h, locale)} tone={changeTone(summary.marketChange24h)} />
+        <MarketValueCard label={text.risingCoins} value={new Intl.NumberFormat(locale).format(summary.risingCount)} tone="up" />
+        <MarketValueCard label={text.fallingCoins} value={new Intl.NumberFormat(locale).format(summary.fallingCount)} tone="down" />
+      </div>
+    </section>
+  );
+}
+
+function FeaturedNewsSection({ items, loading, text, locale }: {
+  items: CryptoNewsItem[];
+  loading: boolean;
+  text: typeof COPY[LangCode];
+  locale: string;
+}) {
+  if (loading || items.length === 0) return null;
+  const [lead, ...secondary] = items;
+  const leadTitle = lead.title || lead.headline;
+  const leadSummary = lead.summary || leadTitle;
+  const leadUrl = safeExternalUrl(lead.url);
+
+  return (
+    <section className="crypto-featured" aria-label={text.featured}>
+      <div className="crypto-section-head">
+        <div>
+          <h2>{text.featured}</h2>
+          <p>{text.featuredHint}</p>
+        </div>
+        <span><Newspaper size={14} />{items.length}</span>
+      </div>
+      <div className="crypto-featured-grid">
+        <article className="crypto-lead-card">
+          <div className="crypto-lead-art" aria-hidden="true">
+            <LineChart size={48} />
+          </div>
+          <div className="crypto-lead-body">
+            <div className="crypto-meta-row">
+              <SourceBadge source={lead.source || text.source} />
+              {lead.isTranslated ? <AiBadge label={text.machineTranslated} /> : <span className="crypto-source-pill">{text.originalText}</span>}
+              <span className="crypto-source-pill"><Clock3 size={13} />{formatDateTime(lead.publishedAt, locale)}</span>
+            </div>
+            <CategoryBadges item={lead} text={text} />
+            <SymbolBadges symbols={lead.symbols} />
+            {leadUrl ? (
+              <a className="crypto-title-link" href={leadUrl} target="_blank" rel="noopener noreferrer nofollow" dir="auto">
+                <h3>{leadTitle}</h3>
+              </a>
+            ) : <h3 dir="auto">{leadTitle}</h3>}
+            <p dir="auto">{leadSummary}</p>
+            <div className="crypto-card-actions">
+              {leadUrl ? (
+                <a className="crypto-news-link" href={leadUrl} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.originalSource}: ${leadTitle}`}>
+                  {text.read}
+                  <ExternalLink size={14} />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </article>
+        <div className="crypto-mini-list">
+          {secondary.slice(0, 3).map(item => {
+            const title = item.title || item.headline;
+            const url = safeExternalUrl(item.url);
+            return url ? (
+              <a className="crypto-mini-story" href={url} target="_blank" rel="noopener noreferrer nofollow" key={item.id} aria-label={`${text.originalSource}: ${title}`}>
+                <div className="crypto-meta-row">
+                  <SourceBadge source={item.source || text.source} />
+                  <small><Clock3 size={13} />{formatDateTime(item.publishedAt, locale)}</small>
+                </div>
+                <strong dir="auto">{title}</strong>
+                <SymbolChips symbols={item.symbols} />
+              </a>
+            ) : null;
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CoinAvatar({ coin }: { coin: CryptoMarketCoin }) {
+  const [failed, setFailed] = useState(false);
+  if (!coin.image || failed) {
+    return <span className="crypto-coin-logo" dir="ltr">{coin.symbol.slice(0, 2)}</span>;
+  }
+  return (
+    <span className="crypto-coin-logo">
+      <Image src={coin.image} alt={`${coin.name} ${coin.symbol}`} width={34} height={34} sizes="34px" onError={() => setFailed(true)} />
+    </span>
+  );
+}
+
+function CryptoMarketMovers({ data, loading, error, text, locale }: {
+  data: CryptoMarketPayload | null;
+  loading: boolean;
+  error: string;
+  text: typeof COPY[LangCode];
+  locale: string;
+}) {
+  if (loading) {
+    return (
+      <section className="crypto-movers" aria-label={text.marketMovers}>
+        <div className="crypto-section-head"><h2>{text.marketMovers}</h2></div>
+        <div className="crypto-skeleton-grid" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, index) => <article className="crypto-skeleton crypto-panel" key={index}><span /><i /><i /><b /></article>)}
+        </div>
+      </section>
+    );
+  }
+  if (!data) {
+    return <NewsState tone="error" icon={AlertTriangle} title={text.unavailable} body={error || text.marketError} />;
+  }
+  const cards = [
+    { key: 'gainers', title: text.gainers, items: data.rankings.gainers, showVolume: false },
+    { key: 'losers', title: text.losers, items: data.rankings.losers, showVolume: false },
+    { key: 'volume', title: text.mostTraded, items: data.rankings.mostTraded, showVolume: true },
+    { key: 'trending', title: text.trending, items: data.rankings.trending, showVolume: false },
+  ].filter(card => card.items.length > 0);
+
+  return (
+    <section className="crypto-movers" aria-label={text.marketMovers}>
+      <div className="crypto-section-head">
+        <div>
+          <h2>{text.marketMovers}</h2>
+          <p>{text.delayed} · {data.source}</p>
+        </div>
+      </div>
+      <div className="crypto-movers-grid">
+        {cards.map(card => (
+          <article className="crypto-mover-card" key={card.key}>
+            <h3>{card.title}</h3>
+            {card.items.slice(0, 5).map(coin => (
+              <Link href={cryptoMarketHref(coin)} className="crypto-coin-row" key={`${card.key}-${coin.id}`} aria-label={`${text.openAnalysis}: ${coin.name} ${coin.symbol}`}>
+                <CoinAvatar coin={coin} />
+                <span className="crypto-coin-id">
+                  <strong>{coin.name}</strong>
+                  <small dir="ltr">{coin.symbol}</small>
+                </span>
+                <span className="crypto-coin-values">
+                  <b dir="ltr">{card.showVolume ? formatCompactUsd(coin.volume24h, locale) : formatCryptoPrice(coin.price, locale)}</b>
+                  <em className={`crypto-tone ${changeTone(coin.changePercent24h)}`} dir="ltr">{formatPercent(coin.changePercent24h, locale)}</em>
+                </span>
+              </Link>
+            ))}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NewsFilters({
+  text,
+  query,
+  setQuery,
+  assetFilter,
+  setAssetFilter,
+  category,
+  setCategory,
+  sourceFilter,
+  setSourceFilter,
+  sourceOptions,
+  timeFilter,
+  setTimeFilter,
+  sort,
+  setSort,
+  categoryCounts,
+  activeFilters,
+  resetFilters,
+}: {
+  text: typeof COPY[LangCode];
+  query: string;
+  setQuery: (value: string) => void;
+  assetFilter: AssetFilter;
+  setAssetFilter: (value: AssetFilter) => void;
+  category: CategoryFilter;
+  setCategory: (value: CategoryFilter) => void;
+  sourceFilter: string;
+  setSourceFilter: (value: string) => void;
+  sourceOptions: string[];
+  timeFilter: TimeFilter;
+  setTimeFilter: (value: TimeFilter) => void;
+  sort: SortFilter;
+  setSort: (value: SortFilter) => void;
+  categoryCounts: Record<CategoryFilter, number>;
+  activeFilters: Array<{ key: string; label: string; clear: () => void }>;
+  resetFilters: () => void;
+}) {
+  return (
+    <section className="crypto-filter-panel" aria-label={text.filters}>
+      <div className="crypto-filter-title">
+        <h2><Filter size={18} /> {text.filters}</h2>
+        {activeFilters.length > 0 ? <button type="button" className="crypto-clear-btn" onClick={resetFilters}>{text.clearFilters}</button> : null}
+      </div>
+      <div className="crypto-filter-grid">
+        <label className="crypto-field crypto-search">
+          <span>{text.filters}</span>
+          <Search size={17} />
+          <input type="search" autoComplete="off" value={query} onChange={event => setQuery(event.target.value)} placeholder={text.searchPlaceholder} />
+        </label>
+        <label className="crypto-field">
+          <span>{text.asset}</span>
+          <select value={assetFilter} onChange={event => setAssetFilter(event.target.value as AssetFilter)}>
+            {ASSET_ORDER.map(asset => <option value={asset} key={asset}>{asset === 'all' ? text.allAssets : asset}</option>)}
+          </select>
+        </label>
+        <label className="crypto-field">
+          <span>{text.sourceFilter}</span>
+          <select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}>
+            <option value="all">{text.allSources}</option>
+            {sourceOptions.map(source => <option value={source} key={source}>{source}</option>)}
+          </select>
+        </label>
+        <label className="crypto-field">
+          <span>{text.timeRange}</span>
+          <select value={timeFilter} onChange={event => setTimeFilter(event.target.value as TimeFilter)}>
+            {TIME_FILTERS.map(time => <option value={time} key={time}>{timeLabel(time, text)}</option>)}
+          </select>
+        </label>
+        <label className="crypto-field">
+          <span>{text.sort}</span>
+          <select value={sort} onChange={event => setSort(event.target.value as SortFilter)}>
+            {SORT_FILTERS.map(item => <option value={item} key={item}>{sortLabel(item, text)}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="crypto-category-tabs" role="tablist" aria-label={text.category}>
+        {CATEGORY_ORDER.map(item => (
+          <button type="button" role="tab" aria-selected={category === item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)} key={item}>
+            <span>{text.categories[item]}</span>
+            <b>{categoryCounts[item] ?? 0}</b>
+          </button>
+        ))}
+      </div>
+      {activeFilters.length > 0 ? (
+        <div className="crypto-active-filters" aria-label={text.activeFilters}>
+          {activeFilters.map(filter => (
+            <button type="button" className="crypto-active-chip" key={filter.key} onClick={filter.clear}>
+              {filter.label}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function NewsResultsToolbar({ text, count, shown, sort }: {
+  text: typeof COPY[LangCode];
+  count: number;
+  shown: number;
+  sort: SortFilter;
+}) {
+  return (
+    <div className="crypto-results-bar">
+      <div>
+        <h2>{text.results}</h2>
+        <span>{count} {text.resultCount} · {text.showing} <b>{shown}</b> · {sortLabel(sort, text)}</span>
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  return <span className="crypto-source-pill" dir="auto">{source}</span>;
+}
+
+function AiBadge({ label }: { label: string }) {
+  return <span className="crypto-source-pill ai" title={label}><Sparkles size={12} />{label}</span>;
+}
+
+function CategoryBadges({ item, text }: { item: CryptoNewsItem; text: typeof COPY[LangCode] }) {
+  if (item.categories.length === 0) return null;
   return (
     <div className="crypto-category-row">
       {item.categories.slice(0, 3).map(category => (
-        <span className="crypto-category-badge" key={category}>{labels[category]}</span>
+        <span className="crypto-badge" key={category}>{text.categories[category]}</span>
       ))}
     </div>
   );
@@ -498,413 +1441,127 @@ function SymbolBadges({ symbols }: { symbols: CryptoNewsSymbol[] }) {
   if (symbols.length === 0) return null;
   return (
     <div className="crypto-symbol-row">
-      {symbols.slice(0, 6).map(symbol => (
-        <Link className="crypto-symbol-badge" href={symbolHref(symbol)} key={symbol}>{symbol}</Link>
+      {symbols.slice(0, 5).map(symbol => (
+        <Link className="crypto-badge crypto-symbol-badge" href={symbolHref(symbol)} key={symbol}>{symbol}</Link>
       ))}
     </div>
   );
 }
 
-function cryptoMarketHref(coin: CryptoMarketCoin) {
-  return `/market-analysis?symbol=${encodeURIComponent(coin.marketSymbol)}`;
-}
-
-function changeTone(value: number | null) {
-  if (value === null || value === 0) return 'neutral';
-  return value > 0 ? 'up' : 'down';
-}
-
-type CryptoMarketLabels = {
-  tickerTitle: string;
-  tickerSubtitle: string;
-  marketRankings: string;
-  marketRankingsSubtitle: string;
-  highestPriced: string;
-  lowestPriced: string;
-  mostTraded: string;
-  leastTraded: string;
-  price: string;
-  volume: string;
-  change24h: string;
-  source: string;
-  liveData: string;
-  loading: string;
-  unavailableTitle: string;
-  unavailableBody: string;
-  openAnalysis: string;
-};
-
-function CryptoMarketOverview({
-  data,
-  loading,
-  error,
-  labels,
-  formatPrice,
-  formatVolume,
-  formatPercent,
-}: {
-  data: CryptoMarketPayload | null;
-  loading: boolean;
-  error: string;
-  labels: CryptoMarketLabels;
-  formatPrice: (value: number) => string;
-  formatVolume: (value: number | null) => string;
-  formatPercent: (value: number | null) => string;
-}) {
-  const rankingCards = data ? [
-    { key: 'highest', title: labels.highestPriced, items: data.rankings.highestPriced, showVolume: false },
-    { key: 'lowest', title: labels.lowestPriced, items: data.rankings.lowestPriced, showVolume: false },
-    { key: 'most', title: labels.mostTraded, items: data.rankings.mostTraded, showVolume: true },
-    { key: 'least', title: labels.leastTraded, items: data.rankings.leastTraded, showVolume: true },
-  ].filter(card => card.items.length > 0) : [];
-
+function SymbolChips({ symbols }: { symbols: CryptoNewsSymbol[] }) {
+  if (symbols.length === 0) return null;
   return (
-    <section className="crypto-market-overview" aria-label={labels.marketRankings}>
-      <section className="crypto-market-panel crypto-ticker-panel" aria-label={labels.tickerTitle}>
-        <div className="crypto-market-head">
-          <span className="crypto-market-head-icon"><Coins size={17} /></span>
-          <div>
-            <h2>{labels.tickerTitle}</h2>
-            <p>{labels.tickerSubtitle}</p>
-          </div>
-          {data?.source ? <small>{labels.source}: {data.source}</small> : null}
-        </div>
-        {loading ? (
-          <CryptoMarketSkeleton variant="ticker" />
-        ) : data?.ticker.length ? (
-          <CryptoTickerStrip
-            items={data.ticker}
-            labels={labels}
-            formatPrice={formatPrice}
-            formatVolume={formatVolume}
-            formatPercent={formatPercent}
-          />
-        ) : (
-          <div className="crypto-market-inline-state" role="status">
-            <AlertTriangle size={17} />
-            <span>{error || labels.unavailableBody}</span>
-          </div>
-        )}
-      </section>
-
-      {loading ? (
-        <CryptoMarketSkeleton variant="rankings" />
-      ) : rankingCards.length > 0 ? (
-        <section className="crypto-ranking-section" aria-label={labels.marketRankings}>
-          <div className="crypto-ranking-head">
-            <div>
-              <h2>{labels.marketRankings}</h2>
-              <p>{labels.marketRankingsSubtitle}</p>
-            </div>
-            <span>{labels.liveData}</span>
-          </div>
-          <div className="crypto-ranking-grid">
-            {rankingCards.map(card => (
-              <CryptoRankingCard
-                key={card.key}
-                title={card.title}
-                items={card.items}
-                labels={labels}
-                showVolume={card.showVolume}
-                formatPrice={formatPrice}
-                formatVolume={formatVolume}
-                formatPercent={formatPercent}
-              />
-            ))}
-          </div>
-        </section>
-      ) : data ? (
-        <section className="crypto-market-state" role="status">
-          <BarChart3 size={22} />
-          <strong>{labels.unavailableTitle}</strong>
-          <p>{labels.unavailableBody}</p>
-        </section>
-      ) : null}
-    </section>
-  );
-}
-
-function CryptoTickerStrip({
-  items,
-  labels,
-  formatPrice,
-  formatVolume,
-  formatPercent,
-}: {
-  items: CryptoMarketCoin[];
-  labels: CryptoMarketLabels;
-  formatPrice: (value: number) => string;
-  formatVolume: (value: number | null) => string;
-  formatPercent: (value: number | null) => string;
-}) {
-  return (
-    <div className="crypto-live-ticker">
-      <span className="crypto-ticker-status">{labels.liveData}</span>
-      <div className="crypto-ticker-viewport">
-        <div className="crypto-ticker-track">
-          {[0, 1].map(setIndex => (
-          <div className="crypto-ticker-set" aria-hidden={setIndex === 1} key={setIndex}>
-            {items.map(coin => {
-              const tone = changeTone(coin.changePercent24h);
-              const Icon = tone === 'down' ? TrendingDown : TrendingUp;
-              return (
-                <Link
-                  className="crypto-ticker-item"
-                  href={cryptoMarketHref(coin)}
-                  key={`${setIndex}-${coin.id}`}
-                  tabIndex={setIndex === 1 ? -1 : undefined}
-                  aria-label={`${labels.openAnalysis}: ${coin.name} ${coin.symbol}`}
-                  title={`${coin.name} · ${coin.symbol}`}
-                >
-                  <div>
-                      <strong dir="ltr">{coin.symbol}</strong>
-                    <span>{coin.name}</span>
-                    {coin.volume24h !== null ? <small>{labels.volume}: {formatVolume(coin.volume24h)}</small> : null}
-                  </div>
-                    <b dir="ltr" title={labels.price}>{formatPrice(coin.price)}</b>
-                    <em className={tone} dir="ltr" title={labels.change24h}>
-                    <Icon size={12} />
-                    {formatPercent(coin.changePercent24h)}
-                  </em>
-                </Link>
-              );
-            })}
-          </div>
-          ))}
-        </div>
-      </div>
+    <div className="crypto-symbol-row">
+      {symbols.slice(0, 5).map(symbol => (
+        <span className="crypto-badge crypto-symbol-badge" dir="ltr" key={symbol}>{symbol}</span>
+      ))}
     </div>
   );
 }
 
-function CryptoRankingCard({
-  title,
-  items,
-  labels,
-  showVolume,
-  formatPrice,
-  formatVolume,
-  formatPercent,
-}: {
-  title: string;
-  items: CryptoMarketCoin[];
-  labels: CryptoMarketLabels;
-  showVolume: boolean;
-  formatPrice: (value: number) => string;
-  formatVolume: (value: number | null) => string;
-  formatPercent: (value: number | null) => string;
-}) {
-  return (
-    <article className="crypto-ranking-card">
-      <h3>{title}</h3>
-      <div className="crypto-ranking-list">
-        {items.map((coin, index) => {
-          const tone = changeTone(coin.changePercent24h);
-          return (
-            <Link
-              href={cryptoMarketHref(coin)}
-              className="crypto-ranking-row"
-              key={`${title}-${coin.id}`}
-              title={`${coin.name} · ${coin.symbol}`}
-              aria-label={`${labels.openAnalysis}: ${coin.name} ${coin.symbol}`}
-            >
-              <span className="crypto-ranking-index">{index + 1}</span>
-              <span className="crypto-ranking-identity">
-                <strong>{coin.name}</strong>
-                <small dir="ltr">{coin.symbol}</small>
-              </span>
-              <span className="crypto-ranking-values">
-                <b dir="ltr" title={showVolume ? labels.volume : labels.price}>{showVolume ? formatVolume(coin.volume24h) : formatPrice(coin.price)}</b>
-                {showVolume ? <small dir="ltr">{formatPrice(coin.price)}</small> : null}
-                <em className={tone} dir="ltr" title={labels.change24h}>{formatPercent(coin.changePercent24h)}</em>
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-function CryptoMarketSkeleton({ variant }: { variant: 'ticker' | 'rankings' }) {
-  if (variant === 'ticker') {
-    return (
-      <div className="crypto-market-skeleton-row" aria-hidden="true">
-        {Array.from({ length: 8 }).map((_, index) => <span key={index} />)}
-      </div>
-    );
-  }
-
-  return (
-    <section className="crypto-ranking-section crypto-market-skeleton" aria-hidden="true">
-      <div className="crypto-ranking-head">
-        <div>
-          <i />
-          <small />
-        </div>
-        <b />
-      </div>
-      <div className="crypto-ranking-grid">
-        {Array.from({ length: 4 }).map((_, cardIndex) => (
-          <article className="crypto-ranking-card" key={cardIndex}>
-            <i />
-            {Array.from({ length: 5 }).map((_, rowIndex) => <span key={rowIndex} />)}
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FeaturedCryptoNews({
-  items,
-  labels,
-  formatDateTime,
-  categoryLabels,
-}: {
-  items: CryptoNewsItem[];
-  labels: { title: string; readNews: string; source: string; openArticle: string };
-  formatDateTime: (value: string) => string;
-  categoryLabels: Record<CategoryFilter, string>;
-}) {
-  const [lead, ...secondaryItems] = items;
-  if (!lead) return null;
-  const leadTitle = lead.title || lead.headline;
-  const leadSummary = lead.summary || leadTitle;
-
-  return (
-    <section className="crypto-news-featured" aria-label={labels.title}>
-      <div className="crypto-news-featured-head">
-        <span><Star size={16} /></span>
-        <h2>{labels.title}</h2>
-      </div>
-      <div className="crypto-news-featured-grid">
-        <article className="crypto-featured-main">
-          <div className="crypto-featured-badges">
-            <span>{lead.source || labels.source}</span>
-          </div>
-          <CategoryBadges item={lead} labels={categoryLabels} />
-          <SymbolBadges symbols={lead.symbols} />
-          <h3>{leadTitle}</h3>
-          <p>{leadSummary}</p>
-          <div className="crypto-featured-meta">
-            <span><Clock3 size={14} />{formatDateTime(lead.publishedAt)}</span>
-            <a className="crypto-news-read-link" href={lead.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${leadTitle}`}>
-              {labels.readNews}
-              <ExternalLink size={14} />
-            </a>
-          </div>
-        </article>
-        <div className="crypto-featured-side">
-          {secondaryItems.map(item => {
-            const itemTitle = item.title || item.headline;
-            return (
-              <a className="crypto-featured-mini" href={item.url} target="_blank" rel="noreferrer" key={item.id} aria-label={`${labels.openArticle}: ${itemTitle}`}>
-                <span>{item.source || labels.source}</span>
-                <strong>{itemTitle}</strong>
-                <small><Clock3 size={13} />{formatDateTime(item.publishedAt)}</small>
-              </a>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CryptoNewsCard({
-  item,
-  labels,
-  categoryLabels,
-  formatDateTime,
-}: {
+function NewsCard({ item, text, locale, variant }: {
   item: CryptoNewsItem;
-  labels: { source: string; readMore: string; openArticle: string; translated: string; originalLanguage: string };
-  categoryLabels: Record<CategoryFilter, string>;
-  formatDateTime: (value: string) => string;
+  text: typeof COPY[LangCode];
+  locale: string;
+  variant: 'card';
 }) {
-  const displayTitle = item.title || item.headline;
-  const displaySummary = item.summary || displayTitle;
-  const contentDir = item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : item.isTranslated ? 'ltr' : 'auto';
-
+  const title = item.title || item.headline;
+  const summary = item.summary || title;
+  const url = safeExternalUrl(item.url);
   return (
-    <article className="crypto-news-card" dir={contentDir}>
-      <div className="crypto-news-card-top">
-        <div className="crypto-featured-badges">
-          <span>{item.source || labels.source}</span>
-          <span>{item.isTranslated ? labels.translated : labels.originalLanguage}</span>
-        </div>
-        <CategoryBadges item={item} labels={categoryLabels} />
-        <SymbolBadges symbols={item.symbols} />
+    <article className={`crypto-news-card ${variant}`}>
+      <div className="crypto-meta-row">
+        <SourceBadge source={item.source || text.source} />
+        {item.isTranslated ? <AiBadge label={text.machineTranslated} /> : <span className="crypto-source-pill">{text.originalText}</span>}
+        <span><Clock3 size={13} />{formatDateTime(item.publishedAt, locale)}</span>
       </div>
-      <h2>{displayTitle}</h2>
-      <p>{displaySummary}</p>
-      <div className="crypto-news-card-footer">
-        <div className="crypto-news-meta">
-          <span className="crypto-news-source-badge">{item.source || labels.source}</span>
-          <span><Clock3 size={14} />{formatDateTime(item.publishedAt)}</span>
-        </div>
-        <a className="crypto-news-read-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
-          {labels.readMore}
-          <ExternalLink size={15} />
+      <CategoryBadges item={item} text={text} />
+      <SymbolBadges symbols={item.symbols} />
+      {url ? (
+        <a className="crypto-title-link" href={url} target="_blank" rel="noopener noreferrer nofollow" dir="auto">
+          <h3>{title}</h3>
         </a>
+      ) : <h3 dir="auto">{title}</h3>}
+      <p dir="auto">{summary}</p>
+      <div className="crypto-card-actions">
+        {url ? (
+          <a className="crypto-news-link" href={url} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.originalSource}: ${title}`}>
+            {text.read}
+            <ExternalLink size={14} />
+          </a>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function CryptoNewsSkeleton() {
-  return (
-    <section className="crypto-news-grid" aria-hidden="true">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <article className="crypto-news-card crypto-news-skeleton" key={index}>
-          <span />
-          <i />
-          <i />
-          <i />
-          <b />
-          <small />
-        </article>
-      ))}
-    </section>
+function CompactNewsRow({ item, text, locale }: {
+  item: CryptoNewsItem;
+  text: typeof COPY[LangCode];
+  locale: string;
+}) {
+  const title = item.title || item.headline;
+  const url = safeExternalUrl(item.url);
+  const content = (
+    <>
+      <div>
+        <div className="crypto-meta-row">
+          <SourceBadge source={item.source || text.source} />
+          <small><Clock3 size={13} />{formatDateTime(item.publishedAt, locale)}</small>
+        </div>
+        <h3 dir="auto">{title}</h3>
+        <p dir="auto">{item.summary || title}</p>
+      </div>
+      <span className="crypto-compact-action">
+        {text.read}
+        <ArrowUpRight size={14} />
+      </span>
+    </>
+  );
+  return url ? (
+    <a className="crypto-compact-row" href={url} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.originalSource}: ${title}`}>
+      {content}
+    </a>
+  ) : (
+    <article className="crypto-compact-row">{content}</article>
   );
 }
 
-function CryptoNewsSidePanel({
-  latestItems,
-  symbolCounts,
-  sourceCounts,
-  labels,
-  formatDateTime,
-}: {
+function NewsSidebar({ latestItems, symbolCounts, sourceCounts, text, locale }: {
   latestItems: CryptoNewsItem[];
   symbolCounts: Array<[CryptoNewsSymbol, number]>;
   sourceCounts: Array<[string, number]>;
-  labels: { latest: string; symbols: string; sources: string; articles: string; mentions: string; source: string };
-  formatDateTime: (value: string) => string;
+  text: typeof COPY[LangCode];
+  locale: string;
 }) {
   return (
-    <aside className="crypto-news-side-panel">
-      <section className="crypto-side-card">
-        <h3><Newspaper size={16} />{labels.latest}</h3>
-        <div className="crypto-side-list">
-          {latestItems.map(item => (
-            <a href={item.url} target="_blank" rel="noreferrer" key={`latest-${item.id}`}>
-              <span className="crypto-news-source-badge">{item.source || labels.source}</span>
-              <strong>{item.title || item.headline}</strong>
-              <small><Clock3 size={12} />{formatDateTime(item.publishedAt)}</small>
-            </a>
-          ))}
-        </div>
-      </section>
+    <aside className="crypto-side-panel">
+      {latestItems.length > 0 ? (
+        <section className="crypto-side-card">
+          <h3><Newspaper size={16} />{text.latestUpdates}</h3>
+          <div className="crypto-side-list">
+            {latestItems.map(item => {
+              const title = item.title || item.headline;
+              const url = safeExternalUrl(item.url);
+              return url ? (
+                <a className="crypto-side-item" href={url} target="_blank" rel="noopener noreferrer nofollow" key={`side-${item.id}`}>
+                  <SourceBadge source={item.source || text.source} />
+                  <strong dir="auto">{title}</strong>
+                  <small><Clock3 size={12} />{formatDateTime(item.publishedAt, locale)}</small>
+                </a>
+              ) : null;
+            })}
+          </div>
+        </section>
+      ) : null}
       {symbolCounts.length > 0 ? (
         <section className="crypto-side-card">
-          <h3><Tags size={16} />{labels.symbols}</h3>
-          <div className="crypto-side-symbols">
+          <h3><Tags size={16} />{text.mentionedAssets}</h3>
+          <div className="crypto-side-list">
             {symbolCounts.map(([symbol, count]) => (
-              <Link href={symbolHref(symbol)} key={symbol}>
+              <Link href={symbolHref(symbol)} className="crypto-side-symbol" key={symbol}>
                 <b dir="ltr">{symbol}</b>
-                <small>{count} {labels.mentions}</small>
+                <small>{count} {text.mentions}</small>
               </Link>
             ))}
           </div>
@@ -912,18 +1569,56 @@ function CryptoNewsSidePanel({
       ) : null}
       {sourceCounts.length > 0 ? (
         <section className="crypto-side-card">
-          <h3><Newspaper size={16} />{labels.sources}</h3>
-          <div className="crypto-side-source-list">
+          <h3><Layers3 size={16} />{text.sources}</h3>
+          <div className="crypto-side-list">
             {sourceCounts.map(([source, count]) => (
-              <span key={source}>
-                <b>{source}</b>
-                <small>{count} {labels.articles}</small>
+              <span className="crypto-side-source" key={source}>
+                <b dir="auto">{source}</b>
+                <small>{count} {text.articles}</small>
               </span>
             ))}
           </div>
         </section>
       ) : null}
     </aside>
+  );
+}
+
+function NewsLoadingSkeleton() {
+  return (
+    <section className="crypto-skeleton-grid" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <article className="crypto-skeleton crypto-panel" key={index}>
+          <span />
+          <i />
+          <i />
+          <b />
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function NewsState({ tone, icon: Icon, title, body, actionLabel, onAction }: {
+  tone: 'error' | 'empty';
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <section className={`crypto-state ${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
+      <Icon size={28} />
+      <strong>{title}</strong>
+      <p>{body}</p>
+      {actionLabel && onAction ? (
+        <button type="button" onClick={onAction}>
+          <RefreshCcw size={15} />
+          {actionLabel}
+        </button>
+      ) : null}
+    </section>
   );
 }
 

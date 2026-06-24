@@ -79,6 +79,12 @@ const nextConfig: NextConfig = {
       },
       {
         hostname: "cdn.chat2db-ai.com",
+      },
+      {
+        hostname: "assets.coingecko.com",
+      },
+      {
+        hostname: "coin-images.coingecko.com",
       }
     ],
   },

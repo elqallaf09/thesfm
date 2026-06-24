@@ -14,12 +14,23 @@ export type CryptoMarketPayload = {
   ok: true;
   source: 'CoinGecko';
   updatedAt: string;
+  summary: {
+    totalMarketCapUsd: number | null;
+    totalVolume24hUsd: number | null;
+    bitcoinDominance: number | null;
+    marketChange24h: number | null;
+    risingCount: number;
+    fallingCount: number;
+  };
   ticker: CryptoMarketCoin[];
   rankings: {
+    gainers: CryptoMarketCoin[];
+    losers: CryptoMarketCoin[];
     highestPriced: CryptoMarketCoin[];
     lowestPriced: CryptoMarketCoin[];
     mostTraded: CryptoMarketCoin[];
     leastTraded: CryptoMarketCoin[];
+    trending: CryptoMarketCoin[];
   };
 };
 
@@ -32,6 +43,35 @@ type CoinGeckoMarketCoin = {
   price_change_percentage_24h?: unknown;
   total_volume?: unknown;
   market_cap_rank?: unknown;
+};
+
+type CoinGeckoGlobalPayload = {
+  data?: {
+    total_market_cap?: Record<string, unknown>;
+    total_volume?: Record<string, unknown>;
+    market_cap_percentage?: Record<string, unknown>;
+    market_cap_change_percentage_24h_usd?: unknown;
+  };
+};
+
+type CoinGeckoTrendingCoin = {
+  item?: {
+    id?: unknown;
+    symbol?: unknown;
+    name?: unknown;
+    small?: unknown;
+    thumb?: unknown;
+    market_cap_rank?: unknown;
+    data?: {
+      price?: unknown;
+      total_volume?: unknown;
+      price_change_percentage_24h?: Record<string, unknown>;
+    };
+  };
+};
+
+type CoinGeckoTrendingPayload = {
+  coins?: CoinGeckoTrendingCoin[];
 };
 
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
@@ -121,6 +161,69 @@ async function fetchCoinGeckoMarkets(searchParams: URLSearchParams) {
   return Array.isArray(json) ? json as CoinGeckoMarketCoin[] : [];
 }
 
+async function fetchCoinGeckoGlobal() {
+  const response = await fetch(`${COINGECKO_BASE_URL}/global`, {
+    next: { revalidate: 120 },
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
+    },
+  });
+
+  if (!response.ok) throw new Error(`CoinGecko global ${response.status}`);
+  const json = await response.json() as CoinGeckoGlobalPayload;
+  return {
+    totalMarketCapUsd: asFiniteNumber(json.data?.total_market_cap?.usd),
+    totalVolume24hUsd: asFiniteNumber(json.data?.total_volume?.usd),
+    bitcoinDominance: asFiniteNumber(json.data?.market_cap_percentage?.btc),
+    marketChange24h: asFiniteNumber(json.data?.market_cap_change_percentage_24h_usd),
+  };
+}
+
+function normalizeTrendingCoin(entry: CoinGeckoTrendingCoin): CryptoMarketCoin | null {
+  const item = entry.item;
+  if (!item) return null;
+  const id = cleanText(item.id);
+  const symbol = cleanText(item.symbol).toUpperCase();
+  const name = cleanText(item.name);
+  const price = asFiniteNumber(item.data?.price);
+  const volume24h = asFiniteNumber(item.data?.total_volume);
+  const changePercent24h = asFiniteNumber(item.data?.price_change_percentage_24h?.usd);
+  const marketCapRank = asFiniteNumber(item.market_cap_rank);
+  const image = cleanText(item.small) || cleanText(item.thumb) || null;
+
+  if (!id || !symbol || !name || !/^[A-Z0-9]{2,10}$/.test(symbol) || price === null || price <= 0) return null;
+  if (isNoisyAsset({ id, symbol, name })) return null;
+
+  return {
+    id,
+    symbol,
+    marketSymbol: marketSymbolFor(symbol),
+    name,
+    price,
+    changePercent24h,
+    volume24h: volume24h !== null && volume24h >= 0 ? volume24h : null,
+    marketCapRank: marketCapRank !== null && marketCapRank > 0 ? marketCapRank : null,
+    image,
+  };
+}
+
+async function fetchTrendingCoins() {
+  const response = await fetch(`${COINGECKO_BASE_URL}/search/trending`, {
+    next: { revalidate: 120 },
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
+    },
+  });
+
+  if (!response.ok) throw new Error(`CoinGecko trending ${response.status}`);
+  const json = await response.json() as CoinGeckoTrendingPayload;
+  return uniqueBySymbol((json.coins ?? []).map(normalizeTrendingCoin).filter((coin): coin is CryptoMarketCoin => Boolean(coin))).slice(0, 6);
+}
+
 async function fetchMajorTickerCoins() {
   const params = new URLSearchParams({
     vs_currency: 'usd',
@@ -174,13 +277,37 @@ function byVolume(coins: CryptoMarketCoin[], direction: 'asc' | 'desc') {
     .slice(0, 6);
 }
 
+function byChange(coins: CryptoMarketCoin[], direction: 'asc' | 'desc') {
+  return coins
+    .filter(coin => coin.changePercent24h !== null)
+    .sort((a, b) => {
+      const diff = (a.changePercent24h ?? 0) - (b.changePercent24h ?? 0);
+      return direction === 'asc' ? diff : -diff;
+    })
+    .slice(0, 6);
+}
+
 export async function fetchCryptoMarketData(): Promise<CryptoMarketPayload> {
-  const [ticker, rankableCoins] = await Promise.all([
+  const [tickerResult, rankableResult, globalSummary, trendingResult] = await Promise.allSettled([
     fetchMajorTickerCoins(),
     fetchRankableCoins(),
+    fetchCoinGeckoGlobal(),
+    fetchTrendingCoins(),
   ]);
 
-  if (ticker.length === 0 && rankableCoins.length === 0) {
+  const tickerCoins = tickerResult.status === 'fulfilled' ? tickerResult.value : [];
+  const rankableCoins = rankableResult.status === 'fulfilled' ? rankableResult.value : [];
+  const summary = globalSummary.status === 'fulfilled'
+    ? globalSummary.value
+    : {
+      totalMarketCapUsd: null,
+      totalVolume24hUsd: null,
+      bitcoinDominance: null,
+      marketChange24h: null,
+    };
+  const trending = trendingResult.status === 'fulfilled' ? trendingResult.value : [];
+
+  if (tickerCoins.length === 0 && rankableCoins.length === 0) {
     throw new Error('CoinGecko returned no usable crypto market data');
   }
 
@@ -188,12 +315,20 @@ export async function fetchCryptoMarketData(): Promise<CryptoMarketPayload> {
     ok: true,
     source: 'CoinGecko',
     updatedAt: new Date().toISOString(),
-    ticker,
+    summary: {
+      ...summary,
+      risingCount: rankableCoins.filter(coin => (coin.changePercent24h ?? 0) > 0).length,
+      fallingCount: rankableCoins.filter(coin => (coin.changePercent24h ?? 0) < 0).length,
+    },
+    ticker: tickerCoins,
     rankings: {
+      gainers: byChange(rankableCoins, 'desc'),
+      losers: byChange(rankableCoins, 'asc'),
       highestPriced: topByPrice(rankableCoins),
       lowestPriced: lowByPrice(rankableCoins),
       mostTraded: byVolume(rankableCoins, 'desc'),
       leastTraded: byVolume(rankableCoins, 'asc'),
+      trending,
     },
   };
 }
