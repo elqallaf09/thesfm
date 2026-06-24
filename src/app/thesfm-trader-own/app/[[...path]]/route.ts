@@ -29,10 +29,6 @@ function safeAssetPath(parts: string[] = []) {
 
 function rewriteTraderTextAsset(content: string) {
   return content
-    .replaceAll('"/api/', '"/api/thesfm-trader/')
-    .replaceAll('`/api/', '`/api/thesfm-trader/')
-    .replaceAll('sendBeacon("/api/', 'sendBeacon("/api/thesfm-trader/')
-    .replaceAll('fetch("/api/', 'fetch("/api/thesfm-trader/')
     .replaceAll('href="/manifest.webmanifest"', 'href="/thesfm-trader-own/app/manifest.webmanifest"')
     .replaceAll('href="/styles.css', 'href="/thesfm-trader-own/app/styles.css')
     .replaceAll('href="/desktop-balance.css', 'href="/thesfm-trader-own/app/desktop-balance.css')

@@ -29,23 +29,28 @@ It is served through:
 /thesfm-trader-own/app/*
 ```
 
-The static route checks access before serving any asset, then rewrites local app URLs so the trader shell stays inside the protected path.
+The static route checks access before serving any asset, then rewrites static asset URLs so the trader shell stays inside the protected path. API calls remain relative, for example `/api/trader/status`, so they target the current Vercel deployment and preserve authentication cookies.
 
-## Trader API proxy
+## Trader API routes
 
 The browser calls:
 
 ```text
-/api/thesfm-trader/*
+/api/trader/*
 ```
 
-The proxy validates the same private access rules, then forwards to:
+The main Next.js application owns these endpoints directly. They call server-only trader services and data providers; they do not proxy to a local development server.
 
 ```text
-THE_SFM_TRADER_API_BASE_URL=http://127.0.0.1:4173
+/api/trader/status
+/api/trader/us-stocks
+/api/trader/scanner/results
+/api/trader/scanner/run
 ```
 
-In production, point `THE_SFM_TRADER_API_BASE_URL` at the deployed trader API service. Keep provider keys server-side only.
+The legacy `/api/thesfm-trader/*` route remains only as a protected compatibility layer for older cached assets and health checks. It dispatches to internal services and must never fall back to `localhost`, `127.0.0.1`, or another private machine address in production.
+
+If a separate trader backend is added later, deploy it to a public HTTPS service and wire it through a server-only variable after explicit validation. Keep provider keys server-side only.
 
 ## Data providers
 
