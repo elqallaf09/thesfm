@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { ImagePlus, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 
 type CompanyImageKind = 'logo' | 'cover';
+type CompanyFormMode = 'create' | 'edit';
 
 type CompanyImageUploadFieldProps = {
   label: string;
@@ -15,6 +16,8 @@ type CompanyImageUploadFieldProps = {
   onChange: (value: string) => void;
   kind: CompanyImageKind;
   companyId?: string;
+  mode?: CompanyFormMode;
+  resetKey?: string | number;
 };
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -100,7 +103,7 @@ function buildStoragePath(userId: string, companyId: string | undefined, kind: C
   return `${userId}/${folder}/${kind}-${Date.now()}-${randomPart}.${safeExtension}`;
 }
 
-export function CompanyImageUploadField({ label, value, onChange, kind, companyId }: CompanyImageUploadFieldProps) {
+export function CompanyImageUploadField({ label, value, onChange, kind, companyId, resetKey }: CompanyImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const fieldId = useId();
   const { user } = useAuth();
@@ -132,6 +135,13 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
       maxBytes: 5 * 1024 * 1024,
     };
   }, [kind]);
+
+  useEffect(() => {
+    setError('');
+    setWarning('');
+    setFailed(false);
+    if (inputRef.current) inputRef.current.value = '';
+  }, [resetKey, kind, setFailed]);
 
   async function handleFile(file: File | undefined) {
     setError('');

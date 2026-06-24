@@ -57,6 +57,8 @@ type FormState = {
   coverImageUrl: string;
 };
 
+type CompanyFormMode = 'create' | 'edit';
+
 const statusCopy: Record<CompanyStatus, { ar: string; en: string; tone: 'amber' | 'green' | 'red' | 'blue' | 'slate' }> = {
   pending_review: { ar: 'قيد المراجعة', en: 'Pending review', tone: 'amber' },
   approved: { ar: 'معتمدة', en: 'Approved', tone: 'green' },
@@ -118,6 +120,18 @@ function formFromCompany(company: CompanyListing): FormState {
     logoUrl: company.logo_url ?? '',
     coverImageUrl: company.cover_image_url ?? '',
   };
+}
+
+function logCompanyFormInitialized(mode: CompanyFormMode, values: FormState, companyId?: string | null) {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.log('Company form initialized', {
+    mode,
+    companyId: companyId ?? null,
+    hasLogoUrl: Boolean(values.logoUrl),
+    hasCoverUrl: Boolean(values.coverImageUrl),
+    hasLogoFile: false,
+    hasCoverFile: false,
+  });
 }
 
 function formPayload(form: FormState) {
@@ -216,9 +230,16 @@ export function OwnerCompaniesPage() {
   }, [authLoading, router, session]);
 
   function openEdit(company: CompanyListing) {
-    setEditing(company);
-    setForm(formFromCompany(company));
+    const nextForm = formFromCompany(company);
     setMessage(null);
+    setForm(nextForm);
+    setEditing(company);
+    logCompanyFormInitialized('edit', nextForm, company.id);
+  }
+
+  function closeEdit() {
+    setEditing(null);
+    setForm(null);
   }
 
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -242,8 +263,7 @@ export function OwnerCompaniesPage() {
       if (!response.ok || !payload.ok) throw new Error(payload.code ?? 'SAVE_FAILED');
       const nextItem = payload.item as CompanyListing;
       setCompanies(previous => previous.map(item => item.id === nextItem.id ? nextItem : item));
-      setEditing(null);
-      setForm(null);
+      closeEdit();
       setMessage({
         type: 'ok',
         text: payload.pendingReview ? 'تم إرسال التعديلات للمراجعة قبل نشرها.' : 'تم تحديث بيانات الشركة وإرسالها للمراجعة.',
@@ -444,11 +464,11 @@ export function OwnerCompaniesPage() {
       )}
 
       {editing && form ? (
-        <div className="owner-modal-overlay" onClick={event => { if (event.target === event.currentTarget) setEditing(null); }}>
-          <section className="owner-modal" aria-modal="true" role="dialog" aria-label="تعديل بيانات الشركة">
+        <div className="owner-modal-overlay" onClick={event => { if (event.target === event.currentTarget) closeEdit(); }}>
+          <section key={`company-edit-${editing.id}`} className="owner-modal" aria-modal="true" role="dialog" aria-label="تعديل بيانات الشركة">
             <div className="owner-modal-head">
               <h2>{editing.status === 'approved' ? 'طلب تعديل بيانات الشركة' : 'تعديل بيانات الشركة'}</h2>
-              <button type="button" className="owner-modal-close" onClick={() => setEditing(null)} aria-label="إغلاق">×</button>
+              <button type="button" className="owner-modal-close" onClick={closeEdit} aria-label="إغلاق">×</button>
             </div>
             <div className="owner-form">
               <Field label="اسم الشركة" value={form.companyName} onChange={value => updateForm('companyName', value)} />
@@ -477,15 +497,15 @@ export function OwnerCompaniesPage() {
               <Field label="رقم الترخيص" value={form.licenseNumber} onChange={value => updateForm('licenseNumber', value)} />
               <Field label="الجهة المنظمة" value={form.regulatorName} onChange={value => updateForm('regulatorName', value)} />
               <Field label="الخدمات المقدمة" value={form.services} onChange={value => updateForm('services', value)} textarea full />
-              <CompanyImageUploadField label="رابط شعار الشركة" value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} kind="logo" companyId={editing.id} />
-              <CompanyImageUploadField label="رابط صورة الغلاف" value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} kind="cover" companyId={editing.id} />
+              <CompanyImageUploadField key={`company-edit-${editing.id}-logo`} mode="edit" resetKey={`edit-${editing.id}-logo`} label="رابط شعار الشركة" value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} kind="logo" companyId={editing.id} />
+              <CompanyImageUploadField key={`company-edit-${editing.id}-cover`} mode="edit" resetKey={`edit-${editing.id}-cover`} label="رابط صورة الغلاف" value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} kind="cover" companyId={editing.id} />
             </div>
             <div className="owner-modal-actions">
               <button type="button" className="owner-primary-btn" disabled={saving} onClick={() => void saveEdit()}>
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 إرسال للمراجعة
               </button>
-              <button type="button" className="owner-secondary-btn" disabled={saving} onClick={() => setEditing(null)}>
+              <button type="button" className="owner-secondary-btn" disabled={saving} onClick={closeEdit}>
                 إلغاء
               </button>
             </div>

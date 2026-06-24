@@ -1,5 +1,5 @@
 import { CompanySubmitForm } from '@/components/company-listings/CompanySubmitForm';
 
 export default function CompanyListingSubmitPage() {
-  return <CompanySubmitForm />;
+  return <CompanySubmitForm key="company-create" />;
 }

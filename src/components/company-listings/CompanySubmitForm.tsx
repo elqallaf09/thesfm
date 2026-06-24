@@ -42,7 +42,9 @@ type FormState = {
   coverImageUrl: string;
 };
 
-const initialForm: FormState = {
+type CompanyFormMode = 'create' | 'edit';
+
+const EMPTY_COMPANY_FORM: Readonly<FormState> = Object.freeze({
   companyName: '',
   category: 'investment',
   country: '',
@@ -68,7 +70,23 @@ const initialForm: FormState = {
   services: '',
   logoUrl: '',
   coverImageUrl: '',
-};
+});
+
+function createEmptyCompanyForm(overrides: Partial<FormState> = {}): FormState {
+  return { ...EMPTY_COMPANY_FORM, ...overrides };
+}
+
+function logCompanyFormInitialized(mode: CompanyFormMode, values: FormState, companyId?: string | null) {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.log('Company form initialized', {
+    mode,
+    companyId: companyId ?? null,
+    hasLogoUrl: Boolean(values.logoUrl),
+    hasCoverUrl: Boolean(values.coverImageUrl),
+    hasLogoFile: false,
+    hasCoverFile: false,
+  });
+}
 
 const COUNTRY_CODES = [
   'KW','SA','AE','QA','BH','OM','US','GB','FR','DE','IT','ES','NL','BE','CH','AT','SE','NO','DK','FI','IE','PT','GR','CY','LU','MT','PL','CZ','SK','HU','RO','BG','HR','SI','EE','LV','LT','IS','LI','MC','SM','VA','AD','AL','BA','RS','ME','MK','XK','TR','RU','UA','BY','MD','GE','AM','AZ',
@@ -187,7 +205,8 @@ export function CompanySubmitForm() {
   const { t, dir } = useLanguage();
   const { session, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() => createEmptyCompanyForm());
+  const [uploadResetVersion, setUploadResetVersion] = useState(0);
   const [eligible, setEligible] = useState(false);
   const [checking, setChecking] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -197,8 +216,10 @@ export function CompanySubmitForm() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const requestedCategory = normalizeCompanyCategory(new URLSearchParams(window.location.search).get('category'));
-    if (!requestedCategory) return;
-    setForm(prev => ({ ...prev, category: requestedCategory }));
+    const nextForm = createEmptyCompanyForm(requestedCategory ? { category: requestedCategory } : undefined);
+    setForm(nextForm);
+    setUploadResetVersion(version => version + 1);
+    logCompanyFormInitialized('create', nextForm, null);
   }, []);
 
   useEffect(() => {
@@ -383,7 +404,10 @@ export function CompanySubmitForm() {
         });
         return;
       }
-      setForm(initialForm);
+      const nextForm = createEmptyCompanyForm();
+      setForm(nextForm);
+      setUploadResetVersion(version => version + 1);
+      logCompanyFormInitialized('create', nextForm, null);
       setMessage({ type: 'ok', text: t('company_listing_submit_success') });
     } catch {
       setMessage({ type: 'error', text: t('company_listing_submit_error') });
@@ -490,8 +514,8 @@ export function CompanySubmitForm() {
           <Field label={t('company_listing_license_number')} value={form.licenseNumber} placeholder="رقم أو أحرف الترخيص" onChange={value => updateField('licenseNumber', value)} />
           <Field label={t('company_listing_regulator_name')} value={form.regulatorName} placeholder="اسم الجهة المنظمة أو الرقابية" onChange={value => updateField('regulatorName', value)} />
           <Field label={t('company_listing_services')} value={form.services} placeholder="اكتب الخدمات مفصولة بفواصل" onChange={value => updateField('services', value)} span textarea />
-          <CompanyImageUploadField label={t('company_listing_logo_url')} value={form.logoUrl} onChange={value => updateField('logoUrl', value)} kind="logo" />
-          <CompanyImageUploadField label={t('company_listing_cover_url')} value={form.coverImageUrl} onChange={value => updateField('coverImageUrl', value)} kind="cover" />
+          <CompanyImageUploadField key={`company-create-logo-${uploadResetVersion}`} mode="create" resetKey={uploadResetVersion} label={t('company_listing_logo_url')} value={form.logoUrl} onChange={value => updateField('logoUrl', value)} kind="logo" />
+          <CompanyImageUploadField key={`company-create-cover-${uploadResetVersion}`} mode="create" resetKey={uploadResetVersion} label={t('company_listing_cover_url')} value={form.coverImageUrl} onChange={value => updateField('coverImageUrl', value)} kind="cover" />
         </FormSection>
 
         <div className="submit-sticky">
