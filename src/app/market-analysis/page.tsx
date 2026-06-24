@@ -163,13 +163,46 @@ function findBestSearchMatch(items: MarketSearchSuggestion[], query: string) {
   return ranked[0]?.item;
 }
 
+function isMarketTimeframe(value: unknown): value is MarketTimeframe {
+  return MARKET_TIMEFRAMES.includes(String(value ?? '') as MarketTimeframe);
+}
+
+function normalizeAssetFilterParam(value: unknown): MarketAssetFilter {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === 'all') return 'all';
+  return normalizeAssetType(raw) as MarketAssetFilter;
+}
+
+function readMarketAnalysisUrlState() {
+  if (typeof window === 'undefined') {
+    return {
+      symbol: '',
+      assetType: DEFAULT_MARKET_ASSET_FILTER,
+      timeframe: '1D' as MarketTimeframe,
+      autoRun: false,
+    };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const symbol = validateSymbol(params.get('symbol')?.trim().toUpperCase() ?? '') ?? '';
+  const assetType = normalizeAssetFilterParam(params.get('assetType') ?? (symbol ? 'stock' : DEFAULT_MARKET_ASSET_FILTER));
+  const timeframeParam = params.get('timeframe');
+  return {
+    symbol,
+    assetType,
+    timeframe: isMarketTimeframe(timeframeParam) ? timeframeParam : '1D',
+    autoRun: params.get('autoRun') === '1',
+  };
+}
+
 export default function MarketAnalysisPage() {
   const { dir, lang, t } = useLanguage();
   const { currency: userCurrency } = useCurrency();
   const currentUserProfile = useCurrentUserProfile();
   const { user, isGuest } = useAuth();
-  const [query, setQuery] = useState('');
-  const [assetType, setAssetType] = useState<MarketAssetFilter>(DEFAULT_MARKET_ASSET_FILTER);
+  const initialUrlStateRef = useRef<ReturnType<typeof readMarketAnalysisUrlState> | null>(null);
+  if (initialUrlStateRef.current === null) initialUrlStateRef.current = readMarketAnalysisUrlState();
+  const [query, setQuery] = useState(initialUrlStateRef.current.symbol);
+  const [assetType, setAssetType] = useState<MarketAssetFilter>(initialUrlStateRef.current.assetType);
   const [analysis, setAnalysis] = useState<MarketViewAnalysis | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<SelectedMarketAsset | null>(null);
   const [searchResults, setSearchResults] = useState<MarketSearchSuggestion[]>([]);
@@ -195,7 +228,7 @@ export default function MarketAnalysisPage() {
   const [errorSuggestions, setErrorSuggestions] = useState<MarketSearchSuggestion[]>([]);
   const [notice, setNotice] = useState('');
   const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
-  const [timeframe, setTimeframe] = useState<MarketTimeframe>('1D');
+  const [timeframe, setTimeframe] = useState<MarketTimeframe>(initialUrlStateRef.current.timeframe);
   const [chartType, setChartType] = useState<MarketChartType>('area');
   const [chartHistory, setChartHistory] = useState<MarketHistoryPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -210,6 +243,7 @@ export default function MarketAnalysisPage() {
   const [scenarioCurrencyOpen, setScenarioCurrencyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
+  const hasAutoRunUrlAnalysisRef = useRef(false);
   const [traderToolTab, setTraderToolTab] = useState<TraderToolsSubTab>('risk');
   const [performance, setPerformance] = useState<ApiListState<MarketPerformanceItem>>({ loading: false, items: [], message: '' });
   const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
@@ -699,7 +733,6 @@ export default function MarketAnalysisPage() {
 
       if (hasUsableAnalysis(result)) {
         setNotice(t('market_progress_preparing_analysis'));
-        setTimeframe('1D');
         setChartMessage('');
         setChartMeta({});
         const nextAnalysis = {
@@ -776,6 +809,52 @@ export default function MarketAnalysisPage() {
       setLoading(false);
     }
   }, [isGuest, requestAiInsight, t, user]);
+
+  useEffect(() => {
+    const initial = initialUrlStateRef.current;
+    if (!initial?.autoRun || !initial.symbol || hasAutoRunUrlAnalysisRef.current) return;
+    hasAutoRunUrlAnalysisRef.current = true;
+    setActiveTab('analyze');
+    const normalizedInput = normalizeMarketSymbolInput(initial.symbol, initial.assetType);
+    if (normalizedInput.valid) {
+      void requestAnalysis(normalizedInput.providerSymbol, initial.assetType, {
+        symbol: normalizedInput.displaySymbol,
+        providerSymbol: normalizedInput.providerSymbol,
+        name: normalizedInput.displaySymbol,
+        assetType: normalizeAssetType(normalizedInput.assetType),
+      });
+      return;
+    }
+    void requestAnalysis(initial.symbol, initial.assetType);
+  }, [requestAnalysis]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const cleanSymbol = validateSymbol(query.trim().toUpperCase());
+    if (cleanSymbol) params.set('symbol', cleanSymbol);
+    else params.delete('symbol');
+
+    if (cleanSymbol || assetType !== DEFAULT_MARKET_ASSET_FILTER || params.has('assetType')) {
+      params.set('assetType', assetType === 'all' ? DEFAULT_MARKET_TYPE : assetType);
+    } else {
+      params.delete('assetType');
+    }
+
+    if (cleanSymbol || timeframe !== '1D' || params.has('timeframe')) {
+      params.set('timeframe', timeframe);
+    } else {
+      params.delete('timeframe');
+    }
+    params.delete('autoRun');
+
+    const queryString = params.toString();
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, '', nextUrl);
+    }
+  }, [assetType, query, timeframe]);
 
   const historySymbol = analysis?.symbol ?? '';
   const historyProviderSymbol = analysis?.providerSymbol ?? historySymbol;
