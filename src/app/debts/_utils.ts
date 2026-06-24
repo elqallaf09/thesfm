@@ -134,6 +134,14 @@ export function monthlyInterestAmount(debt: DebtRow) {
   return remaining * monthlyRate;
 }
 
+export function debtEffectiveMonthlyRate(debt: DebtRow) {
+  return debtMonthlyInterestRate(debt.interest_rate, debt.interest_type || 'annual');
+}
+
+export function isDebtActiveForCalculations(debt: DebtRow) {
+  return debt.status === 'active' && remainingForDebt(debt) > 0.005;
+}
+
 export function calculateDebtPayment(debt: DebtRow, overrideAmount?: number) {
   const remaining = remainingForDebt(debt);
   const requestedAmount = Math.max(0, overrideAmount ?? toNumber(debt.monthly_payment));
@@ -166,7 +174,7 @@ export function debtAmortization(
     originalPrincipal: debt.original_amount,
     remainingBalance: remainingForDebt(debt),
     annualInterestRate: debt.interest_rate,
-    interestType: debt.interest_type || 'annual',
+    interestRatePeriod: debt.interest_type || 'annual',
     monthlyPayment: debt.monthly_payment,
     nextPaymentDate: options.nextPaymentDate ?? debtSchedule(debt).nextPaymentDate ?? debtFirstPaymentDate(debt),
     paymentHistory: options.paymentHistory,
@@ -190,22 +198,30 @@ export function estimatePayoffDate(debt: DebtRow): string | null {
 }
 
 export type StrategyEntry = { debt: DebtRow; payoffMonth: number; interestPaid: number };
-export type StrategyResult = { order: StrategyEntry[]; totalMonths: number; totalInterest: number } | null;
+export type StrategyResult = {
+  order: StrategyEntry[];
+  totalMonths: number;
+  totalInterest: number;
+  blockedDebts: DebtRow[];
+} | null;
 
 export function simulatePayoffStrategy(
   debts: DebtRow[],
   extraMonthly: number,
   method: 'snowball' | 'avalanche',
 ): StrategyResult {
-  const active = debts.filter(
-    d => d.status === 'active' && toNumber(d.monthly_payment) > 0 && remainingForDebt(d) > 0,
-  );
+  const active = debts.filter(d => isDebtActiveForCalculations(d) && toNumber(d.monthly_payment) > 0);
+  const blockedDebts = active.filter(debt => calculateDebtPayment(debt).warning);
+  const eligible = active.filter(debt => !calculateDebtPayment(debt).warning);
   if (active.length === 0) return null;
+  if (eligible.length === 0) {
+    return { order: [], totalMonths: 0, totalInterest: 0, blockedDebts };
+  }
 
-  const sorted = [...active].sort((a, b) =>
+  const sorted = [...eligible].sort((a, b) =>
     method === 'snowball'
       ? remainingForDebt(a) - remainingForDebt(b)
-      : toNumber(b.interest_rate) - toNumber(a.interest_rate),
+      : debtEffectiveMonthlyRate(b) - debtEffectiveMonthlyRate(a),
   );
 
   type State = {
@@ -227,7 +243,7 @@ export function simulatePayoffStrategy(
   }));
 
   let extraPool = Math.max(0, extraMonthly);
-  const MAX_MONTHS = 600;
+  const MAX_MONTHS = 2400;
 
   for (let month = 1; month <= MAX_MONTHS; month += 1) {
     if (states.every(s => s.done)) break;
@@ -237,10 +253,7 @@ export function simulatePayoffStrategy(
     for (const state of states) {
       if (state.done) continue;
 
-      const interestType = state.debt.interest_type || 'annual';
-      const rate = toNumber(state.debt.interest_rate);
-      const monthlyRate =
-        interestType === 'none' ? 0 : interestType === 'monthly' ? rate / 100 : rate / 100 / 12;
+      const monthlyRate = debtEffectiveMonthlyRate(state.debt);
       const interestCharge = state.remaining * monthlyRate;
 
       let payment = state.minPayment;
@@ -254,6 +267,10 @@ export function simulatePayoffStrategy(
 
       const interestPortion = Math.min(interestCharge, Math.max(0, payment));
       const principal = Math.max(0, payment - interestPortion);
+      if (principal <= 0.000001 && payment > 0) {
+        state.payoffMonth = MAX_MONTHS;
+        continue;
+      }
       state.interestPaid += interestPortion;
       state.remaining = Math.max(0, state.remaining - principal);
 
@@ -274,7 +291,7 @@ export function simulatePayoffStrategy(
 
   const totalMonths = Math.max(...order.map(o => o.payoffMonth));
   const totalInterest = order.reduce((sum, o) => sum + o.interestPaid, 0);
-  return { order, totalMonths, totalInterest };
+  return { order, totalMonths, totalInterest, blockedDebts };
 }
 
 export function payloadFromForm(form: DebtForm, userId: string) {

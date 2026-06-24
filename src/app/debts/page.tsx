@@ -33,7 +33,7 @@ import { useCurrency } from '@/lib/useCurrency';
 
 import type { Lang, DebtRow, DebtPaymentRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { TEXT } from './_text';
-import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, calculateDebtPayment, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails, debtAmortization } from './_utils';
+import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, calculateDebtPayment, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails, debtAmortization, debtEffectiveMonthlyRate, isDebtActiveForCalculations } from './_utils';
 import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, RequiredMark, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
 
 export default function DebtsPage() {
@@ -55,6 +55,7 @@ export default function DebtsPage() {
   const [generationChecked, setGenerationChecked] = useState(false);
   const [extraPaymentAmount, setExtraPaymentAmount] = useState('0');
   const [expandedDebtIds, setExpandedDebtIds] = useState<Set<string>>(() => new Set());
+  const [debtFilter, setDebtFilter] = useState<'active' | 'paid' | 'all'>('active');
   const modalRef = useRef<HTMLFormElement>(null);
 
   const t = useCallback((key: keyof typeof TEXT) => trFn(locale, key), [locale]);
@@ -140,7 +141,6 @@ export default function DebtsPage() {
     void generateDuePayments();
   }, [generationChecked, loadData, session?.access_token, t, user]);
 
-  const activeDebts = useMemo(() => debts.filter(debt => debt.status !== 'paid'), [debts]);
   const monthlyIncome = useMemo(() => incomeRows.reduce((sum, row) => sum + toNumber(row.amount), 0), [incomeRows]);
   const paymentsByDebt = useMemo(() => {
     const groups = new Map<string, DebtPaymentRow[]>();
@@ -210,6 +210,20 @@ export default function DebtsPage() {
       lastPaymentDate,
     };
   }, [paymentsByDebt]);
+  const activeDebts = useMemo(
+    () => debts.filter(debt => isDebtActiveForCalculations(debtDisplaySummary(debt).displayDebt)),
+    [debts, debtDisplaySummary],
+  );
+  const paidDebts = useMemo(
+    () => debts.filter(debt => debt.status === 'paid' || debtDisplaySummary(debt).effectiveRemaining <= 0.005),
+    [debts, debtDisplaySummary],
+  );
+  const visibleDebts = useMemo(() => {
+    if (debtFilter === 'active') return activeDebts;
+    if (debtFilter === 'paid') return paidDebts;
+    return debts;
+  }, [activeDebts, debtFilter, debts, paidDebts]);
+
   const totals = useMemo(() => {
     const totalOriginal = debts.reduce((sum, debt) => sum + toNumber(debt.original_amount), 0);
     const totalRemaining = activeDebts.reduce((sum, debt) => sum + debtDisplaySummary(debt).effectiveRemaining, 0);
@@ -246,8 +260,25 @@ export default function DebtsPage() {
   );
 
   const interestRiskDebt = activeDisplayDebts.find(debt => calculateDebtPayment(debt).warning);
-  const highestInterest = [...activeDisplayDebts].sort((a, b) => toNumber(b.interest_rate) - toNumber(a.interest_rate))[0];
+  const highestInterest = [...activeDisplayDebts].sort((a, b) => debtEffectiveMonthlyRate(b) - debtEffectiveMonthlyRate(a))[0];
   const smallestDebt = [...activeDisplayDebts].sort((a, b) => remainingForDebt(a) - remainingForDebt(b))[0];
+  const upcomingInstallments = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return activeDisplayDebts
+      .map(debt => {
+        const schedule = debtSchedule(debt);
+        const nextPaymentDate = schedule.nextPaymentDate ?? '';
+        const statusKey = nextPaymentDate && nextPaymentDate < today ? 'overdue' : nextPaymentDate === today ? 'dueToday' : 'upcoming';
+        return {
+          debt,
+          nextPaymentDate,
+          amount: toNumber(debt.monthly_payment),
+          statusKey: statusKey as 'overdue' | 'dueToday' | 'upcoming',
+        };
+      })
+      .filter(item => item.nextPaymentDate)
+      .sort((a, b) => a.nextPaymentDate.localeCompare(b.nextPaymentDate));
+  }, [activeDisplayDebts]);
 
   function resetForm() {
     setForm(createDefaultForm(baseCurrency || 'KWD'));
@@ -604,6 +635,7 @@ export default function DebtsPage() {
           <SummaryCard icon={<CreditCard size={18} />} label={t('remainingToPay')} value={money(totals.totalRemaining)} />
           <SummaryCard icon={<ReceiptText size={18} />} label={t('monthlyInstallments')} value={money(totals.totalMonthly)} />
           <SummaryCard icon={<Gauge size={18} />} label={t('activeDebtsCount')} value={`${activeDebts.length}`} />
+          <SummaryCard icon={<CheckCircle2 size={18} />} label={t('paidDebtsCount')} value={`${paidDebts.length}`} />
         </section>
 
         <section className="debts-layout">
@@ -616,16 +648,35 @@ export default function DebtsPage() {
               <button type="button" onClick={openAddForm}><Plus size={16} />{t('addDebt')}</button>
             </div>
 
-            {debts.length === 0 ? (
+            <div className="debt-tabs" role="tablist" aria-label={t('title')}>
+              {[
+                { key: 'active' as const, label: t('activeDebtsTab'), count: activeDebts.length },
+                { key: 'paid' as const, label: t('paidDebtsTab'), count: paidDebts.length },
+                { key: 'all' as const, label: t('allDebtsTab'), count: debts.length },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={debtFilter === tab.key ? 'active' : ''}
+                  onClick={() => setDebtFilter(tab.key)}
+                  aria-pressed={debtFilter === tab.key}
+                >
+                  {tab.label}
+                  <span>{tab.count}</span>
+                </button>
+              ))}
+            </div>
+
+            {visibleDebts.length === 0 ? (
               <div className="debts-empty">
                 <CreditCard size={30} />
-                <h2>{t('noDebts')}</h2>
+                <h2>{debts.length === 0 ? t('noDebts') : t('unavailable')}</h2>
                 <p>{t('noDebtsBody')}</p>
                 <button type="button" className="debts-primary" onClick={openAddForm}>{t('addDebt')}</button>
               </div>
             ) : (
               <div className="debt-card-grid">
-                {debts.map(debt => {
+                {visibleDebts.map(debt => {
                   const {
                     schedule,
                     displayDebt,
@@ -633,11 +684,14 @@ export default function DebtsPage() {
                     effectiveRemaining,
                     totalPaid,
                     totalInterestPaid,
+                    totalPrincipalPaid,
                     paidPaymentsCount,
                     lastPaymentDate,
                   } = debtDisplaySummary(debt);
-                  const status = (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
-                  const nextPayment = schedule.nextPaymentDate ?? '';
+                  const status = effectiveRemaining <= 0.005
+                    ? 'paid'
+                    : (debt.status === 'paid' || debt.status === 'paused' || debt.status === 'active') ? debt.status : 'active';
+                  const nextPayment = status === 'paid' ? '' : schedule.nextPaymentDate ?? '';
                   const isDue = nextPayment === new Date().toISOString().slice(0, 10);
                   const isExpanded = expandedDebtIds.has(debt.id);
                   const amortization = debtAmortization(displayDebt, {
@@ -651,7 +705,12 @@ export default function DebtsPage() {
                   });
                   const progress = Math.min(100, Math.max(0, amortization.repaymentProgressPercent));
                   const remainingPaymentsCount = amortization.remainingPayments;
-                  const payoffDate = amortization.expectedPayoffDate;
+                  const payoffDate = status === 'paid' ? lastPaymentDate : amortization.expectedPayoffDate;
+                  const interestLabel = debt.interest_type === 'monthly'
+                    ? t('monthlyInterest')
+                    : debt.interest_type === 'none'
+                      ? t('noInterest')
+                      : t('annualInterest');
                   return (
                     <article className={`debt-card ${isExpanded ? 'expanded' : ''}`} key={debt.id}>
                       <div className="debt-card-top">
@@ -678,49 +737,69 @@ export default function DebtsPage() {
                         <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
                         <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
                       </div>
+                      <div className="debt-progress debt-progress-compact">
+                        <span><b>{t('payoffRate')}</b><strong dir="ltr">{progress.toFixed(1)}%</strong></span>
+                        <i aria-label={`${t('payoffRate')} ${progress.toFixed(1)}%`}><b style={{ width: `${progress}%` }} /></i>
+                      </div>
                       {isExpanded && (
                         <div className="debt-expanded-details">
-                          <div className="debt-progress">
-                            <span><b>{t('payoffRate')}</b><strong dir="ltr">{progress.toFixed(1)}%</strong></span>
-                            <i><b style={{ width: `${progress}%` }} /></i>
+                          <div className="debt-detail-groups">
+                            <section className="debt-detail-group">
+                              <h4>{t('paymentGroup')}</h4>
+                              <div className="debt-metrics">
+                                <DebtMetric label={t('originalAmount')} value={money(debt.original_amount, debt.currency)} />
+                                <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid, debt.currency)} />
+                                <DebtMetric label={t('principalPaid')} value={money(totalPrincipalPaid, debt.currency)} />
+                                <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
+                              </div>
+                            </section>
+                            <section className="debt-detail-group">
+                              <h4>{t('scheduleGroup')}</h4>
+                              <div className="debt-metrics">
+                                <DebtMetric label={t('remainingPaymentsCount')} value={remainingPaymentsCount === null ? t('unavailable') : `${remainingPaymentsCount}`} />
+                                <DebtMetric label={t('expectedPayoffByCurrentPayment')} value={formatDate(payoffDate, locale)} highlight={status !== 'paid'} />
+                                <DebtMetric label={t('finalPaymentAmount')} value={amortization.finalPaymentAmount === null ? t('unavailable') : money(amortization.finalPaymentAmount, debt.currency)} />
+                                <DebtMetric label={t('totalRemainingInterest')} value={money(amortization.totalRemainingInterest, debt.currency)} />
+                                <DebtMetric label={t('principalReductionNextPayment')} value={money(amortization.principalReductionNextPayment, debt.currency)} />
+                                <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
+                              </div>
+                            </section>
+                            <section className="debt-detail-group">
+                              <h4>{t('termsGroup')}</h4>
+                              <div className="debt-metrics">
+                                <DebtMetric label={t('interestRate')} value={`${interestLabel}: ${toNumber(debt.interest_rate).toFixed(2)}%`} />
+                                <DebtMetric label={t('monthlyInterestCurrent')} value={money(amortization.monthlyInterestAmount, debt.currency)} />
+                                <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
+                                <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
+                                <DebtMetric label={t('lastPayment')} value={formatDate(lastPaymentDate, locale)} />
+                                <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
+                                <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
+                              </div>
+                            </section>
                           </div>
-                          <div className="debt-metrics">
-                            <DebtMetric label={t('originalAmount')} value={money(debt.original_amount, debt.currency)} />
-                            <DebtMetric label={t('totalPaidAmount')} value={money(totalPaid, debt.currency)} />
-                            <DebtMetric label={t('remaining')} value={money(effectiveRemaining, debt.currency)} />
-                            <DebtMetric label={t('monthlyPayment')} value={money(debt.monthly_payment, debt.currency)} />
-                            <DebtMetric label={t('interestRate')} value={`${toNumber(debt.interest_rate).toFixed(2)}%`} />
-                            <DebtMetric label={t('startDate')} value={formatDate(debt.start_date, locale)} />
-                            <DebtMetric label={t('nextPayment')} value={formatDate(nextPayment, locale)} />
-                            <DebtMetric label={t('remainingPaymentsCount')} value={remainingPaymentsCount === null ? t('unavailable') : `${remainingPaymentsCount}`} />
-                            <DebtMetric label={t('lastPayment')} value={formatDate(lastPaymentDate, locale)} />
-                            <DebtMetric label={t('repaymentPlan')} value={debt.status === 'paid' ? t('paid') : formatDate(payoffDate, locale)} highlight={debt.status !== 'paid'} />
-                            <DebtMetric label={t('firstPaymentDate')} value={formatDate(debtFirstPaymentDate(debt), locale)} />
-                            <DebtMetric label={t('paidPaymentsCount')} value={`${paidPaymentsCount}`} />
-                            <DebtMetric label={t('totalInterestPaid')} value={money(totalInterestPaid, debt.currency)} />
-                            <DebtMetric label={t('finalPaymentAmount')} value={amortization.finalPaymentAmount === null ? t('unavailable') : money(amortization.finalPaymentAmount, debt.currency)} />
-                            <DebtMetric label={t('totalRemainingInterest')} value={money(amortization.totalRemainingInterest, debt.currency)} />
-                            <DebtMetric label={t('paymentDayLabel')} value={`${clampPaymentDay(debt.payment_day)}`} />
-                            {debt.status !== 'paid' && (
-                              <DebtMetric
-                                label={t('payoffDate')}
-                                value={formatDate(payoffDate, locale)}
-                                highlight
-                              />
-                            )}
-                          </div>
-                          {(!amortization.isPaymentSufficient || schedule.warning || calculateDebtPayment(displayDebt).warning) && (
-                            <div className="debt-warning"><AlertTriangle size={15} />{!amortization.isPaymentSufficient ? t('paymentInsufficient') : t('interestWarning')}</div>
+                          {(!amortization.isPaymentSufficient || calculateDebtPayment(displayDebt).warning) && (
+                            <div className="debt-warning">
+                              <AlertTriangle size={15} />
+                              <div>
+                                <strong>{t('paymentInsufficient')}</strong>
+                                <span>{t('monthlyInterestCurrent')}: {money(amortization.monthlyInterestAmount, debt.currency)} · {t('enteredPayment')}: {money(debt.monthly_payment, debt.currency)}</span>
+                              </div>
+                            </div>
                           )}
                           {isDue && status === 'active' && <div className="debt-due"><CalendarDays size={15} />{t('dueToday')}</div>}
                           <div className="debt-actions">
-                            <button type="button" onClick={() => openEditForm(debt)}><Edit3 size={15} />{t('edit')}</button>
-                            {status === 'active' && <button type="button" onClick={() => void recordPayment(debt)}><ReceiptText size={15} />{t('recordPayment')}</button>}
-                            {status === 'paused'
-                              ? <button type="button" onClick={() => void updateStatus(debt, 'active')}><PlayCircle size={15} />{t('resume')}</button>
-                              : status === 'active' ? <button type="button" onClick={() => void updateStatus(debt, 'paused')}><PauseCircle size={15} />{t('pause')}</button> : null}
-                            {status !== 'paid' && <button type="button" onClick={() => void updateStatus(debt, 'paid', 0)}><CheckCircle2 size={15} />{t('markPaid')}</button>}
-                            <button type="button" className="danger" onClick={() => void deleteDebt(debt)}><Trash2 size={15} />{t('delete')}</button>
+                            {status === 'active' && <button className="debt-action-primary" type="button" onClick={() => void recordPayment(debt)}><ReceiptText size={15} />{t('recordPayment')}</button>}
+                            <details className="debt-action-menu">
+                              <summary>{t('otherActions')}</summary>
+                              <div>
+                                <button type="button" onClick={() => openEditForm(debt)}><Edit3 size={15} />{t('edit')}</button>
+                                {status === 'paused'
+                                  ? <button type="button" onClick={() => void updateStatus(debt, 'active')}><PlayCircle size={15} />{t('resume')}</button>
+                                  : status === 'active' ? <button type="button" onClick={() => void updateStatus(debt, 'paused')}><PauseCircle size={15} />{t('pause')}</button> : null}
+                                {status !== 'paid' && <button type="button" onClick={() => void updateStatus(debt, 'paid', 0)}><CheckCircle2 size={15} />{t('markPaid')}</button>}
+                                <button type="button" className="danger" onClick={() => void deleteDebt(debt)}><Trash2 size={15} />{t('delete')}</button>
+                              </div>
+                            </details>
                           </div>
                         </div>
                       )}
@@ -761,28 +840,28 @@ export default function DebtsPage() {
           setExtraPaymentAmount={setExtraPaymentAmount}
         />
 
-        {payments.length > 0 && (
-          <section className="payments-panel">
-            <div className="debts-section-head">
-              <div>
-                <span>{t('recordPayment')}</span>
-                <h2>{t('monthlyInstallments')}</h2>
-              </div>
+        <section className="payments-panel">
+          <div className="debts-section-head">
+            <div>
+              <span>{t('activeMonthlyTotal')}: {money(totals.totalMonthly)}</span>
+              <h2>{t('upcomingInstallments')}</h2>
             </div>
+          </div>
+          {upcomingInstallments.length === 0 ? (
+            <div className="payments-empty">{t('noDueMonthlyPayments')}</div>
+          ) : (
             <div className="payments-list">
-              {payments.slice(0, 8).map(payment => {
-                const debt = debts.find(item => item.id === payment.debt_id);
-                return (
-                  <div className="payment-row" key={payment.id}>
-                    <span>{debt?.name ?? t('unavailable')}</span>
-                    <b dir="ltr">{money(payment.amount, debt?.currency || baseCurrency || 'KWD')}</b>
-                    <small>{formatDate(payment.payment_date, locale)}</small>
-                  </div>
-                );
-              })}
+              {upcomingInstallments.map(item => (
+                <div className={`payment-row ${item.statusKey}`} key={item.debt.id}>
+                  <span>{item.debt.name}</span>
+                  <b dir="ltr">{money(item.amount, item.debt.currency)}</b>
+                  <small>{formatDate(item.nextPaymentDate, locale)}</small>
+                  <em>{t(item.statusKey)}</em>
+                </div>
+              ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </main>
 
       {formOpen && (
