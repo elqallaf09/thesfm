@@ -1146,6 +1146,240 @@ function normalizeReportCellValue(value: unknown, lang: Lang) {
   return String(value);
 }
 
+const PDF_REPORT_TEXT: Record<Lang, {
+  reportCenter: string;
+  privateReport: string;
+  generatedAt: string;
+  reportPeriod: string;
+  reportYear: string;
+  grouping: string;
+  currency: string;
+  recordsCount: string;
+  userName: string;
+  totalExpenses: string;
+  operationsCount: string;
+  averageExpense: string;
+  highestExpense: string;
+  topCategory: string;
+  coveredPeriod: string;
+  noCategory: string;
+  printReady: string;
+  previewControls: string;
+  fitWidth: string;
+  fitPage: string;
+  pageNumber: string;
+}> = {
+  ar: {
+    reportCenter: 'مركز التقارير المالية',
+    privateReport: 'تقرير مالي خاص بالمستخدم',
+    generatedAt: 'تاريخ إنشاء التقرير',
+    reportPeriod: 'فترة التقرير',
+    reportYear: 'سنة التقرير',
+    grouping: 'طريقة التجميع',
+    currency: 'العملة',
+    recordsCount: 'عدد السجلات',
+    userName: 'اسم المستخدم',
+    totalExpenses: 'إجمالي المصروفات',
+    operationsCount: 'عدد العمليات',
+    averageExpense: 'متوسط المصروف',
+    highestExpense: 'أعلى مصروف',
+    topCategory: 'أكثر تصنيف إنفاقاً',
+    coveredPeriod: 'الفترة المشمولة',
+    noCategory: 'غير مصنف',
+    printReady: 'المعاينة جاهزة للطباعة أو الحفظ كملف PDF.',
+    previewControls: 'أدوات المعاينة',
+    fitWidth: 'ملاءمة العرض',
+    fitPage: 'ملاءمة الصفحة',
+    pageNumber: 'صفحة',
+  },
+  en: {
+    reportCenter: 'Financial Reports Center',
+    privateReport: 'Private financial report',
+    generatedAt: 'Generated at',
+    reportPeriod: 'Report period',
+    reportYear: 'Report year',
+    grouping: 'Grouping',
+    currency: 'Currency',
+    recordsCount: 'Records',
+    userName: 'User name',
+    totalExpenses: 'Total expenses',
+    operationsCount: 'Transactions',
+    averageExpense: 'Average expense',
+    highestExpense: 'Highest expense',
+    topCategory: 'Top spending category',
+    coveredPeriod: 'Covered period',
+    noCategory: 'Uncategorized',
+    printReady: 'The preview is ready to print or save as PDF.',
+    previewControls: 'Preview controls',
+    fitWidth: 'Fit width',
+    fitPage: 'Fit page',
+    pageNumber: 'Page',
+  },
+  fr: {
+    reportCenter: 'Centre des rapports financiers',
+    privateReport: 'Rapport financier privé',
+    generatedAt: 'Date de génération',
+    reportPeriod: 'Période du rapport',
+    reportYear: 'Année du rapport',
+    grouping: 'Regroupement',
+    currency: 'Devise',
+    recordsCount: 'Enregistrements',
+    userName: 'Nom utilisateur',
+    totalExpenses: 'Total des dépenses',
+    operationsCount: 'Opérations',
+    averageExpense: 'Dépense moyenne',
+    highestExpense: 'Dépense la plus élevée',
+    topCategory: 'Catégorie principale',
+    coveredPeriod: 'Période couverte',
+    noCategory: 'Non classé',
+    printReady: 'L’aperçu est prêt pour l’impression ou l’export PDF.',
+    previewControls: 'Contrôles d’aperçu',
+    fitWidth: 'Adapter à la largeur',
+    fitPage: 'Adapter à la page',
+    pageNumber: 'Page',
+  },
+};
+
+type PdfColumn = {
+  key: string;
+  label: string;
+  align?: 'start' | 'end';
+};
+
+function localeForReport(lang: Lang) {
+  if (lang === 'ar') return 'ar-KW';
+  if (lang === 'fr') return 'fr-FR';
+  return 'en-US';
+}
+
+function formatReportDateValue(value: unknown, lang: Lang, options?: Intl.DateTimeFormatOptions) {
+  const date = value instanceof Date ? value : value ? new Date(String(value)) : null;
+  if (!date || !Number.isFinite(date.getTime())) return '';
+  return new Intl.DateTimeFormat(localeForReport(lang), options ?? {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+}
+
+function formatReportDateTime(value: unknown, lang: Lang) {
+  return formatReportDateValue(value, lang, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatReportAmount(value: unknown, currency: unknown, lang: Lang) {
+  const amount = numberValue(value);
+  const code = currencyCode(currency, 'KWD');
+  const decimals = code === 'KWD' ? 3 : 2;
+  const formatted = new Intl.NumberFormat(localeForReport(lang), {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(amount);
+  const label = formatReportCurrency(code, code, lang);
+  return lang === 'en' ? `${code} ${formatted}` : `${formatted} ${label}`;
+}
+
+function reportPeriodLabel(filters: Filters, lang: Lang) {
+  if (filters.startDate || filters.endDate) {
+    const start = filters.startDate ? formatReportDateValue(filters.startDate, lang) : '...';
+    const end = filters.endDate ? formatReportDateValue(filters.endDate, lang) : '...';
+    return `${start} - ${end}`;
+  }
+  if (filters.month !== 'all') {
+    const monthDate = new Date(Number(filters.year), Number(filters.month) - 1, 1);
+    return new Intl.DateTimeFormat(localeForReport(lang), { month: 'long', year: 'numeric' }).format(monthDate);
+  }
+  return filters.year;
+}
+
+function reportFileName(report: ReportDefinition, filters: Filters, lang: Lang) {
+  const monthPart = filters.month === 'all' ? filters.year : `${filters.year}-${filters.month}`;
+  const localizedTitle = report.id === 'expenses' && lang === 'ar' ? 'تقرير-المصروفات' : slug(report.title.en);
+  return `THE-SFM-${localizedTitle}-${monthPart}.pdf`;
+}
+
+function expenseSummaryRows(rows: Record<string, unknown>[], filters: Filters, lang: Lang) {
+  const text = PDF_REPORT_TEXT[lang];
+  const total = rows.reduce((sum, row) => sum + numberValue(row.amount), 0);
+  const count = rows.length;
+  const average = count ? total / count : 0;
+  const highest = rows.reduce((max, row) => Math.max(max, numberValue(row.amount)), 0);
+  const categoryTotals = rows.reduce((map, row) => {
+    const category = cleanReportText(row.category) || text.noCategory;
+    map.set(category, (map.get(category) ?? 0) + numberValue(row.amount));
+    return map;
+  }, new Map<string, number>());
+  const topCategory = Array.from(categoryTotals.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? text.noCategory;
+
+  return [
+    { label: text.totalExpenses, value: formatReportAmount(total, filters.currency, lang) },
+    { label: text.operationsCount, value: formatNumber(count, lang) },
+    { label: text.averageExpense, value: formatReportAmount(average, filters.currency, lang) },
+    { label: text.highestExpense, value: formatReportAmount(highest, filters.currency, lang) },
+    { label: text.topCategory, value: topCategory },
+    { label: text.coveredPeriod, value: reportPeriodLabel(filters, lang) },
+  ];
+}
+
+function reportMetadataRows(report: ReportDefinition, filters: Filters, lang: Lang, userLabel: string, rowsCount: number, generatedAt: Date) {
+  const text = PDF_REPORT_TEXT[lang];
+  return [
+    { label: text.userName, value: userLabel },
+    { label: text.reportPeriod, value: reportPeriodLabel(filters, lang) },
+    { label: text.reportYear, value: filters.year },
+    { label: text.grouping, value: report.category },
+    { label: text.currency, value: filters.currency },
+    { label: text.recordsCount, value: formatNumber(rowsCount, lang) },
+    { label: text.generatedAt, value: formatReportDateTime(generatedAt, lang) },
+  ].filter(item => cleanReportText(item.value));
+}
+
+function reportColumns(report: ReportDefinition, rows: Record<string, unknown>[], lang: Lang): PdfColumn[] {
+  if (report.id === 'expenses') {
+    const optional: PdfColumn[] = [];
+    if (rows.some(row => cleanReportText(row.payment_method))) {
+      optional.push({ key: 'payment_method', label: columnLabel('payment_method', lang) });
+    }
+    if (rows.some(row => cleanReportText(row.notes))) {
+      optional.push({ key: 'notes', label: columnLabel('notes', lang) });
+    }
+    return [
+      { key: 'date', label: columnLabel('date', lang) },
+      { key: 'name', label: columnLabel('name', lang) },
+      { key: 'category', label: columnLabel('category', lang) },
+      ...optional,
+      { key: 'amount', label: columnLabel('amount', lang), align: 'end' },
+    ];
+  }
+
+  const keys = Array.from(rows.reduce((set, row) => {
+    Object.keys(row).forEach(key => set.add(key));
+    return set;
+  }, new Set<string>()));
+  return keys.map(key => ({
+    key,
+    label: columnLabel(key, lang),
+    align: /amount|value|total|price|cost|balance|profit|revenue/i.test(key) ? 'end' : 'start',
+  }));
+}
+
+function reportCellValue(row: Record<string, unknown>, column: PdfColumn, lang: Lang, fallbackCurrency: string) {
+  const value = row[column.key];
+  if (column.key === 'date' || column.key.endsWith('_date') || column.key.endsWith('_at')) {
+    return formatReportDateValue(value, lang);
+  }
+  if (column.key === 'amount' || column.key.endsWith('_amount') || column.key.includes('value') || column.key.includes('cost') || column.key.includes('profit') || column.key.includes('revenue')) {
+    return formatReportAmount(value, row.currency ?? fallbackCurrency, lang);
+  }
+  if (typeof value === 'number') return formatNumber(value, lang, { maximumFractionDigits: 3 });
+  return normalizeReportCellValue(value, lang);
+}
+
 function normalizeProjectForReport(project: any, lang: Lang, filters: Filters) {
   const notes = parseMaybeObject(project?.notes) ?? {};
   const analysis = parseMaybeObject(notes.analysis) ?? parseMaybeObject(project?.analysis) ?? {};
@@ -1361,6 +1595,8 @@ function reportRows(report: ReportDefinition, records: RecordsState, filters: Fi
       date: firstDate(row),
       name: firstText(row, ['name', 'description'], entity.expense),
       category: firstText(row, ['category', 'expense_type']),
+      payment_method: firstText(row, ['payment_method', 'paymentMethod', 'payment_source', 'paymentSource']),
+      notes: firstText(row, ['notes', 'note']),
       amount: numberValue(row.amount),
       currency: row.currency || filters.currency,
     }));
@@ -1567,7 +1803,9 @@ export default function ReportsCenterPage() {
   const { lang, dir } = useLanguage();
   const tr = TEXT[(lang as Lang) || 'ar'];
   const extra = EXTRA_TEXT[(lang as Lang) || 'ar'];
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
+  const reportLang = (lang as Lang) || 'ar';
+  const pdfText = PDF_REPORT_TEXT[reportLang];
   const [records, setRecords] = useState<RecordsState>(EMPTY_RECORDS);
   const [loadErrors, setLoadErrors] = useState<Partial<Record<TableKey, string>>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -1576,6 +1814,7 @@ export default function ReportsCenterPage() {
   const [reportView, setReportView] = useState<ReportView>('all');
   const [reportViewTouched, setReportViewTouched] = useState(false);
   const [expandedRequirements, setExpandedRequirements] = useState<Record<string, boolean>>({});
+  const [previewFit, setPreviewFit] = useState<'width' | 'page'>('width');
   const [openCategories, setOpenCategories] = useState<Record<ReportCategory, boolean>>({
     financial: true,
     projects: false,
@@ -1634,7 +1873,18 @@ export default function ReportsCenterPage() {
     return { report, status, rows };
   }), [filters, lang, loadErrors, records]);
 
-  const activeRows = useMemo(() => reportRows(activeReport, records, filters, lang as Lang), [activeReport, filters, lang, records]);
+  const activeRows = useMemo(() => reportRows(activeReport, records, filters, reportLang), [activeReport, filters, reportLang, records]);
+  const activeColumns = useMemo(() => reportColumns(activeReport, activeRows, reportLang), [activeReport, activeRows, reportLang]);
+  const activeUserLabel = String(user?.user_metadata?.full_name || user?.email || 'THE SFM');
+  const activeMetadataRows = useMemo(
+    () => reportMetadataRows(activeReport, filters, reportLang, activeUserLabel, activeRows.length, now),
+    [activeReport, activeRows.length, activeUserLabel, filters, now, reportLang],
+  );
+  const activeSummaryRows = useMemo(
+    () => activeReport.id === 'expenses' ? expenseSummaryRows(activeRows, filters, reportLang) : [],
+    [activeReport.id, activeRows, filters, reportLang],
+  );
+  const activeTotalAmount = useMemo(() => activeRows.reduce((sum, row) => sum + numberValue(row.amount), 0), [activeRows]);
   const activeStatus = reportStatus(activeReport, records, loadErrors);
   const readyCount = reportCards.filter(card => card.status === 'ready').length;
   const needsCount = reportCards.filter(card => card.status === 'needs_data').length;
@@ -1732,7 +1982,16 @@ export default function ReportsCenterPage() {
     }
     setActiveReportId(report.id);
     window.setTimeout(() => {
+      const previousTitle = document.title;
+      const nextTitle = reportFileName(report, filters, lang as Lang).replace(/\.pdf$/i, '');
+      const restoreTitle = () => {
+        document.title = previousTitle;
+        window.removeEventListener('afterprint', restoreTitle);
+      };
+      document.title = nextTitle;
+      window.addEventListener('afterprint', restoreTitle);
       window.print();
+      window.setTimeout(restoreTitle, 1500);
       void trackEvent('export_report', { module: 'reports', metadata: { export_type: 'print', report_id: report.id } });
       showToast(tr.printOpened);
     }, 120);
@@ -2055,85 +2314,137 @@ export default function ReportsCenterPage() {
             })}
           </section>
 
-          <aside className="preview-panel print-area" aria-label={tr.reportPreview}>
-            <div className="print-report-brand">
-              <Image src="/sfm-logo.png" alt="" width={46} height={46} />
-              <div>
-                <strong>THE SFM</strong>
-                <span>{tr.generatedBy}</span>
-              </div>
-            </div>
-            <div className="preview-head">
+          <aside className="preview-panel" aria-label={tr.reportPreview}>
+            <div className="pdf-preview-toolbar no-print">
               <div>
                 <span>{tr.reportPreview}</span>
-                <h2>{activeReport.title[lang as Lang]}</h2>
+                <h2>{activeReport.title[reportLang]}</h2>
+                <p>{pdfText.printReady}</p>
               </div>
-              <span className="status-badge" style={{ color: STATUS_TONE[activeStatus], background: `${STATUS_TONE[activeStatus]}12`, borderColor: `${STATUS_TONE[activeStatus]}30` }}>
-                {statusLabel(activeStatus)}
-              </span>
+              <div className="pdf-preview-controls" aria-label={pdfText.previewControls}>
+                <button type="button" className={previewFit === 'width' ? 'active' : ''} onClick={() => setPreviewFit('width')}>
+                  {pdfText.fitWidth}
+                </button>
+                <button type="button" className={previewFit === 'page' ? 'active' : ''} onClick={() => setPreviewFit('page')}>
+                  {pdfText.fitPage}
+                </button>
+                <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} title={!activeCanExport ? tr.exportsDisabled : undefined} onClick={() => printReport(activeReport)}>
+                  <Printer size={16} /> {tr.printPdf}
+                </button>
+                <button type="button" disabled={!activeCanExport || !activeReport.exportable} aria-disabled={!activeCanExport || !activeReport.exportable} title={!activeCanExport || !activeReport.exportable ? tr.exportsDisabled : undefined} onClick={() => exportCsv(activeReport)}>
+                  <Download size={16} /> {activeReport.exportable ? tr.excel : tr.comingSoon}
+                </button>
+              </div>
             </div>
 
-            <div className="preview-meta">
-              <span>{tr.userName}: {String(user?.user_metadata?.full_name || user?.email || 'THE SFM')}</span>
-              <span>{tr.year}: {filters.year}</span>
-              <span>{tr.month}: {filters.month === 'all' ? tr.allCategories : filters.month}</span>
-              <span>{tr.currency}: {filters.currency}</span>
-              <span>{tr.reportDate}: {new Date().toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</span>
-              <span>{tr.rows}: {activeRows.length}</span>
-            </div>
-
-            {activeStatus === 'ready' && activeRows.length > 0 ? (
-              <>
-                <p className="ready-copy">{tr.reportReady}</p>
-                <div className="preview-table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        {Object.keys(activeRows[0]).map(key => <th key={key}>{columnLabel(key, lang as Lang)}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeRows.slice(0, 60).map((row, index) => (
-                        <tr key={index}>
-                          {Object.keys(activeRows[0]).map(key => <td key={key}>{normalizeReportCellValue(row[key], lang as Lang)}</td>)}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <div className="preview-empty">
-                <ShieldAlert size={28} />
-                <strong>{activeStatus === 'unavailable' ? tr.unavailable : tr.noData}</strong>
-                <p>{activeStatus === 'unavailable' ? tr.unavailableCopy : activeStatus === 'error' ? tr.loadError : tr.missingData}</p>
-                {activeStatus === 'needs_data' && activeMissing.length > 0 && (
-                  <div className="preview-requirements">
-                    <strong>{tr.requiredData}</strong>
-                    <ul>
-                      {activeMissing.map(key => <li key={key}>{tableKeyLabel(key as TableKey, lang as Lang)}</li>)}
-                    </ul>
-                    <div className="missing-actions">
-                      {uniqueActions(activeMissing.map(key => missingActionForKey(key as TableKey))).slice(0, 3).map(action => (
-                        <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
-                          {action.label}
-                        </button>
-                      ))}
+            <div className={`pdf-preview-viewport fit-${previewFit}`}>
+              <article className="pdf-report-page print-area" dir={dir}>
+                <header className="pdf-report-header">
+                  <div className="pdf-brand-lockup">
+                    <Image src="/sfm-logo.png" alt="THE SFM" width={56} height={56} className="pdf-logo" />
+                    <div>
+                      <span>{pdfText.reportCenter}</span>
+                      <h2>{activeReport.title[reportLang]}</h2>
+                      <p>{activeReport.description[reportLang]}</p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+                  <div className="pdf-report-reference">
+                    <span>{pdfText.privateReport}</span>
+                    <strong>{formatReportDateValue(now, reportLang)}</strong>
+                    <em>{reportFileName(activeReport, filters, reportLang).replace(/\.pdf$/i, '')}</em>
+                  </div>
+                </header>
 
-            <div className="preview-actions no-print">
-              <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} title={!activeCanExport ? tr.exportsDisabled : undefined} onClick={() => printReport(activeReport)}>
-                <Printer size={16} /> {tr.printPdf}
-              </button>
-              <button type="button" disabled={!activeCanExport || !activeReport.exportable} aria-disabled={!activeCanExport || !activeReport.exportable} title={!activeCanExport || !activeReport.exportable ? tr.exportsDisabled : undefined} onClick={() => exportCsv(activeReport)}>
-                <Download size={16} /> {activeReport.exportable ? tr.excel : tr.comingSoon}
-              </button>
+                <section className="pdf-metadata-grid" aria-label={tr.reportPreview}>
+                  {activeMetadataRows.map(item => (
+                    <div key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </section>
+
+                {activeStatus === 'ready' && activeRows.length > 0 ? (
+                  <>
+                    {activeSummaryRows.length > 0 && (
+                      <section className="pdf-summary-grid" aria-label={pdfText.totalExpenses}>
+                        {activeSummaryRows.map(item => (
+                          <div key={item.label}>
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
+                          </div>
+                        ))}
+                      </section>
+                    )}
+
+                    <section className="pdf-table-section">
+                      <div className="pdf-section-heading">
+                        <h3>{activeReport.title[reportLang]}</h3>
+                        <span>{formatNumber(activeRows.length, reportLang)} {pdfText.recordsCount}</span>
+                      </div>
+                      <div className="preview-table-wrap">
+                        <table className="pdf-report-table">
+                          <thead>
+                            <tr>
+                              {activeColumns.map(column => (
+                                <th key={column.key} className={column.align === 'end' ? 'is-numeric' : undefined}>{column.label}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeRows.map((row, index) => (
+                              <tr key={index}>
+                                {activeColumns.map(column => (
+                                  <td key={column.key} className={column.align === 'end' ? 'is-numeric' : undefined} dir={column.align === 'end' ? 'ltr' : undefined}>
+                                    {reportCellValue(row, column, reportLang, filters.currency)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                            {activeReport.id === 'expenses' && (
+                              <tr className="pdf-total-row">
+                                <td colSpan={Math.max(activeColumns.length - 1, 1)}>
+                                  {pdfText.totalExpenses} · {formatNumber(activeRows.length, reportLang)} {pdfText.recordsCount}
+                                </td>
+                                <td className="is-numeric" dir="ltr">{formatReportAmount(activeTotalAmount, filters.currency, reportLang)}</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  <div className="preview-empty">
+                    <ShieldAlert size={28} />
+                    <strong>{activeStatus === 'unavailable' ? tr.unavailable : tr.noData}</strong>
+                    <p>{activeStatus === 'unavailable' ? tr.unavailableCopy : activeStatus === 'error' ? tr.loadError : tr.missingData}</p>
+                    {activeStatus === 'needs_data' && activeMissing.length > 0 && (
+                      <div className="preview-requirements no-print">
+                        <strong>{tr.requiredData}</strong>
+                        <ul>
+                          {activeMissing.map(key => <li key={key}>{tableKeyLabel(key as TableKey, reportLang)}</li>)}
+                        </ul>
+                        <div className="missing-actions">
+                          {uniqueActions(activeMissing.map(key => missingActionForKey(key as TableKey))).slice(0, 3).map(action => (
+                            <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <footer className="pdf-report-footer">
+                  <span>www.the-sfm.com</span>
+                  <span>{pdfText.privateReport}</span>
+                  <span>{pdfText.generatedAt}: {formatReportDateTime(now, reportLang)}</span>
+                  <span className="pdf-page-number">{pdfText.pageNumber}</span>
+                </footer>
+              </article>
             </div>
-            <footer className="print-footer">{tr.generatedBy}</footer>
           </aside>
         </div>
 
@@ -2164,7 +2475,7 @@ const pageStyles = `
   .reports-hero h1{margin:18px 0 10px;font-size:clamp(34px,7vw,66px);line-height:1;font-weight:950;letter-spacing:0}.reports-hero p{margin:0;max-width:780px;color:rgba(234,246,255,.76);font-size:clamp(15px,2vw,19px);line-height:1.8;font-weight:800}
   .hero-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.hero-stats span{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 11px;color:rgba(234,246,255,.8);font-size:12px;font-weight:900}
   .hero-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-  .reports-hero button,.preview-actions button,.card-actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}
+  .reports-hero button,.card-actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}
   .reports-hero button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;white-space:nowrap}.reports-hero button:disabled{background:rgba(234,246,255,.2);color:rgba(234,246,255,.62);cursor:not-allowed}
   .report-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.report-summary-cards article{min-width:0;border:1px solid rgba(29,140,255,.14);border-radius:18px;background:var(--sfm-card);box-shadow:0 12px 34px rgba(3,18,37,.06);padding:14px;display:grid;gap:7px}.report-summary-cards span{color:var(--sfm-muted);font-size:12px;font-weight:950}.report-summary-cards strong{color:var(--sfm-primary-dark);font-size:24px;line-height:1.1;overflow-wrap:anywhere}
   .category-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}.category-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,color .18s ease,background .18s ease}.category-tabs button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);color:var(--sfm-primary-dark);box-shadow:0 10px 24px rgba(29,140,255,.10)}.category-tabs button span{min-width:24px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 7px}.category-tabs button.active,.category-tabs button:focus-visible{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.category-tabs button.active span{background:rgba(167,243,240,.16);color:var(--sfm-soft-cyan)}
@@ -2176,15 +2487,13 @@ const pageStyles = `
   .report-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.13);border-radius:18px;padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;min-width:0;min-height:218px}.report-card.ready{border-color:rgba(21,128,61,.18)}.report-card.needs_data{border-color:rgba(154,94,13,.22)}.report-card.unavailable,.report-card.error{background:var(--sfm-light-card)}.report-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.report-card h3{margin:0 0 5px;color:var(--sfm-primary-dark);font-size:16px;font-weight:950;line-height:1.35}.report-card p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .status-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.sources,.missing-requirements{display:grid;gap:7px}.sources strong,.missing-requirements strong{font-size:11px;color:var(--sfm-primary)}.sources div{display:flex;flex-wrap:wrap;gap:5px}.sources span{font-size:11px;font-weight:900;color:var(--sfm-muted);background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);border-radius:999px;padding:4px 7px}.missing-requirements{background:#FFF7ED;border:1px solid rgba(154,94,13,.16);border-radius:13px;padding:10px}.missing-requirements ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px}.missing-requirements li{font-size:11px;font-weight:950;color:#7A4B09;background:#FFFFFF;border:1px solid rgba(154,94,13,.16);border-radius:999px;padding:4px 8px}
   .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--sfm-muted);font-size:11px;font-weight:900}.requirements-compact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.14);border-radius:13px;padding:10px}.requirements-compact div{min-width:0;display:grid;gap:3px}.requirements-compact strong{color:#7A4B09;font-size:12px}.requirements-compact span{color:#7A4B09;font-size:11px;font-weight:850;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.requirements-compact button,.missing-actions button{border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:7px 10px;font:950 11px Tajawal,Arial,sans-serif;cursor:pointer}.missing-actions{display:flex;flex-wrap:wrap;gap:6px}
-  .card-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0;align-items:center}.card-actions button,.report-actions-menu summary{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}.primary-card-action{background:var(--sfm-primary-dark)!important;color:var(--sfm-card)!important;min-width:0;white-space:normal}.report-actions-menu{position:relative;justify-self:end}.report-actions-menu summary{list-style:none;border:1px solid rgba(29,140,255,.18);background:#FFFFFF;color:var(--sfm-primary-dark)}.report-actions-menu summary::-webkit-details-marker{display:none}.report-actions-menu div{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:20;min-width:220px;display:grid;gap:6px;background:#FFFFFF;border:1px solid rgba(29,140,255,.16);border-radius:16px;box-shadow:0 18px 48px rgba(3,18,37,.18);padding:8px}.report-actions-menu button{width:100%;justify-content:flex-start;background:#FFFFFF;color:var(--sfm-primary-dark);border:1px solid rgba(29,140,255,.10);white-space:normal}.report-actions-menu button:hover{background:rgba(29,140,255,.08)}.card-actions button:disabled,.preview-actions button:disabled,.report-actions-menu button:disabled{opacity:1;background:#EEF2F7!important;color:#64748B!important;border:1px solid rgba(100,116,139,.18);cursor:not-allowed}
-  .preview-panel{padding:18px;position:sticky;top:18px}.print-report-brand{display:flex;align-items:center;gap:12px;border:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,var(--sfm-light-card));border-radius:16px;padding:12px;margin-bottom:14px}.print-report-brand img{width:42px;height:42px;border-radius:12px;object-fit:cover}.print-report-brand strong{display:block;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}.print-report-brand span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:900}.preview-head{display:flex;justify-content:space-between;gap:12px;align-items:start;border-bottom:1px solid rgba(29,140,255,.12);padding-bottom:12px}.preview-head span:first-child{font-size:12px;color:var(--sfm-primary);font-weight:950}.preview-head h2{margin:5px 0 0;color:var(--sfm-primary-dark);font-size:24px;line-height:1.2}.preview-meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.preview-meta span{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.12);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;color:var(--sfm-muted)}.ready-copy{margin:0 0 12px;color:#047857;background:#ECFDF5;border:1px solid rgba(39,80,10,.12);border-radius:13px;padding:10px;font-size:13px;font-weight:900}
-  .preview-table-wrap{max-width:100%;max-height:540px;overflow:auto;border:1px solid rgba(29,140,255,.14);border-radius:14px}.preview-table-wrap table{width:100%;border-collapse:collapse;background:var(--sfm-card);min-width:560px;table-layout:auto}.preview-table-wrap th,.preview-table-wrap td{padding:10px;border-bottom:1px solid rgba(29,140,255,.1);text-align:start;font-size:12px}.preview-table-wrap th{color:var(--sfm-primary);background:rgba(29,140,255,.10);font-weight:950;white-space:nowrap}.preview-table-wrap td{color:var(--sfm-midnight);font-weight:800;white-space:normal;vertical-align:top;overflow-wrap:anywhere;max-width:280px}
+  .card-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0;align-items:center}.card-actions button,.report-actions-menu summary{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}.primary-card-action{background:var(--sfm-primary-dark)!important;color:var(--sfm-card)!important;min-width:0;white-space:normal}.report-actions-menu{position:relative;justify-self:end}.report-actions-menu summary{list-style:none;border:1px solid rgba(29,140,255,.18);background:#FFFFFF;color:var(--sfm-primary-dark)}.report-actions-menu summary::-webkit-details-marker{display:none}.report-actions-menu div{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:20;min-width:220px;display:grid;gap:6px;background:#FFFFFF;border:1px solid rgba(29,140,255,.16);border-radius:16px;box-shadow:0 18px 48px rgba(3,18,37,.18);padding:8px}.report-actions-menu button{width:100%;justify-content:flex-start;background:#FFFFFF;color:var(--sfm-primary-dark);border:1px solid rgba(29,140,255,.10);white-space:normal}.report-actions-menu button:hover{background:rgba(29,140,255,.08)}.card-actions button:disabled,.report-actions-menu button:disabled{opacity:1;background:#EEF2F7!important;color:#64748B!important;border:1px solid rgba(100,116,139,.18);cursor:not-allowed}
+  .preview-panel{padding:0;position:sticky;top:18px;overflow:hidden}.pdf-preview-toolbar{display:grid;gap:14px;padding:16px;border-bottom:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F7FBFF)}.pdf-preview-toolbar span{color:var(--sfm-primary);font-size:12px;font-weight:950}.pdf-preview-toolbar h2{margin:4px 0;color:var(--sfm-primary-dark);font-size:22px;line-height:1.25}.pdf-preview-toolbar p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.65}.pdf-preview-controls{display:flex;gap:8px;flex-wrap:wrap}.pdf-preview-controls button{min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:#FFFFFF;color:var(--sfm-primary-dark);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}.pdf-preview-controls button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.35);background:#F0FDFF}.pdf-preview-controls button.active{background:var(--sfm-primary-dark);color:#FFFFFF}.pdf-preview-controls button:disabled{opacity:1;background:#EEF2F7;color:#64748B;cursor:not-allowed}.pdf-preview-viewport{background:#E8EFF6;max-height:72vh;overflow:auto;padding:22px;display:flex;justify-content:center}.pdf-preview-viewport.fit-page{align-items:flex-start}.pdf-report-page{width:min(100%,794px);min-height:1123px;background:#FFFFFF;color:#10233E;border:1px solid rgba(15,39,66,.08);box-shadow:0 20px 60px rgba(15,39,66,.18);border-radius:8px;padding:34px;display:flex;flex-direction:column;gap:18px;font-family:Tajawal,Arial,sans-serif}.pdf-report-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;border-bottom:3px solid #0F2742;padding-bottom:16px;break-inside:avoid}.pdf-brand-lockup{display:flex;align-items:flex-start;gap:14px;min-width:0}.pdf-logo{border-radius:14px;object-fit:contain;border:1px solid #D9E8F5;background:#F8FAFC;padding:4px}.pdf-brand-lockup span{display:block;color:#0A8FA7;font-size:12px;font-weight:950}.pdf-brand-lockup h2{margin:3px 0;color:#0F2742;font-size:28px;font-weight:950;line-height:1.2}.pdf-brand-lockup p{margin:0;color:#52657B;font-size:12px;font-weight:850;line-height:1.7;max-width:520px}.pdf-report-reference{display:grid;justify-items:end;gap:5px;text-align:end}.pdf-report-reference span{color:#0A8FA7;font-size:11px;font-weight:950}.pdf-report-reference strong{color:#0F2742;font-size:13px;font-weight:950}.pdf-report-reference em{font-style:normal;color:#64748B;font-size:10px;font-weight:850;max-width:220px;overflow-wrap:anywhere}.pdf-metadata-grid,.pdf-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border:1px solid #D8E7F3;background:#F8FBFF;border-radius:12px;padding:10px 12px;min-width:0}.pdf-summary-grid div{background:#FFFFFF;border-color:#D6E9F5}.pdf-metadata-grid span,.pdf-summary-grid span{display:block;color:#64748B;font-size:10px;font-weight:900;margin-bottom:4px}.pdf-metadata-grid strong,.pdf-summary-grid strong{display:block;color:#0F2742;font-size:13px;font-weight:950;overflow-wrap:anywhere}.pdf-summary-grid div:first-child{border-color:#7DD3FC;background:#EFFBFF}.pdf-summary-grid div:first-child strong{font-size:16px;color:#0369A1}.pdf-table-section{display:grid;gap:10px;min-width:0}.pdf-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;break-inside:avoid}.pdf-section-heading h3{margin:0;color:#0F2742;font-size:16px;font-weight:950}.pdf-section-heading span{color:#64748B;font-size:11px;font-weight:900}.preview-table-wrap{max-width:100%;overflow:auto;border:1px solid #D6E3EE;border-radius:14px;background:#FFFFFF}.pdf-report-table{width:100%;border-collapse:collapse;background:#FFFFFF;table-layout:fixed}.pdf-report-table thead{display:table-header-group}.pdf-report-table th,.pdf-report-table td{padding:9px 10px;border-bottom:1px solid #E2EAF2;text-align:start;vertical-align:top;font-size:11px;line-height:1.55;overflow-wrap:anywhere}.pdf-report-table th{background:#0F2742;color:#FFFFFF;font-size:10.5px;font-weight:950;white-space:nowrap}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FBFF}.pdf-report-table tr{break-inside:avoid;page-break-inside:avoid}.pdf-report-table .is-numeric{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}.pdf-total-row td{background:#EAF8FF!important;color:#0F2742;font-weight:950;border-top:2px solid #7DD3FC}.pdf-report-footer{margin-top:auto;border-top:1px solid #D8E7F3;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#64748B;font-size:9.5px;font-weight:850;break-inside:avoid}.pdf-page-number::after{content:" " counter(page) " / " counter(pages)}
   .preview-empty{min-height:260px;display:grid;place-items:center;text-align:center;align-content:center;gap:9px;background:var(--sfm-light-card);border:1px dashed rgba(29,140,255,.26);border-radius:18px;color:var(--sfm-primary);padding:18px}.preview-empty strong{color:var(--sfm-primary-dark);font-size:18px}.preview-empty p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:900}.preview-requirements{width:100%;display:grid;gap:8px;text-align:start;background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px}.preview-requirements>strong{font-size:12px;color:var(--sfm-primary)}.preview-requirements ul{margin:0;padding-inline-start:20px;color:#7A4B09;font-weight:950}
-  .preview-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.preview-actions button{background:var(--sfm-primary-dark);color:var(--sfm-card)}.preview-actions button+button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}.print-footer{display:none;margin-top:18px;border-top:1px solid rgba(29,140,255,.16);padding-top:10px;color:var(--sfm-muted);font-size:11px;font-weight:900;text-align:center}
   .history-panel p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:800}.toast{position:fixed;inset:auto 24px 24px auto;z-index:80;background:var(--sfm-primary-dark);color:var(--sfm-card);border:1px solid rgba(29,140,255,.3);border-radius:16px;padding:12px 14px;font-weight:950;box-shadow:0 18px 50px rgba(3,18,37,.28)}
   [dir="rtl"] .toast{inset:auto auto 24px 24px}
   @media(max-width:1200px){.filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.filters-project-selector{grid-column:1 / -1}.reports-layout{grid-template-columns:1fr}.preview-panel{position:static}.reports-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}}
   @media(max-width:1024px){.reports-center-main{width:100%!important;max-width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(84px + env(safe-area-inset-top)) 16px 24px!important}.reports-hero{grid-template-columns:1fr}.reports-hero button{width:100%}.report-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:720px){.filters-grid,.report-summary-cards{grid-template-columns:1fr}.card-actions{grid-template-columns:1fr}.report-actions-menu,.report-actions-menu summary,.primary-card-action{width:100%}.report-actions-menu div{position:static;margin-top:8px;min-width:0}.requirements-compact{grid-template-columns:1fr}.requirements-compact button{width:100%}.category-summary{align-items:flex-start;flex-direction:column}.category-counts{justify-content:flex-start}.reports-grid{padding:0 14px 14px}.reports-hero{border-radius:22px}.topbar{align-items:flex-start}.preview-table-wrap table{min-width:520px}.reports-center-content{gap:14px}.toast{left:14px;right:14px;bottom:14px;text-align:center}}
-  @media print{@page{size:A4;margin:14mm}.sfm-shared-sidebar,.no-print,.topbar,.reports-hero,.filters-panel,.report-categories,.history-panel,.toast{display:none!important}.reports-center-main{width:100%!important;margin:0!important;padding:0!important}.reports-center-shell{background:white;color:#0F2742}.reports-layout{display:block}.preview-panel{position:static!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:white!important}.print-report-brand{break-inside:avoid;border:0;border-bottom:2px solid #0F2742;border-radius:0;background:white;padding:0 0 12px;margin-bottom:18px}.print-report-brand img{width:46px;height:46px}.print-report-brand strong{font-size:22px;color:#0F2742}.preview-head{break-inside:avoid}.preview-head h2{font-size:24px;color:#0F2742}.status-badge{border-color:#94A3B8!important;color:#0F2742!important;background:#F8FAFC!important}.preview-meta span{border:1px solid #CBD5E1;background:#F8FAFC;color:#334155;border-radius:8px}.ready-copy{border-color:#BBF7D0;background:#F0FDF4;color:#166534}.preview-table-wrap{max-height:none;overflow:visible;border:1px solid #CBD5E1;border-radius:0}.preview-table-wrap table{min-width:0;font-size:10.5px}.preview-table-wrap th{background:#EAF6FF!important;color:#0F2742!important}.preview-table-wrap th,.preview-table-wrap td{padding:7px;border-color:#E2E8F0;white-space:normal}.preview-actions{display:none!important}.print-footer{display:block}}
+  @media(max-width:720px){.filters-grid,.report-summary-cards{grid-template-columns:1fr}.card-actions{grid-template-columns:1fr}.report-actions-menu,.report-actions-menu summary,.primary-card-action{width:100%}.report-actions-menu div{position:static;margin-top:8px;min-width:0}.requirements-compact{grid-template-columns:1fr}.requirements-compact button{width:100%}.category-summary{align-items:flex-start;flex-direction:column}.category-counts{justify-content:flex-start}.reports-grid{padding:0 14px 14px}.reports-hero{border-radius:22px}.topbar{align-items:flex-start}.reports-center-content{gap:14px}.pdf-preview-viewport{padding:12px;max-height:68vh}.pdf-report-page{padding:20px;min-height:780px}.pdf-report-header{grid-template-columns:1fr}.pdf-report-reference{justify-items:start;text-align:start}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:1fr}.pdf-report-table th,.pdf-report-table td{font-size:10.5px;padding:8px}.toast{left:14px;right:14px;bottom:14px;text-align:center}}
+  @media print{@page{size:A4;margin:16mm}.sfm-shared-sidebar,.no-print,.topbar,.reports-hero,.filters-panel,.report-categories,.history-panel,.toast,.skip-link,.sfm-skip-link,[href="#main-content"]{display:none!important}html,body{background:#FFFFFF!important}.reports-center-main{width:100%!important;margin:0!important;padding:0!important}.reports-center-shell{background:white!important;color:#0F2742!important}.reports-layout{display:block!important}.preview-panel{position:static!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:white!important;overflow:visible!important}.pdf-preview-viewport{display:block!important;max-height:none!important;overflow:visible!important;background:white!important;padding:0!important}.pdf-report-page{width:100%!important;min-height:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 0 14mm!important;color:#0F2742!important;display:block!important}.pdf-report-header{break-inside:avoid;page-break-inside:avoid;border-bottom:2px solid #0F2742;padding-bottom:10px;margin-bottom:12px;grid-template-columns:minmax(0,1fr) auto}.pdf-brand-lockup h2{font-size:22pt}.pdf-brand-lockup p{font-size:9.5pt}.pdf-logo{width:42px!important;height:42px!important}.pdf-report-reference em{font-size:7.5pt}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border-color:#CBD5E1!important;background:#F8FAFC!important;border-radius:6px!important;padding:7px 8px!important}.pdf-metadata-grid span,.pdf-summary-grid span{font-size:8pt}.pdf-metadata-grid strong,.pdf-summary-grid strong{font-size:9.5pt}.pdf-summary-grid div:first-child strong{font-size:12pt}.pdf-section-heading{break-inside:avoid;page-break-inside:avoid;margin-bottom:6px}.preview-table-wrap{overflow:visible!important;border:1px solid #CBD5E1!important;border-radius:0!important}.pdf-report-table{table-layout:fixed!important;width:100%!important;border-collapse:collapse!important}.pdf-report-table thead{display:table-header-group!important}.pdf-report-table th{background:#0F2742!important;color:#FFFFFF!important;font-size:8.6pt!important}.pdf-report-table th,.pdf-report-table td{padding:6px 7px!important;border-color:#DDE7F0!important;font-size:8.8pt!important;line-height:1.45!important}.pdf-report-table tr{break-inside:avoid!important;page-break-inside:avoid!important}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FAFC!important}.pdf-total-row td{background:#EAF8FF!important;border-top:1.5px solid #38BDF8!important}.pdf-report-footer{position:fixed;left:0;right:0;bottom:0;margin:0;padding:5mm 0 0;border-top:1px solid #CBD5E1;background:#FFFFFF;font-size:7.5pt}.preview-empty{display:none!important}}
 `;
