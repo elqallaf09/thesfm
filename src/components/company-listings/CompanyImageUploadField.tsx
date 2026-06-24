@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { ImagePlus, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,12 +102,21 @@ function buildStoragePath(userId: string, companyId: string | undefined, kind: C
 
 export function CompanyImageUploadField({ label, value, onChange, kind, companyId }: CompanyImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const fieldId = useId();
   const { user } = useAuth();
   const valid = isAsciiUrl(value);
   const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(valid ? value : '');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
+  const warningId = `${fieldId}-warning`;
+  const errorId = `${fieldId}-error`;
+  const urlInputId = `${fieldId}-url`;
+  const describedBy = [
+    `${fieldId}-hint`,
+    warning ? warningId : '',
+    error ? errorId : '',
+  ].filter(Boolean).join(' ');
 
   const copy = useMemo(() => {
     if (kind === 'logo') {
@@ -173,7 +182,7 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
 
   return (
     <>
-      <label
+      <div
         className="submit-field image-upload-field"
         onDragOver={event => event.preventDefault()}
         onDrop={event => {
@@ -181,8 +190,8 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
           void handleFile(event.dataTransfer.files?.[0]);
         }}
       >
-        <span>{label}</span>
-        <div className="image-upload-box">
+        <label className="image-upload-label" htmlFor={urlInputId}>{label}</label>
+        <div className="image-upload-box" data-kind={kind}>
           <input
             ref={inputRef}
             type="file"
@@ -194,9 +203,18 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
             {uploading ? <Loader2 size={18} className="image-upload-spin" /> : <UploadCloud size={18} />}
             <span>{uploading ? 'جاري رفع الصورة...' : copy.uploadLabel}</span>
           </button>
-          <small>{copy.hint}</small>
+          <small id={`${fieldId}-hint`}>{copy.hint}</small>
         </div>
-        <input value={value} onChange={event => { setError(''); onChange(event.target.value); }} inputMode="url" dir="ltr" placeholder="https://example.com/logo.png" />
+        <input
+          id={urlInputId}
+          value={value}
+          onChange={event => { setError(''); onChange(event.target.value); }}
+          inputMode="url"
+          dir="ltr"
+          placeholder="https://example.com/logo.png"
+          aria-invalid={Boolean(error) || (!valid && Boolean(value.trim()))}
+          aria-describedby={describedBy}
+        />
         {value.trim() ? (
           <div className={`image-preview ${valid && !failed ? '' : 'invalid'}`}>
             {valid && imageUrl && !failed ? (
@@ -237,9 +255,17 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
             <span>اسحب الصورة هنا أو اضغط للاختيار</span>
           </div>
         )}
-        {warning ? <small className="image-upload-warning">{warning}</small> : null}
-        {error ? <small className="image-upload-error">{error}</small> : null}
-      </label>
+        {warning ? (
+          <p id={warningId} role="status" aria-live="polite" className="image-upload-warning">
+            {warning}
+          </p>
+        ) : null}
+        {error ? (
+          <p id={errorId} role="alert" className="image-upload-error">
+            {error}
+          </p>
+        ) : null}
+      </div>
       <ImageUploadStyles />
     </>
   );
@@ -250,9 +276,21 @@ function ImageUploadStyles() {
     <style jsx global>{`
       .image-upload-field {
         align-content: start;
+        position: relative;
+        z-index: 0;
+        overflow: visible;
+        gap: 10px;
+      }
+      .image-upload-label {
+        color: #475569;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.5;
       }
       .image-upload-box,
       .image-upload-empty {
+        position: relative;
+        z-index: 0;
         border: 1px dashed rgba(11, 118, 224, 0.24);
         border-radius: 16px;
         background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
@@ -284,6 +322,11 @@ function ImageUploadStyles() {
         cursor: pointer;
         transition: transform .16s ease, border-color .16s ease, background .16s ease;
       }
+      .image-upload-trigger span,
+      .image-upload-empty span {
+        color: inherit;
+        font: inherit;
+      }
       .image-upload-trigger:hover,
       .image-upload-trigger:focus-visible,
       .image-upload-actions button:hover,
@@ -303,6 +346,47 @@ function ImageUploadStyles() {
         color: #64748b;
         font-weight: 850;
         line-height: 1.6;
+      }
+      .image-preview {
+        position: relative;
+        z-index: 0;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        border-radius: 16px;
+        background: #f8fbff;
+        padding: 10px;
+        display: grid;
+        gap: 10px;
+        overflow: visible;
+      }
+      .image-preview img {
+        width: 100%;
+        max-height: 180px;
+        border-radius: 12px;
+        object-fit: contain;
+        background: #ffffff;
+      }
+      .image-preview small {
+        color: #0f766e;
+        font-weight: 900;
+        line-height: 1.6;
+      }
+      .image-preview.invalid {
+        border-color: rgba(220, 38, 38, 0.24);
+        background: rgba(254, 242, 242, 0.88);
+      }
+      .image-preview.invalid small {
+        color: #991b1b;
+      }
+      .image-preview-loader {
+        min-height: 52px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: #0f766e;
+        background: rgba(20, 184, 166, 0.08);
+        font-size: 24px;
+        font-weight: 950;
+        letter-spacing: 2px;
       }
       .image-upload-empty {
         min-height: 72px;
@@ -328,10 +412,15 @@ function ImageUploadStyles() {
       }
       .image-upload-warning,
       .image-upload-error {
+        position: relative;
+        z-index: 1;
+        margin: 0;
         border-radius: 12px;
-        padding: 9px 11px;
+        padding: 10px 12px;
+        display: block;
         font-weight: 900;
-        line-height: 1.6;
+        font-size: 13px;
+        line-height: 1.65;
       }
       .image-upload-warning {
         color: #92400e;
@@ -362,6 +451,19 @@ function ImageUploadStyles() {
       }
       .dark .image-upload-box small {
         color: #b8c7d9;
+      }
+      .dark .image-preview {
+        background: rgba(7, 26, 46, 0.92);
+        border-color: rgba(74, 222, 228, 0.18);
+      }
+      .dark .image-preview img {
+        background: rgba(15, 36, 59, 0.92);
+      }
+      .dark .image-preview small {
+        color: #9ff7f7;
+      }
+      .dark .image-upload-label {
+        color: #dce8f5;
       }
     `}</style>
   );
