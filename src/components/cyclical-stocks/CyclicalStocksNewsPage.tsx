@@ -1138,10 +1138,13 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'info' }: {
 }
 
 function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loading: boolean; lang: LangCode }) {
+  const loopRows = rows.length > 0 ? [...rows, ...rows] : [];
   if (loading) {
     return (
       <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
-        {Array.from({ length: 6 }).map((_, index) => <div className="ticker-skeleton" key={index} />)}
+        <div className="ticker-track ticker-loading">
+          {Array.from({ length: 6 }).map((_, index) => <div className="ticker-skeleton" key={index} />)}
+        </div>
       </section>
     );
   }
@@ -1150,21 +1153,27 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loadin
   }
   return (
     <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
-      {rows.map(row => {
-        const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
-        return (
-          <article className="ticker-item" key={row.symbol}>
-            <div>
-              <strong dir="ltr">{row.symbol}</strong>
-              <span>{row.name}</span>
-            </div>
-            <div className="ticker-values">
-              <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
-              <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
-            </div>
-          </article>
-        );
-      })}
+      <div className="ticker-track">
+        {loopRows.map((row, index) => {
+          const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
+          return (
+            <article
+              className="ticker-item"
+              key={`${row.symbol}-${index}`}
+              aria-hidden={index >= rows.length ? true : undefined}
+            >
+              <div>
+                <strong dir="ltr">{row.symbol}</strong>
+                <span>{row.name}</span>
+              </div>
+              <div className="ticker-values">
+                <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
+                <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -2173,32 +2182,38 @@ export function CyclicalStocksNewsPage() {
       <style jsx>{`
         .page {
           min-height: 100dvh;
+          width: 100%;
+          overflow-x: clip;
           background:
             radial-gradient(circle at top left, rgba(30, 184, 214, 0.13), transparent 34rem),
             linear-gradient(180deg, #f5fbff 0%, #edf7ff 48%, #f8fbff 100%);
           color: #10233d;
         }
         .main {
+          box-sizing: border-box;
+          width: 100%;
           min-width: 0;
           padding: 24px clamp(16px, 2vw, 32px) 56px;
           padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
         }
         :global([dir="ltr"]) .main {
-          padding-inline-start: clamp(16px, 2vw, 32px);
-          padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+          padding-inline-end: clamp(16px, 2vw, 32px);
         }
         .container {
-          width: min(100%, 1500px);
+          width: 100%;
+          max-width: 1500px;
           margin-inline: auto;
           display: grid;
-          gap: 22px;
+          gap: 18px;
+          min-width: 0;
         }
         .hero {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 360px;
-          gap: 22px;
+          grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+          gap: 18px;
           align-items: stretch;
-          padding: 26px;
+          padding: 22px;
           border: 1px solid rgba(63, 127, 158, 0.22);
           border-radius: 24px;
           background:
@@ -2346,35 +2361,54 @@ export function CyclicalStocksNewsPage() {
           to { transform: rotate(360deg); }
         }
         .ticker-strip {
-          display: grid;
-          grid-auto-flow: column;
-          grid-auto-columns: minmax(230px, 1fr);
-          gap: 14px;
-          overflow-x: auto;
-          padding-block-end: 4px;
-          scrollbar-width: thin;
+          width: 100%;
+          min-width: 0;
+          overflow: hidden;
+          border: 1px solid rgba(41, 104, 139, 0.14);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.78);
+          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.06);
+          padding: 8px;
+        }
+        .ticker-track {
+          width: max-content;
+          min-width: max-content;
+          display: flex;
+          gap: 10px;
+          direction: ltr;
+          animation: cyclicalTickerScroll 46s linear infinite;
+          will-change: transform;
+        }
+        .ticker-track.ticker-loading {
+          animation: none;
         }
         .ticker-item,
         .ticker-skeleton {
-          min-height: 92px;
+          flex: 0 0 214px;
+          min-height: 72px;
           border: 1px solid rgba(41, 104, 139, 0.16);
-          border-radius: 18px;
+          border-radius: 15px;
           background: rgba(255, 255, 255, 0.88);
-          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.07);
+          box-shadow: 0 10px 24px rgba(8, 38, 73, 0.055);
         }
         .ticker-item {
-          padding: 15px;
+          padding: 10px 12px;
           display: grid;
-          gap: 12px;
+          gap: 7px;
+          align-content: center;
         }
         .ticker-item strong {
           color: #0b2442;
-          font-size: 17px;
+          font-size: 14px;
           font-weight: 950;
         }
         .ticker-item span {
+          display: block;
+          overflow: hidden;
           color: #637991;
-          font-size: 12px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 11px;
           font-weight: 800;
         }
         .ticker-values {
@@ -2417,7 +2451,8 @@ export function CyclicalStocksNewsPage() {
         }
         .tab-stack {
           display: grid;
-          gap: 22px;
+          gap: 18px;
+          min-width: 0;
         }
         .panel,
         .featured-news,
@@ -2432,14 +2467,14 @@ export function CyclicalStocksNewsPage() {
         .panel,
         .featured-news,
         .news-list {
-          padding: 22px;
+          padding: 18px;
         }
         .section-header {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 18px;
+          gap: 14px;
+          margin-bottom: 14px;
         }
         .section-header > div:first-child {
           display: grid;
@@ -2474,23 +2509,24 @@ export function CyclicalStocksNewsPage() {
         }
         .metrics-grid {
           display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+          gap: 12px;
+          min-width: 0;
         }
         .metric-card {
           border: 1px solid rgba(41, 104, 139, 0.15);
           border-radius: 18px;
           background: #ffffff;
-          padding: 16px;
+          padding: 13px;
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
           gap: 12px;
           align-items: center;
-          min-height: 116px;
+          min-height: 88px;
         }
         .metric-card > span {
-          width: 42px;
-          height: 42px;
+          width: 36px;
+          height: 36px;
           display: grid;
           place-items: center;
           border-radius: 14px;
@@ -2507,7 +2543,7 @@ export function CyclicalStocksNewsPage() {
           display: block;
           margin-top: 4px;
           color: #0b2442;
-          font-size: 22px;
+          font-size: 19px;
           line-height: 1.2;
           font-weight: 950;
         }
@@ -2521,8 +2557,10 @@ export function CyclicalStocksNewsPage() {
         }
         .overview-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-          gap: 22px;
+          grid-template-columns: minmax(0, 1.28fr) minmax(280px, 0.72fr);
+          gap: 18px;
+          align-items: start;
+          min-width: 0;
         }
         .cycle-phase {
           display: flex;
@@ -2532,8 +2570,8 @@ export function CyclicalStocksNewsPage() {
           border: 1px solid rgba(245, 158, 11, 0.22);
           border-radius: 18px;
           background: rgba(255, 251, 235, 0.68);
-          padding: 16px;
-          margin-bottom: 16px;
+          padding: 13px;
+          margin-bottom: 13px;
         }
         .phase-label {
           display: block;
@@ -2550,8 +2588,9 @@ export function CyclicalStocksNewsPage() {
         }
         .macro-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 10px;
+          min-width: 0;
         }
         .macro-item,
         .sector-stat-row,
@@ -2583,7 +2622,7 @@ export function CyclicalStocksNewsPage() {
         }
         .bar-chart {
           display: grid;
-          gap: 14px;
+          gap: 11px;
         }
         .bar-row {
           display: grid;
@@ -2626,7 +2665,7 @@ export function CyclicalStocksNewsPage() {
         }
         .mover-tabs {
           display: grid;
-          gap: 14px;
+          gap: 12px;
         }
         .mover-list {
           display: grid;
@@ -2670,16 +2709,17 @@ export function CyclicalStocksNewsPage() {
         }
         .stock-card-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 13px;
+          min-width: 0;
         }
         .stock-card {
           display: grid;
-          gap: 15px;
+          gap: 12px;
           border: 1px solid rgba(41, 104, 139, 0.14);
           border-radius: 18px;
           background: #ffffff;
-          padding: 16px;
+          padding: 13px;
         }
         .stock-card.compact {
           align-content: start;
@@ -2719,8 +2759,8 @@ export function CyclicalStocksNewsPage() {
         }
         .stock-logo {
           flex: 0 0 auto;
-          width: 46px;
-          height: 46px;
+          width: 40px;
+          height: 40px;
           display: grid;
           place-items: center;
           border-radius: 14px;
@@ -2731,12 +2771,12 @@ export function CyclicalStocksNewsPage() {
         .stock-metrics {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
+          gap: 8px;
         }
         .stock-metrics div {
           border-radius: 13px;
           background: #f7fbff;
-          padding: 10px;
+          padding: 8px;
           min-width: 0;
         }
         .stock-metrics small {
@@ -2795,6 +2835,7 @@ export function CyclicalStocksNewsPage() {
           border-radius: 18px;
           background: #f8fbff;
           padding: 14px;
+          min-width: 0;
         }
         .news-filter-bar {
           grid-template-columns: minmax(240px, 1.5fr) repeat(5, minmax(150px, 1fr)) auto;
@@ -2878,8 +2919,9 @@ export function CyclicalStocksNewsPage() {
         .method-grid,
         .sector-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+          gap: 12px;
+          min-width: 0;
         }
         .method-grid span {
           color: #506982;
@@ -2888,12 +2930,14 @@ export function CyclicalStocksNewsPage() {
         .featured-news-grid {
           display: grid;
           grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.82fr);
-          gap: 16px;
+          gap: 13px;
+          min-width: 0;
         }
         .news-card {
           display: grid;
-          gap: 12px;
-          padding: 18px;
+          gap: 10px;
+          padding: 15px;
+          min-width: 0;
         }
         .news-card.featured {
           background:
@@ -2963,7 +3007,8 @@ export function CyclicalStocksNewsPage() {
           min-width: 190px;
         }
         .sector-card {
-          padding: 18px;
+          padding: 15px;
+          min-width: 0;
         }
         .sector-head {
           align-items: flex-start;
@@ -3014,8 +3059,9 @@ export function CyclicalStocksNewsPage() {
         }
         .accordion-list {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
           gap: 12px;
+          min-width: 0;
         }
         .accordion-card {
           border: 1px solid rgba(41, 104, 139, 0.13);
@@ -3125,7 +3171,7 @@ export function CyclicalStocksNewsPage() {
           animation: shimmer 1.4s ease infinite;
         }
         .skeleton-card {
-          min-height: 180px;
+          min-height: 128px;
           border-radius: 22px;
           border: 1px solid rgba(41, 104, 139, 0.12);
         }
@@ -3133,20 +3179,27 @@ export function CyclicalStocksNewsPage() {
           0% { background-position: 100% 0; }
           100% { background-position: -100% 0; }
         }
+        @keyframes cyclicalTickerScroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .ticker-strip:hover .ticker-track {
+            animation-play-state: paused;
+          }
+        }
         @media (max-width: 1280px) {
           .main {
-            padding-inline: 18px;
+            padding: 20px 18px 48px;
+            padding-inline-start: calc(var(--sidebar-w, 230px) + 18px);
           }
           :global([dir="ltr"]) .main {
-            padding-inline: 18px;
+            padding-inline-start: calc(var(--sidebar-w, 230px) + 18px);
+            padding-inline-end: 18px;
           }
           .hero,
           .overview-grid {
             grid-template-columns: 1fr;
-          }
-          .metrics-grid,
-          .stock-card-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
           .featured-news-grid,
           .method-grid,
@@ -3158,6 +3211,12 @@ export function CyclicalStocksNewsPage() {
           .filter-bar,
           .news-filter-bar {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 1024px) {
+          .main,
+          :global([dir="ltr"]) .main {
+            padding-inline: 18px;
           }
         }
         @media (max-width: 780px) {
@@ -3212,7 +3271,20 @@ export function CyclicalStocksNewsPage() {
             grid-template-columns: 1fr;
           }
           .ticker-strip {
-            grid-auto-columns: minmax(210px, 82vw);
+            padding: 7px;
+          }
+          .ticker-item,
+          .ticker-skeleton {
+            flex-basis: 178px;
+            min-height: 66px;
+          }
+          .ticker-item {
+            padding: 9px 10px;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ticker-track {
+            animation: none;
           }
         }
       `}</style>
