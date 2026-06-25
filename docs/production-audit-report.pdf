@@ -1,0 +1,1417 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R] /Count 11 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 3661 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(THE SFM PRODUCTION AUDIT REPORT) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Generated: 2026-06-25T16:14:34.583Z) Tj
+0 -12 Td
+(Repository: thesfm-origin-main-review) Tj
+0 -12 Td
+(Framework: Next.js 15.5.7 / React 19 / Supabase / Stripe / market-data providers) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+EXECUTIVE SUMMARY) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(THE SFM was reviewed across application routes, dashboard/admin layout usage, API routes,) Tj
+0 -12 Td
+(Supabase/RLS posture, Stripe/payment surfaces, authentication and authorization patterns,) Tj
+0 -12 Td
+(market-data provider integrations, UI shell consistency, RTL/LTR readiness, light/dark mode) Tj
+0 -12 Td
+(risks, duplicate/demo-data risks, and launch validation commands.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The codebase is a **launch candidate with required operational checks**. Automated validation is) Tj
+0 -12 Td
+(green, production build succeeds, and several safe launch issues were fixed during this audit.) Tj
+0 -12 Td
+(Remaining launch risks are primarily operational: deploying pending Supabase migrations,) Tj
+0 -12 Td
+(confirming production environment variables, and smoke-testing real provider credentials in the) Tj
+0 -12 Td
+(target deployment.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+SCORES) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(   Area    Score    Rationale) Tj
+0 -12 Td
+(   ---    ---:    ---) Tj
+0 -12 Td
+(   Security    88%    Admin/API protection patterns are present, service keys remain server-) Tj
+0 -12 Td
+(side, Stripe uses server routes, and the audit removed a predictable analytics hash fallback.) Tj
+0 -12 Td
+(Remaining risk is live RLS/provider verification in the deployed Supabase project.) Tj
+0 -12 Td
+(   Code Quality    86%    TypeScript, ESLint, tests, and build pass. Shared admin shell) Tj
+0 -12 Td
+(abstraction was added. Some very large page components remain and should be decomposed over) Tj
+0 -12 Td
+(time.) Tj
+0 -12 Td
+(   Performance    82%    Build is successful and provider caching/rate-limit patterns exist.) Tj
+0 -12 Td
+(Some feature pages, especially market analysis, remain heavy and should be split/lazy-loaded) Tj
+0 -12 Td
+(further.) Tj
+0 -12 Td
+(   UI/UX Readiness    84%    Shared sidebar shell was restored for admin pages and recent) Tj
+0 -12 Td
+(market-page regressions have tests. Remaining readiness depends on visual smoke tests across the) Tj
+0 -12 Td
+(largest market pages and mobile layouts.) Tj
+0 -12 Td
+(   Launch Readiness    Conditional Go    Safe to stage after migrations/env configuration;) Tj
+0 -12 Td
+(production launch should wait for Supabase migration application, provider credential smoke) Tj
+0 -12 Td
+(tests, and Stripe webhook verification.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+WHAT WAS REVIEWED) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- 106 App Router pages.) Tj
+0 -12 Td
+(- 108 API route handlers.) Tj
+0 -12 Td
+(- 10 layout files.) Tj
+0 -12 Td
+(- Supabase migration history through migration 112.) Tj
+0 -12 Td
+(- Admin pages and protected dashboard shell usage.) Tj
+0 -12 Td
+(- Stripe checkout, portal, and webhook route surfaces.) Tj
+0 -12 Td
+(- Market provider routes, news/calendar adapters, trader routes, and provider status surfaces.) Tj
+0 -12 Td
+(- Navigation/sidebar configuration and admin-only visibility.) Tj
+0 -12 Td
+(- Localhost/private endpoint references, service-role key usage, public env exposure risks,) Tj
+0 -12 Td
+(unsafe HTML patterns, mock/demo fallback indicators, and RLS policy patterns.) Tj
+0 -12 Td
+(- Validation commands: TypeScript, ESLint, i18n completeness, unit/integration tests, and) Tj
+0 -12 Td
+(production build.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+ISSUES FOUND BY SEVERITY) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+High - Fixed) Tj
+0 -12 Td
+() Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 3707 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(1. **Admin pages missing the shared sidebar shell**) Tj
+0 -12 Td
+(   - Affected: /sfm-admin-control, /sfm-admin-control/companies.) Tj
+0 -12 Td
+(   - Risk: admins could lose platform navigation and admin pages looked standalone/inconsistent.) Tj
+0 -12 Td
+(   - Fix: introduced AdminDashboardShell and wired both admin pages through the shared sidebar-) Tj
+0 -12 Td
+(aware dashboard shell.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(2. **Deprecated service-role policy check for news translation cache**) Tj
+0 -12 Td
+(   - Affected migration/table: public.news_translations.) Tj
+0 -12 Td
+(   - Risk: older auth.role\(\) = 'service_role' policy style is no longer aligned with current) Tj
+0 -12 Td
+(Supabase guidance and explicit grants model.) Tj
+0 -12 Td
+(   - Fix: added migration 111_harden_news_translations_service_role_policy.sql with a service-) Tj
+0 -12 Td
+(role-scoped policy and explicit grants/revokes.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(3. **Predictable fallback analytics hash salt**) Tj
+0 -12 Td
+(   - Affected: src/lib/server/companyAnalytics.ts.) Tj
+0 -12 Td
+(   - Risk: fallback salt could make IP hashes easier to compare across deployments when) Tj
+0 -12 Td
+(configured secrets are missing.) Tj
+0 -12 Td
+(   - Fix: removed the static production fallback; analytics omits ip_hash if no server) Tj
+0 -12 Td
+(salt/secret is configured. Added ANALYTICS_HASH_SALT to .env.example.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(4. **Profile creation trigger needed explicit search-path hardening**) Tj
+0 -12 Td
+(   - Affected: public.handle_new_user\(\).) Tj
+0 -12 Td
+(   - Risk: security-definer functions should pin search_path to the intended schema.) Tj
+0 -12 Td
+(   - Fix: added migration 112_harden_profile_trigger_search_path.sql preserving behavior while) Tj
+0 -12 Td
+(setting search_path = public.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+Medium - Fixed) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(5. **Platform Admin navigation lacked the private trading terminal link**) Tj
+0 -12 Td
+(   - Affected: sidebar admin group.) Tj
+0 -12 Td
+(   - Fix: added /thesfm-trader-own with Arabic, English, and French labels and a terminal icon.) Tj
+0 -12 Td
+(Existing admin-only filtering protects visibility.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(6. **Production start script used a shell-specific port expression**) Tj
+0 -12 Td
+(   - Affected: package.json.) Tj
+0 -12 Td
+(   - Risk: less portable local production start behavior.) Tj
+0 -12 Td
+(   - Fix: simplified to next start; platform deployments should provide their own runtime) Tj
+0 -12 Td
+(process.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+Medium - Reviewed / Remaining) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(7. **Some print/export modules use document.write**) Tj
+0 -12 Td
+(   - Affected areas include generated reports and print windows.) Tj
+0 -12 Td
+(   - Risk: acceptable for internal generated output when escaped, but should remain on the) Tj
+0 -12 Td
+(security backlog for sanitizer review.) Tj
+0 -12 Td
+(   - Status: documented; not changed because it may alter export behavior.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(8. **Large page components and heavy first-load bundles**) Tj
+0 -12 Td
+(   - Example: /market-analysis first-load JS is materially larger than most pages.) Tj
+0 -12 Td
+(   - Status: documented for future lazy-loading/component decomposition.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(9. **Live Supabase policy verification was not performed in the remote project**) Tj
+0 -12 Td
+(   - The Supabase CLI is not installed in this local environment and no production project) Tj
+0 -12 Td
+(credentials were used.) Tj
+0 -12 Td
+(   - Status: migration prepared; applying and verifying in the target Supabase project remains a) Tj
+0 -12 Td
+(launch checklist item.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+Low - Reviewed) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 3540 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+() Tj
+0 -12 Td
+(10. **Localhost references are documentation/development-only or blocked by tests**) Tj
+0 -12 Td
+(    - Runtime scans found no production self-fetch fallback to localhost. Existing trader) Tj
+0 -12 Td
+(compatibility tests enforce this.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(11. **Seed market symbols exist in migrations**) Tj
+0 -12 Td
+(    - These are static symbol universe records, not user data or demo activity records.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+FIXES COMPLETED) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Added src/components/AdminDashboardShell.tsx and used it on admin dashboard/company review) Tj
+0 -12 Td
+(pages.) Tj
+0 -12 Td
+(- Restored sidebar rendering on /sfm-admin-control and /sfm-admin-control/companies.) Tj
+0 -12 Td
+(- Added Smart Trading Terminal admin sidebar item for /thesfm-trader-own.) Tj
+0 -12 Td
+(- Added navigation translation key nav_smart_trading_terminal for Arabic, English, and French.) Tj
+0 -12 Td
+(- Removed the static production fallback for company analytics IP hashing.) Tj
+0 -12 Td
+(- Added ANALYTICS_HASH_SALT to .env.example.) Tj
+0 -12 Td
+(- Added Supabase migration to harden the news translation cache policy and grants.) Tj
+0 -12 Td
+(- Added Supabase migration to pin the profile creation trigger's search_path.) Tj
+0 -12 Td
+(- Simplified npm start to a portable Next.js start command.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+DUPLICATED / UNUSED CODE REMOVED) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Removed the duplicate Supabase migration created during audit consolidation and retained one) Tj
+0 -12 Td
+(migration for the news translation policy fix.) Tj
+0 -12 Td
+(- No production components or routes were deleted. No working feature was removed.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+SECURITY REVIEW) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Strengths:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Admin pages checked server-side via authenticated Supabase token and admin email allowlist.) Tj
+0 -12 Td
+(- Trader terminal access is server-gated via getTraderAccess.) Tj
+0 -12 Td
+(- Stripe secret usage is confined to server routes/libraries.) Tj
+0 -12 Td
+(- Public env secret exposure scan found no NEXT_PUBLIC_*SECRET/SERVICE/PRIVATE/TOKEN/KEY misuse.) Tj
+0 -12 Td
+(- External image resolver rejects localhost, loopback, and private network hosts before server-) Tj
+0 -12 Td
+(side fetch.) Tj
+0 -12 Td
+(- Account activity has regression tests for empty users and user isolation.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Remaining security tasks before production:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Apply and verify pending Supabase migrations in the production project.) Tj
+0 -12 Td
+(- Confirm RLS policies directly in Supabase for account activity, subscriptions, company) Tj
+0 -12 Td
+(listings, analytics, trader access, and funding/admin tables.) Tj
+0 -12 Td
+(- Configure ANALYTICS_HASH_SALT, ADMIN_EMAILS, ADMIN_ACCESS_CODE, CRON_SECRET, Supabase service) Tj
+0 -12 Td
+(key, Stripe secrets, provider keys, and webhook secrets in Preview and Production.) Tj
+0 -12 Td
+(- Review generated print/export HTML paths for sanitization hardening.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+PERFORMANCE REVIEW) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Observed:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Production build completes successfully.) Tj
+0 -12 Td
+(- Static generation completed for 137 generated pages/routes.) Tj
+0 -12 Td
+(- Most API routes are dynamic handlers with small route bundles.) Tj
+0 -12 Td
+(- Heavy client pages remain: market analysis, project detail, business hub, charity projects,) Tj
+0 -12 Td
+(financial theories, setup, profile, debts.) Tj
+0 -12 Td
+() Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 3046 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(Recommendations:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Continue lazy-loading lower market-analysis modules.) Tj
+0 -12 Td
+(- Split oversized page components into smaller client islands.) Tj
+0 -12 Td
+(- Add route-level performance budgets for pages over 300 kB first-load JS.) Tj
+0 -12 Td
+(- Add Playwright/Lighthouse smoke tests for primary desktop/mobile routes after deployment.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+UI/UX REVIEW) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Fixed:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Admin pages now render inside the dashboard shell with sidebar navigation.) Tj
+0 -12 Td
+(- Admin terminal link appears in the Platform Admin sidebar with active-state support.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Reviewed risks:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Many market pages have been recently repaired, but should receive cross-language visual smoke) Tj
+0 -12 Td
+(tests in production data conditions.) Tj
+0 -12 Td
+(- Largest dashboard pages still rely on substantial inline/page-local CSS; over time, migrate) Tj
+0 -12 Td
+(stable patterns into shared components.) Tj
+0 -12 Td
+(- RTL/LTR support is present through language hooks and logical CSS, but pages with custom) Tj
+0 -12 Td
+(inline CSS should remain in regression testing.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+DATA PROVIDER REVIEW) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Provider surfaces reviewed:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Yahoo Finance quote/history helpers.) Tj
+0 -12 Td
+(- Finnhub news/ticker routes.) Tj
+0 -12 Td
+(- FMP economic calendar provider interface.) Tj
+0 -12 Td
+(- Myfxbook/market sentiment health routes.) Tj
+0 -12 Td
+(- Stripe payment routes.) Tj
+0 -12 Td
+(- Trader scanner compatibility API.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Launch checks required:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Confirm FINNHUB_API_KEY, FMP_API_KEY, optional ECONOMIC_CALENDAR_PROVIDER, OPENAI_API_KEY/AI) Tj
+0 -12 Td
+(gateway credentials, Stripe keys, and Supabase keys are configured in deployment.) Tj
+0 -12 Td
+(- Smoke-test provider health endpoints in Vercel Preview and Production.) Tj
+0 -12 Td
+(- Verify provider-error UI states do not expose raw upstream errors.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+VALIDATION RESULTS) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(   Command    Result) Tj
+0 -12 Td
+(   ---    ---) Tj
+0 -12 Td
+(   corepack pnpm exec tsc --noEmit --pretty false    Passed) Tj
+0 -12 Td
+(   npm run lint    Passed) Tj
+0 -12 Td
+(   npm run check:i18n    Passed; all translation entries include ar/en/fr) Tj
+0 -12 Td
+(   npm run test:run    Passed; 14 files, 121 tests) Tj
+0 -12 Td
+(   npm run build    Passed; Next.js production build completed) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+FULL PAGE ROUTE AUDIT TABLE) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(   Route    File    Shell/Layout Signal    Auth Signal    Dynamic) Tj
+0 -12 Td
+(   ---    ---    ---    ---    ---) Tj
+0 -12 Td
+(   /    src/app/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /about    src/app/about/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /accounting-companies    src/app/accounting-companies/page.tsx    public/standalone    public) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 13 0 R >>
+endobj
+13 0 obj
+<< /Length 4937 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(no) Tj
+0 -12 Td
+(   /ai    src/app/ai/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /alerts    src/app/alerts/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /banking-stocks    src/app/banking-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /business    src/app/business/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /business-hub    src/app/business-hub/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /business-operations    src/app/business-operations/page.tsx    shared/sidebar-aware    yes) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /charity    src/app/charity/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /charity-projects    src/app/charity-projects/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /charity-projects/report    src/app/charity-projects/report/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /command-center    src/app/command-center/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /companies/[id]    src/app/companies/[id]/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /company-listing/cancel    src/app/company-listing/cancel/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /company-listing/submit    src/app/company-listing/submit/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /company-listing/success    src/app/company-listing/success/page.tsx    review    review) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /contact    src/app/contact/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /crypto-news    src/app/crypto-news/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /customers    src/app/customers/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /cyclical-stocks    src/app/cyclical-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /dashboard    src/app/dashboard/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /debts    src/app/debts/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /debts/monthly-subscriptions    src/app/debts/monthly-subscriptions/page.tsx    review) Tj
+0 -12 Td
+(review    no) Tj
+0 -12 Td
+(   /decisions    src/app/decisions/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /defensive-stocks    src/app/defensive-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /dividend-stocks    src/app/dividend-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /documents    src/app/documents/page.tsx    shared/sidebar-aware    review    no) Tj
+0 -12 Td
+(   /ebooks    src/app/ebooks/page.tsx    shared/sidebar-aware    review    no) Tj
+0 -12 Td
+(   /ebooks/[slug]    src/app/ebooks/[slug]/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /education    src/app/education/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /education/expenses    src/app/education/expenses/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /education/investments    src/app/education/investments/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /education/savings    src/app/education/savings/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /employees    src/app/employees/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /energy-stocks    src/app/energy-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /europe-news    src/app/europe-news/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /expenses    src/app/expenses/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /expenses/add    src/app/expenses/add/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /expenses/monthly-subscriptions    src/app/expenses/monthly-subscriptions/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /feasibility-companies    src/app/feasibility-companies/page.tsx    public/standalone) Tj
+0 -12 Td
+(public    no) Tj
+0 -12 Td
+(   /financial-consulting-companies    src/app/financial-consulting-companies/page.tsx) Tj
+0 -12 Td
+(public/standalone    public    no) Tj
+0 -12 Td
+(   /financial-theories    src/app/financial-theories/page.tsx    shared/sidebar-aware    yes) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /goals    src/app/goals/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /goals/add    src/app/goals/add/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /growth-stocks    src/app/growth-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /guest    src/app/guest/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /gulf-news    src/app/gulf-news/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /income    src/app/income/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /income/add    src/app/income/add/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /invest    src/app/invest/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /invest/add    src/app/invest/add/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /investment-companies    src/app/investment-companies/page.tsx    public/standalone    public) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 15 0 R >>
+endobj
+15 0 obj
+<< /Length 4727 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(no) Tj
+0 -12 Td
+(   /investment-offers    src/app/investment-offers/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /invoices    src/app/invoices/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /login    src/app/\(auth\)/login/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /market-agent    src/app/market-agent/page.tsx    shared/sidebar-aware    review    no) Tj
+0 -12 Td
+(   /market-alerts    src/app/market-alerts/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /market-analysis    src/app/market-analysis/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /market-watchlist    src/app/market-watchlist/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /mfa/verify    src/app/mfa/verify/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /notif    src/app/notif/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /notifications    src/app/notifications/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /onboarding    src/app/onboarding/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /operating-expenses    src/app/operating-expenses/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /privacy    src/app/privacy/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /profile    src/app/profile/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /profile/companies    src/app/profile/companies/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /projects    src/app/projects/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /projects/[id]    src/app/projects/[id]/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /projects/ad-calculator    src/app/projects/ad-calculator/page.tsx    review    yes    no) Tj
+0 -12 Td
+(   /reports    src/app/reports/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /reports-center    src/app/reports-center/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /reset-password    src/app/reset-password/page.tsx    public/standalone    public    no) Tj
+0 -12 Td
+(   /sales    src/app/sales/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /savings    src/app/savings/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /security    src/app/security/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /services/accounting-firms    src/app/services/accounting-firms/page.tsx    review    review) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /services/advisory-firms    src/app/services/advisory-firms/page.tsx    review    review) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /services/feasibility-firms    src/app/services/feasibility-firms/page.tsx    review) Tj
+0 -12 Td
+(review    no) Tj
+0 -12 Td
+(   /services/investment-firms    src/app/services/investment-firms/page.tsx    review    review) Tj
+0 -12 Td
+(no) Tj
+0 -12 Td
+(   /settings    src/app/settings/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /setup    src/app/setup/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /sfm-admin-control    src/app/sfm-admin-control/page.tsx    shared/sidebar-aware    yes) Tj
+0 -12 Td
+(yes) Tj
+0 -12 Td
+(   /sfm-admin-control/companies    src/app/sfm-admin-control/companies/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    yes    yes) Tj
+0 -12 Td
+(   /sharia-stocks    src/app/sharia-stocks/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /site-map    src/app/site-map/page.tsx    shared/sidebar-aware    review    no) Tj
+0 -12 Td
+(   /suppliers    src/app/suppliers/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /tasks    src/app/tasks/page.tsx    shared/sidebar-aware    review    no) Tj
+0 -12 Td
+(   /tech-news    src/app/tech-news/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /terms    src/app/terms/page.tsx    public/standalone    yes    no) Tj
+0 -12 Td
+(   /thesfm-trader-own    src/app/thesfm-trader-own/page.tsx    shared/sidebar-aware    review) Tj
+0 -12 Td
+(yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/ai-scanner    src/app/thesfm-trader-own/ai-scanner/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/alerts    src/app/thesfm-trader-own/alerts/page.tsx    shared/sidebar-) Tj
+0 -12 Td
+(aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/calendar    src/app/thesfm-trader-own/calendar/page.tsx    shared/sidebar-) Tj
+0 -12 Td
+(aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/education    src/app/thesfm-trader-own/education/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/markets    src/app/thesfm-trader-own/markets/page.tsx    shared/sidebar-) Tj
+0 -12 Td
+(aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/markets/[market]    src/app/thesfm-trader-own/markets/[market]/page.tsx) Tj
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 17 0 R >>
+endobj
+17 0 obj
+<< /Length 4416 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(shared/sidebar-aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/news    src/app/thesfm-trader-own/news/page.tsx    shared/sidebar-aware) Tj
+0 -12 Td
+(review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/portfolio    src/app/thesfm-trader-own/portfolio/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/settings    src/app/thesfm-trader-own/settings/page.tsx    shared/sidebar-) Tj
+0 -12 Td
+(aware    review    yes) Tj
+0 -12 Td
+(   /thesfm-trader-own/watchlist    src/app/thesfm-trader-own/watchlist/page.tsx) Tj
+0 -12 Td
+(shared/sidebar-aware    review    yes) Tj
+0 -12 Td
+(   /today    src/app/today/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+(   /trading-companies    src/app/trading-companies/page.tsx    public/standalone    public    no) Tj
+0 -12 Td
+(   /watchlist    src/app/watchlist/page.tsx    review    review    no) Tj
+0 -12 Td
+(   /zakat    src/app/zakat/page.tsx    shared/sidebar-aware    yes    no) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+FULL API ROUTE AUDIT TABLE) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(   Route    File    Access Signal    Cache Signal    Server Secret Usage    Client Secret Risk) Tj
+0 -12 Td
+(   ---    ---    ---    ---    ---    ---) Tj
+0 -12 Td
+(   /api/account/delete    src/app/api/account/delete/route.ts    admin/protected    no-) Tj
+0 -12 Td
+(store/dynamic    server-side env    review) Tj
+0 -12 Td
+(   /api/admin/access    src/app/api/admin/access/route.ts    admin/protected    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/admin/ai-usage-limits    src/app/api/admin/ai-usage-limits/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/admin/analytics    src/app/api/admin/analytics/route.ts    admin/protected    review) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/admin/companies/review    src/app/api/admin/companies/review/route.ts    admin/protected) Tj
+0 -12 Td
+(review    -    none found) Tj
+0 -12 Td
+(   /api/ai/receipt-scan    src/app/api/ai/receipt-scan/route.ts    admin/protected    review) Tj
+0 -12 Td
+(server-side env    none found) Tj
+0 -12 Td
+(   /api/analytics/track    src/app/api/analytics/track/route.ts    admin/protected    review) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/auth/password-reset/check    src/app/api/auth/password-reset/check/route.ts) Tj
+0 -12 Td
+(admin/protected    review    -    none found) Tj
+0 -12 Td
+(   /api/auth/resolve-username    src/app/api/auth/resolve-username/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/banking-stocks/movers    src/app/api/banking-stocks/movers/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/banking-stocks/news    src/app/api/banking-stocks/news/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/banking-stocks/ticker    src/app/api/banking-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/charity-projects/export    src/app/api/charity-projects/export/route.ts) Tj
+0 -12 Td
+(protected/session-or-token    no-store/dynamic    -    review) Tj
+0 -12 Td
+(   /api/charity-projects/metals-prices    src/app/api/charity-projects/metals-prices/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/companies/[companyId]/analytics    src/app/api/companies/[companyId]/analytics/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/companies/[companyId]/track    src/app/api/companies/[companyId]/track/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/companies/analytics    src/app/api/companies/analytics/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings    src/app/api/company-listings/route.ts    admin/protected    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings/[id]    src/app/api/company-listings/[id]/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings/admin    src/app/api/company-listings/admin/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 19 0 R >>
+endobj
+19 0 obj
+<< /Length 4750 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(   /api/company-listings/eligibility    src/app/api/company-listings/eligibility/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings/owner    src/app/api/company-listings/owner/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings/owner/[id]    src/app/api/company-listings/owner/[id]/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/company-listings/resolve-image    src/app/api/company-listings/resolve-image/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/contact    src/app/api/contact/route.ts    public/provider    review    -    none found) Tj
+0 -12 Td
+(   /api/crypto-news    src/app/api/crypto-news/route.ts    public/provider    no-store/dynamic) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/crypto-news/market    src/app/api/crypto-news/market/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/cyclical-stocks/movers    src/app/api/cyclical-stocks/movers/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/cyclical-stocks/news    src/app/api/cyclical-stocks/news/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/cyclical-stocks/ticker    src/app/api/cyclical-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/daily-tip    src/app/api/daily-tip/route.ts    admin/protected    review    server-side) Tj
+0 -12 Td
+(env    none found) Tj
+0 -12 Td
+(   /api/debts/generate-monthly-expenses    src/app/api/debts/generate-monthly-expenses/route.ts) Tj
+0 -12 Td
+(admin/protected    review    server-side env    none found) Tj
+0 -12 Td
+(   /api/debug/document-ai    src/app/api/debug/document-ai/route.ts    admin/protected    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/debug/receipt-provider    src/app/api/debug/receipt-provider/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/defensive-stocks/movers    src/app/api/defensive-stocks/movers/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/defensive-stocks/news    src/app/api/defensive-stocks/news/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/defensive-stocks/ticker    src/app/api/defensive-stocks/ticker/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/dividend-stocks/movers    src/app/api/dividend-stocks/movers/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/dividend-stocks/news    src/app/api/dividend-stocks/news/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/dividend-stocks/ticker    src/app/api/dividend-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/economic-calendar    src/app/api/economic-calendar/route.ts    public/provider    review) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/energy-stocks/movers    src/app/api/energy-stocks/movers/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/energy-stocks/news    src/app/api/energy-stocks/news/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/energy-stocks/ticker    src/app/api/energy-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/europe-news    src/app/api/europe-news/route.ts    public/provider    no-store/dynamic) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/funding-programs/admin    src/app/api/funding-programs/admin/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/growth-stocks/movers    src/app/api/growth-stocks/movers/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/growth-stocks/news    src/app/api/growth-stocks/news/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/growth-stocks/ticker    src/app/api/growth-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/gulf-news    src/app/api/gulf-news/route.ts    public/provider    no-store/dynamic    -) Tj
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 21 0 R >>
+endobj
+21 0 obj
+<< /Length 4453 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(none found) Tj
+0 -12 Td
+(   /api/health    src/app/api/health/route.ts    public/provider    review    -    none found) Tj
+0 -12 Td
+(   /api/health/database    src/app/api/health/database/route.ts    public/provider    review) Tj
+0 -12 Td
+(-    review) Tj
+0 -12 Td
+(   /api/invoices/analyze    src/app/api/invoices/analyze/route.ts    admin/protected    review) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/market-agent/analyze    src/app/api/market-agent/analyze/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    review) Tj
+0 -12 Td
+(   /api/market-data/status    src/app/api/market-data/status/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market-news    src/app/api/market-news/route.ts    public/provider    no-store/dynamic) Tj
+0 -12 Td
+(-    none found) Tj
+0 -12 Td
+(   /api/market-ticker    src/app/api/market-ticker/route.ts    public/provider    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/market/ai-insight    src/app/api/market/ai-insight/route.ts    admin/protected    review) Tj
+0 -12 Td
+(server-side env    none found) Tj
+0 -12 Td
+(   /api/market/analyze    src/app/api/market/analyze/route.ts    public/provider    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/market/asset-profile    src/app/api/market/asset-profile/route.ts    public/provider) Tj
+0 -12 Td
+(review    -    none found) Tj
+0 -12 Td
+(   /api/market/banking/snapshot    src/app/api/market/banking/snapshot/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/market/central-bank-news    src/app/api/market/central-bank-news/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/market/company-profile    src/app/api/market/company-profile/route.ts    public/provider) Tj
+0 -12 Td
+(review    -    none found) Tj
+0 -12 Td
+(   /api/market/compare    src/app/api/market/compare/route.ts    public/provider    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/market/economic-calendar    src/app/api/market/economic-calendar/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/energy/commodities    src/app/api/market/energy/commodities/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/market/fx/batch    src/app/api/market/fx/batch/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/fx/rate    src/app/api/market/fx/rate/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/health    src/app/api/market/health/route.ts    public/provider    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/market/history    src/app/api/market/history/route.ts    public/provider    review    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/market/metals    src/app/api/market/metals/route.ts    protected/session-or-token    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/performance    src/app/api/market/performance/route.ts    public/provider) Tj
+0 -12 Td
+(review    -    none found) Tj
+0 -12 Td
+(   /api/market/provider-health    src/app/api/market/provider-health/route.ts    admin/protected) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/refresh-investment-price    src/app/api/market/refresh-investment-price/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/market/search    src/app/api/market/search/route.ts    public/provider    review) Tj
+0 -12 Td
+(server-side env    review) Tj
+0 -12 Td
+(   /api/market/search-assets    src/app/api/market/search-assets/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    review) Tj
+0 -12 Td
+(   /api/market/sentiment    src/app/api/market/sentiment/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/market/sentiment/health    src/app/api/market/sentiment/health/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/market/symbols    src/app/api/market/symbols/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 23 0 R >>
+endobj
+23 0 obj
+<< /Length 4745 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+(   /api/market/technical-analysis    src/app/api/market/technical-analysis/route.ts) Tj
+0 -12 Td
+(public/provider    review    -    none found) Tj
+0 -12 Td
+(   /api/markets/movers    src/app/api/markets/movers/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/markets/portfolio-comparison    src/app/api/markets/portfolio-comparison/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/myfxbook/health    src/app/api/myfxbook/health/route.ts    admin/protected    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/projects-chat    src/app/api/projects-chat/route.ts    admin/protected    review) Tj
+0 -12 Td
+(server-side env    none found) Tj
+0 -12 Td
+(   /api/projects/[id]/ai-advisor    src/app/api/projects/[id]/ai-advisor/route.ts) Tj
+0 -12 Td
+(protected/session-or-token    review    server-side env    review) Tj
+0 -12 Td
+(   /api/projects/[id]/expense-analysis    src/app/api/projects/[id]/expense-analysis/route.ts) Tj
+0 -12 Td
+(protected/session-or-token    review    server-side env    review) Tj
+0 -12 Td
+(   /api/projects/[id]/pitch-deck    src/app/api/projects/[id]/pitch-deck/route.ts) Tj
+0 -12 Td
+(protected/session-or-token    review    server-side env    review) Tj
+0 -12 Td
+(   /api/projects/[id]/pitch-deck/export    src/app/api/projects/[id]/pitch-deck/export/route.ts) Tj
+0 -12 Td
+(protected/session-or-token    no-store/dynamic    server-side env    review) Tj
+0 -12 Td
+(   /api/receipts/provider-status    src/app/api/receipts/provider-status/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/receipts/scan    src/app/api/receipts/scan/route.ts    admin/protected    review) Tj
+0 -12 Td
+(server-side env    none found) Tj
+0 -12 Td
+(   /api/sharia-stocks/news    src/app/api/sharia-stocks/news/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/sharia-stocks/screening    src/app/api/sharia-stocks/screening/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/sharia-stocks/ticker    src/app/api/sharia-stocks/ticker/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/stock-categories/movers    src/app/api/stock-categories/movers/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/stock-categories/news    src/app/api/stock-categories/news/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/stripe/create-checkout-session    src/app/api/stripe/create-checkout-session/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    server-side env    review) Tj
+0 -12 Td
+(   /api/stripe/create-portal-session    src/app/api/stripe/create-portal-session/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/stripe/webhook    src/app/api/stripe/webhook/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/tech-news    src/app/api/tech-news/route.ts    public/provider    no-store/dynamic    -) Tj
+0 -12 Td
+(none found) Tj
+0 -12 Td
+(   /api/thesfm-trader/[...path]    src/app/api/thesfm-trader/[...path]/route.ts) Tj
+0 -12 Td
+(admin/protected    no-store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/trader/analysis/[symbol]    src/app/api/trader/analysis/[symbol]/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/trader/scanner/results    src/app/api/trader/scanner/results/route.ts    public/provider) Tj
+0 -12 Td
+(no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/trader/scanner/run    src/app/api/trader/scanner/run/route.ts    admin/protected    no-) Tj
+0 -12 Td
+(store/dynamic    server-side env    none found) Tj
+0 -12 Td
+(   /api/trader/status    src/app/api/trader/status/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/trader/us-stocks    src/app/api/trader/us-stocks/route.ts    public/provider    no-) Tj
+0 -12 Td
+(store/dynamic    -    none found) Tj
+0 -12 Td
+(   /api/zakat/metals-prices    src/app/api/zakat/metals-prices/route.ts    public/provider) Tj
+0 -12 Td
+(review    -    none found) Tj
+0 -12 Td
+(   /thesfm-trader-own/app/[[...path]]    src/app/thesfm-trader-own/app/[[...path]]/route.ts) Tj
+0 -12 Td
+(public/provider    no-store/dynamic    -    none found) Tj
+0 -12 Td
+(   /zoer_proxy/[...path]    src/app/zoer_proxy/[...path]/route.ts    protected/session-or-token) Tj
+0 -12 Td
+(review    -    none found) Tj
+ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 25 0 R >>
+endobj
+25 0 obj
+<< /Length 2428 >>
+stream
+BT
+/F1 9 Tf
+48 744 Td
+() Tj
+0 -12 Td
+(
+REMAINING RISKS) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- Pending Supabase migrations must be applied and verified in the target project.) Tj
+0 -12 Td
+(- Provider credentials and Stripe webhooks must be tested in the actual deployment environment.) Tj
+0 -12 Td
+(- Some exports still use generated HTML/print windows and should receive sanitizer-focused) Tj
+0 -12 Td
+(review.) Tj
+0 -12 Td
+(- Bundle sizes on the largest client pages warrant future lazy-loading work.) Tj
+0 -12 Td
+(- Visual regression tests should be expanded to cover Arabic RTL, English LTR, French LTR, dark) Tj
+0 -12 Td
+(mode, and mobile Safari for key flows.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+FUTURE IMPROVEMENTS BEFORE LAUNCH) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(1. Add Playwright smoke tests for auth, admin, company submission, Stripe checkout creation,) Tj
+0 -12 Td
+(market analysis, charity projects, subscriptions, and market-news pages.) Tj
+0 -12 Td
+(2. Add CI checks for production-localhost references and public secret env patterns.) Tj
+0 -12 Td
+(3. Add Supabase policy tests with a local Supabase test harness once the CLI is available.) Tj
+0 -12 Td
+(4. Add route-level performance budgets for large client pages.) Tj
+0 -12 Td
+(5. Extract common market-page ticker/card/table patterns into shared components.) Tj
+0 -12 Td
+(6. Add deployment runbook for provider credential validation and webhook replay tests.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(
+FINAL LAUNCH CHECKLIST) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(- [ ] Apply all Supabase migrations, including) Tj
+0 -12 Td
+(111_harden_news_translations_service_role_policy.sql and) Tj
+0 -12 Td
+(112_harden_profile_trigger_search_path.sql.) Tj
+0 -12 Td
+(- [ ] Verify RLS policies directly in Supabase for all user-owned tables.) Tj
+0 -12 Td
+(- [ ] Configure Preview and Production environment variables.) Tj
+0 -12 Td
+(- [ ] Verify Stripe checkout, portal, and webhook routes with test events.) Tj
+0 -12 Td
+(- [ ] Smoke-test market data, news, economic calendar, trader terminal, and AI routes with real) Tj
+0 -12 Td
+(provider credentials.) Tj
+0 -12 Td
+(- [ ] Smoke-test admin pages and sidebar navigation in Arabic and English.) Tj
+0 -12 Td
+(- [ ] Confirm no raw provider errors or secrets appear in browser responses/logs.) Tj
+0 -12 Td
+(- [ ] Run the validation suite in CI.) Tj
+0 -12 Td
+(- [ ] Run a final mobile Safari and desktop visual pass for key dashboard and market pages.) Tj
+0 -12 Td
+() Tj
+ET
+endstream
+endobj
+xref
+0 26
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000190 00000 n 
+0000000260 00000 n 
+0000000386 00000 n 
+0000004099 00000 n 
+0000004225 00000 n 
+0000007984 00000 n 
+0000008110 00000 n 
+0000011702 00000 n 
+0000011830 00000 n 
+0000014929 00000 n 
+0000015057 00000 n 
+0000020047 00000 n 
+0000020175 00000 n 
+0000024955 00000 n 
+0000025083 00000 n 
+0000029552 00000 n 
+0000029680 00000 n 
+0000034483 00000 n 
+0000034611 00000 n 
+0000039117 00000 n 
+0000039245 00000 n 
+0000044043 00000 n 
+0000044171 00000 n 
+trailer
+<< /Size 26 /Root 1 0 R >>
+startxref
+46652
+%%EOF

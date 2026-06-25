@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { LogIn, LogOut } from 'lucide-react';
+import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
@@ -292,9 +293,9 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   }
 
   return (
-    <>
+    <AdminDashboardShell ariaLabel={text.title as string} contentClassName="company-admin-dashboard-content">
       <style>{`
-        .ca-page{min-height:100vh;background:var(--sfm-background);padding:2rem 1.5rem;direction:${dir};font-family:inherit;color:var(--sfm-foreground)}
+        .ca-page{width:100%;max-width:1320px;margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:inherit;color:var(--sfm-foreground)}
         .ca-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.35rem;flex-wrap:wrap}
         .ca-admin-chip{min-height:42px;border-radius:999px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.12);color:var(--sfm-foreground);padding:0 .95rem;display:inline-flex;align-items:center;gap:.45rem;font-size:.82rem;font-weight:900}
         .ca-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
@@ -334,7 +335,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-actions{display:flex;gap:.75rem;flex-wrap:wrap}.ca-action-btn{flex:1;min-width:100px;padding:.6rem 1rem;border-radius:10px;border:0;font-size:.87rem;font-weight:900;cursor:pointer;transition:all .15s}.ca-action-btn:disabled{opacity:.5;cursor:not-allowed}
         .ca-btn-approve{background:#10b981;color:#fff}.ca-btn-changes{background:#3b82f6;color:#fff}.ca-btn-reject{background:#ef4444;color:#fff}
         .ca-feedback{padding:.65rem 1rem;border-radius:10px;font-size:.85rem;font-weight:800}.ca-feedback.ok{background:#d1fae5;color:#065f46}.ca-feedback.err{background:#fee2e2;color:#991b1b}.dark .ca-feedback.ok{background:rgba(16,185,129,.15);color:#6ee7b7}.dark .ca-feedback.err{background:rgba(239,68,68,.15);color:#fca5a5}
-        @media(max-width:700px){.ca-page{padding:1rem}.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-card{overflow-x:auto}.ca-table{min-width:620px}}
+        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-card{overflow-x:auto}.ca-table{min-width:620px}}
       `}</style>
 
       <div className="ca-page">
@@ -494,6 +495,6 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
           </div>
         </div>
       )}
-    </>
+    </AdminDashboardShell>
   );
 }

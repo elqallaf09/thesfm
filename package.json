@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack",
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
-    "start": "next start --port ${port}",
+    "start": "next start",
     "check:i18n": "node scripts/check-translations.mjs",
     "lint": "eslint .",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",

@@ -36,6 +36,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Target,
+  Terminal,
   TrendingUp,
   UserRound,
   UsersRound,
@@ -187,6 +188,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true },
       { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true },
+      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', viewModes: ['simple', 'professional'], adminOnly: true },
     ],
   },
   {

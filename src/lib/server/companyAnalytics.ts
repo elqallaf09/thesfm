@@ -16,7 +16,13 @@ const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function hashIp(value: string | null) {
   if (!value) return null;
-  const salt = process.env.ANALYTICS_HASH_SALT || process.env.NEXTAUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'the-sfm-analytics';
+  const salt = process.env.ANALYTICS_HASH_SALT || process.env.NEXTAUTH_SECRET;
+  if (!salt) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[CompanyAnalytics] ANALYTICS_HASH_SALT is not configured; storing analytics event without ip_hash.');
+    }
+    return null;
+  }
   return createHash('sha256').update(`${salt}:${value}`).digest('hex');
 }
 

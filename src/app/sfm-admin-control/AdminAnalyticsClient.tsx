@@ -5,7 +5,7 @@ import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, LogIn, LogOut, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
-import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
@@ -410,7 +410,7 @@ export default function AdminAnalyticsClient() {
   }
 
   return (
-    <DashboardPageShell ariaLabel={t('admin_dashboard_title')} contentClassName="admin-dashboard-content">
+    <AdminDashboardShell ariaLabel={t('admin_dashboard_title')} contentClassName="admin-dashboard-content">
       <main className="admin-dashboard" dir={dir}>
         {adminControls}
         <section className="admin-hero">
@@ -615,16 +615,16 @@ export default function AdminAnalyticsClient() {
         </Panel>
       </main>
       <style jsx>{adminStyles}</style>
-    </DashboardPageShell>
+    </AdminDashboardShell>
   );
 }
 
 function AdminShell({ children, dir }: { children: React.ReactNode; dir: 'rtl' | 'ltr' }) {
   return (
-    <DashboardPageShell contentClassName="admin-dashboard-content">
+    <AdminDashboardShell contentClassName="admin-dashboard-content">
       <main className="admin-dashboard" dir={dir}>{children}</main>
       <style jsx>{adminStyles}</style>
-    </DashboardPageShell>
+    </AdminDashboardShell>
   );
 }
 
