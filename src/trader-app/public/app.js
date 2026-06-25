@@ -4,6 +4,8 @@ const canvas = document.querySelector("#terminal-background");
 const STORAGE_KEY = "the-sfm-trader-settings";
 const WATCHLIST_KEY = "the-sfm-trader-watchlist";
 const DISMISSED_NOTICE_KEY = "the-sfm-trader-dismissed-legal-notices";
+const TRADE_HISTORY_KEY = "the-sfm-trader-history";
+const FOLLOWED_TRADES_KEY = "the-sfm-trader-followed-trades";
 const APP_BASE = "/thesfm-trader-own";
 
 const i18n = {
@@ -17,6 +19,8 @@ const i18n = {
     commodities: "السلع",
     etfs: "الصناديق المتداولة",
     aiScanner: "ماسح الذكاء الاصطناعي",
+    marketAiAnalysis: "تحليل الذكاء الاصطناعي",
+    tradePerformance: "سجل الصفقات",
     watchlist: "قائمة المراقبة",
     portfolio: "المحفظة",
     alerts: "التنبيهات",
@@ -139,6 +143,32 @@ const i18n = {
     shariaStandard: "المنهجية",
     shariaLastReview: "آخر مراجعة",
     shariaOutdated: "التصنيف قديم ويحتاج إلى تحديث",
+    marketAnalysisDesc: "تحليل السوق المختار باستخدام نتائج الفحص الحقيقية المتاحة.",
+    analysisResults: "نتائج التحليل",
+    signalResults: "نتائج الإشارات",
+    noMarketAnalysisData: "لا توجد توصيات حقيقية متاحة لهذا السوق حالياً.",
+    marketAnalysisUnsupported: "لا يوجد مزود بيانات متصل حالياً لتحليل هذا السوق.",
+    providerErrorState: "تعذر تحميل نتائج التحليل من مزود البيانات.",
+    tradePerformanceDesc: "تصنيف نتائج التوصيات المتابعة حسب الحالة الفعلية للتداول.",
+    winningTrades: "الصفقات الرابحة",
+    losingTrades: "الصفقات الخاسرة",
+    openTrades: "الصفقات المفتوحة",
+    monitoredTrades: "تحت المتابعة",
+    entryPrice: "سعر الدخول",
+    lastPrice: "آخر سعر",
+    openDate: "تاريخ الفتح",
+    closeDate: "تاريخ الإغلاق",
+    profitLoss: "الربح / الخسارة",
+    tradeStatus: "حالة الصفقة",
+    followTrade: "تابع الصفقة",
+    unfollowTrade: "إيقاف المتابعة",
+    noTradeHistory: "لا يوجد سجل صفقات بعد. سيبدأ السجل بعد توفر نتائج فحص حقيقية.",
+    targetHit: "وصل الهدف",
+    stopLossHit: "ضرب وقف الخسارة",
+    closedProfit: "مغلقة بربح",
+    closedLoss: "مغلقة بخسارة",
+    monitoring: "تحت المتابعة",
+    startedFromMarket: "السوق المختار",
     openDrawer: "فتح القائمة",
     closeDrawer: "إغلاق القائمة",
   },
@@ -152,6 +182,8 @@ const i18n = {
     commodities: "Commodities",
     etfs: "ETFs",
     aiScanner: "AI Scanner",
+    marketAiAnalysis: "AI market analysis",
+    tradePerformance: "Trade performance",
     watchlist: "Watchlist",
     portfolio: "Portfolio",
     alerts: "Alerts",
@@ -274,6 +306,32 @@ const i18n = {
     shariaStandard: "Methodology",
     shariaLastReview: "Last review",
     shariaOutdated: "Classification is outdated and needs review",
+    marketAnalysisDesc: "Selected-market analysis using available real scanner results.",
+    analysisResults: "Analysis results",
+    signalResults: "Signal results",
+    noMarketAnalysisData: "No real recommendations are available for this market right now.",
+    marketAnalysisUnsupported: "No connected data provider is available for this market analysis yet.",
+    providerErrorState: "Unable to load analysis results from the data provider.",
+    tradePerformanceDesc: "Track recommendation outcomes by their real trade status.",
+    winningTrades: "Winning trades",
+    losingTrades: "Losing trades",
+    openTrades: "Open trades",
+    monitoredTrades: "Under monitoring",
+    entryPrice: "Entry price",
+    lastPrice: "Last price",
+    openDate: "Open date",
+    closeDate: "Close date",
+    profitLoss: "Profit / loss",
+    tradeStatus: "Trade status",
+    followTrade: "Follow trade",
+    unfollowTrade: "Stop following",
+    noTradeHistory: "No trade history yet. The log starts after real scan results are available.",
+    targetHit: "Target hit",
+    stopLossHit: "Stop loss hit",
+    closedProfit: "Closed profit",
+    closedLoss: "Closed loss",
+    monitoring: "Under monitoring",
+    startedFromMarket: "Selected market",
     openDrawer: "Open menu",
     closeDrawer: "Close menu",
   },
@@ -287,6 +345,8 @@ const i18n = {
     commodities: "Matieres premieres",
     etfs: "ETF",
     aiScanner: "Scanner IA",
+    marketAiAnalysis: "Analyse IA du marche",
+    tradePerformance: "Performance des trades",
     watchlist: "Surveillance",
     portfolio: "Portefeuille",
     alerts: "Alertes",
@@ -409,6 +469,32 @@ const i18n = {
     shariaStandard: "Methode",
     shariaLastReview: "Derniere revue",
     shariaOutdated: "Classification expiree, revue requise",
+    marketAnalysisDesc: "Analyse du marche selectionne avec les resultats reels disponibles.",
+    analysisResults: "Resultats d'analyse",
+    signalResults: "Resultats des signaux",
+    noMarketAnalysisData: "Aucune recommandation reelle disponible pour ce marche.",
+    marketAnalysisUnsupported: "Aucun fournisseur connecte pour l'analyse de ce marche.",
+    providerErrorState: "Impossible de charger les resultats d'analyse.",
+    tradePerformanceDesc: "Suivi des recommandations selon leur etat reel.",
+    winningTrades: "Trades gagnants",
+    losingTrades: "Trades perdants",
+    openTrades: "Trades ouverts",
+    monitoredTrades: "Sous surveillance",
+    entryPrice: "Prix d'entree",
+    lastPrice: "Dernier prix",
+    openDate: "Date d'ouverture",
+    closeDate: "Date de cloture",
+    profitLoss: "Gain / perte",
+    tradeStatus: "Statut du trade",
+    followTrade: "Suivre",
+    unfollowTrade: "Ne plus suivre",
+    noTradeHistory: "Aucun historique. Le journal commence apres des scans reels.",
+    targetHit: "Objectif atteint",
+    stopLossHit: "Stop-loss atteint",
+    closedProfit: "Cloture en gain",
+    closedLoss: "Cloture en perte",
+    monitoring: "Sous surveillance",
+    startedFromMarket: "Marche selectionne",
     openDrawer: "Ouvrir le menu",
     closeDrawer: "Fermer le menu",
   },
@@ -457,8 +543,10 @@ const sidebarItems = [
     ],
   },
   { id: "ai-scanner", route: "ai-scanner", labelKey: "aiScanner", icon: "scanner" },
+  { id: "market-analysis", route: "market-analysis/stocks", labelKey: "marketAiAnalysis", icon: "scanner" },
   { id: "watchlist", route: "watchlist", labelKey: "watchlist", icon: "watchlist" },
   { id: "portfolio", route: "portfolio", labelKey: "portfolio", icon: "portfolio" },
+  { id: "trade-performance", route: "trade-performance", labelKey: "tradePerformance", icon: "portfolio" },
   { id: "alerts", route: "alerts", labelKey: "alerts", icon: "alerts" },
   { id: "news", route: "news", labelKey: "news", icon: "news" },
   { id: "calendar", route: "calendar", labelKey: "calendar", icon: "calendar" },
@@ -476,8 +564,11 @@ const routeMeta = {
   "markets/commodities": { title: "Commodities", pageKey: "commodities", marketId: "commodities" },
   "markets/etfs": { title: "ETFs", pageKey: "etfs", marketId: "etfs" },
   "ai-scanner": { title: "AI Scanner", pageKey: "aiScanner" },
+  "market-analysis": { title: "AI Market Analysis", pageKey: "marketAiAnalysis", marketId: "us", marketCategoryId: "stocks" },
+  "market-analysis/stocks": { title: "US Stocks AI Analysis", pageKey: "marketAiAnalysis", marketId: "us", marketCategoryId: "stocks" },
   watchlist: { title: "Watchlist", pageKey: "watchlist" },
   portfolio: { title: "Portfolio", pageKey: "portfolio" },
+  "trade-performance": { title: "Trade Performance", pageKey: "tradePerformance" },
   alerts: { title: "Alerts", pageKey: "alerts" },
   news: { title: "News", pageKey: "news" },
   calendar: { title: "Calendar", pageKey: "calendar" },
@@ -489,6 +580,12 @@ marketCategories.forEach((market) => {
   routeMeta[market.route] = {
     title: market.labelEn,
     pageKey: "markets",
+    marketId: market.apiMarket,
+    marketCategoryId: market.id,
+  };
+  routeMeta[`market-analysis/${market.id}`] = {
+    title: `${market.labelEn} AI Analysis`,
+    pageKey: "marketAiAnalysis",
     marketId: market.apiMarket,
     marketCategoryId: market.id,
   };
@@ -566,6 +663,11 @@ function normalizeRoute(value) {
     .replace(/\/+$/, "")
     .replace(/^thesfm-trader-own\/?/, "")
     .replace(/^app\/?/, "");
+  if (["ai-analysis", "scanner", "recommendations"].includes(clean)) return "market-analysis/stocks";
+  if (clean.startsWith("ai-analysis/")) return normalizeRoute(clean.replace(/^ai-analysis\//, "market-analysis/"));
+  if (["trades", "trade-history", "trade-performance", "positions", "recommendations-history", "signal-history"].includes(clean)) {
+    return "trade-performance";
+  }
   if (DEPRECATED_MARKET_ROUTES.has(clean)) return "markets";
   return routeMeta[clean] ? clean : "dashboard";
 }
@@ -1083,6 +1185,8 @@ function renderTopbar() {
 
 function renderRoute() {
   if (state.route === "dashboard") return renderDashboard();
+  if (state.route === "market-analysis" || state.route.startsWith("market-analysis/")) return renderMarketAnalysisPage(routeMeta[state.route]?.marketCategoryId || state.selectedMarketId);
+  if (state.route === "trade-performance") return renderTradePerformancePage();
   if (state.route.startsWith("markets/")) return renderMarketPage(routeMeta[state.route]?.marketId || "us");
   if (state.route === "markets") return renderMarketsOverviewPage();
   if (state.route === "ai-scanner") return renderAiScannerPage();
@@ -1397,7 +1501,7 @@ function renderMarketsHeroBanner(market) {
         <p>${marketCopy("heroText")}</p>
         <div class="markets-hero-actions">
           <a href="${publicHref(market.route)}" target="_top">${marketCopy("routeAction")}</a>
-          <button type="button" data-market-select="${escapeHtml(market.id)}">${marketCopy("startScan")}</button>
+          <a href="${publicHref(`market-analysis/${market.id}`)}" target="_top">${marketCopy("startScan")}</a>
         </div>
       </div>
       <div class="markets-hero-visual" aria-hidden="true">
@@ -1521,6 +1625,317 @@ function renderMarketsQualityStrip(market) {
 
 function scannerSelected(key, value) {
   return String(state.data.scannerFilters?.[key] ?? "") === String(value) ? "selected" : "";
+}
+
+function validNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function renderMarketAnalysisPage(marketId) {
+  const market = marketById(marketId || "stocks");
+  state.selectedMarketId = market.id;
+  const supported = isUsBackedMarket(market);
+  const allRecs = recommendationsForMarket(market);
+  const recs = shariaFilteredItems(allRecs, market);
+  const routeError = allRecs.length ? null : (state.data.errors.route || state.data.errors.dashboard);
+  const hasLoaded = Boolean(state.data.loadedAt || routeError || state.data.scannerStatus);
+  const buys = recs.filter((item) => actionOf(item) === "buy").length;
+  const sells = recs.filter((item) => actionOf(item) === "sell").length;
+  const holds = recs.filter((item) => actionOf(item) === "hold").length;
+  const avgConfidence = deriveAverageConfidence(recs);
+  const errorInfo = routeError ? requestErrorInfo(routeError) : null;
+
+  return `
+    ${renderPageHeader(t("marketAiAnalysis"), `${t("startedFromMarket")}: ${localMarketLabel(market)} · ${t("marketAnalysisDesc")}`, market)}
+    <section class="terminal-card market-analysis-hero">
+      <div>
+        <span>${escapeHtml(t("startedFromMarket"))}</span>
+        <h2>${escapeHtml(localMarketLabel(market))}</h2>
+        <p>${escapeHtml(localMarketSubtitle(market))}</p>
+      </div>
+      <div class="analysis-summary-grid">
+        ${metricCard(t("analysisResults"), supported ? recs.length : t("unavailable"), supported ? formatStatusTimestamp(state.data.loadedAt) : t("marketAnalysisUnsupported"))}
+        ${metricCard(t("buy"), buys, t("signalResults"))}
+        ${metricCard(t("sell"), sells, t("signalResults"))}
+        ${metricCard(t("hold"), holds, t("signalResults"))}
+        ${metricCard(t("aiConfidence"), avgConfidence ? `${avgConfidence}%` : t("unavailable"), t("confidence"))}
+      </div>
+    </section>
+    ${state.shariaOnly ? renderShariaFilterControl(recs.length, allRecs.length) : ""}
+    <section class="terminal-card market-analysis-results">
+      <div class="section-header compact">
+        <div><h2>${t("analysisResults")}</h2><p>${supported ? marketCopy("liveProvider") : t("marketAnalysisUnsupported")}</p></div>
+        <button type="button" data-refresh-scanner>${t("retry")}</button>
+      </div>
+      ${!supported ? renderAnalysisState(t("marketAnalysisUnsupported"), marketCopy("noProviderMarket"), "unsupported") : ""}
+      ${supported && errorInfo ? renderAnalysisState(errorInfo.label, t("providerErrorState"), errorInfo.key, true) : ""}
+      ${supported && !errorInfo && !hasLoaded ? renderAnalysisState(t("loading"), t("marketAnalysisDesc"), "loading") : ""}
+      ${supported && !errorInfo && hasLoaded && !recs.length ? (state.shariaOnly ? renderShariaEmptyState() : renderAnalysisState(t("unavailable"), t("noMarketAnalysisData"), "empty")) : ""}
+      ${supported && !errorInfo && recs.length ? `
+        <div class="recommendation-grid market-analysis-card-grid">
+          ${topRecommendations(recs, 12).map(renderRecommendationCard).join("")}
+        </div>
+        <div class="terminal-table-wrap">
+          <table class="terminal-table">
+            <thead><tr><th>${t("symbol")}</th><th>${t("price")}</th><th>${t("signal")}</th><th>${t("confidence")}</th><th>${t("target")}</th><th>${t("stopLoss")}</th><th>${t("timeframe")}</th><th>${t("risk")}</th><th>${t("aiScore")}</th><th>${t("action")}</th></tr></thead>
+            <tbody>${topRecommendations(recs, 24).map(renderScannerRow).join("")}</tbody>
+          </table>
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
+function renderAnalysisState(title, message, kind = "empty", retry = false) {
+  return `
+    <div class="analysis-state ${escapeHtml(kind)}" role="status">
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(message)}</p>
+      ${retry ? `<button type="button" data-refresh-scanner>${t("retry")}</button>` : ""}
+    </div>
+  `;
+}
+
+function loadJsonStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJsonStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Local storage can be unavailable in hardened browser modes.
+  }
+}
+
+function loadFollowedTradeKeys() {
+  const raw = loadJsonStorage(FOLLOWED_TRADES_KEY, []);
+  return new Set(Array.isArray(raw) ? raw.filter(Boolean) : []);
+}
+
+function saveFollowedTradeKeys(keys) {
+  saveJsonStorage(FOLLOWED_TRADES_KEY, [...keys]);
+}
+
+function tradeKeyFor(item) {
+  return `${String(item.symbol || "").toUpperCase()}:${actionOf(item)}`;
+}
+
+function isTargetReached(action, currentPrice, targetPrice) {
+  const current = validNumber(currentPrice);
+  const target = validNumber(targetPrice);
+  if (current === null || target === null) return false;
+  return action === "sell" ? current <= target : current >= target;
+}
+
+function isStopReached(action, currentPrice, stopPrice) {
+  const current = validNumber(currentPrice);
+  const stop = validNumber(stopPrice);
+  if (current === null || stop === null) return false;
+  return action === "sell" ? current >= stop : current <= stop;
+}
+
+function tradeReturnPct(action, entryPrice, currentPrice) {
+  const entry = validNumber(entryPrice);
+  const current = validNumber(currentPrice);
+  if (entry === null || current === null || entry === 0) return null;
+  const raw = ((current - entry) / entry) * 100;
+  return action === "sell" ? -raw : raw;
+}
+
+function normalizeTradeStatus(record) {
+  const raw = String(record.status || record.tradeStatus || record.outcome || "").toLowerCase();
+  if (["target_hit", "closed_profit", "target", "win", "winning"].includes(raw)) return "target_hit";
+  if (["stop_loss_hit", "closed_loss", "stop", "loss", "losing"].includes(raw)) return "stop_loss_hit";
+  if (["open", "active"].includes(raw)) return "open";
+  if (["cancelled", "expired"].includes(raw)) return raw;
+  return "monitoring";
+}
+
+function normalizeTradeRecord(record) {
+  if (!record?.symbol) return null;
+  const action = actionOf(record);
+  const entryPrice = validNumber(record.entryPrice ?? record.currentPrice);
+  const currentPrice = validNumber(record.lastPrice ?? record.currentMarketPrice ?? record.currentPrice);
+  const targetPrice = validNumber(record.targetPrice ?? record.target1 ?? record.expectedPrice);
+  const stopLoss = validNumber(record.stopLoss);
+  const status = normalizeTradeStatus(record);
+  return {
+    key: record.key || tradeKeyFor({ ...record, action }),
+    symbol: String(record.symbol || "").toUpperCase(),
+    name: record.name || record.companyName || record.symbol,
+    market: record.market || record.marketName || "US",
+    action,
+    currency: normalizeCurrency(record.currency || "USD"),
+    entryPrice,
+    currentPrice,
+    targetPrice,
+    stopLoss,
+    confidence: validNumber(record.confidence),
+    riskLabel: record.risk?.label || record.riskLevel || "",
+    status,
+    openedAt: record.openedAt || record.firstSeen || record.generatedAt || record.dataTimestamp || "",
+    closedAt: record.closedAt || record.hitAt || record.stopAt || "",
+    lastUpdatedAt: record.lastUpdatedAt || record.lastSeen || record.dataTimestamp || record.generatedAt || "",
+  };
+}
+
+function loadTradeHistory() {
+  const raw = loadJsonStorage(TRADE_HISTORY_KEY, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.map(normalizeTradeRecord).filter(Boolean);
+}
+
+function saveTradeHistory(items) {
+  saveJsonStorage(TRADE_HISTORY_KEY, items);
+}
+
+function updateTradeHistoryFromRecommendations(items = []) {
+  if (!Array.isArray(items) || !items.length) return;
+  const now = new Date().toISOString();
+  const byKey = new Map(loadTradeHistory().map((entry) => [entry.key, entry]));
+
+  items.forEach((item) => {
+    if (!item?.symbol) return;
+    const action = actionOf(item);
+    const currentPrice = validNumber(item.currentPrice);
+    if (currentPrice === null) return;
+    const key = tradeKeyFor(item);
+    const existing = byKey.get(key);
+    const entryPrice = validNumber(existing?.entryPrice) ?? currentPrice;
+    const targetPrice = validNumber(item.expectedPrice ?? item.target1) ?? existing?.targetPrice ?? null;
+    const stopLoss = validNumber(item.stopLoss) ?? existing?.stopLoss ?? null;
+    const alreadyClosed = ["target_hit", "stop_loss_hit", "closed_profit", "closed_loss", "cancelled", "expired"].includes(existing?.status);
+    const targetHit = !alreadyClosed && action !== "hold" && isTargetReached(action, currentPrice, targetPrice);
+    const stopHit = !alreadyClosed && action !== "hold" && isStopReached(action, currentPrice, stopLoss);
+    const status = alreadyClosed
+      ? existing.status
+      : targetHit
+        ? "target_hit"
+        : stopHit
+          ? "stop_loss_hit"
+          : action === "hold"
+            ? "monitoring"
+            : "open";
+
+    byKey.set(key, {
+      key,
+      symbol: String(item.symbol || "").toUpperCase(),
+      name: item.name || item.companyName || existing?.name || item.symbol,
+      market: item.market || existing?.market || "US",
+      action,
+      currency: normalizeCurrency(item.currency || existing?.currency || "USD"),
+      entryPrice,
+      currentPrice,
+      targetPrice,
+      stopLoss,
+      confidence: validNumber(item.confidence) ?? existing?.confidence ?? null,
+      riskLabel: item.risk?.label || item.riskLevel || existing?.riskLabel || "",
+      status,
+      openedAt: existing?.openedAt || item.generatedAt || item.dataTimestamp || now,
+      closedAt: existing?.closedAt || (targetHit || stopHit ? now : ""),
+      lastUpdatedAt: item.dataTimestamp || item.generatedAt || now,
+    });
+  });
+
+  const sorted = [...byKey.values()]
+    .sort((a, b) => new Date(b.lastUpdatedAt || b.openedAt || 0) - new Date(a.lastUpdatedAt || a.openedAt || 0))
+    .slice(0, 160);
+  saveTradeHistory(sorted);
+}
+
+function tradeStatusLabel(status) {
+  if (status === "target_hit") return t("targetHit");
+  if (status === "stop_loss_hit") return t("stopLossHit");
+  if (status === "closed_profit") return t("closedProfit");
+  if (status === "closed_loss") return t("closedLoss");
+  if (status === "open") return t("openTrades");
+  return t("monitoring");
+}
+
+function tradeGroups(entries) {
+  return [
+    { id: "winning", title: t("winningTrades"), items: entries.filter((entry) => ["target_hit", "closed_profit"].includes(entry.status)) },
+    { id: "losing", title: t("losingTrades"), items: entries.filter((entry) => ["stop_loss_hit", "closed_loss"].includes(entry.status)) },
+    { id: "open", title: t("openTrades"), items: entries.filter((entry) => entry.status === "open") },
+    { id: "monitoring", title: t("monitoredTrades"), items: entries.filter((entry) => !["target_hit", "closed_profit", "stop_loss_hit", "closed_loss", "open"].includes(entry.status)) },
+  ];
+}
+
+function renderTradePerformancePage() {
+  const entries = loadTradeHistory();
+  const groups = tradeGroups(entries);
+  const followed = loadFollowedTradeKeys();
+  const wins = groups.find((group) => group.id === "winning")?.items.length || 0;
+  const losses = groups.find((group) => group.id === "losing")?.items.length || 0;
+  const open = groups.find((group) => group.id === "open")?.items.length || 0;
+  const monitoring = groups.find((group) => group.id === "monitoring")?.items.length || 0;
+  const closed = wins + losses;
+  const winRate = closed ? Math.round((wins / closed) * 100) : 0;
+
+  return `
+    ${renderPageHeader(t("tradePerformance"), t("tradePerformanceDesc"))}
+    <section class="trade-performance-summary">
+      ${metricCard(t("winningTrades"), wins, `${t("confidence")}: ${closed ? `${winRate}%` : t("unavailable")}`)}
+      ${metricCard(t("losingTrades"), losses, t("tradeStatus"))}
+      ${metricCard(t("openTrades"), open, t("tradePerformanceDesc"))}
+      ${metricCard(t("monitoredTrades"), monitoring, `${followed.size} ${t("watchlist")}`)}
+    </section>
+    <div class="trade-performance-grid">
+      ${entries.length ? groups.map((group) => renderTradeGroup(group, followed)).join("") : `<section class="terminal-card trade-group-card">${emptyState(t("noTradeHistory"))}</section>`}
+    </div>
+  `;
+}
+
+function renderTradeGroup(group, followed) {
+  return `
+    <section class="terminal-card trade-group-card trade-group-${group.id}">
+      <div class="section-header compact"><div><h2>${escapeHtml(group.title)}</h2><p>${escapeHtml(t("tradePerformanceDesc"))}</p></div><strong>${group.items.length}</strong></div>
+      <div class="trade-list">
+        ${group.items.length ? group.items.map((entry) => renderTradeRow(entry, followed)).join("") : `<div class="trade-empty">${escapeHtml(t("noLiveData"))}</div>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderTradeRow(entry, followed) {
+  const pnl = tradeReturnPct(entry.action, entry.entryPrice, entry.currentPrice);
+  const isFollowing = followed.has(entry.key);
+  const pnlClass = pnl === null ? "" : pnl >= 0 ? "positive" : "negative";
+  return `
+    <article class="trade-row">
+      <div class="trade-row-main">
+        ${assetLogo(entry)}
+        <div>
+          <strong dir="ltr">${escapeHtml(entry.symbol)}</strong>
+          <span>${escapeHtml(entry.name || entry.market || "")}</span>
+        </div>
+        <b class="signal-badge ${entry.action}">${actionLabel(entry.action)}</b>
+      </div>
+      <div class="trade-row-metrics">
+        <div><span>${t("entryPrice")}</span><strong dir="ltr">${entry.entryPrice === null ? "--" : money(entry.entryPrice, entry.currency)}</strong></div>
+        <div><span>${t("lastPrice")}</span><strong dir="ltr">${entry.currentPrice === null ? "--" : money(entry.currentPrice, entry.currency)}</strong></div>
+        <div><span>${t("target")}</span><strong dir="ltr">${entry.targetPrice === null ? "--" : money(entry.targetPrice, entry.currency)}</strong></div>
+        <div><span>${t("stopLoss")}</span><strong dir="ltr">${entry.stopLoss === null ? "--" : money(entry.stopLoss, entry.currency)}</strong></div>
+        <div><span>${t("profitLoss")}</span><strong class="${pnlClass}" dir="ltr">${pnl === null ? "--" : pct(pnl)}</strong></div>
+        <div><span>${t("tradeStatus")}</span><strong>${escapeHtml(tradeStatusLabel(entry.status))}</strong></div>
+      </div>
+      <div class="trade-row-footer">
+        <span>${t("openDate")}: ${escapeHtml(formatStatusTimestamp(entry.openedAt))}</span>
+        <span>${t("lastUpdate")}: ${escapeHtml(formatStatusTimestamp(entry.lastUpdatedAt))}</span>
+        ${entry.closedAt ? `<span>${t("closeDate")}: ${escapeHtml(formatStatusTimestamp(entry.closedAt))}</span>` : ""}
+        <button type="button" class="${isFollowing ? "active" : ""}" data-follow-trade="${escapeHtml(entry.key)}">${isFollowing ? t("unfollowTrade") : t("followTrade")}</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderAiScannerPage() {
@@ -1920,6 +2335,17 @@ function bindEvents() {
   root.querySelector("[data-refresh-scanner]")?.addEventListener("click", () => {
     loadScannerWithFilters();
   });
+  root.querySelectorAll("[data-follow-trade]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const followed = loadFollowedTradeKeys();
+      const key = button.dataset.followTrade;
+      if (!key) return;
+      if (followed.has(key)) followed.delete(key);
+      else followed.add(key);
+      saveFollowedTradeKeys(followed);
+      render();
+    });
+  });
   root.querySelector("[data-watchlist-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -2013,6 +2439,7 @@ async function loadDashboardRecommendations() {
     const suffix = state.shariaOnly ? "?market=US&sharia_status=compliant" : "?market=US";
     const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
     state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    updateTradeHistoryFromRecommendations(state.data.dashboardRecommendations);
     state.data.scannerSummary = data.summary || null;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
     state.data.loadedAt = data.generatedAt || Date.now();
@@ -2034,6 +2461,7 @@ async function loadRouteRecommendations() {
     const suffix = state.shariaOnly ? "?sharia_status=compliant" : "";
     const data = await fetchJson(traderApi(`us-stocks${suffix}`), { timeout: 45000 });
     state.data.recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    updateTradeHistoryFromRecommendations(state.data.recommendations);
     state.data.usStocks = data;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
     state.data.loadedAt = data.generatedAt || Date.now();
@@ -2056,6 +2484,7 @@ async function loadScannerWithFilters() {
     const suffix = params.toString() ? `?${params.toString()}` : "";
     const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
     state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    updateTradeHistoryFromRecommendations(state.data.dashboardRecommendations);
     state.data.scannerSummary = data.summary || null;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
     state.data.loadedAt = data.generatedAt || Date.now();
