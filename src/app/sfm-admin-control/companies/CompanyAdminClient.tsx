@@ -550,9 +550,14 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   }
 
   return (
-    <AdminDashboardShell ariaLabel={text.title as string} contentClassName="company-admin-dashboard-content">
+    <AdminDashboardShell
+      ariaLabel={text.title as string}
+      contentClassName="company-admin-dashboard-content"
+      contentStyle={{ maxWidth: 'none', width: '100%' }}
+    >
       <style>{`
-        .ca-page{width:100%;max-width:min(1180px,100%);margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:inherit;color:var(--sfm-foreground)}
+        .company-admin-dashboard-content{width:100%!important;max-width:none!important;min-width:0!important}
+        .ca-page{width:100%;max-width:min(1500px,100%);margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:inherit;color:var(--sfm-foreground);min-width:0}
         .ca-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.35rem;flex-wrap:wrap}
         .ca-admin-chip{min-height:42px;border-radius:999px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.12);color:var(--sfm-foreground);padding:0 .95rem;display:inline-flex;align-items:center;gap:.45rem;font-size:.82rem;font-weight:900}
         .ca-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
@@ -563,19 +568,19 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-auth-action.secondary{background:#405766;color:#fff;border-color:rgba(47,214,192,.24);box-shadow:0 12px 24px rgba(15,29,49,.12)}
         .dark .ca-auth-action.secondary,.dark .ca-admin-chip{background:#0f1d31;border-color:#1d3050;color:#e8eef6}
         .dark .ca-toolbar .sfm-language-trigger{background:#0f1d31;border-color:#1d3050;color:#e8eef6;box-shadow:0 10px 24px rgba(0,0,0,.18)}
-        .ca-header{margin-bottom:1.4rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
-        .ca-header-copy{min-width:0;max-width:720px}
-        .ca-header h1{font-size:1.6rem;font-weight:800;color:var(--sfm-foreground);margin:0 0 .3rem}
+        .ca-header{margin-bottom:1.4rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;border:1px solid rgba(29,140,255,.12);background:var(--sfm-card-bg,var(--sfm-card));border-radius:22px;padding:1.25rem 1.35rem;box-shadow:0 14px 34px rgba(3,18,37,.06);min-width:0}
+        .ca-header-copy{min-width:0;max-width:820px}
+        .ca-header h1{font-size:clamp(1.7rem,2.2vw,2.35rem);font-weight:950;color:var(--sfm-foreground);margin:0 0 .35rem;line-height:1.15}
         .ca-header p{color:#64748b;font-size:.9rem;margin:0}.dark .ca-header p{color:#94a3b8}
         .ca-primary-add{min-height:46px;border:0;border-radius:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;padding:0 1.1rem;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font:900 .9rem Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 16px 34px rgba(29,140,255,.22);white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease}
         .ca-primary-add:hover,.ca-primary-add:focus-visible{transform:translateY(-1px);outline:none;box-shadow:0 18px 40px rgba(29,140,255,.30)}
-        .ca-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
-        .ca-tab{padding:.45rem 1rem;border-radius:999px;border:1.5px solid transparent;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .15s;background:var(--sfm-card);color:var(--sfm-foreground)}
+        .ca-tabs{display:flex;gap:.55rem;margin-bottom:1.2rem;overflow-x:auto;scrollbar-width:thin;padding:.15rem .1rem .55rem;min-width:0}
+        .ca-tab{flex:0 0 auto;min-height:42px;padding:.45rem 1rem;border-radius:999px;border:1.5px solid transparent;font-size:.85rem;font-weight:850;cursor:pointer;transition:all .15s;background:var(--sfm-card);color:var(--sfm-foreground);white-space:nowrap}
         .ca-tab:hover{border-color:var(--sfm-primary)}.ca-tab.active{background:var(--sfm-primary);color:#fff;border-color:var(--sfm-primary)}
         .ca-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;border-radius:999px;font-size:.72rem;font-weight:800;padding:0 .35rem;background:rgba(255,255,255,.25);margin-inline-start:.35rem}
         .ca-tab:not(.active) .ca-badge{background:var(--sfm-primary);color:#fff}
-        .ca-card{background:var(--sfm-card);border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.06)}.dark .ca-card{box-shadow:0 4px 18px rgba(0,0,0,.22)}
-        .ca-table{width:100%;border-collapse:collapse;font-size:.87rem}.ca-table th{padding:.75rem 1rem;text-align:start;background:rgba(11,118,224,.06);color:#64748b;font-weight:800;font-size:.78rem;border-bottom:1px solid rgba(0,0,0,.06)}
+        .ca-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);border-radius:18px;overflow:auto;box-shadow:0 12px 30px rgba(3,18,37,.06);max-width:100%;min-width:0}.dark .ca-card{box-shadow:0 4px 18px rgba(0,0,0,.22);border-color:rgba(255,255,255,.08)}
+        .ca-table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:760px}.ca-table th{position:sticky;top:0;z-index:1;padding:.75rem 1rem;text-align:start;background:rgba(11,118,224,.06);color:#64748b;font-weight:800;font-size:.78rem;border-bottom:1px solid rgba(0,0,0,.06)}
         .dark .ca-table th{background:rgba(11,118,224,.08);color:#94a3b8;border-bottom-color:rgba(255,255,255,.06)}
         .ca-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(0,0,0,.05);color:var(--sfm-foreground);vertical-align:middle}.dark .ca-table td{border-bottom-color:rgba(255,255,255,.05)}
         .ca-table tr:last-child td{border-bottom:none}.ca-table tr:hover td{background:rgba(11,118,224,.04)}.dark .ca-table tr:hover td{background:rgba(11,118,224,.08)}
@@ -616,8 +621,8 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-secondary-btn{border:1px solid rgba(100,116,139,.22);background:var(--sfm-card);color:var(--sfm-foreground)}
         .ca-save-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 12px 28px rgba(29,140,255,.18)}
         .ca-save-btn:disabled,.ca-secondary-btn:disabled{opacity:.6;cursor:not-allowed}
-        @media(max-width:900px){.ca-header{display:grid;align-items:start}.ca-primary-add{width:100%}.ca-add-grid{grid-template-columns:1fr}}
-        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-card{overflow-x:auto}.ca-table{min-width:620px}.ca-add-actions{display:grid;grid-template-columns:1fr}.ca-save-btn,.ca-secondary-btn{width:100%}}
+        @media(max-width:900px){.ca-header{display:grid;align-items:start;padding:1rem}.ca-primary-add{width:100%}.ca-add-grid{grid-template-columns:1fr}}
+        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-table{min-width:620px}.ca-add-actions{display:grid;grid-template-columns:1fr}.ca-save-btn,.ca-secondary-btn{width:100%}}
       `}</style>
 
       <div className="ca-page">
