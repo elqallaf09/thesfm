@@ -2201,3 +2201,174 @@
             height: 40px;
           }
         }
+
+@media (max-width: 760px) {
+  .market-analysis-page,
+  .market-page-shell,
+  .market-dashboard,
+  .market-dashboard-main,
+  .market-dashboard-sidebar,
+  .market-dashboard-grid,
+  .market-active-dashboard,
+  .market-card,
+  .market-quick-card,
+  .news-tool-card,
+  .central-news-card,
+  .session-card,
+  .education-card,
+  .calendar-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .market-analysis-page,
+  .market-page-shell {
+    overflow-x: hidden;
+  }
+
+  .market-dashboard-main,
+  .market-dashboard-sidebar,
+  .market-dashboard-grid,
+  .market-active-dashboard,
+  .market-section-grid,
+  .market-stat-grid,
+  .market-news-grid,
+  .market-calendar-grid,
+  .market-education-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .market-dashboard-tabs,
+  .market-filter-row,
+  .market-pill-row,
+  .market-category-row,
+  .market-symbol-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .market-dashboard-tabs > *,
+  .market-filter-row > *,
+  .market-pill-row > *,
+  .market-category-row > *,
+  .market-symbol-row > * {
+    flex: 0 0 auto;
+  }
+
+  .market-dashboard-tabs button,
+  .market-filter-row button,
+  .market-pill-row button,
+  .market-category-row button,
+  .market-symbol-row button,
+  .market-action-button,
+  .market-card button,
+  .news-tool-card button,
+  .central-news-card button {
+    min-height: 44px;
+  }
+
+  .market-card,
+  .market-quick-card,
+  .central-news-card,
+  .news-tool-card,
+  .session-card {
+    padding: 15px;
+    border-radius: 22px;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+
+  .market-card-head,
+  .market-quick-head,
+  .central-news-card-head,
+  .news-tool-card-head,
+  .session-card-head {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .market-card-title,
+  .market-quick-card h3,
+  .central-news-card h3,
+  .news-tool-card h3,
+  .session-card h3 {
+    font-size: 16px;
+    line-height: 1.55;
+    white-space: normal;
+  }
+
+  .market-card p,
+  .market-quick-card p,
+  .central-news-card p,
+  .news-tool-card p,
+  .session-card p {
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+
+  .market-empty-state,
+  .tool-empty-state,
+  .market-section-loading {
+    min-height: auto;
+    padding: 18px 14px;
+  }
+
+  .market-price,
+  .market-change,
+  .market-symbol,
+  .market-currency,
+  .market-percent,
+  .market-time,
+  .market-ticker,
+  .session-time,
+  .news-symbol {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  .central-news-card h4,
+  .news-tool-card h4,
+  .market-news-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.55;
+  }
+
+  .central-news-card p,
+  .news-tool-card p,
+  .market-news-summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 430px) {
+  .market-analysis-page,
+  .market-page-shell {
+    padding-inline: 12px;
+  }
+
+  .market-card,
+  .market-quick-card,
+  .central-news-card,
+  .news-tool-card,
+  .session-card {
+    padding: 14px;
+  }
+
+  .market-empty-state,
+  .tool-empty-state,
+  .market-section-loading {
+    padding: 16px 12px;
+  }
+}

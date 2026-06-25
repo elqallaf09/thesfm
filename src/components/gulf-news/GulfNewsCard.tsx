@@ -30,17 +30,17 @@ export function GulfNewsCard({ item, marketBadge, variant = 'standard', labels, 
         </span>
       </div>
       <div className="gulf-news-card-body">
-        <span className="gulf-news-card-kicker">
+        <span className="gulf-news-card-kicker" dir="auto">
           <Newspaper size={15} />
           {item.source || labels.source}
         </span>
-        <h2>{displayTitle}</h2>
-        <p>{displaySummary}</p>
+        <h2 dir="auto">{displayTitle}</h2>
+        <p dir="auto">{displaySummary}</p>
       </div>
       <div className="gulf-news-meta">
         <span title={labels.published}>
           <Clock3 size={14} />
-          {formatDateTime(item.publishedAt)}
+          <bdi>{formatDateTime(item.publishedAt)}</bdi>
         </span>
         <a className="gulf-news-read-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`${labels.openArticle}: ${displayTitle}`}>
           {labels.openArticle}

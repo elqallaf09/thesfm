@@ -1334,6 +1334,7 @@
 @media (max-width: 620px) {
   .page {
     display: block;
+    overflow-x: hidden;
   }
 
   .heroCopy {
@@ -1362,6 +1363,8 @@
   .analysisPanel,
   .sidebarPanel {
     padding: 14px;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .summaryStrip,
@@ -1408,8 +1411,57 @@
 
   .tabs button,
   .categoryScroller button {
-    min-height: 42px;
+    min-height: 44px;
     padding-inline: 14px;
+  }
+
+  .tabs,
+  .categoryScroller {
+    scroll-padding-inline: 12px;
+    overscroll-behavior-inline: contain;
+  }
+
+  .stockCard,
+  .newsCard,
+  .compactCard,
+  .analysisCard,
+  .summaryCard {
+    min-width: 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+
+  .stockCard h3,
+  .newsCard h3,
+  .featuredPrimary h3,
+  .analysisCard h3 {
+    line-height: 1.45;
+    white-space: normal;
+  }
+
+  .newsCard p,
+  .featuredPrimary p,
+  .analysisCard p,
+  .compactCard p {
+    line-height: 1.65;
+  }
+
+  .emptyState,
+  .loadingState,
+  .errorState {
+    min-height: auto;
+    padding: 18px 12px;
+  }
+
+  .bankTickerItem strong,
+  .bankTickerItem b,
+  .stockSymbol,
+  .stockPrice,
+  .stockChange,
+  .currencyCode,
+  .percentValue {
+    direction: ltr;
+    unicode-bidi: isolate;
   }
 
   .featuredPrimary {
