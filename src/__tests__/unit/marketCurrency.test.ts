@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMarketPrice } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, normalizeMarketPrice } from '@/lib/market/marketCurrency';
 
 describe('formatMarketPrice forex formatting', () => {
   it('does not round small inverse JPY pairs to a two-decimal USD amount', () => {
@@ -42,5 +42,78 @@ describe('formatMarketPrice forex formatting', () => {
       assetType: 'stock',
       locale: 'ar',
     })).toBe('$0.01');
+  });
+});
+
+describe('market price normalization', () => {
+  it('converts raw Boursa Kuwait fils prices into KWD once', () => {
+    const normalized = normalizeMarketPrice({
+      price: 770,
+      currency: 'KWD',
+      symbol: 'KFH.KW',
+      providerSymbol: 'KFH.KW',
+      exchange: 'Boursa Kuwait',
+      assetType: 'stock',
+    });
+
+    expect(normalized.price).toBe(0.77);
+    expect(normalized.priceUnit).toBe('fils');
+    expect(formatMarketPrice({
+      price: 770,
+      currency: 'KWD',
+      symbol: 'KFH.KW',
+      providerSymbol: 'KFH.KW',
+      exchange: 'Boursa Kuwait',
+      assetType: 'stock',
+      locale: 'en',
+    })).toBe('0.770 KWD');
+  });
+
+  it('does not convert already-normalized Kuwait prices a second time', () => {
+    const normalized = normalizeMarketPrice({
+      price: 0.77,
+      currency: 'KWD',
+      symbol: 'KFH.KW',
+      providerSymbol: 'KFH.KW',
+      exchange: 'Boursa Kuwait',
+      assetType: 'stock',
+      priceUnit: 'fils',
+      priceIsNormalized: true,
+    });
+
+    expect(normalized.price).toBe(0.77);
+    expect(formatMarketPrice({
+      price: 0.77,
+      currency: 'KWD',
+      symbol: 'KFH.KW',
+      providerSymbol: 'KFH.KW',
+      exchange: 'Boursa Kuwait',
+      assetType: 'stock',
+      priceUnit: 'fils',
+      priceIsNormalized: true,
+      includeKuwaitDinarEquivalent: true,
+      locale: 'en',
+    })).toBe('0.770 KWD · 770 fils');
+  });
+
+  it('does not treat ordinary KWD amounts as fils without Kuwait market context', () => {
+    const formatted = formatMarketPrice({
+      price: 1000,
+      currency: 'KWD',
+      locale: 'en',
+    });
+
+    expect(formatted).toContain('1,000.000');
+    expect(formatted).not.toContain('1.000');
+  });
+
+  it('returns unavailable for missing prices instead of a fake zero', () => {
+    expect(normalizeMarketPrice({
+      price: null,
+      currency: 'KWD',
+      symbol: 'KFH.KW',
+      exchange: 'Boursa Kuwait',
+      assetType: 'stock',
+    }).price).toBeNull();
   });
 });

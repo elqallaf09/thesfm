@@ -30,6 +30,7 @@ export type NormalizedMarketPrice = {
   currency: string | null;
   priceUnit: MarketPriceUnit;
   currencySource?: MarketCurrencySource;
+  priceIsNormalized?: boolean;
 };
 
 type FormatMarketPriceInput = {
@@ -41,6 +42,7 @@ type FormatMarketPriceInput = {
   providerSymbol?: string | null;
   assetType?: MarketAssetType | string | null;
   priceUnit?: MarketPriceUnit;
+  priceIsNormalized?: boolean;
   locale?: string | null;
   includeKuwaitDinarEquivalent?: boolean;
   unknownCurrencyLabel?: string;
@@ -269,6 +271,11 @@ function isLondonMarket(symbol?: string | null, exchange?: string | null, market
   return /\.L\b/i.test(String(symbol ?? '')) || /london|lse|united kingdom/i.test(`${exchange ?? ''} ${market ?? ''}`);
 }
 
+function warnMarketPriceNormalization(message: string, details: Record<string, unknown>) {
+  if (process.env.NODE_ENV === 'production') return;
+  console.warn('[market-price-normalization]', message, details);
+}
+
 function marketPriceUnitLabel(unit: Exclude<MarketPriceUnit, 'major' | null>, locale?: string | null) {
   if (unit === 'fils') return locale === 'ar' ? 'فلس' : 'fils';
   return locale === 'ar' ? 'بنس' : locale === 'fr' ? 'pence' : 'pence';
@@ -291,7 +298,9 @@ export function detectPriceUnit(input: {
   const providerCurrency = String(input.providerCurrency ?? '').trim();
   const currency = normalizeMarketCurrencyCode(input.currency ?? input.providerCurrency);
 
-  if ((currency === 'KWD' || /^KWF$/i.test(providerCurrency) || isKuwaitMarket(symbols, exchange)) && Math.abs(numeric) >= 10) {
+  const providerUsesFils = /^(KWF|fils)$/i.test(providerCurrency);
+  const kuwaitMarket = isKuwaitMarket(symbols, exchange);
+  if ((providerUsesFils || kuwaitMarket) && Math.abs(numeric) >= 10) {
     return 'fils';
   }
 
@@ -312,8 +321,21 @@ export function normalizeMarketPrice(input: {
   market?: string | null;
   assetType?: MarketAssetType | string | null;
   priceUnit?: MarketPriceUnit;
+  priceIsNormalized?: boolean;
   currencySource?: MarketCurrencySource;
 }): NormalizedMarketPrice {
+  if (input.price === null || input.price === undefined) {
+    const currency = normalizeMarketCurrencyCode(input.currency ?? input.providerCurrency);
+    return {
+      rawPrice: null,
+      price: null,
+      currency,
+      priceUnit: input.priceUnit ?? null,
+      currencySource: input.currencySource,
+      priceIsNormalized: input.priceIsNormalized,
+    };
+  }
+
   const rawPrice = Number(input.price);
   const currency = normalizeMarketCurrencyCode(input.currency ?? input.providerCurrency);
   if (!Number.isFinite(rawPrice)) {
@@ -323,10 +345,20 @@ export function normalizeMarketPrice(input: {
       currency,
       priceUnit: input.priceUnit ?? null,
       currencySource: input.currencySource,
+      priceIsNormalized: input.priceIsNormalized,
     };
   }
+  if (!input.priceIsNormalized && currency === 'KWD' && rawPrice > 0 && rawPrice < 0.01 && isKuwaitMarket(input.symbol ?? input.providerSymbol, input.exchange, input.market)) {
+    warnMarketPriceNormalization('Suspiciously small Kuwait market price received before normalization.', {
+      symbol: input.symbol,
+      providerSymbol: input.providerSymbol,
+      exchange: input.exchange,
+      rawPrice,
+      priceUnit: input.priceUnit,
+    });
+  }
 
-  const priceUnit = input.priceUnit ?? detectPriceUnit({
+  const priceUnit = input.priceIsNormalized ? input.priceUnit ?? 'major' : input.priceUnit ?? detectPriceUnit({
     price: rawPrice,
     currency,
     providerCurrency: input.providerCurrency,
@@ -337,7 +369,7 @@ export function normalizeMarketPrice(input: {
     assetType: input.assetType,
   });
 
-  const price = priceUnit === 'fils'
+  const price = input.priceIsNormalized ? rawPrice : priceUnit === 'fils'
     ? rawPrice / 1000
     : priceUnit === 'pence'
       ? rawPrice / 100
@@ -349,6 +381,7 @@ export function normalizeMarketPrice(input: {
     currency,
     priceUnit,
     currencySource: input.currencySource,
+    priceIsNormalized: input.priceIsNormalized,
   };
 }
 
@@ -361,6 +394,7 @@ export function formatMarketPrice({
   providerSymbol,
   assetType,
   priceUnit,
+  priceIsNormalized,
   locale = 'ar',
   includeKuwaitDinarEquivalent = false,
   unknownCurrencyLabel,
@@ -382,6 +416,7 @@ export function formatMarketPrice({
     market,
     assetType,
     priceUnit,
+    priceIsNormalized,
   });
   if (normalizedPrice.price === null) return locale === 'ar' ? 'غير متاح' : locale === 'fr' ? 'Indisponible' : 'Unavailable';
   const numeric = normalizedPrice.price;
@@ -405,11 +440,15 @@ export function formatMarketPrice({
   if (normalizedCurrency === 'KWD' && isKuwaitMarket(symbol ?? providerSymbol, exchange, market)) {
     const primary = `${formatPlainNumber(numeric, locale, 3)} ${marketCurrencyLabel('KWD', locale)}`;
     if (includeKuwaitDinarEquivalent) {
-      const rawFils = normalizedPrice.priceUnit === 'fils' && normalizedPrice.rawPrice !== null
-        ? normalizedPrice.rawPrice
-        : numeric > 0 && Math.abs(numeric) < 10
-          ? numeric * 1000
-          : null;
+      const rawFils = normalizedPrice.priceIsNormalized
+        ? numeric * 1000
+        : (
+            normalizedPrice.priceUnit === 'fils' && normalizedPrice.rawPrice !== null
+              ? normalizedPrice.rawPrice
+              : numeric > 0 && Math.abs(numeric) < 10
+                ? numeric * 1000
+                : null
+          );
       if (rawFils !== null) {
         const secondary = `${formatPlainNumber(rawFils, locale, 0)} ${marketPriceUnitLabel('fils', locale)}`;
         return `${primary} · ${secondary}`;

@@ -177,7 +177,7 @@ export function PriceHistoryChart({
   const axisValues = Array.from({ length: 5 }, (_, index) => domainMax - (spread * index) / 4);
   const verticalGridCount = Math.min(6, Math.max(3, Math.floor(activePoints.length / 8)));
   const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.86));
-  const chartMoney = (value: number) => money(value, currency, { locale, exchange, symbol });
+  const chartMoney = (value: number) => money(value, currency, { locale, exchange, symbol, priceIsNormalized: true });
   const chartMoneyOrUnavailable = (value: number | null) => value === null ? t('market_unavailable') : chartMoney(value);
   const resolvedCurrentPrice = numberOrNull(currentPrice) ?? last?.close ?? null;
   const levelLines = [

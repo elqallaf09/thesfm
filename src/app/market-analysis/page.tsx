@@ -1449,9 +1449,41 @@ export default function MarketAnalysisPage() {
   const selectedProviderMarketSymbol = selected?.providerSymbol ?? selectedAsset?.providerSymbol ?? null;
   const selectedMarketAssetType = selected?.assetType ?? selectedAsset?.assetType ?? null;
   const selectedCurrencyLabel = marketCurrencyLabel(selectedCurrency, lang);
+  const selectedPriceHistory = useMemo(
+    () => chartHistory.length > 0 ? chartHistory : selected?.history ?? [],
+    [chartHistory, selected?.history],
+  );
+  const marketLevels = useMemo(() => {
+    if (!selected) return { reliable: false, support: null as number | null, resistance: null as number | null };
+    const current = Number(selected.latestPrice);
+    const support = Number(selected.levels.support);
+    const resistance = Number(selected.levels.resistance);
+    const closes = selectedPriceHistory
+      .map(point => Number(point.close))
+      .filter(value => Number.isFinite(value) && value > 0);
+    const distinctCloses = new Set(closes.map(value => value.toFixed(6)));
+    const spread = Math.abs(resistance - support);
+    const relativeSpread = current > 0 ? spread / current : 0;
+    const reliable = Number.isFinite(current)
+      && Number.isFinite(support)
+      && Number.isFinite(resistance)
+      && current > 0
+      && support > 0
+      && resistance > 0
+      && resistance >= support
+      && relativeSpread >= 0.001
+      && closes.length >= 3
+      && distinctCloses.size >= 2;
+
+    return {
+      reliable,
+      support: reliable ? support : null,
+      resistance: reliable ? resistance : null,
+    };
+  }, [selected, selectedPriceHistory]);
   const levelRange = useMemo(() => {
     if (!selected) return { min: 0, max: 1, support: 0, current: 50, resistance: 100 };
-    const values = [selected.levels.support, selected.latestPrice, selected.levels.resistance].filter(value => Number.isFinite(value));
+    const values = [marketLevels.support, selected.latestPrice, marketLevels.resistance].filter((value): value is number => Number.isFinite(value));
     const min = values.length ? Math.min(...values) : 0;
     const max = values.length ? Math.max(...values) : 1;
     const spread = max - min;
@@ -1460,11 +1492,11 @@ export default function MarketAnalysisPage() {
     return {
       min: paddedMin,
       max: paddedMax,
-      support: levelMarkerPercent(selected.levels.support, paddedMin, paddedMax),
+      support: marketLevels.support === null ? 50 : levelMarkerPercent(marketLevels.support, paddedMin, paddedMax),
       current: levelMarkerPercent(selected.latestPrice, paddedMin, paddedMax),
-      resistance: levelMarkerPercent(selected.levels.resistance, paddedMin, paddedMax),
+      resistance: marketLevels.resistance === null ? 50 : levelMarkerPercent(marketLevels.resistance, paddedMin, paddedMax),
     };
-  }, [selected]);
+  }, [marketLevels.resistance, marketLevels.support, selected]);
   const selectedMoney = useCallback(
     (value: number, extra?: { includeKuwaitDinarEquivalent?: boolean }) => money(value, selectedCurrency, {
       locale: lang,
@@ -1473,6 +1505,7 @@ export default function MarketAnalysisPage() {
       providerSymbol: selectedProviderMarketSymbol,
       assetType: selectedMarketAssetType,
       priceUnit: selected?.priceUnit ?? selected?.quote?.priceUnit,
+      priceIsNormalized: true,
       includeKuwaitDinarEquivalent: extra?.includeKuwaitDinarEquivalent,
     }),
     [lang, selected?.priceUnit, selected?.quote?.priceUnit, selectedCurrency, selectedExchange, selectedMarketAssetType, selectedMarketSymbol, selectedProviderMarketSymbol],
@@ -1485,6 +1518,7 @@ export default function MarketAnalysisPage() {
       providerSymbol: asset.providerSymbol,
       assetType: asset.assetType,
       priceUnit: asset.priceUnit ?? asset.quote?.priceUnit,
+      priceIsNormalized: true,
     }),
     [lang],
   );
@@ -1773,7 +1807,7 @@ export default function MarketAnalysisPage() {
   const analysisConfidence = selected ? Math.min(100, Math.max(0, Math.round(
     35
     + ((selected.dataStatus ?? 'live') === 'live' ? 15 : selected.dataStatus === 'delayed' ? 9 : 0)
-    + (chartHistory.length >= 30 ? 18 : chartHistory.length >= 10 ? 10 : chartHistory.length > 0 ? 5 : 0)
+    + (selectedPriceHistory.length >= 30 ? 18 : selectedPriceHistory.length >= 10 ? 10 : selectedPriceHistory.length > 0 ? 5 : 0)
     + (selectedHasOhlc ? 7 : 0)
     + (hasFundamentals ? 8 : 0)
     + (aiInsight?.status === 'ready' ? 12 : ruleBasedSummary ? 6 : 0)
@@ -1790,7 +1824,7 @@ export default function MarketAnalysisPage() {
     },
     {
       label: analysisCopy.priceHistory,
-      value: chartHistory.length > 0 ? `${chartHistory.length}` : analysisCopy.unavailableData,
+      value: selectedPriceHistory.length > 0 ? `${selectedPriceHistory.length}` : analysisCopy.unavailableData,
     },
     {
       label: t('market_fundamental_snapshot'),
@@ -1847,7 +1881,7 @@ export default function MarketAnalysisPage() {
   const reportLines = selected ? [
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
     `${t('market_report_risk')}: ${t(`market_risk_${selected.riskLevel}`)} - ${selected.indicators.volatility.toFixed(1)}%`,
-    `${t('market_report_levels')}: ${t('market_support_zone')} ${selectedMoney(selected.levels.support)} / ${t('market_resistance_zone')} ${selectedMoney(selected.levels.resistance)}`,
+    `${t('market_report_levels')}: ${marketLevels.reliable && marketLevels.support !== null && marketLevels.resistance !== null ? `${t('market_support_zone')} ${selectedMoney(marketLevels.support)} / ${t('market_resistance_zone')} ${selectedMoney(marketLevels.resistance)}` : t('market_analysis_insufficient')}`,
     `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${selectedMoney(selected.indicators.sma20)}, SMA 50 ${selectedMoney(selected.indicators.sma50)}`,
   ] : [];
   const marketTabs = useMemo(() => [
@@ -2394,8 +2428,8 @@ export default function MarketAnalysisPage() {
                   currentPrice={selected.latestPrice}
                   changePercent={selected.changePercent}
                   trend={selected.trend}
-                  support={selected.levels.support}
-                  resistance={selected.levels.resistance}
+                  support={marketLevels.support}
+                  resistance={marketLevels.resistance}
                   source={chartMeta.source ?? selected.source ?? selected.provider}
                   updatedAt={chartMeta.updatedAt ?? selected.lastUpdated ?? selected.quote?.timestamp ?? selected.fetchedAt}
                   onRetry={() => loadHistory(timeframe)}
@@ -2411,39 +2445,49 @@ export default function MarketAnalysisPage() {
                   <MarketMetric label={t('market_daily_change')} value={percent(selected.changePercent)} valueDir="ltr" />
                   <MarketMetric label={t('market_trend')} value={t(`market_trend_${selected.trend}`)} icon={trendIcon} />
                 </div>
-                <div className="levels-strip" aria-label={t('market_support_resistance_levels')}>
-                  <div className="levels-strip-labels">
-                    <span className="support">
-                      <small>{t('market_support_zone')}</small>
-                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.levels.support)}</b>
-                      <em className="market-numeric-value" dir="ltr">{percent(distancePercent(selected.levels.support, selected.latestPrice))}</em>
-                    </span>
-                    <span className="current">
-                      <small>{t('market_current_price')}</small>
-                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.latestPrice)}</b>
-                      <em>{t(`market_trend_${selected.trend}`)}</em>
-                    </span>
-                    <span className="resistance">
-                      <small>{t('market_resistance_zone')}</small>
-                      <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.levels.resistance)}</b>
-                      <em className="market-numeric-value" dir="ltr">{percent(distancePercent(selected.levels.resistance, selected.latestPrice))}</em>
-                    </span>
+                {marketLevels.reliable && marketLevels.support !== null && marketLevels.resistance !== null ? (
+                  <div className="levels-strip" aria-label={t('market_support_resistance_levels')}>
+                    <div className="levels-strip-labels">
+                      <span className="support">
+                        <small>{t('market_support_zone')}</small>
+                        <b className="market-numeric-value" dir="ltr">{selectedMoney(marketLevels.support)}</b>
+                        <em className="market-numeric-value" dir="ltr">{percent(distancePercent(marketLevels.support, selected.latestPrice))}</em>
+                      </span>
+                      <span className="current">
+                        <small>{t('market_current_price')}</small>
+                        <b className="market-numeric-value" dir="ltr">{selectedMoney(selected.latestPrice)}</b>
+                        <em>{t(`market_trend_${selected.trend}`)}</em>
+                      </span>
+                      <span className="resistance">
+                        <small>{t('market_resistance_zone')}</small>
+                        <b className="market-numeric-value" dir="ltr">{selectedMoney(marketLevels.resistance)}</b>
+                        <em className="market-numeric-value" dir="ltr">{percent(distancePercent(marketLevels.resistance, selected.latestPrice))}</em>
+                      </span>
+                    </div>
+                    <div className="levels-bar" aria-hidden="true">
+                      <span className="support" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.support)}%` }}>
+                        <i />
+                        <em>{t('market_support_zone')}</em>
+                      </span>
+                      <span className="current" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.current)}%` }}>
+                        <i />
+                        <em>{t('market_current_price')}</em>
+                      </span>
+                      <span className="resistance" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.resistance)}%` }}>
+                        <i />
+                        <em>{t('market_resistance_zone')}</em>
+                      </span>
+                    </div>
                   </div>
-                  <div className="levels-bar" aria-hidden="true">
-                    <span className="support" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.support)}%` }}>
-                      <i />
-                      <em>{t('market_support_zone')}</em>
-                    </span>
-                    <span className="current" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.current)}%` }}>
-                      <i />
-                      <em>{t('market_current_price')}</em>
-                    </span>
-                    <span className="resistance" style={{ insetInlineStart: `${readableLevelMarkerPercent(levelRange.resistance)}%` }}>
-                      <i />
-                      <em>{t('market_resistance_zone')}</em>
-                    </span>
+                ) : (
+                  <div className="market-levels-empty" role="status">
+                    <AlertTriangle size={18} />
+                    <div>
+                      <strong>{t('market_chart_partial_data_title')}</strong>
+                      <p>{t('market_chart_partial_data_body')}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <aside className="market-panel">
@@ -2459,8 +2503,8 @@ export default function MarketAnalysisPage() {
                   <MarketMetric label="SMA 20" value={selectedMoney(selected.indicators.sma20)} valueDir="ltr" />
                   <MarketMetric label="SMA 50" value={selectedMoney(selected.indicators.sma50)} valueDir="ltr" />
                   <MarketMetric label={t('market_risk_level')} value={Number.isFinite(selected.indicators.volatility) ? `${selected.indicators.volatility.toFixed(1)}%` : '--'} valueDir="ltr" />
-                  <MarketMetric label={t('market_support_zone')} value={selectedMoney(selected.levels.support)} valueDir="ltr" />
-                  <MarketMetric label={t('market_resistance_zone')} value={selectedMoney(selected.levels.resistance)} valueDir="ltr" />
+                  <MarketMetric label={t('market_support_zone')} value={marketLevels.support !== null ? selectedMoney(marketLevels.support) : t('market_analysis_insufficient')} valueDir={marketLevels.support !== null ? 'ltr' : undefined} />
+                  <MarketMetric label={t('market_resistance_zone')} value={marketLevels.resistance !== null ? selectedMoney(marketLevels.resistance) : t('market_analysis_insufficient')} valueDir={marketLevels.resistance !== null ? 'ltr' : undefined} />
                 </div>
                 <div className="analysis-interpretation-list">
                   {technicalNarratives.map(item => (
@@ -3649,7 +3693,7 @@ export default function MarketAnalysisPage() {
           width:min(1450px,100%)!important;
           margin-inline:auto!important;
           display:grid!important;
-          grid-template-columns:minmax(0,1fr) minmax(320px,360px)!important;
+          grid-template-columns:minmax(0,1fr)!important;
           gap:20px!important;
           align-items:start!important;
           min-width:0!important;
@@ -3880,15 +3924,17 @@ export default function MarketAnalysisPage() {
         :global(.analysis-columns){
           grid-column:1 / -1!important;
           display:grid!important;
-          grid-template-columns:minmax(0,1fr) minmax(320px,360px)!important;
+          grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important;
           gap:20px!important;
           align-items:start!important;
+          width:100%!important;
           min-width:0!important;
         }
         :global(.analysis-main-column),
         :global(.analysis-side-rail){
           display:grid!important;
           gap:16px!important;
+          width:100%!important;
           min-width:0!important;
           align-content:start!important;
         }
@@ -3909,6 +3955,7 @@ export default function MarketAnalysisPage() {
           display:grid!important;
           grid-template-columns:1fr!important;
           gap:14px!important;
+          width:100%!important;
           min-width:0!important;
         }
         :global(.analysis-side-rail .asset-profile-card){
@@ -4118,6 +4165,37 @@ export default function MarketAnalysisPage() {
           font-size:12px!important;
           font-weight:850!important;
           line-height:1.65!important;
+        }
+        :global(.market-levels-empty){
+          margin-top:16px!important;
+          display:flex!important;
+          align-items:flex-start!important;
+          gap:12px!important;
+          padding:14px 15px!important;
+          border-radius:18px!important;
+          border:1px dashed rgba(245,158,11,.28)!important;
+          background:rgba(245,158,11,.08)!important;
+          color:#92400e!important;
+        }
+        :global(.market-levels-empty svg){
+          flex:0 0 auto!important;
+          margin-top:3px!important;
+        }
+        :global(.market-levels-empty strong),
+        :global(.market-levels-empty p){
+          margin:0!important;
+          line-height:1.75!important;
+        }
+        :global(.market-levels-empty strong){
+          display:block!important;
+          color:#713f12!important;
+          font-size:13px!important;
+          font-weight:950!important;
+        }
+        :global(.market-levels-empty p){
+          color:#92400e!important;
+          font-size:12px!important;
+          font-weight:850!important;
         }
         @media(max-width:1180px){
           :global(.market-analysis-result-workspace){

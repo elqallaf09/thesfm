@@ -199,6 +199,7 @@ export function money(value: number, currency?: string | null, options?: {
   providerSymbol?: string | null;
   assetType?: MarketAssetType | string | null;
   priceUnit?: MarketPriceUnit;
+  priceIsNormalized?: boolean;
   includeKuwaitDinarEquivalent?: boolean;
 }) {
   return formatMarketPrice({
@@ -209,6 +210,7 @@ export function money(value: number, currency?: string | null, options?: {
     providerSymbol: options?.providerSymbol,
     assetType: options?.assetType,
     priceUnit: options?.priceUnit,
+    priceIsNormalized: options?.priceIsNormalized,
     locale: options?.locale ?? 'ar',
     includeKuwaitDinarEquivalent: options?.includeKuwaitDinarEquivalent,
   });

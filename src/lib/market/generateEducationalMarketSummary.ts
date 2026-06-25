@@ -126,6 +126,7 @@ function formatNativeMoney(input: EducationalMarketSummaryInput, value: number) 
     exchange: input.exchange,
     symbol: input.symbol,
     locale: input.language,
+    priceIsNormalized: true,
   });
 }
 
