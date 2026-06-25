@@ -4,21 +4,22 @@ import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/
 import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { normalizeAssetType } from '@/lib/market/marketService';
 
-type MarketChartRange = '1D' | '1W' | '1M' | '6M' | '1Y';
+type MarketChartRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
 
 const RANGE_CONFIG: Record<MarketChartRange, { period: string; interval: string }> = {
   '1D': { period: '1d', interval: '5m' },
   '1W': { period: '5d', interval: '30m' },
   '1M': { period: '1mo', interval: '1d' },
-  '6M': { period: '6mo', interval: '1d' },
   '1Y': { period: '1y', interval: '1d' },
+  ALL: { period: 'max', interval: '1mo' },
 };
 
 function normalizeRange(value: unknown): MarketChartRange {
   const normalized = String(value ?? '').trim().toUpperCase();
-  if (normalized === '1D' || normalized === '1W' || normalized === '1M' || normalized === '6M' || normalized === '1Y') return normalized;
+  if (normalized === '1D' || normalized === '1W' || normalized === '1M' || normalized === '1Y' || normalized === 'ALL') return normalized;
   if (normalized === '1MO') return '1M';
-  if (normalized === '6MO') return '6M';
+  if (normalized === 'MAX') return 'ALL';
+  if (normalized === '6M' || normalized === '6MO') return '1Y';
   if (normalized === '12M' || normalized === '1YR') return '1Y';
   return '1D';
 }
@@ -30,8 +31,9 @@ function normalizePeriod(value: unknown, fallback: string) {
   if (upper === '1D') return '1d';
   if (upper === '1W') return '5d';
   if (upper === '1M' || upper === '1MO') return '1mo';
-  if (upper === '6M' || upper === '6MO') return '6mo';
   if (upper === '1Y' || upper === '1YR' || upper === '12M') return '1y';
+  if (upper === 'ALL' || upper === 'MAX') return 'max';
+  if (upper === '6M' || upper === '6MO') return '6mo';
   return normalized;
 }
 
@@ -115,6 +117,7 @@ function normalizeHistoryCurrencyPoints(points: ReturnType<typeof normalizeHisto
 
 function statusForCode(code?: string) {
   if (code === 'market_data_timeout') return 408;
+  if (code === 'market_data_rate_limit' || code === 'RATE_LIMIT') return 429;
   if (code === 'invalid_symbol' || code === 'provider_no_data' || code === 'PRICE_HISTORY_UNAVAILABLE') return 422;
   if (code === 'market_data_unreachable' || code === 'provider_error') return 503;
   return 400;

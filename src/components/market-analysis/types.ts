@@ -106,7 +106,7 @@ export type TechnicalState = {
 };
 
 
-export type MarketTimeframe = '1D' | '1W' | '1M' | '6M' | '1Y';
+export type MarketTimeframe = '1D' | '1W' | '1M' | '1Y' | 'ALL';
 export type MarketChartType = 'line' | 'area' | 'candlestick' | 'ohlc';
 
 export type ScenarioCurrencyCode = 'KWD' | 'USD' | 'SAR' | 'AED' | 'QAR' | 'BHD' | 'OMR' | 'EUR' | 'GBP';

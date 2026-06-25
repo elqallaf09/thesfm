@@ -186,7 +186,7 @@ function readMarketAnalysisUrlState() {
   const params = new URLSearchParams(window.location.search);
   const symbol = validateSymbol(params.get('symbol')?.trim().toUpperCase() ?? '') ?? '';
   const assetType = normalizeAssetFilterParam(params.get('assetType') ?? (symbol ? 'stock' : DEFAULT_MARKET_ASSET_FILTER));
-  const timeframeParam = params.get('timeframe');
+  const timeframeParam = params.get('range') ?? params.get('timeframe');
   return {
     symbol,
     assetType,
@@ -236,6 +236,7 @@ export default function MarketAnalysisPage() {
   const [chartMessage, setChartMessage] = useState('');
   const [chartMeta, setChartMeta] = useState<{ interval?: string; source?: string; updatedAt?: string }>({});
   const [chartRefreshKey, setChartRefreshKey] = useState(0);
+  const chartAssetKeyRef = useRef('');
   const [alertType, setAlertType] = useState<AlertType>('above');
   const [alertThreshold, setAlertThreshold] = useState('');
   const [whatIfAmount, setWhatIfAmount] = useState('');
@@ -856,11 +857,12 @@ export default function MarketAnalysisPage() {
       params.delete('assetType');
     }
 
-    if (cleanSymbol || timeframe !== '1D' || params.has('timeframe')) {
-      params.set('timeframe', timeframe);
+    if (cleanSymbol || timeframe !== '1D' || params.has('range') || params.has('timeframe')) {
+      params.set('range', timeframe);
     } else {
-      params.delete('timeframe');
+      params.delete('range');
     }
+    params.delete('timeframe');
     params.delete('autoRun');
 
     const queryString = params.toString();
@@ -891,13 +893,16 @@ export default function MarketAnalysisPage() {
     }
   }, [chartType]);
 
-  const loadHistory = useCallback((nextTimeframe: MarketTimeframe) => {
-    setChartHistory([]);
+  const loadHistory = useCallback((nextTimeframe: MarketTimeframe, options?: { force?: boolean }) => {
+    if (!MARKET_TIMEFRAMES.includes(nextTimeframe)) return;
+    if (chartLoading && timeframe === nextTimeframe && !options?.force) return;
     setChartMessage('');
-    setChartMeta({});
+    if (timeframe === nextTimeframe) {
+      setChartRefreshKey(value => value + 1);
+      return;
+    }
     setTimeframe(nextTimeframe);
-    setChartRefreshKey(value => value + 1);
-  }, []);
+  }, [chartLoading, timeframe]);
 
   useEffect(() => {
     if (!historySymbol) {
@@ -905,10 +910,19 @@ export default function MarketAnalysisPage() {
       setChartMessage('');
       setChartMeta({});
       setChartHistory([]);
+      chartAssetKeyRef.current = '';
       return;
     }
 
-    let cancelled = false;
+    const chartAssetKey = `${historySymbol}:${historyProviderSymbol}:${historyAssetType}`;
+    const assetChanged = chartAssetKeyRef.current !== chartAssetKey;
+    chartAssetKeyRef.current = chartAssetKey;
+    if (assetChanged) {
+      setChartHistory([]);
+      setChartMeta({});
+    }
+
+    const controller = new AbortController();
     const params = new URLSearchParams({
       symbol: historySymbol,
       providerSymbol: historyProviderSymbol,
@@ -918,19 +932,29 @@ export default function MarketAnalysisPage() {
 
     setChartLoading(true);
     setChartMessage('');
-    setChartMeta({});
-    setChartHistory([]);
 
     async function fetchHistory() {
+      const timeoutId = window.setTimeout(() => controller.abort(), MARKET_REQUEST_TIMEOUT_MS);
       try {
-        const result = await fetchJsonWithTimeout<PriceHistoryResponse>(`/api/market/history?${params.toString()}`, MARKET_REQUEST_TIMEOUT_MS, true);
-        if (cancelled) return;
+        const response = await fetch(`/api/market/history?${params.toString()}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        });
+        const contentType = response.headers.get('content-type') || '';
+        const result = contentType.includes('application/json')
+          ? await response.json() as PriceHistoryResponse
+          : {
+            success: false,
+            code: 'invalid_response',
+            error: t('market_chart_provider_error'),
+          } as PriceHistoryResponse;
+        if (controller.signal.aborted) return;
         const points = Array.isArray(result.points) ? result.points : [];
         const nextHistory = points.length > 0
           ? historyFromPricePoints(points)
           : Array.isArray(result.history) ? result.history : [];
-        if (!result.success || nextHistory.length === 0) {
-          setChartHistory([]);
+        if (!response.ok || !result.success || nextHistory.length === 0) {
           setChartMessage(chartErrorText(result.code, result.error, t));
           setChartMeta({
             interval: result.interval,
@@ -957,20 +981,19 @@ export default function MarketAnalysisPage() {
           updatedAt: result.updated_at,
         });
         if (result.cached) setNotice(t('market_cached_data'));
-      } catch {
-        if (!cancelled) {
-          setChartHistory([]);
-          setChartMessage(t('market_chart_provider_error'));
-          setChartMeta({});
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setChartMessage(isAbortLikeError(error) ? t('market_timeout_error') : t('market_chart_provider_error'));
         }
       } finally {
-        if (!cancelled) setChartLoading(false);
+        window.clearTimeout(timeoutId);
+        if (!controller.signal.aborted) setChartLoading(false);
       }
     }
 
     void fetchHistory();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [chartRefreshKey, historyAssetType, historyProviderSymbol, historySymbol, timeframe, t]);
 
@@ -2300,7 +2323,7 @@ export default function MarketAnalysisPage() {
                 })}>
                   <Activity size={15} />{t('market_analyze_now')}
                 </button>
-                <button type="button" onClick={() => void loadHistory(timeframe)}>
+                <button type="button" onClick={() => void loadHistory(timeframe, { force: true })}>
                   <RefreshCw size={15} />{analysisCopy.refreshAnalysis}
                 </button>
                 <button
@@ -2380,7 +2403,10 @@ export default function MarketAnalysisPage() {
                       <button
                         type="button"
                         key={item}
+                        data-range={item}
+                        data-timeframe={item}
                         aria-pressed={timeframe === item}
+                        aria-label={`${t('market_timeframe')} ${item}`}
                         onClick={() => loadHistory(item)}
                       >
                         {item}
@@ -2432,7 +2458,7 @@ export default function MarketAnalysisPage() {
                   resistance={marketLevels.resistance}
                   source={chartMeta.source ?? selected.source ?? selected.provider}
                   updatedAt={chartMeta.updatedAt ?? selected.lastUpdated ?? selected.quote?.timestamp ?? selected.fetchedAt}
-                  onRetry={() => loadHistory(timeframe)}
+                  onRetry={() => loadHistory(timeframe, { force: true })}
                   t={t}
                 />
                 <div className="market-chart-meta">

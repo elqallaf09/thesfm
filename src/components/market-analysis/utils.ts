@@ -25,7 +25,7 @@ export const DEFAULT_MARKET_ASSET_FILTER: MarketAssetFilter = 'all';
 export const MARKET_REQUEST_TIMEOUT_MS = 12000;
 export const MARKET_SLOW_NOTICE_MS = 5000;
 export const MARKET_TOOL_REQUEST_TIMEOUT_MS = 12000;
-export const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '6M', '1Y'] as const;
+export const MARKET_TIMEFRAMES = ['1D', '1W', '1M', '1Y', 'ALL'] as const;
 export const MARKET_CHART_TYPES = ['line', 'area', 'candlestick', 'ohlc'] as const;
 export const MARKET_CHART_TYPE_STORAGE_KEY = 'sfm_market_chart_type';
 export type PriceHistoryPoint = {
@@ -882,15 +882,22 @@ export function formatChartTimestamp(value: string, locale: string, timeframe: M
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const normalizedLocale = locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US';
-  return new Intl.DateTimeFormat(normalizedLocale, timeframe === '1D'
-    ? { hour: '2-digit', minute: '2-digit' }
-    : { month: 'short', day: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(
+    normalizedLocale,
+    timeframe === '1D'
+      ? { hour: '2-digit', minute: '2-digit' }
+      : timeframe === 'ALL'
+        ? { year: 'numeric' }
+        : { month: 'short', day: 'numeric' },
+  ).format(date);
 }
 
 export function chartErrorText(code: string | undefined, fallback: string | undefined, t: (key: string) => string) {
   if (code === 'invalid_symbol' || code === 'symbol_not_found') return t('market_chart_unsupported_symbol');
   if (code === 'provider_no_data' || code === 'PRICE_HISTORY_UNAVAILABLE') return t('market_chart_empty_range');
+  if (code === 'market_data_rate_limit' || code === 'RATE_LIMIT') return t('market_rate_limit_error');
   if (code === 'market_data_timeout' || code === 'market_data_unreachable' || code === 'provider_error') return t('market_chart_provider_error');
+  if (code === 'invalid_response') return t('market_chart_provider_error');
   return fallback || t('market_chart_provider_error');
 }
 
