@@ -223,7 +223,7 @@ function ReportContent() {
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
   const db = supabase as any;
-  const selectedYear = Number(searchParams.get('year')) || new Date().getFullYear();
+  const selectedYear = Number(searchParams?.get('year')) || new Date().getFullYear();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);

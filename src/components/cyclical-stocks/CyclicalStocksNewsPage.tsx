@@ -2181,7 +2181,7 @@ export function CyclicalStocksNewsPage() {
         </div>
       </main>
 
-      <style jsx>{`
+      <style jsx global>{`
         .page {
           min-height: 100dvh;
           width: 100%;

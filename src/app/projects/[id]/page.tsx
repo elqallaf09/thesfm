@@ -68,7 +68,7 @@ export default function ProjectWorkspacePage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   useEffect(() => {
-    const tab = searchParams.get('tab') as TabId | null;
+    const tab = searchParams?.get('tab') as TabId | null;
     if (tab && tabs.some(t => t.id === tab)) setActiveTab(tab);
   }, [searchParams]);
 

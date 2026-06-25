@@ -405,7 +405,7 @@ function LoginContent() {
   const text = TEXT[lang];
   const questionOptions = QUESTION_OPTIONS[lang];
 
-  const queryMode = searchParams.get('mode');
+  const queryMode = searchParams?.get('mode');
   const initialMode: AuthMode = queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password'
     ? (queryMode === 'forgot-password' ? 'forgot' : queryMode)
     : 'login';
@@ -437,7 +437,7 @@ function LoginContent() {
   const [socialLoading, setSocialLoading] = useState<'google' | null>(null);
 
   const nextPath = useMemo(() => {
-    const requested = searchParams.get('next') || '/dashboard';
+    const requested = searchParams?.get('next') || '/dashboard';
     return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard';
   }, [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);

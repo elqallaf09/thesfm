@@ -69,7 +69,7 @@ export default function MfaVerifyPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const nextPath = useMemo(() => {
-    const requested = searchParams.get('next') || '/dashboard';
+    const requested = searchParams?.get('next') || '/dashboard';
     return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard';
   }, [searchParams]);
 

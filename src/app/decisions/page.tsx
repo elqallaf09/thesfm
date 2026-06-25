@@ -360,7 +360,7 @@ export default function DecisionsPage() {
     } else {
       const rows = (saved.data ?? []) as DecisionRow[];
       setDecisions(rows);
-      const requested = searchParams.get('decision');
+      const requested = searchParams?.get('decision');
       setSelectedId(requested && rows.some(row => row.id === requested) ? requested : rows[0]?.id ?? '');
     }
     setLoading(false);
