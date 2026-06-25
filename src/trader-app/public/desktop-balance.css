@@ -713,6 +713,28 @@ body[data-app-view="home"] .market-premium-commodity svg {
     overflow: hidden !important;
   }
 
+  body:not(.intro-running) .app-shell.detail-shell {
+    width: min(1480px, calc(100vw - 32px)) !important;
+    min-height: calc(100svh - 32px) !important;
+    margin: 16px auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    overflow: visible !important;
+    align-items: start !important;
+  }
+
+  body:not(.intro-running) .app-shell.detail-shell > main {
+    display: grid !important;
+    align-content: start !important;
+    gap: 18px !important;
+    overflow: visible !important;
+  }
+
+  body:not(.intro-running) .app-shell.detail-shell .topbar,
+  body:not(.intro-running) .app-shell.detail-shell .site-footer {
+    grid-column: 1 !important;
+  }
+
   body[data-app-view="home"] .sfm-live-floor {
     flex: 0.98 1 clamp(188px, 18.8svh, 224px) !important;
     min-height: clamp(188px, 18.8svh, 224px) !important;

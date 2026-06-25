@@ -812,8 +812,14 @@ function calculateFinalScore(item) {
 }
 
 function drawSparkline(canvas, values = [], action) {
+  if (!canvas || typeof canvas.getContext !== "function") return;
   const context = canvas.getContext("2d");
+  if (!context) return;
   const rect = canvas.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) {
+    window.requestAnimationFrame(() => drawSparkline(canvas, values, action));
+    return;
+  }
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -1146,7 +1152,9 @@ window.addEventListener("storage", (event) => {
 
 function initMarketBackground() {
   const canvas = document.querySelector("#market-bg");
+  if (!canvas || typeof canvas.getContext !== "function") return;
   const context = canvas.getContext("2d");
+  if (!context) return;
   const rows = Array.from({ length: 8 }, (_, index) => ({
     y: 80 + index * 92,
     phase: Math.random() * 100,

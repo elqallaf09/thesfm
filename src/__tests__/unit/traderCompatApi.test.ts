@@ -22,6 +22,21 @@ describe('thesfm trader compatibility API', () => {
 
     expect(staticRoute).not.toContain('/api/thesfm-trader/');
     expect(staticRoute).not.toContain('fetch("/api/thesfm-trader/');
+    expect(staticRoute).toContain('publicTraderAssetExtensions');
+    expect(staticRoute).toContain("'.css'");
+    expect(staticRoute).toContain("'.webmanifest'");
+  });
+
+  it('serves the trader PWA manifest from the private app scope', () => {
+    const manifest = JSON.parse(readProjectFile('src/trader-app/public/manifest.webmanifest')) as {
+      start_url?: string;
+      scope?: string;
+      icons?: Array<{ src?: string }>;
+    };
+
+    expect(manifest.start_url).toBe('/thesfm-trader-own/app/index.html?app=ios');
+    expect(manifest.scope).toBe('/thesfm-trader-own/app/');
+    expect(manifest.icons?.every((icon) => icon.src?.startsWith('/thesfm-trader-own/app/'))).toBe(true);
   });
 
   it('normalizes older cached trader API paths without self-fetching', () => {

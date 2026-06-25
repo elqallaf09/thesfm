@@ -19,6 +19,22 @@ const mimeTypes: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
+const publicTraderAssetExtensions = new Set([
+  '.css',
+  '.js',
+  '.json',
+  '.webmanifest',
+  '.svg',
+  '.png',
+  '.ico',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+  '.woff',
+  '.woff2',
+]);
+
 function safeAssetPath(parts: string[] = []) {
   const requested = parts.length ? parts.join('/') : 'index.html';
   const normalized = requested.endsWith('/') ? `${requested}index.html` : requested;
@@ -52,26 +68,37 @@ function rewriteTraderTextAsset(content: string) {
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ path?: string[] }> }) {
-  const access = await getTraderAccess();
-  if (!access.allowed) {
-    return new NextResponse('Forbidden', { status: access.reason === 'unauthenticated' ? 401 : 403 });
-  }
-
   const params = await context.params;
   const assetPath = safeAssetPath(params.path);
   if (!assetPath) return new NextResponse('Not found', { status: 404 });
+  const ext = path.extname(assetPath).toLowerCase();
+  const isPublicAsset = publicTraderAssetExtensions.has(ext);
+
+  if (!isPublicAsset) {
+    const access = await getTraderAccess();
+    if (!access.allowed) {
+      return new NextResponse('Forbidden', {
+        status: access.reason === 'unauthenticated' ? 401 : 403,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Robots-Tag': 'noindex, nofollow',
+        },
+      });
+    }
+  }
 
   try {
-    const ext = path.extname(assetPath).toLowerCase();
     const contentType = mimeTypes[ext] ?? 'application/octet-stream';
     const file = await readFile(assetPath);
+    const cacheControl = isPublicAsset ? 'public, max-age=60, stale-while-revalidate=300' : 'no-store';
 
     if (['.html', '.js', '.css', '.webmanifest', '.json'].includes(ext)) {
       const rewritten = rewriteTraderTextAsset(file.toString('utf8'));
       return new NextResponse(rewritten, {
         headers: {
           'Content-Type': contentType,
-          'Cache-Control': 'no-store',
+          'Cache-Control': cacheControl,
           'X-Robots-Tag': 'noindex, nofollow',
         },
       });
@@ -80,11 +107,18 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
     return new NextResponse(new Uint8Array(file), {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': cacheControl,
         'X-Robots-Tag': 'noindex, nofollow',
       },
     });
   } catch {
-    return new NextResponse('Not found', { status: 404 });
+    return new NextResponse('Not found', {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
   }
 }
