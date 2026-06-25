@@ -324,6 +324,11 @@ const COPY = {
     loadMore: 'عرض المزيد',
     noResults: 'لا توجد أخبار مطابقة للفلاتر الحالية.',
     noResultsHint: 'جرّب تعديل كلمات البحث أو إزالة بعض الفلاتر.',
+    noNewsAvailable: 'لا توجد أخبار بنكية متاحة حالياً.',
+    noNewsAvailableHint: 'لم تُرجع المصادر الحالية أخباراً بنكية قابلة للعرض. حاول التحديث لاحقاً.',
+    tickerUnavailable: 'بيانات شريط الأسهم غير متاحة حالياً.',
+    tickerUnavailableHint: 'سيظهر الشريط عند توفر أسعار البنوك من مزود السوق.',
+    noSideData: 'لا توجد بيانات كافية حالياً.',
     providerError: 'تعذر تحديث البيانات حالياً. يتم عرض آخر بيانات متاحة إن وجدت.',
     retry: 'إعادة المحاولة',
     sideRailTitle: 'لوحة متابعة البنوك',
@@ -435,6 +440,11 @@ const COPY = {
     loadMore: 'Load more',
     noResults: 'No news matches the current filters.',
     noResultsHint: 'Try changing the search terms or removing filters.',
+    noNewsAvailable: 'No banking news is available right now.',
+    noNewsAvailableHint: 'The current sources did not return displayable banking stories. Try refreshing later.',
+    tickerUnavailable: 'Ticker data is unavailable right now.',
+    tickerUnavailableHint: 'The strip will appear when bank prices are available from the market provider.',
+    noSideData: 'Not enough data is available yet.',
     providerError: 'Unable to refresh data now. Showing the last available data where possible.',
     retry: 'Retry',
     sideRailTitle: 'Banking watch panel',
@@ -546,6 +556,11 @@ const COPY = {
     loadMore: 'Voir plus',
     noResults: 'Aucune actualité ne correspond aux filtres.',
     noResultsHint: 'Essayez de modifier la recherche ou les filtres.',
+    noNewsAvailable: 'Aucune actualité bancaire n’est disponible pour le moment.',
+    noNewsAvailableHint: 'Les sources actuelles n’ont renvoyé aucun article bancaire exploitable. Réessayez plus tard.',
+    tickerUnavailable: 'Les données du ticker sont indisponibles pour le moment.',
+    tickerUnavailableHint: 'Le ruban apparaîtra lorsque les cours bancaires seront disponibles.',
+    noSideData: 'Données encore insuffisantes.',
     providerError: 'Impossible de mettre à jour les données. Les dernières données disponibles restent affichées.',
     retry: 'Réessayer',
     sideRailTitle: 'Suivi bancaire',
@@ -965,18 +980,48 @@ function BankingHeader({
   );
 }
 
-function BankingTicker({ items, text, locale, loading }: { items: BankTickerItem[]; text: Copy; locale: string; loading: boolean }) {
+function BankingTicker({
+  items,
+  text,
+  lang,
+  locale,
+  loading,
+}: {
+  items: BankTickerItem[];
+  text: Copy;
+  lang: LangCode;
+  locale: string;
+  loading: boolean;
+}) {
   if (loading) {
     return (
       <section className="bankPanel" aria-label={text.bankingTicker}>
-        <div className="bankTickerScroller">
+        <div className="bankTickerSkeletons">
           {Array.from({ length: 8 }).map((_, index) => <SkeletonCard key={index} compact />)}
         </div>
       </section>
     );
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return (
+      <section className="bankPanel tickerPanel" aria-labelledby="banking-ticker-title">
+        <div className="sectionHead compact">
+          <div>
+            <h2 id="banking-ticker-title">{text.bankingTicker}</h2>
+            <p>{text.providerDelayed}</p>
+          </div>
+        </div>
+        <div className="bankInlineState" role="status">
+          <AlertTriangle size={19} />
+          <span>
+            <strong>{text.tickerUnavailable}</strong>
+            <em>{text.tickerUnavailableHint}</em>
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bankPanel tickerPanel" aria-labelledby="banking-ticker-title">
@@ -986,22 +1031,29 @@ function BankingTicker({ items, text, locale, loading }: { items: BankTickerItem
           <p>{text.providerDelayed}</p>
         </div>
       </div>
-      <div className="bankTickerScroller" role="list">
-        {items.map(item => (
-          <article className="bankTickerItem" key={item.symbol} role="listitem">
-            <div>
-              <strong dir="ltr">{item.symbol}</strong>
-              <span>{item.name}</span>
-            </div>
-            <div className="tickerNumbers">
-              <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-              <em className={`tone-${changeTone(item.changePercent)}`} dir="ltr">
-                {formatPercent(item.changePercent, locale) || text.unavailable}
-              </em>
-            </div>
-            <small>{sectorLabel(item.sector, 'ar', text)} · {text.delayedQuote}</small>
-          </article>
-        ))}
+      <div className="bankTickerViewport">
+        <div className="bankTickerTrack" role="list" aria-label={text.bankingTicker}>
+          {([0, 1] as const).map(loop => items.map(item => (
+            <article
+              className="bankTickerItem"
+              key={`${loop}-${item.symbol}`}
+              role={loop === 0 ? 'listitem' : undefined}
+              aria-hidden={loop === 1 ? true : undefined}
+            >
+              <div>
+                <strong dir="ltr">{item.symbol}</strong>
+                <span>{item.name}</span>
+              </div>
+              <div className="tickerNumbers">
+                <b dir="ltr">{formatMoney(item.price, item.currency, locale) || text.unavailable}</b>
+                <em className={`tone-${changeTone(item.changePercent)}`} dir="ltr">
+                  {formatPercent(item.changePercent, locale) || text.unavailable}
+                </em>
+              </div>
+              <small>{sectorLabel(item.sector, lang, text)} · {text.delayedQuote}</small>
+            </article>
+          )))}
+        </div>
       </div>
     </section>
   );
@@ -1093,40 +1145,35 @@ function BankStockCard({
 }) {
   const normalized = normalizeBankSymbol(item.symbol, BANK_EXCHANGES[item.symbol]);
   const analysisUrl = normalized ? buildAnalysisUrl({ ...normalized, companyName: item.name, currency: item.currency }, true) : '/market-analysis';
+  const exchange = BANK_EXCHANGES[item.symbol] ?? text.unavailable;
+  const price = formatMoney(item.price, item.currency, locale) || text.unavailable;
+  const change = formatPercent(item.changePercent, locale) || text.unavailable;
   return (
     <article className="bankStockCard">
       <div className="bankStockHeader">
-        <span className="bankStockLogo" aria-hidden="true">{item.symbol.slice(0, 2)}</span>
+        <span className="bankStockLogo" aria-hidden="true" dir="ltr">{item.symbol.slice(0, 2)}</span>
         <div>
           <h3>{item.name}</h3>
           <p><span dir="ltr">{item.symbol}</span> · {sectorLabel(item.sector, lang, text)}</p>
         </div>
-        <span className={`bankQuoteBadge tone-${changeTone(item.changePercent)}`}>{formatPercent(item.changePercent, locale) || text.unavailable}</span>
+        <span className={`bankQuoteBadge tone-${changeTone(item.changePercent)}`} dir="ltr">{change}</span>
       </div>
 
-      <dl className="bankStockMetrics">
-        <div>
-          <dt>{text.currentPrice}</dt>
-          <dd dir="ltr">{formatMoney(item.price, item.currency, locale) || text.unavailable}</dd>
-        </div>
-        <div>
-          <dt>{text.change}</dt>
-          <dd className={`tone-${changeTone(item.changePercent)}`} dir="ltr">{formatPercent(item.changePercent, locale) || text.unavailable}</dd>
-        </div>
+      <div className="bankStockPriceRow">
+        <span>
+          <small>{text.currentPrice}</small>
+          <strong dir="ltr">{price}</strong>
+        </span>
+        <em className={`tone-${changeTone(item.changePercent)}`} dir="ltr">{change}</em>
+      </div>
+
+      <dl className="bankStockMetaGrid">
         <div>
           <dt>{text.market}</dt>
-          <dd>{BANK_EXCHANGES[item.symbol] ?? text.unavailable}</dd>
+          <dd dir={exchange === text.unavailable ? undefined : 'ltr'}>{exchange}</dd>
         </div>
         <div>
-          <dt>{text.marketCap}</dt>
-          <dd>{text.unavailable}</dd>
-        </div>
-        <div>
-          <dt>{text.dividendYield}</dt>
-          <dd>{text.unavailable}</dd>
-        </div>
-        <div>
-          <dt>{text.stockUpdate}</dt>
+          <dt>{text.marketStatus}</dt>
           <dd>{text.delayedQuote}</dd>
         </div>
       </dl>
@@ -1496,22 +1543,53 @@ function BankingNewsFeed({
   locale,
   items,
   loading,
+  error,
+  hasAnyNews,
   total,
   visibleCount,
   onLoadMore,
   onClear,
+  onRetry,
   onQuickAnalysisSymbol,
 }: {
   text: Copy;
   locale: string;
   items: BankNewsItem[];
   loading: boolean;
+  error?: string;
+  hasAnyNews: boolean;
   total: number;
   visibleCount: number;
   onLoadMore: () => void;
   onClear: () => void;
+  onRetry: () => void;
   onQuickAnalysisSymbol: (symbol: string | undefined, name?: string, trigger?: HTMLButtonElement | null) => void;
 }) {
+  const emptyState = error
+    ? {
+      icon: AlertTriangle,
+      title: text.providerError,
+      hint: '',
+      action: text.retry,
+      onAction: onRetry,
+    }
+    : hasAnyNews
+      ? {
+        icon: Search,
+        title: text.noResults,
+        hint: text.noResultsHint,
+        action: text.clearFilters,
+        onAction: onClear,
+      }
+      : {
+        icon: Newspaper,
+        title: text.noNewsAvailable,
+        hint: text.noNewsAvailableHint,
+        action: text.retry,
+        onAction: onRetry,
+      };
+  const EmptyIcon = emptyState.icon;
+
   return (
     <section className="bankPanel" aria-labelledby="banking-feed-title">
       <div className="sectionHead">
@@ -1536,10 +1614,10 @@ function BankingNewsFeed({
           ))
         ) : (
           <div className="bankEmptyState">
-            <Search size={26} />
-            <strong>{text.noResults}</strong>
-            <p>{text.noResultsHint}</p>
-            <button className="bankSecondaryButton" type="button" onClick={onClear}>{text.clearFilters}</button>
+            <EmptyIcon size={26} />
+            <strong>{emptyState.title}</strong>
+            {emptyState.hint ? <p>{emptyState.hint}</p> : null}
+            <button className="bankSecondaryButton" type="button" onClick={emptyState.onAction}>{emptyState.action}</button>
           </div>
         )}
       </div>
@@ -1552,6 +1630,7 @@ function BankingNewsFeed({
 
 function BankingSideRail({
   text,
+  lang,
   locale,
   stocks,
   stories,
@@ -1560,6 +1639,7 @@ function BankingSideRail({
   onQuickAnalysis,
 }: {
   text: Copy;
+  lang: LangCode;
   locale: string;
   stocks: BankTickerItem[];
   stories: BankNewsItem[];
@@ -1587,44 +1667,56 @@ function BankingSideRail({
       <section className="sideModule">
         <h3>{text.watchedStocks}</h3>
         <div className="sideStockList">
-          {watched.map(item => (
-            <button type="button" key={item.symbol} onClick={event => onQuickAnalysis(item, event.currentTarget)}>
-              <span>
-                <strong dir="ltr">{item.symbol}</strong>
-                <em>{item.name}</em>
-              </span>
-              <b className={`tone-${changeTone(item.changePercent)}`} dir="ltr">{formatPercent(item.changePercent, locale) || text.unavailable}</b>
-            </button>
-          ))}
+          {watched.length > 0 ? (
+            watched.map(item => (
+              <button type="button" key={item.symbol} onClick={event => onQuickAnalysis(item, event.currentTarget)}>
+                <span>
+                  <strong dir="ltr">{item.symbol}</strong>
+                  <em>{item.name}</em>
+                </span>
+                <b className={`tone-${changeTone(item.changePercent)}`} dir="ltr">{formatPercent(item.changePercent, locale) || text.unavailable}</b>
+              </button>
+            ))
+          ) : (
+            <div className="sideEmpty">{text.noSideData}</div>
+          )}
         </div>
       </section>
       <section className="sideModule">
         <h3>{text.topStories}</h3>
         <div className="sideStoryList">
-          {stories.slice(0, 5).map(item => (
-            <a key={item.id} href={safeExternalUrl(item.url) || '#'} target={safeExternalUrl(item.url) ? '_blank' : undefined} rel="noopener noreferrer nofollow">
-              <span dir="auto">{displayTitle(item)}</span>
-              <em>{item.source} · {relativeTime(item.publishedAt, locale)}</em>
-            </a>
-          ))}
+          {stories.length > 0 ? (
+            stories.slice(0, 5).map(item => (
+              <a key={item.id} href={safeExternalUrl(item.url) || '#'} target={safeExternalUrl(item.url) ? '_blank' : undefined} rel="noopener noreferrer nofollow">
+                <span dir="auto">{displayTitle(item)}</span>
+                <em>{item.source} · {relativeTime(item.publishedAt, locale)}</em>
+              </a>
+            ))
+          ) : (
+            <div className="sideEmpty">{text.noNewsAvailable}</div>
+          )}
         </div>
       </section>
       <section className="sideModule">
         <h3>{text.sources}</h3>
         <div className="sourceList">
-          {sources.slice(0, 6).map(item => (
-            <span key={item.source}>
-              <b>{item.source}</b>
-              <em dir="ltr">{item.count}</em>
-            </span>
-          ))}
+          {sources.length > 0 ? (
+            sources.slice(0, 6).map(item => (
+              <span key={item.source}>
+                <b>{item.source}</b>
+                <em dir="ltr">{item.count}</em>
+              </span>
+            ))
+          ) : (
+            <div className="sideEmpty">{text.noSideData}</div>
+          )}
         </div>
       </section>
       <section className="sideModule">
         <h3>{text.categories}</h3>
         <div className="categoryCloud">
           {CATEGORY_OPTIONS.filter(option => option.id !== 'all').slice(0, 7).map(option => (
-            <span key={option.id}>{option.ar}</span>
+            <span key={option.id}>{option[lang] ?? option.ar}</span>
           ))}
         </div>
       </section>
@@ -2003,7 +2095,8 @@ export function BankNewsPage() {
     });
   }, [categoryFilter, debouncedQuery, newsItems, sortMode, sourceFilter, symbolFilter, timeFilter]);
 
-  const featured = filteredNews.slice(0, 4);
+  const featuredCount = filteredNews.length >= 6 ? 4 : filteredNews.length > 0 ? 1 : 0;
+  const featured = filteredNews.slice(0, featuredCount);
   const featuredIds = new Set(featured.map(item => item.id));
   const feedItems = filteredNews.filter(item => !featuredIds.has(item.id)).slice(0, visibleNews);
   const sidebarStories = filteredNews.filter(item => !featuredIds.has(item.id) && !feedItems.some(feed => feed.id === item.id)).slice(0, 5);
@@ -2058,7 +2151,7 @@ export function BankNewsPage() {
           </div>
         ) : null}
 
-        <BankingTicker items={sortedStocks} text={text} locale={locale} loading={loading && sortedStocks.length === 0} />
+        <BankingTicker items={sortedStocks} text={text} lang={lang} locale={locale} loading={loading && sortedStocks.length === 0} />
         <BankingMarketSummary text={text} locale={locale} stocks={sortedStocks} featuredStory={featured[0]} loading={loading && sortedStocks.length === 0} />
         <BankStockSection
           text={text}
@@ -2105,14 +2198,18 @@ export function BankNewsPage() {
             locale={locale}
             items={feedItems}
             loading={loading && newsItems.length === 0}
+            error={newsError}
+            hasAnyNews={newsItems.length > 0}
             total={filteredNews.length}
             visibleCount={visibleNews}
             onLoadMore={() => setVisibleNews(count => count + NEWS_PAGE_SIZE)}
             onClear={clearFilters}
+            onRetry={() => void loadData(true)}
             onQuickAnalysisSymbol={openQuickAnalysisSymbol}
           />
           <BankingSideRail
             text={text}
+            lang={lang}
             locale={locale}
             stocks={sortedStocks}
             stories={sidebarStories.length ? sidebarStories : filteredNews.slice(0, 5)}
@@ -2426,7 +2523,7 @@ export function BankNewsPage() {
           line-height: 1.7;
         }
 
-        .bankTickerScroller {
+        .bankTickerSkeletons {
           display: grid;
           grid-auto-flow: column;
           grid-auto-columns: minmax(210px, 1fr);
@@ -2435,6 +2532,30 @@ export function BankNewsPage() {
           overscroll-behavior-inline: contain;
           padding-bottom: 4px;
           scrollbar-width: thin;
+        }
+
+        .bankTickerViewport {
+          width: 100%;
+          max-width: 100%;
+          overflow: hidden;
+          direction: ltr;
+          mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+        }
+
+        .bankTickerTrack {
+          display: flex;
+          align-items: stretch;
+          gap: 12px;
+          width: max-content;
+          min-width: max-content;
+          animation: bankTickerMove 42s linear infinite;
+          will-change: transform;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          .bankTickerViewport:hover .bankTickerTrack {
+            animation-play-state: paused;
+          }
         }
 
         .bankTickerItem,
@@ -2454,7 +2575,13 @@ export function BankNewsPage() {
           padding: 14px;
           display: grid;
           gap: 10px;
+          flex: 0 0 clamp(220px, 18vw, 282px);
           min-width: 0;
+          direction: rtl;
+        }
+
+        [dir="ltr"] .bankTickerItem {
+          direction: ltr;
         }
 
         .bankTickerItem strong,
@@ -2526,6 +2653,8 @@ export function BankNewsPage() {
 
         .bankMetricLabel,
         .bankStockMetrics dt,
+        .bankStockMetaGrid dt,
+        .bankStockPriceRow small,
         .filterField span {
           color: #64748b;
           font-size: 0.82rem;
@@ -2552,14 +2681,14 @@ export function BankNewsPage() {
         .bankStockGrid {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
+          gap: 14px;
         }
 
         .bankStockCard {
-          padding: 18px;
+          padding: 15px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
           min-width: 0;
           box-shadow: 0 10px 22px rgba(15, 35, 61, 0.045);
         }
@@ -2572,9 +2701,9 @@ export function BankNewsPage() {
         }
 
         .bankStockLogo {
-          width: 46px;
-          height: 46px;
-          border-radius: 16px;
+          width: 40px;
+          height: 40px;
+          border-radius: 14px;
           display: grid;
           place-items: center;
           color: #082f49;
@@ -2593,8 +2722,12 @@ export function BankNewsPage() {
         }
 
         .bankStockHeader h3 {
-          font-size: 1rem;
-          line-height: 1.45;
+          font-size: 0.98rem;
+          line-height: 1.35;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
         .bankStockHeader p {
@@ -2621,26 +2754,59 @@ export function BankNewsPage() {
           white-space: nowrap;
         }
 
-        .bankStockMetrics {
+        .bankStockPriceRow {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          background: #f8fafc;
+          border: 1px solid rgba(226, 232, 240, 0.88);
+        }
+
+        .bankStockPriceRow span {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+
+        .bankStockPriceRow strong {
+          color: #0b213a;
+          font-size: 1.08rem;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .bankStockPriceRow em {
+          font-style: normal;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+
+        .bankStockMetaGrid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
+          gap: 8px;
           margin: 0;
         }
 
-        .bankStockMetrics div {
-          padding: 10px;
-          border-radius: 13px;
+        .bankStockMetrics div,
+        .bankStockMetaGrid div {
+          padding: 8px 10px;
+          border-radius: 12px;
           background: #f8fafc;
           border: 1px solid rgba(226, 232, 240, 0.88);
           min-width: 0;
         }
 
-        .bankStockMetrics dd {
+        .bankStockMetrics dd,
+        .bankStockMetaGrid dd {
           margin: 4px 0 0;
           color: #10243d;
           font-weight: 900;
-          font-size: 0.92rem;
+          font-size: 0.86rem;
           overflow-wrap: anywhere;
         }
 
@@ -3045,6 +3211,48 @@ export function BankNewsPage() {
           color: #64748b;
         }
 
+        .bankInlineState,
+        .sideEmpty {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 1px dashed rgba(148, 163, 184, 0.72);
+          border-radius: 16px;
+          background: #f8fafc;
+          color: #64748b;
+          line-height: 1.65;
+        }
+
+        .bankInlineState {
+          padding: 14px 16px;
+        }
+
+        .bankInlineState svg {
+          flex: 0 0 auto;
+          color: #b45309;
+        }
+
+        .bankInlineState span {
+          display: grid;
+          gap: 2px;
+        }
+
+        .bankInlineState strong {
+          color: #0b213a;
+        }
+
+        .bankInlineState em,
+        .sideEmpty {
+          font-style: normal;
+          font-size: 0.88rem;
+        }
+
+        .sideEmpty {
+          padding: 12px;
+          justify-content: center;
+          text-align: center;
+        }
+
         .bankEmptyState strong,
         .emptyMini strong,
         .quickError strong,
@@ -3098,6 +3306,11 @@ export function BankNewsPage() {
         @keyframes bankShimmer {
           0% { background-position: 100% 0; }
           100% { background-position: -100% 0; }
+        }
+
+        @keyframes bankTickerMove {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(calc(-50% - 6px)); }
         }
 
         .quickAnalysisOverlay {
@@ -3315,11 +3528,12 @@ export function BankNewsPage() {
             border-radius: 18px;
           }
 
-          .bankTickerScroller {
-            grid-auto-columns: minmax(190px, 82vw);
+          .bankTickerItem {
+            flex-basis: min(78vw, 260px);
           }
 
-          .bankStockMetrics {
+          .bankStockMetrics,
+          .bankStockMetaGrid {
             grid-template-columns: 1fr;
           }
 
@@ -3347,6 +3561,16 @@ export function BankNewsPage() {
             animation-duration: 0.001ms !important;
             transition-duration: 0.001ms !important;
             scroll-behavior: auto !important;
+          }
+
+          .bankTickerViewport {
+            overflow-x: auto;
+            mask-image: none;
+            scrollbar-width: thin;
+          }
+
+          .bankTickerTrack {
+            animation: none !important;
           }
         }
       `}</style>
