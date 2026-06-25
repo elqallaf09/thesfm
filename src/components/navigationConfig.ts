@@ -160,6 +160,13 @@ export const NAV_GROUPS: NavigationGroup[] = [
     ],
   },
   {
+    id: 'business-management',
+    labelKey: 'nav_group_business_management',
+    items: [
+      { id: 'business-subscriptions', icon: CreditCard, href: '/business/subscriptions', labelKey: 'nav_clients_subscriptions', viewModes: ['simple', 'professional'] },
+    ],
+  },
+  {
     id: 'charity',
     labelKey: 'nav_group_charity',
     items: [
