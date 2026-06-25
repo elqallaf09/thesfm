@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { CategoryStockTicker } from '@/components/stock-categories/CategoryStockTicker';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getStockCategoryConfig, type StockCategoryFilterKey, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
@@ -500,6 +501,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-xs font-black text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
               {row.rank}
             </span>
+            <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span dir="ltr" className="font-black text-slate-950 dark:text-white">{row.symbol}</span>

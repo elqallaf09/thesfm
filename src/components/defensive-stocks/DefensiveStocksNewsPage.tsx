@@ -27,6 +27,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -928,6 +929,7 @@ function DefensiveTicker({ items, loading, error, lang, locale, text }: {
           const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
           return (
             <article className={`def-ticker-item ${tone}`} key={item.symbol} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+              <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div className="def-ticker-copy">
                 <strong dir="ltr">{item.symbol}</strong>
                 <small>{stockName(item.symbol, item.name)} · {SECTOR_LABELS[lang][sectorForSymbol(item.symbol)]}</small>
@@ -1153,7 +1155,10 @@ function StocksTab({ stockRows, loading, locale, lang, text, sectorFilter, setSe
           {filtered.map(row => (
             <article className="def-stock-card" key={row.symbol}>
               <header>
-                <span dir="ltr">{row.symbol}</span>
+                <div className="def-stock-head-main">
+                  <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
+                  <span className="def-stock-symbol" dir="ltr">{row.symbol}</span>
+                </div>
                 <b className={changeTone(row.changePercent)} dir="ltr">{formatPercent(row.changePercent, locale)}</b>
               </header>
               <h3>{row.name}</h3>
@@ -1609,12 +1614,12 @@ export function DefensiveStocksNewsPage() {
         .def-ticker-strip:focus-within .def-ticker-track,.def-ticker-strip.is-paused .def-ticker-track{animation-play-state:paused}
         .def-ticker-set{display:flex;align-items:center;gap:9px;flex:none}
         .def-ticker-status{display:inline-flex;align-items:center;gap:6px;padding:0 10px;min-height:28px;border-radius:999px;background:#E0F2FE;color:#075985;font-size:11px;font-weight:900;white-space:nowrap}
-        .def-ticker-item{width:178px;max-width:178px;min-width:178px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--def-border);border-radius:14px;background:#fff}
+        .def-ticker-item{width:196px;max-width:196px;min-width:196px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--def-border);border-radius:14px;background:#fff}
         .def-ticker-copy{display:grid;gap:1px;min-width:0}
         .def-ticker-item strong{font-size:13px;font-weight:950;color:var(--def-text);line-height:1.15}
         .def-ticker-item small{font-size:10px;font-weight:850;color:var(--def-muted);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .def-ticker-item b{font-size:12px;font-weight:950;color:var(--def-text);line-height:1.15}
-        .def-ticker-item em{grid-column:2;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:999px;padding:4px 7px;font-style:normal;font-size:10px;font-weight:950;line-height:1}
+        .def-ticker-item em{grid-column:3;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:999px;padding:4px 7px;font-style:normal;font-size:10px;font-weight:950;line-height:1}
         .def-ticker-item.up em,.up{background:#DCFCE7;color:#166534}
         .def-ticker-item.down em,.down{background:#FEE2E2;color:#991B1B}
         .def-ticker-item.neutral em,.neutral{background:#E2E8F0;color:#334155}
@@ -1703,7 +1708,8 @@ export function DefensiveStocksNewsPage() {
         .def-stock-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .def-stock-card{padding:18px;display:grid;gap:12px}
         .def-stock-card header{display:flex;align-items:center;justify-content:space-between;gap:10px}
-        .def-stock-card header span{width:52px;height:52px;border-radius:18px;background:#E0F2FE;color:#075985;display:grid;place-items:center;font-size:15px;font-weight:950}
+        .def-stock-head-main{display:flex;align-items:center;gap:10px;min-width:0}
+        .def-stock-symbol{display:inline-flex;align-items:center;justify-content:center;min-height:28px;border-radius:999px;background:#E0F2FE;color:#075985;padding:0 9px;font-size:12px;font-weight:950}
         .def-stock-card header b{border-radius:999px;padding:5px 9px;font-size:12px}
         .def-stock-card h3{margin:0;color:var(--def-text);font-size:17px;font-weight:950}
         .def-stock-card > small{color:var(--def-muted);font-size:12px;font-weight:900}
@@ -1782,7 +1788,7 @@ export function DefensiveStocksNewsPage() {
           .def-ticker-viewport{overflow:hidden}
           .def-ticker-track{gap:8px;animation-duration:42s}
           .def-ticker-set{gap:8px}
-          .def-ticker-item{width:160px;max-width:160px;min-width:160px;padding:7px 9px;border-radius:13px}
+          .def-ticker-item{width:178px;max-width:178px;min-width:178px;padding:7px 9px;border-radius:13px}
           .def-ticker-item strong{font-size:12px}
           .def-ticker-item small{font-size:9.5px}
           .def-ticker-item b{font-size:11px}

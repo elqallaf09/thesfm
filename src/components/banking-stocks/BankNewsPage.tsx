@@ -36,6 +36,7 @@ import {
   type RefObject,
   type ReactNode,
 } from 'react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -1040,6 +1041,7 @@ function BankingTicker({
               role={loop === 0 ? 'listitem' : undefined}
               aria-hidden={loop === 1 ? true : undefined}
             >
+              <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div>
                 <strong dir="ltr">{item.symbol}</strong>
                 <span>{item.name}</span>
@@ -1151,7 +1153,7 @@ function BankStockCard({
   return (
     <article className="bankStockCard">
       <div className="bankStockHeader">
-        <span className="bankStockLogo" aria-hidden="true" dir="ltr">{item.symbol.slice(0, 2)}</span>
+        <AssetAvatar className="bankStockLogo" symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
         <div>
           <h3>{item.name}</h3>
           <p><span dir="ltr">{item.symbol}</span> · {sectorLabel(item.sector, lang, text)}</p>
@@ -1670,6 +1672,7 @@ function BankingSideRail({
           {watched.length > 0 ? (
             watched.map(item => (
               <button type="button" key={item.symbol} onClick={event => onQuickAnalysis(item, event.currentTarget)}>
+                <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
                 <span>
                   <strong dir="ltr">{item.symbol}</strong>
                   <em>{item.name}</em>
@@ -2574,10 +2577,21 @@ export function BankNewsPage() {
         .bankTickerItem {
           padding: 14px;
           display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-items: center;
           gap: 10px;
           flex: 0 0 clamp(220px, 18vw, 282px);
           min-width: 0;
           direction: rtl;
+        }
+
+        .bankTickerItem > div:not(.tickerNumbers) {
+          min-width: 0;
+        }
+
+        .bankTickerItem .tickerNumbers,
+        .bankTickerItem > small {
+          grid-column: 1 / -1;
         }
 
         [dir="ltr"] .bankTickerItem {

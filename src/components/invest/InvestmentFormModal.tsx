@@ -15,6 +15,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { currencyDisplayName, getCurrency, getCurrencyOptions, type CurrencyLocale } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
 import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -374,10 +375,6 @@ function TypeIcon({ type }: { type: InvestmentType }) {
   if (type === 'realEstate') return <Home size={16} />;
   if (type === 'cash') return <Banknote size={16} />;
   return <Building2 size={16} />;
-}
-
-function TrendingGlyph({ assetType }: { assetType: string }) {
-  return <span dir="ltr">{assetType.slice(0, 2).toUpperCase()}</span>;
 }
 
 function assetSearchPrice(asset: AssetSearchItem, locale: string, unavailable: string) {
@@ -1259,7 +1256,7 @@ export function InvestmentFormModal({
                       )}
                       {searchState === 'ready' && searchResults.map(asset => (
                         <button key={`${asset.symbol}:${asset.provider_symbol ?? asset.asset_type}:${asset.name_en ?? asset.name}`} type="button" className="invest-asset-result" onClick={() => handleSelectAsset(asset)}>
-                          <span className="invest-asset-result-icon"><TrendingGlyph assetType={asset.asset_type} /></span>
+                          <AssetAvatar className="invest-asset-result-icon" symbol={asset.symbol} name={localizedAssetName(asset, dir)} assetType={asset.asset_type} exchange={asset.market ?? undefined} size="sm" decorative />
                           <span className="invest-asset-result-body">
                             <strong>{localizedAssetName(asset, dir)}</strong>
                             <small>
@@ -1286,6 +1283,7 @@ export function InvestmentFormModal({
                 <div className="invest-selected-asset span-2">
                   <div>
                     <span><CheckCircle2 size={15} /> {labels.selectedAsset}</span>
+                    <AssetAvatar symbol={selectedAsset.symbol} name={localizedAssetName(selectedAsset, dir)} assetType={selectedAsset.asset_type} exchange={selectedAsset.market ?? undefined} size="md" decorative />
                     <strong>{localizedAssetName(selectedAsset, dir)}</strong>
                     <small>
                       <b dir="ltr">{selectedAsset.provider_symbol ?? selectedAsset.symbol}</b>
@@ -1854,7 +1852,7 @@ export function InvestmentFormModal({
             background: #10243a;
             border-color: rgba(103, 232, 249, .16);
           }
-          .invest-selected-asset span,
+          .invest-selected-asset span:not(.asset-avatar),
           .invest-summary-item span {
             display: flex;
             align-items: center;

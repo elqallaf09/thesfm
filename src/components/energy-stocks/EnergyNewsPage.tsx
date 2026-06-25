@@ -44,6 +44,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -1466,7 +1467,10 @@ function EnergyTicker({ items, loading, text, locale }: {
                 key={`${item.symbol}-${index}`}
                 aria-hidden={index >= items.length ? true : undefined}
               >
-                <span dir="ltr">{item.symbol}</span>
+                <div className="energyTickerIdentity">
+                  <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+                  <span dir="ltr">{item.symbol}</span>
+                </div>
                 <strong>{item.name}</strong>
                 <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                 <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
@@ -1554,6 +1558,7 @@ function EnergyMarketMovers({ movers, commodities, text, locale }: {
               <h3><Icon size={17} />{list.title}</h3>
               {list.rows.length > 0 ? list.rows.slice(0, 5).map(row => (
                 <div className={`energyMoverRow energyTone-${toneFor(row.changePercent)}`} key={row.symbol}>
+                  <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
                   <span dir="ltr">{row.symbol}</span>
                   <strong>{row.name}</strong>
                   <b dir="ltr">{formatMoney(row.price, row.currency, locale)}</b>
@@ -1567,6 +1572,7 @@ function EnergyMarketMovers({ movers, commodities, text, locale }: {
           <h3><Droplets size={17} />{text.commodityMoves}</h3>
           {commodityRows.length > 0 ? commodityRows.map(row => (
             <div className={`energyMoverRow energyTone-${toneFor(row.changePercent)}`} key={row.symbol}>
+              <AssetAvatar symbol={row.symbol} name={row.displayName} assetType="commodity" size="sm" decorative />
               <span dir="ltr">{row.symbol}</span>
               <strong>{row.displayName}</strong>
               <b dir="ltr">{formatMoney(row.price, row.currency, locale)}</b>
@@ -1618,11 +1624,10 @@ function FeaturedEnergyCompanies({ items, text, lang, locale, limit = 6 }: {
         <div className="energyFeaturedGrid">
           {featured.map(item => {
             const tone = toneFor(item.changePercent);
-            const CategoryIcon = COMPANY_CATEGORY_META[item.sector as EnergyCompanyCategory]?.icon ?? Building2;
             return (
               <article className={`energyCompanyFeature energyTone-${tone}`} key={item.symbol}>
                 <header>
-                  <span><CategoryIcon size={17} /></span>
+                  <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
                   <div>
                     <strong>{item.name}</strong>
                     <small dir="ltr">{item.symbol}</small>
@@ -1752,7 +1757,7 @@ function EnergyCompanyTable({ items, text, lang, locale }: {
               <tr key={item.symbol}>
                 <td>
                   <div className="energyCompanyCell">
-                    <span>{item.name.slice(0, 1)}</span>
+                    <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
                     <div>
                       <strong>{item.name}</strong>
                       <small dir="ltr">{item.symbol}</small>
@@ -1775,9 +1780,12 @@ function EnergyCompanyTable({ items, text, lang, locale }: {
         {items.map(item => (
           <article className="energyMobileCompanyCard" key={item.symbol}>
             <header>
-              <div>
+              <div className="energyMobileCompanyIdentity">
+                <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+                <span>
                 <strong>{item.name}</strong>
                 <small dir="ltr">{item.symbol}</small>
+                </span>
               </div>
               <DataBadge tone={toneFor(item.changePercent)}><span dir="ltr">{formatPercent(item.changePercent, locale)}</span></DataBadge>
             </header>

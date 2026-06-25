@@ -28,6 +28,7 @@ import {
   WalletCards,
   type LucideIcon,
 } from 'lucide-react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -212,6 +213,7 @@ const COPY = {
     datesAvailable: 'تواريخ توزيعات متوفرة',
     balancedMetrics: 'عائد ونسبة دفع متوازنان',
     insufficientMetrics: 'بيانات غير كافية للتقييم',
+    insufficientDividendData: 'لا توجد بيانات توزيعات كافية لهذا السهم حالياً',
     company: 'الشركة',
     symbol: 'الرمز',
     exchange: 'السوق / البورصة',
@@ -364,6 +366,7 @@ const COPY = {
     datesAvailable: 'Dividend dates available',
     balancedMetrics: 'Balanced yield and payout',
     insufficientMetrics: 'Insufficient data',
+    insufficientDividendData: 'Not enough dividend data for this stock right now',
     company: 'Company',
     symbol: 'Symbol',
     exchange: 'Market / exchange',
@@ -516,6 +519,7 @@ const COPY = {
     datesAvailable: 'Dates disponibles',
     balancedMetrics: 'Rendement et payout équilibrés',
     insufficientMetrics: 'Données insuffisantes',
+    insufficientDividendData: 'Données de dividende insuffisantes pour cette action',
     company: 'Société',
     symbol: 'Symbole',
     exchange: 'Marché / bourse',
@@ -692,6 +696,24 @@ function sectorLabel(id: SectorId, lang: LangCode) {
 function normalizeRatioToPercent(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return Math.abs(value) <= 1 ? value * 100 : value;
+}
+
+function hasNumber(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function hasDate(value: string | null | undefined) {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+}
+
+function hasDividendData(row: Pick<DividendTickerItem, 'dividendYield' | 'payoutRatio' | 'annualDividend' | 'exDividendDate' | 'paymentDate'>) {
+  return normalizeRatioToPercent(row.dividendYield) !== null
+    || normalizeRatioToPercent(row.payoutRatio) !== null
+    || hasNumber(row.annualDividend)
+    || hasDate(row.exDividendDate)
+    || hasDate(row.paymentDate);
 }
 
 function formatNumber(value: number | null | undefined, lang: LangCode, options?: Intl.NumberFormatOptions) {
@@ -1335,25 +1357,57 @@ function newsSectorForItem(item: DividendNewsItem): SectorId {
 
 function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; loading: boolean; text: typeof COPY[LangCode]; lang: LangCode }) {
   if (loading) {
-    return <section className="ticker-panel"><div className="ticker-scroll">{Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}</div></section>;
+    return (
+      <section className="ticker-panel" aria-label={text.trackedCompanies}>
+        <div className="ticker-viewport">
+          <div className="ticker-track ticker-skeleton-track">
+            {Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}
+          </div>
+        </div>
+      </section>
+    );
   }
+  if (rows.length === 0) {
+    return (
+      <section className="ticker-panel" aria-label={text.trackedCompanies}>
+        <div className="ticker-empty">
+          <Coins size={18} />
+          <span>{text.noStocks}</span>
+        </div>
+      </section>
+    );
+  }
+  const renderItem = (row: DividendStockRow, group: number) => (
+    <article className="ticker-item" key={`${group}-${row.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
+      <div className="ticker-top">
+        <div className="ticker-identity">
+          <AssetAvatar className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
+          <span className="symbol">{row.symbol}</span>
+        </div>
+        <span className={badgeClass(toneForChange(row.changePercent))}>{formatPercent(row.changePercent, lang)}</span>
+      </div>
+      <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
+      <span className="ticker-name">{row.name}</span>
+      {hasDividendData(row) ? (
+        <div className="ticker-metrics">
+          <span>{text.dividendYield}: <b>{formatPercent(row.dividendYield, lang, true)}</b></span>
+          <span>{text.payoutRatio}: <b>{formatPercent(row.payoutRatio, lang, true)}</b></span>
+        </div>
+      ) : (
+        <span className="dividend-empty-inline">{text.insufficientDividendData}</span>
+      )}
+    </article>
+  );
   return (
     <section className="ticker-panel" aria-label={text.trackedCompanies}>
-      <div className="ticker-scroll">
-        {rows.map(row => (
-          <article className="ticker-item" key={row.symbol}>
-            <div className="ticker-top">
-              <span className="symbol">{row.symbol}</span>
-              <span className={badgeClass(toneForChange(row.changePercent))}>{formatPercent(row.changePercent, lang)}</span>
+      <div className="ticker-viewport">
+        <div className="ticker-track" role="list">
+          {[0, 1].map(group => (
+            <div className="ticker-set" key={group} aria-hidden={group === 1}>
+              {rows.map(row => renderItem(row, group))}
             </div>
-            <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
-            <span className="ticker-name">{row.name}</span>
-            <div className="ticker-metrics">
-              <span>{text.dividendYield}: <b>{formatPercent(row.dividendYield, lang, true)}</b></span>
-              <span>{text.payoutRatio}: <b>{formatPercent(row.payoutRatio, lang, true)}</b></span>
-            </div>
-          </article>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1789,10 +1843,11 @@ function FeaturedGrid({ rows, text, lang, loading, compact }: { rows: DividendSt
 }
 
 function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
+  const hasData = hasDividendData(row);
   return (
     <article className="card featured-card">
       <div className="stock-head">
-        <div className="stock-logo">{row.symbol.slice(0, 2)}</div>
+        <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
         <div className="stock-title">
           <h3>{row.name}</h3>
           <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
@@ -1803,30 +1858,20 @@ function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow
         <span>{text.score}</span>
         <strong>{row.qualityScore === null ? text.unavailable : row.qualityScore}</strong>
       </div>
-      <div className="metric-grid">
-        <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} />
-        <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} />
-        <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} />
-        <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} />
-        {!compact ? (
-          <>
-            <MiniMetric label={text.dividendPerShare} value={formatCurrency(row.annualDividend, row.currency, lang)} />
-            <MiniMetric label={text.dataDate} value={row.dividendMetricSource ?? text.unavailable} />
-          </>
-        ) : null}
-      </div>
-      <p className="muted"><strong>{text.reason}:</strong> {row.selectionReason}</p>
+      {hasData ? <DividendMetricGrid row={row} text={text} lang={lang} compact={compact} /> : <DividendDataNotice text={text} />}
+      {hasData ? <p className="muted"><strong>{text.reason}:</strong> {row.selectionReason}</p> : null}
       {row.highYieldWarning ? <p className="warning-line"><AlertTriangle size={15} />{text.highYieldWarning}</p> : null}
     </article>
   );
 }
 
 function StockTableRow({ row, text, lang }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode }) {
+  const hasData = hasDividendData(row);
   return (
     <tr>
       <td>
         <div className="company-cell">
-          <span className="stock-logo small">{row.symbol.slice(0, 2)}</span>
+          <AssetAvatar className="stock-logo small" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
           <div>
             <strong>{row.name}</strong>
             <span className="symbol">{row.symbol}</span>
@@ -1834,10 +1879,16 @@ function StockTableRow({ row, text, lang }: { row: DividendStockRow; text: typeo
         </div>
       </td>
       <td className="numeric">{formatCurrency(row.price, row.currency, lang)}</td>
-      <td className="numeric">{formatPercent(row.dividendYield, lang, true)}</td>
-      <td className="numeric">{formatPercent(row.payoutRatio, lang, true)}</td>
-      <td>{formatDate(row.exDividendDate, lang)}</td>
-      <td>{formatDate(row.paymentDate, lang)}</td>
+      {hasData ? (
+        <>
+          <td className="numeric">{normalizeRatioToPercent(row.dividendYield) === null ? text.unavailable : formatPercent(row.dividendYield, lang, true)}</td>
+          <td className="numeric">{normalizeRatioToPercent(row.payoutRatio) === null ? text.unavailable : formatPercent(row.payoutRatio, lang, true)}</td>
+          <td>{hasDate(row.exDividendDate) ? formatDate(row.exDividendDate, lang) : text.unavailable}</td>
+          <td>{hasDate(row.paymentDate) ? formatDate(row.paymentDate, lang) : text.unavailable}</td>
+        </>
+      ) : (
+        <td colSpan={4}><span className="dividend-empty-inline">{text.insufficientDividendData}</span></td>
+      )}
       <td><span className={badgeClass(row.riskTone)}>{row.riskLabel}</span></td>
       <td><button className="link-button" type="button">{text.viewDetails}<ArrowUpRight size={14} /></button></td>
     </tr>
@@ -1845,24 +1896,50 @@ function StockTableRow({ row, text, lang }: { row: DividendStockRow; text: typeo
 }
 
 function DividendMobileCard({ row, text, lang }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode }) {
+  const hasData = hasDividendData(row);
   return (
     <article className="card">
       <div className="stock-head">
-        <div className="stock-logo">{row.symbol.slice(0, 2)}</div>
+        <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
         <div className="stock-title">
           <h3>{row.name}</h3>
           <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
         </div>
         <span className={badgeClass(row.riskTone)}>{row.riskLabel}</span>
       </div>
-      <div className="metric-grid">
-        <MiniMetric label={text.currentPrice} value={formatCurrency(row.price, row.currency, lang)} />
-        <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} />
-        <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} />
-        <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} />
-      </div>
+      {hasData ? (
+        <div className="metric-grid">
+          <MiniMetric label={text.currentPrice} value={formatCurrency(row.price, row.currency, lang)} />
+          {normalizeRatioToPercent(row.dividendYield) !== null ? <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} /> : null}
+          {normalizeRatioToPercent(row.payoutRatio) !== null ? <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} /> : null}
+          {hasDate(row.exDividendDate) ? <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} /> : null}
+          {hasDate(row.paymentDate) ? <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} /> : null}
+        </div>
+      ) : <DividendDataNotice text={text} />}
       <button className="primary-button" type="button">{text.viewDetails}</button>
     </article>
+  );
+}
+
+function DividendMetricGrid({ row, text, lang, compact }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
+  return (
+    <div className="metric-grid">
+      {normalizeRatioToPercent(row.dividendYield) !== null ? <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} /> : null}
+      {normalizeRatioToPercent(row.payoutRatio) !== null ? <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} /> : null}
+      {hasDate(row.exDividendDate) ? <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} /> : null}
+      {hasDate(row.paymentDate) ? <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} /> : null}
+      {!compact && hasNumber(row.annualDividend) ? <MiniMetric label={text.dividendPerShare} value={formatCurrency(row.annualDividend, row.currency, lang)} /> : null}
+      {!compact && row.dividendMetricSource ? <MiniMetric label={text.dataDate} value={row.dividendMetricSource} /> : null}
+    </div>
+  );
+}
+
+function DividendDataNotice({ text }: { text: typeof COPY[LangCode] }) {
+  return (
+    <div className="dividend-data-notice">
+      <Info size={16} />
+      <span>{text.insufficientDividendData}</span>
+    </div>
   );
 }
 
@@ -2068,15 +2145,22 @@ function DividendStyles() {
       }
       .main {
         min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: clip;
         padding: 24px clamp(16px, 2vw, 32px) 56px;
-        padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
       }
-      :global([dir="ltr"]) .main {
+      .page[dir="rtl"] .main {
         padding-inline-start: clamp(16px, 2vw, 32px);
         padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
       }
+      .page[dir="ltr"] .main {
+        padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+        padding-inline-end: clamp(16px, 2vw, 32px);
+      }
       .container {
         width: min(100%, 1440px);
+        min-width: 0;
         margin-inline: auto;
         display: grid;
         gap: 22px;
@@ -2095,6 +2179,7 @@ function DividendStyles() {
         color: #f8fdff;
         box-shadow: 0 24px 60px rgba(10, 42, 75, 0.16);
         overflow: hidden;
+        min-width: 0;
       }
       .hero-copy {
         display: grid;
@@ -2168,6 +2253,7 @@ function DividendStyles() {
         background: rgba(255, 255, 255, 0.11);
         border: 1px solid rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(8px);
+        min-width: 0;
       }
       .hero-panel span {
         color: #a8f3ff;
@@ -2250,14 +2336,16 @@ function DividendStyles() {
       .footer-note,
       .ticker-panel,
       .state-box {
+        max-width: 100%;
+        min-width: 0;
         border: 1px solid rgba(58, 124, 154, 0.16);
         background: rgba(255, 255, 255, 0.9);
         border-radius: 22px;
         box-shadow: 0 16px 40px rgba(24, 62, 92, 0.08);
       }
       .section,
-      .panel { padding: 22px; }
-      .stack { display: grid; gap: 18px; }
+      .panel { padding: 22px; min-width: 0; }
+      .stack { display: grid; gap: 18px; min-width: 0; }
       .section-header {
         display: flex;
         align-items: flex-start;
@@ -2284,7 +2372,7 @@ function DividendStyles() {
       }
       .summary-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
         gap: 14px;
       }
       .metric-card {
@@ -2322,23 +2410,56 @@ function DividendStyles() {
         line-height: 1.5;
       }
       .ticker-panel {
-        padding: 12px;
+        padding: 10px;
         overflow: hidden;
+        min-width: 0;
       }
-      .ticker-scroll {
+      .ticker-viewport {
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+      }
+      .ticker-track,
+      .ticker-set {
         display: flex;
         gap: 10px;
-        overflow-x: auto;
-        padding-bottom: 2px;
+        align-items: stretch;
+        width: max-content;
+      }
+      .ticker-track {
+        animation: dividendTickerMarquee 52s linear infinite;
+        will-change: transform;
+      }
+      .ticker-set {
+        flex: none;
       }
       .ticker-item {
-        flex: 0 0 232px;
+        flex: 0 0 218px;
+        width: 218px;
+        max-width: 218px;
         display: grid;
-        gap: 7px;
-        padding: 14px;
-        border-radius: 16px;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 15px;
         background: #fff;
         border: 1px solid rgba(58, 124, 154, 0.13);
+        min-width: 0;
+      }
+      .ticker-skeleton-track {
+        animation: none;
+        width: 100%;
+      }
+      .ticker-empty {
+        min-height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #526579;
+        font-size: 13px;
+        font-weight: 850;
+        text-align: center;
       }
       .ticker-top,
       .stock-head,
@@ -2350,14 +2471,39 @@ function DividendStyles() {
         justify-content: space-between;
         gap: 12px;
       }
+      .ticker-identity {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+      .ticker-logo {
+        flex: 0 0 auto;
+      }
       .ticker-name,
       .muted {
         color: #64748b;
       }
+      .ticker-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 820;
+      }
       .ticker-metrics {
         justify-content: space-between;
         color: #526579;
-        font-size: 12px;
+        font-size: 11px;
+        gap: 8px;
+        min-width: 0;
+      }
+      .ticker-metrics span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .symbol,
       .numeric {
@@ -2367,6 +2513,17 @@ function DividendStyles() {
       }
       .symbol {
         color: #0f253f;
+        font-weight: 950;
+      }
+      .ticker-item .symbol {
+        max-width: 78px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+      }
+      .ticker-item .numeric {
+        font-size: 13px;
         font-weight: 950;
       }
       .tone-positive { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.22); }
@@ -2391,9 +2548,10 @@ function DividendStyles() {
       }
       .workspace-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr);
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
         gap: 18px;
         align-items: start;
+        min-width: 0;
       }
       .featured-grid,
       .news-grid,
@@ -2403,15 +2561,15 @@ function DividendStyles() {
         gap: 14px;
       }
       .featured-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
       }
       .news-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
         margin-top: 16px;
       }
       .guide-grid,
       .strategy-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
       }
       .card {
         display: grid;
@@ -2493,6 +2651,32 @@ function DividendStyles() {
         font-size: 14px;
         font-weight: 950;
       }
+      .dividend-data-notice,
+      .dividend-empty-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        border: 1px solid rgba(14, 165, 233, 0.18);
+        background: rgba(14, 165, 233, 0.08);
+        color: #075985;
+        font-size: 12px;
+        font-weight: 850;
+        line-height: 1.55;
+      }
+      .dividend-data-notice {
+        padding: 12px 13px;
+        border-radius: 14px;
+      }
+      .dividend-empty-inline {
+        width: fit-content;
+        max-width: 100%;
+        padding: 6px 9px;
+        border-radius: 999px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .warning-line {
         display: flex;
         align-items: flex-start;
@@ -2504,7 +2688,7 @@ function DividendStyles() {
       }
       .filter-panel {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(130px, 190px)) auto;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: 10px;
         align-items: end;
         padding: 16px;
@@ -2513,7 +2697,7 @@ function DividendStyles() {
         background: #fff;
       }
       .news-filter-panel {
-        grid-template-columns: minmax(220px, 1fr) repeat(5, minmax(130px, 180px)) auto;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       }
       .field {
         display: grid;
@@ -2596,7 +2780,7 @@ function DividendStyles() {
       }
       .stock-table {
         width: 100%;
-        min-width: 980px;
+        min-width: 920px;
         border-collapse: separate;
         border-spacing: 0;
       }
@@ -2621,10 +2805,17 @@ function DividendStyles() {
         align-items: center;
         gap: 10px;
         min-width: 210px;
+        max-width: 320px;
       }
       .company-cell div {
         display: grid;
         gap: 3px;
+        min-width: 0;
+      }
+      .company-cell strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .mobile-card-list {
         display: none;
@@ -2637,7 +2828,7 @@ function DividendStyles() {
       }
       .event-row {
         display: grid;
-        grid-template-columns: 180px minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) auto auto;
         gap: 12px;
         align-items: center;
         padding: 13px;
@@ -2656,6 +2847,7 @@ function DividendStyles() {
         overflow: hidden;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+        word-break: break-word;
       }
       .article-summary {
         display: -webkit-box;
@@ -2709,7 +2901,7 @@ function DividendStyles() {
       }
       .comparison-row {
         display: grid;
-        grid-template-columns: 180px 1fr 1fr;
+        grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) minmax(0, 1fr);
         gap: 12px;
         padding: 13px 15px;
         background: #fff;
@@ -2785,8 +2977,17 @@ function DividendStyles() {
         background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
         animation: shimmer 1.4s infinite;
       }
+      @keyframes dividendTickerMarquee {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+      }
       @keyframes shimmer { 100% { transform: translateX(100%); } }
       @keyframes spin { to { transform: rotate(360deg); } }
+      @media (hover: hover) and (pointer: fine) {
+        .ticker-panel:hover .ticker-track {
+          animation-play-state: paused;
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {
           animation-duration: 0.001ms !important;
@@ -2799,19 +3000,14 @@ function DividendStyles() {
         .workspace-grid {
           grid-template-columns: 1fr;
         }
-        .summary-grid,
-        .featured-grid,
-        .news-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
         .filter-panel,
         .news-filter-panel {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
       @media (max-width: 900px) {
-        .main,
-        :global([dir="ltr"]) .main {
+        .page[dir="rtl"] .main,
+        .page[dir="ltr"] .main {
           padding-inline: 16px;
           padding-top: 18px;
         }
@@ -2835,7 +3031,6 @@ function DividendStyles() {
           grid-template-columns: 1fr;
         }
         .section-header,
-        .ticker-top,
         .stock-head,
         .article-actions,
         .row-between,
@@ -2859,6 +3054,29 @@ function DividendStyles() {
         }
         .comparison-row {
           grid-template-columns: 1fr;
+        }
+        .ticker-panel {
+          padding: 8px;
+        }
+        .ticker-viewport {
+          mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+        }
+        .ticker-track,
+        .ticker-set {
+          gap: 8px;
+        }
+        .ticker-track {
+          animation-duration: 42s;
+        }
+        .ticker-item {
+          flex-basis: 190px;
+          width: 190px;
+          max-width: 190px;
+          padding: 9px 10px;
+        }
+        .ticker-metrics {
+          display: grid;
+          gap: 3px;
         }
       }
     `}</style>

@@ -939,6 +939,8 @@ export function TechNewsPage() {
         }
 
         .tech-ticker-item > div{display:grid;gap:2px;min-width:0}
+        .tech-ticker-item .tech-ticker-identity{display:flex;align-items:center;gap:9px;min-width:0}
+        .tech-ticker-item .tech-ticker-identity>div{display:grid;gap:2px;min-width:0}
         .tech-ticker-item strong{font-size:15px;font-weight:950;letter-spacing:.02em;color:var(--tech-text)}
         .tech-ticker-item small{display:inline-flex;align-items:center;gap:4px;color:var(--tech-muted);font-size:10.5px;font-weight:850}
         .tech-ticker-item > span{grid-row:span 2;color:var(--tech-text);font-size:13px;font-weight:950;white-space:nowrap}

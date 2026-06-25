@@ -30,6 +30,7 @@ import {
   Utensils,
   type LucideIcon,
 } from 'lucide-react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -1382,6 +1383,7 @@ function MoverList({ title, items, lang, tone }: { title: string; items: StockCa
       {items.length ? items.map(item => (
         <div className="mover-row" key={`${title}-${item.symbol}`}>
           <span>{item.rank}</span>
+          <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
           <div>
             <strong dir="ltr">{item.symbol}</strong>
             <small>{item.name}</small>
@@ -1403,7 +1405,7 @@ function StockCard({ row, text, lang, compact = false }: {
   return (
     <article className={compact ? 'stock-card compact' : 'stock-card'}>
       <div className="stock-card-head">
-        <span className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+        <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
         <div>
           <strong>{row.name}</strong>
           <span dir="ltr">{row.symbol}</span>
@@ -1517,7 +1519,7 @@ function StocksTab({
                     <tr key={row.symbol}>
                       <td>
                         <div className="company-cell">
-                          <span className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+                          <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
                           <div>
                             <strong>{row.name}</strong>
                             <span dir="ltr">{row.symbol}</span>
@@ -2679,7 +2681,7 @@ export function CyclicalStocksNewsPage() {
         }
         .mover-row {
           display: grid;
-          grid-template-columns: auto minmax(0, 1fr) auto;
+          grid-template-columns: auto auto minmax(0, 1fr) auto;
           gap: 10px;
           align-items: center;
           border-radius: 14px;
@@ -2751,8 +2753,8 @@ export function CyclicalStocksNewsPage() {
           font-size: 16px;
           font-weight: 950;
         }
-        .stock-card-head span,
-        .company-cell span {
+        .stock-card-head > div span,
+        .company-cell > div span {
           color: #62778d;
           font-size: 12px;
           font-weight: 850;

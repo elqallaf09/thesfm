@@ -3526,7 +3526,13 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: #fff;
           align-content: center;
         }
-        .energyTickerItem span {
+        .energyTickerIdentity {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .energyTickerIdentity > span:not(.asset-avatar) {
           color: #0f7891;
           font-size: 11px;
           font-weight: 950;
@@ -3831,7 +3837,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyMoverRow {
           min-width: 0;
           display: grid;
-          grid-template-columns: 52px minmax(0, 1fr) auto auto;
+          grid-template-columns: auto 52px minmax(0, 1fr) auto auto;
           gap: 8px;
           align-items: center;
           min-height: 44px;
@@ -3839,7 +3845,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           padding-top: 8px;
           font-size: 12px;
         }
-        .energyMoverRow span {
+        .energyMoverRow > span:not(.asset-avatar) {
           color: #0f7891;
           font-weight: 950;
         }
@@ -3869,7 +3875,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           gap: 11px;
           min-width: 0;
         }
-        .energyCompanyFeature header > span {
+        .energyCompanyFeature header > .asset-avatar {
           width: 34px;
           height: 34px;
           border-radius: 12px;
@@ -4092,7 +4098,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           gap: 10px;
           min-width: 0;
         }
-        .energyCompanyCell > span {
+        .energyCompanyCell > .asset-avatar {
           width: 38px;
           height: 38px;
           border-radius: 13px;
@@ -4120,6 +4126,17 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyMobileCompanyList,
         .energyMobileHint {
           display: none;
+        }
+        .energyMobileCompanyIdentity {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .energyMobileCompanyIdentity > span:not(.asset-avatar) {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
         }
         .energyNewsGrid {
           grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -4702,7 +4719,11 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             border-top: 1px solid #e2eef5;
           }
           .energyMoverRow {
-            grid-template-columns: 48px minmax(0, 1fr);
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+          .energyMoverRow > span:not(.asset-avatar),
+          .energyMoverRow strong {
+            grid-column: 2;
           }
           .energyMoverRow b,
           .energyMoverRow em {

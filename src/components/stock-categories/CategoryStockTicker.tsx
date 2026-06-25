@@ -3,6 +3,7 @@
 import { Activity, AlertCircle, TrendingDown, TrendingUp } from 'lucide-react';
 import type { StockCategoryId, StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 
 type CategoryStockTickerProps = {
   categoryType: StockCategoryId;
@@ -150,6 +151,7 @@ export function CategoryStockTicker({
                 className="min-w-[210px] max-w-[250px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
+                  <AssetAvatar symbol={stock.symbol} name={stock.name} assetType="stock" size="sm" decorative />
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
                       <span dir="ltr" className="text-base font-black text-slate-950 dark:text-white">

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
@@ -26,6 +25,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
@@ -1235,14 +1235,14 @@ function FeaturedNewsSection({ items, loading, text, locale }: {
 }
 
 function CoinAvatar({ coin }: { coin: CryptoMarketCoin }) {
-  const [failed, setFailed] = useState(false);
-  if (!coin.image || failed) {
-    return <span className="crypto-coin-logo" dir="ltr">{coin.symbol.slice(0, 2)}</span>;
-  }
   return (
-    <span className="crypto-coin-logo">
-      <Image src={coin.image} alt={`${coin.name} ${coin.symbol}`} width={34} height={34} sizes="34px" onError={() => setFailed(true)} />
-    </span>
+    <AssetAvatar
+      symbol={coin.symbol}
+      name={coin.name}
+      assetType="crypto"
+      imageUrl={coin.image}
+      size="sm"
+    />
   );
 }
 

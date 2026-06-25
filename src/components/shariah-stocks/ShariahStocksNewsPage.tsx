@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import styles from './ShariahStocksNewsPage.module.css';
@@ -1638,8 +1639,11 @@ function SecurityTable({
               <tr key={row.symbol}>
                 <td>
                   <button type="button" className={styles.companyButton} onClick={() => onDetails(row)}>
-                    <span>{row.name}</span>
-                    <b dir="ltr">{row.symbol}</b>
+                    <AssetAvatar symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
+                    <span className={styles.companyButtonText}>
+                      <strong>{row.name}</strong>
+                      <b dir="ltr">{row.symbol}</b>
+                    </span>
                   </button>
                 </td>
                 <td><StatusBadge status={row.shariahStatus} label={statusLabel(row.shariahStatus, locale)} /></td>
@@ -1942,9 +1946,12 @@ function SecurityMiniCard({
   return (
     <article className={styles.securityCard}>
       <header>
-        <div>
-          <strong>{row.name}</strong>
-          <span dir="ltr">{row.symbol}</span>
+        <div className={styles.securityCardIdentity}>
+          <AssetAvatar symbol={row.symbol} name={row.name} assetType={row.assetType} size="md" decorative />
+          <div>
+            <strong>{row.name}</strong>
+            <span dir="ltr">{row.symbol}</span>
+          </div>
         </div>
         <StatusBadge status={row.shariahStatus} label={statusLabel(row.shariahStatus, locale)} />
       </header>
