@@ -182,9 +182,57 @@ type EnergyNewsResponse =
     reason?: string;
   };
 
+type CalendarImpact = 'high' | 'medium' | 'low' | 'unknown';
+
+type EconomicCalendarApiEvent = {
+  id?: string;
+  title?: string;
+  eventName?: string;
+  event?: string;
+  name?: string;
+  country?: string | null;
+  currency?: string | null;
+  dateTimeUtc?: string;
+  dateTime?: string;
+  time?: string;
+  datetime?: string;
+  eventTime?: string;
+  impact?: CalendarImpact;
+  actual?: string | number | null;
+  forecast?: string | number | null;
+  previous?: string | number | null;
+  unit?: string | null;
+  source?: string | null;
+  provider?: string | null;
+};
+
+type EconomicCalendarApiResponse = {
+  status?: string;
+  provider?: string | null;
+  data?: EconomicCalendarApiEvent[];
+  items?: EconomicCalendarApiEvent[];
+  events?: EconomicCalendarApiEvent[];
+  cached?: boolean;
+  stale?: boolean;
+  lastSuccessfulUpdate?: string | null;
+  messageCode?: string | null;
+};
+
+type EnergyCalendarEventCard = {
+  id: string;
+  title: string;
+  category: string;
+  dateTime: string;
+  impact: CalendarImpact;
+  description: string;
+  source: string;
+  status: 'upcoming' | 'recent';
+};
+
 const NEWS_PAGE_SIZE = 12;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 const ENERGY_ROUTE = '/energy-stocks';
+const ENERGY_CALENDAR_LIMIT = 7;
 
 const TEXT = {
   ar: {
@@ -275,6 +323,20 @@ const TEXT = {
     noMarketBody: 'تعذر الاتصال بمزود البيانات. سنعرض آخر بيانات متاحة عند توفرها.',
     noCalendarTitle: 'لا توجد أحداث طاقة ضمن الفترة المحددة',
     noCalendarBody: 'جرّب تغيير الفترة الزمنية أو نوع الحدث أو إزالة بعض عوامل التصفية.',
+    calendarLoadingTitle: 'جاري تحميل تقويم الطاقة',
+    calendarLoadingBody: 'نبحث عن أحداث الطاقة من التقويم الاقتصادي والأخبار المتاحة.',
+    calendarProviderNotice: 'مصدر التقويم الاقتصادي غير متاح حالياً، لذلك يتم عرض الأحداث المستخلصة من أخبار الطاقة المتاحة.',
+    calendarEconomicSource: 'التقويم الاقتصادي',
+    calendarRecentNewsSource: 'خبر حديث',
+    calendarImpactHigh: 'تأثير مرتفع',
+    calendarImpactMedium: 'تأثير متوسط',
+    calendarImpactLow: 'تأثير منخفض',
+    calendarImpactUnknown: 'تأثير غير محدد',
+    calendarUpcoming: 'قادم',
+    calendarRecent: 'حديث',
+    calendarActual: 'الفعلي',
+    calendarForecast: 'المتوقع',
+    calendarPrevious: 'السابق',
     loadingMarket: 'جارٍ تحميل بيانات الطاقة...',
     providerError: 'تعذر تحديث جزء من البيانات حالياً. تبقى الأقسام الأخرى متاحة عند توفرها.',
     totalCompanies: 'الشركات المتاحة',
@@ -411,6 +473,20 @@ const TEXT = {
     noMarketBody: 'The data provider could not be reached. Latest available data will appear when present.',
     noCalendarTitle: 'No energy events in the selected period',
     noCalendarBody: 'Try changing the period, event type, or filters.',
+    calendarLoadingTitle: 'Loading energy calendar',
+    calendarLoadingBody: 'Checking the economic calendar and available energy news.',
+    calendarProviderNotice: 'The economic-calendar source is unavailable right now, so events are derived from available energy news.',
+    calendarEconomicSource: 'Economic calendar',
+    calendarRecentNewsSource: 'Recent story',
+    calendarImpactHigh: 'High impact',
+    calendarImpactMedium: 'Medium impact',
+    calendarImpactLow: 'Low impact',
+    calendarImpactUnknown: 'Impact unavailable',
+    calendarUpcoming: 'Upcoming',
+    calendarRecent: 'Recent',
+    calendarActual: 'Actual',
+    calendarForecast: 'Forecast',
+    calendarPrevious: 'Previous',
     loadingMarket: 'Loading energy data...',
     providerError: 'Part of the data could not be refreshed. Other sections remain usable where available.',
     totalCompanies: 'Available companies',
@@ -547,6 +623,20 @@ const TEXT = {
     noMarketBody: 'Le fournisseur de données est inaccessible. Les dernières données disponibles apparaîtront quand présentes.',
     noCalendarTitle: 'Aucun événement énergie sur la période',
     noCalendarBody: 'Essayez de modifier la période, le type d’événement ou les filtres.',
+    calendarLoadingTitle: 'Chargement du calendrier énergie',
+    calendarLoadingBody: 'Recherche dans le calendrier économique et les actualités énergie disponibles.',
+    calendarProviderNotice: 'La source du calendrier économique est indisponible pour le moment ; les événements proviennent donc des actualités énergie disponibles.',
+    calendarEconomicSource: 'Calendrier économique',
+    calendarRecentNewsSource: 'Actualité récente',
+    calendarImpactHigh: 'Impact fort',
+    calendarImpactMedium: 'Impact moyen',
+    calendarImpactLow: 'Impact faible',
+    calendarImpactUnknown: 'Impact indisponible',
+    calendarUpcoming: 'À venir',
+    calendarRecent: 'Récent',
+    calendarActual: 'Réel',
+    calendarForecast: 'Prévision',
+    calendarPrevious: 'Précédent',
     loadingMarket: 'Chargement des données énergie...',
     providerError: 'Une partie des données n’a pas pu être actualisée. Les autres sections restent disponibles.',
     totalCompanies: 'Sociétés disponibles',
@@ -951,6 +1041,165 @@ function itemMatchesTime(item: EnergyNewsItem, period: TimeFilter) {
   return age <= 30 * 24 * 60 * 60 * 1000;
 }
 
+const ENERGY_EVENT_KEYWORDS = [
+  'oil',
+  'crude',
+  'brent',
+  'wti',
+  'petroleum',
+  'gas',
+  'natural gas',
+  'lng',
+  'opec',
+  'refinery',
+  'refining',
+  'energy',
+  'power',
+  'electricity',
+  'solar',
+  'wind',
+  'renewable',
+  'nuclear',
+  'uranium',
+  'eia',
+  'inventory',
+  'inventories',
+  'مخزون',
+  'النفط',
+  'الخام',
+  'برنت',
+  'الغاز',
+  'أوبك',
+  'الطاقة',
+  'الكهرباء',
+  'الشمسية',
+  'الرياح',
+  'المتجددة',
+  'النووية',
+  'اليورانيوم',
+];
+
+const HIGH_IMPACT_EVENT_KEYWORDS = ['opec', 'inventories', 'inventory', 'eia', 'sanction', 'war', 'supply cut', 'rate decision', 'أوبك', 'مخزون', 'عقوبات'];
+const MEDIUM_IMPACT_EVENT_KEYWORDS = ['earnings', 'guidance', 'production', 'refinery', 'export', 'import', 'capacity', 'أرباح', 'إنتاج', 'تصدير'];
+
+function isoDateOffset(days: number) {
+  const date = new Date();
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isEnergyEventText(value: string) {
+  const normalized = value.toLowerCase();
+  return ENERGY_EVENT_KEYWORDS.some(keyword => normalized.includes(keyword.toLowerCase()));
+}
+
+function impactFromText(value: string): CalendarImpact {
+  const normalized = value.toLowerCase();
+  if (HIGH_IMPACT_EVENT_KEYWORDS.some(keyword => normalized.includes(keyword.toLowerCase()))) return 'high';
+  if (MEDIUM_IMPACT_EVENT_KEYWORDS.some(keyword => normalized.includes(keyword.toLowerCase()))) return 'medium';
+  return 'unknown';
+}
+
+function normalizeCalendarImpact(value: unknown): CalendarImpact {
+  const normalized = String(value ?? '').toLowerCase();
+  if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
+  return 'unknown';
+}
+
+function energyEventCategoryFromText(value: string, lang: LangCode) {
+  const normalized = value.toLowerCase();
+  const match = (Object.keys(NEWS_CATEGORY_META) as NewsCategory[])
+    .filter(category => category !== 'all')
+    .find(category => NEWS_CATEGORY_META[category].keywords.some(keyword => normalized.includes(keyword.toLowerCase())));
+  return NEWS_CATEGORY_META[match ?? 'all'].label[lang];
+}
+
+function impactLabel(impact: CalendarImpact, text: TextBundle) {
+  if (impact === 'high') return text.calendarImpactHigh;
+  if (impact === 'medium') return text.calendarImpactMedium;
+  if (impact === 'low') return text.calendarImpactLow;
+  return text.calendarImpactUnknown;
+}
+
+function calendarStatus(dateTime: string): 'upcoming' | 'recent' {
+  const date = new Date(dateTime);
+  if (!Number.isNaN(date.getTime()) && date.getTime() >= Date.now()) return 'upcoming';
+  return 'recent';
+}
+
+function normalizeEconomicCalendarEvents(
+  records: EconomicCalendarApiEvent[],
+  lang: LangCode,
+  text: TextBundle,
+): EnergyCalendarEventCard[] {
+  return records
+    .map((record, index) => {
+      const title = String(record.title || record.eventName || record.event || record.name || '').trim();
+      const dateTime = String(record.dateTimeUtc || record.dateTime || record.time || record.datetime || record.eventTime || '').trim();
+      if (!title || !dateTime || Number.isNaN(new Date(dateTime).getTime())) return null;
+      const haystack = [
+        title,
+        record.country,
+        record.currency,
+        record.source,
+        record.provider,
+      ].filter(Boolean).join(' ');
+      if (!isEnergyEventText(haystack)) return null;
+      const impact = normalizeCalendarImpact(record.impact);
+      const values = [
+        record.actual !== null && record.actual !== undefined ? `${text.calendarActual}: ${record.actual}${record.unit ? ` ${record.unit}` : ''}` : '',
+        record.forecast !== null && record.forecast !== undefined ? `${text.calendarForecast}: ${record.forecast}${record.unit ? ` ${record.unit}` : ''}` : '',
+        record.previous !== null && record.previous !== undefined ? `${text.calendarPrevious}: ${record.previous}${record.unit ? ` ${record.unit}` : ''}` : '',
+      ].filter(Boolean);
+      return {
+        id: `calendar-${record.id || title}-${dateTime}-${index}`,
+        title,
+        category: energyEventCategoryFromText(haystack, lang),
+        dateTime,
+        impact: impact === 'unknown' ? impactFromText(haystack) : impact,
+        description: values.join(' · ') || text.calendarEconomicSource,
+        source: record.source || record.provider || text.calendarEconomicSource,
+        status: calendarStatus(dateTime),
+      } satisfies EnergyCalendarEventCard;
+    })
+    .filter((event): event is EnergyCalendarEventCard => Boolean(event));
+}
+
+function newsToCalendarEvents(items: EnergyNewsItem[], lang: LangCode, text: TextBundle): EnergyCalendarEventCard[] {
+  return dedupeNews(items)
+    .map<EnergyCalendarEventCard | null>((item, index) => {
+      const title = displayTitle(item).trim();
+      const dateTime = item.publishedAt;
+      if (!title || !dateTime || Number.isNaN(new Date(dateTime).getTime())) return null;
+      const haystack = newsHaystack(item);
+      if (!isEnergyEventText(haystack)) return null;
+      return {
+        id: `news-event-${item.id || item.url || title}-${index}`,
+        title,
+        category: energyEventCategoryFromText(haystack, lang),
+        dateTime,
+        impact: impactFromText(haystack),
+        description: displaySummary(item) || text.calendarRecentNewsSource,
+        source: item.source || text.calendarRecentNewsSource,
+        status: 'recent',
+      } satisfies EnergyCalendarEventCard;
+    })
+    .filter((event): event is EnergyCalendarEventCard => Boolean(event));
+}
+
+function sortEnergyCalendarEvents(events: EnergyCalendarEventCard[]) {
+  const now = Date.now();
+  return events.slice().sort((a, b) => {
+    const aTime = new Date(a.dateTime).getTime();
+    const bTime = new Date(b.dateTime).getTime();
+    const aFuture = aTime >= now;
+    const bFuture = bTime >= now;
+    if (aFuture !== bFuture) return aFuture ? -1 : 1;
+    return aFuture ? aTime - bTime : bTime - aTime;
+  });
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -1199,6 +1448,7 @@ function EnergyTicker({ items, loading, text, locale }: {
   text: TextBundle;
   locale: string;
 }) {
+  const loopItems = items.length > 0 ? [...items, ...items] : [];
   return (
     <section className="energyTickerPanel" aria-label={text.marketData}>
       {loading ? (
@@ -1206,11 +1456,16 @@ function EnergyTicker({ items, loading, text, locale }: {
           {Array.from({ length: 8 }, (_, index) => <span className="energyTickerSkeleton" key={index} />)}
         </div>
       ) : items.length > 0 ? (
-        <div className="energyTickerTrack">
-          {items.map(item => {
+        <div className="energyTickerViewport">
+          <div className="energyTickerTrack energyTickerMarquee">
+            {loopItems.map((item, index) => {
             const tone = toneFor(item.changePercent);
             return (
-              <article className={`energyTickerItem energyTone-${tone}`} key={item.symbol}>
+              <article
+                className={`energyTickerItem energyTone-${tone}`}
+                key={`${item.symbol}-${index}`}
+                aria-hidden={index >= items.length ? true : undefined}
+              >
                 <span dir="ltr">{item.symbol}</span>
                 <strong>{item.name}</strong>
                 <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
@@ -1218,7 +1473,8 @@ function EnergyTicker({ items, loading, text, locale }: {
                 <small>{categoryLabel(item.sector, 'en')}</small>
               </article>
             );
-          })}
+            })}
+          </div>
         </div>
       ) : (
         <EmptyState title={text.noMarketTitle} body={text.noMarketBody} icon={AlertTriangle} />
@@ -1791,12 +2047,118 @@ function EnergyNewsFeed({ items, loading, error, text, locale, query, setQuery, 
   );
 }
 
-function EnergyCalendar({ text }: { text: TextBundle }) {
+function EnergyCalendar({ text, locale, lang, newsItems, newsLoading, newsError }: {
+  text: TextBundle;
+  locale: string;
+  lang: LangCode;
+  newsItems: EnergyNewsItem[];
+  newsLoading: boolean;
+  newsError: string;
+}) {
+  const [calendarEvents, setCalendarEvents] = useState<EnergyCalendarEventCard[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
+  const [calendarError, setCalendarError] = useState('');
+  const [calendarStatus, setCalendarStatus] = useState('');
+  const [calendarProvider, setCalendarProvider] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCalendar = async () => {
+      setCalendarLoading(true);
+      setCalendarError('');
+      try {
+        const params = new URLSearchParams({
+          from: isoDateOffset(-7),
+          to: isoDateOffset(21),
+        });
+        const result = await fetchJson<EconomicCalendarApiResponse>(`/api/economic-calendar?${params.toString()}`);
+        if (cancelled) return;
+        const records = result.data ?? result.items ?? result.events ?? [];
+        setCalendarEvents(normalizeEconomicCalendarEvents(records, lang, text));
+        setCalendarProvider(result.provider ?? null);
+        setCalendarStatus(result.status ?? '');
+        if (result.status && result.status !== 'success') {
+          setCalendarError(result.messageCode || result.status);
+        }
+      } catch {
+        if (!cancelled) {
+          setCalendarEvents([]);
+          setCalendarProvider(null);
+          setCalendarStatus('provider_error');
+          setCalendarError('provider_error');
+        }
+      } finally {
+        if (!cancelled) setCalendarLoading(false);
+      }
+    };
+
+    void loadCalendar();
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, text]);
+
+  const newsEvents = useMemo(
+    () => newsToCalendarEvents(newsItems, lang, text),
+    [lang, newsItems, text],
+  );
+  const events = useMemo(
+    () => sortEnergyCalendarEvents([...calendarEvents, ...newsEvents]).slice(0, ENERGY_CALENDAR_LIMIT),
+    [calendarEvents, newsEvents],
+  );
+  const isLoading = calendarLoading || (newsLoading && newsItems.length === 0);
+  const hasProviderIssue = Boolean(calendarError && calendarStatus !== 'success');
+  const showProviderNotice = hasProviderIssue && newsEvents.length > 0;
+
   return (
     <section className="energyPanel">
       <SectionHeader icon={CalendarDays} title={text.calendarTitle} subtitle={text.calendarSubtitle} />
       <div className="energyCalendarShell">
-        <EmptyState icon={CalendarDays} title={text.noCalendarTitle} body={`${text.noCalendarBody} ${text.eventProviderMissing}`} />
+        {showProviderNotice ? (
+          <div className="energyCalendarNotice">
+            <AlertTriangle size={17} />
+            <span>{text.calendarProviderNotice}</span>
+          </div>
+        ) : null}
+        {isLoading ? (
+          <div className="energyCalendarList" aria-busy="true" aria-live="polite">
+            {Array.from({ length: 4 }, (_, index) => <span className="energyCalendarSkeleton" key={index} />)}
+          </div>
+        ) : events.length > 0 ? (
+          <div className="energyCalendarList">
+            {events.map(event => (
+              <article className={`energyCalendarEvent energyTone-${event.impact === 'high' ? 'warning' : 'neutral'}`} key={event.id}>
+                <div className="energyCalendarDate">
+                  <strong>{relativeDate(event.dateTime, locale)}</strong>
+                  <span>{formatDateTime(event.dateTime, locale)}</span>
+                </div>
+                <div className="energyCalendarBody">
+                  <div>
+                    <DataBadge tone={event.status === 'upcoming' ? 'positive' : 'neutral'}>
+                      {event.status === 'upcoming' ? text.calendarUpcoming : text.calendarRecent}
+                    </DataBadge>
+                    <DataBadge tone={event.impact === 'high' ? 'warning' : 'neutral'}>
+                      {impactLabel(event.impact, text)}
+                    </DataBadge>
+                    <DataBadge>{event.category}</DataBadge>
+                  </div>
+                  <h3 dir="auto">{event.title}</h3>
+                  <p dir="auto">{event.description}</p>
+                </div>
+                <footer>
+                  <span>{text.source}: <b>{event.source}</b></span>
+                  {calendarProvider ? <span>{text.provider}: <b dir="ltr">{calendarProvider}</b></span> : null}
+                </footer>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={CalendarDays}
+            title={hasProviderIssue || newsError ? text.providerError : text.noCalendarTitle}
+            body={hasProviderIssue || newsError ? `${text.noCalendarBody} ${text.eventProviderMissing}` : text.noCalendarBody}
+          />
+        )}
       </div>
     </section>
   );
@@ -2088,7 +2450,7 @@ export function EnergyNewsPage() {
   }, [loadMarket]);
 
   useEffect(() => {
-    if (activeTab === 'overview' || activeTab === 'news' || activeTab === 'oil-gas' || activeTab === 'renewables' || activeTab === 'nuclear') {
+    if (activeTab === 'overview' || activeTab === 'news' || activeTab === 'calendar' || activeTab === 'oil-gas' || activeTab === 'renewables' || activeTab === 'nuclear') {
       if (!newsLoaded) void loadNews(true);
     }
     if (activeTab === 'overview' || activeTab === 'companies') {
@@ -2156,7 +2518,16 @@ export function EnergyNewsPage() {
       );
     }
     if (activeTab === 'calendar') {
-      return <EnergyCalendar text={text} />;
+      return (
+        <EnergyCalendar
+          text={text}
+          locale={locale}
+          lang={activeLang}
+          newsItems={newsItems}
+          newsLoading={newsLoading}
+          newsError={newsError}
+        />
+      );
     }
     if (activeTab === 'news') {
       return (
@@ -2197,7 +2568,14 @@ export function EnergyNewsPage() {
         </div>
         <FeaturedEnergyCompanies items={tickerItems} text={text} lang={activeLang} locale={locale} />
         <div className="energyOverviewGrid">
-          <EnergyCalendar text={text} />
+          <EnergyCalendar
+            text={text}
+            locale={locale}
+            lang={activeLang}
+            newsItems={newsItems}
+            newsLoading={newsLoading}
+            newsError={newsError}
+          />
           <EnergyStrategyComparison text={text} lang={activeLang} preview />
         </div>
         <EnergyNewsFeed
