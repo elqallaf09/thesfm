@@ -38,6 +38,8 @@ export function toTraderRecommendation(result: StockAnalysisResult) {
     exchange: result.exchange,
     sector: result.sector,
     currency: result.currency,
+    shariaStatus: 'review_required',
+    shariaSource: 'Verified Sharia screening data is not connected for this scanner result.',
     currentPrice: result.currentPrice,
     price: result.currentPrice,
     expectedPrice: result.targetPrice,

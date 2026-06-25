@@ -28,6 +28,34 @@ const i18n = {
     aiActive: "AI AGENT ACTIVE",
     analyzing: "تحليل مستمر",
     liveData: "بيانات مباشرة",
+    delayedData: "بيانات متأخرة",
+    connecting: "جاري الاتصال",
+    operational: "يعمل",
+    scanning: "قيد الفحص",
+    providerAvailability: "حالة مزود البيانات",
+    dataFreshness: "حداثة البيانات",
+    applicationStatus: "حالة التطبيق",
+    providerConnected: "مزود البيانات متصل",
+    providerDelayed: "مزود البيانات متصل ببيانات متأخرة",
+    providerUnavailable: "مزود البيانات غير متاح",
+    unauthorized: "انتهت الجلسة",
+    accessDenied: "لا توجد صلاحية",
+    requestFailed: "فشل الطلب",
+    rateLimited: "تم تجاوز حد الطلبات",
+    providerTimeout: "انتهت مهلة الطلب",
+    invalidResponse: "استجابة غير صالحة",
+    serverError: "خطأ في الخادم",
+    unsupportedMetric: "غير مدعوم لهذا السوق",
+    noMarketMovers: "لا تتوفر بيانات حركة لهذا السوق",
+    multipleCurrencies: "عملات متعددة",
+    baseQuoteCurrencies: "عملات أساس/مقابل",
+    mixedCurrencies: "عملات متعددة",
+    notApplicable: "غير منطبق",
+    selectedMarketInstruments: "أدوات في السوق المختار",
+    supportedCategories: "فئات سوق مدعومة",
+    scannedAssets: "أدوات مفحوصة حالياً",
+    availableSignals: "إشارات متاحة حالياً",
+    lastUpdatedAt: "آخر تحديث عند",
     unavailable: "غير متاح",
     loading: "جاري التحميل",
     error: "تعذر تحميل البيانات",
@@ -62,10 +90,10 @@ const i18n = {
     aiNoticeTitle: "تنبيه الذكاء الاصطناعي",
     aiNoticeBody: "يتم إنشاء بعض التحليلات والتوقعات باستخدام تقنيات الذكاء الاصطناعي. قد تحتوي النتائج على أخطاء أو تقديرات غير دقيقة، ويجب عدم الاعتماد عليها وحدها لاتخاذ القرارات الاستثمارية.",
     close: "إغلاق",
-    statusBarData: "حالة البيانات",
-    totalMarkets: "إجمالي الأسواق",
-    activeAssets: "الأصول النشطة",
-    scans: "فحوصات الذكاء الاصطناعي",
+    statusBarData: "حالة مزود البيانات",
+    totalMarkets: "فئات الأسواق المدعومة",
+    activeAssets: "الأدوات المفحوصة",
+    scans: "الإشارات المتاحة",
     lastUpdate: "آخر تحديث",
     systemStatus: "حالة النظام",
     noLiveData: "لا توجد بيانات مباشرة متاحة حالياً.",
@@ -94,6 +122,12 @@ const i18n = {
     marketPreferences: "تفضيلات الأسواق",
     educational: "تعليمي",
     support: "الدعم والمعلومات",
+    shariaCompliance: "التوافق الشرعي",
+    shariaCompliant: "متوافق شرعياً",
+    shariaNonCompliant: "غير متوافق شرعياً",
+    shariaReviewRequired: "يحتاج مراجعة",
+    shariaNotApplicable: "غير منطبق",
+    shariaTooltip: "التصنيف الشرعي إرشادي ويحتاج إلى مراجعة دورية وفق المعايير الشرعية المعتمدة.",
     openDrawer: "فتح القائمة",
     closeDrawer: "إغلاق القائمة",
   },
@@ -118,6 +152,34 @@ const i18n = {
     aiActive: "AI AGENT ACTIVE",
     analyzing: "Analyzing 24/7",
     liveData: "Live data",
+    delayedData: "Delayed data",
+    connecting: "Connecting",
+    operational: "Operational",
+    scanning: "Scanning",
+    providerAvailability: "Data-provider status",
+    dataFreshness: "Data freshness",
+    applicationStatus: "Application status",
+    providerConnected: "Provider connected",
+    providerDelayed: "Provider connected with delayed data",
+    providerUnavailable: "Provider unavailable",
+    unauthorized: "Session expired",
+    accessDenied: "Access denied",
+    requestFailed: "Request failed",
+    rateLimited: "Rate limited",
+    providerTimeout: "Request timed out",
+    invalidResponse: "Invalid response",
+    serverError: "Server error",
+    unsupportedMetric: "Unsupported for this market",
+    noMarketMovers: "No mover data for this market",
+    multipleCurrencies: "Multiple currencies",
+    baseQuoteCurrencies: "Base / quote currencies",
+    mixedCurrencies: "Mixed currencies",
+    notApplicable: "Not applicable",
+    selectedMarketInstruments: "Selected-market instruments",
+    supportedCategories: "Supported market categories",
+    scannedAssets: "Currently scanned assets",
+    availableSignals: "Available signals",
+    lastUpdatedAt: "Last updated at",
     unavailable: "Unavailable",
     loading: "Loading",
     error: "Unable to load data",
@@ -152,10 +214,10 @@ const i18n = {
     aiNoticeTitle: "AI notice",
     aiNoticeBody: "Some analysis and forecasts are generated using artificial intelligence. Results may contain errors or inaccurate estimates and should not be relied on alone for investment decisions.",
     close: "Close",
-    statusBarData: "Data status",
-    totalMarkets: "Total markets",
-    activeAssets: "Active assets",
-    scans: "AI scans",
+    statusBarData: "Data-provider status",
+    totalMarkets: "Supported market categories",
+    activeAssets: "Scanned assets",
+    scans: "Available signals",
     lastUpdate: "Last update",
     systemStatus: "System status",
     noLiveData: "No live data is available right now.",
@@ -184,6 +246,12 @@ const i18n = {
     marketPreferences: "Market preferences",
     educational: "Educational",
     support: "Support / About",
+    shariaCompliance: "Sharia compliance",
+    shariaCompliant: "Sharia compliant",
+    shariaNonCompliant: "Non-compliant",
+    shariaReviewRequired: "Review required",
+    shariaNotApplicable: "Not applicable",
+    shariaTooltip: "Sharia classification is indicative and requires periodic review under approved Sharia standards.",
     openDrawer: "Open menu",
     closeDrawer: "Close menu",
   },
@@ -208,6 +276,34 @@ const i18n = {
     aiActive: "AGENT IA ACTIF",
     analyzing: "Analyse 24/7",
     liveData: "Donnees directes",
+    delayedData: "Donnees differees",
+    connecting: "Connexion",
+    operational: "Operationnel",
+    scanning: "Scan en cours",
+    providerAvailability: "Etat du fournisseur",
+    dataFreshness: "Fraicheur des donnees",
+    applicationStatus: "Etat application",
+    providerConnected: "Fournisseur connecte",
+    providerDelayed: "Fournisseur connecte avec donnees differees",
+    providerUnavailable: "Fournisseur indisponible",
+    unauthorized: "Session expiree",
+    accessDenied: "Acces refuse",
+    requestFailed: "Echec de la requete",
+    rateLimited: "Limite de requetes atteinte",
+    providerTimeout: "Delai depasse",
+    invalidResponse: "Reponse invalide",
+    serverError: "Erreur serveur",
+    unsupportedMetric: "Non pris en charge pour ce marche",
+    noMarketMovers: "Aucune donnee de mouvement pour ce marche",
+    multipleCurrencies: "Devises multiples",
+    baseQuoteCurrencies: "Devises base / contrepartie",
+    mixedCurrencies: "Devises mixtes",
+    notApplicable: "Non applicable",
+    selectedMarketInstruments: "Instruments du marche selectionne",
+    supportedCategories: "Categories de marche prises en charge",
+    scannedAssets: "Actifs scannes",
+    availableSignals: "Signaux disponibles",
+    lastUpdatedAt: "Derniere mise a jour a",
     unavailable: "Indisponible",
     loading: "Chargement",
     error: "Impossible de charger les donnees",
@@ -242,10 +338,10 @@ const i18n = {
     aiNoticeTitle: "Avertissement IA",
     aiNoticeBody: "Certaines analyses sont generees par IA et peuvent contenir des erreurs. Ne les utilisez pas seules pour prendre une decision.",
     close: "Fermer",
-    statusBarData: "Etat des donnees",
-    totalMarkets: "Marches",
-    activeAssets: "Actifs actifs",
-    scans: "Scans IA",
+    statusBarData: "Etat du fournisseur",
+    totalMarkets: "Categories de marche",
+    activeAssets: "Actifs scannes",
+    scans: "Signaux disponibles",
     lastUpdate: "Derniere mise a jour",
     systemStatus: "Etat systeme",
     noLiveData: "Aucune donnee directe disponible.",
@@ -274,6 +370,12 @@ const i18n = {
     marketPreferences: "Preferences marche",
     educational: "Educatif",
     support: "Support / A propos",
+    shariaCompliance: "Conformite Charia",
+    shariaCompliant: "Conforme Charia",
+    shariaNonCompliant: "Non conforme",
+    shariaReviewRequired: "Revue requise",
+    shariaNotApplicable: "Non applicable",
+    shariaTooltip: "La classification Charia est indicative et doit etre revue periodiquement.",
     openDrawer: "Ouvrir le menu",
     closeDrawer: "Fermer le menu",
   },
@@ -284,7 +386,6 @@ const marketCategories = [
   { id: "stocks", route: "markets/stocks", apiMarket: "us", labelAr: "الأسهم الأمريكية", labelEn: "US Stocks", labelFr: "Actions US", subtitleAr: "NYSE / NASDAQ", subtitleEn: "NYSE / NASDAQ", exchange: "NYSE / NASDAQ", countryCode: "US", currency: "USD", icon: "us", type: "market", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "QQQ", "SPY"] },
   { id: "crypto", route: "markets/crypto", apiMarket: "crypto", labelAr: "العملات الرقمية", labelEn: "Crypto", labelFr: "Crypto", subtitleAr: "أصول رقمية مقابل الدولار", subtitleEn: "Digital assets", exchange: "Crypto", countryCode: "CRYPTO", currency: "USD", icon: "crypto", type: "market", symbols: ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD", "ADAUSD", "AVAXUSD"] },
   { id: "commodities", route: "markets/commodities", apiMarket: "commodities", labelAr: "السلع", labelEn: "Commodities", labelFr: "Matieres", subtitleAr: "ذهب، فضة، نفط وغاز", subtitleEn: "Metals and energy", exchange: "Commodities", countryCode: "CMDTY", currency: "USD", icon: "gold", type: "market", symbols: ["XAUUSD", "XAGUSD", "USOIL", "UKOIL", "NATGAS", "COPPER"] },
-  { id: "gcc", route: "markets/gcc", apiMarket: "gcc", labelAr: "السوق الخليجي", labelEn: "GCC Markets", labelFr: "Golfe", subtitleAr: "السعودية، الكويت، الإمارات، قطر، البحرين، عُمان", subtitleEn: "GCC overview", exchange: "GCC", countryCode: "GCC", currency: "Mixed", icon: "gcc", type: "market", symbols: ["2222.SR", "NBK.KW", "EMAAR.AE", "QNBK.QA", "NBB.BH", "BKMB.OM"] },
   { id: "saudi", route: "markets/saudi", apiMarket: "saudi", labelAr: "السوق السعودي", labelEn: "Saudi Market", labelFr: "Arabie", subtitleAr: "تداول", subtitleEn: "Tadawul", exchange: "Tadawul", countryCode: "SA", currency: "SAR", icon: "saudi", type: "exchange", symbols: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "2010.SR", "1211.SR", "7203.SR"] },
   { id: "kuwait", route: "markets/kuwait", apiMarket: "kuwait", labelAr: "بورصة الكويت", labelEn: "Boursa Kuwait", labelFr: "Koweit", subtitleAr: "السوق الكويتي", subtitleEn: "Boursa Kuwait", exchange: "Boursa Kuwait", countryCode: "KW", currency: "KWD", icon: "kuwait", type: "exchange", symbols: ["NBK.KW", "KFH.KW", "ZAIN.KW", "AUB.KW", "GBK.KW", "BOUBYAN.KW", "AGILITY.KW"] },
   { id: "uae", route: "markets/uae", apiMarket: "uae", labelAr: "السوق الإماراتي", labelEn: "UAE Market", labelFr: "EAU", subtitleAr: "ADX / DFM", subtitleEn: "ADX / DFM", exchange: "ADX / DFM", countryCode: "AE", currency: "AED", icon: "uae", type: "exchange", symbols: ["EMAAR.AE", "DIB.AE", "FAB.AD", "EAND.AD", "ADNOCGAS.AD", "DEWA.DU"] },
@@ -483,7 +584,6 @@ function marketIcon(kind) {
     us: "🇺🇸",
     crypto: "₿",
     gold: "Au",
-    gcc: "GCC",
     saudi: "🇸🇦",
     kuwait: "🇰🇼",
     uae: "🇦🇪",
@@ -548,6 +648,185 @@ function normalizeCurrency(currency) {
   const value = String(currency || "").toUpperCase();
   if (value === "KWF") return "KWD";
   return value || "";
+}
+
+function marketCurrencyDisplay(market) {
+  const currency = normalizeCurrency(market?.currency);
+  if (!currency) return t("notApplicable");
+  if (currency === "PAIRS") return t("multipleCurrencies");
+  if (currency === "MIXED") return t("mixedCurrencies");
+  return currency;
+}
+
+function marketCurrencyNote(market) {
+  const currency = normalizeCurrency(market?.currency);
+  if (currency === "PAIRS") return t("baseQuoteCurrencies");
+  if (currency === "MIXED") return market?.countryCode || t("mixedCurrencies");
+  return market?.countryCode || market?.exchange || t("notApplicable");
+}
+
+const SHARIA_STOCK_MARKET_IDS = new Set([
+  "stocks",
+  "us",
+  "saudi",
+  "kuwait",
+  "uae",
+  "qatar",
+  "bahrain",
+  "oman",
+  "europe",
+  "asia",
+  "tech",
+  "ai",
+  "energy",
+  "defensive",
+  "dividends",
+  "semiconductors",
+  "food",
+  "healthcare",
+  "banking",
+]);
+
+const SHARIA_NON_STOCK_SYMBOLS = new Set([
+  "SPY",
+  "QQQ",
+  "DIA",
+  "IWM",
+  "VTI",
+  "VOO",
+  "GLD",
+  "SLV",
+]);
+
+function symbolKey(value) {
+  return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function isStockLikeInstrument(item = {}, market) {
+  const record = typeof item === "string" ? { symbol: item } : (item || {});
+  const rawSymbol = String(record.symbol || record.providerSymbol || record.ticker || "").trim().toUpperCase();
+  const key = symbolKey(rawSymbol);
+  const explicitType = String(record.assetType || record.type || record.kind || record.category || "").toLowerCase();
+  const marketId = String(market?.id || market?.apiMarket || record.market || "").toLowerCase();
+
+  if (!rawSymbol && !key) return false;
+  if (/forex|fx|crypto|commodity|commodit|index|indice|etf|fund|future/.test(explicitType)) return false;
+  if (SHARIA_NON_STOCK_SYMBOLS.has(key)) return false;
+  if (/^(BTC|ETH|BNB|SOL|XRP|ADA|AVAX)/.test(key)) return false;
+  if (/^(XAU|XAG|USOIL|UKOIL|NATGAS|COPPER|GOLD|SILVER)/.test(key)) return false;
+  if (rawSymbol.includes("/") || /^(EURUSD|GBPUSD|USDJPY|USDCHF|AUDUSD|NZDUSD|USDCAD|EURJPY|EURGBP|GBPJPY)$/.test(key)) return false;
+  if (SHARIA_STOCK_MARKET_IDS.has(marketId)) return true;
+  if (/\.(KW|SR|AE|AD|DU|QA|BH|OM|DE|PA|SW|KS|HK)$/.test(rawSymbol)) return true;
+  return /^[A-Z]{1,5}$/.test(key);
+}
+
+function normalizeShariaStatus(value, item, market) {
+  const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["compliant", "sharia_compliant", "halal", "approved"].includes(raw)) return "compliant";
+  if (["non_compliant", "not_compliant", "noncompliant", "haram", "rejected"].includes(raw)) return "non_compliant";
+  if (["review_required", "requires_review", "needs_review", "review", "doubtful", "unknown", "unclassified", ""].includes(raw)) {
+    return isStockLikeInstrument(item, market) ? "review_required" : null;
+  }
+  return isStockLikeInstrument(item, market) ? "review_required" : null;
+}
+
+function shariaStatusFor(item, market) {
+  const record = typeof item === "string" ? { symbol: item } : (item || {});
+  return normalizeShariaStatus(record.shariaStatus ?? record.sharia_compliance ?? record.shariaCompliance, record, market);
+}
+
+function renderShariaBadge(item, market) {
+  const status = shariaStatusFor(item, market);
+  if (!status) return "";
+  const labelKey = status === "compliant"
+    ? "shariaCompliant"
+    : status === "non_compliant"
+      ? "shariaNonCompliant"
+      : "shariaReviewRequired";
+  return `<span class="sharia-badge ${status}" title="${escapeHtml(t("shariaTooltip"))}"><span class="sr-only">${escapeHtml(t("shariaCompliance"))}: </span>${escapeHtml(t(labelKey))}</span>`;
+}
+
+function formatStatusTimestamp(value) {
+  if (!value) return t("unavailable");
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return t("unavailable");
+  const time = date.toLocaleTimeString("en-US", { hour12: false, timeZone: "UTC" });
+  const datePart = date.toLocaleDateString("en-CA", { timeZone: "UTC" });
+  return `${t("lastUpdatedAt")} ${datePart} ${time} UTC`;
+}
+
+function requestErrorInfo(error) {
+  const code = String(error || "").toLowerCase();
+  if (code.includes("unauth") || code.includes("401")) {
+    return { key: "unauthorized", label: t("unauthorized"), note: t("retry") };
+  }
+  if (code.includes("denied") || code.includes("forbidden") || code.includes("403")) {
+    return { key: "unauthorized", label: t("accessDenied"), note: t("retry") };
+  }
+  if (code.includes("429") || code.includes("rate")) {
+    return { key: "provider_unavailable", label: t("rateLimited"), note: t("retry") };
+  }
+  if (code.includes("timeout")) {
+    return { key: "provider_unavailable", label: t("providerTimeout"), note: t("retry") };
+  }
+  if (code.includes("invalid_response") || code.includes("empty_response")) {
+    return { key: "error", label: t("invalidResponse"), note: t("retry") };
+  }
+  if (code.includes("500") || code.includes("server")) {
+    return { key: "error", label: t("serverError"), note: t("retry") };
+  }
+  return { key: "error", label: t("requestFailed"), note: t("retry") };
+}
+
+function providerStatusInfo() {
+  const status = state.data.scannerStatus?.marketData;
+  if (state.data.errors.status) {
+    return requestErrorInfo(state.data.errors.status);
+  }
+  if (!status) {
+    return { key: "loading", label: t("loading"), note: t("connecting") };
+  }
+  if (!status.configured || !status.connected) {
+    return { key: "provider_unavailable", label: t("providerUnavailable"), note: status.provider || t("unavailable") };
+  }
+  if (status.delayed) {
+    return { key: "delayed", label: t("delayedData"), note: t("providerDelayed") };
+  }
+  return { key: "success", label: t("liveData"), note: t("providerConnected") };
+}
+
+function marketAnalysisState(market, recs = []) {
+  if (!isUsBackedMarket(market)) {
+    return { key: "unsupported", label: t("unsupportedMetric"), note: marketCopy("noProviderMarket") };
+  }
+  if (state.data.errors.route || state.data.errors.dashboard) {
+    return requestErrorInfo(state.data.errors.route || state.data.errors.dashboard);
+  }
+  if (!state.data.loadedAt && !recs.length) {
+    return { key: "loading", label: t("loading"), note: t("connecting") };
+  }
+  if (!recs.length) {
+    return { key: "empty", label: t("unavailable"), note: t("noLiveData") };
+  }
+  return { key: "success", label: `${recs.length} ${t("availableSignals")}`, note: formatStatusTimestamp(state.data.loadedAt) };
+}
+
+function marketMoversState(market, recs, direction) {
+  if (!isUsBackedMarket(market)) {
+    return { key: "unsupported", value: t("unsupportedMetric"), note: t("noMarketMovers") };
+  }
+  if (state.data.errors.route || state.data.errors.dashboard) {
+    const info = requestErrorInfo(state.data.errors.route || state.data.errors.dashboard);
+    return { key: info.key, value: info.label, note: info.note };
+  }
+  if (!recs.length) {
+    return { key: "empty", value: 0, note: t("noLiveData") };
+  }
+  const count = recs.filter((item) => {
+    const value = Number(item.expectedMovePct ?? item.changePct);
+    return Number.isFinite(value) && (direction === "up" ? value > 0 : value < 0);
+  }).length;
+  return { key: "success", value: count, note: `${t("selectedMarketInstruments")}: ${recs.length}` };
 }
 
 function formatNumber(value, digits = 2) {
@@ -921,9 +1200,7 @@ function recommendationsForMarket(market) {
 }
 
 function marketStatusValue(market) {
-  if (!isUsBackedMarket(market)) return marketCopy("providerReady");
-  if (state.data.errors.dashboard || state.data.errors.route) return t("unavailable");
-  return state.data.loadedAt ? marketCopy("liveProvider") : t("loading");
+  return providerStatusInfo().label;
 }
 
 function renderMarketPage(marketId) {
@@ -967,7 +1244,7 @@ function renderMarketsHeroBanner(market) {
       <div class="markets-hero-visual" aria-hidden="true">
         <i></i><i></i><i></i>
         <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
-        <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+        <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(marketCurrencyDisplay(market))}</span>
       </div>
     </section>
   `;
@@ -981,7 +1258,7 @@ function renderMarketsSelectorGrid(activeMarket) {
       </div>
       <div class="markets-grid" role="list">
         ${marketCategories.map((market) => `
-          <button class="market-hub-tile ${market.id === activeMarket.id ? "active" : ""}" type="button" role="listitem" data-market-select="${escapeHtml(market.id)}">
+          <button class="market-hub-tile ${market.id === activeMarket.id ? "active" : ""}" type="button" role="listitem" data-market-select="${escapeHtml(market.id)}" title="${escapeHtml(localMarketLabel(market))}">
             <span class="market-tile-icon">${marketIcon(market.icon)}</span>
             <span class="market-tile-body">
               <strong>${escapeHtml(localMarketLabel(market))}</strong>
@@ -990,7 +1267,7 @@ function renderMarketsSelectorGrid(activeMarket) {
             </span>
             <span class="market-tile-meta">
               <b>${escapeHtml(market.countryCode || market.type || "")}</b>
-              <i>${escapeHtml(normalizeCurrency(market.currency) || (market.currency === "Pairs" ? "Pairs" : "Mixed"))}</i>
+              <i>${escapeHtml(marketCurrencyDisplay(market))}</i>
             </span>
           </button>
         `).join("")}
@@ -1001,17 +1278,18 @@ function renderMarketsSelectorGrid(activeMarket) {
 
 function renderMarketQuickStats(market, recs) {
   const symbols = market.symbols || [];
-  const gainers = recs.filter((item) => Number(item.expectedMovePct || item.changePct || 0) > 0).length;
-  const losers = recs.filter((item) => Number(item.expectedMovePct || item.changePct || 0) < 0).length;
-  const lastUpdate = state.data.loadedAt ? new Date(state.data.loadedAt).toLocaleTimeString("en-US", { hour12: false }) : "--";
+  const analysisState = marketAnalysisState(market, recs);
+  const gainers = marketMoversState(market, recs, "up");
+  const losers = marketMoversState(market, recs, "down");
+  const providerState = providerStatusInfo();
   return `
     <section class="markets-stats-grid" aria-label="${marketCopy("quickStats")}">
-      ${metricCard(marketCopy("assetCount"), symbols.length, marketCopy("configuredSymbols"))}
-      ${metricCard(marketCopy("marketState"), marketStatusValue(market), market.exchange || market.type)}
-      ${metricCard(marketCopy("primaryCurrency"), normalizeCurrency(market.currency) || "Mixed", market.countryCode || "")}
-      ${metricCard(marketCopy("dataQuality"), isUsBackedMarket(market) && recs.length ? `${recs.length} signals` : t("unavailable"), lastUpdate)}
-      ${metricCard(marketCopy("topGainers"), gainers || "--", marketCopy("providerReady"))}
-      ${metricCard(marketCopy("topLosers"), losers || "--", marketCopy("providerReady"))}
+      ${metricCard(marketCopy("assetCount"), symbols.length, `${t("selectedMarketInstruments")} · ${marketCopy("configuredSymbols")}`)}
+      ${metricCard(t("providerAvailability"), providerState.label, providerState.note)}
+      ${metricCard(marketCopy("primaryCurrency"), marketCurrencyDisplay(market), marketCurrencyNote(market))}
+      ${metricCard(marketCopy("dataQuality"), analysisState.label, analysisState.note)}
+      ${metricCard(marketCopy("topGainers"), gainers.value, gainers.note)}
+      ${metricCard(marketCopy("topLosers"), losers.value, losers.note)}
     </section>
   `;
 }
@@ -1032,7 +1310,7 @@ function renderSelectedMarketOverview(market) {
           ${marketIcon(market.icon)}
           <div>
             <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
-            <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+            <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(marketCurrencyDisplay(market))}</span>
             <p>${escapeHtml(localMarketSubtitle(market))}</p>
           </div>
         </div>
@@ -1055,7 +1333,7 @@ function renderMarketOpportunities(market, recs) {
       <section class="terminal-card market-watch-preview">
         <div class="section-header compact"><div><h2>${marketCopy("watchPreview")}</h2><p>${marketCopy("configuredSymbols")}</p></div></div>
         <div class="watch-preview-list">
-          ${(watchlist.length ? watchlist.map((item) => item.symbol) : (market.symbols || []).slice(0, 6)).map((symbol) => `<div><span dir="ltr">${escapeHtml(symbol)}</span><em>${escapeHtml(normalizeCurrency(market.currency) || market.countryCode || "")}</em></div>`).join("")}
+          ${(watchlist.length ? watchlist.map((item) => item.symbol) : (market.symbols || []).slice(0, 6)).map((symbol) => `<div><span dir="ltr">${escapeHtml(symbol)}</span><em>${escapeHtml(marketCurrencyDisplay(market))}</em>${renderShariaBadge(symbol, market)}</div>`).join("")}
         </div>
       </section>
     </div>
@@ -1076,7 +1354,7 @@ function renderMarketsQualityStrip(market) {
     <section class="markets-quality-strip">
       <span>${marketIcon(market.icon)} ${escapeHtml(localMarketLabel(market))}</span>
       <span>${marketCopy("assetCount")}: ${(market.symbols || []).length}</span>
-      <span>${marketCopy("primaryCurrency")}: ${escapeHtml(normalizeCurrency(market.currency) || "Mixed")}</span>
+      <span>${marketCopy("primaryCurrency")}: ${escapeHtml(marketCurrencyDisplay(market))}</span>
       <strong>${marketCopy("delayedNotice")}</strong>
     </section>
   `;
@@ -1208,7 +1486,7 @@ function renderRecommendationCard(item) {
   const action = actionOf(item);
   return `
     <article class="recommendation-card ${action}">
-      <div class="rec-head">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || item.symbol || "--")}</span></div><b class="signal-badge ${action}">${actionLabel(action)}</b></div>
+      <div class="rec-head">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || item.symbol || "--")}</span></div><div class="rec-badges"><b class="signal-badge ${action}">${actionLabel(action)}</b>${renderShariaBadge(item)}</div></div>
       <div class="rec-metrics">
         <div><span>${t("currentPrice")}</span><strong>${money(item.currentPrice, item.currency)}</strong></div>
         <div><span>${t("targetPrice")}</span><strong>${money(item.expectedPrice || item.target1, item.currency)}</strong></div>
@@ -1225,7 +1503,7 @@ function renderPickRow(item) {
   return `
     <a class="pick-row" href="/thesfm-trader-own/app/detail.html?symbol=${encodeURIComponent(item.symbol || "")}" target="_top">
       ${assetLogo(item)}
-      <div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span></div>
+      <div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span>${renderShariaBadge(item)}</div>
       <b class="signal-badge ${action}">${actionLabel(action)}</b>
       <span>${money(item.currentPrice, item.currency)}</span>
       <em>${formatNumber(item.confidence || 0, 0)}%</em>
@@ -1238,7 +1516,7 @@ function renderWatchlistRow(item) {
   const action = actionOf(item);
   return `
     <tr>
-      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span></div></div></td>
+      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span>${renderShariaBadge(item)}</div></div></td>
       <td>${money(item.currentPrice, item.currency)}</td>
       <td class="${Number(item.expectedMovePct || 0) >= 0 ? "positive" : "negative"}">${pct(item.expectedMovePct || 0)}</td>
       <td><b class="signal-badge ${action}">${actionLabel(action)}</b></td>
@@ -1256,7 +1534,7 @@ function renderScannerRow(item) {
   const action = actionOf(item);
   return `
     <tr>
-      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span></div></div></td>
+      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span>${renderShariaBadge(item)}</div></div></td>
       <td>${money(item.currentPrice, item.currency)}</td>
       <td><b class="signal-badge ${action}">${actionLabel(action)}</b></td>
       <td>${formatNumber(item.confidence || 0, 0)}%</td>
@@ -1275,7 +1553,7 @@ function renderWatchlistSignalRow(item) {
   const action = actionOf(item);
   return `
     <tr>
-      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || item.notes || "")}</span></div></div></td>
+      <td><div class="table-asset">${assetLogo(item)}<div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || item.notes || "")}</span>${renderShariaBadge(item)}</div></div></td>
       <td>${hasSignal ? money(item.currentPrice, item.currency) : "--"}</td>
       <td class="${Number(item.expectedMovePct || 0) >= 0 ? "positive" : "negative"}">${hasSignal ? pct(item.expectedMovePct || 0) : "--"}</td>
       <td>${hasSignal ? `<b class="signal-badge ${action}">${actionLabel(action)}</b>` : "--"}</td>
@@ -1288,7 +1566,10 @@ function renderWatchlistSignalRow(item) {
 }
 
 function metricCard(label, value, note) {
-  return `<article class="metric-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong><small>${escapeHtml(note || "")}</small></article>`;
+  const safeLabel = escapeHtml(label);
+  const safeValue = escapeHtml(String(value));
+  const safeNote = escapeHtml(note || "");
+  return `<article class="metric-card" title="${safeLabel}: ${safeValue}${safeNote ? ` - ${safeNote}` : ""}"><span>${safeLabel}</span><strong>${safeValue}</strong><small>${safeNote}</small></article>`;
 }
 
 function settingsCard(title, body) {
@@ -1334,19 +1615,29 @@ function renderTemporaryLegalNotices() {
 }
 
 function renderStatusBar() {
-  const loadedAt = state.data.loadedAt ? new Date(state.data.loadedAt).toLocaleTimeString("en-US", { hour12: false }) : t("unavailable");
   const status = state.data.scannerStatus;
-  const marketData = status?.marketData;
   const scanner = status?.scanner;
-  const dataLabel = !marketData ? t("unavailable") : marketData.connected ? (marketData.delayed ? "Delayed data" : t("liveData")) : "Connecting";
-  const systemStatus = scanner?.running ? "Scanning" : scanner?.lastScanCompletedAt ? "Operational" : t("unavailable");
+  const providerState = providerStatusInfo();
+  const scannedAssets = Number.isFinite(Number(scanner?.scannedAssets)) ? Number(scanner.scannedAssets) : t("unavailable");
+  const generatedSignals = Number.isFinite(Number(scanner?.generatedSignals)) ? Number(scanner.generatedSignals) : 0;
+  const routeError = state.data.errors.dashboard || state.data.errors.route;
+  const systemStatus = scanner?.running
+    ? t("scanning")
+    : scanner?.lastScanCompletedAt
+      ? t("operational")
+      : routeError
+        ? requestErrorInfo(routeError).label
+        : providerState.key === "provider_unavailable" || providerState.key === "unauthorized"
+          ? providerState.label
+          : t("connecting");
+  const freshness = scanner?.lastScanCompletedAt || status?.marketData?.lastSuccessfulUpdate || state.data.loadedAt;
   return `
     <footer class="terminal-statusbar">
-      <div><span>${t("statusBarData")}</span><strong>${state.data.errors.dashboard ? t("error") : dataLabel}</strong></div>
+      <div><span>${t("statusBarData")}</span><strong>${providerState.label}</strong></div>
       <div><span>${t("totalMarkets")}</span><strong>${marketCategories.length}</strong></div>
-      <div><span>${t("activeAssets")}</span><strong>${scanner?.scannedAssets ?? state.data.dashboardRecommendations.length ?? t("unavailable")}</strong></div>
-      <div><span>${t("scans")}</span><strong>${scanner?.generatedSignals ?? 0}</strong></div>
-      <div><span>${t("lastUpdate")}</span><strong>${loadedAt}</strong></div>
+      <div><span>${t("activeAssets")}</span><strong>${escapeHtml(String(scannedAssets))}</strong></div>
+      <div><span>${t("scans")}</span><strong>${escapeHtml(String(generatedSignals))}</strong></div>
+      <div><span>${t("dataFreshness")}</span><strong>${escapeHtml(formatStatusTimestamp(freshness))}</strong></div>
       <div><span>${t("systemStatus")}</span><strong>${state.data.errors.dashboard ? t("unavailable") : systemStatus}</strong></div>
     </footer>
   `;
@@ -1471,9 +1762,28 @@ async function fetchJson(path, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeout || 12000);
   try {
-    const response = await fetch(path, { signal: controller.signal, cache: "no-store" });
-    if (!response.ok) throw new Error(`${response.status}`);
-    return await response.json();
+    const response = await fetch(path, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(`TRADER_INVALID_RESPONSE_${response.status}`);
+    }
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.code || payload?.message || payload?.error || `HTTP_${response.status}`);
+    }
+    if (!payload || typeof payload !== "object") {
+      throw new Error("TRADER_EMPTY_RESPONSE");
+    }
+    return payload;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("TRADER_REQUEST_TIMEOUT");
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
