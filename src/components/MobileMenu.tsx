@@ -11,6 +11,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/hooks/useViewMode';
+import { isAdminEmailClient } from '@/lib/adminUtils';
 import {
   filterNavigationGroups,
   findActiveNavigationGroup,
@@ -29,7 +30,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const pathname = usePathname() || '/';
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { viewMode, setViewMode } = useViewMode();
   const [activeSource, setActiveSource] = useState(pathname);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -42,7 +43,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     [activeSource],
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
-  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode), [viewMode]);
+  const isAdmin = isAdminEmailClient(user?.email);
+  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, isAdmin), [viewMode, isAdmin]);
   useEffect(() => {
     const nextPath = typeof window === 'undefined'
       ? null
