@@ -1,15 +1,16 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { type FormEvent, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LogIn, LogOut } from 'lucide-react';
+import { CheckCircle2, LogIn, LogOut, Plus, Save, X } from 'lucide-react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { COMPANY_CATEGORIES, type CompanyCategory } from '@/lib/companyListings';
 import type { Lang } from '@/lib/translations';
 
 type CompanyStatus = 'pending_review' | 'approved' | 'rejected' | 'needs_changes' | 'inactive';
@@ -18,9 +19,10 @@ type Tab = CompanyStatus;
 interface Company {
   id: string;
   company_name: string;
-  category: string | null;
+  category: CompanyCategory | string | null;
   country: string | null;
   city: string | null;
+  full_address?: string | null;
   status: CompanyStatus;
   update_status: 'none' | 'pending_update' | 'deletion_requested' | null;
   deletion_requested: boolean | null;
@@ -29,17 +31,51 @@ interface Company {
   admin_notes: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
-  created_at: string;
+  created_at: string | null;
   email: string | null;
+  phone?: string | null;
   website_url: string | null;
   short_description: string | null;
+  long_description?: string | null;
   logo_url: string | null;
+  cover_image_url?: string | null;
+  linkedin_url?: string | null;
+  twitter_url?: string | null;
+  instagram_url?: string | null;
+  services?: string[] | null;
+  is_featured?: boolean | null;
 }
 
 interface Props {
   companies: Company[];
   adminEmail: string;
 }
+
+type AdminCompanyForm = {
+  companyName: string;
+  category: CompanyCategory;
+  status: CompanyStatus;
+  country: string;
+  city: string;
+  fullAddress: string;
+  shortDescription: string;
+  longDescription: string;
+  websiteUrl: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  linkedinUrl: string;
+  twitterUrl: string;
+  instagramUrl: string;
+  logoUrl: string;
+  coverImageUrl: string;
+  foundedYear: string;
+  licenseNumber: string;
+  regulatorName: string;
+  services: string;
+  isFeatured: boolean;
+  adminNotes: string;
+};
 
 const TABS: Tab[] = ['pending_review', 'needs_changes', 'approved', 'rejected', 'inactive'];
 
@@ -51,6 +87,69 @@ const STATUS_COLORS: Record<CompanyStatus, string> = {
   inactive: '#6B7280',
 };
 
+const CATEGORY_LABELS: Record<Lang, Record<CompanyCategory, string>> = {
+  ar: {
+    investment: 'شركات الاستثمار',
+    trading: 'شركات التداول',
+    accounting: 'المحاسبة والضرائب',
+    feasibility: 'دراسات الجدوى',
+    financial_consulting: 'الاستشارات المالية',
+  },
+  en: {
+    investment: 'Investment companies',
+    trading: 'Trading companies',
+    accounting: 'Accounting and tax',
+    feasibility: 'Feasibility studies',
+    financial_consulting: 'Financial consulting',
+  },
+  fr: {
+    investment: 'Sociétés d’investissement',
+    trading: 'Sociétés de trading',
+    accounting: 'Comptabilité et fiscalité',
+    feasibility: 'Études de faisabilité',
+    financial_consulting: 'Conseil financier',
+  },
+};
+
+function createEmptyAdminCompanyForm(): AdminCompanyForm {
+  return {
+    companyName: '',
+    category: 'investment',
+    status: 'approved',
+    country: '',
+    city: '',
+    fullAddress: '',
+    shortDescription: '',
+    longDescription: '',
+    websiteUrl: '',
+    email: '',
+    phone: '',
+    whatsapp: '',
+    linkedinUrl: '',
+    twitterUrl: '',
+    instagramUrl: '',
+    logoUrl: '',
+    coverImageUrl: '',
+    foundedYear: '',
+    licenseNumber: '',
+    regulatorName: '',
+    services: '',
+    isFeatured: false,
+    adminNotes: '',
+  };
+}
+
+function normalizeSocialUrl(value: string, network: 'linkedin' | 'twitter' | 'instagram') {
+  const raw = value.trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const handle = raw.replace(/^@/, '').replace(/^\/+/, '').trim();
+  if (!handle) return '';
+  if (network === 'twitter') return `https://x.com/${handle}`;
+  if (network === 'instagram') return `https://instagram.com/${handle}`;
+  return `https://linkedin.com/company/${handle}`;
+}
+
 const COPY = {
   ar: {
     adminFallback: 'أدمن THE SFM',
@@ -58,6 +157,38 @@ const COPY = {
     signOut: 'تسجيل الخروج',
     title: 'مراجعة طلبات الشركات',
     subtitle: 'مراجعة وإدارة طلبات إدراج الشركات في الدليل',
+    addCompany: 'إضافة شركة',
+    addCompanyTitle: 'إضافة شركة من لوحة الأدمن',
+    addCompanySubtitle: 'تُضاف الشركة مباشرة دون دفع، مع الاحتفاظ بمسار الدفع للمستخدمين العاديين.',
+    requiredFields: 'الحقول الأساسية',
+    contactFields: 'بيانات التواصل',
+    mediaFields: 'الشعار والروابط',
+    detailsFields: 'تفاصيل إضافية',
+    companyName: 'اسم الشركة',
+    shortDescription: 'وصف مختصر',
+    longDescription: 'وصف تفصيلي',
+    fullAddress: 'العنوان التفصيلي',
+    phone: 'الهاتف',
+    whatsapp: 'واتساب',
+    logoUrl: 'رابط الشعار',
+    coverImageUrl: 'رابط صورة الغلاف',
+    linkedinUrl: 'LinkedIn',
+    twitterUrl: 'X / Twitter',
+    instagramUrl: 'Instagram',
+    foundedYear: 'سنة التأسيس',
+    licenseNumber: 'رقم الترخيص',
+    regulatorName: 'الجهة الرقابية',
+    services: 'الخدمات',
+    featured: 'شركة مميزة',
+    saveCompany: 'حفظ الشركة',
+    savingCompany: 'جارٍ الحفظ...',
+    createSuccess: 'تمت إضافة الشركة بنجاح دون دفع.',
+    createValidationError: 'يرجى إدخال اسم الشركة والتصنيف، والتحقق من الروابط وبيانات التواصل.',
+    imageResolveError: 'تعذر التحقق من رابط الشعار أو صورة الغلاف.',
+    createForbidden: 'لا تملك صلاحية إضافة الشركات من لوحة الأدمن.',
+    createServiceError: 'تعذر حفظ الشركة حالياً.',
+    close: 'إغلاق',
+    optionalPlaceholder: 'اختياري',
     empty: 'لا توجد شركات في هذه الفئة',
     company: 'الشركة',
     category: 'الفئة',
@@ -100,6 +231,38 @@ const COPY = {
     signOut: 'Sign out',
     title: 'Company Requests Review',
     subtitle: 'Review and manage company listing requests in the directory',
+    addCompany: 'Add Company',
+    addCompanyTitle: 'Add company from admin',
+    addCompanySubtitle: 'Create an approved listing directly while keeping the paid user submission flow unchanged.',
+    requiredFields: 'Required fields',
+    contactFields: 'Contact details',
+    mediaFields: 'Logo and links',
+    detailsFields: 'Additional details',
+    companyName: 'Company name',
+    shortDescription: 'Short description',
+    longDescription: 'Detailed description',
+    fullAddress: 'Full address',
+    phone: 'Phone',
+    whatsapp: 'WhatsApp',
+    logoUrl: 'Logo URL',
+    coverImageUrl: 'Cover image URL',
+    linkedinUrl: 'LinkedIn',
+    twitterUrl: 'X / Twitter',
+    instagramUrl: 'Instagram',
+    foundedYear: 'Founded year',
+    licenseNumber: 'License number',
+    regulatorName: 'Regulator',
+    services: 'Services',
+    featured: 'Featured company',
+    saveCompany: 'Save company',
+    savingCompany: 'Saving...',
+    createSuccess: 'Company added successfully without payment.',
+    createValidationError: 'Enter the company name and category, and check links/contact fields.',
+    imageResolveError: 'Could not verify the logo or cover image link.',
+    createForbidden: 'You are not authorized to add companies from admin.',
+    createServiceError: 'Could not save the company right now.',
+    close: 'Close',
+    optionalPlaceholder: 'Optional',
     empty: 'No companies in this category',
     company: 'Company',
     category: 'Category',
@@ -142,6 +305,38 @@ const COPY = {
     signOut: 'Déconnexion',
     title: 'Révision des demandes de sociétés',
     subtitle: 'Réviser et gérer les demandes d’ajout de sociétés dans l’annuaire',
+    addCompany: 'Ajouter une société',
+    addCompanyTitle: 'Ajouter une société depuis l’admin',
+    addCompanySubtitle: 'Créer une fiche approuvée directement sans modifier le parcours payant des utilisateurs.',
+    requiredFields: 'Champs requis',
+    contactFields: 'Coordonnées',
+    mediaFields: 'Logo et liens',
+    detailsFields: 'Détails supplémentaires',
+    companyName: 'Nom de la société',
+    shortDescription: 'Description courte',
+    longDescription: 'Description détaillée',
+    fullAddress: 'Adresse complète',
+    phone: 'Téléphone',
+    whatsapp: 'WhatsApp',
+    logoUrl: 'URL du logo',
+    coverImageUrl: 'URL de l’image de couverture',
+    linkedinUrl: 'LinkedIn',
+    twitterUrl: 'X / Twitter',
+    instagramUrl: 'Instagram',
+    foundedYear: 'Année de création',
+    licenseNumber: 'Numéro de licence',
+    regulatorName: 'Régulateur',
+    services: 'Services',
+    featured: 'Société mise en avant',
+    saveCompany: 'Enregistrer',
+    savingCompany: 'Enregistrement...',
+    createSuccess: 'Société ajoutée avec succès sans paiement.',
+    createValidationError: 'Indiquez le nom, la catégorie et vérifiez les liens/coordonnées.',
+    imageResolveError: 'Impossible de vérifier le logo ou l’image de couverture.',
+    createForbidden: 'Vous n’êtes pas autorisé à ajouter des sociétés depuis l’admin.',
+    createServiceError: 'Impossible d’enregistrer la société pour le moment.',
+    close: 'Fermer',
+    optionalPlaceholder: 'Facultatif',
     empty: 'Aucune société dans cette catégorie',
     company: 'Société',
     category: 'Catégorie',
@@ -216,6 +411,10 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   const [note, setNote] = useState('');
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<AdminCompanyForm>(() => createEmptyAdminCompanyForm());
+  const [addSaving, setAddSaving] = useState(false);
+  const [addFeedback, setAddFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
 
   const tabCounts = useMemo(() => {
     const map: Partial<Record<Tab, number>> = {};
@@ -226,6 +425,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   }, [companies]);
 
   const filtered = companies.filter(company => company.status === activeTab);
+  const categoryLabels = CATEGORY_LABELS[lang] ?? CATEGORY_LABELS.ar;
 
   async function handleSignOut() {
     await signOut();
@@ -242,6 +442,63 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
     setSelected(null);
     setNote('');
     setFeedback(null);
+  }
+
+  function openAddCompany() {
+    setAddForm(createEmptyAdminCompanyForm());
+    setAddFeedback(null);
+    setAddOpen(true);
+  }
+
+  function closeAddCompany() {
+    if (addSaving) return;
+    setAddOpen(false);
+    setAddFeedback(null);
+  }
+
+  function updateAddForm<Field extends keyof AdminCompanyForm>(field: Field, value: AdminCompanyForm[Field]) {
+    setAddForm(previous => ({ ...previous, [field]: value }));
+  }
+
+  function adminCreateErrorMessage(code: unknown) {
+    if (code === 'FORBIDDEN') return text.createForbidden as string;
+    if (code === 'IMAGE_URL_NOT_RESOLVED') return text.imageResolveError as string;
+    if (code === 'VALIDATION_ERROR' || code === 'BAD_REQUEST') return text.createValidationError as string;
+    return text.createServiceError as string;
+  }
+
+  async function submitAdminCompany(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAddSaving(true);
+    setAddFeedback(null);
+    try {
+      const response = await fetch('/api/company-listings/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...addForm,
+          linkedinUrl: normalizeSocialUrl(addForm.linkedinUrl, 'linkedin'),
+          twitterUrl: normalizeSocialUrl(addForm.twitterUrl, 'twitter'),
+          instagramUrl: normalizeSocialUrl(addForm.instagramUrl, 'instagram'),
+        }),
+      });
+      const payload = await response.json() as { ok?: boolean; item?: Company; code?: string };
+      if (!response.ok || !payload.ok || !payload.item) {
+        throw new Error(adminCreateErrorMessage(payload.code));
+      }
+      setCompanies(previous => [payload.item as Company, ...previous]);
+      setActiveTab(payload.item.status);
+      setAddFeedback({ type: 'ok', msg: text.createSuccess as string });
+      setAddForm(createEmptyAdminCompanyForm());
+      setTimeout(() => {
+        setAddOpen(false);
+        setAddFeedback(null);
+      }, 900);
+    } catch (error) {
+      setAddFeedback({ type: 'err', msg: error instanceof Error ? error.message : text.createServiceError as string });
+    } finally {
+      setAddSaving(false);
+    }
   }
 
   async function submitAction(newStatus: CompanyStatus) {
@@ -295,7 +552,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
   return (
     <AdminDashboardShell ariaLabel={text.title as string} contentClassName="company-admin-dashboard-content">
       <style>{`
-        .ca-page{width:100%;max-width:1320px;margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:inherit;color:var(--sfm-foreground)}
+        .ca-page{width:100%;max-width:min(1180px,100%);margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:inherit;color:var(--sfm-foreground)}
         .ca-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.35rem;flex-wrap:wrap}
         .ca-admin-chip{min-height:42px;border-radius:999px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.12);color:var(--sfm-foreground);padding:0 .95rem;display:inline-flex;align-items:center;gap:.45rem;font-size:.82rem;font-weight:900}
         .ca-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
@@ -306,9 +563,12 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-auth-action.secondary{background:#405766;color:#fff;border-color:rgba(47,214,192,.24);box-shadow:0 12px 24px rgba(15,29,49,.12)}
         .dark .ca-auth-action.secondary,.dark .ca-admin-chip{background:#0f1d31;border-color:#1d3050;color:#e8eef6}
         .dark .ca-toolbar .sfm-language-trigger{background:#0f1d31;border-color:#1d3050;color:#e8eef6;box-shadow:0 10px 24px rgba(0,0,0,.18)}
-        .ca-header{margin-bottom:2rem}
+        .ca-header{margin-bottom:1.4rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
+        .ca-header-copy{min-width:0;max-width:720px}
         .ca-header h1{font-size:1.6rem;font-weight:800;color:var(--sfm-foreground);margin:0 0 .3rem}
         .ca-header p{color:#64748b;font-size:.9rem;margin:0}.dark .ca-header p{color:#94a3b8}
+        .ca-primary-add{min-height:46px;border:0;border-radius:14px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;padding:0 1.1rem;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font:900 .9rem Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 16px 34px rgba(29,140,255,.22);white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease}
+        .ca-primary-add:hover,.ca-primary-add:focus-visible{transform:translateY(-1px);outline:none;box-shadow:0 18px 40px rgba(29,140,255,.30)}
         .ca-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
         .ca-tab{padding:.45rem 1rem;border-radius:999px;border:1.5px solid transparent;font-size:.85rem;font-weight:800;cursor:pointer;transition:all .15s;background:var(--sfm-card);color:var(--sfm-foreground)}
         .ca-tab:hover{border-color:var(--sfm-primary)}.ca-tab.active{background:var(--sfm-primary);color:#fff;border-color:var(--sfm-primary)}
@@ -335,7 +595,29 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-actions{display:flex;gap:.75rem;flex-wrap:wrap}.ca-action-btn{flex:1;min-width:100px;padding:.6rem 1rem;border-radius:10px;border:0;font-size:.87rem;font-weight:900;cursor:pointer;transition:all .15s}.ca-action-btn:disabled{opacity:.5;cursor:not-allowed}
         .ca-btn-approve{background:#10b981;color:#fff}.ca-btn-changes{background:#3b82f6;color:#fff}.ca-btn-reject{background:#ef4444;color:#fff}
         .ca-feedback{padding:.65rem 1rem;border-radius:10px;font-size:.85rem;font-weight:800}.ca-feedback.ok{background:#d1fae5;color:#065f46}.ca-feedback.err{background:#fee2e2;color:#991b1b}.dark .ca-feedback.ok{background:rgba(16,185,129,.15);color:#6ee7b7}.dark .ca-feedback.err{background:rgba(239,68,68,.15);color:#fca5a5}
-        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-card{overflow-x:auto}.ca-table{min-width:620px}}
+        .ca-add-panel{max-width:880px}
+        .ca-add-intro{display:flex;align-items:flex-start;gap:.85rem;border:1px solid rgba(29,140,255,.14);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.08));border-radius:16px;padding:1rem;margin-bottom:.25rem}
+        .ca-add-intro svg{color:var(--sfm-primary);flex:0 0 auto;margin-top:.1rem}
+        .ca-add-intro h3{margin:0 0 .25rem;font-size:1rem;color:var(--sfm-foreground)}
+        .ca-add-intro p{margin:0;color:#64748b;line-height:1.65;font-size:.86rem}.dark .ca-add-intro p{color:#a8b6ca}
+        .ca-add-section{border:1px solid rgba(29,140,255,.14);border-radius:16px;padding:1rem;background:rgba(255,255,255,.62)}.dark .ca-add-section{background:rgba(15,29,49,.44);border-color:rgba(148,163,184,.16)}
+        .ca-add-section-title{margin:0 0 .85rem;font-size:.88rem;font-weight:950;color:var(--sfm-primary)}
+        .ca-add-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+        .ca-field{display:grid;gap:.38rem;min-width:0}
+        .ca-field.full{grid-column:1/-1}
+        .ca-field span{font-size:.78rem;font-weight:900;color:#475569}.dark .ca-field span{color:#cbd5e1}
+        .ca-input,.ca-select,.ca-textarea{width:100%;min-width:0;border:1.5px solid rgba(29,140,255,.18);border-radius:12px;background:var(--sfm-input-bg,#f8fbff);color:var(--sfm-foreground);padding:.72rem .8rem;font-family:inherit;font-size:.88rem;font-weight:800;box-sizing:border-box}
+        .ca-textarea{resize:vertical;min-height:82px;line-height:1.6}
+        .ca-input:focus,.ca-select:focus,.ca-textarea:focus{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}
+        .ca-check-row{display:flex;align-items:center;gap:.55rem;min-height:44px;font-size:.86rem;font-weight:900;color:var(--sfm-foreground)}
+        .ca-check-row input{width:18px;height:18px;accent-color:var(--sfm-primary)}
+        .ca-add-actions{display:flex;gap:.75rem;justify-content:flex-end;flex-wrap:wrap}
+        .ca-secondary-btn,.ca-save-btn{min-height:44px;border-radius:12px;padding:0 1rem;font:900 .86rem Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.45rem}
+        .ca-secondary-btn{border:1px solid rgba(100,116,139,.22);background:var(--sfm-card);color:var(--sfm-foreground)}
+        .ca-save-btn{border:0;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 12px 28px rgba(29,140,255,.18)}
+        .ca-save-btn:disabled,.ca-secondary-btn:disabled{opacity:.6;cursor:not-allowed}
+        @media(max-width:900px){.ca-header{display:grid;align-items:start}.ca-primary-add{width:100%}.ca-add-grid{grid-template-columns:1fr}}
+        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-card{overflow-x:auto}.ca-table{min-width:620px}.ca-add-actions{display:grid;grid-template-columns:1fr}.ca-save-btn,.ca-secondary-btn{width:100%}}
       `}</style>
 
       <div className="ca-page">
@@ -359,8 +641,14 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         </div>
 
         <div className="ca-header">
-          <h1>{text.title as string}</h1>
-          <p>{text.subtitle as string}</p>
+          <div className="ca-header-copy">
+            <h1>{text.title as string}</h1>
+            <p>{text.subtitle as string}</p>
+          </div>
+          <button type="button" className="ca-primary-add" onClick={openAddCompany}>
+            <Plus size={18} />
+            {text.addCompany as string}
+          </button>
         </div>
 
         <div className="ca-tabs">
@@ -422,6 +710,288 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
           )}
         </div>
       </div>
+
+      {addOpen && (
+        <div className="ca-overlay" onClick={event => { if (event.target === event.currentTarget) closeAddCompany(); }}>
+          <div className="ca-panel ca-add-panel" role="dialog" aria-modal="true" aria-labelledby="admin-add-company-title">
+            <div className="ca-panel-header">
+              <h2 id="admin-add-company-title">{text.addCompanyTitle as string}</h2>
+              <button className="ca-close" onClick={closeAddCompany} aria-label={text.close as string} disabled={addSaving}>
+                <X size={20} />
+              </button>
+            </div>
+            <form className="ca-panel-body" onSubmit={submitAdminCompany}>
+              <div className="ca-add-intro">
+                <CheckCircle2 size={22} />
+                <div>
+                  <h3>{text.addCompany as string}</h3>
+                  <p>{text.addCompanySubtitle as string}</p>
+                </div>
+              </div>
+
+              <section className="ca-add-section">
+                <h3 className="ca-add-section-title">{text.requiredFields as string}</h3>
+                <div className="ca-add-grid">
+                  <label className="ca-field">
+                    <span>{text.companyName as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.companyName}
+                      onChange={event => updateAddForm('companyName', event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.category as string}</span>
+                    <select
+                      className="ca-select"
+                      value={addForm.category}
+                      onChange={event => updateAddForm('category', event.target.value as CompanyCategory)}
+                    >
+                      {COMPANY_CATEGORIES.map(category => (
+                        <option key={category} value={category}>{categoryLabels[category]}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.status as string}</span>
+                    <select
+                      className="ca-select"
+                      value={addForm.status}
+                      onChange={event => updateAddForm('status', event.target.value as CompanyStatus)}
+                    >
+                      {TABS.map(status => (
+                        <option key={status} value={status}>{text.statuses[status]}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.country as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.country}
+                      onChange={event => updateAddForm('country', event.target.value)}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.city as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.city}
+                      onChange={event => updateAddForm('city', event.target.value)}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                  <label className="ca-field full">
+                    <span>{text.shortDescription as string}</span>
+                    <textarea
+                      className="ca-textarea"
+                      value={addForm.shortDescription}
+                      onChange={event => updateAddForm('shortDescription', event.target.value)}
+                      rows={2}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="ca-add-section">
+                <h3 className="ca-add-section-title">{text.contactFields as string}</h3>
+                <div className="ca-add-grid">
+                  <label className="ca-field">
+                    <span>{text.website as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.websiteUrl}
+                      onChange={event => updateAddForm('websiteUrl', event.target.value)}
+                      placeholder="https://example.com"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.email as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.email}
+                      onChange={event => updateAddForm('email', event.target.value)}
+                      placeholder="name@example.com"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.phone as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.phone}
+                      onChange={event => updateAddForm('phone', event.target.value)}
+                      placeholder="+965 00000000"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.whatsapp as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.whatsapp}
+                      onChange={event => updateAddForm('whatsapp', event.target.value)}
+                      placeholder="+965 00000000"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field full">
+                    <span>{text.fullAddress as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.fullAddress}
+                      onChange={event => updateAddForm('fullAddress', event.target.value)}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="ca-add-section">
+                <h3 className="ca-add-section-title">{text.mediaFields as string}</h3>
+                <div className="ca-add-grid">
+                  <label className="ca-field">
+                    <span>{text.logoUrl as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.logoUrl}
+                      onChange={event => updateAddForm('logoUrl', event.target.value)}
+                      placeholder="https://example.com/logo.png"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.coverImageUrl as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.coverImageUrl}
+                      onChange={event => updateAddForm('coverImageUrl', event.target.value)}
+                      placeholder="https://example.com/cover.jpg"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.linkedinUrl as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.linkedinUrl}
+                      onChange={event => updateAddForm('linkedinUrl', event.target.value)}
+                      placeholder="company-name"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.twitterUrl as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.twitterUrl}
+                      onChange={event => updateAddForm('twitterUrl', event.target.value)}
+                      placeholder="@company"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.instagramUrl as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.instagramUrl}
+                      onChange={event => updateAddForm('instagramUrl', event.target.value)}
+                      placeholder="@company"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-check-row">
+                    <input
+                      type="checkbox"
+                      checked={addForm.isFeatured}
+                      onChange={event => updateAddForm('isFeatured', event.target.checked)}
+                    />
+                    {text.featured as string}
+                  </label>
+                </div>
+              </section>
+
+              <section className="ca-add-section">
+                <h3 className="ca-add-section-title">{text.detailsFields as string}</h3>
+                <div className="ca-add-grid">
+                  <label className="ca-field">
+                    <span>{text.foundedYear as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.foundedYear}
+                      onChange={event => updateAddForm('foundedYear', event.target.value)}
+                      inputMode="numeric"
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.licenseNumber as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.licenseNumber}
+                      onChange={event => updateAddForm('licenseNumber', event.target.value)}
+                    />
+                  </label>
+                  <label className="ca-field">
+                    <span>{text.regulatorName as string}</span>
+                    <input
+                      className="ca-input"
+                      value={addForm.regulatorName}
+                      onChange={event => updateAddForm('regulatorName', event.target.value)}
+                    />
+                  </label>
+                  <label className="ca-field full">
+                    <span>{text.services as string}</span>
+                    <textarea
+                      className="ca-textarea"
+                      value={addForm.services}
+                      onChange={event => updateAddForm('services', event.target.value)}
+                      rows={3}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                  <label className="ca-field full">
+                    <span>{text.longDescription as string}</span>
+                    <textarea
+                      className="ca-textarea"
+                      value={addForm.longDescription}
+                      onChange={event => updateAddForm('longDescription', event.target.value)}
+                      rows={4}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                  <label className="ca-field full">
+                    <span>{text.notesLabel as string}</span>
+                    <textarea
+                      className="ca-textarea"
+                      value={addForm.adminNotes}
+                      onChange={event => updateAddForm('adminNotes', event.target.value)}
+                      rows={2}
+                      placeholder={text.optionalPlaceholder as string}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              {addFeedback && <div className={`ca-feedback ${addFeedback.type}`}>{addFeedback.msg}</div>}
+
+              <div className="ca-add-actions">
+                <button type="button" className="ca-secondary-btn" onClick={closeAddCompany} disabled={addSaving}>
+                  {text.close as string}
+                </button>
+                <button type="submit" className="ca-save-btn" disabled={addSaving}>
+                  <Save size={16} />
+                  {addSaving ? text.savingCompany as string : text.saveCompany as string}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <div className="ca-overlay" onClick={event => { if (event.target === event.currentTarget) closePanel(); }}>

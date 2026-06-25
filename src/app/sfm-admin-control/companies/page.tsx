@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getUserFromBearerToken, isAdminEmail, createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { COMPANY_LISTING_SELECT_COLUMNS } from '@/lib/server/companyListingHelpers';
 import CompanyAdminClient from './CompanyAdminClient';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,7 @@ export default async function AdminCompaniesPage() {
   if (!supabase) redirect('/dashboard');
   const { data: companies, error } = await supabase
     .from('company_listings')
-    .select('id, company_name, category, country, city, status, update_status, deletion_requested, deletion_requested_at, last_owner_update_at, admin_notes, reviewed_at, reviewed_by, created_at, email, website_url, short_description, logo_url')
+    .select(COMPANY_LISTING_SELECT_COLUMNS)
     .order('created_at', { ascending: false });
 
   if (error) {
