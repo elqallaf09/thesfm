@@ -927,11 +927,10 @@ function DefensiveTicker({ items, loading, error, lang, locale, text }: {
           const tone = changeTone(item.changePercent);
           const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
           return (
-            <article className={`def-ticker-item ${tone}`} key={item.symbol}>
-              <div>
+            <article className={`def-ticker-item ${tone}`} key={item.symbol} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+              <div className="def-ticker-copy">
                 <strong dir="ltr">{item.symbol}</strong>
-                <small>{stockName(item.symbol, item.name)}</small>
-                <small>{SECTOR_LABELS[lang][sectorForSymbol(item.symbol)]}</small>
+                <small>{stockName(item.symbol, item.name)} · {SECTOR_LABELS[lang][sectorForSymbol(item.symbol)]}</small>
               </div>
               <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
               <em dir="ltr">
@@ -1598,23 +1597,31 @@ export function DefensiveStocksNewsPage() {
           border-radius:24px;
           box-shadow:var(--def-shadow);
         }
-        .def-ticker-panel{padding:12px;overflow:hidden}
-        .def-ticker-strip{display:flex;align-items:center;gap:12px;overflow:hidden}
-        .def-ticker-viewport{flex:1;min-width:0;overflow:hidden}
-        .def-ticker-track{display:flex;align-items:center;gap:12px;width:max-content;animation:defTicker 58s linear infinite}
-        .def-ticker-strip:hover .def-ticker-track,.def-ticker-strip:focus-within .def-ticker-track,.def-ticker-strip.is-paused .def-ticker-track{animation-play-state:paused}
-        .def-ticker-set{display:flex;align-items:center;gap:12px;flex:none}
-        .def-ticker-status{display:inline-flex;align-items:center;gap:7px;padding:0 13px;min-height:34px;border-radius:999px;background:#E0F2FE;color:#075985;font-size:12px;font-weight:900;white-space:nowrap}
-        .def-ticker-item{min-width:210px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;align-items:center;padding:12px 14px;border:1px solid var(--def-border);border-radius:18px;background:#fff}
-        .def-ticker-item div{display:grid;gap:2px;min-width:0}
-        .def-ticker-item strong{font-size:15px;font-weight:950;color:var(--def-text)}
-        .def-ticker-item small{font-size:11px;font-weight:850;color:var(--def-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .def-ticker-item b{font-size:13px;font-weight:950;color:var(--def-text)}
-        .def-ticker-item em{grid-column:2;display:inline-flex;align-items:center;gap:5px;justify-self:end;border-radius:999px;padding:5px 8px;font-style:normal;font-size:11px;font-weight:950}
+        .def-ticker-panel{padding:8px 10px;overflow:hidden}
+        .def-ticker-strip{display:flex;align-items:center;gap:9px;overflow:hidden;min-width:0}
+        .def-ticker-viewport{
+          flex:1;
+          min-width:0;
+          overflow:hidden;
+          mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
+        }
+        .def-ticker-track{display:flex;align-items:center;gap:9px;width:max-content;animation:defTicker 48s linear infinite;will-change:transform}
+        .def-ticker-strip:focus-within .def-ticker-track,.def-ticker-strip.is-paused .def-ticker-track{animation-play-state:paused}
+        .def-ticker-set{display:flex;align-items:center;gap:9px;flex:none}
+        .def-ticker-status{display:inline-flex;align-items:center;gap:6px;padding:0 10px;min-height:28px;border-radius:999px;background:#E0F2FE;color:#075985;font-size:11px;font-weight:900;white-space:nowrap}
+        .def-ticker-item{width:178px;max-width:178px;min-width:178px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--def-border);border-radius:14px;background:#fff}
+        .def-ticker-copy{display:grid;gap:1px;min-width:0}
+        .def-ticker-item strong{font-size:13px;font-weight:950;color:var(--def-text);line-height:1.15}
+        .def-ticker-item small{font-size:10px;font-weight:850;color:var(--def-muted);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .def-ticker-item b{font-size:12px;font-weight:950;color:var(--def-text);line-height:1.15}
+        .def-ticker-item em{grid-column:2;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:999px;padding:4px 7px;font-style:normal;font-size:10px;font-weight:950;line-height:1}
         .def-ticker-item.up em,.up{background:#DCFCE7;color:#166534}
         .def-ticker-item.down em,.down{background:#FEE2E2;color:#991B1B}
         .def-ticker-item.neutral em,.neutral{background:#E2E8F0;color:#334155}
         @keyframes defTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        @media(hover:hover) and (pointer:fine){
+          .def-ticker-strip:hover .def-ticker-track{animation-play-state:paused}
+        }
 
         .def-hero{
           position:relative;
@@ -1742,7 +1749,7 @@ export function DefensiveStocksNewsPage() {
         .def-disclaimer h2{margin:0;color:var(--def-text);font-size:16px;font-weight:950}
         .def-disclaimer p{margin:5px 0 0;color:var(--def-muted);font-size:13px;font-weight:850;line-height:1.7}
         .def-skeleton span,.def-skeleton i,.def-skeleton b,.def-skeleton-row span{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.12),rgba(36,213,197,.18),rgba(142,166,195,.12));background-size:220% 100%;animation:defShimmer 1.2s linear infinite}
-        .def-skeleton{min-height:220px}.def-skeleton span{height:24px;width:45%}.def-skeleton i{height:14px;width:100%}.def-skeleton b{height:40px;width:60%}.def-skeleton-row{display:flex;gap:12px}.def-skeleton-row span{height:72px;min-width:210px}
+        .def-skeleton{min-height:220px}.def-skeleton span{height:24px;width:45%}.def-skeleton i{height:14px;width:100%}.def-skeleton b{height:40px;width:60%}.def-skeleton-row{display:flex;gap:9px}.def-skeleton-row span{height:54px;min-width:178px}
         @keyframes defShimmer{to{background-position:-220% 0}}
 
         @media(max-width:1280px){
@@ -1769,8 +1776,17 @@ export function DefensiveStocksNewsPage() {
           .def-section-head{display:grid}
           .def-metric-grid,.def-stock-grid,.def-news-grid,.def-sector-grid,.def-filter-card,.def-filter-card.news{grid-template-columns:1fr}
           .def-stock-metrics,.def-sector-card div{grid-template-columns:1fr}
-          .def-ticker-viewport{overflow-x:auto;scrollbar-width:thin}
-          .def-ticker-track{animation:none}
+          .def-ticker-panel{padding:7px 8px}
+          .def-ticker-strip{gap:7px}
+          .def-ticker-status{min-height:26px;padding:0 8px;font-size:10px}
+          .def-ticker-viewport{overflow:hidden}
+          .def-ticker-track{gap:8px;animation-duration:42s}
+          .def-ticker-set{gap:8px}
+          .def-ticker-item{width:160px;max-width:160px;min-width:160px;padding:7px 9px;border-radius:13px}
+          .def-ticker-item strong{font-size:12px}
+          .def-ticker-item small{font-size:9.5px}
+          .def-ticker-item b{font-size:11px}
+          .def-ticker-item em{font-size:9.5px;padding:3px 6px}
           .def-tabs{overflow-x:auto}
         }
         @media(prefers-reduced-motion:reduce){
