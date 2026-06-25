@@ -13,6 +13,7 @@ import { useResolvedImageUrl } from '@/components/company-listings/useResolvedIm
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
+import { isValidCompanySocialInput, normalizeCompanySocialUrl } from '@/lib/companySocialLinks';
 
 type FormState = {
   companyName: string;
@@ -153,20 +154,6 @@ function isAsciiUrl(value: string) {
 function isValidEmail(value: string) {
   const raw = value.trim();
   return !raw || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
-}
-
-function isValidHandle(value: string) {
-  const raw = value.trim();
-  return !raw || /^@?[A-Za-z0-9._-]{2,80}$/.test(raw) || isAsciiUrl(raw);
-}
-
-function normalizeHandle(value: string, network: 'linkedin' | 'twitter' | 'instagram') {
-  const raw = value.trim();
-  if (!raw || raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  const handle = raw.replace(/^@+/, '');
-  if (network === 'linkedin') return `https://www.linkedin.com/company/${handle}`;
-  if (network === 'twitter') return `https://x.com/${handle}`;
-  return `https://www.instagram.com/${handle}`;
 }
 
 function parseGoogleMapsCoordinates(value: string) {
@@ -321,9 +308,9 @@ export function CompanySubmitForm() {
     if (!isValidEmail(form.email)) return 'البريد الإلكتروني يجب أن يكون بصيغة EXAMPLE@EXAMPLE.COM.';
     if (form.phone.trim() && digitsOnly(form.phone).length < 5) return 'رقم الهاتف يجب أن يحتوي على أرقام كافية مع رمز الدولة.';
     if (form.whatsapp.trim() && digitsOnly(form.whatsapp).length < 5) return 'رقم واتساب يجب أن يحتوي على أرقام كافية مع رمز الدولة.';
-    if (!isValidHandle(form.linkedinUrl)) return 'رابط LinkedIn يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (!isValidHandle(form.twitterUrl)) return 'رابط X / Twitter يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (!isValidHandle(form.instagramUrl)) return 'رابط Instagram يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
+    if (!isValidCompanySocialInput(form.linkedinUrl, 'linkedin')) return 'رابط LinkedIn يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
+    if (!isValidCompanySocialInput(form.twitterUrl, 'twitter')) return 'رابط X / Twitter يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
+    if (!isValidCompanySocialInput(form.instagramUrl, 'instagram')) return 'رابط Instagram يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
     if (form.regulatorName.trim() && !hasLetter(form.regulatorName)) return 'الجهة المنظمة يجب أن تكون أحرفاً أو جملة.';
     if (form.services.trim() && !hasLetter(form.services)) return 'الخدمات المقدمة يجب أن تكون أحرفاً أو جملاً.';
     for (const [url, label] of imageUrls) {
@@ -337,9 +324,9 @@ export function CompanySubmitForm() {
       email: form.email.trim().toUpperCase(),
       phone: form.phone.trim() ? `${form.phoneCountryCode} ${digitsOnly(form.phone)}` : '',
       whatsapp: form.whatsapp.trim() ? `${form.whatsappCountryCode} ${digitsOnly(form.whatsapp)}` : '',
-      linkedinUrl: normalizeHandle(form.linkedinUrl, 'linkedin'),
-      twitterUrl: normalizeHandle(form.twitterUrl, 'twitter'),
-      instagramUrl: normalizeHandle(form.instagramUrl, 'instagram'),
+      linkedinUrl: normalizeCompanySocialUrl(form.linkedinUrl, 'linkedin') ?? '',
+      twitterUrl: normalizeCompanySocialUrl(form.twitterUrl, 'twitter') ?? '',
+      instagramUrl: normalizeCompanySocialUrl(form.instagramUrl, 'instagram') ?? '',
     };
   }
 

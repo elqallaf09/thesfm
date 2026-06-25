@@ -10,41 +10,13 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { COMPANY_CATEGORIES, type CompanyCategory } from '@/lib/companyListings';
+import { COMPANY_CATEGORIES, type CompanyCategory, type CompanyListing } from '@/lib/companyListings';
 import type { Lang } from '@/lib/translations';
 
 type CompanyStatus = 'pending_review' | 'approved' | 'rejected' | 'needs_changes' | 'inactive';
 type Tab = CompanyStatus;
 
-interface Company {
-  id: string;
-  company_name: string;
-  category: CompanyCategory | string | null;
-  country: string | null;
-  city: string | null;
-  full_address?: string | null;
-  status: CompanyStatus;
-  update_status: 'none' | 'pending_update' | 'deletion_requested' | null;
-  deletion_requested: boolean | null;
-  deletion_requested_at: string | null;
-  last_owner_update_at: string | null;
-  admin_notes: string | null;
-  reviewed_at: string | null;
-  reviewed_by: string | null;
-  created_at: string | null;
-  email: string | null;
-  phone?: string | null;
-  website_url: string | null;
-  short_description: string | null;
-  long_description?: string | null;
-  logo_url: string | null;
-  cover_image_url?: string | null;
-  linkedin_url?: string | null;
-  twitter_url?: string | null;
-  instagram_url?: string | null;
-  services?: string[] | null;
-  is_featured?: boolean | null;
-}
+type Company = CompanyListing;
 
 interface Props {
   companies: Company[];
@@ -137,17 +109,6 @@ function createEmptyAdminCompanyForm(): AdminCompanyForm {
     isFeatured: false,
     adminNotes: '',
   };
-}
-
-function normalizeSocialUrl(value: string, network: 'linkedin' | 'twitter' | 'instagram') {
-  const raw = value.trim();
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  const handle = raw.replace(/^@/, '').replace(/^\/+/, '').trim();
-  if (!handle) return '';
-  if (network === 'twitter') return `https://x.com/${handle}`;
-  if (network === 'instagram') return `https://instagram.com/${handle}`;
-  return `https://linkedin.com/company/${handle}`;
 }
 
 const COPY = {
@@ -475,12 +436,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
       const response = await fetch('/api/company-listings/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...addForm,
-          linkedinUrl: normalizeSocialUrl(addForm.linkedinUrl, 'linkedin'),
-          twitterUrl: normalizeSocialUrl(addForm.twitterUrl, 'twitter'),
-          instagramUrl: normalizeSocialUrl(addForm.instagramUrl, 'instagram'),
-        }),
+        body: JSON.stringify(addForm),
       });
       const payload = await response.json() as { ok?: boolean; item?: Company; code?: string };
       if (!response.ok || !payload.ok || !payload.item) {
@@ -696,7 +652,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
                     </td>
                     <td>{company.category ?? text.dash as string}</td>
                     <td>{[company.city, company.country].filter(Boolean).join(lang === 'ar' ? '، ' : ', ') || text.dash as string}</td>
-                    <td style={{ fontSize: '.8rem', color: '#94A3B8' }}>{formatDate(company.created_at, lang)}</td>
+                    <td style={{ fontSize: '.8rem', color: '#94A3B8' }}>{formatDate(company.created_at ?? null, lang)}</td>
                     <td>
                       <span className="ca-status-badge" style={{ background: `${STATUS_COLORS[company.status]}18`, color: STATUS_COLORS[company.status] }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[company.status], display: 'inline-block' }} />

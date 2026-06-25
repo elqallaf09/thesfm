@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getUserFromBearerToken, isAdminEmail, createServerSupabaseAdmin } from '@/lib/server/adminAccess';
-import { COMPANY_LISTING_SELECT_COLUMNS } from '@/lib/server/companyListingHelpers';
+import { COMPANY_LISTING_SELECT_COLUMNS, normalizeCompanyListing } from '@/lib/server/companyListingHelpers';
 import CompanyAdminClient from './CompanyAdminClient';
 
 export const dynamic = 'force-dynamic';
@@ -24,5 +24,10 @@ export default async function AdminCompaniesPage() {
     console.error('[AdminCompanies] fetch error:', error);
   }
 
-  return <CompanyAdminClient companies={companies ?? []} adminEmail={user.email ?? ''} />;
+  return (
+    <CompanyAdminClient
+      companies={(companies ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>))}
+      adminEmail={user.email ?? ''}
+    />
+  );
 }

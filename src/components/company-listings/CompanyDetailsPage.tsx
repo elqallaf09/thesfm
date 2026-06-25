@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
+  Twitter,
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -39,6 +40,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
+import { formatCompanySocialHandle, normalizeCompanySocialUrl } from '@/lib/companySocialLinks';
 
 type DetailPayload = {
   ok?: boolean;
@@ -111,30 +113,6 @@ function normalizeExternalUrl(value?: string | null) {
   const text = value!.trim();
   if (/^(https?:|mailto:|tel:)/i.test(text)) return text;
   return `https://${text.replace(/^\/+/, '')}`;
-}
-
-function socialHandle(value?: string | null) {
-  if (isMissing(value)) return '';
-  const text = value!.trim();
-  if (text.startsWith('@')) return text;
-  try {
-    const url = new URL(text.startsWith('http') ? text : `https://${text}`);
-    const parts = url.pathname.split('/').filter(Boolean);
-    return parts.length ? `@${parts[parts.length - 1]}` : url.hostname.replace(/^www\./, '');
-  } catch {
-    return text;
-  }
-}
-
-function socialUrl(value: string | null | undefined, platform: 'instagram' | 'linkedin' | 'twitter') {
-  if (isMissing(value)) return null;
-  const text = value!.trim();
-  if (/^https?:\/\//i.test(text)) return text;
-  const handle = text.replace(/^@/, '').replace(/^\/+/, '');
-  if (!handle) return null;
-  if (platform === 'instagram') return `https://instagram.com/${handle}`;
-  if (platform === 'twitter') return `https://x.com/${handle}`;
-  return `https://www.linkedin.com/in/${handle}`;
 }
 
 function buildMapsHref(item: CompanyListing, location: string) {
@@ -233,7 +211,7 @@ function ContactAction({
 }) {
   if (!href || isMissing(value)) return null;
   return (
-    <a className="contact-action" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} onClick={onClick}>
+    <a className="contact-action" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined} onClick={onClick}>
       <span>{icon}</span>
       <div>
         <small>{label}</small>
@@ -344,13 +322,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const location = [item?.country, item?.city].filter(Boolean).join(' / ');
   const services = useMemo(() => item?.services?.map(service => service.trim()).filter(Boolean) ?? [], [item?.services]);
   const coordinates = [item?.latitude, item?.longitude].filter(value => typeof value === 'number').join(', ');
-  const hasContact = Boolean(item?.website_url || item?.email || item?.phone || item?.instagram_url || item?.linkedin_url || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
   const backHref = item ? (COMPANY_CATEGORY_CONFIGS[item.category]?.path ?? '/services') : '/services';
   const websiteHref = item ? normalizeExternalUrl(item.website_url) : null;
-  const instagramHref = item ? socialUrl(item.instagram_url, 'instagram') : null;
-  const linkedinHref = item ? socialUrl(item.linkedin_url, 'linkedin') : null;
-  const twitterHref = item ? socialUrl(item.twitter_url, 'twitter') : null;
+  const instagramHref = item ? normalizeCompanySocialUrl(item.instagram_url, 'instagram') : null;
+  const linkedinHref = item ? normalizeCompanySocialUrl(item.linkedin_url, 'linkedin') : null;
+  const twitterHref = item ? normalizeCompanySocialUrl(item.twitter_url, 'twitter') : null;
   const mapsHref = item ? buildMapsHref(item, location) : null;
+  const hasContact = Boolean(websiteHref || item?.email || item?.phone || instagramHref || linkedinHref || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
   const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const canSeeDetailedAnalytics = Boolean(viewer?.canReview || viewer?.isOwner);
   const numberFormat = useMemo(() => new Intl.NumberFormat(locale), [locale]);
@@ -605,9 +583,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                       <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
                       <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
                       <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<MessageCircle size={16} />} label="واتساب" value={item.whatsapp} />
-                      <ContactAction href={instagramHref} icon={<Instagram size={16} />} label="Instagram" value={item.instagram_url} display={socialHandle(item.instagram_url)} />
-                      <ContactAction href={linkedinHref} icon={<Linkedin size={16} />} label="LinkedIn" value={item.linkedin_url} display={socialHandle(item.linkedin_url)} />
-                      <ContactAction href={twitterHref} icon={<ExternalLink size={16} />} label="X / Twitter" value={item.twitter_url} display={socialHandle(item.twitter_url)} />
+                      <ContactAction href={instagramHref} icon={<Instagram size={16} />} label="Instagram" value={instagramHref} display={formatCompanySocialHandle(item.instagram_url, 'instagram')} />
+                      <ContactAction href={linkedinHref} icon={<Linkedin size={16} />} label="LinkedIn" value={linkedinHref} display={formatCompanySocialHandle(item.linkedin_url, 'linkedin')} />
+                      <ContactAction href={twitterHref} icon={<Twitter size={16} />} label="X / Twitter" value={twitterHref} display={formatCompanySocialHandle(item.twitter_url, 'twitter')} />
                       <ContactAction href={mapsHref} icon={<MapPin size={16} />} label="الموقع على الخريطة" value={item.full_address || location || item.google_maps_url} display="فتح الموقع على الخريطة" />
                     </div>
                   ) : (

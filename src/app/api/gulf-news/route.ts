@@ -62,8 +62,8 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to load Gulf market news',
-        reason: error instanceof Error ? error.message : 'Unknown error',
+        error: 'provider_temporarily_unavailable',
+        reason: 'provider_temporarily_unavailable',
       },
       { status: 503 },
     );

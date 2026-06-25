@@ -1,11 +1,12 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from '@/lib/server/adminAccess';
+import { COMPANY_LISTING_SELECT_COLUMNS, normalizeCompanyListing } from '@/lib/server/companyListingHelpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const SELECT_COLUMNS = 'id,user_id,company_name,category,country,city,full_address,google_maps_url,latitude,longitude,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
+const SELECT_COLUMNS = COMPANY_LISTING_SELECT_COLUMNS;
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {
@@ -50,5 +51,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return json({ ok: false, code: 'ACCESS_DENIED' }, { status: 403 });
   }
 
-  return json({ ok: true, item: data, viewer: { isOwner, isAdmin, canReview: isAdmin } });
+  return json({
+    ok: true,
+    item: normalizeCompanyListing(data as Record<string, unknown>),
+    viewer: { isOwner, isAdmin, canReview: isAdmin },
+  });
 }

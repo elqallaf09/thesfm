@@ -4,9 +4,11 @@ import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import {
   COMPANY_LISTING_SELECT_COLUMNS,
   cleanCompanyText,
+  cleanCompanySocialUrl,
   cleanCompanyUrl,
   companyYearOrNull,
   getCompanyRequestUser,
+  hasInvalidCompanySocialUrl,
   normalizeCompanyListing,
 } from '@/lib/server/companyListingHelpers';
 import { normalizeCompanyCategory, splitServices } from '@/lib/companyListings';
@@ -92,9 +94,9 @@ async function buildUpdateRecord(payload: OwnerPayload) {
   if (!category || !companyName) return { error: 'VALIDATION_ERROR' as const, record: null };
   if (
     hasInvalidOptionalUrl(payload.websiteUrl) ||
-    hasInvalidOptionalUrl(payload.linkedinUrl) ||
-    hasInvalidOptionalUrl(payload.twitterUrl) ||
-    hasInvalidOptionalUrl(payload.instagramUrl) ||
+    hasInvalidCompanySocialUrl(payload.linkedinUrl, 'linkedin') ||
+    hasInvalidCompanySocialUrl(payload.twitterUrl, 'twitter') ||
+    hasInvalidCompanySocialUrl(payload.instagramUrl, 'instagram') ||
     hasInvalidOptionalUrl(payload.logoUrl) ||
     hasInvalidOptionalUrl(payload.coverImageUrl) ||
     hasInvalidOptionalUrl(payload.googleMapsUrl) ||
@@ -130,9 +132,9 @@ async function buildUpdateRecord(payload: OwnerPayload) {
       email: cleanCompanyText(payload.email, 180).toUpperCase() || null,
       phone: cleanCompanyText(payload.phone, 80) || null,
       whatsapp: cleanCompanyText(payload.whatsapp, 80) || null,
-      linkedin_url: cleanCompanyUrl(payload.linkedinUrl),
-      twitter_url: cleanCompanyUrl(payload.twitterUrl),
-      instagram_url: cleanCompanyUrl(payload.instagramUrl),
+      linkedin_url: cleanCompanySocialUrl(payload.linkedinUrl, 'linkedin'),
+      twitter_url: cleanCompanySocialUrl(payload.twitterUrl, 'twitter'),
+      instagram_url: cleanCompanySocialUrl(payload.instagramUrl, 'instagram'),
       founded_year: companyYearOrNull(payload.foundedYear),
       license_number: cleanCompanyText(payload.licenseNumber, 180) || null,
       regulator_name: cleanCompanyText(payload.regulatorName, 180) || null,

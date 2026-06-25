@@ -13,8 +13,10 @@ import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import {
   COMPANY_LISTING_SELECT_COLUMNS,
   cleanCompanyText,
+  cleanCompanySocialUrl,
   cleanCompanyUrl,
   companyYearOrNull,
+  hasInvalidCompanySocialUrl,
   normalizeCompanyListing,
 } from '@/lib/server/companyListingHelpers';
 
@@ -120,7 +122,10 @@ export async function GET(request: NextRequest) {
     return json({ ok: false, code: 'LOAD_FAILED' }, { status: 500 });
   }
 
-  return json({ ok: true, items: data ?? [] });
+  return json({
+    ok: true,
+    items: (data ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>)),
+  });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -183,9 +188,9 @@ export async function POST(request: NextRequest) {
 
   if (
     hasInvalidOptionalUrl(payload.websiteUrl) ||
-    hasInvalidOptionalUrl(payload.linkedinUrl) ||
-    hasInvalidOptionalUrl(payload.twitterUrl) ||
-    hasInvalidOptionalUrl(payload.instagramUrl) ||
+    hasInvalidCompanySocialUrl(payload.linkedinUrl, 'linkedin') ||
+    hasInvalidCompanySocialUrl(payload.twitterUrl, 'twitter') ||
+    hasInvalidCompanySocialUrl(payload.instagramUrl, 'instagram') ||
     hasInvalidOptionalUrl(payload.logoUrl) ||
     hasInvalidOptionalUrl(payload.coverImageUrl) ||
     hasInvalidOptionalUrl(payload.googleMapsUrl) ||
@@ -231,9 +236,9 @@ export async function POST(request: NextRequest) {
     email: cleanCompanyText(payload.email, 180).toUpperCase() || null,
     phone: cleanCompanyText(payload.phone, 80) || null,
     whatsapp: cleanCompanyText(payload.whatsapp, 80) || null,
-    linkedin_url: cleanCompanyUrl(payload.linkedinUrl),
-    twitter_url: cleanCompanyUrl(payload.twitterUrl),
-    instagram_url: cleanCompanyUrl(payload.instagramUrl),
+    linkedin_url: cleanCompanySocialUrl(payload.linkedinUrl, 'linkedin'),
+    twitter_url: cleanCompanySocialUrl(payload.twitterUrl, 'twitter'),
+    instagram_url: cleanCompanySocialUrl(payload.instagramUrl, 'instagram'),
     founded_year: companyYearOrNull(payload.foundedYear),
     license_number: cleanCompanyText(payload.licenseNumber, 180) || null,
     regulator_name: cleanCompanyText(payload.regulatorName, 180) || null,

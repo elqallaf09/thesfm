@@ -7,6 +7,7 @@ import {
   normalizeCompanyUpdateStatus,
   type CompanyListing,
 } from '@/lib/companyListings';
+import { normalizeCompanySocialUrl, type CompanySocialPlatform } from '@/lib/companySocialLinks';
 
 export const COMPANY_LISTING_SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,full_address,google_maps_url,latitude,longitude,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,update_status,pending_update,deletion_requested,deletion_requested_at,last_owner_update_at,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
 
@@ -31,6 +32,14 @@ export function cleanCompanyUrl(value: unknown) {
   } catch {
     return null;
   }
+}
+
+export function cleanCompanySocialUrl(value: unknown, platform: CompanySocialPlatform) {
+  return normalizeCompanySocialUrl(value, platform);
+}
+
+export function hasInvalidCompanySocialUrl(value: unknown, platform: CompanySocialPlatform) {
+  return cleanCompanyText(value, 500) !== '' && cleanCompanySocialUrl(value, platform) === null;
 }
 
 export function companyYearOrNull(value: unknown) {
@@ -66,9 +75,9 @@ export function normalizeCompanyListing(row: Record<string, unknown>): CompanyLi
     email: row.email ? String(row.email) : null,
     phone: row.phone ? String(row.phone) : null,
     whatsapp: row.whatsapp ? String(row.whatsapp) : null,
-    linkedin_url: row.linkedin_url ? String(row.linkedin_url) : null,
-    twitter_url: row.twitter_url ? String(row.twitter_url) : null,
-    instagram_url: row.instagram_url ? String(row.instagram_url) : null,
+    linkedin_url: cleanCompanySocialUrl(row.linkedin_url, 'linkedin'),
+    twitter_url: cleanCompanySocialUrl(row.twitter_url, 'twitter'),
+    instagram_url: cleanCompanySocialUrl(row.instagram_url, 'instagram'),
     founded_year: typeof row.founded_year === 'number' ? row.founded_year : null,
     license_number: row.license_number ? String(row.license_number) : null,
     regulator_name: row.regulator_name ? String(row.regulator_name) : null,
