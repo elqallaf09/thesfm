@@ -1681,6 +1681,15 @@ export default function MarketAnalysisPage() {
         currencyLabel: 'العملة',
         availableData: 'بيانات متاحة',
         unavailableData: 'غير متاح',
+        rsiOverbought: 'يميل إلى تشبع شرائي، لذلك تحتاج الحركة إلى تأكيد إضافي.',
+        rsiOversold: 'يميل إلى تشبع بيعي، وقد ترتفع احتمالات ارتداد قصير إذا تحسنت السيولة.',
+        rsiNeutral: 'لا يظهر تشبع شراء أو بيع واضح حالياً.',
+        averagesBullish: 'المتوسط القصير أعلى من المتوسط الأطول، ما يدعم الزخم الصاعد نسبياً.',
+        averagesBearish: 'المتوسط القصير دون المتوسط الأطول، ما يعكس ضغطاً سعرياً يحتاج متابعة.',
+        averagesMixed: 'المتوسطات متقاربة، لذلك لا توجد أفضلية اتجاهية واضحة.',
+        volatilityHigh: 'التذبذب مرتفع، ويستدعي ضبط حجم الصفقة وإدارة المخاطر.',
+        volatilityMedium: 'التذبذب متوسط، والقراءة تعتمد أكثر على اختراق المستويات الرئيسية.',
+        volatilityLow: 'التذبذب منخفض نسبياً، ما يجعل كسر الدعم أو المقاومة أكثر أهمية.',
       },
       en: {
         currentReading: 'Current reading',
@@ -1705,6 +1714,15 @@ export default function MarketAnalysisPage() {
         currencyLabel: 'Currency',
         availableData: 'Available data',
         unavailableData: 'Unavailable',
+        rsiOverbought: 'RSI leans overbought, so price action needs extra confirmation.',
+        rsiOversold: 'RSI leans oversold, which may raise short rebound odds if liquidity improves.',
+        rsiNeutral: 'RSI does not show a clear overbought or oversold condition.',
+        averagesBullish: 'The shorter average is above the longer average, supporting relative upside momentum.',
+        averagesBearish: 'The shorter average is below the longer average, showing price pressure to monitor.',
+        averagesMixed: 'The moving averages are close, so there is no clear directional edge.',
+        volatilityHigh: 'Volatility is elevated, so position sizing and risk controls matter more.',
+        volatilityMedium: 'Volatility is moderate, and the reading depends more on key level breaks.',
+        volatilityLow: 'Volatility is relatively low, making support or resistance breaks more important.',
       },
       fr: {
         currentReading: 'Lecture actuelle',
@@ -1729,6 +1747,15 @@ export default function MarketAnalysisPage() {
         currencyLabel: 'Devise',
         availableData: 'Données disponibles',
         unavailableData: 'Indisponible',
+        rsiOverbought: 'Le RSI tend vers une zone de surachat, une confirmation supplémentaire est donc utile.',
+        rsiOversold: 'Le RSI tend vers une zone de survente, ce qui peut augmenter les chances d’un rebond court si la liquidité s’améliore.',
+        rsiNeutral: 'Le RSI ne montre pas de surachat ou de survente clair.',
+        averagesBullish: 'La moyenne courte est au-dessus de la moyenne longue, ce qui soutient un momentum haussier relatif.',
+        averagesBearish: 'La moyenne courte est sous la moyenne longue, ce qui signale une pression à surveiller.',
+        averagesMixed: 'Les moyennes mobiles sont proches, sans avantage directionnel clair.',
+        volatilityHigh: 'La volatilité est élevée, la taille de position et la gestion du risque deviennent prioritaires.',
+        volatilityMedium: 'La volatilité est moyenne, la lecture dépend surtout des cassures de niveaux clés.',
+        volatilityLow: 'La volatilité est relativement faible, les cassures de support ou résistance deviennent plus importantes.',
       },
     };
     return copy[lang as 'ar' | 'en' | 'fr'] ?? copy.ar;
@@ -1758,6 +1785,32 @@ export default function MarketAnalysisPage() {
     {
       label: t('market_fundamental_snapshot'),
       value: hasFundamentals ? analysisCopy.availableData : analysisCopy.unavailableData,
+    },
+  ] : [];
+  const technicalNarratives = selected ? [
+    {
+      label: 'RSI',
+      value: selected.indicators.rsi >= 70
+        ? analysisCopy.rsiOverbought
+        : selected.indicators.rsi <= 30
+          ? analysisCopy.rsiOversold
+          : analysisCopy.rsiNeutral,
+    },
+    {
+      label: 'SMA 20 / SMA 50',
+      value: selected.indicators.sma20 > selected.indicators.sma50
+        ? analysisCopy.averagesBullish
+        : selected.indicators.sma20 < selected.indicators.sma50
+          ? analysisCopy.averagesBearish
+          : analysisCopy.averagesMixed,
+    },
+    {
+      label: t('market_risk_level'),
+      value: selected.indicators.volatility >= 30
+        ? analysisCopy.volatilityHigh
+        : selected.indicators.volatility >= 15
+          ? analysisCopy.volatilityMedium
+          : analysisCopy.volatilityLow,
     },
   ] : [];
   const assetSnapshot = selected ? {
@@ -2232,59 +2285,41 @@ export default function MarketAnalysisPage() {
               <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
             </section>
 
-            <AssetProfileCard
-              response={assetProfile}
-              loading={assetProfileLoading}
-              error={assetProfileError}
-              language={lang}
-              assetType={selected.assetType}
-              t={t}
-            />
-
-            <section className="market-decision-grid">
-              <article className={`market-panel decision ${decision?.tone ?? ''}`}>
-                <div className="market-section-head">
-                  <Brain size={19} />
-                  <div>
-                    <span>{aiSummaryEyebrow}</span>
-                    <h2>{t('market_ai_summary')}</h2>
+            <div className="analysis-columns">
+              <div className="analysis-main-column">
+                <section className={`market-panel analysis-signal-overview ${decision?.tone ?? ''}`} aria-labelledby="analysis-signal-heading">
+                  <div className="market-section-head">
+                    <Gauge size={19} />
+                    <div>
+                      <span>{analysisCopy.currentReading}</span>
+                      <h2 id="analysis-signal-heading">{decision?.status ?? assetSnapshot.trendLabel}</h2>
+                    </div>
                   </div>
-                </div>
-                <div className="decision-body ai-summary-body">
-                  {aiLoading && <div className="ai-summary-loading" aria-live="polite"><span />{t('market_ai_summary_loading')}</div>}
-                  {aiSummaryIntro && <p className="ai-summary-intro">{aiSummaryIntro}</p>}
-                  {aiSummarySections.map(section => (
-                    <section className="ai-summary-section" key={section.title}>
-                      <b>{section.title}</b>
-                      {'body' in section && section.body ? <p>{section.body}</p> : null}
-                      {'items' in section && section.items ? (
-                        <ul>
-                          {section.items.map(item => <li key={item}>{item}</li>)}
-                        </ul>
-                      ) : null}
-                    </section>
-                  ))}
-                  <div className="risk-score" aria-label={`${t('market_risk_score')} ${visibleRiskScore}`}>
-                    <span>{t('market_risk_score')}</span>
-                    <i><b style={{ width: `${visibleRiskScore}%` }} /></i>
-                    <strong>{visibleRiskScore}/100</strong>
+                  <div className="analysis-signal-grid">
+                    <MarketMetric label={analysisCopy.confidence} value={`${analysisConfidence}%`} valueDir="ltr" />
+                    <MarketMetric label={t('market_risk_level')} value={assetSnapshot.riskLabel} />
+                    <MarketMetric label={t('market_timeframe')} value={timeframe} valueDir="ltr" />
+                    <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
                   </div>
-                  <div className="ai-summary-actions">
-                    <button
-                      type="button"
-                      className="inline-action ai-regenerate"
-                      disabled={aiLoading || !selected || !hasUsableAnalysis(selected)}
-                      onClick={regenerateAiSummary}
-                    >
-                      <Brain size={15} />
-                      {t('market_ai_summary_regenerate')}
-                    </button>
-                    <small>{t('market_ai_summary_disclaimer')}</small>
-                  </div>
-                </div>
-              </article>
-
-            </section>
+                  {decision ? (
+                    <div className="analysis-signal-copy">
+                      <p>{decision.reason}</p>
+                      <p>{decision.warning}</p>
+                      <strong>{decision.action}</strong>
+                    </div>
+                  ) : null}
+                  <details className="analysis-confidence-details">
+                    <summary>{analysisCopy.confidenceHelp}</summary>
+                    <div>
+                      {confidenceFactors.map(factor => (
+                        <span key={factor.label}>
+                          <b>{factor.label}</b>
+                          <em>{factor.value}</em>
+                        </span>
+                      ))}
+                    </div>
+                  </details>
+                </section>
 
             <section className="market-layout">
               <div className="market-panel market-chart">
@@ -2417,6 +2452,14 @@ export default function MarketAnalysisPage() {
                   <MarketMetric label={t('market_support_zone')} value={selectedMoney(selected.levels.support)} valueDir="ltr" />
                   <MarketMetric label={t('market_resistance_zone')} value={selectedMoney(selected.levels.resistance)} valueDir="ltr" />
                 </div>
+                <div className="analysis-interpretation-list">
+                  {technicalNarratives.map(item => (
+                    <span key={item.label}>
+                      <b>{item.label}</b>
+                      <em>{item.value}</em>
+                    </span>
+                  ))}
+                </div>
               </aside>
 
               <aside className="market-panel">
@@ -2446,6 +2489,15 @@ export default function MarketAnalysisPage() {
                 )}
               </aside>
             </section>
+
+                <details className="analysis-secondary-drawer">
+                  <summary>
+                    <span>
+                      <ChevronDown size={17} aria-hidden="true" />
+                      <b>{analysisCopy.secondaryTools}</b>
+                    </span>
+                    <em>{t('market_what_if')} · {t('market_price_alerts')} · {t('market_watchlist')} · {t('market_compare_assets')}</em>
+                  </summary>
 
             <section className="market-tools-grid">
               <article className="market-panel">
@@ -2701,6 +2753,96 @@ export default function MarketAnalysisPage() {
                 <p className="market-muted">{t('market_compare_note')}</p>
               </div>
             </section>
+                </details>
+              </div>
+
+              <aside className="analysis-side-rail" aria-label={t('market_ai_summary')}>
+                <section className="market-decision-grid">
+                  <article className={`market-panel decision ${decision?.tone ?? ''}`}>
+                    <div className="market-section-head">
+                      <Brain size={19} />
+                      <div>
+                        <span>{aiSummaryEyebrow}</span>
+                        <h2>{t('market_ai_summary')}</h2>
+                      </div>
+                    </div>
+                    <div className="decision-body ai-summary-body">
+                      {aiLoading && <div className="ai-summary-loading" aria-live="polite"><span />{t('market_ai_summary_loading')}</div>}
+                      {aiSummaryIntro && <p className="ai-summary-intro">{aiSummaryIntro}</p>}
+                      {aiSummarySections.map(section => (
+                        <section className="ai-summary-section" key={section.title}>
+                          <b>{section.title}</b>
+                          {'body' in section && section.body ? <p>{section.body}</p> : null}
+                          {'items' in section && section.items ? (
+                            <ul>
+                              {section.items.map(item => <li key={item}>{item}</li>)}
+                            </ul>
+                          ) : null}
+                        </section>
+                      ))}
+                      <div className="risk-score" aria-label={`${t('market_risk_score')} ${visibleRiskScore}`}>
+                        <span>{t('market_risk_score')}</span>
+                        <i><b style={{ width: `${visibleRiskScore}%` }} /></i>
+                        <strong>{visibleRiskScore}/100</strong>
+                      </div>
+                      <div className="ai-summary-actions">
+                        <button
+                          type="button"
+                          className="inline-action ai-regenerate"
+                          disabled={aiLoading || !selected || !hasUsableAnalysis(selected)}
+                          onClick={regenerateAiSummary}
+                        >
+                          <Brain size={15} />
+                          {t('market_ai_summary_regenerate')}
+                        </button>
+                        <small>{t('market_ai_summary_disclaimer')}</small>
+                      </div>
+                    </div>
+                  </article>
+                </section>
+
+                <AssetProfileCard
+                  response={assetProfile}
+                  loading={assetProfileLoading}
+                  error={assetProfileError}
+                  language={lang}
+                  assetType={selected.assetType}
+                  t={t}
+                />
+
+                <section className="market-panel analysis-freshness-card">
+                  <div className="market-section-head">
+                    <Clock3 size={19} />
+                    <div>
+                      <span>{analysisCopy.dataFreshness}</span>
+                      <h2>{analysisCopy.quoteSnapshot}</h2>
+                    </div>
+                  </div>
+                  <div className="indicator-list compact">
+                    <MarketMetric label={t('market_data_source')} value={assetSnapshot.dataProvider} valueDir="ltr" />
+                    <MarketMetric label={t('market_data_status')} value={assetSnapshot.dataStatusLabel} />
+                    <MarketMetric label={t('market_last_updated')} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
+                    <MarketMetric label={analysisCopy.currencyLabel} value={assetSnapshot.currencyLabel} valueDir="ltr" />
+                  </div>
+                </section>
+
+                <section className="market-panel analysis-quick-actions-card">
+                  <div className="market-section-head">
+                    <Activity size={19} />
+                    <div>
+                      <span>{analysisCopy.quickActions}</span>
+                      <h2>{assetSnapshot.symbol}</h2>
+                    </div>
+                  </div>
+                  <div className="analysis-side-actions">
+                    <button type="button" onClick={() => setActiveTab('technicalAnalysis')}>{t('market_daily_technical_analysis')}</button>
+                    <button type="button" onClick={() => setActiveTab('newsSentiment')}>{t('market_news_sentiment')}</button>
+                    <button type="button" onClick={() => setActiveTab('comparison')}>{t('market_compare_assets')}</button>
+                    <button type="button" onClick={() => setActiveTab('assetReport')}>{t('market_ai_asset_report')}</button>
+                  </div>
+                </section>
+              </aside>
+            </div>
           </section>
         ) : selected ? (
           <section className="market-panel market-focused-tab">
@@ -3725,8 +3867,260 @@ export default function MarketAnalysisPage() {
         :global(.market-analysis-result-workspace .market-tools-grid .market-panel){
           align-content:start!important;
         }
+        :global(.analysis-columns){
+          grid-column:1 / -1!important;
+          display:grid!important;
+          grid-template-columns:minmax(0,1fr) minmax(320px,360px)!important;
+          gap:20px!important;
+          align-items:start!important;
+          min-width:0!important;
+        }
+        :global(.analysis-main-column),
+        :global(.analysis-side-rail){
+          display:grid!important;
+          gap:16px!important;
+          min-width:0!important;
+          align-content:start!important;
+        }
+        :global(.analysis-side-rail){
+          position:sticky!important;
+          top:92px!important;
+        }
+        :global(.analysis-main-column .market-layout){
+          display:grid!important;
+          grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          gap:16px!important;
+          min-width:0!important;
+        }
+        :global(.analysis-main-column .market-chart){
+          grid-column:1 / -1!important;
+        }
+        :global(.analysis-side-rail .market-decision-grid){
+          display:grid!important;
+          grid-template-columns:1fr!important;
+          gap:14px!important;
+          min-width:0!important;
+        }
+        :global(.analysis-side-rail .asset-profile-card){
+          margin:0!important;
+          min-width:0!important;
+        }
+        :global(.analysis-signal-overview){
+          display:grid!important;
+          gap:14px!important;
+          background:linear-gradient(135deg,rgba(31,149,255,.07),rgba(32,212,207,.05)),#ffffff!important;
+        }
+        :global(.analysis-signal-overview.ok){
+          border-color:rgba(34,197,94,.22)!important;
+        }
+        :global(.analysis-signal-overview.warn){
+          border-color:rgba(245,158,11,.24)!important;
+        }
+        :global(.analysis-signal-overview.danger){
+          border-color:rgba(239,68,68,.22)!important;
+        }
+        :global(.analysis-signal-grid){
+          display:grid!important;
+          grid-template-columns:repeat(4,minmax(0,1fr))!important;
+          gap:10px!important;
+        }
+        :global(.analysis-signal-grid .metric){
+          min-height:74px!important;
+          border-radius:16px!important;
+          padding:12px!important;
+          background:rgba(248,252,255,.96)!important;
+        }
+        :global(.analysis-signal-copy){
+          display:grid!important;
+          gap:8px!important;
+          padding:14px!important;
+          border-radius:18px!important;
+          border:1px solid rgba(32,104,145,.13)!important;
+          background:#f8fcff!important;
+        }
+        :global(.analysis-signal-copy p),
+        :global(.analysis-signal-copy strong){
+          margin:0!important;
+          color:#334155!important;
+          font-size:13px!important;
+          font-weight:850!important;
+          line-height:1.75!important;
+        }
+        :global(.analysis-signal-copy strong){
+          color:#071a2f!important;
+          font-weight:950!important;
+        }
+        :global(.analysis-confidence-details){
+          border:1px solid rgba(32,212,207,.18)!important;
+          border-radius:16px!important;
+          background:rgba(32,212,207,.07)!important;
+          padding:0!important;
+          overflow:hidden!important;
+        }
+        :global(.analysis-confidence-details summary){
+          min-height:44px!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:space-between!important;
+          gap:12px!important;
+          padding:0 14px!important;
+          cursor:pointer!important;
+          color:#075985!important;
+          font-size:13px!important;
+          font-weight:950!important;
+          list-style:none!important;
+        }
+        :global(.analysis-confidence-details summary::-webkit-details-marker){
+          display:none!important;
+        }
+        :global(.analysis-confidence-details div){
+          display:grid!important;
+          grid-template-columns:repeat(3,minmax(0,1fr))!important;
+          gap:8px!important;
+          padding:0 14px 14px!important;
+        }
+        :global(.analysis-confidence-details span){
+          display:grid!important;
+          gap:4px!important;
+          padding:10px!important;
+          border-radius:12px!important;
+          background:#ffffff!important;
+          border:1px solid rgba(32,104,145,.12)!important;
+        }
+        :global(.analysis-confidence-details b){
+          color:#64748b!important;
+          font-size:11px!important;
+          font-weight:950!important;
+        }
+        :global(.analysis-confidence-details em){
+          color:#0f263d!important;
+          font-style:normal!important;
+          font-size:13px!important;
+          font-weight:950!important;
+        }
+        :global(.analysis-secondary-drawer){
+          display:grid!important;
+          gap:14px!important;
+          border:1px solid rgba(32,104,145,.16)!important;
+          border-radius:22px!important;
+          background:rgba(255,255,255,.94)!important;
+          box-shadow:var(--market-shadow)!important;
+          overflow:hidden!important;
+        }
+        :global(.analysis-secondary-drawer > summary){
+          min-height:58px!important;
+          display:flex!important;
+          align-items:center!important;
+          justify-content:space-between!important;
+          gap:16px!important;
+          padding:0 18px!important;
+          cursor:pointer!important;
+          list-style:none!important;
+          color:#071a2f!important;
+          font-size:14px!important;
+          font-weight:950!important;
+        }
+        :global(.analysis-secondary-drawer > summary::-webkit-details-marker){
+          display:none!important;
+        }
+        :global(.analysis-secondary-drawer > summary span){
+          display:inline-flex!important;
+          align-items:center!important;
+          gap:9px!important;
+          min-width:0!important;
+        }
+        :global(.analysis-secondary-drawer > summary svg){
+          color:#087ea1!important;
+          transition:transform .18s ease!important;
+        }
+        :global(.analysis-secondary-drawer[open] > summary svg){
+          transform:rotate(180deg)!important;
+        }
+        :global(.analysis-secondary-drawer > summary em){
+          color:#64748b!important;
+          font-style:normal!important;
+          font-size:12px!important;
+          font-weight:850!important;
+          overflow:hidden!important;
+          text-overflow:ellipsis!important;
+          white-space:nowrap!important;
+        }
+        :global(.analysis-secondary-drawer .market-tools-grid),
+        :global(.analysis-secondary-drawer .market-bottom-grid){
+          padding-inline:14px!important;
+        }
+        :global(.analysis-secondary-drawer .market-bottom-grid){
+          padding-bottom:14px!important;
+          display:grid!important;
+          grid-template-columns:repeat(2,minmax(0,1fr))!important;
+          gap:14px!important;
+        }
+        :global(.analysis-secondary-drawer .market-bottom-grid > .market-panel:first-child){
+          display:none!important;
+        }
+        :global(.analysis-freshness-card .indicator-list.compact){
+          grid-template-columns:1fr!important;
+        }
+        :global(.analysis-side-actions){
+          display:grid!important;
+          gap:9px!important;
+        }
+        :global(.analysis-side-actions button){
+          min-height:42px!important;
+          border-radius:14px!important;
+          border:1px solid rgba(32,212,207,.22)!important;
+          background:rgba(32,212,207,.09)!important;
+          color:#075985!important;
+          font:950 12px Tajawal,Arial,sans-serif!important;
+          cursor:pointer!important;
+          text-align:center!important;
+        }
+        :global(.analysis-side-actions button:hover),
+        :global(.analysis-side-actions button:focus-visible){
+          outline:none!important;
+          border-color:rgba(32,212,207,.48)!important;
+          background:rgba(32,212,207,.16)!important;
+          box-shadow:0 0 0 3px rgba(32,212,207,.14)!important;
+        }
+        :global(.analysis-interpretation-list){
+          display:grid!important;
+          gap:8px!important;
+          margin-top:12px!important;
+        }
+        :global(.analysis-interpretation-list span){
+          display:grid!important;
+          gap:4px!important;
+          padding:11px 12px!important;
+          border-radius:14px!important;
+          border:1px solid rgba(32,104,145,.12)!important;
+          background:#f8fcff!important;
+        }
+        :global(.analysis-interpretation-list b){
+          color:#0f263d!important;
+          font-size:12px!important;
+          font-weight:950!important;
+          line-height:1.35!important;
+          justify-self:start!important;
+        }
+        :global(.analysis-interpretation-list em){
+          color:#52667a!important;
+          font-style:normal!important;
+          font-size:12px!important;
+          font-weight:850!important;
+          line-height:1.65!important;
+        }
         @media(max-width:1180px){
           :global(.market-analysis-result-workspace){
+            grid-template-columns:1fr!important;
+          }
+          :global(.analysis-columns){
+            grid-template-columns:1fr!important;
+          }
+          :global(.analysis-side-rail){
+            position:static!important;
+            grid-row:auto!important;
+          }
+          :global(.analysis-main-column .market-layout){
             grid-template-columns:1fr!important;
           }
           :global(.market-analysis-result-workspace > .market-layout),
@@ -3774,11 +4168,22 @@ export default function MarketAnalysisPage() {
           }
           :global(.analysis-hero-actions),
           :global(.analysis-status-strip),
+          :global(.analysis-signal-grid),
+          :global(.analysis-confidence-details div),
           :global(.market-analysis-result-workspace > .market-decision-grid),
           :global(.market-analysis-result-workspace > .market-tools-grid),
           :global(.market-analysis-result-workspace > .market-bottom-grid),
+          :global(.analysis-secondary-drawer .market-bottom-grid),
           :global(.market-analysis-result-workspace .indicator-list){
             grid-template-columns:1fr!important;
+          }
+          :global(.analysis-secondary-drawer > summary){
+            display:grid!important;
+            align-content:center!important;
+            min-height:64px!important;
+          }
+          :global(.analysis-secondary-drawer > summary em){
+            white-space:normal!important;
           }
           :global(.market-analysis-result-workspace .price-history-chart){
             min-height:330px!important;
