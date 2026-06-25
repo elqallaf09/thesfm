@@ -2,9 +2,11 @@
 import { proxyHistory } from '@/lib/market/marketDataProvider';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
-import { normalizeAssetType } from '@/lib/market/marketService';
+import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 
 type MarketChartRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
+
+const HISTORY_ROUTE_TIMEOUT_MS = 15_000;
 
 const RANGE_CONFIG: Record<MarketChartRange, { period: string; interval: string }> = {
   '1D': { period: '1d', interval: '5m' },
@@ -123,6 +125,51 @@ function statusForCode(code?: string) {
   return 400;
 }
 
+function historyTimeoutResult(input: {
+  symbol: string;
+  assetType: MarketAssetType;
+  period: string;
+  interval?: string;
+}) {
+  return {
+    success: false,
+    code: 'market_data_timeout',
+    source: 'yahoo',
+    fallback: false,
+    marketDataService: 'unavailable',
+    symbol: input.symbol,
+    assetType: input.assetType,
+    period: input.period,
+    interval: input.interval || undefined,
+    history: [],
+    error: 'Market history request timed out.',
+    timedOut: true,
+  };
+}
+
+async function proxyHistoryWithRouteTimeout(
+  symbol: string,
+  assetType: MarketAssetType,
+  period: string,
+  interval?: string,
+): Promise<Awaited<ReturnType<typeof proxyHistory>> & { timedOut?: boolean }> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<Awaited<ReturnType<typeof proxyHistory>> & { timedOut: true }>((resolve) => {
+    timeout = setTimeout(() => {
+      resolve(historyTimeoutResult({ symbol, assetType, period, interval }));
+    }, HISTORY_ROUTE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      proxyHistory(symbol, assetType, period, interval),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const assetTypeInput = searchParams.get('assetType');
@@ -162,12 +209,13 @@ export async function GET(request: NextRequest) {
   let providerSymbol = candidates[0];
 
   for (const candidate of candidates) {
-    const attempt = await proxyHistory(candidate, assetType, period, interval);
+    const attempt = await proxyHistoryWithRouteTimeout(candidate, assetType, period, interval);
     result = attempt;
     if (attempt.success && Array.isArray(attempt.history) && attempt.history.length > 0) {
       providerSymbol = candidate;
       break;
     }
+    if (attempt.timedOut) break;
   }
 
   const normalizedHistory = normalizeHistoryCurrencyPoints(normalizeHistoryPoints(result?.history), {

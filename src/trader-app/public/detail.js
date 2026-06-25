@@ -1,6 +1,15 @@
 const params = new URLSearchParams(window.location.search);
 const rawSymbolParam = params.get("symbol") || "";
 const symbol = normalizeDetailSymbol(rawSymbolParam);
+const DETAIL_CHART_RANGES = ["ALL", "1Y", "1M", "1W", "1D"];
+const DETAIL_CHART_API_CONFIG = {
+  "1D": { period: "1d", interval: "5m" },
+  "1W": { period: "5d", interval: "30m" },
+  "1M": { period: "1mo", interval: "1d" },
+  "1Y": { period: "1y", interval: "1d" },
+  ALL: { period: "max", interval: "1mo" }
+};
+const DETAIL_CHART_CLIENT_TIMEOUT_MS = 20000;
 const NUMBER_LOCALE = "ar-KW-u-nu-latn";
 const NUMBER_OPTIONS = { numberingSystem: "latn" };
 const APP_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
@@ -560,6 +569,20 @@ const elements = {
 let detailAbortController = null;
 let detailRequestId = 0;
 let scanInFlight = false;
+let detailChartControlsInitialized = false;
+let detailChartResizeRaf = 0;
+let detailChartRequestId = 0;
+let detailChartAbortController = null;
+const detailChartState = {
+  range: normalizeDetailChartRange(params.get("range") || params.get("timeframe") || "1M"),
+  item: null,
+  profile: null,
+  market: null,
+  loading: false,
+  message: "",
+  messageKind: "idle",
+  values: []
+};
 
 const DETAIL_STATUS_TEXT = {
   noSymbol: "\u0644\u0645 \u064a\u062a\u0645 \u062a\u062d\u062f\u064a\u062f \u0631\u0645\u0632 \u0627\u0644\u0633\u0647\u0645.",
@@ -598,6 +621,7 @@ applyDetailLanguage();
 initMarketBackground();
 initDetailBackButton();
 initDetailStateActions();
+initDetailChartControls();
 registerPwaServiceWorker();
 loadDetailV2();
 
@@ -633,6 +657,60 @@ function initDetailStateActions() {
       loadDetailV2();
     }
   });
+}
+
+function initDetailChartControls() {
+  if (detailChartControlsInitialized || !elements.sparkline) return;
+  const chartPanel = elements.sparkline.closest(".detail-panel");
+  if (!chartPanel) return;
+
+  let toolbar = chartPanel.querySelector(".detail-chart-controls");
+  if (!toolbar) {
+    toolbar = document.createElement("div");
+    toolbar.className = "detail-chart-controls";
+    toolbar.innerHTML = `
+      <div>
+        <span class="eyebrow">${escapeHtml(detailText("الفترة", "Range"))}</span>
+        <strong>${escapeHtml(detailText("الرسم البياني", "Price chart"))}</strong>
+      </div>
+      <div class="detail-chart-ranges" role="group" aria-label="${escapeHtml(detailText("اختيار فترة الرسم", "Select chart range"))}">
+        ${DETAIL_CHART_RANGES.map((range) => `
+          <button type="button" data-range="${range}" data-timeframe="${range}" aria-pressed="false" dir="ltr">${range}</button>
+        `).join("")}
+      </div>
+    `;
+    elements.sparkline.before(toolbar);
+  }
+
+  const status = document.createElement("div");
+  status.id = "detail-chart-status";
+  status.className = "detail-chart-status";
+  status.setAttribute("aria-live", "polite");
+  elements.sparkline.after(status);
+  elements.chartStatus = status;
+  elements.chartRangeButtons = Array.from(toolbar.querySelectorAll("[data-range]"));
+
+  toolbar.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-range]");
+    if (!button || button.disabled) return;
+    event.preventDefault();
+    const range = normalizeDetailChartRange(button.getAttribute("data-range"));
+    if (!range) return;
+    if (range === detailChartState.range && detailChartState.loading) return;
+    setDetailChartRange(range, { updateUrl: true });
+    loadDetailChartRange(range, { keepExisting: true });
+  });
+
+  window.addEventListener("resize", () => {
+    if (detailChartResizeRaf) window.cancelAnimationFrame(detailChartResizeRaf);
+    detailChartResizeRaf = window.requestAnimationFrame(() => {
+      detailChartResizeRaf = 0;
+      redrawDetailChart();
+    });
+  });
+
+  detailChartControlsInitialized = true;
+  updateDetailChartControls();
 }
 
 function registerPwaServiceWorker() {
@@ -817,6 +895,203 @@ function hideDetailState() {
   elements.statePanel.innerHTML = "";
 }
 
+function normalizeDetailChartRange(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "MAX") return "ALL";
+  if (normalized === "6M" || normalized === "6MO" || normalized === "12M" || normalized === "1YR") return "1Y";
+  if (normalized === "1MO") return "1M";
+  return DETAIL_CHART_RANGES.includes(normalized) ? normalized : "1M";
+}
+
+function setDetailChartRange(range, options = {}) {
+  const normalized = normalizeDetailChartRange(range);
+  detailChartState.range = normalized;
+  updateDetailChartControls();
+
+  if (!options.updateUrl) return;
+  try {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("range", normalized);
+    nextUrl.searchParams.delete("timeframe");
+    window.history.replaceState(null, "", nextUrl);
+  } catch (error) {
+    console.warn("[detail-chart] Unable to persist selected range in the URL.", error);
+  }
+}
+
+function updateDetailChartControls() {
+  if (Array.isArray(elements.chartRangeButtons)) {
+    elements.chartRangeButtons.forEach((button) => {
+      const range = normalizeDetailChartRange(button.getAttribute("data-range"));
+      const active = range === detailChartState.range;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      button.disabled = !detailChartState.item;
+      button.setAttribute("aria-label", `${detailText("فترة الرسم", "Chart range")} ${range}`);
+    });
+  }
+
+  if (elements.chartStatus) {
+    elements.chartStatus.dataset.state = detailChartState.loading ? "loading" : detailChartState.messageKind;
+    elements.chartStatus.textContent = detailChartState.loading
+      ? detailText("جاري تحميل بيانات الرسم...", "Loading chart data...")
+      : detailChartState.message;
+  }
+}
+
+function inferDetailAssetType(item = {}, profile = {}, market = {}) {
+  const currentSymbol = String(item.providerSymbol || item.symbol || symbol || "").toUpperCase();
+  const source = [
+    item.assetType,
+    item.type,
+    item.category,
+    item.sector,
+    item.market,
+    profile.assetType,
+    profile.specialty,
+    market.label,
+    market.labelEn,
+    currentSymbol,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/forex|fx|currency pair|pair|usd\/|eur\/|gbp\/|jpy|chf|aud|nzd|cad/.test(source)) return "forex";
+  if (/crypto|bitcoin|ethereum|digital|btc|eth|bnb|sol|xrp|ada|avax/.test(source)) return "crypto";
+  if (/commodity|commodities|gold|silver|oil|gas|copper|xau|xag|usoil|ukoil|natgas|futures/.test(source)) return "commodity";
+  if (/index|indices|dow|nasdaq|s&p|sp500|us30/.test(source)) return "index";
+  return "stock";
+}
+
+function chartMessageForError(code, fallback) {
+  const normalized = String(code || "").trim();
+  if (normalized === "provider_no_data" || normalized === "PRICE_HISTORY_UNAVAILABLE" || normalized === "NO_DATA") {
+    return detailText("لا تتوفر بيانات لهذه الفترة حالياً.", "No data is available for this range right now.");
+  }
+  if (normalized === "invalid_symbol" || normalized === "symbol_not_found") {
+    return detailText("هذا الرمز غير مدعوم لبيانات الرسم حالياً.", "This symbol is not supported for chart data right now.");
+  }
+  if (normalized === "market_data_rate_limit" || normalized === "RATE_LIMIT") {
+    return detailText("تم تجاوز حد مزود البيانات مؤقتاً. حاول مرة أخرى بعد قليل.", "The data provider is temporarily rate limited. Try again shortly.");
+  }
+  if (normalized === "market_data_timeout") {
+    return detailText("استغرق طلب بيانات الرسم وقتاً أطول من المتوقع.", "The chart data request took longer than expected.");
+  }
+  if (normalized === "invalid_response") {
+    return detailText("استجابة بيانات الرسم غير صالحة.", "The chart data response is invalid.");
+  }
+  if (normalized === "request_failed") {
+    return detailText("تعذر تحميل بيانات الرسم. حاول مرة أخرى.", "Could not load chart data. Try again.");
+  }
+  return localizeDetailText(fallback || detailText("تعذر تحميل بيانات الرسم.", "Could not load chart data."));
+}
+
+function extractDetailChartValues(payload) {
+  const rawPoints = Array.isArray(payload?.points)
+    ? payload.points
+    : Array.isArray(payload?.history)
+      ? payload.history
+      : [];
+
+  return rawPoints
+    .map((point) => {
+      if (typeof point === "number") return point;
+      if (!point || typeof point !== "object") return NaN;
+      return Number(point.close ?? point.price ?? point.value ?? point.currentPrice);
+    })
+    .filter(Number.isFinite);
+}
+
+function setDetailChartMessage(kind, message) {
+  detailChartState.messageKind = kind;
+  detailChartState.message = message;
+  updateDetailChartControls();
+}
+
+function redrawDetailChart() {
+  if (!detailChartState.item) return;
+  drawSparkline(elements.sparkline, detailChartState.values, detailChartState.item.action);
+}
+
+async function loadDetailChartRange(range = detailChartState.range, options = {}) {
+  if (!detailChartState.item) {
+    updateDetailChartControls();
+    return;
+  }
+
+  const normalizedRange = normalizeDetailChartRange(range);
+  const requestId = ++detailChartRequestId;
+  detailChartAbortController?.abort();
+  const requestController = new AbortController();
+  detailChartAbortController = requestController;
+  let requestTimedOut = false;
+  const requestTimeout = window.setTimeout(() => {
+    requestTimedOut = true;
+    requestController.abort();
+  }, DETAIL_CHART_CLIENT_TIMEOUT_MS);
+  detailChartState.loading = true;
+  setDetailChartRange(normalizedRange);
+  updateDetailChartControls();
+
+  const item = detailChartState.item;
+  const profile = detailChartState.profile || {};
+  const market = detailChartState.market || {};
+  const providerSymbol = normalizeDetailSymbol(item.providerSymbol || item.symbol || symbol);
+  const apiConfig = DETAIL_CHART_API_CONFIG[normalizedRange] || DETAIL_CHART_API_CONFIG["1M"];
+  const query = new URLSearchParams({
+    symbol: normalizeDetailSymbol(item.symbol || symbol),
+    providerSymbol,
+    assetType: inferDetailAssetType(item, profile, market),
+    range: normalizedRange,
+    period: apiConfig.period,
+    interval: apiConfig.interval,
+  });
+
+  try {
+    const response = await fetch(`/api/market/history?${query.toString()}`, {
+      cache: "no-store",
+      signal: requestController.signal,
+      headers: { Accept: "application/json" },
+    });
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : { success: false, code: "invalid_response", error: await response.text() };
+
+    if (requestId !== detailChartRequestId || requestController.signal.aborted) return;
+
+    if (!response.ok || !payload?.success) {
+      setDetailChartMessage("error", chartMessageForError(payload?.code, payload?.error || payload?.message));
+      if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
+      return;
+    }
+
+    const values = extractDetailChartValues(payload);
+    if (values.length < 2) {
+      setDetailChartMessage("empty", detailText("لا تتوفر بيانات لهذه الفترة حالياً.", "No data is available for this range right now."));
+      if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
+      return;
+    }
+
+    detailChartState.values = values;
+    drawSparkline(elements.sparkline, values, item.action);
+    setDetailChartMessage("success", `${detailText("تم تحديث الرسم لفترة", "Chart updated for")} ${normalizedRange}`);
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      if (requestId === detailChartRequestId && requestTimedOut) {
+        setDetailChartMessage("error", chartMessageForError("market_data_timeout"));
+      }
+      return;
+    }
+    setDetailChartMessage("error", chartMessageForError("request_failed", error?.message));
+    if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
+  } finally {
+    window.clearTimeout(requestTimeout);
+    if (requestId === detailChartRequestId) {
+      detailChartState.loading = false;
+      updateDetailChartControls();
+    }
+  }
+}
+
 async function loadDetail() {
   if (!symbol) {
     showError(detailText(DETAIL_STATUS_TEXT.noSymbol, "No stock symbol was selected."));
@@ -897,7 +1172,13 @@ function renderDetail(data) {
   renderOutlook(item);
   renderReasons(item.reasons || []);
   renderBacktest(item);
-  drawSparkline(elements.sparkline, item.sparkline || [], item.action);
+  detailChartState.item = item;
+  detailChartState.profile = profile;
+  detailChartState.market = market;
+  detailChartState.values = Array.isArray(item.sparkline) ? item.sparkline.filter(Number.isFinite) : [];
+  updateDetailChartControls();
+  drawSparkline(elements.sparkline, detailChartState.values, item.action);
+  loadDetailChartRange(detailChartState.range, { keepExisting: true });
   applyDetailLanguage();
 }
 
