@@ -1552,6 +1552,9 @@ export default function CharityProjectsPage() {
               <HeartHandshake size={42} />
               <strong>{tr.notEnoughImpactData}</strong>
               <p>{tr.customImpactHint}</p>
+              <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                <Plus size={15} /> {tr.newProject}
+              </button>
             </div>
           ) : (
             <>
@@ -1673,6 +1676,9 @@ export default function CharityProjectsPage() {
               <HeartHandshake size={44} />
               <strong>{tr.emptyTitle}</strong>
               <p>{tr.emptyBody}</p>
+              <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                <Plus size={15} /> {tr.newProject}
+              </button>
             </div>
           ) : (
             <div className="project-grid">
@@ -1795,6 +1801,11 @@ export default function CharityProjectsPage() {
             <div className="empty-state compact">
               <HandCoins size={38} />
               <strong>{tr.invitationsSoon}</strong>
+              <p>{tr.collaborationDesc}</p>
+              <button className="mini-gold" type="button" onClick={() => {
+                resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
+                setContributorOpen(true);
+              }}>{tr.addContributor}</button>
             </div>
           ) : (
             <div className="contributor-grid">
@@ -1870,6 +1881,11 @@ export default function CharityProjectsPage() {
             <div className="empty-state compact">
               <HeartHandshake size={38} />
               <strong>{tr.noBeneficiaries}</strong>
+              <p>{tr.beneficiaryDesc}</p>
+              <button className="mini-gold" type="button" onClick={() => {
+                resetBeneficiaryForm();
+                setBeneficiaryOpen(true);
+              }}>{tr.addBeneficiary}</button>
             </div>
           ) : (
             <div className="beneficiary-grid">
@@ -1953,6 +1969,13 @@ export default function CharityProjectsPage() {
             <div className="empty-state compact">
               <FileText size={38} />
               <strong>{tr.noDocuments}</strong>
+              <p>{tr.documentVaultDesc}</p>
+              <button className="mini-gold" type="button" onClick={() => {
+                resetDocumentForm();
+                setDocumentOpen(true);
+              }}>
+                <FileUp size={15} /> {tr.uploadDocument}
+              </button>
             </div>
           ) : (
             <div className="document-grid">
