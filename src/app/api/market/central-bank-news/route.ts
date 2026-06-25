@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic';
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
 };
+const unavailableHeaders = {
+  'Cache-Control': 'no-store',
+};
 const REQUEST_TIMEOUT_MS = 8000;
 const MAX_ITEMS = 18;
 
@@ -280,7 +283,7 @@ function unavailableResponse(code: 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' | '
     source: null,
     items: [],
     updated_at: null,
-  }, { status: 200, headers: cacheHeaders });
+  }, { status: 200, headers: unavailableHeaders });
 }
 
 export async function GET(request: Request) {

@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export const revalidate = 900;
+export const dynamic = 'force-dynamic';
 
 const cacheHeaders = {
   'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
+};
+const unavailableHeaders = {
+  'Cache-Control': 'no-store',
 };
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -136,7 +140,7 @@ function unavailableResponse(code: string) {
     code,
     events: [],
     updated_at: null,
-  }, { status: 200, headers: cacheHeaders });
+  }, { status: 200, headers: unavailableHeaders });
 }
 
 export async function GET() {
