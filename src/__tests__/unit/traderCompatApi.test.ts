@@ -46,10 +46,12 @@ describe('thesfm trader compatibility API', () => {
 
   it('exposes all trader market categories with correct Kuwait currency', () => {
     const ids = new Set(TRADER_MARKET_CATEGORIES.map((market) => market.id));
-    for (const id of ['forex', 'us-stocks', 'crypto', 'commodities', 'gulf-markets', 'saudi', 'kuwait', 'uae', 'qatar', 'bahrain', 'oman', 'european-stocks', 'asian-stocks', 'technology-stocks', 'food-stocks', 'pharma-stocks', 'banking-stocks', 'energy-stocks', 'ai-stocks', 'semiconductors']) {
+    for (const id of ['forex', 'us-stocks', 'crypto', 'commodities', 'saudi', 'kuwait', 'uae', 'qatar', 'bahrain', 'oman', 'european-stocks', 'asian-stocks', 'technology-stocks', 'food-stocks', 'pharma-stocks', 'banking-stocks', 'energy-stocks', 'ai-stocks', 'semiconductors']) {
       expect(ids.has(id)).toBe(true);
     }
 
+    expect(ids.has('gulf-markets')).toBe(false);
+    expect(TRADER_MARKET_CATEGORIES.some((market) => market.countryCode === 'GCC')).toBe(false);
     expect(TRADER_MARKET_CATEGORIES.find((market) => market.id === 'kuwait')?.currency).toBe('KWD');
     expect(TRADER_MARKET_CATEGORIES.some((market) => market.currency === 'KWF')).toBe(false);
   });

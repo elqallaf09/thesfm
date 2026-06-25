@@ -241,7 +241,7 @@ const DETAIL_EXTRA_TEXT_TRANSLATIONS = {
   "الفوركس": "Forex",
   "العملات الرقمية": "Crypto",
   "السلع": "Commodities",
-  "أسواق الخليج": "Gulf markets",
+  "أسواق الخليج": "Gulf country markets",
   "السوق السعودي": "Saudi market",
   "بورصة الكويت": "Kuwait market",
   "السوق الإماراتي": "UAE market",
@@ -395,7 +395,8 @@ const DETAIL_SHARIA_LABELS = {
   not_compliant: { ar: "غير متوافق شرعياً", en: "Non-compliant" },
   review_required: { ar: "يحتاج مراجعة", en: "Review required" },
   doubtful: { ar: "يحتاج مراجعة", en: "Review required" },
-  unknown: { ar: "يحتاج مراجعة", en: "Review required" }
+  unknown: { ar: "يحتاج مراجعة", en: "Review required" },
+  unsupported: { ar: "غير منطبق", en: "Not applicable" }
 };
 const DETAIL_SHARIA_DESCRIPTIONS = {
   compliant: {
@@ -421,7 +422,27 @@ const DETAIL_SHARIA_DESCRIPTIONS = {
   unknown: {
     ar: "لا يوجد تصنيف شرعي موثق لهذا الرمز داخل التطبيق حالياً، لذلك يحتاج إلى مراجعة وفق المعايير الشرعية المعتمدة.",
     en: "No verified Sharia classification is available for this symbol in the app right now, so it requires review under approved Sharia standards."
+  },
+  unsupported: {
+    ar: "هذا النوع من الأدوات لا يملك تصنيف أسهم شرعي داخل التطبيق حالياً.",
+    en: "This instrument type does not currently have stock Sharia screening in the app."
   }
+};
+const DETAIL_SHARIA_REASON_LABELS = {
+  prohibited_business_activity: { ar: "نشاط رئيسي غير متوافق", en: "Core business activity is not compliant" },
+  financial_ratio_threshold: { ar: "تجاوز النسب المالية المعتمدة", en: "Approved financial ratios were exceeded" },
+  interest_bearing_debt_threshold: { ar: "ارتفاع الديون ذات الفائدة", en: "Interest-bearing debt threshold exceeded" },
+  non_permissible_income_threshold: { ar: "تجاوز نسبة الإيرادات غير المتوافقة", en: "Non-permissible income threshold exceeded" },
+  insufficient_financial_data: { ar: "بيانات غير مكتملة", en: "Incomplete financial data" },
+  classification_expired: { ar: "التصنيف قديم ويحتاج إلى تحديث", en: "Classification is outdated and needs review" },
+  source_unavailable: { ar: "المصدر غير متاح", en: "Source unavailable" },
+  conflicting_sources: { ar: "توجد نتائج متعارضة", en: "Conflicting source results" },
+  not_yet_reviewed: { ar: "لا يوجد تصنيف موثق", en: "No verified classification is available" },
+  other_verified_reason: { ar: "سبب آخر موثق", en: "Other verified reason" }
+};
+const DETAIL_SHARIA_DISCLAIMER = {
+  ar: "التصنيف الشرعي إرشادي وقد يتغير مع تحديث البيانات المالية أو اختلاف المعايير المعتمدة. يُنصح بالرجوع إلى جهة شرعية مختصة قبل اتخاذ القرار الاستثماري.",
+  en: "The Sharia classification is indicative and may change with updated financial data or different standards. Consult a qualified Sharia authority before making an investment decision."
 };
 const DETAIL_RISK_LABELS = {
   low: { ar: "مخاطرة منخفضة", en: "Low risk" },
@@ -449,7 +470,7 @@ const DETAIL_REGION_TRANSLATIONS = {
   America: "America",
   Europe: "Europe",
   Asia: "Asia",
-  GCC: "GCC",
+  GCC: "Gulf country markets",
   FX: "FX",
   Crypto: "Crypto",
   Commodities: "Commodities",
@@ -894,19 +915,84 @@ function renderGeneralInfo(profile, market, item) {
   `;
 }
 
+function normalizeDetailShariaClassification(profile = {}) {
+  const structured = profile.sharia && typeof profile.sharia === "object" ? profile.sharia : null;
+  const status = normalizeDetailShariaStatus(
+    structured?.status ?? profile.shariaStatus ?? profile.sharia_status ?? profile.shariaCompliance,
+  );
+  const record = {
+    status,
+    sourceStatus: status,
+    reasonCode: structured?.reason_code || profile.shariaReasonCode || profile.reason_code || (status === "review_required" ? "not_yet_reviewed" : null),
+    reasonAr: structured?.reason_ar || profile.shariaReasonAr || profile.reason_ar || "",
+    source: structured?.source || profile.shariaSource || "",
+    standard: structured?.standard || profile.shariaStandard || "",
+    reviewedAt: structured?.reviewed_at || profile.shariaCheckedAt || profile.reviewed_at || "",
+    validUntil: structured?.valid_until || profile.valid_until || "",
+  };
+  if (record.status === "compliant" && isDetailShariaExpired(record)) {
+    return { ...record, status: "review_required", expired: true, reasonCode: "classification_expired", reasonAr: "" };
+  }
+  return { ...record, expired: false };
+}
+
+function isDetailShariaExpired(record = {}) {
+  const validUntil = record.validUntil;
+  if (validUntil) {
+    const date = new Date(validUntil);
+    if (!Number.isNaN(date.getTime()) && date.getTime() < Date.now()) return true;
+  }
+  const reviewedAt = record.reviewedAt;
+  if (reviewedAt) {
+    const date = new Date(reviewedAt);
+    if (!Number.isNaN(date.getTime())) {
+      return Date.now() - date.getTime() > 365 * 24 * 60 * 60 * 1000;
+    }
+  }
+  return false;
+}
+
+function localizeShariaReason(classification) {
+  if (classification.reasonAr) return localizeDetailText(classification.reasonAr);
+  const labels = DETAIL_SHARIA_REASON_LABELS[classification.reasonCode || "not_yet_reviewed"];
+  if (!labels) return "";
+  return detailText(labels.ar, labels.en);
+}
+
+function renderOptionalInfoRow(label, value) {
+  if (value === null || value === undefined || value === "") return "";
+  return renderInfoRow(label, value);
+}
+
+function formatDetailDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(isDetailEnglishLanguage() ? "en-US" : "ar-KW-u-nu-latn", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 function renderSharia(profile) {
-  const normalizedStatus = normalizeDetailShariaStatus(profile.shariaStatus);
-  const normalizedProfile = { ...profile, shariaStatus: normalizedStatus };
-  const statusClass = normalizedStatus === "compliant" ? "buy" : normalizedStatus === "non_compliant" ? "sell" : "hold";
+  const classification = normalizeDetailShariaClassification(profile);
+  const normalizedProfile = { ...profile, shariaStatus: classification.status };
+  const statusClass = classification.status === "compliant" ? "buy" : classification.status === "non_compliant" ? "sell" : "hold";
+  const reason = localizeShariaReason(classification);
   elements.shariaBox.innerHTML = `
     <div class="sharia-status-detail ${statusClass}">
       <strong>${escapeHtml(localizeShariaLabel(normalizedProfile))}</strong>
-      <span>${escapeHtml(localizeShariaDescription(normalizedProfile))}</span>
+      <span>${escapeHtml(reason || localizeShariaDescription(normalizedProfile))}</span>
     </div>
     <div class="info-list">
-      ${renderInfoRow(detailText("المصدر", "Source"), localizeDetailText(profile.shariaSource || "تصنيف داخلي قابل للتحديث"))}
-      ${renderInfoRow(detailText("آخر مراجعة", "Last review"), profile.shariaCheckedAt || "--")}
+      ${renderOptionalInfoRow(detailText("سبب التصنيف", "Reason"), reason)}
+      ${renderOptionalInfoRow(detailText("المصدر", "Source"), classification.source ? localizeDetailText(classification.source) : "")}
+      ${renderOptionalInfoRow(detailText("المنهجية المعتمدة", "Methodology"), classification.standard ? localizeDetailText(classification.standard) : "")}
+      ${renderOptionalInfoRow(detailText("آخر مراجعة", "Last review"), formatDetailDate(classification.reviewedAt))}
+      ${classification.expired ? renderInfoRow(detailText("حالة التحديث", "Freshness"), detailText("التصنيف قديم ويحتاج إلى تحديث", "Classification is outdated and needs review")) : ""}
     </div>
+    <p class="sharia-disclaimer">${escapeHtml(detailText(DETAIL_SHARIA_DISCLAIMER.ar, DETAIL_SHARIA_DISCLAIMER.en))}</p>
   `;
 }
 
@@ -1043,7 +1129,7 @@ function showError(message) {
 function calculateFinalScore(item) {
   const confidencePoints = clamp(Number(item.confidence || 0), 0, 100) * 0.35;
   const agreementPoints = clamp(Number(item.timeframeConsensus?.agreementPct || 0), 0, 100) * 0.15;
-  const shariaStatus = normalizeDetailShariaStatus(item.shariaStatus);
+  const shariaStatus = normalizeDetailShariaClassification(item).status;
   const shariaPoints = {
     compliant: 20,
     review_required: 4,
@@ -1211,6 +1297,7 @@ function normalizeDetailShariaStatus(value) {
   const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (["compliant", "sharia_compliant", "halal", "approved"].includes(raw)) return "compliant";
   if (["non_compliant", "not_compliant", "noncompliant", "haram", "rejected"].includes(raw)) return "non_compliant";
+  if (["unsupported", "not_applicable", "na", "n_a"].includes(raw)) return "unsupported";
   return "review_required";
 }
 

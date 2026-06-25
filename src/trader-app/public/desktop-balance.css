@@ -163,7 +163,7 @@ body:not(.intro-running) .language-choice:hover .language-choice-copy small {
   }
 }
 
-/* Unified sharp asset identity layer: stocks, crypto, commodities, GCC, and cards. */
+/* Unified sharp asset identity layer: stocks, crypto, commodities, regional markets, and cards. */
 body:not(.intro-running) .asset-logo {
   position: relative !important;
   isolation: isolate !important;
@@ -465,11 +465,9 @@ body[data-app-view="home"] .market-button.active .market-button-copy strong {
 body:not(.intro-running) .market-premium-flag,
 body:not(.intro-running) .market-premium-glyph,
 body:not(.intro-running) .market-premium-commodity,
-body:not(.intro-running) .market-premium-gcc-badge,
 body[data-app-view="home"] .market-premium-flag,
 body[data-app-view="home"] .market-premium-glyph,
-body[data-app-view="home"] .market-premium-commodity,
-body[data-app-view="home"] .market-premium-gcc-badge {
+body[data-app-view="home"] .market-premium-commodity {
   width: 30px !important;
   height: 30px !important;
   border-radius: 999px !important;
@@ -553,35 +551,6 @@ body[data-app-view="home"] .market-premium-oman {
     linear-gradient(180deg, #ffffff 0 33%, #db161b 33% 66%, #00843d 66%) !important;
 }
 
-body:not(.intro-running) .market-premium-gcc-badge,
-body[data-app-view="home"] .market-premium-gcc-badge {
-  color: #ffe79d !important;
-  background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.28), transparent 29%),
-    radial-gradient(circle at 60% 56%, rgba(54, 232, 137, 0.4), transparent 36%),
-    conic-gradient(from 35deg, #d8ac50, #057a4b, #102a39, #ce1126, #d8ac50) !important;
-}
-
-body:not(.intro-running) .market-premium-gcc-badge::before,
-body[data-app-view="home"] .market-premium-gcc-badge::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 5px !important;
-  border-radius: 999px !important;
-  background: rgba(2, 12, 14, 0.26) !important;
-  border: 1px solid rgba(255, 231, 157, 0.22) !important;
-}
-
-body:not(.intro-running) .market-premium-gcc-badge svg,
-body[data-app-view="home"] .market-premium-gcc-badge svg {
-  position: relative !important;
-  z-index: 2 !important;
-  width: 29px !important;
-  height: 29px !important;
-  overflow: visible !important;
-  filter: none !important;
-}
-
 body:not(.intro-running) .market-premium-dollar,
 body[data-app-view="home"] .market-premium-dollar {
   color: #eafff4 !important;
@@ -630,11 +599,9 @@ body[data-app-view="home"] .market-premium-commodity svg {
   body:not(.intro-running) .market-premium-flag,
   body:not(.intro-running) .market-premium-glyph,
   body:not(.intro-running) .market-premium-commodity,
-  body:not(.intro-running) .market-premium-gcc-badge,
   body[data-app-view="home"] .market-premium-flag,
   body[data-app-view="home"] .market-premium-glyph,
-  body[data-app-view="home"] .market-premium-commodity,
-  body[data-app-view="home"] .market-premium-gcc-badge {
+  body[data-app-view="home"] .market-premium-commodity {
     width: 34px !important;
     height: 34px !important;
   }

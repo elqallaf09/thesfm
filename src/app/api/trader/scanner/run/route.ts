@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTraderAccess } from '@/lib/server/traderAccess';
-import { parseScannerFilters, scannerSummary, toTraderRecommendation } from '@/lib/trader/apiFormat';
+import {
+  filterTraderRecommendationsBySharia,
+  parseScannerFilters,
+  toTraderRecommendation,
+  traderRecommendationSummary,
+} from '@/lib/trader/apiFormat';
 import { filterResults, runScanner } from '@/lib/trader/scannerService';
 
 export const dynamic = 'force-dynamic';
@@ -30,17 +35,19 @@ export async function POST(request: NextRequest) {
   if (typeof body.signalType === 'string') search.set('signalType', body.signalType);
   if (typeof body.riskLevel === 'string') search.set('riskLevel', body.riskLevel);
   if (typeof body.timeHorizon === 'string') search.set('timeHorizon', body.timeHorizon);
+  if (typeof body.sharia_status === 'string') search.set('sharia_status', body.sharia_status);
+  if (typeof body.shariaStatus === 'string') search.set('shariaStatus', body.shariaStatus);
   if (typeof body.minimumConfidence === 'number') search.set('minimumConfidence', String(body.minimumConfidence));
   if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.slice(0, 30).join(','));
 
   const filters = parseScannerFilters(search);
   const results = filterResults(await runScanner(filters, true), filters);
-  const recommendations = results.map(toTraderRecommendation);
+  const recommendations = filterTraderRecommendationsBySharia(results.map(toTraderRecommendation), filters.shariaStatus);
 
   return NextResponse.json({
     ok: true,
     generatedAt: new Date().toISOString(),
-    summary: scannerSummary(results),
+    summary: traderRecommendationSummary(recommendations),
     recommendations,
     results: recommendations,
   }, {
@@ -59,7 +66,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     generatedAt: new Date().toISOString(),
-    summary: scannerSummary(results),
+    summary: traderRecommendationSummary(recommendations),
     recommendations,
     results: recommendations,
   }, {

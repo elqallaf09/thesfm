@@ -14,7 +14,6 @@ export const TRADER_MARKET_CATEGORIES: TraderMarketCategory[] = [
   { id: 'us-stocks', labelAr: 'الأسهم الأمريكية', labelEn: 'US Stocks', countryCode: 'US', currency: 'USD', kind: 'market' },
   { id: 'crypto', labelAr: 'العملات الرقمية', labelEn: 'Crypto', countryCode: null, currency: 'USD', kind: 'asset-class' },
   { id: 'commodities', labelAr: 'السلع', labelEn: 'Commodities', countryCode: null, currency: 'USD', kind: 'asset-class' },
-  { id: 'gulf-markets', labelAr: 'أسواق الخليج', labelEn: 'Gulf Markets', countryCode: 'GCC', currency: 'MIXED', kind: 'market' },
   { id: 'saudi', labelAr: 'السوق السعودي', labelEn: 'Saudi Market', countryCode: 'SA', currency: 'SAR', kind: 'market' },
   { id: 'kuwait', labelAr: 'بورصة الكويت', labelEn: 'Kuwait Market', countryCode: 'KW', currency: 'KWD', kind: 'market' },
   { id: 'uae', labelAr: 'السوق الإماراتي', labelEn: 'UAE Market', countryCode: 'AE', currency: 'AED', kind: 'market' },

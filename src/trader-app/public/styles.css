@@ -843,6 +843,99 @@ html[dir="rtl"] .nav-sub-item.active {
   background: rgba(255, 82, 104, 0.10);
 }
 
+.sharia-badge.review_required,
+.sharia-badge.unsupported {
+  border-color: rgba(246, 185, 74, 0.34);
+  color: #ffe3a3 !important;
+  background: rgba(246, 185, 74, 0.10);
+}
+
+.sharia-badge.expired {
+  border-style: dashed;
+}
+
+.sharia-filter-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.sharia-filter-panel p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--terminal-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sharia-filter-panel p em {
+  display: block;
+  color: rgba(244, 248, 252, 0.68);
+  font-style: normal;
+}
+
+.sharia-filter-chip,
+.sharia-clear-filter,
+.sharia-empty-state button {
+  min-height: 36px;
+  border: 1px solid rgba(242, 199, 102, 0.26);
+  border-radius: 999px;
+  color: var(--terminal-text);
+  background: rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.sharia-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+}
+
+.sharia-filter-chip strong {
+  min-width: 32px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #8cffc3;
+  background: rgba(25, 217, 139, 0.11);
+}
+
+.sharia-filter-chip.active {
+  border-color: rgba(25, 217, 139, 0.58);
+  background: rgba(25, 217, 139, 0.12);
+  box-shadow: 0 0 18px rgba(25, 217, 139, 0.10);
+}
+
+.sharia-clear-filter,
+.sharia-empty-state button {
+  padding: 7px 12px;
+  color: #ffe3a3;
+  background: rgba(242, 199, 102, 0.10);
+}
+
+.sharia-empty-state {
+  display: grid;
+  gap: 8px;
+}
+
+.sharia-empty-state button {
+  width: fit-content;
+}
+
+.sharia-disclaimer {
+  margin: 12px 0 0;
+  border: 1px solid rgba(131, 151, 170, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: rgba(244, 248, 252, 0.72);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .rec-badges {
   display: flex;
   flex-wrap: wrap;
@@ -2584,6 +2677,17 @@ html[dir="rtl"] .market-tile-meta {
 }
 
 @media (max-width: 680px) {
+  .sharia-filter-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sharia-filter-chip,
+  .sharia-clear-filter {
+    width: 100%;
+    justify-content: center;
+  }
+
   .detail-shell {
     width: min(100%, calc(100vw - 20px));
     min-height: calc(100dvh - 20px);

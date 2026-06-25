@@ -128,6 +128,17 @@ const i18n = {
     shariaReviewRequired: "يحتاج مراجعة",
     shariaNotApplicable: "غير منطبق",
     shariaTooltip: "التصنيف الشرعي إرشادي ويحتاج إلى مراجعة دورية وفق المعايير الشرعية المعتمدة.",
+    shariaOnlyFilter: "الأسهم الشرعية فقط",
+    shariaOnlyFilterNote: "يعرض الأسهم ذات التصنيف الموثق كمتوافقة شرعياً فقط.",
+    shariaFilterStocksOnly: "ينطبق هذا الفلتر على الأسهم فقط ولا يشمل الفوركس أو السلع أو العملات الرقمية.",
+    noShariaCompliantResults: "لا توجد أسهم مصنفة كمتوافقة شرعياً ضمن النتائج الحالية.",
+    clearFilter: "مسح الفلتر",
+    shariaStatusFilter: "الحالة الشرعية",
+    shariaReason: "سبب التصنيف",
+    shariaSource: "مصدر التصنيف",
+    shariaStandard: "المنهجية",
+    shariaLastReview: "آخر مراجعة",
+    shariaOutdated: "التصنيف قديم ويحتاج إلى تحديث",
     openDrawer: "فتح القائمة",
     closeDrawer: "إغلاق القائمة",
   },
@@ -252,6 +263,17 @@ const i18n = {
     shariaReviewRequired: "Review required",
     shariaNotApplicable: "Not applicable",
     shariaTooltip: "Sharia classification is indicative and requires periodic review under approved Sharia standards.",
+    shariaOnlyFilter: "Sharia-compliant stocks only",
+    shariaOnlyFilterNote: "Shows only stocks verified as Sharia compliant.",
+    shariaFilterStocksOnly: "This filter applies to stocks only, not forex, commodities, or crypto.",
+    noShariaCompliantResults: "No verified Sharia-compliant stocks are available in the current results.",
+    clearFilter: "Clear filter",
+    shariaStatusFilter: "Sharia status",
+    shariaReason: "Classification reason",
+    shariaSource: "Classification source",
+    shariaStandard: "Methodology",
+    shariaLastReview: "Last review",
+    shariaOutdated: "Classification is outdated and needs review",
     openDrawer: "Open menu",
     closeDrawer: "Close menu",
   },
@@ -376,6 +398,17 @@ const i18n = {
     shariaReviewRequired: "Revue requise",
     shariaNotApplicable: "Non applicable",
     shariaTooltip: "La classification Charia est indicative et doit etre revue periodiquement.",
+    shariaOnlyFilter: "Actions conformes Charia uniquement",
+    shariaOnlyFilterNote: "Affiche uniquement les actions verifiees conformes Charia.",
+    shariaFilterStocksOnly: "Ce filtre concerne les actions seulement.",
+    noShariaCompliantResults: "Aucune action verifiee conforme Charia dans les resultats actuels.",
+    clearFilter: "Effacer le filtre",
+    shariaStatusFilter: "Statut Charia",
+    shariaReason: "Raison",
+    shariaSource: "Source",
+    shariaStandard: "Methode",
+    shariaLastReview: "Derniere revue",
+    shariaOutdated: "Classification expiree, revue requise",
     openDrawer: "Ouvrir le menu",
     closeDrawer: "Fermer le menu",
   },
@@ -461,12 +494,18 @@ marketCategories.forEach((market) => {
   };
 });
 
+const DEPRECATED_MARKET_IDS = new Set(["gcc", "gulf", "gulf-markets", "mixed_gcc", "mixed-gcc"]);
+const DEPRECATED_MARKET_ROUTES = new Set(["markets/gcc", "markets/gulf", "markets/gulf-markets", "markets/mixed-gcc"]);
+const initialSearchParams = new URLSearchParams(location.search);
+const initialSettings = sanitizeSettings(loadSettings());
+
 const state = {
-  route: normalizeRoute(new URLSearchParams(location.search).get("route") || "dashboard"),
-  language: loadSettings().language || "ar",
-  selectedMarketId: loadSettings().selectedMarketId || "stocks",
+  route: normalizeRoute(initialSearchParams.get("route") || "dashboard"),
+  language: initialSettings.language || "ar",
+  selectedMarketId: initialSettings.selectedMarketId || "stocks",
+  shariaOnly: initialSearchParams.get("sharia") === "compliant",
   drawerOpen: false,
-  marketsOpen: loadSettings().marketsOpen ?? true,
+  marketsOpen: initialSettings.marketsOpen ?? true,
   data: {
     markets: [],
     recommendations: [],
@@ -474,7 +513,7 @@ const state = {
     scannerStatus: null,
     scannerSummary: null,
     usStocks: null,
-    scannerFilters: { signalType: "all", minimumConfidence: "0", riskLevel: "all", timeHorizon: "all" },
+    scannerFilters: { signalType: "all", minimumConfidence: "0", riskLevel: "all", timeHorizon: "all", sharia_status: initialSearchParams.get("sharia") === "compliant" ? "compliant" : "all" },
     errors: {},
     loadedAt: null,
   },
@@ -507,8 +546,17 @@ function loadSettings() {
   }
 }
 
+function sanitizeSettings(settings = {}) {
+  const next = { ...settings };
+  if (DEPRECATED_MARKET_IDS.has(String(next.selectedMarketId || "").toLowerCase())) {
+    next.selectedMarketId = "stocks";
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+  return next;
+}
+
 function saveSettings(patch) {
-  const next = { ...loadSettings(), ...patch };
+  const next = sanitizeSettings({ ...loadSettings(), ...patch });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
@@ -518,6 +566,7 @@ function normalizeRoute(value) {
     .replace(/\/+$/, "")
     .replace(/^thesfm-trader-own\/?/, "")
     .replace(/^app\/?/, "");
+  if (DEPRECATED_MARKET_ROUTES.has(clean)) return "markets";
   return routeMeta[clean] ? clean : "dashboard";
 }
 
@@ -720,30 +769,105 @@ function isStockLikeInstrument(item = {}, market) {
   return /^[A-Z]{1,5}$/.test(key);
 }
 
+const SHARIA_REASON_LABELS = {
+  prohibited_business_activity: { ar: "نشاط رئيسي غير متوافق", en: "Core business activity is not compliant", fr: "Activite principale non conforme" },
+  financial_ratio_threshold: { ar: "تجاوز النسب المالية المعتمدة", en: "Approved financial ratios were exceeded", fr: "Ratios financiers depasses" },
+  interest_bearing_debt_threshold: { ar: "ارتفاع الديون ذات الفائدة", en: "Interest-bearing debt threshold exceeded", fr: "Dette portant interet elevee" },
+  non_permissible_income_threshold: { ar: "تجاوز نسبة الإيرادات غير المتوافقة", en: "Non-permissible income threshold exceeded", fr: "Revenus non conformes eleves" },
+  insufficient_financial_data: { ar: "بيانات غير مكتملة", en: "Incomplete financial data", fr: "Donnees financieres incompletes" },
+  classification_expired: { ar: "التصنيف قديم ويحتاج إلى تحديث", en: "Classification is outdated and needs review", fr: "Classification expiree" },
+  source_unavailable: { ar: "المصدر غير متاح", en: "Source unavailable", fr: "Source indisponible" },
+  conflicting_sources: { ar: "توجد نتائج متعارضة", en: "Conflicting source results", fr: "Sources contradictoires" },
+  not_yet_reviewed: { ar: "لا يوجد تصنيف موثق", en: "No verified classification is available", fr: "Aucune classification verifiee" },
+  other_verified_reason: { ar: "سبب آخر موثق", en: "Other verified reason", fr: "Autre raison verifiee" },
+};
+
 function normalizeShariaStatus(value, item, market) {
   const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (["compliant", "sharia_compliant", "halal", "approved"].includes(raw)) return "compliant";
   if (["non_compliant", "not_compliant", "noncompliant", "haram", "rejected"].includes(raw)) return "non_compliant";
+  if (["unsupported", "not_applicable", "na", "n_a"].includes(raw)) return "unsupported";
   if (["review_required", "requires_review", "needs_review", "review", "doubtful", "unknown", "unclassified", ""].includes(raw)) {
     return isStockLikeInstrument(item, market) ? "review_required" : null;
   }
   return isStockLikeInstrument(item, market) ? "review_required" : null;
 }
 
-function shariaStatusFor(item, market) {
+function shariaReasonLabel(code, fallback) {
+  if (fallback) return localizeDetailish(fallback);
+  const labels = SHARIA_REASON_LABELS[code] || SHARIA_REASON_LABELS.not_yet_reviewed;
+  return labels[state.language] || labels.en;
+}
+
+function localizeDetailish(value) {
+  if (!value) return "";
+  if (typeof value === "object") {
+    return value[state.language] || value.en || value.ar || "";
+  }
+  return String(value);
+}
+
+function isShariaExpired(record) {
+  const validUntil = record.valid_until || record.validUntil;
+  if (validUntil) {
+    const date = new Date(validUntil);
+    if (!Number.isNaN(date.getTime()) && date.getTime() < Date.now()) return true;
+  }
+  const reviewedAt = record.reviewed_at || record.reviewedAt || record.reviewed || record.shariaCheckedAt;
+  if (reviewedAt) {
+    const date = new Date(reviewedAt);
+    if (!Number.isNaN(date.getTime())) {
+      return Date.now() - date.getTime() > 365 * 24 * 60 * 60 * 1000;
+    }
+  }
+  return false;
+}
+
+function normalizeShariaClassification(item, market) {
   const record = typeof item === "string" ? { symbol: item } : (item || {});
-  return normalizeShariaStatus(record.shariaStatus ?? record.sharia_compliance ?? record.shariaCompliance, record, market);
+  const structured = record.sharia && typeof record.sharia === "object" ? record.sharia : null;
+  const stockLike = isStockLikeInstrument(record, market);
+  const status = normalizeShariaStatus(
+    structured?.status ?? record.shariaStatus ?? record.sharia_status ?? record.sharia_compliance ?? record.shariaCompliance,
+    record,
+    market,
+  );
+  if (!status && !stockLike) return null;
+
+  const base = {
+    status: status || "review_required",
+    reasonCode: structured?.reason_code || record.shariaReasonCode || record.reason_code || (stockLike ? "not_yet_reviewed" : null),
+    reasonAr: structured?.reason_ar || record.shariaReasonAr || record.reason_ar || "",
+    source: structured?.source || record.shariaSource || record.source || "",
+    standard: structured?.standard || record.shariaStandard || record.standard || "",
+    reviewedAt: structured?.reviewed_at || record.shariaCheckedAt || record.reviewed_at || "",
+    validUntil: structured?.valid_until || record.valid_until || "",
+  };
+  const expired = base.status === "compliant" && isShariaExpired(structured || record);
+  if (expired) {
+    return { ...base, effectiveStatus: "review_required", expired: true, reasonCode: "classification_expired", reasonAr: "" };
+  }
+  return { ...base, effectiveStatus: base.status, expired: false };
+}
+
+function shariaStatusFor(item, market) {
+  return normalizeShariaClassification(item, market)?.effectiveStatus || null;
 }
 
 function renderShariaBadge(item, market) {
-  const status = shariaStatusFor(item, market);
+  const classification = normalizeShariaClassification(item, market);
+  const status = classification?.effectiveStatus;
   if (!status) return "";
   const labelKey = status === "compliant"
     ? "shariaCompliant"
     : status === "non_compliant"
       ? "shariaNonCompliant"
-      : "shariaReviewRequired";
-  return `<span class="sharia-badge ${status}" title="${escapeHtml(t("shariaTooltip"))}"><span class="sr-only">${escapeHtml(t("shariaCompliance"))}: </span>${escapeHtml(t(labelKey))}</span>`;
+      : status === "unsupported"
+        ? "shariaNotApplicable"
+        : "shariaReviewRequired";
+  const reason = shariaReasonLabel(classification.reasonCode, classification.reasonAr);
+  const title = [t("shariaTooltip"), reason, classification.source].filter(Boolean).join(" · ");
+  return `<span class="sharia-badge ${status}${classification.expired ? " expired" : ""}" title="${escapeHtml(title)}"><span class="sr-only">${escapeHtml(t("shariaCompliance"))}: </span>${escapeHtml(t(labelKey))}</span>`;
 }
 
 function formatStatusTimestamp(value) {
@@ -1126,7 +1250,7 @@ function renderExploreMarkets() {
 }
 
 function renderSmartWatchlist(recs = []) {
-  const rows = topRecommendations(recs, 6);
+  const rows = topRecommendations(shariaFilteredItems(recs, marketById("stocks")), 6);
   return `
     <section class="terminal-card smart-watchlist-card">
       <div class="section-header compact">
@@ -1140,7 +1264,7 @@ function renderSmartWatchlist(recs = []) {
             <tbody>${rows.map(renderWatchlistRow).join("")}</tbody>
           </table>
         </div>
-      ` : emptyState(t("noLiveData"))}
+      ` : (state.shariaOnly ? renderShariaEmptyState() : emptyState(t("noLiveData")))}
     </section>
   `;
 }
@@ -1153,7 +1277,7 @@ function marketCopy(key, market) {
   const copy = {
     heroEyebrow: { ar: "مركز الأسواق العالمية", en: "Global markets hub", fr: "Hub marches" },
     heroTitle: { ar: "استكشف الأسواق العالمية عبر وكيل SFM الذكي", en: "Explore global markets with SFM AI intelligence", fr: "Explorez les marches avec SFM AI" },
-    heroText: { ar: "تابع الخليج، أمريكا، أوروبا، العملات الرقمية والسلع من واجهة واحدة مهيأة للتحديث اللحظي والربط مع مزودي البيانات.", en: "Track GCC, US, Europe, crypto, forex and commodities from one terminal ready for live provider feeds.", fr: "Suivez les marches depuis un terminal pret pour les donnees live." },
+    heroText: { ar: "تابع أسواق الكويت والسعودية والإمارات وقطر والبحرين وعُمان، إضافة إلى أمريكا وأوروبا والعملات الرقمية والسلع من واجهة واحدة.", en: "Track Kuwait, Saudi, UAE, Qatar, Bahrain, Oman, US, Europe, crypto, forex, and commodities from one terminal.", fr: "Suivez les marches du Golfe, US, Europe, crypto et matieres premieres depuis un terminal." },
     startScan: { ar: "بدء تحليل السوق", en: "Start market analysis", fr: "Analyser le marche" },
     selectedMarket: { ar: "السوق المختار", en: "Selected market", fr: "Marche selectionne" },
     marketUniverse: { ar: "قائمة الأصول", en: "Asset universe", fr: "Univers" },
@@ -1199,6 +1323,39 @@ function recommendationsForMarket(market) {
   return filtered.length || market.id !== "stocks" ? filtered : topRecommendations(source, 8);
 }
 
+function shariaFilteredItems(items = [], market) {
+  return shariaStatusFilteredItems(items, state.shariaOnly ? "compliant" : "all", market);
+}
+
+function shariaStatusFilteredItems(items = [], status = "all", market) {
+  if (!status || status === "all") return items;
+  return items.filter((item) => isStockLikeInstrument(item, market) && shariaStatusFor(item, market) === status);
+}
+
+function updateShariaQuery() {
+  const url = new URL(window.location.href);
+  if (state.shariaOnly) url.searchParams.set("sharia", "compliant");
+  else url.searchParams.delete("sharia");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function renderShariaFilterControl(count, total) {
+  return `
+    <section class="terminal-card sharia-filter-panel" aria-label="${escapeHtml(t("shariaStatusFilter"))}">
+      <button type="button" class="sharia-filter-chip ${state.shariaOnly ? "active" : ""}" data-sharia-filter aria-pressed="${state.shariaOnly ? "true" : "false"}">
+        <span>${escapeHtml(t("shariaOnlyFilter"))}</span>
+        <strong>${state.shariaOnly ? `${count}/${total}` : total}</strong>
+      </button>
+      <p>${escapeHtml(t("shariaOnlyFilterNote"))} <em>${escapeHtml(t("shariaFilterStocksOnly"))}</em></p>
+      ${state.shariaOnly ? `<button type="button" class="sharia-clear-filter" data-clear-sharia-filter>${escapeHtml(t("clearFilter"))}</button>` : ""}
+    </section>
+  `;
+}
+
+function renderShariaEmptyState() {
+  return `<div class="empty-state sharia-empty-state"><strong>${escapeHtml(t("shariaCompliance"))}</strong><p>${escapeHtml(t("noShariaCompliantResults"))}</p><button type="button" data-clear-sharia-filter>${escapeHtml(t("clearFilter"))}</button></div>`;
+}
+
 function marketStatusValue(market) {
   return providerStatusInfo().label;
 }
@@ -1215,11 +1372,13 @@ function renderMarketsOverviewPage() {
 
 function renderMarketsHub(selectedMarket) {
   const market = selectedMarket || marketById("stocks");
-  const recs = recommendationsForMarket(market);
+  const allRecs = recommendationsForMarket(market);
+  const recs = shariaFilteredItems(allRecs, market);
   return `
     <div class="markets-hub-page">
       ${renderMarketsHeroBanner(market)}
       ${renderMarketsSelectorGrid(market)}
+      ${renderShariaFilterControl(recs.length, allRecs.length)}
       ${renderMarketQuickStats(market, recs)}
       ${renderSelectedMarketOverview(market)}
       ${renderMarketOpportunities(market, recs)}
@@ -1328,7 +1487,7 @@ function renderMarketOpportunities(market, recs) {
     <div class="market-opportunity-layout">
       <section class="terminal-card market-opportunities-card">
         <div class="section-header compact"><div><h2>${marketCopy("opportunities")}</h2><p>${isUsBackedMarket(market) ? marketCopy("liveProvider") : marketCopy("noProviderMarket")}</p></div></div>
-        ${recs.length ? `<div class="recommendation-grid compact-market-recs">${topRecommendations(recs, 6).map(renderRecommendationCard).join("")}</div>` : emptyState(marketCopy("noProviderMarket"))}
+        ${recs.length ? `<div class="recommendation-grid compact-market-recs">${topRecommendations(recs, 6).map(renderRecommendationCard).join("")}</div>` : (state.shariaOnly ? renderShariaEmptyState() : emptyState(marketCopy("noProviderMarket")))}
       </section>
       <section class="terminal-card market-watch-preview">
         <div class="section-header compact"><div><h2>${marketCopy("watchPreview")}</h2><p>${marketCopy("configuredSymbols")}</p></div></div>
@@ -1365,7 +1524,9 @@ function scannerSelected(key, value) {
 }
 
 function renderAiScannerPage() {
-  const recs = topRecommendations(state.data.dashboardRecommendations, 12);
+  const stockMarket = marketById("stocks");
+  const scannerShariaStatus = state.data.scannerFilters?.sharia_status || "all";
+  const recs = topRecommendations(shariaStatusFilteredItems(state.data.dashboardRecommendations, scannerShariaStatus, stockMarket), 12);
   return `
     ${renderPageHeader(t("aiScanner"), "Real provider scan results, confidence thresholds, risk filters, and explainable signals.")}
     <section class="terminal-card scanner-panel">
@@ -1374,6 +1535,7 @@ function renderAiScannerPage() {
         <label><span>Minimum confidence</span><select data-scanner-filter="minimumConfidence"><option value="0" ${scannerSelected("minimumConfidence", "0")}>All</option><option value="50" ${scannerSelected("minimumConfidence", "50")}>50%</option><option value="60" ${scannerSelected("minimumConfidence", "60")}>60%</option><option value="70" ${scannerSelected("minimumConfidence", "70")}>70%</option><option value="80" ${scannerSelected("minimumConfidence", "80")}>80%</option></select></label>
         <label><span>Risk level</span><select data-scanner-filter="riskLevel"><option value="all" ${scannerSelected("riskLevel", "all")}>All</option><option value="low" ${scannerSelected("riskLevel", "low")}>Low</option><option value="medium" ${scannerSelected("riskLevel", "medium")}>Medium</option><option value="high" ${scannerSelected("riskLevel", "high")}>High</option></select></label>
         <label><span>Time horizon</span><select data-scanner-filter="timeHorizon"><option value="all" ${scannerSelected("timeHorizon", "all")}>All</option><option value="days" ${scannerSelected("timeHorizon", "days")}>Days</option><option value="weeks" ${scannerSelected("timeHorizon", "weeks")}>Weeks</option><option value="months" ${scannerSelected("timeHorizon", "months")}>Months</option></select></label>
+        <label><span>${t("shariaStatusFilter")}</span><select data-scanner-filter="sharia_status"><option value="all" ${scannerSelected("sharia_status", "all")}>All</option><option value="compliant" ${scannerSelected("sharia_status", "compliant")}>${t("shariaCompliant")}</option><option value="non_compliant" ${scannerSelected("sharia_status", "non_compliant")}>${t("shariaNonCompliant")}</option><option value="review_required" ${scannerSelected("sharia_status", "review_required")}>${t("shariaReviewRequired")}</option></select></label>
         <button type="button" data-refresh-scanner>${t("refresh") || "Refresh"}</button>
       </div>
       ${recs.length ? `
@@ -1383,7 +1545,7 @@ function renderAiScannerPage() {
             <tbody>${recs.map(renderScannerRow).join("")}</tbody>
           </table>
         </div>
-      ` : emptyState(state.data.errors.dashboard ? "Provider scan failed or is still connecting." : t("noLiveData"))}
+      ` : (state.data.scannerFilters?.sharia_status === "compliant" ? renderShariaEmptyState() : emptyState(state.data.errors.dashboard ? "Provider scan failed or is still connecting." : t("noLiveData")))}
     </section>
   `;
 }
@@ -1391,16 +1553,18 @@ function renderAiScannerPage() {
 function renderWatchlistPage() {
   const watchlist = loadWatchlist();
   const latest = state.data.dashboardRecommendations || [];
-  const rows = watchlist.map((item) => findBySymbol(latest, item.symbol) || item);
+  const allRows = watchlist.map((item) => findBySymbol(latest, item.symbol) || item);
+  const rows = shariaFilteredItems(allRows, marketById("stocks"));
   return `
     ${renderPageHeader(t("watchlist"), "User-created watchlists, notes, sorting, and asset detail drawer.")}
+    ${renderShariaFilterControl(rows.length, allRows.length)}
     <section class="terminal-card watchlist-manager">
       <form class="inline-form" data-watchlist-form>
         <input name="symbol" placeholder="${t("symbol")}" />
         <input name="notes" placeholder="${t("notes")}" />
         <button type="submit">${t("add")}</button>
       </form>
-      ${watchlist.length ? `<div class="terminal-table-wrap"><table class="terminal-table"><thead><tr><th>${t("symbol")}</th><th>${t("price")}</th><th>${t("change")}</th><th>${t("signal")}</th><th>${t("confidence")}</th><th>${t("target")}</th><th>${t("risk")}</th><th>${t("lastUpdate")}</th></tr></thead><tbody>${rows.map(renderWatchlistSignalRow).join("")}</tbody></table></div>` : emptyState("Add stocks to your watchlist to show prices and analysis.")}
+      ${rows.length ? `<div class="terminal-table-wrap"><table class="terminal-table"><thead><tr><th>${t("symbol")}</th><th>${t("price")}</th><th>${t("change")}</th><th>${t("signal")}</th><th>${t("confidence")}</th><th>${t("target")}</th><th>${t("risk")}</th><th>${t("lastUpdate")}</th></tr></thead><tbody>${rows.map(renderWatchlistSignalRow).join("")}</tbody></table></div>` : (state.shariaOnly && watchlist.length ? renderShariaEmptyState() : emptyState("Add stocks to your watchlist to show prices and analysis."))}
     </section>
   `;
 }
@@ -1498,10 +1662,16 @@ function renderRecommendationCard(item) {
   `;
 }
 
+function detailHref(symbol) {
+  const query = new URLSearchParams({ symbol: String(symbol || "") });
+  if (state.shariaOnly || state.data.scannerFilters?.sharia_status === "compliant") query.set("sharia", "compliant");
+  return `/thesfm-trader-own/app/detail.html?${query.toString()}`;
+}
+
 function renderPickRow(item) {
   const action = actionOf(item);
   return `
-    <a class="pick-row" href="/thesfm-trader-own/app/detail.html?symbol=${encodeURIComponent(item.symbol || "")}" target="_top">
+    <a class="pick-row" href="${detailHref(item.symbol)}" target="_top">
       ${assetLogo(item)}
       <div><strong dir="ltr">${escapeHtml(item.symbol || "--")}</strong><span>${escapeHtml(item.name || "")}</span>${renderShariaBadge(item)}</div>
       <b class="signal-badge ${action}">${actionLabel(action)}</b>
@@ -1543,7 +1713,7 @@ function renderScannerRow(item) {
       <td>${escapeHtml(item.duration || "--")}</td>
       <td>${escapeHtml(item.risk?.label || item.riskLevel || "--")}</td>
       <td>${formatNumber(item.finalScore || item.score || 0, 1)}/10</td>
-      <td><a class="row-action" href="/thesfm-trader-own/app/detail.html?symbol=${encodeURIComponent(item.symbol || "")}" target="_top">View</a></td>
+      <td><a class="row-action" href="${detailHref(item.symbol)}" target="_top">View</a></td>
     </tr>
   `;
 }
@@ -1720,7 +1890,31 @@ function bindEvents() {
         ...state.data.scannerFilters,
         [select.dataset.scannerFilter]: select.value,
       };
+      if (select.dataset.scannerFilter === "sharia_status") {
+        state.shariaOnly = select.value === "compliant";
+        updateShariaQuery();
+      }
       loadScannerWithFilters();
+    });
+  });
+  root.querySelector("[data-sharia-filter]")?.addEventListener("click", () => {
+    state.shariaOnly = !state.shariaOnly;
+    state.data.scannerFilters = {
+      ...state.data.scannerFilters,
+      sharia_status: state.shariaOnly ? "compliant" : "all",
+    };
+    updateShariaQuery();
+    render();
+  });
+  root.querySelectorAll("[data-clear-sharia-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.shariaOnly = false;
+      state.data.scannerFilters = {
+        ...state.data.scannerFilters,
+        sharia_status: "all",
+      };
+      updateShariaQuery();
+      render();
     });
   });
   root.querySelector("[data-refresh-scanner]")?.addEventListener("click", () => {
@@ -1816,7 +2010,8 @@ async function loadTraderStatus() {
 
 async function loadDashboardRecommendations() {
   try {
-    const data = await fetchJson(traderApi("scanner/results?market=US"), { timeout: 45000 });
+    const suffix = state.shariaOnly ? "?market=US&sharia_status=compliant" : "?market=US";
+    const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
     state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
     state.data.scannerSummary = data.summary || null;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
@@ -1836,7 +2031,8 @@ async function loadRouteRecommendations() {
   }
 
   try {
-    const data = await fetchJson(traderApi("us-stocks"), { timeout: 45000 });
+    const suffix = state.shariaOnly ? "?sharia_status=compliant" : "";
+    const data = await fetchJson(traderApi(`us-stocks${suffix}`), { timeout: 45000 });
     state.data.recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
     state.data.usStocks = data;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
@@ -1852,7 +2048,7 @@ async function loadScannerWithFilters() {
   const filters = state.data.scannerFilters || {};
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && String(value) !== "" && String(value) !== "0") {
+    if (value !== undefined && value !== null && String(value) !== "" && String(value) !== "0" && String(value) !== "all") {
       params.set(key, String(value));
     }
   });
