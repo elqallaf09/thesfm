@@ -1183,6 +1183,7 @@ export default function CharityProjectsPage() {
           active={activeTab}
           onChange={id => setActiveTab(id as CharityProjectsTab)}
           ariaLabel={tr.title}
+          className="charity-tabs"
         />
 
         <section className="warm-card hijri-calendar" hidden={activeTab !== 'overview'}>
@@ -1236,6 +1237,11 @@ export default function CharityProjectsPage() {
             <div className="empty-state compact">
               <CalendarDays size={38} />
               <strong>{tr.noReminders}</strong>
+              <p>{tr.hijriCalendarDesc}</p>
+              <button className="mini-gold" type="button" onClick={() => {
+                resetReminderForm();
+                setReminderOpen(true);
+              }}>{tr.addReminder}</button>
             </div>
           ) : (
             <div className="reminder-grid">

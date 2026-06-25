@@ -76,6 +76,17 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
           white-space: nowrap;
         }
+        .page-section-tabs.charity-tabs {
+          gap: 10px;
+          padding: 10px;
+          border-radius: 22px;
+        }
+        .page-section-tabs.charity-tabs button {
+          min-height: 46px;
+          padding: 0 18px;
+          font-size: 13.5px;
+          line-height: 1.2;
+        }
         .page-section-tabs button span {
           min-width: 0;
           overflow: visible;
