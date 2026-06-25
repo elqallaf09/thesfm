@@ -746,17 +746,40 @@ function sectorForSymbol(symbol: string): Exclude<SectorId, 'all'> {
   return STOCK_SECTOR[symbol.toUpperCase()] ?? 'digital_platforms';
 }
 
+function cleanTextValue(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text || /^(undefined|null|nan)$/i.test(text)) return '';
+  return text;
+}
+
 function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockRow[] {
-  return items.map(item => {
-    const sectorId = sectorForSymbol(item.symbol);
-    const tone = toneForChange(item.changePercent);
+  const rows: GrowthStockRow[] = [];
+  for (const item of items) {
+    const symbol = cleanTextValue(item.symbol).toUpperCase();
+    if (!symbol) continue;
+    const name = cleanTextValue(item.name) || symbol;
+    const currency = cleanTextValue(item.currency) || 'USD';
+    const price = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : Number.NaN;
+    const change = typeof item.change === 'number' && Number.isFinite(item.change) ? item.change : null;
+    const changePercent = typeof item.changePercent === 'number' && Number.isFinite(item.changePercent) ? item.changePercent : null;
+    const source = cleanTextValue(item.source) || COPY[lang].unavailable;
+    const sectorId = sectorForSymbol(symbol);
+    const tone = toneForChange(changePercent);
     const momentumLabel = tone === 'positive'
       ? COPY[lang].momentumPositive
       : tone === 'negative'
         ? COPY[lang].momentumNegative
         : COPY[lang].momentumNeutral;
-    return {
+    rows.push({
       ...item,
+      symbol,
+      name,
+      price,
+      currency,
+      change,
+      changePercent,
+      source,
+      delayed: Boolean(item.delayed),
       sectorId,
       sectorLabel: sectorLabel(sectorId, lang),
       momentumLabel,
@@ -765,8 +788,9 @@ function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockR
       qualityLabel: COPY[lang].fundamentalsUnavailable,
       growthClassification: COPY[lang].notEnoughFundamentals,
       dataCompleteness: 35,
-    };
-  });
+    });
+  }
+  return rows;
 }
 
 function stockMatchesSearch(row: GrowthStockRow, query: string) {
@@ -1051,7 +1075,7 @@ export function GrowthStocksNewsPage() {
   const hasActiveNewsFilters = newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsTime !== 'all' || newsSort !== 'latest';
 
   return (
-    <div className="page" dir={dir}>
+    <div className="page growth-stocks-page" dir={dir}>
       <Sidebar />
       <main className="main">
         <div className="container">
@@ -1185,25 +1209,33 @@ export function GrowthStocksNewsPage() {
         </div>
       </main>
 
-      <style jsx>{`
+      <style jsx global>{`
         .page {
           min-height: 100dvh;
+          width: 100%;
+          overflow-x: clip;
           background:
             radial-gradient(circle at top left, rgba(30, 184, 214, 0.14), transparent 34rem),
             linear-gradient(180deg, #f5fbff 0%, #eef7ff 46%, #f8fbff 100%);
           color: #0f1f35;
         }
         .main {
+          width: 100%;
+          max-width: 100vw;
+          box-sizing: border-box;
           min-width: 0;
+          overflow-x: clip;
           padding: 24px clamp(16px, 2vw, 32px) 56px;
           padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
         }
         :global([dir="ltr"]) .main {
-          padding-inline-start: clamp(16px, 2vw, 32px);
-          padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
+          padding-inline-end: clamp(16px, 2vw, 32px);
         }
         .container {
           width: min(100%, 1500px);
+          max-width: 100%;
+          min-width: 0;
           margin-inline: auto;
           display: grid;
           gap: 22px;
@@ -1386,6 +1418,8 @@ export function GrowthStocksNewsPage() {
         .section,
         .panel {
           padding: 22px;
+          min-width: 0;
+          max-width: 100%;
         }
         .section-header {
           display: flex;
@@ -1397,6 +1431,7 @@ export function GrowthStocksNewsPage() {
         .section-title {
           display: grid;
           gap: 6px;
+          min-width: 0;
         }
         .section-title h2,
         .section-title h3 {
@@ -1451,23 +1486,46 @@ export function GrowthStocksNewsPage() {
           line-height: 1.5;
         }
         .ticker-panel {
-          padding: 12px;
+          padding: 10px;
           overflow: hidden;
+          max-width: 100%;
         }
-        .ticker-scroll {
+        .ticker-marquee,
+        .ticker-skeleton-track,
+        .chip-scroll,
+        .symbol-strip {
           display: flex;
           gap: 10px;
-          overflow-x: auto;
           padding-bottom: 2px;
+          min-width: 0;
+          max-width: 100%;
+        }
+        .ticker-marquee {
+          overflow: hidden;
+          mask-image: linear-gradient(90deg, transparent 0, #000 34px, #000 calc(100% - 34px), transparent 100%);
+        }
+        .ticker-track {
+          display: flex;
+          width: max-content;
+          gap: 10px;
+          direction: ltr;
+          animation: growth-ticker-marquee 36s linear infinite;
+          will-change: transform;
+        }
+        .ticker-skeleton-track,
+        .chip-scroll,
+        .symbol-strip {
+          overflow-x: auto;
         }
         .ticker-item {
-          flex: 0 0 210px;
+          flex: 0 0 clamp(178px, 17vw, 218px);
           display: grid;
-          gap: 7px;
-          padding: 14px;
+          gap: 6px;
+          padding: 11px 12px;
           border-radius: 16px;
           background: #fff;
           border: 1px solid rgba(58, 124, 154, 0.13);
+          min-width: 0;
         }
         .ticker-top,
         .stock-head,
@@ -1491,6 +1549,26 @@ export function GrowthStocksNewsPage() {
         .ticker-name,
         .muted {
           color: #64748b;
+        }
+        .ticker-name {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .ticker-item .numeric {
+          font-size: 15px;
+          font-weight: 950;
+        }
+        .ticker-item .mini-meta {
+          min-width: 0;
+          overflow: hidden;
+          color: #64748b;
+          font-size: 11.5px;
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .numeric {
           direction: ltr;
@@ -1529,14 +1607,19 @@ export function GrowthStocksNewsPage() {
         }
         .compare-list,
         .stock-grid,
+        .stock-card-list,
         .news-grid,
         .sector-grid,
         .guide-grid {
           display: grid;
           gap: 14px;
+          min-width: 0;
         }
         .stock-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .stock-card-list {
+          display: none;
         }
         .news-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1549,9 +1632,48 @@ export function GrowthStocksNewsPage() {
         }
         .compare-row {
           display: grid;
-          grid-template-columns: 120px minmax(0, 1fr) 82px;
+          grid-template-columns: minmax(180px, 1.05fr) 112px minmax(0, 1.4fr) 88px;
           gap: 12px;
           align-items: center;
+          min-width: 0;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(58, 124, 154, 0.1);
+        }
+        .compare-row:last-of-type {
+          border-bottom: 0;
+        }
+        .compare-asset,
+        .table-asset {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+        .compare-asset > div,
+        .table-asset > div {
+          min-width: 0;
+        }
+        .asset-name {
+          display: block;
+          overflow: hidden;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .asset-avatar {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          border-radius: 12px;
+          color: #0e7490;
+          background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          font-size: 12px;
+          font-weight: 950;
         }
         .bar-shell {
           height: 12px;
@@ -1569,6 +1691,7 @@ export function GrowthStocksNewsPage() {
           display: grid;
           gap: 14px;
           min-width: 0;
+          max-width: 100%;
           padding: 18px;
         }
         .stock-logo {
@@ -1595,10 +1718,18 @@ export function GrowthStocksNewsPage() {
           line-height: 1.45;
           font-weight: 950;
         }
+        .stock-title h3 {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
         .stock-title p {
           margin: 4px 0 0;
           color: #64748b;
           font-size: 13px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .metric-grid {
           display: grid;
@@ -1624,6 +1755,71 @@ export function GrowthStocksNewsPage() {
           color: #102742;
           font-size: 14px;
           font-weight: 950;
+          overflow-wrap: anywhere;
+        }
+        .stock-table-card {
+          margin-top: 16px;
+          overflow: hidden;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          border-radius: 18px;
+          background: #fff;
+        }
+        .stock-table-scroll {
+          max-width: 100%;
+          overflow-x: auto;
+        }
+        .stock-table {
+          width: 100%;
+          min-width: 920px;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        .stock-table th,
+        .stock-table td {
+          padding: 12px 14px;
+          border-bottom: 1px solid rgba(58, 124, 154, 0.1);
+          text-align: start;
+          vertical-align: middle;
+          color: #102742;
+          font-size: 13px;
+        }
+        .stock-table th {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          background: #f2f8fc;
+          color: #50677c;
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .stock-table tbody tr:hover {
+          background: #f8fbff;
+        }
+        .stock-table td {
+          font-weight: 850;
+        }
+        .stock-table .table-muted {
+          display: block;
+          margin-top: 3px;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 750;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .table-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .table-actions .ghost-button,
+        .table-actions .primary-button {
+          min-height: 36px;
+          border-radius: 11px;
+          padding: 0 10px;
+          font-size: 12px;
+          box-shadow: none;
         }
         .filter-panel {
           display: grid;
@@ -1707,6 +1903,7 @@ export function GrowthStocksNewsPage() {
         }
         .article-card {
           min-height: 100%;
+          align-content: start;
         }
         .article-title {
           display: -webkit-box;
@@ -1717,12 +1914,12 @@ export function GrowthStocksNewsPage() {
         .article-summary {
           display: -webkit-box;
           overflow: hidden;
-          -webkit-line-clamp: 3;
+          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           margin: 0;
           color: #5b7085;
-          font-size: 14px;
-          line-height: 1.75;
+          font-size: 13px;
+          line-height: 1.65;
         }
         .article-meta {
           flex-wrap: wrap;
@@ -1740,7 +1937,7 @@ export function GrowthStocksNewsPage() {
           gap: 14px;
         }
         .lead-card {
-          padding: 22px;
+          padding: 18px;
           background:
             linear-gradient(135deg, rgba(15, 42, 73, 0.97), rgba(16, 112, 135, 0.88)),
             radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.2), transparent 20rem);
@@ -1748,7 +1945,7 @@ export function GrowthStocksNewsPage() {
         }
         .lead-card .article-title {
           color: #fff;
-          font-size: clamp(20px, 2.2vw, 28px);
+          font-size: clamp(19px, 1.9vw, 24px);
         }
         .lead-card .article-summary,
         .lead-card .article-meta {
@@ -1761,10 +1958,11 @@ export function GrowthStocksNewsPage() {
         .compact-row {
           display: grid;
           gap: 8px;
-          padding: 14px;
+          padding: 12px;
           border-radius: 16px;
           border: 1px solid rgba(58, 124, 154, 0.14);
           background: #fff;
+          min-width: 0;
         }
         .movers-grid {
           display: grid;
@@ -1861,8 +2059,17 @@ export function GrowthStocksNewsPage() {
         @keyframes shimmer {
           100% { transform: translateX(100%); }
         }
+        @keyframes growth-ticker-marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .ticker-panel:hover .ticker-track {
+            animation-play-state: paused;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           *,
@@ -1871,6 +2078,9 @@ export function GrowthStocksNewsPage() {
             animation-duration: 0.001ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.001ms !important;
+          }
+          .ticker-track {
+            transform: none !important;
           }
         }
         @media (max-width: 1280px) {
@@ -1881,6 +2091,7 @@ export function GrowthStocksNewsPage() {
           }
           .summary-grid,
           .stock-grid,
+          .stock-card-list,
           .news-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
@@ -1906,6 +2117,7 @@ export function GrowthStocksNewsPage() {
           }
           .summary-grid,
           .stock-grid,
+          .stock-card-list,
           .news-grid,
           .sector-grid,
           .guide-grid,
@@ -1916,7 +2128,6 @@ export function GrowthStocksNewsPage() {
             grid-template-columns: 1fr;
           }
           .section-header,
-          .ticker-top,
           .card-actions,
           .row-between,
           .filter-actions {
@@ -1928,9 +2139,20 @@ export function GrowthStocksNewsPage() {
           .refresh-button {
             width: 100%;
           }
-          .compare-row {
-            grid-template-columns: 92px minmax(0, 1fr);
+          .ticker-item {
+            flex-basis: 172px;
           }
+          .stock-table-card {
+            display: none;
+          }
+          .stock-card-list {
+            display: grid;
+            margin-top: 16px;
+          }
+          .compare-row {
+            grid-template-columns: minmax(0, 1fr) auto;
+          }
+          .compare-row .bar-shell,
           .compare-row > .numeric:last-child {
             grid-column: 1 / -1;
           }
@@ -1944,27 +2166,37 @@ function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loadin
   if (loading) {
     return (
       <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
-        <div className="ticker-scroll">
+        <div className="ticker-skeleton-track">
           {Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}
         </div>
       </section>
     );
   }
 
+  if (items.length === 0) {
+    return (
+      <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
+        <StateBox tone="info" icon={Info} title={COPY[lang].priceUnavailable} />
+      </section>
+    );
+  }
+
   return (
     <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
-      <div className="ticker-scroll">
-        {items.map(item => (
-          <article className="ticker-item" key={item.symbol}>
-            <div className="ticker-top">
-              <span className="ticker-symbol">{item.symbol}</span>
-              <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>
-            </div>
-            <strong className="numeric">{formatCurrency(item.price, item.currency, lang)}</strong>
-            <span className="ticker-name">{item.name}</span>
-            <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
-          </article>
-        ))}
+      <div className="ticker-marquee">
+        <div className="ticker-track">
+          {[0, 1].map(group => items.map(item => (
+            <article className="ticker-item" key={`${group}-${item.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
+              <div className="ticker-top">
+                <span className="ticker-symbol">{item.symbol}</span>
+                <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>
+              </div>
+              <strong className="numeric">{formatCurrency(item.price, item.currency, lang)}</strong>
+              <span className="ticker-name">{item.name}</span>
+              <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
+            </article>
+          )))}
+        </div>
       </div>
     </section>
   );
@@ -2020,7 +2252,7 @@ function OverviewTab({
           <section className="section">
             <SectionHeader title={text.comparisonTitle} description={text.comparisonDescription} />
             <div className="filter-actions" style={{ marginBottom: 14 }}>
-              <div className="ticker-scroll" aria-label={text.selectForCompare}>
+              <div className="chip-scroll" aria-label={text.selectForCompare}>
                 {stockRows.slice(0, 14).map(row => (
                   <button
                     key={row.symbol}
@@ -2134,18 +2366,13 @@ function StocksTab({
         <StateBox tone="info" icon={Search} title={text.noStocks} actionLabel={hasActiveFilters ? text.clearFilters : undefined} onAction={hasActiveFilters ? reset : undefined} />
       ) : (
         <>
-          <div className="stock-grid" style={{ marginTop: 16 }}>
-            {rows.map(row => (
-              <GrowthStockCard
-                key={row.symbol}
-                row={row}
-                text={text}
-                lang={lang}
-                selectedForComparison={comparisonSymbols.includes(row.symbol)}
-                onCompare={() => toggleComparisonSymbol(row.symbol)}
-              />
-            ))}
-          </div>
+          <GrowthStockTable
+            rows={rows}
+            text={text}
+            lang={lang}
+            comparisonSymbols={comparisonSymbols}
+            toggleComparisonSymbol={toggleComparisonSymbol}
+          />
           {allRows.length > 0 ? (
             <p className="muted" style={{ marginTop: 16 }}>{text.insufficientMethodology}</p>
           ) : null}
@@ -2210,6 +2437,8 @@ function NewsTab({
   originalVisibleIds: string[];
   toggleOriginal: (id: string) => void;
 }) {
+  const regularCards = regular.slice(0, 4);
+  const compactRows = regular.slice(4);
   return (
     <section className="section">
       <SectionHeader title={text.newsTitle} description={text.newsDescription} action={<span className="pill">{text.resultCount}: {total}</span>} />
@@ -2256,18 +2485,27 @@ function NewsTab({
       ) : (
         <div className="stack" style={{ marginTop: 16 }}>
           <FeaturedNews items={featured} text={text} lang={lang} originalVisibleIds={originalVisibleIds} toggleOriginal={toggleOriginal} />
-          <div className="news-grid">
-            {regular.map(item => (
-              <NewsCard
-                key={item.id || item.url}
-                item={item}
-                text={text}
-                lang={lang}
-                showOriginal={originalVisibleIds.includes(item.id)}
-                toggleOriginal={() => toggleOriginal(item.id)}
-              />
-            ))}
-          </div>
+          {regularCards.length > 0 ? (
+            <div className="news-grid">
+              {regularCards.map(item => (
+                <NewsCard
+                  key={item.id || item.url}
+                  item={item}
+                  text={text}
+                  lang={lang}
+                  showOriginal={originalVisibleIds.includes(item.id)}
+                  toggleOriginal={() => toggleOriginal(item.id)}
+                />
+              ))}
+            </div>
+          ) : null}
+          {compactRows.length > 0 ? (
+            <div className="side-news">
+              {compactRows.map(item => (
+                <CompactNewsRow key={item.id || item.url} item={item} text={text} lang={lang} />
+              ))}
+            </div>
+          ) : null}
           {visibleCount < total ? (
             <button className="primary-button" type="button" onClick={() => setVisibleCount(visibleCount + NEWS_PAGE_SIZE)}>
               {text.loadMore}
@@ -2325,7 +2563,14 @@ function ComparisonChart({ rows, lang, text }: { rows: GrowthStockRow[]; lang: L
         const width = Math.max(4, (Math.abs(row.changePercent ?? 0) / maxMove) * 100);
         return (
           <div className="compare-row" key={row.symbol}>
-            <span className="symbol">{row.symbol}</span>
+            <div className="compare-asset">
+              <span className="asset-avatar" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+              <div>
+                <strong className="symbol">{row.symbol}</strong>
+                <span className="asset-name">{row.name}</span>
+              </div>
+            </div>
+            <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
             <div className="bar-shell"><div className={`bar-fill tone-${toneForChange(row.changePercent)}`} style={{ width: `${width}%` }} /></div>
             <strong className="numeric">{formatPercent(row.changePercent, lang)}</strong>
           </div>
@@ -2333,6 +2578,84 @@ function ComparisonChart({ rows, lang, text }: { rows: GrowthStockRow[]; lang: L
       })}
       <p className="muted">{text.chartUnavailable}</p>
     </div>
+  );
+}
+
+function GrowthStockTable({
+  rows,
+  text,
+  lang,
+  comparisonSymbols,
+  toggleComparisonSymbol,
+}: {
+  rows: GrowthStockRow[];
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  comparisonSymbols: string[];
+  toggleComparisonSymbol: (symbol: string) => void;
+}) {
+  return (
+    <>
+      <div className="stock-table-card">
+        <div className="stock-table-scroll">
+          <table className="stock-table">
+            <thead>
+              <tr>
+                <th>{text.symbolFilter}</th>
+                <th>{text.currentPrice}</th>
+                <th>{text.dailyChange}</th>
+                <th>{text.sector}</th>
+                <th>{text.valuationRisk}</th>
+                <th>{text.methodology}</th>
+                <th>{text.compare}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr key={row.symbol}>
+                  <td>
+                    <div className="table-asset">
+                      <span className="asset-avatar" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+                      <div>
+                        <strong>{row.name}</strong>
+                        <span className="table-muted symbol">{row.symbol}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="numeric">{formatCurrency(row.price, row.currency, lang)}</td>
+                  <td><span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span></td>
+                  <td>{row.sectorLabel}</td>
+                  <td>{row.valuationRiskLabel}</td>
+                  <td>{row.growthClassification}</td>
+                  <td>
+                    <div className="table-actions">
+                      <button className="primary-button" type="button" onClick={() => toggleComparisonSymbol(row.symbol)} aria-pressed={comparisonSymbols.includes(row.symbol)}>
+                        <BarChart3 size={15} />{text.compare}
+                      </button>
+                      <button className="ghost-button" type="button">
+                        <BookOpen size={15} />{text.viewAnalysis}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="stock-card-list">
+        {rows.map(row => (
+          <GrowthStockCard
+            key={row.symbol}
+            row={row}
+            text={text}
+            lang={lang}
+            selectedForComparison={comparisonSymbols.includes(row.symbol)}
+            onCompare={() => toggleComparisonSymbol(row.symbol)}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -2570,7 +2893,7 @@ function SectorCard({ sector, lang, expanded }: { sector: ReturnType<typeof buil
         <>
           <p className="muted"><strong>{COPY[lang].methodology}:</strong> {sector.drivers}</p>
           <p className="muted"><strong>{COPY[lang].valuationRisk}:</strong> {sector.risks}</p>
-          <div className="ticker-scroll">
+          <div className="symbol-strip">
             {sector.symbols.map(symbol => <span key={symbol} className="badge tone-info symbol">{symbol}</span>)}
           </div>
         </>
