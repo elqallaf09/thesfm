@@ -1394,7 +1394,7 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
           <span>{text.payoutRatio}: <b>{formatPercent(row.payoutRatio, lang, true)}</b></span>
         </div>
       ) : (
-        <span className="dividend-empty-inline">{text.insufficientDividendData}</span>
+        <span className="dividend-empty-inline">{text.insufficientMetrics}</span>
       )}
     </article>
   );
@@ -2135,7 +2135,7 @@ function SkeletonGrid({ count }: { count: number }) {
 
 function DividendStyles() {
   return (
-    <style jsx>{`
+    <style jsx global>{`
       .page {
         min-height: 100dvh;
         background:
@@ -2435,12 +2435,12 @@ function DividendStyles() {
         flex: none;
       }
       .ticker-item {
-        flex: 0 0 218px;
-        width: 218px;
-        max-width: 218px;
+        flex: 0 0 206px;
+        width: 206px;
+        max-width: 206px;
         display: grid;
-        gap: 6px;
-        padding: 10px 12px;
+        gap: 5px;
+        padding: 9px 10px;
         border-radius: 15px;
         background: #fff;
         border: 1px solid rgba(58, 124, 154, 0.13);
@@ -2489,14 +2489,14 @@ function DividendStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 820;
       }
       .ticker-metrics {
         justify-content: space-between;
         color: #526579;
-        font-size: 11px;
-        gap: 8px;
+        font-size: 10.5px;
+        gap: 6px;
         min-width: 0;
       }
       .ticker-metrics span {
@@ -2516,15 +2516,20 @@ function DividendStyles() {
         font-weight: 950;
       }
       .ticker-item .symbol {
-        max-width: 78px;
+        max-width: 72px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 13px;
+        font-size: 12px;
       }
       .ticker-item .numeric {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 950;
+      }
+      .ticker-item .badge {
+        min-height: 22px;
+        padding: 3px 7px;
+        font-size: 10px;
       }
       .tone-positive { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.22); }
       .tone-negative { color: #b42318; background: rgba(239, 68, 68, 0.09); border-color: rgba(239, 68, 68, 0.2); }
@@ -3069,10 +3074,10 @@ function DividendStyles() {
           animation-duration: 42s;
         }
         .ticker-item {
-          flex-basis: 190px;
-          width: 190px;
-          max-width: 190px;
-          padding: 9px 10px;
+          flex-basis: 180px;
+          width: 180px;
+          max-width: 180px;
+          padding: 8px 9px;
         }
         .ticker-metrics {
           display: grid;
