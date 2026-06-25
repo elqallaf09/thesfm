@@ -258,6 +258,7 @@ export default function MarketAnalysisPage() {
   const newsSentimentLoadedRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentLoadingRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentSymbolRef = useRef('');
+  const newsSentimentNewsKeyRef = useRef('');
   const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
   const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
   const [technicalRefreshKey, setTechnicalRefreshKey] = useState(0);
@@ -297,6 +298,7 @@ export default function MarketAnalysisPage() {
 
   const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment'], options: { force?: boolean } = {}) => {
     const requestedTargets = [...new Set(targets)];
+    const newsRequestKey = selectedSentimentRequestKey || 'GENERAL_MARKET_NEWS';
 
     if (requestedTargets.includes('sentiment') && !selectedSentimentRequestKey) {
       newsSentimentLoadingRef.current.sentiment = false;
@@ -312,6 +314,9 @@ export default function MarketAnalysisPage() {
     const uniqueTargets = requestedTargets.filter(target => {
       if (target === 'sentiment' && !selectedSentimentRequestKey) return false;
       if (options.force) return !newsSentimentLoadingRef.current[target];
+      if (target === 'news' && newsRequestKey !== newsSentimentNewsKeyRef.current) {
+        return !newsSentimentLoadingRef.current[target];
+      }
       if (target === 'sentiment' && selectedSentimentRequestKey !== newsSentimentSymbolRef.current) {
         return !newsSentimentLoadingRef.current[target];
       }
@@ -333,9 +338,11 @@ export default function MarketAnalysisPage() {
 
     const refreshKey = options.force ? Date.now() : null;
     const requests = uniqueTargets.map(target => {
-      const newsUrl = refreshKey
-        ? `/api/market/central-bank-news?refresh=${refreshKey}`
-        : '/api/market/central-bank-news';
+      const newsParams = new URLSearchParams({ scope: 'general', limit: '24' });
+      if (refreshKey) newsParams.set('refresh', String(refreshKey));
+      const newsSymbol = selectedSentimentProviderSymbol || selectedSentimentSymbol;
+      if (newsSymbol) newsParams.set('symbol', newsSymbol);
+      const newsUrl = `/api/market-news?${newsParams.toString()}`;
       const sentimentParams = new URLSearchParams();
       if (refreshKey) sentimentParams.set('refresh', String(refreshKey));
       if (selectedSentimentSymbol) sentimentParams.set('symbol', selectedSentimentSymbol);
@@ -355,7 +362,7 @@ export default function MarketAnalysisPage() {
       return {
         target,
         request: target === 'news'
-          ? fetchMarketToolState<Record<string, any>>(newsUrl, 'central-bank-news')
+          ? fetchMarketToolState<Record<string, any>>(newsUrl, 'market-news')
           : fetchMarketToolState<Record<string, any>>(sentimentUrl, 'market-sentiment'),
       };
     });
@@ -366,7 +373,10 @@ export default function MarketAnalysisPage() {
         const nextState = result.status === 'fulfilled'
           ? result.value
           : marketToolFailureState<Record<string, any>>(result.reason);
-        if (target === 'news') setCentralBankNews(nextState);
+        if (target === 'news') {
+          setCentralBankNews(nextState);
+          newsSentimentNewsKeyRef.current = newsRequestKey;
+        }
         if (target === 'sentiment') {
           setMarketSentiment(nextState);
           newsSentimentSymbolRef.current = selectedSentimentRequestKey;

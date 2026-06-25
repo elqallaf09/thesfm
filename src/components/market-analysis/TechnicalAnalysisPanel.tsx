@@ -1110,16 +1110,23 @@ export function formatMarketToolTimestamp(value: string | undefined, locale = 'a
 }
 
 export function publicNewsEmptyCopy(code: string | undefined, t: (key: string) => string) {
-  if (code === 'MARKET_DATA_TIMEOUT') {
+  const normalizedCode = String(code ?? '').trim().toUpperCase();
+  if (normalizedCode === 'MARKET_DATA_TIMEOUT') {
     return { title: t('market_section_timeout_title'), body: t('market_section_timeout_body') };
   }
-  if (code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED') {
+  if (normalizedCode === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' || normalizedCode === 'PROVIDER_NOT_CONFIGURED' || normalizedCode === 'NOT_CONFIGURED') {
     return { title: t('market_news_not_configured_title'), body: t('market_news_not_configured_body') };
   }
-  if (code === 'NO_CENTRAL_BANK_NEWS') {
+  if (normalizedCode === 'NO_CENTRAL_BANK_NEWS' || normalizedCode === 'NEWS_NO_RESULTS') {
     return { title: t('market_news_no_items_title'), body: t('market_news_no_items_body') };
   }
-  if (code === 'CENTRAL_BANK_NEWS_PROVIDER_FAILED' || code === 'CENTRAL_BANK_NEWS_PROVIDER_ERROR') {
+  if (
+    normalizedCode === 'CENTRAL_BANK_NEWS_PROVIDER_FAILED'
+    || normalizedCode === 'CENTRAL_BANK_NEWS_PROVIDER_ERROR'
+    || normalizedCode === 'PROVIDER_ACCESS_DENIED'
+    || normalizedCode === 'PROVIDER_RATE_LIMITED'
+    || normalizedCode === 'PROVIDER_TEMPORARILY_UNAVAILABLE'
+  ) {
     return { title: t('market_news_unavailable_title'), body: t('market_news_provider_failed_body') };
   }
   return { title: t('market_news_unavailable_title'), body: t('market_news_unavailable_body') };

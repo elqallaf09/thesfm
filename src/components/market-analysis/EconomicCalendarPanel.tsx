@@ -171,10 +171,26 @@ function isCalendarProviderNotConfigured(code?: string, message?: string) {
   const normalizedCode = String(code ?? '').trim().toUpperCase();
   const normalizedMessage = String(message ?? '').trim().toLowerCase();
   return [
+    'PROVIDER_NOT_CONFIGURED',
+    'NOT_CONFIGURED',
     'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED',
     'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED',
     'ECONOMIC_CALENDAR_NOT_CONFIGURED',
-  ].includes(normalizedCode) || normalizedMessage.includes('not configured');
+  ].includes(normalizedCode) || normalizedMessage.includes('not configured') || normalizedMessage.includes('provider_not_configured');
+}
+
+function isCalendarProviderAccessDenied(code?: string, providerStatus?: string | null) {
+  const normalizedCode = String(code ?? '').trim().toUpperCase();
+  const normalizedStatus = String(providerStatus ?? '').trim().toUpperCase();
+  return ['PROVIDER_ACCESS_DENIED', 'UNAUTHORIZED', 'FORBIDDEN'].includes(normalizedCode)
+    || ['UNAUTHORIZED', 'FORBIDDEN'].includes(normalizedStatus);
+}
+
+function isCalendarProviderRateLimited(code?: string, providerStatus?: string | null) {
+  const normalizedCode = String(code ?? '').trim().toUpperCase();
+  const normalizedStatus = String(providerStatus ?? '').trim().toUpperCase();
+  return ['PROVIDER_RATE_LIMITED', 'RATE_LIMITED', 'RATE_LIMIT'].includes(normalizedCode)
+    || ['RATE_LIMITED', 'RATE_LIMIT'].includes(normalizedStatus);
 }
 
 function resolveCalendarAvailability(state: ApiListState<Record<string, any>>, eventCount: number): CalendarAvailability {
@@ -288,6 +304,8 @@ export function EconomicCalendarPanel({
   const availability = resolveCalendarAvailability(state, sortedEvents.length);
   const providerNotConfigured = availability === 'not_configured';
   const providerFailed = availability === 'error';
+  const providerAccessDenied = providerFailed && isCalendarProviderAccessDenied(state.code, state.providerStatus);
+  const providerRateLimited = providerFailed && isCalendarProviderRateLimited(state.code, state.providerStatus);
   const now = new Date();
   const query = searchTerm.trim().toLowerCase();
   const todayCount = sortedEvents.filter(event => isSameLocalDay(getEconomicEventDate(event), now)).length;
@@ -326,6 +344,10 @@ export function EconomicCalendarPanel({
     ? t('market_section_timeout_title')
     : providerNotConfigured
       ? t('market_calendar_not_configured_title')
+      : providerAccessDenied
+        ? t('market_calendar_access_denied_title')
+      : providerRateLimited
+        ? t('market_calendar_rate_limited_title')
       : providerFailed
         ? t('market_calendar_error_title')
         : t('market_calendar_no_events_title');
@@ -333,12 +355,20 @@ export function EconomicCalendarPanel({
     ? t('market_section_timeout_body')
     : providerNotConfigured
       ? t('market_calendar_not_configured_body')
+      : providerAccessDenied
+        ? t('market_calendar_access_denied_body')
+      : providerRateLimited
+        ? t('market_calendar_rate_limited_body')
       : providerFailed
         ? t('market_calendar_error_body')
         : t('market_calendar_no_events_body');
   const providerLabel = state.provider || state.source || unavailable;
   const providerStatusLabel = providerNotConfigured
     ? t('market_calendar_provider_not_configured_badge')
+    : providerAccessDenied
+      ? t('market_calendar_provider_access_denied_badge')
+    : providerRateLimited
+      ? t('market_calendar_provider_rate_limited_badge')
     : providerFailed
       ? t('market_calendar_provider_error_badge')
       : state.loading
@@ -814,10 +844,28 @@ export function LegacyEconomicCalendarPanel({ t, locale, state }: { t: (key: str
     return event.currency.toUpperCase() === filter;
   }), [filter, sortedEvents]);
   const nextEvent = sortedEvents.find(event => event.eventTime && event.eventTime.getTime() >= Date.now()) ?? sortedEvents[0];
-  const isMissingSource = state.code === 'ECONOMIC_CALENDAR_SOURCE_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' || state.code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED';
+  const isMissingSource = isCalendarProviderNotConfigured(state.code, state.message);
+  const isAccessDenied = isCalendarProviderAccessDenied(state.code, state.providerStatus);
+  const isRateLimited = isCalendarProviderRateLimited(state.code, state.providerStatus);
   const isTimedOut = state.code === 'MARKET_DATA_TIMEOUT';
-  const emptyTitle = isTimedOut ? t('market_section_timeout_title') : isMissingSource ? t('market_calendar_not_configured_title') : t('market_calendar_unavailable_title');
-  const emptyBody = isTimedOut ? t('market_section_timeout_body') : isMissingSource ? t('market_calendar_not_configured_body') : (state.message || t('market_calendar_unavailable_body'));
+  const emptyTitle = isTimedOut
+    ? t('market_section_timeout_title')
+    : isMissingSource
+      ? t('market_calendar_not_configured_title')
+      : isAccessDenied
+        ? t('market_calendar_access_denied_title')
+        : isRateLimited
+          ? t('market_calendar_rate_limited_title')
+          : t('market_calendar_unavailable_title');
+  const emptyBody = isTimedOut
+    ? t('market_section_timeout_body')
+    : isMissingSource
+      ? t('market_calendar_not_configured_body')
+      : isAccessDenied
+        ? t('market_calendar_access_denied_body')
+        : isRateLimited
+          ? t('market_calendar_rate_limited_body')
+          : (state.message || t('market_calendar_unavailable_body'));
 
   return (
     <section className="market-panel economic-calendar-panel">

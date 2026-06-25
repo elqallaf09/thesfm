@@ -315,6 +315,13 @@ export function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED' ||
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
     code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
+    code === 'PROVIDER_NOT_CONFIGURED' ||
+    code === 'PROVIDER_ACCESS_DENIED' ||
+    code === 'PROVIDER_RATE_LIMITED' ||
+    code === 'PROVIDER_TEMPORARILY_UNAVAILABLE' ||
+    code === 'PROVIDER_INVALID_REQUEST' ||
+    code === 'NEWS_NO_RESULTS' ||
+    code === 'CALENDAR_NO_EVENTS' ||
     code.startsWith('MARKET_SENTIMENT_') ||
     code.startsWith('MYFXBOOK_') ||
     code === 'NO_MARKET_SENTIMENT_DATA' ||
@@ -333,7 +340,7 @@ export function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'MISSING_PROVIDER' ||
     code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
-    /ECONOMIC_CALENDAR_|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured/i.test(message)
+    /ECONOMIC_CALENDAR_|provider_not_configured|provider_access_denied|provider_rate_limited|provider_temporarily_unavailable|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured|data source is not configured/i.test(message)
   ) {
     return '';
   }
@@ -369,9 +376,13 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
     const payload = await response.json().catch(() => ({})) as {
       items?: T[];
       events?: T[];
+      data?: T[];
       message?: string;
+      messageCode?: string | null;
+      status?: string | null;
       updated_at?: string | null;
       updatedAt?: string | null;
+      lastSuccessfulUpdate?: string | null;
       code?: string | null;
       ok?: boolean;
       success?: boolean;
@@ -399,12 +410,20 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
       diagnosticSource?: string | null;
       suggestions?: unknown[];
     };
-    const code = String(payload.code ?? '').trim().toUpperCase();
+    const normalizedMessageCode = String(payload.messageCode ?? '').trim().toUpperCase();
+    const normalizedStatus = String(payload.status ?? '').trim().toUpperCase();
+    const code = String(payload.code ?? '').trim().toUpperCase() || normalizedMessageCode || normalizedStatus;
     const sourceAvailable = response.ok && payload.ok !== false && payload.success !== false;
     const rawMessage = sourceAvailable
       ? (label === 'market-sentiment' ? String(payload.message ?? '') : '')
-      : String(payload.message ?? 'Data source is not configured.');
-    const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload.events) ? payload.events : [];
+      : String(payload.message ?? '');
+    const items = Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload.events)
+        ? payload.events
+        : Array.isArray(payload.data)
+          ? payload.data
+          : [];
     logMarketToolPerformance(label, startedAt, {
       status: response.status,
       code,
@@ -419,14 +438,14 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
       loading: false,
       items,
       message: sanitizeMarketToolMessage(code, rawMessage),
-      updatedAt: payload.updated_at ?? payload.updatedAt ?? undefined,
+      updatedAt: payload.updated_at ?? payload.updatedAt ?? payload.lastSuccessfulUpdate ?? undefined,
       code,
       symbol: payload.symbol,
       assetType: payload.assetType,
       provider: payload.provider,
       source: payload.source,
       sentimentAvailable: payload.sentimentAvailable,
-      providerStatus: payload.providerStatus,
+      providerStatus: payload.providerStatus ?? payload.status ?? undefined,
       cacheStatus: payload.cacheStatus,
       cached: payload.cached,
       stale: payload.stale,

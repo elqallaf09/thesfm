@@ -41,22 +41,34 @@ THE SFM uses Yahoo Finance through server-side Next.js routes for market quotes,
 
 The browser should call local Next.js routes, such as `/api/market/health` and `/api/market/analyze?symbol=AAPL&assetType=stock`. Client components should not call external market-data hosts directly.
 
-## Economic Calendar
+## Market News and Economic Calendar
 
-The Market Analysis page uses `/api/market/economic-calendar` for real high-impact economic events. The route runs server-side only and never exposes provider keys to the browser.
+The Market Analysis page uses server-only provider routes for market news and the economic calendar:
+
+- `/api/market-news` loads general and asset-specific market news from Finnhub.
+- `/api/market/economic-calendar` loads real economic calendar events from Financial Modeling Prep (FMP) by default.
+- `/api/economic-calendar` is a compatibility alias for the same calendar integration.
+
+These routes run server-side only and never expose provider keys to the browser.
 
 Set these Vercel environment variables:
 
 ```text
-ECONOMIC_CALENDAR_PROVIDER=finnhub
-ECONOMIC_CALENDAR_API_KEY=your_finnhub_key
+FINNHUB_API_KEY=your_finnhub_key
+FMP_API_KEY=your_fmp_key
+ECONOMIC_CALENDAR_PROVIDER=fmp
+
+# Optional legacy calendar fallback when FMP_API_KEY is not available
+ECONOMIC_CALENDAR_API_KEY=your_calendar_key
 ```
 
-If `ECONOMIC_CALENDAR_API_KEY` is empty, the route falls back to the existing server-only `FINNHUB_API_KEY`. If no provider key is configured, the API returns an empty event list with `ECONOMIC_CALENDAR_PROVIDER_NOT_CONFIGURED`, and the UI shows a polished empty state instead of raw deployment or environment-variable errors.
+If `FMP_API_KEY` is not configured, the calendar route can use the legacy `ECONOMIC_CALENDAR_API_KEY`. Set `ECONOMIC_CALENDAR_PROVIDER=finnhub` only when the Finnhub account explicitly has economic-calendar endpoint access. If no provider key is configured, the API returns a structured `provider_not_configured` status and the Arabic UI shows a localized setup state instead of raw deployment or environment-variable errors.
+
+After adding or changing provider keys in Vercel project settings, redeploy the project so the runtime can read the updated variables.
 
 ## Market Analysis News and Sentiment Providers
 
-The Market Analysis page uses server-only routes for central bank news and market sentiment. Provider keys are read only on the server and are never exposed to the browser.
+The Market Analysis page also uses server-only routes for central bank news and market sentiment. Provider keys are read only on the server and are never exposed to the browser.
 
 Set these Vercel environment variables as needed:
 
