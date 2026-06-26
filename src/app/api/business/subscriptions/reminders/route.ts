@@ -4,6 +4,8 @@ import {
   buildReminderCandidates,
   emailReminderTemplate,
   formatMoney,
+  reminderCandidateAmount,
+  reminderCandidateCurrency,
   type ActivityLogRow,
   type ClientFileRow,
   type ClientNoteRow,
@@ -14,7 +16,7 @@ import {
   type SubscriptionRow,
 } from '@/lib/businessSubscriptions';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
-import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
+import { getSmtpMailConfigStatus, isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,9 +43,25 @@ async function getScopeUserId(request: NextRequest) {
   return user?.id ?? undefined;
 }
 
-function todayIso() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString().slice(0, 10);
+function safeTimezone(value: string | null | undefined) {
+  const timezone = value?.trim() || 'Asia/Kuwait';
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+    return timezone;
+  } catch {
+    return 'Asia/Kuwait';
+  }
+}
+
+function todayIso(timezone = 'Asia/Kuwait') {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find(part => part.type === type)?.value || '01';
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
 function cleanError(error: unknown) {
@@ -73,6 +91,39 @@ async function getOwnerEmail(db: any, cache: Map<string, string | null>, userId:
   }
 }
 
+async function insertRunLog(db: any, input: {
+  userId: string;
+  runType: 'manual' | 'scheduled' | 'page_load';
+  status: 'completed' | 'failed' | 'partial' | 'skipped';
+  baseDate: string;
+  timezone: string;
+  startedAt: string;
+  candidatesCount: number;
+  processedCount: number;
+  emailSentCount: number;
+  emailFailedCount: number;
+  smtpConfigured: boolean;
+  message?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  await db.from('subscription_reminder_runs').insert({
+    user_id: input.userId,
+    run_type: input.runType,
+    status: input.status,
+    base_date: input.baseDate,
+    timezone: input.timezone,
+    started_at: input.startedAt,
+    finished_at: new Date().toISOString(),
+    candidates_count: input.candidatesCount,
+    processed_count: input.processedCount,
+    email_sent_count: input.emailSentCount,
+    email_failed_count: input.emailFailedCount,
+    smtp_configured: input.smtpConfigured,
+    message: input.message ?? null,
+    metadata: input.metadata ?? {},
+  });
+}
+
 export async function GET(request: NextRequest) {
   const db = createServerSupabaseAdmin();
   if (!db) {
@@ -90,9 +141,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const timezone = safeTimezone(request.nextUrl.searchParams.get('timezone') || request.headers.get('x-client-timezone'));
+  const runType = isCronAuthorized(request)
+    ? 'scheduled'
+    : request.nextUrl.searchParams.get('source') === 'page_load'
+      ? 'page_load'
+      : 'manual';
+  const startedAt = new Date().toISOString();
   const baseDate = request.nextUrl.searchParams.get('date')?.match(/^\d{4}-\d{2}-\d{2}$/)
     ? request.nextUrl.searchParams.get('date') as string
-    : todayIso();
+    : todayIso(timezone);
 
   try {
     const [clients, subscriptions, payments, history, notes, files, activity, notificationLogs] = await Promise.all([
@@ -117,23 +175,28 @@ export async function GET(request: NextRequest) {
       notifications: notificationLogs,
     });
     const candidates = buildReminderCandidates(bundles, baseDate);
+    const smtpStatus = getSmtpMailConfigStatus();
     const smtpConfigured = isSmtpMailConfigured();
     const ownerEmailCache = new Map<string, string | null>();
     const origin = request.nextUrl.origin;
-    const results: Array<{ dedupeKey: string; status: string; channel: string; error?: string }> = [];
+    const results: Array<{ userId: string; dedupeKey: string; status: string; channel: string; error?: string }> = [];
 
     for (const candidate of candidates) {
+      const amountDue = reminderCandidateAmount(candidate);
+      const currency = reminderCandidateCurrency(candidate, 'KWD');
       const metadata = {
         daysRemaining: candidate.daysRemaining,
-        amountDue: candidate.payment.amount_due,
-        currency: candidate.payment.currency || candidate.subscription.currency || 'KWD',
+        amountDue,
+        currency,
+        dueDate: candidate.dueDate,
+        source: candidate.payment ? 'payment' : 'subscription_next_payment_date',
       };
 
       const logPayload = {
         user_id: candidate.client.user_id,
         client_id: candidate.client.id,
         subscription_id: candidate.subscription.id,
-        payment_id: candidate.payment.id,
+        payment_id: candidate.payment?.id ?? null,
         channel: 'in_app',
         reminder_type: candidate.reminderType,
         scheduled_for: new Date().toISOString(),
@@ -151,10 +214,10 @@ export async function GET(request: NextRequest) {
 
       if (insertError) {
         if (String(insertError.code) === '23505') {
-          results.push({ dedupeKey: candidate.dedupeKey, status: 'skipped_duplicate', channel: 'in_app' });
+          results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'skipped_duplicate', channel: 'in_app' });
           continue;
         }
-        results.push({ dedupeKey: candidate.dedupeKey, status: 'failed', channel: 'in_app', error: cleanError(insertError) });
+        results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'failed', channel: 'in_app', error: cleanError(insertError) });
         continue;
       }
 
@@ -164,18 +227,18 @@ export async function GET(request: NextRequest) {
         title: candidate.daysRemaining < 0
           ? `${candidate.client.full_name} has an overdue payment.`
           : `${candidate.client.full_name} subscription payment is due.`,
-        message: `${formatMoney(candidate.payment.amount_due, candidate.payment.currency || candidate.subscription.currency || 'KWD', 'en')} due on ${candidate.payment.due_date}.`,
+        message: `${formatMoney(amountDue, currency, 'en')} due on ${candidate.dueDate}.`,
         read: false,
         status: 'unread',
         severity: candidate.daysRemaining < 0 ? 'danger' : candidate.daysRemaining <= 1 ? 'warning' : 'info',
         source_module: 'business_subscriptions',
-        source_id: inserted?.id ?? candidate.payment.id,
+        source_id: inserted?.id ?? candidate.payment?.id ?? candidate.subscription.id,
         action_url: `/business/subscriptions/${candidate.client.id}`,
-        due_date: candidate.payment.due_date,
+        due_date: candidate.dueDate,
         metadata,
       });
 
-      results.push({ dedupeKey: candidate.dedupeKey, status: 'sent', channel: 'in_app' });
+      results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'sent', channel: 'in_app' });
 
       if (!smtpConfigured) continue;
       const ownerEmail = await getOwnerEmail(db, ownerEmailCache, candidate.client.user_id);
@@ -200,7 +263,7 @@ export async function GET(request: NextRequest) {
 
       if (emailLogError) {
         if (String(emailLogError.code) !== '23505') {
-          results.push({ dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: cleanError(emailLogError) });
+          results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: cleanError(emailLogError) });
         }
         continue;
       }
@@ -208,9 +271,9 @@ export async function GET(request: NextRequest) {
       const template = emailReminderTemplate({
         clientName: candidate.client.full_name,
         phone: candidate.client.phone,
-        amount: String(candidate.payment.amount_due),
-        currency: candidate.payment.currency || candidate.subscription.currency || 'KWD',
-        dueDate: candidate.payment.due_date,
+        amount: String(amountDue),
+        currency,
+        dueDate: candidate.dueDate,
         daysRemaining: candidate.daysRemaining,
         openClientUrl: `${origin}/business/subscriptions/${candidate.client.id}`,
       });
@@ -228,25 +291,78 @@ export async function GET(request: NextRequest) {
           .update({ status: 'sent', sent_at: new Date().toISOString() })
           .eq('user_id', candidate.client.user_id)
           .eq('dedupe_key', emailDedupeKey);
-        results.push({ dedupeKey: emailDedupeKey, status: 'sent', channel: 'email' });
+        await db.from('activity_logs').insert({
+          user_id: candidate.client.user_id,
+          client_id: candidate.client.id,
+          subscription_id: candidate.subscription.id,
+          payment_id: candidate.payment?.id ?? null,
+          event_type: 'subscription_email_sent',
+          title: 'subscription_email_sent',
+          description: `${candidate.client.full_name} - ${candidate.dueDate}`,
+          metadata,
+        });
+        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'sent', channel: 'email' });
       } catch (error) {
+        const errorText = cleanError(error);
         await db
           .from('subscription_notifications')
-          .update({ status: 'failed', metadata: { ...metadata, error: cleanError(error) } })
+          .update({ status: 'failed', metadata: { ...metadata, error: errorText } })
           .eq('user_id', candidate.client.user_id)
           .eq('dedupe_key', emailDedupeKey);
-        results.push({ dedupeKey: emailDedupeKey, status: 'failed', channel: 'email' });
+        await db.from('activity_logs').insert({
+          user_id: candidate.client.user_id,
+          client_id: candidate.client.id,
+          subscription_id: candidate.subscription.id,
+          payment_id: candidate.payment?.id ?? null,
+          event_type: 'subscription_email_failed',
+          title: 'subscription_email_failed',
+          description: errorText,
+          metadata,
+        });
+        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: errorText });
       }
     }
+
+    const usersToLog = scopeUserId
+      ? [scopeUserId]
+      : Array.from(new Set(clients.map(client => client.user_id)));
+
+    await Promise.all(usersToLog.map(userId => {
+      const userCandidates = candidates.filter(candidate => candidate.client.user_id === userId);
+      const userResults = results.filter(result => result.userId === userId);
+      const emailFailures = userResults.filter(result => result.channel === 'email' && result.status === 'failed');
+      const emailSent = userResults.filter(result => result.channel === 'email' && result.status === 'sent').length;
+      const status = emailFailures.length ? (emailSent ? 'partial' : 'failed') : 'completed';
+      return insertRunLog(db, {
+        userId,
+        runType,
+        status,
+        baseDate,
+        timezone,
+        startedAt,
+        candidatesCount: userCandidates.length,
+        processedCount: userResults.length,
+        emailSentCount: emailSent,
+        emailFailedCount: emailFailures.length,
+        smtpConfigured,
+        message: emailFailures[0]?.error ?? (!smtpConfigured ? `SMTP missing: ${smtpStatus.missing.join(', ')}` : null),
+        metadata: {
+          scope: scopeUserId ? 'current_user' : 'all_users',
+          smtpMissing: smtpStatus.missing,
+        },
+      });
+    }));
 
     return NextResponse.json(
       {
         ok: true,
         scope: scopeUserId ? 'current_user' : 'all_users',
         date: baseDate,
+        timezone,
         candidates: candidates.length,
         processed: results.length,
         smtpConfigured,
+        smtpMissing: smtpStatus.missing,
         results,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },

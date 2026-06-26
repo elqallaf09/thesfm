@@ -48,6 +48,7 @@ import {
   formatDate,
   formatMoney,
   isDateInput,
+  isPaymentOpen,
   latestPayment,
   nextOpenPayment,
   normalizePaymentStatus,
@@ -56,6 +57,8 @@ import {
   normalizeSubscriptionType,
   parseAmountInput,
   paymentStatusLabel,
+  reminderCandidateAmount,
+  reminderCandidateCurrency,
   reminderLabel,
   sanitizeColorTag,
   SUBSCRIPTION_ASSET_BUCKET,
@@ -105,6 +108,77 @@ type Props = {
   clientId?: string;
 };
 
+type ReminderRuntimeStatus = {
+  smtp: {
+    configured: boolean;
+    missing: string[];
+  };
+  emailRemindersActive: boolean;
+  lastRun: {
+    run_type: string;
+    status: string;
+    finished_at: string | null;
+    candidates_count: number;
+    processed_count: number;
+    email_sent_count: number;
+    email_failed_count: number;
+    message: string | null;
+  } | null;
+  lastEmailSentAt: string | null;
+  lastEmailFailure: {
+    at: string;
+    reason: string;
+  } | null;
+};
+
+const REMINDER_CONTROL_TEXT = {
+  ar: {
+    emailStatus: 'حالة تذكيرات البريد',
+    active: 'تذكيرات البريد مفعلة',
+    smtpMissing: 'إعدادات SMTP ناقصة',
+    lastCheck: 'آخر فحص للتذكيرات',
+    lastEmail: 'آخر بريد مرسل',
+    failedReason: 'سبب آخر فشل',
+    runNow: 'تشغيل فحص التذكيرات الآن',
+    running: 'جاري فحص التذكيرات...',
+    sendTest: 'إرسال بريد اختبار',
+    sendingTest: 'جاري إرسال بريد الاختبار...',
+    checkComplete: 'اكتمل فحص التذكيرات.',
+    testSent: 'تم إرسال بريد الاختبار.',
+    unavailable: 'غير متاح',
+  },
+  en: {
+    emailStatus: 'Email reminder status',
+    active: 'Email reminders active',
+    smtpMissing: 'SMTP settings missing',
+    lastCheck: 'Last reminder check',
+    lastEmail: 'Last email sent',
+    failedReason: 'Last failed reason',
+    runNow: 'Run Reminder Check Now',
+    running: 'Checking reminders...',
+    sendTest: 'Send Test Email',
+    sendingTest: 'Sending test email...',
+    checkComplete: 'Reminder check completed.',
+    testSent: 'Test email sent.',
+    unavailable: 'Unavailable',
+  },
+  fr: {
+    emailStatus: 'Etat des rappels e-mail',
+    active: 'Rappels e-mail actifs',
+    smtpMissing: 'Parametres SMTP manquants',
+    lastCheck: 'Derniere verification',
+    lastEmail: 'Dernier e-mail envoye',
+    failedReason: 'Derniere erreur',
+    runNow: 'Lancer la verification',
+    running: 'Verification en cours...',
+    sendTest: 'Envoyer un e-mail test',
+    sendingTest: 'Envoi du test...',
+    checkComplete: 'Verification terminee.',
+    testSent: 'E-mail test envoye.',
+    unavailable: 'Indisponible',
+  },
+} as const;
+
 const subscriptionTypes: SubscriptionType[] = ['monthly', 'weekly', 'quarterly', 'semi_annual', 'yearly', 'custom'];
 const subscriptionStatuses: SubscriptionStatus[] = ['active', 'paused', 'cancelled', 'expired'];
 const colorTags = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -134,6 +208,22 @@ function dbErrorText(error: unknown) {
   if (!error || typeof error !== 'object') return String(error ?? '');
   const value = error as { code?: unknown; message?: unknown; details?: unknown };
   return [value.code, value.message, value.details].filter(Boolean).join(' ');
+}
+
+function browserTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kuwait';
+  } catch {
+    return 'Asia/Kuwait';
+  }
+}
+
+function formatDateTime(value: unknown, lang: SubscriptionLang = 'ar') {
+  if (!value) return REMINDER_CONTROL_TEXT[lang].unavailable;
+  const date = new Date(String(value));
+  if (!Number.isFinite(date.getTime())) return REMINDER_CONTROL_TEXT[lang].unavailable;
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function isSafeUploadType(file: File) {
@@ -249,6 +339,10 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
   const [files, setFiles] = useState<ClientFileRow[]>([]);
   const [activity, setActivity] = useState<ActivityLogRow[]>([]);
   const [notifications, setNotifications] = useState<ReminderNotificationRow[]>([]);
+  const [reminderStatus, setReminderStatus] = useState<ReminderRuntimeStatus | null>(null);
+  const [reminderStatusLoading, setReminderStatusLoading] = useState(false);
+  const [reminderCheckRunning, setReminderCheckRunning] = useState(false);
+  const [testEmailSending, setTestEmailSending] = useState(false);
   const [assetUrlMap, setAssetUrlMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -293,6 +387,77 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
     if (path && assetUrlMap[path]) return assetUrlMap[path];
     return isExternalAssetUrl(value) ? String(value) : '';
   }, [assetUrlMap]);
+
+  const authReminderHeaders = useCallback(() => {
+    if (!session?.access_token) return null;
+    return {
+      Authorization: `Bearer ${session.access_token}`,
+      'x-client-timezone': browserTimezone(),
+    };
+  }, [session?.access_token]);
+
+  const loadReminderStatus = useCallback(async () => {
+    const headers = authReminderHeaders();
+    if (!headers) return;
+    setReminderStatusLoading(true);
+    try {
+      const response = await fetch('/api/business/subscriptions/reminders/status', { headers });
+      const payload = await response.json().catch(() => null) as ReminderRuntimeStatus & { ok?: boolean } | null;
+      if (response.ok && payload) {
+        setReminderStatus(payload);
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('[business-subscriptions] reminder status failed', dbErrorText(err));
+    } finally {
+      setReminderStatusLoading(false);
+    }
+  }, [authReminderHeaders]);
+
+  const runReminderCheckNow = useCallback(async () => {
+    const headers = authReminderHeaders();
+    if (!headers) return;
+    setReminderCheckRunning(true);
+    setError('');
+    setNotice('');
+    try {
+      const params = new URLSearchParams({ timezone: browserTimezone() });
+      const response = await fetch(`/api/business/subscriptions/reminders?${params.toString()}`, { headers });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string } | null;
+      if (!response.ok || !payload?.ok) throw new Error(payload?.message || payload?.code || 'reminder_check_failed');
+      setNotice(REMINDER_CONTROL_TEXT[locale].checkComplete);
+      await loadReminderStatus();
+    } catch (err) {
+      setError(dbErrorText(err) || text.saveFailed);
+    } finally {
+      setReminderCheckRunning(false);
+    }
+  }, [authReminderHeaders, loadReminderStatus, locale, text.saveFailed]);
+
+  const sendTestEmail = useCallback(async () => {
+    const headers = authReminderHeaders();
+    if (!headers) return;
+    setTestEmailSending(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/business/subscriptions/reminders/test-email', {
+        method: 'POST',
+        headers,
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string; missing?: string[] } | null;
+      if (!response.ok || !payload?.ok) {
+        const missing = payload?.missing?.length ? `: ${payload.missing.join(', ')}` : '';
+        throw new Error(`${payload?.message || payload?.code || 'smtp_test_failed'}${missing}`);
+      }
+      setNotice(REMINDER_CONTROL_TEXT[locale].testSent);
+      await loadReminderStatus();
+    } catch (err) {
+      setError(dbErrorText(err) || text.saveFailed);
+      await loadReminderStatus();
+    } finally {
+      setTestEmailSending(false);
+    }
+  }, [authReminderHeaders, loadReminderStatus, locale, text.saveFailed]);
 
   const filteredBundles = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -412,10 +577,12 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
 
       if (!loadedOnce.current && session?.access_token) {
         loadedOnce.current = true;
-        void fetch('/api/business/subscriptions/reminders', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+        const params = new URLSearchParams({ source: 'page_load', timezone: browserTimezone() });
+        void fetch(`/api/business/subscriptions/reminders?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${session.access_token}`, 'x-client-timezone': browserTimezone() },
         }).then(() => undefined).catch(() => undefined);
       }
+      void loadReminderStatus();
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[business-subscriptions] load failed', dbErrorText(err));
@@ -424,7 +591,7 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [refreshSignedAssetUrls, session?.access_token, text.loadFailed, user?.id]);
+  }, [loadReminderStatus, refreshSignedAssetUrls, session?.access_token, text.loadFailed, user?.id]);
 
   useEffect(() => {
     if (!authLoading) void loadData();
@@ -476,6 +643,47 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
     return path;
   }
 
+  async function syncOpenPaymentForSubscription(input: {
+    clientId: string;
+    subscriptionId: string;
+    amount: number;
+    currency: string;
+    dueDate: string;
+    status: SubscriptionStatus;
+  }) {
+    if (!user?.id || input.status !== 'active') return;
+    const openPayment = payments.find(payment =>
+      payment.subscription_id === input.subscriptionId &&
+      isPaymentOpen(payment)
+    );
+
+    if (openPayment) {
+      const { error: paymentUpdateError } = await supabase
+        .from('payments')
+        .update({
+          amount_due: input.amount,
+          currency: input.currency,
+          due_date: input.dueDate,
+        })
+        .eq('id', openPayment.id)
+        .eq('user_id', user.id);
+      if (paymentUpdateError) throw paymentUpdateError;
+      return;
+    }
+
+    const { error: paymentInsertError } = await supabase.from('payments').insert({
+      user_id: user.id,
+      client_id: input.clientId,
+      subscription_id: input.subscriptionId,
+      amount_due: input.amount,
+      amount_paid: 0,
+      currency: input.currency,
+      due_date: input.dueDate,
+      status: 'pending',
+    });
+    if (paymentInsertError) throw paymentInsertError;
+  }
+
   async function saveClient(event: FormEvent) {
     event.preventDefault();
     if (!user?.id) return;
@@ -511,7 +719,7 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
         const { error: clientError } = await supabase.from('clients').update(clientPayload).eq('id', editingBundle.client.id).eq('user_id', user.id);
         if (clientError) throw clientError;
         if (editingBundle.subscription) {
-          const { error: subscriptionError } = await supabase.from('subscriptions').update({
+          const { data: updatedSubscription, error: subscriptionError } = await supabase.from('subscriptions').update({
             amount,
             currency: form.currency,
             subscription_type: form.subscriptionType,
@@ -520,8 +728,17 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
             next_payment_date: form.nextPaymentDate,
             automatic_renewal: form.automaticRenewal,
             status: form.status,
-          }).eq('id', editingBundle.subscription.id).eq('user_id', user.id);
+          }).eq('id', editingBundle.subscription.id).eq('user_id', user.id).select('id,next_payment_date').single();
           if (subscriptionError) throw subscriptionError;
+          if (updatedSubscription?.next_payment_date !== form.nextPaymentDate) throw new Error('next_payment_date_not_saved');
+          await syncOpenPaymentForSubscription({
+            clientId: editingBundle.client.id,
+            subscriptionId: editingBundle.subscription.id,
+            amount,
+            currency: form.currency,
+            dueDate: form.nextPaymentDate,
+            status: form.status,
+          });
         }
         await supabase.from('activity_logs').insert({
           user_id: user.id,
@@ -555,6 +772,7 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
           .select('*')
           .single();
         if (subscriptionError) throw subscriptionError;
+        if (createdSubscription.next_payment_date !== form.nextPaymentDate) throw new Error('next_payment_date_not_saved');
         const { error: paymentError } = await supabase.from('payments').insert({
           user_id: user.id,
           client_id: createdClient.id,
@@ -916,10 +1134,29 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
                 onExport={exportRows}
                 setSelectedBundleId={setSelectedBundleId}
                 getAssetUrl={assetDisplayUrl}
+                reminderStatus={reminderStatus}
+                reminderStatusLoading={reminderStatusLoading}
+                reminderCheckRunning={reminderCheckRunning}
+                testEmailSending={testEmailSending}
+                onRunReminderCheck={runReminderCheckNow}
+                onSendTestEmail={sendTestEmail}
               />
             ) : null}
             {tab === 'calendar' ? <CalendarView bundles={bundles} text={text} locale={locale} defaultCurrency={defaultCurrency} /> : null}
-            {tab === 'notifications' ? <NotificationCenter candidates={reminderCandidates} notifications={notifications} text={text} locale={locale} /> : null}
+            {tab === 'notifications' ? (
+              <NotificationCenter
+                candidates={reminderCandidates}
+                notifications={notifications}
+                text={text}
+                locale={locale}
+                reminderStatus={reminderStatus}
+                reminderStatusLoading={reminderStatusLoading}
+                reminderCheckRunning={reminderCheckRunning}
+                testEmailSending={testEmailSending}
+                onRunReminderCheck={runReminderCheckNow}
+                onSendTestEmail={sendTestEmail}
+              />
+            ) : null}
             {tab === 'statistics' ? <StatisticsView bundles={bundles} metrics={metrics} text={text} locale={locale} defaultCurrency={defaultCurrency} /> : null}
           </>
         )}
@@ -979,7 +1216,68 @@ type ClientsWorkspaceProps = {
   onExport: (kind: 'csv' | 'xlsx' | 'pdf' | 'print') => void;
   setSelectedBundleId: (id: string) => void;
   getAssetUrl: (value: string | null | undefined) => string;
+  reminderStatus: ReminderRuntimeStatus | null;
+  reminderStatusLoading: boolean;
+  reminderCheckRunning: boolean;
+  testEmailSending: boolean;
+  onRunReminderCheck: () => void;
+  onSendTestEmail: () => void;
 };
+
+function ReminderStatusCard({
+  status,
+  loading,
+  locale,
+  onRunReminderCheck,
+  onSendTestEmail,
+  reminderCheckRunning,
+  testEmailSending,
+}: {
+  status: ReminderRuntimeStatus | null;
+  loading: boolean;
+  locale: SubscriptionLang;
+  onRunReminderCheck: () => void;
+  onSendTestEmail: () => void;
+  reminderCheckRunning: boolean;
+  testEmailSending: boolean;
+}) {
+  const copy = REMINDER_CONTROL_TEXT[locale];
+  const missing = status?.smtp.missing ?? [];
+  const active = Boolean(status?.emailRemindersActive);
+  const lastRunAt = status?.lastRun?.finished_at || null;
+  return (
+    <article className={`subscription-reminder-status ${active ? 'active' : 'warning'}`}>
+      <header>
+        <span aria-hidden="true">{active ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}</span>
+        <div>
+          <h3>{copy.emailStatus}</h3>
+          <p>{loading ? copy.unavailable : active ? copy.active : copy.smtpMissing}</p>
+        </div>
+      </header>
+      {!active && missing.length ? <div className="subscription-reminder-missing">{missing.join(', ')}</div> : null}
+      <div className="subscription-reminder-status-grid">
+        <div><span>{copy.lastCheck}</span><strong>{formatDateTime(lastRunAt, locale)}</strong></div>
+        <div><span>{copy.lastEmail}</span><strong>{formatDateTime(status?.lastEmailSentAt, locale)}</strong></div>
+      </div>
+      {status?.lastEmailFailure ? (
+        <div className="subscription-reminder-failure">
+          <span>{copy.failedReason}</span>
+          <strong>{status.lastEmailFailure.reason}</strong>
+        </div>
+      ) : null}
+      <div className="subscription-reminder-actions">
+        <button className="subscription-secondary-btn compact" type="button" onClick={onRunReminderCheck} disabled={reminderCheckRunning}>
+          {reminderCheckRunning ? <Loader2 className="spin" size={15} /> : <RefreshCw size={15} />}
+          {reminderCheckRunning ? copy.running : copy.runNow}
+        </button>
+        <button className="subscription-secondary-btn compact" type="button" onClick={onSendTestEmail} disabled={testEmailSending}>
+          {testEmailSending ? <Loader2 className="spin" size={15} /> : <Mail size={15} />}
+          {testEmailSending ? copy.sendingTest : copy.sendTest}
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function ClientsWorkspace(props: ClientsWorkspaceProps) {
   const {
@@ -1003,6 +1301,12 @@ function ClientsWorkspace(props: ClientsWorkspaceProps) {
     onExport,
     setSelectedBundleId,
     getAssetUrl,
+    reminderStatus,
+    reminderStatusLoading,
+    reminderCheckRunning,
+    testEmailSending,
+    onRunReminderCheck,
+    onSendTestEmail,
   } = props;
   const hasFilters = Boolean(query || statusFilter !== 'all' || typeFilter !== 'all' || periodFilter !== 'all');
 
@@ -1077,11 +1381,19 @@ function ClientsWorkspace(props: ClientsWorkspaceProps) {
       </div>
       <aside className="subscription-side-panel">
         <h2>{text.notifications}</h2>
-        <p>{text.emailReady}</p>
+        <ReminderStatusCard
+          status={reminderStatus}
+          loading={reminderStatusLoading}
+          locale={locale}
+          reminderCheckRunning={reminderCheckRunning}
+          testEmailSending={testEmailSending}
+          onRunReminderCheck={onRunReminderCheck}
+          onSendTestEmail={onSendTestEmail}
+        />
         {buildReminderCandidates(allBundles).slice(0, 5).map(candidate => (
           <article key={candidate.dedupeKey} className="subscription-reminder-mini">
             <strong>{candidate.client.full_name}</strong>
-            <span>{reminderLabel(candidate.reminderType, locale)} · {formatMoney(candidate.payment.amount_due, candidate.payment.currency || defaultCurrency, locale)}</span>
+            <span>{reminderLabel(candidate.reminderType, locale)} · {formatMoney(reminderCandidateAmount(candidate), reminderCandidateCurrency(candidate, defaultCurrency), locale)}</span>
           </article>
         ))}
         {!buildReminderCandidates(allBundles).length ? <div className="subscription-empty-mini">{text.noData}</div> : null}
@@ -1362,10 +1674,41 @@ function CalendarView({ bundles, text, locale, defaultCurrency }: { bundles: Cli
   );
 }
 
-function NotificationCenter({ candidates, notifications, text, locale }: { candidates: ReturnType<typeof buildReminderCandidates>; notifications: ReminderNotificationRow[]; text: typeof SUBSCRIPTION_TEXT[SubscriptionLang]; locale: SubscriptionLang }) {
+function NotificationCenter({
+  candidates,
+  notifications,
+  text,
+  locale,
+  reminderStatus,
+  reminderStatusLoading,
+  reminderCheckRunning,
+  testEmailSending,
+  onRunReminderCheck,
+  onSendTestEmail,
+}: {
+  candidates: ReturnType<typeof buildReminderCandidates>;
+  notifications: ReminderNotificationRow[];
+  text: typeof SUBSCRIPTION_TEXT[SubscriptionLang];
+  locale: SubscriptionLang;
+  reminderStatus: ReminderRuntimeStatus | null;
+  reminderStatusLoading: boolean;
+  reminderCheckRunning: boolean;
+  testEmailSending: boolean;
+  onRunReminderCheck: () => void;
+  onSendTestEmail: () => void;
+}) {
   return (
     <section className="subscription-notification-grid">
       <InfoPanel title={text.notifications} icon={<Bell size={18} />}>
+        <ReminderStatusCard
+          status={reminderStatus}
+          loading={reminderStatusLoading}
+          locale={locale}
+          reminderCheckRunning={reminderCheckRunning}
+          testEmailSending={testEmailSending}
+          onRunReminderCheck={onRunReminderCheck}
+          onSendTestEmail={onSendTestEmail}
+        />
         <div className="subscription-notification-list">
           {candidates.map(candidate => (
             <article key={candidate.dedupeKey}>
@@ -2436,6 +2779,111 @@ const subscriptionManagerStyles = `
     line-height: 1.6;
   }
 
+  .subscription-reminder-status {
+    border: 1px solid rgba(29, 140, 255, 0.14);
+    background: var(--sfm-light-card);
+    border-radius: 16px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .subscription-reminder-status.active {
+    border-color: rgba(16, 185, 129, 0.22);
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .subscription-reminder-status.warning {
+    border-color: rgba(245, 158, 11, 0.26);
+    background: rgba(245, 158, 11, 0.08);
+  }
+
+  .subscription-reminder-status header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .subscription-reminder-status header > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+  }
+
+  .subscription-reminder-status h3 {
+    margin: 0;
+    color: var(--sfm-foreground);
+    font-size: 0.95rem;
+    font-weight: 950;
+  }
+
+  .subscription-reminder-status p {
+    margin: 3px 0 0;
+    color: var(--sfm-muted-readable);
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .subscription-reminder-missing,
+  .subscription-reminder-failure {
+    border: 1px dashed rgba(185, 28, 28, 0.22);
+    background: rgba(239, 68, 68, 0.08);
+    color: #991B1B;
+    border-radius: 12px;
+    padding: 9px 10px;
+    font-size: 0.78rem;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+  }
+
+  .subscription-reminder-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .subscription-reminder-status-grid div {
+    min-width: 0;
+    border: 1px solid rgba(29, 140, 255, 0.12);
+    background: var(--sfm-card);
+    border-radius: 12px;
+    padding: 9px;
+  }
+
+  .subscription-reminder-status-grid span,
+  .subscription-reminder-failure span {
+    display: block;
+    color: var(--sfm-muted-readable);
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .subscription-reminder-status-grid strong,
+  .subscription-reminder-failure strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--sfm-foreground);
+    font-size: 0.78rem;
+    font-weight: 950;
+    overflow-wrap: anywhere;
+  }
+
+  .subscription-reminder-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .subscription-reminder-actions .subscription-secondary-btn {
+    width: 100%;
+    min-height: 42px;
+  }
+
   .subscription-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -2555,6 +3003,8 @@ const subscriptionManagerStyles = `
   .dark .subscription-client-metrics div,
   .dark .detail-row,
   .dark .subscription-reminder-mini,
+  .dark .subscription-reminder-status,
+  .dark .subscription-reminder-status-grid div,
   .dark .subscription-notification-list article,
   .dark .subscription-timeline article,
   .dark .subscription-activity-list article,
@@ -2584,6 +3034,18 @@ const subscriptionManagerStyles = `
   .dark .subscription-integration-note {
     color: #86EFAC;
     background: rgba(16, 185, 129, 0.14);
+  }
+
+  .dark .subscription-reminder-status.active {
+    background: rgba(16, 185, 129, 0.12);
+  }
+
+  .dark .subscription-reminder-status.warning,
+  .dark .subscription-reminder-missing,
+  .dark .subscription-reminder-failure {
+    color: #FCD34D;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.24);
   }
 
   @media (max-width: 1220px) {
@@ -2641,6 +3103,8 @@ const subscriptionManagerStyles = `
     .subscription-toolbar,
     .subscription-client-metrics,
     .subscription-panel-grid,
+    .subscription-reminder-status-grid,
+    .subscription-reminder-actions,
     .subscription-form-grid,
     .subscription-skeleton-grid,
     .subscription-chart-bars article {

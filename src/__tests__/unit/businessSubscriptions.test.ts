@@ -138,4 +138,45 @@ describe('business subscription management rules', () => {
       'overdue-six-days:reminder_overdue_3_days:2026-06-25',
     ]);
   });
+
+  it('uses subscription next payment date when an open payment row is missing', () => {
+    const candidates = buildReminderCandidates([
+      bundle({
+        subscription: subscription({
+          id: 'subscription-next-date',
+          next_payment_date: '2026-06-26',
+        }),
+        payments: [],
+      }),
+    ], '2026-06-25');
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].payment).toBeNull();
+    expect(candidates[0].dueDate).toBe('2026-06-26');
+    expect(candidates[0].reminderType).toBe('reminder_1_day');
+    expect(candidates[0].dedupeKey).toBe('subscription:subscription-next-date:reminder_1_day:2026-06-25');
+  });
+
+  it('does not create a subscription fallback reminder when that due date was already paid', () => {
+    const candidates = buildReminderCandidates([
+      bundle({
+        subscription: subscription({
+          id: 'subscription-paid-date',
+          next_payment_date: '2026-06-26',
+        }),
+        payments: [
+          payment({
+            id: 'paid-next-date',
+            subscription_id: 'subscription-paid-date',
+            due_date: '2026-06-26',
+            status: 'paid',
+            amount_paid: 12,
+            paid_at: '2026-06-25T10:00:00.000Z',
+          }),
+        ],
+      }),
+    ], '2026-06-25');
+
+    expect(candidates).toEqual([]);
+  });
 });

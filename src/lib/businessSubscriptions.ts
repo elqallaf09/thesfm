@@ -156,7 +156,7 @@ export type DashboardMetrics = {
 };
 
 export type ReminderCandidate = {
-  payment: PaymentRow;
+  payment: PaymentRow | null;
   client: ClientRow;
   subscription: SubscriptionRow;
   reminderType: string;
@@ -752,9 +752,10 @@ export function reminderLabel(reminderType: string, lang: SubscriptionLang) {
 export function buildReminderCandidates(bundles: ClientBundle[], baseDate = todayIso()): ReminderCandidate[] {
   return bundles.flatMap(bundle => {
     if (!bundle.subscription || normalizeSubscriptionStatus(bundle.subscription.status) !== 'active') return [];
-    return bundle.payments
+    const isReminderCandidate = (item: ReminderCandidate | null): item is ReminderCandidate => Boolean(item);
+    const openPaymentCandidates = bundle.payments
       .filter(isPaymentOpen)
-      .map(payment => {
+      .map((payment): ReminderCandidate | null => {
         const reminderType = reminderTypeForPayment(payment, baseDate);
         if (!reminderType) return null;
         const daysRemaining = daysBetween(baseDate, payment.due_date);
@@ -768,8 +769,54 @@ export function buildReminderCandidates(bundles: ClientBundle[], baseDate = toda
           dedupeKey: `${payment.id}:${reminderType}:${baseDate}`,
         };
       })
-      .filter((item): item is ReminderCandidate => Boolean(item));
+      .filter(isReminderCandidate);
+
+    const subscriptionDueDate = bundle.subscription.next_payment_date;
+    const hasAnyPaymentForNextDate = bundle.payments.some(payment =>
+      payment.subscription_id === bundle.subscription?.id &&
+      payment.due_date === subscriptionDueDate
+    );
+    const subscriptionReminderType = !hasAnyPaymentForNextDate
+      ? reminderTypeForPayment({
+        id: bundle.subscription.id,
+        user_id: bundle.subscription.user_id,
+        client_id: bundle.subscription.client_id,
+        subscription_id: bundle.subscription.id,
+        amount_due: bundle.subscription.amount,
+        amount_paid: 0,
+        currency: bundle.subscription.currency || 'KWD',
+        due_date: subscriptionDueDate,
+        paid_at: null,
+        status: 'pending',
+        notes: null,
+        created_at: bundle.subscription.created_at,
+        updated_at: bundle.subscription.updated_at,
+      }, baseDate)
+      : null;
+
+    if (!subscriptionReminderType) return openPaymentCandidates;
+
+    return [
+      ...openPaymentCandidates,
+      {
+        payment: null,
+        client: bundle.client,
+        subscription: bundle.subscription,
+        reminderType: subscriptionReminderType,
+        daysRemaining: daysBetween(baseDate, subscriptionDueDate),
+        dueDate: subscriptionDueDate,
+        dedupeKey: `subscription:${bundle.subscription.id}:${subscriptionReminderType}:${baseDate}`,
+      },
+    ];
   });
+}
+
+export function reminderCandidateAmount(candidate: ReminderCandidate) {
+  return candidate.payment?.amount_due ?? candidate.subscription.amount;
+}
+
+export function reminderCandidateCurrency(candidate: ReminderCandidate, fallback = 'KWD') {
+  return candidate.payment?.currency || candidate.subscription.currency || fallback;
 }
 
 export function clientInitials(name: string) {

@@ -110,7 +110,7 @@ function smtpConfig() {
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.CONTACT_FROM_EMAIL || user;
+  const from = process.env.SMTP_FROM || process.env.CONTACT_FROM_EMAIL || user;
 
   if (!host || !port || !user || !pass || !from) return null;
   return { host, port, user, pass, from };
@@ -124,6 +124,25 @@ function recipients(value: string | string[]) {
 
 export function isSmtpMailConfigured() {
   return Boolean(smtpConfig());
+}
+
+export function getSmtpMailConfigStatus() {
+  const required = {
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT || '587',
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM || process.env.CONTACT_FROM_EMAIL || process.env.SMTP_USER,
+  };
+
+  const missing = Object.entries(required)
+    .filter(([, value]) => !String(value ?? '').trim())
+    .map(([key]) => key);
+
+  return {
+    configured: missing.length === 0,
+    missing,
+  };
 }
 
 export async function sendSmtpMail(input: SmtpMailInput) {
