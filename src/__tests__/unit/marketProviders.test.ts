@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dedupeEconomicEvents, normalizeFmpEconomicEvent } from '@/lib/providers/economic-calendar/fmp';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
+import { toCycleIndicator } from '@/lib/providers/economic-data/common';
 import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar/finnhub';
 import { dedupeMarketNewsArticles, normalizeFinnhubNewsArticle } from '@/lib/providers/news/finnhub';
 import { getMarketNews } from '@/lib/providers/news';
@@ -260,5 +261,35 @@ describe('economic calendar provider normalization', () => {
     expect(second.cached).toBe(true);
     expect(second.data).toHaveLength(1);
     expect(second.messageCode).toBe('provider_rate_limited');
+  });
+});
+
+describe('economic cycle indicators', () => {
+  it('maps real macro indicator fields into cycle cards without fabricating values', () => {
+    const indicator = toCycleIndicator({
+      id: 'gdp',
+      country: 'United States',
+      indicator: 'Real GDP growth',
+      value: 1.8,
+      unit: '%',
+      date: '2026-06-26T00:00:00.000Z',
+      source: 'FRED (A191RL1Q225SBEA)',
+      provider: 'fred',
+      previous: 1.6,
+      forecast: null,
+      status: 'actual',
+    });
+
+    expect(indicator).toMatchObject({
+      id: 'gdp',
+      value: '1.8%',
+      source: 'FRED (A191RL1Q225SBEA)',
+      status: 'actual',
+      change: {
+        basis: 'previous',
+        basisValue: '1.6%',
+      },
+    });
+    expect(indicator.change?.delta).toBeCloseTo(0.2);
   });
 });

@@ -53,6 +53,43 @@ type NewsSort = 'latest' | 'oldest' | 'strongestMove';
 type StockSort = 'sensitivity' | 'leastVolatile' | 'momentum' | 'name' | 'sector';
 type EducationId = 'what' | 'sectors' | 'defensive' | 'cycle' | 'rates' | 'employment' | 'debt' | 'decline' | 'balance';
 type Tone = 'positive' | 'negative' | 'warning' | 'neutral' | 'info';
+type EconomicCycleIndicatorId =
+  | 'gdp'
+  | 'pmi'
+  | 'unemployment'
+  | 'confidence'
+  | 'retail'
+  | 'industrial'
+  | 'policyRate'
+  | 'yieldCurve'
+  | 'housing'
+  | 'inflation';
+type EconomicIndicatorStatus = 'actual' | 'forecast' | 'stale';
+
+type EconomicIndicatorChange = {
+  delta: number | null;
+  unit: string | null;
+  basis: 'previous' | 'forecast';
+  basisValue: string;
+};
+
+type EconomicCycleIndicator = {
+  id: EconomicCycleIndicatorId;
+  value: string;
+  change: EconomicIndicatorChange | null;
+  date: string;
+  source: string;
+  status: EconomicIndicatorStatus;
+};
+
+type EconomicCycleResponse = {
+  ok: boolean;
+  status: 'available' | 'empty' | 'error';
+  source: string | null;
+  updated_at: string | null;
+  indicators: EconomicCycleIndicator[];
+  devHint?: string;
+};
 
 type CyclicalTickerItem = {
   symbol: string;
@@ -60,6 +97,7 @@ type CyclicalTickerItem = {
   sector: string;
   price: number;
   currency: string;
+  market?: string | null;
   change: number | null;
   changePercent: number | null;
   source: string;
@@ -192,15 +230,15 @@ const COPY = {
     subtitle: 'تابع الشركات والقطاعات التي تتأثر بالنمو الاقتصادي والإنفاق الاستهلاكي، وقارن فرصها بمخاطر الدورة والتذبذب.',
     refresh: 'تحديث البيانات',
     refreshing: 'جارٍ التحديث...',
-    connected: 'بيانات السوق متصلة',
-    partial: 'بيانات جزئية',
-    delayed: 'متأخرة أو مخزنة مؤقتاً',
+    connected: 'تحديثات السوق متاحة',
+    partial: 'تحديثات محدودة',
+    delayed: 'قد تتأخر الأسعار أو تُعرض من ذاكرة مؤقتة حسب المصدر.',
     source: 'المصدر',
     unavailable: 'غير متاح',
     lastQuoteUpdate: 'آخر تحديث للأسعار',
     lastNewsUpdate: 'آخر تحديث للأخبار',
     lastMacroUpdate: 'آخر تحديث اقتصادي',
-    macroNotConnected: 'بيانات الدورة الاقتصادية المباشرة غير مربوطة حالياً.',
+    macroNotConnected: 'سيتم عرض مؤشرات الدورة الاقتصادية عند توفر بيانات موثوقة.',
     insufficientMacro: 'بيانات غير كافية',
     tabs: {
       overview: 'نظرة عامة',
@@ -214,24 +252,43 @@ const COPY = {
     economicDashboard: 'مؤشرات الدورة الاقتصادية',
     cyclePhase: 'مرحلة الدورة المحتملة',
     howPhase: 'كيف تم تحديد المرحلة؟',
-    macroUnavailableBody: 'لا يوجد مزود اقتصادي مباشر مرتبط بهذه الصفحة، لذلك لا يتم عرض قيم GDP أو PMI أو البطالة أو ثقة المستهلك كأرقام إنتاجية.',
-    macroEducationalOnly: 'تعليمي فقط',
+    macroUnavailableBody: 'سيتم عرض مؤشرات الدورة الاقتصادية عند توفر بيانات موثوقة.',
+    macroEducationalOnly: 'بانتظار البيانات',
+    macroEmptyTitle: 'مؤشرات الدورة الاقتصادية غير معروضة حالياً',
+    macroEmptyBody: 'سيتم عرض مؤشرات الدورة الاقتصادية عند توفر بيانات موثوقة ومحدثة. لا يتم عرض أرقام تقديرية أو تجريبية في هذه الصفحة.',
+    macroErrorTitle: 'تعذر تحديث مؤشرات الدورة الاقتصادية الآن',
+    macroDevHintLabel: 'ملاحظة للمطور',
+    macroRetry: 'إعادة تحديث المؤشرات',
+    macroLoading: 'جاري تحميل مؤشرات الدورة الاقتصادية...',
+    macroAvailableOnly: 'تظهر المؤشرات المتاحة من مصادر موثوقة فقط.',
+    macroDate: 'تاريخ القراءة',
+    macroStatus: 'الحالة',
+    macroChangePrevious: 'مقارنة بالقراءة السابقة',
+    macroChangeForecast: 'مقارنة بالتوقع',
+    macroStatusActual: 'قراءة فعلية',
+    macroStatusForecast: 'توقع منشور',
+    macroStatusStale: 'آخر قراءة محفوظة',
     risingStocks: 'أسهم مرتفعة',
     fallingStocks: 'أسهم منخفضة',
+    topGainers: 'الأعلى ارتفاعاً',
+    topLosers: 'الأكثر انخفاضاً',
+    highestVolume: 'الأعلى تداولاً',
+    moversUnavailable: 'لا توجد حركة كافية لعرض الرابحين والخاسرين حالياً.',
+    noMoverGroupData: 'لا توجد بيانات كافية لهذا التصنيف.',
     bestSector: 'أفضل قطاع متاح',
     strongestMover: 'أقوى حركة',
     highestVolatility: 'أعلى تذبذب يومي',
     trackedStocks: 'أسهم مراقبة',
     comparisonTitle: 'مقارنة الأداء المتاح',
-    comparisonDescription: 'يعرض الرسم الحركة اليومية المتاحة فقط من مزود الأسعار. البيانات التاريخية غير متاحة لهذا المحور حالياً.',
+    comparisonDescription: 'يعرض الرسم الحركة اليومية المتاحة فقط. البيانات التاريخية غير متاحة لهذا المحور حالياً.',
     historicalUnavailable: 'البيانات التاريخية غير متاحة حالياً.',
     highlightedTitle: 'أسهم دورية بارزة',
-    highlightedDescription: 'عرض موجز لأبرز الأسهم المتاحة من مزود الأسعار. القائمة الكاملة في تبويب الأسهم الدورية.',
+    highlightedDescription: 'عرض موجز لأبرز الأسهم الدورية المتاحة. القائمة الكاملة في تبويب الأسهم الدورية.',
     viewAllStocks: 'عرض جميع الأسهم',
     educationPreview: 'دليل الأسهم الدورية',
     educationPreviewBody: 'بطاقات تعليمية مختصرة ومغلقة افتراضياً حتى تبقى الصفحة سهلة التصفح.',
     stocksTitle: 'مستكشف الأسهم الدورية',
-    stocksDescription: 'جدول بحث وفرز للأسهم الدورية المتاحة. القيم غير المتوفرة من المزود تظهر بوضوح ولا تتحول إلى صفر.',
+    stocksDescription: 'بطاقات بحث وفرز للأسهم الدورية المتاحة مع السعر، التغير اليومي، السوق، والعملة.',
     search: 'البحث',
     searchPlaceholder: 'ابحث عن شركة أو رمز أو قطاع...',
     sector: 'القطاع',
@@ -244,6 +301,10 @@ const COPY = {
     symbol: 'الرمز',
     currentPrice: 'السعر الحالي',
     change: 'التغير',
+    dailyChange: 'التغير اليومي',
+    market: 'السوق',
+    currency: 'العملة',
+    usMarket: 'السوق الأمريكية',
     beta: 'Beta',
     volatility: 'التذبذب',
     drawdown: 'أعلى هبوط',
@@ -297,7 +358,7 @@ const COPY = {
     sectorPerformance: 'أداء القطاع المتاح',
     mainDrivers: 'محركات القطاع',
     economicCycleTitle: 'تحليل الدورة الاقتصادية',
-    economicCycleDescription: 'مساحة شفافة لربط الأسهم الدورية بالمؤشرات الاقتصادية. عندما يتم ربط مزود Macro موثوق ستظهر القيم والتفسيرات هنا.',
+    economicCycleDescription: 'تربط هذه المساحة الأسهم الدورية بالمؤشرات الاقتصادية عند توفر بيانات موثوقة وحديثة.',
     phaseRecovery: 'تعافٍ',
     phaseExpansion: 'توسع',
     phasePeak: 'ذروة',
@@ -314,6 +375,7 @@ const COPY = {
       policyRate: 'سعر الفائدة',
       yieldCurve: 'منحنى العائد',
       housing: 'نشاط الإسكان',
+      inflation: 'التضخم / مؤشر أسعار المستهلك',
     },
     educationCards: {
       what: 'ما هي الأسهم الدورية؟',
@@ -346,15 +408,15 @@ const COPY = {
     subtitle: 'Track companies and sectors tied to economic growth and consumer spending, while separating opportunity from cycle and volatility risk.',
     refresh: 'Refresh data',
     refreshing: 'Refreshing...',
-    connected: 'Market data connected',
-    partial: 'Partial data',
-    delayed: 'Delayed or cached',
+    connected: 'Market updates available',
+    partial: 'Limited updates',
+    delayed: 'Quotes may be delayed or cached by source.',
     source: 'Source',
     unavailable: 'Unavailable',
     lastQuoteUpdate: 'Last quote update',
     lastNewsUpdate: 'Last news update',
     lastMacroUpdate: 'Last macro update',
-    macroNotConnected: 'Live economic-cycle data is not connected yet.',
+    macroNotConnected: 'Economic-cycle indicators will appear when reliable data is available.',
     insufficientMacro: 'Insufficient data',
     tabs: {
       overview: 'Overview',
@@ -368,24 +430,43 @@ const COPY = {
     economicDashboard: 'Economic-cycle indicators',
     cyclePhase: 'Potential cycle phase',
     howPhase: 'How was the phase determined?',
-    macroUnavailableBody: 'No live macro provider is connected to this page, so GDP, PMI, unemployment, or confidence are not shown as production values.',
-    macroEducationalOnly: 'Educational only',
+    macroUnavailableBody: 'Economic-cycle indicators will appear when reliable data is available.',
+    macroEducationalOnly: 'Awaiting data',
+    macroEmptyTitle: 'Economic-cycle indicators are not shown right now',
+    macroEmptyBody: 'Economic-cycle indicators will appear when reliable and current data is available. Estimated or demo numbers are not displayed on this page.',
+    macroErrorTitle: 'Economic-cycle indicators could not be refreshed',
+    macroDevHintLabel: 'Developer note',
+    macroRetry: 'Refresh indicators',
+    macroLoading: 'Loading economic-cycle indicators...',
+    macroAvailableOnly: 'Only indicators available from reliable sources are shown.',
+    macroDate: 'Reading date',
+    macroStatus: 'Status',
+    macroChangePrevious: 'Versus previous reading',
+    macroChangeForecast: 'Versus forecast',
+    macroStatusActual: 'Actual reading',
+    macroStatusForecast: 'Published forecast',
+    macroStatusStale: 'Last saved reading',
     risingStocks: 'Rising stocks',
     fallingStocks: 'Falling stocks',
+    topGainers: 'Top gainers',
+    topLosers: 'Top losers',
+    highestVolume: 'Most traded',
+    moversUnavailable: 'There is not enough movement data to show gainers and losers right now.',
+    noMoverGroupData: 'Not enough data for this ranking.',
     bestSector: 'Best available sector',
     strongestMover: 'Strongest move',
     highestVolatility: 'Highest daily volatility',
     trackedStocks: 'Tracked stocks',
     comparisonTitle: 'Available performance comparison',
-    comparisonDescription: 'The chart uses only current daily change from the quote provider. Historical data is not available here yet.',
+    comparisonDescription: 'The chart uses only current daily change from available quotes. Historical data is not available here yet.',
     historicalUnavailable: 'Historical data is unavailable right now.',
     highlightedTitle: 'Highlighted cyclical stocks',
-    highlightedDescription: 'A concise view of available quote-provider stocks. The complete list is in the cyclical stocks tab.',
+    highlightedDescription: 'A concise view of available cyclical stocks. The complete list is in the cyclical stocks tab.',
     viewAllStocks: 'View all stocks',
     educationPreview: 'Cyclical stocks guide',
     educationPreviewBody: 'Short educational cards start collapsed to keep the page compact.',
     stocksTitle: 'Cyclical stock screener',
-    stocksDescription: 'Search and sort available cyclical stocks. Missing provider fields are shown clearly and never converted to zero.',
+    stocksDescription: 'Search and sort available cyclical stocks with price, daily change, market, and currency.',
     search: 'Search',
     searchPlaceholder: 'Search company, symbol, or sector...',
     sector: 'Sector',
@@ -398,6 +479,10 @@ const COPY = {
     symbol: 'Symbol',
     currentPrice: 'Current price',
     change: 'Change',
+    dailyChange: 'Daily change',
+    market: 'Market',
+    currency: 'Currency',
+    usMarket: 'US market',
     beta: 'Beta',
     volatility: 'Volatility',
     drawdown: 'Max drawdown',
@@ -451,7 +536,7 @@ const COPY = {
     sectorPerformance: 'Available sector performance',
     mainDrivers: 'Sector drivers',
     economicCycleTitle: 'Economic-cycle analysis',
-    economicCycleDescription: 'A transparent area for connecting cyclical stocks to macro indicators. Values will appear when a trusted macro provider is connected.',
+    economicCycleDescription: 'This area connects cyclical stocks to economic indicators when reliable and current data is available.',
     phaseRecovery: 'Recovery',
     phaseExpansion: 'Expansion',
     phasePeak: 'Peak',
@@ -468,6 +553,7 @@ const COPY = {
       policyRate: 'Policy rate',
       yieldCurve: 'Yield curve',
       housing: 'Housing activity',
+      inflation: 'Inflation / CPI',
     },
     educationCards: {
       what: 'What are cyclical stocks?',
@@ -500,15 +586,15 @@ const COPY = {
     subtitle: 'Suivez les sociétés et secteurs liés à la croissance économique et aux dépenses des consommateurs, en séparant opportunité, cycle et volatilité.',
     refresh: 'Actualiser',
     refreshing: 'Actualisation...',
-    connected: 'Données de marché connectées',
-    partial: 'Données partielles',
-    delayed: 'Retardées ou mises en cache',
+    connected: 'Mises à jour de marché disponibles',
+    partial: 'Mises à jour limitées',
+    delayed: 'Les cours peuvent être retardés ou mis en cache selon la source.',
     source: 'Source',
     unavailable: 'Indisponible',
     lastQuoteUpdate: 'Dernière mise à jour des cours',
     lastNewsUpdate: 'Dernière mise à jour des actualités',
     lastMacroUpdate: 'Dernière mise à jour macro',
-    macroNotConnected: 'Les données directes du cycle économique ne sont pas encore connectées.',
+    macroNotConnected: 'Les indicateurs du cycle économique apparaîtront lorsque des données fiables seront disponibles.',
     insufficientMacro: 'Données insuffisantes',
     tabs: {
       overview: 'Aperçu',
@@ -522,10 +608,29 @@ const COPY = {
     economicDashboard: 'Indicateurs du cycle économique',
     cyclePhase: 'Phase potentielle du cycle',
     howPhase: 'Comment la phase est-elle déterminée ?',
-    macroUnavailableBody: 'Aucun fournisseur macro direct n’est connecté à cette page. Les valeurs GDP, PMI, chômage ou confiance ne sont donc pas affichées comme données de production.',
-    macroEducationalOnly: 'Éducatif seulement',
+    macroUnavailableBody: 'Les indicateurs du cycle économique apparaîtront lorsque des données fiables seront disponibles.',
+    macroEducationalOnly: 'En attente de données',
+    macroEmptyTitle: 'Les indicateurs du cycle économique ne sont pas affichés actuellement',
+    macroEmptyBody: 'Les indicateurs du cycle économique apparaîtront lorsque des données fiables et récentes seront disponibles. Aucun chiffre estimé ou de démonstration n’est affiché sur cette page.',
+    macroErrorTitle: 'Les indicateurs du cycle économique n’ont pas pu être actualisés',
+    macroDevHintLabel: 'Note développeur',
+    macroRetry: 'Actualiser les indicateurs',
+    macroLoading: 'Chargement des indicateurs du cycle économique...',
+    macroAvailableOnly: 'Seuls les indicateurs disponibles depuis des sources fiables sont affichés.',
+    macroDate: 'Date de lecture',
+    macroStatus: 'Statut',
+    macroChangePrevious: 'Par rapport à la lecture précédente',
+    macroChangeForecast: 'Par rapport à la prévision',
+    macroStatusActual: 'Lecture réelle',
+    macroStatusForecast: 'Prévision publiée',
+    macroStatusStale: 'Dernière lecture enregistrée',
     risingStocks: 'Actions en hausse',
     fallingStocks: 'Actions en baisse',
+    topGainers: 'Plus fortes hausses',
+    topLosers: 'Plus fortes baisses',
+    highestVolume: 'Plus échangées',
+    moversUnavailable: 'Les données de mouvement sont insuffisantes pour afficher les hausses et baisses actuellement.',
+    noMoverGroupData: 'Données insuffisantes pour ce classement.',
     bestSector: 'Meilleur secteur disponible',
     strongestMover: 'Plus forte variation',
     highestVolatility: 'Plus forte volatilité journalière',
@@ -534,12 +639,12 @@ const COPY = {
     comparisonDescription: 'Le graphique utilise uniquement la variation journalière disponible. Les données historiques ne sont pas disponibles ici.',
     historicalUnavailable: 'Les données historiques sont indisponibles.',
     highlightedTitle: 'Actions cycliques en évidence',
-    highlightedDescription: 'Vue concise des actions disponibles via le fournisseur de cours. La liste complète se trouve dans l’onglet actions.',
+    highlightedDescription: 'Vue concise des actions cycliques disponibles. La liste complète se trouve dans l’onglet actions.',
     viewAllStocks: 'Voir toutes les actions',
     educationPreview: 'Guide des actions cycliques',
     educationPreviewBody: 'Des cartes éducatives courtes sont fermées par défaut pour garder la page compacte.',
     stocksTitle: 'Screener des actions cycliques',
-    stocksDescription: 'Recherchez et triez les actions disponibles. Les champs manquants sont signalés clairement et jamais convertis en zéro.',
+    stocksDescription: 'Recherchez et triez les actions cycliques disponibles avec cours, variation journalière, marché et devise.',
     search: 'Recherche',
     searchPlaceholder: 'Rechercher une société, un symbole ou un secteur...',
     sector: 'Secteur',
@@ -552,6 +657,10 @@ const COPY = {
     symbol: 'Symbole',
     currentPrice: 'Cours actuel',
     change: 'Variation',
+    dailyChange: 'Variation journalière',
+    market: 'Marché',
+    currency: 'Devise',
+    usMarket: 'Marché américain',
     beta: 'Beta',
     volatility: 'Volatilité',
     drawdown: 'Drawdown max',
@@ -605,7 +714,7 @@ const COPY = {
     sectorPerformance: 'Performance sectorielle disponible',
     mainDrivers: 'Moteurs du secteur',
     economicCycleTitle: 'Analyse du cycle économique',
-    economicCycleDescription: 'Espace transparent reliant les actions cycliques aux indicateurs macro. Les valeurs apparaîtront lorsqu’un fournisseur macro fiable sera connecté.',
+    economicCycleDescription: 'Cet espace relie les actions cycliques aux indicateurs économiques lorsque des données fiables et récentes sont disponibles.',
     phaseRecovery: 'Reprise',
     phaseExpansion: 'Expansion',
     phasePeak: 'Pic',
@@ -622,6 +731,7 @@ const COPY = {
       policyRate: 'Taux directeur',
       yieldCurve: 'Courbe des taux',
       housing: 'Logement',
+      inflation: 'Inflation / IPC',
     },
     educationCards: {
       what: 'Que sont les actions cycliques ?',
@@ -842,6 +952,45 @@ function formatPercent(value: number | null | undefined, lang: LangCode, digits 
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(value)}%`;
+}
+
+function formatSignedValue(value: number | null, unit: string | null, lang: LangCode, digits = 2) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const sign = value > 0 ? '+' : '';
+  const formatted = new Intl.NumberFormat(localeFor(lang), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+  const normalizedUnit = unit?.trim();
+  const suffix = !normalizedUnit ? '' : normalizedUnit === '%' ? '%' : ` ${normalizedUnit}`;
+  return `${sign}${formatted}${suffix}`;
+}
+
+function formatIndicatorChange(change: EconomicIndicatorChange | null, text: typeof COPY[LangCode], lang: LangCode) {
+  if (!change) return '';
+  const basis = change.basis === 'previous' ? text.macroChangePrevious : text.macroChangeForecast;
+  const delta = formatSignedValue(change.delta, change.unit, lang);
+  return delta ? `${delta} · ${basis}` : `${basis}: ${change.basisValue}`;
+}
+
+function macroStatusLabel(status: EconomicIndicatorStatus, text: typeof COPY[LangCode]) {
+  if (status === 'stale') return text.macroStatusStale;
+  if (status === 'forecast') return text.macroStatusForecast;
+  return text.macroStatusActual;
+}
+
+function macroStatusTone(status: EconomicIndicatorStatus): Tone {
+  if (status === 'forecast') return 'warning';
+  if (status === 'stale') return 'info';
+  return 'positive';
+}
+
+function stockMarketLabel(row: CyclicalStockRow, text: typeof COPY[LangCode]) {
+  return row.market?.trim() || text.usMarket;
+}
+
+function analysisHref(symbol: string) {
+  return `/market-analysis?symbol=${encodeURIComponent(symbol)}`;
 }
 
 function formatDateTime(value: string | null | undefined, lang: LangCode) {
@@ -1179,32 +1328,84 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loadin
   );
 }
 
-function EconomicCycleDashboard({ text, lang, compact = false }: { text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
-  const macroKeys = Object.keys(text.macroIndicators) as Array<keyof typeof text.macroIndicators>;
+function MacroEmptyState({ text, macro, onRefresh }: {
+  text: typeof COPY[LangCode];
+  macro: EconomicCycleResponse | null;
+  onRefresh: () => void;
+}) {
+  const isError = macro?.status === 'error';
   return (
-    <section className="panel">
+    <div className="macro-empty">
+      <StateBox
+        icon={isError ? AlertTriangle : BarChart3}
+        title={isError ? text.macroErrorTitle : text.macroEmptyTitle}
+        body={text.macroEmptyBody}
+        actionLabel={text.macroRetry}
+        onAction={onRefresh}
+        tone={isError ? 'warning' : 'info'}
+      />
+      {process.env.NODE_ENV !== 'production' && macro?.devHint ? (
+        <p className="dev-hint">
+          <strong>{text.macroDevHintLabel}: </strong>
+          {macro.devHint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function EconomicCycleDashboard({
+  text,
+  lang,
+  macro,
+  loading,
+  compact = false,
+  onRefresh,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  macro: EconomicCycleResponse | null;
+  loading: boolean;
+  compact?: boolean;
+  onRefresh: () => void;
+}) {
+  const indicators = macro?.indicators ?? [];
+  return (
+    <section className="panel macro-panel">
       <SectionHeader
         icon={BarChart3}
         title={text.economicDashboard}
-        description={compact ? text.macroNotConnected : text.economicCycleDescription}
+        description={indicators.length ? text.macroAvailableOnly : compact ? text.macroNotConnected : text.economicCycleDescription}
       />
-      <div className="cycle-phase">
-        <div>
-          <span className="phase-label">{text.cyclePhase}</span>
-          <strong>{text.phaseInsufficient}</strong>
-          <p>{text.macroUnavailableBody}</p>
+      {loading ? (
+        <StateBox icon={BarChart3} title={text.macroLoading} body={text.macroUnavailableBody} tone="info" />
+      ) : indicators.length ? (
+        <div className="macro-grid">
+          {indicators.map(indicator => {
+            const change = formatIndicatorChange(indicator.change, text, lang);
+            return (
+              <article className="macro-item" key={indicator.id}>
+                <div className="macro-item-head">
+                  <span>{text.macroIndicators[indicator.id]}</span>
+                  <ToneBadge tone={macroStatusTone(indicator.status)}>{macroStatusLabel(indicator.status, text)}</ToneBadge>
+                </div>
+                <strong dir="ltr">{indicator.value}</strong>
+                {change ? <small>{change}</small> : null}
+                <div className="macro-detail-row">
+                  <span>{text.macroDate}</span>
+                  <b>{formatDateTime(indicator.date, lang)}</b>
+                </div>
+                <div className="macro-detail-row">
+                  <span>{text.source}</span>
+                  <b>{indicator.source}</b>
+                </div>
+              </article>
+            );
+          })}
         </div>
-        <ToneBadge tone="warning">{text.macroEducationalOnly}</ToneBadge>
-      </div>
-      <div className="macro-grid">
-        {macroKeys.map(key => (
-          <div className="macro-item" key={key}>
-            <span>{text.macroIndicators[key]}</span>
-            <strong>{text.unavailable}</strong>
-            <small>{text.macroNotConnected}</small>
-          </div>
-        ))}
-      </div>
+      ) : (
+        <MacroEmptyState text={text} macro={macro} onRefresh={onRefresh} />
+      )}
     </section>
   );
 }
@@ -1332,19 +1533,24 @@ function EducationGuide({ text, open, toggle, preview = false }: {
   );
 }
 
-function OverviewTab({ text, lang, rows, stats, movers, openGuide, toggleGuide, onViewAllStocks }: {
+function OverviewTab({ text, lang, rows, stats, movers, macro, macroLoading, refreshMacro, openGuide, toggleGuide, onViewAllStocks }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
   rows: CyclicalStockRow[];
   stats: SectorStat[];
   movers: StockCategoryMoversResponse | null;
+  macro: EconomicCycleResponse | null;
+  macroLoading: boolean;
+  refreshMacro: () => void;
   openGuide: EducationId[];
   toggleGuide: (id: EducationId) => void;
   onViewAllStocks: () => void;
 }) {
   return (
     <div className="tab-stack">
-      <EconomicCycleDashboard text={text} lang={lang} compact />
+      {macroLoading || (macro?.indicators.length ?? 0) > 0 ? (
+        <EconomicCycleDashboard text={text} lang={lang} macro={macro} loading={macroLoading} compact onRefresh={refreshMacro} />
+      ) : null}
       <SummaryCards text={text} lang={lang} rows={rows} stats={stats} />
       <div className="overview-grid">
         <ComparisonChart rows={rows} text={text} lang={lang} />
@@ -1364,19 +1570,30 @@ function MoversPanel({ movers, text, lang }: {
   const gainers = movers?.ok ? movers.data.topGainers : [];
   const losers = movers?.ok ? movers.data.topLosers : [];
   const volume = movers?.ok ? movers.data.highestVolume : [];
+  const hasRows = gainers.length > 0 || losers.length > 0 || volume.length > 0;
   return (
     <section className="panel">
-      <SectionHeader icon={TrendingUp} title={text.strongestMover} description={movers?.ok ? `${text.source}: ${movers.source}` : text.providerError} />
-      <div className="mover-tabs">
-        <MoverList title={text.risingStocks} items={gainers} lang={lang} tone="positive" />
-        <MoverList title={text.fallingStocks} items={losers} lang={lang} tone="negative" />
-        <MoverList title={text.trackedStocks} items={volume} lang={lang} tone="info" />
-      </div>
+      <SectionHeader icon={TrendingUp} title={text.strongestMover} description={movers?.ok ? `${text.source}: ${movers.source}` : text.moversUnavailable} />
+      {hasRows ? (
+        <div className="mover-tabs">
+          <MoverList title={text.topGainers} items={gainers} text={text} lang={lang} tone="positive" />
+          <MoverList title={text.topLosers} items={losers} text={text} lang={lang} tone="negative" />
+          <MoverList title={text.highestVolume} items={volume} text={text} lang={lang} tone="info" />
+        </div>
+      ) : (
+        <StateBox icon={Info} title={text.moversUnavailable} tone="info" />
+      )}
     </section>
   );
 }
 
-function MoverList({ title, items, lang, tone }: { title: string; items: StockCategoryMoverItem[]; lang: LangCode; tone: Tone }) {
+function MoverList({ title, items, text, lang, tone }: {
+  title: string;
+  items: StockCategoryMoverItem[];
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  tone: Tone;
+}) {
   return (
     <div className="mover-list">
       <h3>{title}</h3>
@@ -1388,9 +1605,12 @@ function MoverList({ title, items, lang, tone }: { title: string; items: StockCa
             <strong dir="ltr">{item.symbol}</strong>
             <small>{item.name}</small>
           </div>
-          <ToneBadge tone={tone}>{formatPercent(item.changePercent, lang)}</ToneBadge>
+          <div className="mover-values">
+            <b dir="ltr">{formatCurrency(item.price, item.currency, lang)}</b>
+            <ToneBadge tone={tone}>{formatPercent(item.changePercent, lang)}</ToneBadge>
+          </div>
         </div>
-      )) : <small className="muted">{COPY[lang].unavailable}</small>}
+      )) : <p className="muted">{text.noMoverGroupData}</p>}
     </div>
   );
 }
@@ -1418,7 +1638,7 @@ function StockCard({ row, text, lang, compact = false }: {
           <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
         </div>
         <div>
-          <small>{text.change}</small>
+          <small>{text.dailyChange}</small>
           <b dir="ltr" className={`num-${changeTone}`}>{formatPercent(row.changePercent, lang)}</b>
         </div>
         <div>
@@ -1426,8 +1646,16 @@ function StockCard({ row, text, lang, compact = false }: {
           <b>{row.sectorLabel}</b>
         </div>
         <div>
-          <small>{text.economicSensitivity}</small>
-          <b>{text.notEnoughFundamentals}</b>
+          <small>{text.market}</small>
+          <b>{stockMarketLabel(row, text)}</b>
+        </div>
+        <div>
+          <small>{text.currency}</small>
+          <b dir="ltr">{row.currency}</b>
+        </div>
+        <div>
+          <small>{text.source}</small>
+          <b>{row.source}</b>
         </div>
       </div>
       {!compact ? (
@@ -1437,8 +1665,10 @@ function StockCard({ row, text, lang, compact = false }: {
         </div>
       ) : null}
       <div className="stock-actions">
-        <button type="button">{text.viewAnalysis}</button>
-        <button type="button" className="secondary">{text.compare}</button>
+        <a href={analysisHref(row.symbol)}>
+          <ArrowUpRight size={16} />
+          {text.viewAnalysis}
+        </a>
       </div>
     </article>
   );
@@ -1499,61 +1729,16 @@ function StocksTab({
           {hasActiveFilters ? <button type="button" onClick={reset}>{text.clearFilters}</button> : null}
         </div>
         {rows.length ? (
-          <>
-            <div className="stock-table-wrap">
-              <table className="stock-table">
-                <thead>
-                  <tr>
-                    <th>{text.company}</th>
-                    <th>{text.sector}</th>
-                    <th>{text.currentPrice}</th>
-                    <th>{text.change}</th>
-                    <th>{text.beta}</th>
-                    <th>{text.debtToEbitda}</th>
-                    <th>{text.economicSensitivity}</th>
-                    <th>{text.portfolioStatus}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(row => (
-                    <tr key={row.symbol}>
-                      <td>
-                        <div className="company-cell">
-                          <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
-                          <div>
-                            <strong>{row.name}</strong>
-                            <span dir="ltr">{row.symbol}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{row.sectorLabel}</td>
-                      <td dir="ltr">{formatCurrency(row.price, row.currency, lang)}</td>
-                      <td dir="ltr" className={(row.changePercent ?? 0) >= 0 ? 'num-positive' : 'num-negative'}>{formatPercent(row.changePercent, lang)}</td>
-                      <td>{text.unavailable}</td>
-                      <td>{text.unavailable}</td>
-                      <td><ToneBadge tone={row.sensitivityTone}>{row.sectorSensitivity}</ToneBadge></td>
-                      <td>{text.unavailable}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="stock-mobile-grid">
-              {rows.map(row => <StockCard key={`mobile-${row.symbol}`} row={row} text={text} lang={lang} />)}
-            </div>
-          </>
+          <div className="stock-card-grid stock-results-grid">
+            {rows.map(row => <StockCard key={row.symbol} row={row} text={text} lang={lang} />)}
+          </div>
         ) : (
           <StateBox icon={Search} title={text.noStockResults} actionLabel={text.clearFilters} onAction={reset} />
         )}
       </section>
       <section className="panel">
         <SectionHeader icon={Info} title={text.howPhase} description={text.sensitivityMethodology} />
-        <div className="method-grid">
-          {[text.beta, text.revenueGrowth, text.earningsGrowth, text.drawdown, text.netDebt, text.interestCoverage].map(item => (
-            <span key={item}>{item}: {text.unavailable}</span>
-          ))}
-        </div>
-        <p className="muted paragraph">{allRows.length ? text.notEnoughFundamentals : text.providerError}</p>
+        <p className="muted paragraph">{allRows.length ? text.sensitivityMethodology : text.providerError}</p>
       </section>
     </div>
   );
@@ -1803,22 +1988,30 @@ function SectorsTab({ text, lang, stats }: { text: typeof COPY[LangCode]; lang: 
       <div className="sector-grid">
         {stats.map(stat => {
           const Icon = stat.icon;
+          const performanceTone = (stat.averageChange ?? 0) > 0 ? 'positive' : (stat.averageChange ?? 0) < 0 ? 'negative' : 'neutral';
           return (
             <article className="sector-card" key={stat.id}>
               <div className="sector-head">
-                <span><Icon size={19} /></span>
+                <span className="sector-icon"><Icon size={19} /></span>
                 <div>
                   <h3>{stat.label[lang]}</h3>
                   <p>{stat.description[lang]}</p>
                 </div>
+                <ToneBadge tone={performanceTone}>{formatPercent(stat.averageChange, lang)}</ToneBadge>
               </div>
-              <div className="sector-stat-row">
-                <span>{text.trackedStocks}</span>
-                <strong>{formatNumber(stat.count, lang)}</strong>
-              </div>
-              <div className="sector-stat-row">
-                <span>{text.sectorPerformance}</span>
-                <strong dir="ltr">{formatPercent(stat.averageChange, lang)}</strong>
+              <div className="sector-stat-grid">
+                <div className="sector-stat-row">
+                  <span>{text.trackedStocks}</span>
+                  <strong>{formatNumber(stat.count, lang)}</strong>
+                </div>
+                <div className="sector-stat-row">
+                  <span>{text.risingStocks}</span>
+                  <strong>{formatNumber(stat.rising, lang)}</strong>
+                </div>
+                <div className="sector-stat-row">
+                  <span>{text.fallingStocks}</span>
+                  <strong>{formatNumber(stat.falling, lang)}</strong>
+                </div>
               </div>
               <div className="sector-drivers">
                 <strong>{text.mainDrivers}</strong>
@@ -1832,15 +2025,18 @@ function SectorsTab({ text, lang, stats }: { text: typeof COPY[LangCode]; lang: 
   );
 }
 
-function EconomicCycleTab({ text, lang, openGuide, toggleGuide }: {
+function EconomicCycleTab({ text, lang, macro, macroLoading, refreshMacro, openGuide, toggleGuide }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
+  macro: EconomicCycleResponse | null;
+  macroLoading: boolean;
+  refreshMacro: () => void;
   openGuide: EducationId[];
   toggleGuide: (id: EducationId) => void;
 }) {
   return (
     <div className="tab-stack">
-      <EconomicCycleDashboard text={text} lang={lang} />
+      <EconomicCycleDashboard text={text} lang={lang} macro={macro} loading={macroLoading} onRefresh={refreshMacro} />
       <EducationGuide text={text} open={openGuide} toggle={toggleGuide} />
     </div>
   );
@@ -1856,7 +2052,9 @@ export function CyclicalStocksNewsPage() {
   const [ticker, setTicker] = useState<CyclicalTickerResponse | null>(null);
   const [news, setNews] = useState<CyclicalNewsResponse | null>(null);
   const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
+  const [macro, setMacro] = useState<EconomicCycleResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [macroLoading, setMacroLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [stockSearch, setStockSearch] = useState(initialState.stockSearch);
@@ -1933,12 +2131,15 @@ export function CyclicalStocksNewsPage() {
   const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') setLoading(true);
     else setRefreshing(true);
+    setMacroLoading(true);
     setError('');
 
-    const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
+    const macroUrl = `/api/cyclical-stocks/economic-cycle${mode === 'refresh' ? '?refresh=1' : ''}`;
+    const [tickerResult, newsResult, moversResult, macroResult] = await Promise.allSettled([
       fetchJson<CyclicalTickerResponse>('/api/cyclical-stocks/ticker'),
       fetchJson<CyclicalNewsResponse>(`/api/cyclical-stocks/news?lang=${encodeURIComponent(activeLang)}&limit=72`),
       fetchJson<StockCategoryMoversResponse>('/api/cyclical-stocks/movers?limit=5'),
+      fetchJson<EconomicCycleResponse>(macroUrl),
     ]);
 
     if (tickerResult.status === 'fulfilled') setTicker(tickerResult.value);
@@ -1950,8 +2151,21 @@ export function CyclicalStocksNewsPage() {
     if (moversResult.status === 'fulfilled') setMovers(moversResult.value);
     else setMovers(null);
 
+    if (macroResult.status === 'fulfilled') {
+      setMacro(macroResult.value);
+    } else {
+      setMacro({
+        ok: false,
+        status: 'error',
+        source: null,
+        updated_at: null,
+        indicators: [],
+      });
+    }
+
     if (tickerResult.status === 'rejected' || newsResult.status === 'rejected') setError(text.providerError);
     setLoading(false);
+    setMacroLoading(false);
     setRefreshing(false);
   }, [activeLang, text.providerError]);
 
@@ -2018,7 +2232,8 @@ export function CyclicalStocksNewsPage() {
 
   const lastQuoteUpdate = ticker?.ok ? ticker.updated_at : null;
   const lastNewsUpdate = news?.success ? news.lastUpdated : null;
-  const lastUpdate = newestTimestamp([lastQuoteUpdate, lastNewsUpdate, movers?.ok ? movers.updated_at : null]);
+  const lastMacroUpdate = macro?.updated_at ?? null;
+  const lastUpdate = newestTimestamp([lastQuoteUpdate, lastNewsUpdate, lastMacroUpdate, movers?.ok ? movers.updated_at : null]);
 
   const resetStockFilters = () => {
     setStockSearch('');
@@ -2064,7 +2279,7 @@ export function CyclicalStocksNewsPage() {
               <div className="hero-meta">
                 <span><Clock3 size={15} />{text.lastQuoteUpdate}: {formatDateTime(lastQuoteUpdate, activeLang)}</span>
                 <span><Newspaper size={15} />{text.lastNewsUpdate}: {formatDateTime(lastNewsUpdate, activeLang)}</span>
-                <span><BarChart3 size={15} />{text.lastMacroUpdate}: {text.unavailable}</span>
+                <span><BarChart3 size={15} />{text.lastMacroUpdate}: {lastMacroUpdate ? formatDateTime(lastMacroUpdate, activeLang) : text.macroEducationalOnly}</span>
               </div>
             </div>
             <div className="hero-panel">
@@ -2112,6 +2327,9 @@ export function CyclicalStocksNewsPage() {
               rows={stockRows}
               stats={sectorStats}
               movers={movers}
+              macro={macro}
+              macroLoading={macroLoading}
+              refreshMacro={() => void loadData('refresh')}
               openGuide={openGuide}
               toggleGuide={toggleGuide}
               onViewAllStocks={() => selectTab('stocks')}
@@ -2168,7 +2386,15 @@ export function CyclicalStocksNewsPage() {
           {!loading && tab === 'sectors' ? <SectorsTab text={text} lang={activeLang} stats={sectorStats} /> : null}
 
           {!loading && tab === 'economic-cycle' ? (
-            <EconomicCycleTab text={text} lang={activeLang} openGuide={openGuide} toggleGuide={toggleGuide} />
+            <EconomicCycleTab
+              text={text}
+              lang={activeLang}
+              macro={macro}
+              macroLoading={macroLoading}
+              refreshMacro={() => void loadData('refresh')}
+              openGuide={openGuide}
+              toggleGuide={toggleGuide}
+            />
           ) : null}
 
           <footer className="footer-note">
@@ -2183,19 +2409,29 @@ export function CyclicalStocksNewsPage() {
 
       <style jsx global>{`
         .page {
+          --cyc-ink: #122033;
+          --cyc-muted: #587084;
+          --cyc-line: rgba(29, 64, 95, 0.13);
+          --cyc-panel: rgba(255, 255, 255, 0.9);
+          --cyc-panel-strong: #ffffff;
+          --cyc-soft: #f4f9fd;
+          --cyc-blue: #1669b2;
+          --cyc-cyan: #19b8c9;
+          --cyc-gold: #c9953f;
+          --cyc-shadow: 0 18px 42px rgba(18, 48, 78, 0.09);
           min-height: 100dvh;
           width: 100%;
           overflow-x: clip;
           background:
-            radial-gradient(circle at top left, rgba(30, 184, 214, 0.13), transparent 34rem),
-            linear-gradient(180deg, #f5fbff 0%, #edf7ff 48%, #f8fbff 100%);
-          color: #10233d;
+            linear-gradient(135deg, rgba(22, 105, 178, 0.1), transparent 32rem),
+            linear-gradient(180deg, #f8fbfd 0%, #eef6fb 45%, #fbfdff 100%);
+          color: var(--cyc-ink);
         }
         .main {
           box-sizing: border-box;
           width: 100%;
           min-width: 0;
-          padding: 24px clamp(16px, 2vw, 32px) 56px;
+          padding: 22px clamp(16px, 2.2vw, 34px) 56px;
           padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
         }
         :global([dir="ltr"]) .main {
@@ -2204,26 +2440,43 @@ export function CyclicalStocksNewsPage() {
         }
         .container {
           width: 100%;
-          max-width: 1500px;
+          max-width: 1540px;
           margin-inline: auto;
           display: grid;
-          gap: 18px;
+          gap: 20px;
           min-width: 0;
         }
         .hero {
+          position: relative;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-          gap: 18px;
+          grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+          gap: 20px;
           align-items: stretch;
-          padding: 22px;
-          border: 1px solid rgba(63, 127, 158, 0.22);
-          border-radius: 24px;
+          padding: clamp(20px, 3vw, 30px);
+          border: 1px solid rgba(255, 255, 255, 0.32);
+          border-radius: 22px;
           background:
-            linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(9, 78, 101, 0.9)),
-            radial-gradient(circle at 12% 20%, rgba(42, 213, 235, 0.32), transparent 22rem);
+            linear-gradient(135deg, rgba(10, 29, 48, 0.98), rgba(11, 74, 89, 0.92) 58%, rgba(57, 85, 57, 0.88)),
+            linear-gradient(90deg, rgba(201, 149, 63, 0.24), transparent 44%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0));
           color: #f8fdff;
-          box-shadow: 0 24px 60px rgba(10, 42, 75, 0.16);
+          box-shadow: 0 28px 70px rgba(18, 48, 78, 0.18);
           overflow: hidden;
+        }
+        .hero::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+          background-size: 54px 54px;
+          mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 72%);
+        }
+        .hero > * {
+          position: relative;
+          z-index: 1;
         }
         .hero-copy,
         .hero-panel,
@@ -2238,7 +2491,7 @@ export function CyclicalStocksNewsPage() {
         .hero-copy {
           display: grid;
           align-content: center;
-          gap: 13px;
+          gap: 14px;
         }
         .eyebrow,
         .hero-meta,
@@ -2255,17 +2508,18 @@ export function CyclicalStocksNewsPage() {
         .eyebrow {
           width: max-content;
           max-width: 100%;
-          border: 1px solid rgba(120, 230, 239, 0.24);
+          border: 1px solid rgba(255, 255, 255, 0.22);
           border-radius: 999px;
           padding: 8px 12px;
-          background: rgba(255, 255, 255, 0.08);
-          color: #b7fbff;
+          background: rgba(255, 255, 255, 0.12);
+          color: #d7fbff;
           font-weight: 900;
           font-size: 13px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
         }
         .hero h1 {
           margin: 0;
-          font-size: clamp(30px, 4vw, 46px);
+          font-size: clamp(32px, 4vw, 50px);
           line-height: 1.08;
           letter-spacing: 0;
           font-weight: 950;
@@ -2273,7 +2527,7 @@ export function CyclicalStocksNewsPage() {
         .hero p {
           margin: 0;
           max-width: 820px;
-          color: rgba(235, 250, 255, 0.84);
+          color: rgba(238, 250, 252, 0.88);
           font-size: 16px;
           line-height: 1.85;
           font-weight: 750;
@@ -2281,18 +2535,27 @@ export function CyclicalStocksNewsPage() {
         .hero-meta {
           display: flex;
           flex-wrap: wrap;
-          color: rgba(235, 250, 255, 0.78);
+          color: rgba(235, 250, 255, 0.82);
           font-size: 13px;
           font-weight: 800;
+        }
+        .hero-meta span {
+          min-height: 34px;
+          border: 1px solid rgba(255, 255, 255, 0.13);
+          border-radius: 999px;
+          padding: 6px 10px;
+          background: rgba(255, 255, 255, 0.08);
         }
         .hero-panel {
           display: grid;
           align-content: space-between;
           gap: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          border-radius: 18px;
           padding: 18px;
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.11);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 38px rgba(0, 0, 0, 0.11);
+          backdrop-filter: blur(14px);
         }
         .hero-panel strong {
           display: block;
@@ -2306,6 +2569,7 @@ export function CyclicalStocksNewsPage() {
         .clear-button,
         .load-more,
         .stock-actions button,
+        .stock-actions a,
         .article-footer button,
         .article-footer a,
         .state-box button {
@@ -2323,10 +2587,10 @@ export function CyclicalStocksNewsPage() {
           transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         }
         .refresh-button {
-          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          background: linear-gradient(135deg, var(--cyc-blue), var(--cyc-cyan));
           border: 0;
           color: #ffffff;
-          box-shadow: 0 16px 34px rgba(29, 140, 255, 0.25);
+          box-shadow: 0 16px 34px rgba(22, 105, 178, 0.28);
         }
         .refresh-button:disabled {
           cursor: progress;
@@ -2337,6 +2601,7 @@ export function CyclicalStocksNewsPage() {
         .clear-button:hover,
         .load-more:hover,
         .stock-actions button:hover,
+        .stock-actions a:hover,
         .article-footer a:hover,
         .article-footer button:hover,
         .state-box button:hover {
@@ -2347,6 +2612,7 @@ export function CyclicalStocksNewsPage() {
         .clear-button:focus-visible,
         .load-more:focus-visible,
         .stock-actions button:focus-visible,
+        .stock-actions a:focus-visible,
         .article-footer a:focus-visible,
         .article-footer button:focus-visible,
         .tabs button:focus-visible,
@@ -2366,11 +2632,12 @@ export function CyclicalStocksNewsPage() {
           width: 100%;
           min-width: 0;
           overflow: hidden;
-          border: 1px solid rgba(41, 104, 139, 0.14);
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.78);
-          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.06);
+          border: 1px solid var(--cyc-line);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.82);
+          box-shadow: 0 12px 30px rgba(18, 48, 78, 0.07);
           padding: 8px;
+          backdrop-filter: blur(10px);
         }
         .ticker-track {
           width: max-content;
@@ -2388,10 +2655,10 @@ export function CyclicalStocksNewsPage() {
         .ticker-skeleton {
           flex: 0 0 214px;
           min-height: 72px;
-          border: 1px solid rgba(41, 104, 139, 0.16);
-          border-radius: 15px;
-          background: rgba(255, 255, 255, 0.88);
-          box-shadow: 0 10px 24px rgba(8, 38, 73, 0.055);
+          border: 1px solid rgba(29, 64, 95, 0.12);
+          border-radius: 12px;
+          background: linear-gradient(180deg, #ffffff, #f8fbfd);
+          box-shadow: 0 8px 18px rgba(18, 48, 78, 0.055);
         }
         .ticker-item {
           padding: 10px 12px;
@@ -2400,14 +2667,14 @@ export function CyclicalStocksNewsPage() {
           align-content: center;
         }
         .ticker-item strong {
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: 14px;
           font-weight: 950;
         }
         .ticker-item span {
           display: block;
           overflow: hidden;
-          color: #637991;
+          color: var(--cyc-muted);
           text-overflow: ellipsis;
           white-space: nowrap;
           font-size: 11px;
@@ -2427,29 +2694,36 @@ export function CyclicalStocksNewsPage() {
         }
         .tabs {
           display: flex;
-          gap: 10px;
+          gap: 8px;
           overflow-x: auto;
-          padding: 8px;
-          border: 1px solid rgba(41, 104, 139, 0.14);
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.74);
-          box-shadow: 0 14px 34px rgba(8, 38, 73, 0.06);
+          padding: 7px;
+          border: 1px solid var(--cyc-line);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.8);
+          box-shadow: 0 12px 30px rgba(18, 48, 78, 0.07);
+          backdrop-filter: blur(10px);
+          scrollbar-width: thin;
         }
         .tab {
           min-height: 44px;
           white-space: nowrap;
           border: 0;
-          border-radius: 13px;
+          border-radius: 11px;
           background: transparent;
-          color: #45637e;
+          color: #415b73;
           padding: 0 16px;
           font: 900 14px Tajawal, Arial, sans-serif;
           cursor: pointer;
+          transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+        .tab:hover {
+          background: rgba(22, 105, 178, 0.08);
+          color: #123555;
         }
         .tab.active {
           color: #ffffff;
-          background: linear-gradient(135deg, #1d8cff, #18d4d4);
-          box-shadow: 0 12px 28px rgba(29, 140, 255, 0.22);
+          background: linear-gradient(135deg, var(--cyc-ink), var(--cyc-blue));
+          box-shadow: 0 12px 24px rgba(18, 48, 78, 0.18);
         }
         .tab-stack {
           display: grid;
@@ -2462,14 +2736,15 @@ export function CyclicalStocksNewsPage() {
         .state-box,
         .footer-note {
           border: 1px solid rgba(41, 104, 139, 0.15);
-          border-radius: 22px;
-          background: rgba(255, 255, 255, 0.92);
-          box-shadow: 0 16px 38px rgba(8, 38, 73, 0.07);
+          border-radius: 18px;
+          background: var(--cyc-panel);
+          box-shadow: var(--cyc-shadow);
+          backdrop-filter: blur(10px);
         }
         .panel,
         .featured-news,
         .news-list {
-          padding: 18px;
+          padding: 20px;
         }
         .section-header {
           display: flex;
@@ -2484,16 +2759,17 @@ export function CyclicalStocksNewsPage() {
           min-width: 0;
         }
         .section-icon {
-          width: 38px;
-          height: 38px;
+          width: 40px;
+          height: 40px;
           justify-content: center;
+          border: 1px solid rgba(22, 105, 178, 0.12);
           border-radius: 12px;
-          background: rgba(29, 140, 255, 0.09);
-          color: #1477d4;
+          background: linear-gradient(135deg, rgba(22, 105, 178, 0.11), rgba(25, 184, 201, 0.08));
+          color: var(--cyc-blue);
         }
         .section-header h2 {
           margin: 0;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: clamp(20px, 2vw, 25px);
           font-weight: 950;
           line-height: 1.25;
@@ -2504,7 +2780,7 @@ export function CyclicalStocksNewsPage() {
         .news-card p,
         .accordion-card p {
           margin: 0;
-          color: #5d7288;
+          color: var(--cyc-muted);
           font-size: 14px;
           line-height: 1.85;
           font-weight: 750;
@@ -2516,35 +2792,36 @@ export function CyclicalStocksNewsPage() {
           min-width: 0;
         }
         .metric-card {
-          border: 1px solid rgba(41, 104, 139, 0.15);
-          border-radius: 18px;
-          background: #ffffff;
-          padding: 13px;
+          border: 1px solid var(--cyc-line);
+          border-radius: 14px;
+          background: linear-gradient(180deg, #ffffff, #f8fbfd);
+          padding: 14px;
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
           gap: 12px;
           align-items: center;
           min-height: 88px;
+          box-shadow: 0 10px 24px rgba(18, 48, 78, 0.055);
         }
         .metric-card > span {
-          width: 36px;
-          height: 36px;
+          width: 38px;
+          height: 38px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
-          background: rgba(29, 140, 255, 0.08);
-          color: #1477d4;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(22, 105, 178, 0.11), rgba(25, 184, 201, 0.08));
+          color: var(--cyc-blue);
         }
         .metric-card small {
           display: block;
-          color: #688096;
+          color: var(--cyc-muted);
           font-size: 12px;
           font-weight: 850;
         }
         .metric-card strong {
           display: block;
           margin-top: 4px;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: 19px;
           line-height: 1.2;
           font-weight: 950;
@@ -2552,7 +2829,7 @@ export function CyclicalStocksNewsPage() {
         .metric-card em {
           display: block;
           margin-top: 5px;
-          color: #7890a5;
+          color: #6f8498;
           font-size: 12px;
           font-style: normal;
           font-weight: 800;
@@ -2564,63 +2841,97 @@ export function CyclicalStocksNewsPage() {
           align-items: start;
           min-width: 0;
         }
-        .cycle-phase {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px;
-          border: 1px solid rgba(245, 158, 11, 0.22);
-          border-radius: 18px;
-          background: rgba(255, 251, 235, 0.68);
-          padding: 13px;
-          margin-bottom: 13px;
+        .macro-panel {
+          overflow: hidden;
         }
-        .phase-label {
-          display: block;
-          color: #8a5b0a;
+        .macro-empty {
+          display: grid;
+          gap: 10px;
+        }
+        .dev-hint {
+          margin: 0;
+          border: 1px solid rgba(201, 149, 63, 0.28);
+          border-radius: 12px;
+          background: rgba(255, 251, 235, 0.72);
+          color: #7c520b;
+          padding: 10px 12px;
           font-size: 12px;
-          font-weight: 900;
+          line-height: 1.7;
+          font-weight: 800;
         }
-        .cycle-phase strong {
-          display: block;
-          margin-block: 5px;
-          color: #0b2442;
-          font-size: 20px;
+        .dev-hint strong {
+          color: #694509;
           font-weight: 950;
         }
         .macro-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 10px;
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+          gap: 12px;
           min-width: 0;
         }
         .macro-item,
         .sector-stat-row,
         .method-grid span {
-          border: 1px solid rgba(41, 104, 139, 0.12);
-          border-radius: 14px;
-          background: #f8fbff;
-          padding: 12px;
+          border: 1px solid rgba(29, 64, 95, 0.11);
+          border-radius: 12px;
+          background: var(--cyc-soft);
+          padding: 14px;
         }
-        .macro-item span,
+        .macro-item {
+          display: grid;
+          gap: 10px;
+          align-content: start;
+        }
+        .macro-item-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+          min-width: 0;
+        }
+        .macro-item-head > span,
         .sector-stat-row span {
           display: block;
-          color: #60778e;
-          font-size: 12px;
-          font-weight: 850;
+          color: var(--cyc-muted);
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.45;
         }
         .macro-item strong,
         .sector-stat-row strong {
           display: block;
-          margin-top: 5px;
-          color: #0b2442;
+          color: var(--cyc-ink);
+          font-size: 22px;
+          line-height: 1.2;
           font-weight: 950;
         }
         .macro-item small {
           display: block;
-          margin-top: 5px;
-          color: #7b8fa3;
-          font-weight: 750;
+          color: #6f8498;
+          font-size: 12px;
+          line-height: 1.6;
+          font-weight: 850;
+        }
+        .macro-detail-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.78);
+          padding: 9px 10px;
+        }
+        .macro-detail-row span {
+          color: var(--cyc-muted);
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .macro-detail-row b {
+          color: var(--cyc-ink);
+          font-size: 12px;
+          line-height: 1.45;
+          font-weight: 950;
+          text-align: end;
         }
         .bar-chart {
           display: grid;
@@ -2681,12 +2992,13 @@ export function CyclicalStocksNewsPage() {
         }
         .mover-row {
           display: grid;
-          grid-template-columns: auto auto minmax(0, 1fr) auto;
-          gap: 10px;
+          grid-template-columns: auto auto minmax(0, 1fr) minmax(92px, auto);
+          gap: 11px;
           align-items: center;
-          border-radius: 14px;
-          background: #f8fbff;
-          padding: 10px;
+          border: 1px solid rgba(29, 64, 95, 0.1);
+          border-radius: 12px;
+          background: linear-gradient(180deg, #ffffff, #f8fbfd);
+          padding: 11px;
         }
         .mover-row > span:first-child {
           width: 28px;
@@ -2695,33 +3007,57 @@ export function CyclicalStocksNewsPage() {
           place-items: center;
           border-radius: 9px;
           background: #eaf6ff;
-          color: #1477d4;
+          color: var(--cyc-blue);
           font-weight: 950;
         }
         .mover-row strong {
           display: block;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-weight: 950;
         }
         .mover-row small,
         .muted {
-          color: #72879b;
-          font-size: 12px;
+          color: var(--cyc-muted);
+          font-size: 13px;
           font-weight: 800;
+        }
+        .mover-values {
+          display: grid;
+          justify-items: end;
+          gap: 5px;
+        }
+        .mover-values b {
+          color: var(--cyc-ink);
+          font-size: 13px;
+          font-weight: 950;
         }
         .stock-card-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 13px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
           min-width: 0;
         }
+        .stock-results-grid {
+          margin-top: 16px;
+        }
         .stock-card {
+          position: relative;
+          overflow: hidden;
           display: grid;
-          gap: 12px;
-          border: 1px solid rgba(41, 104, 139, 0.14);
-          border-radius: 18px;
-          background: #ffffff;
-          padding: 13px;
+          gap: 13px;
+          border: 1px solid var(--cyc-line);
+          border-radius: 14px;
+          background:
+            linear-gradient(180deg, #ffffff, #f8fbfd),
+            linear-gradient(135deg, rgba(22, 105, 178, 0.08), transparent 46%);
+          padding: 15px;
+          box-shadow: 0 12px 26px rgba(18, 48, 78, 0.065);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .stock-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(22, 105, 178, 0.24);
+          box-shadow: 0 18px 34px rgba(18, 48, 78, 0.1);
         }
         .stock-card.compact {
           align-content: start;
@@ -2765,26 +3101,28 @@ export function CyclicalStocksNewsPage() {
           height: 40px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
-          background: linear-gradient(135deg, #eff8ff, #dff9fb);
-          color: #0c6fb3;
+          border: 1px solid rgba(22, 105, 178, 0.12);
+          border-radius: 12px;
+          background: linear-gradient(135deg, #eff8ff, #e4faf4);
+          color: var(--cyc-blue);
           font-weight: 950;
         }
         .stock-metrics {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px;
+          gap: 9px;
         }
         .stock-metrics div {
-          border-radius: 13px;
-          background: #f7fbff;
-          padding: 8px;
+          border: 1px solid rgba(29, 64, 95, 0.08);
+          border-radius: 11px;
+          background: rgba(244, 249, 253, 0.9);
+          padding: 10px;
           min-width: 0;
         }
         .stock-metrics small {
           display: block;
           color: #637991;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 850;
         }
         .stock-metrics b {
@@ -2797,9 +3135,10 @@ export function CyclicalStocksNewsPage() {
         }
         .stock-note {
           align-items: flex-start;
-          color: #60778e;
-          border-radius: 13px;
-          background: #f8fbff;
+          color: var(--cyc-muted);
+          border: 1px solid rgba(29, 64, 95, 0.08);
+          border-radius: 11px;
+          background: rgba(244, 249, 253, 0.9);
           padding: 10px;
           font-size: 12px;
           font-weight: 800;
@@ -2813,9 +3152,10 @@ export function CyclicalStocksNewsPage() {
           gap: 10px;
           margin-top: auto;
         }
-        .stock-actions button {
+        .stock-actions button,
+        .stock-actions a {
           flex: 1;
-          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          background: linear-gradient(135deg, var(--cyc-blue), var(--cyc-cyan));
           color: #ffffff;
           border: 0;
         }
@@ -2833,9 +3173,9 @@ export function CyclicalStocksNewsPage() {
           grid-template-columns: minmax(260px, 1.3fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr) auto;
           gap: 12px;
           align-items: end;
-          border: 1px solid rgba(41, 104, 139, 0.12);
-          border-radius: 18px;
-          background: #f8fbff;
+          border: 1px solid rgba(29, 64, 95, 0.1);
+          border-radius: 14px;
+          background: linear-gradient(180deg, rgba(248, 251, 253, 0.95), rgba(255, 255, 255, 0.82));
           padding: 14px;
           min-width: 0;
         }
@@ -2848,7 +3188,7 @@ export function CyclicalStocksNewsPage() {
           min-width: 0;
         }
         .filter-bar label > span {
-          color: #506982;
+          color: var(--cyc-muted);
           font-size: 12px;
           font-weight: 900;
         }
@@ -2866,12 +3206,13 @@ export function CyclicalStocksNewsPage() {
         select {
           min-height: 44px;
           width: 100%;
-          border: 1px solid rgba(41, 104, 139, 0.18);
-          border-radius: 13px;
+          border: 1px solid rgba(29, 64, 95, 0.16);
+          border-radius: 11px;
           background: #ffffff;
-          color: #0b2442;
+          color: var(--cyc-ink);
           padding: 0 12px;
           font: 850 14px Tajawal, Arial, sans-serif;
+          box-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
         }
         .search-field input {
           padding-inline-start: 38px;
@@ -2879,14 +3220,15 @@ export function CyclicalStocksNewsPage() {
         .results-toolbar {
           justify-content: space-between;
           margin-top: 14px;
-          color: #506982;
+          color: var(--cyc-muted);
           font-weight: 900;
         }
         .stock-table-wrap {
           margin-top: 16px;
           overflow-x: auto;
-          border: 1px solid rgba(41, 104, 139, 0.13);
-          border-radius: 18px;
+          border: 1px solid var(--cyc-line);
+          border-radius: 14px;
+          box-shadow: 0 10px 24px rgba(18, 48, 78, 0.055);
         }
         .stock-table {
           width: 100%;
@@ -2907,8 +3249,8 @@ export function CyclicalStocksNewsPage() {
           position: sticky;
           top: 0;
           z-index: 1;
-          background: #f0f8ff;
-          color: #24465f;
+          background: #eef6fb;
+          color: #28465f;
           font-weight: 950;
         }
         .stock-table td {
@@ -2993,7 +3335,7 @@ export function CyclicalStocksNewsPage() {
           background: rgba(255, 255, 255, 0.09);
         }
         .article-footer a {
-          background: linear-gradient(135deg, #1d8cff, #18d4d4);
+          background: linear-gradient(135deg, var(--cyc-blue), var(--cyc-cyan));
           color: #ffffff;
           border: 0;
         }
@@ -3009,35 +3351,70 @@ export function CyclicalStocksNewsPage() {
           min-width: 190px;
         }
         .sector-card {
-          padding: 15px;
+          position: relative;
+          overflow: hidden;
+          padding: 16px;
           min-width: 0;
+          border-radius: 14px;
+          background:
+            linear-gradient(180deg, #ffffff, #f8fbfd),
+            linear-gradient(135deg, rgba(201, 149, 63, 0.08), transparent 48%);
+          box-shadow: 0 12px 26px rgba(18, 48, 78, 0.065);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .sector-card::before {
+          content: "";
+          position: absolute;
+          inset-block: 0;
+          inset-inline-start: 0;
+          width: 4px;
+          background: linear-gradient(180deg, var(--cyc-gold), var(--cyc-cyan));
+          opacity: 0.85;
+        }
+        .sector-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(201, 149, 63, 0.28);
+          box-shadow: 0 18px 34px rgba(18, 48, 78, 0.1);
         }
         .sector-head {
           align-items: flex-start;
+          justify-content: space-between;
           margin-bottom: 14px;
         }
-        .sector-head > span {
+        .sector-head > div {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+        .sector-icon {
           flex: 0 0 auto;
           width: 42px;
           height: 42px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
-          background: rgba(29, 140, 255, 0.09);
-          color: #1477d4;
+          border: 1px solid rgba(22, 105, 178, 0.12);
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(22, 105, 178, 0.11), rgba(201, 149, 63, 0.1));
+          color: var(--cyc-blue);
         }
         .sector-card h3 {
           margin: 0 0 6px;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: 17px;
           font-weight: 950;
         }
+        .sector-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
         .sector-stat-row {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-top: 10px;
+          justify-content: center;
+          gap: 5px;
+          min-height: 82px;
+          text-align: center;
         }
         .sector-drivers {
           display: flex;
@@ -3047,14 +3424,15 @@ export function CyclicalStocksNewsPage() {
         }
         .sector-drivers strong {
           width: 100%;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: 13px;
           font-weight: 950;
         }
         .sector-drivers span {
+          border: 1px solid rgba(22, 105, 178, 0.1);
           border-radius: 999px;
-          background: #edf7ff;
-          color: #42617c;
+          background: rgba(237, 247, 255, 0.86);
+          color: #365a74;
           padding: 6px 9px;
           font-size: 12px;
           font-weight: 850;
@@ -3097,14 +3475,14 @@ export function CyclicalStocksNewsPage() {
         .footer-note strong,
         .state-box strong {
           display: block;
-          color: #0b2442;
+          color: var(--cyc-ink);
           font-size: 15px;
           font-weight: 950;
         }
         .footer-note p,
         .state-box p {
           margin: 4px 0 0;
-          color: #60778e;
+          color: var(--cyc-muted);
           font-size: 13px;
           line-height: 1.75;
           font-weight: 750;
@@ -3119,9 +3497,10 @@ export function CyclicalStocksNewsPage() {
           height: 42px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
-          background: rgba(29, 140, 255, 0.09);
-          color: #1477d4;
+          border: 1px solid rgba(22, 105, 178, 0.12);
+          border-radius: 12px;
+          background: rgba(22, 105, 178, 0.09);
+          color: var(--cyc-blue);
         }
         .state-warning > span {
           background: rgba(245, 158, 11, 0.12);
@@ -3130,6 +3509,7 @@ export function CyclicalStocksNewsPage() {
         .badge {
           width: max-content;
           max-width: 100%;
+          border: 1px solid transparent;
           border-radius: 999px;
           padding: 6px 10px;
           font-size: 12px;
@@ -3138,26 +3518,181 @@ export function CyclicalStocksNewsPage() {
         }
         .tone-positive {
           background: rgba(20, 184, 122, 0.12);
+          border-color: rgba(20, 184, 122, 0.18);
           color: #0f8b5b;
         }
         .tone-negative {
           background: rgba(239, 68, 68, 0.12);
+          border-color: rgba(239, 68, 68, 0.18);
           color: #c23131;
         }
         .tone-warning {
-          background: rgba(245, 158, 11, 0.14);
+          background: rgba(201, 149, 63, 0.15);
+          border-color: rgba(201, 149, 63, 0.2);
           color: #a76405;
         }
         .tone-neutral,
         .tone-info {
-          background: rgba(29, 140, 255, 0.10);
-          color: #1477d4;
+          background: rgba(22, 105, 178, 0.10);
+          border-color: rgba(22, 105, 178, 0.16);
+          color: var(--cyc-blue);
         }
         .num-positive {
           color: #0f8b5b !important;
         }
         .num-negative {
           color: #c23131 !important;
+        }
+        .dark .page,
+        body.dark .page {
+          background:
+            radial-gradient(circle at top left, rgba(47, 214, 192, 0.13), transparent 34rem),
+            linear-gradient(180deg, #061a2e 0%, #071b2f 52%, #061a2e 100%);
+          color: #f8fafc;
+        }
+        .dark .ticker-strip,
+        .dark .tabs,
+        .dark .panel,
+        .dark .featured-news,
+        .dark .news-list,
+        .dark .state-box,
+        .dark .footer-note,
+        body.dark .ticker-strip,
+        body.dark .tabs,
+        body.dark .panel,
+        body.dark .featured-news,
+        body.dark .news-list,
+        body.dark .state-box,
+        body.dark .footer-note {
+          border-color: rgba(167, 243, 240, 0.14);
+          background: rgba(16, 47, 82, 0.94);
+          box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+        }
+        .dark .ticker-item,
+        .dark .metric-card,
+        .dark .macro-item,
+        .dark .sector-card,
+        .dark .accordion-card,
+        .dark .stock-card,
+        .dark .news-card,
+        body.dark .ticker-item,
+        body.dark .metric-card,
+        body.dark .macro-item,
+        body.dark .sector-card,
+        body.dark .accordion-card,
+        body.dark .stock-card,
+        body.dark .news-card {
+          border-color: rgba(167, 243, 240, 0.12);
+          background: #0b2a4a;
+        }
+        .dark .section-header h2,
+        .dark .metric-card strong,
+        .dark .macro-item strong,
+        .dark .macro-detail-row b,
+        .dark .bar-label strong,
+        .dark .mover-row strong,
+        .dark .mover-values b,
+        .dark .stock-card-head strong,
+        .dark .company-cell strong,
+        .dark .sector-card h3,
+        .dark .sector-drivers strong,
+        .dark .accordion-card button,
+        .dark .footer-note strong,
+        .dark .state-box strong,
+        .dark .dev-hint strong,
+        body.dark .section-header h2,
+        body.dark .metric-card strong,
+        body.dark .macro-item strong,
+        body.dark .macro-detail-row b,
+        body.dark .bar-label strong,
+        body.dark .mover-row strong,
+        body.dark .mover-values b,
+        body.dark .stock-card-head strong,
+        body.dark .company-cell strong,
+        body.dark .sector-card h3,
+        body.dark .sector-drivers strong,
+        body.dark .accordion-card button,
+        body.dark .footer-note strong,
+        body.dark .state-box strong,
+        body.dark .dev-hint strong {
+          color: #f8fafc;
+        }
+        .dark .section-header p,
+        .dark .paragraph,
+        .dark .macro-item small,
+        .dark .macro-item-head > span,
+        .dark .macro-detail-row span,
+        .dark .metric-card small,
+        .dark .metric-card em,
+        .dark .ticker-item span,
+        .dark .stock-card-head > div span,
+        .dark .company-cell > div span,
+        .dark .stock-metrics small,
+        .dark .stock-note,
+        .dark .mover-row small,
+        .dark .muted,
+        .dark .footer-note p,
+        .dark .state-box p,
+        .dark .dev-hint,
+        body.dark .section-header p,
+        body.dark .paragraph,
+        body.dark .macro-item small,
+        body.dark .macro-item-head > span,
+        body.dark .macro-detail-row span,
+        body.dark .metric-card small,
+        body.dark .metric-card em,
+        body.dark .ticker-item span,
+        body.dark .stock-card-head > div span,
+        body.dark .company-cell > div span,
+        body.dark .stock-metrics small,
+        body.dark .stock-note,
+        body.dark .mover-row small,
+        body.dark .muted,
+        body.dark .footer-note p,
+        body.dark .state-box p,
+        body.dark .dev-hint {
+          color: #cbd5e1;
+        }
+        .dark .stock-metrics div,
+        .dark .mover-row,
+        .dark .macro-detail-row,
+        .dark .sector-stat-row,
+        .dark .method-grid span,
+        .dark .filter-bar,
+        .dark input,
+        .dark select,
+        body.dark .stock-metrics div,
+        body.dark .mover-row,
+        body.dark .macro-detail-row,
+        body.dark .sector-stat-row,
+        body.dark .method-grid span,
+        body.dark .filter-bar,
+        body.dark input,
+        body.dark select {
+          border-color: rgba(167, 243, 240, 0.12);
+          background: #071b2f;
+          color: #f8fafc;
+        }
+        .dark .dev-hint,
+        body.dark .dev-hint {
+          border-color: rgba(47, 214, 192, 0.24);
+          background: rgba(47, 214, 192, 0.08);
+        }
+        .dark .ghost-action,
+        .dark .clear-button,
+        .dark .load-more,
+        .dark .stock-actions button.secondary,
+        .dark .article-footer button,
+        .dark .state-box button,
+        body.dark .ghost-action,
+        body.dark .clear-button,
+        body.dark .load-more,
+        body.dark .stock-actions button.secondary,
+        body.dark .article-footer button,
+        body.dark .state-box button {
+          background: #0b2a4a;
+          color: #7dd3fc;
+          border-color: rgba(125, 211, 252, 0.22);
         }
         .loading-grid {
           display: grid;
@@ -3207,8 +3742,12 @@ export function CyclicalStocksNewsPage() {
           .method-grid,
           .sector-grid,
           .accordion-list,
-          .macro-grid {
+          .macro-grid,
+          .stock-card-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .sector-stat-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
           .filter-bar,
           .news-filter-bar {
@@ -3238,6 +3777,16 @@ export function CyclicalStocksNewsPage() {
           .hero {
             gap: 16px;
           }
+          .hero h1 {
+            font-size: 30px;
+          }
+          .hero-panel {
+            border-radius: 14px;
+          }
+          .hero-meta span {
+            width: 100%;
+            justify-content: flex-start;
+          }
           .hero-meta,
           .section-header,
           .stock-actions,
@@ -3255,8 +3804,20 @@ export function CyclicalStocksNewsPage() {
           .macro-grid,
           .filter-bar,
           .news-filter-bar,
-          .loading-grid {
+          .loading-grid,
+          .sector-stat-grid {
             grid-template-columns: 1fr;
+          }
+          .sector-head {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+          .sector-head .badge {
+            grid-column: 1 / -1;
+            justify-self: start;
+          }
+          :global([dir="rtl"]) .sector-head .badge {
+            justify-self: end;
           }
           .stock-table-wrap {
             display: none;

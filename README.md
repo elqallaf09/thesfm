@@ -66,6 +66,30 @@ If `FMP_API_KEY` is not configured, the calendar route can use the legacy `ECONO
 
 After adding or changing provider keys in Vercel project settings, redeploy the project so the runtime can read the updated variables.
 
+## Economic Cycle Macro Data
+
+The Cyclical Stocks economic-cycle panel uses a server-only macro data abstraction:
+
+- `getEconomicCycleIndicators()` for the dashboard indicator set.
+- `getEconomicCalendar()` for provider-normalized economic calendar events.
+- `getMacroIndicator(country, indicator)` for one country/indicator pair.
+
+Trading Economics is preferred when `TRADING_ECONOMICS_API_KEY` is configured. FRED is used only as a US macro-indicator fallback when Trading Economics is not configured. Provider keys stay server-side and are never returned to the browser.
+
+Set these Vercel environment variables as needed:
+
+```text
+ECONOMIC_DATA_PROVIDER=tradingeconomics
+TRADING_ECONOMICS_API_KEY=your_trading_economics_key
+TRADING_ECONOMICS_BASE_URL=https://api.tradingeconomics.com
+
+# US-only fallback when Trading Economics is not configured
+FRED_API_KEY=your_fred_key
+FRED_BASE_URL=https://api.stlouisfed.org/fred
+```
+
+If neither provider is configured, the UI shows one localized empty state instead of repeated unavailable indicator cards. FRED does not provide a full economic calendar in this integration, so calendar events require Trading Economics.
+
 ## Market Analysis News and Sentiment Providers
 
 The Market Analysis page also uses server-only routes for central bank news and market sentiment. Provider keys are read only on the server and are never exposed to the browser.
