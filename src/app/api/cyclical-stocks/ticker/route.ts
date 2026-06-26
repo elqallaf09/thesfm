@@ -125,6 +125,7 @@ export async function GET() {
           sector: stock.sector,
           price: price.price,
           currency: 'USD',
+          market: 'US',
           change: price.change,
           changePercent: price.changePercent,
           source: price.source,
