@@ -94,6 +94,8 @@ type DbClient = SupabaseClient<any, 'public', any>;
 type DraftPayload = {
   id?: unknown;
   contentType?: unknown;
+  platform?: unknown;
+  language?: unknown;
   topic?: unknown;
   titles?: unknown;
   assetPrompts?: unknown;
@@ -104,6 +106,7 @@ type DraftPayload = {
   assetUrl?: unknown;
   thumbnailUrl?: unknown;
   templateProvider?: unknown;
+  status?: unknown;
 };
 
 type ActionPayload = {
@@ -228,6 +231,8 @@ function normalizePost(row: Record<string, unknown>): InstagramAutomationPost {
     created_by: String(row.created_by ?? ''),
     content_type: contentType(row.content_type) ?? 'post',
     topic: String(row.topic ?? ''),
+    platform: typeof row.platform === 'string' ? row.platform : null,
+    language: language(row.language),
     titles: normalizeObject(row.titles, { ar: '', en: '', fr: '' }) as LocalizedText,
     asset_prompts: normalizeObject(row.asset_prompts, { ar: '', en: '', fr: '' }) as LocalizedText,
     captions: normalizeObject(row.captions, { ar: '', en: '', fr: '' }) as LocalizedText,
@@ -373,8 +378,12 @@ export async function createOrUpdateDraft(admin: DbClient, user: User, payload: 
   }
 
   const id = cleanText(payload.id, 80);
+  const platform = cleanText(payload.platform, 80) || 'instagram';
+  const selectedLanguage = language(payload.language);
   const record = {
     content_type: type,
+    platform,
+    language: selectedLanguage,
     topic,
     titles: localizedText(payload.titles),
     asset_prompts: localizedText(payload.assetPrompts),
@@ -431,6 +440,38 @@ export async function createOrUpdateDraft(admin: DbClient, user: User, payload: 
     statusTo: 'draft',
   });
   return { ok: true, data: post };
+}
+
+export async function deleteDraft(admin: DbClient, user: User, payload: DraftPayload): Promise<AutomationApiResult<InstagramAutomationPost>> {
+  const post = await loadPost(admin, payload.id);
+  if (!post) return { ok: false, code: 'NOT_FOUND', status: 404 };
+  if (post.status === 'published') return { ok: false, code: 'PUBLISHED_POST_LOCKED', status: 409 };
+
+  const { data, error } = await admin
+    .from('instagram_automation_posts')
+    .delete()
+    .eq('id', post.id)
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[instagram-automation] delete draft failed', { id: post.id, code: error.code, message: error.message });
+    return { ok: false, code: 'DELETE_FAILED', status: 500 };
+  }
+
+  await createEvent(admin, {
+    postId: post.id,
+    actorUserId: user.id,
+    eventType: 'deleted',
+    statusFrom: post.status,
+    statusTo: null,
+    message: `Deleted draft ${post.id}`,
+  });
+
+  if (!data) {
+    return { ok: true, data: post };
+  }
+  return { ok: true, data: normalizePost(data as Record<string, unknown>) };
 }
 
 function appOrigin() {

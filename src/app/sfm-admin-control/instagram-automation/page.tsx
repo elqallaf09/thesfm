@@ -7,5 +7,10 @@ export const dynamic = 'force-dynamic';
 export default async function InstagramAutomationAdminPage() {
   const auth = await requireInstagramAutomationAdminPage('/sfm-admin-control/instagram-automation');
   if (!auth.ok) redirect(auth.redirectTo);
-  return <InstagramAutomationClient adminEmail={auth.user.email ?? ''} />;
+  return (
+    <InstagramAutomationClient
+      adminEmail={auth.user.email ?? ''}
+      contentStyle={{ width: '100%', maxWidth: '100%', margin: 0 }}
+    />
+  );
 }
