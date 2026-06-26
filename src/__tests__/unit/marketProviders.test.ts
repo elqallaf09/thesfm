@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dedupeEconomicEvents, normalizeFmpEconomicEvent } from '@/lib/providers/economic-calendar/fmp';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
+import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar/finnhub';
 import { dedupeMarketNewsArticles, normalizeFinnhubNewsArticle } from '@/lib/providers/news/finnhub';
 import { getMarketNews } from '@/lib/providers/news';
 
@@ -78,6 +79,31 @@ describe('market news provider normalization', () => {
 });
 
 describe('economic calendar provider normalization', () => {
+  it('normalizes Finnhub calendar values without exposing provider payloads', () => {
+    const event = normalizeFinnhubEconomicEvent({
+      event: 'Federal Reserve Interest Rate Decision',
+      time: '2026-06-25 18:00:00',
+      country: 'US',
+      impact: 'High',
+      actual: null,
+      forecast: '4.50%',
+      previous: '4.75%',
+    }, 0);
+
+    expect(event).toMatchObject({
+      title: 'Federal Reserve Interest Rate Decision',
+      country: 'US',
+      currency: 'USD',
+      impact: 'high',
+      actual: null,
+      forecast: '4.50%',
+      previous: '4.75%',
+      source: 'Finnhub',
+      provider: 'finnhub',
+    });
+    expect(event?.dateTimeUtc).toBe('2026-06-25T18:00:00.000Z');
+  });
+
   it('normalizes FMP calendar values without converting missing fields to zero', () => {
     const event = normalizeFmpEconomicEvent({
       event: 'CPI YoY',
@@ -123,6 +149,7 @@ describe('economic calendar provider normalization', () => {
   });
 
   it('returns not_configured when calendar keys are missing', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', 'fmp');
@@ -137,7 +164,66 @@ describe('economic calendar provider normalization', () => {
     expect(result.messageCode).toBe('provider_not_configured');
   });
 
+  it('prefers Finnhub economic calendar when FINNHUB_API_KEY is configured', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      economicCalendar: [
+        {
+          event: 'CPI YoY',
+          time: '2026-07-01 12:30:00',
+          country: 'US',
+          impact: '2',
+          forecast: '2.4%',
+          previous: '2.5%',
+        },
+      ],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-01',
+      to: '2026-07-02',
+      force: true,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data[0]).toMatchObject({
+      title: 'CPI YoY',
+      provider: 'finnhub',
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('finnhub.io/api/v1/calendar/economic');
+  });
+
+  it('reports Finnhub calendar access failures as temporary provider errors', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      error: 'You do not have access to this resource',
+    }), { status: 403 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-03',
+      to: '2026-07-04',
+      force: true,
+    });
+
+    expect(result.status).toBe('provider_error');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('provider_temporarily_unavailable');
+  });
+
   it('keeps last successful calendar data as stale when a provider is rate-limited', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', 'fmp');

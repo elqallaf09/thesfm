@@ -21,13 +21,15 @@ export class ProviderError extends Error {
   status: ProviderApiStatus;
   messageCode: string;
   providerStatus?: number;
+  providerMessage?: string;
 
-  constructor(status: ProviderApiStatus, messageCode: string, providerStatus?: number) {
+  constructor(status: ProviderApiStatus, messageCode: string, providerStatus?: number, providerMessage?: string) {
     super(messageCode);
     this.name = 'ProviderError';
     this.status = status;
     this.messageCode = messageCode;
     this.providerStatus = providerStatus;
+    this.providerMessage = providerMessage;
   }
 }
 

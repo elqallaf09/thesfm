@@ -1,6 +1,4 @@
 import {
-  mapHttpProviderStatus,
-  messageCodeForStatus,
   normalizeTitle,
   ProviderError,
   shortText,
@@ -57,6 +55,15 @@ function normalizeUtcDateTime(value: unknown): string | null {
     : raw;
   const date = new Date(assumedUtc);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+async function safeProviderMessage(response: Response) {
+  const text = await response.text().catch(() => '');
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/token=[^&\s]+/gi, 'token=[redacted]')
+    .trim()
+    .slice(0, 300);
 }
 
 export function normalizeFinnhubEconomicEvent(record: FinnhubEconomicRecord, index: number): EconomicCalendarEvent | null {
@@ -119,8 +126,11 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
       });
 
       if (!response.ok) {
-        const status = mapHttpProviderStatus(response.status);
-        throw new ProviderError(status, messageCodeForStatus(status) ?? 'provider_temporarily_unavailable', response.status);
+        const status = response.status === 429 ? 'rate_limited' : 'provider_error';
+        const messageCode = status === 'rate_limited'
+          ? 'provider_rate_limited'
+          : 'provider_temporarily_unavailable';
+        throw new ProviderError(status, messageCode, response.status, await safeProviderMessage(response));
       }
 
       const payload = await response.json().catch(() => ({}));

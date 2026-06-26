@@ -21,8 +21,28 @@ type CacheEntry = {
   provider: EconomicCalendarProviderName;
 };
 
+type CalendarProviderDiagnostics = {
+  provider: EconomicCalendarProviderName | null;
+  configured: boolean;
+  finnhubConfigured: boolean;
+  status: 'available' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
+  lastFetchStatus: string | null;
+  lastFetchTime: string | null;
+  lastSuccessfulUpdate: string | null;
+};
+
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<ProviderApiResponse<EconomicCalendarEvent[]>>>();
+let diagnostics: CalendarProviderDiagnostics = {
+  provider: null,
+  configured: false,
+  finnhubConfigured: false,
+  status: 'not_configured',
+  lastFetchStatus: null,
+  lastFetchTime: null,
+  lastSuccessfulUpdate: null,
+};
+let lastLoggedStatus = '';
 
 function normalizeCalendarProvider(value: string): EconomicCalendarProviderName | null {
   const normalized = value.trim().toLowerCase().replace(/[_\s-]+/g, '');
@@ -38,14 +58,14 @@ export function getEconomicCalendarProviderConfig(): CalendarProviderConfig {
   const legacyKey = cleanEnv(process.env.ECONOMIC_CALENDAR_API_KEY);
   const finnhubKey = cleanEnv(process.env.FINNHUB_API_KEY);
 
-  if (explicit === 'finnhub') {
-    const apiKey = legacyKey || finnhubKey;
+  if (finnhubKey || explicit === 'finnhub') {
+    const apiKey = finnhubKey || legacyKey;
     return apiKey
       ? { configured: true, provider: 'finnhub', apiKey, missingEnvName: null }
-      : { configured: false, provider: 'finnhub', apiKey: '', missingEnvName: 'ECONOMIC_CALENDAR_API_KEY or FINNHUB_API_KEY' };
+      : { configured: false, provider: 'finnhub', apiKey: '', missingEnvName: 'FINNHUB_API_KEY' };
   }
 
-  const provider = explicit ?? 'fmp';
+  const provider = explicit ?? (fmpKey || legacyKey ? 'fmp' : 'finnhub');
   if (provider === 'fmp') {
     const apiKey = fmpKey || legacyKey;
     return apiKey
@@ -53,7 +73,7 @@ export function getEconomicCalendarProviderConfig(): CalendarProviderConfig {
       : { configured: false, provider: 'fmp', apiKey: '', missingEnvName: 'FMP_API_KEY or ECONOMIC_CALENDAR_API_KEY' };
   }
 
-  return { configured: false, provider: null, apiKey: '', missingEnvName: 'FMP_API_KEY' };
+  return { configured: false, provider: 'finnhub', apiKey: '', missingEnvName: 'FINNHUB_API_KEY' };
 }
 
 function cacheKey(provider: EconomicCalendarProviderName, query: EconomicCalendarQuery) {
@@ -85,17 +105,53 @@ function successResponse(
   };
 }
 
+function updateDiagnostics(partial: Partial<CalendarProviderDiagnostics>) {
+  diagnostics = {
+    ...diagnostics,
+    ...partial,
+  };
+}
+
+function logProviderStatus(config: CalendarProviderConfig) {
+  const status = {
+    provider: config.provider,
+    configured: config.configured,
+    finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
+  };
+  const signature = JSON.stringify(status);
+  if (signature === lastLoggedStatus) return;
+  lastLoggedStatus = signature;
+  console.info('[economic-calendar] provider status', status);
+}
+
 export function getEconomicCalendarProviderStatus() {
   const config = getEconomicCalendarProviderConfig();
+  updateDiagnostics({
+    provider: config.provider,
+    configured: config.configured,
+    finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
+    status: config.configured ? diagnostics.status === 'not_configured' ? 'available' : diagnostics.status : 'not_configured',
+  });
   return {
     configured: config.configured,
     provider: config.provider,
-    status: config.configured ? 'available' : 'not_configured',
+    status: diagnostics.status,
+    finnhubConfigured: diagnostics.finnhubConfigured,
+    lastFetchStatus: diagnostics.lastFetchStatus,
+    lastFetchTime: diagnostics.lastFetchTime,
+    lastSuccessfulUpdate: diagnostics.lastSuccessfulUpdate,
   };
 }
 
 export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise<ProviderApiResponse<EconomicCalendarEvent[]>> {
   const config = getEconomicCalendarProviderConfig();
+  logProviderStatus(config);
+  updateDiagnostics({
+    provider: config.provider,
+    configured: config.configured,
+    finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
+    status: config.configured ? 'available' : 'not_configured',
+  });
   if (!config.configured) {
     return {
       status: 'not_configured',
@@ -125,6 +181,14 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
         : createFmpCalendarProvider(config.apiKey);
       const data = await provider.getEvents(query);
       const updatedAt = new Date().toISOString();
+      updateDiagnostics({
+        provider: config.provider,
+        configured: true,
+        status: 'success',
+        lastFetchStatus: 'success',
+        lastFetchTime: updatedAt,
+        lastSuccessfulUpdate: updatedAt,
+      });
       cache.set(key, {
         data,
         updatedAt,
@@ -136,6 +200,14 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
       const providerError = error instanceof ProviderError
         ? error
         : new ProviderError('provider_error', 'provider_temporarily_unavailable');
+      const failedAt = new Date().toISOString();
+      updateDiagnostics({
+        provider: config.provider,
+        configured: true,
+        status: providerError.status === 'rate_limited' ? 'rate_limited' : 'provider_error',
+        lastFetchStatus: providerError.status,
+        lastFetchTime: failedAt,
+      });
       if (cached) {
         return {
           status: providerError.status,
@@ -152,6 +224,7 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
           provider: config.provider,
           status: providerError.status,
           providerStatus: providerError.providerStatus,
+          providerMessage: providerError.providerMessage,
         });
       }
       return {
