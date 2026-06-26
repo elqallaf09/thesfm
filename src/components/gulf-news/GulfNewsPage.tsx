@@ -253,17 +253,19 @@ export function GulfNewsPage() {
   }, [lastLoadedAt]);
 
   const selectedMarketConfig = getGulfMarket(selectedMarket);
-  const selectedUnavailableHelper = selectedMarket === 'bahrain'
-    ? t('gulf_news_bahrain_unavailable_helper')
-    : selectedMarket === 'oman'
-      ? t('gulf_news_oman_unavailable_helper')
-      : t('gulf_news_unavailable_helper');
+  const unavailableHelperByMarket: Partial<Record<GulfMarketId, string>> = {
+    bahrain: t('gulf_news_bahrain_unavailable_helper'),
+    oman: t('gulf_news_oman_unavailable_helper'),
+    'uae-adx': t('gulf_news_uae_adx_unavailable_helper'),
+  };
+  const selectedUnavailableHelper = unavailableHelperByMarket[selectedMarket] ?? t('gulf_news_unavailable_helper');
   const marketLabels = useMemo<Record<GulfMarketId, string>>(() => ({
     kuwait: t('gulf_news_market_kuwait'),
     saudi: t('gulf_news_market_saudi'),
     oman: t('gulf_news_market_oman'),
     bahrain: t('gulf_news_market_bahrain'),
-    uae: t('gulf_news_market_uae'),
+    'uae-dfm': t('gulf_news_market_uae_dfm'),
+    'uae-adx': t('gulf_news_market_uae_adx'),
     qatar: t('gulf_news_market_qatar'),
   }), [t]);
 
@@ -647,6 +649,7 @@ export function GulfNewsPage() {
               market={selectedMarket}
               marketLabel={marketLabels[selectedMarket]}
               locale={locale}
+              indexDataAvailable={marketData[selectedMarket]?.available === true}
               labels={{
                 title: t('market_movers_title'),
                 subtitle: t('market_movers_subtitle'),
@@ -675,6 +678,8 @@ export function GulfNewsPage() {
                 loading: t('market_movers_loading'),
                 unavailableTitle: t('market_movers_unavailable_title'),
                 unavailableBody: t('market_movers_unavailable_body'),
+                indexOnlyTitle: t('market_movers_index_only_title'),
+                indexOnlyBody: t('market_movers_index_only_body'),
                 emptyTitle: t('market_movers_empty_title'),
                 emptyBody: t('market_movers_empty_body'),
                 limitedData: t('market_movers_limited_data'),

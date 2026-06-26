@@ -14,6 +14,7 @@ type MsxMarketTodayResponse = {
 export type GulfMarketData = {
   market: GulfMarketId;
   code: GulfMarket['code'];
+  exchangeCode: GulfMarket['exchangeCode'];
   name: string;
   indexName: string;
   requestedSymbol: string | null;
@@ -33,7 +34,8 @@ export type GulfMarketData = {
 };
 
 function shouldDebugMarketData() {
-  return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
+  return process.env.DEBUG_MARKET_DATA === 'true'
+    || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
 }
 
 function debugLog(message: string, meta: Record<string, unknown>) {
@@ -55,6 +57,7 @@ function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_no
   return {
     market: market.id,
     code: market.code,
+    exchangeCode: market.exchangeCode,
     name: market.nameAr,
     indexName: market.indexName,
     requestedSymbol: market.yahooSymbols[0] ?? null,
@@ -73,11 +76,15 @@ function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_no
   };
 }
 
-function available(market: GulfMarket, data: Omit<GulfMarketData, 'market' | 'code' | 'name' | 'status' | 'available' | 'delayed' | 'updatedAt'>): GulfMarketData {
+function available(
+  market: GulfMarket,
+  data: Omit<GulfMarketData, 'market' | 'code' | 'exchangeCode' | 'name' | 'status' | 'available' | 'delayed' | 'updatedAt'>,
+): GulfMarketData {
   const now = new Date().toISOString();
   return {
     market: market.id,
     code: market.code,
+    exchangeCode: market.exchangeCode,
     name: market.nameAr,
     status: 'available',
     available: true,
@@ -142,6 +149,8 @@ async function fetchYahooMarketData(market: GulfMarket, source: Extract<GulfInde
   const stale = quote.available && isStaleMarketTime(quote.marketTime);
   debugLog('[GulfNews] Yahoo index attempt', {
     marketCode: market.code,
+    selectedMarket: market.id,
+    exchangeCode: market.exchangeCode,
     provider: source.provider,
     symbolAttempted: source.symbol,
     parsedValue: quote.price,
@@ -185,8 +194,11 @@ async function fetchMuscatOfficialMarketData(market: GulfMarket): Promise<GulfMa
 
   debugLog('[GulfNews] Official index attempt', {
     marketCode: market.code,
+    selectedMarket: market.id,
+    exchangeCode: market.exchangeCode,
     provider: 'Muscat Stock Exchange',
     symbolAttempted: 'MSX30',
+    endpoint: url,
     responseStatus: result.status,
     parsedValue: value,
     parsedChange: change,
@@ -218,8 +230,11 @@ async function fetchBahrainOfficialMarketData(market: GulfMarket): Promise<GulfM
 
   debugLog('[GulfNews] Official index attempt', {
     marketCode: market.code,
+    selectedMarket: market.id,
+    exchangeCode: market.exchangeCode,
     provider: 'Bahrain Bourse',
     symbolAttempted: 'Bahrain All Share Index',
+    endpoint: url,
     responseStatus: result.status,
     unavailableReason,
   });
@@ -252,8 +267,11 @@ async function fetchMubasherMarketData(market: GulfMarket, source: Extract<GulfI
 
   debugLog('[GulfNews] Mubasher index attempt', {
     marketCode: market.code,
+    selectedMarket: market.id,
+    exchangeCode: market.exchangeCode,
     provider: source.provider,
     symbolAttempted: source.symbol,
+    endpoint: url,
     responseStatus: result.status,
     parsedValue: parsed.value,
     parsedChange: parsed.change,
@@ -280,8 +298,11 @@ async function fetchMubasherMarketData(market: GulfMarket, source: Extract<GulfI
 async function fetchInvestingMarketData(market: GulfMarket, source: Extract<GulfIndexSourceStrategy, { provider: 'Investing' }>): Promise<GulfMarketData> {
   debugLog('[GulfNews] Investing index attempt skipped', {
     marketCode: market.code,
+    selectedMarket: market.id,
+    exchangeCode: market.exchangeCode,
     provider: source.provider,
     symbolAttempted: source.symbol,
+    endpoint: null,
     unavailableReason: 'provider_not_used_without_stable_public_endpoint',
   });
   return unavailable(market, 'provider_not_used_without_stable_public_endpoint');
@@ -321,6 +342,7 @@ export function gulfMarketDataToApiMarkets(marketData: Record<GulfMarketId, Gulf
     const data = marketData[market.id] ?? unavailable(market);
     return {
       code: market.code,
+      exchangeCode: market.exchangeCode,
       name: data.name,
       indexName: data.indexName,
       requestedSymbol: data.requestedSymbol,

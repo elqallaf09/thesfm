@@ -6,6 +6,8 @@ export type MarketMoverId =
   | 'oman'
   | 'bahrain'
   | 'uae'
+  | 'uae-dfm'
+  | 'uae-adx'
   | 'qatar'
   | 'uk'
   | 'germany'
@@ -48,7 +50,7 @@ export type MarketMoversResponse =
   }
   | {
     ok: false;
-    code: 'MARKET_MOVERS_UNAVAILABLE' | 'UNSUPPORTED_MARKET';
+    code: 'MARKET_MOVERS_UNAVAILABLE' | 'MARKET_MOVERS_NOT_SUPPORTED' | 'UNSUPPORTED_MARKET';
     market: string;
     marketName?: string;
     currency?: string;
@@ -147,15 +149,42 @@ const MARKET_MOVER_CONFIGS: MarketMoverConfig[] = [
     marketName: 'UAE Market',
     currency: 'AED',
     symbols: [
-      { symbol: 'EMAAR.DU', name: 'Emaar Properties' },
-      { symbol: 'DIB.DU', name: 'Dubai Islamic Bank' },
-      { symbol: 'DEWA.DU', name: 'DEWA' },
-      { symbol: 'SALIK.DU', name: 'Salik' },
-      { symbol: 'DU.DU', name: 'du' },
-      { symbol: 'FAB.AD', name: 'First Abu Dhabi Bank' },
-      { symbol: 'ALDAR.AD', name: 'Aldar Properties' },
-      { symbol: 'ADNOCGAS.AD', name: 'ADNOC Gas' },
+      { symbol: 'EMAAR.AE', name: 'Emaar Properties' },
+      { symbol: 'DIB.AE', name: 'Dubai Islamic Bank' },
+      { symbol: 'DEWA.AE', name: 'DEWA' },
+      { symbol: 'SALIK.AE', name: 'Salik' },
+      { symbol: 'DU.AE', name: 'du' },
+      { symbol: 'DFM.AE', name: 'Dubai Financial Market' },
+      { symbol: 'EMIRATESNBD.AE', name: 'Emirates NBD' },
+      { symbol: 'AIRARABIA.AE', name: 'Air Arabia' },
+      { symbol: 'EMAARDEV.AE', name: 'Emaar Development' },
+      { symbol: 'TALABAT.AE', name: 'Talabat Holding' },
     ],
+  },
+  {
+    id: 'uae-dfm',
+    region: 'gulf',
+    marketName: 'Dubai Financial Market',
+    currency: 'AED',
+    symbols: [
+      { symbol: 'EMAAR.AE', name: 'Emaar Properties' },
+      { symbol: 'DIB.AE', name: 'Dubai Islamic Bank' },
+      { symbol: 'DEWA.AE', name: 'DEWA' },
+      { symbol: 'SALIK.AE', name: 'Salik' },
+      { symbol: 'DU.AE', name: 'du' },
+      { symbol: 'DFM.AE', name: 'Dubai Financial Market' },
+      { symbol: 'EMIRATESNBD.AE', name: 'Emirates NBD' },
+      { symbol: 'AIRARABIA.AE', name: 'Air Arabia' },
+      { symbol: 'EMAARDEV.AE', name: 'Emaar Development' },
+      { symbol: 'TALABAT.AE', name: 'Talabat Holding' },
+    ],
+  },
+  {
+    id: 'uae-adx',
+    region: 'gulf',
+    marketName: 'Abu Dhabi Securities Exchange',
+    currency: 'AED',
+    symbols: [],
   },
   {
     id: 'qatar',
@@ -357,7 +386,16 @@ function normalizeProviderChangePercent(price: number, previousClose: number | n
 }
 
 function normalizeSymbolForDisplay(symbol: string) {
-  return symbol.replace(/\.(SR|KW|DU|AD|QA|L|DE|PA|MI|MC|AS|SW)$/i, '');
+  return symbol.replace(/\.(SR|KW|DU|AD|AE|QA|L|DE|PA|MI|MC|AS|SW)$/i, '');
+}
+
+function shouldDebugMarketMovers() {
+  return process.env.DEBUG_MARKET_DATA === 'true'
+    || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
+}
+
+function debugMarketMovers(message: string, meta: Record<string, unknown>) {
+  if (shouldDebugMarketMovers()) console.info(message, meta);
 }
 
 function rowFromYahooQuote(row: YahooQuoteRow, configured: MarketMoverSymbol, config: MarketMoverConfig) {
@@ -384,6 +422,16 @@ async function fetchYahooChartRow(providerSymbol: string, configured: MarketMove
       'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
     },
   });
+
+  debugMarketMovers('[MarketMovers] Yahoo chart fallback attempt', {
+    selectedMarket: config.id,
+    exchangeCode: config.marketName,
+    endpoint: 'https://query1.finance.yahoo.com/v8/finance/chart',
+    providerSymbol,
+    responseStatus: response.status,
+    fallbackUsed: true,
+  });
+
   if (!response.ok) return null;
 
   const payload = await response.json().catch(() => null) as YahooChartResponse | null;
@@ -422,6 +470,15 @@ async function fetchYahooRows(config: MarketMoverConfig): Promise<Array<Omit<Mar
         accept: 'application/json',
         'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
       },
+    });
+
+    debugMarketMovers('[MarketMovers] Yahoo quote attempt', {
+      selectedMarket: config.id,
+      exchangeCode: config.marketName,
+      endpoint: 'https://query1.finance.yahoo.com/v7/finance/quote',
+      providerSymbols,
+      responseStatus: response.status,
+      fallbackUsed: !response.ok,
     });
 
     if (response.ok) {
@@ -508,6 +565,29 @@ export async function fetchMarketMovers(marketInput: string, limitInput = 5): Pr
       updated_at: null,
       source: 'Yahoo Finance',
       data: null,
+    };
+  }
+
+  if (config.symbols.length === 0) {
+    debugMarketMovers('[MarketMovers] Market movers skipped', {
+      selectedMarket: config.id,
+      exchangeCode: config.marketName,
+      endpoint: null,
+      providerSymbols: [],
+      fallbackUsed: false,
+      unavailableReason: 'market_movers_not_supported_by_current_provider',
+    });
+
+    return {
+      ok: false,
+      code: 'MARKET_MOVERS_NOT_SUPPORTED',
+      market: config.id,
+      marketName: config.marketName,
+      currency: config.currency,
+      updated_at: null,
+      source: 'Yahoo Finance',
+      data: null,
+      message: 'market_movers_not_supported_by_current_provider',
     };
   }
 

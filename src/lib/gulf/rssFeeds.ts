@@ -13,7 +13,7 @@ export const GULF_RSS_FEEDS: GulfRssFeed[] = [
   { market: 'saudi', source: 'Mubasher Saudi Arabia', url: 'http://feeds.mubasher.info/ar/TDWL/news' },
   { market: 'oman', source: 'Mubasher Oman', url: 'http://feeds.mubasher.info/ar/MSM/news' },
   { market: 'bahrain', source: 'Mubasher Bahrain', url: 'http://feeds.mubasher.info/ar/BB/news' },
-  { market: 'uae', source: 'Mubasher Dubai Financial Market', url: 'http://feeds.mubasher.info/ar/DFM/news' },
-  { market: 'uae', source: 'Mubasher Abu Dhabi Securities Exchange', url: 'http://feeds.mubasher.info/ar/ADX/news' },
+  { market: 'uae-dfm', source: 'Mubasher Dubai Financial Market', url: 'http://feeds.mubasher.info/ar/DFM/news' },
+  { market: 'uae-adx', source: 'Mubasher Abu Dhabi Securities Exchange', url: 'http://feeds.mubasher.info/ar/ADX/news' },
   { market: 'qatar', source: 'Mubasher Qatar', url: 'http://feeds.mubasher.info/ar/QE/news' },
 ];

@@ -1,4 +1,11 @@
-export type GulfMarketId = 'kuwait' | 'saudi' | 'oman' | 'bahrain' | 'uae' | 'qatar';
+export type GulfMarketId =
+  | 'kuwait'
+  | 'saudi'
+  | 'oman'
+  | 'bahrain'
+  | 'uae-dfm'
+  | 'uae-adx'
+  | 'qatar';
 
 export type GulfIndexSourceStrategy =
   | { provider: 'Yahoo Finance'; symbol: string; label?: string }
@@ -8,7 +15,9 @@ export type GulfIndexSourceStrategy =
 
 export type GulfMarket = {
   id: GulfMarketId;
-  code: 'KW' | 'SA' | 'OM' | 'BH' | 'AE' | 'QA';
+  code: 'KW' | 'SA' | 'OM' | 'BH' | 'DFM' | 'ADX' | 'QA';
+  countryCode: 'KW' | 'SA' | 'OM' | 'BH' | 'AE' | 'QA';
+  exchangeCode: 'Boursa Kuwait' | 'Tadawul' | 'MSX' | 'Bahrain Bourse' | 'DFM' | 'ADX' | 'QSE';
   flag: string;
   labelKey: string;
   nameAr: string;
@@ -22,6 +31,8 @@ export const GULF_MARKETS: GulfMarket[] = [
   {
     id: 'saudi',
     code: 'SA',
+    countryCode: 'SA',
+    exchangeCode: 'Tadawul',
     flag: '🇸🇦',
     labelKey: 'gulf_news_market_saudi',
     nameAr: 'بورصة السعودية',
@@ -33,6 +44,8 @@ export const GULF_MARKETS: GulfMarket[] = [
   {
     id: 'kuwait',
     code: 'KW',
+    countryCode: 'KW',
+    exchangeCode: 'Boursa Kuwait',
     flag: '🇰🇼',
     labelKey: 'gulf_news_market_kuwait',
     nameAr: 'بورصة الكويت',
@@ -47,6 +60,8 @@ export const GULF_MARKETS: GulfMarket[] = [
   {
     id: 'oman',
     code: 'OM',
+    countryCode: 'OM',
+    exchangeCode: 'MSX',
     flag: '🇴🇲',
     labelKey: 'gulf_news_market_oman',
     nameAr: 'بورصة عُمان',
@@ -62,6 +77,8 @@ export const GULF_MARKETS: GulfMarket[] = [
   {
     id: 'bahrain',
     code: 'BH',
+    countryCode: 'BH',
+    exchangeCode: 'Bahrain Bourse',
     flag: '🇧🇭',
     labelKey: 'gulf_news_market_bahrain',
     nameAr: 'بورصة البحرين',
@@ -76,19 +93,36 @@ export const GULF_MARKETS: GulfMarket[] = [
     ],
   },
   {
-    id: 'uae',
-    code: 'AE',
+    id: 'uae-dfm',
+    code: 'DFM',
+    countryCode: 'AE',
+    exchangeCode: 'DFM',
     flag: '🇦🇪',
-    labelKey: 'gulf_news_market_uae',
-    nameAr: 'بورصة الإمارات',
+    labelKey: 'gulf_news_market_uae_dfm',
+    nameAr: 'سوق دبي المالي',
     indexName: 'DFM General Index',
     indexNameAr: 'DFM General Index',
     yahooSymbols: ['DFMGI.AE'],
     preferredSources: [{ provider: 'Yahoo Finance', symbol: 'DFMGI.AE' }],
   },
   {
+    id: 'uae-adx',
+    code: 'ADX',
+    countryCode: 'AE',
+    exchangeCode: 'ADX',
+    flag: '🇦🇪',
+    labelKey: 'gulf_news_market_uae_adx',
+    nameAr: 'سوق أبوظبي للأوراق المالية',
+    indexName: 'FTSE ADX General Index',
+    indexNameAr: 'FTSE ADX General Index',
+    yahooSymbols: ['FADGI.FGI'],
+    preferredSources: [{ provider: 'Yahoo Finance', symbol: 'FADGI.FGI' }],
+  },
+  {
     id: 'qatar',
     code: 'QA',
+    countryCode: 'QA',
+    exchangeCode: 'QSE',
     flag: '🇶🇦',
     labelKey: 'gulf_news_market_qatar',
     nameAr: 'بورصة قطر',

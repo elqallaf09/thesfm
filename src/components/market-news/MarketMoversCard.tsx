@@ -29,7 +29,7 @@ type MarketMoversApiResponse =
   }
   | {
     ok: false;
-    code: string;
+    code: 'MARKET_MOVERS_UNAVAILABLE' | 'MARKET_MOVERS_NOT_SUPPORTED' | 'UNSUPPORTED_MARKET' | string;
     market: string;
     marketName?: string;
     currency?: string;
@@ -67,6 +67,8 @@ type MarketMoversLabels = {
   loading: string;
   unavailableTitle: string;
   unavailableBody: string;
+  indexOnlyTitle?: string;
+  indexOnlyBody?: string;
   emptyTitle: string;
   emptyBody: string;
   limitedData: string;
@@ -77,6 +79,7 @@ type MarketMoversCardProps = {
   marketLabel: string;
   locale: string;
   labels: MarketMoversLabels;
+  indexDataAvailable?: boolean;
 };
 
 type MoverListConfig = {
@@ -240,7 +243,7 @@ function MoverList({
   );
 }
 
-export function MarketMoversCard({ market, marketLabel, locale, labels }: MarketMoversCardProps) {
+export function MarketMoversCard({ market, marketLabel, locale, labels, indexDataAvailable = false }: MarketMoversCardProps) {
   const [response, setResponse] = useState<MarketMoversApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -305,6 +308,11 @@ export function MarketMoversCard({ market, marketLabel, locale, labels }: Market
   const source = response?.source ?? 'Yahoo Finance';
   const updatedAt = response?.ok ? response.updated_at : response?.updated_at ?? null;
   const limited = response?.ok && response.warnings?.includes('provider_returned_limited_rows');
+  const isIndexOnlyState = Boolean(
+    indexDataAvailable
+      && response?.ok === false
+      && (response.code === 'MARKET_MOVERS_NOT_SUPPORTED' || response.code === 'MARKET_MOVERS_UNAVAILABLE')
+  );
 
   const meta = (
     <div className="market-movers-meta">
@@ -347,8 +355,20 @@ export function MarketMoversCard({ market, marketLabel, locale, labels }: Market
       ) : !hasData(data) ? (
         <div className="market-movers-unavailable compact">
           <AlertTriangle size={21} />
-          <strong>{response?.ok === false ? labels.unavailableTitle : labels.emptyTitle}</strong>
-          <p>{response?.ok === false ? labels.unavailableBody : labels.emptyBody}</p>
+          <strong>
+            {isIndexOnlyState
+              ? labels.indexOnlyTitle ?? labels.emptyTitle
+              : response?.ok === false
+                ? labels.unavailableTitle
+                : labels.emptyTitle}
+          </strong>
+          <p>
+            {isIndexOnlyState
+              ? labels.indexOnlyBody ?? labels.emptyBody
+              : response?.ok === false
+                ? labels.unavailableBody
+                : labels.emptyBody}
+          </p>
         </div>
       ) : (
         <div className="market-movers-compact-grid">
