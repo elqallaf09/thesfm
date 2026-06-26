@@ -39,12 +39,13 @@ export function ReminderModal({
 }: ReminderModalProps) {
   if (!open) return null;
   const close = () => { onClose(); resetReminderForm(); };
+  const titleId = 'charity-reminder-modal-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{tr.addReminder}</h2>
-          <button aria-label={tr.cancel} onClick={close}><X size={18} /></button>
+          <h2 id={titleId}>{tr.addReminder}</h2>
+          <button type="button" aria-label={tr.cancel} onClick={close}><X size={18} /></button>
         </div>
         <div className="form-grid">
           <label className="wide">
@@ -101,8 +102,8 @@ export function ReminderModal({
             <textarea value={reminderForm.notes} onChange={e => setReminderForm(prev => ({ ...prev, notes: e.target.value }))} />
           </label>
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={close}>{tr.cancel}</button>
-            <button className="gold-btn" disabled={saving} onClick={saveReminder}>{tr.addReminder}</button>
+            <button type="button" className="ghost-btn" onClick={close}>{tr.cancel}</button>
+            <button type="button" className="gold-btn" disabled={saving} onClick={saveReminder}>{tr.addReminder}</button>
           </div>
         </div>
       </div>

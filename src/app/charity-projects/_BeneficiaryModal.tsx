@@ -46,12 +46,13 @@ export function BeneficiaryModal({
 }: BeneficiaryModalProps) {
   if (!open) return null;
   const close = () => { onClose(); resetBeneficiaryForm(); };
+  const titleId = 'charity-beneficiary-modal-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{tr.addBeneficiary}</h2>
-          <button aria-label={tr.cancel} onClick={close}><X size={18} /></button>
+          <h2 id={titleId}>{tr.addBeneficiary}</h2>
+          <button type="button" aria-label={tr.cancel} onClick={close}><X size={18} /></button>
         </div>
         <div className="form-grid">
           <label><span>{tr.shortName}</span><input value={beneficiaryForm.display_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, display_name: e.target.value }))} /></label>
@@ -70,8 +71,8 @@ export function BeneficiaryModal({
           <label className="wide"><span>{tr.notes}</span><textarea value={beneficiaryForm.notes} onChange={e => setBeneficiaryForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
           <p className="privacy-note wide">{tr.privacyNote}</p>
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={close}>{tr.cancel}</button>
-            <button className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>
+            <button type="button" className="ghost-btn" onClick={close}>{tr.cancel}</button>
+            <button type="button" className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>
           </div>
         </div>
       </div>
@@ -92,12 +93,13 @@ export function BeneficiaryDetailsModal({
   dateLabel: (date: string | null | undefined) => string;
 }) {
   if (!beneficiaryDetails) return null;
+  const titleId = 'charity-beneficiary-details-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal small">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal small" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{beneficiaryDetails.display_name}</h2>
-          <button aria-label={tr.cancel} onClick={() => setBeneficiaryDetails(null)}><X size={18} /></button>
+          <h2 id={titleId}>{beneficiaryDetails.display_name}</h2>
+          <button type="button" aria-label={tr.cancel} onClick={() => setBeneficiaryDetails(null)}><X size={18} /></button>
         </div>
         <div className="details-list">
           <p><b>{tr.referenceNumber}</b><span>{beneficiaryDetails.reference_code || '-'}</span></p>

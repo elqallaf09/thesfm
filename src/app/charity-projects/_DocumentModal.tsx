@@ -36,12 +36,13 @@ export function DocumentModal({
   uploadingDocument, uploadDocument, money, toNum, formatFileSize, documentCategories,
 }: DocumentModalProps) {
   if (!open) return null;
+  const titleId = 'charity-document-modal-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{tr.uploadDocument}</h2>
-          <button aria-label={tr.cancel} onClick={onClose}><X size={18} /></button>
+          <h2 id={titleId}>{tr.uploadDocument}</h2>
+          <button type="button" aria-label={tr.cancel} onClick={onClose}><X size={18} /></button>
         </div>
         <div className="form-grid">
           <label className="wide">
@@ -112,8 +113,8 @@ export function DocumentModal({
             <textarea value={documentForm.notes} onChange={e => setDocumentForm(prev => ({ ...prev, notes: e.target.value }))} />
           </label>
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={onClose}>{tr.cancel}</button>
-            <button className="gold-btn" disabled={uploadingDocument} onClick={uploadDocument}>{tr.uploadDocument}</button>
+            <button type="button" className="ghost-btn" onClick={onClose}>{tr.cancel}</button>
+            <button type="button" className="gold-btn" disabled={uploadingDocument} onClick={uploadDocument}>{tr.uploadDocument}</button>
           </div>
         </div>
       </div>

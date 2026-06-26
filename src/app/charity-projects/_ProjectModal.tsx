@@ -43,12 +43,16 @@ export function ProjectModal({
   saving, saveProject, categories, statuses,
 }: ProjectModalProps) {
   if (!open) return null;
+  const titleId = 'charity-project-modal-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal charity-project-modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{tr.newProject}</h2>
-          <button aria-label={tr.cancel} onClick={onClose}><X size={18} /></button>
+          <div>
+            <span className="modal-kicker">{tr.projectName}</span>
+            <h2 id={titleId}>{tr.newProject}</h2>
+          </div>
+          <button type="button" aria-label={tr.cancel} onClick={onClose}><X size={18} /></button>
         </div>
         <div className="form-grid">
           <label className="wide"><span>{tr.projectName}</span><input value={projectForm.name} onChange={e => setProjectForm(prev => ({ ...prev, name: e.target.value }))} /></label>
@@ -92,8 +96,8 @@ export function ProjectModal({
           )}
           <label className="wide"><span>{tr.notes}</span><textarea value={projectForm.notes} onChange={e => setProjectForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={onClose}>{tr.cancel}</button>
-            <button className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button>
+            <button type="button" className="ghost-btn" onClick={onClose}>{tr.cancel}</button>
+            <button type="button" className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button>
           </div>
         </div>
       </div>

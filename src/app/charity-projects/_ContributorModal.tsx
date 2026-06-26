@@ -36,12 +36,13 @@ export function ContributorModal({
 }: ContributorModalProps) {
   if (!open) return null;
   const close = () => { onClose(); resetContributorForm(); };
+  const titleId = 'charity-contributor-modal-title';
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2>{tr.addContributor}</h2>
-          <button aria-label={tr.cancel} onClick={close}><X size={18} /></button>
+          <h2 id={titleId}>{tr.addContributor}</h2>
+          <button type="button" aria-label={tr.cancel} onClick={close}><X size={18} /></button>
         </div>
         <div className="form-grid">
           <label className="wide"><span>{tr.linkedProject}</span><select value={contributorForm.project_id} onChange={e => setContributorForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
@@ -56,8 +57,8 @@ export function ContributorModal({
           <label className="wide"><span>{tr.notes}</span><textarea value={contributorForm.notes} onChange={e => setContributorForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
           <p className="privacy-note wide">{tr.invitationsSoon}</p>
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={close}>{tr.cancel}</button>
-            <button className="gold-btn" disabled={saving} onClick={saveContributor}>{tr.addContributor}</button>
+            <button type="button" className="ghost-btn" onClick={close}>{tr.cancel}</button>
+            <button type="button" className="gold-btn" disabled={saving} onClick={saveContributor}>{tr.addContributor}</button>
           </div>
         </div>
       </div>

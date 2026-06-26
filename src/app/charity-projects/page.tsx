@@ -2144,11 +2144,17 @@ export default function CharityProjectsPage() {
       />
 
       {donationProject && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal small">
-            <div className="modal-head"><h2>{tr.addDonation}</h2><button aria-label={tr.cancel} onClick={() => setDonationProject(null)}><X size={18} /></button></div>
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal small" role="dialog" aria-modal="true" aria-labelledby="charity-donation-modal-title">
+            <div className="modal-head">
+              <h2 id="charity-donation-modal-title">{tr.addDonation}</h2>
+              <button type="button" aria-label={tr.cancel} onClick={() => setDonationProject(null)}><X size={18} /></button>
+            </div>
             <label className="impact-input"><span>{donationProject.name}</span><input inputMode="decimal" value={donationAmount} onChange={e => setDonationAmount(e.target.value)} placeholder="0.000" /></label>
-            <div className="modal-actions"><button className="ghost-btn" onClick={() => setDonationProject(null)}>{tr.cancel}</button><button className="gold-btn" disabled={saving} onClick={saveDonation}>{tr.addDonation}</button></div>
+            <div className="modal-actions">
+              <button type="button" className="ghost-btn" onClick={() => setDonationProject(null)}>{tr.cancel}</button>
+              <button type="button" className="gold-btn" disabled={saving} onClick={saveDonation}>{tr.addDonation}</button>
+            </div>
           </div>
         </div>
       )}
