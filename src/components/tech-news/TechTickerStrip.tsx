@@ -39,7 +39,7 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
       setClassName="tech-ticker-set"
       status={(
         <span className="tech-ticker-delay-badge">
-          <Clock3 size={13} />
+          <Clock3 size={12} />
           {labels.delayedGlobal}
         </span>
       )}
@@ -50,11 +50,11 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
         return (
           <div className={`tech-ticker-item ${tone}`} key={item.symbol}>
             <div className="tech-ticker-identity">
-              <AssetAvatar symbol={item.symbol} assetType="stock" size="sm" decorative />
+              <AssetAvatar symbol={item.symbol} assetType="stock" size="xs" decorative />
               <div>
                 <strong dir="ltr">{item.symbol}</strong>
                 <small>
-                  <Activity size={12} />
+                  <Activity size={10} />
                   {item.available ? labels.lastUpdated : labels.priceUnavailable}
                 </small>
               </div>
@@ -62,7 +62,7 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
             <span dir="ltr">{item.price === null ? labels.priceUnavailable : formatPrice(item.price)}</span>
             {item.price !== null && item.changePercent !== null ? (
               <b className={tone}>
-                <Icon size={13} />
+                <Icon size={11} />
                 <span dir="ltr">{`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}</span>
               </b>
             ) : null}
