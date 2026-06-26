@@ -2419,6 +2419,8 @@ export function CyclicalStocksNewsPage() {
           --cyc-cyan: #19b8c9;
           --cyc-gold: #c9953f;
           --cyc-shadow: 0 18px 42px rgba(18, 48, 78, 0.09);
+          --cyc-card-ring: rgba(41, 104, 139, 0.13);
+          --cyc-card-glow: 0 22px 54px rgba(18, 48, 78, 0.11);
           min-height: 100dvh;
           width: 100%;
           overflow-x: clip;
@@ -2474,6 +2476,21 @@ export function CyclicalStocksNewsPage() {
           background-size: 54px 54px;
           mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 72%);
         }
+        .hero::after {
+          content: "";
+          position: absolute;
+          inset-block-end: -42%;
+          inset-inline-start: 42%;
+          width: min(560px, 60vw);
+          aspect-ratio: 1;
+          pointer-events: none;
+          border-radius: 999px;
+          background:
+            radial-gradient(circle, rgba(25, 184, 201, 0.34), transparent 58%),
+            radial-gradient(circle at 34% 28%, rgba(201, 149, 63, 0.32), transparent 44%);
+          filter: blur(4px);
+          opacity: 0.82;
+        }
         .hero > * {
           position: relative;
           z-index: 1;
@@ -2523,6 +2540,8 @@ export function CyclicalStocksNewsPage() {
           line-height: 1.08;
           letter-spacing: 0;
           font-weight: 950;
+          text-wrap: balance;
+          text-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
         }
         .hero p {
           margin: 0;
@@ -2547,6 +2566,7 @@ export function CyclicalStocksNewsPage() {
           background: rgba(255, 255, 255, 0.08);
         }
         .hero-panel {
+          position: relative;
           display: grid;
           align-content: space-between;
           gap: 18px;
@@ -2556,6 +2576,20 @@ export function CyclicalStocksNewsPage() {
           background: rgba(255, 255, 255, 0.11);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 38px rgba(0, 0, 0, 0.11);
           backdrop-filter: blur(14px);
+          overflow: hidden;
+        }
+        .hero-panel::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 36%),
+            radial-gradient(circle at 16% 0%, rgba(25, 184, 201, 0.18), transparent 38%);
+        }
+        .hero-panel > * {
+          position: relative;
+          z-index: 1;
         }
         .hero-panel strong {
           display: block;
@@ -2705,9 +2739,10 @@ export function CyclicalStocksNewsPage() {
           scrollbar-width: thin;
         }
         .tab {
+          position: relative;
           min-height: 44px;
           white-space: nowrap;
-          border: 0;
+          border: 1px solid transparent;
           border-radius: 11px;
           background: transparent;
           color: #415b73;
@@ -2724,6 +2759,15 @@ export function CyclicalStocksNewsPage() {
           color: #ffffff;
           background: linear-gradient(135deg, var(--cyc-ink), var(--cyc-blue));
           box-shadow: 0 12px 24px rgba(18, 48, 78, 0.18);
+        }
+        .tab.active::after {
+          content: "";
+          position: absolute;
+          inset-inline: 18px;
+          inset-block-end: 5px;
+          height: 2px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.82), transparent);
         }
         .tab-stack {
           display: grid;
@@ -3352,11 +3396,15 @@ export function CyclicalStocksNewsPage() {
         }
         .sector-card {
           position: relative;
+          isolation: isolate;
           overflow: hidden;
           padding: 16px;
           min-width: 0;
+          border: 1px solid var(--cyc-card-ring);
           border-radius: 14px;
           background:
+            radial-gradient(circle at top right, rgba(25, 184, 201, 0.12), transparent 38%),
+            radial-gradient(circle at bottom left, rgba(201, 149, 63, 0.12), transparent 40%),
             linear-gradient(180deg, #ffffff, #f8fbfd),
             linear-gradient(135deg, rgba(201, 149, 63, 0.08), transparent 48%);
           box-shadow: 0 12px 26px rgba(18, 48, 78, 0.065);
@@ -3371,10 +3419,23 @@ export function CyclicalStocksNewsPage() {
           background: linear-gradient(180deg, var(--cyc-gold), var(--cyc-cyan));
           opacity: 0.85;
         }
+        .sector-card::after {
+          content: "";
+          position: absolute;
+          inset: 1px;
+          pointer-events: none;
+          border-radius: 13px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), transparent 42%);
+          z-index: -1;
+        }
+        .sector-card > * {
+          position: relative;
+          z-index: 1;
+        }
         .sector-card:hover {
           transform: translateY(-2px);
           border-color: rgba(201, 149, 63, 0.28);
-          box-shadow: 0 18px 34px rgba(18, 48, 78, 0.1);
+          box-shadow: var(--cyc-card-glow);
         }
         .sector-head {
           align-items: flex-start;
@@ -3395,6 +3456,13 @@ export function CyclicalStocksNewsPage() {
           border-radius: 12px;
           background: linear-gradient(135deg, rgba(22, 105, 178, 0.11), rgba(201, 149, 63, 0.1));
           color: var(--cyc-blue);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 10px 22px rgba(22, 105, 178, 0.08);
+          transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
+        }
+        .sector-card:hover .sector-icon {
+          transform: translateY(-1px) scale(1.03);
+          background: linear-gradient(135deg, rgba(22, 105, 178, 0.16), rgba(201, 149, 63, 0.16));
+          color: #0f5f9f;
         }
         .sector-card h3 {
           margin: 0 0 6px;
