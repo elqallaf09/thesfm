@@ -270,12 +270,12 @@ const COPY = {
     newsSource: 'مصادر الأخبار',
     bankingTicker: 'شريط أسهم البنوك',
     marketSummary: 'ملخص القطاع البنكي',
-    bestBank: 'أفضل بنك أداءً',
-    weakestBank: 'أضعف بنك أداءً',
-    sectorAverage: 'متوسط حركة العينة',
-    risingStocks: 'أسهم مرتفعة',
-    fallingStocks: 'أسهم منخفضة',
-    importantStory: 'أبرز خبر',
+    bestBank: 'أفضل سهم',
+    weakestBank: 'أضعف سهم',
+    sectorAverage: 'متوسط أداء القطاع',
+    risingStocks: 'عدد الأسهم الصاعدة',
+    fallingStocks: 'عدد الأسهم الهابطة',
+    valuationRisk: 'متوسط التقييم / المخاطرة',
     bankStocks: 'أسهم بنكية للمتابعة',
     bankStocksDescription: 'بطاقات مختصرة تربط السعر الحالي بالتحليل الفني السريع والتحليل الكامل.',
     showAllStocks: 'عرض كل الأسهم',
@@ -386,12 +386,12 @@ const COPY = {
     newsSource: 'News sources',
     bankingTicker: 'Bank ticker',
     marketSummary: 'Banking sector summary',
-    bestBank: 'Best performer',
-    weakestBank: 'Weakest performer',
-    sectorAverage: 'Average move',
+    bestBank: 'Best stock',
+    weakestBank: 'Weakest stock',
+    sectorAverage: 'Sector average return',
     risingStocks: 'Rising stocks',
     fallingStocks: 'Falling stocks',
-    importantStory: 'Top story',
+    valuationRisk: 'Valuation / risk',
     bankStocks: 'Bank stocks to watch',
     bankStocksDescription: 'Compact cards connecting live quotes with quick and full analysis.',
     showAllStocks: 'Show all stocks',
@@ -502,12 +502,12 @@ const COPY = {
     newsSource: 'Sources',
     bankingTicker: 'Ticker bancaire',
     marketSummary: 'Synthèse bancaire',
-    bestBank: 'Meilleure performance',
-    weakestBank: 'Plus faible performance',
-    sectorAverage: 'Variation moyenne',
-    risingStocks: 'Actions en hausse',
-    fallingStocks: 'Actions en baisse',
-    importantStory: 'Article principal',
+    bestBank: 'Meilleure action',
+    weakestBank: 'Action la plus faible',
+    sectorAverage: 'Moyenne de performance du secteur',
+    risingStocks: 'Actions haussières',
+    fallingStocks: 'Actions baissières',
+    valuationRisk: 'Évaluation / risque',
     bankStocks: 'Actions bancaires à suivre',
     bankStocksDescription: 'Cartes compactes reliant les cours à l’analyse rapide et complète.',
     showAllStocks: 'Tout afficher',
@@ -638,6 +638,30 @@ function formatPercent(value: number | null | undefined, locale = 'ar-KW') {
     maximumFractionDigits: 2,
     signDisplay: 'exceptZero',
   }).format(value)}%`;
+}
+
+function formatSnapshotValue(value: number | null | undefined, unit = '', locale = 'ar-KW') {
+  if (!isFiniteNumber(value)) return '';
+  const normalizedUnit = String(unit || '').trim();
+  if (normalizedUnit === '%') {
+    return `${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 2,
+    }).format(value)}%`;
+  }
+
+  if (/^[A-Z]{3}$/i.test(normalizedUnit)) {
+    return formatMoney(value, normalizedUnit, locale);
+  }
+
+  if (normalizedUnit === 'Index') {
+    return new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  return `${new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 2,
+  }).format(value)} ${normalizedUnit || ''}`.trim();
 }
 
 function formatDateTime(value: string | null | undefined, locale: string) {
@@ -1034,12 +1058,11 @@ function BankingTicker({
       </div>
       <div className="bankTickerViewport">
         <div className="bankTickerTrack" role="list" aria-label={text.bankingTicker}>
-          {([0, 1] as const).map(loop => items.map(item => (
+          {items.map((item, index) => (
             <article
               className="bankTickerItem"
-              key={`${loop}-${item.symbol}`}
-              role={loop === 0 ? 'listitem' : undefined}
-              aria-hidden={loop === 1 ? true : undefined}
+              key={`${item.symbol}-${index}`}
+              role="listitem"
             >
               <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div>
@@ -1054,7 +1077,7 @@ function BankingTicker({
               </div>
               <small>{sectorLabel(item.sector, lang, text)} · {text.delayedQuote}</small>
             </article>
-          )))}
+          ))}
         </div>
       </div>
     </section>
@@ -1065,13 +1088,13 @@ function BankingMarketSummary({
   text,
   locale,
   stocks,
-  featuredStory,
+  snapshotItems,
   loading,
 }: {
   text: Copy;
   locale: string;
   stocks: BankTickerItem[];
-  featuredStory?: BankNewsItem;
+  snapshotItems: BankingSnapshotItem[];
   loading: boolean;
 }) {
   const validStocks = stocks.filter(item => isFiniteNumber(item.changePercent));
@@ -1082,6 +1105,16 @@ function BankingMarketSummary({
     : null;
   const rising = validStocks.filter(item => (item.changePercent ?? 0) > 0).length;
   const falling = validStocks.filter(item => (item.changePercent ?? 0) < 0).length;
+  const sectorValuation = snapshotItems.find(item => item.category === 'financial_sector');
+  const volatilityMetric = snapshotItems.find(item => item.category === 'volatility');
+  const valuationValue = formatPercent(sectorValuation?.changePercent, locale) || formatSnapshotValue(sectorValuation?.value ?? null, sectorValuation?.unit ?? 'Index', locale);
+  const riskValue = formatSnapshotValue(volatilityMetric?.value ?? null, volatilityMetric?.unit ?? '%', locale);
+  const valuationRiskDetail = [
+    sectorValuation ? `${sectorValuation.symbol} ${formatSnapshotValue(sectorValuation.value, sectorValuation.unit, locale)}` : null,
+    riskValue ? `${text.risk}: ${riskValue}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <section className="bankSection" aria-labelledby="banking-summary-title">
@@ -1117,13 +1150,24 @@ function BankingMarketSummary({
               detail={`${validStocks.length} ${text.resultCount}`}
               tone={changeTone(average)}
             />
-            <MetricCard icon={ArrowUpRight} label={text.risingStocks} value={formatCompactNumber(rising, locale) || '0'} detail={text.latestQuote} tone="positive" />
-            <MetricCard icon={TrendingDown} label={text.fallingStocks} value={formatCompactNumber(falling, locale) || '0'} detail={text.latestQuote} tone="negative" />
             <MetricCard
-              icon={Newspaper}
-              label={text.importantStory}
-              value={featuredStory ? displayTitle(featuredStory) : text.unavailable}
-              detail={featuredStory ? `${featuredStory.source} · ${relativeTime(featuredStory.publishedAt, locale)}` : undefined}
+              icon={ArrowUpRight}
+              label={text.risingStocks}
+              value={formatCompactNumber(rising, locale) || '0'}
+              tone="positive"
+            />
+            <MetricCard
+              icon={TrendingDown}
+              label={text.fallingStocks}
+              value={formatCompactNumber(falling, locale) || '0'}
+              tone="negative"
+            />
+            <MetricCard
+              icon={Gauge}
+              label={text.valuationRisk}
+              value={valuationValue || text.unavailable}
+              detail={valuationRiskDetail || text.unavailable}
+              tone={sectorValuation ? changeTone(sectorValuation.changePercent) : 'neutral'}
             />
           </>
         )}
@@ -2155,7 +2199,13 @@ export function BankNewsPage() {
         ) : null}
 
         <BankingTicker items={sortedStocks} text={text} lang={lang} locale={locale} loading={loading && sortedStocks.length === 0} />
-        <BankingMarketSummary text={text} locale={locale} stocks={sortedStocks} featuredStory={featured[0]} loading={loading && sortedStocks.length === 0} />
+        <BankingMarketSummary
+          text={text}
+          locale={locale}
+          stocks={sortedStocks}
+          snapshotItems={snapshotItems}
+          loading={loading && sortedStocks.length === 0}
+        />
         <BankStockSection
           text={text}
           lang={lang}
@@ -2266,7 +2316,7 @@ export function BankNewsPage() {
           padding: clamp(16px, 2vw, 32px);
           display: flex;
           flex-direction: column;
-          gap: 22px;
+          gap: 16px;
           min-width: 0;
           overflow-x: clip;
         }
@@ -2276,7 +2326,7 @@ export function BankNewsPage() {
           grid-template-columns: minmax(0, 1fr) minmax(320px, 0.48fr);
           gap: 20px;
           align-items: stretch;
-          padding: 24px;
+          padding: 18px;
           border: 1px solid rgba(148, 163, 184, 0.26);
           border-radius: 22px;
           background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(239, 250, 255, 0.92));
@@ -2295,7 +2345,7 @@ export function BankNewsPage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 7px 11px;
+          padding: 6px 10px;
           border: 1px solid rgba(20, 184, 166, 0.22);
           border-radius: 999px;
           background: rgba(236, 254, 255, 0.78);
@@ -2306,7 +2356,7 @@ export function BankNewsPage() {
 
         .bankHero h1 {
           margin: 12px 0 8px;
-          font-size: clamp(2rem, 3vw, 2.8rem);
+          font-size: clamp(1.75rem, 2.6vw, 2.35rem);
           line-height: 1.15;
           color: #071b33;
           letter-spacing: 0;
@@ -2316,7 +2366,7 @@ export function BankNewsPage() {
           margin: 0;
           max-width: 760px;
           color: #53677f;
-          font-size: 1rem;
+          font-size: 0.95rem;
           line-height: 1.8;
         }
 
@@ -2332,7 +2382,7 @@ export function BankNewsPage() {
           flex-direction: column;
           gap: 4px;
           min-width: 0;
-          padding: 12px;
+          padding: 10px;
           border-radius: 16px;
           background: #fff;
           border: 1px solid rgba(203, 213, 225, 0.8);
@@ -2472,7 +2522,7 @@ export function BankNewsPage() {
         .bankPanel,
         .bankFilterPanel,
         .bankSideRail {
-          padding: 20px;
+          padding: 16px;
         }
 
         .bankWarning {
@@ -2504,7 +2554,7 @@ export function BankNewsPage() {
         }
 
         .sectionHead.compact {
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
 
         .sectionHead h2,
@@ -2515,7 +2565,7 @@ export function BankNewsPage() {
           align-items: center;
           gap: 8px;
           color: #0b213a;
-          font-size: clamp(1.18rem, 1.5vw, 1.45rem);
+          font-size: clamp(1.05rem, 1.35vw, 1.25rem);
           letter-spacing: 0;
         }
 
@@ -2529,36 +2579,35 @@ export function BankNewsPage() {
         .bankTickerSkeletons {
           display: grid;
           grid-auto-flow: column;
-          grid-auto-columns: minmax(210px, 1fr);
-          gap: 12px;
+          grid-auto-columns: minmax(190px, 1fr);
+          gap: 10px;
           overflow-x: auto;
           overscroll-behavior-inline: contain;
-          padding-bottom: 4px;
+          padding-bottom: 2px;
           scrollbar-width: thin;
         }
 
         .bankTickerViewport {
           width: 100%;
           max-width: 100%;
-          overflow: hidden;
+          overflow-x: auto;
+          overflow-y: visible;
           direction: ltr;
-          mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+          scrollbar-width: thin;
+          -webkit-overflow-scrolling: touch;
         }
 
         .bankTickerTrack {
           display: flex;
           align-items: stretch;
-          gap: 12px;
+          gap: 10px;
           width: max-content;
           min-width: max-content;
-          animation: bankTickerMove 42s linear infinite;
           will-change: transform;
         }
 
-        @media (hover: hover) and (pointer: fine) {
-          .bankTickerViewport:hover .bankTickerTrack {
-            animation-play-state: paused;
-          }
+        .bankTickerTrack:empty {
+          min-height: 84px;
         }
 
         .bankTickerItem,
@@ -2575,12 +2624,12 @@ export function BankNewsPage() {
         }
 
         .bankTickerItem {
-          padding: 14px;
+          padding: 10px 11px;
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
           align-items: center;
-          gap: 10px;
-          flex: 0 0 clamp(220px, 18vw, 282px);
+          gap: 8px;
+          flex: 0 0 clamp(180px, 17vw, 240px);
           min-width: 0;
           direction: rtl;
         }
@@ -2610,13 +2659,14 @@ export function BankNewsPage() {
         .bankTickerItem strong {
           display: block;
           color: #071b33;
-          font-size: 1.05rem;
+          font-size: 0.94rem;
         }
 
         .bankTickerItem span,
         .bankTickerItem small {
           color: #64748b;
-          font-size: 0.84rem;
+          font-size: 0.76rem;
+          line-height: 1.4;
         }
 
         .tickerNumbers {
@@ -2645,22 +2695,22 @@ export function BankNewsPage() {
         .bankMetricGrid {
           display: grid;
           grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 14px;
+          gap: 10px;
         }
 
         .bankMetricCard {
-          padding: 16px;
+          padding: 12px;
           display: grid;
-          gap: 8px;
+          gap: 7px;
           min-width: 0;
         }
 
         .bankMetricIcon {
-          width: 38px;
-          height: 38px;
+          width: 32px;
+          height: 32px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
+          border-radius: 12px;
           background: #eff6ff;
           color: #0284c7;
         }
@@ -2676,9 +2726,9 @@ export function BankNewsPage() {
         }
 
         .bankMetricValue {
-          min-height: 2.7em;
+          min-height: 2.2em;
           color: #0b213a;
-          font-size: 1.18rem;
+          font-size: 1.02rem;
           line-height: 1.35;
           display: -webkit-box;
           -webkit-line-clamp: 2;
@@ -2688,8 +2738,8 @@ export function BankNewsPage() {
 
         .bankMetricDetail {
           color: #64748b;
-          font-size: 0.82rem;
-          line-height: 1.5;
+          font-size: 0.74rem;
+          line-height: 1.45;
         }
 
         .bankStockGrid {
@@ -3457,6 +3507,12 @@ export function BankNewsPage() {
           }
         }
 
+        @media (max-width: 1020px) {
+          .bankMetricGrid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
         @media (max-width: 860px) {
           html,
           body,
@@ -3478,10 +3534,13 @@ export function BankNewsPage() {
           }
 
           .bankHeroStatus,
-          .bankMetricGrid,
           .quickSummaryGrid,
           .quickTechnicalGrid {
             grid-template-columns: 1fr;
+          }
+
+          .bankMetricGrid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .leadStory {
@@ -3542,8 +3601,24 @@ export function BankNewsPage() {
             border-radius: 18px;
           }
 
+          .bankHero {
+            padding: 14px;
+          }
+
+          .bankHero h1 {
+            font-size: clamp(1.45rem, 7vw, 1.75rem);
+          }
+
           .bankTickerItem {
-            flex-basis: min(78vw, 260px);
+            flex-basis: min(78vw, 262px);
+          }
+
+          .bankMetricCard {
+            padding: 11px;
+          }
+
+          .bankMetricLabel {
+            font-size: 0.72rem;
           }
 
           .bankStockMetrics,
