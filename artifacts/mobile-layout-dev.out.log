@@ -1,0 +1,1919 @@
+   ▲ Next.js 15.5.7 (Turbopack)
+   - Local:        http://127.0.0.1:3000
+   - Network:      http://127.0.0.1:3000
+
+ ✓ Starting...
+ ✓ Compiled instrumentation Node.js in 16ms
+ ✓ Compiled instrumentation Edge in 16ms
+ ✓ Compiled middleware in 72ms
+ ✓ Ready in 1185ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 3.4s
+ GET /login?next=%2Fthesfm-trader-own%2Fapp 200 in 4023ms
+ ✓ Compiled /api/analytics/track in 319ms
+ POST /api/analytics/track 200 in 731ms
+ GET /login?next=%2Fthesfm-trader-own%2Fapp 200 in 222ms
+ POST /api/analytics/track 200 in 336ms
+ GET /login?next=%2Fthesfm-trader-own%2Fapp 200 in 243ms
+ POST /api/analytics/track 200 in 324ms
+ GET /login?next=%2Fmarket-analysis 200 in 218ms
+ POST /api/analytics/track 200 in 344ms
+ ○ Compiling /gulf-news ...
+ ✓ Compiled /gulf-news in 669ms
+ GET /gulf-news 200 in 1154ms
+ ✓ Compiled /api/markets/movers in 216ms
+ POST /api/analytics/track 200 in 346ms
+[MarketData] Yahoo quote endpoint response {
+  marketCode: 'KW',
+  market: 'kuwait',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^BKP.KW',
+  symbolsTried: [ '^BKP.KW' ],
+  requestedSymbol: '^BKP.KW',
+  symbol: '^BKP.KW',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EBKP.KW',
+  status: 401,
+  rawQuoteKeys: [],
+  parsedPrice: null,
+  parsedChangePercent: null,
+  unavailableReason: 'provider_http_401'
+}
+[MarketData] Yahoo chart endpoint response {
+  marketCode: 'KW',
+  market: 'kuwait',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^BKP.KW',
+  symbolsTried: [ '^BKP.KW' ],
+  requestedSymbol: '^BKP.KW',
+  symbol: '^BKP.KW',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/%5EBKP.KW?range=2d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsedPrice: 9126.44,
+  parsedChangePercent: -0.21069988005303708,
+  unavailableReason: null
+}
+[GulfNews] Yahoo index attempt {
+  marketCode: 'KW',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^BKP.KW',
+  parsedValue: 9126.44,
+  parsedChange: -19.269999999998618,
+  parsedChangePercent: -0.21069988005303708,
+  marketTime: '2026-06-25T10:15:00.000Z',
+  unavailableReason: null
+}
+[GulfNews] Official index attempt {
+  marketCode: 'BH',
+  provider: 'Bahrain Bourse',
+  symbolAttempted: 'Bahrain All Share Index',
+  responseStatus: 404,
+  unavailableReason: 'provider_http_404'
+}
+[MarketData] Yahoo quote endpoint response {
+  marketCode: 'QA',
+  market: 'qatar',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^GNRI.QA',
+  symbolsTried: [ '^GNRI.QA' ],
+  requestedSymbol: '^GNRI.QA',
+  symbol: '^GNRI.QA',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EGNRI.QA',
+  status: 401,
+  rawQuoteKeys: [],
+  parsedPrice: null,
+  parsedChangePercent: null,
+  unavailableReason: 'provider_http_401'
+}
+[MarketData] Yahoo quote endpoint response {
+  marketCode: 'AE',
+  market: 'uae',
+  provider: 'Yahoo Finance',
+  symbolAttempted: 'DFMGI.AE',
+  symbolsTried: [ 'DFMGI.AE' ],
+  requestedSymbol: 'DFMGI.AE',
+  symbol: 'DFMGI.AE',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=DFMGI.AE',
+  status: 401,
+  rawQuoteKeys: [],
+  parsedPrice: null,
+  parsedChangePercent: null,
+  unavailableReason: 'provider_http_401'
+}
+ GET /api/markets/movers?market=saudi&limit=5 200 in 3349ms
+[MarketData] Yahoo chart endpoint response {
+  marketCode: 'QA',
+  market: 'qatar',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^GNRI.QA',
+  symbolsTried: [ '^GNRI.QA' ],
+  requestedSymbol: '^GNRI.QA',
+  symbol: '^GNRI.QA',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGNRI.QA?range=2d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsedPrice: 10281.811,
+  parsedChangePercent: -0.381911882780623,
+  unavailableReason: null
+}
+[GulfNews] Yahoo index attempt {
+  marketCode: 'QA',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^GNRI.QA',
+  parsedValue: 10281.811,
+  parsedChange: -39.417999999999665,
+  parsedChangePercent: -0.381911882780623,
+  marketTime: '2026-06-25T10:15:00.000Z',
+  unavailableReason: null
+}
+[MarketData] Yahoo chart endpoint response {
+  marketCode: 'AE',
+  market: 'uae',
+  provider: 'Yahoo Finance',
+  symbolAttempted: 'DFMGI.AE',
+  symbolsTried: [ 'DFMGI.AE' ],
+  requestedSymbol: 'DFMGI.AE',
+  symbol: 'DFMGI.AE',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/DFMGI.AE?range=2d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsedPrice: 6024.59,
+  parsedChangePercent: -1.4307825210567964,
+  unavailableReason: null
+}
+[GulfNews] Yahoo index attempt {
+  marketCode: 'AE',
+  provider: 'Yahoo Finance',
+  symbolAttempted: 'DFMGI.AE',
+  parsedValue: 6024.59,
+  parsedChange: -87.44999999999982,
+  parsedChangePercent: -1.4307825210567964,
+  marketTime: '2026-06-25T11:00:20.000Z',
+  unavailableReason: null
+}
+[GulfNews] Mubasher index attempt {
+  marketCode: 'BH',
+  provider: 'Mubasher',
+  symbolAttempted: 'BHBX',
+  responseStatus: 200,
+  parsedValue: 2041.6,
+  parsedChange: 0,
+  parsedChangePercent: 0,
+  unavailableReason: null
+}
+[GulfNews] Official index attempt {
+  marketCode: 'OM',
+  provider: 'Muscat Stock Exchange',
+  symbolAttempted: 'MSX30',
+  responseStatus: 200,
+  parsedValue: 7316.652,
+  parsedChange: -31.839,
+  parsedChangePercent: -0.43,
+  unavailableReason: null
+}
+[MarketData] Yahoo quote endpoint response {
+  marketCode: 'SA',
+  market: 'saudi',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^TASI.SR',
+  symbolsTried: [ '^TASI.SR' ],
+  requestedSymbol: '^TASI.SR',
+  symbol: '^TASI.SR',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETASI.SR',
+  status: 401,
+  rawQuoteKeys: [],
+  parsedPrice: null,
+  parsedChangePercent: null,
+  unavailableReason: 'provider_http_401'
+}
+[MarketData] Yahoo chart endpoint response {
+  marketCode: 'SA',
+  market: 'saudi',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^TASI.SR',
+  symbolsTried: [ '^TASI.SR' ],
+  requestedSymbol: '^TASI.SR',
+  symbol: '^TASI.SR',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/%5ETASI.SR?range=2d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsedPrice: 10933.23,
+  parsedChangePercent: -0.6684049860086466,
+  unavailableReason: null
+}
+[GulfNews] Yahoo index attempt {
+  marketCode: 'SA',
+  provider: 'Yahoo Finance',
+  symbolAttempted: '^TASI.SR',
+  parsedValue: 10933.23,
+  parsedChange: -73.56999999999971,
+  parsedChangePercent: -0.6684049860086466,
+  marketTime: '2026-06-25T12:19:59.000Z',
+  unavailableReason: null
+}
+ GET /api/gulf-news?lang=ar&limit=50 200 in 6412ms
+ ○ Compiling /banking-stocks ...
+ ✓ Compiled /banking-stocks in 542ms
+ GET /banking-stocks 200 in 832ms
+ GET /banking-stocks?symbol=ALL 200 in 199ms
+ ✓ Compiled /api/banking-stocks/ticker in 359ms
+ POST /api/analytics/track 200 in 590ms
+[TechNews] Yahoo quote response {
+  symbol: 'XLF',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=XLF',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: '^VIX',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'DX-Y.NYB',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=DX-Y.NYB',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'AXP',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=AXP',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'C',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=C',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'WFC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=WFC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'ICE',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=ICE',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'USB',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=USB',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MA',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MA',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BAC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BAC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BLK',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BLK',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BAC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BAC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'V',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=V',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'CME',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=CME',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BK',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BK',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MS',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MS',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MCO',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MCO',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MCO',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MCO',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'V',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=V',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'PNC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=PNC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'TFC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=TFC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BLK',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BLK',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'AXP',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=AXP',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'GS',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=GS',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'PYPL',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=PYPL',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'SPGI',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPGI',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'ICE',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=ICE',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'WFC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=WFC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'CME',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=CME',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MS',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MS',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'JPM',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=JPM',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'PYPL',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=PYPL',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'TFC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=TFC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'SPGI',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SPGI',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'PNC',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=PNC',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'USB',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=USB',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'BK',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=BK',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'SCHW',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SCHW',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'GS',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=GS',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'JPM',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=JPM',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'SCHW',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SCHW',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo quote response {
+  symbol: 'MA',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MA',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'V',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/V?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 330.52,
+    regularMarketChange: -1.7100000000000364,
+    regularMarketChangePercent: -0.5147036691448804
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'CME',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/CME?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 225,
+    regularMarketChange: -6.5800000000000125,
+    regularMarketChangePercent: -2.841350721133091
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BLK',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BLK?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 971.92,
+    regularMarketChange: -10.680000000000064,
+    regularMarketChangePercent: -1.0869122735599495
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'C',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/C?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 144.98,
+    regularMarketChange: 1.3899999999999864,
+    regularMarketChangePercent: 0.9680339856535874
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'V',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/V?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 330.52,
+    regularMarketChange: -1.7100000000000364,
+    regularMarketChangePercent: -0.5147036691448804
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'PYPL',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/PYPL?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 42.38,
+    regularMarketChange: -0.09499999999999886,
+    regularMarketChangePercent: -0.2236609770453181
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BK',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BK?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 137.16,
+    regularMarketChange: 0,
+    regularMarketChangePercent: 0
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MCO',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MCO?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 438.85,
+    regularMarketChange: -10.939999999999998,
+    regularMarketChangePercent: -2.4322461593187925
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'PYPL',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/PYPL?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 42.38,
+    regularMarketChange: -0.09499999999999886,
+    regularMarketChangePercent: -0.2236609770453181
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'AXP',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/AXP?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 342.46,
+    regularMarketChange: -0.10000000000002274,
+    regularMarketChangePercent: -0.02919196637086138
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BAC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BAC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 58.19,
+    regularMarketChange: 0.46000000000000085,
+    regularMarketChangePercent: 0.7968127490039856
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'WFC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/WFC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 84.74,
+    regularMarketChange: 0.4399999999999977,
+    regularMarketChangePercent: 0.5219454329774588
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MCO',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MCO?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 438.85,
+    regularMarketChange: -10.939999999999998,
+    regularMarketChangePercent: -2.4322461593187925
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BLK',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BLK?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 971.92,
+    regularMarketChange: -10.680000000000064,
+    regularMarketChangePercent: -1.0869122735599495
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'GS',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/GS?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 1065.09,
+    regularMarketChange: -11.820000000000164,
+    regularMarketChangePercent: -1.0975847563863428
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'AXP',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/AXP?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 342.46,
+    regularMarketChange: -0.10000000000002274,
+    regularMarketChangePercent: -0.02919196637086138
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'TFC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/TFC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 50.67,
+    regularMarketChange: 0.8800000000000026,
+    regularMarketChangePercent: 1.7674231773448537
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'PNC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/PNC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 245.28,
+    regularMarketChange: 5.360000000000014,
+    regularMarketChangePercent: 2.2340780260086754
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'TFC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/TFC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 50.67,
+    regularMarketChange: 0.8800000000000026,
+    regularMarketChangePercent: 1.7674231773448537
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'JPM',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/JPM?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 335.12,
+    regularMarketChange: 1.670000000000016,
+    regularMarketChangePercent: 0.500824711351032
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MS',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MS?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 221.04,
+    regularMarketChange: 1.1799999999999784,
+    regularMarketChangePercent: 0.5367051760210945
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo quote response {
+  symbol: 'C',
+  url: 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=C',
+  status: 401,
+  rawQuoteKeys: [],
+  parsed: {
+    regularMarketPrice: null,
+    regularMarketChange: null,
+    regularMarketChangePercent: null
+  },
+  unavailableReason: 'provider_http_401'
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MS',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MS?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 221.04,
+    regularMarketChange: 1.1799999999999784,
+    regularMarketChangePercent: 0.5367051760210945
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MA',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MA?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 488.92,
+    regularMarketChange: -5.490000000000009,
+    regularMarketChangePercent: -1.1104144333650228
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'C',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/C?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 144.98,
+    regularMarketChange: 1.3899999999999864,
+    regularMarketChangePercent: 0.9680339856535874
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: '^VIX',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 18.89,
+    regularMarketChange: -0.5999999999999979,
+    regularMarketChangePercent: -3.0785017957927034
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'XLF',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/XLF?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 53.45,
+    regularMarketChange: -0.269999999999996,
+    regularMarketChangePercent: -0.5026061057334252
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'DX-Y.NYB',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'longName',             'shortName',
+    'chartPreviousClose',   'priceHint',
+    'currentTradingPeriod', 'dataGranularity',
+    'range',                'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 101.441,
+    regularMarketChange: -0.16799999999999216,
+    regularMarketChangePercent: -0.1653396844767611
+  },
+  unavailableReason: null
+}
+ GET /api/market/banking/snapshot 200 in 3387ms
+[TechNews] Yahoo chart quote response {
+  symbol: 'ICE',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/ICE?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 124.49,
+    regularMarketChange: -5.530000000000015,
+    regularMarketChangePercent: -4.2531918166436045
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'MA',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/MA?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 488.92,
+    regularMarketChange: -5.490000000000009,
+    regularMarketChangePercent: -1.1104144333650228
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'ICE',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/ICE?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 124.49,
+    regularMarketChange: -5.530000000000015,
+    regularMarketChangePercent: -4.2531918166436045
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'CME',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/CME?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 225,
+    regularMarketChange: -6.5800000000000125,
+    regularMarketChangePercent: -2.841350721133091
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'USB',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/USB?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 61.21,
+    regularMarketChange: 1.1000000000000014,
+    regularMarketChangePercent: 1.829978372982867
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BAC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BAC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 58.19,
+    regularMarketChange: 0.46000000000000085,
+    regularMarketChangePercent: 0.7968127490039856
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'SPGI',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/SPGI?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 395.14,
+    regularMarketChange: -7.210000000000036,
+    regularMarketChangePercent: -1.7919721635392163
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'BK',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/BK?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 137.16,
+    regularMarketChange: 0,
+    regularMarketChangePercent: 0
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'SPGI',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/SPGI?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 395.14,
+    regularMarketChange: -7.210000000000036,
+    regularMarketChangePercent: -1.7919721635392163
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'USB',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/USB?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 61.21,
+    regularMarketChange: 1.1000000000000014,
+    regularMarketChangePercent: 1.829978372982867
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'GS',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/GS?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 1065.09,
+    regularMarketChange: -11.820000000000164,
+    regularMarketChangePercent: -1.0975847563863428
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'PNC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/PNC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 245.28,
+    regularMarketChange: 5.360000000000014,
+    regularMarketChangePercent: 2.2340780260086754
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'JPM',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/JPM?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 335.12,
+    regularMarketChange: 1.670000000000016,
+    regularMarketChangePercent: 0.500824711351032
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'SCHW',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/SCHW?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 89.44,
+    regularMarketChange: -1.9500000000000028,
+    regularMarketChangePercent: -2.1337126600284524
+  },
+  unavailableReason: null
+}
+[TechNews] Yahoo chart quote response {
+  symbol: 'WFC',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/WFC?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 84.74,
+    regularMarketChange: 0.4399999999999977,
+    regularMarketChangePercent: 0.5219454329774588
+  },
+  unavailableReason: null
+}
+ GET /api/banking-stocks/movers?limit=6 200 in 3621ms
+[TechNews] Yahoo chart quote response {
+  symbol: 'SCHW',
+  url: 'https://query1.finance.yahoo.com/v8/finance/chart/SCHW?range=1d&interval=1d',
+  status: 200,
+  rawQuoteKeys: [
+    'currency',             'symbol',
+    'exchangeName',         'fullExchangeName',
+    'instrumentType',       'firstTradeDate',
+    'regularMarketTime',    'hasPrePostMarketData',
+    'gmtoffset',            'timezone',
+    'exchangeTimezoneName', 'regularMarketPrice',
+    'fiftyTwoWeekHigh',     'fiftyTwoWeekLow',
+    'regularMarketDayHigh', 'regularMarketDayLow',
+    'regularMarketVolume',  'longName',
+    'shortName',            'chartPreviousClose',
+    'priceHint',            'currentTradingPeriod',
+    'dataGranularity',      'range',
+    'validRanges'
+  ],
+  parsed: {
+    regularMarketPrice: 89.44,
+    regularMarketChange: -1.9500000000000028,
+    regularMarketChangePercent: -2.1337126600284524
+  },
+  unavailableReason: null
+}
+ GET /api/banking-stocks/ticker 200 in 3751ms
+[StockCategoryNews] RSS fallback returned { category: 'banking', source: 'Yahoo Finance', count: 11 }
+[StockCategoryNews] RSS fallback returned { category: 'banking', source: 'Google News', count: 11 }
+ GET /api/banking-stocks/news?lang=ar&limit=72 200 in 7000ms
+ ✓ Compiled in 533.7s
+ ✓ Compiled instrumentation Node.js in 0ms
+ ✓ Compiled instrumentation Edge in 0ms
+[?25h

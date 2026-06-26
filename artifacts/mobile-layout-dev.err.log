@@ -1,0 +1,52 @@
+Analytics service role key is not configured 
+Analytics service role key is not configured 
+Analytics service role key is not configured 
+Analytics service role key is not configured 
+Analytics service role key is not configured 
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+Analytics service role key is not configured 
+[StockCategoryNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices. { category: 'banking' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+[NewsTranslation] Translation failed { targetLanguage: 'ar', reason: 'Anthropic returned 404' }
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\User\AppData\Local\Temp\next-panic-d2667127a64ed9c8d2905056dff642b8.log.
+
+To help make Turbopack better, report this error by clicking here: https://github.com/vercel/next.js/discussions/new?category=turbopack-error-report&title=Turbopack%20Error%3A%20%5Bproject%5D%2Fsrc%2Fapp%2Fglobals.css%20%5Bapp-client%5D%20%28css%29&body=Turbopack%20version%3A%20%6096f69990%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0ATurbopack%20Error%3A%20%5Bproject%5D%2Fsrc%2Fapp%2Fglobals.css%20%5Bapp-client%5D%20%28css%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+[Error: ENOENT: no such file or directory, open 'C:\Users\User\thesfm\.next\static\development\_buildManifest.js.tmp.24r677xjtsw'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\User\\thesfm\\.next\\static\\development\\_buildManifest.js.tmp.24r677xjtsw'
+}

@@ -4,6 +4,9 @@ const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || "https://www.the-sfm.
 const PROJECT_ROOT = process.cwd();
 
 const nextConfig: NextConfig = {
+  experimental: {
+    webpackBuildWorker: false,
+  },
   outputFileTracingRoot: PROJECT_ROOT,
   turbopack: {
     root: PROJECT_ROOT,

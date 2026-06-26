@@ -1,0 +1,1214 @@
+{
+  "viewports": {
+    "1728x886": {
+      "documentWidth": 1728,
+      "viewportWidth": 1728,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 14,
+        "y": 814,
+        "width": 1476,
+        "height": 72,
+        "bottom": 886,
+        "top": 814,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 1504,
+        "height": 2511,
+        "bottom": 2511,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 31,
+        "y": 473,
+        "width": 1442,
+        "height": 756,
+        "bottom": 1229,
+        "top": 473,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 14,
+        "y": 1696,
+        "width": 1476,
+        "height": 362,
+        "bottom": 2058,
+        "top": 1696,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 14,
+        "y": 2343,
+        "width": 1476,
+        "height": 64,
+        "bottom": 2407,
+        "top": 2343,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 1728,
+          "height": 886,
+          "bottom": 886,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 14,
+          "y": 814,
+          "width": 1476,
+          "height": 72,
+          "bottom": 886,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 352,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 352,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 352,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 352,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 352,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 352,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 352,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    },
+    "1920x1080": {
+      "documentWidth": 1920,
+      "viewportWidth": 1920,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 14,
+        "y": 1008,
+        "width": 1668,
+        "height": 72,
+        "bottom": 1080,
+        "top": 1008,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 1696,
+        "height": 2366,
+        "bottom": 2366,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 31,
+        "y": 473,
+        "width": 1634,
+        "height": 628,
+        "bottom": 1101,
+        "top": 473,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 14,
+        "y": 1551,
+        "width": 1668,
+        "height": 362,
+        "bottom": 1913,
+        "top": 1551,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 14,
+        "y": 2198,
+        "width": 1668,
+        "height": 64,
+        "bottom": 2262,
+        "top": 2198,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080,
+          "bottom": 1080,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 14,
+          "y": 1008,
+          "width": 1668,
+          "height": 72,
+          "bottom": 1080,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 317,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 317,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 317,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 317,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 317,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 317,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 317,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 317,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 317,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 317,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    },
+    "1440x900": {
+      "documentWidth": 1440,
+      "viewportWidth": 1440,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 14,
+        "y": 828,
+        "width": 1188,
+        "height": 72,
+        "bottom": 900,
+        "top": 828,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 1216,
+        "height": 2775,
+        "bottom": 2775,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 31,
+        "y": 467,
+        "width": 1154,
+        "height": 1012,
+        "bottom": 1479,
+        "top": 467,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 14,
+        "y": 1960,
+        "width": 1188,
+        "height": 362,
+        "bottom": 2322,
+        "top": 1960,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 14,
+        "y": 2607,
+        "width": 1188,
+        "height": 64,
+        "bottom": 2671,
+        "top": 2607,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 900,
+          "bottom": 900,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 14,
+          "y": 828,
+          "width": 1188,
+          "height": 72,
+          "bottom": 900,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 377,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 377,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 377,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 377,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 377,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 377,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 377,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 377,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 377,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 377,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    },
+    "1366x768": {
+      "documentWidth": 1366,
+      "viewportWidth": 1366,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 14,
+        "y": 696,
+        "width": 1114,
+        "height": 72,
+        "bottom": 768,
+        "top": 696,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 1142,
+        "height": 2770,
+        "bottom": 2770,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 31,
+        "y": 462,
+        "width": 1080,
+        "height": 1012,
+        "bottom": 1474,
+        "top": 462,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 14,
+        "y": 1955,
+        "width": 1114,
+        "height": 362,
+        "bottom": 2318,
+        "top": 1955,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 14,
+        "y": 2602,
+        "width": 1114,
+        "height": 64,
+        "bottom": 2666,
+        "top": 2602,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 1366,
+          "height": 768,
+          "bottom": 768,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 14,
+          "y": 696,
+          "width": 1114,
+          "height": 72,
+          "bottom": 768,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 352,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 352,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 352,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 352,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 352,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 352,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 352,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 352,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    },
+    "1024x768": {
+      "documentWidth": 1024,
+      "viewportWidth": 1024,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 14,
+        "y": 692,
+        "width": 910,
+        "height": 76,
+        "bottom": 768,
+        "top": 692,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 938,
+        "height": 3712,
+        "bottom": 3712,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 31,
+        "y": 491,
+        "width": 876,
+        "height": 1524,
+        "bottom": 2015,
+        "top": 491,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 14,
+        "y": 2651,
+        "width": 910,
+        "height": 605,
+        "bottom": 3256,
+        "top": 2651,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 14,
+        "y": 3540,
+        "width": 910,
+        "height": 64,
+        "bottom": 3604,
+        "top": 3540,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768,
+          "bottom": 768,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 14,
+          "y": 692,
+          "width": 910,
+          "height": 76,
+          "bottom": 768,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 432,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 432,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 432,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 432,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 432,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 432,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 432,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 432,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 432,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 432,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    },
+    "390x844": {
+      "documentWidth": 390,
+      "viewportWidth": 390,
+      "horizontalOverflow": false,
+      "statusbar": {
+        "x": 10,
+        "y": 668,
+        "width": 370,
+        "height": 176,
+        "bottom": 844,
+        "top": 668,
+        "position": "fixed",
+        "zIndex": "30",
+        "overflow": "hidden",
+        "pointerEvents": "auto",
+        "backdropFilter": "blur(12px)"
+      },
+      "main": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 6236,
+        "bottom": 6236,
+        "top": 0,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "marketsGrid": {
+        "x": 27,
+        "y": 599,
+        "width": 336,
+        "height": 3065,
+        "bottom": 3663,
+        "top": 599,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "opportunities": {
+        "x": 10,
+        "y": 4914,
+        "width": 370,
+        "height": 646,
+        "bottom": 5560,
+        "top": 4914,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "qualityStrip": {
+        "x": 10,
+        "y": 5879,
+        "width": 370,
+        "height": 149,
+        "bottom": 6028,
+        "top": 5879,
+        "position": "static",
+        "zIndex": "auto",
+        "overflow": "visible",
+        "pointerEvents": "auto",
+        "backdropFilter": "none"
+      },
+      "fixedLayers": [
+        {
+          "tag": "canvas",
+          "className": "terminal-background",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "bottom": 844,
+          "zIndex": "0",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "aside",
+          "className": "terminal-sidebar",
+          "x": 330,
+          "y": 0,
+          "width": 300,
+          "height": 844,
+          "bottom": 844,
+          "zIndex": "50",
+          "pointerEvents": "none",
+          "backdropFilter": "none"
+        },
+        {
+          "tag": "footer",
+          "className": "terminal-statusbar",
+          "x": 10,
+          "y": 668,
+          "width": 370,
+          "height": 176,
+          "bottom": 844,
+          "zIndex": "30",
+          "pointerEvents": "auto",
+          "backdropFilter": "blur(12px)"
+        }
+      ],
+      "metricTexts": [
+        "عدد الأصول\n8\nأدوات في السوق المختار · رموز مهيأة للتحليل",
+        "حالة مزود البيانات\nاستجابة غير صالحة\nإعادة المحاولة",
+        "العملة الرئيسية\nعملات متعددة\nعملات أساس/مقابل",
+        "جودة البيانات\nغير مدعوم لهذا السوق\nلا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.",
+        "أبرز الرابحين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق",
+        "أبرز الخاسرين\nغير مدعوم لهذا السوق\nلا تتوفر بيانات حركة لهذا السوق"
+      ],
+      "marketTiles": [
+        {
+          "text": "$\nالفوركس\nFX\nأزواج العملات الرئيسية\nFX\nعملات متعددة",
+          "width": 336,
+          "height": 116,
+          "title": "الفوركس"
+        },
+        {
+          "text": "🇺🇸\nالأسهم الأمريكية\nNYSE / NASDAQ\nNYSE / NASDAQ\nUS\nUSD",
+          "width": 336,
+          "height": 116,
+          "title": "الأسهم الأمريكية"
+        },
+        {
+          "text": "₿\nالعملات الرقمية\nCrypto\nأصول رقمية مقابل الدولار\nCRYPTO\nUSD",
+          "width": 336,
+          "height": 116,
+          "title": "العملات الرقمية"
+        },
+        {
+          "text": "Au\nالسلع\nCommodities\nذهب، فضة، نفط وغاز\nCMDTY\nUSD",
+          "width": 336,
+          "height": 116,
+          "title": "السلع"
+        },
+        {
+          "text": "GCC\nالسوق الخليجي\nGCC\nالسعودية، الكويت، الإمارات، قطر، البحرين، عُمان\nGCC\nعملات متعددة",
+          "width": 336,
+          "height": 116,
+          "title": "السوق الخليجي"
+        },
+        {
+          "text": "🇸🇦\nالسوق السعودي\nTadawul\nتداول\nSA\nSAR",
+          "width": 336,
+          "height": 116,
+          "title": "السوق السعودي"
+        },
+        {
+          "text": "🇰🇼\nبورصة الكويت\nBoursa Kuwait\nالسوق الكويتي\nKW\nKWD",
+          "width": 336,
+          "height": 116,
+          "title": "بورصة الكويت"
+        },
+        {
+          "text": "🇦🇪\nالسوق الإماراتي\nADX / DFM\nADX / DFM\nAE\nAED",
+          "width": 336,
+          "height": 116,
+          "title": "السوق الإماراتي"
+        },
+        {
+          "text": "🇶🇦\nالسوق القطري\nQSE\nبورصة قطر\nQA\nQAR",
+          "width": 336,
+          "height": 116,
+          "title": "السوق القطري"
+        },
+        {
+          "text": "🇧🇭\nالسوق البحريني\nBHB\nبورصة البحرين\nBH\nBHD",
+          "width": 336,
+          "height": 116,
+          "title": "السوق البحريني"
+        }
+      ],
+      "qualityText": "$\nالفوركس\nعدد الأصول: 8\nالعملة الرئيسية: عملات متعددة\nلا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي."
+    }
+  },
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/styles.css?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8",
+      "bodyPreview": ":root {\r\n  --terminal-bg: #020912;\r\n  --terminal-bg-deep: #01050c;\r\n  --terminal-surface: rgba(6, 19, 33, 0.82);\r\n  --terminal-surface-strong: rgba(8, 26, 43, 0.92);\r\n  --terminal-border: rgba(65, 123, 166, 0.28);\r\n  --terminal-border-soft: rgba(88, 166, 255, 0.14);\r\n  --terminal-text: #f4f8fc;\r\n  --terminal-muted: #8397aa;\r\n  --terminal-blue: #1889ff;\r\n  --terminal-cyan: #19d3ff;\r\n  --terminal-gr"
+    },
+    {
+      "url": "http://127.0.0.1:4308/app.js?v=20260624-terminal-architecture",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bodyPreview": "const root = document.querySelector(\"#app\");\r\nconst canvas = document.querySelector(\"#terminal-background\");\r\n\r\nconst STORAGE_KEY = \"the-sfm-trader-settings\";\r\nconst WATCHLIST_KEY = \"the-sfm-trader-watchlist\";\r\nconst DISMISSED_NOTICE_KEY = \"the-sfm-trader-dismissed-legal-notices\";\r\nconst APP_BASE = \"/thesfm-trader-own\";\r\n\r\nconst i18n = {\r\n  ar: {\r\n    dashboard: \"الرئيسية\",\r\n    markets: \"الأسواق\""
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/status",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    },
+    {
+      "url": "http://127.0.0.1:4308/api/trader/scanner/results?market=US",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8",
+      "bodyPreview": "Not found"
+    }
+  ]
+}

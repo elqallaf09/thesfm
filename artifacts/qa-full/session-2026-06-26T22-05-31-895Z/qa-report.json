@@ -1,0 +1,3033 @@
+{
+  "timestamp": "2026-06-26T22:05:31.998Z",
+  "totalRoutes": 121,
+  "routes": [
+    {
+      "route": "/login",
+      "sourceFile": "src\\app\\(auth)\\login\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/login\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/about",
+      "sourceFile": "src\\app\\about\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/about\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/accounting-companies",
+      "sourceFile": "src\\app\\accounting-companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/accounting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/ai",
+      "sourceFile": "src\\app\\ai\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ai\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ai\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/alerts",
+      "sourceFile": "src\\app\\alerts\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/banking-stocks",
+      "sourceFile": "src\\app\\banking-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/banking-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/banking-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/business",
+      "sourceFile": "src\\app\\business\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/business/subscriptions",
+      "sourceFile": "src\\app\\business\\subscriptions\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/business/subscriptions/aapl",
+      "sourceFile": "src\\app\\business\\subscriptions\\[clientId]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/business-hub",
+      "sourceFile": "src\\app\\business-hub\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-hub\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-hub\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/business-operations",
+      "sourceFile": "src\\app\\business-operations\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-operations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-operations\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/charity",
+      "sourceFile": "src\\app\\charity\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/charity-projects",
+      "sourceFile": "src\\app\\charity-projects\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/charity-projects/report",
+      "sourceFile": "src\\app\\charity-projects\\report\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects/report\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects/report\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/command-center",
+      "sourceFile": "src\\app\\command-center\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/command-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/command-center\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/companies/aapl",
+      "sourceFile": "src\\app\\companies\\[id]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/companies/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/companies/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/company-listing/cancel",
+      "sourceFile": "src\\app\\company-listing\\cancel\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/cancel\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/cancel\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/company-listing/submit",
+      "sourceFile": "src\\app\\company-listing\\submit\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/submit\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/submit\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/company-listing/success",
+      "sourceFile": "src\\app\\company-listing\\success\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/success\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/success\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/contact",
+      "sourceFile": "src\\app\\contact\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/contact\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/contact\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/crypto-news",
+      "sourceFile": "src\\app\\crypto-news\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/crypto-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/crypto-news\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/customers",
+      "sourceFile": "src\\app\\customers\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/customers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/customers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/cyclical-stocks",
+      "sourceFile": "src\\app\\cyclical-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/cyclical-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/cyclical-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/dashboard",
+      "sourceFile": "src\\app\\dashboard\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dashboard\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dashboard\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/debts/monthly-subscriptions",
+      "sourceFile": "src\\app\\debts\\monthly-subscriptions\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/debts",
+      "sourceFile": "src\\app\\debts\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/decisions",
+      "sourceFile": "src\\app\\decisions\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/decisions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/decisions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/defensive-stocks",
+      "sourceFile": "src\\app\\defensive-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/defensive-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/defensive-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/dividend-stocks",
+      "sourceFile": "src\\app\\dividend-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dividend-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dividend-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/documents",
+      "sourceFile": "src\\app\\documents\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/documents\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/documents\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/ebooks",
+      "sourceFile": "src\\app\\ebooks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/ebooks/market-guide",
+      "sourceFile": "src\\app\\ebooks\\[slug]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks/market-guide\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks/market-guide\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/education/expenses",
+      "sourceFile": "src\\app\\education\\expenses\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/education/investments",
+      "sourceFile": "src\\app\\education\\investments\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/investments\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/investments\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/education",
+      "sourceFile": "src\\app\\education\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/education/savings",
+      "sourceFile": "src\\app\\education\\savings\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/savings\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/employees",
+      "sourceFile": "src\\app\\employees\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/employees\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/employees\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/energy-stocks",
+      "sourceFile": "src\\app\\energy-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/energy-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/energy-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/europe-news",
+      "sourceFile": "src\\app\\europe-news\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/europe-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/europe-news\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/expenses/add",
+      "sourceFile": "src\\app\\expenses\\add\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/add\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/expenses/monthly-subscriptions",
+      "sourceFile": "src\\app\\expenses\\monthly-subscriptions\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/expenses",
+      "sourceFile": "src\\app\\expenses\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/feasibility-companies",
+      "sourceFile": "src\\app\\feasibility-companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/feasibility-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/feasibility-companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/financial-consulting-companies",
+      "sourceFile": "src\\app\\financial-consulting-companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-consulting-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-consulting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/financial-theories",
+      "sourceFile": "src\\app\\financial-theories\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-theories\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-theories\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/goals/add",
+      "sourceFile": "src\\app\\goals\\add\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals/add\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/goals",
+      "sourceFile": "src\\app\\goals\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/growth-stocks",
+      "sourceFile": "src\\app\\growth-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/growth-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/growth-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/guest",
+      "sourceFile": "src\\app\\guest\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/guest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/guest\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/gulf-news",
+      "sourceFile": "src\\app\\gulf-news\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/gulf-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/gulf-news\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/income/add",
+      "sourceFile": "src\\app\\income\\add\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income/add\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/income",
+      "sourceFile": "src\\app\\income\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/invest/add",
+      "sourceFile": "src\\app\\invest\\add\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest/add\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/invest",
+      "sourceFile": "src\\app\\invest\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/investment-companies",
+      "sourceFile": "src\\app\\investment-companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/investment-offers",
+      "sourceFile": "src\\app\\investment-offers\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-offers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-offers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/invoices",
+      "sourceFile": "src\\app\\invoices\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invoices\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invoices\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/market-agent",
+      "sourceFile": "src\\app\\market-agent\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-agent\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-agent\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/market-alerts",
+      "sourceFile": "src\\app\\market-alerts\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-alerts\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/market-analysis",
+      "sourceFile": "src\\app\\market-analysis\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/market-watchlist",
+      "sourceFile": "src\\app\\market-watchlist\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/mfa/verify",
+      "sourceFile": "src\\app\\mfa\\verify\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/mfa/verify\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/mfa/verify\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/notif",
+      "sourceFile": "src\\app\\notif\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notif\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notif\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/notifications",
+      "sourceFile": "src\\app\\notifications\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notifications\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notifications\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/onboarding",
+      "sourceFile": "src\\app\\onboarding\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/onboarding\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/onboarding\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/operating-expenses",
+      "sourceFile": "src\\app\\operating-expenses\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/operating-expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/operating-expenses\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/",
+      "sourceFile": "src\\app\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/privacy",
+      "sourceFile": "src\\app\\privacy\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/privacy\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/privacy\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/profile/companies",
+      "sourceFile": "src\\app\\profile\\companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile/companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/profile",
+      "sourceFile": "src\\app\\profile\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/projects/ad-calculator",
+      "sourceFile": "src\\app\\projects\\ad-calculator\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/ad-calculator\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/ad-calculator\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/projects",
+      "sourceFile": "src\\app\\projects\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/projects/aapl",
+      "sourceFile": "src\\app\\projects\\[id]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/reports",
+      "sourceFile": "src\\app\\reports\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/reports-center",
+      "sourceFile": "src\\app\\reports-center\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports-center\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/reset-password",
+      "sourceFile": "src\\app\\reset-password\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reset-password\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reset-password\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/sales",
+      "sourceFile": "src\\app\\sales\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sales\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/savings",
+      "sourceFile": "src\\app\\savings\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/savings\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/security",
+      "sourceFile": "src\\app\\security\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/security\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/security\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/services/accounting-firms",
+      "sourceFile": "src\\app\\services\\accounting-firms\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/accounting-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/accounting-firms\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/services/advisory-firms",
+      "sourceFile": "src\\app\\services\\advisory-firms\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/advisory-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/advisory-firms\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/services/feasibility-firms",
+      "sourceFile": "src\\app\\services\\feasibility-firms\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/feasibility-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/feasibility-firms\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/services/investment-firms",
+      "sourceFile": "src\\app\\services\\investment-firms\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/investment-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/investment-firms\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/settings",
+      "sourceFile": "src\\app\\settings\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/settings\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/setup",
+      "sourceFile": "src\\app\\setup\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/setup\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/setup\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/sfm-admin-control/companies",
+      "sourceFile": "src\\app\\sfm-admin-control\\companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/sfm-admin-control/instagram-automation",
+      "sourceFile": "src\\app\\sfm-admin-control\\instagram-automation\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/instagram-automation\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/instagram-automation\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/sfm-admin-control",
+      "sourceFile": "src\\app\\sfm-admin-control\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/sharia-stocks",
+      "sourceFile": "src\\app\\sharia-stocks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sharia-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sharia-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/site-map",
+      "sourceFile": "src\\app\\site-map\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/site-map\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/site-map\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/suppliers",
+      "sourceFile": "src\\app\\suppliers\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/suppliers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/suppliers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/tasks",
+      "sourceFile": "src\\app\\tasks\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tasks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tasks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/tech-news",
+      "sourceFile": "src\\app\\tech-news\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tech-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tech-news\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/terms",
+      "sourceFile": "src\\app\\terms\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/terms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/terms\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis",
+      "sourceFile": "src\\app\\thesfm-trader-own\\ai-analysis\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis/stocks",
+      "sourceFile": "src\\app\\thesfm-trader-own\\ai-analysis\\[market]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/ai-scanner",
+      "sourceFile": "src\\app\\thesfm-trader-own\\ai-scanner\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/alerts",
+      "sourceFile": "src\\app\\thesfm-trader-own\\alerts\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/calendar",
+      "sourceFile": "src\\app\\thesfm-trader-own\\calendar\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/calendar\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/calendar\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/education",
+      "sourceFile": "src\\app\\thesfm-trader-own\\education\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/education\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis",
+      "sourceFile": "src\\app\\thesfm-trader-own\\market-analysis\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis/stocks",
+      "sourceFile": "src\\app\\thesfm-trader-own\\market-analysis\\[market]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/markets",
+      "sourceFile": "src\\app\\thesfm-trader-own\\markets\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/markets/stocks",
+      "sourceFile": "src\\app\\thesfm-trader-own\\markets\\[market]\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/news",
+      "sourceFile": "src\\app\\thesfm-trader-own\\news\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/news\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own",
+      "sourceFile": "src\\app\\thesfm-trader-own\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/portfolio",
+      "sourceFile": "src\\app\\thesfm-trader-own\\portfolio\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/portfolio\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/portfolio\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/positions",
+      "sourceFile": "src\\app\\thesfm-trader-own\\positions\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/positions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/positions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations",
+      "sourceFile": "src\\app\\thesfm-trader-own\\recommendations\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations-history",
+      "sourceFile": "src\\app\\thesfm-trader-own\\recommendations-history\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/scanner",
+      "sourceFile": "src\\app\\thesfm-trader-own\\scanner\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/scanner\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/settings",
+      "sourceFile": "src\\app\\thesfm-trader-own\\settings\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/settings\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/signal-history",
+      "sourceFile": "src\\app\\thesfm-trader-own\\signal-history\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/signal-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/signal-history\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/trade-history",
+      "sourceFile": "src\\app\\thesfm-trader-own\\trade-history\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-history\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/trade-performance",
+      "sourceFile": "src\\app\\thesfm-trader-own\\trade-performance\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-performance\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-performance\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/trades",
+      "sourceFile": "src\\app\\thesfm-trader-own\\trades\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trades\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trades\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/thesfm-trader-own/watchlist",
+      "sourceFile": "src\\app\\thesfm-trader-own\\watchlist\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/today",
+      "sourceFile": "src\\app\\today\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/today\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/today\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/trading-companies",
+      "sourceFile": "src\\app\\trading-companies\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/trading-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/trading-companies\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/watchlist",
+      "sourceFile": "src\\app\\watchlist\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "route": "/zakat",
+      "sourceFile": "src\\app\\zakat\\page.tsx",
+      "screenshots": {},
+      "overflow": {
+        "desktop": false,
+        "mobile": false
+      },
+      "consoleErrorCount": 0,
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/zakat\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/zakat\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    }
+  ],
+  "issues": [
+    {
+      "route": "/login",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/login\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18013
+    },
+    {
+      "route": "/login",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/login\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18011
+    },
+    {
+      "route": "/about",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/about\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18012
+    },
+    {
+      "route": "/about",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/about\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18003
+    },
+    {
+      "route": "/accounting-companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/accounting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18015
+    },
+    {
+      "route": "/accounting-companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: Timeout 18000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/accounting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 18013
+    },
+    {
+      "route": "/ai",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_RESET at http://127.0.0.1:3000/ai\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ai\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 6880
+    },
+    {
+      "route": "/ai",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ai\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ai\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2022
+    },
+    {
+      "route": "/alerts",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/alerts",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2021
+    },
+    {
+      "route": "/banking-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/banking-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/banking-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2048
+    },
+    {
+      "route": "/banking-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/banking-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/banking-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2020
+    },
+    {
+      "route": "/business",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/business",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/business/subscriptions",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2065
+    },
+    {
+      "route": "/business/subscriptions",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2059
+    },
+    {
+      "route": "/business/subscriptions/aapl",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2049
+    },
+    {
+      "route": "/business/subscriptions/aapl",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business/subscriptions/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business/subscriptions/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/business-hub",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-hub\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-hub\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2042
+    },
+    {
+      "route": "/business-hub",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-hub\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-hub\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    },
+    {
+      "route": "/business-operations",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-operations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-operations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/business-operations",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/business-operations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/business-operations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/charity",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/charity",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/charity-projects",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/charity-projects",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/charity-projects/report",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects/report\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects/report\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/charity-projects/report",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/charity-projects/report\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/charity-projects/report\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/command-center",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/command-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/command-center\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/command-center",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/command-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/command-center\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2021
+    },
+    {
+      "route": "/companies/aapl",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/companies/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/companies/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/companies/aapl",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/companies/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/companies/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/company-listing/cancel",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/cancel\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/cancel\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/company-listing/cancel",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/cancel\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/cancel\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/company-listing/submit",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/submit\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/submit\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/company-listing/submit",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/submit\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/submit\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/company-listing/success",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/success\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/success\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/company-listing/success",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/company-listing/success\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/company-listing/success\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2039
+    },
+    {
+      "route": "/contact",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/contact\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/contact\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/contact",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/contact\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/contact\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/crypto-news",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/crypto-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/crypto-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/crypto-news",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/crypto-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/crypto-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/customers",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/customers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/customers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/customers",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/customers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/customers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/cyclical-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/cyclical-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/cyclical-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/cyclical-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/cyclical-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/cyclical-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2050
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dashboard\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dashboard\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dashboard\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dashboard\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/debts/monthly-subscriptions",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/debts/monthly-subscriptions",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    },
+    {
+      "route": "/debts",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/debts",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/debts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/debts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/decisions",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/decisions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/decisions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/decisions",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/decisions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/decisions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/defensive-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/defensive-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/defensive-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/defensive-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/defensive-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/defensive-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/dividend-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dividend-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dividend-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/dividend-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/dividend-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/dividend-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/documents",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/documents\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/documents\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/documents",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/documents\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/documents\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/ebooks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/ebooks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/ebooks/market-guide",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks/market-guide\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks/market-guide\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2020
+    },
+    {
+      "route": "/ebooks/market-guide",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/ebooks/market-guide\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/ebooks/market-guide\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2063
+    },
+    {
+      "route": "/education/expenses",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/education/expenses",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/education/investments",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/investments\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/investments\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/education/investments",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/investments\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/investments\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/education",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/education",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/education/savings",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/savings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2047
+    },
+    {
+      "route": "/education/savings",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/education/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/education/savings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2057
+    },
+    {
+      "route": "/employees",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/employees\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/employees\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/employees",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/employees\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/employees\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2056
+    },
+    {
+      "route": "/energy-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/energy-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/energy-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2059
+    },
+    {
+      "route": "/energy-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/energy-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/energy-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/europe-news",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/europe-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/europe-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/europe-news",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/europe-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/europe-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/expenses/add",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/expenses/add",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2054
+    },
+    {
+      "route": "/expenses/monthly-subscriptions",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2042
+    },
+    {
+      "route": "/expenses/monthly-subscriptions",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses/monthly-subscriptions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses/monthly-subscriptions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/expenses",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2044
+    },
+    {
+      "route": "/expenses",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/feasibility-companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/feasibility-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/feasibility-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/feasibility-companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/feasibility-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/feasibility-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/financial-consulting-companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-consulting-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-consulting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2039
+    },
+    {
+      "route": "/financial-consulting-companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-consulting-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-consulting-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/financial-theories",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-theories\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-theories\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/financial-theories",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/financial-theories\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/financial-theories\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/goals/add",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/goals/add",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/goals",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2049
+    },
+    {
+      "route": "/goals",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/goals\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/goals\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2052
+    },
+    {
+      "route": "/growth-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/growth-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/growth-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/growth-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/growth-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/growth-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/guest",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/guest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/guest\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/guest",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/guest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/guest\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/gulf-news",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/gulf-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/gulf-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2042
+    },
+    {
+      "route": "/gulf-news",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/gulf-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/gulf-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/income/add",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/income/add",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/income",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/income",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/income\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/income\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/invest/add",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/invest/add",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest/add\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest/add\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/invest",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2047
+    },
+    {
+      "route": "/invest",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invest\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invest\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/investment-companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2047
+    },
+    {
+      "route": "/investment-companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2051
+    },
+    {
+      "route": "/investment-offers",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-offers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-offers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/investment-offers",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/investment-offers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/investment-offers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2052
+    },
+    {
+      "route": "/invoices",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invoices\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invoices\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/invoices",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/invoices\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/invoices\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2050
+    },
+    {
+      "route": "/market-agent",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-agent\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-agent\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/market-agent",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-agent\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-agent\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/market-alerts",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/market-alerts",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/market-analysis",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/market-analysis",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/market-watchlist",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2048
+    },
+    {
+      "route": "/market-watchlist",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/market-watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/market-watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2016
+    },
+    {
+      "route": "/mfa/verify",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/mfa/verify\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/mfa/verify\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/mfa/verify",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/mfa/verify\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/mfa/verify\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/notif",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notif\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notif\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/notif",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notif\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notif\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2014
+    },
+    {
+      "route": "/notifications",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notifications\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notifications\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/notifications",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/notifications\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/notifications\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/onboarding",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/onboarding\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/onboarding\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2044
+    },
+    {
+      "route": "/onboarding",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/onboarding\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/onboarding\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/operating-expenses",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/operating-expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/operating-expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2013
+    },
+    {
+      "route": "/operating-expenses",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/operating-expenses\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/operating-expenses\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2046
+    },
+    {
+      "route": "/",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/privacy",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/privacy\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/privacy\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/privacy",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/privacy\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/privacy\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2050
+    },
+    {
+      "route": "/profile/companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile/companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/profile/companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile/companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/profile",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2021
+    },
+    {
+      "route": "/profile",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/profile\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/profile\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/projects/ad-calculator",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/ad-calculator\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/ad-calculator\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/projects/ad-calculator",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/ad-calculator\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/ad-calculator\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/projects",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/projects",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2053
+    },
+    {
+      "route": "/projects/aapl",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2046
+    },
+    {
+      "route": "/projects/aapl",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/projects/aapl\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/projects/aapl\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2020
+    },
+    {
+      "route": "/reports",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/reports",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    },
+    {
+      "route": "/reports-center",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports-center\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2021
+    },
+    {
+      "route": "/reports-center",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reports-center\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reports-center\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/reset-password",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reset-password\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reset-password\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2046
+    },
+    {
+      "route": "/reset-password",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/reset-password\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/reset-password\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/sales",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sales\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sales\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/sales",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sales\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sales\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2015
+    },
+    {
+      "route": "/savings",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/savings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/savings",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/savings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/savings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/security",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/security\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/security\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/security",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/security\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/security\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/services/accounting-firms",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/accounting-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/accounting-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/services/accounting-firms",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/accounting-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/accounting-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2031
+    },
+    {
+      "route": "/services/advisory-firms",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/advisory-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/advisory-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/services/advisory-firms",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/advisory-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/advisory-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/services/feasibility-firms",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/feasibility-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/feasibility-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2036
+    },
+    {
+      "route": "/services/feasibility-firms",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/feasibility-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/feasibility-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2044
+    },
+    {
+      "route": "/services/investment-firms",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/investment-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/investment-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2039
+    },
+    {
+      "route": "/services/investment-firms",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/investment-firms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/services/investment-firms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    },
+    {
+      "route": "/settings",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/settings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/settings",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/settings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2042
+    },
+    {
+      "route": "/setup",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/setup\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/setup\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2049
+    },
+    {
+      "route": "/setup",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/setup\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/setup\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/sfm-admin-control/companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/sfm-admin-control/companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/sfm-admin-control/instagram-automation",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/instagram-automation\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/instagram-automation\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2039
+    },
+    {
+      "route": "/sfm-admin-control/instagram-automation",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control/instagram-automation\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control/instagram-automation\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/sfm-admin-control",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/sfm-admin-control",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sfm-admin-control\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sfm-admin-control\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/sharia-stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sharia-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sharia-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/sharia-stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/sharia-stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/sharia-stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2019
+    },
+    {
+      "route": "/site-map",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/site-map\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/site-map\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/site-map",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/site-map\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/site-map\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2035
+    },
+    {
+      "route": "/suppliers",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/suppliers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/suppliers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/suppliers",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/suppliers\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/suppliers\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2016
+    },
+    {
+      "route": "/tasks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tasks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tasks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2015
+    },
+    {
+      "route": "/tasks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tasks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tasks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/tech-news",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tech-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tech-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/tech-news",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/tech-news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/tech-news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2037
+    },
+    {
+      "route": "/terms",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/terms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/terms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/terms",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/terms\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/terms\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2034
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2020
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis/stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/thesfm-trader-own/ai-analysis/stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2022
+    },
+    {
+      "route": "/thesfm-trader-own/ai-scanner",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2013
+    },
+    {
+      "route": "/thesfm-trader-own/ai-scanner",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/ai-scanner\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/thesfm-trader-own/alerts",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/thesfm-trader-own/alerts",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/alerts\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/alerts\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/thesfm-trader-own/calendar",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/calendar\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/calendar\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/thesfm-trader-own/calendar",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/calendar\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/calendar\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/thesfm-trader-own/education",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/education\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/thesfm-trader-own/education",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/education\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/education\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2017
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis/stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2017
+    },
+    {
+      "route": "/thesfm-trader-own/market-analysis/stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/market-analysis/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/thesfm-trader-own/markets",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/thesfm-trader-own/markets",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/thesfm-trader-own/markets/stocks",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2030
+    },
+    {
+      "route": "/thesfm-trader-own/markets/stocks",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/markets/stocks\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/thesfm-trader-own/news",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2014
+    },
+    {
+      "route": "/thesfm-trader-own/news",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/news\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/news\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2014
+    },
+    {
+      "route": "/thesfm-trader-own",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2050
+    },
+    {
+      "route": "/thesfm-trader-own",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/thesfm-trader-own/portfolio",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/portfolio\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/portfolio\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2014
+    },
+    {
+      "route": "/thesfm-trader-own/portfolio",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/portfolio\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/portfolio\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/thesfm-trader-own/positions",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/positions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/positions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2032
+    },
+    {
+      "route": "/thesfm-trader-own/positions",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/positions\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/positions\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2028
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations-history",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2056
+    },
+    {
+      "route": "/thesfm-trader-own/recommendations-history",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/recommendations-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2041
+    },
+    {
+      "route": "/thesfm-trader-own/scanner",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/scanner\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2025
+    },
+    {
+      "route": "/thesfm-trader-own/scanner",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/scanner\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/scanner\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/thesfm-trader-own/settings",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/settings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/thesfm-trader-own/settings",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/settings\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/settings\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2026
+    },
+    {
+      "route": "/thesfm-trader-own/signal-history",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/signal-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/signal-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2043
+    },
+    {
+      "route": "/thesfm-trader-own/signal-history",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/signal-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/signal-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2024
+    },
+    {
+      "route": "/thesfm-trader-own/trade-history",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2027
+    },
+    {
+      "route": "/thesfm-trader-own/trade-history",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-history\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-history\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2052
+    },
+    {
+      "route": "/thesfm-trader-own/trade-performance",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-performance\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-performance\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2038
+    },
+    {
+      "route": "/thesfm-trader-own/trade-performance",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trade-performance\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trade-performance\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2018
+    },
+    {
+      "route": "/thesfm-trader-own/trades",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trades\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trades\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2017
+    },
+    {
+      "route": "/thesfm-trader-own/trades",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/trades\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/trades\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2059
+    },
+    {
+      "route": "/thesfm-trader-own/watchlist",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/thesfm-trader-own/watchlist",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/thesfm-trader-own/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/thesfm-trader-own/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2039
+    },
+    {
+      "route": "/today",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/today\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/today\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2059
+    },
+    {
+      "route": "/today",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/today\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/today\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2033
+    },
+    {
+      "route": "/trading-companies",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/trading-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/trading-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2023
+    },
+    {
+      "route": "/trading-companies",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/trading-companies\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/trading-companies\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/watchlist",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2056
+    },
+    {
+      "route": "/watchlist",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/watchlist\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/watchlist\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/zakat",
+      "viewport": "desktop",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/zakat\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/zakat\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2029
+    },
+    {
+      "route": "/zakat",
+      "viewport": "mobile",
+      "issue": "capture-failed",
+      "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/zakat\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3000/zakat\", waiting until \"domcontentloaded\"\u001b[22m\n",
+      "durationMs": 2040
+    }
+  ]
+}

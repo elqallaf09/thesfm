@@ -1,4 +1,4 @@
-const root = document.querySelector("#app");
+﻿const root = document.querySelector("#app");
 const canvas = document.querySelector("#terminal-background");
 
 const STORAGE_KEY = "the-sfm-trader-settings";
@@ -10,167 +10,167 @@ const APP_BASE = "/thesfm-trader-own";
 
 const i18n = {
   ar: {
-    dashboard: "الرئيسية",
-    markets: "الأسواق",
-    forex: "الفوركس",
-    indices: "المؤشرات",
-    stocks: "الأسهم",
-    crypto: "العملات الرقمية",
-    commodities: "السلع",
-    etfs: "الصناديق المتداولة",
-    aiScanner: "ماسح الذكاء الاصطناعي",
-    marketAiAnalysis: "تحليل الذكاء الاصطناعي",
-    tradePerformance: "سجل الصفقات",
-    watchlist: "قائمة المراقبة",
-    portfolio: "المحفظة",
-    alerts: "التنبيهات",
-    news: "الأخبار",
-    calendar: "التقويم",
-    education: "التعليم",
-    settings: "الإعدادات",
-    searchPlaceholder: "ابحث عن أصل، رمز، أو سوق...",
+    dashboard: "Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©",
+    markets: "Ø§Ù„Ø£Ø³ÙˆØ§Ù‚",
+    forex: "Ø§Ù„ÙÙˆØ±ÙƒØ³",
+    indices: "Ø§Ù„Ù…Ø¤Ø´Ø±Ø§Øª",
+    stocks: "Ø§Ù„Ø£Ø³Ù‡Ù…",
+    crypto: "Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ø±Ù‚Ù…ÙŠØ©",
+    commodities: "Ø§Ù„Ø³Ù„Ø¹",
+    etfs: "Ø§Ù„ØµÙ†Ø§Ø¯ÙŠÙ‚ Ø§Ù„Ù…ØªØ¯Ø§ÙˆÙ„Ø©",
+    aiScanner: "Ù…Ø§Ø³Ø­ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    marketAiAnalysis: "ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    tradePerformance: "Ø³Ø¬Ù„ Ø§Ù„ØµÙÙ‚Ø§Øª",
+    watchlist: "Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©",
+    portfolio: "Ø§Ù„Ù…Ø­ÙØ¸Ø©",
+    alerts: "Ø§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª",
+    news: "Ø§Ù„Ø£Ø®Ø¨Ø§Ø±",
+    calendar: "Ø§Ù„ØªÙ‚ÙˆÙŠÙ…",
+    education: "Ø§Ù„ØªØ¹Ù„ÙŠÙ…",
+    settings: "Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª",
+    searchPlaceholder: "Ø§Ø¨Ø­Ø« Ø¹Ù† Ø£ØµÙ„ØŒ Ø±Ù…Ø²ØŒ Ø£Ùˆ Ø³ÙˆÙ‚...",
     aiActive: "AI AGENT ACTIVE",
-    analyzing: "تحليل مستمر",
-    liveData: "بيانات مباشرة",
-    delayedData: "بيانات متأخرة",
-    connecting: "جاري الاتصال",
-    operational: "يعمل",
-    scanning: "قيد الفحص",
-    providerAvailability: "حالة مزود البيانات",
-    dataFreshness: "حداثة البيانات",
-    applicationStatus: "حالة التطبيق",
-    providerConnected: "مزود البيانات متصل",
-    providerDelayed: "مزود البيانات متصل ببيانات متأخرة",
-    providerUnavailable: "مزود البيانات غير متاح",
-    unauthorized: "انتهت الجلسة",
-    accessDenied: "لا توجد صلاحية",
-    requestFailed: "فشل الطلب",
-    rateLimited: "تم تجاوز حد الطلبات",
-    providerTimeout: "انتهت مهلة الطلب",
-    invalidResponse: "استجابة غير صالحة",
-    serverError: "خطأ في الخادم",
-    unsupportedMetric: "غير مدعوم لهذا السوق",
-    noMarketMovers: "لا تتوفر بيانات حركة لهذا السوق",
-    multipleCurrencies: "عملات متعددة",
-    baseQuoteCurrencies: "عملات أساس/مقابل",
-    mixedCurrencies: "عملات متعددة",
-    notApplicable: "غير منطبق",
-    selectedMarketInstruments: "أدوات في السوق المختار",
-    supportedCategories: "فئات سوق مدعومة",
-    scannedAssets: "أدوات مفحوصة حالياً",
-    availableSignals: "إشارات متاحة حالياً",
-    lastUpdatedAt: "آخر تحديث عند",
-    unavailable: "غير متاح",
-    loading: "جاري التحميل",
-    error: "تعذر تحميل البيانات",
-    retry: "إعادة المحاولة",
-    viewAll: "عرض الكل",
-    marketOverview: "نظرة عامة على السوق",
-    marketOverviewDesc: "تحليل مرئي للأسواق العالمية والمراكز المالية النشطة.",
-    aiTopPicks: "أفضل اختيارات الذكاء الاصطناعي",
-    aiTopPicksDesc: "فرص مرتبة حسب الثقة عندما تتوفر بيانات حقيقية.",
-    marketNews: "أخبار السوق",
-    aiMarketAnalysis: "تحليل السوق بالذكاء الاصطناعي",
-    exploreMarkets: "استكشاف الأسواق",
-    smartWatchlist: "قائمة مراقبة ذكية",
-    smartWatchlistDesc: "متابعة أصولك وتحويل التحليل إلى إشارات واضحة.",
-    signal: "الإشارة",
-    confidence: "الثقة",
-    target: "الهدف",
-    timeframe: "المدة",
-    risk: "المخاطرة",
-    price: "السعر",
-    change: "التغير",
-    action: "الإجراء",
-    buy: "شراء",
-    sell: "بيع",
-    hold: "انتظار",
-    currentPrice: "السعر الحالي",
-    targetPrice: "السعر المستهدف",
-    stopLoss: "وقف الخسارة",
+    analyzing: "ØªØ­Ù„ÙŠÙ„ Ù…Ø³ØªÙ…Ø±",
+    liveData: "Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø¨Ø§Ø´Ø±Ø©",
+    delayedData: "Ø¨ÙŠØ§Ù†Ø§Øª Ù…ØªØ£Ø®Ø±Ø©",
+    connecting: "Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø§ØªØµØ§Ù„",
+    operational: "ÙŠØ¹Ù…Ù„",
+    scanning: "Ù‚ÙŠØ¯ Ø§Ù„ÙØ­Øµ",
+    providerAvailability: "Ø­Ø§Ù„Ø© Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª",
+    dataFreshness: "Ø­Ø¯Ø§Ø«Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª",
+    applicationStatus: "Ø­Ø§Ù„Ø© Ø§Ù„ØªØ·Ø¨ÙŠÙ‚",
+    providerConnected: "Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ù…ØªØµÙ„",
+    providerDelayed: "Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ù…ØªØµÙ„ Ø¨Ø¨ÙŠØ§Ù†Ø§Øª Ù…ØªØ£Ø®Ø±Ø©",
+    providerUnavailable: "Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª ØºÙŠØ± Ù…ØªØ§Ø­",
+    unauthorized: "Ø§Ù†ØªÙ‡Øª Ø§Ù„Ø¬Ù„Ø³Ø©",
+    accessDenied: "Ù„Ø§ ØªÙˆØ¬Ø¯ ØµÙ„Ø§Ø­ÙŠØ©",
+    requestFailed: "ÙØ´Ù„ Ø§Ù„Ø·Ù„Ø¨",
+    rateLimited: "ØªÙ… ØªØ¬Ø§ÙˆØ² Ø­Ø¯ Ø§Ù„Ø·Ù„Ø¨Ø§Øª",
+    providerTimeout: "Ø§Ù†ØªÙ‡Øª Ù…Ù‡Ù„Ø© Ø§Ù„Ø·Ù„Ø¨",
+    invalidResponse: "Ø§Ø³ØªØ¬Ø§Ø¨Ø© ØºÙŠØ± ØµØ§Ù„Ø­Ø©",
+    serverError: "Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø®Ø§Ø¯Ù…",
+    unsupportedMetric: "ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ… Ù„Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚",
+    noMarketMovers: "Ù„Ø§ ØªØªÙˆÙØ± Ø¨ÙŠØ§Ù†Ø§Øª Ø­Ø±ÙƒØ© Ù„Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚",
+    multipleCurrencies: "Ø¹Ù…Ù„Ø§Øª Ù…ØªØ¹Ø¯Ø¯Ø©",
+    baseQuoteCurrencies: "Ø¹Ù…Ù„Ø§Øª Ø£Ø³Ø§Ø³/Ù…Ù‚Ø§Ø¨Ù„",
+    mixedCurrencies: "Ø¹Ù…Ù„Ø§Øª Ù…ØªØ¹Ø¯Ø¯Ø©",
+    notApplicable: "ØºÙŠØ± Ù…Ù†Ø·Ø¨Ù‚",
+    selectedMarketInstruments: "Ø£Ø¯ÙˆØ§Øª ÙÙŠ Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù…Ø®ØªØ§Ø±",
+    supportedCategories: "ÙØ¦Ø§Øª Ø³ÙˆÙ‚ Ù…Ø¯Ø¹ÙˆÙ…Ø©",
+    scannedAssets: "Ø£Ø¯ÙˆØ§Øª Ù…ÙØ­ÙˆØµØ© Ø­Ø§Ù„ÙŠØ§Ù‹",
+    availableSignals: "Ø¥Ø´Ø§Ø±Ø§Øª Ù…ØªØ§Ø­Ø© Ø­Ø§Ù„ÙŠØ§Ù‹",
+    lastUpdatedAt: "Ø¢Ø®Ø± ØªØ­Ø¯ÙŠØ« Ø¹Ù†Ø¯",
+    unavailable: "ØºÙŠØ± Ù…ØªØ§Ø­",
+    loading: "Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„",
+    error: "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª",
+    retry: "Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©",
+    viewAll: "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„",
+    marketOverview: "Ù†Ø¸Ø±Ø© Ø¹Ø§Ù…Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø³ÙˆÙ‚",
+    marketOverviewDesc: "ØªØ­Ù„ÙŠÙ„ Ù…Ø±Ø¦ÙŠ Ù„Ù„Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ø¹Ø§Ù„Ù…ÙŠØ© ÙˆØ§Ù„Ù…Ø±Ø§ÙƒØ² Ø§Ù„Ù…Ø§Ù„ÙŠØ© Ø§Ù„Ù†Ø´Ø·Ø©.",
+    aiTopPicks: "Ø£ÙØ¶Ù„ Ø§Ø®ØªÙŠØ§Ø±Ø§Øª Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    aiTopPicksDesc: "ÙØ±Øµ Ù…Ø±ØªØ¨Ø© Ø­Ø³Ø¨ Ø§Ù„Ø«Ù‚Ø© Ø¹Ù†Ø¯Ù…Ø§ ØªØªÙˆÙØ± Ø¨ÙŠØ§Ù†Ø§Øª Ø­Ù‚ÙŠÙ‚ÙŠØ©.",
+    marketNews: "Ø£Ø®Ø¨Ø§Ø± Ø§Ù„Ø³ÙˆÙ‚",
+    aiMarketAnalysis: "ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ø³ÙˆÙ‚ Ø¨Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    exploreMarkets: "Ø§Ø³ØªÙƒØ´Ø§Ù Ø§Ù„Ø£Ø³ÙˆØ§Ù‚",
+    smartWatchlist: "Ù‚Ø§Ø¦Ù…Ø© Ù…Ø±Ø§Ù‚Ø¨Ø© Ø°ÙƒÙŠØ©",
+    smartWatchlistDesc: "Ù…ØªØ§Ø¨Ø¹Ø© Ø£ØµÙˆÙ„Ùƒ ÙˆØªØ­ÙˆÙŠÙ„ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø¥Ù„Ù‰ Ø¥Ø´Ø§Ø±Ø§Øª ÙˆØ§Ø¶Ø­Ø©.",
+    signal: "Ø§Ù„Ø¥Ø´Ø§Ø±Ø©",
+    confidence: "Ø§Ù„Ø«Ù‚Ø©",
+    target: "Ø§Ù„Ù‡Ø¯Ù",
+    timeframe: "Ø§Ù„Ù…Ø¯Ø©",
+    risk: "Ø§Ù„Ù…Ø®Ø§Ø·Ø±Ø©",
+    price: "Ø§Ù„Ø³Ø¹Ø±",
+    change: "Ø§Ù„ØªØºÙŠØ±",
+    action: "Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡",
+    buy: "Ø´Ø±Ø§Ø¡",
+    sell: "Ø¨ÙŠØ¹",
+    hold: "Ø§Ù†ØªØ¸Ø§Ø±",
+    currentPrice: "Ø§Ù„Ø³Ø¹Ø± Ø§Ù„Ø­Ø§Ù„ÙŠ",
+    targetPrice: "Ø§Ù„Ø³Ø¹Ø± Ø§Ù„Ù…Ø³ØªÙ‡Ø¯Ù",
+    stopLoss: "ÙˆÙ‚Ù Ø§Ù„Ø®Ø³Ø§Ø±Ø©",
     aiScore: "AI Score",
-    riskNoticeTitle: "تنبيه المخاطر",
-    riskNoticeBody: "جميع التحليلات والمؤشرات والتوقعات المعروضة داخل SFM Trading Terminal هي لأغراض تعليمية ومعلوماتية فقط ولا تشكل نصيحة استثمارية أو توصية مالية. قد يؤدي التداول والاستثمار إلى خسارة جزء أو كامل رأس المال.",
-    aiNoticeTitle: "تنبيه الذكاء الاصطناعي",
-    aiNoticeBody: "يتم إنشاء بعض التحليلات والتوقعات باستخدام تقنيات الذكاء الاصطناعي. قد تحتوي النتائج على أخطاء أو تقديرات غير دقيقة، ويجب عدم الاعتماد عليها وحدها لاتخاذ القرارات الاستثمارية.",
-    close: "إغلاق",
-    statusBarData: "حالة مزود البيانات",
-    totalMarkets: "فئات الأسواق المدعومة",
-    activeAssets: "الأدوات المفحوصة",
-    scans: "الإشارات المتاحة",
-    lastUpdate: "آخر تحديث",
-    systemStatus: "حالة النظام",
-    noLiveData: "لا توجد بيانات مباشرة متاحة حالياً.",
-    noNews: "مزود الأخبار غير متصل حالياً.",
-    noPortfolio: "لا توجد ممتلكات محفوظة. لن يتم عرض مراكز وهمية.",
-    noAlerts: "لا توجد تنبيهات نشطة حالياً.",
-    routeUnavailable: "هذه الصفحة جاهزة للبيانات الحقيقية، ولا تعرض بيانات وهمية.",
-    marketSentiment: "معنويات السوق",
-    aiConfidence: "ثقة الذكاء الاصطناعي",
-    bullish: "صاعد",
-    bearish: "هابط",
-    neutral: "محايد",
+    riskNoticeTitle: "ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù„Ù…Ø®Ø§Ø·Ø±",
+    riskNoticeBody: "Ø¬Ù…ÙŠØ¹ Ø§Ù„ØªØ­Ù„ÙŠÙ„Ø§Øª ÙˆØ§Ù„Ù…Ø¤Ø´Ø±Ø§Øª ÙˆØ§Ù„ØªÙˆÙ‚Ø¹Ø§Øª Ø§Ù„Ù…Ø¹Ø±ÙˆØ¶Ø© Ø¯Ø§Ø®Ù„ SFM Trading Terminal Ù‡ÙŠ Ù„Ø£ØºØ±Ø§Ø¶ ØªØ¹Ù„ÙŠÙ…ÙŠØ© ÙˆÙ…Ø¹Ù„ÙˆÙ…Ø§ØªÙŠØ© ÙÙ‚Ø· ÙˆÙ„Ø§ ØªØ´ÙƒÙ„ Ù†ØµÙŠØ­Ø© Ø§Ø³ØªØ«Ù…Ø§Ø±ÙŠØ© Ø£Ùˆ ØªÙˆØµÙŠØ© Ù…Ø§Ù„ÙŠØ©. Ù‚Ø¯ ÙŠØ¤Ø¯ÙŠ Ø§Ù„ØªØ¯Ø§ÙˆÙ„ ÙˆØ§Ù„Ø§Ø³ØªØ«Ù…Ø§Ø± Ø¥Ù„Ù‰ Ø®Ø³Ø§Ø±Ø© Ø¬Ø²Ø¡ Ø£Ùˆ ÙƒØ§Ù…Ù„ Ø±Ø£Ø³ Ø§Ù„Ù…Ø§Ù„.",
+    aiNoticeTitle: "ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    aiNoticeBody: "ÙŠØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø¨Ø¹Ø¶ Ø§Ù„ØªØ­Ù„ÙŠÙ„Ø§Øª ÙˆØ§Ù„ØªÙˆÙ‚Ø¹Ø§Øª Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… ØªÙ‚Ù†ÙŠØ§Øª Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ. Ù‚Ø¯ ØªØ­ØªÙˆÙŠ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ø¹Ù„Ù‰ Ø£Ø®Ø·Ø§Ø¡ Ø£Ùˆ ØªÙ‚Ø¯ÙŠØ±Ø§Øª ØºÙŠØ± Ø¯Ù‚ÙŠÙ‚Ø©ØŒ ÙˆÙŠØ¬Ø¨ Ø¹Ø¯Ù… Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ Ø¹Ù„ÙŠÙ‡Ø§ ÙˆØ­Ø¯Ù‡Ø§ Ù„Ø§ØªØ®Ø§Ø° Ø§Ù„Ù‚Ø±Ø§Ø±Ø§Øª Ø§Ù„Ø§Ø³ØªØ«Ù…Ø§Ø±ÙŠØ©.",
+    close: "Ø¥ØºÙ„Ø§Ù‚",
+    statusBarData: "Ø­Ø§Ù„Ø© Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª",
+    totalMarkets: "ÙØ¦Ø§Øª Ø§Ù„Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ù…Ø¯Ø¹ÙˆÙ…Ø©",
+    activeAssets: "Ø§Ù„Ø£Ø¯ÙˆØ§Øª Ø§Ù„Ù…ÙØ­ÙˆØµØ©",
+    scans: "Ø§Ù„Ø¥Ø´Ø§Ø±Ø§Øª Ø§Ù„Ù…ØªØ§Ø­Ø©",
+    lastUpdate: "Ø¢Ø®Ø± ØªØ­Ø¯ÙŠØ«",
+    systemStatus: "Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ø¸Ø§Ù…",
+    noLiveData: "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø¨Ø§Ø´Ø±Ø© Ù…ØªØ§Ø­Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.",
+    noNews: "Ù…Ø²ÙˆØ¯ Ø§Ù„Ø£Ø®Ø¨Ø§Ø± ØºÙŠØ± Ù…ØªØµÙ„ Ø­Ø§Ù„ÙŠØ§Ù‹.",
+    noPortfolio: "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù…ØªÙ„ÙƒØ§Øª Ù…Ø­ÙÙˆØ¸Ø©. Ù„Ù† ÙŠØªÙ… Ø¹Ø±Ø¶ Ù…Ø±Ø§ÙƒØ² ÙˆÙ‡Ù…ÙŠØ©.",
+    noAlerts: "Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙ†Ø¨ÙŠÙ‡Ø§Øª Ù†Ø´Ø·Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.",
+    routeUnavailable: "Ù‡Ø°Ù‡ Ø§Ù„ØµÙØ­Ø© Ø¬Ø§Ù‡Ø²Ø© Ù„Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø­Ù‚ÙŠÙ‚ÙŠØ©ØŒ ÙˆÙ„Ø§ ØªØ¹Ø±Ø¶ Ø¨ÙŠØ§Ù†Ø§Øª ÙˆÙ‡Ù…ÙŠØ©.",
+    marketSentiment: "Ù…Ø¹Ù†ÙˆÙŠØ§Øª Ø§Ù„Ø³ÙˆÙ‚",
+    aiConfidence: "Ø«Ù‚Ø© Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ",
+    bullish: "ØµØ§Ø¹Ø¯",
+    bearish: "Ù‡Ø§Ø¨Ø·",
+    neutral: "Ù…Ø­Ø§ÙŠØ¯",
     profileName: "SFM Trader",
     premium: "Premium",
-    add: "إضافة",
-    symbol: "الرمز",
-    notes: "ملاحظات",
-    language: "اللغة",
-    theme: "المظهر",
-    currency: "العملة",
-    timezone: "المنطقة الزمنية",
-    dataRefresh: "تحديث البيانات",
-    privacy: "الخصوصية",
-    account: "الحساب",
-    notificationPreferences: "تفضيلات التنبيهات",
-    marketPreferences: "تفضيلات الأسواق",
-    educational: "تعليمي",
-    support: "الدعم والمعلومات",
-    shariaCompliance: "التوافق الشرعي",
-    shariaCompliant: "متوافق شرعياً",
-    shariaNonCompliant: "غير متوافق شرعياً",
-    shariaReviewRequired: "يحتاج مراجعة",
-    shariaNotApplicable: "غير منطبق",
-    shariaTooltip: "التصنيف الشرعي إرشادي ويحتاج إلى مراجعة دورية وفق المعايير الشرعية المعتمدة.",
-    shariaOnlyFilter: "الأسهم الشرعية فقط",
-    shariaOnlyFilterNote: "يعرض الأسهم ذات التصنيف الموثق كمتوافقة شرعياً فقط.",
-    shariaFilterStocksOnly: "ينطبق هذا الفلتر على الأسهم فقط ولا يشمل الفوركس أو السلع أو العملات الرقمية.",
-    noShariaCompliantResults: "لا توجد أسهم مصنفة كمتوافقة شرعياً ضمن النتائج الحالية.",
-    clearFilter: "مسح الفلتر",
-    shariaStatusFilter: "الحالة الشرعية",
-    shariaReason: "سبب التصنيف",
-    shariaSource: "مصدر التصنيف",
-    shariaStandard: "المنهجية",
-    shariaLastReview: "آخر مراجعة",
-    shariaOutdated: "التصنيف قديم ويحتاج إلى تحديث",
-    marketAnalysisDesc: "تحليل السوق المختار باستخدام نتائج الفحص الحقيقية المتاحة.",
-    analysisResults: "نتائج التحليل",
-    signalResults: "نتائج الإشارات",
-    noMarketAnalysisData: "لا توجد توصيات حقيقية متاحة لهذا السوق حالياً.",
-    marketAnalysisUnsupported: "لا يوجد مزود بيانات متصل حالياً لتحليل هذا السوق.",
-    providerErrorState: "تعذر تحميل نتائج التحليل من مزود البيانات.",
-    tradePerformanceDesc: "تصنيف نتائج التوصيات المتابعة حسب الحالة الفعلية للتداول.",
-    winningTrades: "الصفقات الرابحة",
-    losingTrades: "الصفقات الخاسرة",
-    openTrades: "الصفقات المفتوحة",
-    monitoredTrades: "تحت المتابعة",
-    entryPrice: "سعر الدخول",
-    lastPrice: "آخر سعر",
-    openDate: "تاريخ الفتح",
-    closeDate: "تاريخ الإغلاق",
-    profitLoss: "الربح / الخسارة",
-    tradeStatus: "حالة الصفقة",
-    followTrade: "تابع الصفقة",
-    unfollowTrade: "إيقاف المتابعة",
-    noTradeHistory: "لا يوجد سجل صفقات بعد. سيبدأ السجل بعد توفر نتائج فحص حقيقية.",
-    targetHit: "وصل الهدف",
-    stopLossHit: "ضرب وقف الخسارة",
-    closedProfit: "مغلقة بربح",
-    closedLoss: "مغلقة بخسارة",
-    monitoring: "تحت المتابعة",
-    startedFromMarket: "السوق المختار",
-    openDrawer: "فتح القائمة",
-    closeDrawer: "إغلاق القائمة",
+    add: "Ø¥Ø¶Ø§ÙØ©",
+    symbol: "Ø§Ù„Ø±Ù…Ø²",
+    notes: "Ù…Ù„Ø§Ø­Ø¸Ø§Øª",
+    language: "Ø§Ù„Ù„ØºØ©",
+    theme: "Ø§Ù„Ù…Ø¸Ù‡Ø±",
+    currency: "Ø§Ù„Ø¹Ù…Ù„Ø©",
+    timezone: "Ø§Ù„Ù…Ù†Ø·Ù‚Ø© Ø§Ù„Ø²Ù…Ù†ÙŠØ©",
+    dataRefresh: "ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª",
+    privacy: "Ø§Ù„Ø®ØµÙˆØµÙŠØ©",
+    account: "Ø§Ù„Ø­Ø³Ø§Ø¨",
+    notificationPreferences: "ØªÙØ¶ÙŠÙ„Ø§Øª Ø§Ù„ØªÙ†Ø¨ÙŠÙ‡Ø§Øª",
+    marketPreferences: "ØªÙØ¶ÙŠÙ„Ø§Øª Ø§Ù„Ø£Ø³ÙˆØ§Ù‚",
+    educational: "ØªØ¹Ù„ÙŠÙ…ÙŠ",
+    support: "Ø§Ù„Ø¯Ø¹Ù… ÙˆØ§Ù„Ù…Ø¹Ù„ÙˆÙ…Ø§Øª",
+    shariaCompliance: "Ø§Ù„ØªÙˆØ§ÙÙ‚ Ø§Ù„Ø´Ø±Ø¹ÙŠ",
+    shariaCompliant: "Ù…ØªÙˆØ§ÙÙ‚ Ø´Ø±Ø¹ÙŠØ§Ù‹",
+    shariaNonCompliant: "ØºÙŠØ± Ù…ØªÙˆØ§ÙÙ‚ Ø´Ø±Ø¹ÙŠØ§Ù‹",
+    shariaReviewRequired: "ÙŠØ­ØªØ§Ø¬ Ù…Ø±Ø§Ø¬Ø¹Ø©",
+    shariaNotApplicable: "ØºÙŠØ± Ù…Ù†Ø·Ø¨Ù‚",
+    shariaTooltip: "Ø§Ù„ØªØµÙ†ÙŠÙ Ø§Ù„Ø´Ø±Ø¹ÙŠ Ø¥Ø±Ø´Ø§Ø¯ÙŠ ÙˆÙŠØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ Ù…Ø±Ø§Ø¬Ø¹Ø© Ø¯ÙˆØ±ÙŠØ© ÙˆÙÙ‚ Ø§Ù„Ù…Ø¹Ø§ÙŠÙŠØ± Ø§Ù„Ø´Ø±Ø¹ÙŠØ© Ø§Ù„Ù…Ø¹ØªÙ…Ø¯Ø©.",
+    shariaOnlyFilter: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø´Ø±Ø¹ÙŠØ© ÙÙ‚Ø·",
+    shariaOnlyFilterNote: "ÙŠØ¹Ø±Ø¶ Ø§Ù„Ø£Ø³Ù‡Ù… Ø°Ø§Øª Ø§Ù„ØªØµÙ†ÙŠÙ Ø§Ù„Ù…ÙˆØ«Ù‚ ÙƒÙ…ØªÙˆØ§ÙÙ‚Ø© Ø´Ø±Ø¹ÙŠØ§Ù‹ ÙÙ‚Ø·.",
+    shariaFilterStocksOnly: "ÙŠÙ†Ø·Ø¨Ù‚ Ù‡Ø°Ø§ Ø§Ù„ÙÙ„ØªØ± Ø¹Ù„Ù‰ Ø§Ù„Ø£Ø³Ù‡Ù… ÙÙ‚Ø· ÙˆÙ„Ø§ ÙŠØ´Ù…Ù„ Ø§Ù„ÙÙˆØ±ÙƒØ³ Ø£Ùˆ Ø§Ù„Ø³Ù„Ø¹ Ø£Ùˆ Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ø±Ù‚Ù…ÙŠØ©.",
+    noShariaCompliantResults: "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£Ø³Ù‡Ù… Ù…ØµÙ†ÙØ© ÙƒÙ…ØªÙˆØ§ÙÙ‚Ø© Ø´Ø±Ø¹ÙŠØ§Ù‹ Ø¶Ù…Ù† Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø­Ø§Ù„ÙŠØ©.",
+    clearFilter: "Ù…Ø³Ø­ Ø§Ù„ÙÙ„ØªØ±",
+    shariaStatusFilter: "Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„Ø´Ø±Ø¹ÙŠØ©",
+    shariaReason: "Ø³Ø¨Ø¨ Ø§Ù„ØªØµÙ†ÙŠÙ",
+    shariaSource: "Ù…ØµØ¯Ø± Ø§Ù„ØªØµÙ†ÙŠÙ",
+    shariaStandard: "Ø§Ù„Ù…Ù†Ù‡Ø¬ÙŠØ©",
+    shariaLastReview: "Ø¢Ø®Ø± Ù…Ø±Ø§Ø¬Ø¹Ø©",
+    shariaOutdated: "Ø§Ù„ØªØµÙ†ÙŠÙ Ù‚Ø¯ÙŠÙ… ÙˆÙŠØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ ØªØ­Ø¯ÙŠØ«",
+    marketAnalysisDesc: "ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù…Ø®ØªØ§Ø± Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… Ù†ØªØ§Ø¦Ø¬ Ø§Ù„ÙØ­Øµ Ø§Ù„Ø­Ù‚ÙŠÙ‚ÙŠØ© Ø§Ù„Ù…ØªØ§Ø­Ø©.",
+    analysisResults: "Ù†ØªØ§Ø¦Ø¬ Ø§Ù„ØªØ­Ù„ÙŠÙ„",
+    signalResults: "Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¥Ø´Ø§Ø±Ø§Øª",
+    noMarketAnalysisData: "Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙˆØµÙŠØ§Øª Ø­Ù‚ÙŠÙ‚ÙŠØ© Ù…ØªØ§Ø­Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚ Ø­Ø§Ù„ÙŠØ§Ù‹.",
+    marketAnalysisUnsupported: "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø²ÙˆØ¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù…ØªØµÙ„ Ø­Ø§Ù„ÙŠØ§Ù‹ Ù„ØªØ­Ù„ÙŠÙ„ Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚.",
+    providerErrorState: "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ù†ØªØ§Ø¦Ø¬ Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ù…Ù† Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª.",
+    tradePerformanceDesc: "ØªØµÙ†ÙŠÙ Ù†ØªØ§Ø¦Ø¬ Ø§Ù„ØªÙˆØµÙŠØ§Øª Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø© Ø­Ø³Ø¨ Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„ÙØ¹Ù„ÙŠØ© Ù„Ù„ØªØ¯Ø§ÙˆÙ„.",
+    winningTrades: "Ø§Ù„ØµÙÙ‚Ø§Øª Ø§Ù„Ø±Ø§Ø¨Ø­Ø©",
+    losingTrades: "Ø§Ù„ØµÙÙ‚Ø§Øª Ø§Ù„Ø®Ø§Ø³Ø±Ø©",
+    openTrades: "Ø§Ù„ØµÙÙ‚Ø§Øª Ø§Ù„Ù…ÙØªÙˆØ­Ø©",
+    monitoredTrades: "ØªØ­Øª Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©",
+    entryPrice: "Ø³Ø¹Ø± Ø§Ù„Ø¯Ø®ÙˆÙ„",
+    lastPrice: "Ø¢Ø®Ø± Ø³Ø¹Ø±",
+    openDate: "ØªØ§Ø±ÙŠØ® Ø§Ù„ÙØªØ­",
+    closeDate: "ØªØ§Ø±ÙŠØ® Ø§Ù„Ø¥ØºÙ„Ø§Ù‚",
+    profitLoss: "Ø§Ù„Ø±Ø¨Ø­ / Ø§Ù„Ø®Ø³Ø§Ø±Ø©",
+    tradeStatus: "Ø­Ø§Ù„Ø© Ø§Ù„ØµÙÙ‚Ø©",
+    followTrade: "ØªØ§Ø¨Ø¹ Ø§Ù„ØµÙÙ‚Ø©",
+    unfollowTrade: "Ø¥ÙŠÙ‚Ø§Ù Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©",
+    noTradeHistory: "Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø³Ø¬Ù„ ØµÙÙ‚Ø§Øª Ø¨Ø¹Ø¯. Ø³ÙŠØ¨Ø¯Ø£ Ø§Ù„Ø³Ø¬Ù„ Ø¨Ø¹Ø¯ ØªÙˆÙØ± Ù†ØªØ§Ø¦Ø¬ ÙØ­Øµ Ø­Ù‚ÙŠÙ‚ÙŠØ©.",
+    targetHit: "ÙˆØµÙ„ Ø§Ù„Ù‡Ø¯Ù",
+    stopLossHit: "Ø¶Ø±Ø¨ ÙˆÙ‚Ù Ø§Ù„Ø®Ø³Ø§Ø±Ø©",
+    closedProfit: "Ù…ØºÙ„Ù‚Ø© Ø¨Ø±Ø¨Ø­",
+    closedLoss: "Ù…ØºÙ„Ù‚Ø© Ø¨Ø®Ø³Ø§Ø±Ø©",
+    monitoring: "ØªØ­Øª Ø§Ù„Ù…ØªØ§Ø¨Ø¹Ø©",
+    startedFromMarket: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù…Ø®ØªØ§Ø±",
+    openDrawer: "ÙØªØ­ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø©",
+    closeDrawer: "Ø¥ØºÙ„Ø§Ù‚ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø©",
   },
   en: {
     dashboard: "Dashboard",
@@ -501,29 +501,29 @@ const i18n = {
 };
 
 const marketCategories = [
-  { id: "forex", route: "markets/forex", apiMarket: "forex", labelAr: "الفوركس", labelEn: "Forex", labelFr: "Forex", subtitleAr: "أزواج العملات الرئيسية", subtitleEn: "Major currency pairs", exchange: "FX", countryCode: "FX", currency: "Pairs", icon: "fx", type: "market", symbols: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD", "XAU/USD"] },
-  { id: "stocks", route: "markets/stocks", apiMarket: "us", labelAr: "الأسهم الأمريكية", labelEn: "US Stocks", labelFr: "Actions US", subtitleAr: "NYSE / NASDAQ", subtitleEn: "NYSE / NASDAQ", exchange: "NYSE / NASDAQ", countryCode: "US", currency: "USD", icon: "us", type: "market", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "QQQ", "SPY"] },
-  { id: "crypto", route: "markets/crypto", apiMarket: "crypto", labelAr: "العملات الرقمية", labelEn: "Crypto", labelFr: "Crypto", subtitleAr: "أصول رقمية مقابل الدولار", subtitleEn: "Digital assets", exchange: "Crypto", countryCode: "CRYPTO", currency: "USD", icon: "crypto", type: "market", symbols: ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD", "ADAUSD", "AVAXUSD"] },
-  { id: "commodities", route: "markets/commodities", apiMarket: "commodities", labelAr: "السلع", labelEn: "Commodities", labelFr: "Matieres", subtitleAr: "ذهب، فضة، نفط وغاز", subtitleEn: "Metals and energy", exchange: "Commodities", countryCode: "CMDTY", currency: "USD", icon: "gold", type: "market", symbols: ["XAUUSD", "XAGUSD", "USOIL", "UKOIL", "NATGAS", "COPPER"] },
-  { id: "saudi", route: "markets/saudi", apiMarket: "saudi", labelAr: "السوق السعودي", labelEn: "Saudi Market", labelFr: "Arabie", subtitleAr: "تداول", subtitleEn: "Tadawul", exchange: "Tadawul", countryCode: "SA", currency: "SAR", icon: "saudi", type: "exchange", symbols: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "2010.SR", "1211.SR", "7203.SR"] },
-  { id: "kuwait", route: "markets/kuwait", apiMarket: "kuwait", labelAr: "بورصة الكويت", labelEn: "Boursa Kuwait", labelFr: "Koweit", subtitleAr: "السوق الكويتي", subtitleEn: "Boursa Kuwait", exchange: "Boursa Kuwait", countryCode: "KW", currency: "KWD", icon: "kuwait", type: "exchange", symbols: ["NBK.KW", "KFH.KW", "ZAIN.KW", "AUB.KW", "GBK.KW", "BOUBYAN.KW", "AGILITY.KW"] },
-  { id: "uae", route: "markets/uae", apiMarket: "uae", labelAr: "السوق الإماراتي", labelEn: "UAE Market", labelFr: "EAU", subtitleAr: "ADX / DFM", subtitleEn: "ADX / DFM", exchange: "ADX / DFM", countryCode: "AE", currency: "AED", icon: "uae", type: "exchange", symbols: ["EMAAR.AE", "DIB.AE", "FAB.AD", "EAND.AD", "ADNOCGAS.AD", "DEWA.DU"] },
-  { id: "qatar", route: "markets/qatar", apiMarket: "qatar", labelAr: "السوق القطري", labelEn: "Qatar Market", labelFr: "Qatar", subtitleAr: "بورصة قطر", subtitleEn: "QSE", exchange: "QSE", countryCode: "QA", currency: "QAR", icon: "qatar", type: "exchange", symbols: ["QNBK.QA", "IQCD.QA", "MARK.QA", "QIBK.QA", "ORDS.QA"] },
-  { id: "bahrain", route: "markets/bahrain", apiMarket: "bahrain", labelAr: "السوق البحريني", labelEn: "Bahrain Market", labelFr: "Bahrein", subtitleAr: "بورصة البحرين", subtitleEn: "BHB", exchange: "BHB", countryCode: "BH", currency: "BHD", icon: "bahrain", type: "exchange", symbols: ["NBB.BH", "ALBH.BH", "BEYON.BH", "SALAM.BH"] },
-  { id: "oman", route: "markets/oman", apiMarket: "oman", labelAr: "السوق العماني", labelEn: "Oman Market", labelFr: "Oman", subtitleAr: "بورصة مسقط", subtitleEn: "MSX", exchange: "MSX", countryCode: "OM", currency: "OMR", icon: "oman", type: "exchange", symbols: ["BKMB.OM", "OMANTEL.OM", "NBO.OM", "OMINVEST.OM"] },
-  { id: "europe", route: "markets/europe", apiMarket: "europe", labelAr: "الأسهم الأوروبية", labelEn: "European Stocks", labelFr: "Europe", subtitleAr: "أسواق الاتحاد الأوروبي والمملكة المتحدة", subtitleEn: "European equities", exchange: "EU Stocks", countryCode: "EU", currency: "EUR", icon: "europe", type: "market", symbols: ["ASML", "SAP", "SHEL", "TTE", "LVMH", "SIE.DE", "AIR.PA", "NESN.SW"] },
-  { id: "asia", route: "markets/asia", apiMarket: "asia", labelAr: "الأسهم الآسيوية", labelEn: "Asian Stocks", labelFr: "Asie", subtitleAr: "آسيا والمحيط الهادئ", subtitleEn: "Asia Pacific", exchange: "Asia Markets", countryCode: "ASIA", currency: "Mixed", icon: "asia", type: "market", symbols: ["TSM", "BABA", "TCEHY", "SONY", "TM", "005930.KS", "9988.HK"] },
-  { id: "indices", route: "markets/indices", apiMarket: "indices", labelAr: "المؤشرات العالمية", labelEn: "Global Indices", labelFr: "Indices", subtitleAr: "مؤشرات عالمية", subtitleEn: "Global indices", exchange: "Indices", countryCode: "INDEX", currency: "USD", icon: "indices", type: "category", symbols: ["SPY", "QQQ", "DIA", "IWM", "VTI"] },
-  { id: "etfs", route: "markets/etfs", apiMarket: "etfs", labelAr: "الصناديق المتداولة", labelEn: "ETFs", labelFr: "ETF", subtitleAr: "صناديق مؤشرات متداولة", subtitleEn: "Exchange traded funds", exchange: "ETFs", countryCode: "US", currency: "USD", icon: "etf", type: "category", symbols: ["SPY", "QQQ", "VTI", "VOO", "GLD", "SLV"] },
-  { id: "ai", route: "markets/ai", apiMarket: "ai", labelAr: "أسهم الذكاء الاصطناعي", labelEn: "AI Stocks", labelFr: "IA", subtitleAr: "شركات الذكاء الاصطناعي", subtitleEn: "AI leaders", exchange: "AI Category", countryCode: "US", currency: "USD", icon: "ai", type: "theme", symbols: ["NVDA", "MSFT", "GOOGL", "AMD", "PLTR", "META", "AVGO", "ORCL"] },
-  { id: "tech", route: "markets/tech", apiMarket: "tech", labelAr: "أسهم التكنولوجيا", labelEn: "Technology Stocks", labelFr: "Technologie", subtitleAr: "شركات التقنية الكبرى", subtitleEn: "Technology leaders", exchange: "Tech Category", countryCode: "US", currency: "USD", icon: "chip", type: "theme", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMD", "INTC", "ORCL", "CRM", "AVGO"] },
-  { id: "energy", route: "markets/energy", apiMarket: "energy", labelAr: "أسهم الطاقة", labelEn: "Energy Stocks", labelFr: "Energie", subtitleAr: "نفط وطاقة", subtitleEn: "Energy and oil", exchange: "Energy Category", countryCode: "US", currency: "USD", icon: "energy", type: "theme", symbols: ["XOM", "CVX", "COP", "SLB", "BP", "SHEL", "TTE"] },
-  { id: "defensive", route: "markets/defensive", apiMarket: "defensive", labelAr: "الأسهم الدفاعية", labelEn: "Defensive Stocks", labelFr: "Defensives", subtitleAr: "شركات مستقرة ودفاعية", subtitleEn: "Defensive equities", exchange: "Defensive Category", countryCode: "US", currency: "USD", icon: "shield", type: "theme", symbols: ["PG", "KO", "PEP", "WMT", "COST", "JNJ", "MRK"] },
-  { id: "dividends", route: "markets/dividends", apiMarket: "dividends", labelAr: "أسهم التوزيعات", labelEn: "Dividend Stocks", labelFr: "Dividendes", subtitleAr: "شركات توزيعات أرباح", subtitleEn: "Dividend payers", exchange: "Dividend Category", countryCode: "US", currency: "USD", icon: "dividend", type: "theme", symbols: ["JPM", "KO", "PEP", "PG", "JNJ", "XOM", "CVX"] },
-  { id: "semiconductors", route: "markets/semiconductors", apiMarket: "semiconductors", labelAr: "أشباه الموصلات", labelEn: "Semiconductors", labelFr: "Semi-conducteurs", subtitleAr: "شركات الرقائق", subtitleEn: "Chip makers", exchange: "Semiconductors", countryCode: "SEMI", currency: "USD", icon: "semi", type: "theme", symbols: ["NVDA", "AMD", "INTC", "AVGO", "TSM", "QCOM", "ASML", "MU"] },
-  { id: "food", route: "markets/food", apiMarket: "food", labelAr: "الأسهم الغذائية", labelEn: "Food / Staples", labelFr: "Consommation", subtitleAr: "الأغذية والسلع الاستهلاكية", subtitleEn: "Consumer staples", exchange: "Staples Category", countryCode: "US", currency: "USD", icon: "food", type: "theme", symbols: ["KO", "PEP", "MCD", "COST", "WMT", "PG", "MDLZ", "KHC", "SBUX"] },
-  { id: "healthcare", route: "markets/healthcare", apiMarket: "healthcare", labelAr: "الأسهم الدوائية", labelEn: "Healthcare / Pharma", labelFr: "Sante", subtitleAr: "الصحة والدواء", subtitleEn: "Healthcare and pharma", exchange: "Healthcare Category", countryCode: "HLTH", currency: "USD", icon: "health", type: "theme", symbols: ["LLY", "JNJ", "PFE", "MRK", "ABBV", "NVO", "UNH", "AMGN"] },
-  { id: "banking", route: "markets/banking", apiMarket: "banking", labelAr: "أسهم البنوك", labelEn: "Banking Stocks", labelFr: "Banques", subtitleAr: "البنوك والخدمات المالية", subtitleEn: "Banks and financials", exchange: "Banking Category", countryCode: "BANK", currency: "USD", icon: "bank", type: "theme", symbols: ["JPM", "BAC", "WFC", "C", "GS", "MS", "HSBC"] },
+  { id: "forex", route: "markets/forex", apiMarket: "forex", labelAr: "Ø§Ù„ÙÙˆØ±ÙƒØ³", labelEn: "Forex", labelFr: "Forex", subtitleAr: "Ø£Ø²ÙˆØ§Ø¬ Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©", subtitleEn: "Major currency pairs", exchange: "FX", countryCode: "FX", currency: "Pairs", icon: "fx", type: "market", symbols: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD", "XAU/USD"] },
+  { id: "stocks", route: "markets/stocks", apiMarket: "us", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø£Ù…Ø±ÙŠÙƒÙŠØ©", labelEn: "US Stocks", labelFr: "Actions US", subtitleAr: "NYSE / NASDAQ", subtitleEn: "NYSE / NASDAQ", exchange: "NYSE / NASDAQ", countryCode: "US", currency: "USD", icon: "us", type: "market", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "QQQ", "SPY"] },
+  { id: "crypto", route: "markets/crypto", apiMarket: "crypto", labelAr: "Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ø±Ù‚Ù…ÙŠØ©", labelEn: "Crypto", labelFr: "Crypto", subtitleAr: "Ø£ØµÙˆÙ„ Ø±Ù‚Ù…ÙŠØ© Ù…Ù‚Ø§Ø¨Ù„ Ø§Ù„Ø¯ÙˆÙ„Ø§Ø±", subtitleEn: "Digital assets", exchange: "Crypto", countryCode: "CRYPTO", currency: "USD", icon: "crypto", type: "market", symbols: ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD", "ADAUSD", "AVAXUSD"] },
+  { id: "commodities", route: "markets/commodities", apiMarket: "commodities", labelAr: "Ø§Ù„Ø³Ù„Ø¹", labelEn: "Commodities", labelFr: "Matieres", subtitleAr: "Ø°Ù‡Ø¨ØŒ ÙØ¶Ø©ØŒ Ù†ÙØ· ÙˆØºØ§Ø²", subtitleEn: "Metals and energy", exchange: "Commodities", countryCode: "CMDTY", currency: "USD", icon: "gold", type: "market", symbols: ["XAUUSD", "XAGUSD", "USOIL", "UKOIL", "NATGAS", "COPPER"] },
+  { id: "saudi", route: "markets/saudi", apiMarket: "saudi", labelAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ø³Ø¹ÙˆØ¯ÙŠ", labelEn: "Saudi Market", labelFr: "Arabie", subtitleAr: "ØªØ¯Ø§ÙˆÙ„", subtitleEn: "Tadawul", exchange: "Tadawul", countryCode: "SA", currency: "SAR", icon: "saudi", type: "exchange", symbols: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "2010.SR", "1211.SR", "7203.SR"] },
+  { id: "kuwait", route: "markets/kuwait", apiMarket: "kuwait", labelAr: "Ø¨ÙˆØ±ØµØ© Ø§Ù„ÙƒÙˆÙŠØª", labelEn: "Boursa Kuwait", labelFr: "Koweit", subtitleAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„ÙƒÙˆÙŠØªÙŠ", subtitleEn: "Boursa Kuwait", exchange: "Boursa Kuwait", countryCode: "KW", currency: "KWD", icon: "kuwait", type: "exchange", symbols: ["NBK.KW", "KFH.KW", "ZAIN.KW", "AUB.KW", "GBK.KW", "BOUBYAN.KW", "AGILITY.KW"] },
+  { id: "uae", route: "markets/uae", apiMarket: "uae", labelAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ø¥Ù…Ø§Ø±Ø§ØªÙŠ", labelEn: "UAE Market", labelFr: "EAU", subtitleAr: "ADX / DFM", subtitleEn: "ADX / DFM", exchange: "ADX / DFM", countryCode: "AE", currency: "AED", icon: "uae", type: "exchange", symbols: ["EMAAR.AE", "DIB.AE", "FAB.AD", "EAND.AD", "ADNOCGAS.AD", "DEWA.DU"] },
+  { id: "qatar", route: "markets/qatar", apiMarket: "qatar", labelAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù‚Ø·Ø±ÙŠ", labelEn: "Qatar Market", labelFr: "Qatar", subtitleAr: "Ø¨ÙˆØ±ØµØ© Ù‚Ø·Ø±", subtitleEn: "QSE", exchange: "QSE", countryCode: "QA", currency: "QAR", icon: "qatar", type: "exchange", symbols: ["QNBK.QA", "IQCD.QA", "MARK.QA", "QIBK.QA", "ORDS.QA"] },
+  { id: "bahrain", route: "markets/bahrain", apiMarket: "bahrain", labelAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ø¨Ø­Ø±ÙŠÙ†ÙŠ", labelEn: "Bahrain Market", labelFr: "Bahrein", subtitleAr: "Ø¨ÙˆØ±ØµØ© Ø§Ù„Ø¨Ø­Ø±ÙŠÙ†", subtitleEn: "BHB", exchange: "BHB", countryCode: "BH", currency: "BHD", icon: "bahrain", type: "exchange", symbols: ["NBB.BH", "ALBH.BH", "BEYON.BH", "SALAM.BH"] },
+  { id: "oman", route: "markets/oman", apiMarket: "oman", labelAr: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ø¹Ù…Ø§Ù†ÙŠ", labelEn: "Oman Market", labelFr: "Oman", subtitleAr: "Ø¨ÙˆØ±ØµØ© Ù…Ø³Ù‚Ø·", subtitleEn: "MSX", exchange: "MSX", countryCode: "OM", currency: "OMR", icon: "oman", type: "exchange", symbols: ["BKMB.OM", "OMANTEL.OM", "NBO.OM", "OMINVEST.OM"] },
+  { id: "europe", route: "markets/europe", apiMarket: "europe", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø£ÙˆØ±ÙˆØ¨ÙŠØ©", labelEn: "European Stocks", labelFr: "Europe", subtitleAr: "Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ø§ØªØ­Ø§Ø¯ Ø§Ù„Ø£ÙˆØ±ÙˆØ¨ÙŠ ÙˆØ§Ù„Ù…Ù…Ù„ÙƒØ© Ø§Ù„Ù…ØªØ­Ø¯Ø©", subtitleEn: "European equities", exchange: "EU Stocks", countryCode: "EU", currency: "EUR", icon: "europe", type: "market", symbols: ["ASML", "SAP", "SHEL", "TTE", "LVMH", "SIE.DE", "AIR.PA", "NESN.SW"] },
+  { id: "asia", route: "markets/asia", apiMarket: "asia", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø¢Ø³ÙŠÙˆÙŠØ©", labelEn: "Asian Stocks", labelFr: "Asie", subtitleAr: "Ø¢Ø³ÙŠØ§ ÙˆØ§Ù„Ù…Ø­ÙŠØ· Ø§Ù„Ù‡Ø§Ø¯Ø¦", subtitleEn: "Asia Pacific", exchange: "Asia Markets", countryCode: "ASIA", currency: "Mixed", icon: "asia", type: "market", symbols: ["TSM", "BABA", "TCEHY", "SONY", "TM", "005930.KS", "9988.HK"] },
+  { id: "indices", route: "markets/indices", apiMarket: "indices", labelAr: "Ø§Ù„Ù…Ø¤Ø´Ø±Ø§Øª Ø§Ù„Ø¹Ø§Ù„Ù…ÙŠØ©", labelEn: "Global Indices", labelFr: "Indices", subtitleAr: "Ù…Ø¤Ø´Ø±Ø§Øª Ø¹Ø§Ù„Ù…ÙŠØ©", subtitleEn: "Global indices", exchange: "Indices", countryCode: "INDEX", currency: "USD", icon: "indices", type: "category", symbols: ["SPY", "QQQ", "DIA", "IWM", "VTI"] },
+  { id: "etfs", route: "markets/etfs", apiMarket: "etfs", labelAr: "Ø§Ù„ØµÙ†Ø§Ø¯ÙŠÙ‚ Ø§Ù„Ù…ØªØ¯Ø§ÙˆÙ„Ø©", labelEn: "ETFs", labelFr: "ETF", subtitleAr: "ØµÙ†Ø§Ø¯ÙŠÙ‚ Ù…Ø¤Ø´Ø±Ø§Øª Ù…ØªØ¯Ø§ÙˆÙ„Ø©", subtitleEn: "Exchange traded funds", exchange: "ETFs", countryCode: "US", currency: "USD", icon: "etf", type: "category", symbols: ["SPY", "QQQ", "VTI", "VOO", "GLD", "SLV"] },
+  { id: "ai", route: "markets/ai", apiMarket: "ai", labelAr: "Ø£Ø³Ù‡Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ", labelEn: "AI Stocks", labelFr: "IA", subtitleAr: "Ø´Ø±ÙƒØ§Øª Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ", subtitleEn: "AI leaders", exchange: "AI Category", countryCode: "US", currency: "USD", icon: "ai", type: "theme", symbols: ["NVDA", "MSFT", "GOOGL", "AMD", "PLTR", "META", "AVGO", "ORCL"] },
+  { id: "tech", route: "markets/tech", apiMarket: "tech", labelAr: "Ø£Ø³Ù‡Ù… Ø§Ù„ØªÙƒÙ†ÙˆÙ„ÙˆØ¬ÙŠØ§", labelEn: "Technology Stocks", labelFr: "Technologie", subtitleAr: "Ø´Ø±ÙƒØ§Øª Ø§Ù„ØªÙ‚Ù†ÙŠØ© Ø§Ù„ÙƒØ¨Ø±Ù‰", subtitleEn: "Technology leaders", exchange: "Tech Category", countryCode: "US", currency: "USD", icon: "chip", type: "theme", symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMD", "INTC", "ORCL", "CRM", "AVGO"] },
+  { id: "energy", route: "markets/energy", apiMarket: "energy", labelAr: "Ø£Ø³Ù‡Ù… Ø§Ù„Ø·Ø§Ù‚Ø©", labelEn: "Energy Stocks", labelFr: "Energie", subtitleAr: "Ù†ÙØ· ÙˆØ·Ø§Ù‚Ø©", subtitleEn: "Energy and oil", exchange: "Energy Category", countryCode: "US", currency: "USD", icon: "energy", type: "theme", symbols: ["XOM", "CVX", "COP", "SLB", "BP", "SHEL", "TTE"] },
+  { id: "defensive", route: "markets/defensive", apiMarket: "defensive", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø¯ÙØ§Ø¹ÙŠØ©", labelEn: "Defensive Stocks", labelFr: "Defensives", subtitleAr: "Ø´Ø±ÙƒØ§Øª Ù…Ø³ØªÙ‚Ø±Ø© ÙˆØ¯ÙØ§Ø¹ÙŠØ©", subtitleEn: "Defensive equities", exchange: "Defensive Category", countryCode: "US", currency: "USD", icon: "shield", type: "theme", symbols: ["PG", "KO", "PEP", "WMT", "COST", "JNJ", "MRK"] },
+  { id: "dividends", route: "markets/dividends", apiMarket: "dividends", labelAr: "Ø£Ø³Ù‡Ù… Ø§Ù„ØªÙˆØ²ÙŠØ¹Ø§Øª", labelEn: "Dividend Stocks", labelFr: "Dividendes", subtitleAr: "Ø´Ø±ÙƒØ§Øª ØªÙˆØ²ÙŠØ¹Ø§Øª Ø£Ø±Ø¨Ø§Ø­", subtitleEn: "Dividend payers", exchange: "Dividend Category", countryCode: "US", currency: "USD", icon: "dividend", type: "theme", symbols: ["JPM", "KO", "PEP", "PG", "JNJ", "XOM", "CVX"] },
+  { id: "semiconductors", route: "markets/semiconductors", apiMarket: "semiconductors", labelAr: "Ø£Ø´Ø¨Ø§Ù‡ Ø§Ù„Ù…ÙˆØµÙ„Ø§Øª", labelEn: "Semiconductors", labelFr: "Semi-conducteurs", subtitleAr: "Ø´Ø±ÙƒØ§Øª Ø§Ù„Ø±Ù‚Ø§Ø¦Ù‚", subtitleEn: "Chip makers", exchange: "Semiconductors", countryCode: "SEMI", currency: "USD", icon: "semi", type: "theme", symbols: ["NVDA", "AMD", "INTC", "AVGO", "TSM", "QCOM", "ASML", "MU"] },
+  { id: "food", route: "markets/food", apiMarket: "food", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„ØºØ°Ø§Ø¦ÙŠØ©", labelEn: "Food / Staples", labelFr: "Consommation", subtitleAr: "Ø§Ù„Ø£ØºØ°ÙŠØ© ÙˆØ§Ù„Ø³Ù„Ø¹ Ø§Ù„Ø§Ø³ØªÙ‡Ù„Ø§ÙƒÙŠØ©", subtitleEn: "Consumer staples", exchange: "Staples Category", countryCode: "US", currency: "USD", icon: "food", type: "theme", symbols: ["KO", "PEP", "MCD", "COST", "WMT", "PG", "MDLZ", "KHC", "SBUX"] },
+  { id: "healthcare", route: "markets/healthcare", apiMarket: "healthcare", labelAr: "Ø§Ù„Ø£Ø³Ù‡Ù… Ø§Ù„Ø¯ÙˆØ§Ø¦ÙŠØ©", labelEn: "Healthcare / Pharma", labelFr: "Sante", subtitleAr: "Ø§Ù„ØµØ­Ø© ÙˆØ§Ù„Ø¯ÙˆØ§Ø¡", subtitleEn: "Healthcare and pharma", exchange: "Healthcare Category", countryCode: "HLTH", currency: "USD", icon: "health", type: "theme", symbols: ["LLY", "JNJ", "PFE", "MRK", "ABBV", "NVO", "UNH", "AMGN"] },
+  { id: "banking", route: "markets/banking", apiMarket: "banking", labelAr: "Ø£Ø³Ù‡Ù… Ø§Ù„Ø¨Ù†ÙˆÙƒ", labelEn: "Banking Stocks", labelFr: "Banques", subtitleAr: "Ø§Ù„Ø¨Ù†ÙˆÙƒ ÙˆØ§Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ù…Ø§Ù„ÙŠØ©", subtitleEn: "Banks and financials", exchange: "Banking Category", countryCode: "BANK", currency: "USD", icon: "bank", type: "theme", symbols: ["JPM", "BAC", "WFC", "C", "GS", "MS", "HSBC"] },
 ];
 
 const sidebarItems = [
@@ -533,14 +533,33 @@ const sidebarItems = [
     route: "markets",
     labelKey: "markets",
     icon: "markets",
-    children: [
-      { id: "forex", route: "markets/forex", labelKey: "forex" },
-      { id: "indices", route: "markets/indices", labelKey: "indices" },
-      { id: "stocks", route: "markets/stocks", labelKey: "stocks" },
-      { id: "crypto", route: "markets/crypto", labelKey: "crypto" },
-      { id: "commodities", route: "markets/commodities", labelKey: "commodities" },
-      { id: "etfs", route: "markets/etfs", labelKey: "etfs" },
-    ],
+    children: (() => {
+      const seen = new Set();
+      const baseChildren = [
+        { id: "forex", route: "markets/forex", labelKey: "forex" },
+        { id: "indices", route: "markets/indices", labelKey: "indices" },
+        { id: "stocks", route: "markets/stocks", labelKey: "stocks" },
+        { id: "crypto", route: "markets/crypto", labelKey: "crypto" },
+        { id: "commodities", route: "markets/commodities", labelKey: "commodities" },
+        { id: "etfs", route: "markets/etfs", labelKey: "etfs" },
+      ];
+      for (const child of baseChildren) {
+        seen.add(child.route);
+      }
+      const extra = marketCategories
+        .map((market) => ({
+          id: market.id,
+          route: market.route,
+          labelAr: market.labelAr,
+          labelEn: market.labelEn,
+        }))
+        .filter((child) => {
+          if (seen.has(child.route)) return false;
+          seen.add(child.route);
+          return true;
+        });
+      return baseChildren.concat(extra);
+    })(),
   },
   { id: "ai-scanner", route: "ai-scanner", labelKey: "aiScanner", icon: "scanner" },
   { id: "market-analysis", route: "market-analysis/stocks", labelKey: "marketAiAnalysis", icon: "scanner" },
@@ -732,29 +751,29 @@ function icon(name) {
 function marketIcon(kind) {
   const label = {
     fx: "$",
-    us: "🇺🇸",
-    crypto: "₿",
+    us: "ðŸ‡ºðŸ‡¸",
+    crypto: "â‚¿",
     gold: "Au",
-    saudi: "🇸🇦",
-    kuwait: "🇰🇼",
-    uae: "🇦🇪",
-    qatar: "🇶🇦",
-    bahrain: "🇧🇭",
-    oman: "🇴🇲",
-    europe: "🇪🇺",
-    asia: "🌐",
+    saudi: "ðŸ‡¸ðŸ‡¦",
+    kuwait: "ðŸ‡°ðŸ‡¼",
+    uae: "ðŸ‡¦ðŸ‡ª",
+    qatar: "ðŸ‡¶ðŸ‡¦",
+    bahrain: "ðŸ‡§ðŸ‡­",
+    oman: "ðŸ‡´ðŸ‡²",
+    europe: "ðŸ‡ªðŸ‡º",
+    asia: "ðŸŒ",
     chip: "CPU",
-    food: "●",
+    food: "â—",
     health: "+",
-    bank: "▥",
-    energy: "◆",
+    bank: "â–¥",
+    energy: "â—†",
     ai: "AI",
-    semi: "▦",
-    indices: "↗",
+    semi: "â–¦",
+    indices: "â†—",
     etf: "ETF",
-    shield: "◈",
+    shield: "â—ˆ",
     dividend: "%",
-  }[kind] || "●";
+  }[kind] || "â—";
   return `<span class="market-icon market-icon-${kind}" aria-hidden="true">${label}</span>`;
 }
 
@@ -762,19 +781,19 @@ function assetLogo(item = {}) {
   const raw = String(item.symbol || item.name || "").toUpperCase();
   const symbol = raw.replace(/[^A-Z0-9]/g, "");
   const exact = [
-    ["AAPL", "apple", ""],
+    ["AAPL", "apple", "ï£¿"],
     ["GOOGL", "google", "G"],
     ["GOOG", "google", "G"],
-    ["MSFT", "microsoft", "▦"],
+    ["MSFT", "microsoft", "â–¦"],
     ["NVDA", "nvidia", "NV"],
     ["AMZN", "amazon", "a"],
-    ["META", "meta", "∞"],
+    ["META", "meta", "âˆž"],
     ["TSLA", "tesla", "T"],
     ["AMD", "amd", "AMD"],
     ["INTC", "intel", "intel"],
     ["NFLX", "netflix", "N"],
-    ["BTC", "bitcoin", "₿"],
-    ["ETH", "ethereum", "Ξ"],
+    ["BTC", "bitcoin", "â‚¿"],
+    ["ETH", "ethereum", "Îž"],
     ["BNB", "bnb", "BNB"],
     ["XAU", "gold", "Au"],
     ["XAG", "silver", "Ag"],
@@ -799,6 +818,80 @@ function normalizeCurrency(currency) {
   const value = String(currency || "").toUpperCase();
   if (value === "KWF") return "KWD";
   return value || "";
+}
+
+const CURRENCY_SUFFIX_RULES = [
+  { suffix: ".KW", currency: "KWD" },
+  { suffix: ".BH", currency: "BHD" },
+  { suffix: ".SR", currency: "SAR" },
+  { suffix: ".AE", currency: "AED" },
+  { suffix: ".QA", currency: "QAR" },
+  { suffix: ".OM", currency: "OMR" },
+];
+
+const CURRENCY_SYMBOL_OVERRIDES = {
+  AMD: "USD",
+  NVDA: "USD",
+  GOOGL: "USD",
+  AAPL: "USD",
+  MSFT: "USD",
+  GOOG: "USD",
+  META: "USD",
+  TSLA: "USD",
+  AMZN: "USD",
+  ORCL: "USD",
+};
+
+function normalizeAssetSymbol(value = "") {
+  return String(value || "").trim().toUpperCase();
+}
+
+function symbolLookupKey(value = "") {
+  return normalizeAssetSymbol(value).replace(/[^A-Z0-9]/g, "");
+}
+
+function symbolBaseLookupKey(value = "") {
+  return normalizeAssetSymbol(value).split(".")[0];
+}
+
+function resolveSymbolCurrency(symbol, fallbackCurrency = "USD") {
+  const normalized = normalizeAssetSymbol(symbol);
+  if (CURRENCY_SYMBOL_OVERRIDES[normalized]) return CURRENCY_SYMBOL_OVERRIDES[normalized];
+  for (const rule of CURRENCY_SUFFIX_RULES) {
+    if (normalized.endsWith(rule.suffix)) return rule.currency;
+  }
+  const extracted = normalized.includes(".") && normalized.match(/\.[A-Z]{2,3}$/);
+  if (extracted?.[0]) {
+    const suffix = extracted[0];
+    const suffixMatch = CURRENCY_SUFFIX_RULES.find((rule) => rule.suffix === suffix);
+    if (suffixMatch) return suffixMatch.currency;
+  }
+  return normalizeCurrency(fallbackCurrency || "USD") || "USD";
+}
+
+function withSymbolCurrency(record = {}, fallbackCurrency) {
+  if (!record) return record;
+  const normalizedSymbol = normalizeAssetSymbol(record.symbol || record.providerSymbol || record.ticker);
+  const currency = resolveSymbolCurrency(normalizedSymbol, record.currency || fallbackCurrency);
+  return {
+    ...record,
+    symbol: normalizedSymbol || record.symbol,
+    currency,
+  };
+}
+
+function resolveWithSymbols(items = [], fallbackCurrency = "USD") {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => withSymbolCurrency(item, fallbackCurrency));
+}
+
+function normalizeMarketSymbol(value = "") {
+  return normalizeAssetSymbol(value);
+}
+
+function normalizeMarketSymbolBase(value = "") {
+  const normalized = normalizeMarketSymbol(value);
+  return normalized.includes(".") ? normalized.split(".")[0] : normalized;
 }
 
 function marketCurrencyDisplay(market) {
@@ -872,16 +965,16 @@ function isStockLikeInstrument(item = {}, market) {
 }
 
 const SHARIA_REASON_LABELS = {
-  prohibited_business_activity: { ar: "نشاط رئيسي غير متوافق", en: "Core business activity is not compliant", fr: "Activite principale non conforme" },
-  financial_ratio_threshold: { ar: "تجاوز النسب المالية المعتمدة", en: "Approved financial ratios were exceeded", fr: "Ratios financiers depasses" },
-  interest_bearing_debt_threshold: { ar: "ارتفاع الديون ذات الفائدة", en: "Interest-bearing debt threshold exceeded", fr: "Dette portant interet elevee" },
-  non_permissible_income_threshold: { ar: "تجاوز نسبة الإيرادات غير المتوافقة", en: "Non-permissible income threshold exceeded", fr: "Revenus non conformes eleves" },
-  insufficient_financial_data: { ar: "بيانات غير مكتملة", en: "Incomplete financial data", fr: "Donnees financieres incompletes" },
-  classification_expired: { ar: "التصنيف قديم ويحتاج إلى تحديث", en: "Classification is outdated and needs review", fr: "Classification expiree" },
-  source_unavailable: { ar: "المصدر غير متاح", en: "Source unavailable", fr: "Source indisponible" },
-  conflicting_sources: { ar: "توجد نتائج متعارضة", en: "Conflicting source results", fr: "Sources contradictoires" },
-  not_yet_reviewed: { ar: "لا يوجد تصنيف موثق", en: "No verified classification is available", fr: "Aucune classification verifiee" },
-  other_verified_reason: { ar: "سبب آخر موثق", en: "Other verified reason", fr: "Autre raison verifiee" },
+  prohibited_business_activity: { ar: "Ù†Ø´Ø§Ø· Ø±Ø¦ÙŠØ³ÙŠ ØºÙŠØ± Ù…ØªÙˆØ§ÙÙ‚", en: "Core business activity is not compliant", fr: "Activite principale non conforme" },
+  financial_ratio_threshold: { ar: "ØªØ¬Ø§ÙˆØ² Ø§Ù„Ù†Ø³Ø¨ Ø§Ù„Ù…Ø§Ù„ÙŠØ© Ø§Ù„Ù…Ø¹ØªÙ…Ø¯Ø©", en: "Approved financial ratios were exceeded", fr: "Ratios financiers depasses" },
+  interest_bearing_debt_threshold: { ar: "Ø§Ø±ØªÙØ§Ø¹ Ø§Ù„Ø¯ÙŠÙˆÙ† Ø°Ø§Øª Ø§Ù„ÙØ§Ø¦Ø¯Ø©", en: "Interest-bearing debt threshold exceeded", fr: "Dette portant interet elevee" },
+  non_permissible_income_threshold: { ar: "ØªØ¬Ø§ÙˆØ² Ù†Ø³Ø¨Ø© Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª ØºÙŠØ± Ø§Ù„Ù…ØªÙˆØ§ÙÙ‚Ø©", en: "Non-permissible income threshold exceeded", fr: "Revenus non conformes eleves" },
+  insufficient_financial_data: { ar: "Ø¨ÙŠØ§Ù†Ø§Øª ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©", en: "Incomplete financial data", fr: "Donnees financieres incompletes" },
+  classification_expired: { ar: "Ø§Ù„ØªØµÙ†ÙŠÙ Ù‚Ø¯ÙŠÙ… ÙˆÙŠØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ ØªØ­Ø¯ÙŠØ«", en: "Classification is outdated and needs review", fr: "Classification expiree" },
+  source_unavailable: { ar: "Ø§Ù„Ù…ØµØ¯Ø± ØºÙŠØ± Ù…ØªØ§Ø­", en: "Source unavailable", fr: "Source indisponible" },
+  conflicting_sources: { ar: "ØªÙˆØ¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ù…ØªØ¹Ø§Ø±Ø¶Ø©", en: "Conflicting source results", fr: "Sources contradictoires" },
+  not_yet_reviewed: { ar: "Ù„Ø§ ÙŠÙˆØ¬Ø¯ ØªØµÙ†ÙŠÙ Ù…ÙˆØ«Ù‚", en: "No verified classification is available", fr: "Aucune classification verifiee" },
+  other_verified_reason: { ar: "Ø³Ø¨Ø¨ Ø¢Ø®Ø± Ù…ÙˆØ«Ù‚", en: "Other verified reason", fr: "Autre raison verifiee" },
 };
 
 function normalizeShariaStatus(value, item, market) {
@@ -968,7 +1061,7 @@ function renderShariaBadge(item, market) {
         ? "shariaNotApplicable"
         : "shariaReviewRequired";
   const reason = shariaReasonLabel(classification.reasonCode, classification.reasonAr);
-  const title = [t("shariaTooltip"), reason, classification.source].filter(Boolean).join(" · ");
+  const title = [t("shariaTooltip"), reason, classification.source].filter(Boolean).join(" Â· ");
   return `<span class="sharia-badge ${status}${classification.expired ? " expired" : ""}" title="${escapeHtml(title)}"><span class="sr-only">${escapeHtml(t("shariaCompliance"))}: </span>${escapeHtml(t(labelKey))}</span>`;
 }
 
@@ -1069,8 +1162,8 @@ function pct(value) {
 
 function actionOf(item) {
   const action = String(item.action || item.signal || "").toLowerCase();
-  if (action.includes("buy") || action.includes("شراء")) return "buy";
-  if (action.includes("sell") || action.includes("بيع")) return "sell";
+  if (action.includes("buy") || action.includes("Ø´Ø±Ø§Ø¡")) return "buy";
+  if (action.includes("sell") || action.includes("Ø¨ÙŠØ¹")) return "sell";
   return "hold";
 }
 
@@ -1136,16 +1229,20 @@ function renderSidebar() {
 function renderSidebarItem(item) {
   const active = isRouteActive(item.route);
   const hasChildren = Array.isArray(item.children);
+  const label = item.labelKey ? t(item.labelKey) : escapeHtml(item.label || item.labelAr || item.labelEn || item.id);
   return `
     <div class="nav-group ${hasChildren && state.marketsOpen ? "is-open" : ""}">
-      <a class="nav-item ${active ? "active" : ""}" href="${publicHref(item.route)}" target="_top" aria-current="${active ? "page" : "false"}">
+      <a class="nav-item ${active ? "active" : ""}" href="${publicHref(item.route)}" target="_top" aria-current="${active ? "page" : "false"}" title="${label}" data-label="${label}">
         <span>${icon(item.icon || item.id)}</span>
-        <strong>${t(item.labelKey)}</strong>
-        ${hasChildren ? `<button class="nav-expand" type="button" data-toggle-markets aria-label="${t("markets")}">⌄</button>` : ""}
+        <strong>${label}</strong>
+        ${hasChildren ? `<button class="nav-expand" type="button" data-toggle-markets aria-label="${t("markets")}">âŒ„</button>` : ""}
       </a>
-      ${hasChildren ? `<div class="nav-sub">${item.children.map((child) => `
-        <a class="nav-sub-item ${isRouteActive(child.route) ? "active" : ""}" href="${publicHref(child.route)}" target="_top">${t(child.labelKey)}</a>
-      `).join("")}</div>` : ""}
+      ${hasChildren ? `<div class="nav-sub">${item.children.map((child) => {
+        const childLabel = child.labelKey ? t(child.labelKey) : escapeHtml(child.label || child.labelAr || child.labelEn || child.id);
+        return `
+        <a class="nav-sub-item ${isRouteActive(child.route) ? "active" : ""}" href="${publicHref(child.route)}" target="_top" title="${childLabel}" data-label="${childLabel}">${childLabel}</a>
+      `;
+      }).join("")}</div>` : ""}
     </div>
   `;
 }
@@ -1379,31 +1476,31 @@ function isUsBackedMarket(market) {
 
 function marketCopy(key, market) {
   const copy = {
-    heroEyebrow: { ar: "مركز الأسواق العالمية", en: "Global markets hub", fr: "Hub marches" },
-    heroTitle: { ar: "استكشف الأسواق العالمية عبر وكيل SFM الذكي", en: "Explore global markets with SFM AI intelligence", fr: "Explorez les marches avec SFM AI" },
-    heroText: { ar: "تابع أسواق الكويت والسعودية والإمارات وقطر والبحرين وعُمان، إضافة إلى أمريكا وأوروبا والعملات الرقمية والسلع من واجهة واحدة.", en: "Track Kuwait, Saudi, UAE, Qatar, Bahrain, Oman, US, Europe, crypto, forex, and commodities from one terminal.", fr: "Suivez les marches du Golfe, US, Europe, crypto et matieres premieres depuis un terminal." },
-    startScan: { ar: "بدء تحليل السوق", en: "Start market analysis", fr: "Analyser le marche" },
-    selectedMarket: { ar: "السوق المختار", en: "Selected market", fr: "Marche selectionne" },
-    marketUniverse: { ar: "قائمة الأصول", en: "Asset universe", fr: "Univers" },
-    quickStats: { ar: "ملخص سريع", en: "Quick market stats", fr: "Statistiques" },
-    assetCount: { ar: "عدد الأصول", en: "Assets", fr: "Actifs" },
-    marketState: { ar: "حالة السوق", en: "Market state", fr: "Etat" },
-    primaryCurrency: { ar: "العملة الرئيسية", en: "Primary currency", fr: "Devise" },
-    dataQuality: { ar: "جودة البيانات", en: "Data quality", fr: "Qualite donnees" },
-    topGainers: { ar: "أبرز الرابحين", en: "Top gainers", fr: "Meilleures hausses" },
-    topLosers: { ar: "أبرز الخاسرين", en: "Top losers", fr: "Meilleures baisses" },
-    providerReady: { ar: "متاح عند توفر المزود", en: "Available when provider is connected", fr: "Selon fournisseur" },
-    liveProvider: { ar: "بيانات مزود حقيقي", en: "Real provider data", fr: "Donnees fournisseur" },
-    overviewTitle: { ar: "نظرة السوق", en: "Market overview", fr: "Vue du marche" },
-    overviewText: { ar: "تعرض هذه المنطقة معلومات السوق المختار، رموزه، عملته، وحالة التحليل المتاحة حالياً.", en: "This section reflects the selected market, its symbols, currency, and currently available analysis state.", fr: "Cette section resume le marche selectionne." },
-    opportunities: { ar: "الفرص والأصول البارزة", en: "Featured opportunities", fr: "Opportunites" },
-    watchPreview: { ar: "معاينة قائمة المراقبة", en: "Watchlist preview", fr: "Watchlist" },
-    newsPreview: { ar: "أخبار السوق", en: "Market news", fr: "Actualites" },
-    noProviderMarket: { ar: "لا توجد بيانات مباشرة متاحة لهذا السوق حالياً. سيتم عرض النتائج فور ربط مزود البيانات.", en: "No live provider data is available for this market yet. Results will appear when a data provider is connected.", fr: "Aucune donnee live disponible pour ce marche." },
-    configuredSymbols: { ar: "رموز مهيأة للتحليل", en: "Configured symbols", fr: "Symboles configures" },
-    routeAction: { ar: "فتح صفحة السوق", en: "Open market page", fr: "Ouvrir" },
-    delayedNotice: { ar: "لا يتم عرض أسعار أو توصيات وهمية. تظهر القيم فقط عند توفر بيانات مزود حقيقي.", en: "No fake prices or recommendations are shown. Values appear only when real provider data is available.", fr: "Aucune donnee fictive n'est affichee." },
-    newsUnavailable: { ar: "تغذية الأخبار الخاصة بهذا السوق غير متصلة حالياً.", en: "Market-specific news feed is not connected yet.", fr: "Flux actualites non connecte." },
+    heroEyebrow: { ar: "Ù…Ø±ÙƒØ² Ø§Ù„Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ø¹Ø§Ù„Ù…ÙŠØ©", en: "Global markets hub", fr: "Hub marches" },
+    heroTitle: { ar: "Ø§Ø³ØªÙƒØ´Ù Ø§Ù„Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„Ø¹Ø§Ù„Ù…ÙŠØ© Ø¹Ø¨Ø± ÙˆÙƒÙŠÙ„ SFM Ø§Ù„Ø°ÙƒÙŠ", en: "Explore global markets with SFM AI intelligence", fr: "Explorez les marches avec SFM AI" },
+    heroText: { ar: "ØªØ§Ø¨Ø¹ Ø£Ø³ÙˆØ§Ù‚ Ø§Ù„ÙƒÙˆÙŠØª ÙˆØ§Ù„Ø³Ø¹ÙˆØ¯ÙŠØ© ÙˆØ§Ù„Ø¥Ù…Ø§Ø±Ø§Øª ÙˆÙ‚Ø·Ø± ÙˆØ§Ù„Ø¨Ø­Ø±ÙŠÙ† ÙˆØ¹ÙÙ…Ø§Ù†ØŒ Ø¥Ø¶Ø§ÙØ© Ø¥Ù„Ù‰ Ø£Ù…Ø±ÙŠÙƒØ§ ÙˆØ£ÙˆØ±ÙˆØ¨Ø§ ÙˆØ§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ø±Ù‚Ù…ÙŠØ© ÙˆØ§Ù„Ø³Ù„Ø¹ Ù…Ù† ÙˆØ§Ø¬Ù‡Ø© ÙˆØ§Ø­Ø¯Ø©.", en: "Track Kuwait, Saudi, UAE, Qatar, Bahrain, Oman, US, Europe, crypto, forex, and commodities from one terminal.", fr: "Suivez les marches du Golfe, US, Europe, crypto et matieres premieres depuis un terminal." },
+    startScan: { ar: "Ø¨Ø¯Ø¡ ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ø³ÙˆÙ‚", en: "Start market analysis", fr: "Analyser le marche" },
+    selectedMarket: { ar: "Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù…Ø®ØªØ§Ø±", en: "Selected market", fr: "Marche selectionne" },
+    marketUniverse: { ar: "Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£ØµÙˆÙ„", en: "Asset universe", fr: "Univers" },
+    quickStats: { ar: "Ù…Ù„Ø®Øµ Ø³Ø±ÙŠØ¹", en: "Quick market stats", fr: "Statistiques" },
+    assetCount: { ar: "Ø¹Ø¯Ø¯ Ø§Ù„Ø£ØµÙˆÙ„", en: "Assets", fr: "Actifs" },
+    marketState: { ar: "Ø­Ø§Ù„Ø© Ø§Ù„Ø³ÙˆÙ‚", en: "Market state", fr: "Etat" },
+    primaryCurrency: { ar: "Ø§Ù„Ø¹Ù…Ù„Ø© Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©", en: "Primary currency", fr: "Devise" },
+    dataQuality: { ar: "Ø¬ÙˆØ¯Ø© Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª", en: "Data quality", fr: "Qualite donnees" },
+    topGainers: { ar: "Ø£Ø¨Ø±Ø² Ø§Ù„Ø±Ø§Ø¨Ø­ÙŠÙ†", en: "Top gainers", fr: "Meilleures hausses" },
+    topLosers: { ar: "Ø£Ø¨Ø±Ø² Ø§Ù„Ø®Ø§Ø³Ø±ÙŠÙ†", en: "Top losers", fr: "Meilleures baisses" },
+    providerReady: { ar: "Ù…ØªØ§Ø­ Ø¹Ù†Ø¯ ØªÙˆÙØ± Ø§Ù„Ù…Ø²ÙˆØ¯", en: "Available when provider is connected", fr: "Selon fournisseur" },
+    liveProvider: { ar: "Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø²ÙˆØ¯ Ø­Ù‚ÙŠÙ‚ÙŠ", en: "Real provider data", fr: "Donnees fournisseur" },
+    overviewTitle: { ar: "Ù†Ø¸Ø±Ø© Ø§Ù„Ø³ÙˆÙ‚", en: "Market overview", fr: "Vue du marche" },
+    overviewText: { ar: "ØªØ¹Ø±Ø¶ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ù†Ø·Ù‚Ø© Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø§Ù„Ø³ÙˆÙ‚ Ø§Ù„Ù…Ø®ØªØ§Ø±ØŒ Ø±Ù…ÙˆØ²Ù‡ØŒ Ø¹Ù…Ù„ØªÙ‡ØŒ ÙˆØ­Ø§Ù„Ø© Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…ØªØ§Ø­Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.", en: "This section reflects the selected market, its symbols, currency, and currently available analysis state.", fr: "Cette section resume le marche selectionne." },
+    opportunities: { ar: "Ø§Ù„ÙØ±Øµ ÙˆØ§Ù„Ø£ØµÙˆÙ„ Ø§Ù„Ø¨Ø§Ø±Ø²Ø©", en: "Featured opportunities", fr: "Opportunites" },
+    watchPreview: { ar: "Ù…Ø¹Ø§ÙŠÙ†Ø© Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©", en: "Watchlist preview", fr: "Watchlist" },
+    newsPreview: { ar: "Ø£Ø®Ø¨Ø§Ø± Ø§Ù„Ø³ÙˆÙ‚", en: "Market news", fr: "Actualites" },
+    noProviderMarket: { ar: "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø¨Ø§Ø´Ø±Ø© Ù…ØªØ§Ø­Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚ Ø­Ø§Ù„ÙŠØ§Ù‹. Ø³ÙŠØªÙ… Ø¹Ø±Ø¶ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ ÙÙˆØ± Ø±Ø¨Ø· Ù…Ø²ÙˆØ¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª.", en: "No live provider data is available for this market yet. Results will appear when a data provider is connected.", fr: "Aucune donnee live disponible pour ce marche." },
+    configuredSymbols: { ar: "Ø±Ù…ÙˆØ² Ù…Ù‡ÙŠØ£Ø© Ù„Ù„ØªØ­Ù„ÙŠÙ„", en: "Configured symbols", fr: "Symboles configures" },
+    routeAction: { ar: "ÙØªØ­ ØµÙØ­Ø© Ø§Ù„Ø³ÙˆÙ‚", en: "Open market page", fr: "Ouvrir" },
+    delayedNotice: { ar: "Ù„Ø§ ÙŠØªÙ… Ø¹Ø±Ø¶ Ø£Ø³Ø¹Ø§Ø± Ø£Ùˆ ØªÙˆØµÙŠØ§Øª ÙˆÙ‡Ù…ÙŠØ©. ØªØ¸Ù‡Ø± Ø§Ù„Ù‚ÙŠÙ… ÙÙ‚Ø· Ø¹Ù†Ø¯ ØªÙˆÙØ± Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ø²ÙˆØ¯ Ø­Ù‚ÙŠÙ‚ÙŠ.", en: "No fake prices or recommendations are shown. Values appear only when real provider data is available.", fr: "Aucune donnee fictive n'est affichee." },
+    newsUnavailable: { ar: "ØªØºØ°ÙŠØ© Ø§Ù„Ø£Ø®Ø¨Ø§Ø± Ø§Ù„Ø®Ø§ØµØ© Ø¨Ù‡Ø°Ø§ Ø§Ù„Ø³ÙˆÙ‚ ØºÙŠØ± Ù…ØªØµÙ„Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.", en: "Market-specific news feed is not connected yet.", fr: "Flux actualites non connecte." },
   };
   return copy[key]?.[state.language] || copy[key]?.en || key;
 }
@@ -1416,9 +1513,9 @@ function recommendationsForMarket(market) {
     ...(state.data.recommendations || []),
   ];
   const seen = new Set();
-  const symbols = new Set((market.symbols || []).map((symbol) => String(symbol).replace(/[^A-Z0-9]/gi, "").toUpperCase()));
+  const symbols = new Set((market.symbols || []).map((symbol) => normalizeMarketSymbolBase(symbol)));
   const filtered = source.filter((item) => {
-    const key = String(item.symbol || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    const key = normalizeMarketSymbolBase(item.symbol || "");
     if (!key || seen.has(key)) return false;
     if (market.id !== "stocks" && symbols.size && !symbols.has(key)) return false;
     seen.add(key);
@@ -1507,7 +1604,7 @@ function renderMarketsHeroBanner(market) {
       <div class="markets-hero-visual" aria-hidden="true">
         <i></i><i></i><i></i>
         <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
-        <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(marketCurrencyDisplay(market))}</span>
+        <span>${escapeHtml(market.countryCode || "")} Â· ${escapeHtml(marketCurrencyDisplay(market))}</span>
       </div>
     </section>
   `;
@@ -1547,7 +1644,7 @@ function renderMarketQuickStats(market, recs) {
   const providerState = providerStatusInfo();
   return `
     <section class="markets-stats-grid" aria-label="${marketCopy("quickStats")}">
-      ${metricCard(marketCopy("assetCount"), symbols.length, `${t("selectedMarketInstruments")} · ${marketCopy("configuredSymbols")}`)}
+      ${metricCard(marketCopy("assetCount"), symbols.length, `${t("selectedMarketInstruments")} Â· ${marketCopy("configuredSymbols")}`)}
       ${metricCard(t("providerAvailability"), providerState.label, providerState.note)}
       ${metricCard(marketCopy("primaryCurrency"), marketCurrencyDisplay(market), marketCurrencyNote(market))}
       ${metricCard(marketCopy("dataQuality"), analysisState.label, analysisState.note)}
@@ -1573,7 +1670,7 @@ function renderSelectedMarketOverview(market) {
           ${marketIcon(market.icon)}
           <div>
             <strong>${escapeHtml(market.exchange || market.labelEn)}</strong>
-            <span>${escapeHtml(market.countryCode || "")} · ${escapeHtml(marketCurrencyDisplay(market))}</span>
+            <span>${escapeHtml(market.countryCode || "")} Â· ${escapeHtml(marketCurrencyDisplay(market))}</span>
             <p>${escapeHtml(localMarketSubtitle(market))}</p>
           </div>
         </div>
@@ -1647,7 +1744,7 @@ function renderMarketAnalysisPage(marketId) {
   const errorInfo = routeError ? requestErrorInfo(routeError) : null;
 
   return `
-    ${renderPageHeader(t("marketAiAnalysis"), `${t("startedFromMarket")}: ${localMarketLabel(market)} · ${t("marketAnalysisDesc")}`, market)}
+    ${renderPageHeader(t("marketAiAnalysis"), `${t("startedFromMarket")}: ${localMarketLabel(market)} Â· ${t("marketAnalysisDesc")}`, market)}
     <section class="terminal-card market-analysis-hero">
       <div>
         <span>${escapeHtml(t("startedFromMarket"))}</span>
@@ -1762,7 +1859,8 @@ function normalizeTradeStatus(record) {
 
 function normalizeTradeRecord(record) {
   if (!record?.symbol) return null;
-  const action = actionOf(record);
+  const enriched = withSymbolCurrency(record);
+  const action = actionOf(enriched);
   const entryPrice = validNumber(record.entryPrice ?? record.currentPrice);
   const currentPrice = validNumber(record.lastPrice ?? record.currentMarketPrice ?? record.currentPrice);
   const targetPrice = validNumber(record.targetPrice ?? record.target1 ?? record.expectedPrice);
@@ -1770,11 +1868,11 @@ function normalizeTradeRecord(record) {
   const status = normalizeTradeStatus(record);
   return {
     key: record.key || tradeKeyFor({ ...record, action }),
-    symbol: String(record.symbol || "").toUpperCase(),
+    symbol: String(enriched.symbol || record.symbol || "").toUpperCase(),
     name: record.name || record.companyName || record.symbol,
     market: record.market || record.marketName || "US",
     action,
-    currency: normalizeCurrency(record.currency || "USD"),
+    currency: normalizeCurrency(enriched.currency || "USD"),
     entryPrice,
     currentPrice,
     targetPrice,
@@ -1804,6 +1902,7 @@ function updateTradeHistoryFromRecommendations(items = []) {
   const byKey = new Map(loadTradeHistory().map((entry) => [entry.key, entry]));
 
   items.forEach((item) => {
+    const enriched = withSymbolCurrency(item);
     if (!item?.symbol) return;
     const action = actionOf(item);
     const currentPrice = validNumber(item.currentPrice);
@@ -1828,11 +1927,10 @@ function updateTradeHistoryFromRecommendations(items = []) {
 
     byKey.set(key, {
       key,
-      symbol: String(item.symbol || "").toUpperCase(),
+      ...enriched,
       name: item.name || item.companyName || existing?.name || item.symbol,
       market: item.market || existing?.market || "US",
       action,
-      currency: normalizeCurrency(item.currency || existing?.currency || "USD"),
       entryPrice,
       currentPrice,
       targetPrice,
@@ -1899,42 +1997,38 @@ function renderTradeGroup(group, followed) {
   return `
     <section class="terminal-card trade-group-card trade-group-${group.id}">
       <div class="section-header compact"><div><h2>${escapeHtml(group.title)}</h2><p>${escapeHtml(t("tradePerformanceDesc"))}</p></div><strong>${group.items.length}</strong></div>
-      <div class="trade-list">
-        ${group.items.length ? group.items.map((entry) => renderTradeRow(entry, followed)).join("") : `<div class="trade-empty">${escapeHtml(t("noLiveData"))}</div>`}
+      <div class="terminal-table-wrap">
+        ${group.items.length ? `<table class="terminal-table trade-performance-table">${renderTradePerformanceTable(group.items, followed)}</table>` : `<div class="trade-empty">${escapeHtml(t("noLiveData"))}</div>`}
       </div>
     </section>
   `;
 }
 
+function renderTradePerformanceTable(items = [], followed) {
+  return `<thead><tr><th>${t("symbol")}</th><th>${t("companyName") || "Company"}</th><th>${t("action")}</th><th>${t("entryPrice")}</th><th>${t("lastPrice")}</th><th>${t("target")}</th><th>${t("stopLoss")}</th><th>${t("confidence")}</th><th>${t("profitLoss")}</th><th>${t("tradeStatus")}</th><th>${t("openDate")}</th><th>${t("lastUpdate")}</th></tr></thead><tbody>${items.map((entry) => renderTradeRow(entry, followed)).join("")}</tbody>`;
+}
+
 function renderTradeRow(entry, followed) {
+  const enriched = withSymbolCurrency(entry);
   const pnl = tradeReturnPct(entry.action, entry.entryPrice, entry.currentPrice);
+  const pnlValue = pnl === null ? "--" : `${pct(pnl)} (${pnl >= 0 ? "+" : ""}${formatNumber(entry.currentPrice && entry.entryPrice ? (entry.currentPrice - entry.entryPrice) : 0, 4)} ${enriched.currency})`;
   const isFollowing = followed.has(entry.key);
   const pnlClass = pnl === null ? "" : pnl >= 0 ? "positive" : "negative";
   return `
-    <article class="trade-row">
-      <div class="trade-row-main">
-        ${assetLogo(entry)}
-        <div>
-          <strong dir="ltr">${escapeHtml(entry.symbol)}</strong>
-          <span>${escapeHtml(entry.name || entry.market || "")}</span>
-        </div>
-        <b class="signal-badge ${entry.action}">${actionLabel(entry.action)}</b>
-      </div>
-      <div class="trade-row-metrics">
-        <div><span>${t("entryPrice")}</span><strong dir="ltr">${entry.entryPrice === null ? "--" : money(entry.entryPrice, entry.currency)}</strong></div>
-        <div><span>${t("lastPrice")}</span><strong dir="ltr">${entry.currentPrice === null ? "--" : money(entry.currentPrice, entry.currency)}</strong></div>
-        <div><span>${t("target")}</span><strong dir="ltr">${entry.targetPrice === null ? "--" : money(entry.targetPrice, entry.currency)}</strong></div>
-        <div><span>${t("stopLoss")}</span><strong dir="ltr">${entry.stopLoss === null ? "--" : money(entry.stopLoss, entry.currency)}</strong></div>
-        <div><span>${t("profitLoss")}</span><strong class="${pnlClass}" dir="ltr">${pnl === null ? "--" : pct(pnl)}</strong></div>
-        <div><span>${t("tradeStatus")}</span><strong>${escapeHtml(tradeStatusLabel(entry.status))}</strong></div>
-      </div>
-      <div class="trade-row-footer">
-        <span>${t("openDate")}: ${escapeHtml(formatStatusTimestamp(entry.openedAt))}</span>
-        <span>${t("lastUpdate")}: ${escapeHtml(formatStatusTimestamp(entry.lastUpdatedAt))}</span>
-        ${entry.closedAt ? `<span>${t("closeDate")}: ${escapeHtml(formatStatusTimestamp(entry.closedAt))}</span>` : ""}
-        <button type="button" class="${isFollowing ? "active" : ""}" data-follow-trade="${escapeHtml(entry.key)}">${isFollowing ? t("unfollowTrade") : t("followTrade")}</button>
-      </div>
-    </article>
+    <tr>
+      <td><div class="table-asset">${assetLogo(enriched)}<div><strong dir="ltr">${escapeHtml(enriched.symbol || "--")}</strong></div></div></td>
+      <td>${escapeHtml(enriched.name || enriched.symbol || "--")}</td>
+      <td><b class="signal-badge ${enriched.action}">${actionLabel(enriched.action)}</b></td>
+      <td dir="ltr">${enriched.entryPrice === null ? "--" : money(enriched.entryPrice, enriched.currency)}</td>
+      <td dir="ltr">${enriched.currentPrice === null ? "--" : money(enriched.currentPrice, enriched.currency)}</td>
+      <td dir="ltr">${enriched.targetPrice === null ? "--" : money(enriched.targetPrice, enriched.currency)}</td>
+      <td dir="ltr">${enriched.stopLoss === null ? "--" : money(enriched.stopLoss, enriched.currency)}</td>
+      <td>${formatNumber(enriched.confidence, 0)}%</td>
+      <td class="${pnlClass}" dir="ltr">${pnlValue}</td>
+      <td>${escapeHtml(tradeStatusLabel(entry.status))}</td>
+      <td>${escapeHtml(formatStatusTimestamp(enriched.openedAt))}</td>
+      <td>${escapeHtml(formatStatusTimestamp(enriched.lastUpdatedAt))}</td>
+    </tr>
   `;
 }
 
@@ -2027,7 +2121,7 @@ function renderEducationPage() {
     ${renderPageHeader(t("education"), "Courses, lessons, risk education, terminology, and saved learning items.")}
     <section class="terminal-card education-grid">
       ${["Risk foundations", "Technical analysis", "Portfolio basics", "Trading terminology"].map((title) => `
-        <article class="education-card"><strong>${title}</strong><p>${t("educational")} · ${t("routeUnavailable")}</p></article>
+        <article class="education-card"><strong>${title}</strong><p>${t("educational")} Â· ${t("routeUnavailable")}</p></article>
       `).join("")}
     </section>
   `;
@@ -2040,14 +2134,14 @@ function renderSettingsPage() {
     <div class="settings-grid">
       ${settingsCard(t("language"), `
         <div class="language-cards" role="radiogroup" aria-label="${t("language")}">
-          ${["ar", "en", "fr"].map((language) => `<button class="${state.language === language ? "active" : ""}" data-language="${language}" type="button" role="radio" aria-checked="${state.language === language}"><strong>${language.toUpperCase()}</strong><span>${language === "ar" ? "العربية" : language === "en" ? "English" : "Francais"}</span></button>`).join("")}
+          ${["ar", "en", "fr"].map((language) => `<button class="${state.language === language ? "active" : ""}" data-language="${language}" type="button" role="radio" aria-checked="${state.language === language}"><strong>${language.toUpperCase()}</strong><span>${language === "ar" ? "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©" : language === "en" ? "English" : "Francais"}</span></button>`).join("")}
         </div>
       `)}
       ${settingsCard(t("account"), settingRows([t("profileName"), t("premium")]))}
       ${settingsCard(t("marketPreferences"), settingRows([t("currency"), settings.currency || "USD", t("timezone"), settings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone]))}
       ${settingsCard(t("notificationPreferences"), settingRows([t("alerts"), t("unavailable")]))}
       ${settingsCard(t("dataRefresh"), settingRows([t("liveData"), t("unavailable")]))}
-      ${settingsCard(t("privacy"), settingRows([t("systemStatus"), "Private route · noindex"]))}
+      ${settingsCard(t("privacy"), settingRows([t("systemStatus"), "Private route Â· noindex"]))}
       ${settingsCard(t("support"), settingRows(["Powered by", "M.ALQ"]))}
     </div>
   `;
@@ -2110,7 +2204,7 @@ function renderWatchlistRow(item) {
       <td>${escapeHtml(item.duration || "--")}</td>
       <td>${escapeHtml(item.risk?.label || "--")}</td>
       <td>${formatNumber(item.finalScore || item.confidence || 0, 1)}/10</td>
-      <td><button class="row-action" type="button">☆</button></td>
+      <td><button class="row-action" type="button">â˜†</button></td>
     </tr>
   `;
 }
@@ -2180,7 +2274,7 @@ function emptyState(message, kind = "data") {
 function renderTemporaryLegalNotices() {
   const dismissed = new Set(loadDismissedNotices());
   const items = [
-    { id: "risk", title: t("riskNoticeTitle"), body: t("riskNoticeBody"), icon: "🛡" },
+    { id: "risk", title: t("riskNoticeTitle"), body: t("riskNoticeBody"), icon: "ðŸ›¡" },
     { id: "ai", title: t("aiNoticeTitle"), body: t("aiNoticeBody"), icon: "AI" },
   ].filter((item) => !dismissed.has(item.id));
   if (!items.length) return "";
@@ -2192,7 +2286,7 @@ function renderTemporaryLegalNotices() {
         <article class="temporary-notice">
           <span>${item.icon}</span>
           <div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body)}</p></div>
-          <button type="button" data-dismiss-notice="${item.id}" aria-label="${t("close")}">×</button>
+          <button type="button" data-dismiss-notice="${item.id}" aria-label="${t("close")}">Ã—</button>
         </article>
       `).join("")}
     </section>
@@ -2242,8 +2336,14 @@ function topRecommendations(recs = [], count = 5) {
 }
 
 function findBySymbol(items, symbol) {
-  const normalized = String(symbol).replace(/[^A-Z0-9]/gi, "").toUpperCase();
-  return items.find((item) => String(item.symbol || "").replace(/[^A-Z0-9]/gi, "").toUpperCase().includes(normalized));
+  if (!Array.isArray(items) || !symbol) return undefined;
+  const normalized = normalizeMarketSymbol(symbol);
+  const targetBase = normalizeMarketSymbolBase(normalized);
+  if (!normalized) return undefined;
+  return (
+    items.find((item) => normalizeMarketSymbol(item.symbol || item.ticker || item.providerSymbol) === normalized) ||
+    items.find((item) => normalizeMarketSymbolBase(item.symbol || item.ticker || item.providerSymbol) === targetBase)
+  );
 }
 
 function deriveAverageConfidence(recs = state.data.dashboardRecommendations) {
@@ -2438,7 +2538,7 @@ async function loadDashboardRecommendations() {
   try {
     const suffix = state.shariaOnly ? "?market=US&sharia_status=compliant" : "?market=US";
     const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
-    state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.dashboardRecommendations = resolveWithSymbols(Array.isArray(data.recommendations) ? data.recommendations : []);
     updateTradeHistoryFromRecommendations(state.data.dashboardRecommendations);
     state.data.scannerSummary = data.summary || null;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
@@ -2460,7 +2560,7 @@ async function loadRouteRecommendations() {
   try {
     const suffix = state.shariaOnly ? "?sharia_status=compliant" : "";
     const data = await fetchJson(traderApi(`us-stocks${suffix}`), { timeout: 45000 });
-    state.data.recommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.recommendations = resolveWithSymbols(Array.isArray(data.recommendations) ? data.recommendations : []);
     updateTradeHistoryFromRecommendations(state.data.recommendations);
     state.data.usStocks = data;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
@@ -2483,7 +2583,7 @@ async function loadScannerWithFilters() {
   try {
     const suffix = params.toString() ? `?${params.toString()}` : "";
     const data = await fetchJson(traderApi(`scanner/results${suffix}`), { timeout: 45000 });
-    state.data.dashboardRecommendations = Array.isArray(data.recommendations) ? data.recommendations : [];
+    state.data.dashboardRecommendations = resolveWithSymbols(Array.isArray(data.recommendations) ? data.recommendations : []);
     updateTradeHistoryFromRecommendations(state.data.dashboardRecommendations);
     state.data.scannerSummary = data.summary || null;
     state.data.scannerStatus = data.status || state.data.scannerStatus;
@@ -2559,3 +2659,5 @@ function escapeHtml(value) {
 applyDocumentLanguage();
 initBackground();
 loadData();
+
+
