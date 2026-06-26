@@ -39,6 +39,8 @@ export type InstagramAutomationPost = {
   created_by: string;
   content_type: InstagramContentType;
   topic: string;
+  platform: string | null;
+  language: keyof LocalizedText;
   titles: LocalizedText;
   asset_prompts: LocalizedText;
   captions: LocalizedText;
