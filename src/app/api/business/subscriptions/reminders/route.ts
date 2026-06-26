@@ -16,7 +16,14 @@ import {
   type SubscriptionRow,
 } from '@/lib/businessSubscriptions';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
-import { getSmtpMailConfigStatus, isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
+import {
+  getSmtpErrorDetails,
+  getSmtpMailConfigStatus,
+  isSmtpMailConfigured,
+  logSmtpMailError,
+  sendSmtpMail,
+  smtpErrorUserMessage,
+} from '@/lib/server/smtpMail';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,6 +72,15 @@ function todayIso(timezone = 'Asia/Kuwait') {
 }
 
 function cleanError(error: unknown) {
+  const smtpDetails = getSmtpErrorDetails(error);
+  if (smtpDetails.responseCode || smtpDetails.response || smtpDetails.command) {
+    return [
+      smtpDetails.responseCode ? `responseCode=${smtpDetails.responseCode}` : null,
+      smtpDetails.command ? `command=${smtpDetails.command}` : null,
+      smtpDetails.rejected?.length ? `rejected=${smtpDetails.rejected.join(',')}` : null,
+      smtpDetails.response ? `response=${smtpDetails.response.replace(/\s+/g, ' ').trim()}` : null,
+    ].filter(Boolean).join(' | ');
+  }
   if (!error || typeof error !== 'object') return String(error ?? '');
   const value = error as { code?: unknown; message?: unknown };
   return [value.code, value.message].filter(Boolean).join(': ');
@@ -284,7 +300,6 @@ export async function GET(request: NextRequest) {
           subject: template.subject,
           text: template.text,
           html: template.html,
-          fromName: 'THE SFM',
         });
         await db
           .from('subscription_notifications')
@@ -304,9 +319,20 @@ export async function GET(request: NextRequest) {
         results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'sent', channel: 'email' });
       } catch (error) {
         const errorText = cleanError(error);
+        const userMessage = smtpErrorUserMessage(error);
+        const smtpDetails = getSmtpErrorDetails(error);
+        logSmtpMailError('[business-subscriptions] reminder email failed', error, {
+          userId: candidate.client.user_id,
+          clientId: candidate.client.id,
+          subscriptionId: candidate.subscription.id,
+          paymentId: candidate.payment?.id ?? null,
+          to: ownerEmail,
+          subject: template.subject,
+          dedupeKey: emailDedupeKey,
+        });
         await db
           .from('subscription_notifications')
-          .update({ status: 'failed', metadata: { ...metadata, error: errorText } })
+          .update({ status: 'failed', metadata: { ...metadata, error: errorText, userMessage, smtp: smtpDetails } })
           .eq('user_id', candidate.client.user_id)
           .eq('dedupe_key', emailDedupeKey);
         await db.from('activity_logs').insert({
@@ -316,10 +342,10 @@ export async function GET(request: NextRequest) {
           payment_id: candidate.payment?.id ?? null,
           event_type: 'subscription_email_failed',
           title: 'subscription_email_failed',
-          description: errorText,
-          metadata,
+          description: userMessage,
+          metadata: { ...metadata, error: errorText, smtp: smtpDetails },
         });
-        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: errorText });
+        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: userMessage });
       }
     }
 

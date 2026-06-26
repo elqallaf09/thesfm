@@ -5,11 +5,56 @@ import tls from 'node:tls';
 type SmtpMailInput = {
   to: string | string[];
   subject: string;
-  text: string;
-  html?: string;
+  text?: string | null;
+  html?: string | null;
   replyTo?: string | null;
   fromName?: string;
 };
+
+type SmtpEnvelope = {
+  from: string;
+  to: string[];
+};
+
+type SmtpMailResult = {
+  accepted: string[];
+  rejected: string[];
+  envelope: SmtpEnvelope;
+  response: string;
+  responseCode: number;
+};
+
+type SmtpErrorDetails = {
+  name: string;
+  message: string;
+  responseCode?: number;
+  response?: string;
+  command?: string;
+  rejected?: string[];
+  envelope?: SmtpEnvelope;
+  code?: string;
+  stack?: string;
+};
+
+export class SmtpMailError extends Error {
+  responseCode?: number;
+  response?: string;
+  command?: string;
+  rejected?: string[];
+  envelope?: SmtpEnvelope;
+  code?: string;
+
+  constructor(message: string, details: Omit<SmtpErrorDetails, 'name' | 'message' | 'stack'> = {}) {
+    super(message);
+    this.name = 'SmtpMailError';
+    this.responseCode = details.responseCode;
+    this.response = details.response;
+    this.command = details.command;
+    this.rejected = details.rejected;
+    this.envelope = details.envelope;
+    this.code = details && 'code' in details ? String((details as { code?: unknown }).code) : undefined;
+  }
+}
 
 function headerSafe(value: string) {
   return value.replace(/[\r\n]+/g, ' ').trim();
@@ -48,7 +93,7 @@ function createSmtpReader(socket: net.Socket | tls.TLSSocket) {
       const timer = setTimeout(() => {
         const index = waiters.indexOf(wrapped);
         if (index >= 0) waiters.splice(index, 1);
-        reject(new Error('SMTP response timed out'));
+        reject(new SmtpMailError('SMTP response timed out'));
       }, timeoutMs);
 
       wrapped = (response: string) => {
@@ -66,11 +111,33 @@ function responseCode(response: string) {
   return match ? Number(match[1]) : 0;
 }
 
-async function expectSmtp(responsePromise: Promise<string>, allowed: number[]) {
+function maskCommand(command: string) {
+  if (/^AUTH\s+LOGIN/i.test(command)) return 'AUTH LOGIN';
+  if (/^[A-Za-z0-9+/=]{12,}$/.test(command)) return '[SMTP credential payload]';
+  return command;
+}
+
+async function expectSmtp(
+  responsePromise: Promise<string>,
+  allowed: number[],
+  context: {
+    command?: string;
+    envelope?: SmtpEnvelope;
+    rejected?: string[];
+  } = {},
+) {
   const response = await responsePromise;
   const code = responseCode(response);
-  if (!allowed.includes(code)) throw new Error(`SMTP error ${code || 'unknown'}`);
-  return response;
+  if (!allowed.includes(code)) {
+    throw new SmtpMailError(`SMTP error ${code || 'unknown'}`, {
+      responseCode: code,
+      response,
+      command: context.command,
+      envelope: context.envelope,
+      rejected: context.rejected,
+    });
+  }
+  return { response, responseCode: code };
 }
 
 async function writeCommand(
@@ -78,9 +145,18 @@ async function writeCommand(
   readResponse: ReturnType<typeof createSmtpReader>,
   command: string,
   allowed: number[],
+  context: {
+    envelope?: SmtpEnvelope;
+    rejected?: string[];
+    logCommand?: string;
+  } = {},
 ) {
   socket.write(`${command}\r\n`);
-  return expectSmtp(readResponse(), allowed);
+  return expectSmtp(readResponse(), allowed, {
+    command: context.logCommand ?? maskCommand(command),
+    envelope: context.envelope,
+    rejected: context.rejected,
+  });
 }
 
 function dotStuff(value: string) {
@@ -92,7 +168,7 @@ async function createPlainSocket(host: string, port: number) {
     const socket = net.connect({ host, port });
     socket.once('connect', () => resolve(socket));
     socket.once('error', reject);
-    socket.setTimeout(20000, () => socket.destroy(new Error('SMTP connection timed out')));
+    socket.setTimeout(20000, () => socket.destroy(new SmtpMailError('SMTP connection timed out')));
   });
 }
 
@@ -101,8 +177,21 @@ async function createTlsSocket(host: string, port: number) {
     const socket = tls.connect({ host, port, servername: host });
     socket.once('secureConnect', () => resolve(socket));
     socket.once('error', reject);
-    socket.setTimeout(20000, () => socket.destroy(new Error('SMTP TLS connection timed out')));
+    socket.setTimeout(20000, () => socket.destroy(new SmtpMailError('SMTP TLS connection timed out')));
   });
+}
+
+function extractDisplayName(value: string) {
+  const match = value.match(/^\s*"?([^"<]*)"?\s*<[^>]+>\s*$/);
+  return headerSafe(match?.[1] || '');
+}
+
+function emailAddress(value: string | null | undefined) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const bracketMatch = raw.match(/<([^>]+)>/);
+  const candidate = (bracketMatch?.[1] ?? raw).trim().replace(/^mailto:/i, '');
+  return /^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(candidate) ? candidate : null;
 }
 
 function smtpConfig() {
@@ -110,16 +199,29 @@ function smtpConfig() {
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || process.env.CONTACT_FROM_EMAIL || user;
+  const rawFrom = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = emailAddress(rawFrom);
+  const fromName = rawFrom ? extractDisplayName(rawFrom) : '';
 
   if (!host || !port || !user || !pass || !from) return null;
-  return { host, port, user, pass, from };
+  return { host, port, user, pass, from, fromName };
 }
 
 function recipients(value: string | string[]) {
-  return (Array.isArray(value) ? value : [value])
-    .map(item => item.trim())
-    .filter(Boolean);
+  const rawRecipients = Array.isArray(value) ? value : value.split(/[;,]/);
+  const parsed = rawRecipients
+    .map(item => emailAddress(item))
+    .filter((item): item is string => Boolean(item));
+  return Array.from(new Set(parsed));
+}
+
+function cleanSubject(value: string) {
+  return headerSafe(value).slice(0, 180);
+}
+
+function cleanBody(value: string | null | undefined) {
+  const body = String(value ?? '').trim();
+  return body || null;
 }
 
 export function isSmtpMailConfigured() {
@@ -132,12 +234,14 @@ export function getSmtpMailConfigStatus() {
     SMTP_PORT: process.env.SMTP_PORT || '587',
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASS: process.env.SMTP_PASS,
-    SMTP_FROM: process.env.SMTP_FROM || process.env.CONTACT_FROM_EMAIL || process.env.SMTP_USER,
+    SMTP_FROM: process.env.SMTP_FROM || process.env.SMTP_USER,
   };
 
   const missing = Object.entries(required)
     .filter(([, value]) => !String(value ?? '').trim())
     .map(([key]) => key);
+
+  if (required.SMTP_FROM && !emailAddress(required.SMTP_FROM)) missing.push('SMTP_FROM_VALID_EMAIL');
 
   return {
     configured: missing.length === 0,
@@ -145,74 +249,194 @@ export function getSmtpMailConfigStatus() {
   };
 }
 
-export async function sendSmtpMail(input: SmtpMailInput) {
+export function getSmtpErrorDetails(error: unknown): SmtpErrorDetails {
+  if (error instanceof SmtpMailError) {
+    return {
+      name: error.name,
+      message: error.message,
+      responseCode: error.responseCode,
+      response: error.response,
+      command: error.command,
+      rejected: error.rejected,
+      envelope: error.envelope,
+      code: error.code,
+      stack: error.stack,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      response: (error as { response?: string })?.response,
+      responseCode: (error as { responseCode?: number })?.responseCode,
+      command: (error as { command?: string })?.command,
+      rejected: (error as { rejected?: string[] })?.rejected,
+      envelope: (error as { envelope?: SmtpEnvelope })?.envelope,
+      code: (error as { code?: string })?.code,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    name: 'UnknownError',
+    message: String(error ?? 'Unknown SMTP error'),
+  };
+}
+
+export function logSmtpMailError(scope: string, error: unknown, metadata: Record<string, unknown> = {}) {
+  console.error(scope, {
+    ...metadata,
+    smtp: getSmtpErrorDetails(error),
+  });
+}
+
+export function smtpErrorUserMessage(error: unknown) {
+  const details = getSmtpErrorDetails(error);
+  if (details.responseCode === 555) {
+    return 'تعذر إرسال البريد بسبب صيغة غير صحيحة في بيانات الرسالة. تمت إضافة التفاصيل إلى سجلات الخادم.';
+  }
+  if (details.responseCode && details.responseCode >= 500) {
+    return 'تعذر إرسال البريد حالياً من مزود البريد. تمت إضافة التفاصيل إلى سجلات الخادم.';
+  }
+  return 'تعذر إرسال البريد حالياً. تمت إضافة التفاصيل إلى سجلات الخادم.';
+}
+
+export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult> {
   const config = smtpConfig();
   if (!config) {
-    throw Object.assign(new Error('SMTP email is not configured'), { code: 'smtp_not_configured' });
+    throw Object.assign(new SmtpMailError('SMTP email is not configured'), { code: 'smtp_not_configured' });
   }
 
   const to = recipients(input.to);
-  if (!to.length) throw new Error('SMTP email recipient is required');
+  const rejected = Array.isArray(input.to)
+    ? input.to.filter(item => !emailAddress(item))
+    : input.to.split(/[;,]/).filter(item => item.trim() && !emailAddress(item));
+  const subject = cleanSubject(input.subject);
+  const text = cleanBody(input.text);
+  const html = cleanBody(input.html);
 
-  let socket: net.Socket | tls.TLSSocket = config.port === 465
-    ? await createTlsSocket(config.host, config.port)
-    : await createPlainSocket(config.host, config.port);
-  let readResponse = createSmtpReader(socket);
+  if (!to.length) throw new SmtpMailError('SMTP email recipient is required', { rejected });
+  if (rejected.length) throw new SmtpMailError('SMTP email recipient is invalid', { rejected });
+  if (!subject) throw new SmtpMailError('SMTP email subject is required');
+  if (!text && !html) throw new SmtpMailError('SMTP email text or html body is required');
 
-  await expectSmtp(readResponse(), [220]);
-  await writeCommand(socket, readResponse, `EHLO ${config.host}`, [250]);
+  const envelope: SmtpEnvelope = { from: config.from, to };
+  const replyTo = emailAddress(input.replyTo);
+  const fromName = headerSafe(input.fromName || config.fromName || 'THE SFM');
+  const messageId = `<${crypto.randomUUID()}@the-sfm.com>`;
+  let socket: net.Socket | tls.TLSSocket | null = null;
+  let dataResponse: Awaited<ReturnType<typeof expectSmtp>> | null = null;
 
-  if (config.port !== 465) {
-    await writeCommand(socket, readResponse, 'STARTTLS', [220]);
-    socket.removeAllListeners('data');
-    socket = tls.connect({ socket, servername: config.host });
-    readResponse = createSmtpReader(socket);
-    await new Promise<void>((resolve, reject) => {
-      (socket as tls.TLSSocket).once('secureConnect', resolve);
-      socket.once('error', reject);
+  console.info('[EmailService] sending SMTP email', {
+    provider: config.host,
+    secure: config.port === 465,
+    from: config.from,
+    to,
+    subject,
+    hasText: Boolean(text),
+    hasHtml: Boolean(html),
+    replyTo: replyTo ?? null,
+    envelope,
+  });
+
+  try {
+    socket = config.port === 465
+      ? await createTlsSocket(config.host, config.port)
+      : await createPlainSocket(config.host, config.port);
+    let readResponse = createSmtpReader(socket);
+
+    await expectSmtp(readResponse(), [220], { command: 'CONNECT', envelope });
+    await writeCommand(socket, readResponse, `EHLO ${config.host}`, [250], { envelope });
+
+    if (config.port !== 465) {
+      await writeCommand(socket, readResponse, 'STARTTLS', [220], { envelope });
+      socket.removeAllListeners('data');
+      socket = tls.connect({ socket, servername: config.host });
+      readResponse = createSmtpReader(socket);
+      await new Promise<void>((resolve, reject) => {
+        (socket as tls.TLSSocket).once('secureConnect', resolve);
+        socket?.once('error', reject);
+      });
+      await writeCommand(socket, readResponse, `EHLO ${config.host}`, [250], { envelope });
+    }
+
+    await writeCommand(socket, readResponse, 'AUTH LOGIN', [334], { envelope });
+    await writeCommand(socket, readResponse, Buffer.from(config.user).toString('base64'), [334], {
+      envelope,
+      logCommand: '[SMTP username]',
     });
-    await writeCommand(socket, readResponse, `EHLO ${config.host}`, [250]);
+    await writeCommand(socket, readResponse, Buffer.from(config.pass).toString('base64'), [235], {
+      envelope,
+      logCommand: '[SMTP password]',
+    });
+
+    await writeCommand(socket, readResponse, `MAIL FROM:<${config.from}>`, [250], { envelope });
+    for (const recipient of to) {
+      await writeCommand(socket, readResponse, `RCPT TO:<${recipient}>`, [250, 251], { envelope, rejected });
+    }
+    await writeCommand(socket, readResponse, 'DATA', [354], { envelope });
+
+    const boundary = `sfm-${crypto.randomUUID()}`;
+    const headers = [
+      `From: ${encodeHeader(fromName)} <${config.from}>`,
+      `To: ${to.join(', ')}`,
+      replyTo ? `Reply-To: ${replyTo}` : '',
+      `Subject: ${encodeHeader(subject)}`,
+      `Message-ID: ${messageId}`,
+      `Date: ${new Date().toUTCString()}`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ].filter(Boolean);
+
+    const plainText = text || String(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const htmlBody = html || String(text ?? '').replace(/\n/g, '<br>');
+    const body = [
+      `--${boundary}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      plainText,
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      htmlBody,
+      `--${boundary}--`,
+    ].join('\r\n');
+
+    socket.write(`${dotStuff([...headers, '', body].join('\r\n'))}\r\n.\r\n`);
+    dataResponse = await expectSmtp(readResponse(), [250], { command: 'DATA body', envelope, rejected });
+    await writeCommand(socket, readResponse, 'QUIT', [221, 250], { envelope });
+    socket.end();
+
+    return {
+      accepted: to,
+      rejected: [],
+      envelope,
+      response: dataResponse.response,
+      responseCode: dataResponse.responseCode,
+    };
+  } catch (error) {
+    const smtpError = error instanceof SmtpMailError
+      ? error
+      : new SmtpMailError(error instanceof Error ? error.message : String(error), { envelope, rejected });
+    logSmtpMailError('[EmailService] SMTP send failed', smtpError, {
+      provider: config.host,
+      from: config.from,
+      to,
+      subject,
+    });
+    throw smtpError;
+  } finally {
+    if (socket && !socket.destroyed) socket.destroy();
   }
-
-  await writeCommand(socket, readResponse, 'AUTH LOGIN', [334]);
-  await writeCommand(socket, readResponse, Buffer.from(config.user).toString('base64'), [334]);
-  await writeCommand(socket, readResponse, Buffer.from(config.pass).toString('base64'), [235]);
-
-  await writeCommand(socket, readResponse, `MAIL FROM:<${config.from}>`, [250]);
-  for (const recipient of to) {
-    await writeCommand(socket, readResponse, `RCPT TO:<${recipient}>`, [250, 251]);
-  }
-  await writeCommand(socket, readResponse, 'DATA', [354]);
-
-  const boundary = `sfm-${crypto.randomUUID()}`;
-  const fromName = input.fromName || 'THE SFM';
-  const headers = [
-    `From: ${encodeHeader(fromName)} <${config.from}>`,
-    `To: ${to.join(', ')}`,
-    input.replyTo ? `Reply-To: ${headerSafe(input.replyTo)}` : '',
-    `Subject: ${encodeHeader(input.subject)}`,
-    `Message-ID: <${crypto.randomUUID()}@the-sfm.com>`,
-    `Date: ${new Date().toUTCString()}`,
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-  ].filter(Boolean);
-
-  const body = [
-    `--${boundary}`,
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: 8bit',
-    '',
-    input.text,
-    `--${boundary}`,
-    'Content-Type: text/html; charset=UTF-8',
-    'Content-Transfer-Encoding: 8bit',
-    '',
-    input.html || input.text.replace(/\n/g, '<br>'),
-    `--${boundary}--`,
-  ].join('\r\n');
-
-  socket.write(`${dotStuff([...headers, '', body].join('\r\n'))}\r\n.\r\n`);
-  await expectSmtp(readResponse(), [250]);
-  await writeCommand(socket, readResponse, 'QUIT', [221, 250]);
-  socket.end();
 }
+
+export const EmailService = {
+  send: sendSmtpMail,
+  isConfigured: isSmtpMailConfigured,
+  getConfigStatus: getSmtpMailConfigStatus,
+  getErrorDetails: getSmtpErrorDetails,
+  logError: logSmtpMailError,
+};

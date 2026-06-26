@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
-import { getSmtpMailConfigStatus, sendSmtpMail } from '@/lib/server/smtpMail';
+import {
+  getSmtpErrorDetails,
+  getSmtpMailConfigStatus,
+  logSmtpMailError,
+  sendSmtpMail,
+  smtpErrorUserMessage,
+} from '@/lib/server/smtpMail';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +39,14 @@ function todayIso(timezone = 'Asia/Kuwait') {
 }
 
 function cleanError(error: unknown) {
+  const smtpDetails = getSmtpErrorDetails(error);
+  if (smtpDetails.responseCode || smtpDetails.response || smtpDetails.command) {
+    return [
+      smtpDetails.responseCode ? `responseCode=${smtpDetails.responseCode}` : null,
+      smtpDetails.command ? `command=${smtpDetails.command}` : null,
+      smtpDetails.response ? `response=${smtpDetails.response.replace(/\s+/g, ' ').trim()}` : null,
+    ].filter(Boolean).join(' | ');
+  }
   if (!error || typeof error !== 'object') return String(error ?? '');
   const value = error as { code?: unknown; message?: unknown };
   return [value.code, value.message].filter(Boolean).join(': ');
@@ -115,7 +129,6 @@ export async function POST(request: NextRequest) {
   try {
     await sendSmtpMail({
       to: user.email,
-      fromName: 'THE SFM',
       subject: 'THE SFM subscription reminder test',
       text: 'This is a test email from the Clients & Subscriptions reminder system.',
       html: `
@@ -139,16 +152,22 @@ export async function POST(request: NextRequest) {
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
-    const message = cleanError(error);
+    const technicalMessage = cleanError(error);
+    const userMessage = smtpErrorUserMessage(error);
+    logSmtpMailError('[business-subscriptions] SMTP test email failed', error, {
+      userId: user.id,
+      to: user.email,
+      subject: 'THE SFM subscription reminder test',
+    });
     await logTestRun(db, {
       userId: user.id,
       status: 'failed',
       timezone,
       smtpConfigured: true,
-      message,
+      message: technicalMessage,
     });
     return NextResponse.json(
-      { ok: false, code: 'SMTP_TEST_FAILED', message },
+      { ok: false, code: 'SMTP_TEST_FAILED', message: userMessage },
       { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
