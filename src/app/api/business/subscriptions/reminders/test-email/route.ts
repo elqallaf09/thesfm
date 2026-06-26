@@ -4,8 +4,10 @@ import {
   getSmtpErrorDetails,
   getSmtpMailConfigStatus,
   logSmtpMailError,
+  maskEmailForLog,
   sendSmtpMail,
   smtpErrorUserMessage,
+  validateMailPayload,
 } from '@/lib/server/smtpMail';
 
 export const runtime = 'nodejs';
@@ -58,6 +60,7 @@ async function logTestRun(db: any, input: {
   timezone: string;
   smtpConfigured: boolean;
   message?: string | null;
+  metadata?: Record<string, unknown>;
 }) {
   await db.from('subscription_reminder_runs').insert({
     user_id: input.userId,
@@ -73,9 +76,15 @@ async function logTestRun(db: any, input: {
     email_failed_count: input.status === 'failed' ? 1 : 0,
     smtp_configured: input.smtpConfigured,
     message: input.message ?? null,
-    metadata: { source: 'send_test_email' },
+    metadata: {
+      source: 'send_test_email',
+      ...(input.metadata ?? {}),
+    },
   });
 }
+
+const INVALID_TEST_RECIPIENT_MESSAGE = 'تعذر إرسال البريد. تحقق من بيانات العميل أو البريد المستلم.';
+const TEST_EMAIL_SUCCESS_MESSAGE = 'تم إرسال بريد الاختبار بنجاح.';
 
 export async function POST(request: NextRequest) {
   const token = bearerToken(request);
@@ -112,43 +121,89 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!user.email) {
+  const contactEmail = String(process.env.CONTACT_TO_EMAIL || '').trim();
+  const smtpUserEmail = String(process.env.SMTP_USER || '').trim();
+  const adminEmail = String(user.email || '').trim();
+  const recipient = contactEmail || smtpUserEmail || adminEmail;
+
+  if (!recipient) {
+    const message = INVALID_TEST_RECIPIENT_MESSAGE;
     await logTestRun(db, {
       userId: user.id,
       status: 'failed',
       timezone,
       smtpConfigured: true,
-      message: 'Authenticated user has no email address',
+      message,
     });
     return NextResponse.json(
-      { ok: false, code: 'USER_EMAIL_MISSING' },
+      { ok: false, code: 'SMTP_TEST_RECIPIENT_MISSING', message },
       { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
 
-  try {
-    await sendSmtpMail({
-      to: user.email,
-      subject: 'THE SFM subscription reminder test',
-      text: 'This is a test email from the Clients & Subscriptions reminder system.',
-      html: `
-        <div style="font-family:Inter,Tajawal,Arial,sans-serif;background:#eef6ff;padding:24px;color:#0b172a">
-          <div style="max-width:560px;margin:auto;background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:24px">
-            <strong style="color:#0b3558">THE SFM</strong>
-            <h1 style="margin:10px 0 8px;font-size:22px">Subscription reminder test</h1>
-            <p style="margin:0;color:#475569">SMTP is configured and the reminder email channel can send messages.</p>
-          </div>
+  const testPayload = {
+    to: recipient,
+    subject: 'THE SFM subscription reminder test',
+    text: 'This is a test email from the Clients & Subscriptions reminder system.',
+    html: `
+      <div style="font-family:Inter,Tajawal,Arial,sans-serif;background:#eef6ff;padding:24px;color:#0b172a">
+        <div style="max-width:560px;margin:auto;background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:24px">
+          <strong style="color:#0b3558">THE SFM</strong>
+          <h1 style="margin:10px 0 8px;font-size:22px">Subscription reminder test</h1>
+          <p style="margin:0;color:#475569">SMTP is configured and the reminder email channel can send messages.</p>
         </div>
-      `,
+      </div>
+    `,
+    replyTo: recipient,
+  };
+
+  try {
+    const validation = validateMailPayload(testPayload);
+    if (!validation.ok || !validation.payload) {
+      const message = validation.errors[0] || INVALID_TEST_RECIPIENT_MESSAGE;
+      logSmtpMailError('[business-subscriptions] reminder test email payload invalid', new Error(message), {
+        userId: user.id,
+        subject: testPayload.subject,
+        to: maskEmailForLog(recipient),
+        from: validation.payload?.from ? maskEmailForLog(validation.payload.from) : null,
+        validationErrors: validation.errors,
+      });
+      await logTestRun(db, {
+        userId: user.id,
+        status: 'failed',
+        timezone,
+        smtpConfigured: true,
+        message,
+        metadata: {
+          reason: 'payload_validation',
+          validationErrors: validation.errors,
+          payloadValidation: true,
+        },
+      });
+      return NextResponse.json(
+        { ok: false, code: 'SMTP_TEST_INVALID_PAYLOAD', message },
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+
+    await sendSmtpMail({
+      to: validation.payload.to,
+      subject: validation.payload.subject,
+      text: validation.payload.text,
+      html: validation.payload.html,
+      from: validation.payload.from,
+      replyTo: validation.payload.replyTo ?? recipient,
     });
+
     await logTestRun(db, {
       userId: user.id,
       status: 'completed',
       timezone,
       smtpConfigured: true,
     });
+
     return NextResponse.json(
-      { ok: true },
+      { ok: true, message: TEST_EMAIL_SUCCESS_MESSAGE },
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
@@ -156,8 +211,8 @@ export async function POST(request: NextRequest) {
     const userMessage = smtpErrorUserMessage(error);
     logSmtpMailError('[business-subscriptions] SMTP test email failed', error, {
       userId: user.id,
-      to: user.email,
-      subject: 'THE SFM subscription reminder test',
+      to: recipient,
+      subject: testPayload.subject,
     });
     await logTestRun(db, {
       userId: user.id,
@@ -165,6 +220,9 @@ export async function POST(request: NextRequest) {
       timezone,
       smtpConfigured: true,
       message: technicalMessage,
+      metadata: {
+        reason: 'smtp_send_failed',
+      },
     });
     return NextResponse.json(
       { ok: false, code: 'SMTP_TEST_FAILED', message: userMessage },

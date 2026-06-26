@@ -128,23 +128,39 @@ type ReminderRuntimeStatus = {
   lastEmailFailure: {
     at: string;
     reason: string;
+    reminderType: string | null;
+    customerId: string | null;
+    to: string[];
+    from: string[];
+    smtp?: {
+      responseCode?: number;
+      response?: string | null;
+      command?: string | null;
+      rejected?: string[];
+      envelope?: {
+        from?: string;
+        to?: string[];
+      };
+      stack?: string | null;
+    } | null;
   } | null;
 };
 
 const REMINDER_CONTROL_TEXT = {
   ar: {
-    emailStatus: 'حالة تذكيرات البريد',
-    active: 'تذكيرات البريد مفعلة',
+    emailStatus: 'حالة تفعيل التنبيهات',
+    active: 'تنبيهات البريد فعّالة',
     smtpMissing: 'إعدادات SMTP ناقصة',
     lastCheck: 'آخر فحص للتذكيرات',
     lastEmail: 'آخر بريد مرسل',
-    failedReason: 'سبب آخر فشل',
+    failedReason: 'سبب الفشل الأخير',
     runNow: 'تشغيل فحص التذكيرات الآن',
-    running: 'جاري فحص التذكيرات...',
+    running: 'جارٍ فحص التذكيرات...',
     sendTest: 'إرسال بريد اختبار',
-    sendingTest: 'جاري إرسال بريد الاختبار...',
+    sendingTest: 'جارٍ إرسال بريد الاختبار...',
     checkComplete: 'اكتمل فحص التذكيرات.',
-    testSent: 'تم إرسال بريد الاختبار.',
+    testSent: 'تم إرسال بريد الاختبار بنجاح.',
+    details: 'التفاصيل',
     unavailable: 'غير متاح',
   },
   en: {
@@ -160,6 +176,7 @@ const REMINDER_CONTROL_TEXT = {
     sendingTest: 'Sending test email...',
     checkComplete: 'Reminder check completed.',
     testSent: 'Test email sent.',
+    details: 'Details',
     unavailable: 'Unavailable',
   },
   fr: {
@@ -175,6 +192,7 @@ const REMINDER_CONTROL_TEXT = {
     sendingTest: 'Envoi du test...',
     checkComplete: 'Verification terminee.',
     testSent: 'E-mail test envoye.',
+    details: 'Détails',
     unavailable: 'Indisponible',
   },
 } as const;
@@ -424,7 +442,7 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
       const response = await fetch(`/api/business/subscriptions/reminders?${params.toString()}`, { headers });
       const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string } | null;
       if (!response.ok || !payload?.ok) throw new Error(payload?.message || payload?.code || 'reminder_check_failed');
-      setNotice(REMINDER_CONTROL_TEXT[locale].checkComplete);
+      setNotice(payload.message || REMINDER_CONTROL_TEXT[locale].checkComplete);
       await loadReminderStatus();
     } catch (err) {
       setError(dbErrorText(err) || text.saveFailed);
@@ -449,10 +467,11 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
         const missing = payload?.missing?.length ? `: ${payload.missing.join(', ')}` : '';
         throw new Error(`${payload?.message || payload?.code || 'smtp_test_failed'}${missing}`);
       }
-      setNotice(REMINDER_CONTROL_TEXT[locale].testSent);
+      setNotice(payload?.message || REMINDER_CONTROL_TEXT[locale].testSent);
       await loadReminderStatus();
     } catch (err) {
-      setError(dbErrorText(err) || text.saveFailed);
+      const errorMessage = err instanceof Error ? err.message : dbErrorText(err);
+      setError(errorMessage || text.saveFailed);
       await loadReminderStatus();
     } finally {
       setTestEmailSending(false);
@@ -1245,6 +1264,9 @@ function ReminderStatusCard({
   const missing = status?.smtp.missing ?? [];
   const active = Boolean(status?.emailRemindersActive);
   const lastRunAt = status?.lastRun?.finished_at || null;
+  const lastFailure = status?.lastEmailFailure;
+  const lastRunMessage = status?.lastRun?.message?.trim() || null;
+  const showRawDetails = process.env.NODE_ENV !== 'production' || Boolean(lastFailure?.smtp);
   return (
     <article className={`subscription-reminder-status ${active ? 'active' : 'warning'}`}>
       <header>
@@ -1255,14 +1277,37 @@ function ReminderStatusCard({
         </div>
       </header>
       {!active && missing.length ? <div className="subscription-reminder-missing">{missing.join(', ')}</div> : null}
+      {lastRunMessage ? (
+        <div className="subscription-reminder-failure">
+          <span>{copy.lastCheck}</span>
+          <strong>{lastRunMessage}</strong>
+        </div>
+      ) : null}
       <div className="subscription-reminder-status-grid">
         <div><span>{copy.lastCheck}</span><strong>{formatDateTime(lastRunAt, locale)}</strong></div>
         <div><span>{copy.lastEmail}</span><strong>{formatDateTime(status?.lastEmailSentAt, locale)}</strong></div>
       </div>
-      {status?.lastEmailFailure ? (
+      {lastFailure ? (
         <div className="subscription-reminder-failure">
           <span>{copy.failedReason}</span>
-          <strong>{status.lastEmailFailure.reason}</strong>
+          <strong>{lastFailure.reason}</strong>
+          <div style={{ marginTop: 8 }}>
+            {lastFailure.to.length ? <div>To: {lastFailure.to.join(', ')}</div> : null}
+            {lastFailure.from.length ? <div>From: {lastFailure.from.join(', ')}</div> : null}
+            {lastFailure.reminderType ? <div>Reminder Type: {lastFailure.reminderType}</div> : null}
+            {lastFailure.customerId ? <div>Customer ID: {lastFailure.customerId}</div> : null}
+          </div>
+          {(showRawDetails && lastFailure.smtp) ? (
+            <details style={{ marginTop: 8 }}>
+              <summary>{copy.details}</summary>
+              {lastFailure.smtp.responseCode ? <div>responseCode: {lastFailure.smtp.responseCode}</div> : null}
+              {lastFailure.smtp.command ? <div>command: {lastFailure.smtp.command}</div> : null}
+              {lastFailure.smtp.response ? <div>response: {lastFailure.smtp.response}</div> : null}
+              {lastFailure.smtp.rejected?.length ? <div>rejected: {lastFailure.smtp.rejected.join(', ')}</div> : null}
+              {lastFailure.smtp.envelope ? <div>envelope: {JSON.stringify(lastFailure.smtp.envelope)}</div> : null}
+              {lastFailure.smtp.stack ? <div>stack: {lastFailure.smtp.stack}</div> : null}
+            </details>
+          ) : null}
         </div>
       ) : null}
       <div className="subscription-reminder-actions">
@@ -3136,3 +3181,4 @@ const subscriptionManagerStyles = `
     }
   }
 `;
+

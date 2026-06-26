@@ -9,6 +9,7 @@ type SmtpMailInput = {
   html?: string | null;
   replyTo?: string | null;
   fromName?: string;
+  from?: string;
 };
 
 type SmtpEnvelope = {
@@ -34,6 +35,21 @@ type SmtpErrorDetails = {
   envelope?: SmtpEnvelope;
   code?: string;
   stack?: string;
+};
+
+type MailValidationResult = {
+  ok: boolean;
+  payload?: {
+    to: string[];
+    subject: string;
+    text: string | null;
+    html: string | null;
+    replyTo?: string | null;
+    from: string;
+    fromName?: string;
+  };
+  errors: string[];
+  rejected: string[];
 };
 
 export class SmtpMailError extends Error {
@@ -194,6 +210,87 @@ function emailAddress(value: string | null | undefined) {
   return /^[^\s<>,;@]+@[^\s<>,;@]+\.[^\s<>,;@]+$/.test(candidate) ? candidate : null;
 }
 
+export function maskEmailForLog(input: string | null | undefined) {
+  const email = emailAddress(input);
+  if (!email) return '[redacted]';
+  const [name, domain] = email.split('@');
+  if (!name || !domain) return '[redacted]';
+  const maskedName = name.length <= 2 ? `${name[0] ?? ''}*` : `${name.slice(0, 2)}***`;
+  return `${maskedName}@${domain}`;
+}
+
+export function sanitizeEmail(value: unknown) {
+  return emailAddress(value === null || value === undefined ? '' : String(value).trim());
+}
+
+export function validateMailPayload(input: {
+  to: unknown;
+  subject: unknown;
+  text?: unknown;
+  html?: unknown;
+  replyTo?: unknown;
+  from?: unknown;
+  fromName?: string;
+}): MailValidationResult {
+  const config = smtpConfig();
+  const errors: string[] = [];
+  const rejected: string[] = [];
+
+  if (!config) {
+    return { ok: false, errors: ['SMTP mail service is not configured'], rejected };
+  }
+
+  const from = sanitizeEmail(input.from ?? config.from);
+  if (!from) {
+    errors.push('SMTP sender email is required and must be valid');
+  }
+
+  const subject = cleanSubject(typeof input.subject === 'string' ? input.subject : '');
+  const text = cleanBody(typeof input.text === 'string' ? input.text : null);
+  const html = cleanBody(typeof input.html === 'string' ? input.html : null);
+  const toInputs = Array.isArray(input.to)
+    ? input.to.map(item => String(item ?? '').trim())
+    : [String(input.to ?? '').trim()];
+  const to = toInputs.map(item => sanitizeEmail(item)).filter((item): item is string => Boolean(item));
+  const invalidTo = toInputs.filter(item => item && !sanitizeEmail(item));
+  const replyTo = sanitizeEmail(input.replyTo);
+
+  if (!to.length) {
+    errors.push(input.to ? 'SMTP recipient is invalid' : 'SMTP recipient is required');
+    rejected.push(...invalidTo);
+  }
+  if (!subject) {
+    errors.push('SMTP subject is required');
+  }
+  if (!text && !html) {
+    errors.push('SMTP text or HTML body is required');
+  }
+  if (input.replyTo !== undefined && input.replyTo !== null && input.replyTo !== '' && !replyTo) {
+    errors.push('SMTP reply-to is invalid');
+  }
+
+  const payload = {
+    to,
+    subject,
+    text,
+    html,
+    replyTo: input.replyTo ? replyTo ?? null : null,
+    from: from ?? config.from,
+    fromName: input.fromName,
+  };
+
+  if (errors.length) {
+    return {
+      ok: false,
+      payload,
+      errors,
+      rejected,
+    };
+  }
+
+  return { ok: true, payload, errors, rejected };
+}
+
 function smtpConfig() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
@@ -303,27 +400,26 @@ export function smtpErrorUserMessage(error: unknown) {
 }
 
 export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult> {
+  const validation = validateMailPayload(input);
+  if (!validation.ok || !validation.payload) {
+    const firstError = validation.errors[0] ?? 'SMTP mail payload is invalid';
+    throw Object.assign(new SmtpMailError(firstError), { code: 'smtp_invalid_payload' });
+  }
+
   const config = smtpConfig();
   if (!config) {
     throw Object.assign(new SmtpMailError('SMTP email is not configured'), { code: 'smtp_not_configured' });
   }
 
-  const to = recipients(input.to);
-  const rejected = Array.isArray(input.to)
-    ? input.to.filter(item => !emailAddress(item))
-    : input.to.split(/[;,]/).filter(item => item.trim() && !emailAddress(item));
-  const subject = cleanSubject(input.subject);
-  const text = cleanBody(input.text);
-  const html = cleanBody(input.html);
-
-  if (!to.length) throw new SmtpMailError('SMTP email recipient is required', { rejected });
-  if (rejected.length) throw new SmtpMailError('SMTP email recipient is invalid', { rejected });
-  if (!subject) throw new SmtpMailError('SMTP email subject is required');
-  if (!text && !html) throw new SmtpMailError('SMTP email text or html body is required');
-
-  const envelope: SmtpEnvelope = { from: config.from, to };
-  const replyTo = emailAddress(input.replyTo);
-  const fromName = headerSafe(input.fromName || config.fromName || 'THE SFM');
+  const to = validation.payload.to;
+  const rejected = validation.rejected;
+  const subject = validation.payload.subject;
+  const text = validation.payload.text;
+  const html = validation.payload.html;
+  const replyTo = validation.payload.replyTo;
+  const from = validation.payload.from;
+  const fromName = headerSafe(validation.payload.fromName || config.fromName || 'THE SFM');
+  const envelope: SmtpEnvelope = { from, to };
   const messageId = `<${crypto.randomUUID()}@the-sfm.com>`;
   let socket: net.Socket | tls.TLSSocket | null = null;
   let dataResponse: Awaited<ReturnType<typeof expectSmtp>> | null = null;
@@ -331,7 +427,7 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
   console.info('[EmailService] sending SMTP email', {
     provider: config.host,
     secure: config.port === 465,
-    from: config.from,
+    from,
     to,
     subject,
     hasText: Boolean(text),
@@ -371,7 +467,7 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
       logCommand: '[SMTP password]',
     });
 
-    await writeCommand(socket, readResponse, `MAIL FROM:<${config.from}>`, [250], { envelope });
+    await writeCommand(socket, readResponse, `MAIL FROM:<${from}>`, [250], { envelope });
     for (const recipient of to) {
       await writeCommand(socket, readResponse, `RCPT TO:<${recipient}>`, [250, 251], { envelope, rejected });
     }
@@ -379,7 +475,7 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
 
     const boundary = `sfm-${crypto.randomUUID()}`;
     const headers = [
-      `From: ${encodeHeader(fromName)} <${config.from}>`,
+      `From: ${encodeHeader(fromName)} <${from}>`,
       `To: ${to.join(', ')}`,
       replyTo ? `Reply-To: ${replyTo}` : '',
       `Subject: ${encodeHeader(subject)}`,
@@ -423,7 +519,7 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
       : new SmtpMailError(error instanceof Error ? error.message : String(error), { envelope, rejected });
     logSmtpMailError('[EmailService] SMTP send failed', smtpError, {
       provider: config.host,
-      from: config.from,
+      from,
       to,
       subject,
     });
