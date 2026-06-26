@@ -187,4 +187,26 @@ Translation is optional. If `LIBRETRANSLATE_URL` is not configured, THE SFM show
 
 Create a key from the Finnhub dashboard, add it to `.env.local` for development and to Vercel Environment Variables for production, then redeploy. If the key is missing or Finnhub fails, THE SFM uses the configured real fallbacks where available, and otherwise shows unavailable states instead of fake articles or fake prices.
 
+## Instagram Automation
+
+The Platform Admin area includes `/sfm-admin-control/instagram-automation` for the Generate -> Send for Approval -> Publish workflow. The browser talks only to `/api/instagram-automation/*`; provider credentials stay server-side.
+
+Apply `supabase/migrations/114_create_instagram_automation.sql` before using the module. It creates:
+
+- `instagram_automation_posts`
+- `instagram_automation_events`
+
+Set these server-only variables in Vercel project settings:
+
+```text
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+INSTAGRAM_APPROVAL_TELEGRAM_CHAT_ID=your_approval_chat_id
+INSTAGRAM_GRAPH_ACCESS_TOKEN=your_instagram_graph_token
+INSTAGRAM_BUSINESS_ACCOUNT_ID=your_instagram_business_account_id
+INSTAGRAM_GRAPH_API_VERSION=v21.0
+APP_URL=https://your-production-domain.example
+```
+
+`TELEGRAM_BOT_TOKEN` and `INSTAGRAM_APPROVAL_TELEGRAM_CHAT_ID` are required for the send-for-approval action unless a trusted external workflow supplies Telegram message IDs. `INSTAGRAM_GRAPH_ACCESS_TOKEN` and `INSTAGRAM_BUSINESS_ACCOUNT_ID` are required for publishing. The API returns safe configuration codes when providers are missing and never returns keys, provider secrets, or raw stack traces to the browser.
+
 
