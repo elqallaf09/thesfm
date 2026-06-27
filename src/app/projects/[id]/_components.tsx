@@ -10,8 +10,7 @@ import type {
   ProjectIncomeRow, ProjectExpenseRow, MoneyFormatter, CurrencyAmountRow,
   TabId, RiskLevel,
 } from './_types';
-import type { ProjectTasksSummary } from '@/components/projects/ProjectTasksTab';
-import type { ProjectKpiSummary } from '@/components/projects/ProjectKpisTab';
+import type { ProjectTasksSummary, ProjectKpiSummary } from '@/components/projects/projectTabSummaryTypes';
 import {
   formatRowsByCurrency, formatRowMoney, formatProjectExpenseMoney,
   toNum, normalizeCurrencyCode,

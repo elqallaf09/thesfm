@@ -7,13 +7,12 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Bot, Coins, ClipboardList, FileText, Globe2, Pencil, Plus, Target } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+// Tiny static import — types + empty constants only (~2 KB):
 import {
-  ProjectKpisTab, buildProjectKpiSummary, emptyProjectKpiSummary, type ProjectKpiSummary,
-} from '@/components/projects/ProjectKpisTab';
-import {
-  ProjectTasksTab, buildProjectTasksSummary, emptyProjectTasksSummary,
-  type ProjectMilestoneRow, type ProjectTaskRow, type ProjectTasksSummary,
-} from '@/components/projects/ProjectTasksTab';
+  emptyProjectKpiSummary, emptyProjectTasksSummary,
+  type ProjectKpiSummary, type ProjectTasksSummary,
+  type ProjectMilestoneRow, type ProjectTaskRow,
+} from '@/components/projects/projectTabSummaryTypes';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -26,6 +25,8 @@ const ProjectAiAdvisorTab = dynamic(() => import('@/components/projects/ProjectA
 const ProjectDocumentsTab = dynamic(() => import('@/components/projects/ProjectDocumentsTab').then(m => m.ProjectDocumentsTab), { ssr: false, loading: () => <LazyTabSkeleton /> });
 const ProjectFinancialModelTab = dynamic(() => import('@/components/projects/ProjectFinancialModelTab').then(m => m.ProjectFinancialModelTab), { ssr: false, loading: () => <LazyTabSkeleton /> });
 const ProjectPitchDeckTab = dynamic(() => import('@/components/projects/ProjectPitchDeckTab').then(m => m.ProjectPitchDeckTab), { ssr: false, loading: () => <LazyTabSkeleton /> });
+const ProjectKpisTab = dynamic(() => import('@/components/projects/ProjectKpisTab').then(m => m.ProjectKpisTab), { ssr: false, loading: () => <LazyTabSkeleton /> });
+const ProjectTasksTab = dynamic(() => import('@/components/projects/ProjectTasksTab').then(m => m.ProjectTasksTab), { ssr: false, loading: () => <LazyTabSkeleton /> });
 
 import type {
   Lang, TabId, RiskLevel, FeasibilitySection, FeasibilityStatus, FeasibilityForm,
@@ -279,6 +280,12 @@ export default function ProjectWorkspacePage() {
       setFeasibilityUpdatedAt(null);
       setFeasibility(normalizeFeasibilityRow(null, loadedProject));
     }
+    // Lazy-import the heavy summary builders so the tab modules stay out of the
+    // initial bundle — they only load once data is being processed.
+    const [{ buildProjectTasksSummary }, { buildProjectKpiSummary }] = await Promise.all([
+      import('@/components/projects/ProjectTasksTab'),
+      import('@/components/projects/ProjectKpisTab'),
+    ]);
     setTaskSummary(buildProjectTasksSummary(loadedTasks, loadedMilestones));
     setDocumentsCount(loadedDocumentsCount);
     setKpiSummary(buildProjectKpiSummary({

@@ -4,28 +4,15 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { Activity, AlertTriangle, BarChart3, ClipboardList, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
-import type { ProjectMilestoneRow, ProjectTaskRow } from './ProjectTasksTab';
+import type {
+  ProjectKpiStatus, ProjectRiskCode, ProjectKpiSummary,
+  ProjectMilestoneRow, ProjectTaskRow,
+} from './projectTabSummaryTypes';
+// Re-export for back-compat
+export type { ProjectKpiStatus, ProjectRiskCode, ProjectKpiSummary } from './projectTabSummaryTypes';
+export { emptyProjectKpiSummary } from './projectTabSummaryTypes';
 
 type Lang = 'ar' | 'en' | 'fr';
-export type ProjectKpiStatus = 'strong' | 'good' | 'needs_review' | 'high_risk' | 'insufficient';
-export type ProjectRiskCode =
-  | 'financial_model_missing'
-  | 'feasibility_incomplete'
-  | 'overdue_tasks'
-  | 'no_documents'
-  | 'project_end_passed'
-  | 'expenses_exceed_budget'
-  | 'negative_cash'
-  | 'payback_too_long'
-  | 'behind_schedule';
-
-export type ProjectKpiSummary = {
-  score: number | null;
-  status: ProjectKpiStatus;
-  topRiskCode: ProjectRiskCode | null;
-  taskProgress: number | null;
-  lateTasks: number;
-};
 
 export type ProjectFinancialModelKpiRow = {
   id?: string;
@@ -262,13 +249,6 @@ const TEXT = {
 
 type KpiTranslation = Record<keyof typeof TEXT.ar, string>;
 
-export const emptyProjectKpiSummary: ProjectKpiSummary = {
-  score: null,
-  status: 'insufficient',
-  topRiskCode: null,
-  taskProgress: null,
-  lateTasks: 0,
-};
 
 function toNum(value: unknown) {
   const number = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
