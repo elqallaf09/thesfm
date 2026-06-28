@@ -1131,58 +1131,13 @@ tbody tr:hover td{background:var(--bg-muted)}
 }
 
 /* ── Auth Card ── */
-.auth-card {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 44px 40px 36px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow:
-    0 1px 2px rgba(27,36,48,0.04),
-    0 8px 32px rgba(27,36,48,0.09),
-    0 24px 64px rgba(27,36,48,0.06);
-  position: relative;
-  z-index: 1;
-}
 
 /* ── Brand Block ── */
-.auth-brand { text-align: center; margin-bottom: 32px; }
-
-.auth-logo {
-  margin: 0 auto 16px;
-}
-.auth-brand-name {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 20px; font-weight: 800;
-  color: var(--sfm-foreground); margin-bottom: 5px;
-  letter-spacing: -0.3px;
-}
-.auth-brand-sub {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 13.5px; font-weight: 400;
-  color: var(--sfm-muted);
-}
 
 /* ── Divider ── */
-.auth-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--sfm-border), transparent);
-  margin: 0 0 28px;
-}
 
 /* ── Field ── */
 .auth-field { margin-bottom: 18px; }
-.auth-field-label {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 13.5px; font-weight: 600;
-  color: var(--sfm-muted); display: block; margin-bottom: 7px;
-}
-.auth-input-wrap { position: relative; }
-.auth-input-icon {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  right: 14px; color: var(--sfm-accent); font-size: 17px;
-  pointer-events: none;
-}
 .auth-input-eye {
   position: absolute; top: 50%; transform: translateY(-50%);
   left: 12px;
@@ -1216,7 +1171,6 @@ tbody tr:hover td{background:var(--bg-muted)}
   box-shadow: 0 0 0 3px rgba(29,140,255,0.14) !important;
   background: #ffffff !important;
 }
-.auth-input-no-pad { padding: 0 44px 0 16px !important; }
 
 /* ── Primary Button ── */
 .auth-btn-primary {
@@ -1256,16 +1210,8 @@ tbody tr:hover td{background:var(--bg-muted)}
 }
 
 /* ── Separator ── */
-.auth-sep {
-  display: flex; align-items: center; gap: 12px;
-  margin: 20px 0;
-}
-.auth-sep-line { flex: 1; height: 1px; background: var(--sfm-border); }
-.auth-sep-text { font-size: 12.5px; color: var(--sfm-muted); white-space: nowrap; }
 
 /* ── Links ── */
-.auth-links { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.auth-link-row { display: flex; align-items: center; gap: 16px; }
 .auth-link {
   font-family: 'Tajawal', sans-serif;
   font-size: 13.5px; font-weight: 500;
@@ -1279,40 +1225,10 @@ tbody tr:hover td{background:var(--bg-muted)}
   border-bottom: 1.5px solid var(--sfm-primary); padding-bottom: 1px;
 }
 .auth-link-primary:hover { color: var(--sfm-primary-hover); }
-.auth-link-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--sfm-border); }
 
 /* ── Error / Success ── */
-.auth-error {
-  background: rgba(192,57,43,0.08);
-  border: 1px solid rgba(192,57,43,0.2);
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-family: 'Tajawal', sans-serif;
-  font-size: 13.5px; font-weight: 500;
-  color: #B91C1C;
-  margin-bottom: 16px;
-  display: flex; align-items: center; gap: 8px;
-}
-.auth-success {
-  background: rgba(45,138,78,0.08);
-  border: 1px solid rgba(45,138,78,0.2);
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-family: 'Tajawal', sans-serif;
-  font-size: 13.5px; font-weight: 500;
-  color: #047857;
-  margin-bottom: 16px;
-  display: flex; align-items: center; gap: 8px;
-}
 
 /* ── Progress Steps ── */
-.auth-steps {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 24px;
-}
-.auth-step {
-  display: flex; align-items: center; gap: 6px; flex: 1;
-}
 .auth-step-circle {
   width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -1329,12 +1245,9 @@ tbody tr:hover td{background:var(--bg-muted)}
 }
 .auth-step-label { font-size: 11.5px; color: var(--sfm-muted); font-family: 'Tajawal', sans-serif; }
 .auth-step-label.active { color: var(--sfm-foreground); font-weight: 600; }
-.auth-step-line { flex: 1; height: 1px; background: var(--sfm-border); margin: 0 4px; }
 
 /* ── Mobile Auth ── */
 @media (max-width: 480px) {
-  .auth-card { padding: 32px 24px 28px; border-radius: 20px; }
-  .auth-brand-name { font-size: 18px; }
   .auth-btn-primary { height: 50px; font-size: 15px; }
 }
 
