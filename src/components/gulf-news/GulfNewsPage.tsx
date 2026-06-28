@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
-import { useLanguage } from '@/hooks/useLanguage';
+import { useMarketLanguage } from '@/hooks/useMarketLanguage';
 import { GULF_MARKETS, getGulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 import type { GulfNewsItem } from '@/lib/gulf/parseRssFeeds';
@@ -114,7 +114,7 @@ function isWithinRange(value: string, range: GulfNewsTimeRange) {
 }
 
 export function GulfNewsPage() {
-  const { dir, lang, t } = useLanguage();
+  const { dir, lang, t } = useMarketLanguage();
   const [items, setItems] = useState<GulfNewsItem[]>([]);
   const [marketData, setMarketData] = useState<Partial<Record<GulfMarketId, GulfMarketData>>>({});
   const [selectedMarket, setSelectedMarket] = useState<GulfMarketId>('saudi');

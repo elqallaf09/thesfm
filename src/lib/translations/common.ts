@@ -4,6 +4,12 @@ type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string
 
 export const TR_COMMON: Record<string, TranslationEntry> = {
   common_user: { ar:'مستخدم', en:'User', fr:'Utilisateur' },
+  // Cross-cutting keys referenced by non-market pages (/ai, /invest).
+  // Duplicated here so removing the heavy market.ts spread from the global
+  // TR doesn't strand them. Originals remain in market.ts for the chunk
+  // loaded by useMarketLanguage.
+  market_last_updated: { ar:'آخر تحديث', en:'Last updated', fr:'Dernière mise à jour' },
+  market_title: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
   back:        { ar:'← رجوع', en:'← Back', fr:'← Retour' },
   save:        { ar:'💾 حفظ', en:'💾 Save', fr:'💾 Enregistrer' },
   saving:      { ar:'جارٍ الحفظ...', en:'Saving...', fr:'Enregistrement...' },

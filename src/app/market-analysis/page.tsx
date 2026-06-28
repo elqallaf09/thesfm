@@ -10,7 +10,7 @@ import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
-import { useLanguage } from '@/hooks/useLanguage';
+import { useMarketLanguage } from '@/hooks/useMarketLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
@@ -197,7 +197,7 @@ function readMarketAnalysisUrlState() {
 }
 
 export default function MarketAnalysisPage() {
-  const { dir, lang, t } = useLanguage();
+  const { dir, lang, t } = useMarketLanguage();
   const { currency: userCurrency } = useCurrency();
   const currentUserProfile = useCurrentUserProfile();
   const { user, isGuest } = useAuth();

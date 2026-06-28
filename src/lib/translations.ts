@@ -23,7 +23,10 @@ import { TR_DEFENSIVE } from './translations/defensive';
 import { TR_GOALS } from './translations/goals';
 import { TR_INVEST } from './translations/invest';
 import { TR_INVESTMENT_OFFERS } from './translations/investment-offers';
-import { TR_MARKET } from './translations/market';
+// TR_MARKET is NOT spread into the global TR. Market-only components import
+// the dedicated useMarketLanguage hook (src/hooks/useMarketLanguage.tsx),
+// which loads TR_MARKET into the market chunk only. Cross-cutting keys
+// (`market_last_updated`, `market_title`) live in TR_COMMON.
 import { TR_NAV } from './translations/nav';
 import { TR_NEWS } from './translations/news';
 import { TR_PROFILE } from './translations/profile';
@@ -46,7 +49,6 @@ export const TR: Record<string, TranslationEntry> = {
   ...TR_GOALS,
   ...TR_INVEST,
   ...TR_INVESTMENT_OFFERS,
-  ...TR_MARKET,
   ...TR_NAV,
   ...TR_NEWS,
   ...TR_PROFILE,

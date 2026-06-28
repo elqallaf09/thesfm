@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Newspaper, RefreshCcw, Search } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
-import { useLanguage } from '@/hooks/useLanguage';
+import { useMarketLanguage } from '@/hooks/useMarketLanguage';
 import { EUROPE_MARKETS, getEuropeMarket, type EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import type { EuropeNewsItem } from '@/lib/europe/parseEuropeRssFeeds';
@@ -46,7 +46,7 @@ function formatCountdown(totalSeconds: number) {
 }
 
 export function EuropeNewsPage() {
-  const { dir, lang, t } = useLanguage();
+  const { dir, lang, t } = useMarketLanguage();
   const [items, setItems] = useState<EuropeNewsItem[]>([]);
   const [marketData, setMarketData] = useState<Partial<Record<EuropeMarketId, EuropeMarketData>>>({});
   const [selectedMarket, setSelectedMarket] = useState<EuropeMarketId>('uk');
