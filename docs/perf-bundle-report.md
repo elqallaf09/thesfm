@@ -100,16 +100,22 @@ by market pages via `useMarketLanguage`.
   preserves comma-grouped selectors and `:is()/:where()/:has()` lists
 
 ## Still on the table (separate PRs recommended)
-1. **CSS architecture refactor** — `globals.css` uses heavy comma-grouped
-   selectors (`.business-hero, .other-shared, …`) so the per-page class
-   audit can't extract them without first restructuring the rule groups.
-   Potential savings ~30–50 KB.
-2. **i18n market.ts split** — `src/lib/translations/market.ts` (163 KB)
-   is spread into the global `TR`, so it ships with every page. 1085
-   `t('market_*')` call sites + prop-drilled `t` + 24 template strings
-   make this codemod-resistant; needs an async-`t()` semantics change or
-   a file-by-file migration with browser QA.
-3. **Inline component extraction** in the giant `'use client'` pages
-   (setup 148 KB, reports-center 133 KB, profile 126 KB, income 123 KB).
-   Their bulk is inline functional components — splitting them requires
-   real refactoring with visual regression checks.
+
+### 1. CSS architecture refactor — **measured: NOT worth a quick PR**
+`globals.css` uses heavy comma-grouped selectors. The new diagnostic
+`scripts/extract-single-page-css-rules.mjs` finds only **15 rules totalling
+2.3 KB** where ALL comma-separated selectors belong to one page — meaning
+the rest of the cascade is genuinely shared and cannot be moved without
+splitting comma groups into per-page rules first. A real CSS architecture
+PR could deliver ~30–50 KB by deduping near-identical rules and splitting
+mega-groups, but the diff is large and brittle without visual QA.
+
+### 2. i18n market.ts split — ✅ **shipped on this branch**
+See commit `046e5df`. Saved ~38 kB First Load JS on every non-market page.
+
+### 3. Inline component extraction in `'use client'` mega-pages
+(setup 148 KB, reports-center 133 KB, profile 126 KB, income 123 KB.) Their
+bulk is inline functional components defined within the page file via
+closures over page state. Splitting them requires real refactoring and
+visual regression checks — best done one page at a time with someone
+clicking through the result.
