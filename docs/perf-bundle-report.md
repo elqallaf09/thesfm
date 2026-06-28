@@ -3,6 +3,25 @@
 Generated after the perf cleanup landed on this branch. Use it as the
 review reference; compare with the same `pnpm build` output on `main`.
 
+## Per-route First Load JS — before vs after this branch
+Measured with `pnpm build` on each commit (no optimizePackageImports baseline difference).
+
+| route | before | after | delta |
+|---|---:|---:|---:|
+| `/reports` | 365 kB | **327 kB** | −38 kB |
+| `/savings` | 364 kB | **326 kB** | −38 kB |
+| `/goals` | 364 kB | **326 kB** | −38 kB |
+| `/expenses` | 364 kB | **326 kB** | −38 kB |
+| `/charity-projects` | 342 kB | **304 kB** | −38 kB |
+| `/business-hub` | 342 kB | **304 kB** | −38 kB |
+| `/business/subscriptions` | 335 kB | **297 kB** | −38 kB |
+| `/ai` | 316 kB | **277 kB** | −39 kB |
+| `/market-analysis` | 390 kB | 392 kB | +2 kB (intentional — TR_MARKET now ships only here) |
+
+**Structural saving: ~38 kB First Load JS on every non-market page**, from
+extracting `TR_MARKET` (163 KB source) into a dedicated chunk consumed only
+by market pages via `useMarketLanguage`.
+
 ## Build configuration
 - Next.js 15 + React 19
 - `experimental.optimizePackageImports` enabled for 37 libraries
