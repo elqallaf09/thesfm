@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import {
   Activity,
@@ -913,10 +913,10 @@ function toneFor(value: number | null | undefined): Tone {
   return 'neutral';
 }
 
-function formatMoney(value: number | null | undefined, currency: string | null | undefined, locale: string) {
+function formatMoney(value: number | null | undefined, currency: string | null | undefined, locale: string, fractionDigits = 2) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const safeCurrency = currency && /^[A-Z]{3}$/.test(currency) ? currency : 'USD';
-  const digits = Math.abs(value) >= 100 ? 2 : 3;
+  const digits = Math.max(0, Math.min(6, fractionDigits));
   return `${new Intl.NumberFormat('en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -926,7 +926,7 @@ function formatMoney(value: number | null | undefined, currency: string | null |
 function formatSignedMoney(value: number | null | undefined, currency: string | null | undefined, locale: string) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const sign = value > 0 ? '+' : value < 0 ? '-' : '';
-  return `${sign}${formatMoney(Math.abs(value), currency, locale)}`;
+  return `${sign}${formatMoney(Math.abs(value), currency, locale, 3)}`;
 }
 
 function formatNumber(value: number | null | undefined, locale: string, maximumFractionDigits = 2) {
