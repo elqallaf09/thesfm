@@ -1741,8 +1741,7 @@ button:disabled,
   overflow: hidden !important;
 }
 
-html:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .income-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)),
-body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .income-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)) {
+html:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)), body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-modal-backdrop, .tasks-modal-backdrop, .expense-modal-backdrop, .invest-overlay, .business-modal-backdrop, .security-modal-overlay, .ebooks-modal-backdrop, .financial-modal-backdrop, .market-movers-modal-backdrop, .modal-overlay, .debt-modal-backdrop)) {
   overflow: hidden !important;
 }
 
@@ -1997,69 +1996,27 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 }
 
 /* App-wide interaction polish for legacy page-local classes */
-:where(
-  .primary-btn,
-  .gold-btn,
-  .mini-gold,
-  .primary-wide,
-  .primary-form-btn,
-  .primary-save,
-  .overview-link-btn,
-  .hero-actions a,
-  .hero-actions button
-) {
+:where(.primary-btn, .gold-btn, .mini-gold, .primary-wide, .primary-form-btn, .primary-save, .overview-link-btn, .hero-actions a, .hero-actions button) {
   transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease), border-color 180ms var(--ease), background-color 180ms var(--ease) !important;
 }
 
-:where(
-  .primary-btn,
-  .gold-btn,
-  .mini-gold,
-  .primary-wide,
-  .primary-form-btn,
-  .primary-save,
-  .overview-link-btn
-):not(:disabled):hover {
+:where(.primary-btn, .gold-btn, .mini-gold, .primary-wide, .primary-form-btn, .primary-save, .overview-link-btn):not(:disabled):hover {
   transform: translateY(-2px) !important;
   filter: saturate(1.05) brightness(1.04);
   box-shadow: 0 16px 40px rgba(24, 212, 212, 0.28) !important;
 }
 
-:where(
-  .primary-btn,
-  .gold-btn,
-  .mini-gold,
-  .primary-wide,
-  .primary-form-btn,
-  .primary-save,
-  .overview-link-btn
-):not(:disabled):active {
+:where(.primary-btn, .gold-btn, .mini-gold, .primary-wide, .primary-form-btn, .primary-save, .overview-link-btn):not(:disabled):active {
   transform: translateY(0) scale(0.985) !important;
   box-shadow: 0 8px 22px rgba(29, 140, 255, 0.18) !important;
 }
 
-:where(
-  .ghost-btn,
-  .ghost-form-btn,
-  .secondary-btn,
-  .outline-btn,
-  .filter-chip,
-  .category-chip,
-  .tab-chip
-) {
+:where(.ghost-btn, .ghost-form-btn, .filter-chip, .tab-chip) {
   color: var(--sfm-primary-dark) !important;
   transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), color 180ms var(--ease), background-color 180ms var(--ease), border-color 180ms var(--ease) !important;
 }
 
-:where(
-  .ghost-btn,
-  .ghost-form-btn,
-  .secondary-btn,
-  .outline-btn,
-  .filter-chip,
-  .category-chip,
-  .tab-chip
-):not(:disabled):hover {
+:where(.ghost-btn, .ghost-form-btn, .filter-chip, .tab-chip):not(:disabled):hover {
   border-color: rgba(24, 212, 212, 0.38) !important;
   background: var(--sfm-surface-hover) !important;
   color: var(--sfm-primary-dark) !important;
@@ -2067,29 +2024,13 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   transform: translateY(-1px) !important;
 }
 
-:where(
-  .workspace-tabs button,
-  .category-tabs button,
-  .filter-tabs button,
-  .notif-filter-row button,
-  .report-categories-tabs button,
-  .tab-list button,
-  .expense-modal-tabs button
-) {
+:where(.workspace-tabs button, .category-tabs button, .filter-tabs button, .notif-filter-row button, .report-categories-tabs button, .tab-list button, .expense-modal-tabs button) {
   color: var(--sfm-muted-readable) !important;
   border: 1px solid rgba(29, 140, 255, 0.16);
   transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), background-color 180ms var(--ease), color 180ms var(--ease), border-color 180ms var(--ease) !important;
 }
 
-:where(
-  .workspace-tabs button,
-  .category-tabs button,
-  .filter-tabs button,
-  .notif-filter-row button,
-  .report-categories-tabs button,
-  .tab-list button,
-  .expense-modal-tabs button
-):not(.active):not(:disabled):hover {
+:where(.workspace-tabs button, .category-tabs button, .filter-tabs button, .notif-filter-row button, .report-categories-tabs button, .tab-list button, .expense-modal-tabs button):not(.active):not(:disabled):hover {
   background: var(--sfm-surface-hover) !important;
   border-color: rgba(24, 212, 212, 0.34) !important;
   color: var(--sfm-primary-dark) !important;
@@ -2097,17 +2038,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   transform: translateY(-1px);
 }
 
-:where(
-  .workspace-tabs button.active,
-  .category-tabs button.active,
-  .filter-tabs button.active,
-  .notif-filter-row button.active,
-  .report-categories-tabs button.active,
-  .tab-list button.active,
-  .expense-modal-tabs button.active,
-  [aria-selected="true"],
-  [aria-pressed="true"]
-) {
+:where(.workspace-tabs button.active, .category-tabs button.active, .filter-tabs button.active, .notif-filter-row button.active, .report-categories-tabs button.active, .tab-list button.active, .expense-modal-tabs button.active, [aria-selected="true"], [aria-pressed="true"]) {
   border-color: rgba(24, 212, 212, 0.38) !important;
   box-shadow: 0 10px 28px rgba(29, 140, 255, 0.16), inset 0 -2px 0 rgba(24, 212, 212, 0.62) !important;
 }
@@ -2126,7 +2057,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   border-color: rgba(29, 140, 255, 0.34) !important;
 }
 
-:where(.sfm-app-card, .report-card, .project-card, .document-card, .task-card, .notification-card, .program-card, .charity-card, .market-card, .income-card, .expense-card, .zakat-card):hover {
+:where(.sfm-app-card, .report-card, .project-card, .document-card, .task-card, .program-card, .market-card, .expense-card, .zakat-card):hover {
   border-color: rgba(24, 212, 212, 0.24) !important;
 }
 
@@ -2137,211 +2068,37 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   background: var(--sfm-page-gradient);
 }
 
-.dark :is(
-  .sfm-shell,
-  .sfm-dashboard-page-shell,
-  .sfm-under-shell,
-  .today-shell,
-  .security-shell,
-  .dashboard-shell,
-  .command-center-shell,
-  .profile-page,
-  .profile-shell,
-  .project-workspace,
-  .reports-center-shell,
-  .financial-theories-shell,
-  .setup-shell,
-  .setup-page,
-  .business-hub-shell,
-  .charity-projects-page,
-  .charity-projects-shell,
-  .notifications-shell,
-  .notif-shell,
-  .tasks-shell,
-  .documents-center-shell,
-  .documents-shell,
-  .investment-offers-shell,
-  .invest-shell,
-  .market-shell,
-  .income-shell,
-  .expense-smart-shell,
-  .site-map-shell,
-  .edu-shell,
-  .ai-page,
-  .zakat-page,
-  .zakat-shell
-) {
+.dark :is(.sfm-shell, .sfm-dashboard-page-shell, .today-shell, .security-shell, .dashboard-shell, .command-center-shell, .profile-page, .project-workspace, .reports-center-shell, .financial-theories-shell, .setup-page, .business-hub-shell, .charity-projects-page, .notif-shell, .tasks-shell, .documents-center-shell, .investment-offers-shell, .invest-shell, .market-shell, .income-shell, .expense-smart-shell, .site-map-shell, .edu-shell, .ai-page, .zakat-page, .zakat-shell) {
   background: var(--sfm-page-gradient) !important;
   color: var(--sfm-foreground) !important;
 }
 
-.dark :is(
-  .sfm-dashboard-page-content,
-  .dashboard-main,
-  .income-main,
-  .market-main,
-  .invest-main,
-  .profile-main,
-  .business-hub-main,
-  .reports-center-main,
-  .expense-smart-main,
-  .sfm-main,
-  .sfm-under-main,
-  .notif-page,
-  .documents-center-shell,
-  .financial-theories-shell,
-  .setup-page,
-  .site-map-shell,
-  .ai-main,
-  .zakat-page
-) :is(h1, h2, h3, h4, h5, strong, b, label) {
+.dark :is(.sfm-dashboard-page-content, .dashboard-main, .income-main, .market-main, .invest-main, .profile-main, .business-hub-main, .reports-center-main, .expense-smart-main, .sfm-main, .sfm-under-main, .notif-page, .documents-center-shell, .financial-theories-shell, .setup-page, .site-map-shell, .ai-main, .zakat-page) :is(h1, h2, h3, h4, h5, strong, b, label) {
   color: var(--sfm-heading) !important;
 }
 
-.dark :is(
-  .sfm-dashboard-page-content,
-  .dashboard-main,
-  .income-main,
-  .market-main,
-  .invest-main,
-  .profile-main,
-  .business-hub-main,
-  .reports-center-main,
-  .expense-smart-main,
-  .sfm-main,
-  .sfm-under-main,
-  .notif-page,
-  .documents-center-shell,
-  .financial-theories-shell,
-  .setup-page,
-  .site-map-shell,
-  .ai-main,
-  .zakat-page
-) :is(p, small, em, dd, li) {
+.dark :is(.sfm-dashboard-page-content, .dashboard-main, .income-main, .market-main, .invest-main, .profile-main, .business-hub-main, .reports-center-main, .expense-smart-main, .sfm-main, .sfm-under-main, .notif-page, .documents-center-shell, .financial-theories-shell, .setup-page, .site-map-shell, .ai-main, .zakat-page) :is(p, small, em, dd, li) {
   color: var(--sfm-body) !important;
 }
 
-.dark :is(
-  .sfm-page-hero,
-  .dashboard-main .hero-card,
-  .reports-hero,
-  .business-hero,
-  .workspace-hero,
-  .market-hero,
-  .income-header,
-  .notif-hero,
-  .ai-hero,
-  .hero-card,
-  .hero,
-  .documents-header,
-  .funding-header,
-  .jurisdiction-header,
-  .directory-header,
-  .pitch-hero,
-  .ai-status-card
-) {
+.dark :is(.sfm-page-hero, .dashboard-main .hero-card, .reports-hero, .business-hero, .workspace-hero, .market-hero, .income-header, .ai-hero, .hero-card, .hero, .documents-header, .funding-header, .jurisdiction-header, .directory-header, .pitch-hero, .ai-status-card) {
   background:
     radial-gradient(circle at 12% 10%, rgba(24, 212, 212, 0.24), transparent 30%),
     var(--sfm-hero-gradient) !important;
 }
 
-.dark :is(
-  .sfm-app-card,
-  .sfm-card,
-  .warm-card,
-  .panel,
-  .profile-card,
-  .ai-card,
-  .report-card,
-  .preview-panel,
-  .history-panel,
-  .filters-panel,
-  .readiness-card,
-  .strategic-doc-card,
-  .program-card,
-  .jurisdiction-card,
-  .market-card,
-  .market-panel,
-  .income-card,
-  .expense-card,
-  .charity-card,
-  .zakat-card,
-  .state-card,
-  .task-card,
-  .notification-card,
-  .document-card,
-  .project-card,
-  .empty-state article,
-  .slide-stage,
-  .slide-list,
-  .slide-insights,
-  .edit-panel
-) {
+.dark :is(.sfm-app-card, .sfm-card, .warm-card, .panel, .profile-card, .ai-card, .report-card, .preview-panel, .history-panel, .filters-panel, .readiness-card, .strategic-doc-card, .program-card, .jurisdiction-card, .market-card, .market-panel, .expense-card, .zakat-card, .state-card, .task-card, .document-card, .project-card, .empty-state article, .slide-stage, .slide-list, .slide-insights, .edit-panel) {
   background: var(--sfm-card) !important;
   border-color: var(--sfm-border) !important;
   color: var(--sfm-card-foreground) !important;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26) !important;
 }
 
-.dark :is(
-  .sfm-app-card,
-  .sfm-card,
-  .warm-card,
-  .panel,
-  .profile-card,
-  .ai-card,
-  .report-card,
-  .preview-panel,
-  .history-panel,
-  .filters-panel,
-  .readiness-card,
-  .strategic-doc-card,
-  .program-card,
-  .jurisdiction-card,
-  .market-card,
-  .market-panel,
-  .income-card,
-  .expense-card,
-  .charity-card,
-  .zakat-card,
-  .state-card,
-  .task-card,
-  .notification-card,
-  .document-card,
-  .project-card,
-  .empty-state article
-) :is(h1, h2, h3, h4, h5, strong, b, dt, .sfm-card-title, .card-title) {
+.dark :is(.sfm-app-card, .sfm-card, .warm-card, .panel, .profile-card, .ai-card, .report-card, .preview-panel, .history-panel, .filters-panel, .readiness-card, .strategic-doc-card, .program-card, .jurisdiction-card, .market-card, .market-panel, .expense-card, .zakat-card, .state-card, .task-card, .document-card, .project-card, .empty-state article) :is(h1, h2, h3, h4, h5, strong, b, dt, .card-title) {
   color: var(--sfm-heading) !important;
 }
 
-.dark :is(
-  .sfm-app-card,
-  .sfm-card,
-  .warm-card,
-  .panel,
-  .profile-card,
-  .ai-card,
-  .report-card,
-  .preview-panel,
-  .history-panel,
-  .filters-panel,
-  .readiness-card,
-  .strategic-doc-card,
-  .program-card,
-  .jurisdiction-card,
-  .market-card,
-  .market-panel,
-  .income-card,
-  .expense-card,
-  .charity-card,
-  .zakat-card,
-  .state-card,
-  .task-card,
-  .notification-card,
-  .document-card,
-  .project-card,
-  .empty-state article
-) :is(p, small, em, dd, li, .sfm-card-sub, .card-description) {
+.dark :is(.sfm-app-card, .sfm-card, .warm-card, .panel, .profile-card, .ai-card, .report-card, .preview-panel, .history-panel, .filters-panel, .readiness-card, .strategic-doc-card, .program-card, .jurisdiction-card, .market-card, .market-panel, .expense-card, .zakat-card, .state-card, .task-card, .document-card, .project-card, .empty-state article) :is(p, small, em, dd, li, .card-description) {
   color: var(--sfm-body) !important;
 }
 
@@ -2357,13 +2114,13 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   box-shadow: 0 16px 38px rgba(29, 140, 255, 0.22) !important;
 }
 
-.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link) {
+.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .filter-chip, .tab-chip, .sfm-secondary-link) {
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(167, 243, 240, 0.24) !important;
   color: #EAF6FF !important;
 }
 
-.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .secondary-btn, .outline-btn, .filter-chip, .category-chip, .tab-chip, .sfm-secondary-link):not(:disabled):hover {
+.dark :is(.sfm-button-secondary, .sfm-button-ghost, .ghost-btn, .ghost-form-btn, .filter-chip, .tab-chip, .sfm-secondary-link):not(:disabled):hover {
   background: rgba(255, 255, 255, 0.08) !important;
   border-color: rgba(24, 212, 212, 0.38) !important;
   color: #FFFFFF !important;
@@ -2425,7 +2182,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   color: #FCD34D !important;
 }
 
-.dark :is(.badge-gold, .badge-ai, .status-badge.todo, .status-badge.planned, .phase-badge) {
+.dark :is(.badge-gold, .status-badge.todo, .status-badge.planned, .phase-badge) {
   background: rgba(29, 140, 255, 0.16) !important;
   color: #A7D8FF !important;
   border-color: rgba(24, 212, 212, 0.22) !important;
@@ -2456,44 +2213,13 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   --sfm-border-strong: rgba(47, 214, 192, 0.42);
 }
 
-.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(
-  .sfm-app-card,
-  .sfm-card,
-  .panel,
-  .kpi-card,
-  .summary-card,
-  .income-row,
-  .expense-card-row,
-  .data-row,
-  .goal-card,
-  .goal-ai-card,
-  .goal-ai-plan,
-  .goal-modal-preview,
-  .monthly-grid div,
-  .receipt-detail-grid div,
-  .receipt-review-card,
-  .receipt-candidate-panel,
-  .receipt-candidate-panel button
-) {
+.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(.sfm-app-card, .sfm-card, .panel, .kpi-card, .summary-card, .income-row, .expense-card-row, .data-row, .goal-card, .goal-ai-card, .goal-ai-plan, .goal-modal-preview, .monthly-grid div, .receipt-detail-grid div, .receipt-review-card, .receipt-candidate-panel, .receipt-candidate-panel button) {
   background: #0f1d31 !important;
   border-color: #1d3050 !important;
   color: #e8eef6 !important;
 }
 
-.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(
-  .empty,
-  .income-empty-state,
-  .expense-empty,
-  .sfm-empty-state,
-  .empty-state,
-  .line-chart,
-  .row-controls,
-  .summary-band,
-  .goal-meta-grid div,
-  .goal-ai-metrics div,
-  .receipt-items span,
-  .receipt-selected-count
-) {
+.dark :is(.income-shell, .expense-smart-main, .sfm-main.savings-main, .sfm-main.goals-main, .sfm-main.reports-main, .dashboard-main) :is(.empty, .income-empty-state, .expense-empty, .sfm-empty-state, .empty-state, .line-chart, .row-controls, .summary-band, .goal-meta-grid div, .goal-ai-metrics div, .receipt-items span, .receipt-selected-count) {
   background: #13243a !important;
   border-color: #1d3050 !important;
   color: #b8c7d9 !important;
@@ -2521,7 +2247,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   color: var(--sfm-heading) !important;
 }
 
-.dark :is(.sfm-topbar-sub, .sfm-user-role, .sfm-bottom-nav-item) {
+.dark :is(.sfm-topbar-sub, .sfm-bottom-nav-item) {
   color: var(--sfm-muted) !important;
 }
 
@@ -2549,7 +2275,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   opacity: 0.72 !important;
 }
 
-.dark :is(.report-actions-menu div, .currency-popover, .currency-options, .language-switcher-menu) {
+.dark :is(.report-actions-menu div, .currency-popover, .language-switcher-menu) {
   background: var(--sfm-card) !important;
   border-color: var(--sfm-border) !important;
   color: var(--sfm-foreground) !important;
@@ -2565,30 +2291,11 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28) !important;
 }
 
-.dark :is(
-  .account-completion-copy h2,
-  .account-completion-ring strong,
-  .account-completion-status strong,
-  .step-copy b,
-  .project-selector-main strong,
-  .option-copy strong,
-  .currency-label,
-  .currency-trigger-code,
-  .currency-code
-) {
+.dark :is(.account-completion-copy h2, .account-completion-ring strong, .account-completion-status strong, .step-copy b, .project-selector-main strong, .option-copy strong, .currency-label, .currency-trigger-code, .currency-code) {
   color: var(--sfm-heading) !important;
 }
 
-.dark :is(
-  .account-completion-copy p,
-  .account-completion-score small,
-  .step-copy small,
-  .project-selector-main small,
-  .project-selector-meta em,
-  .option-copy small,
-  .currency-trigger-name,
-  .currency-name
-) {
+.dark :is(.account-completion-copy p, .account-completion-score small, .step-copy small, .project-selector-main small, .project-selector-meta em, .option-copy small, .currency-trigger-name, .currency-name) {
   color: var(--sfm-body) !important;
 }
 

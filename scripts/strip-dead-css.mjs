@@ -65,7 +65,8 @@ root.walkRules(rule => {
   if (newSelectors.length === 0) {
     rule.remove();
     removedRuleCount++;
-  } else if (newSelectors.length !== rule.selectors.length) {
+  } else if (newSelectors.join(',') !== rule.selectors.join(',')) {
+    // Catches in-place :is()/:where()/:has() prunes too, not just top-level removals.
     rule.selectors = newSelectors;
   }
 });
