@@ -10,27 +10,33 @@ const pageTabs = readFileSync(join(projectRoot, 'src/components/layout/PageTabs.
 
 describe('charity projects page layout regression guard', () => {
   it('keeps the page inside a readable sidebar-safe content container', () => {
-    expect(charityStyles).toContain('max-width:1440px');
+    expect(charityStyles).toContain('max-inline-size: min(1520px, 100%)');
+    expect(charityStyles).toContain('margin-inline-start: var(--sidebar-w)');
     expect(charityStyles).toContain('margin-inline:auto');
     expect(charityStyles).toContain('grid-template-columns:minmax(0,1fr) auto');
   });
 
-  it('keeps summary cards as real cards instead of collapsed strips', () => {
-    expect(charityStyles).toContain('repeat(auto-fit,minmax(220px,1fr))');
-    expect(charityStyles).toContain('min-height:132px');
-    expect(charityStyles).toContain('font-size:clamp(22px,2vw,28px)');
+  it('keeps KPI cards compact, complete, and dashboard-like', () => {
+    expect(charityStyles).toContain('grid-template-columns: repeat(5, minmax(0, 1fr))');
+    expect(charityStyles).toContain('min-height: 112px');
+    expect(charityStyles).toContain('font-size: clamp(20px, 1.6vw, 25px)');
+    expect(charityPage).toContain('tr.nextDueDateKpi');
+    expect(charityPage).toContain('tr.beneficiariesCountKpi');
   });
 
-  it('keeps the Hijri calendar and empty states structurally separated', () => {
-    expect(charityStyles).toContain('grid-template-columns:minmax(280px,.82fr) minmax(0,1.18fr)');
-    expect(charityStyles).toContain('.season-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))');
-    expect(charityStyles).toContain('.empty-state.compact{min-height:170px');
+  it('keeps the Hijri calendar useful and empty states compact', () => {
+    expect(charityPage).toContain('calendarCards');
+    expect(charityPage).toContain('className="season-card"');
+    expect(charityPage).toContain('className="charity-empty-state compact"');
+    expect(charityStyles).toContain('.charity-projects-page .season-card');
+    expect(charityStyles).toContain('min-height: 136px !important');
     expect(charityStyles).not.toMatch(/\.empty-state(?:\.compact)?\{[^}]*min-height:\s*(?:[3-9]\d{2}|[1-9]\d{3})px/);
   });
 
   it('uses the charity-specific tab sizing hook without changing every page tab', () => {
     expect(charityPage).toContain('className="charity-tabs"');
     expect(pageTabs).toContain('.page-section-tabs.charity-tabs button');
+    expect(pageTabs).toContain('grid-template-columns: repeat(7, minmax(0, 1fr))');
     expect(pageTabs).toContain('font-size: 13.5px');
   });
 });

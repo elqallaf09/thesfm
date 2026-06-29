@@ -26,6 +26,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabs } from '@/components/layout/PageTabs';
+import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +48,8 @@ export default function CharityProjectsPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
+  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const unavailableLabel = lang === 'fr' ? 'Indisponible' : lang === 'en' ? 'Unavailable' : 'غير متاح';
   const zakatShortcut = {
     ar: {
       title: 'إدارة الزكاة',
@@ -200,6 +203,10 @@ export default function CharityProjectsPage() {
   });
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
+  const safeMoney = useCallback((amount: number | null | undefined, currency = 'KWD') => (
+    typeof amount === 'number' && Number.isFinite(amount) ? formatMoney(amount, currency, lang as Lang) : unavailableLabel
+  ), [lang, unavailableLabel]);
+  const numberLabel = useCallback((value: number) => value.toLocaleString(locale), [locale]);
   const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
 
   const loadMetalsPrices = useCallback(async () => {
@@ -586,12 +593,45 @@ export default function CharityProjectsPage() {
     .filter(reminder => reminder.status === 'active')
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
   const urgentReminders = activeReminders.filter(reminder => daysUntil(reminder.due_date) <= reminder.remind_before_days).slice(0, 3);
-  const seasonalCards = [
-    { title: tr.ramadanPlanning },
-    { title: tr.lastTenNights },
-    { title: tr.arafahDay },
-    { title: tr.eidAdha },
-    { title: tr.zakatAnnualReview },
+  const nextReminder = activeReminders[0] ?? null;
+  const nextCharityDueDate = nextReminder?.due_date ?? nextDue ?? null;
+  const calendarCards = [
+    {
+      icon: ShieldCheck,
+      title: tr.nextZakatDue,
+      value: nextDue ? dateLabel(nextDue) : unavailableLabel,
+      description: nextDue ? tr.hijriEstimated : tr.zakatCalendarEmptyHint,
+    },
+    {
+      icon: CalendarDays,
+      title: tr.ramadanPlanning,
+      value: tr.ramadan,
+      description: tr.ramadanPlanningDesc,
+    },
+    {
+      icon: Sparkles,
+      title: tr.lastTenNights,
+      value: tr.lastTenNights,
+      description: tr.lastTenNightsDesc,
+    },
+    {
+      icon: Gift,
+      title: tr.eidAdha,
+      value: tr.sacrifice,
+      description: tr.eidAdhaDesc,
+    },
+    {
+      icon: HandCoins,
+      title: tr.monthlyCharity,
+      value: tr.monthly,
+      description: tr.monthlyCharityDesc,
+    },
+    {
+      icon: HeartHandshake,
+      title: tr.charityReminders,
+      value: activeReminders.length > 0 ? numberLabel(activeReminders.length) : unavailableLabel,
+      description: activeReminders.length > 0 ? tr.upcomingReminders : tr.reminderEmptyBody,
+    },
   ];
 
   const resetProjectForm = () => {
@@ -1123,11 +1163,11 @@ export default function CharityProjectsPage() {
   };
 
   const summaryCards = [
-    { icon: HeartHandshake, label: tr.activeProjects, value: activeProjects.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') },
-    { icon: HandCoins, label: tr.totalDonations, value: money(totalDonations) },
-    { icon: CalendarDays, label: tr.commitments, value: expectedCommitments > 0 ? money(expectedCommitments) : '0' },
-    { icon: Coins, label: tr.estimatedZakat, value: money(toNum(latestEstimatedZakat)) },
-    { icon: ShieldCheck, label: tr.nextZakat, value: nextDue ? dateLabel(nextDue) : tr.noDueDate },
+    { icon: HeartHandshake, label: tr.activeProjects, value: numberLabel(activeProjects) },
+    { icon: HandCoins, label: tr.totalDonations, value: safeMoney(totalDonations) },
+    { icon: CalendarDays, label: tr.nextDueDateKpi, value: nextCharityDueDate ? dateLabel(nextCharityDueDate) : unavailableLabel },
+    { icon: Gift, label: tr.beneficiariesCountKpi, value: numberLabel(beneficiaries.length) },
+    { icon: ShieldCheck, label: tr.upcomingRemindersKpi, value: numberLabel(activeReminders.length) },
   ];
   const charityTabs = [
     { id: 'overview', label: lang === 'ar' ? 'نظرة عامة' : lang === 'fr' ? 'Aperçu' : 'Overview' },
@@ -1136,7 +1176,7 @@ export default function CharityProjectsPage() {
     { id: 'contributors', label: tr.contributors, count: contributors.length },
     { id: 'documents', label: tr.documentVault, count: documents.length },
     { id: 'impact', label: tr.impactDashboard },
-    { id: 'reports', label: lang === 'ar' ? 'التقارير' : lang === 'fr' ? 'Rapports' : 'Reports' },
+    { id: 'reports', label: tr.reports },
   ];
 
   return (
@@ -1193,15 +1233,40 @@ export default function CharityProjectsPage() {
               <h2>{tr.hijriCalendar}</h2>
               <p>{tr.hijriCalendarDesc}</p>
             </div>
-            <button className="mini-gold" type="button" onClick={() => {
-              resetReminderForm();
-              setReminderOpen(true);
-            }}>
-              <CalendarDays size={16} /> {tr.addReminder}
-            </button>
+            <div className="section-actions">
+              <button className="mini-gold" type="button" onClick={() => {
+                resetReminderForm();
+                setReminderOpen(true);
+              }}>
+                <CalendarDays size={16} /> {tr.addReminder}
+              </button>
+              <button className="ghost-btn" type="button" onClick={() => {
+                document.getElementById('upcoming-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}>
+                <Pencil size={16} /> {tr.editReminders}
+              </button>
+            </div>
           </div>
           <div className="calendar-grid">
-            <article className="alert-panel">
+            <article className="season-panel calendar-season-panel">
+              <strong>{tr.seasonalReminders}</strong>
+              <div className="season-grid">
+                {calendarCards.map(card => {
+                  const Icon = card.icon;
+                  return (
+                    <article className="season-card" key={card.title}>
+                      <div className="season-card-icon"><Icon size={18} /></div>
+                      <div>
+                        <b>{card.title}</b>
+                        <strong>{card.value}</strong>
+                        <small>{card.description}</small>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </article>
+            <article className="alert-panel calendar-alert-panel">
               <strong>{tr.smartAlerts}</strong>
               {urgentReminders.length === 0 ? <p>{tr.noUrgentAlerts}</p> : urgentReminders.map(reminder => (
                 <div className="alert-line" key={reminder.id}>
@@ -1210,39 +1275,36 @@ export default function CharityProjectsPage() {
                 </div>
               ))}
             </article>
-            <article className="season-panel">
-              <strong>{tr.seasonalReminders}</strong>
-              <div className="season-grid">
-                {seasonalCards.map(card => (
-                  <span key={card.title}>
-                    <b>{card.title}</b>
-                    <small>{tr.preciseHijriLater}</small>
-                  </span>
-                ))}
-              </div>
-            </article>
           </div>
           <p className="nisab"><CalendarDays size={15} /> {tr.notificationNote}</p>
         </section>
 
-        <section className="warm-card" hidden={activeTab !== 'overview'}>
+        <section className="warm-card reminders-section" id="upcoming-reminders" hidden={activeTab !== 'overview'}>
           <div className="section-head">
-            <h2>{tr.upcomingReminders}</h2>
+            <div>
+              <small>{tr.charityReminders}</small>
+              <h2>{tr.upcomingReminders}</h2>
+            </div>
             <button className="mini-gold" type="button" onClick={() => {
               resetReminderForm();
               setReminderOpen(true);
-            }}>{tr.addReminder}</button>
+            }}><CalendarDays size={16} /> {tr.addReminder}</button>
           </div>
           {activeReminders.length === 0 ? (
-            <div className="empty-state compact">
-              <CalendarDays size={38} />
-              <strong>{tr.noReminders}</strong>
-              <p>{tr.hijriCalendarDesc}</p>
-              <button className="mini-gold" type="button" onClick={() => {
-                resetReminderForm();
-                setReminderOpen(true);
-              }}>{tr.addReminder}</button>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<CalendarDays size={28} />}
+              title={tr.noReminders}
+              description={tr.reminderEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => {
+                  resetReminderForm();
+                  setReminderOpen(true);
+                }}>
+                  <CalendarDays size={15} /> {tr.addReminder}
+                </button>
+              )}
+            />
           ) : (
             <div className="reminder-grid">
               {activeReminders.map(reminder => {
@@ -1548,14 +1610,17 @@ export default function CharityProjectsPage() {
             <Sparkles size={22} />
           </div>
           {!hasImpactData ? (
-            <div className="empty-state compact">
-              <HeartHandshake size={42} />
-              <strong>{tr.notEnoughImpactData}</strong>
-              <p>{tr.customImpactHint}</p>
-              <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
-                <Plus size={15} /> {tr.newProject}
-              </button>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<HeartHandshake size={28} />}
+              title={tr.notEnoughImpactData}
+              description={tr.impactEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                  <Plus size={15} /> {tr.newProject}
+                </button>
+              )}
+            />
           ) : (
             <>
               <div className="impact-summary-grid">
@@ -1670,7 +1735,7 @@ export default function CharityProjectsPage() {
         </section>
 
         <section className="warm-card" hidden={activeTab !== 'projects'}>
-          <div className="section-head"><h2>{tr.projects}</h2><button className="mini-gold" onClick={() => setProjectOpen(true)}>{tr.newProject}</button></div>
+          <div className="section-head"><h2>{tr.projects}</h2><button className="mini-gold" onClick={() => setProjectOpen(true)}><Plus size={15} /> {tr.newProject}</button></div>
           {projects.length === 0 ? (
             <div className="empty-state">
               <HeartHandshake size={44} />

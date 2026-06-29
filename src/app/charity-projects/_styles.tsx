@@ -66,9 +66,19 @@ export function CharityStyles() {
           overflow-x: hidden;
         }
 
+        @media (min-width: 1025px) {
+          .charity-projects-page .sfm-dashboard-page-shell {
+            width: auto;
+            max-width: none;
+            margin-inline-start: var(--sidebar-w);
+            margin-inline-end: 0;
+            padding-inline: clamp(22px, 2.4vw, 36px);
+          }
+        }
+
         .charity-projects-page .sfm-dashboard-page-content.charity-projects-content {
           width: 100%;
-          max-inline-size: min(1440px, 100%);
+          max-inline-size: min(1520px, 100%);
           margin-inline: auto;
           display: grid;
           gap: clamp(18px, 2vw, 28px);
@@ -95,11 +105,54 @@ export function CharityStyles() {
           align-content: center;
         }
 
+        .charity-projects-page .summary-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .charity-projects-page .summary-card {
+          min-height: 112px;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-content: center;
+          align-items: center;
+          column-gap: 12px;
+          row-gap: 5px;
+          padding: 16px;
+        }
+
+        .charity-projects-page .summary-card span {
+          grid-row: 1 / span 2;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+        }
+
+        .charity-projects-page .summary-card small {
+          color: var(--sfm-muted-readable);
+          font-size: 12.5px;
+          line-height: 1.45;
+          white-space: normal;
+        }
+
+        .charity-projects-page .summary-card strong {
+          font-size: clamp(20px, 1.6vw, 25px);
+          line-height: 1.25;
+        }
+
+        .charity-projects-page .section-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
         .charity-projects-page .page-section-tabs.charity-tabs {
           gap: 8px;
           padding: 8px;
           border-radius: 20px;
           scroll-padding-inline: 12px;
+          overflow: visible;
         }
 
         .charity-projects-page .page-section-tabs.charity-tabs button {
@@ -113,6 +166,112 @@ export function CharityStyles() {
           min-width: 22px;
           padding: 3px 6px;
           font-size: 10.5px;
+        }
+
+        .charity-projects-page .calendar-grid {
+          grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+          gap: 14px;
+        }
+
+        .charity-projects-page .calendar-season-panel,
+        .charity-projects-page .calendar-alert-panel {
+          min-height: 0;
+          padding: 16px;
+        }
+
+        .charity-projects-page .season-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .charity-projects-page .season-card {
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr);
+          gap: 11px;
+          align-items: start;
+          min-width: 0;
+          border-radius: 16px;
+          border: 1px solid rgba(29, 140, 255, .12);
+          background: var(--sfm-card);
+          padding: 13px;
+        }
+
+        .charity-projects-page .season-card-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          color: var(--sfm-primary);
+          background: linear-gradient(135deg, rgba(29, 140, 255, .10), rgba(24, 212, 212, .09));
+          border: 1px solid rgba(29, 140, 255, .12);
+        }
+
+        .charity-projects-page .season-card b,
+        .charity-projects-page .season-card strong,
+        .charity-projects-page .season-card small {
+          display: block;
+          min-width: 0;
+        }
+
+        .charity-projects-page .season-card b {
+          font-size: 13.5px;
+        }
+
+        .charity-projects-page .season-card strong {
+          margin-top: 4px;
+          color: var(--sfm-midnight);
+          font-size: 15px;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+
+        .charity-projects-page .season-card small {
+          margin-top: 4px;
+        }
+
+        .charity-projects-page .calendar-alert-panel {
+          gap: 10px;
+        }
+
+        .charity-projects-page .calendar-alert-panel .alert-line {
+          padding: 11px;
+        }
+
+        .charity-projects-page .sfm-empty-state.charity-empty-state,
+        .charity-projects-page .empty-state.compact {
+          min-height: 136px !important;
+          padding: 18px !important;
+          border-radius: 18px !important;
+          gap: 8px !important;
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(234, 246, 255, .68)) !important;
+        }
+
+        .charity-projects-page .sfm-empty-state.charity-empty-state .sfm-empty-state-icon {
+          width: 46px;
+          height: 46px;
+          border-radius: 15px;
+        }
+
+        .charity-projects-page .sfm-empty-state.charity-empty-state strong {
+          color: var(--sfm-midnight);
+          font-size: 17px;
+          line-height: 1.45;
+          font-weight: 950;
+        }
+
+        .charity-projects-page .sfm-empty-state.charity-empty-state p {
+          max-width: 560px;
+          color: var(--sfm-muted-readable);
+          font-size: 13.5px;
+          line-height: 1.7;
+        }
+
+        .charity-projects-page .sfm-empty-state-actions {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 8px;
         }
 
         .charity-projects-page .modal-backdrop {
@@ -296,6 +455,52 @@ export function CharityStyles() {
           transform: none;
         }
 
+        @media (max-width: 1180px) {
+          .charity-projects-page .summary-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .charity-projects-page .calendar-grid {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .charity-projects-page .season-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .charity-projects-page .section-actions {
+            justify-content: flex-start;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .charity-projects-page .summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 640px) {
+          .charity-projects-page .summary-grid,
+          .charity-projects-page .season-grid {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .charity-projects-page .summary-card {
+            min-height: 96px;
+          }
+
+          .charity-projects-page .section-actions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            width: 100%;
+          }
+
+          .charity-projects-page .sfm-empty-state.charity-empty-state,
+          .charity-projects-page .empty-state.compact {
+            min-height: 128px !important;
+          }
+        }
+
         .dark .charity-projects-page {
           background:
             radial-gradient(circle at 8% 0%, rgba(47, 214, 192, .10), transparent 30%),
@@ -340,6 +545,28 @@ export function CharityStyles() {
           background: rgba(10, 20, 34, .72);
           border-color: #1D3050;
           color: var(--sfm-body);
+        }
+
+        .dark .charity-projects-page .season-card,
+        .dark .charity-projects-page .sfm-empty-state.charity-empty-state {
+          background: rgba(10, 20, 34, .62) !important;
+          border-color: #1D3050 !important;
+        }
+
+        .dark .charity-projects-page .season-card strong,
+        .dark .charity-projects-page .sfm-empty-state.charity-empty-state strong {
+          color: var(--sfm-heading);
+        }
+
+        .dark .charity-projects-page .season-card small,
+        .dark .charity-projects-page .sfm-empty-state.charity-empty-state p {
+          color: var(--sfm-body);
+        }
+
+        .dark .charity-projects-page .season-card-icon {
+          background: rgba(47, 214, 192, .12);
+          border-color: rgba(47, 214, 192, .20);
+          color: #A7F3F0;
         }
 
         @media (max-width: 1024px) {
