@@ -1057,7 +1057,7 @@ export function DividendStocksNewsPage() {
   const [newsTime, setNewsTime] = useState<NewsTimeFilter>('all');
   const [newsSort, setNewsSort] = useState<NewsSort>('latest');
   const [visibleNews, setVisibleNews] = useState(NEWS_INITIAL_LIMIT);
-  const [openEducation, setOpenEducation] = useState<EducationId[]>([]);
+  const [openEducation, setOpenEducation] = useState<EducationId | null>(null);
   const [originalNewsIds, setOriginalNewsIds] = useState<string[]>([]);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
 
@@ -1192,7 +1192,7 @@ export function DividendStocksNewsPage() {
   };
 
   const toggleEducation = (id: EducationId) => {
-    setOpenEducation(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+    setOpenEducation(current => current === id ? null : id);
   };
 
   const toggleOriginal = (id: string) => {
@@ -1258,6 +1258,8 @@ export function DividendStocksNewsPage() {
               setMethodologyOpen={setMethodologyOpen}
               originalNewsIds={originalNewsIds}
               toggleOriginal={toggleOriginal}
+              openEducation={openEducation}
+              toggleEducation={toggleEducation}
             />
           ) : null}
 
@@ -1334,7 +1336,7 @@ export function DividendStocksNewsPage() {
           ) : null}
 
           {tab === 'education' ? (
-            <EducationTab text={text} open={openEducation} toggle={toggleEducation} full />
+            <EducationTab text={text} open={openEducation} toggle={toggleEducation} idPrefix="dividend-guide-full" />
           ) : null}
 
           <footer className="footer-note">
@@ -1427,6 +1429,8 @@ function OverviewTab({
   setMethodologyOpen,
   originalNewsIds,
   toggleOriginal,
+  openEducation,
+  toggleEducation,
 }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
@@ -1441,6 +1445,8 @@ function OverviewTab({
   setMethodologyOpen: (open: boolean) => void;
   originalNewsIds: string[];
   toggleOriginal: (id: string) => void;
+  openEducation: EducationId | null;
+  toggleEducation: (id: EducationId) => void;
 }) {
   return (
     <div className="stack">
@@ -1482,7 +1488,7 @@ function OverviewTab({
             </div>
           </section>
 
-          <EducationTab text={text} open={['yield', 'payout', 'dates']} toggle={() => {}} preview />
+          <EducationTab text={text} open={openEducation} toggle={toggleEducation} idPrefix="dividend-guide-preview" preview />
         </aside>
       </div>
     </div>
@@ -1701,7 +1707,19 @@ function NewsTab({
   );
 }
 
-function EducationTab({ text, open, toggle, preview, full }: { text: typeof COPY[LangCode]; open: EducationId[]; toggle: (id: EducationId) => void; preview?: boolean; full?: boolean }) {
+function EducationTab({
+  text,
+  open,
+  toggle,
+  idPrefix,
+  preview,
+}: {
+  text: typeof COPY[LangCode];
+  open: EducationId | null;
+  toggle: (id: EducationId) => void;
+  idPrefix: string;
+  preview?: boolean;
+}) {
   const ids = (Object.keys(text.education) as EducationId[]);
   const shown = preview ? ids.slice(0, 3) : ids;
   return (
@@ -1709,14 +1727,16 @@ function EducationTab({ text, open, toggle, preview, full }: { text: typeof COPY
       <SectionHeader title={text.educationTitle} description={text.educationDescription} action={preview ? <span className="pill">{text.fullGuide}</span> : undefined} />
       <div className="guide-grid">
         {shown.map(id => {
-          const isOpen = full ? open.includes(id) : open.includes(id);
+          const isOpen = open === id;
+          const panelId = `${idPrefix}-panel-${id}`;
+          const buttonId = `${idPrefix}-button-${id}`;
           return (
             <article key={id}>
-              <button className="guide-button" type="button" aria-expanded={isOpen} aria-controls={`dividend-guide-${id}`} onClick={() => toggle(id)}>
+              <button id={buttonId} className="guide-button" type="button" aria-expanded={isOpen} aria-controls={panelId} onClick={() => toggle(id)}>
                 <span>{text.education[id]}</span>
                 {isOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
               </button>
-              {isOpen ? <div id={`dividend-guide-${id}`} className="guide-content">{text.educationBody[id]}</div> : null}
+              {isOpen ? <div id={panelId} className="guide-content" role="region" aria-labelledby={buttonId}>{text.educationBody[id]}</div> : null}
             </article>
           );
         })}
@@ -2923,17 +2943,38 @@ function DividendStyles() {
         justify-content: space-between;
         padding: 0 14px;
         text-align: start;
+        min-width: 0;
       }
       .guide-button span {
         display: inline-flex;
         align-items: center;
         gap: 8px;
+        flex: 1 1 auto;
+        min-width: 0;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+      .guide-button svg {
+        flex: 0 0 auto;
       }
       .guide-content {
         margin-top: 10px;
         color: #5b7085;
         font-size: 14px;
         line-height: 1.8;
+        overflow-wrap: anywhere;
+        animation: dividendGuideOpen 180ms ease-out;
+      }
+      @keyframes dividendGuideOpen {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
       .footer-note {
         display: flex;
