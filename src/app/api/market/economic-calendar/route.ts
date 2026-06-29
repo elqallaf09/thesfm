@@ -17,6 +17,13 @@ function safeCode(messageCode: string | null, fallback: string) {
   return (messageCode || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
 }
 
+function providerDisplayName(provider: ProviderApiResponse<EconomicCalendarEvent[]>['provider']) {
+  if (provider === 'finnhub') return 'Finnhub';
+  if (provider === 'tradingeconomics') return 'Trading Economics';
+  if (provider === 'fmp') return 'Financial Modeling Prep';
+  return null;
+}
+
 function parseDateRange(searchParams: URLSearchParams) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -73,6 +80,10 @@ function safeImpact(value: string | null): EconomicCalendarQuery['impact'] | 'in
 }
 
 function toUiEvent(event: EconomicCalendarEvent) {
+  const providerLabel = providerDisplayName(event.provider);
+  const sourceLabel = event.source && providerLabel && event.source.toLowerCase() !== providerLabel.toLowerCase()
+    ? `${event.source} / ${providerLabel}`
+    : event.source ?? providerLabel ?? event.provider;
   return {
     ...event,
     eventName: event.title,
@@ -82,7 +93,8 @@ function toUiEvent(event: EconomicCalendarEvent) {
     time: event.dateTimeUtc,
     datetime: event.dateTimeUtc,
     eventTime: event.dateTimeUtc,
-    source: event.source ?? event.provider,
+    source: sourceLabel,
+    providerName: providerLabel ?? event.provider,
   };
 }
 
@@ -111,7 +123,8 @@ function jsonResponse(
     code,
     ok,
     success: result.status === 'success',
-    source: result.provider,
+    source: providerDisplayName(result.provider) ?? result.provider,
+    providerStatus: result.status,
   }, {
     status,
     headers: result.status === 'success' ? SUCCESS_HEADERS : ERROR_HEADERS,

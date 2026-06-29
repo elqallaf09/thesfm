@@ -4,8 +4,10 @@ import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
 import { getDividendCalendar } from '@/lib/providers/dividend-calendar';
 import { toCycleIndicator } from '@/lib/providers/economic-data/common';
 import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar/finnhub';
+import { normalizeTradingEconomicsEvent } from '@/lib/providers/economic-calendar/tradingEconomics';
 import { dedupeMarketNewsArticles, normalizeFinnhubNewsArticle } from '@/lib/providers/news/finnhub';
 import { getMarketNews } from '@/lib/providers/news';
+import { TR_MARKET } from '@/lib/translations/market';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -133,6 +135,36 @@ describe('economic calendar provider normalization', () => {
     expect(event?.dateTimeUtc).toBe('2026-06-25T12:30:00.000Z');
   });
 
+  it('normalizes Trading Economics calendar values from official response fields', () => {
+    const event = normalizeTradingEconomicsEvent({
+      CalendarId: '87220',
+      Date: '2026-07-06T13:30:00',
+      Country: 'United States',
+      Event: 'Non Farm Payrolls',
+      Source: 'U.S. Bureau of Labor Statistics',
+      Actual: '178K',
+      Previous: '142K',
+      Forecast: '175K',
+      Importance: 3,
+      Unit: 'K',
+    }, 0);
+
+    expect(event).toMatchObject({
+      id: '87220',
+      title: 'Non Farm Payrolls',
+      country: 'United States',
+      currency: 'USD',
+      impact: 'high',
+      actual: '178K',
+      previous: '142K',
+      forecast: '175K',
+      unit: 'K',
+      source: 'U.S. Bureau of Labor Statistics',
+      provider: 'tradingeconomics',
+    });
+    expect(event?.dateTimeUtc).toBe('2026-07-06T13:30:00.000Z');
+  });
+
   it('deduplicates economic events by stable event identity', () => {
     const first = normalizeFmpEconomicEvent({
       event: 'Retail Sales',
@@ -152,6 +184,7 @@ describe('economic calendar provider normalization', () => {
 
   it('returns not_configured when calendar keys are missing', async () => {
     vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', 'fmp');
@@ -168,9 +201,11 @@ describe('economic calendar provider normalization', () => {
 
   it('prefers Finnhub economic calendar when FINNHUB_API_KEY is configured', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', 'test-te-key');
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       economicCalendar: [
@@ -199,16 +234,27 @@ describe('economic calendar provider normalization', () => {
       provider: 'finnhub',
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('finnhub.io/api/v1/calendar/economic');
+    const finnhubLog = infoSpy.mock.calls.find(call => call[0] === '[economic-calendar] Finnhub request');
+    expect(finnhubLog?.[1]).toMatchObject({
+      finnhubConfigured: true,
+      responseStatus: 200,
+      responseBodyErrorMessage: null,
+      eventsReturned: 1,
+    });
+    expect(String((finnhubLog?.[1] as Record<string, unknown> | undefined)?.requestUrl ?? '')).not.toContain('token=');
   });
 
-  it('reports Finnhub calendar access failures as temporary provider errors', async () => {
+  it('reports Finnhub calendar access failures as provider access denied when no fallback is configured', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
-      error: 'You do not have access to this resource',
+      error: 'You do not have access to this resource on your current plan',
     }), { status: 403 }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -218,14 +264,138 @@ describe('economic calendar provider normalization', () => {
       force: true,
     });
 
+    expect(result.status).toBe('forbidden');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('provider_access_denied');
+  });
+
+  it('falls back to Trading Economics when Finnhub calendar is blocked by plan access', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', 'test-te-key');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        error: 'Economic calendar is not included in your plan',
+      }), { status: 403 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        {
+          CalendarId: 'te-1',
+          Date: '2026-07-05T12:30:00',
+          Country: 'United States',
+          Event: 'Initial Jobless Claims',
+          Source: 'U.S. Department of Labor',
+          Importance: 2,
+          Forecast: '220K',
+          Previous: '218K',
+        },
+      ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-05',
+      to: '2026-07-06',
+      force: true,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('tradingeconomics');
+    expect(result.data[0]).toMatchObject({
+      title: 'Initial Jobless Claims',
+      provider: 'tradingeconomics',
+      currency: 'USD',
+    });
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('api.tradingeconomics.com/calendar/country/All/2026-07-05/2026-07-06');
+  });
+
+  it('falls back to FMP when Finnhub is missing and Trading Economics is not configured', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      {
+        event: 'GDP Growth Rate',
+        date: '2026-07-07 12:30:00',
+        country: 'US',
+        currency: 'USD',
+        impact: 'High',
+      },
+    ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-07',
+      to: '2026-07-08',
+      force: true,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('fmp');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('financialmodelingprep.com/stable/economic-calendar');
+  });
+
+  it('returns a clean provider error when configured providers fail', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      error: 'upstream unavailable',
+    }), { status: 500 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-09',
+      to: '2026-07-10',
+      force: true,
+    });
+
     expect(result.status).toBe('provider_error');
     expect(result.provider).toBe('finnhub');
     expect(result.data).toEqual([]);
     expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
 
+  it('returns success with calendar_no_events when the active provider returns no events', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      economicCalendar: [],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-11',
+      to: '2026-07-12',
+      force: true,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('calendar_no_events');
+  });
+
   it('keeps last successful calendar data as stale when a provider is rate-limited', async () => {
     vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', 'fmp');
@@ -262,6 +432,17 @@ describe('economic calendar provider normalization', () => {
     expect(second.cached).toBe(true);
     expect(second.data).toHaveLength(1);
     expect(second.messageCode).toBe('provider_rate_limited');
+  });
+
+  it('keeps Arabic and English unavailable calendar copy localized', () => {
+    expect(TR_MARKET.market_calendar_not_configured_title.ar).toBe('التقويم الاقتصادي غير متوفر حالياً');
+    expect(TR_MARKET.market_calendar_not_configured_body.ar).toBe('تعذر جلب بيانات التقويم الاقتصادي من مزود البيانات الحالي. سيتم عرض الأحداث تلقائياً عند توفر مصدر بيانات يدعم هذه الخدمة.');
+    expect(TR_MARKET.market_calendar_access_denied_title.ar).toBe('التقويم الاقتصادي غير متوفر ضمن صلاحية مزود البيانات الحالي.');
+    expect(TR_MARKET.market_calendar_access_denied_body.ar).toBe('يمكن تفعيله عند ربط مزود يدعم التقويم الاقتصادي.');
+    expect(TR_MARKET.market_calendar_not_configured_title.en).toBe('Economic calendar is currently unavailable');
+    expect(TR_MARKET.market_calendar_not_configured_body.en).toBe('Could not load economic calendar data from the current data provider. Events will appear automatically when a provider that supports this service is available.');
+    expect(TR_MARKET.market_calendar_access_denied_title.en).toBe('Economic calendar is not available under the current data provider entitlement.');
+    expect(TR_MARKET.market_calendar_access_denied_body.en).toBe('It can be enabled by connecting a provider that supports the economic calendar.');
   });
 });
 

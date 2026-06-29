@@ -1,6 +1,6 @@
 import type { ProviderApiResponse } from '../shared';
 
-export type EconomicCalendarProviderName = 'fmp' | 'finnhub';
+export type EconomicCalendarProviderName = 'finnhub' | 'tradingeconomics' | 'fmp';
 
 export type EconomicCalendarQuery = {
   from: string;

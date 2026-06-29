@@ -46,7 +46,7 @@ The browser should call local Next.js routes, such as `/api/market/health` and `
 The Market Analysis page uses server-only provider routes for market news and the economic calendar:
 
 - `/api/market-news` loads general and asset-specific market news from Finnhub.
-- `/api/market/economic-calendar` loads real economic calendar events from Financial Modeling Prep (FMP) by default.
+- `/api/market/economic-calendar` loads real economic calendar events server-side, preferring Finnhub, then Trading Economics, then Financial Modeling Prep (FMP).
 - `/api/economic-calendar` is a compatibility alias for the same calendar integration.
 
 These routes run server-side only and never expose provider keys to the browser.
@@ -55,14 +55,12 @@ Set these Vercel environment variables:
 
 ```text
 FINNHUB_API_KEY=your_finnhub_key
+TRADING_ECONOMICS_API_KEY=your_trading_economics_key
+TRADING_ECONOMICS_BASE_URL=https://api.tradingeconomics.com
 FMP_API_KEY=your_fmp_key
-ECONOMIC_CALENDAR_PROVIDER=fmp
-
-# Optional legacy calendar fallback when FMP_API_KEY is not available
-ECONOMIC_CALENDAR_API_KEY=your_calendar_key
 ```
 
-If `FMP_API_KEY` is not configured, the calendar route can use the legacy `ECONOMIC_CALENDAR_API_KEY`. Set `ECONOMIC_CALENDAR_PROVIDER=finnhub` only when the Finnhub account explicitly has economic-calendar endpoint access. If no provider key is configured, the API returns a structured `provider_not_configured` status and the Arabic UI shows a localized setup state instead of raw deployment or environment-variable errors.
+Finnhub is used only from `FINNHUB_API_KEY`; the key is never exposed to the browser. If Finnhub is configured but the account plan does not include the economic-calendar endpoint, the route tries Trading Economics and then FMP when those keys are present. If no provider key is configured, or no provider returns events, the UI shows a compact localized empty state instead of raw deployment or environment-variable errors.
 
 After adding or changing provider keys in Vercel project settings, redeploy the project so the runtime can read the updated variables.
 

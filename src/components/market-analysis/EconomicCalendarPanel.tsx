@@ -154,6 +154,15 @@ function displayEconomicValue(value: unknown, unavailable: string) {
   return unavailable;
 }
 
+function calendarProviderLabel(value: unknown, fallback: string) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (normalized === 'finnhub') return 'Finnhub';
+  if (normalized === 'tradingeconomics' || normalized === 'trading economics') return 'Trading Economics';
+  if (normalized === 'fmp' || normalized === 'financial modeling prep') return 'Financial Modeling Prep';
+  return String(value).trim();
+}
+
 function economicImpactLabel(impact: EconomicImpact, t: (key: string) => string) {
   if (impact === 'high') return t('market_calendar_impact_high');
   if (impact === 'medium') return t('market_calendar_impact_medium');
@@ -193,9 +202,14 @@ function isCalendarProviderRateLimited(code?: string, providerStatus?: string | 
     || ['RATE_LIMITED', 'RATE_LIMIT'].includes(normalizedStatus);
 }
 
+function isCalendarNoEvents(code?: string) {
+  return String(code ?? '').trim().toUpperCase() === 'CALENDAR_NO_EVENTS';
+}
+
 function resolveCalendarAvailability(state: ApiListState<Record<string, any>>, eventCount: number): CalendarAvailability {
   if (state.loading && eventCount === 0) return 'loading';
   if (isCalendarProviderNotConfigured(state.code, state.message)) return 'not_configured';
+  if (isCalendarNoEvents(state.code)) return 'empty';
   if (state.code && eventCount === 0) return 'error';
   if (eventCount === 0) return 'empty';
   return 'ready';
@@ -282,7 +296,7 @@ export function EconomicCalendarPanel({
   t: (key: string) => string;
   locale: string;
   state: ApiListState<Record<string, any>>;
-  onRefresh: () => void;
+  onRefresh: (force?: boolean) => void;
 }) {
   const [timeFilter, setTimeFilter] = useState<CalendarTimeFilter>('week');
   const [impactFilter, setImpactFilter] = useState<CalendarImpactFilter>('all');
@@ -362,7 +376,7 @@ export function EconomicCalendarPanel({
       : providerFailed
         ? t('market_calendar_error_body')
         : t('market_calendar_no_events_body');
-  const providerLabel = state.provider || state.source || unavailable;
+  const providerLabel = calendarProviderLabel(state.provider || state.source, unavailable);
   const providerStatusLabel = providerNotConfigured
     ? t('market_calendar_provider_not_configured_badge')
     : providerAccessDenied
@@ -401,18 +415,18 @@ export function EconomicCalendarPanel({
         <MarketSectionRefreshButton
           t={t}
           loading={state.loading}
-          onRefresh={onRefresh}
-          disabled={providerNotConfigured}
-          title={providerNotConfigured ? t('market_calendar_refresh_disabled_tooltip') : undefined}
+          onRefresh={() => onRefresh(true)}
         />
       </div>
 
-      <div className="economic-calendar-summary-grid">
-        <CalendarStatCard icon={<Clock3 size={18} />} label={t('market_calendar_next_event')} value={providerNotConfigured || providerFailed ? unavailable : nextEvent?.eventName ?? unavailable} valueDir="auto" tone="cyan" />
-        <CalendarStatCard icon={<CalendarDays size={18} />} label={t('market_calendar_today_events')} value={providerNotConfigured || providerFailed ? unavailable : String(todayCount)} valueDir="auto" tone="blue" />
-        <CalendarStatCard icon={<AlertTriangle size={18} />} label={t('market_calendar_high_impact_count')} value={providerNotConfigured || providerFailed ? unavailable : String(highImpactCount)} valueDir="auto" tone="amber" />
-        <CalendarStatCard icon={<CheckCircle2 size={18} />} label={t('market_last_updated')} value={lastUpdatedLabel} valueDir="auto" tone="green" />
-      </div>
+      {availability === 'ready' ? (
+        <div className="economic-calendar-summary-grid">
+          <CalendarStatCard icon={<Clock3 size={18} />} label={t('market_calendar_next_event')} value={nextEvent?.eventName ?? unavailable} valueDir="auto" tone="cyan" />
+          <CalendarStatCard icon={<CalendarDays size={18} />} label={t('market_calendar_today_events')} value={String(todayCount)} valueDir="auto" tone="blue" />
+          <CalendarStatCard icon={<AlertTriangle size={18} />} label={t('market_calendar_high_impact_count')} value={String(highImpactCount)} valueDir="auto" tone="amber" />
+          <CalendarStatCard icon={<CheckCircle2 size={18} />} label={t('market_last_updated')} value={lastUpdatedLabel} valueDir="auto" tone="green" />
+        </div>
+      ) : null}
 
       {state.loading && sortedEvents.length > 0 ? (
         <div className="economic-calendar-refreshing" role="status">{t('market_calendar_refreshing_existing')}</div>
@@ -424,16 +438,26 @@ export function EconomicCalendarPanel({
         <div className={`economic-calendar-empty-state ${providerNotConfigured ? 'not-configured' : providerFailed ? 'error' : 'empty'}`}>
           <span><CalendarDays size={24} /></span>
           <div>
-            <small>{providerNotConfigured ? t('market_calendar_provider_not_configured_badge') : providerFailed ? t('market_calendar_provider_error_badge') : t('market_high_impact_events')}</small>
+            <small>
+              {providerNotConfigured
+                ? t('market_calendar_provider_not_configured_badge')
+                : providerAccessDenied
+                  ? t('market_calendar_provider_access_denied_badge')
+                  : providerRateLimited
+                    ? t('market_calendar_provider_rate_limited_badge')
+                    : providerFailed
+                      ? t('market_calendar_provider_error_badge')
+                      : t('market_high_impact_events')}
+            </small>
             <strong>{stateTitle}</strong>
             <p>{stateBody}</p>
-            {availability === 'empty' ? (
-              <button type="button" onClick={clearCalendarFilters}>{t('market_news_clear_filters')}</button>
-            ) : providerFailed ? (
-              <button type="button" onClick={onRefresh}>{t('market_retry')}</button>
-            ) : (
-              <em>{t('market_calendar_public_note')}</em>
-            )}
+            <div className="economic-calendar-empty-actions">
+              <button type="button" onClick={() => onRefresh(true)}>{t('market_retry')}</button>
+              <button type="button" onClick={() => onRefresh(true)}>{t('market_refresh_section')}</button>
+              {availability === 'empty' && hasActiveFilters ? (
+                <button type="button" onClick={clearCalendarFilters}>{t('market_news_clear_filters')}</button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : (
@@ -645,8 +669,9 @@ export function EconomicCalendarPanel({
         .economic-calendar-empty-state small{display:block;color:#B45309;font-size:12px;font-weight:950;line-height:1.4;margin-bottom:5px}
         .economic-calendar-empty-state strong{display:block;color:var(--sfm-foreground);font-size:clamp(18px,2vw,24px);font-weight:950;line-height:1.35}
         .economic-calendar-empty-state p{margin:8px 0 0;max-width:760px;color:var(--sfm-muted);font-size:14px;font-weight:850;line-height:1.9}
-        .economic-calendar-empty-state em{display:inline-flex;width:max-content;max-width:100%;margin-top:12px;border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:7px 11px;font-style:normal;font-size:12px;font-weight:950;line-height:1.4}
-        .economic-calendar-empty-state button{width:max-content;max-width:100%;min-height:42px;border:1px solid rgba(47,214,192,.26);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
+        .economic-calendar-empty-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+        .economic-calendar-empty-state button{width:max-content;max-width:100%;min-height:42px;border:1px solid rgba(47,214,192,.26);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+        .economic-calendar-empty-state button:hover,.economic-calendar-empty-state button:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 12px 24px rgba(29,140,255,.16)}
         .economic-calendar-empty-state.error{border-color:rgba(239,68,68,.22);background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(29,140,255,.05)),var(--sfm-card)}
         .economic-calendar-empty-state.error>span{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.22);color:#B91C1C}
         .dark .calendar-stat-card,.dark .economic-calendar-filter-card,.dark .economic-calendar-table-card,.dark .economic-calendar-event-card{background:#0f1d31;border-color:#1d3050}
@@ -663,7 +688,6 @@ export function EconomicCalendarPanel({
         .dark .economic-calendar-empty-state{background:linear-gradient(135deg,rgba(245,185,66,.12),rgba(29,140,255,.07)),#0f1d31;border-color:rgba(245,185,66,.26)}
         .dark .economic-calendar-empty-state>span{background:rgba(245,185,66,.12);border-color:rgba(245,185,66,.24);color:#F5B942}
         .dark .economic-calendar-empty-state small{color:#F5B942}
-        .dark .economic-calendar-empty-state em{color:#2FD6C0;background:rgba(47,214,192,.12);border-color:rgba(47,214,192,.25)}
         @media(max-width:980px){.economic-calendar-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.economic-calendar-featured{grid-template-columns:1fr}.economic-calendar-table-card{display:none}.economic-calendar-mobile-list{display:grid}}
         @media(max-width:640px){.economic-calendar-dashboard{border-radius:24px;padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:24px;padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:22px;padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:16px;border-radius:22px}.economic-calendar-empty-state>span{width:46px;height:46px;border-radius:17px}}
       `}</style>

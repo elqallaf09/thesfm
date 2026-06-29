@@ -9,7 +9,7 @@ export type ProviderApiStatus =
 
 export type ProviderApiResponse<T> = {
   status: ProviderApiStatus;
-  provider: 'finnhub' | 'fmp' | null;
+  provider: 'finnhub' | 'tradingeconomics' | 'fmp' | null;
   data: T;
   cached: boolean;
   stale: boolean;

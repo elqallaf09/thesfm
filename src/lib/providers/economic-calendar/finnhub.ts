@@ -57,13 +57,68 @@ function normalizeUtcDateTime(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-async function safeProviderMessage(response: Response) {
-  const text = await response.text().catch(() => '');
+function safeProviderMessageFromText(text: string) {
   return text
     .replace(/\s+/g, ' ')
     .replace(/token=[^&\s]+/gi, 'token=[redacted]')
     .trim()
     .slice(0, 300);
+}
+
+function extractProviderMessage(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const record = payload as Record<string, unknown>;
+  return shortText(
+    record.error
+      ?? record.message
+      ?? record.Message
+      ?? record['Error Message']
+      ?? record.status
+      ?? '',
+    300,
+  );
+}
+
+function parseJsonPayload(text: string) {
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return {};
+  }
+}
+
+function isAccessOrPlanError(status: number, message: string) {
+  const text = message.toLowerCase();
+  return status === 401
+    || status === 403
+    || /\b(access|license|licence|permission|plan|subscription|entitlement|unauthori[sz]ed|forbidden|premium|not allowed)\b/.test(text);
+}
+
+function isRateLimitError(status: number, message: string) {
+  return status === 429 || /rate\s*limit|too many requests|quota/i.test(message);
+}
+
+function requestUrlWithoutToken(url: URL) {
+  const safeUrl = new URL(url.toString());
+  safeUrl.searchParams.delete('token');
+  return safeUrl.toString();
+}
+
+function logFinnhubCalendarRequest(input: {
+  finnhubConfigured: boolean;
+  requestUrl: string;
+  responseStatus: number | null;
+  providerMessage: string;
+  eventCount: number;
+}) {
+  console.info('[economic-calendar] Finnhub request', {
+    finnhubConfigured: input.finnhubConfigured,
+    requestUrl: input.requestUrl,
+    responseStatus: input.responseStatus,
+    responseBodyErrorMessage: input.providerMessage || null,
+    eventsReturned: input.eventCount,
+  });
 }
 
 export function normalizeFinnhubEconomicEvent(record: FinnhubEconomicRecord, index: number): EconomicCalendarEvent | null {
@@ -118,22 +173,17 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
       url.searchParams.set('from', query.from);
       url.searchParams.set('to', query.to);
       url.searchParams.set('token', apiKey);
+      const safeRequestUrl = requestUrlWithoutToken(url);
 
       const response = await fetch(url, {
         cache: query.force ? 'no-store' : undefined,
         next: query.force ? undefined : { revalidate: 600 },
         signal: AbortSignal.timeout(FINNHUB_CALENDAR_TIMEOUT_MS),
       });
-
-      if (!response.ok) {
-        const status = response.status === 429 ? 'rate_limited' : 'provider_error';
-        const messageCode = status === 'rate_limited'
-          ? 'provider_rate_limited'
-          : 'provider_temporarily_unavailable';
-        throw new ProviderError(status, messageCode, response.status, await safeProviderMessage(response));
-      }
-
-      const payload = await response.json().catch(() => ({}));
+      const text = await response.text().catch(() => '');
+      const payload = parseJsonPayload(text);
+      const extractedProviderMessage = extractProviderMessage(payload);
+      const providerMessage = extractedProviderMessage || (!response.ok ? safeProviderMessageFromText(text) : '');
       const records = Array.isArray((payload as Record<string, unknown>).economicCalendar)
         ? (payload as { economicCalendar: FinnhubEconomicRecord[] }).economicCalendar
         : Array.isArray((payload as Record<string, unknown>).events)
@@ -141,6 +191,23 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
           : Array.isArray((payload as Record<string, unknown>).data)
             ? (payload as { data: FinnhubEconomicRecord[] }).data
             : [];
+      logFinnhubCalendarRequest({
+        finnhubConfigured: Boolean(apiKey.trim()),
+        requestUrl: safeRequestUrl,
+        responseStatus: response.status,
+        providerMessage,
+        eventCount: records.length,
+      });
+
+      if (!response.ok || isAccessOrPlanError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
+        if (isRateLimitError(response.status, providerMessage)) {
+          throw new ProviderError('rate_limited', 'provider_rate_limited', response.status, providerMessage);
+        }
+        if (isAccessOrPlanError(response.status, providerMessage)) {
+          throw new ProviderError('forbidden', 'provider_access_denied', response.status, providerMessage);
+        }
+        throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, providerMessage);
+      }
 
       return dedupe(
         records
