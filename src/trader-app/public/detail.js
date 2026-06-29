@@ -1,15 +1,5 @@
 const params = new URLSearchParams(window.location.search);
-const rawSymbolParam = params.get("symbol") || "";
-const symbol = normalizeDetailSymbol(rawSymbolParam);
-const DETAIL_CHART_RANGES = ["ALL", "1Y", "1M", "1W", "1D"];
-const DETAIL_CHART_API_CONFIG = {
-  "1D": { period: "1d", interval: "5m" },
-  "1W": { period: "5d", interval: "30m" },
-  "1M": { period: "1mo", interval: "1d" },
-  "1Y": { period: "1y", interval: "1d" },
-  ALL: { period: "max", interval: "1mo" }
-};
-const DETAIL_CHART_CLIENT_TIMEOUT_MS = 20000;
+const symbol = params.get("symbol") || "";
 const NUMBER_LOCALE = "ar-KW-u-nu-latn";
 const NUMBER_OPTIONS = { numberingSystem: "latn" };
 const APP_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
@@ -49,10 +39,10 @@ const DETAIL_TEXT_TRANSLATIONS = {
   "رسم حركة السعر": "Price movement chart",
   "اختبار خلفي": "Backtest",
   "جودة الإشارة": "Signal quality",
-  "\u0644\u0645 \u064a\u062a\u0645 \u062a\u062d\u062f\u064a\u062f \u0631\u0645\u0632 \u0627\u0644\u0633\u0647\u0645.": "No stock symbol was selected.",
-  "\u062c\u0627\u0631\u064a \u062a\u062d\u0644\u064a\u0644 \u0627\u0644\u0633\u0647\u0645": "Analyzing the stock",
+  "لم يتم تحديد رمز السهم.": "No stock symbol was selected.",
+  "جاري تحليل السهم": "Analyzing the stock",
   "تعذر تحميل تفاصيل السهم": "Could not load stock details",
-  "\u0628\u064a\u0627\u0646\u0627\u062a \u0645\u062e\u0632\u0646\u0629 \u0644\u062d\u0638\u064a\u0627\u064b": "Live cached data",
+  "بيانات مخزنة لحظياً": "Live cached data",
   "تحليل جديد": "Fresh analysis",
   "لا تتوفر معلومات وصفية كافية لهذا الرمز.": "Not enough descriptive information is available for this symbol.",
   "ثقة": "confidence",
@@ -250,7 +240,7 @@ const DETAIL_EXTRA_TEXT_TRANSLATIONS = {
   "الفوركس": "Forex",
   "العملات الرقمية": "Crypto",
   "السلع": "Commodities",
-  "أسواق الخليج": "Gulf country markets",
+  "أسواق الخليج": "Gulf markets",
   "السوق السعودي": "Saudi market",
   "بورصة الكويت": "Kuwait market",
   "السوق الإماراتي": "UAE market",
@@ -399,59 +389,28 @@ const DETAIL_ACTION_LABELS = {
   hold: { ar: "انتظار", en: "Wait" }
 };
 const DETAIL_SHARIA_LABELS = {
-  compliant: { ar: "متوافق شرعياً", en: "Sharia compliant" },
-  non_compliant: { ar: "غير متوافق شرعياً", en: "Non-compliant" },
-  not_compliant: { ar: "غير متوافق شرعياً", en: "Non-compliant" },
-  review_required: { ar: "يحتاج مراجعة", en: "Review required" },
-  doubtful: { ar: "يحتاج مراجعة", en: "Review required" },
-  unknown: { ar: "يحتاج مراجعة", en: "Review required" },
-  unsupported: { ar: "غير منطبق", en: "Not applicable" }
+  compliant: { ar: "مطابق للشريعة", en: "Sharia compliant" },
+  not_compliant: { ar: "غير مطابق للشريعة", en: "Not Sharia compliant" },
+  doubtful: { ar: "يحتاج مراجعة شرعية", en: "Requires Sharia review" },
+  unknown: { ar: "غير معروف", en: "Unknown" }
 };
 const DETAIL_SHARIA_DESCRIPTIONS = {
   compliant: {
-    ar: "مصنف كمتوافق شرعياً حسب البيانات المتاحة في التطبيق.",
+    ar: "مصنف داخلياً كمتوافق مع الشريعة حسب البيانات المتاحة في التطبيق.",
     en: "Internally classified as Sharia compliant based on the data available in the app."
   },
-  non_compliant: {
-    ar: "مصنف كغير متوافق شرعياً حسب البيانات المتاحة، ويحتاج إلى مراجعة قبل اتخاذ أي قرار.",
-    en: "Classified as non-compliant based on available data and should be reviewed before any decision."
-  },
   not_compliant: {
-    ar: "مصنف كغير متوافق شرعياً حسب البيانات المتاحة، ويحتاج إلى مراجعة قبل اتخاذ أي قرار.",
-    en: "Classified as non-compliant based on available data and should be reviewed before any decision."
-  },
-  review_required: {
-    ar: "لا يوجد تصنيف شرعي موثق لهذا الرمز داخل التطبيق حالياً، لذلك يحتاج إلى مراجعة وفق المعايير الشرعية المعتمدة.",
-    en: "No verified Sharia classification is available for this symbol in the app right now, so it requires review under approved Sharia standards."
+    ar: "مصنف داخلياً كغير متوافق مع الشريعة، ويفضل تجنبه إذا كان شرطك الالتزام الشرعي.",
+    en: "Internally classified as not Sharia compliant; it is better to avoid it if Sharia compliance is required."
   },
   doubtful: {
-    ar: "لا يوجد تصنيف شرعي موثق لهذا الرمز داخل التطبيق حالياً، لذلك يحتاج إلى مراجعة وفق المعايير الشرعية المعتمدة.",
-    en: "No verified Sharia classification is available for this symbol in the app right now, so it requires review under approved Sharia standards."
+    ar: "التصنيف الشرعي غير محسوم في بيانات التطبيق ويحتاج مراجعة جهة فحص شرعي.",
+    en: "The Sharia classification is not conclusive in the app data and requires review by a Sharia screening provider."
   },
   unknown: {
-    ar: "لا يوجد تصنيف شرعي موثق لهذا الرمز داخل التطبيق حالياً، لذلك يحتاج إلى مراجعة وفق المعايير الشرعية المعتمدة.",
-    en: "No verified Sharia classification is available for this symbol in the app right now, so it requires review under approved Sharia standards."
-  },
-  unsupported: {
-    ar: "هذا النوع من الأدوات لا يملك تصنيف أسهم شرعي داخل التطبيق حالياً.",
-    en: "This instrument type does not currently have stock Sharia screening in the app."
+    ar: "لا يوجد تصنيف شرعي مؤكد لهذا الرمز داخل التطبيق حالياً.",
+    en: "No confirmed Sharia classification is available for this symbol in the app right now."
   }
-};
-const DETAIL_SHARIA_REASON_LABELS = {
-  prohibited_business_activity: { ar: "نشاط رئيسي غير متوافق", en: "Core business activity is not compliant" },
-  financial_ratio_threshold: { ar: "تجاوز النسب المالية المعتمدة", en: "Approved financial ratios were exceeded" },
-  interest_bearing_debt_threshold: { ar: "ارتفاع الديون ذات الفائدة", en: "Interest-bearing debt threshold exceeded" },
-  non_permissible_income_threshold: { ar: "تجاوز نسبة الإيرادات غير المتوافقة", en: "Non-permissible income threshold exceeded" },
-  insufficient_financial_data: { ar: "بيانات غير مكتملة", en: "Incomplete financial data" },
-  classification_expired: { ar: "التصنيف قديم ويحتاج إلى تحديث", en: "Classification is outdated and needs review" },
-  source_unavailable: { ar: "المصدر غير متاح", en: "Source unavailable" },
-  conflicting_sources: { ar: "توجد نتائج متعارضة", en: "Conflicting source results" },
-  not_yet_reviewed: { ar: "لا يوجد تصنيف موثق", en: "No verified classification is available" },
-  other_verified_reason: { ar: "سبب آخر موثق", en: "Other verified reason" }
-};
-const DETAIL_SHARIA_DISCLAIMER = {
-  ar: "التصنيف الشرعي إرشادي وقد يتغير مع تحديث البيانات المالية أو اختلاف المعايير المعتمدة. يُنصح بالرجوع إلى جهة شرعية مختصة قبل اتخاذ القرار الاستثماري.",
-  en: "The Sharia classification is indicative and may change with updated financial data or different standards. Consult a qualified Sharia authority before making an investment decision."
 };
 const DETAIL_RISK_LABELS = {
   low: { ar: "مخاطرة منخفضة", en: "Low risk" },
@@ -479,7 +438,7 @@ const DETAIL_REGION_TRANSLATIONS = {
   America: "America",
   Europe: "Europe",
   Asia: "Asia",
-  GCC: "Gulf country markets",
+  GCC: "GCC",
   FX: "FX",
   Crypto: "Crypto",
   Commodities: "Commodities",
@@ -562,68 +521,14 @@ const elements = {
   reasons: document.querySelector("#detail-reasons"),
   sparkline: document.querySelector("#detail-sparkline"),
   backtest: document.querySelector("#backtest-detail"),
-  back: document.querySelector(".detail-back"),
-  statePanel: document.querySelector("#detail-state-panel")
-};
-
-let detailAbortController = null;
-let detailRequestId = 0;
-let scanInFlight = false;
-let detailChartControlsInitialized = false;
-let detailChartResizeRaf = 0;
-let detailChartRequestId = 0;
-let detailChartAbortController = null;
-const detailChartState = {
-  range: normalizeDetailChartRange(params.get("range") || params.get("timeframe") || "1M"),
-  item: null,
-  profile: null,
-  market: null,
-  loading: false,
-  message: "",
-  messageKind: "idle",
-  values: []
-};
-
-const DETAIL_STATUS_TEXT = {
-  noSymbol: "\u0644\u0645 \u064a\u062a\u0645 \u062a\u062d\u062f\u064a\u062f \u0631\u0645\u0632 \u0627\u0644\u0633\u0647\u0645.",
-  chooseSupportedSymbol: "\u0627\u0631\u062c\u0639 \u0644\u0644\u0623\u0633\u0648\u0627\u0642 \u0648\u0627\u062e\u062a\u0631 \u0631\u0645\u0632\u0627\u064b \u0645\u062f\u0639\u0648\u0645\u0627\u064b.",
-  analyzingStock: "\u062c\u0627\u0631\u064a \u062a\u062d\u0644\u064a\u0644 \u0627\u0644\u0633\u0647\u0645",
-  loadingInstrumentData: "\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0633\u0647\u0645",
-  checkingProvider: "\u064a\u062a\u0645 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u0641\u062d\u0635 \u0648\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0645\u0632\u0648\u062f.",
-  runningScan: "\u062c\u0627\u0631\u064a \u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0641\u062d\u0635",
-  fetchingHistory: "\u064a\u062a\u0645 \u062c\u0644\u0628 \u0627\u0644\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0633\u0639\u0631\u064a \u0648\u062d\u0633\u0627\u0628 \u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062a.",
-  scanning: "\u062c\u0627\u0631\u064a \u0627\u0644\u0641\u062d\u0635...",
-  liveCachedData: "\u0628\u064a\u0627\u0646\u0627\u062a \u0645\u062e\u0632\u0646\u0629 \u0644\u062d\u0638\u064a\u0627\u064b",
-  freshAnalysis: "\u062a\u062d\u0644\u064a\u0644 \u062c\u062f\u064a\u062f",
-  notScanned: "\u0644\u0645 \u064a\u062a\u0645 \u0627\u0644\u0641\u062d\u0635",
-  notScannedTitle: "\u0644\u0645 \u064a\u062a\u0645 \u0641\u062d\u0635 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0628\u0639\u062f",
-  notScannedMessage: "\u0627\u0644\u0633\u0647\u0645 \u0645\u0648\u062c\u0648\u062f\u060c \u0644\u0643\u0646 \u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u064a\u062c\u0629 \u0641\u062d\u0635 \u0645\u062d\u0641\u0648\u0638\u0629.",
-  runScan: "\u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0641\u062d\u0635",
-  noSufficientData: "\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0643\u0627\u0641\u064a\u0629",
-  noSufficientMarketData: "\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0633\u0648\u0642 \u0643\u0627\u0641\u064a\u0629",
-  noChartData: "\u0644\u0627 \u062a\u062a\u0648\u0641\u0631 \u0628\u064a\u0627\u0646\u0627\u062a \u0631\u0633\u0645 \u0623\u0648 \u062a\u0627\u0631\u064a\u062e \u0633\u0639\u0631\u064a \u0643\u0627\u0641\u064a\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u062d\u0627\u0644\u064a\u0627\u064b.",
-  retry: "\u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629",
-  couldNotLoadAnalysis: "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644",
-  incompleteServerResponse: "\u0627\u0633\u062a\u062c\u0627\u0628\u0629 \u0627\u0644\u062e\u0627\u062f\u0645 \u063a\u064a\u0631 \u0645\u0643\u062a\u0645\u0644\u0629.",
-  sessionExpired: "\u0627\u0644\u062c\u0644\u0633\u0629 \u0645\u0646\u062a\u0647\u064a\u0629",
-  accessDenied: "\u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0629 \u0645\u0631\u0641\u0648\u0636\u0629",
-  noAccess: "\u0644\u0627 \u062a\u0648\u062c\u062f \u0635\u0644\u0627\u062d\u064a\u0629",
-  signInRequired: "\u0633\u062c\u0651\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0623\u0648 \u062a\u0623\u0643\u062f \u0645\u0646 \u0635\u0644\u0627\u062d\u064a\u0629 \u0627\u0644\u0645\u0634\u062a\u0631\u0643 \u0644\u0639\u0631\u0636 \u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644.",
-  loadingFailed: "\u062a\u0639\u0630\u0631 \u0627\u0644\u062a\u062d\u0645\u064a\u0644",
-  unexpectedError: "\u062d\u062f\u062b \u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u062a\u0648\u0642\u0639.",
-  analysisStatus: "\u062d\u0627\u0644\u0629 \u0627\u0644\u062a\u062d\u0644\u064a\u0644",
-  symbolStatus: "\u062d\u0627\u0644\u0629 \u0627\u0644\u0631\u0645\u0632",
-  incompleteResponse: "\u0627\u0633\u062a\u062c\u0627\u0628\u0629 \u063a\u064a\u0631 \u0645\u0643\u062a\u0645\u0644\u0629",
-  invalidAnalysisObject: "\u0644\u0645 \u064a\u0631\u062c\u0639 \u0627\u0644\u062e\u0627\u062f\u0645 \u0639\u0642\u062f \u062a\u062d\u0644\u064a\u0644 \u0635\u0627\u0644\u062d \u0644\u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632.",
+  back: document.querySelector(".detail-back")
 };
 
 applyDetailLanguage();
 initMarketBackground();
 initDetailBackButton();
-initDetailStateActions();
-initDetailChartControls();
 registerPwaServiceWorker();
-loadDetailV2();
+loadDetail();
 
 function initDetailBackButton() {
   elements.back?.addEventListener("click", (event) => {
@@ -644,75 +549,6 @@ function initDetailBackButton() {
   });
 }
 
-function initDetailStateActions() {
-  elements.statePanel?.addEventListener("click", (event) => {
-    const actionButton = event.target.closest("[data-detail-action]");
-    if (!actionButton) return;
-    const action = actionButton.getAttribute("data-detail-action");
-    if (action === "scan") {
-      runDetailScan();
-      return;
-    }
-    if (action === "retry") {
-      loadDetailV2();
-    }
-  });
-}
-
-function initDetailChartControls() {
-  if (detailChartControlsInitialized || !elements.sparkline) return;
-  const chartPanel = elements.sparkline.closest(".detail-panel");
-  if (!chartPanel) return;
-
-  let toolbar = chartPanel.querySelector(".detail-chart-controls");
-  if (!toolbar) {
-    toolbar = document.createElement("div");
-    toolbar.className = "detail-chart-controls";
-    toolbar.innerHTML = `
-      <div>
-        <span class="eyebrow">${escapeHtml(detailText("الفترة", "Range"))}</span>
-        <strong>${escapeHtml(detailText("الرسم البياني", "Price chart"))}</strong>
-      </div>
-      <div class="detail-chart-ranges" role="group" aria-label="${escapeHtml(detailText("اختيار فترة الرسم", "Select chart range"))}">
-        ${DETAIL_CHART_RANGES.map((range) => `
-          <button type="button" data-range="${range}" data-timeframe="${range}" aria-pressed="false" dir="ltr">${range}</button>
-        `).join("")}
-      </div>
-    `;
-    elements.sparkline.before(toolbar);
-  }
-
-  const status = document.createElement("div");
-  status.id = "detail-chart-status";
-  status.className = "detail-chart-status";
-  status.setAttribute("aria-live", "polite");
-  elements.sparkline.after(status);
-  elements.chartStatus = status;
-  elements.chartRangeButtons = Array.from(toolbar.querySelectorAll("[data-range]"));
-
-  toolbar.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-range]");
-    if (!button || button.disabled) return;
-    event.preventDefault();
-    const range = normalizeDetailChartRange(button.getAttribute("data-range"));
-    if (!range) return;
-    if (range === detailChartState.range && detailChartState.loading) return;
-    setDetailChartRange(range, { updateUrl: true });
-    loadDetailChartRange(range, { keepExisting: true });
-  });
-
-  window.addEventListener("resize", () => {
-    if (detailChartResizeRaf) window.cancelAnimationFrame(detailChartResizeRaf);
-    detailChartResizeRaf = window.requestAnimationFrame(() => {
-      detailChartResizeRaf = 0;
-      redrawDetailChart();
-    });
-  });
-
-  detailChartControlsInitialized = true;
-  updateDetailChartControls();
-}
-
 function registerPwaServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
@@ -721,388 +557,16 @@ function registerPwaServiceWorker() {
   });
 }
 
-async function loadDetailV2() {
-  if (!symbol) {
-    showDetailState("error", {
-      title: detailText(DETAIL_STATUS_TEXT.noSymbol, "No stock symbol was selected."),
-      message: detailText(DETAIL_STATUS_TEXT.chooseSupportedSymbol, "Go back to markets and select a supported symbol."),
-    });
-    return;
-  }
-
-  detailAbortController?.abort();
-  detailAbortController = new AbortController();
-  const requestId = ++detailRequestId;
-
-  try {
-    elements.status.textContent = detailText(DETAIL_STATUS_TEXT.analyzingStock, "Analyzing the stock");
-    showDetailState("loading", {
-      title: detailText(DETAIL_STATUS_TEXT.loadingInstrumentData, "Loading instrument data"),
-      message: `${escapeHtml(symbol)} - ${detailText(DETAIL_STATUS_TEXT.checkingProvider, "Checking scan status and provider data.")}`,
-    });
-    applyDetailLanguage();
-    const data = await requestDetail("GET", detailAbortController.signal);
-    if (requestId !== detailRequestId) return;
-    handleDetailPayload(data);
-    applyDetailLanguage();
-  } catch (error) {
-    if (error.name === "AbortError") return;
-    handleDetailRequestError(error);
-  }
-}
-
-async function runDetailScan() {
-  if (!symbol || scanInFlight) return;
-  scanInFlight = true;
-
-  try {
-    elements.status.textContent = detailText(DETAIL_STATUS_TEXT.runningScan, "Running scan");
-    showDetailState("loading", {
-      title: detailText(DETAIL_STATUS_TEXT.runningScan, "Running scan"),
-      message: `${escapeHtml(symbol)} - ${detailText(DETAIL_STATUS_TEXT.fetchingHistory, "Fetching price history and calculating indicators.")}`,
-      actionLabel: detailText(DETAIL_STATUS_TEXT.scanning, "Scanning..."),
-      action: "scan",
-      disabled: true,
-    });
-    applyDetailLanguage();
-    const data = await requestDetail("POST");
-    handleDetailPayload(data);
-  } catch (error) {
-    handleDetailRequestError(error);
-  } finally {
-    scanInFlight = false;
-  }
-}
-
-async function requestDetail(method, signal) {
-  const traderAnalysisPrefix = ["", "api", "trader", "analysis"].join("/");
-  const requestUrl = `${traderAnalysisPrefix}/${encodeURIComponent(symbol)}`;
-  const response = await fetch(requestUrl, {
-    method,
-    cache: "no-store",
-    signal,
-    headers: {
-      Accept: "application/json",
-    },
-  });
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json") ? await response.json() : { message: await response.text() };
-
-  if (!response.ok) {
-    const error = new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
-    error.status = response.status;
-    error.payload = payload;
-    throw error;
-  }
-
-  if (!payload || typeof payload !== "object") {
-    const error = new Error("Invalid API response");
-    error.status = 500;
-    throw error;
-  }
-
-  return payload;
-}
-
-function handleDetailPayload(data) {
-  const status = data?.status || (data?.recommendation ? "success" : "error");
-
-  if (status === "success" && data.recommendation) {
-    hideDetailState();
-    renderDetail(data);
-    elements.status.textContent = data.cached ? detailText(DETAIL_STATUS_TEXT.liveCachedData, "Live cached data") : detailText(DETAIL_STATUS_TEXT.freshAnalysis, "Fresh analysis");
-    return;
-  }
-
-  if (status === "not_scanned") {
-    elements.status.textContent = detailText(DETAIL_STATUS_TEXT.notScanned, "Not scanned");
-    showDetailState("not-scanned", {
-      title: detailText(DETAIL_STATUS_TEXT.notScannedTitle, "This symbol has not been scanned yet"),
-      message: `${escapeHtml(data.symbol || symbol)} - ${detailText(DETAIL_STATUS_TEXT.notScannedMessage, "The symbol exists, but there is no saved scan result yet.")}`,
-      actionLabel: detailText(DETAIL_STATUS_TEXT.runScan, "Run scan"),
-      action: "scan",
-    });
-    return;
-  }
-
-  if (status === "no_data") {
-    elements.status.textContent = detailText(DETAIL_STATUS_TEXT.noSufficientData, "No sufficient data");
-    showDetailState("no-data", {
-      title: detailText(DETAIL_STATUS_TEXT.noSufficientMarketData, "No sufficient market data"),
-      message: localizeDetailText(data.message || detailText(DETAIL_STATUS_TEXT.noChartData, "There is not enough chart or historical price data for this symbol right now.")),
-    actionLabel: detailText(DETAIL_STATUS_TEXT.retry, "Retry"),
-      action: "retry",
-    });
-    drawSparkline(elements.sparkline, [], "hold");
-    return;
-  }
-
-  showDetailState("error", {
-    title: detailText(DETAIL_STATUS_TEXT.couldNotLoadAnalysis, "Could not load analysis"),
-    message: localizeDetailText(data?.message || data?.error || detailText(DETAIL_STATUS_TEXT.incompleteServerResponse, "The server response is incomplete.")),
-    actionLabel: detailText(DETAIL_STATUS_TEXT.retry, "Retry"),
-    action: "retry",
-  });
-}
-
-function handleDetailRequestError(error) {
-  const status = error.status;
-  if (status === 401 || status === 403) {
-    elements.status.textContent = status === 401 ? detailText(DETAIL_STATUS_TEXT.sessionExpired, "Session expired") : detailText(DETAIL_STATUS_TEXT.accessDenied, "Access denied");
-    showDetailState("unauthorized", {
-      title: status === 401 ? detailText(DETAIL_STATUS_TEXT.sessionExpired, "Session expired") : detailText(DETAIL_STATUS_TEXT.noAccess, "Access denied"),
-      message: detailText(DETAIL_STATUS_TEXT.signInRequired, "Sign in or verify trader access to view analysis details."),
-    });
-    return;
-  }
-
-  elements.status.textContent = detailText(DETAIL_STATUS_TEXT.loadingFailed, "Loading failed");
-  showDetailState("error", {
-    title: detailText(DETAIL_STATUS_TEXT.couldNotLoadAnalysis, "Could not load analysis"),
-    message: localizeDetailText(error.message || detailText(DETAIL_STATUS_TEXT.unexpectedError, "An unexpected error occurred.")),
-    actionLabel: detailText(DETAIL_STATUS_TEXT.retry, "Retry"),
-    action: "retry",
-  });
-}
-
-function showDetailState(kind, options = {}) {
-  if (!elements.statePanel) return;
-  const title = options.title || detailText(DETAIL_STATUS_TEXT.analysisStatus, "Analysis status");
-  const message = options.message || "";
-  const actionMarkup = options.action ? `
-    <div class="detail-state-actions">
-      <button class="detail-state-button" type="button" data-detail-action="${escapeHtml(options.action)}" ${options.disabled ? "disabled" : ""}>
-        ${escapeHtml(localizeDetailText(options.actionLabel || detailText(DETAIL_STATUS_TEXT.retry, "Retry")))}
-      </button>
-    </div>
-  ` : "";
-
-  elements.statePanel.className = `detail-state-panel detail-state-${kind}`;
-  elements.statePanel.innerHTML = `
-    <div>
-      <p class="eyebrow">${escapeHtml(localizeDetailText(detailText(DETAIL_STATUS_TEXT.symbolStatus, "Symbol status")))}</p>
-      <h2>${escapeHtml(localizeDetailText(title))}</h2>
-      <p>${escapeHtml(localizeDetailText(message))}</p>
-    </div>
-    ${actionMarkup}
-  `;
-  elements.statePanel.hidden = false;
-}
-
-function hideDetailState() {
-  if (!elements.statePanel) return;
-  elements.statePanel.hidden = true;
-  elements.statePanel.innerHTML = "";
-}
-
-function normalizeDetailChartRange(value) {
-  const normalized = String(value || "").trim().toUpperCase();
-  if (normalized === "MAX") return "ALL";
-  if (normalized === "6M" || normalized === "6MO" || normalized === "12M" || normalized === "1YR") return "1Y";
-  if (normalized === "1MO") return "1M";
-  return DETAIL_CHART_RANGES.includes(normalized) ? normalized : "1M";
-}
-
-function setDetailChartRange(range, options = {}) {
-  const normalized = normalizeDetailChartRange(range);
-  detailChartState.range = normalized;
-  updateDetailChartControls();
-
-  if (!options.updateUrl) return;
-  try {
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("range", normalized);
-    nextUrl.searchParams.delete("timeframe");
-    window.history.replaceState(null, "", nextUrl);
-  } catch (error) {
-    console.warn("[detail-chart] Unable to persist selected range in the URL.", error);
-  }
-}
-
-function updateDetailChartControls() {
-  if (Array.isArray(elements.chartRangeButtons)) {
-    elements.chartRangeButtons.forEach((button) => {
-      const range = normalizeDetailChartRange(button.getAttribute("data-range"));
-      const active = range === detailChartState.range;
-      button.classList.toggle("active", active);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
-      button.disabled = !detailChartState.item;
-      button.setAttribute("aria-label", `${detailText("فترة الرسم", "Chart range")} ${range}`);
-    });
-  }
-
-  if (elements.chartStatus) {
-    elements.chartStatus.dataset.state = detailChartState.loading ? "loading" : detailChartState.messageKind;
-    elements.chartStatus.textContent = detailChartState.loading
-      ? detailText("جاري تحميل بيانات الرسم...", "Loading chart data...")
-      : detailChartState.message;
-  }
-}
-
-function inferDetailAssetType(item = {}, profile = {}, market = {}) {
-  const currentSymbol = String(item.providerSymbol || item.symbol || symbol || "").toUpperCase();
-  const source = [
-    item.assetType,
-    item.type,
-    item.category,
-    item.sector,
-    item.market,
-    profile.assetType,
-    profile.specialty,
-    market.label,
-    market.labelEn,
-    currentSymbol,
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  if (/forex|fx|currency pair|pair|usd\/|eur\/|gbp\/|jpy|chf|aud|nzd|cad/.test(source)) return "forex";
-  if (/crypto|bitcoin|ethereum|digital|btc|eth|bnb|sol|xrp|ada|avax/.test(source)) return "crypto";
-  if (/commodity|commodities|gold|silver|oil|gas|copper|xau|xag|usoil|ukoil|natgas|futures/.test(source)) return "commodity";
-  if (/index|indices|dow|nasdaq|s&p|sp500|us30/.test(source)) return "index";
-  return "stock";
-}
-
-function chartMessageForError(code, fallback) {
-  const normalized = String(code || "").trim();
-  if (normalized === "provider_no_data" || normalized === "PRICE_HISTORY_UNAVAILABLE" || normalized === "NO_DATA") {
-    return detailText("لا تتوفر بيانات لهذه الفترة حالياً.", "No data is available for this range right now.");
-  }
-  if (normalized === "invalid_symbol" || normalized === "symbol_not_found") {
-    return detailText("هذا الرمز غير مدعوم لبيانات الرسم حالياً.", "This symbol is not supported for chart data right now.");
-  }
-  if (normalized === "market_data_rate_limit" || normalized === "RATE_LIMIT") {
-    return detailText("تم تجاوز حد مزود البيانات مؤقتاً. حاول مرة أخرى بعد قليل.", "The data provider is temporarily rate limited. Try again shortly.");
-  }
-  if (normalized === "market_data_timeout") {
-    return detailText("استغرق طلب بيانات الرسم وقتاً أطول من المتوقع.", "The chart data request took longer than expected.");
-  }
-  if (normalized === "invalid_response") {
-    return detailText("استجابة بيانات الرسم غير صالحة.", "The chart data response is invalid.");
-  }
-  if (normalized === "request_failed") {
-    return detailText("تعذر تحميل بيانات الرسم. حاول مرة أخرى.", "Could not load chart data. Try again.");
-  }
-  return localizeDetailText(fallback || detailText("تعذر تحميل بيانات الرسم.", "Could not load chart data."));
-}
-
-function extractDetailChartValues(payload) {
-  const rawPoints = Array.isArray(payload?.points)
-    ? payload.points
-    : Array.isArray(payload?.history)
-      ? payload.history
-      : [];
-
-  return rawPoints
-    .map((point) => {
-      if (typeof point === "number") return point;
-      if (!point || typeof point !== "object") return NaN;
-      return Number(point.close ?? point.price ?? point.value ?? point.currentPrice);
-    })
-    .filter(Number.isFinite);
-}
-
-function setDetailChartMessage(kind, message) {
-  detailChartState.messageKind = kind;
-  detailChartState.message = message;
-  updateDetailChartControls();
-}
-
-function redrawDetailChart() {
-  if (!detailChartState.item) return;
-  drawSparkline(elements.sparkline, detailChartState.values, detailChartState.item.action);
-}
-
-async function loadDetailChartRange(range = detailChartState.range, options = {}) {
-  if (!detailChartState.item) {
-    updateDetailChartControls();
-    return;
-  }
-
-  const normalizedRange = normalizeDetailChartRange(range);
-  const requestId = ++detailChartRequestId;
-  detailChartAbortController?.abort();
-  const requestController = new AbortController();
-  detailChartAbortController = requestController;
-  let requestTimedOut = false;
-  const requestTimeout = window.setTimeout(() => {
-    requestTimedOut = true;
-    requestController.abort();
-  }, DETAIL_CHART_CLIENT_TIMEOUT_MS);
-  detailChartState.loading = true;
-  setDetailChartRange(normalizedRange);
-  updateDetailChartControls();
-
-  const item = detailChartState.item;
-  const profile = detailChartState.profile || {};
-  const market = detailChartState.market || {};
-  const providerSymbol = normalizeDetailSymbol(item.providerSymbol || item.symbol || symbol);
-  const apiConfig = DETAIL_CHART_API_CONFIG[normalizedRange] || DETAIL_CHART_API_CONFIG["1M"];
-  const query = new URLSearchParams({
-    symbol: normalizeDetailSymbol(item.symbol || symbol),
-    providerSymbol,
-    assetType: inferDetailAssetType(item, profile, market),
-    range: normalizedRange,
-    period: apiConfig.period,
-    interval: apiConfig.interval,
-  });
-
-  try {
-    const response = await fetch(`/api/market/history?${query.toString()}`, {
-      cache: "no-store",
-      signal: requestController.signal,
-      headers: { Accept: "application/json" },
-    });
-    const contentType = response.headers.get("content-type") || "";
-    const payload = contentType.includes("application/json")
-      ? await response.json()
-      : { success: false, code: "invalid_response", error: await response.text() };
-
-    if (requestId !== detailChartRequestId || requestController.signal.aborted) return;
-
-    if (!response.ok || !payload?.success) {
-      setDetailChartMessage("error", chartMessageForError(payload?.code, payload?.error || payload?.message));
-      if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
-      return;
-    }
-
-    const values = extractDetailChartValues(payload);
-    if (values.length < 2) {
-      setDetailChartMessage("empty", detailText("لا تتوفر بيانات لهذه الفترة حالياً.", "No data is available for this range right now."));
-      if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
-      return;
-    }
-
-    detailChartState.values = values;
-    drawSparkline(elements.sparkline, values, item.action);
-    setDetailChartMessage("success", `${detailText("تم تحديث الرسم لفترة", "Chart updated for")} ${normalizedRange}`);
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      if (requestId === detailChartRequestId && requestTimedOut) {
-        setDetailChartMessage("error", chartMessageForError("market_data_timeout"));
-      }
-      return;
-    }
-    setDetailChartMessage("error", chartMessageForError("request_failed", error?.message));
-    if (!options.keepExisting || !detailChartState.values.length) drawSparkline(elements.sparkline, [], item.action);
-  } finally {
-    window.clearTimeout(requestTimeout);
-    if (requestId === detailChartRequestId) {
-      detailChartState.loading = false;
-      updateDetailChartControls();
-    }
-  }
-}
-
 async function loadDetail() {
   if (!symbol) {
-    showError(detailText(DETAIL_STATUS_TEXT.noSymbol, "No stock symbol was selected."));
+    showError(detailText("لم يتم تحديد رمز السهم.", "No stock symbol was selected."));
     return;
   }
 
   try {
-    elements.status.textContent = detailText(DETAIL_STATUS_TEXT.analyzingStock, "Analyzing the stock");
+    elements.status.textContent = detailText("جاري تحليل السهم", "Analyzing the stock");
     applyDetailLanguage();
-    const traderAnalysisPrefix = ["", "api", "trader", "analysis"].join("/");
-    const response = await fetch(`${traderAnalysisPrefix}/${encodeURIComponent(symbol)}`, { cache: "no-store" });
+    const response = await fetch(`/api/asset?symbol=${encodeURIComponent(symbol)}`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -1110,7 +574,7 @@ async function loadDetail() {
     }
 
     renderDetail(data);
-    elements.status.textContent = data.cached ? detailText(DETAIL_STATUS_TEXT.liveCachedData, "Live cached data") : detailText(DETAIL_STATUS_TEXT.freshAnalysis, "Fresh analysis");
+    elements.status.textContent = data.cached ? detailText("بيانات مخزنة لحظياً", "Live cached data") : detailText("تحليل جديد", "Fresh analysis");
     applyDetailLanguage();
   } catch (error) {
     showError(error.message);
@@ -1118,15 +582,6 @@ async function loadDetail() {
 }
 
 function renderDetail(data) {
-  if (!data || typeof data !== "object" || !data.recommendation || typeof data.recommendation !== "object") {
-    showDetailState("error", {
-      title: detailText(DETAIL_STATUS_TEXT.incompleteResponse, "Incomplete response"),
-      message: detailText(DETAIL_STATUS_TEXT.invalidAnalysisObject, "The server did not return a valid analysis object for this symbol."),
-    actionLabel: detailText(DETAIL_STATUS_TEXT.retry, "Retry"),
-      action: "retry",
-    });
-    return;
-  }
   const item = data.recommendation;
   const profile = data.profile || {};
   const market = data.market || {};
@@ -1147,12 +602,12 @@ function renderDetail(data) {
 
   elements.currentPrice.textContent = formatMoney(item.currentPrice, item.currency);
   elements.expectedPrice.textContent = formatMoney(item.expectedPrice, item.currency);
-  elements.targetOne.textContent = formatMoney(item.target1 ?? item.expectedPrice, item.currency);
+  elements.targetOne.textContent = formatMoney(item.target1 || item.expectedPrice, item.currency);
   elements.targetTwo.textContent = formatMoney(item.target2, item.currency);
-  elements.stopLoss.textContent = hasFiniteNumber(item.stopLoss) ? formatMoney(item.stopLoss, item.currency) : "--";
+  elements.stopLoss.textContent = item.stopLoss ? formatMoney(item.stopLoss, item.currency) : "--";
   elements.support.textContent = formatMoney(item.support, item.currency);
   elements.resistance.textContent = formatMoney(item.resistance, item.currency);
-  elements.riskReward.textContent = hasFiniteNumber(item.riskReward) ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : "--";
+  elements.riskReward.textContent = item.riskReward ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : "--";
   elements.expectedMove.textContent = formatPercent(item.expectedMovePct);
   elements.duration.textContent = localizeDetailText(item.duration);
   elements.score.textContent = `${finalScore.score}% · ${localizeScoreLabel(finalScore.label)}`;
@@ -1172,13 +627,7 @@ function renderDetail(data) {
   renderOutlook(item);
   renderReasons(item.reasons || []);
   renderBacktest(item);
-  detailChartState.item = item;
-  detailChartState.profile = profile;
-  detailChartState.market = market;
-  detailChartState.values = Array.isArray(item.sparkline) ? item.sparkline.filter(Number.isFinite) : [];
-  updateDetailChartControls();
-  drawSparkline(elements.sparkline, detailChartState.values, item.action);
-  loadDetailChartRange(detailChartState.range, { keepExisting: true });
+  drawSparkline(elements.sparkline, item.sparkline || [], item.action);
   applyDetailLanguage();
 }
 
@@ -1191,89 +640,22 @@ function renderGeneralInfo(profile, market, item) {
     ${renderInfoRow(detailText("العملة", "Currency"), profile.currency || item.currency || "--")}
     ${renderInfoRow(detailText("حالة السوق", "Market status"), localizeDetailText(item.marketState || "--"))}
     ${renderInfoRow(detailText("ملاحظة المزود", "Provider note"), localizeDetailText(item.providerDelayNote || market.note || "--"))}
-    ${renderInfoRow(detailText("حجم التداول النسبي", "Relative volume"), hasFiniteNumber(item.relativeVolume) ? `${formatNumber(item.relativeVolume, { maximumFractionDigits: 2 })}x` : "--")}
-    ${renderInfoRow("VWAP", hasFiniteNumber(item.indicators?.vwap) ? formatMoney(item.indicators.vwap, item.currency) : "--")}
+    ${renderInfoRow(detailText("حجم التداول النسبي", "Relative volume"), item.relativeVolume ? `${formatNumber(item.relativeVolume, { maximumFractionDigits: 2 })}x` : "--")}
+    ${renderInfoRow("VWAP", item.indicators?.vwap ? formatMoney(item.indicators.vwap, item.currency) : "--")}
   `;
 }
 
-function normalizeDetailShariaClassification(profile = {}) {
-  const structured = profile.sharia && typeof profile.sharia === "object" ? profile.sharia : null;
-  const status = normalizeDetailShariaStatus(
-    structured?.status ?? profile.shariaStatus ?? profile.sharia_status ?? profile.shariaCompliance,
-  );
-  const record = {
-    status,
-    sourceStatus: status,
-    reasonCode: structured?.reason_code || profile.shariaReasonCode || profile.reason_code || (status === "review_required" ? "not_yet_reviewed" : null),
-    reasonAr: structured?.reason_ar || profile.shariaReasonAr || profile.reason_ar || "",
-    source: structured?.source || profile.shariaSource || "",
-    standard: structured?.standard || profile.shariaStandard || "",
-    reviewedAt: structured?.reviewed_at || profile.shariaCheckedAt || profile.reviewed_at || "",
-    validUntil: structured?.valid_until || profile.valid_until || "",
-  };
-  if (record.status === "compliant" && isDetailShariaExpired(record)) {
-    return { ...record, status: "review_required", expired: true, reasonCode: "classification_expired", reasonAr: "" };
-  }
-  return { ...record, expired: false };
-}
-
-function isDetailShariaExpired(record = {}) {
-  const validUntil = record.validUntil;
-  if (validUntil) {
-    const date = new Date(validUntil);
-    if (!Number.isNaN(date.getTime()) && date.getTime() < Date.now()) return true;
-  }
-  const reviewedAt = record.reviewedAt;
-  if (reviewedAt) {
-    const date = new Date(reviewedAt);
-    if (!Number.isNaN(date.getTime())) {
-      return Date.now() - date.getTime() > 365 * 24 * 60 * 60 * 1000;
-    }
-  }
-  return false;
-}
-
-function localizeShariaReason(classification) {
-  if (classification.reasonAr) return localizeDetailText(classification.reasonAr);
-  const labels = DETAIL_SHARIA_REASON_LABELS[classification.reasonCode || "not_yet_reviewed"];
-  if (!labels) return "";
-  return detailText(labels.ar, labels.en);
-}
-
-function renderOptionalInfoRow(label, value) {
-  if (value === null || value === undefined || value === "") return "";
-  return renderInfoRow(label, value);
-}
-
-function formatDetailDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(isDetailEnglishLanguage() ? "en-US" : "ar-KW-u-nu-latn", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 function renderSharia(profile) {
-  const classification = normalizeDetailShariaClassification(profile);
-  const normalizedProfile = { ...profile, shariaStatus: classification.status };
-  const statusClass = classification.status === "compliant" ? "buy" : classification.status === "non_compliant" ? "sell" : "hold";
-  const reason = localizeShariaReason(classification);
+  const statusClass = profile.shariaStatus === "compliant" ? "buy" : profile.shariaStatus === "not_compliant" ? "sell" : "hold";
   elements.shariaBox.innerHTML = `
     <div class="sharia-status-detail ${statusClass}">
-      <strong>${escapeHtml(localizeShariaLabel(normalizedProfile))}</strong>
-      <span>${escapeHtml(reason || localizeShariaDescription(normalizedProfile))}</span>
+      <strong>${escapeHtml(localizeShariaLabel(profile))}</strong>
+      <span>${escapeHtml(localizeShariaDescription(profile))}</span>
     </div>
     <div class="info-list">
-      ${renderOptionalInfoRow(detailText("سبب التصنيف", "Reason"), reason)}
-      ${renderOptionalInfoRow(detailText("المصدر", "Source"), classification.source ? localizeDetailText(classification.source) : "")}
-      ${renderOptionalInfoRow(detailText("المنهجية المعتمدة", "Methodology"), classification.standard ? localizeDetailText(classification.standard) : "")}
-      ${renderOptionalInfoRow(detailText("آخر مراجعة", "Last review"), formatDetailDate(classification.reviewedAt))}
-      ${classification.expired ? renderInfoRow(detailText("حالة التحديث", "Freshness"), detailText("التصنيف قديم ويحتاج إلى تحديث", "Classification is outdated and needs review")) : ""}
+      ${renderInfoRow(detailText("المصدر", "Source"), localizeDetailText(profile.shariaSource || "تصنيف داخلي قابل للتحديث"))}
+      ${renderInfoRow(detailText("آخر مراجعة", "Last review"), profile.shariaCheckedAt || "--")}
     </div>
-    <p class="sharia-disclaimer">${escapeHtml(detailText(DETAIL_SHARIA_DISCLAIMER.ar, DETAIL_SHARIA_DISCLAIMER.en))}</p>
   `;
 }
 
@@ -1339,9 +721,9 @@ function renderReasons(reasons) {
 
 function renderBacktest(item) {
   elements.backtest.innerHTML = `
-    ${renderInfoRow(detailText("معدل النجاح", "Win rate"), hasFiniteNumber(item.backtest?.winRate) ? `${item.backtest.winRate}%` : localizeDetailText(item.backtest?.label || "--"))}
+    ${renderInfoRow(detailText("معدل النجاح", "Win rate"), item.backtest?.winRate ? `${item.backtest.winRate}%` : localizeDetailText(item.backtest?.label || "--"))}
     ${renderInfoRow(detailText("عدد العينات", "Samples"), item.backtest?.samples ?? "--")}
-    ${renderInfoRow(detailText("أفق الاختبار", "Test horizon"), hasFiniteNumber(item.backtest?.horizonDays) ? detailText(`${item.backtest.horizonDays} يوم`, `${item.backtest.horizonDays} days`) : "--")}
+    ${renderInfoRow(detailText("أفق الاختبار", "Test horizon"), item.backtest?.horizonDays ? detailText(`${item.backtest.horizonDays} يوم`, `${item.backtest.horizonDays} days`) : "--")}
     ${renderInfoRow(detailText("متوسط العائد", "Average return"), Number.isFinite(item.backtest?.avgReturnPct) ? formatPercent(item.backtest.avgReturnPct) : "--")}
     ${renderInfoRow(detailText("جودة التحليل", "Analysis quality"), item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : "--")}
     ${renderInfoRow(detailText("خطة التنفيذ", "Execution plan"), localizeDetailText(item.tradePlan?.note || "--"))}
@@ -1397,28 +779,20 @@ function renderInfoRow(label, value) {
 }
 
 function showError(message) {
-  elements.status.textContent = detailText(DETAIL_STATUS_TEXT.loadingFailed, "Loading failed");
-  showDetailState("error", {
-    title: detailText(DETAIL_STATUS_TEXT.couldNotLoadAnalysis, "Could not load analysis"),
-    message,
-    actionLabel: detailText(DETAIL_STATUS_TEXT.retry, "Retry"),
-    action: "retry",
-  });
+  elements.status.textContent = detailText("تعذر التحميل", "Loading failed");
+  document.querySelector("#detail-content").innerHTML = `<div class="empty">${escapeHtml(localizeDetailText(message))}</div>`;
   applyDetailLanguage();
 }
 
 function calculateFinalScore(item) {
   const confidencePoints = clamp(Number(item.confidence || 0), 0, 100) * 0.35;
   const agreementPoints = clamp(Number(item.timeframeConsensus?.agreementPct || 0), 0, 100) * 0.15;
-  const shariaStatus = normalizeDetailShariaClassification(item).status;
   const shariaPoints = {
     compliant: 20,
-    review_required: 4,
     doubtful: 8,
     unknown: 4,
-    non_compliant: 0,
     not_compliant: 0
-  }[shariaStatus] ?? 4;
+  }[item.shariaStatus] ?? 4;
   const riskPoints = {
     low: 15,
     medium: 9,
@@ -1437,14 +811,8 @@ function calculateFinalScore(item) {
 }
 
 function drawSparkline(canvas, values = [], action) {
-  if (!canvas || typeof canvas.getContext !== "function") return;
   const context = canvas.getContext("2d");
-  if (!context) return;
   const rect = canvas.getBoundingClientRect();
-  if (rect.width < 2 || rect.height < 2) {
-    window.requestAnimationFrame(() => drawSparkline(canvas, values, action));
-    return;
-  }
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -1452,18 +820,7 @@ function drawSparkline(canvas, values = [], action) {
   context.clearRect(0, 0, rect.width, rect.height);
 
   const data = values.filter(Number.isFinite);
-  if (data.length < 2) {
-    context.fillStyle = "rgba(244, 248, 252, 0.72)";
-    context.font = "600 14px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(
-      detailText("لا تتوفر بيانات رسم بياني لهذا السهم حالياً.", "No chart data is available for this instrument right now."),
-      rect.width / 2,
-      rect.height / 2
-    );
-    return;
-  }
+  if (data.length < 2) return;
 
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -1561,25 +918,17 @@ function localizeTimeframeLabel(frame) {
 }
 
 function localizeShariaLabel(profile) {
-  const status = normalizeDetailShariaStatus(profile?.shariaStatus);
+  const status = profile?.shariaStatus || "unknown";
   if (DETAIL_SHARIA_LABELS[status]) return detailText(DETAIL_SHARIA_LABELS[status].ar, DETAIL_SHARIA_LABELS[status].en);
-  return localizeDetailText(profile?.shariaLabel || DETAIL_SHARIA_LABELS.review_required.ar);
+  return localizeDetailText(profile?.shariaLabel || DETAIL_SHARIA_LABELS.unknown.ar);
 }
 
 function localizeShariaDescription(profile) {
-  const status = normalizeDetailShariaStatus(profile?.shariaStatus);
+  const status = profile?.shariaStatus || "unknown";
   if (DETAIL_SHARIA_DESCRIPTIONS[status]) {
     return detailText(DETAIL_SHARIA_DESCRIPTIONS[status].ar, DETAIL_SHARIA_DESCRIPTIONS[status].en);
   }
-  return localizeDetailText(profile?.shariaDescription || DETAIL_SHARIA_DESCRIPTIONS.review_required.ar);
-}
-
-function normalizeDetailShariaStatus(value) {
-  const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (["compliant", "sharia_compliant", "halal", "approved"].includes(raw)) return "compliant";
-  if (["non_compliant", "not_compliant", "noncompliant", "haram", "rejected"].includes(raw)) return "non_compliant";
-  if (["unsupported", "not_applicable", "na", "n_a"].includes(raw)) return "unsupported";
-  return "review_required";
+  return localizeDetailText(profile?.shariaDescription || DETAIL_SHARIA_DESCRIPTIONS.unknown.ar);
 }
 
 function localizeMarketLabel(profile, market) {
@@ -1796,9 +1145,7 @@ window.addEventListener("storage", (event) => {
 
 function initMarketBackground() {
   const canvas = document.querySelector("#market-bg");
-  if (!canvas || typeof canvas.getContext !== "function") return;
   const context = canvas.getContext("2d");
-  if (!context) return;
   const rows = Array.from({ length: 8 }, (_, index) => ({
     y: 80 + index * 92,
     phase: Math.random() * 100,
@@ -1882,23 +1229,12 @@ function normalizeCurrencyCode(currency) {
 }
 
 function formatPercent(value) {
-  if (value === null || value === undefined || value === "") return "--";
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "--";
+  const number = Number(value || 0);
   const prefix = number > 0 ? "+" : "";
   return `${prefix}${formatNumber(number, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}%`;
-}
-
-function normalizeDetailSymbol(value) {
-  return String(value ?? "").trim().toUpperCase();
-}
-
-function hasFiniteNumber(value) {
-  if (value === null || value === undefined || value === "") return false;
-  return Number.isFinite(Number(value));
 }
 
 function formatNumber(value, options = {}) {
