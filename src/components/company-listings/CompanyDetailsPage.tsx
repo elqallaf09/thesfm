@@ -35,6 +35,7 @@ import {
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -80,11 +81,6 @@ function isMissing(value?: string | number | null) {
 
 function displayValue(value?: string | number | null, fallback = 'غير محدد') {
   return isMissing(value) ? fallback : String(value).trim();
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? 'S') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
 function formatDate(value?: string | null, locale = 'ar-KW') {
@@ -153,17 +149,6 @@ function statusMessage(status: CompanyStatus, adminNotes?: string | null) {
 
 function shouldShowReviewNote(status: CompanyStatus) {
   return status === 'rejected' || status === 'needs_changes';
-}
-
-function ProfileLogo({ item }: { item: CompanyListing }) {
-  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
-  if (!item.logo_url || failed || (!loading && !imageUrl)) {
-    return <div className="company-avatar-fallback" aria-label={item.company_name}>{initials(item.company_name)}</div>;
-  }
-  if (loading && !imageUrl) {
-    return <div className="company-avatar-fallback resolving" aria-label={item.company_name}>{initials(item.company_name)}</div>;
-  }
-  return <Image src={imageUrl} alt={`${item.company_name} logo`} width={196} height={196} unoptimized onError={() => setFailed(true)} />;
 }
 
 function ProfileCover({ item }: { item: CompanyListing }) {
@@ -411,14 +396,20 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               />
             </div>
 
-            <section className="company-hero-card">
-              <ProfileCover item={item} />
-              <div className="hero-shade" aria-hidden="true" />
-              <div className="hero-main">
-                <div className="company-logo">
-                  <ProfileLogo item={item} />
-                </div>
-                <div className="hero-copy">
+        <section className="company-hero-card">
+          <ProfileCover item={item} />
+          <div className="hero-shade" aria-hidden="true" />
+          <div className="hero-main">
+            <AssetIdentity
+              symbol={item.company_name}
+              name={item.company_name}
+              assetType="stock"
+              logoUrl={item.logo_url}
+              imageUrl={item.logo_url}
+              size="lg"
+              className="company-logo"
+            />
+            <div className="hero-copy">
                   <span className={`status-pill ${status}`}>
                     <StatusIcon size={15} />
                     {STATUS_LABELS[status] ?? status}
@@ -761,19 +752,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             width: 100%;
             height: 100%;
             object-fit: cover;
-          }
-          .company-avatar-fallback {
-            width: 100%;
-            height: 100%;
-            display: grid;
-            place-items: center;
-            color: #07172A;
-            background: linear-gradient(135deg, #BFF6F0, #23C7D9);
-            font-size: 32px;
-            font-weight: 950;
-          }
-          .company-avatar-fallback.resolving {
-            color: rgba(7, 23, 42, 0.62);
           }
           .hero-copy {
             min-width: 0;
@@ -1285,22 +1263,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             object-fit: contain;
             padding: 10px;
             background: rgba(255, 255, 255, 0.94);
-          }
-
-          :global(.company-avatar-fallback) {
-            width: 100%;
-            height: 100%;
-            display: grid;
-            place-items: center;
-            color: #07172a;
-            background: linear-gradient(135deg, #d9fbff 0%, #22d3ee 48%, #0b76e0 100%);
-            font-size: 34px;
-            font-weight: 950;
-            letter-spacing: 0;
-          }
-
-          :global(.company-avatar-fallback.resolving) {
-            opacity: 0.72;
           }
 
           .hero-copy h1 {

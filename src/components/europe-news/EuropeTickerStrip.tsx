@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { EUROPE_MARKETS, type EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
@@ -49,8 +49,7 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
     >
       {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
         <div className="europe-ticker-item" key={market.id}>
-          <AssetAvatar symbol={market.code} name={indexLabels[market.id]} assetType="index" size="sm" decorative />
-          <strong>{market.code}</strong>
+          <AssetIdentity variant="badge" symbol={market.code} name={indexLabels[market.id]} assetType="index" size="sm" showName={false} />
           <span>{marketLabels[market.id]} / {indexLabels[market.id]}</span>
           <b>{displayValue}</b>
           <em className={tone}>
@@ -64,3 +63,4 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
 }
 
 export default EuropeTickerStrip;
+

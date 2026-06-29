@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, BarChart3, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Gauge, Landmark, LineChart, Percent, PieChart, RefreshCw, ShieldAlert, Sparkles, TrendingUp, WalletCards } from 'lucide-react';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { currencyDisplaySymbol } from '@/lib/currencies';
@@ -1009,7 +1010,18 @@ export function PerformanceTable({ t, locale, performance }: { t: (key: string) 
           <tbody>
             {sorted.map(item => (
               <tr key={`${item.symbol}-${item.asset_type}`}>
-                <td data-label={t('market_symbol')}><span className="performance-symbol" dir="ltr">{item.symbol}</span></td>
+                <td data-label={t('market_symbol')}>
+                  <AssetIdentity
+                    variant="badge"
+                    className="performance-symbol"
+                    symbol={item.symbol}
+                    name={item.name}
+                    assetType={item.asset_type}
+                    exchange={item.exchange ?? undefined}
+                    size="xs"
+                    showName={false}
+                  />
+                </td>
                 <td data-label={t('market_symbol_name')}>{item.name}</td>
                 <td data-label={t('market_current_price')}><span className="performance-value" dir="ltr">{displayPrice(item)}</span></td>
                 <td data-label={t('market_daily_change')}><span className={`performance-value ${Number(item.change_1d) >= 0 ? 'up' : 'down'}`} dir="ltr">{displayPercent(item.change_1d)}</span></td>

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dedupeEconomicEvents, normalizeFmpEconomicEvent } from '@/lib/providers/economic-calendar/fmp';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
+import { getDividendCalendar } from '@/lib/providers/dividend-calendar';
 import { toCycleIndicator } from '@/lib/providers/economic-data/common';
 import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar/finnhub';
 import { dedupeMarketNewsArticles, normalizeFinnhubNewsArticle } from '@/lib/providers/news/finnhub';
@@ -261,6 +262,108 @@ describe('economic calendar provider normalization', () => {
     expect(second.cached).toBe(true);
     expect(second.data).toHaveLength(1);
     expect(second.messageCode).toBe('provider_rate_limited');
+  });
+});
+
+describe('dividend calendar provider', () => {
+  const dividendQuery = {
+    from: '2026-07-01',
+    to: '2026-09-30',
+    symbols: [{ symbol: 'KO', name: 'Coca-Cola', market: 'US', currency: 'USD' }],
+    force: true,
+  };
+
+  it('returns not_configured when dividend calendar provider keys are missing', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', '');
+
+    const result = await getDividendCalendar(dividendQuery);
+
+    expect(result.status).toBe('not_configured');
+    expect(result.provider).toBeNull();
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('provider_not_configured');
+  });
+
+  it('prefers Finnhub dividends calendar when FINNHUB_API_KEY is configured', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      {
+        symbol: 'KO',
+        date: '2026-07-12',
+        amount: 0.51,
+        currency: 'USD',
+        recordDate: '2026-07-13',
+        payDate: '2026-08-01',
+        declarationDate: '2026-06-20',
+      },
+    ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getDividendCalendar(dividendQuery);
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data[0]).toMatchObject({
+      symbol: 'KO',
+      companyName: 'Coca-Cola',
+      market: 'US',
+      currency: 'USD',
+      dividendAmount: 0.51,
+      exDividendDate: '2026-07-12',
+      paymentDate: '2026-08-01',
+      provider: 'finnhub',
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('finnhub.io/api/v1/stock/dividend');
+  });
+
+  it('falls back to FMP direct dividends calendar when Finnhub is not configured', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple',
+        date: '2026-07-15',
+        dividend: 0.27,
+        currency: 'USD',
+        paymentDate: '2026-08-14',
+      },
+    ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getDividendCalendar({ from: '2026-07-01', to: '2026-09-30', force: true });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('fmp');
+    expect(result.data[0]).toMatchObject({
+      symbol: 'AAPL',
+      companyName: 'Apple',
+      dividendAmount: 0.27,
+      exDividendDate: '2026-07-15',
+      provider: 'fmp',
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('financialmodelingprep.com/stable/dividends-calendar');
+  });
+
+  it('reports dividend provider access failures without returning fabricated events', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('FMP_API_KEY', '');
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      error: 'Forbidden',
+    }), { status: 403 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getDividendCalendar(dividendQuery);
+
+    expect(result.status).toBe('forbidden');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('provider_access_denied');
   });
 });
 

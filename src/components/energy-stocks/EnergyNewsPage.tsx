@@ -1,11 +1,9 @@
-'use client';
+﻿'use client';
 
 import {
   Activity,
   AlertTriangle,
-  ArrowUpRight,
   BarChart3,
-  BatteryCharging,
   BookOpen,
   BookmarkPlus,
   Building2,
@@ -18,12 +16,10 @@ import {
   Filter,
   Flame,
   Gauge,
-  Globe2,
   Info,
   Landmark,
   Layers3,
   Leaf,
-  LineChart,
   Loader2,
   Newspaper,
   RefreshCcw,
@@ -44,8 +40,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -269,7 +264,7 @@ const TEXT = {
     source: 'المصدر',
     dataDate: 'تاريخ البيانات',
     viewAll: 'عرض الكل',
-    readArticle: 'قراءة الخبر',
+    readArticle: 'اقرأ المزيد',
     openSource: 'فتح المصدر',
     addWatchlist: 'إضافة للمراقبة',
     details: 'التفاصيل',
@@ -396,7 +391,7 @@ const TEXT = {
     tableChange: 'التغير',
     tableCurrency: 'العملة',
     tableSource: 'المصدر',
-    tableAction: 'إجراء',
+    tableAction: 'فتح المصدر',
     commodityUnavailable: 'بيانات السلعة غير متاحة حالياً',
     eventProviderMissing: 'لا يوجد تكامل تقويم أحداث الطاقة في هذه الصفحة حالياً.',
     tabsLabel: 'أقسام مركز أسواق الطاقة',
@@ -919,37 +914,38 @@ function toneFor(value: number | null | undefined): Tone {
 }
 
 function formatMoney(value: number | null | undefined, currency: string | null | undefined, locale: string) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 'غير متاح';
+  if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const safeCurrency = currency && /^[A-Z]{3}$/.test(currency) ? currency : 'USD';
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: safeCurrency,
-      minimumFractionDigits: Math.abs(value) >= 100 ? 2 : 3,
-      maximumFractionDigits: Math.abs(value) >= 100 ? 2 : 3,
-    }).format(value);
-  } catch {
-    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(value)} ${safeCurrency}`;
-  }
+  const digits = Math.abs(value) >= 100 ? 2 : 3;
+  return `${new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)} ${safeCurrency}`;
+}
+
+function formatSignedMoney(value: number | null | undefined, currency: string | null | undefined, locale: string) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  return `${sign}${formatMoney(Math.abs(value), currency, locale)}`;
 }
 
 function formatNumber(value: number | null | undefined, locale: string, maximumFractionDigits = 2) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 'غير متاح';
+  if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   return new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value);
 }
 
 function formatPercent(value: number | null | undefined, locale: string) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 'غير متاح';
-  return `${value > 0 ? '+' : ''}${new Intl.NumberFormat(locale, {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
+  return `${value > 0 ? '+' : ''}${new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value)}%`;
 }
 
 function formatDateTime(value: string | null | undefined, locale: string) {
-  if (!value) return 'غير متاح';
+  if (!value) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير متاح';
+  if (Number.isNaN(date.getTime())) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -957,14 +953,14 @@ function formatDateTime(value: string | null | undefined, locale: string) {
 }
 
 function formatDate(value: string | null | undefined, locale: string) {
-  if (!value) return 'غير متاح';
+  if (!value) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير متاح';
+  if (Number.isNaN(date.getTime())) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
 }
 
 function relativeDate(value: string | null | undefined, locale: string) {
-  if (!value) return 'غير متاح';
+  if (!value) return locale.startsWith('ar') ? 'غير متاح' : 'Unavailable';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return formatDate(value, locale);
   const diffMs = date.getTime() - Date.now();
@@ -982,8 +978,66 @@ function categoryLabel(category: string | null | undefined, lang: LangCode) {
 }
 
 function commodityLabel(item: EnergyCommodity, lang: LangCode) {
-  if (lang === 'ar' && item.nameAr && !/[ØÃ]/.test(item.nameAr)) return item.nameAr;
+  const cleanArabicName = item.nameAr && !/[ØÙÃÂ]/.test(item.nameAr) ? item.nameAr : '';
+  const labels: Record<string, Record<LangCode, string>> = {
+    brent: { ar: 'خام برنت', en: 'Brent crude', fr: 'Brent' },
+    wti: { ar: 'خام غرب تكساس WTI', en: 'WTI crude', fr: 'WTI' },
+    natural_gas: { ar: 'الغاز الطبيعي', en: 'Natural gas', fr: 'Gaz naturel' },
+    gasoline: { ar: 'بنزين RBOB', en: 'RBOB gasoline', fr: 'Essence RBOB' },
+    heating_oil: { ar: 'زيت التدفئة', en: 'Heating oil', fr: 'Fioul domestique' },
+    energy_etf: { ar: 'مؤشر قطاع الطاقة XLE', en: 'Energy sector ETF XLE', fr: 'ETF secteur énergie XLE' },
+    renewables_etf: { ar: 'مؤشر الطاقة النظيفة ICLN', en: 'Clean energy ETF ICLN', fr: 'ETF énergie propre ICLN' },
+    solar_etf: { ar: 'مؤشر الطاقة الشمسية TAN', en: 'Solar ETF TAN', fr: 'ETF solaire TAN' },
+  };
+  if (labels[item.category]) return labels[item.category][lang];
+  if (lang === 'ar' && cleanArabicName) return cleanArabicName;
   return item.displayName;
+}
+
+function commodityUnit(item: EnergyCommodity | null | undefined) {
+  if (!item) return null;
+  if (item.unit && /USD/i.test(item.unit)) return item.unit.replace(/\s+/g, '');
+  const currency = item.currency && /^[A-Z]{3}$/.test(item.currency) ? item.currency : 'USD';
+  if (item.category === 'brent' || item.category === 'wti') return `${currency}/barrel`;
+  if (item.category === 'natural_gas') return `${currency}/MMBtu`;
+  if (item.category === 'gasoline' || item.category === 'heating_oil') return `${currency}/gallon`;
+  return item.unit || currency;
+}
+
+function quoteAvailable(item: EnergyCommodity | null | undefined) {
+  return Boolean(item?.available && typeof item.price === 'number' && Number.isFinite(item.price));
+}
+
+function moveAvailable(item: EnergyCommodity | null | undefined) {
+  return quoteAvailable(item) && typeof item?.changePercent === 'number' && Number.isFinite(item.changePercent);
+}
+
+function localizedUnavailable(locale: string) {
+  if (locale.startsWith('ar')) {
+    return {
+      title: 'غير متاح حالياً',
+      body: 'تعذر جلب هذه البيانات من المزود.',
+      source: 'المزود غير متاح',
+      benchmark: 'المؤشر',
+      absoluteMove: 'التغير السعري',
+    };
+  }
+  if (locale.startsWith('fr')) {
+    return {
+      title: 'Indisponible',
+      body: 'Le fournisseur ne renvoie pas cette donnée pour le moment.',
+      source: 'Fournisseur indisponible',
+      benchmark: 'Benchmark',
+      absoluteMove: 'Variation',
+    };
+  }
+  return {
+    title: 'Unavailable',
+    body: 'The provider could not return this data right now.',
+    source: 'Provider unavailable',
+    benchmark: 'Benchmark',
+    absoluteMove: 'Price move',
+  };
 }
 
 function isCommodityFuture(item: EnergyCommodity) {
@@ -1413,21 +1467,28 @@ function EnergyCommodityStrip({ items, loading, text, lang, locale, compact = fa
             const tone = toneFor(item.changePercent);
             return (
               <article className={`energyCommodityCard energyTone-${tone}`} key={item.symbol}>
-                <div>
-                  <span className="energyCommodityType">{isCommodityFuture(item) ? text.commodityStripTitle : text.marketData}</span>
-                  <strong>{commodityLabel(item, lang)}</strong>
-                  <small dir="ltr">{item.symbol}</small>
-                </div>
+                <header className="energyCommodityCardHeader">
+                  <div>
+                    <span className="energyCommodityType">{isCommodityFuture(item) ? text.commodityStripTitle : text.marketData}</span>
+                    <strong>{commodityLabel(item, lang)}</strong>
+                    <small dir="ltr">{item.symbol}</small>
+                  </div>
+                  <span className="energyCommoditySource" dir={item.source ? 'ltr' : 'auto'}>{item.source || text.unavailable}</span>
+                </header>
                 {item.available ? (
-                  <>
+                  <div className="energyCommodityValueRow">
                     <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                     <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                  </>
+                  </div>
                 ) : (
-                  <b>{text.commodityUnavailable}</b>
+                  <div className="energyCommodityUnavailable">
+                    <strong>{text.unavailable}</strong>
+                    <span>{text.commodityUnavailable}</span>
+                  </div>
                 )}
                 <footer>
-                  <span>{text.unit}: <i dir="ltr">{item.unit}</i></span>
+                  <span dir="ltr">{commodityUnit(item)}</span>
+                  <span>{text.currency}: <i dir="ltr">{item.currency}</i></span>
                   <span>{item.delayed ? text.delayedData : text.connected}</span>
                 </footer>
               </article>
@@ -1448,32 +1509,158 @@ function EnergyMarketSnapshot({ tickerItems, commodityItems, loading, text, loca
   text: TextBundle;
   locale: string;
 }) {
-  const sectorName = locale.startsWith('ar') ? 'السوق' : locale.startsWith('fr') ? 'Marché' : 'Market';
   const availableCommodities = commodityItems.filter(item => item.available);
-  const rising = tickerItems.filter(item => (item.changePercent ?? 0) > 0).length;
-  const falling = tickerItems.filter(item => (item.changePercent ?? 0) < 0).length;
-  const avgMove = tickerItems.length
-    ? tickerItems.reduce((sum, item) => sum + (item.changePercent ?? 0), 0) / tickerItems.length
-    : null;
   const oilBenchmark = commodityItems.find(item => item.category === 'brent');
   const wti = commodityItems.find(item => item.category === 'wti');
   const naturalGas = commodityItems.find(item => item.category === 'natural_gas');
   const heatingOil = commodityItems.find(item => item.category === 'heating_oil');
-  const sectorMovement = avgMove === null ? null : `${formatPercent(avgMove, locale)}`;
-  const cleanProxy = commodityItems.find(item => isCleanEnergyProxy(item));
+  const sectorProxy = commodityItems.find(item => item.category === 'energy_etf');
   const hasData = tickerItems.length > 0 || availableCommodities.length > 0;
-  const oilPrice = oilBenchmark?.price ?? wti?.price ?? naturalGas?.price;
-  const oilCurrency = oilBenchmark?.currency ?? wti?.currency ?? naturalGas?.currency ?? null;
-  const oilChange = oilBenchmark?.change ?? wti?.change ?? naturalGas?.change ?? null;
-  const oilChangePercent = oilBenchmark?.changePercent ?? wti?.changePercent ?? naturalGas?.changePercent ?? null;
-  const oilPriceSource = oilBenchmark?.source ?? wti?.source ?? naturalGas?.source ?? null;
+  const avgMove = tickerItems.length
+    ? tickerItems.reduce((sum, item) => sum + (item.changePercent ?? 0), 0) / tickerItems.length
+    : null;
+  const cleanProxy = sectorProxy;
+  const oilPrice = oilBenchmark?.price ?? wti?.price ?? naturalGas?.price ?? null;
   const oilPriceStatus = [oilBenchmark?.available, wti?.available, naturalGas?.available].some(Boolean) ? text.connected : text.unavailable;
-  const oilPriceTone = toneFor(oilChangePercent);
-  const sectorTone = toneFor(avgMove);
-  const oilLabel = locale.startsWith('ar') ? 'سعر النفط' : locale.startsWith('fr') ? 'Prix du pétrole' : 'Oil price';
-  const heatingOilLabel = locale.startsWith('ar') ? 'زيت التدفئة' : locale.startsWith('fr') ? 'Fioul' : 'Heating oil';
-  const sectorLabel = locale.startsWith('ar') ? 'حركة القطاع الطاقي' : locale.startsWith('fr') ? 'Mouvement sectoriel' : 'Energy sector movement';
-  const movementMeta = locale.startsWith('fr') ? 'Mouvements' : locale.startsWith('ar') ? 'الحركة' : 'Movement';
+  const oilCardTone = toneFor(oilBenchmark?.changePercent ?? wti?.changePercent ?? naturalGas?.changePercent);
+  const unavailable = localizedUnavailable(locale);
+  const copy = locale.startsWith('ar')
+    ? {
+        oilPrice: 'سعر النفط',
+        oilMove: 'حركة النفط',
+        gasPrice: 'سعر الغاز',
+        gasMove: 'حركة الغاز',
+        heatingOil: 'زيت التدفئة',
+        sectorIndex: 'مؤشر القطاع الطاقي',
+        oilPriceDescription: (benchmark: string) => `السعر المرجعي المعروض من ${benchmark} حسب توافر المزود.`,
+        oilMoveDescription: (benchmark: string) => `التغير اليومي لمرجع ${benchmark} مع إبقاء السعر والنسبة بصيغة واضحة.`,
+        gasPriceDescription: 'سعر الغاز الطبيعي بوحدة USD/MMBtu من المزود المتاح.',
+        gasMoveDescription: 'النسبة اليومية لحركة الغاز الطبيعي مع التغير السعري عند توفره.',
+        heatingOilDescription: 'عقد زيت التدفئة مع وحدة USD/gallon للقراءة السريعة.',
+        sectorDescription: 'مؤشر XLE كبديل سوقي مختصر لأداء قطاع الطاقة.',
+      }
+    : locale.startsWith('fr')
+      ? {
+          oilPrice: 'Prix du pétrole',
+          oilMove: 'Mouvement pétrole',
+          gasPrice: 'Prix du gaz',
+          gasMove: 'Mouvement gaz',
+          heatingOil: 'Fioul domestique',
+          sectorIndex: 'Indice énergie',
+          oilPriceDescription: (benchmark: string) => `Prix du benchmark ${benchmark} selon la donnée fournisseur disponible.`,
+          oilMoveDescription: (benchmark: string) => `Variation journalière du benchmark ${benchmark}, avec montant et pourcentage lisibles.`,
+          gasPriceDescription: 'Prix du gaz naturel en USD/MMBtu depuis le fournisseur disponible.',
+          gasMoveDescription: 'Variation journalière du gaz naturel avec le mouvement de prix si disponible.',
+          heatingOilDescription: 'Contrat fioul avec unité USD/gallon pour une lecture rapide.',
+          sectorDescription: 'ETF XLE comme proxy compact de la performance du secteur énergie.',
+        }
+      : {
+          oilPrice: 'Oil price',
+          oilMove: 'Oil move',
+          gasPrice: 'Gas price',
+          gasMove: 'Gas move',
+          heatingOil: 'Heating oil',
+          sectorIndex: 'Energy sector index',
+          oilPriceDescription: (benchmark: string) => `${benchmark} benchmark price from the available provider feed.`,
+          oilMoveDescription: (benchmark: string) => `${benchmark} daily move with the absolute and percentage change kept readable.`,
+          gasPriceDescription: 'Natural gas price in USD/MMBtu from the available provider.',
+          gasMoveDescription: 'Daily natural gas move with price change when available.',
+          heatingOilDescription: 'Heating oil contract shown with the USD/gallon unit.',
+          sectorDescription: 'XLE is used as a compact market proxy for energy-sector performance.',
+        };
+  const oil = quoteAvailable(oilBenchmark) ? oilBenchmark : quoteAvailable(wti) ? wti : oilBenchmark ?? wti ?? null;
+  const oilBenchmarkLabel = oil?.category === 'wti' ? 'WTI' : 'Brent';
+  const commodityCategoryLabel = (item: EnergyCommodity | null | undefined) => item ? commodityLabel(item, locale.startsWith('ar') ? 'ar' : locale.startsWith('fr') ? 'fr' : 'en') : unavailable.benchmark;
+  const moveValue = (item: EnergyCommodity | null | undefined) => {
+    if (typeof item?.change === 'number' && Number.isFinite(item.change)) return formatSignedMoney(item.change, item.currency, locale);
+    return formatPercent(item?.changePercent, locale);
+  };
+  const insightCards = [
+    {
+      key: 'oil-price',
+      title: copy.oilPrice,
+      icon: Droplets,
+      item: oil,
+      category: oilBenchmarkLabel,
+      value: quoteAvailable(oil) ? formatMoney(oil?.price, oil?.currency, locale) : unavailable.title,
+      change: moveAvailable(oil) ? formatPercent(oil?.changePercent, locale) : text.unavailable,
+      source: oil?.source ?? null,
+      unit: commodityUnit(oil),
+      explanation: quoteAvailable(oil) ? copy.oilPriceDescription(oilBenchmarkLabel) : unavailable.body,
+      available: quoteAvailable(oil),
+      tone: toneFor(oil?.changePercent),
+    },
+    {
+      key: 'oil-move',
+      title: copy.oilMove,
+      icon: Activity,
+      item: oil,
+      category: oilBenchmarkLabel,
+      value: moveAvailable(oil) ? moveValue(oil) : unavailable.title,
+      change: moveAvailable(oil) ? formatPercent(oil?.changePercent, locale) : text.unavailable,
+      source: oil?.source ?? null,
+      unit: commodityUnit(oil),
+      explanation: moveAvailable(oil) ? copy.oilMoveDescription(oilBenchmarkLabel) : unavailable.body,
+      available: moveAvailable(oil),
+      tone: toneFor(oil?.changePercent),
+    },
+    {
+      key: 'gas-price',
+      title: copy.gasPrice,
+      icon: Flame,
+      item: naturalGas ?? null,
+      category: commodityCategoryLabel(naturalGas),
+      value: quoteAvailable(naturalGas) ? formatMoney(naturalGas?.price, naturalGas?.currency, locale) : unavailable.title,
+      change: moveAvailable(naturalGas) ? formatPercent(naturalGas?.changePercent, locale) : text.unavailable,
+      source: naturalGas?.source ?? null,
+      unit: commodityUnit(naturalGas),
+      explanation: quoteAvailable(naturalGas) ? copy.gasPriceDescription : unavailable.body,
+      available: quoteAvailable(naturalGas),
+      tone: toneFor(naturalGas?.changePercent),
+    },
+    {
+      key: 'gas-move',
+      title: copy.gasMove,
+      icon: Gauge,
+      item: naturalGas ?? null,
+      category: commodityCategoryLabel(naturalGas),
+      value: moveAvailable(naturalGas) ? moveValue(naturalGas) : unavailable.title,
+      change: moveAvailable(naturalGas) ? formatPercent(naturalGas?.changePercent, locale) : text.unavailable,
+      source: naturalGas?.source ?? null,
+      unit: commodityUnit(naturalGas),
+      explanation: moveAvailable(naturalGas) ? copy.gasMoveDescription : unavailable.body,
+      available: moveAvailable(naturalGas),
+      tone: toneFor(naturalGas?.changePercent),
+    },
+    {
+      key: 'heating-oil',
+      title: copy.heatingOil,
+      icon: Factory,
+      item: heatingOil ?? null,
+      category: commodityCategoryLabel(heatingOil),
+      value: quoteAvailable(heatingOil) ? formatMoney(heatingOil?.price, heatingOil?.currency, locale) : unavailable.title,
+      change: moveAvailable(heatingOil) ? formatPercent(heatingOil?.changePercent, locale) : text.unavailable,
+      source: heatingOil?.source ?? null,
+      unit: commodityUnit(heatingOil),
+      explanation: quoteAvailable(heatingOil) ? copy.heatingOilDescription : unavailable.body,
+      available: quoteAvailable(heatingOil),
+      tone: toneFor(heatingOil?.changePercent),
+    },
+    {
+      key: 'sector-index',
+      title: copy.sectorIndex,
+      icon: BarChart3,
+      item: sectorProxy ?? null,
+      category: sectorProxy?.symbol ?? 'XLE',
+      value: quoteAvailable(sectorProxy) ? formatMoney(sectorProxy?.price, sectorProxy?.currency, locale) : unavailable.title,
+      change: moveAvailable(sectorProxy) ? formatPercent(sectorProxy?.changePercent, locale) : text.unavailable,
+      source: sectorProxy?.source ?? null,
+      unit: commodityUnit(sectorProxy),
+      explanation: quoteAvailable(sectorProxy) ? copy.sectorDescription : unavailable.body,
+      available: quoteAvailable(sectorProxy),
+      tone: toneFor(sectorProxy?.changePercent),
+    },
+  ];
 
   if (loading) {
     return (
@@ -1490,131 +1677,56 @@ function EnergyMarketSnapshot({ tickerItems, commodityItems, loading, text, loca
     <section className="energyPanel">
       <SectionHeader icon={BarChart3} title={text.snapshotTitle} subtitle={text.snapshotSubtitle} />
       <div className="energySummaryGrid">
-        {[
-          {
-            key: 'oil',
-            title: oilLabel,
-            icon: Droplets,
-            item: {
-              price: oilPrice,
-              currency: oilCurrency,
-              unit: text.unit,
-              change: oilChange,
-              changePercent: oilChangePercent,
-              source: oilPriceSource,
-              available: oilPriceStatus === text.connected,
-            },
-            tone: oilPriceTone,
-            marketLabel: text.commodityStripTitle,
-          },
-          {
-            key: 'brent',
-            title: text.brentMove,
-            icon: Activity,
-            item: oilBenchmark,
-            tone: toneFor(oilBenchmark?.changePercent),
-            marketLabel: text.commodityStripTitle,
-          },
-          {
-            key: 'wti',
-            title: text.wtiMove,
-            icon: Flame,
-            item: wti,
-            tone: toneFor(wti?.changePercent),
-            marketLabel: text.commodityStripTitle,
-          },
-          {
-            key: 'gas',
-            title: text.gasMove,
-            icon: Droplets,
-            item: naturalGas,
-            tone: toneFor(naturalGas?.changePercent),
-            marketLabel: text.commodityStripTitle,
-          },
-          {
-            key: 'heating',
-            title: heatingOilLabel,
-            icon: Factory,
-            item: heatingOil,
-            tone: toneFor(heatingOil?.changePercent),
-            marketLabel: text.commodityStripTitle,
-          },
-          {
-            key: 'sector',
-            title: sectorLabel,
-            icon: Gauge,
-            item: null,
-            tone: sectorTone,
-            marketLabel: sectorName,
-          },
-        ].map(card => (
-          <article key={card.key} className={`energySummaryCard energyTone-${card.tone}`}>
+        {insightCards.map(card => {
+          const Icon = card.icon;
+          return (
+          <article key={card.key} className={`energySummaryCard energyTone-${card.tone}${card.available ? '' : ' energySummaryCardUnavailable'}`}>
             <div className="energySummaryHeader">
-              <card.icon size={17} />
-              <div>
-                <strong>{card.title}</strong>
-                <span>{card.marketLabel}</span>
+              <div className="energySummaryIdentity">
+                <span className="energySummaryIcon"><Icon size={18} /></span>
+                <div>
+                  <strong>{card.title}</strong>
+                  <span>{card.category}</span>
+                </div>
               </div>
+              <span className="energySummarySource" dir={card.source ? 'ltr' : 'auto'}>{card.source || unavailable.source}</span>
             </div>
-            {card.key === 'sector' ? (
-              <>
-                <b dir="ltr">{formatPercent(avgMove, locale)}</b>
-                <small>{sectorMovement || text.unavailable}</small>
-              </>
-            ) : (
-              <>
-                <b dir="ltr">{formatMoney(card.item?.price ?? null, card.item?.currency ?? null, locale)}</b>
-                <small>
-                  <span>{text.change}: <span dir="ltr">{formatMoney(card.item?.change ?? null, card.item?.currency ?? null, locale)}</span></span>
-                  <span>{text.change}: <span dir="ltr">{formatPercent(card.item?.changePercent ?? null, locale)}</span></span>
-                </small>
-              </>
-            )}
-            <div className="energySummaryMetrics">
-              {card.key === 'sector' ? (
-                <>
-                  <span>{text.unit}: {formatNumber(rising, locale, 0)}</span>
-                  <span>{text.currency}: {formatNumber(falling, locale, 0)}</span>
-                </>
-              ) : (
-                <>
-                  <span>{text.unit}: {card.item?.unit ?? text.unavailable}</span>
-                  <span>{text.currency}: {card.item?.currency || text.currency}</span>
-                  <span>{text.source}: <span dir="ltr">{card.item?.source || text.unavailable}</span></span>
-                </>
-              )}
+            <div className="energySummaryValueRow">
+              <b className="energySummaryValue" dir={card.available ? 'ltr' : 'auto'}>{card.value}</b>
+              <span className="energySummaryChange" dir="ltr">{card.change}</span>
             </div>
-            <footer>
-              {card.key === 'sector' ? (
-                <DataBadge tone={sectorTone === 'neutral' ? 'warning' : sectorTone}>
-                  {cleanProxy?.source ? `${text.cleanEnergyProxy} · ${cleanProxy.source}` : text.noMarketTitle}
-                </DataBadge>
-              ) : (
-                <DataBadge tone={(card.item?.available ?? false) ? card.tone : 'warning'}>
-                  {(card.item?.available ?? false) ? text.connected : text.unavailable}
-                </DataBadge>
-              )}
-              <DataBadge tone="neutral">{text.market}</DataBadge>
-            </footer>
+            <p>{card.explanation}</p>
+            {!card.available ? (
+              <div className="energySummaryUnavailable">
+                <strong>{unavailable.title}</strong>
+                <span>{unavailable.body}</span>
+              </div>
+            ) : null}
+            <div className="energySummaryMeta">
+              {card.unit ? <span dir="ltr">{card.unit}</span> : null}
+              <span>{unavailable.benchmark}: <i dir="ltr">{card.category}</i></span>
+              <span>{text.change}: <i dir="ltr">{card.change}</i></span>
+            </div>
           </article>
-        ))}
+          );
+        })}
       </div>
       {!hasData ? <EmptyState title={text.noMarketTitle} body={text.noMarketBody} icon={AlertTriangle} /> : null}
       <div className="energySummaryFooter">
         <small>{text.provider}: {availableCommodities[0]?.source ?? text.unavailable}</small>
-        <small>{movementMeta}: {tickerItems.length ? formatNumber(tickerItems.length, locale, 0) : 0}</small>
+        <small>{text.volume}: {tickerItems.length ? formatNumber(tickerItems.length, locale, 0) : 0}</small>
       </div>
     </section>
   );
 }
 
-function EnergyTicker({ items, loading, text, locale }: {
+function EnergyTicker({ items, loading, text, locale, lang }: {
   items: EnergyTickerItem[];
   loading: boolean;
   text: TextBundle;
   locale: string;
+  lang: LangCode;
 }) {
-  const loopItems = items.length > 0 ? [...items, ...items] : [];
   return (
     <section className="energyTickerPanel" aria-label={text.marketData}>
       {loading ? (
@@ -1623,23 +1735,20 @@ function EnergyTicker({ items, loading, text, locale }: {
         </div>
       ) : items.length > 0 ? (
         <div className="energyTickerViewport">
-          <div className="energyTickerTrack energyTickerMarquee">
-            {loopItems.map((item, index) => {
+          <div className="energyTickerTrack">
+            {items.map(item => {
             const tone = toneFor(item.changePercent);
             return (
-              <article
-                className={`energyTickerItem energyTone-${tone}`}
-                key={`${item.symbol}-${index}`}
-                aria-hidden={index >= items.length ? true : undefined}
-              >
+              <article className={`energyTickerItem energyTone-${tone}`} key={item.symbol}>
                 <div className="energyTickerIdentity">
-                  <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+                  <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
                   <span dir="ltr">{item.symbol}</span>
                 </div>
                 <strong>{item.name}</strong>
                 <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
                 <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                <small>{categoryLabel(item.sector, 'en')}</small>
+                <small>{categoryLabel(item.sector, lang)}</small>
+                <small>{item.source}</small>
               </article>
             );
             })}
@@ -1715,7 +1824,7 @@ function EnergyMarketMovers({ movers, commodities, text, locale }: {
   const renderRows = (rows: StockCategoryMoverItem[], _tone: Tone) => (
     rows.length > 0 ? rows.map(row => (
       <div className={`energyMoverRow energyTone-${toneFor(row.changePercent)}`} key={row.symbol}>
-        <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
+        <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
         <span dir="ltr">{row.symbol}</span>
         <strong>{row.name}</strong>
         <b dir="ltr">{formatMoney(row.price, row.currency, locale)}</b>
@@ -1726,7 +1835,7 @@ function EnergyMarketMovers({ movers, commodities, text, locale }: {
   const renderCommodityRows = () => (
     commodityRows.length > 0 ? commodityRows.map(row => (
       <div className={`energyMoverRow energyTone-${toneFor(row.changePercent)}`} key={row.symbol}>
-        <AssetAvatar symbol={row.symbol} name={row.displayName} assetType="commodity" size="sm" decorative />
+        <AssetIdentity symbol={row.symbol} name={row.displayName} assetType="commodity" size="sm" decorative />
         <span dir="ltr">{row.symbol}</span>
         <strong>{row.displayName}</strong>
         <b dir="ltr">{formatMoney(row.price, row.currency, locale)}</b>
@@ -1798,7 +1907,7 @@ function FeaturedEnergyCompanies({ items, text, lang, locale, limit = 6 }: {
             return (
               <article className={`energyCompanyFeature energyTone-${tone}`} key={item.symbol}>
                 <header>
-                  <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
+                  <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
                   <div>
                     <strong>{item.name}</strong>
                     <small dir="ltr">{item.symbol}</small>
@@ -1914,7 +2023,7 @@ function EnergyCompanyCards({ items, text, lang, locale, limit }: {
       {shown.map(item => (
         <article className={`energyCompanyFeature energyTone-${toneFor(item.changePercent)}`} key={item.symbol}>
           <header>
-            <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
+            <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
             <div>
               <strong>{item.name}</strong>
               <small dir="ltr">{item.symbol}</small>
@@ -2564,7 +2673,7 @@ export function EnergyNewsPage() {
     } else {
       setTickerItems([]);
       setTickerUpdatedAt('');
-      setMarketError(text.noMarketBody);
+      setMarketError(text.providerError);
     }
     if (commodityResult.status === 'fulfilled' && commodityResult.value.ok) {
       setCommodityItems(commodityResult.value.items);
@@ -2572,11 +2681,11 @@ export function EnergyNewsPage() {
     } else {
       setCommodityItems([]);
       setCommodityUpdatedAt('');
-      setMarketError(text.noMarketBody);
+      setMarketError(text.providerError);
     }
     setMarketLoaded(true);
     setMarketLoading(false);
-  }, [text.noMarketBody]);
+  }, [text.providerError]);
 
   const loadNews = useCallback(async (showLoader = true) => {
     if (showLoader) setNewsLoading(true);
@@ -2589,17 +2698,17 @@ export function EnergyNewsPage() {
       } else {
         setNewsItems([]);
         setNewsUpdatedAt('');
-        setNewsError(result.reason || result.error || text.noNewsTitle);
+        setNewsError(text.providerError);
       }
     } catch {
       setNewsItems([]);
       setNewsUpdatedAt('');
-      setNewsError(text.noNewsTitle);
+      setNewsError(text.providerError);
     } finally {
       setNewsLoaded(true);
       setNewsLoading(false);
     }
-  }, [activeLang, text.noNewsTitle]);
+  }, [activeLang, text.providerError]);
 
   const loadMovers = useCallback(async (showLoader = true) => {
     if (showLoader) setMoversLoading(true);
@@ -2796,7 +2905,7 @@ export function EnergyNewsPage() {
             onViewReports={() => setActiveTab('news')}
             dataSources={dataSources}
           />
-          <EnergyTicker items={tickerItems} loading={marketLoading} text={text} locale={locale} />
+          <EnergyTicker items={tickerItems} loading={marketLoading} text={text} locale={locale} lang={activeLang} />
           {marketError ? <div className="energyInlineWarning"><AlertTriangle size={17} />{marketError}</div> : null}
           <EnergyCenterTabs activeTab={activeTab} setActiveTab={setActiveTab} text={text} />
           {renderTab()}
@@ -2817,3 +2926,4 @@ export function EnergyNewsPage() {
 }
 
 export default EnergyNewsPage;
+

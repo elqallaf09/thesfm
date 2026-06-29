@@ -3715,12 +3715,232 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           min-height: 78px;
           border-radius: 15px;
         }
-        .energyCommodityCard {
+        .energySummaryGrid {
           display: grid;
-          gap: 7px;
-          padding: 12px;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          min-width: 0;
+          align-items: stretch;
         }
-        .energyCommodityCard div {
+        .energySummaryCard {
+          position: relative;
+          min-width: 0;
+          min-height: 214px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 14px;
+          border: 1px solid rgba(29, 140, 255, 0.12);
+          border-radius: 18px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 252, 255, 0.94)),
+            #fff;
+          box-shadow: 0 12px 28px rgba(3, 18, 37, 0.05);
+          color: #07182f;
+        }
+        .energySummaryCard::before {
+          content: "";
+          position: absolute;
+          inset-block: 0;
+          inset-inline-start: 0;
+          width: 4px;
+          background: #8fb7ca;
+        }
+        .energySummaryCard.energyTone-positive::before {
+          background: #10b981;
+        }
+        .energySummaryCard.energyTone-negative::before {
+          background: #f43f5e;
+        }
+        .energySummaryCard.energySummaryCardUnavailable::before,
+        .energySummaryCard.energyTone-warning::before {
+          background: #f59e0b;
+        }
+        .energySummaryHeader {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 12px;
+          min-width: 0;
+        }
+        .energySummaryIdentity {
+          min-width: 0;
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .energySummaryIcon {
+          width: 36px;
+          height: 36px;
+          flex: 0 0 auto;
+          border-radius: 13px;
+          display: grid;
+          place-items: center;
+          color: #0f7891;
+          background: #f0fbff;
+          border: 1px solid rgba(34, 211, 238, 0.2);
+        }
+        .energySummaryIdentity > div {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+        .energySummaryIdentity strong {
+          color: #081a33;
+          font-size: 15px;
+          line-height: 1.35;
+          font-weight: 950;
+        }
+        .energySummaryIdentity > div > span {
+          color: #64748b;
+          font-size: 11px;
+          line-height: 1.4;
+          font-weight: 900;
+          overflow-wrap: anywhere;
+        }
+        .energySummarySource,
+        .energyCommoditySource {
+          max-width: 150px;
+          min-height: 26px;
+          flex: 0 1 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          background: #f7fcff;
+          color: #0f7891;
+          padding: 0 9px;
+          font-size: 10.5px;
+          line-height: 1;
+          font-weight: 950;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .energySummaryValueRow,
+        .energyCommodityValueRow {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 10px;
+          min-width: 0;
+        }
+        .energySummaryValue {
+          color: #07182f;
+          font-size: clamp(22px, 2.2vw, 30px);
+          line-height: 1;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+          overflow-wrap: anywhere;
+        }
+        .energySummaryChange {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 116, 139, 0.14);
+          background: #f8fafc;
+          color: #475569;
+          padding: 0 9px;
+          font-size: 12px;
+          font-weight: 950;
+          font-variant-numeric: tabular-nums;
+        }
+        .energySummaryCard.energyTone-positive .energySummaryChange,
+        .energyCommodityCard.energyTone-positive .energyCommodityValueRow em {
+          color: #047857;
+          background: #ecfdf5;
+          border-color: rgba(16, 185, 129, 0.18);
+        }
+        .energySummaryCard.energyTone-negative .energySummaryChange,
+        .energyCommodityCard.energyTone-negative .energyCommodityValueRow em {
+          color: #b42318;
+          background: #fff1f2;
+          border-color: rgba(244, 63, 94, 0.18);
+        }
+        .energySummaryCard p {
+          margin: 0;
+          color: #5d6f86;
+          font-size: 12.5px;
+          line-height: 1.65;
+          font-weight: 850;
+        }
+        .energySummaryUnavailable,
+        .energyCommodityUnavailable {
+          display: grid;
+          gap: 4px;
+          border: 1px dashed rgba(245, 158, 11, 0.28);
+          border-radius: 14px;
+          background: #fffbeb;
+          padding: 10px;
+          color: #92400e;
+        }
+        .energySummaryUnavailable strong,
+        .energyCommodityUnavailable strong {
+          color: #92400e;
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .energySummaryUnavailable span,
+        .energyCommodityUnavailable span {
+          color: #a16207;
+          font-size: 11px;
+          line-height: 1.55;
+          font-weight: 850;
+        }
+        .energySummaryMeta {
+          margin-top: auto;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          min-width: 0;
+        }
+        .energySummaryMeta span {
+          min-height: 25px;
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 116, 139, 0.12);
+          background: #f8fafc;
+          color: #52677f;
+          padding: 0 8px;
+          font-size: 10.5px;
+          font-weight: 900;
+        }
+        .energySummaryMeta i {
+          font-style: normal;
+        }
+        .energySummaryFooter {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          gap: 8px;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 850;
+        }
+        .energyCommodityCard {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 13px;
+          color: #07182f;
+        }
+        .energyCommodityCardHeader {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 10px;
+          min-width: 0;
+        }
+        .energyCommodityCardHeader > div {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+        .energyCommodityCard > div:not(.energyCommodityValueRow):not(.energyCommodityUnavailable) {
           min-width: 0;
           display: grid;
           gap: 4px;
@@ -3746,23 +3966,42 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyCommodityCard b {
           color: #07182f;
-          font-size: 18px;
+          font-size: 19px;
           font-weight: 950;
           font-variant-numeric: tabular-nums;
         }
         .energyCommodityCard em {
+          min-height: 28px;
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 116, 139, 0.14);
+          background: #f8fafc;
+          color: #475569;
+          padding: 0 9px;
           font-style: normal;
           font-weight: 950;
           font-variant-numeric: tabular-nums;
         }
         .energyCommodityCard footer {
           display: flex;
-          justify-content: space-between;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 7px;
           color: #64748b;
           font-size: 11px;
           font-weight: 850;
+        }
+        .energyCommodityCard footer span {
+          min-height: 24px;
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          background: #f8fafc;
+          border: 1px solid rgba(100, 116, 139, 0.1);
+          padding: 0 8px;
+        }
+        .energyCommodityCard footer i {
+          font-style: normal;
         }
         .energyCommoditySkeleton {
           min-height: 112px;
@@ -4564,6 +4803,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           }
         }
         @media (max-width: 1180px) {
+          .energySummaryGrid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
           .energyOverviewGrid,
           .energyNewsPreviewGrid {
             grid-template-columns: 1fr;
@@ -4631,6 +4873,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             flex-direction: column;
           }
           .energyStatsGrid,
+          .energySummaryGrid,
           .energyCommodityGrid,
           .energyFeaturedGrid,
           .energyNewsGrid,
@@ -4642,6 +4885,20 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           .energyFilterGrid,
           .energyFilterGridNews {
             grid-template-columns: 1fr;
+          }
+          .energySummaryHeader,
+          .energyCommodityCardHeader,
+          .energySummaryValueRow,
+          .energyCommodityValueRow {
+            align-items: flex-start;
+          }
+          .energySummaryValueRow,
+          .energyCommodityValueRow {
+            flex-direction: column;
+          }
+          .energySummarySource,
+          .energyCommoditySource {
+            max-width: 100%;
           }
           .energyCompanyTableWrap {
             display: none;

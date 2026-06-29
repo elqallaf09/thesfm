@@ -1,7 +1,7 @@
 'use client';
 
 import { Activity, Clock3, TrendingDown, TrendingUp } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
@@ -50,9 +50,8 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
         return (
           <div className={`tech-ticker-item ${tone}`} key={item.symbol}>
             <div className="tech-ticker-identity">
-              <AssetAvatar symbol={item.symbol} assetType="stock" size="xs" decorative />
+              <AssetIdentity variant="badge" symbol={item.symbol} assetType="stock" size="xs" showName={false} />
               <div>
-                <strong dir="ltr">{item.symbol}</strong>
                 <small>
                   <Activity size={10} />
                   {item.available ? labels.lastUpdated : labels.priceUnavailable}
@@ -74,3 +73,4 @@ export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStrip
 }
 
 export default TechTickerStrip;
+

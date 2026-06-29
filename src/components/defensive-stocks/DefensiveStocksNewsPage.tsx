@@ -27,7 +27,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -929,7 +929,7 @@ function DefensiveTicker({ items, loading, error, lang, locale, text }: {
           const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
           return (
             <article className={`def-ticker-item ${tone}`} key={item.symbol} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-              <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div className="def-ticker-copy">
                 <strong dir="ltr">{item.symbol}</strong>
                 <small>{stockName(item.symbol, item.name)} · {SECTOR_LABELS[lang][sectorForSymbol(item.symbol)]}</small>
@@ -1156,7 +1156,7 @@ function StocksTab({ stockRows, loading, locale, lang, text, sectorFilter, setSe
             <article className="def-stock-card" key={row.symbol}>
               <header>
                 <div className="def-stock-head-main">
-                  <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
+                  <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
                   <span className="def-stock-symbol" dir="ltr">{row.symbol}</span>
                 </div>
                 <b className={changeTone(row.changePercent)} dir="ltr">{formatPercent(row.changePercent, locale)}</b>
@@ -1805,3 +1805,4 @@ export function DefensiveStocksNewsPage() {
 }
 
 export default DefensiveStocksNewsPage;
+

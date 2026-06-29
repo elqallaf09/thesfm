@@ -36,7 +36,7 @@ import {
   type RefObject,
   type ReactNode,
 } from 'react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -1064,7 +1064,7 @@ function BankingTicker({
               key={`${item.symbol}-${index}`}
               role="listitem"
             >
-              <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div>
                 <strong dir="ltr">{item.symbol}</strong>
                 <span>{item.name}</span>
@@ -1197,7 +1197,7 @@ function BankStockCard({
   return (
     <article className="bankStockCard">
       <div className="bankStockHeader">
-        <AssetAvatar className="bankStockLogo" symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
+        <AssetIdentity className="bankStockLogo" symbol={item.symbol} name={item.name} assetType="stock" size="md" decorative />
         <div>
           <h3>{item.name}</h3>
           <p><span dir="ltr">{item.symbol}</span> · {sectorLabel(item.sector, lang, text)}</p>
@@ -1716,7 +1716,7 @@ function BankingSideRail({
           {watched.length > 0 ? (
             watched.map(item => (
               <button type="button" key={item.symbol} onClick={event => onQuickAnalysis(item, event.currentTarget)}>
-                <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
+                <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
                 <span>
                   <strong dir="ltr">{item.symbol}</strong>
                   <em>{item.name}</em>
@@ -3668,3 +3668,4 @@ export function BankNewsPage() {
 }
 
 export default BankNewsPage;
+

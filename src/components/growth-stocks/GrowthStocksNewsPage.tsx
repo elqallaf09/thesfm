@@ -31,6 +31,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -2564,7 +2565,7 @@ function ComparisonChart({ rows, lang, text }: { rows: GrowthStockRow[]; lang: L
         return (
           <div className="compare-row" key={row.symbol}>
             <div className="compare-asset">
-              <span className="asset-avatar" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+              <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="asset-avatar" />
               <div>
                 <strong className="symbol">{row.symbol}</strong>
                 <span className="asset-name">{row.name}</span>
@@ -2615,7 +2616,7 @@ function GrowthStockTable({
                 <tr key={row.symbol}>
                   <td>
                     <div className="table-asset">
-                      <span className="asset-avatar" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+                    <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="asset-avatar" />
                       <div>
                         <strong>{row.name}</strong>
                         <span className="table-muted symbol">{row.symbol}</span>
@@ -2677,7 +2678,7 @@ function GrowthStockCard({
   return (
     <article className="card card-hover">
       <div className="stock-head">
-        <div className="stock-logo" aria-hidden="true">{row.symbol.slice(0, 2)}</div>
+        <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="lg" className="stock-logo" />
         <div className="stock-title">
           <h3>{row.name}</h3>
           <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>

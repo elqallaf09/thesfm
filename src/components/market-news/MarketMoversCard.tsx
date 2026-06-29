@@ -13,7 +13,7 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import type { MarketMoversData, MarketMoverItem } from '@/lib/markets/marketMovers';
 
 type MarketMoversApiResponse =
@@ -172,11 +172,14 @@ function MoverRow({
   return (
     <article className={`market-movers-row ${compact ? 'compact' : ''}`}>
       <span className="market-movers-rank">{item.rank}</span>
-      <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
-      <div className="market-movers-identity">
-        <strong dir="ltr">{item.symbol}</strong>
-        <span>{item.name}</span>
-      </div>
+      <AssetIdentity
+        variant="badge"
+        className="market-movers-identity"
+        symbol={item.symbol}
+        name={item.name}
+        assetType="stock"
+        size="sm"
+      />
       <dl className="market-movers-values">
         <div>
           <dt>{labels.price}</dt>
@@ -489,14 +492,14 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
         .market-movers-list-title strong{min-width:0;color:var(--movers-text);font-size:13px;font-weight:950;line-height:1.35}
         .market-movers-list-title em{margin-inline-start:auto;border-radius:999px;border:1px solid var(--movers-border);background:rgba(142,166,195,.08);color:var(--movers-muted);padding:5px 8px;font-size:10px;font-style:normal;font-weight:950;white-space:nowrap}
         .market-movers-list-body{display:grid;gap:8px;min-width:0}
-        .market-movers-row{min-width:0;border:1px solid var(--movers-border);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.68),rgba(255,255,255,.38));padding:9px;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:8px;align-items:center}
+        .market-movers-row{min-width:0;border:1px solid var(--movers-border);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.68),rgba(255,255,255,.38));padding:9px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center}
         .market-movers-row.compact{padding:8px}
         .dark .market-movers-row{background:linear-gradient(180deg,rgba(19,36,58,.76),rgba(15,29,49,.54))}
         .market-movers-rank{width:26px;height:26px;border-radius:999px;background:#E0F2FE;color:#075985;display:grid;place-items:center;font-size:11px;font-weight:950;line-height:1}
         .dark .market-movers-rank{background:rgba(47,214,192,.12);color:#2FD6C0}
-        .market-movers-identity{min-width:0;display:grid;gap:2px}
-        .market-movers-identity strong{color:var(--movers-text);font-size:13px;font-weight:950;letter-spacing:.02em;line-height:1.25}
-        .market-movers-identity span{color:var(--movers-muted);font-size:10.5px;font-weight:850;line-height:1.45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .market-movers-identity{min-width:0;display:inline-flex;align-items:center;gap:8px}
+        .market-movers-identity .asset-identity-name{color:var(--movers-text);font-size:12px;font-weight:950;line-height:1.25}
+        .market-movers-identity .asset-identity-symbol{color:var(--movers-muted);font-size:10.5px;font-weight:850;line-height:1.45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .market-movers-values{grid-column:1/-1;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
         .market-movers-row.compact .market-movers-values{grid-template-columns:repeat(2,minmax(0,1fr))}
         .market-movers-values div{min-width:0;border-radius:11px;background:rgba(142,166,195,.08);padding:6px}
@@ -530,3 +533,4 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
 }
 
 export default MarketMoversCard;
+

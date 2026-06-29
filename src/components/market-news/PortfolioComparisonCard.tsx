@@ -12,7 +12,7 @@ import {
   ShoppingCart,
   WalletCards,
 } from 'lucide-react';
-import { AssetAvatar, AssetBadge } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { supabase } from '@/integrations/supabase/client';
 
 type RiskLevel = 'low' | 'medium' | 'high' | null;
@@ -231,7 +231,7 @@ export function PortfolioComparisonCard({ market, marketLabel, locale, t }: Prop
       ) : (
         <>
           <div className="market-portfolio-identity">
-            <AssetAvatar symbol={primaryItem.symbol} name={primaryItem.name} assetType="stock" size="lg" decorative />
+            <AssetIdentity symbol={primaryItem.symbol} name={primaryItem.name} assetType="stock" size="lg" decorative />
             <div>
               <span dir="ltr">{primaryItem.symbol}</span>
               <h3>{primaryItem.name}</h3>
@@ -273,10 +273,15 @@ export function PortfolioComparisonCard({ market, marketLabel, locale, t }: Prop
                     {items.map(item => (
                       <tr key={item.id}>
                         <td>
-                          <span className="market-portfolio-symbol-cell">
-                            <AssetAvatar symbol={item.symbol} name={item.name} assetType="stock" size="xs" decorative />
-                            <span dir="ltr">{item.symbol}</span>
-                          </span>
+                          <AssetIdentity
+                            variant="badge"
+                            className="market-portfolio-symbol-cell"
+                            symbol={item.symbol}
+                            name={item.name}
+                            assetType="stock"
+                            size="xs"
+                            showName={false}
+                          />
                         </td>
                         <td>{item.name}</td>
                         <td dir="ltr">{formatNumber(item.quantity)}</td>
@@ -295,7 +300,7 @@ export function PortfolioComparisonCard({ market, marketLabel, locale, t }: Prop
                 {items.map(item => (
                   <article key={item.id}>
                     <div>
-                      <AssetBadge symbol={item.symbol} name={item.name} assetType="stock" size="sm" nameClassName="text-[15px]" symbolClassName="text-[12px]" />
+                      <AssetIdentity variant="badge" size="sm" symbol={item.symbol} name={item.name} assetType="stock" />
                     </div>
                     <dl>
                       <dt>{t('portfolio_comparison_quantity')}</dt>
@@ -351,3 +356,4 @@ function Metric({
     </div>
   );
 }
+

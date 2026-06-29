@@ -29,7 +29,13 @@ async function currentUser(request: NextRequest) {
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const admin = createServerSupabaseAdmin();
-  if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
+  if (!admin) {
+    return json({
+      ok: false,
+      code: 'SERVICE_NOT_CONFIGURED',
+      viewer: { isOwner: false, isAdmin: false, canReview: false },
+    });
+  }
 
   const { data, error } = await admin
     .from('company_listings')

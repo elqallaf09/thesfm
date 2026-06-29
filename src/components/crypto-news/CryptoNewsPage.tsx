@@ -25,7 +25,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
@@ -1236,7 +1236,7 @@ function FeaturedNewsSection({ items, loading, text, locale }: {
 
 function CoinAvatar({ coin }: { coin: CryptoMarketCoin }) {
   return (
-    <AssetAvatar
+    <AssetIdentity
       symbol={coin.symbol}
       name={coin.name}
       assetType="crypto"
@@ -1623,3 +1623,4 @@ function NewsState({ tone, icon: Icon, title, body, actionLabel, onAction }: {
 }
 
 export default CryptoNewsPage;
+

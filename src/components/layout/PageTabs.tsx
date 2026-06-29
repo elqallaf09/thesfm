@@ -77,15 +77,21 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           white-space: nowrap;
         }
         .page-section-tabs.charity-tabs {
-          gap: 10px;
-          padding: 10px;
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 8px;
+          padding: 8px;
           border-radius: 22px;
+          overflow: visible;
         }
         .page-section-tabs.charity-tabs button {
+          width: 100%;
+          min-width: 0;
           min-height: 46px;
-          padding: 0 18px;
+          padding: 8px 12px;
           font-size: 13.5px;
-          line-height: 1.2;
+          line-height: 1.35;
+          white-space: normal;
         }
         .page-section-tabs button span {
           min-width: 0;
@@ -143,6 +149,23 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           .page-section-tabs button span {
             overflow: visible;
             text-overflow: clip;
+          }
+          .page-section-tabs.charity-tabs {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            overflow: visible;
+          }
+          .page-section-tabs.charity-tabs button {
+            white-space: normal;
+          }
+        }
+        @media (max-width: 1180px) and (min-width: 721px) {
+          .page-section-tabs.charity-tabs {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 440px) {
+          .page-section-tabs.charity-tabs {
+            grid-template-columns: minmax(0, 1fr);
           }
         }
       `}</style>

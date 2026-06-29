@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   BadgeCheck,
@@ -26,7 +25,7 @@ import {
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
-import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import type { TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
@@ -149,13 +148,6 @@ function sortCompanies(items: CompanyListing[], sortMode: SortMode) {
 
     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
   });
-}
-
-function getCompanyInitials(name: string | null | undefined) {
-  const clean = cleanDisplayText(name);
-  if (!clean) return 'S';
-  const parts = clean.split(/\s+/).filter(Boolean);
-  return parts.length > 1 ? `${parts[0][0] ?? ''}${parts[1][0] ?? ''}` : clean.slice(0, 2);
 }
 
 export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
@@ -904,9 +896,15 @@ function CompanyCard({
     <article className={`company-card company-card-${layout}`} ref={cardRef}>
       <div className="company-card-body">
         <div className="company-card-header">
-          <div className="company-logo">
-            <CompanyLogo item={item} />
-          </div>
+          <AssetIdentity
+            symbol={item.company_name}
+            name={item.company_name}
+            assetType="stock"
+            logoUrl={item.logo_url}
+            imageUrl={item.logo_url}
+            size="md"
+            className="company-logo"
+          />
           <div className="company-title">
             <div className="company-title-row">
               <h2>{cleanDisplayText(item.company_name) || 'THE SFM'}</h2>
@@ -1017,14 +1015,6 @@ function CompanyCard({
           width: 100%;
           height: 100%;
           object-fit: contain;
-        }
-        .company-logo :global(.company-logo-initials) {
-          font-size: 20px;
-          font-weight: 950;
-          color: #0b76e0;
-        }
-        .company-logo :global(.company-logo-initials.resolving) {
-          color: rgba(11, 118, 224, 0.58);
         }
         .company-title {
           min-width: 0;
@@ -1184,26 +1174,6 @@ function CompanyCard({
       `}</style>
     </article>
   );
-}
-
-function CompanyLogo({ item }: { item: CompanyListing }) {
-  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.logo_url);
-
-  if (imageUrl && !failed) {
-    return (
-      <Image
-        src={imageUrl}
-        alt={item.company_name ? `${item.company_name} logo` : 'Company logo'}
-        width={72}
-        height={72}
-        unoptimized
-        loading="lazy"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  return <span className={`company-logo-initials ${item.logo_url && loading ? 'resolving' : ''}`}>{getCompanyInitials(item.company_name)}</span>;
 }
 
 function CompanySkeleton() {

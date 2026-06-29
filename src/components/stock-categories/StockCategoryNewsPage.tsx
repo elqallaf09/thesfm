@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { CategoryStockTicker } from '@/components/stock-categories/CategoryStockTicker';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getStockCategoryConfig, type StockCategoryFilterKey, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
@@ -501,10 +501,18 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-xs font-black text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
               {row.rank}
             </span>
-            <AssetAvatar symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span dir="ltr" className="font-black text-slate-950 dark:text-white">{row.symbol}</span>
+                <AssetIdentity
+                  variant="badge"
+                  symbol={row.symbol}
+                  name={row.name}
+                  assetType="stock"
+                  size="sm"
+                  className="min-w-0 text-slate-950 dark:text-white"
+                  showName={false}
+                  symbolClassName="text-sm"
+                />
                 <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
                   {formatPercent(row.changePercent)}
                 </span>
@@ -760,9 +768,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       return (
                         <article key={item.id} className="group flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/80">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span dir="ltr" className="rounded-full border border-cyan-300 bg-cyan-100 px-3 py-1.5 text-xs font-black text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-900/40 dark:text-cyan-100">
-                              {item.ticker}
-                            </span>
+                            <AssetIdentity
+                              symbol={item.ticker}
+                              name={item.companyName}
+                              assetType="stock"
+                              size="sm"
+                              variant="badge"
+                              className="max-w-full rounded-full border border-cyan-300 bg-cyan-100 px-2.5 py-1 text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-900/40 dark:text-cyan-100"
+                              labelClassName="max-w-[11rem] text-xs"
+                              symbolClassName="text-[11px]"
+                            />
                             <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100">
                               {item.source}
                             </span>
@@ -863,9 +878,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-950/30"
                     >
                       <div className="mb-1 flex items-center gap-2">
-                        <span dir="ltr" className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-black text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-100">
-                          {item.ticker}
-                        </span>
+                        <AssetIdentity
+                          symbol={item.ticker}
+                          name={item.companyName}
+                          assetType="stock"
+                          size="xs"
+                          variant="badge"
+                          showName={false}
+                          className="max-w-[8rem] rounded-full bg-cyan-100 px-2 py-0.5 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-100"
+                          symbolClassName="text-[11px]"
+                        />
                         <span className="truncate text-[11px] font-bold text-slate-500 dark:text-slate-400">{item.source}</span>
                       </div>
                       <p className="line-clamp-2 text-sm font-bold leading-6 text-slate-800 dark:text-slate-100">{item.title}</p>
@@ -928,10 +950,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   {mentionedTickers.length > 0 ? mentionedTickers.map((item, index) => (
                     <div key={item.ticker} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-100 text-xs font-black text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-100">{index + 1}</span>
-                      <div className="min-w-0 flex-1">
-                        <p dir="ltr" className="font-black text-slate-950 dark:text-white">{item.ticker}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{item.companyName}</p>
-                      </div>
+                      <AssetIdentity
+                        symbol={item.ticker}
+                        name={item.companyName}
+                        assetType="stock"
+                        size="sm"
+                        variant="badge"
+                        className="min-w-0 flex-1 text-slate-950 dark:text-white"
+                        labelClassName="text-sm"
+                        symbolClassName="text-xs text-slate-500 dark:text-slate-400"
+                      />
                       <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100">
                         {tr('tech_news_mentions_count').replace('{count}', String(item.count))}
                       </span>
@@ -1002,9 +1030,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     {card.symbols?.length ? (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {card.symbols.map(symbol => (
-                          <span key={symbol} dir="ltr" className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-black text-cyan-800 dark:border-cyan-500/30 dark:bg-slate-950 dark:text-cyan-100">
-                            {symbol}
-                          </span>
+                          <AssetIdentity
+                            key={symbol}
+                            variant="badge"
+                            symbol={symbol}
+                            assetType="stock"
+                            size="xs"
+                            showName={false}
+                            className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-cyan-800 dark:border-cyan-500/30 dark:bg-slate-950 dark:text-cyan-100"
+                            symbolClassName="text-xs"
+                          />
                         ))}
                       </div>
                     ) : null}
@@ -1068,3 +1103,4 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 }
 
 export default StockCategoryNewsPage;
+

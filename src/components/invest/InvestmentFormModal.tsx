@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { currencyDisplayName, getCurrency, getCurrencyOptions, type CurrencyLocale } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
 import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -1256,7 +1256,7 @@ export function InvestmentFormModal({
                       )}
                       {searchState === 'ready' && searchResults.map(asset => (
                         <button key={`${asset.symbol}:${asset.provider_symbol ?? asset.asset_type}:${asset.name_en ?? asset.name}`} type="button" className="invest-asset-result" onClick={() => handleSelectAsset(asset)}>
-                          <AssetAvatar className="invest-asset-result-icon" symbol={asset.symbol} name={localizedAssetName(asset, dir)} assetType={asset.asset_type} exchange={asset.market ?? undefined} size="sm" decorative />
+                          <AssetIdentity className="invest-asset-result-icon" symbol={asset.symbol} name={localizedAssetName(asset, dir)} assetType={asset.asset_type} exchange={asset.market ?? undefined} size="sm" decorative />
                           <span className="invest-asset-result-body">
                             <strong>{localizedAssetName(asset, dir)}</strong>
                             <small>
@@ -1283,7 +1283,7 @@ export function InvestmentFormModal({
                 <div className="invest-selected-asset span-2">
                   <div>
                     <span><CheckCircle2 size={15} /> {labels.selectedAsset}</span>
-                    <AssetAvatar symbol={selectedAsset.symbol} name={localizedAssetName(selectedAsset, dir)} assetType={selectedAsset.asset_type} exchange={selectedAsset.market ?? undefined} size="md" decorative />
+                    <AssetIdentity symbol={selectedAsset.symbol} name={localizedAssetName(selectedAsset, dir)} assetType={selectedAsset.asset_type} exchange={selectedAsset.market ?? undefined} size="md" decorative />
                     <strong>{localizedAssetName(selectedAsset, dir)}</strong>
                     <small>
                       <b dir="ltr">{selectedAsset.provider_symbol ?? selectedAsset.symbol}</b>
@@ -2171,3 +2171,4 @@ function SummaryItem({ label, value, helper }: { label: string; value: string; h
     </div>
   );
 }
+

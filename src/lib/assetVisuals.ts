@@ -74,7 +74,10 @@ function cleanText(value: unknown) {
 function normalizeSymbol(symbol: unknown) {
   return cleanText(symbol)
     .toUpperCase()
-    .replace(/^(NASDAQ|NYSE|AMEX|TADAWUL|XKUW|KW|DFM|ADX|LSE|TSX|ASX|HKEX|CRYPTO|FOREX|FX)[:\s-]+/i, '')
+    .replace(
+      /^(NASDAQ|NYSE|AMEX|TADAWUL|TASI|TAD|DFM|ADX|KASE|XKUW|KW|KSE|LSE|TSX|ASX|HKEX|BATS|CRYPTO|FOREX|FX|US|EU|GCC)[:\s-]+/i,
+      '',
+    )
     .replace(/\s+/g, '');
 }
 
@@ -82,6 +85,23 @@ function safeImageUrl(value: unknown) {
   const text = cleanText(value);
   if (!text || !SAFE_IMAGE_URL_PATTERN.test(text)) return null;
   return text;
+}
+
+export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
+  const explicitUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
+  if (explicitUrl) return explicitUrl;
+
+  const symbol = normalizeSymbol(input.symbol);
+  const rawType = cleanText(input.assetType ?? input.market ?? input.exchange).toLowerCase();
+  const stockLikeType = !rawType
+    || rawType.includes('stock')
+    || rawType.includes('equity')
+    || rawType.includes('share')
+    || rawType.includes('etf')
+    || rawType.includes('fund');
+
+  if (!stockLikeType || !/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol)) return null;
+  return `https://financialmodelingprep.com/image-stock/${encodeURIComponent(symbol)}.png`;
 }
 
 function normalizeAssetType(value: unknown, symbol: string, label: string): AssetVisualType {
@@ -140,7 +160,7 @@ export function getAssetVisualMeta(input: AssetVisualInput): AssetVisualMeta {
   const symbol = normalizeSymbol(input.symbol);
   const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
   const inferredType = normalizeAssetType(input.assetType ?? input.market ?? input.exchange, symbol, label);
-  const logoUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
+  const logoUrl = resolveAssetLogoUrl(input);
   const flags = inferredType === 'forex' ? forexFlags(symbol) : [];
   const iconKind = inferredType === 'commodity' ? commodityType(`${symbol} ${label}`.toUpperCase()) : inferredType;
   const fallbackText = fallbackInitials(symbol, label);

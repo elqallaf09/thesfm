@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { GULF_MARKETS, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
@@ -50,8 +50,7 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
     >
       {tickerItems.map(({ market, indexName, displayValue, displayChange, tone, Icon }) => (
         <div className="gulf-ticker-item" key={market.id}>
-          <AssetAvatar symbol={market.code} name={indexName} assetType="index" size="sm" decorative />
-          <strong>{market.code}</strong>
+          <AssetIdentity variant="badge" symbol={market.code} name={indexName} assetType="index" size="sm" showName={false} />
           <span>{labels[market.id]} / {indexName}</span>
           <b>{displayValue}</b>
           <em className={tone}>
@@ -65,3 +64,4 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
 }
 
 export default GulfTickerStrip;
+

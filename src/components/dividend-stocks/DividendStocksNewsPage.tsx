@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -26,9 +26,10 @@ import {
   TrendingDown,
   TrendingUp,
   WalletCards,
+  X,
   type LucideIcon,
 } from 'lucide-react';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -134,11 +135,59 @@ type DividendEvent = {
   id: string;
   symbol: string;
   name: string;
+  companyName?: string;
   market: string;
-  type: 'ex' | 'payment';
-  date: string;
-  annualDividend: number | null;
+  type: string | null;
+  date: string | null;
+  annualDividend?: number | null;
+  dividendAmount: number | null;
+  dividendYield: number | null;
   currency: string;
+  exDividendDate: string | null;
+  recordDate: string | null;
+  paymentDate: string | null;
+  declarationDate: string | null;
+  source: string;
+  provider: 'finnhub' | 'fmp' | null;
+  status: 'announced' | 'scheduled' | 'estimated';
+};
+
+type DividendCalendarProviderStatus = {
+  configured: boolean;
+  provider: 'finnhub' | 'fmp' | null;
+  status: 'available' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
+  finnhubConfigured?: boolean;
+  fmpConfigured?: boolean;
+  lastFetchStatus?: string | null;
+  lastFetchTime?: string | null;
+  lastSuccessfulUpdate?: string | null;
+};
+
+type DividendCalendarResponse = {
+  status: 'success' | 'not_configured' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'provider_error' | 'invalid_request';
+  provider: 'finnhub' | 'fmp' | null;
+  providerStatus?: DividendCalendarProviderStatus;
+  configured: boolean;
+  items: DividendEvent[];
+  events?: DividendEvent[];
+  rawEventCount: number;
+  filteredEventCount: number;
+  cached: boolean;
+  stale: boolean;
+  messageCode: string | null;
+  code: string | null;
+  ok: boolean;
+  success: boolean;
+  availableFilters?: {
+    markets?: string[];
+    symbols?: string[];
+    types?: string[];
+  };
+  request?: {
+    from: string;
+    to: string;
+    range: CalendarRange;
+  };
 };
 
 const COPY = {
@@ -228,11 +277,38 @@ const COPY = {
     riskLevel: 'مستوى المخاطر',
     action: 'إجراء',
     viewDetails: 'عرض التفاصيل',
+    viewDetailsAriaPrefix: 'عرض تفاصيل سهم',
+    detailsTitle: 'تفاصيل سهم التوزيعات',
+    detailsLoading: 'جاري فتح التفاصيل...',
+    detailsUnavailable: 'تعذر جلب تفاصيل هذا السهم حالياً.',
+    closeDetails: 'إغلاق التفاصيل',
+    currency: 'العملة',
+    dividendStatus: 'جودة / حالة التوزيعات',
+    disclaimer: 'تنبيه',
     addWatchlist: 'إضافة للمراقبة',
     notSupportedMetric: 'غير متاح من مزود البيانات الحالي',
     annual: 'سنوي',
     eventEx: 'استحقاق التوزيع',
     eventPayment: 'دفع التوزيع',
+    eventType: 'نوع التوزيع',
+    recordDate: 'تاريخ التسجيل',
+    declarationDate: 'تاريخ الإعلان',
+    dividendAmount: 'قيمة التوزيع',
+    providerStatus: 'حالة المزود',
+    providerConfigured: 'المزود متصل',
+    providerNotConfiguredBadge: 'غير متصل',
+    providerErrorBadge: 'خطأ في المزود',
+    statusAnnounced: 'معلن',
+    statusScheduled: 'مجدول',
+    statusEstimated: 'تقديري',
+    calendarUnavailableTitle: 'تقويم التوزيعات غير متوفر حالياً',
+    calendarUnavailableText: 'لم يتم ربط مزود بيانات يدعم تقويم التوزيعات بعد.',
+    calendarErrorTitle: 'تعذر جلب بيانات التوزيعات حالياً',
+    calendarErrorText: 'حاول مرة أخرى بعد قليل.',
+    noCalendarEventsFiltered: 'لا توجد توزيعات ضمن الفترة المحددة',
+    noCalendarTextFiltered: 'جرّب تغيير الفترة أو السوق أو إزالة بعض عوامل التصفية.',
+    allTypes: 'كل أنواع التوزيعات',
+    allSymbols: 'كل الرموز',
     range30: '30 يوماً',
     range90: '90 يوماً',
     rangeAll: 'كل الأحداث',
@@ -381,11 +457,38 @@ const COPY = {
     riskLevel: 'Risk level',
     action: 'Action',
     viewDetails: 'View details',
+    viewDetailsAriaPrefix: 'View details for stock',
+    detailsTitle: 'Dividend stock details',
+    detailsLoading: 'Opening details...',
+    detailsUnavailable: 'Unable to fetch this stock details right now.',
+    closeDetails: 'Close details',
+    currency: 'Currency',
+    dividendStatus: 'Dividend quality / status',
+    disclaimer: 'Disclaimer',
     addWatchlist: 'Add to watchlist',
     notSupportedMetric: 'Unavailable from current provider',
     annual: 'Annual',
     eventEx: 'Ex-dividend',
     eventPayment: 'Payment',
+    eventType: 'Dividend type',
+    recordDate: 'Record date',
+    declarationDate: 'Declaration date',
+    dividendAmount: 'Dividend amount',
+    providerStatus: 'Provider status',
+    providerConfigured: 'Provider configured',
+    providerNotConfiguredBadge: 'Not configured',
+    providerErrorBadge: 'Provider error',
+    statusAnnounced: 'Announced',
+    statusScheduled: 'Scheduled',
+    statusEstimated: 'Estimated',
+    calendarUnavailableTitle: 'Dividend calendar is currently unavailable',
+    calendarUnavailableText: 'No data provider that supports the dividends calendar has been connected yet.',
+    calendarErrorTitle: 'Unable to fetch dividend data right now',
+    calendarErrorText: 'Please try again shortly.',
+    noCalendarEventsFiltered: 'No dividends in the selected period',
+    noCalendarTextFiltered: 'Try changing the period, market, or removing some filters.',
+    allTypes: 'All dividend types',
+    allSymbols: 'All symbols',
     range30: '30 days',
     range90: '90 days',
     rangeAll: 'All events',
@@ -534,11 +637,38 @@ const COPY = {
     riskLevel: 'Risque',
     action: 'Action',
     viewDetails: 'Voir détails',
+    viewDetailsAriaPrefix: 'Voir les détails de l’action',
+    detailsTitle: 'Détails de l’action à dividende',
+    detailsLoading: 'Ouverture des détails...',
+    detailsUnavailable: 'Impossible de récupérer les détails de cette action pour le moment.',
+    closeDetails: 'Fermer les détails',
+    currency: 'Devise',
+    dividendStatus: 'Qualité / statut du dividende',
+    disclaimer: 'Avertissement',
     addWatchlist: 'Ajouter',
     notSupportedMetric: 'Indisponible',
     annual: 'Annuel',
     eventEx: 'Ex-dividende',
     eventPayment: 'Paiement',
+    eventType: 'Type de dividende',
+    recordDate: 'Date d’enregistrement',
+    declarationDate: 'Date d’annonce',
+    dividendAmount: 'Montant du dividende',
+    providerStatus: 'Statut du fournisseur',
+    providerConfigured: 'Fournisseur configuré',
+    providerNotConfiguredBadge: 'Non configuré',
+    providerErrorBadge: 'Erreur fournisseur',
+    statusAnnounced: 'Annoncé',
+    statusScheduled: 'Planifié',
+    statusEstimated: 'Estimé',
+    calendarUnavailableTitle: 'Calendrier des dividendes indisponible',
+    calendarUnavailableText: 'Aucun fournisseur compatible avec le calendrier des dividendes n’est encore connecté.',
+    calendarErrorTitle: 'Impossible de récupérer les dividendes',
+    calendarErrorText: 'Réessayez dans quelques instants.',
+    noCalendarEventsFiltered: 'Aucun dividende dans la période sélectionnée',
+    noCalendarTextFiltered: 'Modifiez la période, le marché ou certains filtres.',
+    allTypes: 'Tous les types',
+    allSymbols: 'Tous les symboles',
     range30: '30 jours',
     range90: '90 jours',
     rangeAll: 'Tous',
@@ -878,49 +1008,6 @@ function buildStockRows(items: DividendTickerItem[], lang: LangCode): DividendSt
   });
 }
 
-function createEvents(items: DividendStockRow[]): DividendEvent[] {
-  const rows: DividendEvent[] = [];
-  items.forEach(item => {
-    if (item.exDividendDate) {
-      rows.push({
-        id: `${item.symbol}-ex-${item.exDividendDate}`,
-        symbol: item.symbol,
-        name: item.name,
-        market: item.sectorLabel,
-        type: 'ex',
-        date: item.exDividendDate,
-        annualDividend: item.annualDividend,
-        currency: item.currency,
-      });
-    }
-    if (item.paymentDate) {
-      rows.push({
-        id: `${item.symbol}-payment-${item.paymentDate}`,
-        symbol: item.symbol,
-        name: item.name,
-        market: item.sectorLabel,
-        type: 'payment',
-        date: item.paymentDate,
-        annualDividend: item.annualDividend,
-        currency: item.currency,
-      });
-    }
-  });
-  return rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-}
-
-function filterEvents(events: DividendEvent[], range: CalendarRange) {
-  if (range === 'all') return events;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const max = new Date(now);
-  max.setDate(max.getDate() + Number(range));
-  return events.filter(event => {
-    const date = new Date(event.date);
-    return !Number.isNaN(date.getTime()) && date >= now && date <= max;
-  });
-}
-
 function newsSector(item: DividendNewsItem): SectorId {
   const symbol = item.ticker?.toUpperCase();
   if (symbol && STOCK_SECTOR[symbol]) return STOCK_SECTOR[symbol];
@@ -1050,6 +1137,11 @@ export function DividendStocksNewsPage() {
   const [yieldMin, setYieldMin] = useState(initial.yieldMin);
   const [payoutMax, setPayoutMax] = useState(initial.payoutMax);
   const [calendarRange, setCalendarRange] = useState<CalendarRange>('90');
+  const [calendarMarket, setCalendarMarket] = useState('all');
+  const [calendarSymbol, setCalendarSymbol] = useState('all');
+  const [calendarType, setCalendarType] = useState('all');
+  const [calendar, setCalendar] = useState<DividendCalendarResponse | null>(null);
+  const [calendarLoading, setCalendarLoading] = useState(true);
   const [newsSearch, setNewsSearch] = useState('');
   const [newsSector, setNewsSector] = useState<SectorId>('all');
   const [newsSource, setNewsSource] = useState('all');
@@ -1060,10 +1152,12 @@ export function DividendStocksNewsPage() {
   const [openEducation, setOpenEducation] = useState<EducationId | null>(null);
   const [originalNewsIds, setOriginalNewsIds] = useState<string[]>([]);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [selectedDetailsRow, setSelectedDetailsRow] = useState<DividendStockRow | null>(null);
+  const [detailsLoadingSymbol, setDetailsLoadingSymbol] = useState<string | null>(null);
+  const detailsTimerRef = useRef<number | null>(null);
 
   const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') setLoading(true);
-    if (mode === 'refresh') setRefreshing(true);
     setError(null);
     try {
       const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
@@ -1079,20 +1173,63 @@ export function DividendStocksNewsPage() {
       setError(text.providerError);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [activeLang, text.providerError]);
+
+  const loadCalendarData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setCalendarLoading(true);
+    try {
+      const params = new URLSearchParams({ range: calendarRange });
+      if (calendarMarket !== 'all') params.set('market', calendarMarket);
+      if (calendarSymbol !== 'all') params.set('symbol', calendarSymbol);
+      if (calendarType !== 'all') params.set('type', calendarType);
+      if (mode === 'refresh') params.set('refresh', '1');
+      const response = await fetch(`/api/dividend-stocks/calendar?${params.toString()}`, { cache: 'no-store' });
+      const payload = await response.json() as DividendCalendarResponse;
+      setCalendar(payload);
+    } catch {
+      setCalendar({
+        status: 'provider_error',
+        provider: null,
+        configured: true,
+        items: [],
+        rawEventCount: 0,
+        filteredEventCount: 0,
+        cached: false,
+        stale: false,
+        messageCode: 'provider_temporarily_unavailable',
+        code: 'PROVIDER_TEMPORARILY_UNAVAILABLE',
+        ok: false,
+        success: false,
+      });
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [calendarMarket, calendarRange, calendarSymbol, calendarType]);
+
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([loadData('refresh'), loadCalendarData('refresh')]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadCalendarData, loadData]);
 
   useEffect(() => {
     void loadData('initial');
   }, [loadData]);
 
   useEffect(() => {
+    void loadCalendarData('initial');
+  }, [loadCalendarData]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
-      void loadData('refresh');
+      void refreshAll();
     }, AUTO_REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, [loadData]);
+  }, [refreshAll]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -1119,9 +1256,46 @@ export function DividendStocksNewsPage() {
     }, 'replace');
   }, [payoutMax, stockSearch, stockSector, stockSort, tab, yieldMin]);
 
+  const closeStockDetails = useCallback(() => {
+    if (detailsTimerRef.current !== null) {
+      window.clearTimeout(detailsTimerRef.current);
+      detailsTimerRef.current = null;
+    }
+    setDetailsLoadingSymbol(null);
+    setSelectedDetailsRow(null);
+  }, []);
+
+  const openStockDetails = useCallback((row: DividendStockRow) => {
+    const symbol = row.symbol.toUpperCase();
+    if (detailsTimerRef.current !== null) window.clearTimeout(detailsTimerRef.current);
+    setSelectedDetailsRow(row);
+    setDetailsLoadingSymbol(symbol);
+    detailsTimerRef.current = window.setTimeout(() => {
+      setDetailsLoadingSymbol(current => current === symbol ? null : current);
+      detailsTimerRef.current = null;
+    }, 180);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (detailsTimerRef.current !== null) window.clearTimeout(detailsTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDetailsRow && !detailsLoadingSymbol) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeStockDetails();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [closeStockDetails, detailsLoadingSymbol, selectedDetailsRow]);
+
   const rows = useMemo(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang), [activeLang, ticker]);
-  const events = useMemo(() => createEvents(rows), [rows]);
-  const visibleEvents = useMemo(() => filterEvents(events, calendarRange), [calendarRange, events]);
+  const events = useMemo(() => calendar?.items ?? calendar?.events ?? [], [calendar]);
+  const calendarMarkets = useMemo(() => calendar?.availableFilters?.markets ?? uniqueOptions(events.map(event => event.market)), [calendar, events]);
+  const calendarSymbols = useMemo(() => calendar?.availableFilters?.symbols ?? uniqueOptions(events.map(event => event.symbol)), [calendar, events]);
+  const calendarTypes = useMemo(() => calendar?.availableFilters?.types ?? uniqueOptions(events.map(event => event.type)), [calendar, events]);
   const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
   const sources = useMemo(() => uniqueOptions(dedupedNews.map(item => item.source)), [dedupedNews]);
   const symbols = useMemo(() => uniqueOptions(dedupedNews.map(item => item.ticker?.toUpperCase())), [dedupedNews]);
@@ -1168,6 +1342,13 @@ export function DividendStocksNewsPage() {
     return { avgYield, avgPayout, markets: markets.size, quality };
   }, [rows]);
 
+  useEffect(() => {
+    setSelectedDetailsRow(current => {
+      if (!current) return current;
+      return rows.find(row => row.symbol === current.symbol) ?? current;
+    });
+  }, [rows]);
+
   const resetStockFilters = () => {
     setStockSearch('');
     setStockSector('all');
@@ -1186,6 +1367,13 @@ export function DividendStocksNewsPage() {
     setVisibleNews(NEWS_INITIAL_LIMIT);
   };
 
+  const resetCalendarFilters = () => {
+    setCalendarRange('all');
+    setCalendarMarket('all');
+    setCalendarSymbol('all');
+    setCalendarType('all');
+  };
+
   const changeTab = (next: DividendTab) => {
     setTab(next);
     updateUrl({ tab: next }, 'push');
@@ -1201,6 +1389,7 @@ export function DividendStocksNewsPage() {
 
   const hasStockFilters = Boolean(stockSearch.trim() || stockSector !== 'all' || stockSort !== 'quality' || yieldMin || payoutMax);
   const hasNewsFilters = Boolean(newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsTime !== 'all' || newsSort !== 'latest');
+  const hasCalendarFilters = Boolean(calendarRange !== '90' || calendarMarket !== 'all' || calendarSymbol !== 'all' || calendarType !== 'all');
 
   return (
     <div className="page" dir={dir}>
@@ -1224,14 +1413,14 @@ export function DividendStocksNewsPage() {
                 <strong>{text.featuredTitle}</strong>
                 <p>{text.methodologyBody}</p>
               </div>
-              <button className="refresh-button" type="button" onClick={() => void loadData('refresh')} disabled={refreshing}>
+              <button className="refresh-button" type="button" onClick={() => void refreshAll()} disabled={refreshing}>
                 <RefreshCcw size={17} className={refreshing ? 'spin' : undefined} />
                 {refreshing ? text.refreshing : text.refresh}
               </button>
             </div>
           </header>
 
-          {error ? <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} actionLabel={text.retry} onAction={() => void loadData('refresh')} /> : null}
+          {error ? <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} actionLabel={text.retry} onAction={() => void refreshAll()} /> : null}
 
           <TickerStrip rows={rows} loading={loading} text={text} lang={activeLang} />
 
@@ -1247,9 +1436,9 @@ export function DividendStocksNewsPage() {
             <OverviewTab
               text={text}
               lang={activeLang}
-              loading={loading}
+              loading={loading || calendarLoading}
               rows={rows}
-              events={visibleEvents}
+              events={events}
               featuredRows={featuredRows.slice(0, 4)}
               newsItems={filteredNews.slice(0, 4)}
               snapshot={snapshot}
@@ -1281,6 +1470,8 @@ export function DividendStocksNewsPage() {
               setPayoutMax={setPayoutMax}
               reset={resetStockFilters}
               hasFilters={hasStockFilters}
+              onOpenDetails={openStockDetails}
+              detailsLoadingSymbol={detailsLoadingSymbol}
             />
           ) : null}
 
@@ -1299,10 +1490,23 @@ export function DividendStocksNewsPage() {
             <CalendarTab
               text={text}
               lang={activeLang}
-              events={visibleEvents}
-              loading={loading}
+              events={events}
+              loading={calendarLoading}
               range={calendarRange}
               setRange={setCalendarRange}
+              market={calendarMarket}
+              setMarket={setCalendarMarket}
+              symbol={calendarSymbol}
+              setSymbol={setCalendarSymbol}
+              type={calendarType}
+              setType={setCalendarType}
+              markets={calendarMarkets}
+              symbols={calendarSymbols}
+              types={calendarTypes}
+              response={calendar}
+              reset={resetCalendarFilters}
+              retry={() => void loadCalendarData('refresh')}
+              hasFilters={hasCalendarFilters}
             />
           ) : null}
 
@@ -1348,6 +1552,18 @@ export function DividendStocksNewsPage() {
           </footer>
         </div>
       </main>
+      {selectedDetailsRow || detailsLoadingSymbol ? (
+        <StockDetailsDrawer
+          row={selectedDetailsRow}
+          loading={Boolean(detailsLoadingSymbol)}
+          loadingSymbol={detailsLoadingSymbol}
+          text={text}
+          lang={activeLang}
+          provider={ticker?.source ?? null}
+          lastUpdated={ticker?.ok ? ticker.updated_at : ticker?.updated_at ?? null}
+          onClose={closeStockDetails}
+        />
+      ) : null}
       <DividendStyles />
     </div>
   );
@@ -1383,7 +1599,7 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
     <article className="ticker-item" key={`${group}-${row.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
       <div className="ticker-top">
         <div className="ticker-identity">
-          <AssetAvatar className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
+          <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
           <span className="symbol">{row.symbol}</span>
         </div>
         <span className={badgeClass(toneForChange(row.changePercent))}>{formatPercent(row.changePercent, lang)}</span>
@@ -1512,6 +1728,8 @@ function ExplorerTab({
   setPayoutMax,
   reset,
   hasFilters,
+  onOpenDetails,
+  detailsLoadingSymbol,
 }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
@@ -1529,6 +1747,8 @@ function ExplorerTab({
   setPayoutMax: (value: string) => void;
   reset: () => void;
   hasFilters: boolean;
+  onOpenDetails: (row: DividendStockRow) => void;
+  detailsLoadingSymbol: string | null;
 }) {
   return (
     <section className="section">
@@ -1568,12 +1788,30 @@ function ExplorerTab({
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => <StockTableRow key={row.symbol} row={row} text={text} lang={lang} />)}
+                {rows.map(row => (
+                  <StockTableRow
+                    key={row.symbol}
+                    row={row}
+                    text={text}
+                    lang={lang}
+                    onOpenDetails={onOpenDetails}
+                    isOpening={detailsLoadingSymbol === row.symbol.toUpperCase()}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
           <div className="mobile-card-list">
-            {rows.map(row => <DividendMobileCard key={row.symbol} row={row} text={text} lang={lang} />)}
+            {rows.map(row => (
+              <DividendMobileCard
+                key={row.symbol}
+                row={row}
+                text={text}
+                lang={lang}
+                onOpenDetails={onOpenDetails}
+                isOpening={detailsLoadingSymbol === row.symbol.toUpperCase()}
+              />
+            ))}
           </div>
         </>
       )}
@@ -1591,10 +1829,79 @@ function FeaturedTab({ text, lang, rows, loading, methodologyOpen, setMethodolog
   );
 }
 
-function CalendarTab({ text, lang, events, loading, range, setRange }: { text: typeof COPY[LangCode]; lang: LangCode; events: DividendEvent[]; loading: boolean; range: CalendarRange; setRange: (range: CalendarRange) => void }) {
+function CalendarTab({
+  text,
+  lang,
+  events,
+  loading,
+  range,
+  setRange,
+  market,
+  setMarket,
+  symbol,
+  setSymbol,
+  type,
+  setType,
+  markets,
+  symbols,
+  types,
+  response,
+  reset,
+  retry,
+  hasFilters,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  events: DividendEvent[];
+  loading: boolean;
+  range: CalendarRange;
+  setRange: (range: CalendarRange) => void;
+  market: string;
+  setMarket: (market: string) => void;
+  symbol: string;
+  setSymbol: (symbol: string) => void;
+  type: string;
+  setType: (type: string) => void;
+  markets: string[];
+  symbols: string[];
+  types: string[];
+  response: DividendCalendarResponse | null;
+  reset: () => void;
+  retry: () => void;
+  hasFilters: boolean;
+}) {
+  const status = response?.status ?? 'success';
+  const providerTone: Tone = status === 'success'
+    ? 'positive'
+    : status === 'not_configured'
+      ? 'warning'
+      : 'negative';
+  const providerLabel = status === 'not_configured'
+    ? text.providerNotConfiguredBadge
+    : status === 'success'
+      ? `${text.providerConfigured}: ${(response?.provider ?? '').toUpperCase() || text.provider}`
+      : text.providerErrorBadge;
+  const emptyTitle = status === 'not_configured'
+    ? text.calendarUnavailableTitle
+    : status === 'success'
+      ? text.noCalendarEventsFiltered
+      : text.calendarErrorTitle;
+  const emptyBody = status === 'not_configured'
+    ? text.calendarUnavailableText
+    : status === 'success'
+      ? text.noCalendarTextFiltered
+      : text.calendarErrorText;
+  const marketOptions = uniqueOptions([...markets, market !== 'all' ? market : null]);
+  const symbolOptions = uniqueOptions([...symbols, symbol !== 'all' ? symbol : null]);
+  const typeOptions = uniqueOptions([...types, type !== 'all' ? type : null]);
+
   return (
     <section className="section">
-      <SectionHeader title={text.calendarTitle} description={text.calendarDescription} action={<span className="pill">{text.resultCount}: {events.length}</span>} />
+      <SectionHeader
+        title={text.calendarTitle}
+        description={text.calendarDescription}
+        action={<span className="pill">{text.resultCount}: {events.length}</span>}
+      />
       <div className="range-tabs" role="group" aria-label={text.calendarTitle}>
         {(['30', '90', 'all'] as CalendarRange[]).map(item => (
           <button key={item} type="button" className={range === item ? 'chip active' : 'chip'} onClick={() => setRange(item)}>
@@ -1602,8 +1909,38 @@ function CalendarTab({ text, lang, events, loading, range, setRange }: { text: t
           </button>
         ))}
       </div>
+      <div className="filter-panel calendar-filter-panel">
+        <SelectField id="dividend-calendar-market" label={text.market} value={market} onChange={setMarket}>
+          <option value="all">{text.allMarkets}</option>
+          {marketOptions.map(item => <option key={item} value={item}>{item}</option>)}
+        </SelectField>
+        <SelectField id="dividend-calendar-symbol" label={text.symbolFilter} value={symbol} onChange={setSymbol}>
+          <option value="all">{text.allSymbols}</option>
+          {symbolOptions.map(item => <option key={item} value={item}>{item}</option>)}
+        </SelectField>
+        <SelectField id="dividend-calendar-type" label={text.eventType} value={type} onChange={setType}>
+          <option value="all">{text.allTypes}</option>
+          {typeOptions.map(item => <option key={item} value={item}>{item}</option>)}
+        </SelectField>
+        <div className="calendar-filter-actions">
+          <span className={badgeClass(providerTone)}>{providerLabel}</span>
+          <button className="ghost-button" type="button" onClick={reset} disabled={!hasFilters}>
+            <Filter size={16} />
+            {text.clearFilters}
+          </button>
+        </div>
+      </div>
       {loading ? <SkeletonGrid count={4} /> : events.length === 0 ? (
-        <StateBox tone="info" icon={CalendarDays} title={text.noCalendarEvents} body={text.noCalendarText} />
+        <DividendEventEmptyState
+          text={text}
+          title={emptyTitle}
+          body={emptyBody}
+          providerLabel={providerLabel}
+          providerTone={providerTone}
+          onRetry={retry}
+          onReset={reset}
+          canReset={hasFilters}
+        />
       ) : <EventList events={events} text={text} lang={lang} />}
     </section>
   );
@@ -1685,7 +2022,7 @@ function NewsTab({
         hasFilters={hasFilters}
       />
       {loading ? <SkeletonGrid count={6} /> : items.length === 0 ? (
-        <StateBox tone="info" icon={Newspaper} title={text.noNews} actionLabel={text.retry} onAction={reset} />
+        <StateBox tone="info" icon={Newspaper} title={text.noNews} actionLabel={hasFilters ? text.clearFilters : undefined} onAction={hasFilters ? reset : undefined} />
       ) : (
         <>
           <div className="news-grid">
@@ -1867,7 +2204,7 @@ function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow
   return (
     <article className="card featured-card">
       <div className="stock-head">
-        <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
+        <AssetIdentity className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
         <div className="stock-title">
           <h3>{row.name}</h3>
           <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
@@ -1885,13 +2222,26 @@ function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow
   );
 }
 
-function StockTableRow({ row, text, lang }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode }) {
+function StockTableRow({
+  row,
+  text,
+  lang,
+  onOpenDetails,
+  isOpening,
+}: {
+  row: DividendStockRow;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  onOpenDetails: (row: DividendStockRow) => void;
+  isOpening: boolean;
+}) {
   const hasData = hasDividendData(row);
+  const ariaLabel = `${text.viewDetailsAriaPrefix} ${row.symbol}`;
   return (
     <tr>
       <td>
         <div className="company-cell">
-          <AssetAvatar className="stock-logo small" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
+          <AssetIdentity className="stock-logo small" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
           <div>
             <strong>{row.name}</strong>
             <span className="symbol">{row.symbol}</span>
@@ -1910,17 +2260,44 @@ function StockTableRow({ row, text, lang }: { row: DividendStockRow; text: typeo
         <td colSpan={4}><span className="dividend-empty-inline">{text.insufficientDividendData}</span></td>
       )}
       <td><span className={badgeClass(row.riskTone)}>{row.riskLabel}</span></td>
-      <td><button className="link-button" type="button">{text.viewDetails}<ArrowUpRight size={14} /></button></td>
+      <td>
+        <button
+          className="link-button"
+          type="button"
+          data-symbol={row.symbol}
+          aria-label={ariaLabel}
+          aria-busy={isOpening}
+          disabled={isOpening}
+          onClick={() => onOpenDetails(row)}
+        >
+          {isOpening ? <RefreshCcw size={14} className="spin" aria-hidden="true" /> : null}
+          {text.viewDetails}
+          {!isOpening ? <ArrowUpRight size={14} aria-hidden="true" /> : null}
+        </button>
+      </td>
     </tr>
   );
 }
 
-function DividendMobileCard({ row, text, lang }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode }) {
+function DividendMobileCard({
+  row,
+  text,
+  lang,
+  onOpenDetails,
+  isOpening,
+}: {
+  row: DividendStockRow;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  onOpenDetails: (row: DividendStockRow) => void;
+  isOpening: boolean;
+}) {
   const hasData = hasDividendData(row);
+  const ariaLabel = `${text.viewDetailsAriaPrefix} ${row.symbol}`;
   return (
     <article className="card">
       <div className="stock-head">
-        <AssetAvatar className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
+        <AssetIdentity className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative />
         <div className="stock-title">
           <h3>{row.name}</h3>
           <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
@@ -1936,8 +2313,122 @@ function DividendMobileCard({ row, text, lang }: { row: DividendStockRow; text: 
           {hasDate(row.paymentDate) ? <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} /> : null}
         </div>
       ) : <DividendDataNotice text={text} />}
-      <button className="primary-button" type="button">{text.viewDetails}</button>
+      <button
+        className="primary-button"
+        type="button"
+        data-symbol={row.symbol}
+        aria-label={ariaLabel}
+        aria-busy={isOpening}
+        disabled={isOpening}
+        onClick={() => onOpenDetails(row)}
+      >
+        {isOpening ? <RefreshCcw size={15} className="spin" aria-hidden="true" /> : null}
+        {text.viewDetails}
+        {!isOpening ? <ArrowUpRight size={15} aria-hidden="true" /> : null}
+      </button>
     </article>
+  );
+}
+
+function StockDetailsDrawer({
+  row,
+  loading,
+  loadingSymbol,
+  text,
+  lang,
+  provider,
+  lastUpdated,
+  onClose,
+}: {
+  row: DividendStockRow | null;
+  loading: boolean;
+  loadingSymbol: string | null;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  provider: string | null;
+  lastUpdated: string | null;
+  onClose: () => void;
+}) {
+  const symbol = (row?.symbol ?? loadingSymbol ?? '').toUpperCase();
+  const providerValue = Array.from(new Set([row?.source, row?.dividendMetricSource, provider].filter(Boolean))).join(' / ') || null;
+  const dividendStatus = row ? [row.qualityLabel, row.payoutQuality].filter(Boolean).join(' / ') : text.unavailable;
+  const showUnavailable = !loading && (!row || !hasDividendData(row));
+
+  return (
+    <div className="details-overlay" onMouseDown={onClose}>
+      <aside
+        className="details-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dividend-stock-details-title"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <div className="details-head">
+          <div className="details-identity">
+            {row ? <AssetIdentity className="stock-logo" symbol={row.symbol} name={row.name} assetType="stock" size="md" decorative /> : null}
+            <div>
+              <span className="eyebrow">{text.detailsTitle}</span>
+              <h2 id="dividend-stock-details-title">{row?.name ?? symbol}</h2>
+              {symbol ? <p><span className="symbol">{symbol}</span></p> : null}
+            </div>
+          </div>
+          <button className="details-close" type="button" aria-label={text.closeDetails} onClick={onClose}>
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="details-loading" role="status">
+            <RefreshCcw size={18} className="spin" aria-hidden="true" />
+            <span>{text.detailsLoading}</span>
+          </div>
+        ) : null}
+
+        {showUnavailable ? (
+          <div className="details-alert" role="status">
+            <AlertTriangle size={17} aria-hidden="true" />
+            <span>{text.detailsUnavailable}</span>
+            {symbol ? <strong className="symbol">{symbol}</strong> : null}
+          </div>
+        ) : null}
+
+        {!loading && row ? (
+          <>
+            <div className="details-grid">
+              <DetailItem label={text.company}>{row.name}</DetailItem>
+              <DetailItem label={text.symbol}><span className="symbol">{row.symbol}</span></DetailItem>
+              <DetailItem label={text.currentPrice}><span className="numeric">{formatCurrency(row.price, row.currency, lang)}</span></DetailItem>
+              <DetailItem label={text.currency}><span className="symbol">{row.currency || text.unavailable}</span></DetailItem>
+              <DetailItem label={text.dividendYield}><span className="numeric">{formatPercent(row.dividendYield, lang, true)}</span></DetailItem>
+              <DetailItem label={text.dividendPerShare}><span className="numeric">{formatCurrency(row.annualDividend, row.currency, lang)}</span></DetailItem>
+              <DetailItem label={text.payoutRatio}><span className="numeric">{formatPercent(row.payoutRatio, lang, true)}</span></DetailItem>
+              <DetailItem label={text.exDividendDate}>{formatDate(row.exDividendDate, lang)}</DetailItem>
+              <DetailItem label={text.paymentDate}>{formatDate(row.paymentDate, lang)}</DetailItem>
+              <DetailItem label={text.sector}>{row.sectorLabel}</DetailItem>
+              <DetailItem label={text.riskLevel}><span className={badgeClass(row.riskTone)}>{row.riskLabel}</span></DetailItem>
+              <DetailItem label={text.dividendStatus}>{dividendStatus}</DetailItem>
+              <DetailItem label={text.provider}>{providerValue ?? text.unavailable}</DetailItem>
+              <DetailItem label={text.lastUpdate}>{formatDateTime(lastUpdated, lang)}</DetailItem>
+            </div>
+
+            <div className="details-disclaimer">
+              <strong>{text.disclaimer}</strong>
+              <p>{text.legal}</p>
+              <p>{text.aiNotice}</p>
+            </div>
+          </>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function DetailItem({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="details-item">
+      <span>{label}</span>
+      <strong>{children}</strong>
+    </div>
   );
 }
 
@@ -1964,27 +2455,116 @@ function DividendDataNotice({ text }: { text: typeof COPY[LangCode] }) {
 }
 
 function EventList({ events, text, lang, compact }: { events: DividendEvent[]; text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
-  if (events.length === 0) return <StateBox tone="info" icon={CalendarDays} title={text.noCalendarEvents} body={text.noCalendarText} />;
+  if (events.length === 0) {
+    return (
+      <DividendEventEmptyState
+        text={text}
+        title={text.noCalendarEventsFiltered}
+        body={text.noCalendarTextFiltered}
+        providerLabel={text.providerStatus}
+        providerTone="neutral"
+        compact={compact}
+      />
+    );
+  }
   return (
     <div className="event-list">
-      {events.map(event => (
-        <article className="event-row" key={event.id}>
-          <div className="event-date">
-            <CalendarDays size={18} />
-            <strong>{formatDate(event.date, lang)}</strong>
-          </div>
-          <div>
-            <strong>{event.name}</strong>
-            <p><span className="symbol">{event.symbol}</span> · {event.market}</p>
-          </div>
-          <span className={badgeClass(event.type === 'ex' ? 'info' : 'positive')}>{event.type === 'ex' ? text.eventEx : text.eventPayment}</span>
-          {!compact ? <span className="numeric">{formatCurrency(event.annualDividend, event.currency, lang)}</span> : null}
-        </article>
-      ))}
+      {events.map(event => {
+        const companyName = event.companyName ?? event.name;
+        const primaryDate = event.exDividendDate ?? event.paymentDate ?? event.recordDate ?? event.declarationDate ?? event.date;
+        const statusLabel = event.status === 'announced'
+          ? text.statusAnnounced
+          : event.status === 'estimated'
+            ? text.statusEstimated
+            : text.statusScheduled;
+        const amount = event.dividendAmount ?? event.annualDividend ?? null;
+        return (
+          <article className="event-row dividend-calendar-row" key={event.id}>
+            <div className="event-date">
+              <CalendarDays size={18} />
+              <div>
+                <strong>{formatDate(primaryDate, lang)}</strong>
+                <span>{event.type || text.eventType}</span>
+              </div>
+            </div>
+            <div className="event-identity">
+              <AssetIdentity symbol={event.symbol} name={companyName} assetType="stock" size="sm" decorative />
+              <div>
+                <strong>{companyName}</strong>
+                <p><span className="symbol">{event.symbol}</span> · {event.market} · {event.currency}</p>
+              </div>
+            </div>
+            <div className="event-badges">
+              <span className={badgeClass(event.status === 'announced' ? 'positive' : 'info')}>{statusLabel}</span>
+              <span className="badge tone-neutral">{event.source || event.provider || text.provider}</span>
+            </div>
+            {!compact ? (
+              <div className="event-detail-grid">
+                <MiniMetric label={text.dividendAmount} value={formatCurrency(amount, event.currency, lang)} />
+                <MiniMetric label={text.dividendYield} value={formatPercent(event.dividendYield, lang, true)} />
+                <MiniMetric label={text.exDividendDate} value={formatDate(event.exDividendDate, lang)} />
+                <MiniMetric label={text.recordDate} value={formatDate(event.recordDate, lang)} />
+                <MiniMetric label={text.paymentDate} value={formatDate(event.paymentDate, lang)} />
+                <MiniMetric label={text.declarationDate} value={formatDate(event.declarationDate, lang)} />
+              </div>
+            ) : (
+              <span className="numeric">{formatCurrency(amount, event.currency, lang)}</span>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 }
 
+function DividendEventEmptyState({
+  text,
+  title,
+  body,
+  providerLabel,
+  providerTone,
+  onRetry,
+  onReset,
+  canReset = false,
+  compact = false,
+}: {
+  text: typeof COPY[LangCode];
+  title: string;
+  body: string;
+  providerLabel: string;
+  providerTone: Tone;
+  onRetry?: () => void;
+  onReset?: () => void;
+  canReset?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`dividend-event-empty ${compact ? 'compact' : ''}`} role="status">
+      <div className="event-empty-icon">
+        <CalendarDays size={20} />
+      </div>
+      <div className="event-empty-copy">
+        <strong>{title}</strong>
+        <p>{body}</p>
+      </div>
+      <div className="event-empty-actions">
+        <span className={badgeClass(providerTone)}>{providerLabel}</span>
+        {onRetry ? (
+          <button className="ghost-button" type="button" onClick={onRetry}>
+            <RefreshCcw size={16} />
+            {text.retry}
+          </button>
+        ) : null}
+        {onReset ? (
+          <button className="ghost-button" type="button" onClick={onReset} disabled={!canReset}>
+            <Filter size={16} />
+            {text.clearFilters}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: DividendNewsItem; text: typeof COPY[LangCode]; lang: LangCode; showOriginal: boolean; toggleOriginal: () => void }) {
   const url = safeUrl(item.url);
   const title = safeArticleTitle(item, showOriginal);
@@ -2000,7 +2580,20 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: Di
       <h3 className="article-title" dir="auto">{title}</h3>
       {summary ? <p className="article-summary" dir="auto">{summary}</p> : null}
       <div className="metric-grid">
-        <MiniMetric label={text.relatedSymbol} value={item.ticker?.toUpperCase() ?? text.unavailable} />
+        <div className="mini-metric asset-mini-metric">
+          <span>{text.relatedSymbol}</span>
+          {item.ticker ? (
+            <AssetIdentity
+              symbol={item.ticker}
+              name={item.companyName ?? item.ticker}
+              assetType="stock"
+              size="sm"
+              variant="badge"
+              labelClassName="asset-mini-name"
+              symbolClassName="asset-mini-symbol"
+            />
+          ) : <strong>{text.unavailable}</strong>}
+        </div>
         <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.unavailable} />
       </div>
       <div className="article-actions">
@@ -2021,7 +2614,18 @@ function CompactNewsRow({ item, text, lang }: { item: DividendNewsItem; text: ty
       </div>
       <h3 className="article-title" dir="auto">{safeArticleTitle(item, false)}</h3>
       <div className="row-between">
-        <span className="badge tone-info">{item.ticker?.toUpperCase() ?? sectorLabel(newsSector(item), lang)}</span>
+        {item.ticker ? (
+          <AssetIdentity
+            symbol={item.ticker}
+            name={item.companyName ?? item.ticker}
+            assetType="stock"
+            size="xs"
+            variant="badge"
+            className="compact-asset-badge"
+            showName={false}
+            symbolClassName="compact-asset-symbol"
+          />
+        ) : <span className="badge tone-info">{sectorLabel(newsSector(item), lang)}</span>}
         {url ? <a className="link-button" href={url} target="_blank" rel="noopener noreferrer nofollow">{text.readArticle}<ArrowUpRight size={15} /></a> : null}
       </div>
     </article>
@@ -2183,14 +2787,14 @@ function DividendStyles() {
         min-width: 0;
         margin-inline: auto;
         display: grid;
-        gap: 22px;
+        gap: 18px;
       }
       .hero {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 380px;
         gap: 22px;
         align-items: stretch;
-        padding: 26px;
+        padding: clamp(20px, 2.4vw, 26px);
         border: 1px solid rgba(63, 127, 158, 0.22);
         border-radius: 24px;
         background:
@@ -2314,13 +2918,15 @@ function DividendStyles() {
         text-decoration: none;
         box-shadow: 0 14px 26px rgba(24, 139, 202, 0.25);
       }
-      .refresh-button:hover,
-      .primary-button:hover,
+      .refresh-button:hover:not(:disabled),
+      .primary-button:hover:not(:disabled),
       .card:hover {
         transform: translateY(-2px);
         box-shadow: 0 18px 34px rgba(20, 78, 118, 0.14);
       }
       .refresh-button:disabled,
+      .primary-button:disabled,
+      .link-button:disabled,
       .ghost-button:disabled {
         cursor: not-allowed;
         opacity: 0.58;
@@ -2676,6 +3282,30 @@ function DividendStyles() {
         font-size: 14px;
         font-weight: 950;
       }
+      .asset-mini-metric {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+      }
+      .asset-mini-metric strong {
+        margin: 0;
+      }
+      .asset-mini-name {
+        color: #102742;
+        font-size: 13px;
+      }
+      .asset-mini-symbol,
+      .compact-asset-symbol {
+        color: #1768a8;
+      }
+      .compact-asset-badge {
+        max-width: 160px;
+        border: 1px solid rgba(14, 165, 233, 0.18);
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.08);
+        padding: 4px 8px;
+        color: #075985;
+      }
       .dividend-data-notice,
       .dividend-empty-inline {
         display: inline-flex;
@@ -2711,6 +3341,144 @@ function DividendStyles() {
         font-size: 13px;
         line-height: 1.7;
       }
+      .details-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        justify-content: flex-end;
+        padding: 18px;
+        background: rgba(8, 22, 38, 0.46);
+        backdrop-filter: blur(5px);
+      }
+      .page[dir="rtl"] .details-overlay {
+        justify-content: flex-start;
+      }
+      .details-drawer {
+        width: min(560px, 100%);
+        max-height: 100%;
+        overflow: auto;
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        padding: 20px;
+        border-radius: 24px;
+        border: 1px solid rgba(58, 124, 154, 0.18);
+        background: #ffffff;
+        box-shadow: 0 24px 70px rgba(8, 22, 38, 0.26);
+      }
+      .details-head,
+      .details-identity {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-width: 0;
+      }
+      .details-head {
+        justify-content: space-between;
+      }
+      .details-identity {
+        flex: 1;
+      }
+      .details-identity > div {
+        min-width: 0;
+      }
+      .details-identity h2 {
+        margin: 5px 0 0;
+        color: #102742;
+        font-size: clamp(21px, 2.8vw, 30px);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+      .details-identity p {
+        margin: 5px 0 0;
+      }
+      .details-close {
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 14px;
+        border: 1px solid rgba(58, 124, 154, 0.16);
+        background: #f8fbff;
+        color: #1768a8;
+        cursor: pointer;
+        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      }
+      .details-close:hover,
+      .details-close:focus-visible {
+        outline: none;
+        transform: translateY(-1px);
+        border-color: rgba(20, 184, 216, 0.5);
+        background: rgba(14, 165, 233, 0.1);
+      }
+      .details-loading,
+      .details-alert {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 12px 13px;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.6;
+      }
+      .details-loading {
+        border: 1px solid rgba(14, 165, 233, 0.18);
+        background: rgba(14, 165, 233, 0.08);
+        color: #075985;
+      }
+      .details-alert {
+        flex-wrap: wrap;
+        border: 1px solid rgba(245, 158, 11, 0.24);
+        background: rgba(245, 158, 11, 0.11);
+        color: #92400e;
+      }
+      .details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .details-item {
+        min-width: 0;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+        border-radius: 15px;
+        border: 1px solid rgba(58, 124, 154, 0.12);
+        background: #f8fbff;
+      }
+      .details-item span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .details-item strong {
+        min-width: 0;
+        color: #102742;
+        font-size: 14px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+      .details-disclaimer {
+        display: grid;
+        gap: 7px;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(58, 124, 154, 0.14);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.07), rgba(20, 184, 166, 0.07));
+      }
+      .details-disclaimer strong {
+        color: #102742;
+      }
+      .details-disclaimer p {
+        margin: 0;
+        color: #5f7388;
+        font-size: 12.5px;
+        font-weight: 800;
+        line-height: 1.8;
+      }
       .filter-panel {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -2723,6 +3491,15 @@ function DividendStyles() {
       }
       .news-filter-panel {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+      .calendar-filter-panel {
+        margin: 12px 0 16px;
+      }
+      .calendar-filter-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
       }
       .field {
         display: grid;
@@ -2786,6 +3563,15 @@ function DividendStyles() {
         font-weight: 900;
         cursor: pointer;
         text-decoration: none;
+      }
+      .ghost-button:hover:not(:disabled),
+      .link-button:hover:not(:disabled),
+      .guide-button:hover:not(:disabled),
+      .chip:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: rgba(20, 184, 216, 0.42);
+        background: rgba(14, 165, 233, 0.08);
+        box-shadow: 0 10px 22px rgba(20, 78, 118, 0.1);
       }
       .chip {
         min-height: 38px;
@@ -2853,7 +3639,7 @@ function DividendStyles() {
       }
       .event-row {
         display: grid;
-        grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) auto auto;
+        grid-template-columns: minmax(140px, 170px) minmax(0, 1fr) auto auto;
         gap: 12px;
         align-items: center;
         padding: 13px;
@@ -2861,11 +3647,53 @@ function DividendStyles() {
         border: 1px solid rgba(58, 124, 154, 0.13);
         background: #fff;
       }
+      .dividend-calendar-row {
+        grid-template-columns: minmax(150px, 190px) minmax(220px, 1fr) auto;
+        align-items: start;
+      }
       .event-date {
         display: flex;
         align-items: center;
         gap: 8px;
         color: #0e7490;
+      }
+      .event-date > div {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+      .event-date span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .event-identity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .event-identity > div {
+        min-width: 0;
+      }
+      .event-identity strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .event-badges {
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .event-detail-grid {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        gap: 10px;
       }
       .article-title {
         display: -webkit-box;
@@ -2999,6 +3827,114 @@ function DividendStyles() {
         gap: 14px;
         padding: 18px;
       }
+      .dividend-event-empty {
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid rgba(14, 116, 144, 0.16);
+        border-radius: 16px;
+        background: #ffffff;
+        text-align: start;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      }
+      .dividend-event-empty.compact {
+        padding: 14px;
+      }
+      .event-empty-icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border-radius: 14px;
+        background: rgba(14, 165, 233, 0.1);
+        color: #0e7490;
+      }
+      .event-empty-copy {
+        flex: 1;
+        min-width: 0;
+      }
+      .event-empty-copy strong {
+        display: block;
+        color: #102742;
+        font-size: 15px;
+        font-weight: 950;
+        line-height: 1.35;
+      }
+      .event-empty-copy p {
+        margin: 4px 0 0;
+        color: #5f7388;
+        font-size: 14px;
+        font-weight: 850;
+        line-height: 1.8;
+      }
+      .event-empty-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+      }
+      .event-empty-hints {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+      .event-empty-hints span {
+        border: 1px solid rgba(14, 116, 144, 0.14);
+        border-radius: 999px;
+        background: rgba(248, 251, 255, 0.9);
+        color: #0e7490;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .dark .dividend-event-empty {
+        border-color: rgba(125, 211, 252, 0.18);
+        background:
+          linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 184, 166, 0.1)),
+          #0f172a;
+      }
+      .dark .event-empty-copy strong,
+      .dark .asset-mini-name {
+        color: #f8fafc;
+      }
+      .dark .event-empty-copy p {
+        color: #cbd5e1;
+      }
+      .dark .event-empty-hints span,
+      .dark .compact-asset-badge {
+        border-color: rgba(125, 211, 252, 0.2);
+        background: rgba(14, 116, 144, 0.2);
+        color: #bae6fd;
+      }
+      .dark .details-drawer {
+        border-color: rgba(125, 211, 252, 0.18);
+        background: #0f172a;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
+      }
+      .dark .details-identity h2,
+      .dark .details-item strong,
+      .dark .details-disclaimer strong {
+        color: #f8fafc;
+      }
+      .dark .details-close,
+      .dark .details-item {
+        border-color: rgba(125, 211, 252, 0.16);
+        background: rgba(15, 23, 42, 0.82);
+      }
+      .dark .details-item span,
+      .dark .details-disclaimer p {
+        color: #cbd5e1;
+      }
+      .dark .details-disclaimer {
+        border-color: rgba(125, 211, 252, 0.16);
+        background: rgba(14, 116, 144, 0.16);
+      }
       .state-copy {
         display: flex;
         align-items: flex-start;
@@ -3095,8 +4031,46 @@ function DividendStyles() {
         .mobile-card-list {
           display: grid;
         }
+        .details-overlay,
+        .page[dir="rtl"] .details-overlay {
+          align-items: flex-end;
+          justify-content: center;
+          padding: 10px;
+        }
+        .details-drawer {
+          width: 100%;
+          max-height: 90vh;
+          border-radius: 22px 22px 0 0;
+        }
+        .details-head {
+          gap: 10px;
+        }
+        .details-grid {
+          grid-template-columns: 1fr;
+        }
         .event-row {
           grid-template-columns: 1fr;
+        }
+        .dividend-calendar-row {
+          grid-template-columns: 1fr;
+        }
+        .event-badges,
+        .calendar-filter-actions,
+        .event-empty-actions {
+          justify-content: flex-start;
+        }
+        .dividend-event-empty {
+          align-items: flex-start;
+          flex-direction: column;
+          text-align: start;
+        }
+        .event-empty-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: 17px;
+        }
+        .event-empty-hints {
+          justify-content: flex-start;
         }
         .comparison-row {
           grid-template-columns: 1fr;
@@ -3130,3 +4104,4 @@ function DividendStyles() {
 }
 
 export default DividendStocksNewsPage;
+

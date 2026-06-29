@@ -36,7 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import { AssetAvatar } from '@/components/asset/AssetAvatar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import styles from './ShariahStocksNewsPage.module.css';
@@ -206,9 +206,9 @@ const QUICK_TIMEFRAMES: QuickTimeframe[] = ['15m', '1h', '4h', '1D', '1W'];
 
 const COPY = {
   ar: {
-    pageTitle: 'مركز أبحاث الأسهم المتوافقة مع المنهجية الشرعية',
-    pageKicker: 'Research Center',
-    pageSubtitle: 'استعرض نتائج الفحص وفق المنهجية المعتمدة في النظام، وافهم أسباب النتيجة ومصادر البيانات قبل اتخاذ أي قرار.',
+    pageTitle: 'مركز أبحاث الأسهم المتوافقة مع الضوابط الشرعية',
+    pageKicker: 'مركز أبحاث',
+    pageSubtitle: 'استعرض نتائج الفحص الشرعي وفق المنهجية المعتمدة في النظام، وراجع أسباب التصنيف ومصادر البيانات قبل اتخاذ أي قرار.',
     refresh: 'تحديث البيانات',
     refreshing: 'جارٍ التحديث',
     updated: 'آخر تحديث',
@@ -216,22 +216,22 @@ const COPY = {
     delayed: 'أسعار متأخرة حسب المزود',
     sourceConnected: 'مصدر الفحص متاح',
     sourceLimited: 'بيانات الفحص محدودة',
-    method: 'المنهجية',
+    method: 'منهجية الفحص',
     screeningDate: 'تاريخ الفحص',
     quoteDate: 'تاريخ السعر',
     financialPeriod: 'فترة القوائم',
     statementUnavailable: 'غير متاحة من المزود الحالي',
     summaryTitle: 'ملخص نتائج الفحص',
-    summaryBody: 'النتائج آلية ومبنية على المنهجية والبيانات المتاحة. نقص البيانات لا يعني الاجتياز أو الإخفاق.',
+    summaryBody: 'النتائج آلية ومبنية على المنهجية والبيانات المتاحة. نقص البيانات لا يعني الاجتياز ولا الإخفاق.',
     totalScreened: 'إجمالي الشركات والأدوات',
-    compliant: 'متوافق مع المنهجية',
-    review: 'يحتاج مراجعة',
-    nonCompliant: 'غير متوافق مع المنهجية',
+    compliant: 'متوافق مع الضوابط',
+    review: 'يحتاج إلى مراجعة شرعية',
+    nonCompliant: 'غير متوافق مع الضوابط',
     unknown: 'بيانات غير كافية',
     notScreened: 'لم يتم الفحص بعد',
     complete: 'بيانات مكتملة',
     partial: 'بيانات جزئية',
-    staleWarning: 'نتائج فحص قديمة نسبياً',
+    staleWarning: 'نتائج فحص قديمة نسبيًا',
     tabs: {
       overview: 'نظرة عامة',
       screener: 'نتائج الفحص',
@@ -239,8 +239,8 @@ const COPY = {
       news: 'الأخبار',
       methodology: 'المنهجية والمصادر',
     },
-    methodologyTitle: 'بطاقة المنهجية والشفافية',
-    methodologyBody: 'تعرض هذه البطاقة مصدر المنهجية وحدود البيانات. لا يتم دمج معايير متعددة أو تحويل نقص البيانات إلى نتيجة اجتياز.',
+    methodologyTitle: 'المنهجية والمصادر',
+    methodologyBody: 'توضح هذه البطاقة مصدر الفحص وحدود البيانات وآلية التعامل مع نقص المعلومات. لا يتحول نقص البيانات إلى نتيجة اجتياز تلقائية.',
     criteria: 'المعايير المستخدمة',
     dataNeeds: 'البيانات المطلوبة',
     missingPolicy: 'التعامل مع البيانات الناقصة',
@@ -248,8 +248,8 @@ const COPY = {
     screeningSnapshot: 'حالة الفحص الحالية',
     recentChanges: 'سجل التغيرات',
     noHistory: 'لا يتوفر سجل تغيرات تاريخي لهذا الأصل في مصدر البيانات الحالي.',
-    screenerTitle: 'فاحص الأسهم المتوافقة مع المنهجية',
-    screenerBody: 'جدول قابل للبحث والفرز يفصل نتيجة الفحص عن الأداء السوقي والمخاطر الاستثمارية.',
+    screenerTitle: 'فاحص الأسهم وفق الضوابط الشرعية',
+    screenerBody: 'جدول قابل للبحث والفرز يفصل نتيجة الفحص الشرعي عن الأداء السوقي والمخاطر الاستثمارية.',
     search: 'البحث',
     searchPlaceholder: 'ابحث باسم الشركة أو الرمز أو القطاع',
     statusFilter: 'حالة الفحص',
@@ -259,7 +259,7 @@ const COPY = {
     allSectors: 'كل القطاعات',
     allSources: 'كل المصادر',
     all: 'الكل',
-    clearFilters: 'مسح الفلاتر',
+    clearFilters: 'مسح عوامل التصفية',
     resultCount: 'عدد النتائج',
     company: 'الشركة',
     symbol: 'الرمز',
@@ -273,35 +273,35 @@ const COPY = {
     change: 'التغير',
     dataQuality: 'اكتمال البيانات',
     confidence: 'ثقة البيانات',
-    details: 'فحص المنهجية',
+    details: 'تفاصيل الفحص',
     quickAnalyze: 'تحليل سريع',
     fullAnalyze: 'التحليل الكامل',
     loadMore: 'عرض المزيد',
-    noStocks: 'لا توجد شركات مطابقة للفلاتر الحالية.',
-    noFunds: 'لا توجد صناديق مطابقة للفلاتر الحالية.',
+    noStocks: 'لا توجد شركات مطابقة لعوامل التصفية الحالية.',
+    noFunds: 'لا توجد صناديق مطابقة لعوامل التصفية الحالية.',
     fundsTitle: 'الصناديق والمؤشرات الشرعية',
     fundsBody: 'الصناديق مفصولة عن الشركات لأن منهجية الصندوق ومراقبته قد تختلف عن فحص الأسهم الفردية.',
     fundWarning: 'قد تختلف منهجية الصندوق عن منهجية الفحص المستخدمة في هذه الصفحة.',
-    newsTitle: 'أخبار مرتبطة بالأسهم المفحوصة',
-    newsBody: 'أخبار مختصرة من المصادر الحالية مع إظهار حالة الفحص الحالية للشركة المرتبطة عند توفرها.',
-    noNews: 'لا توجد أخبار مطابقة للفلاتر الحالية.',
+    newsTitle: 'أخبار الأسهم المفحوصة',
+    newsBody: 'أخبار موجزة من المصادر الحالية مع إظهار حالة الفحص الشرعي للشركة المرتبطة عند توفرها.',
+    noNews: 'لا توجد أخبار مطابقة لعوامل التصفية الحالية.',
     readArticle: 'قراءة الخبر',
     originalText: 'عرض النص الأصلي',
     translated: 'ترجمة آلية',
     source: 'المصدر',
     published: 'تاريخ النشر',
     relatedSymbol: 'رمز مرتبط',
-    openCompanyScreen: 'فحص الشركة',
+    openCompanyScreen: 'عرض فحص الشركة',
     analyzeRelated: 'تحليل السهم',
     detailsTitle: 'تفاصيل نتيجة الفحص',
     reason: 'سبب النتيجة',
     ratios: 'النسب والمعايير',
     ratioValue: 'القيمة المحسوبة',
     threshold: 'الحد المستخدم',
-    ratioStatus: 'النتيجة',
+    ratioStatus: 'حالة النسبة',
     unavailableRatio: 'غير متاح في نتيجة الفحص الحالية',
     noThreshold: 'لم يرسل المزود الحد الرقمي لهذه النسبة',
-    investmentNote: 'اجتياز الفحص وفق المنهجية لا يعني أن السهم مناسب استثمارياً أو منخفض المخاطر.',
+    investmentNote: 'اجتياز الفحص الشرعي لا يعني أن السهم مناسب استثمارياً أو منخفض المخاطر.',
     close: 'إغلاق',
     quickTitle: 'التحليل السريع',
     quickLoading: 'جارٍ تحليل السهم',
@@ -318,8 +318,8 @@ const COPY = {
     openFull: 'فتح التحليل الكامل',
     refreshAnalysis: 'تحديث التحليل',
     educationTitle: 'دليل الفحص الشرعي للأسهم',
-    disclaimer: 'نتائج الفحص آلية ومبنية على البيانات والمنهجية الموضحة، ولا تمثل فتوى شرعية شخصية. يُنصح بالرجوع إلى جهة شرعية مختصة عند الحاجة.',
-    sourceDisclosure: 'الأخبار والبيانات السوقية مجمعة من مصادر خارجية، وقد تتأخر الأسعار أو تكون البيانات المالية ناقصة.',
+    disclaimer: 'نتائج الفحص آلية ومبنية على البيانات والمنهجية الموضحة، ولا تمثل فتوى شرعية أو توصية استثمارية. يُنصح بالرجوع إلى جهة شرعية مختصة عند الحاجة.',
+    sourceDisclosure: 'الأخبار والبيانات السوقية مجمعة من مصادر خارجية، وقد تتأخر الأسعار أو تكون بعض البيانات المالية غير مكتملة.',
     sortLabels: {
       latest_screening: 'أحدث فحص',
       data_quality: 'الأكثر اكتمالاً',
@@ -716,22 +716,22 @@ function explainReason(item: ScreeningItem, lang: LangCode) {
   if (lang !== 'ar') return item.reason?.en || COPY[lang].notAvailable;
   const activity = item.industry || item.sector || item.name;
   if (item.shariahStatus === 'compliant') {
-    return `يعرض السجل الحالي نشاطاً في ${activity} مع نتيجة اجتياز وفق المنهجية المتاحة. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
+    return `يعرض السجل الحالي نشاطًا في ${activity} مع نتيجة توافق وفق الضوابط المتاحة. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
   }
   if (item.shariahStatus === 'review') {
-    return `يحتاج نشاط ${activity} إلى مراجعة دورية وفق المنهجية بسبب طبيعة النشاط أو مزيج الإيرادات. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
+    return `يحتاج نشاط ${activity} إلى مراجعة شرعية دورية بسبب طبيعة النشاط أو مزيج الإيرادات. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
   }
   if (item.shariahStatus === 'non_compliant') {
-    return `يشير السجل الحالي إلى عدم توافق مع المنهجية المحددة. يجب مراجعة سبب الإخفاق والبيانات المالية قبل الاعتماد على النتيجة.`;
+    return `يشير السجل الحالي إلى عدم توافق مع الضوابط المحددة. يجب مراجعة سبب الإخفاق والبيانات المالية قبل الاعتماد على النتيجة.`;
   }
-  return 'لا تتوفر بيانات مالية كافية لإكمال الفحص وفق المنهجية الحالية.';
+  return 'لا تتوفر بيانات مالية كافية لإكمال الفحص وفق منهجية الفحص الحالية.';
 }
 
 function methodologyText(screening: ScreeningResponse | null, lang: LangCode) {
   const value = screening?.methodology?.[lang];
   if (value && !hasMojibake(value)) return value;
   return lang === 'ar'
-    ? 'تعتمد القراءة على فحص نشاط الشركة والنسب المالية المتاحة مثل المديونية والإيرادات غير المتوافقة والنقد أو الأدوات ذات العائد. لا تمثل هذه القراءة فتوى شرعية.'
+    ? 'تعتمد القراءة على فحص نشاط الشركة والنسب المالية المتاحة، مثل المديونية والإيرادات غير المتوافقة والنقد أو الأدوات ذات العائد. هذه القراءة معلوماتية ولا تمثل فتوى شرعية.'
     : COPY[lang].methodologyBody;
 }
 
@@ -1444,54 +1444,109 @@ function OverviewTab({
 }) {
   return (
     <div className={styles.overviewGrid}>
-      <section className={styles.methodologyPanel}>
-        <div className={styles.sectionHead}>
-          <div>
-            <span className={styles.sectionKicker}><Info size={15} /> {c.methodologyTitle}</span>
-            <h2>{c.methodologyTitle}</h2>
-            <p>{methodologyText(screening, locale)}</p>
+      <div className={styles.overviewMain}>
+        <section className={`${styles.panel} ${styles.stockResultsPanel}`}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.sectionKicker}><TrendingUp size={15} /> {c.screenerTitle}</span>
+              <h2>{locale === 'ar' ? 'أسهم مفحوصة تتحرك اليوم' : 'Screened instruments moving today'}</h2>
+              <p>{c.screenerBody}</p>
+            </div>
+            <button type="button" className={styles.linkButton} onClick={() => onTab('screener')}>{c.tabs.screener}</button>
           </div>
-        </div>
-        <div className={styles.methodologyMiniGrid}>
-          <MetricTile label={c.method} value={screening?.sourceName || screening?.screeningSource || (locale === 'ar' ? 'منهجية داخلية' : 'Internal methodology')} />
-          <MetricTile label={c.dataQuality} value={`${summary.complete}/${summary.total || 0}`} />
-          <MetricTile label={c.staleWarning} value={summary.staleCount ? String(summary.staleCount) : '0'} />
-        </div>
-        <button type="button" className={styles.secondaryButton} onClick={() => onTab('methodology')}>
-          <BookOpen size={16} />
-          {c.tabs.methodology}
-        </button>
-      </section>
+          <div className={styles.compactStockGrid} aria-busy={loading}>
+            {leadingStocks.length ? leadingStocks.map(row => (
+              <SecurityMiniCard key={row.symbol} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
+            )) : <EmptyState text={loading ? `${c.refreshing}...` : c.noStocks} />}
+          </div>
+        </section>
 
-      <section className={styles.panel}>
-        <div className={styles.sectionHead}>
-          <div>
-            <span className={styles.sectionKicker}><TrendingUp size={15} /> {c.screenerTitle}</span>
-            <h2>{locale === 'ar' ? 'أدوات مفحوصة تتحرك اليوم' : 'Screened instruments moving today'}</h2>
-            <p>{c.screenerBody}</p>
+        <section className={`${styles.panel} ${styles.newsPreviewPanel}`}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.sectionKicker}><Newspaper size={15} /> {c.newsTitle}</span>
+              <h2>{c.newsTitle}</h2>
+              <p>{c.newsBody}</p>
+            </div>
+            <button type="button" className={styles.linkButton} onClick={() => onTab('news')}>{c.tabs.news}</button>
           </div>
-          <button type="button" className={styles.linkButton} onClick={() => onTab('screener')}>{c.tabs.screener}</button>
-        </div>
-        <div className={styles.compactStockGrid} aria-busy={loading}>
-          {leadingStocks.length ? leadingStocks.map(row => (
-            <SecurityMiniCard key={row.symbol} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
-          )) : <EmptyState text={loading ? `${c.refreshing}...` : c.noStocks} />}
-        </div>
-      </section>
+          <div className={styles.newsPreviewList} aria-busy={newsLoading}>
+            {newsItems.length ? newsItems.map(item => <NewsRow key={item.id || item.url} item={item} c={c} locale={locale} compact />) : <EmptyState text={newsLoading ? `${c.refreshing}...` : c.noNews} />}
+          </div>
+        </section>
+      </div>
 
-      <section className={styles.panel}>
-        <div className={styles.sectionHead}>
-          <div>
-            <span className={styles.sectionKicker}><Newspaper size={15} /> {c.newsTitle}</span>
-            <h2>{c.newsTitle}</h2>
-            <p>{c.newsBody}</p>
+      <aside className={styles.overviewAside}>
+        <section className={`${styles.methodologyPanel} ${styles.methodologyCardCompact}`}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.sectionKicker}><Info size={15} /> {c.methodologyTitle}</span>
+              <h2>{c.methodologyTitle}</h2>
+              <p>{methodologyText(screening, locale)}</p>
+            </div>
           </div>
-          <button type="button" className={styles.linkButton} onClick={() => onTab('news')}>{c.tabs.news}</button>
-        </div>
-        <div className={styles.newsPreviewList} aria-busy={newsLoading}>
-          {newsItems.length ? newsItems.map(item => <NewsRow key={item.id || item.url} item={item} c={c} locale={locale} compact />) : <EmptyState text={newsLoading ? `${c.refreshing}...` : c.noNews} />}
-        </div>
-      </section>
+          <div className={styles.methodologyMiniGrid}>
+            <MetricTile label={c.method} value={screening?.sourceName || screening?.screeningSource || (locale === 'ar' ? 'منهجية داخلية' : 'Internal methodology')} />
+            <MetricTile label={c.dataQuality} value={`${summary.complete}/${summary.total || 0}`} />
+          </div>
+          <div className={styles.methodologyChecklist}>
+            <div>
+              <strong>{c.criteria}</strong>
+              <span>{locale === 'ar' ? 'النشاط، النسب المالية، الإيرادات غير المتوافقة.' : 'Activity, ratios, and non-compliant revenue.'}</span>
+            </div>
+            <div>
+              <strong>{c.missingPolicy}</strong>
+              <span>{locale === 'ar' ? 'البيانات الناقصة لا تُعامل كاجتياز.' : 'Missing data is not treated as a pass.'}</span>
+            </div>
+          </div>
+          <button type="button" className={styles.secondaryButton} onClick={() => onTab('methodology')}>
+            <BookOpen size={16} />
+            {c.tabs.methodology}
+          </button>
+        </section>
+
+        <section className={`${styles.panel} ${styles.transparencyPanel}`}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.sectionKicker}><ShieldCheck size={15} /> {c.missingPolicy}</span>
+              <h2>{locale === 'ar' ? 'شفافية التصنيف' : 'Classification transparency'}</h2>
+              <p>{c.missingPolicyText}</p>
+            </div>
+          </div>
+          <div className={styles.methodologyChecklist}>
+            <div>
+              <strong>{c.dataNeeds}</strong>
+              <span>{locale === 'ar' ? 'نشاط الشركة، المديونية، الإيرادات غير المتوافقة، والسيولة.' : 'Business activity, debt, non-compliant revenue, and liquidity.'}</span>
+            </div>
+            <div>
+              <strong>{c.financialPeriod}</strong>
+              <span>{c.statementUnavailable}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${styles.panel} ${styles.asideStatsPanel}`}>
+          <div className={styles.sectionHead}>
+            <div>
+              <span className={styles.sectionKicker}><ListChecks size={15} /> {c.screeningSnapshot}</span>
+              <h2>{c.summaryTitle}</h2>
+            </div>
+          </div>
+          <div className={styles.sideStatsList}>
+            {[
+              [c.totalScreened, loading ? '...' : String(summary.total)],
+              [c.compliant, loading ? '...' : String(summary.counts.compliant)],
+              [c.review, loading ? '...' : String(summary.counts.review)],
+              [c.unknown, loading ? '...' : String(summary.insufficient)],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      </aside>
     </div>
   );
 }
@@ -1636,11 +1691,11 @@ function SecurityTable({
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr key={row.symbol}>
-                <td>
-                  <button type="button" className={styles.companyButton} onClick={() => onDetails(row)}>
-                    <AssetAvatar symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
-                    <span className={styles.companyButtonText}>
+                <tr key={row.symbol}>
+                  <td>
+                    <button type="button" className={styles.companyButton} onClick={() => onDetails(row)}>
+                     <AssetIdentity symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
+                      <span className={styles.companyButtonText}>
                       <strong>{row.name}</strong>
                       <b dir="ltr">{row.symbol}</b>
                     </span>
@@ -1823,11 +1878,11 @@ function MethodologyTab({
   setOpenEducation: (value: string[]) => void;
 }) {
   const lessons = [
-    ['meaning', locale === 'ar' ? 'ما المقصود بالأسهم المتوافقة؟' : 'What does screened mean?', locale === 'ar' ? 'هي نتيجة فحص آلية وفق منهجية محددة، ولا تعني حكماً عاماً أو مناسبته لكل مستثمر.' : 'It is an automated result under a specific methodology, not a universal religious ruling.'],
-    ['activity', locale === 'ar' ? 'كيف يتم فحص نشاط الشركة؟' : 'Business activity screening', locale === 'ar' ? 'يراجع الفحص طبيعة النشاط والإيرادات المرتبطة بأنشطة قد تكون غير متوافقة وفق المنهجية.' : 'The screen reviews the business model and potentially non-compliant revenue sources.'],
+    ['meaning', locale === 'ar' ? 'ما المقصود بالأسهم المتوافقة؟' : 'What does screened mean?', locale === 'ar' ? 'هي نتيجة فحص آلي وفق منهجية محددة، ولا تعني حكمًا عامًا أو مناسبة السهم لكل مستثمر.' : 'It is an automated result under a specific methodology, not a universal religious ruling.'],
+    ['activity', locale === 'ar' ? 'كيف يتم فحص نشاط الشركة؟' : 'Business activity screening', locale === 'ar' ? 'يراجع الفحص طبيعة النشاط والإيرادات المرتبطة بأنشطة قد تكون غير متوافقة مع الضوابط الشرعية.' : 'The screen reviews the business model and potentially non-compliant revenue sources.'],
     ['ratios', locale === 'ar' ? 'كيف تتم مراجعة النسب المالية؟' : 'Financial ratio review', locale === 'ar' ? 'تحتاج النسب إلى بيانات مالية حديثة مثل المديونية والسيولة والإيرادات. إذا غابت البيانات لا يتم افتراض نتيجة.' : 'Ratios require current financial data. Missing values are not assumed to pass.'],
-    ['limits', locale === 'ar' ? 'ما حدود الفحص الآلي؟' : 'Automated screening limits', locale === 'ar' ? 'النتيجة تعتمد على جودة البيانات وتاريخها والمنهجية، ولا تغني عن مراجعة جهة مختصة.' : 'The result depends on data quality, freshness, and methodology.'],
-    ['investment', locale === 'ar' ? 'الفرق بين التوافق والمناسبة الاستثمارية' : 'Screening vs suitability', locale === 'ar' ? 'نتيجة الفحص منفصلة عن التقييم، الربحية، الأداء، المخاطر، والتحليل الفني.' : 'Screening is separate from valuation, profitability, risk, and technical analysis.'],
+    ['limits', locale === 'ar' ? 'ما حدود الفحص الآلي؟' : 'Automated screening limits', locale === 'ar' ? 'النتيجة تعتمد على جودة البيانات وتاريخها والمنهجية، ولا تغني عن مراجعة جهة شرعية مختصة.' : 'The result depends on data quality, freshness, and methodology.'],
+    ['investment', locale === 'ar' ? 'الفرق بين التوافق الشرعي والمناسبة الاستثمارية' : 'Screening vs suitability', locale === 'ar' ? 'نتيجة الفحص منفصلة عن التقييم والربحية والأداء والمخاطر والتحليل الفني.' : 'Screening is separate from valuation, profitability, risk, and technical analysis.'],
   ];
   const toggle = (id: string) => {
     setOpenEducation(openEducation.includes(id) ? openEducation.filter(item => item !== id) : [...openEducation, id]);
@@ -1867,7 +1922,7 @@ function MethodologyTab({
           <div>
             <span className={styles.sectionKicker}><BookOpen size={15} /> {c.educationTitle}</span>
             <h2>{c.educationTitle}</h2>
-            <p>{locale === 'ar' ? 'بطاقات تعليمية مختصرة ومغلقة افتراضياً للحفاظ على صفحة قابلة للمسح.' : 'Concise education cards, collapsed by default.'}</p>
+            <p>{locale === 'ar' ? 'بطاقات تعليمية مختصرة ومغلقة افتراضيًا لتبقى الصفحة سهلة المسح.' : 'Concise education cards, collapsed by default.'}</p>
           </div>
         </div>
         <div className={styles.accordionList}>
@@ -1947,7 +2002,7 @@ function SecurityMiniCard({
     <article className={styles.securityCard}>
       <header>
         <div className={styles.securityCardIdentity}>
-          <AssetAvatar symbol={row.symbol} name={row.name} assetType={row.assetType} size="md" decorative />
+          <AssetIdentity symbol={row.symbol} name={row.name} assetType={row.assetType} size="md" decorative />
           <div>
             <strong>{row.name}</strong>
             <span dir="ltr">{row.symbol}</span>
@@ -1960,7 +2015,7 @@ function SecurityMiniCard({
         <MetricTile label={c.change} value={formatPercent(row.quote?.changePercent, locale)} ltr />
         <MetricTile label={c.screeningDate} value={formatDate(row.lastScreenedAt, locale)} />
       </div>
-      <p>{explainReason(row, locale)}</p>
+      <p className={styles.securityReason}>{explainReason(row, locale)}</p>
       <div className={styles.cardActions}>
         <button type="button" onClick={() => onDetails(row)}>{c.details}</button>
         <button type="button" onClick={() => onQuick(row)}>{c.quickAnalyze}</button>
@@ -2003,8 +2058,10 @@ function NewsCard({
   return (
     <article className={styles.newsCard}>
       <header>
-        <span>{item.source}</span>
-        <time dateTime={item.publishedAt}>{formatRelativeTime(item.publishedAt, locale)}</time>
+        <div className={styles.newsCardMetaLine}>
+          <span>{item.source}</span>
+          <time dateTime={item.publishedAt}>{formatRelativeTime(item.publishedAt, locale)}</time>
+        </div>
         <StatusBadge status={status} label={statusLabel(status, locale)} />
       </header>
       <h3 dir="auto">{title}</h3>
@@ -2028,9 +2085,9 @@ function NewsRow({ item, c, locale, compact = false }: { item: ShariahNewsItem; 
   const title = item.title || item.headline || item.titleOriginal || c.notAvailable;
   return (
     <a className={`${styles.newsRow} ${compact ? styles.newsRowCompact : ''}`} href={href || undefined} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer nofollow' : undefined}>
-      <span>{item.source}</span>
+      <span className={styles.newsRowSource}>{item.source}</span>
       <strong dir="auto">{title}</strong>
-      <time dateTime={item.publishedAt}>{formatRelativeTime(item.publishedAt, locale)}</time>
+      <time className={styles.newsRowDate} dateTime={item.publishedAt}>{formatRelativeTime(item.publishedAt, locale)}</time>
     </a>
   );
 }

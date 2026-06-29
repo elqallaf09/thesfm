@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { Sidebar } from '@/components/Sidebar';
+import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -82,16 +83,6 @@ function formatDate(value?: string | null, locale = 'ar-KW') {
   } catch {
     return 'غير محدد';
   }
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0])
-    .join('')
-    .toUpperCase() || 'S';
 }
 
 function formFromCompany(company: CompanyListing): FormState {
@@ -160,25 +151,6 @@ function formPayload(form: FormState) {
     logoUrl: form.logoUrl,
     coverImageUrl: form.coverImageUrl,
   };
-}
-
-function CompanyLogo({ company }: { company: CompanyListing }) {
-  const [failed, setFailed] = useState(false);
-  if (company.logo_url && !failed) {
-    return (
-      <Image
-        className="owner-company-logo"
-        src={company.logo_url}
-        alt={`${company.company_name || 'Company'} logo`}
-        width={58}
-        height={58}
-        unoptimized
-        loading="lazy"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-  return <span className="owner-company-logo fallback">{initials(company.company_name)}</span>;
 }
 
 export function OwnerCompaniesPage() {
@@ -328,7 +300,6 @@ export function OwnerCompaniesPage() {
         .owner-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
         .owner-company-main{display:flex;align-items:center;gap:.85rem;min-width:0}
         .owner-company-logo{width:58px;height:58px;border-radius:18px;object-fit:cover;background:#e8f4fb;border:1px solid rgba(47,214,192,.22);flex:0 0 auto}
-        .owner-company-logo.fallback{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0b76e0,#18d4d4);color:#fff;font-weight:950;font-size:1.1rem}
         .owner-company-title{min-width:0}
         .owner-company-title h2{margin:0;font-size:1.08rem;font-weight:950;color:#061b33;overflow-wrap:anywhere}
         .owner-company-title p{margin:.3rem 0 0;color:#64748b;font-weight:800;font-size:.86rem}
@@ -394,7 +365,15 @@ export function OwnerCompaniesPage() {
               <article className="owner-card" key={company.id}>
                 <div className="owner-card-head">
                   <div className="owner-company-main">
-                    <CompanyLogo company={company} />
+                    <AssetIdentity
+                      symbol={company.company_name}
+                      name={company.company_name}
+                      assetType="stock"
+                      logoUrl={company.logo_url}
+                      imageUrl={company.logo_url}
+                      size="md"
+                      className="owner-company-logo"
+                    />
                     <div className="owner-company-title">
                       <h2>{company.company_name}</h2>
                       <p>{categoryLabel}</p>
