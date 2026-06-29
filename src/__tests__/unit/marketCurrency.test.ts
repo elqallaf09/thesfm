@@ -96,6 +96,41 @@ describe('market price normalization', () => {
     })).toBe('0.770 KWD · 770 fils');
   });
 
+  it('formats normalized Kuwait stock prices without appending a duplicate fils equivalent by default', () => {
+    expect(formatMarketPrice({
+      price: 0.636,
+      currency: 'KWD',
+      symbol: 'BOUBYAN',
+      providerSymbol: 'BOUBYAN.KW',
+      exchange: 'Boursa Kuwait - Premier Market',
+      assetType: 'stock',
+      priceIsNormalized: true,
+      locale: 'en',
+    })).toBe('0.636 KWD');
+  });
+
+  it.each([
+    ['BOUBYAN', 'BOUBYAN.KW', 'Boursa Kuwait - Premier Market', 'KWD', 0.636, '0.636 KWD'],
+    ['KFH.KW', 'KFH.KW', 'Boursa Kuwait', 'KWD', 0.77, '0.770 KWD'],
+    ['NBK.KW', 'NBK.KW', 'Boursa Kuwait', 'KWD', 1.23, '1.230 KWD'],
+    ['AAPL', 'AAPL', 'NASDAQ', 'USD', 214.56, '$214.56'],
+    ['GOOGL', 'GOOGL', 'NASDAQ', 'USD', 173.28, '$173.28'],
+  ])('keeps %s prices readable without duplicate currency fragments', (symbol, providerSymbol, exchange, currency, price, expected) => {
+    const formatted = formatMarketPrice({
+      price,
+      currency,
+      symbol,
+      providerSymbol,
+      exchange,
+      assetType: 'stock',
+      priceIsNormalized: true,
+      locale: 'en',
+    });
+
+    expect(formatted).toBe(expected);
+    expect(formatted).not.toMatch(/\b\d+\s+(?:fils|KWD)\s+.*\b(?:fils|KWD)\b/i);
+  });
+
   it('does not treat ordinary KWD amounts as fils without Kuwait market context', () => {
     const formatted = formatMarketPrice({
       price: 1000,

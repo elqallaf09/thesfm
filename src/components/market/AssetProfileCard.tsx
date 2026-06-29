@@ -101,7 +101,7 @@ function DetailRow({ label, value, language }: { label: string; value: string | 
   const safeValue = value || '';
 
   return (
-    <div className="asset-profile-detail-row">
+    <div className="asset-profile-detail-row" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <dt dir={labelDirection(label, language)}>{label}</dt>
       <dd dir={directionFor(safeValue, language)}>{safeValue}</dd>
     </div>
