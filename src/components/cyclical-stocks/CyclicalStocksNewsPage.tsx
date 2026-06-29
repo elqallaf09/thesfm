@@ -2960,7 +2960,8 @@ export function CyclicalStocksNewsPage() {
         }
         .overview-grid {
           display: grid;
-          grid-template-columns: minmax(560px, 1.25fr) minmax(320px, 0.75fr);
+          grid-template-columns: minmax(560px, 1.25fr) minmax(320px, 0.75fr) !important;
+          grid-auto-columns: minmax(0, 1fr);
           gap: 14px;
           align-items: start;
           min-width: 0;
@@ -4082,16 +4083,25 @@ export function CyclicalStocksNewsPage() {
             padding: 10px;
           }
           .mover-row {
-            grid-template-columns: 30px 34px minmax(0, 1fr);
+            grid-template-columns: 30px minmax(0, 1fr);
             gap: 9px;
           }
+          .mover-row > :nth-child(2) {
+            display: none;
+          }
+          .mover-row > div:not(.mover-values) {
+            grid-column: 2;
+          }
           .mover-values {
-            grid-column: 3;
-            justify-items: start;
+            grid-column: 2;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
             min-width: 0;
           }
           :global([dir="rtl"]) .mover-values {
-            justify-items: end;
+            justify-content: flex-end;
           }
           .stock-card-head {
             grid-template-columns: auto minmax(0, 1fr);
@@ -4127,7 +4137,17 @@ export function CyclicalStocksNewsPage() {
             margin-top: 16px;
           }
           .bar-row {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px 10px;
+          }
+          .bar-track {
+            grid-column: 1 / -1;
+          }
+          .comparison-panel .section-header p {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
           }
           .state-box {
             grid-template-columns: 1fr;
