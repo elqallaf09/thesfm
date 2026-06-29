@@ -3303,7 +3303,7 @@ export function CyclicalStocksNewsPage() {
         }
         .stock-metrics {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
           gap: 10px;
           grid-auto-rows: 1fr;
           align-items: stretch;
@@ -4105,7 +4105,7 @@ export function CyclicalStocksNewsPage() {
             justify-self: end;
           }
           .stock-metrics {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 128px), 1fr));
           }
           .sector-head {
             display: grid;
