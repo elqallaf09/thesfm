@@ -271,9 +271,10 @@ export default function MarketAnalysisPage() {
     void fetchMarketToolState<MarketPerformanceItem>('/api/market/performance', 'asset-performance').then(setPerformance);
   }, []);
 
-  const loadEconomicCalendar = useCallback(() => {
+  const loadEconomicCalendar = useCallback((force = false) => {
     setEconomicCalendar(prev => ({ ...prev, loading: true, message: '', code: undefined }));
-    void fetchMarketToolState<Record<string, any>>('/api/market/economic-calendar', 'economic-calendar').then(setEconomicCalendar);
+    const url = force ? '/api/market/economic-calendar?refresh=1' : '/api/market/economic-calendar';
+    void fetchMarketToolState<Record<string, any>>(url, 'economic-calendar').then(setEconomicCalendar);
   }, []);
 
   const selectedSentimentSymbol = useMemo(() => (selectedAsset?.symbol ?? '').trim(), [selectedAsset]);
@@ -1522,7 +1523,7 @@ export default function MarketAnalysisPage() {
     };
   }, [marketLevels.resistance, marketLevels.support, selected]);
   const selectedMoney = useCallback(
-    (value: number, extra?: { includeKuwaitDinarEquivalent?: boolean }) => money(value, selectedCurrency, {
+    (value: number) => money(value, selectedCurrency, {
       locale: lang,
       exchange: selectedExchange,
       symbol: selectedMarketSymbol,
@@ -1530,7 +1531,6 @@ export default function MarketAnalysisPage() {
       assetType: selectedMarketAssetType,
       priceUnit: selected?.priceUnit ?? selected?.quote?.priceUnit,
       priceIsNormalized: true,
-      includeKuwaitDinarEquivalent: extra?.includeKuwaitDinarEquivalent,
     }),
     [lang, selected?.priceUnit, selected?.quote?.priceUnit, selectedCurrency, selectedExchange, selectedMarketAssetType, selectedMarketSymbol, selectedProviderMarketSymbol],
   );
@@ -1890,7 +1890,7 @@ export default function MarketAnalysisPage() {
     currency: selectedCurrency,
     currencyLabel: selectedCurrencyLabel,
     currentPrice: selected.latestPrice,
-    currentPriceLabel: selectedMoney(selected.latestPrice, { includeKuwaitDinarEquivalent: true }),
+    currentPriceLabel: selectedMoney(selected.latestPrice),
     priceChange: selected.quote?.change ?? null,
     priceChangePercent: selected.changePercent,
     priceChangeLabel: percent(selected.changePercent),
@@ -2910,22 +2910,6 @@ export default function MarketAnalysisPage() {
                   assetType={selected.assetType}
                   t={t}
                 />
-
-                <section className="market-panel analysis-freshness-card">
-                  <div className="market-section-head">
-                    <Clock3 size={19} />
-                    <div>
-                      <span>{analysisCopy.dataFreshness}</span>
-                      <h2>{analysisCopy.quoteSnapshot}</h2>
-                    </div>
-                  </div>
-                  <div className="indicator-list compact">
-                    <MarketMetric label={t('market_data_source')} value={assetSnapshot.dataProvider} valueDir="ltr" />
-                    <MarketMetric label={t('market_data_status')} value={assetSnapshot.dataStatusLabel} />
-                    <MarketMetric label={t('market_last_updated')} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
-                    <MarketMetric label={analysisCopy.currencyLabel} value={assetSnapshot.currencyLabel} valueDir="ltr" />
-                  </div>
-                </section>
 
                 <section className="market-panel analysis-quick-actions-card">
                   <div className="market-section-head">
@@ -3976,7 +3960,7 @@ export default function MarketAnalysisPage() {
         :global(.analysis-columns){
           grid-column:1 / -1!important;
           display:grid!important;
-          grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important;
+          grid-template-columns:minmax(0,1fr) minmax(320px,380px)!important;
           gap:20px!important;
           align-items:start!important;
           width:100%!important;
@@ -4166,9 +4150,6 @@ export default function MarketAnalysisPage() {
         }
         :global(.analysis-secondary-drawer .market-bottom-grid > .market-panel:first-child){
           display:none!important;
-        }
-        :global(.analysis-freshness-card .indicator-list.compact){
-          grid-template-columns:1fr!important;
         }
         :global(.analysis-side-actions){
           display:grid!important;
