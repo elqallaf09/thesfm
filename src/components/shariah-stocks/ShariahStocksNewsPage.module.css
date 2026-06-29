@@ -460,6 +460,7 @@
 .transparencyPanel,
 .asideStatsPanel {
   min-width: 0;
+  overflow: hidden;
 }
 
 .methodologyMiniGrid,
