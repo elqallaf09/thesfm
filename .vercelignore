@@ -1,0 +1,14 @@
+artifacts
+artifacts/**
+.next
+.next/**
+node_modules
+node_modules/**
+coverage
+coverage/**
+playwright-report
+playwright-report/**
+test-results
+test-results/**
+*.log
+tsconfig.tsbuildinfo
