@@ -12,6 +12,7 @@ type GulfTickerStripProps = {
   marketData: Partial<Record<GulfMarketId, GulfMarketData>>;
   formatNumber: (value: number | null) => string;
   formatPercent: (value: number | null) => string;
+  direction?: 'ltr' | 'rtl';
 };
 
 function changeTone(value: number | null | undefined) {
@@ -19,7 +20,7 @@ function changeTone(value: number | null | undefined) {
   return value > 0 ? 'up' : 'down';
 }
 
-export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNumber, formatPercent }: GulfTickerStripProps) {
+export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNumber, formatPercent, direction }: GulfTickerStripProps) {
   const tickerItems = GULF_MARKETS.map(market => {
     const data = marketData[market.id];
     const value = data?.value ?? null;
@@ -47,6 +48,7 @@ export function GulfTickerStrip({ labels, unavailableLabel, marketData, formatNu
       viewportClassName="gulf-ticker-viewport"
       trackClassName="gulf-ticker-track"
       setClassName="gulf-ticker-set"
+      direction={direction}
     >
       {tickerItems.map(({ market, indexName, displayValue, displayChange, tone, Icon }) => (
         <div className="gulf-ticker-item" key={market.id}>

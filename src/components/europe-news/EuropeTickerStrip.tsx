@@ -13,6 +13,7 @@ type EuropeTickerStripProps = {
   marketData: Partial<Record<EuropeMarketId, EuropeMarketData>>;
   formatNumber: (value: number | null) => string;
   formatPercent: (value: number | null) => string;
+  direction?: 'ltr' | 'rtl';
 };
 
 function changeTone(value: number | null | undefined) {
@@ -20,7 +21,7 @@ function changeTone(value: number | null | undefined) {
   return value > 0 ? 'up' : 'down';
 }
 
-export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel, marketData, formatNumber, formatPercent }: EuropeTickerStripProps) {
+export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel, marketData, formatNumber, formatPercent, direction }: EuropeTickerStripProps) {
   const tickerItems = EUROPE_MARKETS.map(market => {
     const data = marketData[market.id];
     const value = data?.value ?? null;
@@ -46,6 +47,7 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
       viewportClassName="europe-ticker-viewport"
       trackClassName="europe-ticker-track"
       setClassName="europe-ticker-set"
+      direction={direction}
     >
       {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
         <div className="europe-ticker-item" key={market.id}>
