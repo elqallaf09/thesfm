@@ -71,6 +71,8 @@ const CRYPTO_TICKER_FALLBACK_ITEMS: CryptoTickerItem[] = [
   { symbol: 'DOGE-USD', name: 'Dogecoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
   { symbol: 'DOT-USD', name: 'Polkadot', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
   { symbol: 'LTC-USD', name: 'Litecoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'LINK-USD', name: 'Chainlink', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'UNI-USD', name: 'Uniswap', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
 ];
 
 const SYMBOL_TO_MARKET_SYMBOL: Record<CryptoNewsSymbol, string> = {
@@ -1238,7 +1240,7 @@ function CryptoTickerPanel({
         sourceLabel={text.source}
         direction="ltr"
         durationSeconds={42}
-        minimumItems={10}
+        minimumItems={12}
         className="crypto-ticker-strip"
       />
     </section>

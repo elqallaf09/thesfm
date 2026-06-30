@@ -18,6 +18,8 @@ const CRYPTO_TICKER_ASSETS = [
   { id: 'dogecoin', symbol: 'DOGE-USD', name: 'Dogecoin' },
   { id: 'polkadot', symbol: 'DOT-USD', name: 'Polkadot' },
   { id: 'litecoin', symbol: 'LTC-USD', name: 'Litecoin' },
+  { id: 'chainlink', symbol: 'LINK-USD', name: 'Chainlink' },
+  { id: 'uniswap', symbol: 'UNI-USD', name: 'Uniswap' },
 ] as const;
 
 type CoinGeckoMarketCoin = {
