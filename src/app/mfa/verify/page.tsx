@@ -7,6 +7,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeDigits } from '@/lib/locale';
 
 type Lang = 'ar' | 'en' | 'fr';
 type TotpFactor = { id: string; friendly_name?: string | null; status?: string };
@@ -160,7 +161,7 @@ export default function MfaVerifyPage() {
               <KeyRound size={18} />
               <input
                 value={code}
-                onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={event => setCode(normalizeDigits(event.target.value).replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 dir="ltr"

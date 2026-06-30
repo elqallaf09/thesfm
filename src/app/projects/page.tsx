@@ -11,6 +11,7 @@ import { PageTabs } from '@/components/layout/PageTabs';
 import { AppModal } from '@/components/ui/AppModal';
 import { Loader2, Pencil, Trash2, Send, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
+import { normalizeDigits } from '@/lib/locale';
 
 /* ─── Types ─── */
 type ProjectStatus = 'فكرة' | 'قيد التنفيذ' | 'نشط' | 'متوقف' | 'مكتمل';
@@ -139,7 +140,7 @@ const riskInfo = (v: number) => v < 34
   : {label:'عالٍ',   color:'#EF4444', bg:'rgba(239,68,68,.10)',  bar:'#EF4444'};
 
 const scoreColor = (s: number) => s >= 70 ? '#22C55E' : s >= 50 ? 'var(--sfm-soft-cyan)' : '#EF4444';
-const fmt = (v: string | number) => parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+const fmt = (v: string | number) => parseFloat(normalizeDigits(v).replace(/[^\d.]/g, '')) || 0;
 
 /* ─── Step Indicator ─── */
 function StepDots({ step, total }: { step: number; total: number }) {

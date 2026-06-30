@@ -7,6 +7,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { currencyDisplaySymbol } from '@/lib/currencies';
+import { normalizeDigits } from '@/lib/locale';
 import type { ApiListState, MarketAssetFilter, MarketAiInsightView, MarketResultWithMeta,
   MarketSearchSuggestion, MarketServiceState, MarketViewAnalysis, PipCalculatorAsset,
   PipCalculatorAssetType, ScenarioCurrencyCode, AccountCurrencyCode, TraderToolsSubTab,
@@ -871,12 +872,16 @@ export function ToolInput({
   helper?: string;
   onChange: (value: string) => void;
 }) {
+  const normalizeInput = (nextValue: string) => inputMode === 'decimal'
+    ? normalizeDigits(nextValue)
+    : nextValue;
+
   return (
     <label className="tool-input">
       <span>{label}</span>
       <div className="tool-input-shell">
         {prefix ? <em dir="ltr">{prefix}</em> : null}
-        <input value={value} inputMode={inputMode} dir={inputDir} onChange={event => onChange(event.target.value)} />
+        <input value={value} inputMode={inputMode} dir={inputDir} onChange={event => onChange(normalizeInput(event.target.value))} />
         {suffix ? <em dir={suffix === '%' ? 'ltr' : undefined}>{suffix}</em> : null}
       </div>
       {helper ? <small>{helper}</small> : null}

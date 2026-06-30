@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { normalizeDigits } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ type MetalsResponse = {
 };
 
 function num(value: unknown) {
-  const parsed = typeof value === 'string' ? Number(value.replace(/,/g, '')) : Number(value);
+  const parsed = typeof value === 'string' ? Number(normalizeDigits(value).replace(/,/g, '')) : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 

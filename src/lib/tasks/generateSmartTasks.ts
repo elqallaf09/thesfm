@@ -1,3 +1,5 @@
+import { normalizeDigits } from '@/lib/locale';
+
 export type SmartTaskLang = 'ar' | 'en' | 'fr';
 export type SmartTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type SmartTaskStatus = 'open' | 'done' | 'dismissed';
@@ -472,7 +474,7 @@ function daysUntil(value: unknown, today = new Date()) {
 
 function amount(value: unknown) {
   if (typeof value === 'string') {
-    const parsed = Number(value.replace(/[^\d.-]/g, ''));
+    const parsed = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
     return Number.isFinite(parsed) ? parsed : 0;
   }
   const parsed = Number(value);

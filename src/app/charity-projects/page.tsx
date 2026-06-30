@@ -48,7 +48,7 @@ export default function CharityProjectsPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const unavailableLabel = lang === 'fr' ? 'Indisponible' : lang === 'en' ? 'Unavailable' : 'غير متاح';
   const zakatShortcut = {
     ar: {
@@ -207,7 +207,7 @@ export default function CharityProjectsPage() {
     typeof amount === 'number' && Number.isFinite(amount) ? formatMoney(amount, currency, lang as Lang) : unavailableLabel
   ), [lang, unavailableLabel]);
   const numberLabel = useCallback((value: number) => value.toLocaleString(locale), [locale]);
-  const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
+  const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
 
   const loadMetalsPrices = useCallback(async () => {
     setLoadingMetals(true);
@@ -483,7 +483,7 @@ export default function CharityProjectsPage() {
   const givingIncomeRatioYear = incomeThisYear > 0 ? (totalDonatedThisYear / incomeThisYear) * 100 : null;
   const givingIncomeRatioMonth = incomeThisMonth > 0 ? (totalDonatedThisMonth / incomeThisMonth) * 100 : null;
   const hasImpactData = projects.length > 0 || donations.length > 0 || beneficiaries.length > 0 || commitments.length > 0 || zakatHistory.length > 0 || impactMetrics.length > 0;
-  const monthLabels = useMemo(() => Array.from({ length: 12 }, (_, index) => new Date(currentYear, index, 1).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' })), [currentYear, lang]);
+  const monthLabels = useMemo(() => Array.from({ length: 12 }, (_, index) => new Date(currentYear, index, 1).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' })), [currentYear, lang]);
   const impactByMonth = useMemo(() => monthLabels.map((label, index) => {
     const donationAmount = donations.filter(donation => {
       const value = donation.donation_date || donation.created_at;
@@ -1625,9 +1625,9 @@ export default function CharityProjectsPage() {
             <>
               <div className="impact-summary-grid">
                 <div><small>{tr.totalDonated}</small><strong>{money(totalDonatedThisYear)}</strong></div>
-                <div><small>{tr.activeCharityProjects}</small><strong>{activeProjects.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-                <div><small>{tr.completedProjects}</small><strong>{completedProjectsCount.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-                <div><small>{tr.beneficiariesSupported}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+                <div><small>{tr.activeCharityProjects}</small><strong>{activeProjects.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+                <div><small>{tr.completedProjects}</small><strong>{completedProjectsCount.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+                <div><small>{tr.beneficiariesSupported}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
                 <div><small>{tr.monthlySponsorships}</small><strong>{money(monthlySponsorshipsTotal)}</strong></div>
                 <div><small>{tr.estimatedZakatImpact}</small><strong>{money(toNum(latestEstimatedZakat))}</strong></div>
               </div>
@@ -1647,8 +1647,8 @@ export default function CharityProjectsPage() {
                   <h3>{tr.yearlyImpactSummary}</h3>
                   <div className="impact-lines">
                     <p>{tr.totalDonated}: {money(totalDonatedThisYear)}</p>
-                    <p>{tr.projects}: {projects.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
-                    <p>{tr.beneficiariesSupported}: {beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
+                    <p>{tr.projects}: {projects.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
+                    <p>{tr.beneficiariesSupported}: {beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
                     <p>{tr.monthlySponsorships}: {money(monthlySponsorshipsTotal)}</p>
                   </div>
                 </article>
@@ -1705,7 +1705,7 @@ export default function CharityProjectsPage() {
                           <span>{tr.beneficiariesSupported}: {projectBeneficiaryCounts[project.id] || 0}</span>
                           <span>{tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}</span>
                         </div>
-                        {(impactMetricsByProject[project.id] || []).length > 0 && <div className="metric-chip-row">{impactMetricsByProject[project.id].map(metric => <span key={metric.id}>{metric.metric_name}: {toNum(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</span>)}</div>}
+                        {(impactMetricsByProject[project.id] || []).length > 0 && <div className="metric-chip-row">{impactMetricsByProject[project.id].map(metric => <span key={metric.id}>{metric.metric_name}: {toNum(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</span>)}</div>}
                       </div>
                     );
                   })}
@@ -1856,10 +1856,10 @@ export default function CharityProjectsPage() {
             <button type="button" onClick={() => { resetContributorForm(contributorProjectFilter || projects[0]?.id || ''); setContributorOpen(true); }}>{tr.addContributor}</button>
           </div>
           <div className="beneficiary-stats">
-            <div><small>{tr.contributors}</small><strong>{filteredContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.contributors}</small><strong>{filteredContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
             <div><small>{tr.totalPledged}</small><strong>{money(totalPledged)}</strong></div>
             <div><small>{tr.totalPaid}</small><strong>{money(totalPaid)}</strong></div>
-            <div><small>{tr.lateContribution}</small><strong>{lateContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.lateContribution}</small><strong>{lateContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
           </div>
           {topContributor && <p className="nisab"><HandCoins size={15} /> {tr.topContributor}: {topContributor.contributor_name} - {money(toNum(topContributor.paid_amount), topContributor.currency)}</p>}
           {filteredContributors.length === 0 ? (
@@ -1923,10 +1923,10 @@ export default function CharityProjectsPage() {
             }}>{tr.addBeneficiary}</button>
           </div>
           <div className="beneficiary-stats">
-            <div><small>{tr.totalBeneficiaries}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-            <div><small>{tr.activeSponsorships}</small><strong>{activeBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.totalBeneficiaries}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.activeSponsorships}</small><strong>{activeBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
             <div><small>{tr.monthlySupportTotal}</small><strong>{money(monthlySupportTotal)}</strong></div>
-            <div><small>{tr.upcomingRenewals}</small><strong>{upcomingRenewals.length.toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.upcomingRenewals}</small><strong>{upcomingRenewals.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
           </div>
           <div className="document-tools">
             <label>

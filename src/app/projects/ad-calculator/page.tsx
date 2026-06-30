@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { trackEvent } from '@/lib/analytics';
+import { normalizeDigits } from '@/lib/locale';
 
 const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', pct: 30, cpm: 3.8, cpc: 0.42, color: '#EC4899' },
@@ -26,7 +27,7 @@ const INDUSTRIES = [
 ];
 
 function amountOf(value: string) {
-  return parseFloat(value.replace(/[^\d.]/g, '')) || 0;
+  return parseFloat(normalizeDigits(value).replace(/[^\d.]/g, '')) || 0;
 }
 
 export default function AdCampaignCalculatorPage() {
@@ -146,11 +147,11 @@ export default function AdCampaignCalculatorPage() {
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
                 <label>{isAr ? 'الميزانية الإجمالية' : 'Total budget'}</label>
-                <input inputMode="decimal" value={budget} onChange={e => setBudget(e.target.value.replace(/[^\d.]/g, ''))} placeholder="0.000" />
+                <input inputMode="decimal" value={budget} onChange={e => setBudget(normalizeDigits(e.target.value).replace(/[^\d.]/g, ''))} placeholder="0.000" />
               </div>
               <div>
                 <label>{isAr ? 'مدة الحملة بالأيام' : 'Campaign duration in days'}</label>
-                <input inputMode="numeric" value={duration} onChange={e => setDuration(e.target.value.replace(/\D/g, ''))} />
+                <input inputMode="numeric" value={duration} onChange={e => setDuration(normalizeDigits(e.target.value).replace(/\D/g, ''))} />
               </div>
               <div>
                 <label>{isAr ? 'نوع النشاط' : 'Industry'}</label>
@@ -176,9 +177,9 @@ export default function AdCampaignCalculatorPage() {
               {rows.map(row => <div key={row.id} title={row.name} style={{ width: `${row.pct}%`, background: row.color }} />)}
             </div>
             <div className="kpis">
-              <div className="kpi"><strong>{totals.reach.toLocaleString(isAr ? 'ar-KW' : 'en-US')}</strong><span>{isAr ? 'الوصول' : 'Reach'}</span></div>
-              <div className="kpi"><strong>{totals.clicks.toLocaleString(isAr ? 'ar-KW' : 'en-US')}</strong><span>{isAr ? 'النقرات' : 'Clicks'}</span></div>
-              <div className="kpi"><strong>{totals.conversions.toLocaleString(isAr ? 'ar-KW' : 'en-US')}</strong><span>{isAr ? 'التحويلات' : 'Conversions'}</span></div>
+              <div className="kpi"><strong>{totals.reach.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'الوصول' : 'Reach'}</span></div>
+              <div className="kpi"><strong>{totals.clicks.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'النقرات' : 'Clicks'}</span></div>
+              <div className="kpi"><strong>{totals.conversions.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'التحويلات' : 'Conversions'}</span></div>
             </div>
             <table>
               <thead><tr><th>{isAr ? 'المنصة' : 'Platform'}</th><th>{isAr ? 'يومي' : 'Daily'}</th><th>{isAr ? 'وصول' : 'Reach'}</th><th>{isAr ? 'نقرات' : 'Clicks'}</th></tr></thead>
@@ -186,9 +187,9 @@ export default function AdCampaignCalculatorPage() {
                 {rows.map(row => (
                   <tr key={row.id}>
                     <td>{row.name}</td>
-                    <td>{row.daily.toLocaleString(isAr ? 'ar-KW' : 'en-US', { maximumFractionDigits: 3 })}</td>
-                    <td>{row.reach.toLocaleString(isAr ? 'ar-KW' : 'en-US')}</td>
-                    <td>{row.clicks.toLocaleString(isAr ? 'ar-KW' : 'en-US')}</td>
+                    <td>{row.daily.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US', { maximumFractionDigits: 3 })}</td>
+                    <td>{row.reach.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</td>
+                    <td>{row.clicks.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</td>
                   </tr>
                 ))}
               </tbody>

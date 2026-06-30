@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { Activity, AlertTriangle, BarChart3, ClipboardList, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 import type { ProjectMilestoneRow, ProjectTaskRow } from './ProjectTasksTab';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -271,7 +272,7 @@ export const emptyProjectKpiSummary: ProjectKpiSummary = {
 };
 
 function toNum(value: unknown) {
-  const number = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+  const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(number) ? number : 0;
 }
 
@@ -551,12 +552,12 @@ export function ProjectKpisTab({
 
   const percent = useCallback((value: number | null) => {
     if (value === null || !Number.isFinite(value)) return t.na;
-    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}%`;
+    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}%`;
   }, [locale, t.na]);
 
   const monthLabel = useCallback((value: number | null) => {
     if (value === null || !Number.isFinite(value)) return t.na;
-    return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value);
   }, [locale, t.na]);
 
   const loadData = useCallback(async () => {

@@ -26,7 +26,7 @@ function readCalendarDate(event: Record<string, any>) {
 
 function formatCalendarDate(date: Date | null, locale: string) {
   if (!date) return '';
-  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -36,7 +36,7 @@ function formatCalendarCountdown(date: Date | null, locale: string, fallback: st
   if (!date) return fallback;
   const diffMs = date.getTime() - Date.now();
   if (diffMs <= 0) return fallback;
-  const rtf = new Intl.RelativeTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { numeric: 'auto' });
   const minutes = Math.ceil(diffMs / 60000);
   if (minutes < 60) return rtf.format(minutes, 'minute');
   const hours = Math.ceil(minutes / 60);
@@ -84,7 +84,7 @@ const CALENDAR_CURRENCY_FILTERS: CalendarCurrencyFilter[] = ['all', 'USD', 'EUR'
 const CALENDAR_PAGE_SIZE = 12;
 
 function marketIntlLocale(locale: string) {
-  return locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US';
+  return locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US';
 }
 
 function getEconomicEventDate(event: NormalizedEconomicEvent) {

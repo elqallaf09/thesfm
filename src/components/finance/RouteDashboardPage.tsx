@@ -54,7 +54,7 @@ import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
-import { parseMoneyValue } from '@/lib/money';
+import { normalizeNumberInput, parseMoneyValue } from '@/lib/money';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { trackEvent } from '@/lib/analytics';
 import { recordAccountActivity } from '@/lib/accountActivity';
@@ -2103,7 +2103,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     const fixedCommitmentsTotal = monthlySubscriptionsTotal + debtInstallmentsTotal;
     const expenseNow = new Date();
     const expenseYearOptions = Array.from({ length: 8 }, (_, index) => expenseNow.getFullYear() + 1 - index);
-    const expenseMonthFormatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' });
+    const expenseMonthFormatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' });
     const expensePeriodEmptyTitle = expensePeriod.preset === 'all'
       ? expenseText('emptyTitle', lang)
       : selectedExpenseRange?.months === 1
@@ -2548,7 +2548,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                               ) : <ReceiptText size={34} />}
                               <div className="receipt-review-fields">
                                 <input value={item.name} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, name: event.target.value } : row))} />
-                                <input inputMode="decimal" value={item.amount} placeholder={expenseText('amount', lang)} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, amount: event.target.value, status: Number(event.target.value) > 0 && row.status === 'failed' ? 'review' : row.status } : row))} />
+                                <input inputMode="decimal" value={item.amount} placeholder={expenseText('amount', lang)} onChange={event => {
+                                  const amount = normalizeNumberInput(event.target.value);
+                                  setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, amount, status: Number(amount) > 0 && row.status === 'failed' ? 'review' : row.status } : row));
+                                }} />
                                 <input type="date" value={item.date} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, date: event.target.value } : row))} />
                                 <select value={item.category} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, category: event.target.value } : row))}>{EXPENSE_CATEGORIES.map(category => <option key={category.id} value={category.id}>{pick(category.label, lang)}</option>)}</select>
                                 <select value={item.paymentMethod} onChange={event => setPendingReceiptExpenses(prev => prev.map(row => row.id === item.id ? { ...row, paymentMethod: event.target.value } : row))}>{PAYMENT_METHODS.map(method => <option key={method.id} value={method.id}>{pick(method.label, lang)}</option>)}</select>
@@ -2622,7 +2625,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 )}
 
                 <label><span>{expenseText('name', lang)}</span><input value={expenseForm.name} onChange={event => setExpenseForm(prev => ({ ...prev, name: event.target.value }))} autoFocus /></label>
-                <label><span>{expenseText('amount', lang)}</span><input inputMode="decimal" value={expenseForm.amount} onChange={event => setExpenseForm(prev => ({ ...prev, amount: event.target.value }))} /></label>
+                <label><span>{expenseText('amount', lang)}</span><input inputMode="decimal" value={expenseForm.amount} onChange={event => setExpenseForm(prev => ({ ...prev, amount: normalizeNumberInput(event.target.value) }))} /></label>
                 <label><span>{expenseText('currency', lang)}</span><CurrencySelect value={expenseForm.currency || currency || 'KWD'} onChange={code => setExpenseForm(prev => ({ ...prev, currency: code }))} lang={lang} ariaLabel={expenseText('currency', lang)} /></label>
                 <label><span>{expenseText('category', lang)}</span><select value={expenseForm.category} onChange={event => setExpenseForm(prev => ({ ...prev, category: event.target.value }))}>{EXPENSE_CATEGORIES.map(item => <option key={item.id} value={item.id}>{pick(item.label, lang)}</option>)}</select></label>
                 <label><span>{expenseText('date', lang)}</span><input type="date" value={expenseForm.date} onChange={event => setExpenseForm(prev => ({ ...prev, date: event.target.value }))} /></label>
@@ -2930,7 +2933,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 const toggleLabel = isExpanded ? 'إخفاء تفاصيل الهدف' : 'عرض تفاصيل الهدف';
                 const deadlineDate = localDateFromInput(goal.deadline);
                 const deadlineLabel = deadlineDate
-                  ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium' }).format(deadlineDate)
+                  ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium' }).format(deadlineDate)
                   : t('goal_deadline_missing');
                 return (
                   <article className={`goal-card${isExpanded ? ' is-expanded' : ''}`} key={goal.id}>
@@ -3177,7 +3180,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                     <input
                       inputMode="decimal"
                       value={entryForm.amount}
-                      onChange={event => setEntryForm(prev => ({ ...prev, amount: event.target.value }))}
+                      onChange={event => setEntryForm(prev => ({ ...prev, amount: normalizeNumberInput(event.target.value) }))}
                       placeholder={kind === 'savings' ? '0.000' : undefined}
                     />
                   </div>
@@ -3277,21 +3280,21 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   <span>{t('goal_target_amount')}</span>
                   <div className="currency-input-wrap">
                     <span className="currency-symbol">{selectedCurrencySymbol}</span>
-                    <input inputMode="decimal" value={goalForm.targetAmount} onChange={event => setGoalForm(prev => ({ ...prev, targetAmount: event.target.value }))} />
+                    <input inputMode="decimal" value={goalForm.targetAmount} onChange={event => setGoalForm(prev => ({ ...prev, targetAmount: normalizeNumberInput(event.target.value) }))} />
                   </div>
                 </label>
                 <label>
                   <span>{t('goal_current_amount')}</span>
                   <div className="currency-input-wrap">
                     <span className="currency-symbol">{selectedCurrencySymbol}</span>
-                    <input inputMode="decimal" value={goalForm.currentAmount} onChange={event => setGoalForm(prev => ({ ...prev, currentAmount: event.target.value }))} />
+                    <input inputMode="decimal" value={goalForm.currentAmount} onChange={event => setGoalForm(prev => ({ ...prev, currentAmount: normalizeNumberInput(event.target.value) }))} />
                   </div>
                 </label>
                 <label>
                   <span>{t('goal_monthly_contribution')}</span>
                   <div className="currency-input-wrap">
                     <span className="currency-symbol">{selectedCurrencySymbol}</span>
-                    <input inputMode="decimal" value={goalForm.monthlyContribution} onChange={event => setGoalForm(prev => ({ ...prev, monthlyContribution: event.target.value }))} />
+                    <input inputMode="decimal" value={goalForm.monthlyContribution} onChange={event => setGoalForm(prev => ({ ...prev, monthlyContribution: normalizeNumberInput(event.target.value) }))} />
                   </div>
                 </label>
                 <label>

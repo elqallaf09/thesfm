@@ -119,7 +119,7 @@ async function notifyCompanyReviewRequest(request: NextRequest, listing: Company
   const configuredTo = process.env.COMPANY_REVIEW_TO_EMAIL?.trim() || COMPANY_REVIEW_EMAIL;
   const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin;
   const reviewUrl = new URL('/sfm-admin-control/companies', siteOrigin).toString();
-  const submittedAt = new Date().toLocaleString('ar-KW', { timeZone: 'Asia/Kuwait' });
+  const submittedAt = new Date().toLocaleString('ar-KW-u-nu-latn', { timeZone: 'Asia/Kuwait' });
   const subject = `طلب إدراج شركة جديد: ${listing.company_name}`;
   const text = [
     'يوجد طلب إدراج شركة جديد في THE SFM.',

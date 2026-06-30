@@ -23,6 +23,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { loadUserDataTables } from '@/lib/data/financeData';
+import { normalizeDigits } from '@/lib/locale';
 import { zakatImportCandidates } from '@/lib/data/zakatData';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -396,13 +397,13 @@ function daysUntil(date: string) {
 }
 
 function toNum(value: string | number | null | undefined) {
-  return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
+  return Number(normalizeDigits(value).replace(/[^\d.-]/g, '')) || 0;
 }
 
 function estimatedHijriDate(date?: string | null, lang: Lang = 'ar') {
   if (!date) return '';
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura' : lang === 'fr' ? 'fr-FR-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : lang === 'fr' ? 'fr-FR-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -455,8 +456,8 @@ export default function ZakatPage() {
   });
 
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
-  const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
-  const timeLabel = useCallback((date?: string | null) => date ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+  const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
+  const timeLabel = useCallback((date?: string | null) => date ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

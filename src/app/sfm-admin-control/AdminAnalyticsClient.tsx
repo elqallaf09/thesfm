@@ -223,7 +223,7 @@ const sectionLabelKeys: Record<string, TranslationKey> = {
 };
 
 function formatNumber(value: number, lang: string) {
-  return new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US').format(value || 0);
+  return new Intl.NumberFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US').format(value || 0);
 }
 
 function dateValue(daysBack = 0) {
@@ -235,7 +235,7 @@ function dateValue(daysBack = 0) {
 function formatDateTime(value: string, lang: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
-  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -246,7 +246,7 @@ function formatRelative(value: string | null | undefined, lang: string, fallback
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return fallback;
   const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const absSeconds = Math.abs(diffSeconds);
   if (absSeconds < 60) return formatter.format(diffSeconds, 'second');

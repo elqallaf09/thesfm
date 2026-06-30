@@ -1,4 +1,5 @@
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 
 export type Lang = 'ar' | 'en' | 'fr';
 export type BusinessHubTab = 'readiness' | 'funding' | 'jurisdiction' | 'documents' | 'directory' | 'copilot';
@@ -1497,7 +1498,7 @@ export function firstText(row: Record<string, any> | null | undefined, keys: str
 export function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
-    const cleaned = value.replace(/[^\d.-]/g, '');
+    const cleaned = normalizeDigits(value).replace(/[^\d.-]/g, '');
     const parsed = Number(cleaned);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -1550,7 +1551,7 @@ export function investorStatusLabel(status: InvestorItemStatus, text: typeof TEX
 }
 
 export function percent(value: number, lang: Lang) {
-  return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value)}%`;
+  return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value)}%`;
 }
 
 export function selectedLabel(options: Array<{ value: string; label: Record<Lang, string> }>, value: string, lang: Lang) {

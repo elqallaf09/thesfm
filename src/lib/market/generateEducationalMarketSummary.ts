@@ -108,7 +108,7 @@ const COPY = {
 function localeFor(language: EducationalSummaryLanguage) {
   if (language === 'en') return 'en-US';
   if (language === 'fr') return 'fr-FR';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 function isFiniteNumber(value: unknown): value is number {

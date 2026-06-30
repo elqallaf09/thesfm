@@ -1,5 +1,6 @@
 import type { CurrencyLocale } from './currencies';
 import { formatMoney } from './formatMoney';
+import { normalizeDigits } from './locale';
 
 export type MoneyParseStatus = 'valid' | 'missing' | 'invalid';
 
@@ -8,23 +9,9 @@ export type ParsedMoney =
   | { status: 'missing'; value: null; raw: unknown }
   | { status: 'invalid'; value: null; raw: unknown };
 
-const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
-const EASTERN_ARABIC_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
-
-function digitValue(digit: string) {
-  const arabicIndex = ARABIC_DIGITS.indexOf(digit);
-  if (arabicIndex >= 0) return String(arabicIndex);
-  const easternIndex = EASTERN_ARABIC_DIGITS.indexOf(digit);
-  if (easternIndex >= 0) return String(easternIndex);
-  return digit;
-}
-
 export function normalizeNumberInput(value: unknown): string {
-  return String(value)
+  return normalizeDigits(value)
     .trim()
-    .replace(/[٠-٩۰-۹]/g, digitValue)
-    .replace(/٫/g, '.')
-    .replace(/٬/g, ',')
     .replace(/[^\d.,+-]/g, '');
 }
 

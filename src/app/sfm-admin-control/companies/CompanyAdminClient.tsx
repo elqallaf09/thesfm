@@ -338,7 +338,7 @@ const COPY = {
 
 function formatDate(iso: string | null, lang: Lang) {
   if (!iso) return COPY[lang].dash as string;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 }
 

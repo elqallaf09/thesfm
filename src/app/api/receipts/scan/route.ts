@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import { normalizeDigits } from '@/lib/locale';
 import {
   getGoogleAccessToken,
   getGoogleReceiptConfig,
@@ -272,13 +273,7 @@ function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDe
 }
 
 function normalizeArabicNumbers(value: string) {
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  const persian = '۰۱۲۳۴۵۶۷۸۹';
-  return value
-    .replace(/[٠-٩]/g, digit => String(arabic.indexOf(digit)))
-    .replace(/[۰-۹]/g, digit => String(persian.indexOf(digit)))
-    .replace(/\u066B/g, '.')
-    .replace(/\u066C/g, ',');
+  return normalizeDigits(value);
 }
 
 function isTemplatePlaceholder(value: unknown) {

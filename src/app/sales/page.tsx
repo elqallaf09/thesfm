@@ -30,6 +30,7 @@ import {
 import { aggregateBy, downloadCsv, downloadXlsx, isInDateRange, monthLabel, printPdf, saleExportColumns } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 
 const SalesChartCard = dynamic(() => import('@/components/business/SalesChartCard'), {
   ssr: false,
@@ -64,7 +65,7 @@ type SaleForm = {
 const today = () => new Date().toISOString().slice(0, 10);
 
 function parseAmountInput(value: string) {
-  const parsed = Number(value.trim().replace(',', '.'));
+  const parsed = Number(normalizeDigits(value).trim().replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
@@ -461,9 +462,9 @@ export default function SalesPage() {
 
         <section className="business-stat-grid" aria-label={text.sales}>
           <article><span>{text.totalSales}</span><strong>{formatMoney(summary.totalSales, defaultCurrency, locale)}</strong></article>
-          <article><span>{text.completedSales}</span><strong>{summary.completed.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
-          <article><span>{text.pendingSales}</span><strong>{summary.pending.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
-          <article><span>{text.canceledSales}</span><strong>{summary.canceled.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
+          <article><span>{text.completedSales}</span><strong>{summary.completed.toLocaleString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale)}</strong></article>
+          <article><span>{text.pendingSales}</span><strong>{summary.pending.toLocaleString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale)}</strong></article>
+          <article><span>{text.canceledSales}</span><strong>{summary.canceled.toLocaleString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale)}</strong></article>
         </section>
 
         <section className="business-toolbar" aria-label={text.search}>

@@ -236,7 +236,7 @@ function ReportContent() {
   const money = useCallback((amount: number, currency = 'KWD') => formatMoney(amount, currency, lang as Lang), [lang]);
   const dateLabel = useCallback((value?: string | null) => {
     if (!value) return '-';
-    return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+    return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US');
   }, [lang]);
 
   useEffect(() => {
@@ -297,7 +297,7 @@ function ReportContent() {
     return { totalDonations, zakatableAmount, estimatedZakat, monthlyCommitments, annualCommitments, expectedCommitments, monthlySupport };
   }, [assets, beneficiaries, commitments, donations]);
 
-  const generatedDate = new Date().toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  const generatedDate = new Date().toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const userName = user?.user_metadata?.full_name || user?.email || '-';
 
   return (
@@ -396,7 +396,7 @@ function ReportContent() {
                       <h3>{tr.customMetrics}</h3>
                       <div className="table-wrap">
                         <table><thead><tr><th>{tr.project}</th><th>{tr.type}</th><th>{tr.amount}</th><th>{tr.notes}</th></tr></thead>
-                          <tbody>{impactMetrics.map(metric => <tr key={metric.id}><td>{projects.find(project => project.id === metric.project_id)?.name || '-'}</td><td>{metric.metric_name}</td><td>{safeNumber(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</td><td>-</td></tr>)}</tbody></table>
+                          <tbody>{impactMetrics.map(metric => <tr key={metric.id}><td>{projects.find(project => project.id === metric.project_id)?.name || '-'}</td><td>{metric.metric_name}</td><td>{safeNumber(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</td><td>-</td></tr>)}</tbody></table>
                       </div>
                     </>
                   )}

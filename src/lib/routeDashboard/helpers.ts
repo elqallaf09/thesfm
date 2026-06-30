@@ -1173,7 +1173,7 @@ export function expensePeriodDayCount(range: ExpensePeriodRange | null, expenses
 }
 
 export function formatExpenseMonthYear(year: number, month: number, lang: string) {
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(startOfLocalMonth(year, month));
 }
 

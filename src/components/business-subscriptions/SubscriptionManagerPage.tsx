@@ -36,6 +36,8 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { normalizeDigits } from '@/lib/locale';
+import { normalizeNumberInput } from '@/lib/money';
 import { supabase } from '@/integrations/supabase/client';
 import {
   buildClientBundles,
@@ -240,7 +242,7 @@ function formatDateTime(value: unknown, lang: SubscriptionLang = 'ar') {
   if (!value) return REMINDER_CONTROL_TEXT[lang].unavailable;
   const date = new Date(String(value));
   if (!Number.isFinite(date.getTime())) return REMINDER_CONTROL_TEXT[lang].unavailable;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
@@ -1865,7 +1867,7 @@ function ClientFormModal({
           <Field label={text.notes} value={form.notes} onChange={value => update('notes', value)} span textarea />
           <label>
             <span>{text.amount} *</span>
-            <input value={form.amount} onChange={event => update('amount', event.target.value)} inputMode="decimal" required />
+            <input value={form.amount} onChange={event => update('amount', normalizeNumberInput(event.target.value))} inputMode="decimal" required />
           </label>
           <label>
             <span>{text.currency}</span>
@@ -1880,7 +1882,7 @@ function ClientFormModal({
           {form.subscriptionType === 'custom' ? (
             <label>
               <span>{text.custom}</span>
-              <input value={form.customIntervalDays} onChange={event => update('customIntervalDays', event.target.value)} inputMode="numeric" />
+              <input value={form.customIntervalDays} onChange={event => update('customIntervalDays', normalizeNumberInput(event.target.value).replace(/\D/g, ''))} inputMode="numeric" />
             </label>
           ) : null}
           <label>
@@ -1933,13 +1935,17 @@ function ClientFormModal({
 }
 
 function Field({ label, value, onChange, textarea = false, span = false, required = false, dir, inputMode }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; span?: boolean; required?: boolean; dir?: 'ltr' | 'rtl'; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'] }) {
+  const normalizeInput = (nextValue: string) => inputMode === 'decimal' || inputMode === 'numeric' || inputMode === 'tel'
+    ? normalizeDigits(nextValue)
+    : nextValue;
+
   return (
     <label className={span ? 'span-2' : ''}>
       <span>{label}{required ? ' *' : ''}</span>
       {textarea ? (
         <textarea value={value} onChange={event => onChange(event.target.value)} rows={3} />
       ) : (
-        <input value={value} onChange={event => onChange(event.target.value)} required={required} dir={dir} inputMode={inputMode} />
+        <input value={value} onChange={event => onChange(normalizeInput(event.target.value))} required={required} dir={dir} inputMode={inputMode} />
       )}
     </label>
   );

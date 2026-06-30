@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDate, formatNumber } from '@/lib/locale';
+import { formatDate, formatNumber, normalizeDigits } from '@/lib/locale';
 
 export type FeasibilityExportLang = 'ar' | 'en' | 'fr';
 
@@ -101,7 +101,7 @@ const PDF_LABELS: Record<FeasibilityExportLang, Record<keyof FeasibilityStudyExp
 };
 
 function numberValue(value: unknown) {
-  const number = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+  const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(number) ? number : null;
 }
 
@@ -226,7 +226,7 @@ export function printFeasibilityStudyToPdf(options: {
   const labels = PDF_LABELS[options.lang];
   const dir = options.dir ?? (options.lang === 'ar' ? 'rtl' : 'ltr');
   const localeFont = options.lang === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif';
-  const locale = options.lang === 'ar' ? 'ar-KW' : options.lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = options.lang === 'ar' ? 'ar-KW-u-nu-latn' : options.lang === 'fr' ? 'fr-FR' : 'en-US';
   const generatedAtLabel = options.lang === 'ar' ? 'تاريخ الإنشاء' : options.lang === 'fr' ? 'Généré le' : 'Generated at';
   const emptyLabel = options.lang === 'ar'
     ? 'لا توجد بيانات دراسة جدوى جاهزة للتصدير.'

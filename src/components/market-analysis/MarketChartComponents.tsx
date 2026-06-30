@@ -192,7 +192,7 @@ export function PriceHistoryChart({
     Math.floor((activePoints.length - 1) * 0.75),
     activePoints.length - 1,
   ].filter(index => index >= 0 && index < activePoints.length)));
-  const normalizedLocale = locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US';
+  const normalizedLocale = locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US';
   const formatVolume = (value: number | null) => value === null
     ? t('market_unavailable')
     : new Intl.NumberFormat(normalizedLocale, {

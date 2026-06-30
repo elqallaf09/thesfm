@@ -615,7 +615,7 @@ export async function buildPitchDeckPowerPoint(deck: PitchDeckExportData, source
   pptx.company = 'THE SFM';
   pptx.subject = 'Project pitch deck';
   pptx.title = `${deck.projectName} Pitch Deck`;
-  (pptx as any).lang = deck.language === 'ar' ? 'ar-KW' : deck.language === 'fr' ? 'fr-FR' : 'en-US';
+  (pptx as any).lang = deck.language === 'ar' ? 'ar-KW-u-nu-latn' : deck.language === 'fr' ? 'fr-FR' : 'en-US';
   pptx.rtlMode = deck.language === 'ar';
   (pptx as any).theme = {
     headFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos Display',

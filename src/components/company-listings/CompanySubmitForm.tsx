@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
 import { isValidCompanySocialInput, normalizeCompanySocialUrl } from '@/lib/companySocialLinks';
+import { normalizeDigits } from '@/lib/locale';
 
 type FormState = {
   companyName: string;
@@ -185,7 +186,7 @@ function isValidCoordinate(value: string, min: number, max: number) {
 }
 
 function digitsOnly(value: string) {
-  return value.replace(/[^\d]/g, '');
+  return normalizeDigits(value).replace(/[^\d]/g, '');
 }
 
 export function CompanySubmitForm() {
@@ -658,14 +659,18 @@ function ImageUrlField({ label, value, onChange }: { label: string; value: strin
   );
 }
 
-function Field({ label, value, onChange, textarea = false, span = false, required = false, placeholder, listId, dir, inputMode }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; span?: boolean; required?: boolean; placeholder?: string; listId?: string; dir?: 'rtl' | 'ltr'; inputMode?: 'text' | 'url' | 'email' | 'numeric' }) {
+function Field({ label, value, onChange, textarea = false, span = false, required = false, placeholder, listId, dir, inputMode }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; span?: boolean; required?: boolean; placeholder?: string; listId?: string; dir?: 'rtl' | 'ltr'; inputMode?: 'text' | 'url' | 'email' | 'numeric' | 'decimal' | 'tel' }) {
+  const normalizeInput = (nextValue: string) => inputMode === 'numeric' || inputMode === 'decimal' || inputMode === 'tel'
+    ? normalizeDigits(nextValue)
+    : nextValue;
+
   return (
     <label className={span ? 'submit-field span-2' : 'submit-field'}>
       <span>{label} {required ? <b>*</b> : null}</span>
       {textarea ? (
         <textarea value={value} onChange={event => onChange(event.target.value)} rows={4} placeholder={placeholder} />
       ) : (
-        <input value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} list={listId} dir={dir} inputMode={inputMode} />
+        <input value={value} onChange={event => onChange(normalizeInput(event.target.value))} placeholder={placeholder} list={listId} dir={dir} inputMode={inputMode} />
       )}
     </label>
   );

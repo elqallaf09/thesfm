@@ -4,6 +4,7 @@ import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { personalIncomeRows } from '@/lib/data/financeData';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import { normalizeDigits } from '@/lib/locale';
 
 type Lang = 'ar' | 'en' | 'fr';
 type AdvisorMode = 'summary' | 'risks' | 'actions' | 'plan90' | 'report' | 'chat';
@@ -257,7 +258,7 @@ function aiProviderConfigured() {
 }
 
 function toNum(value: unknown) {
-  const number = Number(String(value ?? 0).replace(/[^\d.-]/g, ''));
+  const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(number) ? number : 0;
 }
 

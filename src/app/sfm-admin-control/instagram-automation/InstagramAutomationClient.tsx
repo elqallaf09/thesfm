@@ -353,7 +353,7 @@ function joinTags(value: string[]) {
 function dateLabel(value: string | null, lang: Lang) {
   if (!value) return '-';
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));

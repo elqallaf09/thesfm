@@ -231,7 +231,7 @@ export function getCurrencySymbol(currency: string | null | undefined, locale?: 
 
 function marketLocale(locale?: string | null) {
   if (locale === 'fr') return 'fr-FR';
-  if (locale === 'ar') return 'ar-KW';
+  if (locale === 'ar') return 'ar-KW-u-nu-latn';
   return 'en-US';
 }
 

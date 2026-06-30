@@ -1,3 +1,5 @@
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
+
 export type SubscriptionLang = 'ar' | 'en' | 'fr';
 
 export type SubscriptionType =
@@ -560,31 +562,32 @@ export function normalizePaymentStatus(value: unknown): PaymentStatus {
 }
 
 export function numericValue(value: unknown, fallback = 0) {
-  const parsed = Number(String(value ?? '').replace(',', '.'));
+  const parsed = Number(normalizeDigits(value).replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export function parseAmountInput(value: unknown) {
-  const parsed = Number(String(value ?? '').trim().replace(',', '.'));
+  const parsed = Number(normalizeDigits(value).trim().replace(',', '.'));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN;
 }
 
 export function formatMoney(value: unknown, currency = 'KWD', lang: SubscriptionLang = 'ar') {
   const amount = numericValue(value, 0);
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const digits = String(currency || '').toUpperCase() === 'KWD' ? 3 : 2;
-  return `${new Intl.NumberFormat(locale, {
+  return normalizeDigits(`${new Intl.NumberFormat(locale, {
+    numberingSystem: 'latn',
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(amount)} ${currency || ''}`.trim();
+  }).format(amount)} ${currency || ''}`.trim());
 }
 
 export function formatDate(value: unknown, lang: SubscriptionLang = 'ar') {
   if (!value) return SUBSCRIPTION_TEXT[lang].unavailable;
   const date = new Date(String(value));
   if (!Number.isFinite(date.getTime())) return SUBSCRIPTION_TEXT[lang].unavailable;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return normalizeDigits(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', numberingSystem: 'latn' }).format(date));
 }
 
 export function todayIso(base = new Date()) {

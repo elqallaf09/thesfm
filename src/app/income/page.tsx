@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { isProjectLinkedIncomeRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { useCurrency } from '@/lib/useCurrency';
+import { normalizeNumberInput } from '@/lib/money';
 import { trackEvent } from '@/lib/analytics';
 
 type IncomeType = 'salary' | 'freelance' | 'project' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
@@ -319,12 +320,7 @@ function normalizeCurrency(value?: string | null, fallback = 'KWD') {
 }
 
 function parseIncomeAmount(value: string) {
-  const normalized = value
-    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-    .replace(/[٬,]/g, '')
-    .replace(/٫/g, '.')
-    .trim();
+  const normalized = normalizeNumberInput(value).replace(/,/g, '').trim();
   const amount = Number(normalized);
   return Number.isFinite(amount) ? amount : Number.NaN;
 }
@@ -430,7 +426,7 @@ function escapePdfHtml(value: unknown) {
 
 function formatDate(value: string | null | undefined, lang: string) {
   const date = dateOnlyToLocalDate(value);
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
@@ -698,7 +694,7 @@ export default function IncomePage() {
   const [attachmentError, setAttachmentError] = useState('');
   const exportRef = useRef<HTMLDivElement | null>(null);
 
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1785,7 +1781,7 @@ export default function IncomePage() {
                   <button type="button" onClick={() => patchForm({ incomeType: categorySuggestion }, 'incomeType')}>{tr('acceptSuggestion', lang)}</button>
                 </div>
               )}
-              <label><span>{tr('amount', lang)}</span><div className="amount-control"><input value={form.amount} inputMode="decimal" onChange={e => patchForm({ amount: e.target.value }, 'amount')} placeholder={tr('amountPlaceholder', lang)} aria-invalid={Boolean(formErrors.amount)} /><em>{currencySymbol(form.currency)}</em></div>{formErrors.amount && <small className="field-error">{formErrors.amount}</small>}</label>
+              <label><span>{tr('amount', lang)}</span><div className="amount-control"><input value={form.amount} inputMode="decimal" onChange={e => patchForm({ amount: normalizeNumberInput(e.target.value) }, 'amount')} placeholder={tr('amountPlaceholder', lang)} aria-invalid={Boolean(formErrors.amount)} /><em>{currencySymbol(form.currency)}</em></div>{formErrors.amount && <small className="field-error">{formErrors.amount}</small>}</label>
               <div className="currency-field">
                 <CurrencySelect
                   value={form.currency}

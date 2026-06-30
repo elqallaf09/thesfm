@@ -36,7 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import styles from './ShariahStocksNewsPage.module.css';
@@ -620,7 +620,7 @@ function formatDate(value: string | null | undefined, lang: LangCode, includeTim
   if (!value) return COPY[lang].notAvailable;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return COPY[lang].notAvailable;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
@@ -635,7 +635,7 @@ function formatRelativeTime(value: string | null | undefined, lang: LangCode) {
   if (Number.isNaN(date.getTime())) return COPY[lang].notAvailable;
   const diffMs = Date.now() - date.getTime();
   const abs = Math.abs(diffMs);
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
     ['day', 24 * 60 * 60 * 1000],
@@ -650,7 +650,7 @@ function formatRelativeTime(value: string | null | undefined, lang: LangCode) {
 
 function formatPrice(value: number | null | undefined, currency: string | null | undefined, lang: LangCode) {
   if (!Number.isFinite(value)) return COPY[lang].notAvailable;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const digits = Math.abs(Number(value)) < 10 ? 3 : 2;
   return `${new Intl.NumberFormat(locale, {
     minimumFractionDigits: digits,
@@ -660,7 +660,7 @@ function formatPrice(value: number | null | undefined, currency: string | null |
 
 function formatPercent(value: number | null | undefined, lang: LangCode) {
   if (!Number.isFinite(value)) return COPY[lang].notAvailable;
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return `${Number(value) > 0 ? '+' : ''}${new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -1694,7 +1694,7 @@ function SecurityTable({
                 <tr key={row.symbol}>
                   <td>
                     <button type="button" className={styles.companyButton} onClick={() => onDetails(row)}>
-                     <AssetIdentity symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
+                      <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
                       <span className={styles.companyButtonText}>
                       <strong>{row.name}</strong>
                       <b dir="ltr">{row.symbol}</b>
@@ -2002,10 +2002,10 @@ function SecurityMiniCard({
     <article className={styles.securityCard}>
       <header>
         <div className={styles.securityCardIdentity}>
-          <AssetIdentity symbol={row.symbol} name={row.name} assetType={row.assetType} size="md" decorative />
+          <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} size="lg" decorative />
           <div>
             <strong>{row.name}</strong>
-            <span dir="ltr">{row.symbol}</span>
+            <span className={styles.securityTicker} dir="ltr">{row.symbol}</span>
           </div>
         </div>
         <StatusBadge status={row.shariahStatus} label={statusLabel(row.shariahStatus, locale)} />

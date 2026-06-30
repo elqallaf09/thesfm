@@ -1,3 +1,5 @@
+import { normalizeDigits } from '@/lib/locale';
+
 export type BusinessLang = 'ar' | 'en' | 'fr';
 
 export type SaleStatus = 'completed' | 'pending' | 'cancelled' | 'refunded' | 'canceled';
@@ -980,7 +982,7 @@ export function businessPermissions(role: BusinessRole) {
 
 export function numericValue(value: unknown) {
   if (typeof value === 'string') {
-    const parsed = Number(value.replace(/[^\d.-]/g, ''));
+    const parsed = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
     return Number.isFinite(parsed) ? parsed : 0;
   }
   const parsed = Number(value);

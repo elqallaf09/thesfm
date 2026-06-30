@@ -195,7 +195,7 @@ function formatDate(value: unknown, lang: Lang) {
   if (!raw) return '';
   const date = new Date(raw);
   if (!Number.isFinite(date.getTime())) return '';
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return date.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 

@@ -1,5 +1,6 @@
 import { ExternalLink, FileText, Info, Layers3 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { normalizeDigits } from '@/lib/locale';
 import type { AssetProfile, AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
 import { marketCurrencyLabel, normalizeMarketCurrencyCode } from '@/lib/market/marketCurrency';
 import type { MarketAssetType } from '@/lib/market/marketService';
@@ -24,31 +25,34 @@ function hasValue(value: unknown) {
 function formatCompactNumber(value: unknown, language: string) {
   if (typeof value === 'string') return value;
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  return new Intl.NumberFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+  return normalizeDigits(new Intl.NumberFormat(language === 'ar' ? 'ar-KW-u-nu-latn' : language === 'fr' ? 'fr-FR-u-nu-latn' : 'en-US-u-nu-latn', {
+    numberingSystem: 'latn',
     notation: Math.abs(value) >= 1000000 ? 'compact' : 'standard',
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value));
 }
 
 function formatPercent(value: unknown, language: string) {
   if (typeof value === 'string') return value;
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const normalized = Math.abs(value) <= 1 ? value : value / 100;
-  return new Intl.NumberFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+  return normalizeDigits(new Intl.NumberFormat(language === 'ar' ? 'ar-KW-u-nu-latn' : language === 'fr' ? 'fr-FR-u-nu-latn' : 'en-US-u-nu-latn', {
+    numberingSystem: 'latn',
     style: 'percent',
     maximumFractionDigits: 2,
-  }).format(normalized);
+  }).format(normalized));
 }
 
 function formatDate(value: unknown, language: string) {
   if (typeof value !== 'string' || !value.trim()) return null;
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US', {
+  return normalizeDigits(new Intl.DateTimeFormat(language === 'ar' ? 'ar-KW-u-nu-latn' : language === 'fr' ? 'fr-FR-u-nu-latn' : 'en-US-u-nu-latn', {
+    numberingSystem: 'latn',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(date);
+  }).format(date));
 }
 
 function fieldValue(value: unknown, fallback: string) {

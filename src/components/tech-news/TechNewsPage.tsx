@@ -310,7 +310,7 @@ const CATEGORY_SEARCH_TERMS: Record<TechNewsDashboardCategory, string[]> = {
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
   if (lang === 'fr') return 'fr-FR';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 function copyFor(lang: string) {
@@ -635,6 +635,7 @@ export function TechNewsPage() {
         <TechTickerStrip
           prices={prices}
           formatPrice={formatPrice}
+          direction={dir === 'rtl' ? 'rtl' : 'ltr'}
           labels={{
             priceUnavailable: ui.priceUnavailable,
             delayedGlobal: ui.delayed,

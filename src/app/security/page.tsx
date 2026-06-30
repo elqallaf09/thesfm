@@ -33,6 +33,7 @@ import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
 import { ActionRow } from '@/components/layout/ActionRow';
 import { useAuth } from '@/hooks/useAuth';
+import { normalizeDigits } from '@/lib/locale';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_MAILTO, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
@@ -387,7 +388,7 @@ const TEXT = {
 function formatDate(value: string | null | undefined, fallback: string, lang: string) {
   if (!value) return fallback;
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
@@ -858,7 +859,7 @@ export default function SecurityPage() {
               <span>{text.enterAuthenticatorCode}</span>
               <input
                 value={totpEnrollment.code}
-                onChange={event => setTotpEnrollment(prev => prev ? { ...prev, code: event.target.value.replace(/\D/g, '').slice(0, 6), error: '' } : prev)}
+                onChange={event => setTotpEnrollment(prev => prev ? { ...prev, code: normalizeDigits(event.target.value).replace(/\D/g, '').slice(0, 6), error: '' } : prev)}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 dir="ltr"

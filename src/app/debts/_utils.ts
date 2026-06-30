@@ -8,6 +8,7 @@ import {
   debtMonthlyInterestRate,
   type DebtAmortizationPayment,
 } from '@/lib/debts/calculateDebtAmortization';
+import { normalizeDigits } from '@/lib/locale';
 export { debtPaymentMonth, deriveFirstPaymentDate };
 
 export const SUPPORTED_CURRENCIES = ['KWD', 'USD', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', 'EUR', 'GBP'];
@@ -62,7 +63,7 @@ export function optionalNumber(value: unknown) {
 }
 
 export function cleanNumericInput(value: string) {
-  const cleaned = value.replace(/[^\d.]/g, '');
+  const cleaned = normalizeDigits(value).replace(/[^\d.]/g, '');
   const [whole, ...fractionParts] = cleaned.split('.');
   return fractionParts.length ? `${whole}.${fractionParts.join('')}` : whole;
 }
@@ -121,7 +122,7 @@ export function formatDate(value: string | null | undefined, lang: Lang) {
   if (!value) return TEXT.unavailable[lang];
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

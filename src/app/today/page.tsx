@@ -475,7 +475,7 @@ export default function FinancialTodayPage() {
                 <Sparkles size={13} aria-hidden="true" />{text.eyebrow}
               </span>
               <span style={{borderRadius:'999px',padding:'6px 12px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(167,243,240,.14)',color:'#C7DBF5',fontSize:'12px',fontWeight:900}} dir="ltr">
-                {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA' : locale === 'fr' ? 'fr-FR' : 'en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
+                {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
               </span>
             </div>
             <h1 id="financial-today-title">{text.title}</h1>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Trash2, Plus, X } from 'lucide-react';
+import { normalizeDigits } from '@/lib/locale';
 
 interface ExpItem { id: string; name: string; amount: number; created_at?: string; }
 
@@ -39,7 +40,7 @@ export default function ExpensesPage() {
   }, [user, load]);
 
   const save = async () => {
-    const amt = parseFloat(amount.replace(/[^\d.]/g, ''));
+    const amt = parseFloat(normalizeDigits(amount).replace(/[^\d.]/g, ''));
     if (!name.trim() || !amt) { setMsg({ type: 'err', text: 'أدخل الاسم والمبلغ' }); return; }
     setSaving(true); setMsg(null);
     if (editId) {

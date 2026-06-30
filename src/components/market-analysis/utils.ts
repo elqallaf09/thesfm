@@ -1,5 +1,5 @@
 ﻿import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
-import { formatCurrency } from '@/lib/locale';
+import { formatCurrency, normalizeDigits } from '@/lib/locale';
 import type { EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency, type MarketPriceUnit } from '@/lib/market/marketCurrency';
 import type { MarketAssetType, MarketAnalysis, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
@@ -301,7 +301,7 @@ export function formatTechnicalTimestamp(value?: string, locale = 'ar') {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
@@ -496,11 +496,7 @@ export function readableLevelMarkerPercent(value: number) {
 }
 
 export function parseNumber(value: unknown) {
-  const normalized = String(value ?? '')
-    .replace(/[\u0660-\u0669]/g, digit => String('Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©'.indexOf(digit)))
-    .replace(/[\u06F0-\u06F9]/g, digit => String('Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹'.indexOf(digit)))
-    .replace(/[^\d.,-]/g, '')
-    .replace(/,/g, '');
+  const normalized = normalizeDigits(value).replace(/[^\d.,-]/g, '').replace(/,/g, '');
   const parsed = Number(normalized || 0);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -881,7 +877,7 @@ export function hasCompleteOhlc(point: MarketHistoryPoint) {
 export function formatChartTimestamp(value: string, locale: string, timeframe: MarketTimeframe) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  const normalizedLocale = locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US';
+  const normalizedLocale = locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(
     normalizedLocale,
     timeframe === '1D'

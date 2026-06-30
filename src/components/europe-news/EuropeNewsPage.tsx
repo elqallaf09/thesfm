@@ -31,7 +31,7 @@ type EuropeNewsApiResponse =
 function localeFor(lang: string) {
   if (lang === 'en') return 'en-US';
   if (lang === 'fr') return 'fr-FR';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 function secondsUntilNextRefresh(lastLoadedAt: number) {
@@ -169,6 +169,7 @@ export function EuropeNewsPage() {
           marketData={marketData}
           formatNumber={formatNumber}
           formatPercent={formatPercent}
+          direction={dir === 'rtl' ? 'rtl' : 'ltr'}
         />
 
         <EuropeNewsHeader

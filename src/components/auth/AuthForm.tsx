@@ -9,6 +9,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { hashSecurityAnswer } from '@/lib/authSecurity';
+import { normalizeDigits } from '@/lib/locale';
 
 const SECURITY_QUESTIONS = [
   { id: 'pet_name', questionAr: 'ما اسم حيوانك الأليف؟', questionEn: 'What is your pet name?', questionFr: "Comment s'appelle votre animal de compagnie?" },
@@ -532,7 +533,7 @@ export function AuthForm() {
                 <div className="auth-field">
                   <label className="auth-field-label">{t.age}</label>
                   <input className="auth-input auth-input-no-pad" type="number"
-                    value={age} onChange={e => setAge(e.target.value)}
+                    value={age} onChange={e => setAge(normalizeDigits(e.target.value).replace(/\D/g, ''))}
                     placeholder="25" dir="ltr" min="10" max="120" />
                 </div>
                 <div className="auth-field">

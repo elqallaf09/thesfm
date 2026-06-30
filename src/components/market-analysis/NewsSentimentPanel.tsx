@@ -34,7 +34,7 @@ type NormalizedMarketNewsArticle = {
 const NEWS_PAGE_SIZE = 12;
 
 function marketIntlLocale(lang: string) {
-  return lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
 }
 
 function normalizeText(value: unknown) {

@@ -1,4 +1,5 @@
 // Utility constants and functions for charity-projects/page
+import { normalizeDigits } from '@/lib/locale';
 import type { Lang, ProjectCategory, ProjectStatus, AssetType, DocumentCategory, ReminderType, ReminderPriority, BeneficiaryCategory, BeneficiaryStatus, ContributorRole, PaymentStatus, OrganizationType, VerificationStatus } from './_types';
 
 export const categories: ProjectCategory[] = ['ongoing', 'sponsorship', 'zakat', 'sacrifice', 'endowment', 'mosque', 'water_well', 'education', 'relief', 'other'];
@@ -49,7 +50,7 @@ export function daysUntil(date: string) {
 }
 
 export function toNum(value: string | number | null | undefined) {
-  return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
+  return Number(normalizeDigits(value).replace(/[^\d.-]/g, '')) || 0;
 }
 
 export function recordDate(row: any) {
@@ -81,7 +82,7 @@ export function cleanFileName(name: string) {
 export function estimatedHijriDate(date?: string | null, lang: Lang = 'ar') {
   if (!date) return '';
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura' : lang === 'fr' ? 'fr-FR-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : lang === 'fr' ? 'fr-FR-u-ca-islamic-umalqura' : 'en-US-u-ca-islamic-umalqura', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',

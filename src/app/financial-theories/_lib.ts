@@ -798,7 +798,7 @@ export function asNumber(value: string) {
 export function formatCalculatorDate(months: number, lang: FinancialTheoryLang) {
   const date = new Date();
   date.setMonth(date.getMonth() + Math.max(0, months));
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
 }
 
@@ -813,7 +813,7 @@ export function monthsUntil(targetDate: string) {
 }
 
 export function formatPercent(value: number, lang: FinancialTheoryLang) {
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(Number.isFinite(value) ? value : 0) + '%';
 }
 

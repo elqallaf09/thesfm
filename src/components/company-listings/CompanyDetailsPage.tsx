@@ -42,6 +42,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
 import { formatCompanySocialHandle, normalizeCompanySocialUrl } from '@/lib/companySocialLinks';
+import { normalizeDigits } from '@/lib/locale';
 
 type DetailPayload = {
   ok?: boolean;
@@ -83,7 +84,7 @@ function displayValue(value?: string | number | null, fallback = 'غير محد�
   return isMissing(value) ? fallback : String(value).trim();
 }
 
-function formatDate(value?: string | null, locale = 'ar-KW') {
+function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn') {
   if (!value) return 'غير محدد';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'غير محدد';
@@ -91,7 +92,7 @@ function formatDate(value?: string | null, locale = 'ar-KW') {
 }
 
 function safeTel(value: string) {
-  return value.replace(/[^\d+]/g, '');
+  return normalizeDigits(value).replace(/[^\d+]/g, '');
 }
 
 function cleanWebsiteLabel(value?: string | null) {
@@ -314,7 +315,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   const twitterHref = item ? normalizeCompanySocialUrl(item.twitter_url, 'twitter') : null;
   const mapsHref = item ? buildMapsHref(item, location) : null;
   const hasContact = Boolean(websiteHref || item?.email || item?.phone || instagramHref || linkedinHref || item?.whatsapp || item?.google_maps_url || item?.full_address || location);
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const canSeeDetailedAnalytics = Boolean(viewer?.canReview || viewer?.isOwner);
   const numberFormat = useMemo(() => new Intl.NumberFormat(locale), [locale]);
 

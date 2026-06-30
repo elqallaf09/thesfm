@@ -30,6 +30,7 @@ import type { TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CompanyAnalyticsEventType, CompanyAnalyticsSummary } from '@/lib/companyAnalytics';
 import { COMPANY_CATEGORY_CONFIGS, type CompanyCategory, type CompanyListing, type CompanyStatus } from '@/lib/companyListings';
+import { normalizeDigits } from '@/lib/locale';
 
 type ApiResponse = {
   ok?: boolean;
@@ -107,7 +108,7 @@ function getCompanyDescription(item: CompanyListing, fallback: string) {
 }
 
 function localeForLang(lang: string) {
-  if (lang === 'ar') return 'ar-KW';
+  if (lang === 'ar') return 'ar-KW-u-nu-latn';
   if (lang === 'fr') return 'fr-FR';
   return 'en-US';
 }
@@ -850,7 +851,7 @@ function CompanyCard({
 }) {
   const cardRef = useRef<HTMLElement | null>(null);
   const trackedRef = useRef(false);
-  const contactHref = item.email ? `mailto:${item.email}` : item.phone ? `tel:${item.phone}` : item.whatsapp ? `https://wa.me/${item.whatsapp.replace(/[^\d]/g, '')}` : '';
+  const contactHref = item.email ? `mailto:${item.email}` : item.phone ? `tel:${normalizeDigits(item.phone).replace(/[^\d+]/g, '')}` : item.whatsapp ? `https://wa.me/${normalizeDigits(item.whatsapp).replace(/[^\d]/g, '')}` : '';
   const visibleViews = analytics?.profileViews ?? 0;
   const location = [cleanDisplayText(item.country), cleanDisplayText(item.city)].filter(Boolean).join(' / ');
   const description = getCompanyDescription(item, t('company_listing_no_description'));

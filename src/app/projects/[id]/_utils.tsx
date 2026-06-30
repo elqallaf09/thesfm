@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import { FolderKanban, FileText, BarChart3, ClipboardList, Gauge, Bot, Presentation } from 'lucide-react';
 import { getCurrency } from '@/lib/currencies';
+import { normalizeDigits } from '@/lib/locale';
 import { TEXT } from './_text';
 import type {
   Lang, TabId, RiskLevel, FeasibilitySection, FeasibilityForm, ProjectRow,
@@ -48,7 +49,7 @@ export function parseNotes(value: ProjectRow['notes']) {
 }
 
 export function toNum(value: unknown) {
-  return Number(String(value ?? 0).replace(/[^\d.-]/g, '')) || 0;
+  return Number(normalizeDigits(value).replace(/[^\d.-]/g, '')) || 0;
 }
 
 export function normalizeCurrencyCode(value: unknown, fallback = 'KWD') {

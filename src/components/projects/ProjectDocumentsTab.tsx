@@ -256,7 +256,7 @@ function toNumber(value: unknown) {
 
 function fileSizeLabel(value: unknown, locale: Lang, t: DocumentTranslation) {
   const bytes = toNumber(value);
-  const formatter = new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
+  const formatter = new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
   if (bytes >= 1024 * 1024) return `${formatter.format(bytes / (1024 * 1024))} ${t.megabytes}`;
   if (bytes >= 1024) return `${formatter.format(bytes / 1024)} ${t.kilobytes}`;
   return `${formatter.format(bytes)} ${t.bytes}`;
@@ -266,7 +266,7 @@ function dateLabel(value: string | null | undefined, locale: Lang) {
   if (!value) return '—';
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return '—';
-  return date.toLocaleDateString(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US');
+  return date.toLocaleDateString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US');
 }
 
 function categoryLabel(category: string | null | undefined, t: DocumentTranslation) {

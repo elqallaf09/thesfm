@@ -1248,7 +1248,7 @@ type PdfColumn = {
 };
 
 function localeForReport(lang: Lang) {
-  if (lang === 'ar') return 'ar-KW';
+  if (lang === 'ar') return 'ar-KW-u-nu-latn';
   if (lang === 'fr') return 'fr-FR';
   return 'en-US';
 }

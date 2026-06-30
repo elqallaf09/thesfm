@@ -37,6 +37,7 @@ import {
   type ReactNode,
 } from 'react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -608,14 +609,14 @@ type Copy = (typeof COPY)[LangCode];
 function localeFor(lang: LangCode) {
   if (lang === 'en') return 'en-US';
   if (lang === 'fr') return 'fr-FR';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-function formatMoney(value: number | null | undefined, currency = 'USD', locale = 'ar-KW') {
+function formatMoney(value: number | null | undefined, currency = 'USD', locale = 'ar-KW-u-nu-latn') {
   if (!isFiniteNumber(value)) return '';
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -624,7 +625,7 @@ function formatMoney(value: number | null | undefined, currency = 'USD', locale 
   }).format(value);
 }
 
-function formatCompactNumber(value: number | null | undefined, locale = 'ar-KW') {
+function formatCompactNumber(value: number | null | undefined, locale = 'ar-KW-u-nu-latn') {
   if (!isFiniteNumber(value)) return '';
   return new Intl.NumberFormat(locale, {
     notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard',
@@ -632,7 +633,7 @@ function formatCompactNumber(value: number | null | undefined, locale = 'ar-KW')
   }).format(value);
 }
 
-function formatPercent(value: number | null | undefined, locale = 'ar-KW') {
+function formatPercent(value: number | null | undefined, locale = 'ar-KW-u-nu-latn') {
   if (!isFiniteNumber(value)) return '';
   return `${new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
@@ -640,7 +641,7 @@ function formatPercent(value: number | null | undefined, locale = 'ar-KW') {
   }).format(value)}%`;
 }
 
-function formatSnapshotValue(value: number | null | undefined, unit = '', locale = 'ar-KW') {
+function formatSnapshotValue(value: number | null | undefined, unit = '', locale = 'ar-KW-u-nu-latn') {
   if (!isFiniteNumber(value)) return '';
   const normalizedUnit = String(unit || '').trim();
   if (normalizedUnit === '%') {
@@ -1056,13 +1057,21 @@ function BankingTicker({
           <p>{text.providerDelayed}</p>
         </div>
       </div>
-      <div className="bankTickerViewport">
-        <div className="bankTickerTrack" role="list" aria-label={text.bankingTicker}>
-          {items.map((item, index) => (
+      <MarketTickerStrip
+        ariaLabel={text.bankingTicker}
+        className="bankTickerStrip"
+        viewportClassName="bankTickerViewport"
+        trackClassName="bankTickerTrack"
+        setClassName="bankTickerSet"
+        direction={lang === 'ar' ? 'rtl' : 'ltr'}
+        durationSeconds={46}
+      >
+        {items.map(item => (
             <article
               className="bankTickerItem"
-              key={`${item.symbol}-${index}`}
+              key={item.symbol}
               role="listitem"
+              dir={lang === 'ar' ? 'rtl' : 'ltr'}
             >
               <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
               <div>
@@ -1077,9 +1086,8 @@ function BankingTicker({
               </div>
               <small>{sectorLabel(item.sector, lang, text)} · {text.delayedQuote}</small>
             </article>
-          ))}
-        </div>
-      </div>
+        ))}
+      </MarketTickerStrip>
     </section>
   );
 }

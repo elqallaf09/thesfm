@@ -7,6 +7,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useCurrency } from '@/lib/useCurrency';
 import { trackEvent } from '@/lib/analytics';
+import { normalizeDigits } from '@/lib/locale';
 
 const EXPENSE_CATEGORIES = [
   { id: 'transport', label_ar: 'المواصلات', label_en: 'Transport', label_fr: 'Transport', icon: '🚌' },
@@ -55,7 +56,7 @@ export default function AddExpensePage() {
   };
 
   const formatAmount = (val: string) => {
-    const num = val.replace(/[^\d.]/g, '');
+    const num = normalizeDigits(val).replace(/[^\d.]/g, '');
     const parts = num.split('.');
     if (parts.length > 1) {
       return parts[0] + '.' + parts[1].slice(0, 3);

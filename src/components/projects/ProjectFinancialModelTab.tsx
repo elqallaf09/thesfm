@@ -7,6 +7,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { AppModal } from '@/components/ui/AppModal';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 
 type Lang = 'ar' | 'en' | 'fr';
 type CostType = 'fixed' | 'variable' | 'one-time';
@@ -460,7 +461,7 @@ function makeId(prefix: string) {
 }
 
 function toNum(value: unknown) {
-  const number = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+  const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(number) ? number : 0;
 }
 
@@ -599,11 +600,11 @@ export function ProjectFinancialModelTab({
   const money = useCallback((amount: number) => formatMoney(Number.isFinite(amount) ? amount : 0, assumptions.currency || 'KWD', locale), [assumptions.currency, locale]);
   const pct = useCallback((value: number | null) => {
     if (value === null || !Number.isFinite(value)) return t.na;
-    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}%`;
+    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}%`;
   }, [locale, t.na]);
   const monthValue = useCallback((value: number | null) => {
     if (value === null || !Number.isFinite(value)) return t.na;
-    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value)}`;
+    return `${new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 0 }).format(value)}`;
   }, [locale, t.na]);
 
   const { forecast, kpis } = useMemo(() => calculateModel(assumptions, revenueStreams, costItems), [assumptions, revenueStreams, costItems]);

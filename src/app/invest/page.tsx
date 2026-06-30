@@ -968,7 +968,7 @@ export default function InvestPage() {
     ? `${portfolioLiveTrend.delta > 0 ? '+' : '-'}${Math.abs(portfolioLiveTrend.percent).toFixed(2)}%`
     : '';
   const liveUpdatedText = lastLiveRefreshAt
-    ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { timeStyle: 'medium' }).format(new Date(lastLiveRefreshAt))
+    ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { timeStyle: 'medium' }).format(new Date(lastLiveRefreshAt))
     : L('لم يبدأ بعد', 'Not started yet', 'Pas encore demarre');
   const liveRefreshCopy = liveRefreshState === 'refreshing'
     ? L('تحديث الأسعار الآن', 'Refreshing prices now', 'Actualisation des prix')
@@ -1058,7 +1058,7 @@ export default function InvestPage() {
                   <span>{L('آخر تحديث للقيم', 'Last valuation update', 'Dernière mise à jour')}</span>
                   <h2>{L('تفصيل الاستثمارات حسب العملة', 'Investment breakdown by currency', 'Répartition des investissements par devise')}</h2>
                 </div>
-                <strong dir="ltr">{lastValuationUpdate ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastValuationUpdate)) : labels.unavailable}</strong>
+                <strong dir="ltr">{lastValuationUpdate ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastValuationUpdate)) : labels.unavailable}</strong>
               </div>
               <div className="invest-currency-grid">
                 {currencyBreakdown.map(group => (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import { normalizeDigits } from '@/lib/locale';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_RECEIPTS = 10;
@@ -85,13 +86,7 @@ async function requestUser(request: NextRequest) {
 }
 
 function normalizeArabicNumbers(value: string) {
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  const persian = '۰۱۲۳۴۵۶۷۸۹';
-  return value
-    .replace(/[٠-٩]/g, digit => String(arabic.indexOf(digit)))
-    .replace(/[۰-۹]/g, digit => String(persian.indexOf(digit)))
-    .replace(/\u066B/g, '.')
-    .replace(/\u066C/g, ',');
+  return normalizeDigits(value);
 }
 
 function isTemplatePlaceholder(value: unknown) {

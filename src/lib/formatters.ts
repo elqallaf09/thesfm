@@ -1,4 +1,6 @@
-export function formatDate(value?: string | Date | null, locale: string = 'ar-KW') {
+import { normalizeDigits, toLatinNumberLocale } from './locale';
+
+export function formatDate(value?: string | Date | null, locale: string = 'ar-KW-u-nu-latn') {
   if (!value) return '—';
 
   const date = value instanceof Date ? value : new Date(value);
@@ -7,9 +9,10 @@ export function formatDate(value?: string | Date | null, locale: string = 'ar-KW
     return '—';
   }
 
-  return new Intl.DateTimeFormat(locale, {
+  return normalizeDigits(new Intl.DateTimeFormat(toLatinNumberLocale(locale), {
+    numberingSystem: 'latn',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(date);
+  }).format(date));
 }

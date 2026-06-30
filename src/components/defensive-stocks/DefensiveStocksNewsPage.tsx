@@ -604,7 +604,7 @@ const SECTOR_KEYWORDS: Record<SectorId, string[]> = {
 function localeFor(lang: LangCode) {
   if (lang === 'en') return 'en-US';
   if (lang === 'fr') return 'fr-FR';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 function numberFormatter(locale: string, options: Intl.NumberFormatOptions = {}) {
@@ -922,6 +922,8 @@ function DefensiveTicker({ items, loading, error, lang, locale, text }: {
         viewportClassName="def-ticker-viewport"
         trackClassName="def-ticker-track"
         setClassName="def-ticker-set"
+        direction={lang === 'ar' ? 'rtl' : 'ltr'}
+        durationSeconds={46}
         status={<span className="def-ticker-status"><Clock3 size={13} />{text.delayed}</span>}
       >
         {items.map(item => {

@@ -26,6 +26,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
+import { normalizeDigits } from '@/lib/locale';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
 type Message = { type: 'error' | 'ok'; text: string } | null;
@@ -1073,7 +1074,7 @@ function LoginContent() {
             <AuthField label={text.verificationCode} icon={<KeyRound size={18} />} required>
               <input
                 value={twoFactorCode}
-                onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={e => setTwoFactorCode(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 dir="ltr"

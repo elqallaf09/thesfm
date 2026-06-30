@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 import type { ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, CircleDollarSign, Clock3, Gauge, Info, LineChart, RefreshCw, Search, ShieldAlert, Sparkles, Star, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import type { MarketAssetType } from '@/lib/market/marketService';
+import { normalizeDigits } from '@/lib/locale';
 import type { ApiListState, MarketServiceState, MarketTab, TechnicalState, TechnicalSymbolCategory, TechnicalSymbolOption } from './types';
 import {
   MARKET_TOOL_REQUEST_TIMEOUT_MS, TECHNICAL_SYMBOL_CATEGORIES, TECHNICAL_SYMBOL_GROUPS,
@@ -1012,7 +1013,7 @@ export function numberField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined || value === '') continue;
-    const parsed = Number(String(value).replace('%', '').replace(/,/g, '').trim());
+    const parsed = Number(normalizeDigits(value).replace('%', '').replace(/,/g, '').trim());
     if (Number.isFinite(parsed)) return parsed <= 1 && parsed >= 0 ? parsed * 100 : parsed;
   }
   return null;
@@ -1022,7 +1023,7 @@ export function plainNumberField(item: Record<string, any>, keys: string[]) {
   for (const key of keys) {
     const value = item[key];
     if (value === null || value === undefined || value === '') continue;
-    const parsed = Number(String(value).replace(/,/g, '').trim());
+    const parsed = Number(normalizeDigits(value).replace(/,/g, '').trim());
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
@@ -1049,7 +1050,7 @@ export function sentimentTone(values: { buy: number; sell: number }) {
 }
 
 export function formatSentimentMetricNumber(value: number, locale: string, options: Intl.NumberFormatOptions = {}) {
-  return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     maximumFractionDigits: 2,
     ...options,
   }).format(value);
@@ -1103,7 +1104,7 @@ export function formatMarketToolTimestamp(value: string | undefined, locale = 'a
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(date);

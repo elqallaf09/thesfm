@@ -183,7 +183,7 @@ export function formatAccountActivityTimestamp(value: string, lang: AccountActiv
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const dateKey = new Intl.DateTimeFormat('en-CA').format(date);
   const todayKey = new Intl.DateTimeFormat('en-CA').format(now);
   const yesterday = new Date(now);

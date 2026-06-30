@@ -29,6 +29,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateKhums, type KhumsStatus } from '@/lib/khums';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 
 type KhumsPane = 'calculator' | 'payments' | 'reminders' | 'reports';
 type ShareType = 'imam' | 'sayyid' | 'unspecified';
@@ -151,7 +152,7 @@ function emptyFieldValues<T extends readonly { key: string }[]>(fields: T) {
 
 function toNumber(value: string | number | null | undefined) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const normalized = String(value ?? '').replace(/[^\d.-]/g, '');
+  const normalized = normalizeDigits(value).replace(/[^\d.-]/g, '');
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -171,7 +172,7 @@ function downloadTextFile(filename: string, text: string, mime = 'text/csv;chars
 export default function KhumsPage() {
   const { user, loading } = useAuth();
   const { dir, lang } = useLanguage();
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const db = supabase as any;
 
   const [activePane, setActivePane] = useState<KhumsPane>('calculator');

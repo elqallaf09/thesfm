@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, Flag, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 import { AppModal } from '@/components/ui/AppModal';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -284,7 +285,7 @@ const phases: TaskPhase[] = ['idea', 'study', 'setup', 'launch', 'growth'];
 const milestoneStatuses: MilestoneStatus[] = ['planned', 'in_progress', 'completed', 'late'];
 
 function toNum(value: unknown) {
-  const number = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+  const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(number) ? number : 0;
 }
 
@@ -391,7 +392,7 @@ export function ProjectTasksTab({
   const money = useCallback((amount: number) => formatMoney(amount, currency || 'KWD', locale), [currency, locale]);
   const dateLabel = useCallback((value?: string | null) => {
     const date = parseDate(value);
-    return date ? date.toLocaleDateString(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US') : '—';
+    return date ? date.toLocaleDateString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US') : '—';
   }, [locale]);
 
   const summary = useMemo(() => buildProjectTasksSummary(tasks, milestones), [tasks, milestones]);

@@ -39,6 +39,7 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
+import { formatDate, normalizeDigits } from '@/lib/locale';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -1573,6 +1574,7 @@ export default function ProfilePage() {
         }} onSave={() => void saveProfile()} />
 
         <SecuritySettings
+          lang={lang}
           labels={{
             title: L('security'), emailAddress: L('emailAddress'), changeEmail: L('changeEmail'), emailVerified: L('emailVerified'), emailNotVerified: L('emailNotVerified'), pendingConfirmation: L('pendingConfirmation'),
             changePassword: L('changePassword'), twoFactor: L('twoFactorTitle'), emailTwoFactor: L('emailTwoFactor'), twoFactorEnabled: L('twoFactorEnabled'), twoFactorDisabled: L('twoFactorDisabled'), lastEnabled: L('lastEnabled'), devices: L('connectedDevices'), lastLogin: L('lastLogin'), signOutAll: L('signOutAll'), open: L('open'), enable: L('enable'), view: L('view'), execute: L('execute'), today: L('today'), disable: L('disableEmailTwoFactor'),
@@ -1726,7 +1728,7 @@ export default function ProfilePage() {
                 <Field icon={<KeyRound size={16} />} label={L('verificationCode')}>
                   <input
                     value={emailTwoFactor.code}
-                    onChange={event => setEmailTwoFactor(prev => ({ ...prev, code: event.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                    onChange={event => setEmailTwoFactor(prev => ({ ...prev, code: normalizeDigits(event.target.value).replace(/\D/g, '').slice(0, 6) }))}
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     autoFocus
@@ -2070,6 +2072,7 @@ function ChevronDownIcon({ open }: { open: boolean }) {
 }
 
 function SecuritySettings({
+  lang,
   labels,
   currentEmail,
   pendingEmail,
@@ -2081,6 +2084,7 @@ function SecuritySettings({
   onTwoFactor,
   onSignOutAll,
 }: {
+  lang: string;
   labels: Record<string, string>;
   currentEmail: string;
   pendingEmail: string;
@@ -2094,7 +2098,7 @@ function SecuritySettings({
 }) {
   const twoFactorStatus = [
     `${labels.emailTwoFactor}: ${emailTwoFactorEnabled ? labels.twoFactorEnabled : labels.twoFactorDisabled}`,
-    emailTwoFactorEnabledAt ? `${labels.lastEnabled}: ${new Date(emailTwoFactorEnabledAt).toLocaleDateString()}` : '',
+    emailTwoFactorEnabledAt ? `${labels.lastEnabled}: ${formatDate(emailTwoFactorEnabledAt, lang, { year: 'numeric', month: 'short', day: 'numeric' })}` : '',
   ].filter(Boolean).join(' · ');
 
   return (

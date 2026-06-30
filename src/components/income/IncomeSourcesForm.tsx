@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { INCOME_CATEGORIES } from '@/lib/income-categories';
-import { moneyNumber } from '@/lib/money';
+import { formatCurrency } from '@/lib/locale';
+import { moneyNumber, normalizeNumberInput } from '@/lib/money';
 
 interface IncomeSourcesFormProps {
   userId: string;
@@ -92,7 +93,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
                       <Input
                         id={category.id}
                         value={amounts[category.id] || ''}
-                        onChange={(event) => setAmounts((current) => ({ ...current, [category.id]: event.target.value }))}
+                        onChange={(event) => setAmounts((current) => ({ ...current, [category.id]: normalizeNumberInput(event.target.value) }))}
                         placeholder="0.00"
                         className="h-12 text-center text-lg font-bold"
                         dir="ltr"
@@ -105,7 +106,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
 
             <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-center dark:border-emerald-800 dark:bg-emerald-950/40">
               <span className="text-sm text-emerald-700 dark:text-emerald-300">إجمالي المدخول الشهري</span>
-              <p className="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{totalIncome.toLocaleString('ar-SA')} د.ك</p>
+              <p className="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{formatCurrency(totalIncome, 'KWD', 'ar')}</p>
             </div>
 
             <Button onClick={saveSources} disabled={saving} className="h-12 w-full bg-emerald-700 text-base hover:bg-emerald-800">

@@ -41,6 +41,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { approximateFxRate, convertCurrencyAmount, fxKey, normalizeMoneyCurrencyCode } from '@/lib/currencyConversion';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeNumberInput } from '@/lib/money';
 import { useCurrency } from '@/lib/useCurrency';
 import {
   BILLING_CYCLES,
@@ -467,7 +468,7 @@ function todayInputDate() {
 }
 
 function cleanNumber(value: string) {
-  return value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+  return normalizeNumberInput(value).replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
 }
 
 function toNumber(value: unknown) {
@@ -512,7 +513,7 @@ function daysUntil(value: string, now = new Date()) {
 function formatDate(value: string, locale: Lang) {
   const date = localDate(value);
   if (!date) return '';
-  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -523,7 +524,7 @@ function formatSubscriptionMoney(amount: number, currencyCode: string, locale: L
   const normalized = normalizeMoneyCurrencyCode(currencyCode, 'KWD');
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   if (normalized === 'KWD') {
-    return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    return new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
       style: 'currency',
       currency: 'KWD',
       currencyDisplay: 'narrowSymbol',
@@ -1439,7 +1440,7 @@ export default function MonthlySubscriptionsPage() {
               </div>
             ))}
           </div>
-          <footer>{new Date().toLocaleDateString(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US')}</footer>
+          <footer>{new Date().toLocaleDateString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US')}</footer>
         </section>
       </DashboardPageShell>
 

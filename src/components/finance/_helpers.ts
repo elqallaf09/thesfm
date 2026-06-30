@@ -8,6 +8,7 @@ import {
   money, sum, pick, progress, pageMeta, expenseText,
   categoryLabel, monthsBetween, editableKind,
 } from '@/lib/routeDashboard/helpers';
+import { formatDate } from '@/lib/locale';
 import { calculateGoalProgress } from '@/lib/goalProgress';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 
@@ -119,7 +120,7 @@ export function buildRows(kind: PageKind, data: ReturnType<typeof buildDataShape
   return source.map(item => ({
     id: item.id,
     title: item.name.replace(/^خيرية:\d{4}-\d{2}:/, ''),
-    subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : pick({ ar: 'سجل مالي', en: 'Financial record', fr: 'Relevé financier' }, lang),
+    subtitle: item.created_at ? formatDate(item.created_at, lang, { year: 'numeric', month: 'short', day: 'numeric' }) : pick({ ar: 'سجل مالي', en: 'Financial record', fr: 'Relevé financier' }, lang),
     value: money(item.amount, lang, currency),
     item,
   }));

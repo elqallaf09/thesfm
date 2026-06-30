@@ -115,7 +115,7 @@ export function TradingSessionsPanel({ t, locale }: { t: (key: string) => string
   }, []);
   const sessions = getTradingSessionsState(now);
   const activeOverlapIds = getActiveOverlapIds(now);
-  const formatter = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const formatter = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <section className="market-panel trading-sessions-dashboard">

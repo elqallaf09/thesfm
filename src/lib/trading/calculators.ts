@@ -1,3 +1,5 @@
+import { normalizeDigits } from '@/lib/locale';
+
 export type TradingInstrumentType = 'forex' | 'metals' | 'indices' | 'crypto' | 'stocks';
 export type TradeDirection = 'buy' | 'sell';
 
@@ -68,7 +70,7 @@ const DEFAULT_POINT_VALUES_PER_CONTRACT: Record<TradingInstrumentType, number> =
 export function safeNumber(value: unknown, fallback = 0) {
   const parsed = typeof value === 'number'
     ? value
-    : Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+    : Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 

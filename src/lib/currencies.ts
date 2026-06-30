@@ -74,7 +74,7 @@ function currencyName(code: string, locale: CurrencyLocale) {
 
 function currencySymbol(code: string, locale: CurrencyLocale) {
   try {
-    const parts = new Intl.NumberFormat(locale === 'ar' ? 'ar-KW' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const parts = new Intl.NumberFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {
       style: 'currency',
       currency: code,
       currencyDisplay: 'narrowSymbol',

@@ -17,6 +17,7 @@ import { BUSINESS_TEXT, EMPLOYEE_STATUS_OPTIONS, businessRoleLabel, employeeStat
 import { daysBetweenCalendar, downloadCsv, downloadXlsx, employeeExportColumns, nextPayrollDate, printPdf } from '@/lib/businessReports';
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits } from '@/lib/locale';
 
 type EmployeeRow = {
   id: string;
@@ -72,12 +73,12 @@ function employeeSalaryDay(row: EmployeeRow) {
 
 function parseNumberInput(value: string, fallback = 0) {
   if (!value.trim()) return fallback;
-  const parsed = Number(value.trim().replace(',', '.'));
+  const parsed = Number(normalizeDigits(value).trim().replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 function formatSkillLevel(value: number | string | null | undefined, lang: BusinessLang) {
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(numericValue(value))}%`;
 }
 
@@ -470,8 +471,8 @@ export default function EmployeesPage() {
           <article><span>{text.totalMonthlyPayroll}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.payroll, defaultCurrency, locale) : text.permissionDenied}</strong></article>
           <article><span>{text.totalAllowances}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.allowances, defaultCurrency, locale) : text.permissionDenied}</strong></article>
           <article><span>{text.totalMonthlyCost}</span><strong>{permissions.canViewPayrollTotals ? formatMoney(summary.monthlyCost, defaultCurrency, locale) : text.permissionDenied}</strong></article>
-          <article><span>{text.totalEmployees}</span><strong>{summary.total.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
-          <article><span>{text.activeEmployees}</span><strong>{summary.active.toLocaleString(locale === 'ar' ? 'ar-KW' : locale)}</strong></article>
+          <article><span>{text.totalEmployees}</span><strong>{summary.total.toLocaleString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale)}</strong></article>
+          <article><span>{text.activeEmployees}</span><strong>{summary.active.toLocaleString(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale)}</strong></article>
           <article><span>{text.averageSalary}</span><strong>{formatMoney(summary.averageSalary, defaultCurrency, locale)}</strong></article>
           <article><span>{text.nearestPayrollDate}</span><strong>{summary.nearestDate ? formatDate(summary.nearestDate, locale) : text.noDataYet}</strong></article>
         </section>

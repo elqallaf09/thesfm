@@ -8,6 +8,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { normalizeDigits } from '@/lib/locale';
 import { MONTHS } from '@/lib/translations';
 
 const LEGACY_CHARITY_PREFIX = '\u062e\u064a\u0631\u064a\u0629';
@@ -143,7 +144,7 @@ export default function CharityPage() {
   const save = async () => {
     if (!user || saving) return;
 
-    const amt = parseFloat(amount.replace(/[^\d.]/g, ''));
+    const amt = parseFloat(normalizeDigits(amount).replace(/[^\d.]/g, ''));
     if (!amt || amt <= 0) { setMsg({ type: 'err', text: t('charity.invalidAmount') }); return; }
     if (!name.trim())     { setMsg({ type: 'err', text: t('charity.invalidName') }); return; }
 

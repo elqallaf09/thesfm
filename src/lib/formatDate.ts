@@ -5,7 +5,7 @@ export type DateFormatLanguage = 'ar' | 'en' | 'fr';
 export function dateLocale(language: DateFormatLanguage = 'ar') {
   if (language === 'fr') return 'fr-FR';
   if (language === 'en') return 'en-US';
-  return 'ar-KW';
+  return 'ar-KW-u-nu-latn';
 }
 
 export function formatDate(value: unknown, language: DateFormatLanguage = 'ar', options?: Intl.DateTimeFormatOptions) {

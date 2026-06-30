@@ -82,7 +82,7 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
   const report = window.open('', '_blank', 'noopener,noreferrer,width=980,height=760');
   if (!report) return false;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const generatedAt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
   const noDataLabel = lang === 'ar' ? 'لا توجد بيانات في هذا التقرير.' : lang === 'fr' ? 'Aucune donnée dans ce rapport.' : 'No data in this report.';
   const filtersLabel = lang === 'ar' ? 'الفلاتر' : lang === 'fr' ? 'Filtres' : 'Filters';
@@ -162,7 +162,7 @@ export function saleExportColumns(lang: BusinessLang, currency: string) {
 
 export function employeeExportColumns(lang: BusinessLang, currency: string) {
   const text = BUSINESS_TEXT[lang];
-  const percentFormatter = new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
+  const percentFormatter = new Intl.NumberFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
   return [
     { key: 'employee_name', label: text.employeeName, value: (row: any) => row.name || row.employee_name || '' },
     { key: 'role', label: text.role, value: (row: any) => row.role || '' },
@@ -178,7 +178,7 @@ export function employeeExportColumns(lang: BusinessLang, currency: string) {
 
 export function monthLabel(value: string, lang: BusinessLang) {
   const [year, month] = value.split('-').map(Number);
-  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', year: 'numeric' }).format(new Date(year, month - 1, 1));
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', year: 'numeric' }).format(new Date(year, month - 1, 1));
 }
 
 export function aggregateBy<T>(rows: T[], getKey: (row: T) => string, getValue: (row: T) => number) {

@@ -115,7 +115,7 @@ export default function ProjectWorkspacePage() {
 
   const dateLabel = useCallback((value?: string | null) => {
     const date = safeDate(value);
-    return date ? date.toLocaleDateString(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US') : tr.noDate;
+    return date ? date.toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US') : tr.noDate;
   }, [lang, tr.noDate]);
 
   const projectCurrency = useMemo(() => {
@@ -654,7 +654,7 @@ export default function ProjectWorkspacePage() {
   const statusLabel = (s: FeasibilityStatus) => s === 'feasible' ? tr.feasible : s === 'high_risk' ? tr.highRisk : tr.needsReview;
   const numericLabel = (value: number | null, suffix = '') => {
     if (value === null || !Number.isFinite(value)) return tr.noData;
-    return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}${suffix}`;
+    return `${new Intl.NumberFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }).format(value)}${suffix}`;
   };
   const moneyOrNoData = (v: number) => (v > 0 || v < 0 ? money(v, projectCurrency) : tr.noData);
 

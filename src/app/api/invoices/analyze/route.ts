@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POST as scanReceipt } from '@/app/api/receipts/scan/route';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { normalizeDigits } from '@/lib/locale';
 import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
@@ -87,7 +88,7 @@ function cleanString(value: unknown) {
 function toNumber(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value !== 'string') return null;
-  const normalized = value.replace(/[^\d.,-]/g, '').replace(/,/g, '');
+  const normalized = normalizeDigits(value).replace(/[^\d.,-]/g, '').replace(/,/g, '');
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }

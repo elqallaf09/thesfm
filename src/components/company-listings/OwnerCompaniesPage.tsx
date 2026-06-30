@@ -76,7 +76,7 @@ const toneClass: Record<string, string> = {
   slate: 'owner-status slate',
 };
 
-function formatDate(value?: string | null, locale = 'ar-KW') {
+function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn') {
   if (!value) return 'غير محدد';
   try {
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
@@ -157,7 +157,7 @@ export function OwnerCompaniesPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const { dir, lang, t } = useLanguage();
-  const locale = lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const [companies, setCompanies] = useState<CompanyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
