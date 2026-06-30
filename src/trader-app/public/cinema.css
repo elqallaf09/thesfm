@@ -1502,3 +1502,44 @@ body,
   .detail-grid { grid-template-columns: 1fr 1fr; }
   .ticker-chip { min-width: 138px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   REAL COMPANY LOGOS + STRATEGY CONSENSUS
+   ════════════════════════════════════════════════════════════════ */
+
+/* logo image overlays the colored badge; if it fails to load it removes
+   itself (onerror) and the badge letter shows underneath */
+.asset-logo { position: relative; }
+.logo-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; padding: 3px; border-radius: inherit;
+  background: transparent; opacity: 0; transition: opacity .2s;
+}
+/* only paint the white logo tile once the image actually loads
+   (until then the colored badge + letter shows underneath) */
+.logo-img.ok { background: #fff; opacity: 1; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06); }
+.asset-logo.lg .logo-img { padding: 6px; }
+.ticker-chip .asset-logo .logo-img { padding: 2px; }
+
+/* strategy consensus engine */
+.strategy-consensus { display: grid; gap: 14px; }
+.consensus-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.consensus-head strong { display: block; margin-top: 4px; font: 800 1.55rem var(--font-mono); }
+.consensus-head strong.state-ok { color: var(--green); }
+.consensus-head strong.state-warn { color: var(--red); }
+.consensus-score { text-align: center; flex: none; }
+.consensus-score b { display: block; font: 800 1.5rem var(--font-mono); color: var(--cyan); }
+.consensus-score small { color: var(--muted); font-size: 0.7rem; }
+.strat-list { display: grid; gap: 8px; }
+.strat-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(4, 12, 20, 0.5); }
+.strat-name { font-size: 0.82rem; font-weight: 700; }
+.strat-note { font-size: 0.74rem; color: var(--muted); }
+.vote { font-size: 0.72rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(143,167,186,0.16); color: var(--muted); text-align: center; }
+.vote.ok { background: rgba(69,240,162,0.16); color: var(--green); }
+.vote.warn { background: rgba(255,94,122,0.16); color: var(--red); }
+.consensus-panel { border-color: rgba(85,215,255,0.28); }
+
+@media (max-width: 520px) {
+  .strat-row { grid-template-columns: 1fr auto; }
+  .strat-note { grid-column: 1 / -1; }
+}
