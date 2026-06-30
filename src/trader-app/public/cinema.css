@@ -131,8 +131,7 @@ button {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 48px rgba(0,0,0,0.22);
 }
 
-.brand-mark,
-.asset-logo {
+.brand-mark {
   display: inline-grid;
   place-items: center;
   color: #061016;
@@ -1446,4 +1445,60 @@ body,
   .market-grid { grid-template-columns: 1fr; }
   .hero-actions { flex-wrap: wrap; }
   .detail-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PRECISION FIXES — layout, ticker, logos, hero density
+   ════════════════════════════════════════════════════════════════ */
+
+/* sidebar: real flex column so AI Pro / status / profile stack cleanly
+   (replaces the old absolute-positioned status that collided) */
+.terminal-sidebar { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.sidebar-nav { flex: 1 1 auto; max-height: none; margin-top: 6px; }
+.sidebar-status { position: static; right: auto; bottom: auto; left: auto; }
+.ai-pro-card { margin-top: 0; }
+.terminal-sidebar .brand-card { min-height: 60px; }
+.terminal-sidebar .brand-card strong { font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* asset logos: clean badges, NO rainbow gradient / heavy glow (fixes ticker orbs) */
+.asset-logo { background: rgba(123, 218, 255, 0.12); color: var(--text); box-shadow: inset 0 0 0 1px rgba(123,218,255,0.16); }
+.asset-logo.lg { box-shadow: inset 0 0 0 1px rgba(123,218,255,0.18); }
+
+/* ticker chips: readable, compact, with clear price + change */
+.ticker-strip { padding: 8px; gap: 8px; }
+.ticker-chip { min-width: 150px; background: rgba(11, 27, 42, 0.85); border-color: rgba(123,218,255,0.2); }
+.ticker-chip strong { color: var(--text); font-size: 0.82rem; }
+.ticker-chip small { color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
+.ticker-chip .asset-logo { width: 30px; height: 30px; min-width: 30px; font-size: 0.7rem; }
+
+/* hero: denser, professional — not a giant billboard */
+.command-hero { min-height: auto; gap: 16px; padding: clamp(18px, 2.4vw, 26px); }
+.hero-copy h2, .page-hero h2 { font-size: clamp(1.45rem, 2.6vw, 2.35rem) !important; line-height: 1.14 !important; letter-spacing: -0.02em !important; max-width: 640px; }
+.hero-copy p, .page-hero p { line-height: 1.7; font-size: 0.9rem; max-width: 620px; }
+.page-hero { padding: clamp(16px, 2vw, 22px); }
+.page-hero::after, .command-hero::after { opacity: 0.6; }
+.hero-actions { margin-top: 14px; }
+
+/* tighter vertical rhythm across the terminal */
+.page-stack { display: grid; gap: 16px; }
+.panel { padding: clamp(16px, 1.8vw, 20px); }
+
+/* keep RTL sidebar nav highlight subtle (no horizontal shift overflow) */
+.sidebar-nav a:hover, .sidebar-nav a.is-active { transform: none; }
+
+/* brand/profile cards must never get the nav active treatment */
+.brand-card.is-active, .profile-card.is-active, .ai-pro-card.is-active { transform: none; }
+
+/* prevent any horizontal overflow + safe word wrapping */
+.terminal-app, .terminal-stage, .terminal-content, .page-stack { max-width: 100%; overflow-x: clip; }
+.hero-copy h2, .page-hero h2, .panel h2, .asset-title small, .market-tile strong { overflow-wrap: anywhere; }
+.ticker-strip { scrollbar-width: thin; }
+
+@media (max-width: 480px) {
+  .hero-copy h2, .page-hero h2 { font-size: clamp(1.25rem, 5.4vw, 1.7rem) !important; letter-spacing: 0 !important; }
+  .command-hero, .page-hero { padding: 16px !important; }
+  .hero-copy p, .page-hero p { font-size: 0.84rem; }
+  .seg-tabs button { padding: 6px 11px; font-size: 0.78rem; }
+  .detail-grid { grid-template-columns: 1fr 1fr; }
+  .ticker-chip { min-width: 138px; }
 }
