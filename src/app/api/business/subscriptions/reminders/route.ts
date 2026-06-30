@@ -2,33 +2,107 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildClientBundles,
   buildReminderCandidates,
-  emailReminderTemplate,
   formatMoney,
   reminderCandidateAmount,
   reminderCandidateCurrency,
   type ActivityLogRow,
+  type ClientBundle,
   type ClientFileRow,
   type ClientNoteRow,
   type ClientRow,
   type PaymentHistoryRow,
   type PaymentRow,
+  type ReminderCandidate,
   type ReminderNotificationRow,
   type SubscriptionRow,
 } from '@/lib/businessSubscriptions';
+import {
+  CUSTOMER_EMAIL_MISSING_OR_INVALID_MESSAGE,
+  CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON,
+  REMINDER_EMAIL_LOG_FAILED_REASON,
+  REMINDER_EMAIL_PAYLOAD_INVALID_REASON,
+  REMINDER_EMAIL_SMTP_FAILED_REASON,
+  SUBSCRIBER_EMAIL_MISSING_OR_INVALID_REASON,
+  customerReminderEmailTemplate,
+  maskReminderEmail,
+  subscriberReminderEmailTemplate,
+  validateReminderRecipientEmail,
+  type ReminderEmailStatus,
+  type ReminderRecipientType,
+} from '@/lib/subscriptionReminderEmails';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
 import {
   getSmtpErrorDetails,
   getSmtpMailConfigStatus,
   isSmtpMailConfigured,
-  logSmtpMailError,
-  sendSmtpMail,
-  validateMailPayload,
   maskEmailForLog,
+  sendSmtpMail,
   smtpErrorUserMessage,
+  validateMailPayload,
 } from '@/lib/server/smtpMail';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+type ScopeUser = {
+  id: string;
+  email?: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  profession: string | null;
+  profession_other: string | null;
+};
+
+type CompanyListingRow = {
+  user_id: string;
+  company_name: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+type SubscriberContext = {
+  id: string;
+  name: string;
+  email: string | null;
+  businessName: string | null;
+};
+
+type ReminderDeliveryContext = {
+  reminderId: string;
+  reminderType: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  subscriptionId: string;
+  paymentId: string | null;
+  amountDue: number;
+  amountFormatted: string;
+  currency: string;
+  dueDate: string;
+  subscriber: SubscriberContext;
+};
+
+type RecipientSendResult = {
+  userId: string;
+  dedupeKey: string;
+  status: ReminderEmailStatus;
+  channel: 'email';
+  recipientType: ReminderRecipientType;
+  customerEmailStatus?: ReminderEmailStatus;
+  subscriberEmailStatus?: ReminderEmailStatus;
+  customerFailureReason?: string | null;
+  subscriberFailureReason?: string | null;
+  error?: string;
+};
+
+type ReminderResult =
+  | { userId: string; dedupeKey: string; status: string; channel: 'in_app'; error?: string }
+  | RecipientSendResult;
 
 function bearerToken(request: NextRequest) {
   const header = request.headers.get('authorization') || '';
@@ -45,11 +119,12 @@ function isCronAuthorized(request: NextRequest) {
   return token === secret || headerSecret === secret || querySecret === secret;
 }
 
-async function getScopeUserId(request: NextRequest) {
+async function getScopeUser(request: NextRequest): Promise<ScopeUser | null | undefined> {
   if (isCronAuthorized(request)) return null;
   const token = bearerToken(request);
   const user = token ? await getUserFromBearerToken(token) : null;
-  return user?.id ?? undefined;
+  if (!user?.id) return undefined;
+  return { id: user.id, email: user.email ?? null };
 }
 
 function safeTimezone(value: string | null | undefined) {
@@ -79,7 +154,7 @@ function cleanError(error: unknown) {
     return [
       smtpDetails.responseCode ? `responseCode=${smtpDetails.responseCode}` : null,
       smtpDetails.command ? `command=${smtpDetails.command}` : null,
-      smtpDetails.rejected?.length ? `rejected=${smtpDetails.rejected.join(',')}` : null,
+      smtpDetails.rejected?.length ? `rejected=${smtpDetails.rejected.map(maskEmailForLog).join(',')}` : null,
       smtpDetails.response ? `response=${smtpDetails.response.replace(/\s+/g, ' ').trim()}` : null,
     ].filter(Boolean).join(' | ');
   }
@@ -90,6 +165,9 @@ function cleanError(error: unknown) {
 
 const NO_CUSTOMER_DATA_MESSAGE = 'لا توجد بيانات عملاء لإرسال التذكيرات.';
 const INVALID_REMINDER_PAYLOAD_MESSAGE = 'تعذر إرسال البريد. تحقق من بيانات العميل أو البريد المستلم.';
+const BOTH_RECIPIENT_EMAILS_INVALID_MESSAGE =
+  'لا يمكن إرسال تذكيرات البريد لأن بريد العميل وبريد المشترك غير موجودين أو غير صالحين.';
+const DUPLICATE_REMINDER_EMAIL_REASON = 'DUPLICATE_REMINDER_EMAIL';
 
 function sanitizeEnvelopeForLog(envelope?: { from: string; to: string[] }) {
   if (!envelope) return undefined;
@@ -107,27 +185,109 @@ function mapStringArray(value: unknown) {
     .filter(Boolean);
 }
 
-function buildReminderFailureMetadata(input: {
-  reminderType: string;
-  customerId: string;
-  to: string[];
-  from?: string;
-  userMessage?: string;
+function safeText(value: unknown, fallback = 'غير متاح') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+function validationStatusForFailure(reason: string | null | undefined, fallback: ReminderEmailStatus | 'scheduled') {
+  if (reason === CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON) return 'missing_or_invalid_customer_email';
+  if (reason === SUBSCRIBER_EMAIL_MISSING_OR_INVALID_REASON) return 'missing_or_invalid_subscriber_email';
+  return reason ?? fallback;
+}
+
+function emailMetadata(input: {
+  recipientType: ReminderRecipientType;
+  status: ReminderEmailStatus | 'scheduled';
+  context: ReminderDeliveryContext;
+  recipientEmail?: string | null;
+  recipientEmailExists: boolean;
+  recipientEmailValid: boolean;
+  from?: string | null;
+  failureReason?: string | null;
+  userMessage?: string | null;
   payloadValidationErrors?: string[];
   smtp?: Record<string, unknown>;
+  smtpCalled: boolean;
 }) {
+  const context = input.context;
+  const recipientTo = input.recipientEmail ? [maskEmailForLog(input.recipientEmail)] : [];
   const meta: Record<string, unknown> = {
-    reminder_type: input.reminderType,
-    customer_id: input.customerId,
-    recipient_to: input.to.map(maskEmailForLog),
+    recipient_type: input.recipientType,
+    email_status: input.status,
+    reminder_id: context.reminderId,
+    reminder_type: context.reminderType,
+    customer_id: context.customerId,
+    customer_name: context.customerName,
+    customer_email_exists: input.recipientType === 'customer'
+      ? input.recipientEmailExists
+      : Boolean(context.customerEmail),
+    customer_email_valid: input.recipientType === 'customer'
+      ? input.recipientEmailValid
+      : Boolean(context.customerEmail),
+    customer_email_masked: context.customerEmail ? maskReminderEmail(context.customerEmail) : null,
+    customer_phone_exists: Boolean(context.customerPhone),
+    subscription_id: context.subscriptionId,
+    payment_id: context.paymentId,
+    amount_due: context.amountDue,
+    amount_formatted: context.amountFormatted,
+    currency: context.currency,
+    due_date: context.dueDate,
+    subscriber_id: context.subscriber.id,
+    subscriber_name: context.subscriber.name,
+    subscriber_email_exists: input.recipientType === 'subscriber'
+      ? input.recipientEmailExists
+      : Boolean(context.subscriber.email),
+    subscriber_email_valid: input.recipientType === 'subscriber'
+      ? input.recipientEmailValid
+      : Boolean(context.subscriber.email),
+    subscriber_email_masked: context.subscriber.email ? maskReminderEmail(context.subscriber.email) : null,
+    business_name: context.subscriber.businessName,
+    recipient_to: recipientTo,
     recipient_from: input.from ? [maskEmailForLog(input.from)] : [],
+    recipient_email_exists: input.recipientEmailExists,
+    recipient_email_valid: input.recipientEmailValid,
+    validation_status: validationStatusForFailure(input.failureReason, input.status),
+    smtp_called: input.smtpCalled,
   };
 
+  if (input.failureReason) meta.failure_reason = input.failureReason;
   if (input.userMessage) meta.error = input.userMessage;
-  if (input.payloadValidationErrors?.length) meta.payloadValidationErrors = input.payloadValidationErrors;
+  if (input.payloadValidationErrors?.length) meta.payload_validation_errors = input.payloadValidationErrors;
   if (input.smtp) meta.smtp = input.smtp;
 
   return meta;
+}
+
+function logReminderEmail(scope: string, input: {
+  context: ReminderDeliveryContext;
+  recipientType: ReminderRecipientType;
+  status: ReminderEmailStatus | 'scheduled';
+  recipientEmail?: string | null;
+  recipientEmailExists: boolean;
+  recipientEmailValid: boolean;
+  failureReason?: string | null;
+  smtpCalled: boolean;
+  smtp?: Record<string, unknown>;
+}) {
+  const payload: Record<string, unknown> = {
+    reminderId: input.context.reminderId,
+    customerId: input.context.customerId,
+    subscriberId: input.context.subscriber.id,
+    recipientType: input.recipientType,
+    customerEmailExists: Boolean(input.context.customerEmail),
+    subscriberEmailExists: Boolean(input.context.subscriber.email),
+    recipientEmail: input.recipientEmail ? maskEmailForLog(input.recipientEmail) : null,
+    result: input.status,
+    failureReason: input.failureReason ?? null,
+    smtpCalled: input.smtpCalled,
+  };
+  if (input.smtpCalled && input.smtp) payload.smtp = input.smtp;
+  if (input.status === 'sent' || input.status === 'scheduled') {
+    console.info(scope, payload);
+  } else {
+    console.warn(scope, payload);
+  }
 }
 
 async function loadRows<T>(db: any, table: string, userId?: string) {
@@ -136,6 +296,167 @@ async function loadRows<T>(db: any, table: string, userId?: string) {
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as T[];
+}
+
+async function loadProfiles(db: any, userIds: string[], scopeUser: ScopeUser | null) {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  const profiles = new Map<string, ProfileRow>();
+  if (uniqueIds.length) {
+    try {
+      const { data, error } = await db
+        .from('profiles')
+        .select('id, display_name, email, profession, profession_other')
+        .in('id', uniqueIds);
+      if (error) {
+        console.warn('[business-subscriptions] reminder profile context failed', {
+          userCount: uniqueIds.length,
+          message: cleanError(error),
+        });
+      } else {
+        for (const row of data ?? []) {
+          profiles.set(String(row.id), row as ProfileRow);
+        }
+      }
+    } catch (error) {
+      console.warn('[business-subscriptions] reminder profile context failed', {
+        userCount: uniqueIds.length,
+        message: cleanError(error),
+      });
+    }
+  }
+
+  if (scopeUser?.id && !profiles.get(scopeUser.id)?.email && scopeUser.email) {
+    profiles.set(scopeUser.id, {
+      id: scopeUser.id,
+      display_name: profiles.get(scopeUser.id)?.display_name ?? null,
+      email: scopeUser.email,
+      profession: profiles.get(scopeUser.id)?.profession ?? null,
+      profession_other: profiles.get(scopeUser.id)?.profession_other ?? null,
+    });
+  }
+
+  return profiles;
+}
+
+async function loadCompanyNames(db: any, userIds: string[]) {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  const companyNames = new Map<string, string>();
+  if (!uniqueIds.length) return companyNames;
+
+  try {
+    const { data, error } = await db
+      .from('company_listings')
+      .select('user_id, company_name, status, created_at')
+      .in('user_id', uniqueIds)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[business-subscriptions] reminder company context failed', {
+        userCount: uniqueIds.length,
+        message: cleanError(error),
+      });
+      return companyNames;
+    }
+
+    for (const row of (data ?? []) as CompanyListingRow[]) {
+      const userId = String(row.user_id ?? '');
+      const companyName = String(row.company_name ?? '').trim();
+      if (!userId || !companyName || companyNames.has(userId)) continue;
+      companyNames.set(userId, companyName);
+    }
+  } catch (error) {
+    console.warn('[business-subscriptions] reminder company context failed', {
+      userCount: uniqueIds.length,
+      message: cleanError(error),
+    });
+  }
+
+  return companyNames;
+}
+
+function subscriberContextFor(
+  userId: string,
+  profiles: Map<string, ProfileRow>,
+  companyNames: Map<string, string>,
+): SubscriberContext {
+  const profile = profiles.get(userId);
+  const businessName = companyNames.get(userId) ?? null;
+  const name = safeText(profile?.display_name || businessName || profile?.email, 'THE SFM');
+  return {
+    id: userId,
+    name,
+    email: profile?.email ?? null,
+    businessName,
+  };
+}
+
+function missingCustomerForSubscription(subscription: SubscriptionRow): ClientRow {
+  return {
+    id: subscription.client_id,
+    user_id: subscription.user_id,
+    full_name: `Missing customer ${subscription.client_id}`,
+    phone: '',
+    whatsapp: null,
+    email: null,
+    address: null,
+    notes: null,
+    color_tag: null,
+    avatar_url: null,
+    profile_photo_url: null,
+    created_at: subscription.created_at,
+    updated_at: subscription.updated_at,
+  };
+}
+
+function buildOrphanSubscriptionBundles(input: {
+  clients: ClientRow[];
+  subscriptions: SubscriptionRow[];
+  payments: PaymentRow[];
+  history: PaymentHistoryRow[];
+  notes: ClientNoteRow[];
+  files: ClientFileRow[];
+  activity: ActivityLogRow[];
+  notifications: ReminderNotificationRow[];
+}): ClientBundle[] {
+  const clientKeys = new Set(input.clients.map(client => `${client.user_id}:${client.id}`));
+
+  return input.subscriptions
+    .filter(subscription => !clientKeys.has(`${subscription.user_id}:${subscription.client_id}`))
+    .map(subscription => {
+      const client = missingCustomerForSubscription(subscription);
+      return {
+        client,
+        subscription,
+        payments: input.payments.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id &&
+          item.subscription_id === subscription.id
+        ).sort((a, b) => String(b.due_date).localeCompare(String(a.due_date))),
+        history: input.history.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id &&
+          item.subscription_id === subscription.id
+        ).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+        notes: input.notes.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id
+        ).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+        files: input.files.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id
+        ).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+        activity: input.activity.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id &&
+          item.subscription_id === subscription.id
+        ).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+        notifications: input.notifications.filter(item =>
+          item.user_id === subscription.user_id &&
+          item.client_id === subscription.client_id &&
+          item.subscription_id === subscription.id
+        ).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+      };
+    });
 }
 
 async function insertRunLog(db: any, input: {
@@ -171,6 +492,343 @@ async function insertRunLog(db: any, input: {
   });
 }
 
+function notificationLogPayload(input: {
+  context: ReminderDeliveryContext;
+  candidate: ReminderCandidate;
+  recipientType: ReminderRecipientType;
+  dedupeKey: string;
+}) {
+  return {
+    user_id: input.candidate.client.user_id,
+    client_id: input.context.customerId,
+    subscription_id: input.context.subscriptionId,
+    payment_id: input.context.paymentId,
+    reminder_type: input.context.reminderType,
+    scheduled_for: new Date().toISOString(),
+    channel: 'email' as const,
+    sent_at: null,
+    dedupe_key: input.dedupeKey,
+  };
+}
+
+async function sendRecipientReminderEmail(input: {
+  db: any;
+  candidate: ReminderCandidate;
+  context: ReminderDeliveryContext;
+  recipientType: ReminderRecipientType;
+  recipientEmail: string | null;
+  template: { subject: string; text: string; html: string };
+  fromName: string;
+}) {
+  const validation = validateReminderRecipientEmail(input.recipientEmail, input.recipientType);
+  const dedupeKey = `${input.candidate.dedupeKey}:email:${input.recipientType}`;
+  const logPayload = notificationLogPayload({
+    context: input.context,
+    candidate: input.candidate,
+    recipientType: input.recipientType,
+    dedupeKey,
+  });
+
+  if (!validation.ok) {
+    const metadata = emailMetadata({
+      recipientType: input.recipientType,
+      status: 'skipped',
+      context: input.context,
+      recipientEmail: validation.rawEmail || null,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      failureReason: validation.reason,
+      userMessage: validation.message,
+      smtpCalled: false,
+    });
+    logReminderEmail('[business-subscriptions] reminder recipient validation failed', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: 'skipped',
+      recipientEmail: validation.rawEmail || null,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      failureReason: validation.reason,
+      smtpCalled: false,
+    });
+
+    const { error } = await input.db
+      .from('subscription_notifications')
+      .insert({
+        ...logPayload,
+        status: 'skipped',
+        metadata,
+      });
+
+    if (error && String(error.code) !== '23505') {
+      console.warn('[business-subscriptions] reminder validation email log failed', {
+        reminderId: input.context.reminderId,
+        customerId: input.context.customerId,
+        subscriberId: input.context.subscriber.id,
+        recipientType: input.recipientType,
+        failureReason: REMINDER_EMAIL_LOG_FAILED_REASON,
+        message: cleanError(error),
+      });
+    }
+
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: 'skipped' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: validation.reason,
+      error: validation.message,
+    };
+  }
+
+  const payload = validateMailPayload({
+    to: validation.email,
+    subject: input.template.subject,
+    text: input.template.text,
+    html: input.template.html,
+    fromName: input.fromName,
+  });
+
+  if (!payload.ok || !payload.payload) {
+    const reason = REMINDER_EMAIL_PAYLOAD_INVALID_REASON;
+    const message = payload.errors[0] || INVALID_REMINDER_PAYLOAD_MESSAGE;
+    const metadata = emailMetadata({
+      recipientType: input.recipientType,
+      status: 'failed',
+      context: input.context,
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      from: payload.payload?.from,
+      failureReason: reason,
+      userMessage: message,
+      payloadValidationErrors: payload.errors,
+      smtpCalled: false,
+    });
+    logReminderEmail('[business-subscriptions] reminder payload validation failed', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: 'failed',
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      failureReason: reason,
+      smtpCalled: false,
+    });
+
+    await input.db.from('subscription_notifications').insert({
+      ...logPayload,
+      status: 'failed',
+      metadata,
+    });
+
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: 'failed' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: reason,
+      error: message,
+    };
+  }
+
+  const emailPayload = payload.payload;
+  const scheduledMetadata = emailMetadata({
+    recipientType: input.recipientType,
+    status: 'scheduled',
+    context: input.context,
+    recipientEmail: validation.email,
+    recipientEmailExists: validation.emailExists,
+    recipientEmailValid: validation.emailValid,
+    from: emailPayload.from,
+    smtpCalled: false,
+  });
+  const scheduleInsertResult = await input.db
+    .from('subscription_notifications')
+    .insert({
+      ...logPayload,
+      status: 'scheduled',
+      metadata: scheduledMetadata,
+    });
+
+  if (scheduleInsertResult.error) {
+    const duplicate = String(scheduleInsertResult.error.code) === '23505';
+    const reason = duplicate ? DUPLICATE_REMINDER_EMAIL_REASON : REMINDER_EMAIL_LOG_FAILED_REASON;
+    const message = duplicate ? scheduleInsertResult.error.message : cleanError(scheduleInsertResult.error);
+    logReminderEmail('[business-subscriptions] reminder email not sent because log scheduling failed', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: duplicate ? 'skipped' : 'failed',
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      failureReason: reason,
+      smtpCalled: false,
+    });
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: duplicate ? 'skipped' as const : 'failed' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: reason,
+      error: message,
+    };
+  }
+
+  try {
+    const sendResult = await sendSmtpMail({
+      to: emailPayload.to,
+      subject: emailPayload.subject,
+      text: emailPayload.text,
+      html: emailPayload.html,
+      fromName: input.fromName,
+    });
+    const smtp = {
+      accepted: sendResult.accepted.map(maskEmailForLog),
+      rejected: sendResult.rejected.map(maskEmailForLog),
+      responseCode: sendResult.responseCode,
+      response: sendResult.response,
+      envelope: sanitizeEnvelopeForLog(sendResult.envelope),
+    };
+    const metadata = emailMetadata({
+      recipientType: input.recipientType,
+      status: 'sent',
+      context: input.context,
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      from: emailPayload.from,
+      smtp,
+      smtpCalled: true,
+    });
+
+    await input.db
+      .from('subscription_notifications')
+      .update({
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        metadata,
+      })
+      .eq('user_id', input.candidate.client.user_id)
+      .eq('dedupe_key', dedupeKey);
+
+    await input.db.from('activity_logs').insert({
+      user_id: input.candidate.client.user_id,
+      client_id: input.context.customerId,
+      subscription_id: input.context.subscriptionId,
+      payment_id: input.context.paymentId,
+      event_type: `subscription_${input.recipientType}_email_sent`,
+      title: `subscription_${input.recipientType}_email_sent`,
+      description: `${input.context.customerName} - ${input.context.dueDate}`,
+      metadata,
+    });
+
+    logReminderEmail('[business-subscriptions] reminder email sent', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: 'sent',
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      smtpCalled: true,
+      smtp,
+    });
+
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: 'sent' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: null,
+    };
+  } catch (error) {
+    const userMessage = smtpErrorUserMessage(error);
+    const smtpDetails = getSmtpErrorDetails(error);
+    const smtp = {
+      responseCode: smtpDetails.responseCode,
+      response: smtpDetails.response,
+      command: smtpDetails.command,
+      rejected: smtpDetails.rejected?.map(maskEmailForLog),
+      envelope: sanitizeEnvelopeForLog(smtpDetails.envelope),
+      stack: smtpDetails.stack,
+    };
+    const metadata = emailMetadata({
+      recipientType: input.recipientType,
+      status: 'failed',
+      context: input.context,
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      from: emailPayload.from,
+      failureReason: REMINDER_EMAIL_SMTP_FAILED_REASON,
+      userMessage,
+      smtp,
+      smtpCalled: true,
+    });
+
+    logReminderEmail('[business-subscriptions] reminder email failed', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: 'failed',
+      recipientEmail: validation.email,
+      recipientEmailExists: validation.emailExists,
+      recipientEmailValid: validation.emailValid,
+      failureReason: REMINDER_EMAIL_SMTP_FAILED_REASON,
+      smtpCalled: true,
+      smtp,
+    });
+
+    await input.db
+      .from('subscription_notifications')
+      .update({
+        status: 'failed',
+        metadata: { ...metadata, smtp_error: cleanError(error) },
+      })
+      .eq('user_id', input.candidate.client.user_id)
+      .eq('dedupe_key', dedupeKey);
+
+    await input.db.from('activity_logs').insert({
+      user_id: input.candidate.client.user_id,
+      client_id: input.context.customerId,
+      subscription_id: input.context.subscriptionId,
+      payment_id: input.context.paymentId,
+      event_type: `subscription_${input.recipientType}_email_failed`,
+      title: `subscription_${input.recipientType}_email_failed`,
+      description: userMessage,
+      metadata,
+    });
+
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: 'failed' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: REMINDER_EMAIL_SMTP_FAILED_REASON,
+      error: userMessage,
+    };
+  }
+}
+
+function emailResultForRecipient(result: Awaited<ReturnType<typeof sendRecipientReminderEmail>>) {
+  if (result.recipientType === 'customer') {
+    return {
+      ...result,
+      customerEmailStatus: result.status,
+      customerFailureReason: result.failureReason,
+    };
+  }
+  return {
+    ...result,
+    subscriberEmailStatus: result.status,
+    subscriberFailureReason: result.failureReason,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const db = createServerSupabaseAdmin();
   if (!db) {
@@ -180,13 +838,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const scopeUserId = await getScopeUserId(request);
-  if (scopeUserId === undefined) {
+  const scopeUser = await getScopeUser(request);
+  if (scopeUser === undefined) {
     return NextResponse.json(
       { ok: false, code: 'UNAUTHORIZED' },
       { status: 401, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
+  const scopeUserId = scopeUser?.id ?? null;
 
   const timezone = safeTimezone(request.nextUrl.searchParams.get('timezone') || request.headers.get('x-client-timezone'));
   const runType = isCronAuthorized(request)
@@ -211,7 +870,7 @@ export async function GET(request: NextRequest) {
       loadRows<ReminderNotificationRow>(db, 'subscription_notifications', scopeUserId || undefined),
     ]);
 
-    const bundles = buildClientBundles({
+    const bundleInput = {
       clients,
       subscriptions,
       payments,
@@ -220,12 +879,15 @@ export async function GET(request: NextRequest) {
       files,
       activity,
       notifications: notificationLogs,
-    });
+    };
+    const bundles = [
+      ...buildClientBundles(bundleInput),
+      ...buildOrphanSubscriptionBundles(bundleInput),
+    ];
     const candidates = buildReminderCandidates(bundles, baseDate);
     const smtpStatus = getSmtpMailConfigStatus();
     const smtpConfigured = isSmtpMailConfigured();
-    const origin = request.nextUrl.origin;
-    const results: Array<{ userId: string; dedupeKey: string; status: string; channel: string; error?: string }> = [];
+    const results: ReminderResult[] = [];
     const usersToLog = scopeUserId
       ? [scopeUserId]
       : Array.from(new Set(clients.map(client => client.user_id)));
@@ -268,9 +930,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const candidateUserIds = Array.from(new Set(candidates.map(candidate => candidate.client.user_id)));
+    const [profiles, companyNames] = await Promise.all([
+      loadProfiles(db, candidateUserIds, scopeUser),
+      loadCompanyNames(db, candidateUserIds),
+    ]);
+
     for (const candidate of candidates) {
-      const amountDue = reminderCandidateAmount(candidate);
+      const amountDue = Number(reminderCandidateAmount(candidate) ?? 0);
       const currency = reminderCandidateCurrency(candidate, 'KWD');
+      const amountFormatted = formatMoney(amountDue, currency, 'ar');
       const metadata = {
         daysRemaining: candidate.daysRemaining,
         amountDue,
@@ -328,239 +997,82 @@ export async function GET(request: NextRequest) {
       results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'sent', channel: 'in_app' });
 
       if (!smtpConfigured) continue;
-      const recipientEmail = (candidate.client.email ?? '').trim();
-      const template = emailReminderTemplate({
-        clientName: candidate.client.full_name,
-        phone: candidate.client.phone,
-        amount: String(amountDue),
+
+      const linkedCustomer = clients.find(client =>
+        client.id === candidate.subscription.client_id &&
+        client.user_id === candidate.subscription.user_id
+      ) ?? null;
+      const customer = linkedCustomer ?? candidate.client;
+      const subscriber = subscriberContextFor(candidate.client.user_id, profiles, companyNames);
+      const context: ReminderDeliveryContext = {
+        reminderId: candidate.dedupeKey,
+        reminderType: candidate.reminderType,
+        customerId: customer.id,
+        customerName: customer.full_name,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        subscriptionId: candidate.subscription.id,
+        paymentId: candidate.payment?.id ?? null,
+        amountDue,
+        amountFormatted,
         currency,
         dueDate: candidate.dueDate,
-        daysRemaining: candidate.daysRemaining,
-        openClientUrl: `${origin}/business/subscriptions/${candidate.client.id}`,
-      });
-      const payload = validateMailPayload({
-        to: recipientEmail,
-        subject: template.subject,
-        text: template.text,
-        html: template.html,
-        replyTo: recipientEmail,
-      });
-      const emailDedupeKey = `${candidate.dedupeKey}:email`;
-      const emailLogPayload = {
-        user_id: logPayload.user_id,
-        client_id: logPayload.client_id,
-        subscription_id: logPayload.subscription_id,
-        payment_id: logPayload.payment_id,
-        reminder_type: logPayload.reminder_type,
-        scheduled_for: logPayload.scheduled_for,
-        metadata: logPayload.metadata,
-        channel: 'email' as const,
-        sent_at: null,
-        dedupe_key: emailDedupeKey,
+        subscriber,
       };
 
-      if (!payload.ok || !payload.payload) {
-        const statusMessage = INVALID_REMINDER_PAYLOAD_MESSAGE;
-        const validationMetadata = buildReminderFailureMetadata({
-          reminderType: candidate.reminderType,
-          customerId: candidate.client.id,
-          to: payload.payload?.to ?? mapStringArray([recipientEmail]),
-          from: payload.payload?.from,
-          userMessage: statusMessage,
-          payloadValidationErrors: payload.errors,
-        });
-        const firstValidationError = payload.errors?.[0];
-        logSmtpMailError('[business-subscriptions] reminder payload validation failed', new Error(firstValidationError ?? INVALID_REMINDER_PAYLOAD_MESSAGE), {
-          userId: candidate.client.user_id,
-          clientId: candidate.client.id,
-          reminderType: candidate.reminderType,
-          candidateUserId: candidate.client.user_id,
-          to: mapStringArray([recipientEmail]).map(maskEmailForLog).join(',') || null,
-          from: payload.payload?.from ? maskEmailForLog(payload.payload.from) : null,
-          reason: firstValidationError ?? null,
-        });
-        const { error: validationInsertError } = await db
-          .from('subscription_notifications')
-          .insert({
-            ...emailLogPayload,
-            status: 'failed',
-            metadata: { ...validationMetadata },
-          });
+      const customerTemplate = customerReminderEmailTemplate({
+        customerName: context.customerName,
+        amount: context.amountFormatted,
+        dueDate: context.dueDate,
+        reminderType: context.reminderType,
+        subscriberName: context.subscriber.name,
+        businessName: context.subscriber.businessName,
+      });
+      const customerSend = await sendRecipientReminderEmail({
+        db,
+        candidate,
+        context,
+        recipientType: 'customer',
+        recipientEmail: context.customerEmail,
+        template: customerTemplate,
+        fromName: 'THE SFM Subscription Reminders',
+      });
+      const customerResult = emailResultForRecipient(customerSend);
+      results.push(customerResult);
 
-        if (!validationInsertError) {
-          results.push({
-            userId: candidate.client.user_id,
-            dedupeKey: emailDedupeKey,
-            status: 'failed',
-            channel: 'email',
-            error: statusMessage,
-          });
-        } else {
-          if (String(validationInsertError.code) === '23505') {
-            results.push({
-              userId: candidate.client.user_id,
-              dedupeKey: emailDedupeKey,
-              status: 'skipped_duplicate',
-              channel: 'email',
-              error: validationInsertError.message,
-            });
-          } else {
-            results.push({
-              userId: candidate.client.user_id,
-              dedupeKey: emailDedupeKey,
-              status: 'failed',
-              channel: 'email',
-              error: cleanError(validationInsertError),
-            });
-          }
-          logSmtpMailError('[business-subscriptions] reminder validation email log failed', validationInsertError, {
-            userId: candidate.client.user_id,
-            clientId: candidate.client.id,
-            candidateUserId: candidate.client.user_id,
-          });
-        }
-        continue;
-      }
-
-      const emailPayload = payload.payload;
-      const scheduleInsertResult = await db
-        .from('subscription_notifications')
-        .insert({
-          ...emailLogPayload,
-          status: 'scheduled',
-        });
-
-      if (scheduleInsertResult.error) {
-        if (String(scheduleInsertResult.error.code) === '23505') {
-          results.push({
-            userId: candidate.client.user_id,
-            dedupeKey: emailDedupeKey,
-            status: 'skipped_duplicate',
-            channel: 'email',
-            error: scheduleInsertResult.error.message,
-          });
-          continue;
-        }
-        const failMetadata = buildReminderFailureMetadata({
-          reminderType: candidate.reminderType,
-          customerId: candidate.client.id,
-          to: emailPayload.to,
-          from: emailPayload.from,
-          userMessage: INVALID_REMINDER_PAYLOAD_MESSAGE,
-        });
-        await db.from('subscription_notifications').insert({
-          ...emailLogPayload,
-          status: 'failed',
-          metadata: { ...failMetadata, error: cleanError(scheduleInsertResult.error) },
-        });
-        results.push({
-          userId: candidate.client.user_id,
-          dedupeKey: emailDedupeKey,
-          status: 'failed',
-          channel: 'email',
-          error: cleanError(scheduleInsertResult.error),
-        });
-        continue;
-      }
-
-      try {
-        const sendResult = await sendSmtpMail({
-          to: emailPayload.to,
-          subject: emailPayload.subject,
-          text: emailPayload.text,
-          html: emailPayload.html,
-          from: emailPayload.from,
-          replyTo: emailPayload.replyTo,
-        });
-        await db
-          .from('subscription_notifications')
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            metadata: {
-              ...metadata,
-              reminder_type: candidate.reminderType,
-              customer_id: candidate.client.id,
-              recipient_to: mapStringArray(emailPayload.to).map(maskEmailForLog),
-              recipient_from: emailPayload.from ? [maskEmailForLog(emailPayload.from)] : [],
-              emailResult: {
-                accepted: sendResult.accepted,
-                rejected: sendResult.rejected,
-                responseCode: sendResult.responseCode,
-                response: sendResult.response,
-              },
-            },
-          })
-          .eq('user_id', candidate.client.user_id)
-          .eq('dedupe_key', emailDedupeKey);
-        await db.from('activity_logs').insert({
-          user_id: candidate.client.user_id,
-          client_id: candidate.client.id,
-          subscription_id: candidate.subscription.id,
-          payment_id: candidate.payment?.id ?? null,
-          event_type: 'subscription_email_sent',
-          title: 'subscription_email_sent',
-          description: `${candidate.client.full_name} - ${candidate.dueDate}`,
-          metadata,
-        });
-        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'sent', channel: 'email' });
-      } catch (error) {
-        const errorText = cleanError(error);
-        const userMessage = smtpErrorUserMessage(error);
-        const smtpDetails = getSmtpErrorDetails(error);
-        const recipientTo = mapStringArray(emailPayload.to);
-        const smtpMetadata = {
-          responseCode: smtpDetails.responseCode,
-          response: smtpDetails.response,
-          command: smtpDetails.command,
-          rejected: smtpDetails.rejected,
-          envelope: sanitizeEnvelopeForLog(smtpDetails.envelope),
-          stack: smtpDetails.stack,
-        };
-        logSmtpMailError('[business-subscriptions] reminder email failed', error, {
-          userId: candidate.client.user_id,
-          clientId: candidate.client.id,
-          subscriptionId: candidate.subscription.id,
-          paymentId: candidate.payment?.id ?? null,
-          to: mapStringArray(emailPayload.to).map(maskEmailForLog).join(',') || null,
-          subject: template.subject,
-          dedupeKey: emailDedupeKey,
-        });
-        const failureMetadata = buildReminderFailureMetadata({
-          reminderType: candidate.reminderType,
-          customerId: candidate.client.id,
-          to: recipientTo,
-          from: emailPayload.from,
-          userMessage,
-          smtp: smtpMetadata,
-        });
-        await db
-          .from('subscription_notifications')
-          .update({
-            status: 'failed',
-            metadata: { ...failureMetadata, smtpError: errorText },
-          })
-          .eq('user_id', candidate.client.user_id)
-          .eq('dedupe_key', emailDedupeKey);
-        await db.from('activity_logs').insert({
-          user_id: candidate.client.user_id,
-          client_id: candidate.client.id,
-          subscription_id: candidate.subscription.id,
-          payment_id: candidate.payment?.id ?? null,
-          event_type: 'subscription_email_failed',
-          title: 'subscription_email_failed',
-          description: userMessage,
-          metadata: failureMetadata,
-        });
-        results.push({ userId: candidate.client.user_id, dedupeKey: emailDedupeKey, status: 'failed', channel: 'email', error: userMessage });
-      }
+      const subscriberTemplate = subscriberReminderEmailTemplate({
+        customerName: context.customerName,
+        customerEmail: context.customerEmail,
+        customerPhone: context.customerPhone,
+        amount: context.amountFormatted,
+        dueDate: context.dueDate,
+        reminderType: context.reminderType,
+        customerEmailStatus: customerSend.status,
+        customerFailureReason: customerSend.failureReason,
+      });
+      const subscriberSend = await sendRecipientReminderEmail({
+        db,
+        candidate,
+        context,
+        recipientType: 'subscriber',
+        recipientEmail: context.subscriber.email,
+        template: subscriberTemplate,
+        fromName: 'THE SFM Subscription Alerts',
+      });
+      const subscriberResult = emailResultForRecipient(subscriberSend);
+      results.push(subscriberResult);
     }
 
     await Promise.all(usersToLog.map(userId => {
       const userCandidates = candidates.filter(candidate => candidate.client.user_id === userId);
       const userResults = results.filter(result => result.userId === userId);
-      const emailFailures = userResults.filter(result => result.channel === 'email' && result.status === 'failed');
-      const emailSent = userResults.filter(result => result.channel === 'email' && result.status === 'sent').length;
+      const emailResults = userResults.filter((result): result is RecipientSendResult => result.channel === 'email');
+      const emailSent = emailResults.filter(result => result.status === 'sent').length;
+      const emailFailures = emailResults.filter(result => result.status === 'failed' || result.status === 'skipped');
+      const firstCustomerFailure = emailFailures.find(result => result.recipientType === 'customer');
+      const firstSubscriberFailure = emailFailures.find(result => result.recipientType === 'subscriber');
+      const bothInvalid = firstCustomerFailure?.customerFailureReason === CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON &&
+        firstSubscriberFailure?.subscriberFailureReason === SUBSCRIBER_EMAIL_MISSING_OR_INVALID_REASON;
       const status = emailFailures.length ? (emailSent ? 'partial' : 'failed') : 'completed';
       return insertRunLog(db, {
         userId,
@@ -574,13 +1086,24 @@ export async function GET(request: NextRequest) {
         emailSentCount: emailSent,
         emailFailedCount: emailFailures.length,
         smtpConfigured,
-        message: emailFailures[0]?.error ?? (!smtpConfigured ? `SMTP missing: ${smtpStatus.missing.join(', ')}` : null),
+        message: bothInvalid
+          ? BOTH_RECIPIENT_EMAILS_INVALID_MESSAGE
+          : firstCustomerFailure?.error ?? firstSubscriberFailure?.error ?? (!smtpConfigured ? `SMTP missing: ${smtpStatus.missing.join(', ')}` : null),
         metadata: {
           scope: scopeUserId ? 'current_user' : 'all_users',
           smtpMissing: smtpStatus.missing,
+          customerEmailFailures: emailFailures.filter(result => result.recipientType === 'customer').length,
+          subscriberEmailFailures: emailFailures.filter(result => result.recipientType === 'subscriber').length,
         },
       });
     }));
+
+    const emailResults = results.filter((result): result is RecipientSendResult => result.channel === 'email');
+    const firstCustomerValidation = emailResults.find(result =>
+      result.recipientType === 'customer' &&
+      result.customerFailureReason === CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON
+    );
+    const responseMessage = firstCustomerValidation?.error ?? undefined;
 
     return NextResponse.json(
       {
@@ -590,6 +1113,7 @@ export async function GET(request: NextRequest) {
         timezone,
         candidates: candidates.length,
         processed: results.length,
+        message: responseMessage,
         smtpConfigured,
         smtpMissing: smtpStatus.missing,
         results,

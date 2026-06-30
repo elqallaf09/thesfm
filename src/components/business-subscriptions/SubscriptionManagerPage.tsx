@@ -36,7 +36,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
+import { normalizeDigits } from '@/lib/locale';
 import { normalizeNumberInput } from '@/lib/money';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -110,6 +110,38 @@ type Props = {
   clientId?: string;
 };
 
+type ReminderRuntimeEmailItem = {
+  id: string;
+  at: string;
+  recipientType: 'customer' | 'subscriber' | null;
+  status: 'sent' | 'skipped' | 'failed';
+  reason: string | null;
+  message?: string | null;
+  reminderType: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  subscriberId?: string | null;
+  subscriberName?: string | null;
+  subscriberEmail: string | null;
+  businessName?: string | null;
+  dueDate: string | null;
+  amount?: string | null;
+  to: string[];
+  from: string[];
+  smtp?: {
+    responseCode?: number;
+    response?: string | null;
+    command?: string | null;
+    rejected?: string[];
+    envelope?: {
+      from?: string;
+      to?: string[];
+    } | null;
+    stack?: string | null;
+  } | null;
+};
+
 type ReminderRuntimeStatus = {
   smtp: {
     configured: boolean;
@@ -127,11 +159,19 @@ type ReminderRuntimeStatus = {
     message: string | null;
   } | null;
   lastEmailSentAt: string | null;
+  lastCustomerEmail: ReminderRuntimeEmailItem | null;
+  lastSubscriberEmail: ReminderRuntimeEmailItem | null;
   lastEmailFailure: {
     at: string;
     reason: string;
     reminderType: string | null;
+    dueDate: string | null;
     customerId: string | null;
+    customerName: string | null;
+    customerEmail: string | null;
+    subscriberEmail?: string | null;
+    recipientType?: 'customer' | 'subscriber' | null;
+    status?: 'sent' | 'skipped' | 'failed';
     to: string[];
     from: string[];
     smtp?: {
@@ -155,6 +195,12 @@ const REMINDER_CONTROL_TEXT = {
     smtpMissing: 'إعدادات SMTP ناقصة',
     lastCheck: 'آخر فحص للتذكيرات',
     lastEmail: 'آخر بريد مرسل',
+    lastCustomerEmail: 'آخر بريد للعميل',
+    lastSubscriberEmail: 'آخر بريد للمشترك',
+    customerSendStatus: 'حالة إرسال العميل',
+    subscriberSendStatus: 'حالة إرسال المشترك',
+    customerFailureReason: 'سبب فشل العميل',
+    subscriberFailureReason: 'سبب فشل المشترك',
     failedReason: 'سبب الفشل الأخير',
     runNow: 'تشغيل فحص التذكيرات الآن',
     running: 'جارٍ فحص التذكيرات...',
@@ -164,6 +210,14 @@ const REMINDER_CONTROL_TEXT = {
     testSent: 'تم إرسال بريد الاختبار بنجاح.',
     details: 'التفاصيل',
     unavailable: 'غير متاح',
+    customerName: 'اسم العميل',
+    customerEmail: 'بريد العميل',
+    subscriberEmail: 'بريد المشترك',
+    reminderType: 'نوع التذكير',
+    dueDate: 'تاريخ الاستحقاق',
+    sent: 'تم الإرسال',
+    skipped: 'تم التخطي',
+    failed: 'فشل الإرسال',
   },
   en: {
     emailStatus: 'Email reminder status',
@@ -171,6 +225,12 @@ const REMINDER_CONTROL_TEXT = {
     smtpMissing: 'SMTP settings missing',
     lastCheck: 'Last reminder check',
     lastEmail: 'Last email sent',
+    lastCustomerEmail: 'Last customer email',
+    lastSubscriberEmail: 'Last subscriber email',
+    customerSendStatus: 'Customer send status',
+    subscriberSendStatus: 'Subscriber send status',
+    customerFailureReason: 'Customer failure reason',
+    subscriberFailureReason: 'Subscriber failure reason',
     failedReason: 'Last failed reason',
     runNow: 'Run Reminder Check Now',
     running: 'Checking reminders...',
@@ -179,6 +239,14 @@ const REMINDER_CONTROL_TEXT = {
     checkComplete: 'Reminder check completed.',
     testSent: 'Test email sent.',
     details: 'Details',
+    customerName: 'Customer name',
+    customerEmail: 'Customer email',
+    subscriberEmail: 'Subscriber email',
+    reminderType: 'Reminder type',
+    dueDate: 'Due date',
+    sent: 'Sent',
+    skipped: 'Skipped',
+    failed: 'Failed',
     unavailable: 'Unavailable',
   },
   fr: {
@@ -187,6 +255,12 @@ const REMINDER_CONTROL_TEXT = {
     smtpMissing: 'Parametres SMTP manquants',
     lastCheck: 'Derniere verification',
     lastEmail: 'Dernier e-mail envoye',
+    lastCustomerEmail: 'Dernier e-mail client',
+    lastSubscriberEmail: 'Dernier e-mail abonne',
+    customerSendStatus: 'Statut envoi client',
+    subscriberSendStatus: 'Statut envoi abonne',
+    customerFailureReason: 'Erreur client',
+    subscriberFailureReason: 'Erreur abonne',
     failedReason: 'Derniere erreur',
     runNow: 'Lancer la verification',
     running: 'Verification en cours...',
@@ -196,6 +270,14 @@ const REMINDER_CONTROL_TEXT = {
     testSent: 'E-mail test envoye.',
     details: 'Détails',
     unavailable: 'Indisponible',
+    customerName: 'Client',
+    customerEmail: 'E-mail client',
+    subscriberEmail: 'E-mail abonne',
+    reminderType: 'Type de rappel',
+    dueDate: 'Echeance',
+    sent: 'Envoye',
+    skipped: 'Ignore',
+    failed: 'Echec',
   },
 } as const;
 
@@ -242,8 +324,8 @@ function formatDateTime(value: unknown, lang: SubscriptionLang = 'ar') {
   if (!value) return REMINDER_CONTROL_TEXT[lang].unavailable;
   const date = new Date(String(value));
   if (!Number.isFinite(date.getTime())) return REMINDER_CONTROL_TEXT[lang].unavailable;
-  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
-  return normalizeDigits(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', numberingSystem: 'latn' }).format(date));
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function isSafeUploadType(file: File) {
@@ -1245,6 +1327,81 @@ type ClientsWorkspaceProps = {
   onSendTestEmail: () => void;
 };
 
+function reminderEmailStatusText(status: ReminderRuntimeEmailItem['status'] | null | undefined, locale: SubscriptionLang) {
+  const copy = REMINDER_CONTROL_TEXT[locale];
+  if (status === 'sent') return copy.sent;
+  if (status === 'skipped') return copy.skipped;
+  if (status === 'failed') return copy.failed;
+  return copy.unavailable;
+}
+
+function reminderEmailFailureText(item: ReminderRuntimeEmailItem | null) {
+  if (!item || item.status === 'sent') return null;
+  return item.message || item.reason || null;
+}
+
+function ReminderRecipientCard({
+  item,
+  recipientType,
+  locale,
+}: {
+  item: ReminderRuntimeEmailItem | null;
+  recipientType: 'customer' | 'subscriber';
+  locale: SubscriptionLang;
+}) {
+  const copy = REMINDER_CONTROL_TEXT[locale];
+  const isCustomer = recipientType === 'customer';
+  const failure = reminderEmailFailureText(item);
+  return (
+    <div className={`subscription-reminder-recipient-card ${item?.status ?? 'empty'}`}>
+      <span>{isCustomer ? copy.lastCustomerEmail : copy.lastSubscriberEmail}</span>
+      <strong>{formatDateTime(item?.at, locale)}</strong>
+      <dl>
+        <div>
+          <dt>{isCustomer ? copy.customerSendStatus : copy.subscriberSendStatus}</dt>
+          <dd>{reminderEmailStatusText(item?.status, locale)}</dd>
+        </div>
+        {item?.customerName ? (
+          <div>
+            <dt>{copy.customerName}</dt>
+            <dd>{item.customerName}</dd>
+          </div>
+        ) : null}
+        {item?.customerEmail ? (
+          <div>
+            <dt>{copy.customerEmail}</dt>
+            <dd>{item.customerEmail}</dd>
+          </div>
+        ) : null}
+        {item?.subscriberEmail ? (
+          <div>
+            <dt>{copy.subscriberEmail}</dt>
+            <dd>{item.subscriberEmail}</dd>
+          </div>
+        ) : null}
+        {item?.reminderType ? (
+          <div>
+            <dt>{copy.reminderType}</dt>
+            <dd>{item.reminderType}</dd>
+          </div>
+        ) : null}
+        {item?.dueDate ? (
+          <div>
+            <dt>{copy.dueDate}</dt>
+            <dd>{formatDate(item.dueDate, locale)}</dd>
+          </div>
+        ) : null}
+        {failure ? (
+          <div className="subscription-reminder-recipient-failure">
+            <dt>{isCustomer ? copy.customerFailureReason : copy.subscriberFailureReason}</dt>
+            <dd>{failure}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </div>
+  );
+}
+
 function ReminderStatusCard({
   status,
   loading,
@@ -1288,20 +1445,29 @@ function ReminderStatusCard({
       <div className="subscription-reminder-status-grid">
         <div><span>{copy.lastCheck}</span><strong>{formatDateTime(lastRunAt, locale)}</strong></div>
         <div><span>{copy.lastEmail}</span><strong>{formatDateTime(status?.lastEmailSentAt, locale)}</strong></div>
+        <div><span>{copy.customerSendStatus}</span><strong>{reminderEmailStatusText(status?.lastCustomerEmail?.status, locale)}</strong></div>
+        <div><span>{copy.subscriberSendStatus}</span><strong>{reminderEmailStatusText(status?.lastSubscriberEmail?.status, locale)}</strong></div>
+      </div>
+      <div className="subscription-reminder-recipient-grid">
+        <ReminderRecipientCard item={status?.lastCustomerEmail ?? null} recipientType="customer" locale={locale} />
+        <ReminderRecipientCard item={status?.lastSubscriberEmail ?? null} recipientType="subscriber" locale={locale} />
       </div>
       {lastFailure ? (
         <div className="subscription-reminder-failure">
           <span>{copy.failedReason}</span>
           <strong>{lastFailure.reason}</strong>
           <div style={{ marginTop: 8 }}>
-            {lastFailure.to.length ? <div>To: {lastFailure.to.join(', ')}</div> : null}
-            {lastFailure.from.length ? <div>From: {lastFailure.from.join(', ')}</div> : null}
-            {lastFailure.reminderType ? <div>Reminder Type: {lastFailure.reminderType}</div> : null}
-            {lastFailure.customerId ? <div>Customer ID: {lastFailure.customerId}</div> : null}
+            {lastFailure.customerName ? <div>{copy.customerName}: {lastFailure.customerName}</div> : null}
+            {lastFailure.customerEmail ? <div>{copy.customerEmail}: {lastFailure.customerEmail}</div> : null}
+            {lastFailure.subscriberEmail ? <div>{copy.subscriberEmail}: {lastFailure.subscriberEmail}</div> : null}
+            {lastFailure.reminderType ? <div>{copy.reminderType}: {lastFailure.reminderType}</div> : null}
+            {lastFailure.dueDate ? <div>{copy.dueDate}: {formatDate(lastFailure.dueDate, locale)}</div> : null}
           </div>
           {(showRawDetails && lastFailure.smtp) ? (
             <details style={{ marginTop: 8 }}>
               <summary>{copy.details}</summary>
+              {lastFailure.to.length ? <div>to: {lastFailure.to.join(', ')}</div> : null}
+              {lastFailure.from.length ? <div>from: {lastFailure.from.join(', ')}</div> : null}
               {lastFailure.smtp.responseCode ? <div>responseCode: {lastFailure.smtp.responseCode}</div> : null}
               {lastFailure.smtp.command ? <div>command: {lastFailure.smtp.command}</div> : null}
               {lastFailure.smtp.response ? <div>response: {lastFailure.smtp.response}</div> : null}
@@ -2924,6 +3090,63 @@ const subscriptionManagerStyles = `
     overflow-wrap: anywhere;
   }
 
+  .subscription-reminder-recipient-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .subscription-reminder-recipient-card {
+    min-width: 0;
+    border: 1px solid rgba(29, 140, 255, 0.12);
+    background: var(--sfm-card);
+    border-radius: 12px;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .subscription-reminder-recipient-card.sent {
+    border-color: rgba(16, 185, 129, 0.20);
+  }
+
+  .subscription-reminder-recipient-card.failed,
+  .subscription-reminder-recipient-card.skipped {
+    border-color: rgba(239, 68, 68, 0.22);
+    background: rgba(239, 68, 68, 0.07);
+  }
+
+  .subscription-reminder-recipient-card > span,
+  .subscription-reminder-recipient-card dt {
+    color: var(--sfm-muted-readable);
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .subscription-reminder-recipient-card > strong,
+  .subscription-reminder-recipient-card dd {
+    margin: 0;
+    color: var(--sfm-foreground);
+    font-size: 0.78rem;
+    font-weight: 950;
+    overflow-wrap: anywhere;
+  }
+
+  .subscription-reminder-recipient-card dl {
+    margin: 0;
+    display: grid;
+    gap: 7px;
+  }
+
+  .subscription-reminder-recipient-card dl div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .subscription-reminder-recipient-failure dd {
+    color: #991B1B;
+  }
+
   .subscription-reminder-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3056,6 +3279,7 @@ const subscriptionManagerStyles = `
   .dark .subscription-reminder-mini,
   .dark .subscription-reminder-status,
   .dark .subscription-reminder-status-grid div,
+  .dark .subscription-reminder-recipient-card,
   .dark .subscription-notification-list article,
   .dark .subscription-timeline article,
   .dark .subscription-activity-list article,
@@ -3093,7 +3317,9 @@ const subscriptionManagerStyles = `
 
   .dark .subscription-reminder-status.warning,
   .dark .subscription-reminder-missing,
-  .dark .subscription-reminder-failure {
+  .dark .subscription-reminder-failure,
+  .dark .subscription-reminder-recipient-card.failed,
+  .dark .subscription-reminder-recipient-card.skipped {
     color: #FCD34D;
     background: rgba(245, 158, 11, 0.12);
     border-color: rgba(245, 158, 11, 0.24);
@@ -3155,6 +3381,7 @@ const subscriptionManagerStyles = `
     .subscription-client-metrics,
     .subscription-panel-grid,
     .subscription-reminder-status-grid,
+    .subscription-reminder-recipient-grid,
     .subscription-reminder-actions,
     .subscription-form-grid,
     .subscription-skeleton-grid,
