@@ -43,7 +43,7 @@ const DIVIDEND_TICKER_NAMES: Record<string, string> = {
   GIS: 'General Mills',
 };
 
-const DIVIDEND_SOURCE = 'Finnhub/Yahoo Finance quote fallback + Finnhub/Yahoo Finance dividend metrics';
+const DIVIDEND_SOURCE = 'Finnhub/Yahoo quote fallback + FMP/Finnhub dividend metrics';
 
 type DividendMetrics = Awaited<ReturnType<typeof fetchDividendStockMetrics>>;
 
@@ -62,12 +62,21 @@ export async function GET() {
     watchlist.map(stock => {
       const metric = metrics?.get(stock.symbol);
       return {
-        ...toResilientTickerItem(stock, prices?.get(stock.symbol), { fallbackSource: DIVIDEND_SOURCE }),
+        ...toResilientTickerItem(
+          stock,
+          prices?.get(stock.symbol),
+          {
+            fallbackSource: DIVIDEND_SOURCE,
+            ...(metric?.currency ? { currency: metric.currency } : {}),
+          },
+        ),
         dividendYield: metric?.dividendYield ?? null,
         payoutRatio: metric?.payoutRatio ?? null,
         annualDividend: metric?.annualDividend ?? null,
         exDividendDate: metric?.exDividendDate ?? null,
         paymentDate: metric?.paymentDate ?? null,
+        recordDate: metric?.recordDate ?? null,
+        declarationDate: metric?.declarationDate ?? null,
         dividendMetricSource: metric?.available ? metric.source : null,
       };
     });
@@ -75,7 +84,7 @@ export async function GET() {
   try {
     const [prices, metrics] = await Promise.all([
       fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY),
-      fetchDividendStockMetrics(watchlist.map(stock => stock.symbol)),
+      fetchDividendStockMetrics(watchlist.map(stock => stock.symbol), process.env.FINNHUB_API_KEY, process.env.FMP_API_KEY),
     ]);
     // Always return every configured symbol; missing quotes are flagged unavailable.
     const items = buildItems(prices, metrics);

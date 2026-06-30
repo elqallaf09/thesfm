@@ -5,7 +5,10 @@ export type DividendStockMetric = {
   annualDividend: number | null;
   exDividendDate: string | null;
   paymentDate: string | null;
-  source: 'Finnhub' | 'Yahoo Finance';
+  recordDate: string | null;
+  declarationDate: string | null;
+  currency: string | null;
+  source: 'Finnhub' | 'Yahoo Finance' | 'FMP';
   available: boolean;
   unavailableReason?: string;
 };
@@ -33,6 +36,21 @@ type FinnhubMetricResponse = {
   metric?: Record<string, unknown>;
 };
 
+type FmpDividendCalendarRecord = Record<string, unknown>;
+
+const FMP_DIVIDEND_TIMEOUT_MS = 9000;
+const FMP_DIVIDEND_LOOKAHEAD_DAYS = 365;
+
+type FinnhubDividendCalendarItem = {
+  date?: string;
+  amount?: number | null;
+  adjustedAmount?: number | null;
+  payDate?: string;
+  recordDate?: string;
+  declarationDate?: string;
+  currency?: string;
+};
+
 function objectOrNull(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
 }
@@ -50,6 +68,12 @@ function numberOrNull(value: unknown) {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function stringOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const clean = value.trim();
+  return clean ? clean : null;
 }
 
 function dateOrNull(value: unknown) {
@@ -72,6 +96,9 @@ function emptyMetric(symbol: string, unavailableReason: string): DividendStockMe
     annualDividend: null,
     exDividendDate: null,
     paymentDate: null,
+    recordDate: null,
+    declarationDate: null,
+    currency: null,
     source: 'Yahoo Finance',
     available: false,
     unavailableReason,
@@ -83,13 +110,24 @@ function hasUsableFinnhubKey(apiKey?: string) {
   return Boolean(key && key !== 'your_key_here');
 }
 
-function metricWithSource(symbol: string, source: DividendStockMetric['source'], values: Omit<DividendStockMetric, 'symbol' | 'source' | 'available' | 'unavailableReason'>): DividendStockMetric {
+function hasUsableFmpKey(apiKey?: string) {
+  const key = apiKey?.trim();
+  return Boolean(key && key !== 'your_key_here');
+}
+
+function metricWithSource(
+  symbol: string,
+  source: DividendStockMetric['source'],
+  values: Omit<DividendStockMetric, 'symbol' | 'source' | 'available' | 'unavailableReason'>,
+): DividendStockMetric {
   const available = [
     values.dividendYield,
     values.payoutRatio,
     values.annualDividend,
     values.exDividendDate,
     values.paymentDate,
+    values.recordDate,
+    values.declarationDate,
   ].some(value => value !== null);
 
   return {
@@ -120,6 +158,9 @@ function normalizeDividendMetric(symbol: string, result: YahooQuoteSummaryResult
     annualDividend,
     exDividendDate,
     paymentDate,
+    recordDate: null,
+    declarationDate: null,
+    currency: null,
   });
 }
 
@@ -133,18 +174,134 @@ function normalizeFinnhubMetric(symbol: string, metric: Record<string, unknown>)
       ?? numberOrNull(metric.dividendPerShareTTM),
     exDividendDate: null,
     paymentDate: null,
+    recordDate: null,
+    declarationDate: null,
+    currency: stringOrNull(metric.currency),
   });
 }
 
-type FinnhubDividendCalendarItem = {
-  date?: string;
-  amount?: number | null;
-  adjustedAmount?: number | null;
-  payDate?: string;
-  recordDate?: string;
-  declarationDate?: string;
-  currency?: string;
-};
+function normalizeFmpDividendCalendarRecord(
+  symbol: string,
+  record: FmpDividendCalendarRecord,
+): DividendStockMetric | null {
+  const candidateSymbol = stringOrNull(record.symbol) ?? stringOrNull(record.ticker);
+  if (candidateSymbol && candidateSymbol.toUpperCase() !== symbol.toUpperCase()) return null;
+
+  const exDividendDate = dateOrNull(record.exDividendDate ?? record.date ?? record.exDate);
+  const paymentDate = dateOrNull(record.paymentDate ?? record.payDate);
+  const recordDate = dateOrNull(record.recordDate);
+  const declarationDate = dateOrNull(record.declarationDate ?? record.declaredDate);
+  const annualDividend = numberOrNull(record.dividend)
+    ?? numberOrNull(record.amount)
+    ?? numberOrNull(record.adjDividend)
+    ?? numberOrNull(record.adjustedAmount);
+  const dividendYield = numberOrNull(record.dividendYield) ?? numberOrNull(record.yield);
+
+  return metricWithSource(symbol, 'FMP', {
+    dividendYield,
+    payoutRatio: null,
+    annualDividend,
+    exDividendDate,
+    paymentDate,
+    recordDate,
+    declarationDate,
+    currency: stringOrNull(record.currency),
+  });
+}
+
+async function fetchFmpDividendPayload(url: URL) {
+  const response = await fetch(url, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(FMP_DIVIDEND_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('fmp_dividend_payload_not_found');
+    }
+    throw new Error(`fmp_dividend_payload_http_${response.status}`);
+  }
+  return response.json().catch(() => null);
+}
+
+async function fetchFmpDividendCalendar(symbol: string, apiKey?: string): Promise<DividendStockMetric> {
+  if (!hasUsableFmpKey(apiKey)) return emptyMetric(symbol, 'fmp_api_key_not_configured');
+
+  const from = new Date().toISOString().slice(0, 10);
+  const to = new Date(Date.now() + FMP_DIVIDEND_LOOKAHEAD_DAYS * 86400 * 1000).toISOString().slice(0, 10);
+
+  const stableUrl = new URL('https://financialmodelingprep.com/stable/dividends-calendar');
+  stableUrl.searchParams.set('from', from);
+  stableUrl.searchParams.set('to', to);
+  stableUrl.searchParams.set('symbol', symbol);
+  stableUrl.searchParams.set('apikey', apiKey?.trim() ?? '');
+
+  try {
+    let payload: unknown;
+    try {
+      payload = await fetchFmpDividendPayload(stableUrl);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'fmp_dividend_payload_not_found') {
+        const legacyUrl = new URL('https://financialmodelingprep.com/api/v3/stock_dividend_calendar');
+        legacyUrl.searchParams.set('from', from);
+        legacyUrl.searchParams.set('to', to);
+        legacyUrl.searchParams.set('symbol', symbol);
+        legacyUrl.searchParams.set('apikey', apiKey?.trim() ?? '');
+        payload = await fetchFmpDividendPayload(legacyUrl);
+      } else {
+        throw error;
+      }
+    }
+
+    if (!payload) return emptyMetric(symbol, 'fmp_dividend_payload_parse_failed');
+
+    const records = Array.isArray(payload)
+      ? payload as FmpDividendCalendarRecord[]
+      : Array.isArray((payload as Record<string, unknown>)?.data)
+        ? (payload as { data: FmpDividendCalendarRecord[] }).data
+        : [];
+
+    const normalized = records
+      .map(record => normalizeFmpDividendCalendarRecord(symbol, objectOrNull(record) ?? {}))
+      .filter((metric): metric is DividendStockMetric => Boolean(metric))
+      .filter(metric =>
+        metric.dividendYield !== null
+        || metric.annualDividend !== null
+        || metric.exDividendDate !== null
+        || metric.paymentDate !== null
+        || metric.recordDate !== null
+        || metric.declarationDate !== null);
+
+    if (normalized.length === 0) return emptyMetric(symbol, 'provider_returned_empty');
+
+    const now = Date.now();
+    const withDate = normalized
+      .map(metric => {
+        const candidateDates = [
+          metric.exDividendDate,
+          metric.paymentDate,
+          metric.recordDate,
+          metric.declarationDate,
+        ]
+          .map(value => (value ? Date.parse(value) : NaN))
+          .filter((value): value is number => Number.isFinite(value))
+          .sort((a, b) => a - b);
+        return {
+          metric,
+          firstKnownDate: candidateDates[0] ?? null,
+        };
+      })
+      .filter((item): item is { metric: DividendStockMetric; firstKnownDate: number } => item.firstKnownDate !== null)
+      .sort((a, b) => a.firstKnownDate - b.firstKnownDate);
+
+    const selected = withDate.find(item => item.firstKnownDate >= now)?.metric
+      ?? withDate[0]?.metric
+      ?? normalized[0];
+
+    return selected ?? emptyMetric(symbol, 'provider_returned_empty_dividend_metrics');
+  } catch (error) {
+    return emptyMetric(symbol, error instanceof Error ? error.message : 'fmp_dividend_calendar_fetch_failed');
+  }
+}
 
 async function fetchFinnhubDividendCalendar(symbol: string, apiKey?: string): Promise<{ exDividendDate: string | null; paymentDate: string | null }> {
   if (!hasUsableFinnhubKey(apiKey)) return { exDividendDate: null, paymentDate: null };
@@ -160,11 +317,11 @@ async function fetchFinnhubDividendCalendar(symbol: string, apiKey?: string): Pr
     if (!response.ok) return { exDividendDate: null, paymentDate: null };
     const body = await response.json().catch(() => null) as FinnhubDividendCalendarItem[] | null;
     if (!Array.isArray(body) || body.length === 0) return { exDividendDate: null, paymentDate: null };
-    // Sort by date ascending, pick the soonest upcoming
     const upcoming = [...body].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))[0];
-    const exDividendDate = upcoming?.date ? dateOrNull(upcoming.date) : null;
-    const paymentDate = upcoming?.payDate ? dateOrNull(upcoming.payDate) : null;
-    return { exDividendDate, paymentDate };
+    return {
+      exDividendDate: upcoming?.date ? dateOrNull(upcoming.date) : null,
+      paymentDate: upcoming?.payDate ? dateOrNull(upcoming.payDate) : null,
+    };
   } catch {
     return { exDividendDate: null, paymentDate: null };
   }
@@ -216,29 +373,61 @@ async function fetchYahooDividendMetric(symbol: string): Promise<DividendStockMe
   }
 }
 
-export async function fetchDividendStockMetric(symbol: string, apiKey?: string): Promise<DividendStockMetric> {
-  const [finnhubMetric, yahooMetric, calendarDates] = await Promise.all([
+export async function fetchDividendStockMetric(
+  symbol: string,
+  apiKey?: string,
+  fmpApiKey?: string,
+): Promise<DividendStockMetric> {
+  const [finnhubMetric, yahooMetric, fmpMetric, calendarDates] = await Promise.all([
     fetchFinnhubDividendMetric(symbol, apiKey),
     fetchYahooDividendMetric(symbol),
+    fetchFmpDividendCalendar(symbol, fmpApiKey),
     fetchFinnhubDividendCalendar(symbol, apiKey),
   ]);
 
-  // Merge: prefer Finnhub metric values, fill in dates from calendar or Yahoo
-  const base = finnhubMetric.available ? finnhubMetric : yahooMetric;
-  const exDividendDate = calendarDates.exDividendDate ?? yahooMetric.exDividendDate ?? base.exDividendDate;
-  const paymentDate = calendarDates.paymentDate ?? yahooMetric.paymentDate ?? base.paymentDate;
+  const metricSource = fmpMetric.available ? fmpMetric : (finnhubMetric.available ? finnhubMetric : yahooMetric);
 
-  return {
-    ...base,
-    exDividendDate,
-    paymentDate,
-    available: base.available || Boolean(exDividendDate) || Boolean(paymentDate),
+  const merged: DividendStockMetric = {
+    ...metricSource,
+    exDividendDate: fmpMetric.exDividendDate
+      ?? calendarDates.exDividendDate
+      ?? metricSource.exDividendDate,
+    paymentDate: fmpMetric.paymentDate
+      ?? calendarDates.paymentDate
+      ?? metricSource.paymentDate,
+    recordDate: fmpMetric.recordDate ?? metricSource.recordDate,
+    declarationDate: fmpMetric.declarationDate ?? metricSource.declarationDate,
+    annualDividend: fmpMetric.annualDividend ?? metricSource.annualDividend,
+    dividendYield: fmpMetric.dividendYield ?? metricSource.dividendYield,
+    currency: fmpMetric.currency ?? metricSource.currency,
+    source: fmpMetric.available ? 'FMP' : metricSource.source,
   };
+
+  merged.available = [
+    merged.dividendYield,
+    merged.payoutRatio,
+    merged.annualDividend,
+    merged.exDividendDate,
+    merged.paymentDate,
+    merged.recordDate,
+    merged.declarationDate,
+  ].some(value => value !== null);
+  merged.unavailableReason = merged.available ? undefined : metricSource.unavailableReason;
+
+  return merged;
 }
 
-export async function fetchDividendStockMetrics(symbols: string[]) {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  const settled = await Promise.allSettled(symbols.map(symbol => fetchDividendStockMetric(symbol, apiKey)));
+export async function fetchDividendStockMetrics(
+  symbols: string[],
+  finnhubApiKey?: string,
+  fmpApiKey?: string,
+) {
+  const settled = await Promise.allSettled(symbols.map(symbol => fetchDividendStockMetric(
+    symbol,
+    finnhubApiKey ?? process.env.FINNHUB_API_KEY,
+    fmpApiKey ?? process.env.FMP_API_KEY,
+  )));
+
   const entries = settled.flatMap((result, index): Array<[string, DividendStockMetric]> => {
     const symbol = symbols[index] ?? '';
     if (!symbol) return [];
@@ -249,5 +438,6 @@ export async function fetchDividendStockMetrics(symbols: string[]) {
         : emptyMetric(symbol, result.reason instanceof Error ? result.reason.message : 'dividend_metric_fetch_failed'),
     ]];
   });
+
   return new Map<string, DividendStockMetric>(entries);
 }
