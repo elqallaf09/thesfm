@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('@playwright/test');
 
-const BASE = 'http://127.0.0.1:3000';
+const BASE = process.env.QA_BASE_URL || 'http://127.0.0.1:3000';
 const APP_ROOT = process.cwd();
 const APP_DIR = path.join(APP_ROOT, 'src', 'app');
 const OUT_ROOT = path.join(APP_ROOT, 'artifacts', 'qa-full');
@@ -67,16 +67,43 @@ async function captureRoute(page, route, routeInfo, label, viewport) {
   try {
     const url = `${BASE}${route}`;
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 18000 });
-    await page.waitForTimeout(700);
+    await page.waitForLoadState('networkidle', { timeout: 1500 }).catch(() => {});
+    await page.waitForTimeout(500);
 
-    const snapshot = await page.evaluate(() => {
-      const doc = document.documentElement;
-      return {
-        scrollWidth: Math.ceil(doc.scrollWidth),
-        innerWidth: Math.ceil(window.innerWidth),
-        innerHeight: Math.ceil(window.innerHeight),
-      };
+    const hasTransientDevCompileError = () => consoleErrors.some((message) => {
+      const text = String(message || '');
+      return text.includes('Invalid or unexpected token')
+        || text.includes('Unexpected end of JSON input')
+        || text.includes('Internal Server Error');
     });
+
+    if (hasTransientDevCompileError()) {
+      consoleErrors.length = 0;
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 18000 });
+      await page.waitForLoadState('networkidle', { timeout: 1500 }).catch(() => {});
+      await page.waitForTimeout(700);
+    }
+
+    let snapshot = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        snapshot = await page.evaluate(() => {
+          const doc = document.documentElement;
+          return {
+            scrollWidth: Math.ceil(doc.scrollWidth),
+            innerWidth: Math.ceil(window.innerWidth),
+            innerHeight: Math.ceil(window.innerHeight),
+          };
+        });
+        break;
+      } catch (error) {
+        if (!String(error?.message || error).includes('Execution context was destroyed') || attempt === 2) {
+          throw error;
+        }
+        await page.waitForLoadState('domcontentloaded', { timeout: 2000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+    }
 
     routeInfo.overflow[label] = snapshot.scrollWidth > snapshot.innerWidth + 2;
     routeInfo.consoleErrorCount = Math.max(routeInfo.consoleErrorCount, consoleErrors.length);

@@ -1,17 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function GuestPage() {
   const { continueAsGuest, session } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     if (!session) continueAsGuest();
-    router.push('/dashboard');
-  }, [continueAsGuest, router, session]);
+    window.location.assign('/dashboard');
+  }, [continueAsGuest, session]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

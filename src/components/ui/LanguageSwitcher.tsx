@@ -203,6 +203,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-menu`}
+        suppressHydrationWarning
         onPointerDown={() => {
           if (!open) updateMenuPosition();
         }}

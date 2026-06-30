@@ -321,7 +321,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
                 <span>{t('company_listing_search')}</span>
                 <div className="company-search-control">
                   <Search size={17} />
-                  <input value={query} onChange={event => { setQuery(event.target.value); setVisibleCount(PAGE_SIZE); }} placeholder={t('company_listing_search')} />
+                  <input value={query} onChange={event => { setQuery(event.target.value); setVisibleCount(PAGE_SIZE); }} placeholder={t('company_listing_search')} suppressHydrationWarning />
                 </div>
               </label>
               <CompanySelect label={t('company_listing_country')} value={country} onChange={value => { setCountry(value); setCity('all'); setVisibleCount(PAGE_SIZE); }} options={[['all', t('company_listing_all_countries')], ...countries.map(value => [value, value] as [string, string])]} />

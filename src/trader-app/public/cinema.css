@@ -1427,3 +1427,213 @@ body::after {
   .right-dashboard-panel { display: none !important; }
   .sidebar-brand-block, .sidebar-pro-card, .sidebar-user-card, .sidebar-spacer { display: none !important; }
 }
+/* Visual QA fix: the shell template uses "rail"; keep the desktop rail there. */
+@media (min-width: 761px) {
+  body:not(.intro-running) .app-shell,
+  body[data-app-view] .app-shell,
+  .app-shell,
+  .app-shell.sfm-dashboard {
+    grid-template-areas:
+      "rail topbar topbar"
+      "rail main main"
+      "rail footer footer" !important;
+    align-items: start !important;
+  }
+
+  .desktop-trading-rail,
+  .app-shell.sfm-dashboard .desktop-trading-rail {
+    grid-area: rail !important;
+    align-self: start !important;
+    position: sticky !important;
+    top: 18px !important;
+    max-height: calc(100dvh - 48px) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell.sfm-dashboard {
+    grid-template-columns: 178px minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, auto) auto !important;
+  }
+
+  .app-shell.sfm-dashboard .desktop-trading-rail {
+    width: 178px !important;
+    min-width: 178px !important;
+    max-width: 178px !important;
+    padding: 12px !important;
+  }
+
+  .app-shell.sfm-dashboard .desktop-trading-rail .rail-link {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 46px !important;
+    padding: 7px 10px !important;
+    gap: 9px !important;
+    text-align: start !important;
+  }
+
+  .app-shell.sfm-dashboard .desktop-trading-rail .rail-link b {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    line-height: 1.25 !important;
+    font-size: 12px !important;
+  }
+
+  .app-shell.sfm-dashboard .right-dashboard-panel {
+    display: none !important;
+  }
+}
+
+/* Visual QA: keep the live market pulse panel from clipping under desktop density rules. */
+@media (min-width: 761px) {
+  body[data-app-view="home"] #sfm-live-floor.sfm-live-floor {
+    display: block !important;
+    height: auto !important;
+    min-height: 168px !important;
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-strip {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 220px) !important;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-head {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 30px !important;
+    margin: 0 0 2px !important;
+    overflow: visible !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-head h3 {
+    margin: 0 !important;
+    font-size: clamp(17px, 1.1vw, 20px) !important;
+    line-height: 1.25 !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-grid {
+    grid-column: 1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    min-height: 104px !important;
+    overflow: hidden !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-card:nth-child(n+4) {
+    display: none !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .pulse-status-card {
+    grid-column: 2 !important;
+    min-height: 104px !important;
+    height: 104px !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Visual QA: desktop home follows the approved compact flow:
+   KPI cards -> provider status -> command center. Keep pulse cards for mobile only. */
+@media (min-width: 761px) {
+  body[data-app-view="home"] #sfm-live-floor.sfm-live-floor {
+    display: grid !important;
+    grid-template-rows: auto !important;
+    gap: 0 !important;
+    height: auto !important;
+    min-height: 126px !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .ai-agent-kpi-strip {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .ai-agent-kpi-strip article {
+    min-height: 96px !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor .live-pulse-strip {
+    display: none !important;
+  }
+
+  body[data-app-view="home"] #sfm-live-floor.sfm-live-floor > :not(.ai-agent-kpi-strip) {
+    display: none !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1120px) {
+  body[data-app-view="home"] #sfm-live-floor .ai-agent-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Visual QA: home desktop uses the markets band as a provider-status strip. */
+@media (min-width: 761px) {
+  body[data-app-view="home"] #markets-section.market-band {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    min-height: 56px !important;
+    height: 56px !important;
+    padding: 0 22px !important;
+    overflow: hidden !important;
+  }
+
+  body[data-app-view="home"] #markets-section.market-band::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body[data-app-view="home"] #markets-section.market-band::after {
+    content: "حالة مزود البيانات" !important;
+    position: static !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    height: auto !important;
+    color: rgba(215, 229, 239, 0.68) !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    letter-spacing: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  html[dir="ltr"] body[data-app-view="home"] #markets-section.market-band::after {
+    content: "Provider status" !important;
+  }
+
+  body[data-app-view="home"] #markets-section .section-head,
+  body[data-app-view="home"] #markets-section .market-tabs {
+    display: none !important;
+  }
+
+  body[data-app-view="home"] #markets-section.market-band > * {
+    display: none !important;
+  }
+}

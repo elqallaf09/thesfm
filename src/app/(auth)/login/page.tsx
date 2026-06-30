@@ -933,7 +933,7 @@ function LoginContent() {
           {mode === 'login' && (
             <>
               <AuthField label={text.usernameOrEmail} icon={<UserRound size={18} />} required>
-                <input value={username} onChange={event => setUsername(event.target.value)} placeholder={text.loginPlaceholder} autoComplete="username" />
+                <input value={username} onChange={event => setUsername(event.target.value)} placeholder={text.loginPlaceholder} autoComplete="username" suppressHydrationWarning />
               </AuthField>
             
               <PasswordField
@@ -1544,6 +1544,7 @@ function PasswordField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           dir="ltr"
+          suppressHydrationWarning
         />
         <button type="button" className="eye-btn" onClick={onToggle} aria-label={ariaLabel}>
           {show ? <EyeOff size={17} /> : <Eye size={17} />}

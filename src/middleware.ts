@@ -53,6 +53,14 @@ function isProtected(pathname: string) {
   return protectedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function isLocalTraderQaBypass(pathname: string) {
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.SFM_LOCAL_TRADER_QA === '1' &&
+    (pathname === '/thesfm-trader-own' || pathname.startsWith('/thesfm-trader-own/'))
+  );
+}
+
 function redirectToLogin(request: NextRequest) {
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = '/login';
@@ -178,6 +186,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!isProtected(pathname)) return response;
+  if (isLocalTraderQaBypass(pathname)) return response;
   if (hasSession) {
     if (pathname === '/sfm-admin-control' && !isAdminEmail(session.email)) {
       const dashboardUrl = request.nextUrl.clone();

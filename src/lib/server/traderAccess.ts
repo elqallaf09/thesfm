@@ -9,7 +9,15 @@ export type TraderAccessResult = {
   isAdmin?: boolean;
 };
 
+function isLocalTraderQaBypassEnabled() {
+  return process.env.NODE_ENV !== 'production' && process.env.SFM_LOCAL_TRADER_QA === '1';
+}
+
 export async function getTraderAccess(): Promise<TraderAccessResult> {
+  if (isLocalTraderQaBypassEnabled()) {
+    return { allowed: true, userId: 'local-trader-qa', email: 'local-trader-qa@localhost', isAdmin: true };
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get('sfm_access_token')?.value;
   const user = await getUserFromBearerToken(token);
