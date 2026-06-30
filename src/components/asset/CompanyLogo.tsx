@@ -7,7 +7,7 @@ import { getAssetVisualMeta, type AssetVisualInput } from '@/lib/assetVisuals';
 type CompanyLogoSize = 'sm' | 'md' | 'lg';
 type CompanyLogoShape = 'rounded' | 'circle';
 
-type CompanyLogoProps = AssetVisualInput & {
+export type CompanyLogoProps = AssetVisualInput & {
   size?: CompanyLogoSize;
   shape?: CompanyLogoShape;
   className?: string;
