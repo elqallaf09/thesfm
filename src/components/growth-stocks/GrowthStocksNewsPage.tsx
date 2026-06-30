@@ -2080,7 +2080,8 @@ export function GrowthStocksNewsPage() {
           font-size: 13px;
           font-weight: 950;
           text-align: end;
-          overflow-wrap: anywhere;
+          overflow-wrap: break-word;
+          word-break: normal;
         }
         .missing-value {
           display: inline-flex;
