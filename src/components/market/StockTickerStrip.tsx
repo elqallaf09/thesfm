@@ -108,11 +108,10 @@ export function StockTickerStrip({
       emptyState={fallbackState}
     >
       {tickerItems.map(item => {
-        const price = isFiniteNumber(item.price) ? item.price : null;
-        const changePercent = isFiniteNumber(item.changePercent) ? item.changePercent : null;
-        const hasPrice = item.available !== false && price !== null;
-        const hasPercent = item.available !== false && changePercent !== null;
-        const tone = hasPercent ? (changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral') : 'neutral';
+        const available = item.available !== false;
+        const price = available && isFiniteNumber(item.price) ? item.price : null;
+        const changePercent = available && isFiniteNumber(item.changePercent) ? item.changePercent : null;
+        const tone = changePercent !== null ? (changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral') : 'neutral';
         const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
         const provider = item.source
           ? sourceLabel
@@ -140,7 +139,7 @@ export function StockTickerStrip({
 
             <div className="sfm-stock-ticker-values">
               <b dir="ltr">
-                {hasPrice
+                {price !== null
                   ? formatPrice
                     ? formatPrice(price, item.currency, item)
                     : formatMoney(price, item.currency, locale)
@@ -148,7 +147,7 @@ export function StockTickerStrip({
               </b>
               <em className={`sfm-stock-ticker-change is-${tone}`} dir="ltr">
                 <TrendIcon size={12} />
-                {hasPercent ? formatPercent(changePercent, locale) : unavailableLabel}
+                {changePercent !== null ? formatPercent(changePercent, locale) : unavailableLabel}
               </em>
             </div>
 

@@ -1617,9 +1617,6 @@ export function DefensiveStocksNewsPage() {
         .def-ticker-item.up em,.up{background:#DCFCE7;color:#166534}
         .def-ticker-item.down em,.down{background:#FEE2E2;color:#991B1B}
         .def-ticker-item.neutral em,.neutral{background:#E2E8F0;color:#334155}
-        .def-ticker-item.is-unavailable{background:#F8FAFC;border-style:dashed}
-        .def-ticker-item.is-unavailable b{color:var(--def-muted);font-weight:850}
-        .def-ticker-item .def-ticker-unavailable{background:#E2E8F0;color:#475569}
         @keyframes defTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         @media(hover:hover) and (pointer:fine){
           .def-ticker-strip:hover .def-ticker-track{animation-play-state:paused}
