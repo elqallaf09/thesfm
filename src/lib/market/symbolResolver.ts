@@ -48,6 +48,56 @@ type CanonicalAlias = {
 
 const SYMBOL_ALIASES: CanonicalAlias[] = [
   {
+    symbol: 'T',
+    providerSymbol: 'T',
+    name: 'AT&T',
+    assetType: 'stock',
+    exchange: 'NYSE',
+    country: 'US',
+    currency: 'USD',
+    aliases: ['t', 'at&t', 'att', 'at and t', 'at&t inc'],
+  },
+  {
+    symbol: 'F',
+    providerSymbol: 'F',
+    name: 'Ford',
+    assetType: 'stock',
+    exchange: 'NYSE',
+    country: 'US',
+    currency: 'USD',
+    aliases: ['f', 'ford', 'ford motor', 'ford motor company'],
+  },
+  {
+    symbol: 'C',
+    providerSymbol: 'C',
+    name: 'Citigroup',
+    assetType: 'stock',
+    exchange: 'NYSE',
+    country: 'US',
+    currency: 'USD',
+    aliases: ['c', 'citigroup', 'citi', 'citigroup inc'],
+  },
+  {
+    symbol: 'V',
+    providerSymbol: 'V',
+    name: 'Visa',
+    assetType: 'stock',
+    exchange: 'NYSE',
+    country: 'US',
+    currency: 'USD',
+    aliases: ['v', 'visa', 'visa inc'],
+  },
+  {
+    symbol: 'O',
+    providerSymbol: 'O',
+    name: 'Realty Income',
+    assetType: 'stock',
+    exchange: 'NYSE',
+    country: 'US',
+    currency: 'USD',
+    aliases: ['o', 'realty income', 'realty income corporation'],
+  },
+  {
     symbol: 'BA',
     providerSymbol: 'BA',
     name: 'Boeing Company',
@@ -219,6 +269,13 @@ function exactAlias(query: string, assetType?: MarketAssetType) {
   const compact = compactText(query);
   return SYMBOL_ALIASES.find(alias => matchesAssetType(aliasToItem(alias), assetType)
     && alias.aliases.some(value => normalizeText(value) === normalized || compactText(value) === compact));
+}
+
+function exactSymbolAlias(query: string, assetType?: MarketAssetType) {
+  const symbol = validateSymbol(query);
+  if (!symbol) return undefined;
+  return SYMBOL_ALIASES.find(alias => matchesAssetType(aliasToItem(alias), assetType)
+    && (alias.symbol === symbol || alias.providerSymbol === symbol));
 }
 
 function typoAlias(query: string, assetType?: MarketAssetType) {
@@ -396,6 +453,12 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
 
   if (query.length < 1) {
     return { ok: false, code: 'INVALID_SYMBOL', message: marketApiMessage('INVALID_SYMBOL'), suggestions: [] };
+  }
+
+  const symbolAlias = exactSymbolAlias(query, assetType);
+  if (symbolAlias) {
+    const item = aliasToItem(symbolAlias);
+    return { ok: true, asset: resolveFromItem(item, 'exact_symbol'), suggestions: [item] };
   }
 
   const alias = exactAlias(query, assetType);

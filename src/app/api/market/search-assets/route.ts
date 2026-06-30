@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { findAssetAliasMatches, normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
-import { normalizeAssetType, normalizeMarketSymbolInput, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import { normalizeAssetType, normalizeMarketSymbolInput, validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import {
   exchangeRequiresSymbolSync,
   marketExchangeAliases,
@@ -436,7 +436,7 @@ export async function GET(request: NextRequest) {
   const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
   const exchange = normalizeMarketExchange(searchParams.get('exchange') ?? searchParams.get('market'));
 
-  if (query.length < 2) {
+  if (query.length < 2 && !validateSymbol(query)) {
     return NextResponse.json({ ok: true, query, items: [], message: 'NO_RESULTS' });
   }
 

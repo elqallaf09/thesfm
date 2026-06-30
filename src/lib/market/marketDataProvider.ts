@@ -427,8 +427,13 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
   if (latestPrice === null || !Number.isFinite(latestPrice) || latestPrice <= 0 || closes.length === 0) return null;
 
   const firstClose = closes[0] || latestPrice;
+  const previousClose = closes.at(-2) ?? latestPrice;
+  const rawDailyChange = latestPrice - previousClose;
   const derivedChange = firstClose ? ((latestPrice - firstClose) / firstClose) * 100 : 0;
   const changePercent = Number.isFinite(Number(data.changePercent)) ? Number(data.changePercent) : derivedChange;
+  const dailyChange = changePercent === 0
+    ? rawDailyChange
+    : Math.sign(changePercent) * Math.abs(rawDailyChange || (latestPrice * changePercent) / 100);
   const volatility = Number.isFinite(Number(data.indicators?.volatility))
     ? Number(data.indicators.volatility)
     : latestPrice ? (standardDeviation(closes) / latestPrice) * 100 : 0;
@@ -467,7 +472,7 @@ function enrichAnalysis(raw: unknown, symbol: string, assetType: MarketAssetType
     changePercent,
     quote: {
       price: latestPrice,
-      change: latestPrice - (closes.at(-2) ?? latestPrice),
+      change: dailyChange,
       changePercent,
       currency: resolvedCurrency.currency,
       currencySource: resolvedCurrency.source,
@@ -555,6 +560,8 @@ async function analyzeWithYahooFallback(input: {
     .filter(value => Number.isFinite(value) && value > 0);
   const latestPrice = closes.at(-1);
   if (!Number.isFinite(latestPrice) || Number(latestPrice) <= 0) return null;
+  const change = Number(latestPrice) - (closes.at(-2) ?? Number(latestPrice));
+  const changePercent = dailyChangePercent(closes);
 
   const directory = directorySymbol(input.displaySymbol) ?? directorySymbol(yahoo.providerSymbol) ?? directorySymbol(input.providerSymbol);
   const name = input.friendlyName || String(directory?.name ?? `${input.displaySymbol} Market Asset`);
@@ -570,9 +577,11 @@ async function analyzeWithYahooFallback(input: {
     exchange: input.exchange ?? directory?.exchange,
     country: input.country ?? directory?.country,
     latestPrice,
-    changePercent: dailyChangePercent(closes),
+    changePercent,
     quote: {
       price: latestPrice,
+      change,
+      changePercent,
       currency: yahoo.currency,
       timestamp: yahoo.fetchedAt,
     },

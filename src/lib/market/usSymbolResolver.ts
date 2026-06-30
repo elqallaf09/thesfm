@@ -40,6 +40,14 @@ const aliasMap: Record<string, string[]> = {
   boing: ['BA'],
 };
 
+const canonicalUsSymbolOverrides: Record<string, Pick<USSymbolRecord, 'name' | 'assetType' | 'exchange' | 'country' | 'currency'>> = {
+  T: { name: 'AT&T', assetType: 'stock', exchange: 'NYSE', country: 'US', currency: 'USD' },
+  F: { name: 'Ford', assetType: 'stock', exchange: 'NYSE', country: 'US', currency: 'USD' },
+  C: { name: 'Citigroup', assetType: 'stock', exchange: 'NYSE', country: 'US', currency: 'USD' },
+  V: { name: 'Visa', assetType: 'stock', exchange: 'NYSE', country: 'US', currency: 'USD' },
+  O: { name: 'Realty Income', assetType: 'stock', exchange: 'NYSE', country: 'US', currency: 'USD' },
+};
+
 let cachedUniverse: { expiresAt: number; rows: USSymbolRecord[]; source: 'nasdaqtrader' | 'static' } | null = null;
 
 function cleanQuery(value: unknown) {
@@ -54,6 +62,11 @@ function cleanName(value: unknown) {
   return String(value ?? '')
     .replace(/\s+-\s+(Common Stock|Ordinary Shares|Class [A-Z].*|ETF|Exchange Traded Fund).*$/i, '')
     .trim();
+}
+
+function withCanonicalUsSymbolOverride(row: USSymbolRecord): USSymbolRecord {
+  const override = canonicalUsSymbolOverrides[row.symbol.toUpperCase()];
+  return override ? { ...row, ...override } : row;
 }
 
 function parsePipeFile(text: string) {
@@ -78,11 +91,12 @@ function parseNasdaqListed(text: string): USSymbolRecord[] {
       symbol: String(row.Symbol).toUpperCase(),
       providerSymbol: normalizeProviderSymbol(String(row.Symbol)),
       name: cleanName(row['Security Name']) || String(row.Symbol).toUpperCase(),
-      assetType: row.ETF === 'Y' ? 'etf' : 'stock',
+      assetType: row.ETF === 'Y' ? 'etf' as const : 'stock' as const,
       exchange: 'NASDAQ',
       country: 'US',
       currency: 'USD',
-    }));
+    }))
+    .map(withCanonicalUsSymbolOverride);
 }
 
 function parseOtherListed(text: string): USSymbolRecord[] {
@@ -95,11 +109,12 @@ function parseOtherListed(text: string): USSymbolRecord[] {
       symbol: String(row['ACT Symbol']).toUpperCase(),
       providerSymbol: normalizeProviderSymbol(String(row['ACT Symbol'])),
       name: cleanName(row['Security Name']) || String(row['ACT Symbol']).toUpperCase(),
-      assetType: row.ETF === 'Y' ? 'etf' : 'stock',
+      assetType: row.ETF === 'Y' ? 'etf' as const : 'stock' as const,
       exchange: exchangeMap[String(row.Exchange)] ?? String(row.Exchange || 'US'),
       country: 'US',
       currency: 'USD',
-    }));
+    }))
+    .map(withCanonicalUsSymbolOverride);
 }
 
 function dedupe(rows: USSymbolRecord[]) {
@@ -109,7 +124,7 @@ function dedupe(rows: USSymbolRecord[]) {
 }
 
 function staticUniverse() {
-  return staticUsSymbols as USSymbolRecord[];
+  return (staticUsSymbols as USSymbolRecord[]).map(withCanonicalUsSymbolOverride);
 }
 
 export async function getUSSymbolUniverse() {
