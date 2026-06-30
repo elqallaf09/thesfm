@@ -21,9 +21,9 @@ import { PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
-import { financialUnavailableHelper, financialUnavailableLabel, formatFinancialCurrency } from '@/lib/financialDisplay';
 import { loadUserDataTables } from '@/lib/data/financeData';
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
+import { formatMoney } from '@/lib/formatMoney';
 import { zakatImportCandidates } from '@/lib/data/zakatData';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -457,7 +457,13 @@ export default function ZakatPage() {
     notes: '',
   });
 
-  const money = useCallback((amount: unknown, currency = 'KWD') => formatFinancialCurrency(amount, currency, lang as Lang), [lang]);
+  const money = useCallback((amount: unknown, currency = 'KWD') => {
+    const validAmount = Number(amount);
+    if (!Number.isFinite(validAmount)) {
+      return lang === 'ar' ? 'غير متاح' : lang === 'fr' ? 'Non disponible' : 'Unavailable';
+    }
+    return formatMoney(validAmount, currency, lang);
+  }, [lang]);
   const dateLabel = useCallback((date?: string | null) => date ? normalizeDigits(new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US'), { numberingSystem: 'latn' })) : '-', [lang]);
   const timeLabel = useCallback((date?: string | null) => date ? normalizeDigits(new Intl.DateTimeFormat(toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US'), {
     hour: '2-digit',
@@ -627,8 +633,8 @@ export default function ZakatPage() {
     setIncludedImports(prev => ({ ...prev, [kind]: true }));
   }
 
-  const unavailable = financialUnavailableLabel(lang);
-  const unavailableHelper = financialUnavailableHelper(lang);
+  const unavailable = lang === 'ar' ? 'غير متاح' : lang === 'fr' ? 'Non disponible' : 'Unavailable';
+  const unavailableHelper = lang === 'ar' ? 'سيظهر هذا الرقم بعد إدخال البيانات.' : lang === 'fr' ? 'Ce chiffre apparaitra apres la saisie des donnees.' : 'This figure will appear after data is entered.';
   const summaryCards = [
     {
       icon: Coins,

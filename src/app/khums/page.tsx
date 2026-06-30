@@ -28,8 +28,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateKhums, type KhumsStatus } from '@/lib/khums';
-import { formatFinancialCurrency } from '@/lib/financialDisplay';
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
+import { formatMoney } from '@/lib/formatMoney';
 
 type KhumsPane = 'calculator' | 'payments' | 'reminders' | 'reports';
 type ShareType = 'imam' | 'sayyid' | 'unspecified';
@@ -210,7 +210,7 @@ export default function KhumsPage() {
   });
 
   const money = useCallback((amount: number, currency = yearForm.currency) => (
-    formatFinancialCurrency(Number.isFinite(amount) ? amount : null, currency || 'KWD', lang)
+    formatMoney(Number.isFinite(amount) ? amount : 0, currency || 'KWD', lang)
   ), [lang, yearForm.currency]);
 
   const dateLabel = useCallback((date?: string | null) => {
