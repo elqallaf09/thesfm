@@ -10,6 +10,7 @@ import {
   type ClientFileRow,
   type ClientNoteRow,
   type ClientRow,
+  normalizeSubscriptionStatus,
   type PaymentHistoryRow,
   type PaymentRow,
   type ReminderCandidate,
@@ -105,6 +106,202 @@ type ReminderResult =
   | { userId: string; dedupeKey: string; status: string; channel: 'in_app'; error?: string }
   | RecipientSendResult;
 
+type ReminderRunSummary = {
+  checkedCount: number;
+  eligibleCount: number;
+  sentCount: number;
+  skippedCount: number;
+  notEligibleCount: number;
+  alreadySentCount: number;
+  failedCount: number;
+  skipReasons: Array<{
+    reminderId: string;
+    reminderType: string;
+    customerName: string | null;
+    customerEmail: string | null;
+    subscriberEmail: string | null;
+    dueDate: string;
+    reasonCode: string;
+    reasonMessage: string;
+    recipient: 'customer' | 'subscriber' | 'both';
+  }>;
+};
+
+type ReminderEligibilityResult = {
+  eligible: boolean;
+  reasonCode: string | null;
+  reasonMessage: string | null;
+};
+
+type ReminderRunSummaryRecipientCounts = {
+  sentCustomer: number;
+  sentSubscriber: number;
+  skippedCustomer: number;
+  skippedSubscriber: number;
+  failedCustomer: number;
+  failedSubscriber: number;
+};
+
+type ReminderRunMetadataSummary = ReminderRunSummary & {
+  byRecipient: ReminderRunSummaryRecipientCounts;
+};
+
+type ReminderRunContextSummary = ReminderRunMetadataSummary & {
+  reminderId?: string;
+};
+
+const VALID_REMINDER_TYPES = new Set([
+  'reminder_7_days',
+  'reminder_3_days',
+  'reminder_1_day',
+  'reminder_due_today',
+  'reminder_overdue_3_days',
+]);
+
+function contextReplyTo(context: ReminderDeliveryContext) {
+  const candidates = [
+    context.subscriber.email,
+    process.env.CONTACT_TO_EMAIL,
+    process.env.SMTP_USER,
+    process.env.SMTP_FROM,
+    context.customerEmail,
+  ];
+  const candidate = candidates.find(value => typeof value === 'string' && value.trim().length > 0);
+  return candidate?.trim() ?? null;
+}
+
+function evaluateReminderEligibility(input: {
+  candidate: ReminderCandidate;
+  amountDue: number;
+  context: ReminderDeliveryContext;
+}) {
+  const dueDate = input.context.dueDate;
+  const reminderTypeFromWindow = dueDate ? buildReminderTypeFromDaysRemaining(input.candidate.daysRemaining) : null;
+
+  if (!input.candidate.subscription) {
+    return {
+      eligible: false,
+      reasonCode: INVALID_SUBSCRIPTION_STATUS_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_SUBSCRIPTION_STATUS_REASON),
+    };
+  }
+
+  if (input.candidate.subscription && normalizeSubscriptionStatus(input.candidate.subscription.status) !== 'active') {
+    return {
+      eligible: false,
+      reasonCode: INVALID_SUBSCRIPTION_STATUS_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_SUBSCRIPTION_STATUS_REASON),
+    };
+  }
+
+  if (!isIsoDate(input.context.dueDate)) {
+    return {
+      eligible: false,
+      reasonCode: INVALID_REMINDER_DUE_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_REMINDER_DUE_REASON),
+    };
+  }
+
+  if (!VALID_REMINDER_TYPES.has(input.candidate.reminderType)) {
+    return {
+      eligible: false,
+      reasonCode: INVALID_REMINDER_TYPE_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_REMINDER_TYPE_REASON),
+    };
+  }
+
+  if (!Number.isFinite(input.amountDue) || input.amountDue <= 0) {
+    return {
+      eligible: false,
+      reasonCode: INVALID_REMINDER_AMOUNT_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_REMINDER_AMOUNT_REASON),
+    };
+  }
+
+  if (!input.context.reminderType) {
+    return {
+      eligible: false,
+      reasonCode: INVALID_REMINDER_TYPE_REASON,
+      reasonMessage: reasonMessageForCode(INVALID_REMINDER_TYPE_REASON),
+    };
+  }
+
+  if (!reminderTypeFromWindow || reminderTypeFromWindow !== input.context.reminderType) {
+    return {
+      eligible: false,
+      reasonCode: REMINDER_NOT_ELIGIBLE_REASON,
+      reasonMessage: reasonMessageForCode(REMINDER_NOT_ELIGIBLE_REASON),
+    };
+  }
+
+  return { eligible: true, reasonCode: null, reasonMessage: null };
+}
+
+function initializeReminderSummary(scope: 'user' | 'run'): ReminderRunContextSummary {
+  return {
+    reminderId: undefined,
+    checkedCount: 0,
+    eligibleCount: 0,
+    sentCount: 0,
+    skippedCount: 0,
+    notEligibleCount: 0,
+    alreadySentCount: 0,
+    failedCount: 0,
+    byRecipient: {
+      sentCustomer: 0,
+      sentSubscriber: 0,
+      skippedCustomer: 0,
+      skippedSubscriber: 0,
+      failedCustomer: 0,
+      failedSubscriber: 0,
+    },
+    skipReasons: [],
+  };
+}
+
+function addReminderSkipReason(summary: ReminderRunContextSummary, input: {
+  candidate: ReminderCandidate;
+  context: ReminderDeliveryContext;
+  reasonCode: string;
+  reasonMessage: string;
+  recipient: 'customer' | 'subscriber' | 'both';
+}) {
+  summary.skipReasons.push({
+    reminderId: input.candidate.dedupeKey,
+    reminderType: input.context.reminderType,
+    customerName: input.context.customerName || null,
+    customerEmail: input.context.customerEmail,
+    subscriberEmail: input.context.subscriber.email,
+    dueDate: input.context.dueDate,
+    reasonCode: input.reasonCode,
+    reasonMessage: input.reasonMessage,
+    recipient: input.recipient,
+  });
+}
+
+function applyRecipientOutcome(summary: ReminderRunContextSummary, input: {
+  recipientType: ReminderRecipientType;
+  status: ReminderEmailStatus;
+  reasonCode?: string | null;
+}) {
+  if (input.recipientType === 'customer') {
+    if (input.status === 'sent') summary.byRecipient.sentCustomer += 1;
+    else if (input.status === 'skipped') summary.byRecipient.skippedCustomer += 1;
+    else summary.byRecipient.failedCustomer += 1;
+    if (input.status === 'sent') summary.sentCount += 1;
+    else if (input.status === 'skipped') summary.skippedCount += 1;
+  } else {
+    if (input.status === 'sent') summary.byRecipient.sentSubscriber += 1;
+    else if (input.status === 'skipped') summary.byRecipient.skippedSubscriber += 1;
+    else summary.byRecipient.failedSubscriber += 1;
+    if (input.status === 'sent') summary.sentCount += 1;
+    else if (input.status === 'skipped') summary.skippedCount += 1;
+  }
+
+  if (input.status === 'failed') summary.failedCount += 1;
+  if (input.reasonCode === REMINDER_ALREADY_SENT_REASON) summary.alreadySentCount += 1;
+}
+
 function bearerToken(request: NextRequest) {
   const header = request.headers.get('authorization') || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -136,6 +333,11 @@ function safeTimezone(value: string | null | undefined) {
   } catch {
     return 'Asia/Kuwait';
   }
+}
+
+function parseBooleanInput(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
 }
 
 function todayIso(timezone = 'Asia/Kuwait') {
@@ -170,6 +372,14 @@ const BOTH_RECIPIENT_EMAILS_INVALID_MESSAGE =
   'لا يمكن إرسال تذكيرات البريد لأن بريد العميل وبريد المشترك غير موجودين أو غير صالحين.';
 const DUPLICATE_REMINDER_EMAIL_REASON = 'DUPLICATE_REMINDER_EMAIL';
 
+const REMINDER_ALREADY_SENT_REASON = 'REMINDER_ALREADY_SENT';
+const REMINDER_NOT_ELIGIBLE_REASON = 'REMINDER_NOT_ELIGIBLE';
+const INVALID_SUBSCRIPTION_STATUS_REASON = 'SUBSCRIPTION_NOT_ACTIVE';
+const INVALID_REMINDER_DUE_REASON = 'REMINDER_DUE_DATE_INVALID';
+const INVALID_REMINDER_AMOUNT_REASON = 'REMINDER_AMOUNT_INVALID';
+const INVALID_REMINDER_TYPE_REASON = 'REMINDER_TYPE_INVALID';
+const SUBSCRIPTION_REMINDER_NOT_FOUND_MESSAGE = 'Ù„Ù†ØªÙˆØµØ§Ù† ØªÙ„ ØªØ°ÙƒÙŠØ±.';
+
 function sanitizeEnvelopeForLog(envelope?: { from: string; to: string[] }) {
   if (!envelope) return undefined;
   return {
@@ -184,6 +394,31 @@ function mapStringArray(value: unknown) {
     .map(item => (typeof item === 'string' ? item : item === null || item === undefined ? '' : String(item)))
     .map(item => item.trim())
     .filter(Boolean);
+}
+
+function buildReminderTypeFromDaysRemaining(daysRemaining: number) {
+  if (daysRemaining === 7) return 'reminder_7_days';
+  if (daysRemaining === 3) return 'reminder_3_days';
+  if (daysRemaining === 1) return 'reminder_1_day';
+  if (daysRemaining === 0) return 'reminder_due_today';
+  if (daysRemaining < 0 && Math.abs(daysRemaining) % 3 === 0) return 'reminder_overdue_3_days';
+  return null;
+}
+
+function isIsoDate(value: string | null | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) return false;
+  const parsed = new Date(`${String(value).trim()}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime());
+}
+
+function reasonMessageForCode(code: string) {
+  if (code === REMINDER_ALREADY_SENT_REASON) return 'The reminder was already sent for this period.';
+  if (code === REMINDER_NOT_ELIGIBLE_REASON) return 'Reminder is outside the current reminder window.';
+  if (code === INVALID_SUBSCRIPTION_STATUS_REASON) return 'Subscription is not active.';
+  if (code === INVALID_REMINDER_DUE_REASON) return 'Reminder has an invalid due date.';
+  if (code === INVALID_REMINDER_AMOUNT_REASON) return 'Reminder amount is missing or invalid.';
+  if (code === INVALID_REMINDER_TYPE_REASON) return 'Reminder type is invalid.';
+  return 'Reminder was skipped.';
 }
 
 function safeText(value: unknown, fallback = 'غير متاح') {
@@ -522,9 +757,13 @@ async function sendRecipientReminderEmail(input: {
   recipientEmail: string | null;
   template: { subject: string; text: string; html: string };
   fromName: string;
+  force?: boolean;
 }) {
-  const validation = validateReminderRecipientEmail(input.recipientEmail, input.recipientType);
-  const dedupeKey = `${input.candidate.dedupeKey}:email:${input.recipientType}`;
+  const recipientValidation = validateReminderRecipientEmail(input.recipientEmail, input.recipientType);
+  const subject = String(input.template?.subject ?? '').trim();
+  const text = String(input.template?.text ?? '').trim();
+  const html = String(input.template?.html ?? '').trim();
+  const dedupeKey = `${input.candidate.dedupeKey}:email:${input.recipientType}${input.force ? ':force' : ''}`;
   const logPayload = notificationLogPayload({
     context: input.context,
     candidate: input.candidate,
@@ -532,26 +771,26 @@ async function sendRecipientReminderEmail(input: {
     dedupeKey,
   });
 
-  if (!validation.ok) {
+  if (!recipientValidation.ok) {
     const metadata = emailMetadata({
       recipientType: input.recipientType,
       status: 'skipped',
       context: input.context,
-      recipientEmail: validation.rawEmail || null,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
-      failureReason: validation.reason,
-      userMessage: validation.message,
+      recipientEmail: recipientValidation.rawEmail || null,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
+      failureReason: recipientValidation.reason,
+      userMessage: recipientValidation.message,
       smtpCalled: false,
     });
     logReminderEmail('[business-subscriptions] reminder recipient validation failed', {
       context: input.context,
       recipientType: input.recipientType,
       status: 'skipped',
-      recipientEmail: validation.rawEmail || null,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
-      failureReason: validation.reason,
+      recipientEmail: recipientValidation.rawEmail || null,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
+      failureReason: recipientValidation.reason,
       smtpCalled: false,
     });
 
@@ -580,29 +819,72 @@ async function sendRecipientReminderEmail(input: {
       status: 'skipped' as const,
       channel: 'email' as const,
       recipientType: input.recipientType,
-      failureReason: validation.reason,
-      error: validation.message,
+      failureReason: recipientValidation.reason,
+      error: recipientValidation.message,
     };
   }
 
-  const payload = validateMailPayload({
-    to: validation.email,
-    subject: input.template.subject,
-    text: input.template.text,
-    html: input.template.html,
-    fromName: input.fromName,
-  });
-
-  if (!payload.ok || !payload.payload) {
+  if (!subject || !text || !html) {
+    const message = INVALID_REMINDER_PAYLOAD_MESSAGE;
     const reason = REMINDER_EMAIL_PAYLOAD_INVALID_REASON;
-    const message = payload.errors[0] || INVALID_REMINDER_PAYLOAD_MESSAGE;
     const metadata = emailMetadata({
       recipientType: input.recipientType,
       status: 'failed',
       context: input.context,
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
+      failureReason: reason,
+      userMessage: message,
+      payloadValidationErrors: [message],
+      smtpCalled: false,
+    });
+    logReminderEmail('[business-subscriptions] reminder email payload validation failed', {
+      context: input.context,
+      recipientType: input.recipientType,
+      status: 'failed',
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
+      failureReason: reason,
+      smtpCalled: false,
+    });
+
+    await input.db.from('subscription_notifications').insert({
+      ...logPayload,
+      status: 'failed',
+      metadata,
+    });
+    return {
+      userId: input.candidate.client.user_id,
+      dedupeKey,
+      status: 'failed' as const,
+      channel: 'email' as const,
+      recipientType: input.recipientType,
+      failureReason: reason,
+      error: message,
+    };
+  }
+
+  const payload = validateMailPayload({
+    to: recipientValidation.email,
+    subject,
+    text,
+    html,
+    fromName: input.fromName,
+    replyTo: contextReplyTo(input.context),
+  });
+
+  if (!payload.ok || !payload.payload) {
+    const reason = payload.errors.length ? REMINDER_EMAIL_PAYLOAD_INVALID_REASON : REMINDER_EMAIL_LOG_FAILED_REASON;
+    const message = payload.errors.length ? payload.errors[0] : INVALID_REMINDER_PAYLOAD_MESSAGE;
+    const metadata = emailMetadata({
+      recipientType: input.recipientType,
+      status: reason === REMINDER_EMAIL_PAYLOAD_INVALID_REASON ? 'failed' : 'failed',
+      context: input.context,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       from: payload.payload?.from,
       failureReason: reason,
       userMessage: message,
@@ -613,9 +895,9 @@ async function sendRecipientReminderEmail(input: {
       context: input.context,
       recipientType: input.recipientType,
       status: 'failed',
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       failureReason: reason,
       smtpCalled: false,
     });
@@ -642,9 +924,9 @@ async function sendRecipientReminderEmail(input: {
     recipientType: input.recipientType,
     status: 'scheduled',
     context: input.context,
-    recipientEmail: validation.email,
-    recipientEmailExists: validation.emailExists,
-    recipientEmailValid: validation.emailValid,
+    recipientEmail: recipientValidation.email,
+    recipientEmailExists: recipientValidation.emailExists,
+    recipientEmailValid: recipientValidation.emailValid,
     from: emailPayload.from,
     smtpCalled: false,
   });
@@ -658,15 +940,15 @@ async function sendRecipientReminderEmail(input: {
 
   if (scheduleInsertResult.error) {
     const duplicate = String(scheduleInsertResult.error.code) === '23505';
-    const reason = duplicate ? DUPLICATE_REMINDER_EMAIL_REASON : REMINDER_EMAIL_LOG_FAILED_REASON;
+    const reason = duplicate ? REMINDER_ALREADY_SENT_REASON : REMINDER_EMAIL_LOG_FAILED_REASON;
     const message = duplicate ? scheduleInsertResult.error.message : cleanError(scheduleInsertResult.error);
     logReminderEmail('[business-subscriptions] reminder email not sent because log scheduling failed', {
       context: input.context,
       recipientType: input.recipientType,
       status: duplicate ? 'skipped' : 'failed',
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       failureReason: reason,
       smtpCalled: false,
     });
@@ -687,7 +969,9 @@ async function sendRecipientReminderEmail(input: {
       subject: emailPayload.subject,
       text: emailPayload.text,
       html: emailPayload.html,
+      from: emailPayload.from,
       fromName: input.fromName,
+      replyTo: emailPayload.replyTo ?? contextReplyTo(input.context),
     });
     const smtp = {
       accepted: sendResult.accepted.map(maskEmailForLog),
@@ -700,9 +984,9 @@ async function sendRecipientReminderEmail(input: {
       recipientType: input.recipientType,
       status: 'sent',
       context: input.context,
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       from: emailPayload.from,
       smtp,
       smtpCalled: true,
@@ -733,9 +1017,9 @@ async function sendRecipientReminderEmail(input: {
       context: input.context,
       recipientType: input.recipientType,
       status: 'sent',
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       smtpCalled: true,
       smtp,
     });
@@ -763,9 +1047,9 @@ async function sendRecipientReminderEmail(input: {
       recipientType: input.recipientType,
       status: 'failed',
       context: input.context,
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       from: emailPayload.from,
       failureReason: REMINDER_EMAIL_SMTP_FAILED_REASON,
       userMessage,
@@ -777,9 +1061,9 @@ async function sendRecipientReminderEmail(input: {
       context: input.context,
       recipientType: input.recipientType,
       status: 'failed',
-      recipientEmail: validation.email,
-      recipientEmailExists: validation.emailExists,
-      recipientEmailValid: validation.emailValid,
+      recipientEmail: recipientValidation.email,
+      recipientEmailExists: recipientValidation.emailExists,
+      recipientEmailValid: recipientValidation.emailValid,
       failureReason: REMINDER_EMAIL_SMTP_FAILED_REASON,
       smtpCalled: true,
       smtp,

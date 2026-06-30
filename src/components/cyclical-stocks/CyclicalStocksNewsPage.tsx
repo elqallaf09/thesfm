@@ -96,7 +96,7 @@ type CyclicalTickerItem = {
   symbol: string;
   name: string;
   sector: string;
-  price: number;
+  price: number | null;
   currency: string;
   market?: string | null;
   change: number | null;
@@ -1208,7 +1208,7 @@ function buildFallbackTickerRow(symbol: string, lang: LangCode): CyclicalTickerS
       ? COPY[lang].mediumSectorSensitivity
       : COPY[lang].mixedSectorSensitivity;
 
-  return {
+  const row: CyclicalStockRow = {
     symbol,
     name: CYCLICAL_TICKER_SYMBOL_NAMES[symbol] ?? symbol,
     sector: SYMBOL_SECTOR[symbol] ?? 'industrials',
@@ -1217,7 +1217,7 @@ function buildFallbackTickerRow(symbol: string, lang: LangCode): CyclicalTickerS
     market: 'US',
     change: null,
     changePercent: null,
-    source: null,
+    source: '',
     delayed: false,
     sectorId,
     sectorLabel: sector.label[lang],
@@ -1229,6 +1229,7 @@ function buildFallbackTickerRow(symbol: string, lang: LangCode): CyclicalTickerS
     valuationLabel: COPY[lang].valuationUnavailable,
     dataCompleteness: 0,
   };
+  return toTickerStripRow(row);
 }
 
 function buildTickerRows(rows: CyclicalStockRow[], lang: LangCode): CyclicalTickerStripItem[] {
@@ -1429,8 +1430,9 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalTickerStripItem[];
       durationSeconds={46}
     >
       {rows.map(row => {
-        const hasPercent = typeof row.changePercent === 'number' && Number.isFinite(row.changePercent);
-        const tone = hasPercent ? (row.changePercent > 0 ? 'positive' : row.changePercent < 0 ? 'negative' : 'neutral') : 'neutral';
+        const cp = row.changePercent;
+        const hasPercent = typeof cp === 'number' && Number.isFinite(cp);
+        const tone = hasPercent ? (cp > 0 ? 'positive' : cp < 0 ? 'negative' : 'neutral') : 'neutral';
         return (
           <article
             className="ticker-item"

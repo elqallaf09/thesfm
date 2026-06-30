@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Clock3, TrendingDown, TrendingUp } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -67,7 +67,8 @@ export function TechTickerStrip({ prices, formatPrice, direction, labels }: Tech
       >
       {tickerItems.map(item => {
         const hasQuote = item.available && item.price !== null && item.changePercent !== null;
-        const tone = !hasQuote || item.changePercent === 0 ? 'neutral' : item.changePercent > 0 ? 'up' : 'down';
+        const cp = item.changePercent;
+        const tone = !hasQuote || cp === 0 || cp === null ? 'neutral' : cp > 0 ? 'up' : 'down';
         const Icon = tone === 'down' ? TrendingDown : TrendingUp;
         const symbolLabel = item.companyName || item.symbol;
         const providerLabel = item.available ? `${labels.sourceLabel}: ${item.source}` : labels.unavailable;
@@ -93,10 +94,10 @@ export function TechTickerStrip({ prices, formatPrice, direction, labels }: Tech
             <span className="tech-ticker-price" dir="ltr">
               {item.price === null ? labels.unavailable : formatPrice(item.price)}
             </span>
-            {hasQuote ? (
+            {hasQuote && cp !== null ? (
               <b className={`tech-ticker-change ${tone}`}>
                 <Icon size={11} />
-                <span dir="ltr">{`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}</span>
+                <span dir="ltr">{`${cp >= 0 ? '+' : ''}${cp.toFixed(2)}%`}</span>
               </b>
             ) : (
               <b className="tech-ticker-change neutral">{labels.unavailable}</b>

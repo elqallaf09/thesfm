@@ -7,7 +7,7 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260701-terminal-2";
+  const VER = "20260701-terminal-3";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
 
@@ -156,7 +156,6 @@
       navigate(`${ROOT}/symbol/${encodeURIComponent(symbol)}`);
     });
     window.addEventListener("popstate", () => { state.route = readRoute(); render(); afterRoute(); });
-    document.querySelectorAll("form").length;
   }
 
   function navigate(href) {
@@ -465,7 +464,7 @@
       </article>
       <aside class="detail-side">
         <article class="panel"><span class="eyebrow">TECHNICAL</span><h2>التحليل الفني</h2>${detail.available ? technical(a, detail.tech, c) : emptyState("لا توجد بيانات تحليل كافية", detail.message, "الإعدادات", `${ROOT}/settings`)}</article>
-        <article class="panel"><span class="eyebrow">AI SUMMARY</span><h2>ملخص الذكاء</h2>${detail.rec ? `<p>${h(detail.rec.reason || detail.rec.summary || "قراءة تحليلية من المزود.")}</p><div class="detail-grid">${detailCard("التوصية", sigLabel(sig), "Action")}${detailCard("الثقة", confText(detail.rec), "Confidence")}</div>` : emptyState("لا يوجد ملخص ذكاء", "لم يرجع المزود توصية لهذا الرمز.", "", "")}</article>
+        <article class="panel"><span class="eyebrow">AI SUMMARY</span><h2>ملخص الذكاء</h2>${detail.rec ? `<p>${h(detail.rec.reason || detail.rec.summary || "قراءة تحليلية من المزود.")}</p><div class="detail-grid">${detailCard("التوصية", sigLabel(sig), "Action")}${detailCard("الثقة", confText(detail.rec), "Confidence")}${detailCard("المخاطرة", riskShort(detail.rec.risk || detail.rec.riskLevel), "Risk")}${detailCard("المدة", detail.rec.timeframe || detail.rec.horizon || detail.rec.duration || "--", "Horizon")}</div>${riskReward(detail.rec, c)}` : emptyState("لا يوجد ملخص ذكاء", "لم يرجع المزود توصية لهذا الرمز.", "", "")}</article>
         <article class="panel"><span class="eyebrow">RELATED NEWS</span><h2>أخبار مرتبطة</h2>${relatedNews(a.symbol)}</article>
       </aside></div>`;
   }
@@ -598,7 +597,37 @@
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: ["منخفضة", "ok"], medium: ["متوسطة", "warn"], high: ["مرتفعة", "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${L[k][0]}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
   function miniChart(a) { const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null); if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني من المزود.</div>`; const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1; const pts = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(40 - (v - min) / rng * 38).toFixed(2)}`).join(" "); const up = series[series.length - 1] >= series[0]; return `<svg class="detail-chart" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="${pts}" class="${up ? "up" : "down"}"></polyline></svg>`; }
-  function technical(a, tech, c) { const t = tech || {}; const rows = [["الاتجاه", t.trend || t.signal || "--"], ["الدعم", price(num(t.support, t.s1), c)], ["المقاومة", price(num(t.resistance, t.r1), c)], ["RSI", t.rsi != null ? Math.round(num(t.rsi)) : "--"], ["التوصية الفنية", t.recommendation || t.action || "--"]]; return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td class="ltr">${h(v || "--")}</td></tr>`).join("")}</tbody></table></div>`; }
+  function technical(a, tech, c) {
+    const t = tech || {};
+    const rsi = num(t.rsi, t.rsi14, t.RSI);
+    const macd = num(t.macd, t.macdValue), macdSig = num(t.macdSignal, t.signalLine);
+    const ma50 = num(t.ma50, t.sma50, t.ema50), ma200 = num(t.ma200, t.sma200, t.ema200);
+    const vol = num(t.volatility, t.atr, t.atr14);
+    const s1 = num(t.support, t.s1, t.support1), s2 = num(t.s2, t.support2);
+    const r1 = num(t.resistance, t.r1, t.resistance1), r2 = num(t.r2, t.resistance2);
+    const trend = t.trend || t.direction || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : null);
+    const rsiTag = rsi === null ? "" : rsi >= 70 ? " (تشبع شرائي)" : rsi <= 30 ? " (تشبع بيعي)" : "";
+    const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? " · إيجابي" : " · سلبي") : "";
+    const rows = [
+      ["الاتجاه العام", trend || "--"],
+      ["RSI (14)", rsi === null ? "--" : Math.round(rsi) + rsiTag],
+      ["MACD", macd === null ? "--" : (Math.round(macd * 1000) / 1000) + macdTag],
+      ["متوسط 50", price(ma50, c)], ["متوسط 200", price(ma200, c)],
+      ["دعم 1", price(s1, c)], ["دعم 2", price(s2, c)],
+      ["مقاومة 1", price(r1, c)], ["مقاومة 2", price(r2, c)],
+      ["التذبذب", vol === null ? "--" : (Math.round(vol * 100) / 100)],
+      ["التوصية الفنية", t.recommendation || t.action || t.signal || "--"]
+    ];
+    return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td class="ltr">${h(v == null || v === "" ? "--" : v)}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  function riskReward(rec, c) {
+    if (!rec) return "";
+    const entry = num(rec.entry, rec.entryPrice, rec.price, rec.currentPrice), tgt = num(rec.target, rec.targetPrice), sl = num(rec.stopLoss, rec.stop);
+    if (entry === null || tgt === null || sl === null) return "";
+    const reward = Math.abs(tgt - entry), risk = Math.abs(entry - sl); if (!risk) return "";
+    const rr = Math.round(reward / risk * 100) / 100;
+    return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف", price(tgt, c), "Target")}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("العائد/المخاطرة", rr + ":1", "R/R")}</div>`;
+  }
   function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(value || "--")}</strong><p>${h(label)}</p></article>`; }
   function stat(label, value, helper) { return `<article class="stat-card"><span class="card-kicker">${h(helper)}</span><strong>${h(String(value))}</strong><small>${h(label)}</small></article>`; }
   function hero(title, body, kicker) { return `<section class="page-hero"><span class="eyebrow">${h(kicker)}</span><h2>${title}</h2><p>${h(body)}</p></section>`; }
