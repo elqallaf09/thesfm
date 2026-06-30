@@ -2,9 +2,6 @@ import type { NextConfig } from "next";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
 const nextConfig: NextConfig = {
-  experimental: {
-    webpackBuildWorker: false,
-  },
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
     process.env.NEXT_BUILD_ID ||
