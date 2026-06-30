@@ -273,7 +273,7 @@ export function TraderToolsDashboard({
           </article>
 
           <aside className="trader-result-stack trader-premium-result-stack">
-            <section className="trader-highlight-result">
+            <section className="trader-highlight-result" aria-live="polite">
               <span>{t('market_suitable_position_size')}</span>
               <strong dir="ltr">{lotValue}</strong>
               <p>
@@ -298,7 +298,7 @@ export function TraderToolsDashboard({
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_risk_formula')}
-              example={`${accountCurrency} ${formatNumber(parseNumber(positionInput.accountBalance), 2)} × ${formatNumber(parseNumber(positionInput.riskPercentage), 2)}% = ${money(position.riskAmount, accountCurrency)}`}
+              example={`${accountCurrency} ${formatNumber(parseNumber(positionInput.accountBalance), 2)} x ${formatNumber(parseNumber(positionInput.riskPercentage), 2)}% = ${money(position.riskAmount, accountCurrency)}`}
             />
             {position.riskWarning && <p className="tool-warning">{t('market_risk_above_two_warning')}</p>}
             {!positionCanCalculate && <p className="tool-warning">{positionInputStatus}</p>}
@@ -321,61 +321,69 @@ export function TraderToolsDashboard({
                 {t('market_reset')}
               </button>
             </div>
-            <div className="trader-form-grid trader-premium-form-grid">
-              <ToolSelect
-                label={t('market_asset_type')}
-                helper={t('market_instrument_type_hint')}
-                value={pipsInput.assetType}
-                onChange={value => {
-                  const nextType = value as PipCalculatorAssetType;
-                  const nextAsset = PIP_CALCULATOR_ASSETS[nextType][0] ?? DEFAULT_PIP_CALCULATOR_ASSET;
-                  setPipsInput(prev => ({
-                    ...prev,
-                    assetType: nextType,
-                    assetSymbol: nextAsset.internalSymbol,
-                    pair: nextAsset.internalSymbol,
-                    pointSize: String(nextAsset.pointSize),
-                    pipValue: String(nextAsset.defaultPointValue),
-                  }));
-                }}
-                options={PIP_CALCULATOR_ASSET_TYPES.map(type => [type, t(pipAssetTypeTranslationKey(type))])}
-              />
-              <ToolSelect
-                label={t('market_asset_symbol')}
-                helper={t('market_asset_symbol_hint')}
-                value={pipsInput.assetSymbol}
-                onChange={value => {
-                  const nextAsset = getPipCalculatorAsset(pipsInput.assetType, value);
-                  setPipsInput(prev => ({
-                    ...prev,
-                    assetSymbol: nextAsset.internalSymbol,
-                    pair: nextAsset.internalSymbol,
-                    pointSize: String(nextAsset.pointSize),
-                    pipValue: String(nextAsset.defaultPointValue),
-                  }));
-                }}
-                options={pipAssetOptions.map(asset => [asset.internalSymbol, `${pipAssetName(asset, locale)} - ${asset.symbol}`])}
-              />
-              <ToolInput label={t('market_entry_price')} helper={t('market_entry_price_hint')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
-              <ToolInput label={t('market_exit_price')} helper={t('market_exit_price_hint')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
-              <ToolInput label={t('market_lot_size')} helper={t('market_lot_size_hint')} suffix={t('market_lot_unit')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
-              <ToolInput label={t('market_point_size')} helper={t('market_point_size_hint')} suffix={pipUnit} value={pipsInput.pointSize} onChange={value => setPipsInput(prev => ({ ...prev, pointSize: value }))} />
-              <ToolInput label={t('market_point_value_per_lot')} helper={t('market_point_value_per_lot_hint')} prefix={accountCurrency} value={pipsInput.pipValue} onChange={value => setPipsInput(prev => ({ ...prev, pipValue: value }))} />
-              <ToolSegmented
-                label={t('market_trade_direction')}
-                helper={t('market_trade_direction_hint')}
-                value={pipsInput.direction}
-                onChange={value => setPipsInput(prev => ({ ...prev, direction: value as TradeDirection }))}
-                options={[
-                  ['buy', t('market_buy')],
-                  ['sell', t('market_sell')],
-                ]}
-              />
+            <div className="trader-field-groups">
+              <TraderFieldGroup title={t('market_instrument_type')} icon={<LineChart size={15} />}>
+                <ToolSelect
+                  label={t('market_asset_type')}
+                  helper={t('market_instrument_type_hint')}
+                  value={pipsInput.assetType}
+                  onChange={value => {
+                    const nextType = value as PipCalculatorAssetType;
+                    const nextAsset = PIP_CALCULATOR_ASSETS[nextType][0] ?? DEFAULT_PIP_CALCULATOR_ASSET;
+                    setPipsInput(prev => ({
+                      ...prev,
+                      assetType: nextType,
+                      assetSymbol: nextAsset.internalSymbol,
+                      pair: nextAsset.internalSymbol,
+                      pointSize: String(nextAsset.pointSize),
+                      pipValue: String(nextAsset.defaultPointValue),
+                    }));
+                  }}
+                  options={PIP_CALCULATOR_ASSET_TYPES.map(type => [type, t(pipAssetTypeTranslationKey(type))])}
+                />
+                <ToolSelect
+                  label={t('market_asset_symbol')}
+                  helper={t('market_asset_symbol_hint')}
+                  value={pipsInput.assetSymbol}
+                  onChange={value => {
+                    const nextAsset = getPipCalculatorAsset(pipsInput.assetType, value);
+                    setPipsInput(prev => ({
+                      ...prev,
+                      assetSymbol: nextAsset.internalSymbol,
+                      pair: nextAsset.internalSymbol,
+                      pointSize: String(nextAsset.pointSize),
+                      pipValue: String(nextAsset.defaultPointValue),
+                    }));
+                  }}
+                  options={pipAssetOptions.map(asset => [asset.internalSymbol, `${pipAssetName(asset, locale)} - ${asset.symbol}`])}
+                />
+              </TraderFieldGroup>
+
+              <TraderFieldGroup title={t('market_trade_direction')} icon={<TrendingUp size={15} />}>
+                <ToolInput label={t('market_entry_price')} helper={t('market_entry_price_hint')} value={pipsInput.entryPrice} onChange={value => setPipsInput(prev => ({ ...prev, entryPrice: value }))} />
+                <ToolInput label={t('market_exit_price')} helper={t('market_exit_price_hint')} value={pipsInput.exitPrice} onChange={value => setPipsInput(prev => ({ ...prev, exitPrice: value }))} />
+                <ToolInput label={t('market_lot_size')} helper={t('market_lot_size_hint')} suffix={t('market_lot_unit')} value={pipsInput.lotSize} onChange={value => setPipsInput(prev => ({ ...prev, lotSize: value }))} />
+                <ToolSegmented
+                  label={t('market_trade_direction')}
+                  helper={t('market_trade_direction_hint')}
+                  value={pipsInput.direction}
+                  onChange={value => setPipsInput(prev => ({ ...prev, direction: value as TradeDirection }))}
+                  options={[
+                    ['buy', t('market_buy')],
+                    ['sell', t('market_sell')],
+                  ]}
+                />
+              </TraderFieldGroup>
+
+              <TraderFieldGroup title={t('market_advanced_settings')} icon={<Gauge size={15} />}>
+                <ToolInput label={t('market_point_size')} helper={t('market_point_size_hint')} suffix={pipUnit} value={pipsInput.pointSize} onChange={value => setPipsInput(prev => ({ ...prev, pointSize: value }))} />
+                <ToolInput label={t('market_point_value_per_lot')} helper={t('market_point_value_per_lot_hint')} prefix={accountCurrency} value={pipsInput.pipValue} onChange={value => setPipsInput(prev => ({ ...prev, pipValue: value }))} />
+              </TraderFieldGroup>
             </div>
             <p className="tool-warning">{t(pipCalculatorWarningKey(pipsInput.assetType))}</p>
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
-            <section className="trader-highlight-result">
+            <section className="trader-highlight-result" aria-live="polite">
               <span>{t('market_profit_loss')}</span>
               <strong dir="ltr">{money(pips.profitLoss, accountCurrency)}</strong>
               <p>
@@ -394,7 +402,7 @@ export function TraderToolsDashboard({
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_pips_formula')}
-              example={`${selectedPipAsset.symbol} | (${formatNumber(pipsPriceDifference, 5)} ÷ ${formatNumber(pipsPointSize, 5)}) × ${accountCurrency} ${formatNumber(pipsPointValue, 2)} × ${formatNumber(parseNumber(pipsInput.lotSize), 2)} = ${money(pips.profitLoss, accountCurrency)}`}
+              example={`${selectedPipAsset.symbol} | (${formatNumber(pipsPriceDifference, 5)} / ${formatNumber(pipsPointSize, 5)}) x ${accountCurrency} ${formatNumber(pipsPointValue, 2)} x ${formatNumber(parseNumber(pipsInput.lotSize), 2)} = ${money(pips.profitLoss, accountCurrency)}`}
             />
             {pipsValidationMessage && <p className="tool-warning">{pipsValidationMessage}</p>}
           </aside>
@@ -416,11 +424,17 @@ export function TraderToolsDashboard({
                 {t('market_reset')}
               </button>
             </div>
-            <div className="trader-form-grid trader-premium-form-grid">
-              <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={lotInput.accountBalance} onChange={value => setLotInput(prev => ({ ...prev, accountBalance: value }))} />
-              <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={lotInput.riskPercentage} onChange={value => setLotInput(prev => ({ ...prev, riskPercentage: value }))} />
-              <ToolInput label={t('market_stop_loss_pips')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={lotInput.stopLossPips} onChange={value => setLotInput(prev => ({ ...prev, stopLossPips: value }))} />
-              <ToolInput label={t('market_pip_value')} helper={t('market_pip_value_hint')} prefix={accountCurrency} value={lotInput.pipValue} onChange={value => setLotInput(prev => ({ ...prev, pipValue: value }))} />
+            <div className="trader-field-groups">
+              <TraderFieldGroup title={t('market_account_settings')} icon={<WalletCards size={15} />}>
+                <ToolInput label={t('market_account_balance')} helper={t('market_account_balance_hint')} prefix={accountCurrency} value={lotInput.accountBalance} onChange={value => setLotInput(prev => ({ ...prev, accountBalance: value }))} />
+              </TraderFieldGroup>
+
+              <TraderFieldGroup title={t('market_risk_settings')} icon={<ShieldAlert size={15} />}>
+                <ToolInput label={t('market_risk_percentage')} helper={t('market_risk_percentage_hint')} suffix="%" value={lotInput.riskPercentage} onChange={value => setLotInput(prev => ({ ...prev, riskPercentage: value }))} />
+                <ToolInput label={t('market_stop_loss_pips')} helper={t('market_stop_loss_hint')} suffix={pipUnit} value={lotInput.stopLossPips} onChange={value => setLotInput(prev => ({ ...prev, stopLossPips: value }))} />
+                <ToolInput label={t('market_pip_value')} helper={t('market_pip_value_hint')} prefix={accountCurrency} value={lotInput.pipValue} onChange={value => setLotInput(prev => ({ ...prev, pipValue: value }))} />
+              </TraderFieldGroup>
+
               <details className="tool-advanced">
                 <summary>{t('market_advanced_settings')}</summary>
                 <ToolInput label={t('market_pair_asset_type')} helper={t('market_asset_pair_hint')} value={lotInput.assetType} inputDir="ltr" inputMode="text" onChange={value => setLotInput(prev => ({ ...prev, assetType: value.toUpperCase() }))} />
@@ -428,7 +442,7 @@ export function TraderToolsDashboard({
             </div>
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
-            <section className="trader-highlight-result">
+            <section className="trader-highlight-result" aria-live="polite">
               <span>{t('market_recommended_lot_size')}</span>
               <strong dir="ltr">{formatNumber(lots.recommendedLotSize, 4)} {t('market_lot_unit')}</strong>
               <p>
@@ -447,7 +461,7 @@ export function TraderToolsDashboard({
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_lot_formula')}
-              example={`${money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency)} ÷ (${formatNumber(parseNumber(lotInput.stopLossPips), 2)} ${pipUnit} × ${accountCurrency} ${formatNumber(parseNumber(lotInput.pipValue), 2)})`}
+              example={`${money((parseNumber(lotInput.accountBalance) * parseNumber(lotInput.riskPercentage)) / 100, accountCurrency)} / (${formatNumber(parseNumber(lotInput.stopLossPips), 2)} ${pipUnit} x ${accountCurrency} ${formatNumber(parseNumber(lotInput.pipValue), 2)})`}
             />
           </aside>
         </div>
@@ -468,14 +482,16 @@ export function TraderToolsDashboard({
                 {t('market_reset')}
               </button>
             </div>
-            <div className="trader-form-grid trader-premium-form-grid">
-              <ToolInput label={t('market_trade_size')} helper={t('market_trade_size_hint')} value={marginInput.tradeSize} onChange={value => setMarginInput(prev => ({ ...prev, tradeSize: value }))} />
-              <ToolInput label={t('market_current_price')} helper={t('market_margin_price_hint')} prefix={accountCurrency} value={marginInput.currentPrice} onChange={value => setMarginInput(prev => ({ ...prev, currentPrice: value }))} />
-              <ToolInput label={t('market_leverage')} helper={t('market_leverage_hint')} prefix="1:" value={marginInput.leverage} onChange={value => setMarginInput(prev => ({ ...prev, leverage: value }))} />
+            <div className="trader-field-groups">
+              <TraderFieldGroup title={t('market_margin_calculator')} icon={<Landmark size={15} />}>
+                <ToolInput label={t('market_trade_size')} helper={t('market_trade_size_hint')} value={marginInput.tradeSize} onChange={value => setMarginInput(prev => ({ ...prev, tradeSize: value }))} />
+                <ToolInput label={t('market_current_price')} helper={t('market_margin_price_hint')} prefix={accountCurrency} value={marginInput.currentPrice} onChange={value => setMarginInput(prev => ({ ...prev, currentPrice: value }))} />
+                <ToolInput label={t('market_leverage')} helper={t('market_leverage_hint')} prefix="1:" value={marginInput.leverage} onChange={value => setMarginInput(prev => ({ ...prev, leverage: value }))} />
+              </TraderFieldGroup>
             </div>
           </article>
           <aside className="trader-result-stack trader-premium-result-stack">
-            <section className="trader-highlight-result">
+            <section className="trader-highlight-result" aria-live="polite">
               <span>{t('market_required_margin')}</span>
               <strong dir="ltr">{money(margin.required, accountCurrency)}</strong>
               <p>
@@ -492,7 +508,7 @@ export function TraderToolsDashboard({
             <FormulaCard
               title={t('market_calculation_method')}
               body={t('market_margin_formula')}
-              example={`(${formatNumber(margin.tradeSize, 2)} × ${formatNumber(parseNumber(marginInput.currentPrice), 4)}) ÷ ${formatNumber(margin.leverage, 0)} = ${money(margin.required, accountCurrency)}`}
+              example={`(${formatNumber(margin.tradeSize, 2)} x ${formatNumber(parseNumber(marginInput.currentPrice), 4)}) / ${formatNumber(margin.leverage, 0)} = ${money(margin.required, accountCurrency)}`}
             />
           </aside>
         </div>
@@ -551,7 +567,7 @@ export function TraderToolsDashboard({
           <div className="trader-premium-main-head">
             <span className="trader-premium-tool-icon">{activeTool.icon}</span>
             <div>
-              <span>{t('market_active_tool')} · {activeToolIndex}/{toolItems.length}</span>
+              <span>{t('market_active_tool')} - {activeToolIndex}/{toolItems.length}</span>
               <h3>{activeTool.title}</h3>
               <p>{activeDescription}</p>
             </div>
@@ -737,9 +753,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-layout {
           direction: ltr;
           display: grid;
-          grid-template-columns: minmax(240px, .64fr) minmax(0, 2.36fr);
+          grid-template-columns: minmax(230px, .55fr) minmax(0, 2.45fr);
           grid-template-areas: "support main";
-          gap: 16px;
+          gap: 18px;
           align-items: start;
           min-width: 0;
         }
@@ -768,7 +784,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           overflow: hidden;
           padding: clamp(14px, 1.8vw, 20px);
-          border: 1px solid var(--trader-line);
+          border: 1px solid rgba(32, 104, 145, .18);
           border-radius: 28px;
           background:
             linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .76)),
@@ -796,6 +812,7 @@ export function TraderToolsDashboard({
           background:
             linear-gradient(135deg, rgba(31, 149, 255, .08), rgba(32, 212, 207, .12)),
             var(--trader-card);
+          box-shadow: 0 16px 36px rgba(7, 28, 52, .08);
         }
 
         .trader-premium-dashboard .trader-support-icon {
@@ -896,6 +913,16 @@ export function TraderToolsDashboard({
           line-height: 1.18;
           overflow-wrap: anywhere;
           font-variant-numeric: tabular-nums;
+        }
+
+        .trader-premium-dashboard .trader-support-card.highlight .trader-side-stat:first-child {
+          border-color: rgba(32, 212, 207, .28);
+          background: linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(232, 250, 249, .82));
+        }
+
+        .trader-premium-dashboard .trader-support-card.highlight .trader-side-stat:first-child b {
+          color: #064f77;
+          font-size: clamp(17px, 1.6vw, 22px);
         }
 
         .trader-premium-dashboard .trader-steps {
@@ -1076,6 +1103,9 @@ export function TraderToolsDashboard({
         }
 
         .trader-premium-dashboard .trader-tool-switcher > button {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
           min-width: 0;
           min-height: 58px;
           display: flex;
@@ -1110,6 +1140,16 @@ export function TraderToolsDashboard({
           border-color: transparent;
           background: linear-gradient(135deg, #0b5f8e, #0f8fb8 58%, #20d4cf);
           box-shadow: 0 13px 28px rgba(15, 143, 184, .25);
+        }
+
+        .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"]::after {
+          content: "";
+          position: absolute;
+          inset-inline: 12px;
+          bottom: 7px;
+          height: 3px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, .76);
         }
 
         .trader-premium-dashboard .trader-switcher-icon {
@@ -1157,9 +1197,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-panel-grid {
           direction: ltr;
           display: grid;
-          grid-template-columns: minmax(360px, 1fr) minmax(300px, .72fr);
+          grid-template-columns: minmax(420px, 1.12fr) minmax(315px, .88fr);
           grid-template-areas: "result settings";
-          gap: 16px;
+          gap: 18px;
           align-items: start;
           min-width: 0;
         }
@@ -1182,10 +1222,10 @@ export function TraderToolsDashboard({
           min-width: 0;
           overflow: hidden;
           padding: 15px;
-          border: 1px solid var(--trader-line);
+          border: 1px solid rgba(32, 104, 145, .16);
           border-radius: 24px;
-          background: rgba(255, 255, 255, .88);
-          box-shadow: 0 12px 30px rgba(7, 28, 52, .06);
+          background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(247, 251, 255, .84));
+          box-shadow: 0 14px 34px rgba(7, 28, 52, .07);
         }
 
         .trader-premium-dashboard .trader-tool-card-head {
@@ -1254,9 +1294,10 @@ export function TraderToolsDashboard({
           gap: 12px;
           min-width: 0;
           padding: 12px;
-          border: 1px solid rgba(32, 104, 145, .12);
+          border: 1px solid rgba(32, 104, 145, .15);
           border-radius: 20px;
-          background: var(--trader-soft);
+          background: linear-gradient(180deg, #f8fcff, #eef7ff);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
         }
 
         .trader-premium-dashboard .trader-field-group-title {
@@ -1291,6 +1332,11 @@ export function TraderToolsDashboard({
           min-width: 0;
         }
 
+        .trader-premium-dashboard .trader-form-grid > .tool-input:only-child,
+        .trader-premium-dashboard .trader-form-grid > .tool-segmented {
+          grid-column: 1 / -1;
+        }
+
         .trader-premium-dashboard .tool-input {
           display: grid !important;
           grid-template-columns: 1fr !important;
@@ -1322,9 +1368,9 @@ export function TraderToolsDashboard({
           gap: 8px;
           min-width: 0;
           padding: 0 9px;
-          border: 1px solid rgba(32, 104, 145, .20);
+          border: 1px solid rgba(32, 104, 145, .25);
           border-radius: 16px;
-          background: #ffffff;
+          background: linear-gradient(180deg, #ffffff, #f9fcff);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, .70);
           transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
@@ -1466,7 +1512,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-highlight-result {
           position: relative;
           isolation: isolate;
-          min-height: 190px;
+          min-height: 208px;
           display: grid;
           align-content: space-between;
           gap: 16px;
@@ -1475,8 +1521,9 @@ export function TraderToolsDashboard({
           border: 1px solid rgba(159, 246, 240, .22);
           border-radius: 28px;
           background:
-            linear-gradient(135deg, #061a2f 0%, #0b3d5f 52%, #0f8fb8 122%);
-          box-shadow: 0 22px 54px rgba(7, 28, 52, .20);
+            radial-gradient(circle at 88% 12%, rgba(32, 212, 207, .28), transparent 32%),
+            linear-gradient(135deg, #061a2f 0%, #0b3d5f 54%, #0f8fb8 126%);
+          box-shadow: 0 26px 60px rgba(7, 28, 52, .24);
           color: #ffffff;
         }
 
@@ -1573,11 +1620,12 @@ export function TraderToolsDashboard({
           align-content: start;
           gap: 8px 10px;
           min-width: 0;
-          min-height: 104px;
+          min-height: 110px;
           padding: 13px;
-          border: 1px solid rgba(32, 104, 145, .12);
+          border: 1px solid rgba(32, 104, 145, .16);
           border-radius: 18px;
-          background: var(--trader-soft);
+          background: linear-gradient(180deg, #ffffff, #f4faff);
+          box-shadow: 0 10px 24px rgba(7, 28, 52, .045);
         }
 
         .trader-premium-dashboard .tool-result-icon {
@@ -1599,7 +1647,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .tool-result-card b {
           grid-column: 1 / -1;
           min-width: 0;
-          color: var(--trader-ink);
+          color: #08213c;
           font-size: clamp(18px, 1.9vw, 26px);
           font-weight: 950;
           line-height: 1.15;
@@ -1768,6 +1816,16 @@ export function TraderToolsDashboard({
         .dark .trader-premium-dashboard .tool-input > span,
         .dark .trader-premium-dashboard .tool-input .tool-input-shell input,
         .dark .trader-premium-dashboard .tool-input .tool-input-shell select {
+          color: var(--trader-ink);
+        }
+
+        .dark .trader-premium-dashboard .trader-support-card.highlight .trader-side-stat:first-child {
+          background: #071527;
+          border-color: rgba(47, 214, 192, .30);
+        }
+
+        .dark .trader-premium-dashboard .trader-support-card.highlight .trader-side-stat:first-child b,
+        .dark .trader-premium-dashboard .tool-result-card b {
           color: var(--trader-ink);
         }
 

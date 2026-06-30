@@ -1,28 +1,6 @@
 import type { NextConfig } from "next";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
-const PAGES_MANIFEST = {
-  '/404': 'pages/404.js',
-  '/500': 'pages/500.js',
-  '/_app': 'pages/_app.js',
-  '/_document': 'pages/_document.js',
-  '/_error': 'pages/_error.js',
-};
-
-const ensurePagesManifest = () => {
-  const serverDir = join(PROJECT_ROOT, '.next', 'server');
-  const manifestPath = join(serverDir, 'pages-manifest.json');
-
-  mkdirSync(serverDir, { recursive: true });
-
-  if (!existsSync(manifestPath)) {
-    writeFileSync(manifestPath, JSON.stringify(PAGES_MANIFEST));
-  }
-};
-
 const nextConfig: NextConfig = {
   experimental: {
     webpackBuildWorker: false,
@@ -35,35 +13,6 @@ const nextConfig: NextConfig = {
   ),
   turbopack: {
     root: PROJECT_ROOT,
-  },
-  webpack(config, { isServer, webpack }) {
-    if (isServer) {
-      config.plugins = config.plugins ?? [];
-      config.plugins.push({
-        apply(compiler: any) {
-          compiler.hooks.beforeRun.tap('EnsureEmptyPagesManifestPlugin', ensurePagesManifest);
-          compiler.hooks.done.tap('EnsureEmptyPagesManifestPlugin', ensurePagesManifest);
-          compiler.hooks.thisCompilation.tap('EnsureEmptyPagesManifestPlugin', (compilation: any) => {
-            compilation.hooks.processAssets.tap(
-              {
-                name: 'EnsureEmptyPagesManifestPlugin',
-                stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
-              },
-              () => {
-                if (!compilation.getAsset('pages-manifest.json')) {
-                  compilation.emitAsset(
-                    'pages-manifest.json',
-                    new webpack.sources.RawSource(JSON.stringify(PAGES_MANIFEST)),
-                  );
-                }
-              },
-            );
-          });
-        },
-      });
-    }
-
-    return config;
   },
   async headers() {
     return [
