@@ -382,7 +382,6 @@ export function GulfNewsPage() {
           marketData={marketData}
           formatNumber={formatNumber}
           formatPercent={formatPercent}
-          direction={dir === 'rtl' ? 'rtl' : 'ltr'}
         />
 
         <GulfNewsHeader

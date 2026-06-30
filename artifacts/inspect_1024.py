@@ -1,4 +1,4 @@
-﻿import os, sys
+import os, sys
 from playwright.sync_api import sync_playwright
 sys.stdout.reconfigure(encoding='utf-8')
 url=os.environ.get('TRADER_AUDIT_URL','http://127.0.0.1:4308/index.html?route=markets%2Fforex')

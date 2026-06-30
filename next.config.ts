@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
       },
       {
         hostname: "coin-images.coingecko.com",
-      }
+      },
     ],
   },
 };

@@ -1,4 +1,4 @@
-﻿// TEXT translations for charity-projects/page
+// TEXT translations for charity-projects/page
 import type { Lang } from './_types';
 
 export const TEXT = {

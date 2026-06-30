@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { marketApiMessage, normalizeMarketApiCode, resolveMarketSymbol } from '@/lib/market/symbolResolver';
 

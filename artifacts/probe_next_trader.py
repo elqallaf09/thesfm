@@ -1,4 +1,4 @@
-﻿import json, sys, urllib.request, urllib.error
+import json, sys, urllib.request, urllib.error
 sys.stdout.reconfigure(encoding='utf-8')
 base='http://127.0.0.1:4311'
 paths=['/thesfm-trader-own/app/styles.css?v=probe','/thesfm-trader-own/app/app.js?v=probe','/api/trader/status','/api/trader/scanner/results?market=US']

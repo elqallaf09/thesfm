@@ -65,4 +65,3 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
 }
 
 export default EuropeTickerStrip;
-

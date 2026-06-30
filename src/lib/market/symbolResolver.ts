@@ -1,4 +1,4 @@
-﻿import staticUsSymbols from '@/data/us-symbols.json';
+import staticUsSymbols from '@/data/us-symbols.json';
 import {
   marketSymbolSuggestions,
   normalizeAssetType,

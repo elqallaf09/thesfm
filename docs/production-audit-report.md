@@ -1,4 +1,4 @@
-﻿# THE SFM Production Audit Report
+# THE SFM Production Audit Report
 
 Generated: 2026-06-25T16:14:34.583Z
 Repository: `thesfm-origin-main-review`

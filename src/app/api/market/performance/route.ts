@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeAssetType } from '@/lib/market/marketService';
 

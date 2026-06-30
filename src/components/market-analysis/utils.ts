@@ -1,4 +1,4 @@
-﻿import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
+import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency, normalizeDigits } from '@/lib/locale';
 import type { EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency, type MarketPriceUnit } from '@/lib/market/marketCurrency';

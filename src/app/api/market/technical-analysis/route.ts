@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';

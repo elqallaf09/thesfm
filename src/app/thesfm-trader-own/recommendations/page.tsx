@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
+import TraderOwnFrame from '../TraderOwnFrame';
 
 export const dynamic = 'force-dynamic';
 
-export default function TraderLegacyRecommendationsPage() {
-  redirect('/thesfm-trader-own/market-analysis/stocks');
+export default function TraderRecommendationsPage() {
+  return <TraderOwnFrame appRoute="recommendations" />;
 }

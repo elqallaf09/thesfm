@@ -1,4 +1,4 @@
-﻿import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
+import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';

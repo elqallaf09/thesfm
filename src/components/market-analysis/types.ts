@@ -1,4 +1,4 @@
-﻿import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
+import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem } from '@/lib/market/marketService';
 import type { EconomicImpact, NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
 
 export type MarketServiceState = 'checking' | 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
