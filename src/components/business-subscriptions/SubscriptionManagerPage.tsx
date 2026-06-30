@@ -114,7 +114,7 @@ type ReminderRuntimeEmailItem = {
   id: string;
   at: string;
   recipientType: 'customer' | 'subscriber' | null;
-  status: 'sent' | 'skipped' | 'failed';
+  status: 'sent' | 'skipped' | 'failed' | 'not_eligible';
   reason: string | null;
   message?: string | null;
   failureReason?: string | null;
@@ -146,6 +146,35 @@ type ReminderRuntimeEmailItem = {
   } | null;
 };
 
+type ReminderRunSummaryState = {
+  checkedCount: number;
+  eligibleCount: number;
+  sentCount: number;
+  skippedCount: number;
+  notEligibleCount: number;
+  alreadySentCount: number;
+  failedCount: number;
+  byRecipient?: {
+    sentCustomer: number;
+    sentSubscriber: number;
+    skippedCustomer: number;
+    skippedSubscriber: number;
+    failedCustomer: number;
+    failedSubscriber: number;
+  };
+  skipReasons: Array<{
+    reminderId: string | null;
+    reminderType: string | null;
+    customerName: string | null;
+    customerEmail: string | null;
+    subscriberEmail: string | null;
+    dueDate: string | null;
+    reasonCode: string | null;
+    reasonMessage: string | null;
+    recipient: string | null;
+  }>;
+};
+
 type ReminderRuntimeStatus = {
   smtp: {
     configured: boolean;
@@ -161,6 +190,8 @@ type ReminderRuntimeStatus = {
     email_sent_count: number;
     email_failed_count: number;
     message: string | null;
+    metadata?: Record<string, unknown> | null;
+    summary?: ReminderRunSummaryState | null;
   } | null;
   lastEmailSentAt: string | null;
   lastCustomerEmail: ReminderRuntimeEmailItem | null;
@@ -175,7 +206,7 @@ type ReminderRuntimeStatus = {
     customerEmail: string | null;
     subscriberEmail?: string | null;
     recipientType?: 'customer' | 'subscriber' | null;
-    status?: 'sent' | 'skipped' | 'failed';
+    status?: 'sent' | 'skipped' | 'failed' | 'not_eligible';
     failureReason?: string | null;
     validationStatus?: string | null;
     smtpCalled?: boolean;
@@ -292,6 +323,52 @@ const REMINDER_CONTROL_TEXT = {
   },
 } as const;
 
+function reminderControlCopy(locale: SubscriptionLang) {
+  const extra = {
+    ar: {
+      sendActualReminder: 'إرسال تذكير لهذا العميل',
+      sendingActualReminder: 'جاري إرسال التذكير...',
+      checkedCount: 'تم فحصها',
+      eligibleCount: 'مؤهلة',
+      sentCount: 'مرسلة',
+      skippedCount: 'متخطاة',
+      failedCount: 'فشلت',
+      notEligibleCount: 'غير مؤهلة',
+      skipReasons: 'أسباب التخطي',
+      notEligible: 'غير مؤهل حالياً',
+    },
+    en: {
+      sendActualReminder: 'Send Reminder To This Customer',
+      sendingActualReminder: 'Sending reminder...',
+      checkedCount: 'Checked',
+      eligibleCount: 'Eligible',
+      sentCount: 'Sent',
+      skippedCount: 'Skipped',
+      failedCount: 'Failed',
+      notEligibleCount: 'Not eligible',
+      skipReasons: 'Skip reasons',
+      notEligible: 'Not eligible now',
+    },
+    fr: {
+      sendActualReminder: 'Envoyer le rappel client',
+      sendingActualReminder: 'Envoi du rappel...',
+      checkedCount: 'Verifies',
+      eligibleCount: 'Eligibles',
+      sentCount: 'Envoyes',
+      skippedCount: 'Ignores',
+      failedCount: 'Echecs',
+      notEligibleCount: 'Non eligibles',
+      skipReasons: 'Raisons',
+      notEligible: 'Non eligible',
+    },
+  } as const;
+
+  return {
+    ...REMINDER_CONTROL_TEXT[locale],
+    ...extra[locale],
+  };
+}
+
 const subscriptionTypes: SubscriptionType[] = ['monthly', 'weekly', 'quarterly', 'semi_annual', 'yearly', 'custom'];
 const subscriptionStatuses: SubscriptionStatus[] = ['active', 'paused', 'cancelled', 'expired'];
 const colorTags = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -337,6 +414,19 @@ function formatDateTime(value: unknown, lang: SubscriptionLang = 'ar') {
   if (!Number.isFinite(date.getTime())) return REMINDER_CONTROL_TEXT[lang].unavailable;
   const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+function reminderRunSummaryText(summary: ReminderRunSummaryState | null | undefined, locale: SubscriptionLang) {
+  const copy = reminderControlCopy(locale);
+  if (!summary) return copy.checkComplete;
+  return [
+    `${copy.checkedCount}: ${summary.checkedCount}`,
+    `${copy.eligibleCount}: ${summary.eligibleCount}`,
+    `${copy.sentCount}: ${summary.sentCount}`,
+    `${copy.skippedCount}: ${summary.skippedCount}`,
+    `${copy.failedCount}: ${summary.failedCount}`,
+    `${copy.notEligibleCount}: ${summary.notEligibleCount}`,
+  ].join(' · ');
 }
 
 function isSafeUploadType(file: File) {
@@ -455,6 +545,7 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
   const [reminderStatus, setReminderStatus] = useState<ReminderRuntimeStatus | null>(null);
   const [reminderStatusLoading, setReminderStatusLoading] = useState(false);
   const [reminderCheckRunning, setReminderCheckRunning] = useState(false);
+  const [singleReminderSending, setSingleReminderSending] = useState<string | null>(null);
   const [testEmailSending, setTestEmailSending] = useState(false);
   const [assetUrlMap, setAssetUrlMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -535,9 +626,9 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
     try {
       const params = new URLSearchParams({ timezone: browserTimezone() });
       const response = await fetch(`/api/business/subscriptions/reminders?${params.toString()}`, { headers });
-      const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string } | null;
+      const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string; summary?: ReminderRunSummaryState | null } | null;
       if (!response.ok || !payload?.ok) throw new Error(payload?.message || payload?.code || 'reminder_check_failed');
-      setNotice(payload.message || REMINDER_CONTROL_TEXT[locale].checkComplete);
+      setNotice(reminderRunSummaryText(payload.summary, locale));
       await loadReminderStatus();
     } catch (err) {
       setError(dbErrorText(err) || text.saveFailed);
@@ -570,6 +661,31 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
       await loadReminderStatus();
     } finally {
       setTestEmailSending(false);
+    }
+  }, [authReminderHeaders, loadReminderStatus, locale, text.saveFailed]);
+
+  const sendActualReminder = useCallback(async (reminderId: string) => {
+    const headers = authReminderHeaders();
+    if (!headers || !reminderId) return;
+    setSingleReminderSending(reminderId);
+    setError('');
+    setNotice('');
+    try {
+      const params = new URLSearchParams({
+        timezone: browserTimezone(),
+        reminderId,
+        force: '1',
+      });
+      const response = await fetch(`/api/business/subscriptions/reminders?${params.toString()}`, { headers });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; code?: string; message?: string; summary?: ReminderRunSummaryState | null } | null;
+      if (!response.ok || !payload?.ok) throw new Error(payload?.message || payload?.code || 'reminder_send_failed');
+      setNotice(reminderRunSummaryText(payload.summary, locale));
+      await loadReminderStatus();
+    } catch (err) {
+      setError(dbErrorText(err) || text.saveFailed);
+      await loadReminderStatus();
+    } finally {
+      setSingleReminderSending(null);
     }
   }, [authReminderHeaders, loadReminderStatus, locale, text.saveFailed]);
 
@@ -1251,8 +1367,10 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
                 reminderStatus={reminderStatus}
                 reminderStatusLoading={reminderStatusLoading}
                 reminderCheckRunning={reminderCheckRunning}
+                singleReminderSending={singleReminderSending}
                 testEmailSending={testEmailSending}
                 onRunReminderCheck={runReminderCheckNow}
+                onSendActualReminder={sendActualReminder}
                 onSendTestEmail={sendTestEmail}
               />
             ) : null}
@@ -1266,8 +1384,10 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
                 reminderStatus={reminderStatus}
                 reminderStatusLoading={reminderStatusLoading}
                 reminderCheckRunning={reminderCheckRunning}
+                singleReminderSending={singleReminderSending}
                 testEmailSending={testEmailSending}
                 onRunReminderCheck={runReminderCheckNow}
+                onSendActualReminder={sendActualReminder}
                 onSendTestEmail={sendTestEmail}
               />
             ) : null}
@@ -1333,16 +1453,19 @@ type ClientsWorkspaceProps = {
   reminderStatus: ReminderRuntimeStatus | null;
   reminderStatusLoading: boolean;
   reminderCheckRunning: boolean;
+  singleReminderSending: string | null;
   testEmailSending: boolean;
   onRunReminderCheck: () => void;
+  onSendActualReminder: (reminderId: string) => void;
   onSendTestEmail: () => void;
 };
 
 function reminderEmailStatusText(status: ReminderRuntimeEmailItem['status'] | null | undefined, locale: SubscriptionLang) {
-  const copy = REMINDER_CONTROL_TEXT[locale];
+  const copy = reminderControlCopy(locale);
   if (status === 'sent') return copy.sent;
   if (status === 'skipped') return copy.skipped;
   if (status === 'failed') return copy.failed;
+  if (status === 'not_eligible') return copy.notEligible;
   return copy.unavailable;
 }
 
@@ -1360,7 +1483,7 @@ function ReminderRecipientCard({
   recipientType: 'customer' | 'subscriber';
   locale: SubscriptionLang;
 }) {
-  const copy = REMINDER_CONTROL_TEXT[locale];
+  const copy = reminderControlCopy(locale);
   const isCustomer = recipientType === 'customer';
   const failure = reminderEmailFailureText(item);
   return (
@@ -1436,12 +1559,22 @@ function ReminderStatusCard({
   reminderCheckRunning: boolean;
   testEmailSending: boolean;
 }) {
-  const copy = REMINDER_CONTROL_TEXT[locale];
+  const copy = reminderControlCopy(locale);
   const missing = status?.smtp.missing ?? [];
   const active = Boolean(status?.emailRemindersActive);
   const lastRunAt = status?.lastRun?.finished_at || null;
   const lastFailure = status?.lastEmailFailure;
   const lastRunMessage = status?.lastRun?.message?.trim() || null;
+  const summary = status?.lastRun?.summary ?? null;
+  const fallbackStatus: ReminderRuntimeEmailItem['status'] | null = status?.lastRun
+    ? summary?.notEligibleCount || status.lastRun.candidates_count === 0
+      ? 'not_eligible'
+      : summary?.skippedCount
+        ? 'skipped'
+        : null
+    : null;
+  const customerStatus = status?.lastCustomerEmail?.status ?? fallbackStatus;
+  const subscriberStatus = status?.lastSubscriberEmail?.status ?? fallbackStatus;
   const showRawDetails = process.env.NODE_ENV !== 'production' || Boolean(lastFailure?.smtp);
   return (
     <article className={`subscription-reminder-status ${active ? 'active' : 'warning'}`}>
@@ -1462,9 +1595,29 @@ function ReminderStatusCard({
       <div className="subscription-reminder-status-grid">
         <div><span>{copy.lastCheck}</span><strong>{formatDateTime(lastRunAt, locale)}</strong></div>
         <div><span>{copy.lastEmail}</span><strong>{formatDateTime(status?.lastEmailSentAt, locale)}</strong></div>
-        <div><span>{copy.customerSendStatus}</span><strong>{reminderEmailStatusText(status?.lastCustomerEmail?.status, locale)}</strong></div>
-        <div><span>{copy.subscriberSendStatus}</span><strong>{reminderEmailStatusText(status?.lastSubscriberEmail?.status, locale)}</strong></div>
+        <div><span>{copy.customerSendStatus}</span><strong>{reminderEmailStatusText(customerStatus, locale)}</strong></div>
+        <div><span>{copy.subscriberSendStatus}</span><strong>{reminderEmailStatusText(subscriberStatus, locale)}</strong></div>
       </div>
+      {summary ? (
+        <div className="subscription-reminder-status-grid">
+          <div><span>{copy.checkedCount}</span><strong>{summary.checkedCount}</strong></div>
+          <div><span>{copy.eligibleCount}</span><strong>{summary.eligibleCount}</strong></div>
+          <div><span>{copy.sentCount}</span><strong>{summary.sentCount}</strong></div>
+          <div><span>{copy.skippedCount}</span><strong>{summary.skippedCount}</strong></div>
+          <div><span>{copy.failedCount}</span><strong>{summary.failedCount}</strong></div>
+          <div><span>{copy.notEligibleCount}</span><strong>{summary.notEligibleCount}</strong></div>
+        </div>
+      ) : null}
+      {summary?.skipReasons?.length ? (
+        <div className="subscription-reminder-failure">
+          <span>{copy.skipReasons}</span>
+          {summary.skipReasons.slice(0, 4).map((item, index) => (
+            <strong key={`${item.reminderId ?? index}-${item.recipient ?? 'both'}`}>
+              {[item.customerName, item.reasonMessage || item.reasonCode, item.recipient].filter(Boolean).join(' · ')}
+            </strong>
+          ))}
+        </div>
+      ) : null}
       <div className="subscription-reminder-recipient-grid">
         <ReminderRecipientCard item={status?.lastCustomerEmail ?? null} recipientType="customer" locale={locale} />
         <ReminderRecipientCard item={status?.lastSubscriberEmail ?? null} recipientType="subscriber" locale={locale} />
@@ -1535,8 +1688,10 @@ function ClientsWorkspace(props: ClientsWorkspaceProps) {
     reminderStatus,
     reminderStatusLoading,
     reminderCheckRunning,
+    singleReminderSending,
     testEmailSending,
     onRunReminderCheck,
+    onSendActualReminder,
     onSendTestEmail,
   } = props;
   const hasFilters = Boolean(query || statusFilter !== 'all' || typeFilter !== 'all' || periodFilter !== 'all');
@@ -1623,6 +1778,17 @@ function ClientsWorkspace(props: ClientsWorkspaceProps) {
         />
         {buildReminderCandidates(allBundles).slice(0, 5).map(candidate => (
           <article key={candidate.dedupeKey} className="subscription-reminder-mini">
+            <button
+              className="subscription-secondary-btn compact"
+              type="button"
+              onClick={() => onSendActualReminder(candidate.dedupeKey)}
+              disabled={singleReminderSending === candidate.dedupeKey}
+            >
+              {singleReminderSending === candidate.dedupeKey ? <Loader2 className="spin" size={14} /> : <Mail size={14} />}
+              {singleReminderSending === candidate.dedupeKey
+                ? reminderControlCopy(locale).sendingActualReminder
+                : reminderControlCopy(locale).sendActualReminder}
+            </button>
             <strong>{candidate.client.full_name}</strong>
             <span>{reminderLabel(candidate.reminderType, locale)} · {formatMoney(reminderCandidateAmount(candidate), reminderCandidateCurrency(candidate, defaultCurrency), locale)}</span>
           </article>
@@ -1913,8 +2079,10 @@ function NotificationCenter({
   reminderStatus,
   reminderStatusLoading,
   reminderCheckRunning,
+  singleReminderSending,
   testEmailSending,
   onRunReminderCheck,
+  onSendActualReminder,
   onSendTestEmail,
 }: {
   candidates: ReturnType<typeof buildReminderCandidates>;
@@ -1924,10 +2092,13 @@ function NotificationCenter({
   reminderStatus: ReminderRuntimeStatus | null;
   reminderStatusLoading: boolean;
   reminderCheckRunning: boolean;
+  singleReminderSending: string | null;
   testEmailSending: boolean;
   onRunReminderCheck: () => void;
+  onSendActualReminder: (reminderId: string) => void;
   onSendTestEmail: () => void;
 }) {
+  const reminderCopy = reminderControlCopy(locale);
   return (
     <section className="subscription-notification-grid">
       <InfoPanel title={text.notifications} icon={<Bell size={18} />}>
@@ -1943,6 +2114,17 @@ function NotificationCenter({
         <div className="subscription-notification-list">
           {candidates.map(candidate => (
             <article key={candidate.dedupeKey}>
+              <button
+                className="subscription-secondary-btn compact"
+                type="button"
+                onClick={() => onSendActualReminder(candidate.dedupeKey)}
+                disabled={singleReminderSending === candidate.dedupeKey}
+              >
+                {singleReminderSending === candidate.dedupeKey ? <Loader2 className="spin" size={14} /> : <Mail size={14} />}
+                {singleReminderSending === candidate.dedupeKey
+                  ? reminderCopy.sendingActualReminder
+                  : reminderCopy.sendActualReminder}
+              </button>
               <strong>{candidate.client.full_name}</strong>
               <span>{reminderLabel(candidate.reminderType, locale)} · {formatDate(candidate.dueDate, locale)}</span>
             </article>
@@ -2583,6 +2765,21 @@ const subscriptionManagerStyles = `
     font-size: 0.88rem;
     font-weight: 950;
     overflow-wrap: anywhere;
+  }
+
+  .subscription-reminder-mini,
+  .subscription-notification-list article {
+    display: grid;
+    gap: 8px;
+  }
+
+  .subscription-reminder-mini button,
+  .subscription-notification-list article button {
+    justify-self: start;
+    min-height: 36px;
+    width: max-content;
+    max-width: 100%;
+    white-space: normal;
   }
 
   .subscription-card-details {

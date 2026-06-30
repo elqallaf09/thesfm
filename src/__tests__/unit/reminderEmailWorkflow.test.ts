@@ -172,6 +172,7 @@ function createFakeDb(options: {
   customerEmail?: string | null;
   subscriberEmail?: string | null;
   includeCustomer?: boolean;
+  existingNotifications?: Array<Record<string, any>>;
 } = {}) {
   const includeCustomer = options.includeCustomer ?? true;
   const rows: FakeRows = {
@@ -182,7 +183,7 @@ function createFakeDb(options: {
     client_notes: [],
     client_files: [],
     activity_logs: [],
-    subscription_notifications: [],
+    subscription_notifications: options.existingNotifications ?? [],
     notifications: [],
     subscription_reminder_runs: [],
     profiles: [{
@@ -217,12 +218,17 @@ function createFakeDb(options: {
   };
 }
 
-async function runReminderCheck(options: Parameters<typeof createFakeDb>[0] = {}) {
-  const fake = createFakeDb(options);
+async function runReminderCheck(options: Parameters<typeof createFakeDb>[0] & {
+  date?: string;
+  reminderId?: string;
+  force?: boolean;
+} = {}) {
+  const { date = '2026-06-25', reminderId, force, ...dbOptions } = options;
+  const fake = createFakeDb(dbOptions);
   vi.mocked(createServerSupabaseAdmin).mockReturnValue(fake.db as any);
   vi.mocked(getUserFromBearerToken).mockResolvedValue({
     id: userId,
-    email: options.subscriberEmail === undefined ? 'owner@example.com' : options.subscriberEmail,
+    email: dbOptions.subscriberEmail === undefined ? 'owner@example.com' : dbOptions.subscriberEmail,
   } as any);
   vi.mocked(sendSmtpMail).mockImplementation(async input => {
     const to = Array.isArray(input.to) ? input.to : [input.to];
@@ -235,7 +241,10 @@ async function runReminderCheck(options: Parameters<typeof createFakeDb>[0] = {}
     };
   });
 
-  const response = await GET(new NextRequest('https://the-sfm.com/api/business/subscriptions/reminders?date=2026-06-25', {
+  const params = new URLSearchParams({ date });
+  if (reminderId) params.set('reminderId', reminderId);
+  if (force) params.set('force', '1');
+  const response = await GET(new NextRequest(`https://the-sfm.com/api/business/subscriptions/reminders?${params.toString()}`, {
     headers: { authorization: 'Bearer token' },
   }));
 
@@ -279,6 +288,13 @@ describe('subscription reminder email workflow', () => {
       expect.objectContaining({ channel: 'email', recipientType: 'customer', customerEmailStatus: 'sent' }),
       expect.objectContaining({ channel: 'email', recipientType: 'subscriber', subscriberEmailStatus: 'sent' }),
     ]));
+    expect(body.summary).toMatchObject({
+      checkedCount: 1,
+      eligibleCount: 1,
+      sentCount: 2,
+      skippedCount: 0,
+      failedCount: 0,
+    });
   });
 
   it('skips a missing customer email and still sends the subscriber warning email', async () => {
@@ -384,6 +400,82 @@ describe('subscription reminder email workflow', () => {
       candidates: 0,
       processed: 0,
     });
+  });
+
+  it('skips both reminder emails when this reminder was already sent', async () => {
+    const reminderId = 'subscription:subscription-a:reminder_1_day:2026-06-25';
+    const existingNotifications = [
+      {
+        id: 'email-customer',
+        user_id: userId,
+        client_id: clientId,
+        subscription_id: 'subscription-a',
+        payment_id: null,
+        channel: 'email',
+        reminder_type: 'reminder_1_day',
+        scheduled_for: '2026-06-25T00:00:00.000Z',
+        sent_at: '2026-06-25T00:01:00.000Z',
+        status: 'sent',
+        dedupe_key: `${reminderId}:email:customer`,
+        metadata: { recipient_type: 'customer' },
+        created_at: '2026-06-25T00:00:00.000Z',
+      },
+      {
+        id: 'email-subscriber',
+        user_id: userId,
+        client_id: clientId,
+        subscription_id: 'subscription-a',
+        payment_id: null,
+        channel: 'email',
+        reminder_type: 'reminder_1_day',
+        scheduled_for: '2026-06-25T00:00:00.000Z',
+        sent_at: '2026-06-25T00:02:00.000Z',
+        status: 'sent',
+        dedupe_key: `${reminderId}:email:subscriber`,
+        metadata: { recipient_type: 'subscriber' },
+        created_at: '2026-06-25T00:00:00.000Z',
+      },
+    ];
+
+    const { body } = await runReminderCheck({
+      customerEmail: 'customer@example.com',
+      subscriberEmail: 'owner@example.com',
+      existingNotifications,
+    });
+
+    expect(sendSmtpMail).not.toHaveBeenCalled();
+    expect(body.summary).toMatchObject({
+      alreadySentCount: 2,
+      skippedCount: 2,
+      sentCount: 0,
+    });
+    expect(body.summary.skipReasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reasonCode: 'REMINDER_ALREADY_SENT', recipient: 'customer' }),
+      expect.objectContaining({ reasonCode: 'REMINDER_ALREADY_SENT', recipient: 'subscriber' }),
+    ]));
+  });
+
+  it('reports a not eligible reason when the due date is outside the reminder window', async () => {
+    const { body } = await runReminderCheck({
+      customerEmail: 'customer@example.com',
+      subscriberEmail: 'owner@example.com',
+      date: '2026-06-20',
+    });
+
+    expect(sendSmtpMail).not.toHaveBeenCalled();
+    expect(body).toMatchObject({
+      ok: true,
+      candidates: 0,
+    });
+    expect(body.summary).toMatchObject({
+      checkedCount: 1,
+      eligibleCount: 0,
+      notEligibleCount: 1,
+      skippedCount: 1,
+    });
+    expect(body.summary.skipReasons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reasonCode: 'REMINDER_NOT_ELIGIBLE' }),
+    ]));
   });
 
   it('treats a deleted or missing customer email as an app-level validation failure', () => {
