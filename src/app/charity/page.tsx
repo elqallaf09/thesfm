@@ -2,12 +2,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { CalendarDays, HandHeart, ListChecks } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { financialCurrencyLabel, formatFinancialCurrency, formatFinancialNumber } from '@/lib/financialDisplay';
 import { normalizeDigits } from '@/lib/locale';
 import { MONTHS } from '@/lib/translations';
 
@@ -89,7 +92,9 @@ export default function CharityPage() {
 
   const monthOptions = useMemo(() => buildMonthOptions(lang), [lang]);
   const selectedMonthLabel = labelFromYM(month, lang);
-  const currencyLabel = t('charity.currency');
+  const currencyLabel = financialCurrencyLabel('KWD', lang);
+  const money = useCallback((value: unknown) => formatFinancialCurrency(value, 'KWD', lang), [lang]);
+  const number = useCallback((value: unknown) => formatFinancialNumber(value, lang, { maximumFractionDigits: 0 }), [lang]);
   const zakatShortcut = lang === 'ar'
     ? { title: 'الزكاة', button: 'فتح صفحة الزكاة' }
     : lang === 'fr'
@@ -172,7 +177,7 @@ export default function CharityPage() {
       if (error) {
         setMsg({ type: 'err', text: `${t('charity.saveError')}: ${error.message}` });
       } else {
-        setMsg({ type: 'ok', text: t('charity.saveSuccess').replace('{amount}', amt.toFixed(3)).replace('{currency}', currencyLabel).replace('{month}', selectedMonthLabel) });
+        setMsg({ type: 'ok', text: t('charity.saveSuccess').replace('{amount}', formatFinancialNumber(amt, lang, { minimumFractionDigits: 3, maximumFractionDigits: 3 })).replace('{currency}', currencyLabel).replace('{month}', selectedMonthLabel) });
         setAmount(''); setName('');
         await load();
       }
@@ -223,7 +228,7 @@ export default function CharityPage() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         .cp { font-family: 'Tajawal', sans-serif; background: var(--sfm-light-card); min-height: 100vh; color: var(--sfm-foreground); display: flex; overflow-x: hidden; }
         .charity-content { width: 100%; max-width: none; margin: 0; min-width: 0; }
-        .g2 > *, .kpi-g > *, .cc { min-width: 0; }
+        .g2 > *, .charity-kpi-grid > *, .cc { min-width: 0; }
         .cp ::-webkit-scrollbar { width: 4px; }
         .cp ::-webkit-scrollbar-thumb { background: rgba(167,243,240,.3); border-radius: 10px; }
         .cc { background: var(--sfm-card); border: 1px solid rgba(167,243,240,.14); border-radius: 22px; box-shadow: 0 4px 22px rgba(3,18,37,.06); transition: all .25s cubic-bezier(.4,0,.2,1); }
@@ -239,6 +244,11 @@ export default function CharityPage() {
         .save-btn:disabled { opacity: .55; cursor: not-allowed; }
         .save-btn span { position: relative; z-index: 1; }
         .row-hover:hover { background: rgba(167,243,240,.04) !important; }
+        .charity-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 16px; align-items: stretch; margin: 4px 0 24px; }
+        .charity-kpi-card { min-height: 128px; padding: 18px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; gap: 8px 13px; border-radius: 18px; }
+        .charity-kpi-icon { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex: 0 0 auto; }
+        .charity-kpi-label { color: var(--sfm-muted); font-size: 12.5px; font-weight: 900; line-height: 1.45; }
+        .charity-kpi-value { align-self: end; color: var(--sfm-primary-dark); font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: clamp(20px, 1.55vw, 25px); font-weight: 950; line-height: 1.2; unicode-bidi: isolate; }
         .charity-projects-shortcut { margin: -6px 0 22px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: radial-gradient(circle at 12% 15%, rgba(167,243,240,.18), transparent 30%), linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 62%,var(--sfm-card-dark) 145%); border: 1px solid rgba(167,243,240,.24); border-radius: 22px; box-shadow: 0 12px 34px rgba(3,18,37,.14); color: var(--sfm-card); overflow: hidden; }
         .charity-projects-shortcut-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(167,243,240,.16); border: 1px solid rgba(167,243,240,.22); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
         .charity-projects-shortcut-copy { display: flex; align-items: center; gap: 14px; min-width: 0; }
@@ -246,9 +256,9 @@ export default function CharityPage() {
         .charity-projects-shortcut p { margin: 5px 0 0; color: rgba(248,251,255,.68); font-size: 13px; line-height: 1.75; max-width: 760px; }
         .charity-projects-shortcut-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
         .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: 14px; background: linear-gradient(135deg,var(--sfm-soft-cyan),var(--sfm-soft-cyan)); color: var(--sfm-foreground); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(167,243,240,.22); }
-        @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .kpi-g { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .charity-kpi-grid { grid-template-columns: 1fr 1fr !important; } }
         @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut-actions { display: grid; } .charity-projects-shortcut button { width: 100%; } }
-        @media (max-width: 560px) { .kpi-g { grid-template-columns: 1fr !important; } }
+        @media (max-width: 560px) { .charity-kpi-grid { grid-template-columns: 1fr !important; } .charity-kpi-card { min-height: 116px; } }
       `}</style>
 
       <div className="cp" dir={dir}>
@@ -273,21 +283,21 @@ export default function CharityPage() {
           </div>
 
           {/* ─── KPI row ─── */}
-          <div className="kpi-g" style={{ ...S(40), display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '22px' }}>
+          <div className="charity-kpi-grid" style={S(40)}>
             {[
-              { icon: '🤲', label: t('charity.monthTotal').replace('{month}', selectedMonthLabel), val: monthTotal, color: 'var(--sfm-soft-cyan)' },
-              { icon: '📅', label: t('charity.yearTotal'), val: allTotal, color: '#22C55E' },
-              { icon: '📋', label: t('charity.donationCount'), val: records.length, unit: '', color: '#3B82F6', isCount: true },
+              { icon: HandHeart, label: t('charity.monthTotal').replace('{month}', selectedMonthLabel), value: money(monthTotal), color: 'var(--sfm-soft-cyan)' },
+              { icon: CalendarDays, label: t('charity.yearTotal'), value: money(allTotal), color: '#22C55E' },
+              { icon: ListChecks, label: t('charity.donationCount'), value: number(records.length), color: '#3B82F6' },
             ].map((k, i) => (
-              <div key={i} className="cc no-h" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '44px', height: '44px', background: `${k.color}14`, borderRadius: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{k.icon}</div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
-                  <div style={{ fontSize: '22px', fontWeight: '900', color: k.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>
-                    {(k as any).isCount ? k.val : k.val.toFixed(3)}
-                    {!(k as any).isCount && <span style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginInlineStart: '4px', fontWeight: '500' }}> {currencyLabel}</span>}
-                  </div>
+              <div key={i} className="cc no-h charity-kpi-card">
+                <div className="charity-kpi-icon" style={{ background: `${k.color}14`, color: k.color }}>
+                  {(() => {
+                    const Icon = k.icon as LucideIcon;
+                    return <Icon size={20} strokeWidth={2.4} />;
+                  })()}
                 </div>
+                <div className="charity-kpi-label">{k.label}</div>
+                <div className="charity-kpi-value" dir="ltr">{k.value}</div>
               </div>
             ))}
           </div>
@@ -426,9 +436,8 @@ export default function CharityPage() {
                             </div>
                           </td>
                           <td style={{ padding: '12px 10px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>
-                              {r.amount.toFixed(3)}
-                              <span style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginInlineStart: '4px' }}>{currencyLabel}</span>
+                            <span dir="ltr" style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
+                              {money(r.amount)}
                             </span>
                           </td>
                           <td style={{ padding: '12px 10px', fontSize: '12px', color: 'var(--sfm-muted)' }}>{labelFromYM(r.month, lang)}</td>
@@ -446,8 +455,8 @@ export default function CharityPage() {
                       <tr style={{ borderTop: '2px solid rgba(167,243,240,.12)' }}>
                         <td colSpan={1} style={{ padding: '12px 10px', fontSize: '13.5px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{t('charity.total')}</td>
                         <td style={{ padding: '12px 10px' }}>
-                          <span style={{ fontSize: '16px', fontWeight: '900', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>
-                            {monthTotal.toFixed(3)} <span style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{currencyLabel}</span>
+                          <span dir="ltr" style={{ fontSize: '16px', fontWeight: '900', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
+                            {money(monthTotal)}
                           </span>
                         </td>
                         <td colSpan={2} />
@@ -475,8 +484,8 @@ export default function CharityPage() {
                             <span style={{ fontSize: '13.5px', fontWeight: '600', color: 'var(--sfm-muted)', cursor: 'pointer' }}
                               onClick={() => setMonth(ym)}>{labelFromYM(ym, lang)}</span>
                           </div>
-                          <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>
-                            {total.toFixed(3)} <span style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{currencyLabel}</span>
+                          <span dir="ltr" style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
+                            {money(total)}
                           </span>
                         </div>
                       ));
@@ -499,8 +508,8 @@ export default function CharityPage() {
                     <span style={{ fontSize: '9px', color: 'rgba(167,243,240,.5)' }}>%</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--sfm-card)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", marginBottom: '6px' }}>
-                  {monthTotal.toFixed(3)} <span style={{ fontSize: '14px', color: 'rgba(167,243,240,.7)' }}>{currencyLabel}</span>
+                <div dir="ltr" style={{ fontSize: '22px', fontWeight: '900', color: 'var(--sfm-card)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", marginBottom: '6px', unicodeBidi: 'isolate' }}>
+                  {money(monthTotal)}
                 </div>
                 <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>{selectedMonthLabel}</div>
               </div>
