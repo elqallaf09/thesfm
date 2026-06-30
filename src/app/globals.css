@@ -72,9 +72,14 @@
 
 @media (max-width: 640px) {
   .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport {
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: hidden;
-    touch-action: pan-x;
+    scrollbar-width: none !important;
+    touch-action: pan-y;
+  }
+
+  .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport::-webkit-scrollbar {
+    display: none !important;
   }
 }
 
@@ -82,12 +87,11 @@
   .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: thin;
+    scrollbar-width: none !important;
   }
 
   .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport::-webkit-scrollbar {
-    display: block;
-    height: 8px;
+    display: none !important;
   }
 
   .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport > .market-ticker-track {
@@ -97,11 +101,11 @@
   }
 
   .market-ticker-strip[data-market-ticker="true"] .market-ticker-set[aria-hidden="true"] {
-    display: none;
+    display: none !important;
   }
 
   .market-ticker-strip[data-market-ticker="true"] .market-ticker-set > [aria-hidden="true"] {
-    display: none;
+    display: none !important;
   }
 }
 

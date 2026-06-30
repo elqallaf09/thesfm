@@ -6,10 +6,14 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 
 type TickerDirection = 'ltr' | 'rtl';
+type TickerAssetType = 'stock' | 'etf' | 'crypto';
 
 export type StockTickerStripItem = {
   symbol: string;
   name?: string | null;
+  assetType?: TickerAssetType;
+  imageUrl?: string | null;
+  logoUrl?: string | null;
   price?: number | null;
   currency?: string | null;
   changePercent?: number | null;
@@ -101,6 +105,9 @@ function normalizeItem(item: StockTickerStripItem) {
     ...item,
     symbol,
     name: String(item.name ?? symbol).trim() || symbol,
+    assetType: item.assetType ?? 'stock',
+    imageUrl: item.imageUrl ?? null,
+    logoUrl: item.logoUrl ?? null,
     currency: inferTickerCurrency(symbol, item.currency),
     source: String(item.source ?? '').trim(),
   };
@@ -161,7 +168,9 @@ export function StockTickerStrip({
                 variant="badge"
                 symbol={item.symbol}
                 name={item.name}
-                assetType="stock"
+                assetType={item.assetType}
+                imageUrl={item.imageUrl}
+                logoUrl={item.logoUrl}
                 size="sm"
                 showName={false}
                 className="sfm-stock-ticker-logo"

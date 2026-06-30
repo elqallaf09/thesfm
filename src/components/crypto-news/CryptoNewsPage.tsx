@@ -26,6 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { StockTickerStrip, type StockTickerStripItem } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
@@ -34,6 +35,19 @@ import type { CryptoMarketCoin, CryptoMarketPayload } from '@/lib/market/fetchCr
 type LangCode = 'ar' | 'en' | 'fr';
 type ApiResponse = CryptoNewsPayload | { success: false; error?: string; code?: string };
 type CryptoMarketApiResponse = CryptoMarketPayload | { ok: false; code?: string; message?: string };
+type CryptoTickerResponse = {
+  ok: boolean;
+  code?: string;
+  source: string;
+  updatedAt?: string | null;
+  updated_at?: string | null;
+  available_count?: number;
+  items: CryptoTickerItem[];
+};
+type CryptoTickerItem = StockTickerStripItem & {
+  providerSymbol?: string | null;
+  assetType: 'crypto';
+};
 type CategoryFilter = 'all' | CryptoNewsCategory;
 type AssetFilter = 'all' | CryptoNewsSymbol;
 type TimeFilter = 'all' | 'hour' | 'day' | 'week' | 'month';
@@ -46,6 +60,18 @@ const CATEGORY_ORDER: CategoryFilter[] = ['all', 'bitcoin', 'ethereum', 'altcoin
 const ASSET_ORDER: AssetFilter[] = ['all', 'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE'];
 const TIME_FILTERS: TimeFilter[] = ['all', 'hour', 'day', 'week', 'month'];
 const SORT_FILTERS: SortFilter[] = ['latest', 'oldest', 'relevance'];
+const CRYPTO_TICKER_FALLBACK_ITEMS: CryptoTickerItem[] = [
+  { symbol: 'BTC-USD', name: 'Bitcoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'ETH-USD', name: 'Ethereum', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'BNB-USD', name: 'BNB', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'SOL-USD', name: 'Solana', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'XRP-USD', name: 'XRP', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'ADA-USD', name: 'Cardano', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'AVAX-USD', name: 'Avalanche', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'DOGE-USD', name: 'Dogecoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'DOT-USD', name: 'Polkadot', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+  { symbol: 'LTC-USD', name: 'Litecoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
+];
 
 const SYMBOL_TO_MARKET_SYMBOL: Record<CryptoNewsSymbol, string> = {
   BTC: 'BTCUSD',
@@ -510,6 +536,9 @@ export function CryptoNewsPage() {
   const [marketData, setMarketData] = useState<CryptoMarketPayload | null>(null);
   const [marketLoading, setMarketLoading] = useState(true);
   const [marketError, setMarketError] = useState('');
+  const [cryptoTicker, setCryptoTicker] = useState<CryptoTickerResponse | null>(null);
+  const [cryptoTickerLoading, setCryptoTickerLoading] = useState(true);
+  const [cryptoTickerError, setCryptoTickerError] = useState('');
   const [query, setQuery] = useState('');
   const [assetFilter, setAssetFilter] = useState<AssetFilter>('all');
   const [category, setCategory] = useState<CategoryFilter>('all');
@@ -569,6 +598,30 @@ export function CryptoNewsPage() {
     }
   }, [text.marketError]);
 
+  const loadCryptoTicker = useCallback(async (showLoader = true) => {
+    if (showLoader) setCryptoTickerLoading(true);
+    setCryptoTickerError('');
+    try {
+      const response = await fetch('/api/market/tickers/crypto');
+      const json = await response.json().catch(() => ({})) as CryptoTickerResponse;
+      if (!response.ok || !Array.isArray(json.items)) throw new Error((json as { message?: string }).message || text.marketError);
+      setCryptoTicker(json);
+    } catch {
+      setCryptoTickerError(text.marketError);
+      if (showLoader) {
+        setCryptoTicker({
+          ok: true,
+          code: 'CLIENT_CRYPTO_TICKER_FALLBACK',
+          source: 'CoinGecko',
+          updatedAt: null,
+          items: CRYPTO_TICKER_FALLBACK_ITEMS,
+        });
+      }
+    } finally {
+      if (showLoader) setCryptoTickerLoading(false);
+    }
+  }, [text.marketError]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -578,12 +631,17 @@ export function CryptoNewsPage() {
   }, [loadMarket]);
 
   useEffect(() => {
+    void loadCryptoTicker();
+  }, [loadCryptoTicker]);
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       void load(false);
       void loadMarket(false);
+      void loadCryptoTicker(false);
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [load, loadMarket]);
+  }, [load, loadMarket, loadCryptoTicker]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -697,10 +755,11 @@ export function CryptoNewsPage() {
     if (refreshing) return;
     void load(false);
     void loadMarket(false);
+    void loadCryptoTicker(false);
   };
 
   const serviceConnected = !error && !marketError;
-  const lastUpdateText = relativeUpdate(lastUpdated || marketData?.updatedAt || '', activeLang, locale, text.notUpdated);
+  const lastUpdateText = relativeUpdate(lastUpdated || marketData?.updatedAt || cryptoTicker?.updatedAt || '', activeLang, locale, text.notUpdated);
   const shownCount = featuredItems.length + visibleFeedItems.length;
 
   return (
@@ -723,6 +782,15 @@ export function CryptoNewsPage() {
             {refreshing ? text.refreshing : text.refresh}
           </button>
         </header>
+
+        <CryptoTickerPanel
+          response={cryptoTicker}
+          loading={cryptoTickerLoading}
+          error={cryptoTickerError}
+          lang={activeLang}
+          text={text}
+          locale={locale}
+        />
 
         <CryptoMarketSnapshot
           data={marketData}
@@ -876,13 +944,13 @@ export function CryptoNewsPage() {
           margin-inline-start:calc(var(--sidebar-w,230px) + 32px);
           margin-inline-end:32px;
         }
-        .crypto-hero,.crypto-panel,.crypto-featured,.crypto-movers,.crypto-filter-panel,.crypto-results-bar,.crypto-news-card,.crypto-compact-row,.crypto-side-card,.crypto-disclaimer,.crypto-state{
+        .crypto-hero,.crypto-ticker-panel,.crypto-panel,.crypto-featured,.crypto-movers,.crypto-filter-panel,.crypto-results-bar,.crypto-news-card,.crypto-compact-row,.crypto-side-card,.crypto-disclaimer,.crypto-state{
           border:1px solid var(--crypto-border);
           background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,252,255,.94));
           border-radius:22px;
           box-shadow:var(--crypto-shadow);
         }
-        .dark .crypto-hero,.dark .crypto-panel,.dark .crypto-featured,.dark .crypto-movers,.dark .crypto-filter-panel,.dark .crypto-results-bar,.dark .crypto-news-card,.dark .crypto-compact-row,.dark .crypto-side-card,.dark .crypto-disclaimer,.dark .crypto-state{
+        .dark .crypto-hero,.dark .crypto-ticker-panel,.dark .crypto-panel,.dark .crypto-featured,.dark .crypto-movers,.dark .crypto-filter-panel,.dark .crypto-results-bar,.dark .crypto-news-card,.dark .crypto-compact-row,.dark .crypto-side-card,.dark .crypto-disclaimer,.dark .crypto-state{
           background:linear-gradient(180deg,rgba(15,29,49,.94),rgba(11,24,41,.94));
         }
         .crypto-hero{
@@ -938,6 +1006,13 @@ export function CryptoNewsPage() {
         @keyframes cryptoSpin{to{transform:rotate(360deg)}}
 
         .crypto-snapshot-grid{display:grid;grid-template-columns:1.25fr repeat(3,minmax(0,1fr));gap:14px}
+        .crypto-ticker-panel{padding:14px;display:grid;gap:12px;overflow:hidden}
+        .crypto-ticker-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+        .crypto-ticker-head h2{margin:0;color:var(--crypto-text);font-size:22px;font-weight:950}
+        .crypto-ticker-head p{margin:5px 0 0;color:var(--crypto-muted);font-size:13px;font-weight:850;line-height:1.65}
+        .crypto-ticker-status{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(14,165,233,.18);border-radius:999px;background:#E0F2FE;color:#075985;padding:6px 10px;font-size:12px;font-weight:950}
+        .crypto-ticker-status.warn{border-color:rgba(245,158,11,.24);background:#FEF3C7;color:#92400E}
+        .crypto-ticker-strip{background:transparent;border:0;padding:0;box-shadow:none}
         .crypto-panel{padding:18px}
         .crypto-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
         .crypto-section-head h2{margin:0;color:var(--crypto-text);font-size:22px;font-weight:950}
@@ -1105,6 +1180,68 @@ function MarketValueCard({ label, value, hint, tone }: { label: string; value: s
       <strong dir="ltr">{value}</strong>
       {hint ? <em>{hint}</em> : null}
     </article>
+  );
+}
+
+function cryptoTickerTitle(lang: LangCode) {
+  if (lang === 'en') return 'Crypto';
+  if (lang === 'fr') return 'Crypto';
+  return 'العملات الرقمية';
+}
+
+function cryptoTickerSubtitle(lang: LangCode) {
+  if (lang === 'en') return 'Dedicated live strip for major USD crypto pairs.';
+  if (lang === 'fr') return 'Bandeau dédié des principales paires crypto en USD.';
+  return 'شريط مخصص لأهم أزواج العملات الرقمية مقابل الدولار.';
+}
+
+function CryptoTickerPanel({
+  response,
+  loading,
+  error,
+  lang,
+  text,
+  locale,
+}: {
+  response: CryptoTickerResponse | null;
+  loading: boolean;
+  error: string;
+  lang: LangCode;
+  text: typeof COPY[LangCode];
+  locale: string;
+}) {
+  const items = response?.items?.length ? response.items : CRYPTO_TICKER_FALLBACK_ITEMS;
+  const degraded = Boolean(error || response?.code);
+
+  return (
+    <section className="crypto-ticker-panel" aria-label={cryptoTickerTitle(lang)}>
+      <div className="crypto-ticker-head">
+        <div>
+          <h2>{cryptoTickerTitle(lang)}</h2>
+          <p>{cryptoTickerSubtitle(lang)}</p>
+        </div>
+        <span className={`crypto-ticker-status ${degraded ? 'warn' : ''}`}>
+          <Signal size={14} />
+          {loading ? text.refreshing : degraded ? text.unavailable : `${text.delayed} · ${response?.source ?? 'CoinGecko'}`}
+        </span>
+      </div>
+      <StockTickerStrip
+        ariaLabel={cryptoTickerTitle(lang)}
+        items={items.map(item => ({
+          ...item,
+          symbol: item.symbol,
+          assetType: 'crypto',
+          available: item.available ?? item.price !== null,
+        }))}
+        locale={locale}
+        unavailableLabel={text.unavailable}
+        sourceLabel={text.source}
+        direction="ltr"
+        durationSeconds={42}
+        minimumItems={10}
+        className="crypto-ticker-strip"
+      />
+    </section>
   );
 }
 

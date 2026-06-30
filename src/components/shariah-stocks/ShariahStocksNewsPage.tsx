@@ -820,7 +820,7 @@ export function ShariahStocksNewsPage() {
     setCoreError('');
     try {
       const [tickerRaw, screeningRaw] = await Promise.all([
-        fetch('/api/sharia-stocks/ticker', { cache: 'no-store' }),
+        fetch('/api/market/tickers/shariah', { cache: 'no-store' }),
         fetch('/api/sharia-stocks/screening', { cache: 'no-store' }),
       ]);
       const tickerJson = (await tickerRaw.json()) as ShariahTickerResponse;
@@ -1157,7 +1157,7 @@ export function ShariahStocksNewsPage() {
                   changePercent: item.changePercent,
                   source: item.source,
                   available: item.available ?? (item.price !== null),
-                  meta: statusLabel(item.shariahStatus, locale),
+                  meta: shariaTickerStatusLabel(item.shariahStatus, locale),
                 }))}
                 locale={locale}
                 unavailableLabel={unavailableLabel}
@@ -2004,6 +2004,25 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
 
 function StatusBadge({ status, label }: { status: ShariahScreeningStatus; label: string }) {
   return <span className={`${styles.statusBadge} ${statusClass(status)}`}>{label}</span>;
+}
+
+function shariaTickerStatusLabel(status: ShariahScreeningStatus, locale: LangCode) {
+  if (locale === 'ar') {
+    if (status === 'compliant') return 'متوافق مع المنهجية';
+    if (status === 'review') return 'يحتاج مراجعة';
+    if (status === 'non_compliant') return 'غير متوافق مع المنهجية';
+    return 'غير مصنف';
+  }
+  if (locale === 'fr') {
+    if (status === 'compliant') return 'Aligné avec la méthodologie';
+    if (status === 'review') return 'À réviser';
+    if (status === 'non_compliant') return 'Non aligné';
+    return 'Non classé';
+  }
+  if (status === 'compliant') return 'Aligned with methodology';
+  if (status === 'review') return 'Needs review';
+  if (status === 'non_compliant') return 'Not aligned';
+  return 'Unclassified';
 }
 
 function DataQualityBadge({ value, stale, c, locale }: { value: DataCompleteness; stale: boolean; c: typeof COPY[LangCode]; locale: LangCode }) {

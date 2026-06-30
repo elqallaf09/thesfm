@@ -1,5 +1,3 @@
-import { type TechStockPrice } from '@/lib/market/fetchStockPrices';
-
 /**
  * Shared, reusable ticker logic for every market/category ticker route.
  *
@@ -12,9 +10,19 @@ import { type TechStockPrice } from '@/lib/market/fetchStockPrices';
 
 export const TICKER_FALLBACK_SOURCE = 'Finnhub/Yahoo Finance fallback';
 
+export type ResilientTickerPrice = {
+  price: number | null;
+  changePercent: number | null;
+  change: number | null;
+  source: string;
+  delayed?: boolean;
+  available: boolean;
+  unavailableReason?: string;
+};
+
 export function isUsableMarketPrice(
-  price: TechStockPrice | undefined,
-): price is TechStockPrice & { price: number } {
+  price: ResilientTickerPrice | undefined,
+): price is ResilientTickerPrice & { price: number } {
   return Boolean(
     price?.available &&
       price.price !== null &&
@@ -44,7 +52,7 @@ export type ResilientTickerItem = {
  */
 export function toResilientTickerItem(
   stock: { symbol: string; name: string },
-  price: TechStockPrice | undefined,
+  price: ResilientTickerPrice | undefined,
   options: { currency?: string; fallbackSource?: string } = {},
 ): ResilientTickerItem {
   const { currency = 'USD', fallbackSource = TICKER_FALLBACK_SOURCE } = options;
