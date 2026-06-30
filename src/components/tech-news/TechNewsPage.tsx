@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowUpDown,
   BarChart3,
   Clock3,
   ExternalLink,
-  Eye,
   LayoutGrid,
   List,
   Newspaper,
@@ -24,6 +22,7 @@ import { TechNewsCard } from '@/components/tech-news/TechNewsCard';
 import {
   TechNewsFilters,
   type TechNewsDashboardCategory,
+  type TechNewsImpactFilter,
   type TechNewsSort,
   type TechNewsTimeFilter,
 } from '@/components/tech-news/TechNewsFilters';
@@ -41,7 +40,8 @@ type MentionedTicker = {
 
 const NEWS_PAGE_SIZE = 9;
 const FEATURED_NEWS_COUNT = 3;
-const MAJOR_TECH_SYMBOLS = new Set(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'AVGO']);
+const TRACKED_SYMBOLS = ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA', 'AMD', 'INTC', 'ORCL', 'CRM', 'AVGO', 'NFLX'] as const;
+const REQUIRED_SOURCE_OPTIONS = ['Yahoo', 'Finnhub', 'Benzinga', 'CNBC', 'SeekingAlpha'] as const;
 
 const COPY = {
   ar: {
@@ -55,16 +55,17 @@ const COPY = {
     unavailable: 'غير متاح',
     delayed: 'أسعار السوق قد تكون متأخرة',
     tickerUpdated: 'محدّث',
-    search: 'ابحث بعنوان الخبر أو الشركة أو الرمز...',
+    search: 'ابحث في الأخبار أو رمز السهم...',
     filter: 'تصفية الأخبار',
     source: 'المصدر',
     allSources: 'كل المصادر',
     symbol: 'الشركة / الرمز',
     allSymbols: 'كل الرموز',
+    impact: 'التأثير',
     time: 'الفترة الزمنية',
     sort: 'الترتيب',
     clear: 'مسح الفلاتر',
-    results: '{count} خبر مطابق',
+    results: 'عدد النتائج: {count}',
     activeFilters: 'الفلاتر النشطة',
     viewMode: 'طريقة العرض',
     grid: 'شبكة',
@@ -94,36 +95,41 @@ const COPY = {
     mentions: 'ذكر',
     sourceTransparency: 'شفافية المصدر',
     sourceTransparencyText: 'كل خبر يفتح من ناشره الأصلي، ولا يتم تقديم المحتوى كتحرير من THE SFM.',
-    noResults: 'لم يتم العثور على أخبار مطابقة.',
-    noResultsHint: 'جرّب تغيير البحث أو إزالة بعض الفلاتر.',
+    noResults: 'لا توجد أخبار مطابقة',
+    noResultsHint: 'جرّب تغيير الفلاتر أو توسيع نطاق البحث.',
     noNews: 'لا توجد أخبار تقنية حالياً',
     retry: 'إعادة المحاولة',
     categories: {
       all: 'الكل',
-      techStocks: 'أسهم التقنية',
-      megaCap: 'الشركات الكبرى',
       ai: 'الذكاء الاصطناعي',
       semiconductors: 'أشباه الموصلات',
-      software: 'البرمجيات',
       cloud: 'الحوسبة السحابية',
+      software: 'البرمجيات',
       cybersecurity: 'الأمن السيبراني',
-      ecommerce: 'التجارة الإلكترونية',
       hardware: 'الأجهزة',
-      gaming: 'الألعاب',
-      startups: 'الشركات الناشئة',
+      ev: 'السيارات الكهربائية',
+      techCrypto: 'العملات الرقمية التقنية',
+      breaking: 'الأخبار العاجلة',
+    },
+    impacts: {
+      all: 'الكل',
+      high: 'تأثير مرتفع',
+      medium: 'تأثير متوسط',
+      low: 'تأثير منخفض',
     },
     times: {
-      all: 'كل الفترات',
-      hour: 'آخر ساعة',
       today: 'اليوم',
       week: 'آخر 7 أيام',
       month: 'آخر 30 يوماً',
+      all: 'الكل',
     },
     sorts: {
-      recent: 'الأحدث',
-      oldest: 'الأقدم',
-      relevance: 'الأكثر ارتباطاً',
-      impact: 'أكبر حركة سعرية',
+      recent: 'الأحدث أولاً',
+      oldest: 'الأقدم أولاً',
+      impact: 'الأعلى تأثيراً',
+      market: 'الأكثر ارتباطاً بالسوق',
+      company: 'حسب الشركة',
+      source: 'حسب المصدر',
     },
   },
   en: {
@@ -143,6 +149,7 @@ const COPY = {
     allSources: 'All sources',
     symbol: 'Company / symbol',
     allSymbols: 'All symbols',
+    impact: 'Impact',
     time: 'Time range',
     sort: 'Sort',
     clear: 'Clear filters',
@@ -182,30 +189,35 @@ const COPY = {
     retry: 'Retry',
     categories: {
       all: 'All',
-      techStocks: 'Tech stocks',
-      megaCap: 'Mega-cap',
       ai: 'Artificial intelligence',
       semiconductors: 'Semiconductors',
-      software: 'Software',
       cloud: 'Cloud',
+      software: 'Software',
       cybersecurity: 'Cybersecurity',
-      ecommerce: 'E-commerce',
       hardware: 'Devices',
-      gaming: 'Gaming',
-      startups: 'Startups',
+      ev: 'Electric vehicles',
+      techCrypto: 'Tech crypto',
+      breaking: 'Breaking news',
+    },
+    impacts: {
+      all: 'All',
+      high: 'High impact',
+      medium: 'Medium impact',
+      low: 'Low impact',
     },
     times: {
-      all: 'All periods',
-      hour: 'Last hour',
       today: 'Today',
       week: 'Last 7 days',
       month: 'Last 30 days',
+      all: 'All',
     },
     sorts: {
-      recent: 'Newest',
-      oldest: 'Oldest',
-      relevance: 'Most relevant',
-      impact: 'Largest stock move',
+      recent: 'Newest first',
+      oldest: 'Oldest first',
+      impact: 'Highest impact',
+      market: 'Most market-related',
+      company: 'By company',
+      source: 'By source',
     },
   },
   fr: {
@@ -225,6 +237,7 @@ const COPY = {
     allSources: 'Toutes les sources',
     symbol: 'Entreprise / symbole',
     allSymbols: 'Tous les symboles',
+    impact: 'Impact',
     time: 'Période',
     sort: 'Tri',
     clear: 'Effacer les filtres',
@@ -264,47 +277,50 @@ const COPY = {
     retry: 'Réessayer',
     categories: {
       all: 'Tout',
-      techStocks: 'Actions tech',
-      megaCap: 'Méga-cap',
       ai: 'Intelligence artificielle',
       semiconductors: 'Semi-conducteurs',
-      software: 'Logiciels',
       cloud: 'Cloud',
+      software: 'Logiciels',
       cybersecurity: 'Cybersécurité',
-      ecommerce: 'E-commerce',
       hardware: 'Appareils',
-      gaming: 'Jeux',
-      startups: 'Startups',
+      ev: 'Véhicules électriques',
+      techCrypto: 'Crypto technologique',
+      breaking: 'Actualités urgentes',
+    },
+    impacts: {
+      all: 'Tout',
+      high: 'Impact élevé',
+      medium: 'Impact moyen',
+      low: 'Impact faible',
     },
     times: {
-      all: 'Toutes les périodes',
-      hour: 'Dernière heure',
       today: "Aujourd'hui",
       week: '7 derniers jours',
       month: '30 derniers jours',
+      all: 'Tout',
     },
     sorts: {
       recent: 'Plus récent',
       oldest: 'Plus ancien',
-      relevance: 'Plus pertinent',
-      impact: 'Plus fort mouvement',
+      impact: 'Impact le plus élevé',
+      market: 'Plus lié au marché',
+      company: 'Par entreprise',
+      source: 'Par source',
     },
   },
 } as const;
 
 const CATEGORY_SEARCH_TERMS: Record<TechNewsDashboardCategory, string[]> = {
   all: [],
-  techStocks: ['tech stocks', 'technology market', 'nasdaq', 'shares', 'stock'],
-  megaCap: ['apple', 'microsoft', 'nvidia', 'alphabet', 'google', 'amazon', 'meta', 'tesla', 'broadcom'],
   ai: ['ai', 'artificial intelligence', 'machine learning', 'openai', 'anthropic', 'copilot', 'gemini', 'data center ai'],
   semiconductors: ['semiconductor', 'semiconductors', 'chip', 'chips', 'gpu', 'cpu', 'nvidia', 'amd', 'intel', 'broadcom', 'tsmc', 'qualcomm', 'micron', 'asml'],
-  software: ['software', 'saas', 'microsoft', 'salesforce', 'oracle', 'adobe', 'servicenow', 'palantir', 'datadog', 'snowflake'],
   cloud: ['cloud', 'cloud computing', 'aws', 'azure', 'google cloud', 'oracle cloud', 'data center'],
+  software: ['software', 'saas', 'microsoft', 'salesforce', 'oracle', 'adobe', 'servicenow', 'palantir', 'datadog', 'snowflake'],
   cybersecurity: ['cybersecurity', 'cyber security', 'crowdstrike', 'palo alto', 'fortinet', 'zscaler', 'ransomware', 'breach'],
-  ecommerce: ['e-commerce', 'ecommerce', 'online retail', 'marketplace', 'amazon', 'shopify', 'mercadolibre', 'alibaba'],
   hardware: ['devices', 'hardware', 'iphone', 'mac', 'pc', 'smartphones', 'apple', 'dell', 'hp'],
-  gaming: ['gaming', 'roblox', 'unity', 'electronic arts', 'netflix', 'sony', 'nintendo', 'streaming'],
-  startups: ['startup', 'startups', 'venture', 'funding', 'private company', 'emerging'],
+  ev: ['electric vehicle', 'ev', 'tesla', 'rivian', 'lucid', 'autonomous driving', 'battery'],
+  techCrypto: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'web3', 'stablecoin', 'coinbase', 'mining'],
+  breaking: ['breaking', 'urgent', 'alert', 'just in', 'beats estimates', 'misses estimates', 'guidance', 'lawsuit', 'acquisition', 'merger', 'sec probe', 'stock jumps', 'stock falls', 'shares jump', 'shares fall'],
 };
 
 function localeFor(lang: string) {
@@ -387,22 +403,36 @@ function itemMatchesSearch(item: TechNewsItem, query: string) {
   return itemSearchText(item).includes(needle);
 }
 
+function canonicalSourceLabel(source: string) {
+  const raw = String(source ?? '').trim();
+  const normalized = raw.toLowerCase().replace(/[\s._-]+/g, '');
+  if (!raw) return '';
+  if (normalized.includes('yahoo')) return 'Yahoo';
+  if (normalized.includes('finnhub')) return 'Finnhub';
+  if (normalized.includes('benzinga')) return 'Benzinga';
+  if (normalized.includes('cnbc')) return 'CNBC';
+  if (normalized.includes('seekingalpha')) return 'SeekingAlpha';
+  return raw;
+}
+
+function sourceMatches(item: TechNewsItem, source: string) {
+  if (source === 'all') return true;
+  return canonicalSourceLabel(item.source) === source;
+}
+
 function categoryMatches(item: TechNewsItem, category: TechNewsDashboardCategory) {
   if (category === 'all') return true;
   const sectors = new Set([item.sector, ...(item.sectors ?? [])]);
-  const ticker = String(item.ticker ?? '').toUpperCase();
 
-  if (category === 'techStocks') return Boolean(ticker && ticker !== 'TECH');
-  if (category === 'megaCap') return MAJOR_TECH_SYMBOLS.has(ticker) || hasKeyword(item, CATEGORY_SEARCH_TERMS.megaCap);
-  if (category === 'startups') return hasKeyword(item, CATEGORY_SEARCH_TERMS.startups);
   if (category === 'ai') return sectors.has('ai') || hasKeyword(item, CATEGORY_SEARCH_TERMS.ai);
   if (category === 'semiconductors') return sectors.has('semiconductors') || hasKeyword(item, CATEGORY_SEARCH_TERMS.semiconductors);
-  if (category === 'software') return sectors.has('software') || hasKeyword(item, CATEGORY_SEARCH_TERMS.software);
   if (category === 'cloud') return sectors.has('cloud') || hasKeyword(item, CATEGORY_SEARCH_TERMS.cloud);
+  if (category === 'software') return sectors.has('software') || hasKeyword(item, CATEGORY_SEARCH_TERMS.software);
   if (category === 'cybersecurity') return sectors.has('cybersecurity') || hasKeyword(item, CATEGORY_SEARCH_TERMS.cybersecurity);
-  if (category === 'ecommerce') return sectors.has('ecommerce') || hasKeyword(item, CATEGORY_SEARCH_TERMS.ecommerce);
   if (category === 'hardware') return sectors.has('hardware') || hasKeyword(item, CATEGORY_SEARCH_TERMS.hardware);
-  if (category === 'gaming') return sectors.has('gaming') || hasKeyword(item, CATEGORY_SEARCH_TERMS.gaming);
+  if (category === 'ev') return sectors.has('ev') || hasKeyword(item, CATEGORY_SEARCH_TERMS.ev);
+  if (category === 'techCrypto') return hasKeyword(item, CATEGORY_SEARCH_TERMS.techCrypto);
+  if (category === 'breaking') return hasKeyword(item, CATEGORY_SEARCH_TERMS.breaking) || (timeMatches(item, 'today') && impactLevel(item) === 'high');
 
   return false;
 }
@@ -412,22 +442,9 @@ function timeMatches(item: TechNewsItem, filter: TechNewsTimeFilter) {
   const date = new Date(item.publishedAt);
   if (Number.isNaN(date.getTime())) return false;
   const diffHours = (Date.now() - date.getTime()) / 3600000;
-  if (filter === 'hour') return diffHours <= 1;
   if (filter === 'today') return diffHours <= 24;
   if (filter === 'week') return diffHours <= 24 * 7;
   return diffHours <= 24 * 30;
-}
-
-function relevanceScore(item: TechNewsItem, query: string) {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return new Date(item.publishedAt).getTime() / 1000000000;
-  let score = 0;
-  if (item.ticker.toLowerCase() === needle) score += 100;
-  if (item.companyName.toLowerCase().includes(needle)) score += 60;
-  if (item.title.toLowerCase().includes(needle)) score += 40;
-  if (item.summary.toLowerCase().includes(needle)) score += 20;
-  if ((item.titleOriginal ?? '').toLowerCase().includes(needle)) score += 16;
-  return score + new Date(item.publishedAt).getTime() / 10000000000;
 }
 
 function impactScore(item: TechNewsItem) {
@@ -435,6 +452,29 @@ function impactScore(item: TechNewsItem) {
   const tickerBonus = item.ticker && item.ticker !== 'TECH' ? 0.35 : 0;
   const translatedBonus = item.isTranslated ? 0.1 : 0;
   return changeImpact + tickerBonus + translatedBonus;
+}
+
+function impactLevel(item: TechNewsItem): TechNewsImpactFilter {
+  const score = impactScore(item);
+  if (score >= 3 || hasKeyword(item, ['earnings', 'guidance', 'acquisition', 'merger', 'lawsuit', 'sec probe', 'stock jumps', 'stock falls', 'shares jump', 'shares fall'])) {
+    return 'high';
+  }
+  if (score >= 1 || hasKeyword(item, ['launch', 'partnership', 'deal', 'contract', 'upgrade', 'downgrade', 'analyst', 'forecast'])) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+function impactMatches(item: TechNewsItem, filter: TechNewsImpactFilter) {
+  return filter === 'all' || impactLevel(item) === filter;
+}
+
+function marketConnectionScore(item: TechNewsItem) {
+  const tickerBonus = item.ticker && item.ticker !== 'TECH' ? 12 : 0;
+  const priceBonus = Math.min(Math.abs(Number(item.changePercent ?? 0)), 8);
+  const marketTermsBonus = hasKeyword(item, ['stock', 'shares', 'earnings', 'revenue', 'profit', 'guidance', 'nasdaq', 'downgrade', 'upgrade', 'analyst', 'market']) ? 8 : 0;
+  const sectorBonus = item.sectors?.length ? Math.min(item.sectors.length, 4) : 0;
+  return tickerBonus + priceBonus + marketTermsBonus + sectorBonus + new Date(item.publishedAt).getTime() / 100000000000;
 }
 
 function buildUpdateLabel(prefix: string, value: string, locale: string, unavailable: string) {
@@ -460,6 +500,7 @@ export function TechNewsPage() {
   const [category, setCategory] = useState<TechNewsDashboardCategory>('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [symbolFilter, setSymbolFilter] = useState('all');
+  const [impactFilter, setImpactFilter] = useState<TechNewsImpactFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TechNewsTimeFilter>('all');
   const [sort, setSort] = useState<TechNewsSort>('recent');
   const [viewMode, setViewMode] = useState<TechNewsViewMode>('grid');
@@ -496,39 +537,41 @@ export function TechNewsPage() {
 
   useEffect(() => {
     setVisibleCount(NEWS_PAGE_SIZE);
-  }, [category, lang, query, sort, sourceFilter, symbolFilter, timeFilter]);
+  }, [category, impactFilter, lang, query, sort, sourceFilter, symbolFilter, timeFilter]);
 
   const dedupedItems = useMemo(() => dedupeNewsItems(items), [items]);
 
   const sourceOptions = useMemo(() => (
-    Array.from(new Set(dedupedItems.map(item => item.source).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+    [
+      ...REQUIRED_SOURCE_OPTIONS,
+      ...Array.from(new Set(dedupedItems.map(item => canonicalSourceLabel(item.source)).filter(Boolean)))
+        .filter(source => !(REQUIRED_SOURCE_OPTIONS as readonly string[]).includes(source))
+        .sort((a, b) => a.localeCompare(b)),
+    ]
   ), [dedupedItems]);
 
-  const symbolOptions = useMemo(() => (
-    Array.from(new Set(dedupedItems.map(item => item.ticker).filter(ticker => ticker && ticker !== 'TECH'))).sort((a, b) => a.localeCompare(b))
-  ), [dedupedItems]);
+  const symbolOptions = useMemo(() => [...TRACKED_SYMBOLS], []);
 
   const baseFilteredItems = useMemo(() => {
     return dedupedItems
-      .filter(item => sourceFilter === 'all' || item.source === sourceFilter)
+      .filter(item => sourceMatches(item, sourceFilter))
       .filter(item => symbolFilter === 'all' || item.ticker === symbolFilter)
+      .filter(item => impactMatches(item, impactFilter))
       .filter(item => timeMatches(item, timeFilter))
       .filter(item => itemMatchesSearch(item, query));
-  }, [dedupedItems, query, sourceFilter, symbolFilter, timeFilter]);
+  }, [dedupedItems, impactFilter, query, sourceFilter, symbolFilter, timeFilter]);
 
   const categoryCounts = useMemo(() => ({
     all: baseFilteredItems.filter(item => categoryMatches(item, 'all')).length,
-    techStocks: baseFilteredItems.filter(item => categoryMatches(item, 'techStocks')).length,
-    megaCap: baseFilteredItems.filter(item => categoryMatches(item, 'megaCap')).length,
     ai: baseFilteredItems.filter(item => categoryMatches(item, 'ai')).length,
     semiconductors: baseFilteredItems.filter(item => categoryMatches(item, 'semiconductors')).length,
-    software: baseFilteredItems.filter(item => categoryMatches(item, 'software')).length,
     cloud: baseFilteredItems.filter(item => categoryMatches(item, 'cloud')).length,
+    software: baseFilteredItems.filter(item => categoryMatches(item, 'software')).length,
     cybersecurity: baseFilteredItems.filter(item => categoryMatches(item, 'cybersecurity')).length,
-    ecommerce: baseFilteredItems.filter(item => categoryMatches(item, 'ecommerce')).length,
     hardware: baseFilteredItems.filter(item => categoryMatches(item, 'hardware')).length,
-    gaming: baseFilteredItems.filter(item => categoryMatches(item, 'gaming')).length,
-    startups: baseFilteredItems.filter(item => categoryMatches(item, 'startups')).length,
+    ev: baseFilteredItems.filter(item => categoryMatches(item, 'ev')).length,
+    techCrypto: baseFilteredItems.filter(item => categoryMatches(item, 'techCrypto')).length,
+    breaking: baseFilteredItems.filter(item => categoryMatches(item, 'breaking')).length,
   }), [baseFilteredItems]);
 
   const filteredItems = useMemo(() => {
@@ -540,13 +583,22 @@ export function TechNewsPage() {
         const impactDiff = impactScore(b) - impactScore(a);
         if (impactDiff !== 0) return impactDiff;
       }
-      if (sort === 'relevance') {
-        const relevanceDiff = relevanceScore(b, query) - relevanceScore(a, query);
-        if (relevanceDiff !== 0) return relevanceDiff;
+      if (sort === 'market') {
+        const marketDiff = marketConnectionScore(b) - marketConnectionScore(a);
+        if (marketDiff !== 0) return marketDiff;
+      }
+      if (sort === 'company') {
+        const companyDiff = a.companyName.localeCompare(b.companyName, locale);
+        if (companyDiff !== 0) return companyDiff;
+        return a.ticker.localeCompare(b.ticker, 'en-US');
+      }
+      if (sort === 'source') {
+        const sourceDiff = canonicalSourceLabel(a.source).localeCompare(canonicalSourceLabel(b.source), locale);
+        if (sourceDiff !== 0) return sourceDiff;
       }
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-  }, [baseFilteredItems, category, query, sort]);
+  }, [baseFilteredItems, category, locale, sort]);
 
   const featuredItems = filteredItems.slice(0, FEATURED_NEWS_COUNT);
   const featuredIds = new Set(featuredItems.map(item => item.id));
@@ -608,6 +660,7 @@ export function TechNewsPage() {
     setCategory('all');
     setSourceFilter('all');
     setSymbolFilter('all');
+    setImpactFilter('all');
     setTimeFilter('all');
     setSort('recent');
   };
@@ -628,6 +681,48 @@ export function TechNewsPage() {
     delayedQuote: ui.delayedQuote,
   };
 
+  const filterControls = (
+    <TechNewsFilters
+      query={query}
+      category={category}
+      source={sourceFilter}
+      symbol={symbolFilter}
+      impactFilter={impactFilter}
+      timeFilter={timeFilter}
+      sort={sort}
+      sources={sourceOptions}
+      symbols={symbolOptions}
+      resultsCount={filteredItems.length}
+      labels={{
+        search: ui.search,
+        filter: ui.filter,
+        source: ui.source,
+        allSources: ui.allSources,
+        symbol: ui.symbol,
+        allSymbols: ui.allSymbols,
+        impact: ui.impact,
+        time: ui.time,
+        sort: ui.sort,
+        clear: ui.clear,
+        results: ui.results,
+        activeFilters: ui.activeFilters,
+        categories: ui.categories,
+        impacts: ui.impacts,
+        times: ui.times,
+        sorts: ui.sorts,
+      }}
+      categoryCounts={categoryCounts}
+      onQueryChange={setQuery}
+      onCategoryChange={setCategory}
+      onSourceChange={setSourceFilter}
+      onSymbolChange={setSymbolFilter}
+      onImpactFilterChange={setImpactFilter}
+      onTimeFilterChange={setTimeFilter}
+      onSortChange={setSort}
+      onClearFilters={clearFilters}
+    />
+  );
+
   return (
     <div className="tech-news-shell" dir={dir}>
       <Sidebar />
@@ -635,7 +730,6 @@ export function TechNewsPage() {
         <TechTickerStrip
           prices={prices}
           formatPrice={formatPrice}
-          direction={dir === 'rtl' ? 'rtl' : 'ltr'}
           labels={{
             priceUnavailable: ui.priceUnavailable,
             delayedGlobal: ui.delayed,
@@ -656,42 +750,6 @@ export function TechNewsPage() {
           onRefresh={() => void load(false)}
         />
 
-        <TechNewsFilters
-          query={query}
-          category={category}
-          source={sourceFilter}
-          symbol={symbolFilter}
-          timeFilter={timeFilter}
-          sort={sort}
-          sources={sourceOptions}
-          symbols={symbolOptions}
-          resultsCount={filteredItems.length}
-          labels={{
-            search: ui.search,
-            filter: ui.filter,
-            source: ui.source,
-            allSources: ui.allSources,
-            symbol: ui.symbol,
-            allSymbols: ui.allSymbols,
-            time: ui.time,
-            sort: ui.sort,
-            clear: ui.clear,
-            results: ui.results,
-            activeFilters: ui.activeFilters,
-            categories: ui.categories,
-            times: ui.times,
-            sorts: ui.sorts,
-          }}
-          categoryCounts={categoryCounts}
-          onQueryChange={setQuery}
-          onCategoryChange={setCategory}
-          onSourceChange={setSourceFilter}
-          onSymbolChange={setSymbolFilter}
-          onTimeFilterChange={setTimeFilter}
-          onSortChange={setSort}
-          onClearFilters={clearFilters}
-        />
-
         {loading ? (
           <TechNewsSkeleton />
         ) : error ? (
@@ -705,17 +763,20 @@ export function TechNewsPage() {
             </button>
           </section>
         ) : filteredItems.length === 0 ? (
-          <section className="tech-news-state">
-            <Newspaper size={24} />
-            <strong>{dedupedItems.length === 0 ? ui.noNews : ui.noResults}</strong>
-            <p>{ui.noResultsHint}</p>
-            {dedupedItems.length > 0 ? (
-              <button type="button" onClick={clearFilters}>
-                <RefreshCcw size={16} />
-                {ui.clear}
-              </button>
-            ) : null}
-          </section>
+          <>
+            {filterControls}
+            <section className="tech-news-state">
+              <Newspaper size={24} />
+              <strong>{dedupedItems.length === 0 ? ui.noNews : ui.noResults}</strong>
+              <p>{ui.noResultsHint}</p>
+              {dedupedItems.length > 0 ? (
+                <button type="button" onClick={clearFilters}>
+                  <RefreshCcw size={16} />
+                  {ui.clear}
+                </button>
+              ) : null}
+            </section>
+          </>
         ) : (
           <>
             <FeaturedNewsSection
@@ -731,6 +792,8 @@ export function TechNewsPage() {
               formatDateTime={formatDateTime}
               formatPrice={formatPrice}
             />
+
+            {filterControls}
 
             <section className="tech-news-layout" aria-label={ui.title}>
               <div className="tech-news-content-column">
@@ -1106,7 +1169,7 @@ export function TechNewsPage() {
         }
         .tech-news-clear-btn:hover,.tech-news-clear-btn:focus-visible{outline:none;border-color:var(--tech-accent);box-shadow:0 0 0 4px rgba(36,213,197,.14)}
 
-        .tech-news-filter-grid{display:grid;grid-template-columns:minmax(260px,1.6fr) repeat(4,minmax(150px,1fr));gap:10px;align-items:end}
+        .tech-news-filter-grid{display:grid;grid-template-columns:minmax(230px,1.45fr) repeat(6,minmax(112px,1fr));gap:10px;align-items:end}
         .tech-news-search{
           min-height:50px;
           display:flex;
@@ -1141,6 +1204,7 @@ export function TechNewsPage() {
           padding-inline:12px;
           font:900 13px Tajawal,Arial,sans-serif;
           outline:none;
+          text-overflow:ellipsis;
         }
         .tech-news-select-control select:focus{border-color:var(--tech-accent);box-shadow:0 0 0 4px rgba(36,213,197,.12)}
         .tech-news-active-filters{display:flex;flex-wrap:wrap;gap:8px}
@@ -1148,6 +1212,7 @@ export function TechNewsPage() {
           display:inline-flex;
           align-items:center;
           gap:7px;
+          max-width:100%;
           min-height:34px;
           border:1px solid rgba(21,149,242,.18);
           border-radius:999px;
@@ -1158,7 +1223,7 @@ export function TechNewsPage() {
           cursor:pointer;
         }
         .tech-news-active-filters button span{color:#0369A1}
-        .tech-news-active-filters button b{font-weight:950}
+        .tech-news-active-filters button b{min-width:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:950}
         .tech-news-active-filters button:hover,.tech-news-active-filters button:focus-visible{outline:none;border-color:var(--tech-primary);box-shadow:0 0 0 4px rgba(21,149,242,.12)}
         .tech-news-chip-row{display:flex;flex-wrap:wrap;gap:9px;overflow:visible;padding-bottom:2px;scrollbar-width:thin}
         .tech-news-chip-row button{
@@ -1230,7 +1295,7 @@ export function TechNewsPage() {
           border:1px solid rgba(125,249,231,.24);
         }
 
-        .tech-news-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+        .tech-news-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
         .tech-news-content-column{display:grid;gap:14px;min-width:0}
         .tech-news-results-bar{
           min-height:62px;
@@ -1273,6 +1338,7 @@ export function TechNewsPage() {
           grid-template-rows:auto 1fr auto;
           gap:14px;
           min-width:0;
+          min-height:100%;
           border:1px solid var(--tech-border);
           border-radius:24px;
           background:linear-gradient(180deg,var(--tech-panel),var(--tech-panel-soft));
@@ -1283,7 +1349,7 @@ export function TechNewsPage() {
         }
         .tech-news-card.list{grid-template-columns:minmax(0,1fr);padding:18px}
         .tech-news-card:hover{border-color:rgba(36,213,197,.38);box-shadow:0 20px 46px rgba(12,38,66,.12)}
-        .tech-news-card-body{display:grid;gap:12px;min-width:0}
+        .tech-news-card-body{display:grid;gap:12px;align-content:start;min-width:0}
         .tech-news-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
         .tech-news-card-kicker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
         .tech-news-source-badge{

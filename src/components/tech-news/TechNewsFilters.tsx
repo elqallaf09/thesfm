@@ -1,23 +1,22 @@
 'use client';
 
-import { Filter, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 
 export type TechNewsDashboardCategory =
   | 'all'
-  | 'techStocks'
-  | 'megaCap'
   | 'ai'
   | 'semiconductors'
-  | 'software'
   | 'cloud'
+  | 'software'
   | 'cybersecurity'
-  | 'ecommerce'
   | 'hardware'
-  | 'gaming'
-  | 'startups';
+  | 'ev'
+  | 'techCrypto'
+  | 'breaking';
 
-export type TechNewsTimeFilter = 'all' | 'hour' | 'today' | 'week' | 'month';
-export type TechNewsSort = 'recent' | 'oldest' | 'relevance' | 'impact';
+export type TechNewsImpactFilter = 'all' | 'high' | 'medium' | 'low';
+export type TechNewsTimeFilter = 'today' | 'week' | 'month' | 'all';
+export type TechNewsSort = 'recent' | 'oldest' | 'impact' | 'market' | 'company' | 'source';
 
 type ActiveFilter = {
   key: string;
@@ -31,6 +30,7 @@ type TechNewsFiltersProps = {
   category: TechNewsDashboardCategory;
   source: string;
   symbol: string;
+  impactFilter: TechNewsImpactFilter;
   timeFilter: TechNewsTimeFilter;
   sort: TechNewsSort;
   sources: string[];
@@ -43,12 +43,14 @@ type TechNewsFiltersProps = {
     allSources: string;
     symbol: string;
     allSymbols: string;
+    impact: string;
     time: string;
     sort: string;
     clear: string;
     results: string;
     activeFilters: string;
     categories: Record<TechNewsDashboardCategory, string>;
+    impacts: Record<TechNewsImpactFilter, string>;
     times: Record<TechNewsTimeFilter, string>;
     sorts: Record<TechNewsSort, string>;
   };
@@ -57,6 +59,7 @@ type TechNewsFiltersProps = {
   onCategoryChange: (value: TechNewsDashboardCategory) => void;
   onSourceChange: (value: string) => void;
   onSymbolChange: (value: string) => void;
+  onImpactFilterChange: (value: TechNewsImpactFilter) => void;
   onTimeFilterChange: (value: TechNewsTimeFilter) => void;
   onSortChange: (value: TechNewsSort) => void;
   onClearFilters: () => void;
@@ -67,24 +70,24 @@ const CATEGORY_ORDER: TechNewsDashboardCategory[] = [
   'ai',
   'semiconductors',
   'cloud',
-  'cybersecurity',
   'software',
+  'cybersecurity',
   'hardware',
-  'ecommerce',
-  'gaming',
-  'megaCap',
-  'techStocks',
-  'startups',
+  'ev',
+  'techCrypto',
+  'breaking',
 ];
 
-const TIME_FILTERS: TechNewsTimeFilter[] = ['all', 'hour', 'today', 'week', 'month'];
-const SORT_OPTIONS: TechNewsSort[] = ['recent', 'impact', 'relevance', 'oldest'];
+const IMPACT_FILTERS: TechNewsImpactFilter[] = ['all', 'high', 'medium', 'low'];
+const TIME_FILTERS: TechNewsTimeFilter[] = ['today', 'week', 'month', 'all'];
+const SORT_OPTIONS: TechNewsSort[] = ['recent', 'oldest', 'impact', 'market', 'company', 'source'];
 
 export function TechNewsFilters({
   query,
   category,
   source,
   symbol,
+  impactFilter,
   timeFilter,
   sort,
   sources,
@@ -96,6 +99,7 @@ export function TechNewsFilters({
   onCategoryChange,
   onSourceChange,
   onSymbolChange,
+  onImpactFilterChange,
   onTimeFilterChange,
   onSortChange,
   onClearFilters,
@@ -113,11 +117,11 @@ export function TechNewsFilters({
     symbol !== 'all'
       ? { key: 'symbol', label: labels.symbol, value: symbol, onClear: () => onSymbolChange('all') }
       : null,
+    impactFilter !== 'all'
+      ? { key: 'impact', label: labels.impact, value: labels.impacts[impactFilter], onClear: () => onImpactFilterChange('all') }
+      : null,
     timeFilter !== 'all'
       ? { key: 'time', label: labels.time, value: labels.times[timeFilter], onClear: () => onTimeFilterChange('all') }
-      : null,
-    sort !== 'recent'
-      ? { key: 'sort', label: labels.sort, value: labels.sorts[sort], onClear: () => onSortChange('recent') }
       : null,
   ].filter((item): item is ActiveFilter => Boolean(item));
 
@@ -167,6 +171,15 @@ export function TechNewsFilters({
             <option value="all">{labels.allSymbols}</option>
             {symbols.map(item => (
               <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="tech-news-select-control">
+          <span>{labels.impact}</span>
+          <select value={impactFilter} onChange={event => onImpactFilterChange(event.target.value as TechNewsImpactFilter)}>
+            {IMPACT_FILTERS.map(item => (
+              <option key={item} value={item}>{labels.impacts[item]}</option>
             ))}
           </select>
         </label>
