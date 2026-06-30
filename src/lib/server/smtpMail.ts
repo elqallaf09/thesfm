@@ -219,6 +219,22 @@ export function maskEmailForLog(input: string | null | undefined) {
   return `${maskedName}@${domain}`;
 }
 
+function maskEnvelopeForLog(envelope?: SmtpEnvelope) {
+  if (!envelope) return undefined;
+  return {
+    from: maskEmailForLog(envelope.from),
+    to: envelope.to.map(maskEmailForLog),
+  };
+}
+
+function maskSmtpDetailsForLog(details: SmtpErrorDetails): SmtpErrorDetails {
+  return {
+    ...details,
+    rejected: details.rejected?.map(maskEmailForLog),
+    envelope: maskEnvelopeForLog(details.envelope),
+  };
+}
+
 export function sanitizeEmail(value: unknown) {
   return emailAddress(value === null || value === undefined ? '' : String(value).trim());
 }
@@ -382,9 +398,10 @@ export function getSmtpErrorDetails(error: unknown): SmtpErrorDetails {
 }
 
 export function logSmtpMailError(scope: string, error: unknown, metadata: Record<string, unknown> = {}) {
+  const smtpDetails = maskSmtpDetailsForLog(getSmtpErrorDetails(error));
   console.error(scope, {
     ...metadata,
-    smtp: getSmtpErrorDetails(error),
+    smtp: smtpDetails,
   });
 }
 
@@ -427,13 +444,13 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
   console.info('[EmailService] sending SMTP email', {
     provider: config.host,
     secure: config.port === 465,
-    from,
-    to,
+    from: maskEmailForLog(from),
+    to: to.map(maskEmailForLog),
     subject,
     hasText: Boolean(text),
     hasHtml: Boolean(html),
-    replyTo: replyTo ?? null,
-    envelope,
+    replyTo: replyTo ? maskEmailForLog(replyTo) : null,
+    envelope: maskEnvelopeForLog(envelope),
   });
 
   try {
@@ -519,8 +536,8 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
       : new SmtpMailError(error instanceof Error ? error.message : String(error), { envelope, rejected });
     logSmtpMailError('[EmailService] SMTP send failed', smtpError, {
       provider: config.host,
-      from,
-      to,
+      from: maskEmailForLog(from),
+      to: to.map(maskEmailForLog),
       subject,
     });
     throw smtpError;

@@ -75,6 +75,7 @@ type ReminderDeliveryContext = {
   reminderId: string;
   reminderType: string;
   customerId: string;
+  customerExists: boolean;
   customerName: string;
   customerEmail: string | null;
   customerPhone: string | null;
@@ -218,6 +219,7 @@ function emailMetadata(input: {
     reminder_id: context.reminderId,
     reminder_type: context.reminderType,
     customer_id: context.customerId,
+    customer_exists: context.customerExists,
     customer_name: context.customerName,
     customer_email_exists: input.recipientType === 'customer'
       ? input.recipientEmailExists
@@ -273,6 +275,7 @@ function logReminderEmail(scope: string, input: {
   const payload: Record<string, unknown> = {
     reminderId: input.context.reminderId,
     customerId: input.context.customerId,
+    customerExists: input.context.customerExists,
     subscriberId: input.context.subscriber.id,
     recipientType: input.recipientType,
     customerEmailExists: Boolean(input.context.customerEmail),
@@ -890,7 +893,10 @@ export async function GET(request: NextRequest) {
     const results: ReminderResult[] = [];
     const usersToLog = scopeUserId
       ? [scopeUserId]
-      : Array.from(new Set(clients.map(client => client.user_id)));
+      : Array.from(new Set([
+        ...clients.map(client => client.user_id),
+        ...subscriptions.map(subscription => subscription.user_id),
+      ]));
 
     if (!candidates.length) {
       const message = NO_CUSTOMER_DATA_MESSAGE;
@@ -1008,6 +1014,7 @@ export async function GET(request: NextRequest) {
         reminderId: candidate.dedupeKey,
         reminderType: candidate.reminderType,
         customerId: customer.id,
+        customerExists: Boolean(linkedCustomer),
         customerName: customer.full_name,
         customerEmail: customer.email,
         customerPhone: customer.phone,

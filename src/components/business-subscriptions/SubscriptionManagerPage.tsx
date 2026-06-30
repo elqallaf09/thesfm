@@ -117,8 +117,12 @@ type ReminderRuntimeEmailItem = {
   status: 'sent' | 'skipped' | 'failed';
   reason: string | null;
   message?: string | null;
+  failureReason?: string | null;
+  validationStatus?: string | null;
+  smtpCalled?: boolean;
   reminderType: string | null;
   customerId: string | null;
+  customerExists?: boolean;
   customerName: string | null;
   customerEmail: string | null;
   subscriberId?: string | null;
@@ -172,6 +176,10 @@ type ReminderRuntimeStatus = {
     subscriberEmail?: string | null;
     recipientType?: 'customer' | 'subscriber' | null;
     status?: 'sent' | 'skipped' | 'failed';
+    failureReason?: string | null;
+    validationStatus?: string | null;
+    smtpCalled?: boolean;
+    customerExists?: boolean;
     to: string[];
     from: string[];
     smtp?: {
@@ -213,6 +221,7 @@ const REMINDER_CONTROL_TEXT = {
     customerName: 'اسم العميل',
     customerEmail: 'بريد العميل',
     subscriberEmail: 'بريد المشترك',
+    validationStatus: 'حالة التحقق',
     reminderType: 'نوع التذكير',
     dueDate: 'تاريخ الاستحقاق',
     sent: 'تم الإرسال',
@@ -242,6 +251,7 @@ const REMINDER_CONTROL_TEXT = {
     customerName: 'Customer name',
     customerEmail: 'Customer email',
     subscriberEmail: 'Subscriber email',
+    validationStatus: 'Validation status',
     reminderType: 'Reminder type',
     dueDate: 'Due date',
     sent: 'Sent',
@@ -273,6 +283,7 @@ const REMINDER_CONTROL_TEXT = {
     customerName: 'Client',
     customerEmail: 'E-mail client',
     subscriberEmail: 'E-mail abonne',
+    validationStatus: 'Statut validation',
     reminderType: 'Type de rappel',
     dueDate: 'Echeance',
     sent: 'Envoye',
@@ -1385,6 +1396,12 @@ function ReminderRecipientCard({
             <dd>{item.reminderType}</dd>
           </div>
         ) : null}
+        {item?.validationStatus ? (
+          <div>
+            <dt>{copy.validationStatus}</dt>
+            <dd>{item.validationStatus}</dd>
+          </div>
+        ) : null}
         {item?.dueDate ? (
           <div>
             <dt>{copy.dueDate}</dt>
@@ -1462,6 +1479,7 @@ function ReminderStatusCard({
             {lastFailure.subscriberEmail ? <div>{copy.subscriberEmail}: {lastFailure.subscriberEmail}</div> : null}
             {lastFailure.reminderType ? <div>{copy.reminderType}: {lastFailure.reminderType}</div> : null}
             {lastFailure.dueDate ? <div>{copy.dueDate}: {formatDate(lastFailure.dueDate, locale)}</div> : null}
+            {lastFailure.validationStatus ? <div>{copy.validationStatus}: {lastFailure.validationStatus}</div> : null}
           </div>
           {(showRawDetails && lastFailure.smtp) ? (
             <details style={{ marginTop: 8 }}>
