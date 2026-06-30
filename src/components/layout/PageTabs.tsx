@@ -151,10 +151,13 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
             text-overflow: clip;
           }
           .page-section-tabs.charity-tabs {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            overflow: visible;
+            display: flex;
+            grid-template-columns: none;
+            overflow-x: auto;
+            overflow-y: hidden;
           }
           .page-section-tabs.charity-tabs button {
+            flex: 0 0 max(152px, 46vw);
             white-space: normal;
           }
         }
@@ -165,7 +168,7 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         }
         @media (max-width: 440px) {
           .page-section-tabs.charity-tabs {
-            grid-template-columns: minmax(0, 1fr);
+            display: flex;
           }
         }
       `}</style>

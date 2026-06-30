@@ -54,22 +54,37 @@ export function BeneficiaryModal({
           <h2 id={titleId}>{tr.addBeneficiary}</h2>
           <button type="button" aria-label={tr.cancel} onClick={close}><X size={18} /></button>
         </div>
-        <div className="form-grid">
-          <label><span>{tr.shortName}</span><input value={beneficiaryForm.display_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, display_name: e.target.value }))} /></label>
-          <label><span>{tr.referenceNumber}</span><input value={beneficiaryForm.reference_code} onChange={e => setBeneficiaryForm(prev => ({ ...prev, reference_code: e.target.value }))} /></label>
-          <label><span>{tr.beneficiaryType}</span><select value={beneficiaryForm.category} onChange={e => setBeneficiaryForm(prev => ({ ...prev, category: e.target.value as BeneficiaryCategory }))}>{beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}</select></label>
-          <label><span>{tr.linkedProject}</span><select value={beneficiaryForm.project_id} onChange={e => setBeneficiaryForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-          <label><span>{tr.responsibleOrg}</span><input value={beneficiaryForm.organization_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
-          <label><span>{tr.country}</span><input value={beneficiaryForm.country} onChange={e => setBeneficiaryForm(prev => ({ ...prev, country: e.target.value }))} /></label>
-          <label><span>{tr.city}</span><input value={beneficiaryForm.city} onChange={e => setBeneficiaryForm(prev => ({ ...prev, city: e.target.value }))} /></label>
-          <label><span>{tr.monthlySupport}</span><input inputMode="decimal" value={beneficiaryForm.monthly_support_amount} onChange={e => setBeneficiaryForm(prev => ({ ...prev, monthly_support_amount: e.target.value }))} /></label>
-          <div className="currency-field"><CurrencySelect value={beneficiaryForm.currency || 'KWD'} onChange={value => setBeneficiaryForm(prev => ({ ...prev, currency: value }))} lang={lang as Lang} label={tr.currency} ariaLabel={tr.currency} /></div>
-          <label><span>{tr.sponsorshipStart}</span><input type="date" value={beneficiaryForm.sponsorship_start_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_start_date: e.target.value }))} /></label>
-          <label><span>{tr.sponsorshipEnd}</span><input type="date" value={beneficiaryForm.sponsorship_end_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_end_date: e.target.value }))} /></label>
-          <label><span>{tr.nextRenewal}</span><input type="date" value={beneficiaryForm.next_renewal_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, next_renewal_date: e.target.value }))} /></label>
-          <label><span>{tr.status}</span><select value={beneficiaryForm.status} onChange={e => setBeneficiaryForm(prev => ({ ...prev, status: e.target.value as BeneficiaryStatus }))}>{beneficiaryStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
-          <label className="wide"><span>{tr.notes}</span><textarea value={beneficiaryForm.notes} onChange={e => setBeneficiaryForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
-          <p className="privacy-note wide">{tr.privacyNote}</p>
+        <div className="modal-form-stack">
+          <section className="form-section">
+            <h3>{tr.beneficiaryIdentity}</h3>
+            <div className="form-grid">
+              <label><span>{tr.shortName}</span><input value={beneficiaryForm.display_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, display_name: e.target.value }))} /></label>
+              <label><span>{tr.referenceNumber}</span><input value={beneficiaryForm.reference_code} onChange={e => setBeneficiaryForm(prev => ({ ...prev, reference_code: e.target.value }))} /></label>
+              <label><span>{tr.beneficiaryType}</span><select value={beneficiaryForm.category} onChange={e => setBeneficiaryForm(prev => ({ ...prev, category: e.target.value as BeneficiaryCategory }))}>{beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}</select></label>
+              <label><span>{tr.status}</span><select value={beneficiaryForm.status} onChange={e => setBeneficiaryForm(prev => ({ ...prev, status: e.target.value as BeneficiaryStatus }))}>{beneficiaryStatuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}</select></label>
+              <p className="privacy-note wide">{tr.privacyNote}</p>
+            </div>
+          </section>
+          <section className="form-section">
+            <h3>{tr.sponsorshipDetails}</h3>
+            <div className="form-grid">
+              <label><span>{tr.linkedProject}</span><select value={beneficiaryForm.project_id} onChange={e => setBeneficiaryForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+              <label><span>{tr.responsibleOrg}</span><input value={beneficiaryForm.organization_name} onChange={e => setBeneficiaryForm(prev => ({ ...prev, organization_name: e.target.value }))} /></label>
+              <label><span>{tr.monthlySupport}</span><input inputMode="decimal" value={beneficiaryForm.monthly_support_amount} onChange={e => setBeneficiaryForm(prev => ({ ...prev, monthly_support_amount: e.target.value }))} /></label>
+              <div className="currency-field"><CurrencySelect value={beneficiaryForm.currency || 'KWD'} onChange={value => setBeneficiaryForm(prev => ({ ...prev, currency: value }))} lang={lang as Lang} label={tr.currency} ariaLabel={tr.currency} /></div>
+              <label><span>{tr.sponsorshipStart}</span><input type="date" value={beneficiaryForm.sponsorship_start_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_start_date: e.target.value }))} /></label>
+              <label><span>{tr.sponsorshipEnd}</span><input type="date" value={beneficiaryForm.sponsorship_end_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, sponsorship_end_date: e.target.value }))} /></label>
+              <label><span>{tr.nextRenewal}</span><input type="date" value={beneficiaryForm.next_renewal_date} onChange={e => setBeneficiaryForm(prev => ({ ...prev, next_renewal_date: e.target.value }))} /></label>
+            </div>
+          </section>
+          <section className="form-section">
+            <h3>{tr.additionalDetails}</h3>
+            <div className="form-grid">
+              <label><span>{tr.country}</span><input value={beneficiaryForm.country} onChange={e => setBeneficiaryForm(prev => ({ ...prev, country: e.target.value }))} /></label>
+              <label><span>{tr.city}</span><input value={beneficiaryForm.city} onChange={e => setBeneficiaryForm(prev => ({ ...prev, city: e.target.value }))} /></label>
+              <label className="wide"><span>{tr.notes}</span><textarea value={beneficiaryForm.notes} onChange={e => setBeneficiaryForm(prev => ({ ...prev, notes: e.target.value }))} /></label>
+            </div>
+          </section>
           <div className="modal-actions">
             <button type="button" className="ghost-btn" onClick={close}>{tr.cancel}</button>
             <button type="button" className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>

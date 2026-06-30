@@ -8,7 +8,6 @@ import {
   Calculator,
   CalendarDays,
   Coins,
-  Eye,
   FileText,
   FileUp,
   Gift,
@@ -109,6 +108,9 @@ export default function CharityProjectsPage() {
   const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
   const [impactDonation, setImpactDonation] = useState('');
   const [selectedReportYear, setSelectedReportYear] = useState(String(new Date().getFullYear()));
+  const [projectSearch, setProjectSearch] = useState('');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | ProjectStatus>('all');
+  const [projectCategoryFilter, setProjectCategoryFilter] = useState<'all' | ProjectCategory>('all');
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentFilter, setDocumentFilter] = useState<'all' | DocumentCategory>('all');
   const [documentProjectFilter, setDocumentProjectFilter] = useState('');
@@ -535,6 +537,18 @@ export default function CharityProjectsPage() {
   const impactPct = incomeTotal > 0 && impactValue > 0 ? (impactValue / incomeTotal) * 100 : null;
   const remainingNet = incomeTotal - expenseTotal - impactValue;
   const hasReportData = projects.length > 0 || assets.length > 0 || commitments.length > 0 || donations.length > 0;
+  const filteredProjects = projects.filter(project => {
+    const query = projectSearch.trim().toLowerCase();
+    const matchesSearch = !query || [
+      project.name,
+      project.organization_name ?? '',
+      organizationLabel(project.organization_id, project.organization_name),
+      project.notes ?? '',
+    ].some(value => value.toLowerCase().includes(query));
+    const matchesStatus = projectStatusFilter === 'all' || project.status === projectStatusFilter;
+    const matchesCategory = projectCategoryFilter === 'all' || project.category === projectCategoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
   const filteredDocuments = documents.filter(document => {
     const query = documentSearch.trim().toLowerCase();
     const matchesSearch = !query || [document.title, document.file_name, document.notes ?? ''].some(value => value.toLowerCase().includes(query));
@@ -1169,11 +1183,15 @@ export default function CharityProjectsPage() {
     { icon: Gift, label: tr.beneficiariesCountKpi, value: numberLabel(beneficiaries.length) },
     { icon: ShieldCheck, label: tr.upcomingRemindersKpi, value: numberLabel(activeReminders.length) },
   ];
+  const projectStatusCards = statuses.map(status => ({
+    label: tr[status],
+    value: numberLabel(projects.filter(project => project.status === status).length),
+  }));
   const charityTabs = [
     { id: 'overview', label: lang === 'ar' ? 'نظرة عامة' : lang === 'fr' ? 'Aperçu' : 'Overview' },
-    { id: 'projects', label: tr.projects, count: projects.length },
+    { id: 'projects', label: lang === 'ar' ? 'مشاريع خيرية' : tr.projects, count: projects.length },
     { id: 'beneficiaries', label: tr.beneficiaryTracking, count: beneficiaries.length },
-    { id: 'contributors', label: tr.contributors, count: contributors.length },
+    { id: 'contributors', label: lang === 'ar' ? 'المساهمون' : tr.contributors, count: contributors.length },
     { id: 'documents', label: tr.documentVault, count: documents.length },
     { id: 'impact', label: tr.impactDashboard },
     { id: 'reports', label: tr.reports },
@@ -1193,12 +1211,12 @@ export default function CharityProjectsPage() {
             <button className="gold-btn" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
               <Plus size={17} /> {tr.newProject}
             </button>
-            <a className="dark-btn" href="/zakat">
-              <Calculator size={17} /> {tr.zakatCalculator}
-            </a>
-            <a className="dark-btn" href="/documents">
-              <FileText size={17} /> {tr.documentsCenter}
-            </a>
+            <button className="dark-btn" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>
+              <CalendarDays size={17} /> {tr.addReminder}
+            </button>
+            <button className="dark-btn" type="button" onClick={() => setActiveTab('reports')}>
+              <FileText size={17} /> {tr.reports}
+            </button>
             <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
@@ -1341,7 +1359,39 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="main-grid" hidden={activeTab !== 'projects'}>
+        <section className="warm-card overview-impact-card" hidden={activeTab !== 'overview'}>
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.impactDashboard}</small>
+              <h2>{tr.impactDashboard}</h2>
+              <p>{tr.impactDashboardDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => setActiveTab('impact')}>
+              <Sparkles size={15} /> {tr.impactDashboard}
+            </button>
+          </div>
+          <div className="impact-summary-grid compact-impact">
+            <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
+            <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
+            <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
+            <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
+          </div>
+          {!hasImpactData && (
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<Sparkles size={28} />}
+              title={tr.notEnoughImpactData}
+              description={tr.impactEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                  <Plus size={15} /> {tr.newProject}
+                </button>
+              )}
+            />
+          )}
+        </section>
+
+        <section className="main-grid quick-action-grid" hidden={activeTab !== 'overview'}>
           <article className="warm-card span-7 zakat-shortcut-card">
             <div className="section-head">
               <div><small>{tr.zakat}</small><h2>{zakatShortcut.title}</h2></div>
@@ -1351,6 +1401,36 @@ export default function CharityProjectsPage() {
             <a className="primary-wide" href="/zakat">
               <Calculator size={16} /> {zakatShortcut.button}
             </a>
+          </article>
+          <article className="warm-card quick-action-card">
+            <div className="section-head">
+              <div><small>{tr.projects}</small><h2>{tr.newProject}</h2></div>
+              <Plus size={22} />
+            </div>
+            <p className="muted">{tr.emptyBody}</p>
+            <button className="primary-wide" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+              <Plus size={16} /> {tr.newProject}
+            </button>
+          </article>
+          <article className="warm-card quick-action-card">
+            <div className="section-head">
+              <div><small>{tr.upcomingReminders}</small><h2>{tr.addReminder}</h2></div>
+              <CalendarDays size={22} />
+            </div>
+            <p className="muted">{tr.reminderEmptyBody}</p>
+            <button className="primary-wide" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>
+              <CalendarDays size={16} /> {tr.addReminder}
+            </button>
+          </article>
+          <article className="warm-card quick-action-card">
+            <div className="section-head">
+              <div><small>{tr.reports}</small><h2>{tr.generateReport}</h2></div>
+              <FileText size={22} />
+            </div>
+            <p className="muted">{tr.emptyReportsBody}</p>
+            <button className="primary-wide" type="button" onClick={() => setActiveTab('reports')}>
+              <FileText size={16} /> {tr.reports}
+            </button>
           </article>
           <article id="zakat-calculator" className="warm-card span-7">
             <div className="section-head">
@@ -1502,7 +1582,139 @@ export default function CharityProjectsPage() {
           </article>
         </section>
 
-        <section className="split-grid" hidden={activeTab !== 'projects'}>
+        <section className="warm-card project-dashboard" hidden={activeTab !== 'projects'}>
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.projects}</small>
+              <h2>{lang === 'ar' ? 'مشاريع خيرية' : tr.projects}</h2>
+              <p>{tr.projectListDesc}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+              <Plus size={15} /> {tr.newProject}
+            </button>
+          </div>
+          <div className="status-metric-grid">
+            {projectStatusCards.map(card => (
+              <div key={card.label}>
+                <small>{card.label}</small>
+                <strong>{card.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="document-tools project-tools">
+            <label>
+              <Search size={16} />
+              <input value={projectSearch} onChange={e => setProjectSearch(e.target.value)} placeholder={tr.searchProjects} aria-label={tr.searchProjects} />
+            </label>
+            <select value={projectStatusFilter} onChange={e => setProjectStatusFilter(e.target.value as 'all' | ProjectStatus)} aria-label={tr.allStatuses}>
+              <option value="all">{tr.allStatuses}</option>
+              {statuses.map(status => <option key={status} value={status}>{tr[status]}</option>)}
+            </select>
+            <select value={projectCategoryFilter} onChange={e => setProjectCategoryFilter(e.target.value as 'all' | ProjectCategory)} aria-label={tr.allTypes}>
+              <option value="all">{tr.allTypes}</option>
+              {categories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+            </select>
+          </div>
+          {filteredProjects.length === 0 ? (
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<HeartHandshake size={28} />}
+              title={projects.length === 0 ? tr.emptyTitle : tr.noFilteredProjects}
+              description={projects.length === 0 ? tr.emptyBody : tr.noFilteredProjectsBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                  <Plus size={15} /> {tr.newProject}
+                </button>
+              )}
+            />
+          ) : (
+            <div className="project-grid">
+              {filteredProjects.map(project => {
+                const target = toNum(project.target_amount);
+                const collected = toNum(project.collected_amount);
+                const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
+                const projectContributors = contributors.filter(contributor => contributor.project_id === project.id);
+                const contributorPaid = projectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+                const contributorCoverage = target > 0 ? Math.min(100, (contributorPaid / target) * 100) : 0;
+                const projectOrganization = project.organization_id ? organizationById[project.organization_id] : null;
+                return (
+                  <article className="project-card" key={project.id}>
+                    <div className="project-top">
+                      <div><strong>{project.name}</strong><span>{organizationLabel(project.organization_id, project.organization_name)}</span></div>
+                      <b className={`status ${project.status}`}>{tr[project.status]}</b>
+                    </div>
+                    <div className="org-strip">
+                      <span>{tr.organization}</span>
+                      <b className={`verify-badge ${projectOrganization?.verification_status ?? 'unverified'}`}>{verificationLabel(projectOrganization?.verification_status)}</b>
+                      {projectOrganization?.license_number && <small>{tr.licenseNumber}: {projectOrganization.license_number}</small>}
+                    </div>
+                    {projectOrganization && projectOrganization.verification_status !== 'verified' && <p className="privacy-note">{tr.unverifiedOrganizationWarning}</p>}
+                    <div className="badge-row"><span>{tr[project.category] ?? tr.other}</span><span>{dateLabel(project.start_date)} - {dateLabel(project.end_date)}</span></div>
+                    <div className="progress"><i style={{ width: `${progress}%` }} /></div>
+                    <div className="money-row">
+                      <div><small>{tr.target}</small><strong>{money(target, project.currency)}</strong></div>
+                      <div><small>{tr.collected}</small><strong>{money(collected, project.currency)}</strong></div>
+                      <div><small>{tr.remaining}</small><strong>{money(Math.max(0, target - collected), project.currency)}</strong></div>
+                    </div>
+                    {projectContributors.length > 0 && (
+                      <div className="collab-strip">
+                        <span>{tr.contributorPayments}: {money(contributorPaid, project.currency)}</span>
+                        <span>{tr.projectCoverage}: {contributorCoverage.toFixed(1)}%</span>
+                      </div>
+                    )}
+                    {project.notes && <p>{project.notes}</p>}
+                    <div className="project-linked-actions">
+                      <button
+                        className="doc-count-btn"
+                        type="button"
+                        aria-label={tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
+                        onClick={() => {
+                          setDocumentFilter('all');
+                          setDocumentSearch('');
+                          setDocumentProjectFilter(project.id);
+                          setActiveTab('documents');
+                        }}
+                      >
+                        {tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
+                      </button>
+                      <button
+                        className="doc-count-btn"
+                        type="button"
+                        aria-label={tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
+                        onClick={() => {
+                          setBeneficiarySearch(project.name);
+                          setBeneficiaryStatusFilter('all');
+                          setBeneficiaryCategoryFilter('all');
+                          setActiveTab('beneficiaries');
+                        }}
+                      >
+                        {tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
+                      </button>
+                      <button
+                        className="doc-count-btn"
+                        type="button"
+                        aria-label={tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
+                        onClick={() => {
+                          setContributorProjectFilter(project.id);
+                          setActiveTab('contributors');
+                        }}
+                      >
+                        {tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
+                      </button>
+                    </div>
+                    <div className="card-actions">
+                      <button type="button" onClick={() => setDonationProject(project)} aria-label={tr.addDonation}><HandCoins size={15} /> {tr.addDonation}</button>
+                      <button type="button" onClick={() => { resetContributorForm(project.id); setContributorOpen(true); }} aria-label={tr.addContributor}>{tr.addContributor}</button>
+                      <button type="button" onClick={() => archiveProject(project)} aria-label={tr.archive}><Archive size={15} /> {tr.archive}</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="split-grid project-support-grid" hidden={activeTab !== 'projects'}>
           <article className="warm-card">
             <div className="section-head"><h2>{tr.templates}</h2><Gift size={22} /></div>
             <div className="template-grid">
@@ -1546,11 +1758,12 @@ export default function CharityProjectsPage() {
             </select>
           </div>
           {organizations.length === 0 ? (
-            <div className="empty-state compact">
-              <ShieldCheck size={40} />
-              <strong>{tr.organizationDirectory}</strong>
-              <p>{tr.noOrganizationsAvailable}</p>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<ShieldCheck size={28} />}
+              title={tr.organizationDirectory}
+              description={tr.noOrganizationsAvailable}
+            />
           ) : (
             <div className="organization-grid">
               {filteredOrganizations.map(organization => {
@@ -1601,13 +1814,21 @@ export default function CharityProjectsPage() {
           <p className="disclaimer">{tr.verificationDisclaimer}</p>
         </section>
 
-        <section className="warm-card" id="impact-dashboard" hidden={activeTab !== 'impact' && activeTab !== 'overview'}>
+        <section className="warm-card" id="impact-dashboard" hidden={activeTab !== 'impact'}>
           <div className="vault-head section-head">
             <div>
               <h2>{tr.impactDashboard}</h2>
               <p>{tr.impactDashboardDesc}</p>
             </div>
             <Sparkles size={22} />
+          </div>
+          <div className="impact-summary-grid">
+            <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
+            <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
+            <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
+            <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
+            <div><small>{tr.monthlySponsorships}</small><strong>{hasImpactData ? money(monthlySponsorshipsTotal) : unavailableLabel}</strong></div>
+            <div><small>{tr.estimatedZakatImpact}</small><strong>{toNum(latestEstimatedZakat) > 0 ? money(toNum(latestEstimatedZakat)) : unavailableLabel}</strong></div>
           </div>
           {!hasImpactData ? (
             <EmptyState
@@ -1623,15 +1844,6 @@ export default function CharityProjectsPage() {
             />
           ) : (
             <>
-              <div className="impact-summary-grid">
-                <div><small>{tr.totalDonated}</small><strong>{money(totalDonatedThisYear)}</strong></div>
-                <div><small>{tr.activeCharityProjects}</small><strong>{activeProjects.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-                <div><small>{tr.completedProjects}</small><strong>{completedProjectsCount.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-                <div><small>{tr.beneficiariesSupported}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-                <div><small>{tr.monthlySponsorships}</small><strong>{money(monthlySponsorshipsTotal)}</strong></div>
-                <div><small>{tr.estimatedZakatImpact}</small><strong>{money(toNum(latestEstimatedZakat))}</strong></div>
-              </div>
-
               <div className="impact-layout">
                 <article className="impact-panel">
                   <h3>{tr.givingIncomeRatio}</h3>
@@ -1688,28 +1900,30 @@ export default function CharityProjectsPage() {
 
               <article className="impact-panel">
                 <h3>{tr.projectImpactProgress}</h3>
-                <div className="project-impact-grid">
-                  {projects.map(project => {
-                    const target = toNum(project.target_amount);
-                    const collected = toNum(project.collected_amount);
-                    const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
-                    return (
-                      <div className="project-impact-card" key={project.id}>
-                        <strong>{project.name}</strong>
-                        <span>{organizationLabel(project.organization_id, project.organization_name)}</span>
-                        <div className="progress"><i style={{ width: `${progress}%` }} /></div>
-                        <div className="badge-row">
-                          <span>{tr.completionRate}: {progress.toFixed(1)}%</span>
-                          <span>{tr.collected}: {money(collected, project.currency)}</span>
-                          <span>{tr.target}: {money(target, project.currency)}</span>
-                          <span>{tr.beneficiariesSupported}: {projectBeneficiaryCounts[project.id] || 0}</span>
-                          <span>{tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}</span>
+                {projects.length === 0 ? <p className="muted">{tr.emptyBody}</p> : (
+                  <div className="project-impact-grid">
+                    {projects.map(project => {
+                      const target = toNum(project.target_amount);
+                      const collected = toNum(project.collected_amount);
+                      const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
+                      return (
+                        <div className="project-impact-card" key={project.id}>
+                          <strong>{project.name}</strong>
+                          <span>{organizationLabel(project.organization_id, project.organization_name)}</span>
+                          <div className="progress"><i style={{ width: `${progress}%` }} /></div>
+                          <div className="badge-row">
+                            <span>{tr.completionRate}: {progress.toFixed(1)}%</span>
+                            <span>{tr.collected}: {money(collected, project.currency)}</span>
+                            <span>{tr.target}: {money(target, project.currency)}</span>
+                            <span>{tr.beneficiariesSupported}: {projectBeneficiaryCounts[project.id] || 0}</span>
+                            <span>{tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}</span>
+                          </div>
+                          {(impactMetricsByProject[project.id] || []).length > 0 && <div className="metric-chip-row">{impactMetricsByProject[project.id].map(metric => <span key={metric.id}>{metric.metric_name}: {toNum(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</span>)}</div>}
                         </div>
-                        {(impactMetricsByProject[project.id] || []).length > 0 && <div className="metric-chip-row">{impactMetricsByProject[project.id].map(metric => <span key={metric.id}>{metric.metric_name}: {toNum(metric.metric_value).toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')} {metric.metric_unit || ''}</span>)}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <p className="disclaimer">{tr.customImpactHint}</p>
               </article>
 
@@ -1734,108 +1948,10 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="warm-card" hidden={activeTab !== 'projects'}>
-          <div className="section-head"><h2>{tr.projects}</h2><button className="mini-gold" onClick={() => setProjectOpen(true)}><Plus size={15} /> {tr.newProject}</button></div>
-          {projects.length === 0 ? (
-            <div className="empty-state">
-              <HeartHandshake size={44} />
-              <strong>{tr.emptyTitle}</strong>
-              <p>{tr.emptyBody}</p>
-              <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
-                <Plus size={15} /> {tr.newProject}
-              </button>
-            </div>
-          ) : (
-            <div className="project-grid">
-              {projects.map(project => {
-                const target = toNum(project.target_amount);
-                const collected = toNum(project.collected_amount);
-                const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
-                const projectContributors = contributors.filter(contributor => contributor.project_id === project.id);
-                const contributorPaid = projectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
-                const contributorCoverage = target > 0 ? Math.min(100, (contributorPaid / target) * 100) : 0;
-                const projectOrganization = project.organization_id ? organizationById[project.organization_id] : null;
-                return (
-                  <article className="project-card" key={project.id}>
-                    <div className="project-top">
-                      <div><strong>{project.name}</strong><span>{organizationLabel(project.organization_id, project.organization_name)}</span></div>
-                      <b className={`status ${project.status}`}>{tr[project.status]}</b>
-                    </div>
-                    <div className="org-strip">
-                      <span>{tr.organization}</span>
-                      <b className={`verify-badge ${projectOrganization?.verification_status ?? 'unverified'}`}>{verificationLabel(projectOrganization?.verification_status)}</b>
-                      {projectOrganization?.license_number && <small>{tr.licenseNumber}: {projectOrganization.license_number}</small>}
-                    </div>
-                    {projectOrganization && projectOrganization.verification_status !== 'verified' && <p className="privacy-note">{tr.unverifiedOrganizationWarning}</p>}
-                    <div className="badge-row"><span>{tr[project.category] ?? tr.other}</span><span>{dateLabel(project.start_date)} - {dateLabel(project.end_date)}</span></div>
-                    <div className="progress"><i style={{ width: `${progress}%` }} /></div>
-                    <div className="money-row">
-                      <div><small>{tr.target}</small><strong>{money(target, project.currency)}</strong></div>
-                      <div><small>{tr.collected}</small><strong>{money(collected, project.currency)}</strong></div>
-                      <div><small>{tr.remaining}</small><strong>{money(Math.max(0, target - collected), project.currency)}</strong></div>
-                    </div>
-                    {projectContributors.length > 0 && (
-                      <div className="collab-strip">
-                        <span>{tr.contributorPayments}: {money(contributorPaid, project.currency)}</span>
-                        <span>{tr.projectCoverage}: {contributorCoverage.toFixed(1)}%</span>
-                      </div>
-                    )}
-                    {project.notes && <p>{project.notes}</p>}
-                    <button
-                      className="doc-count-btn"
-                      type="button"
-                      aria-label={tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
-                      onClick={() => {
-                        setDocumentFilter('all');
-                        setDocumentSearch('');
-                        setDocumentProjectFilter(project.id);
-                        window.setTimeout(() => window.document.getElementById('document-vault')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-                      }}
-                    >
-                      {tr.documentsCount.replace('{count}', String(projectDocumentCounts[project.id] || 0))}
-                    </button>
-                    <button
-                      className="doc-count-btn"
-                      type="button"
-                      aria-label={tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
-                      onClick={() => {
-                        setBeneficiarySearch(project.name);
-                        setBeneficiaryStatusFilter('all');
-                        setBeneficiaryCategoryFilter('all');
-                        window.setTimeout(() => window.document.getElementById('beneficiary-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-                      }}
-                    >
-                      {tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
-                    </button>
-                    <button
-                      className="doc-count-btn"
-                      type="button"
-                      aria-label={tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
-                      onClick={() => {
-                        setContributorProjectFilter(project.id);
-                        window.setTimeout(() => window.document.getElementById('family-collaboration')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-                      }}
-                    >
-                      {tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
-                    </button>
-                    <div className="card-actions">
-                      <button aria-label={tr.view}><Eye size={15} /> {tr.view}</button>
-                      <button onClick={() => setDonationProject(project)} aria-label={tr.addDonation}><HandCoins size={15} /> {tr.addDonation}</button>
-                      <button onClick={() => { resetContributorForm(project.id); setContributorOpen(true); }} aria-label={tr.addContributor}>{tr.addContributor}</button>
-                      <button aria-label={tr.edit}><Pencil size={15} /> {tr.edit}</button>
-                      <button onClick={() => archiveProject(project)} aria-label={tr.archive}><Archive size={15} /> {tr.archive}</button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
         <section id="family-collaboration" className="warm-card family-collaboration" hidden={activeTab !== 'contributors'}>
           <div className="section-head vault-head">
             <div>
-              <small>{tr.invitationsSoon}</small>
+              <small>{tr.contributors}</small>
               <h2>{tr.familyCollaboration}</h2>
               <p>{tr.collaborationDesc}</p>
             </div>
@@ -1863,15 +1979,18 @@ export default function CharityProjectsPage() {
           </div>
           {topContributor && <p className="nisab"><HandCoins size={15} /> {tr.topContributor}: {topContributor.contributor_name} - {money(toNum(topContributor.paid_amount), topContributor.currency)}</p>}
           {filteredContributors.length === 0 ? (
-            <div className="empty-state compact">
-              <HandCoins size={38} />
-              <strong>{tr.invitationsSoon}</strong>
-              <p>{tr.collaborationDesc}</p>
-              <button className="mini-gold" type="button" onClick={() => {
-                resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
-                setContributorOpen(true);
-              }}>{tr.addContributor}</button>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<HandCoins size={28} />}
+              title={tr.noContributors}
+              description={tr.contributorsEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => {
+                  resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
+                  setContributorOpen(true);
+                }}>{tr.addContributor}</button>
+              )}
+            />
           ) : (
             <div className="contributor-grid">
               {filteredContributors.map(contributor => {
@@ -1943,15 +2062,18 @@ export default function CharityProjectsPage() {
             </select>
           </div>
           {filteredBeneficiaries.length === 0 ? (
-            <div className="empty-state compact">
-              <HeartHandshake size={38} />
-              <strong>{tr.noBeneficiaries}</strong>
-              <p>{tr.beneficiaryDesc}</p>
-              <button className="mini-gold" type="button" onClick={() => {
-                resetBeneficiaryForm();
-                setBeneficiaryOpen(true);
-              }}>{tr.addBeneficiary}</button>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<HeartHandshake size={28} />}
+              title={tr.noBeneficiaries}
+              description={tr.beneficiariesEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => {
+                  resetBeneficiaryForm();
+                  setBeneficiaryOpen(true);
+                }}>{tr.addBeneficiary}</button>
+              )}
+            />
           ) : (
             <div className="beneficiary-grid">
               {filteredBeneficiaries.map(beneficiary => {
@@ -2031,17 +2153,20 @@ export default function CharityProjectsPage() {
           </div>
 
           {filteredDocuments.length === 0 ? (
-            <div className="empty-state compact">
-              <FileText size={38} />
-              <strong>{tr.noDocuments}</strong>
-              <p>{tr.documentVaultDesc}</p>
-              <button className="mini-gold" type="button" onClick={() => {
-                resetDocumentForm();
-                setDocumentOpen(true);
-              }}>
-                <FileUp size={15} /> {tr.uploadDocument}
-              </button>
-            </div>
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<FileText size={28} />}
+              title={tr.noDocuments}
+              description={tr.documentsEmptyBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => {
+                  resetDocumentForm();
+                  setDocumentOpen(true);
+                }}>
+                  <FileUp size={15} /> {tr.uploadDocument}
+                </button>
+              )}
+            />
           ) : (
             <div className="document-grid">
               {filteredDocuments.map(document => {
@@ -2068,37 +2193,93 @@ export default function CharityProjectsPage() {
           )}
         </section>
 
-        <section className="split-grid" hidden={activeTab !== 'reports'}>
-          <article className="warm-card">
-            <div className="section-head"><h2>{tr.impact}</h2><AlertTriangle size={22} /></div>
-            <label className="impact-input"><span>{tr.donationAmount}</span><input inputMode="decimal" value={impactDonation} onChange={e => setImpactDonation(e.target.value)} placeholder="0.000" /></label>
-            {incomeTotal <= 0 ? <p className="muted">{tr.incomeMissing}</p> : impactPct !== null && impactValue > 0 ? (
-              <div className="impact-lines">
-                <p>{tr.donationPercent.replace('{pct}', impactPct.toFixed(1))}</p>
-                <p>{tr.remainingNet.replace('{amount}', money(remainingNet))}</p>
-                {impactPct > 20 && <p className="warn">{tr.highWarning}</p>}
-              </div>
-            ) : <p className="muted">{tr.incomeMissing}</p>}
-          </article>
-
-          <article className="warm-card" id="charity-reports">
-            <div className="section-head"><h2>{tr.futureTitle}</h2><Sparkles size={22} /></div>
-            <div className="report-card">
-              <div>
-                <strong>{tr.annualPdfReport}</strong>
-                <span>{tr.reportYear}</span>
-              </div>
+        <section className="warm-card report-dashboard" id="charity-reports" hidden={activeTab !== 'reports'}>
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.reports}</small>
+              <h2>{tr.reports}</h2>
+              <p>{tr.reportsDesc}</p>
+            </div>
+            <FileText size={22} />
+          </div>
+          <div className="report-toolbar">
+            <label>
+              <span>{tr.reportYear}</span>
               <select value={selectedReportYear} onChange={e => setSelectedReportYear(e.target.value)} aria-label={tr.reportYear}>
                 {reportYears.map(year => <option key={year} value={year}>{year}</option>)}
               </select>
-              <button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} aria-label={tr.generateReport}>
-                <FileText size={16} /> {tr.generateReport}
+            </label>
+            <div className="section-actions">
+              <button className="mini-gold" type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData} aria-label={tr.exportPdf}>
+                <FileText size={16} /> {tr.exportPdf}
               </button>
-              <button type="button" onClick={exportExcel} disabled={exportingExcel} aria-label={tr.exportExcel}>
+              <button className="ghost-btn" type="button" onClick={exportExcel} disabled={exportingExcel || !hasReportData} aria-label={tr.exportExcel}>
                 <FileText size={16} /> {exportingExcel ? tr.preparingExcel : tr.exportExcel}
               </button>
             </div>
-          </article>
+          </div>
+          {!hasReportData && (
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<AlertTriangle size={28} />}
+              title={tr.notEnoughReportData}
+              description={tr.emptyReportsBody}
+              actions={(
+                <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                  <Plus size={15} /> {tr.newProject}
+                </button>
+              )}
+            />
+          )}
+          <div className="report-grid">
+            <article className="report-option-card">
+              <FileText size={20} />
+              <div>
+                <strong>{tr.yearlyCharityReport}</strong>
+                <p>{tr.yearlyReportDesc}</p>
+              </div>
+              <button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData}>{tr.generateReport}</button>
+            </article>
+            <article className="report-option-card">
+              <Calculator size={20} />
+              <div>
+                <strong>{tr.zakatKhumsReport}</strong>
+                <p>{tr.zakatKhumsReportDesc}</p>
+              </div>
+              <button type="button" onClick={() => router.push('/zakat')} disabled={assets.length === 0 && zakatHistory.length === 0}>{tr.generateReport}</button>
+            </article>
+            <article className="report-option-card">
+              <HandCoins size={20} />
+              <div>
+                <strong>{tr.donationsReport}</strong>
+                <p>{tr.donationsReportDesc}</p>
+              </div>
+              <button type="button" onClick={exportExcel} disabled={exportingExcel || donations.length === 0}>{tr.exportExcel}</button>
+            </article>
+            <article className="report-option-card">
+              <HeartHandshake size={20} />
+              <div>
+                <strong>{tr.beneficiariesReport}</strong>
+                <p>{tr.beneficiariesReportDesc}</p>
+              </div>
+              <button type="button" onClick={() => setActiveTab('beneficiaries')} disabled={beneficiaries.length === 0}>{tr.beneficiaryTracking}</button>
+            </article>
+            <article className="report-option-card impact-report-card">
+              <Sparkles size={20} />
+              <div>
+                <strong>{tr.impact}</strong>
+                <p>{tr.incomeMissing}</p>
+              </div>
+              <label className="impact-input"><span>{tr.donationAmount}</span><input inputMode="decimal" value={impactDonation} onChange={e => setImpactDonation(e.target.value)} placeholder="0.000" /></label>
+              {incomeTotal <= 0 ? <p className="muted">{tr.incomeMissing}</p> : impactPct !== null && impactValue > 0 ? (
+                <div className="impact-lines">
+                  <p>{tr.donationPercent.replace('{pct}', impactPct.toFixed(1))}</p>
+                  <p>{tr.remainingNet.replace('{amount}', money(remainingNet))}</p>
+                  {impactPct > 20 && <p className="warn">{tr.highWarning}</p>}
+                </div>
+              ) : <p className="muted">{tr.incomeMissing}</p>}
+            </article>
+          </div>
         </section>
       </DashboardPageShell>
 
