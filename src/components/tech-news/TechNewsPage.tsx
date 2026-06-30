@@ -727,16 +727,6 @@ export function TechNewsPage() {
     <div className="tech-news-shell" dir={dir}>
       <Sidebar />
       <main className="tech-news-main">
-        <TechTickerStrip
-          prices={prices}
-          formatPrice={formatPrice}
-          labels={{
-            priceUnavailable: ui.priceUnavailable,
-            delayedGlobal: ui.delayed,
-            lastUpdated: ui.tickerUpdated,
-          }}
-        />
-
         <TechNewsHeader
           title={ui.title}
           subtitle={ui.subtitle}
@@ -748,6 +738,18 @@ export function TechNewsPage() {
           dataStatusLabel={ui.dataStatus}
           refreshing={refreshing}
           onRefresh={() => void load(false)}
+        />
+        <TechTickerStrip
+          prices={prices}
+          formatPrice={formatPrice}
+          direction={dir === 'rtl' ? 'rtl' : 'ltr'}
+          labels={{
+            priceUnavailable: ui.priceUnavailable,
+            unavailable: ui.unavailable,
+            delayedGlobal: ui.delayed,
+            lastUpdated: ui.tickerUpdated,
+            sourceLabel: ui.source,
+          }}
         />
 
         {loading ? (
@@ -961,16 +963,6 @@ export function TechNewsPage() {
           align-items:center;
           gap:8px;
           width:max-content;
-          animation:techTickerScroll 50s linear infinite;
-        }
-        .tech-ticker-strip.is-paused .tech-ticker-track,
-        .tech-ticker-strip:focus-within .tech-ticker-track{
-          animation-play-state:paused;
-        }
-        @media(hover:hover) and (pointer:fine){
-          .tech-ticker-strip:hover .tech-ticker-track{
-            animation-play-state:paused;
-          }
         }
         .tech-ticker-set{
           display:flex;
@@ -993,12 +985,12 @@ export function TechNewsPage() {
         }
 
         .tech-ticker-item{
-          inline-size:158px;
-          min-height:48px;
+          width:210px;
+          min-height:56px;
           display:grid;
           grid-template-columns:minmax(0,1fr) auto;
           align-items:center;
-          gap:4px 8px;
+          gap:4px 6px;
           padding:7px 10px;
           border:1px solid var(--tech-border);
           border-radius:14px;
@@ -1006,10 +998,33 @@ export function TechNewsPage() {
           box-shadow:0 8px 18px rgba(10,43,74,.05);
         }
 
-        .tech-ticker-item > div{display:grid;gap:2px;min-width:0}
-        .tech-ticker-item .tech-ticker-identity{display:flex;align-items:center;gap:7px;min-width:0}
-        .tech-ticker-item .tech-ticker-identity>div{display:grid;gap:1px;min-width:0;overflow:hidden}
-        .tech-ticker-item strong{font-size:13px;font-weight:950;letter-spacing:0;color:var(--tech-text)}
+        .tech-ticker-item .tech-ticker-identity{
+          grid-column:1 / -1;
+          display:flex;
+          align-items:center;
+          gap:7px;
+          min-width:0;
+        }
+        .tech-ticker-item .tech-ticker-identity > div{
+          display:grid;
+          gap:1px;
+          min-width:0;
+          overflow:hidden;
+        }
+        .tech-ticker-item .tech-ticker-identity .asset-identity-name{
+          font-size:10px;
+          line-height:1.1;
+        }
+        .tech-ticker-item .tech-ticker-identity .asset-identity-symbol{
+          font-size:10px;
+        }
+        .tech-ticker-item .tech-ticker-identity strong{
+          font-size:9px;
+          color:var(--tech-muted);
+          text-transform:uppercase;
+          letter-spacing:.2px;
+          line-height:1;
+        }
         .tech-ticker-item small{
           display:inline-flex;
           align-items:center;
@@ -1018,20 +1033,66 @@ export function TechNewsPage() {
           max-width:100%;
           overflow:hidden;
           color:var(--tech-muted);
-          font-size:9.5px;
+          font-size:10px;
           font-weight:850;
           text-overflow:ellipsis;
           white-space:nowrap;
+          grid-column:1 / -1;
         }
-        .tech-ticker-item > span{grid-row:span 2;color:var(--tech-text);font-size:12px;font-weight:950;white-space:nowrap}
-        .tech-ticker-item b{grid-column:2;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:999px;padding:3px 6px;font-size:10.5px;font-weight:950}
-        .tech-ticker-item b.up{background:#DCFCE7;color:#166534}
-        .tech-ticker-item b.down{background:#FEE2E2;color:#991B1B}
-        .tech-ticker-item b.neutral{background:#E2E8F0;color:#334155}
+        .tech-ticker-price{
+          grid-column:1;
+          color:var(--tech-text);
+          font-size:12px;
+          font-weight:950;
+          white-space:nowrap;
+        }
+        .tech-ticker-change{
+          grid-column:2;
+          display:inline-flex;
+          align-items:center;
+          gap:4px;
+          justify-self:end;
+          border-radius:999px;
+          padding:3px 6px;
+          font-size:10px;
+          font-weight:950;
+          white-space:nowrap;
+        }
+        .tech-ticker-change.up{
+          background:#DCFCE7;
+          color:#166534;
+        }
+        .tech-ticker-change.down{
+          background:#FEE2E2;
+          color:#991B1B;
+        }
+        .tech-ticker-change.neutral{
+          background:#E2E8F0;
+          color:#334155;
+        }
 
-        @keyframes techTickerScroll{
-          from{transform:translateX(0)}
-          to{transform:translateX(-50%)}
+        @media (max-width: 620px) {
+          .tech-ticker-strip{
+            padding:6px;
+          }
+          .tech-ticker-viewport{
+            min-height:52px;
+          }
+          .tech-ticker-item{
+            width:206px;
+            min-height:58px;
+            padding:7px 9px;
+            gap:3px 6px;
+          }
+          .tech-ticker-item small{
+            font-size:9.3px;
+          }
+          .tech-ticker-price{
+            font-size:11.5px;
+          }
+          .tech-ticker-change{
+            font-size:9px;
+          }
         }
 
         .tech-news-header{
