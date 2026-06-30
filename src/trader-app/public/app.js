@@ -703,9 +703,9 @@
   function logoUrl(s, base, type) {
     if (type === "crypto") { const k = base.replace(/USDT?$/, "").replace(/USD$/, "").toLowerCase(); return k ? `https://assets.coincap.io/assets/icons/${k}@2x.png` : ""; }
     if (type === "stock" || type === "fund") {
-      const dom = DOMAINS[s] || DOMAINS[base];
-      if (dom) return `https://logo.clearbit.com/${dom}`;
       if (/^[A-Z]{1,5}$/.test(base) && !s.includes(".")) return `https://financialmodelingprep.com/image-stock/${base}.png`;
+      const dom = DOMAINS[s] || DOMAINS[base];
+      if (dom) return `https://www.google.com/s2/favicons?domain=${dom}&sz=128`;
     }
     return "";
   }
