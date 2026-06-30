@@ -19,6 +19,7 @@ import {
   Info,
   Layers3,
   LineChart,
+  Loader2,
   Newspaper,
   RefreshCcw,
   Search,
@@ -27,6 +28,7 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
+  X,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -63,12 +65,14 @@ type DisclosureId =
 type GrowthTickerItem = {
   symbol: string;
   name: string;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
   source: string;
   delayed: boolean;
+  available?: boolean;
+  unavailableReason?: string;
 };
 
 type GrowthTickerResponse =
@@ -76,6 +80,7 @@ type GrowthTickerResponse =
       ok: true;
       source: string;
       updated_at: string;
+      available_count?: number;
       items: GrowthTickerItem[];
     }
   | {
@@ -140,6 +145,100 @@ type GrowthStockRow = GrowthTickerItem & {
   dataCompleteness: number;
 };
 
+type GrowthAnalysisResponse = {
+  ok?: boolean;
+  success?: boolean;
+  symbol?: string;
+  providerSymbol?: string;
+  name?: string;
+  assetType?: string;
+  currency?: string | null;
+  lastUpdated?: string;
+  latestPrice?: number;
+  changePercent?: number;
+  quote?: {
+    price?: number;
+    change?: number;
+    changePercent?: number;
+    currency?: string | null;
+    timestamp?: string;
+  };
+  fundamentals?: Record<string, unknown>;
+  fundamentalsAvailable?: boolean;
+  fundamentalsUnavailableReason?: string;
+  fundamentalsSource?: string;
+  technicals?: Record<string, unknown>;
+  trend?: string;
+  riskLevel?: string;
+  indicators?: {
+    rsi?: number;
+    sma20?: number;
+    sma50?: number;
+    volatility?: number;
+  };
+  levels?: {
+    support?: number;
+    resistance?: number;
+  };
+  history?: unknown[];
+  summary?: string;
+  source?: string;
+  provider?: string;
+  dataStatus?: string;
+  warnings?: string[];
+  aiInsight?: {
+    status?: string;
+    provider?: string;
+    summary?: string;
+    trendStatus?: string;
+    riskNotes?: string;
+    watchNext?: string[];
+  };
+  marketDataService?: string;
+  error?: string;
+  message?: string;
+};
+
+type GrowthAssetProfileResponse = {
+  success?: boolean;
+  symbol?: string;
+  providerSymbol?: string;
+  assetType?: string;
+  source?: string;
+  lastUpdated?: string;
+  profileAvailable?: boolean;
+  unavailableReason?: string;
+  profile?: {
+    name?: string;
+    ticker?: string;
+    exchange?: string;
+    category?: string;
+    sector?: string;
+    industry?: string;
+    country?: string;
+    website?: string;
+    description?: string;
+    marketCap?: number | string;
+    employees?: number | string;
+    currency?: string;
+    dataLimitations?: string[];
+  } | null;
+};
+
+type GrowthStockDetail = {
+  analysis: GrowthAnalysisResponse | null;
+  profile: GrowthAssetProfileResponse | null;
+  error?: string | null;
+};
+
+type AnalysisModalState = {
+  open: boolean;
+  row: GrowthStockRow | null;
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  detail: GrowthStockDetail | null;
+  error: string | null;
+};
+
 type Tone = 'positive' | 'negative' | 'warning' | 'neutral' | 'info';
 
 const COPY = {
@@ -155,6 +254,45 @@ const COPY = {
     connected: 'الخدمة متصلة',
     partial: 'بيانات جزئية',
     unavailable: 'غير متاح',
+    missingDataHint: 'لم يوفر مزود البيانات هذه القيمة حالياً.',
+    selectedCount: 'عدد الأسهم المحددة',
+    startComparison: 'بدء المقارنة',
+    clearSelection: 'مسح الاختيار',
+    removeFromComparison: 'إزالة من المقارنة',
+    comparisonNeedsTwo: 'اختر سهمين على الأقل لبدء المقارنة.',
+    comparisonLimit: 'يمكن مقارنة 5 أسهم كحد أقصى.',
+    comparisonDetailsTitle: 'مقارنة تفصيلية',
+    close: 'إغلاق',
+    companyName: 'اسم الشركة',
+    industry: 'الصناعة',
+    currency: 'العملة',
+    riskLevel: 'مستوى المخاطر',
+    aiConfidence: 'درجة / ثقة الذكاء الاصطناعي',
+    recommendationStatus: 'حالة التوصية',
+    dataProvider: 'مزود البيانات',
+    availableStocks: 'عدد الأسهم المتاحة',
+    missingFields: 'عدد الحقول الناقصة',
+    dataCondition: 'حالة البيانات',
+    someFieldsUnavailable: 'بعض الحقول غير متاحة',
+    delayedData: 'بيانات متأخرة',
+    analysisTitle: 'تحليل السهم',
+    analysisLoading: 'جاري جلب تحليل السهم...',
+    analysisError: 'تعذر جلب تحليل هذا السهم حالياً.',
+    growthCategory: 'فئة النمو',
+    priceChange: 'تغير السعر',
+    keyMetrics: 'المقاييس الرئيسية',
+    technicalSummary: 'الملخص الفني',
+    aiGrowthThesis: 'أطروحة النمو / الذكاء الاصطناعي',
+    strengths: 'نقاط القوة',
+    risks: 'المخاطر',
+    dataQuality: 'جودة البيانات',
+    providerSource: 'المزود / المصدر',
+    lowRisk: 'منخفضة',
+    mediumRisk: 'متوسطة',
+    highRisk: 'مرتفعة',
+    bullish: 'إيجابي',
+    bearish: 'سلبي',
+    neutralTrend: 'محايد',
     lastQuoteUpdate: 'آخر تحديث للأسعار',
     lastNewsUpdate: 'آخر تحديث للأخبار',
     source: 'المصدر',
@@ -278,6 +416,45 @@ const COPY = {
     connected: 'Service connected',
     partial: 'Partial data',
     unavailable: 'Unavailable',
+    missingDataHint: 'The data provider has not supplied this value right now.',
+    selectedCount: 'Selected stocks',
+    startComparison: 'Start comparison',
+    clearSelection: 'Clear selection',
+    removeFromComparison: 'Remove from comparison',
+    comparisonNeedsTwo: 'Select at least two stocks to compare.',
+    comparisonLimit: 'You can compare up to 5 stocks.',
+    comparisonDetailsTitle: 'Detailed comparison',
+    close: 'Close',
+    companyName: 'Company name',
+    industry: 'Industry',
+    currency: 'Currency',
+    riskLevel: 'Risk level',
+    aiConfidence: 'AI score / confidence',
+    recommendationStatus: 'Recommendation status',
+    dataProvider: 'Data provider',
+    availableStocks: 'Available stocks',
+    missingFields: 'Missing fields',
+    dataCondition: 'Data condition',
+    someFieldsUnavailable: 'Some fields unavailable',
+    delayedData: 'Delayed data',
+    analysisTitle: 'Stock analysis',
+    analysisLoading: 'Loading stock analysis...',
+    analysisError: 'Unable to fetch this stock analysis right now.',
+    growthCategory: 'Growth category',
+    priceChange: 'Price change',
+    keyMetrics: 'Key metrics',
+    technicalSummary: 'Technical summary',
+    aiGrowthThesis: 'AI / growth thesis',
+    strengths: 'Strengths',
+    risks: 'Risks',
+    dataQuality: 'Data quality',
+    providerSource: 'Provider / source',
+    lowRisk: 'Low',
+    mediumRisk: 'Medium',
+    highRisk: 'High',
+    bullish: 'Bullish',
+    bearish: 'Bearish',
+    neutralTrend: 'Neutral',
     lastQuoteUpdate: 'Quote update',
     lastNewsUpdate: 'News update',
     source: 'Source',
@@ -396,6 +573,45 @@ const COPY = {
     connected: 'Service connecté',
     partial: 'Données partielles',
     unavailable: 'Indisponible',
+    missingDataHint: 'Le fournisseur de données ne fournit pas cette valeur actuellement.',
+    selectedCount: 'Actions sélectionnées',
+    startComparison: 'Lancer la comparaison',
+    clearSelection: 'Effacer la sélection',
+    removeFromComparison: 'Retirer de la comparaison',
+    comparisonNeedsTwo: 'Sélectionnez au moins deux actions à comparer.',
+    comparisonLimit: 'Vous pouvez comparer jusqu’à 5 actions.',
+    comparisonDetailsTitle: 'Comparaison détaillée',
+    close: 'Fermer',
+    companyName: 'Nom de la société',
+    industry: 'Industrie',
+    currency: 'Devise',
+    riskLevel: 'Niveau de risque',
+    aiConfidence: 'Score / confiance IA',
+    recommendationStatus: 'Statut de recommandation',
+    dataProvider: 'Fournisseur de données',
+    availableStocks: 'Actions disponibles',
+    missingFields: 'Champs manquants',
+    dataCondition: 'État des données',
+    someFieldsUnavailable: 'Certains champs sont indisponibles',
+    delayedData: 'Données retardées',
+    analysisTitle: 'Analyse de l’action',
+    analysisLoading: 'Chargement de l’analyse...',
+    analysisError: 'Impossible de récupérer l’analyse de cette action pour le moment.',
+    growthCategory: 'Catégorie de croissance',
+    priceChange: 'Variation du prix',
+    keyMetrics: 'Indicateurs clés',
+    technicalSummary: 'Résumé technique',
+    aiGrowthThesis: 'Thèse IA / croissance',
+    strengths: 'Points forts',
+    risks: 'Risques',
+    dataQuality: 'Qualité des données',
+    providerSource: 'Fournisseur / source',
+    lowRisk: 'Faible',
+    mediumRisk: 'Moyen',
+    highRisk: 'Élevé',
+    bullish: 'Haussier',
+    bearish: 'Baissier',
+    neutralTrend: 'Neutre',
     lastQuoteUpdate: 'Mise à jour des cours',
     lastNewsUpdate: 'Mise à jour des actualités',
     source: 'Source',
@@ -632,6 +848,7 @@ const STOCK_SECTOR: Record<string, Exclude<SectorId, 'all'>> = Object.entries(SE
 const TAB_IDS: GrowthTab[] = ['overview', 'stocks', 'news', 'sectors'];
 const INITIAL_NEWS_LIMIT = 9;
 const NEWS_PAGE_SIZE = 9;
+const MOVER_VISIBLE_LIMIT = 5;
 const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW', en: 'en-US', fr: 'fr-FR' };
 
 function getLang(lang: string): LangCode {
@@ -702,9 +919,31 @@ function formatPercent(value: number | null | undefined, lang: LangCode) {
   return `${sign}${numberFormatter(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
 }
 
+function localizeDisplayValue(value: string, lang: LangCode) {
+  if (lang !== 'ar') return value;
+  return value
+    .replace(/\bweeks?\s+(\d+)\s*[-–—]\s*(\d+)\b/i, '$1–$2 أسابيع')
+    .replace(/\b(\d+)\s*[-–—]\s*(\d+)\s*weeks?\b/i, '$1–$2 أسابيع')
+    .replace(/\b(\d+)\s+to\s+(\d+)\s+weeks?\b/i, '$1–$2 أسابيع');
+}
+
+function valueTextDirection(value: string): 'ltr' | 'rtl' | 'auto' {
+  return /^[A-Z0-9.^\-/+%$,\s]+$/.test(value.trim()) ? 'ltr' : 'auto';
+}
+
 function formatCompact(value: number | null | undefined, lang: LangCode) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return COPY[lang].unavailable;
   return numberFormatter(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
+function finiteNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function cleanDisplayText(value: unknown) {
+  const text = String(value ?? '').trim();
+  return text.length > 0 && !/^(undefined|null|nan|n\/?a)$/i.test(text) ? text : null;
 }
 
 function formatDateTime(value: string | null | undefined, lang: LangCode) {
@@ -760,7 +999,7 @@ function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockR
     if (!symbol) continue;
     const name = cleanTextValue(item.name) || symbol;
     const currency = cleanTextValue(item.currency) || 'USD';
-    const price = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : Number.NaN;
+    const price = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : null;
     const change = typeof item.change === 'number' && Number.isFinite(item.change) ? item.change : null;
     const changePercent = typeof item.changePercent === 'number' && Number.isFinite(item.changePercent) ? item.changePercent : null;
     const source = cleanTextValue(item.source) || COPY[lang].unavailable;
@@ -781,6 +1020,7 @@ function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockR
       changePercent,
       source,
       delayed: Boolean(item.delayed),
+      available: Boolean(item.available ?? price !== null),
       sectorId,
       sectorLabel: sectorLabel(sectorId, lang),
       momentumLabel,
@@ -926,6 +1166,147 @@ function safeArticleSummary(item: GrowthNewsItem, showOriginal: boolean) {
   return item.summary || item.summaryOriginal || '';
 }
 
+async function fetchGrowthStockDetail(row: GrowthStockRow): Promise<GrowthStockDetail> {
+  const analysisParams = new URLSearchParams({
+    symbol: row.symbol,
+    displaySymbol: row.symbol,
+    assetType: 'stock',
+    name: row.name,
+  });
+  if (row.currency) analysisParams.set('currency', row.currency);
+
+  const profileParams = new URLSearchParams({
+    symbol: row.symbol,
+    assetType: 'stock',
+    name: row.name,
+  });
+
+  const [analysisResult, profileResult] = await Promise.allSettled([
+    fetch(`/api/market/analyze?${analysisParams.toString()}`, { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json().catch(() => null) as GrowthAnalysisResponse | null;
+        if (!response.ok || !payload?.success) throw new Error(payload?.message || payload?.error || 'analysis_unavailable');
+        return payload;
+      }),
+    fetch(`/api/market/asset-profile?${profileParams.toString()}`, { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json().catch(() => null) as GrowthAssetProfileResponse | null;
+        if (!response.ok || !payload?.success) throw new Error('profile_unavailable');
+        return payload;
+      }),
+  ]);
+
+  const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : null;
+  const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
+  const error = analysisResult.status === 'rejected'
+    ? analysisResult.reason instanceof Error ? analysisResult.reason.message : 'analysis_unavailable'
+    : null;
+  return { analysis, profile, error };
+}
+
+function profileData(detail: GrowthStockDetail | null | undefined) {
+  return detail?.profile?.profile ?? null;
+}
+
+function analysisData(detail: GrowthStockDetail | null | undefined) {
+  return detail?.analysis?.success ? detail.analysis : null;
+}
+
+function fundamentalsData(detail: GrowthStockDetail | null | undefined) {
+  const fundamentals = analysisData(detail)?.fundamentals;
+  return fundamentals && typeof fundamentals === 'object' ? fundamentals : null;
+}
+
+function metricNumber(record: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!record) return null;
+  for (const key of keys) {
+    const value = finiteNumber(record[key]);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function metricText(record: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!record) return null;
+  for (const key of keys) {
+    const value = cleanDisplayText(record[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function getMarketCap(detail: GrowthStockDetail | null | undefined) {
+  return finiteNumber(profileData(detail)?.marketCap);
+}
+
+function getPeRatio(detail: GrowthStockDetail | null | undefined) {
+  return metricNumber(fundamentalsData(detail), ['peRatio', 'pe', 'trailingPE', 'forwardPE']);
+}
+
+function getPegRatio(detail: GrowthStockDetail | null | undefined) {
+  return metricNumber(fundamentalsData(detail), ['pegRatio', 'peg', 'pegTTM']);
+}
+
+function getRevenueGrowth(detail: GrowthStockDetail | null | undefined) {
+  return metricNumber(fundamentalsData(detail), ['revenueGrowth', 'revenueGrowthYoY', 'revenueGrowthTTM', 'revenueGrowthQuarterlyYoy']);
+}
+
+function getEarningsGrowth(detail: GrowthStockDetail | null | undefined) {
+  return metricNumber(fundamentalsData(detail), ['earningsGrowth', 'epsGrowth', 'epsGrowthTTM', 'epsGrowthQuarterlyYoy']);
+}
+
+function getAiConfidence(detail: GrowthStockDetail | null | undefined) {
+  const analysis = analysisData(detail) as (GrowthAnalysisResponse & Record<string, unknown>) | null;
+  return metricNumber(analysis, ['aiScore', 'confidence', 'aiConfidence', 'confidenceScore']);
+}
+
+function getRecommendation(detail: GrowthStockDetail | null | undefined) {
+  const analysis = analysisData(detail) as (GrowthAnalysisResponse & Record<string, unknown>) | null;
+  return metricText(analysis, ['recommendation', 'recommendationStatus', 'rating', 'signal']);
+}
+
+function getSource(row: GrowthStockRow, detail: GrowthStockDetail | null | undefined) {
+  return cleanDisplayText(detail?.profile?.source) || cleanDisplayText(analysisData(detail)?.source) || cleanDisplayText(row.source);
+}
+
+function getLastUpdated(row: GrowthStockRow, detail: GrowthStockDetail | null | undefined) {
+  return analysisData(detail)?.lastUpdated || detail?.profile?.lastUpdated || null;
+}
+
+function getSector(row: GrowthStockRow, detail: GrowthStockDetail | null | undefined) {
+  return cleanDisplayText(profileData(detail)?.sector) || row.sectorLabel;
+}
+
+function getIndustry(detail: GrowthStockDetail | null | undefined) {
+  return cleanDisplayText(profileData(detail)?.industry);
+}
+
+function riskLabel(value: string | null | undefined, text: typeof COPY[LangCode]) {
+  if (value === 'low') return text.lowRisk;
+  if (value === 'medium') return text.mediumRisk;
+  if (value === 'high') return text.highRisk;
+  return null;
+}
+
+function trendLabel(value: string | null | undefined, text: typeof COPY[LangCode]) {
+  if (value === 'bullish') return text.bullish;
+  if (value === 'bearish') return text.bearish;
+  if (value === 'neutral') return text.neutralTrend;
+  return null;
+}
+
+function compareAriaLabel(symbol: string, lang: LangCode) {
+  return lang === 'ar' ? `مقارنة سهم ${symbol}` : `Compare ${symbol} stock`;
+}
+
+function analysisAriaLabel(symbol: string, lang: LangCode) {
+  return lang === 'ar' ? `عرض تحليل سهم ${symbol}` : `View ${symbol} stock analysis`;
+}
+
+function removeAriaLabel(symbol: string, lang: LangCode) {
+  return lang === 'ar' ? `إزالة سهم ${symbol} من المقارنة` : `Remove ${symbol} from comparison`;
+}
+
 export function GrowthStocksNewsPage() {
   const { lang, dir } = useLanguage();
   const activeLang = getLang(lang);
@@ -948,7 +1329,18 @@ export function GrowthStocksNewsPage() {
   const [newsSort, setNewsSort] = useState<NewsSort>('latest');
   const [visibleNewsCount, setVisibleNewsCount] = useState(INITIAL_NEWS_LIMIT);
   const [comparisonSymbols, setComparisonSymbols] = useState<string[]>([]);
-  const [openGuide, setOpenGuide] = useState<DisclosureId[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
+  const [comparisonDetails, setComparisonDetails] = useState<Record<string, GrowthStockDetail>>({});
+  const [analysisModal, setAnalysisModal] = useState<AnalysisModalState>({
+    open: false,
+    row: null,
+    status: 'idle',
+    detail: null,
+    error: null,
+  });
+  const [openGuide, setOpenGuide] = useState<DisclosureId | null>('what');
   const [originalVisibleIds, setOriginalVisibleIds] = useState<string[]>([]);
 
   const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
@@ -989,12 +1381,6 @@ export function GrowthStocksNewsPage() {
   const stockRows = useMemo(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang), [activeLang, ticker]);
   const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
   const sectorStats = useMemo(() => buildSectorStats(stockRows, activeLang), [activeLang, stockRows]);
-
-  useEffect(() => {
-    if (comparisonSymbols.length === 0 && stockRows.length > 0) {
-      setComparisonSymbols(stockRows.slice(0, 4).map(row => row.symbol));
-    }
-  }, [comparisonSymbols.length, stockRows]);
 
   const filteredStocks = useMemo(() => {
     const rows = stockRows.filter(row => {
@@ -1060,12 +1446,78 @@ export function GrowthStocksNewsPage() {
   const toggleComparisonSymbol = (symbol: string) => {
     setComparisonSymbols(current => {
       if (current.includes(symbol)) return current.filter(item => item !== symbol);
-      return [...current, symbol].slice(-5);
+      if (current.length >= 5) return current;
+      return [...current, symbol];
     });
   };
 
+  const removeComparisonSymbol = (symbol: string) => {
+    setComparisonSymbols(current => current.filter(item => item !== symbol));
+  };
+
+  const clearComparison = () => {
+    setComparisonSymbols([]);
+    setComparisonOpen(false);
+  };
+
+  const loadComparisonDetails = useCallback(async (rows: GrowthStockRow[]) => {
+    if (rows.length < 2) return;
+    setComparisonLoading(true);
+    setComparisonError(null);
+    try {
+      const missingRows = rows.filter(row => !comparisonDetails[row.symbol]);
+      if (missingRows.length > 0) {
+        const settled = await Promise.allSettled(missingRows.map(row => fetchGrowthStockDetail(row)));
+        setComparisonDetails(current => {
+          const next = { ...current };
+          settled.forEach((result, index) => {
+            const row = missingRows[index];
+            if (!row) return;
+            next[row.symbol] = result.status === 'fulfilled'
+              ? result.value
+              : { analysis: null, profile: null, error: result.reason instanceof Error ? result.reason.message : 'detail_unavailable' };
+          });
+          return next;
+        });
+      }
+    } catch {
+      setComparisonError(text.providerError);
+    } finally {
+      setComparisonLoading(false);
+    }
+  }, [comparisonDetails, text.providerError]);
+
+  const openComparison = () => {
+    if (comparisonRows.length < 2) return;
+    setComparisonOpen(true);
+    void loadComparisonDetails(comparisonRows);
+  };
+
+  const openAnalysis = (row: GrowthStockRow) => {
+    setAnalysisModal({ open: true, row, status: 'loading', detail: null, error: null });
+    void fetchGrowthStockDetail(row)
+      .then(detail => {
+        setAnalysisModal(current => {
+          if (current.row?.symbol !== row.symbol) return current;
+          if (!detail.analysis?.success) {
+            return { open: true, row, status: 'error', detail, error: text.analysisError };
+          }
+          return { open: true, row, status: 'ready', detail, error: null };
+        });
+      })
+      .catch(() => {
+        setAnalysisModal(current => current.row?.symbol === row.symbol
+          ? { open: true, row, status: 'error', detail: null, error: text.analysisError }
+          : current);
+      });
+  };
+
+  const closeAnalysis = () => {
+    setAnalysisModal(current => ({ ...current, open: false }));
+  };
+
   const toggleGuide = (id: DisclosureId) => {
-    setOpenGuide(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+    setOpenGuide(current => current === id ? null : id);
   };
 
   const toggleOriginal = (id: string) => {
@@ -1110,7 +1562,7 @@ export function GrowthStocksNewsPage() {
             <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} actionLabel={text.retry} onAction={() => void loadData('refresh')} />
           ) : null}
 
-          <TickerStrip items={stockRows} loading={loading} lang={activeLang} />
+          <TickerStrip items={stockRows} loading={loading} lang={activeLang} onRetry={() => void loadData('refresh')} />
 
           <nav className="tabs" role="tablist" aria-label={text.title}>
             {TAB_IDS.map(item => (
@@ -1127,6 +1579,16 @@ export function GrowthStocksNewsPage() {
             ))}
           </nav>
 
+          <ComparisonTray
+            text={text}
+            lang={activeLang}
+            selectedRows={comparisonRows}
+            selectedCount={comparisonSymbols.length}
+            onRemove={removeComparisonSymbol}
+            onClear={clearComparison}
+            onStart={openComparison}
+          />
+
           {tab === 'overview' ? (
             <OverviewTab
               text={text}
@@ -1135,12 +1597,15 @@ export function GrowthStocksNewsPage() {
               stockRows={stockRows}
               summary={summary}
               sectorStats={sectorStats}
+              lastUpdated={ticker?.ok ? ticker.updated_at : null}
               comparisonRows={comparisonRows}
               comparisonSymbols={comparisonSymbols}
               toggleComparisonSymbol={toggleComparisonSymbol}
+              openAnalysis={openAnalysis}
               guideOpen={openGuide}
               toggleGuide={toggleGuide}
               movers={movers}
+              onRetry={() => void loadData('refresh')}
             />
           ) : null}
 
@@ -1161,6 +1626,7 @@ export function GrowthStocksNewsPage() {
               loading={loading}
               comparisonSymbols={comparisonSymbols}
               toggleComparisonSymbol={toggleComparisonSymbol}
+              openAnalysis={openAnalysis}
             />
           ) : null}
 
@@ -1209,6 +1675,25 @@ export function GrowthStocksNewsPage() {
           </footer>
         </div>
       </main>
+
+      <ComparisonModal
+        open={comparisonOpen}
+        text={text}
+        lang={activeLang}
+        rows={comparisonRows}
+        details={comparisonDetails}
+        loading={comparisonLoading}
+        error={comparisonError}
+        onClose={() => setComparisonOpen(false)}
+        onRemove={removeComparisonSymbol}
+      />
+
+      <AnalysisDrawer
+        state={analysisModal}
+        text={text}
+        lang={activeLang}
+        onClose={closeAnalysis}
+      />
 
       <style jsx global>{`
         .page {
@@ -1378,6 +1863,15 @@ export function GrowthStocksNewsPage() {
           cursor: not-allowed;
           opacity: 0.68;
         }
+        .primary-button:disabled,
+        .ghost-button:disabled,
+        .chip:disabled,
+        .icon-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+          transform: none;
+          box-shadow: none;
+        }
         .spin {
           animation: spin 850ms linear infinite;
         }
@@ -1404,6 +1898,287 @@ export function GrowthStocksNewsPage() {
           border-color: transparent;
           background: linear-gradient(135deg, #1768d4, #19c7d6);
           box-shadow: 0 12px 24px rgba(25, 138, 204, 0.22);
+        }
+        .comparison-tray {
+          position: sticky;
+          top: 12px;
+          z-index: 8;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 14px;
+          align-items: center;
+          padding: 14px;
+          border: 1px solid rgba(58, 124, 154, 0.18);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.94);
+          box-shadow: 0 16px 36px rgba(15, 61, 92, 0.12);
+          backdrop-filter: blur(10px);
+        }
+        .comparison-tray-main {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+        }
+        .comparison-tray-title,
+        .comparison-tray-actions,
+        .selected-stock-list,
+        .selected-stock-chip,
+        .compare-card-head,
+        .analysis-identity,
+        .loading-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .comparison-tray-title {
+          flex-wrap: wrap;
+        }
+        .comparison-tray-title strong {
+          color: #102742;
+          font-size: 15px;
+          font-weight: 950;
+        }
+        .selected-stock-list {
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+        .selected-stock-chip {
+          min-width: 0;
+          min-height: 38px;
+          padding: 5px 7px;
+          border-radius: 999px;
+          border: 1px solid rgba(58, 124, 154, 0.16);
+          background: #f8fbff;
+        }
+        .selected-stock-chip .asset-avatar {
+          width: 26px;
+          height: 26px;
+          flex-basis: 26px;
+          border-radius: 10px;
+        }
+        .comparison-tray-actions {
+          justify-content: flex-end;
+          flex-wrap: wrap;
+        }
+        .tray-note {
+          flex: 1 0 100%;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 800;
+          text-align: end;
+        }
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          display: grid;
+          place-items: center;
+          padding: 18px;
+          background: rgba(6, 18, 32, 0.42);
+          backdrop-filter: blur(8px);
+        }
+        .modal-panel {
+          width: min(100%, 1180px);
+          max-height: min(88dvh, 940px);
+          overflow: auto;
+          border: 1px solid rgba(58, 124, 154, 0.18);
+          border-radius: 22px;
+          background: #f8fbff;
+          box-shadow: 0 30px 80px rgba(4, 24, 46, 0.26);
+          padding: 20px;
+        }
+        .analysis-drawer {
+          width: min(100%, 880px);
+          margin-inline-start: auto;
+          margin-inline-end: 0;
+        }
+        :global([dir="rtl"]) .analysis-drawer {
+          margin-inline-start: 0;
+          margin-inline-end: auto;
+        }
+        .modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .modal-header h2 {
+          margin: 10px 0 6px;
+          color: #102742;
+          font-size: clamp(22px, 2.6vw, 30px);
+          line-height: 1.2;
+        }
+        .modal-header p {
+          margin: 0;
+          color: #5f7388;
+          line-height: 1.7;
+        }
+        .modal-eyebrow {
+          color: #0f6f94;
+          background: rgba(20, 184, 216, 0.12);
+          border-color: rgba(20, 184, 216, 0.22);
+        }
+        .comparison-card-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+          gap: 14px;
+        }
+        .compare-card {
+          display: grid;
+          gap: 14px;
+          min-width: 0;
+          padding: 15px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          border-radius: 18px;
+          background: #fff;
+        }
+        .compare-card-head {
+          align-items: flex-start;
+        }
+        .compare-card-head > div {
+          min-width: 0;
+          flex: 1;
+        }
+        .compare-card-head strong {
+          display: block;
+          overflow: hidden;
+          color: #102742;
+          font-weight: 950;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .detail-list {
+          display: grid;
+          gap: 8px;
+          min-width: 0;
+        }
+        .detail-list.two-column {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .detail-line {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-width: 0;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(58, 124, 154, 0.1);
+        }
+        .detail-line:last-child {
+          border-bottom: 0;
+        }
+        .detail-line span {
+          min-width: 0;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 850;
+        }
+        .detail-line strong {
+          min-width: 0;
+          color: #102742;
+          font-size: 13px;
+          font-weight: 950;
+          text-align: end;
+          overflow-wrap: anywhere;
+        }
+        .missing-value {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          width: fit-content;
+          min-height: 26px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          color: #8a5c00;
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.24);
+          font-size: 12px;
+          font-weight: 900;
+        }
+        .loading-row {
+          min-height: 48px;
+          margin-bottom: 14px;
+          padding: 12px 14px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          border-radius: 15px;
+          background: #fff;
+          color: #1768a8;
+          font-weight: 900;
+        }
+        .analysis-identity {
+          margin-bottom: 16px;
+          padding: 14px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          border-radius: 18px;
+          background: #fff;
+        }
+        .analysis-identity > div {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+        .analysis-identity strong {
+          color: #102742;
+          font-size: 18px;
+          font-weight: 950;
+        }
+        .analysis-content {
+          display: grid;
+          gap: 16px;
+        }
+        .analysis-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .analysis-section,
+        .insight-box,
+        .analysis-disclaimer {
+          padding: 14px;
+          border: 1px solid rgba(58, 124, 154, 0.14);
+          border-radius: 17px;
+          background: #fff;
+        }
+        .analysis-section .section-header {
+          margin-bottom: 10px;
+        }
+        .insight-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .insight-box h3 {
+          margin: 0 0 8px;
+          color: #102742;
+          font-size: 16px;
+          font-weight: 950;
+        }
+        .insight-box ul {
+          display: grid;
+          gap: 8px;
+          margin: 0;
+          padding-inline-start: 20px;
+          color: #50677c;
+          line-height: 1.7;
+        }
+        .analysis-disclaimer {
+          display: flex;
+          gap: 10px;
+          color: #50677c;
+          line-height: 1.8;
+        }
+        .analysis-disclaimer p {
+          margin: 0;
+        }
+        .mini-icon {
+          width: 30px;
+          min-width: 30px;
+          height: 30px;
+          min-height: 30px;
+          padding: 0;
+          border-radius: 10px;
         }
         .section,
         .panel,
@@ -1449,7 +2224,7 @@ export function GrowthStocksNewsPage() {
         }
         .summary-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
           gap: 14px;
         }
         .metric-card {
@@ -1546,6 +2321,8 @@ export function GrowthStocksNewsPage() {
           color: #0f253f;
           font-weight: 950;
           letter-spacing: 0;
+          white-space: nowrap;
+          word-break: keep-all;
         }
         .ticker-name,
         .muted {
@@ -1575,6 +2352,8 @@ export function GrowthStocksNewsPage() {
           direction: ltr;
           unicode-bidi: isolate;
           font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          word-break: keep-all;
         }
         .tone-positive { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.22); }
         .tone-negative { color: #b42318; background: rgba(239, 68, 68, 0.09); border-color: rgba(239, 68, 68, 0.2); }
@@ -1598,7 +2377,7 @@ export function GrowthStocksNewsPage() {
         }
         .workspace-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.7fr);
+          grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
           gap: 18px;
           align-items: start;
         }
@@ -1617,19 +2396,20 @@ export function GrowthStocksNewsPage() {
           min-width: 0;
         }
         .stock-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+          align-items: stretch;
         }
         .stock-card-list {
           display: none;
         }
         .news-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
         }
         .sector-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
         }
         .guide-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: 1fr;
         }
         .compare-row {
           display: grid;
@@ -1694,6 +2474,7 @@ export function GrowthStocksNewsPage() {
           min-width: 0;
           max-width: 100%;
           padding: 18px;
+          align-content: start;
         }
         .stock-logo {
           display: grid;
@@ -1710,6 +2491,10 @@ export function GrowthStocksNewsPage() {
         .stock-title {
           min-width: 0;
         }
+        .stock-head {
+          align-items: flex-start;
+          justify-content: flex-start;
+        }
         .stock-title h3,
         .article-title,
         .sector-title {
@@ -1720,17 +2505,23 @@ export function GrowthStocksNewsPage() {
           font-weight: 950;
         }
         .stock-title h3 {
+          display: -webkit-box;
           overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          min-height: calc(1.45em * 2);
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .stock-title p {
           margin: 4px 0 0;
           color: #64748b;
           font-size: 13px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          line-height: 1.45;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .metric-grid {
           display: grid;
@@ -1756,7 +2547,9 @@ export function GrowthStocksNewsPage() {
           color: #102742;
           font-size: 14px;
           font-weight: 950;
-          overflow-wrap: anywhere;
+          line-height: 1.45;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .stock-table-card {
           margin-top: 16px;
@@ -1965,24 +2758,86 @@ export function GrowthStocksNewsPage() {
           background: #fff;
           min-width: 0;
         }
+        .movers-section {
+          overflow: hidden;
+        }
         .movers-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+          gap: 14px;
+          align-items: start;
         }
         .mover-list {
           display: grid;
-          gap: 8px;
+          gap: 9px;
+          min-width: 0;
+          padding: 12px;
+          border-radius: 18px;
+          border: 1px solid rgba(58, 124, 154, 0.12);
+          background: linear-gradient(180deg, #ffffff, #f8fcff);
+        }
+        .mover-list-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          color: #102742;
+          font-weight: 950;
         }
         .mover-row {
           display: grid;
-          grid-template-columns: 30px minmax(0, 1fr) auto;
+          grid-template-columns: 30px 38px minmax(0, 1fr) auto;
           gap: 10px;
           align-items: center;
+          min-width: 0;
           padding: 10px;
-          border-radius: 13px;
+          border-radius: 14px;
           background: #f8fbff;
           border: 1px solid rgba(58, 124, 154, 0.1);
+        }
+        .mover-logo {
+          display: grid;
+          place-items: center;
+          width: 38px;
+          height: 38px;
+          flex: 0 0 38px;
+          border-radius: 13px;
+          color: #0e7490;
+          background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(37, 99, 235, 0.11));
+          border: 1px solid rgba(14, 165, 233, 0.14);
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .mover-info {
+          display: grid;
+          gap: 2px;
+          min-width: 0;
+        }
+        .mover-name {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.35;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
+        }
+        .mover-empty {
+          min-height: 56px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          border: 1px dashed rgba(58, 124, 154, 0.18);
+          background: #f8fbff;
+          color: #64748b;
+          font-size: 13px;
+          font-weight: 900;
+        }
+        .mover-more {
+          justify-self: start;
+          min-height: 34px;
+          padding: 0 10px;
+          border-radius: 11px;
         }
         .rank {
           display: grid;
@@ -1995,17 +2850,42 @@ export function GrowthStocksNewsPage() {
           font-weight: 950;
           font-size: 12px;
         }
+        .guide-section {
+          overflow: hidden;
+        }
+        .guide-item {
+          min-width: 0;
+          overflow: hidden;
+          border: 1px solid rgba(58, 124, 154, 0.12);
+          border-radius: 16px;
+          background: linear-gradient(180deg, #ffffff, #f9fcff);
+        }
         .guide-button {
           width: 100%;
+          min-height: 52px;
           justify-content: space-between;
-          padding: 0 14px;
+          padding: 0 16px;
+          border: 0;
+          border-radius: 0;
           text-align: start;
+          color: #0f3f66;
+          background: transparent;
+        }
+        .guide-button span {
+          min-width: 0;
+          white-space: normal;
+          line-height: 1.45;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .guide-content {
-          margin-top: 10px;
+          margin: 0;
+          padding: 0 16px 16px;
           color: #5b7085;
           font-size: 14px;
           line-height: 1.8;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
         .sector-card {
           align-content: start;
@@ -2041,6 +2921,29 @@ export function GrowthStocksNewsPage() {
           justify-content: space-between;
           gap: 14px;
           padding: 18px;
+          min-height: 0;
+          border-style: dashed;
+        }
+        .state-copy {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          min-width: 0;
+        }
+        .state-copy svg {
+          flex: 0 0 auto;
+          margin-top: 2px;
+        }
+        .state-copy strong {
+          display: block;
+          color: #102742;
+          line-height: 1.5;
+        }
+        .state-copy p {
+          margin: 3px 0 0;
+          color: #64748b;
+          font-size: 13px;
+          line-height: 1.7;
         }
         .skeleton {
           position: relative;
@@ -2090,12 +2993,6 @@ export function GrowthStocksNewsPage() {
           .featured-layout {
             grid-template-columns: 1fr;
           }
-          .summary-grid,
-          .stock-grid,
-          .stock-card-list,
-          .news-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
           .filter-panel {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
@@ -2116,13 +3013,35 @@ export function GrowthStocksNewsPage() {
           .panel {
             padding: 16px;
           }
-          .summary-grid,
-          .stock-grid,
-          .stock-card-list,
-          .news-grid,
-          .sector-grid,
-          .guide-grid,
-          .movers-grid {
+          .comparison-tray,
+          .analysis-summary-grid,
+          .detail-list.two-column,
+          .insight-grid {
+            grid-template-columns: 1fr;
+          }
+          .comparison-tray {
+            bottom: 12px;
+            top: auto;
+          }
+          .comparison-tray-actions {
+            justify-content: stretch;
+          }
+          .tray-note {
+            text-align: start;
+          }
+          .modal-backdrop {
+            align-items: end;
+            padding: 10px;
+          }
+          .modal-panel {
+            max-height: 92dvh;
+            padding: 16px;
+            border-radius: 20px;
+          }
+          .modal-header {
+            gap: 10px;
+          }
+          .comparison-card-grid {
             grid-template-columns: 1fr;
           }
           .filter-panel {
@@ -2158,12 +3077,38 @@ export function GrowthStocksNewsPage() {
             grid-column: 1 / -1;
           }
         }
+        @media (max-width: 640px) {
+          .summary-grid,
+          .stock-grid,
+          .stock-card-list,
+          .news-grid,
+          .sector-grid,
+          .movers-grid,
+          .analysis-summary-grid,
+          .comparison-card-grid {
+            grid-template-columns: 1fr;
+          }
+          .state-box {
+            align-items: stretch;
+            flex-direction: column;
+          }
+          .mover-list {
+            padding: 10px;
+          }
+          .mover-row {
+            grid-template-columns: 28px 36px minmax(0, 1fr);
+          }
+          .mover-row .badge {
+            grid-column: 3;
+            justify-self: start;
+          }
+        }
       `}</style>
     </div>
   );
 }
 
-function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loading: boolean; lang: LangCode }) {
+function TickerStrip({ items, loading, lang, onRetry }: { items: GrowthStockRow[]; loading: boolean; lang: LangCode; onRetry: () => void }) {
   if (loading) {
     return (
       <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
@@ -2177,7 +3122,14 @@ function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loadin
   if (items.length === 0) {
     return (
       <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
-        <StateBox tone="info" icon={Info} title={COPY[lang].priceUnavailable} />
+        <StateBox
+          tone="info"
+          icon={Info}
+          title={COPY[lang].priceUnavailable}
+          description={COPY[lang].providerError}
+          actionLabel={COPY[lang].retry}
+          onAction={onRetry}
+        />
       </section>
     );
   }
@@ -2189,10 +3141,10 @@ function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loadin
           {[0, 1].map(group => items.map(item => (
             <article className="ticker-item" key={`${group}-${item.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
               <div className="ticker-top">
-                <span className="ticker-symbol">{item.symbol}</span>
-                <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>
+                <span className="ticker-symbol" dir="ltr">{item.symbol}</span>
+                {item.changePercent === null ? <UnavailableValue text={COPY[lang]} /> : <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>}
               </div>
-              <strong className="numeric">{formatCurrency(item.price, item.currency, lang)}</strong>
+              <strong className="numeric">{item.price === null ? <UnavailableValue text={COPY[lang]} /> : formatCurrency(item.price, item.currency, lang)}</strong>
               <span className="ticker-name">{item.name}</span>
               <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
             </article>
@@ -2203,6 +3155,375 @@ function TickerStrip({ items, loading, lang }: { items: GrowthStockRow[]; loadin
   );
 }
 
+function UnavailableValue({ text }: { text: typeof COPY[LangCode] }) {
+  return (
+    <span className="missing-value" title={text.missingDataHint}>
+      <Info size={12} />{text.unavailable}
+    </span>
+  );
+}
+
+function DataValue({ value, text, numeric }: { value: ReactNode | null | undefined; text: typeof COPY[LangCode]; numeric?: boolean }) {
+  if (value === null || value === undefined || value === '') return <UnavailableValue text={text} />;
+  return <span className={numeric ? 'numeric' : undefined}>{value}</span>;
+}
+
+function MetricLine({ label, value, text, numeric }: { label: string; value: ReactNode | null | undefined; text: typeof COPY[LangCode]; numeric?: boolean }) {
+  return (
+    <div className="detail-line">
+      <span>{label}</span>
+      <strong><DataValue value={value} text={text} numeric={numeric} /></strong>
+    </div>
+  );
+}
+
+function ComparisonTray({
+  text,
+  lang,
+  selectedRows,
+  selectedCount,
+  onRemove,
+  onClear,
+  onStart,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  selectedRows: GrowthStockRow[];
+  selectedCount: number;
+  onRemove: (symbol: string) => void;
+  onClear: () => void;
+  onStart: () => void;
+}) {
+  const canStart = selectedRows.length >= 2;
+  return (
+    <section className="comparison-tray" aria-label={text.comparisonTitle}>
+      <div className="comparison-tray-main">
+        <div className="comparison-tray-title">
+          <strong>{text.comparisonTitle}</strong>
+          <span className="pill">{text.selectedCount}: <span className="numeric">{selectedCount}/5</span></span>
+        </div>
+        <div className="selected-stock-list">
+          {selectedRows.length > 0 ? selectedRows.map(row => (
+            <span className="selected-stock-chip" key={row.symbol}>
+              <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="asset-avatar" />
+              <span className="symbol" dir="ltr">{row.symbol}</span>
+              <button type="button" className="icon-button mini-icon" onClick={() => onRemove(row.symbol)} aria-label={removeAriaLabel(row.symbol, lang)}>
+                <X size={14} />
+              </button>
+            </span>
+          )) : (
+            <span className="muted">{text.comparisonNeedsTwo}</span>
+          )}
+        </div>
+      </div>
+      <div className="comparison-tray-actions">
+        <button className="ghost-button" type="button" onClick={onClear} disabled={selectedRows.length === 0}>
+          <X size={16} />{text.clearSelection}
+        </button>
+        <button className="primary-button" type="button" onClick={onStart} disabled={!canStart} aria-disabled={!canStart}>
+          <BarChart3 size={16} />{text.startComparison}
+        </button>
+        <span className="tray-note">{canStart ? text.comparisonLimit : text.comparisonNeedsTwo}</span>
+      </div>
+    </section>
+  );
+}
+
+function ComparisonModal({
+  open,
+  text,
+  lang,
+  rows,
+  details,
+  loading,
+  error,
+  onClose,
+  onRemove,
+}: {
+  open: boolean;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  rows: GrowthStockRow[];
+  details: Record<string, GrowthStockDetail>;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onRemove: (symbol: string) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal-panel comparison-modal" role="dialog" aria-modal="true" aria-labelledby="growth-comparison-title">
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow modal-eyebrow"><BarChart3 size={15} />{text.startComparison}</span>
+            <h2 id="growth-comparison-title">{text.comparisonDetailsTitle}</h2>
+            <p>{text.comparisonDescription}</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label={text.close}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="loading-row" role="status">
+            <Loader2 size={18} className="spin" />{text.analysisLoading}
+          </div>
+        ) : null}
+        {error ? <StateBox tone="warning" icon={AlertTriangle} title={error} /> : null}
+
+        <div className="comparison-card-grid">
+          {rows.map(row => (
+            <ComparisonStockCard
+              key={row.symbol}
+              row={row}
+              detail={details[row.symbol]}
+              text={text}
+              lang={lang}
+              onRemove={() => onRemove(row.symbol)}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ComparisonStockCard({
+  row,
+  detail,
+  text,
+  lang,
+  onRemove,
+}: {
+  row: GrowthStockRow;
+  detail: GrowthStockDetail | undefined;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  onRemove: () => void;
+}) {
+  const analysis = analysisData(detail);
+  const marketCap = getMarketCap(detail);
+  const pe = getPeRatio(detail);
+  const peg = getPegRatio(detail);
+  const revenueGrowth = getRevenueGrowth(detail);
+  const earningsGrowth = getEarningsGrowth(detail);
+  const aiConfidence = getAiConfidence(detail);
+  const lastUpdated = getLastUpdated(row, detail);
+  return (
+    <article className="compare-card">
+      <div className="compare-card-head">
+        <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="lg" className="stock-logo" />
+        <div>
+          <strong>{row.name}</strong>
+          <span className="symbol" dir="ltr">{row.symbol}</span>
+        </div>
+        <button className="icon-button mini-icon" type="button" onClick={onRemove} aria-label={removeAriaLabel(row.symbol, lang)}>
+          <X size={14} />
+        </button>
+      </div>
+      <div className="detail-list">
+        <MetricLine label={text.companyName} value={row.name} text={text} />
+        <MetricLine label={text.symbolFilter} value={<span className="symbol" dir="ltr">{row.symbol}</span>} text={text} />
+        <MetricLine label={text.currentPrice} value={row.price === null ? null : formatCurrency(row.price, row.currency, lang)} text={text} numeric />
+        <MetricLine label={text.currency} value={row.currency} text={text} />
+        <MetricLine label={text.dailyChange} value={row.changePercent === null ? null : formatPercent(row.changePercent, lang)} text={text} numeric />
+        <MetricLine label={text.sector} value={getSector(row, detail)} text={text} />
+        <MetricLine label={text.industry} value={getIndustry(detail)} text={text} />
+        <MetricLine label={text.marketCap} value={marketCap === null ? null : formatCompact(marketCap, lang)} text={text} numeric />
+        <MetricLine label={text.revenueGrowth} value={revenueGrowth === null ? null : formatPercent(revenueGrowth, lang)} text={text} numeric />
+        <MetricLine label={text.earningsGrowth} value={earningsGrowth === null ? null : formatPercent(earningsGrowth, lang)} text={text} numeric />
+        <MetricLine label={text.pe} value={pe === null ? null : formatNumber(pe, lang, { maximumFractionDigits: 2 })} text={text} numeric />
+        <MetricLine label={text.peg} value={peg === null ? null : formatNumber(peg, lang, { maximumFractionDigits: 2 })} text={text} numeric />
+        <MetricLine label={text.riskLevel} value={riskLabel(analysis?.riskLevel, text)} text={text} />
+        <MetricLine label={text.aiConfidence} value={aiConfidence === null ? null : formatNumber(aiConfidence, lang, { maximumFractionDigits: 1 })} text={text} numeric />
+        <MetricLine label={text.recommendationStatus} value={getRecommendation(detail)} text={text} />
+        <MetricLine label={text.providerSource} value={getSource(row, detail)} text={text} />
+        <MetricLine label={text.lastQuoteUpdate} value={lastUpdated ? formatDateTime(lastUpdated, lang) : null} text={text} />
+      </div>
+    </article>
+  );
+}
+
+function localized(lang: LangCode, ar: string, en: string, fr: string) {
+  if (lang === 'ar') return ar;
+  if (lang === 'fr') return fr;
+  return en;
+}
+
+function buildStrengthItems(row: GrowthStockRow, detail: GrowthStockDetail | null, lang: LangCode) {
+  const analysis = analysisData(detail);
+  const items: string[] = [];
+  if (typeof row.changePercent === 'number' && row.changePercent > 0) {
+    items.push(localized(lang, 'زخم سعري إيجابي في آخر قراءة متاحة.', 'Positive momentum in the latest available quote.', 'Momentum positif dans le dernier cours disponible.'));
+  }
+  if (analysis?.trend === 'bullish') {
+    items.push(localized(lang, 'الاتجاه الفني الحالي إيجابي حسب البيانات المتاحة.', 'Current technical trend is bullish from available data.', 'La tendance technique disponible est haussière.'));
+  }
+  if (analysis?.fundamentalsAvailable) {
+    items.push(localized(lang, 'تتوفر بعض البيانات الأساسية من المزود.', 'Some fundamentals are available from the provider.', 'Certaines données fondamentales sont disponibles.'));
+  }
+  if (getSector(row, detail)) {
+    items.push(localized(lang, `انكشاف واضح على ${getSector(row, detail)}.`, `Clear exposure to ${getSector(row, detail)}.`, `Exposition claire à ${getSector(row, detail)}.`));
+  }
+  return items;
+}
+
+function buildRiskItems(row: GrowthStockRow, detail: GrowthStockDetail | null, lang: LangCode) {
+  const analysis = analysisData(detail);
+  const items: string[] = [];
+  if (typeof row.changePercent === 'number' && row.changePercent < 0) {
+    items.push(localized(lang, 'القراءة اليومية الأخيرة سالبة.', 'Latest daily quote is negative.', 'La dernière variation quotidienne est négative.'));
+  }
+  if (analysis?.riskLevel === 'high') {
+    items.push(localized(lang, 'مستوى المخاطر الفني مرتفع حسب التذبذب المتاح.', 'Technical risk is high based on available volatility.', 'Le risque technique est élevé selon la volatilité disponible.'));
+  }
+  if (!analysis?.fundamentalsAvailable) {
+    items.push(localized(lang, 'البيانات الأساسية غير مكتملة، لذلك لا تظهر نسب النمو أو التقييم كاملة.', 'Fundamentals are incomplete, so growth and valuation metrics are limited.', 'Les fondamentaux sont incomplets, donc les métriques de croissance et de valorisation sont limitées.'));
+  }
+  if (row.delayed || analysis?.dataStatus === 'delayed') {
+    items.push(localized(lang, 'الأسعار قد تكون متأخرة حسب مزود البيانات.', 'Quotes may be delayed by the data provider.', 'Les cours peuvent être retardés par le fournisseur.'));
+  }
+  return items;
+}
+
+function InsightList({ title, items, text }: { title: string; items: string[]; text: typeof COPY[LangCode] }) {
+  return (
+    <div className="insight-box">
+      <h3>{title}</h3>
+      {items.length > 0 ? (
+        <ul>
+          {items.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <UnavailableValue text={text} />
+      )}
+    </div>
+  );
+}
+
+function AnalysisDrawer({
+  state,
+  text,
+  lang,
+  onClose,
+}: {
+  state: AnalysisModalState;
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  onClose: () => void;
+}) {
+  const row = state.row;
+  if (!state.open || !row) return null;
+  const detail = state.detail;
+  const analysis = analysisData(detail);
+  const profile = profileData(detail);
+  const marketCap = getMarketCap(detail);
+  const pe = getPeRatio(detail);
+  const peg = getPegRatio(detail);
+  const revenueGrowth = getRevenueGrowth(detail);
+  const earningsGrowth = getEarningsGrowth(detail);
+  const latestPrice = finiteNumber(analysis?.latestPrice) ?? row.price;
+  const changePercent = finiteNumber(analysis?.changePercent) ?? row.changePercent;
+  const lastUpdated = getLastUpdated(row, detail);
+  const thesis = cleanDisplayText(analysis?.aiInsight?.summary) || cleanDisplayText(analysis?.summary);
+  const technicalSummary = analysis
+    ? `${text.technicalSummary}: ${trendLabel(analysis.trend, text) ?? text.unavailable} · RSI ${formatNumber(analysis.indicators?.rsi, lang, { maximumFractionDigits: 1 })} · ${text.volatility} ${formatPercent(analysis.indicators?.volatility, lang)}`
+    : null;
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <aside className="modal-panel analysis-drawer" role="dialog" aria-modal="true" aria-labelledby="growth-analysis-title">
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow modal-eyebrow"><BookOpen size={15} />{text.viewAnalysis}</span>
+            <h2 id="growth-analysis-title">{text.analysisTitle}</h2>
+            <p><span className="symbol" dir="ltr">{row.symbol}</span> · {row.name}</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label={text.close}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="analysis-identity">
+          <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="lg" className="stock-logo" />
+          <div>
+            <strong>{profile?.name ?? row.name}</strong>
+            <span className="symbol" dir="ltr">{row.symbol}</span>
+          </div>
+        </div>
+
+        {state.status === 'loading' ? (
+          <div className="loading-row" role="status">
+            <Loader2 size={18} className="spin" />{text.analysisLoading}
+          </div>
+        ) : null}
+
+        {state.status === 'error' ? (
+          <StateBox tone="warning" icon={AlertTriangle} title={state.error || text.analysisError} />
+        ) : null}
+
+        {state.status === 'ready' && detail ? (
+          <div className="analysis-content">
+            <div className="analysis-summary-grid">
+              <MiniMetric label={text.currentPrice} value={latestPrice === null ? <UnavailableValue text={text} /> : formatCurrency(latestPrice, analysis?.currency ?? row.currency, lang)} />
+              <MiniMetric label={text.currency} value={analysis?.currency ?? row.currency ?? <UnavailableValue text={text} />} />
+              <MiniMetric label={text.sector} value={getSector(row, detail)} />
+              <MiniMetric label={text.industry} value={getIndustry(detail) ?? <UnavailableValue text={text} />} />
+              <MiniMetric label={text.growthCategory} value={row.growthClassification} />
+              <MiniMetric label={text.riskLevel} value={riskLabel(analysis?.riskLevel, text) ?? <UnavailableValue text={text} />} />
+              <MiniMetric label={text.priceChange} value={changePercent === null ? <UnavailableValue text={text} /> : formatPercent(changePercent, lang)} />
+              <MiniMetric label={text.dataQuality} value={analysis?.fundamentalsAvailable ? text.connected : text.someFieldsUnavailable} />
+            </div>
+
+            <section className="analysis-section">
+              <SectionHeader title={text.keyMetrics} />
+              <div className="detail-list two-column">
+                <MetricLine label={text.marketCap} value={marketCap === null ? null : formatCompact(marketCap, lang)} text={text} numeric />
+                <MetricLine label={text.revenueGrowth} value={revenueGrowth === null ? null : formatPercent(revenueGrowth, lang)} text={text} numeric />
+                <MetricLine label={text.earningsGrowth} value={earningsGrowth === null ? null : formatPercent(earningsGrowth, lang)} text={text} numeric />
+                <MetricLine label={text.pe} value={pe === null ? null : formatNumber(pe, lang, { maximumFractionDigits: 2 })} text={text} numeric />
+                <MetricLine label={text.peg} value={peg === null ? null : formatNumber(peg, lang, { maximumFractionDigits: 2 })} text={text} numeric />
+                <MetricLine label={text.aiConfidence} value={getAiConfidence(detail) === null ? null : formatNumber(getAiConfidence(detail), lang, { maximumFractionDigits: 1 })} text={text} numeric />
+              </div>
+            </section>
+
+            <section className="analysis-section">
+              <SectionHeader title={text.technicalSummary} />
+              <p className="muted">{technicalSummary ?? <UnavailableValue text={text} />}</p>
+            </section>
+
+            <section className="analysis-section">
+              <SectionHeader title={text.aiGrowthThesis} />
+              <p className="muted">{thesis ?? <UnavailableValue text={text} />}</p>
+            </section>
+
+            <div className="insight-grid">
+              <InsightList title={text.strengths} items={buildStrengthItems(row, detail, lang)} text={text} />
+              <InsightList title={text.risks} items={buildRiskItems(row, detail, lang)} text={text} />
+            </div>
+
+            <section className="analysis-section">
+              <SectionHeader title={text.dataQuality} />
+              <div className="detail-list two-column">
+                <MetricLine label={text.providerSource} value={getSource(row, detail)} text={text} />
+                <MetricLine label={text.lastQuoteUpdate} value={lastUpdated ? formatDateTime(lastUpdated, lang) : null} text={text} />
+                <MetricLine label={text.dataCondition} value={analysis?.dataStatus === 'delayed' ? text.delayedData : analysis?.dataStatus ?? text.someFieldsUnavailable} text={text} />
+                <MetricLine label={text.fundamentalsUnavailable} value={analysis?.fundamentalsAvailable ? text.connected : text.someFieldsUnavailable} text={text} />
+              </div>
+            </section>
+
+            <footer className="analysis-disclaimer">
+              <Info size={16} />
+              <p>{text.disclaimer}</p>
+            </footer>
+          </div>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
 function OverviewTab({
   text,
   lang,
@@ -2210,12 +3531,15 @@ function OverviewTab({
   stockRows,
   summary,
   sectorStats,
+  lastUpdated,
   comparisonRows,
   comparisonSymbols,
   toggleComparisonSymbol,
+  openAnalysis,
   guideOpen,
   toggleGuide,
   movers,
+  onRetry,
 }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
@@ -2229,12 +3553,15 @@ function OverviewTab({
     bestSector: ReturnType<typeof buildSectorStats>[number] | null;
   };
   sectorStats: ReturnType<typeof buildSectorStats>;
+  lastUpdated: string | null;
   comparisonRows: GrowthStockRow[];
   comparisonSymbols: string[];
   toggleComparisonSymbol: (symbol: string) => void;
-  guideOpen: DisclosureId[];
+  openAnalysis: (row: GrowthStockRow) => void;
+  guideOpen: DisclosureId | null;
   toggleGuide: (id: DisclosureId) => void;
   movers: StockCategoryMoversResponse | null;
+  onRetry: () => void;
 }) {
   return (
     <div className="stack">
@@ -2248,43 +3575,50 @@ function OverviewTab({
         </div>
       </section>
 
-      <div className="workspace-grid">
-        <div className="stack">
-          <section className="section">
-            <SectionHeader title={text.comparisonTitle} description={text.comparisonDescription} />
-            <div className="filter-actions" style={{ marginBottom: 14 }}>
-              <div className="chip-scroll" aria-label={text.selectForCompare}>
-                {stockRows.slice(0, 14).map(row => (
-                  <button
-                    key={row.symbol}
-                    type="button"
-                    className={comparisonSymbols.includes(row.symbol) ? 'chip active' : 'chip'}
-                    onClick={() => toggleComparisonSymbol(row.symbol)}
-                  >
-                    <span className="symbol">{row.symbol}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ComparisonChart rows={comparisonRows} lang={lang} text={text} />
-          </section>
+      <MoversPanel text={text} lang={lang} movers={movers} onRetry={onRetry} />
 
-          <section className="section">
-            <SectionHeader title={text.highlightedTitle} description={text.highlightedDescription} />
-            <div className="stock-grid">
-              {stockRows.slice(0, 6).map(row => (
-                <GrowthStockCard key={row.symbol} row={row} text={text} lang={lang} compact />
+      <div className="workspace-grid">
+        <section className="section">
+          <SectionHeader title={text.comparisonTitle} description={text.comparisonDescription} />
+          <div className="filter-actions" style={{ marginBottom: 14 }}>
+            <div className="chip-scroll" aria-label={text.selectForCompare}>
+              {stockRows.slice(0, 14).map(row => (
+                <button
+                  key={row.symbol}
+                  type="button"
+                  className={comparisonSymbols.includes(row.symbol) ? 'chip active' : 'chip'}
+                  onClick={() => toggleComparisonSymbol(row.symbol)}
+                  disabled={!comparisonSymbols.includes(row.symbol) && comparisonSymbols.length >= 5}
+                  aria-label={compareAriaLabel(row.symbol, lang)}
+                  aria-pressed={comparisonSymbols.includes(row.symbol)}
+                >
+                  <span className="symbol" dir="ltr">{row.symbol}</span>
+                </button>
               ))}
             </div>
-          </section>
-        </div>
+          </div>
+          <ComparisonChart rows={comparisonRows} lang={lang} text={text} />
+        </section>
 
-        <aside className="stack">
-          <DataStatusPanel text={text} lang={lang} rows={stockRows} />
-          <MoversPanel text={text} lang={lang} movers={movers} />
-          <EducationGuide text={text} open={guideOpen} toggle={toggleGuide} />
-        </aside>
+        <DataStatusPanel text={text} lang={lang} rows={stockRows} lastUpdated={lastUpdated} />
       </div>
+
+      <section className="section">
+        <SectionHeader title={text.highlightedTitle} description={text.highlightedDescription} />
+        {loading ? (
+          <SkeletonGrid count={6} />
+        ) : stockRows.length === 0 ? (
+          <StateBox tone="info" icon={LineChart} title={text.priceUnavailable} description={text.providerError} actionLabel={text.retry} onAction={onRetry} />
+        ) : (
+          <div className="stock-grid">
+            {stockRows.slice(0, 6).map(row => (
+              <GrowthStockCard key={row.symbol} row={row} text={text} lang={lang} compact onAnalysis={() => openAnalysis(row)} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <EducationGuide text={text} lang={lang} open={guideOpen} toggle={toggleGuide} />
 
       <section className="section">
         <SectionHeader title={text.sectorsTitle} description={text.sectorsDescription} />
@@ -2312,6 +3646,7 @@ function StocksTab({
   loading,
   comparisonSymbols,
   toggleComparisonSymbol,
+  openAnalysis,
 }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
@@ -2328,6 +3663,7 @@ function StocksTab({
   loading: boolean;
   comparisonSymbols: string[];
   toggleComparisonSymbol: (symbol: string) => void;
+  openAnalysis: (row: GrowthStockRow) => void;
 }) {
   return (
     <section className="section">
@@ -2373,6 +3709,7 @@ function StocksTab({
             lang={lang}
             comparisonSymbols={comparisonSymbols}
             toggleComparisonSymbol={toggleComparisonSymbol}
+            openAnalysis={openAnalysis}
           />
           {allRows.length > 0 ? (
             <p className="muted" style={{ marginTop: 16 }}>{text.insufficientMethodology}</p>
@@ -2567,13 +3904,13 @@ function ComparisonChart({ rows, lang, text }: { rows: GrowthStockRow[]; lang: L
             <div className="compare-asset">
               <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="asset-avatar" />
               <div>
-                <strong className="symbol">{row.symbol}</strong>
-                <span className="asset-name">{row.name}</span>
+                <strong className="symbol" dir="ltr">{row.symbol}</strong>
+                <span className="asset-name" dir="auto">{row.name}</span>
               </div>
             </div>
-            <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
+            <strong className="numeric">{row.price === null ? <UnavailableValue text={text} /> : formatCurrency(row.price, row.currency, lang)}</strong>
             <div className="bar-shell"><div className={`bar-fill tone-${toneForChange(row.changePercent)}`} style={{ width: `${width}%` }} /></div>
-            <strong className="numeric">{formatPercent(row.changePercent, lang)}</strong>
+            <strong className="numeric">{row.changePercent === null ? <UnavailableValue text={text} /> : formatPercent(row.changePercent, lang)}</strong>
           </div>
         );
       })}
@@ -2588,12 +3925,14 @@ function GrowthStockTable({
   lang,
   comparisonSymbols,
   toggleComparisonSymbol,
+  openAnalysis,
 }: {
   rows: GrowthStockRow[];
   text: typeof COPY[LangCode];
   lang: LangCode;
   comparisonSymbols: string[];
   toggleComparisonSymbol: (symbol: string) => void;
+  openAnalysis: (row: GrowthStockRow) => void;
 }) {
   return (
     <>
@@ -2618,22 +3957,29 @@ function GrowthStockTable({
                     <div className="table-asset">
                     <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="asset-avatar" />
                       <div>
-                        <strong>{row.name}</strong>
-                        <span className="table-muted symbol">{row.symbol}</span>
+                        <strong dir="auto">{row.name}</strong>
+                        <span className="table-muted symbol" dir="ltr">{row.symbol}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="numeric">{formatCurrency(row.price, row.currency, lang)}</td>
-                  <td><span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span></td>
+                  <td className="numeric">{row.price === null ? <UnavailableValue text={text} /> : formatCurrency(row.price, row.currency, lang)}</td>
+                  <td>{row.changePercent === null ? <UnavailableValue text={text} /> : <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>}</td>
                   <td>{row.sectorLabel}</td>
-                  <td>{row.valuationRiskLabel}</td>
+                  <td>{row.valuationRiskLabel === text.unavailable ? <UnavailableValue text={text} /> : row.valuationRiskLabel}</td>
                   <td>{row.growthClassification}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="primary-button" type="button" onClick={() => toggleComparisonSymbol(row.symbol)} aria-pressed={comparisonSymbols.includes(row.symbol)}>
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => toggleComparisonSymbol(row.symbol)}
+                        disabled={!comparisonSymbols.includes(row.symbol) && comparisonSymbols.length >= 5}
+                        aria-label={compareAriaLabel(row.symbol, lang)}
+                        aria-pressed={comparisonSymbols.includes(row.symbol)}
+                      >
                         <BarChart3 size={15} />{text.compare}
                       </button>
-                      <button className="ghost-button" type="button">
+                      <button className="ghost-button" type="button" onClick={() => openAnalysis(row)} aria-label={analysisAriaLabel(row.symbol, lang)}>
                         <BookOpen size={15} />{text.viewAnalysis}
                       </button>
                     </div>
@@ -2653,6 +3999,8 @@ function GrowthStockTable({
             lang={lang}
             selectedForComparison={comparisonSymbols.includes(row.symbol)}
             onCompare={() => toggleComparisonSymbol(row.symbol)}
+            compareDisabled={!comparisonSymbols.includes(row.symbol) && comparisonSymbols.length >= 5}
+            onAnalysis={() => openAnalysis(row)}
           />
         ))}
       </div>
@@ -2667,6 +4015,8 @@ function GrowthStockCard({
   compact,
   selectedForComparison,
   onCompare,
+  compareDisabled,
+  onAnalysis,
 }: {
   row: GrowthStockRow;
   text: typeof COPY[LangCode];
@@ -2674,39 +4024,48 @@ function GrowthStockCard({
   compact?: boolean;
   selectedForComparison?: boolean;
   onCompare?: () => void;
+  compareDisabled?: boolean;
+  onAnalysis?: () => void;
 }) {
   return (
     <article className="card card-hover">
       <div className="stock-head">
         <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="lg" className="stock-logo" />
         <div className="stock-title">
-          <h3>{row.name}</h3>
-          <p><span className="symbol">{row.symbol}</span> · {row.sectorLabel}</p>
+          <h3 dir="auto">{row.name}</h3>
+          <p><span className="symbol" dir="ltr">{row.symbol}</span> · {row.sectorLabel}</p>
         </div>
       </div>
       <div className="row-between">
-        <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
-        <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>
+        <strong className="numeric">{row.price === null ? <UnavailableValue text={text} /> : formatCurrency(row.price, row.currency, lang)}</strong>
+        {row.changePercent === null ? <UnavailableValue text={text} /> : <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>}
       </div>
       <div className="metric-grid">
-        <MiniMetric label={text.methodology} value={row.growthClassification} />
-        <MiniMetric label={text.valuationRisk} value={row.valuationRiskLabel} />
-        <MiniMetric label={text.revenueGrowth} value={text.unavailable} />
-        <MiniMetric label={text.peg} value={text.unavailable} />
+        <MiniMetric label={text.methodology} value={row.growthClassification} lang={lang} />
+        <MiniMetric label={text.valuationRisk} value={row.valuationRiskLabel === text.unavailable ? <UnavailableValue text={text} /> : row.valuationRiskLabel} lang={lang} />
+        <MiniMetric label={text.revenueGrowth} value={<UnavailableValue text={text} />} lang={lang} />
+        <MiniMetric label={text.peg} value={<UnavailableValue text={text} />} lang={lang} />
         {!compact ? (
           <>
-            <MiniMetric label={text.freeCashFlow} value={text.unavailable} />
-            <MiniMetric label={text.volatility} value={row.momentumLabel} />
+            <MiniMetric label={text.freeCashFlow} value={<UnavailableValue text={text} />} lang={lang} />
+            <MiniMetric label={text.volatility} value={row.momentumLabel} lang={lang} />
           </>
         ) : null}
       </div>
       <p className="muted">{text.insufficientMethodology}</p>
       {!compact ? (
         <div className="card-actions">
-          <button className="primary-button" type="button" onClick={onCompare} aria-pressed={selectedForComparison}>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={onCompare}
+            disabled={compareDisabled}
+            aria-label={compareAriaLabel(row.symbol, lang)}
+            aria-pressed={selectedForComparison}
+          >
             <BarChart3 size={16} />{selectedForComparison ? text.compare : text.compare}
           </button>
-          <button className="ghost-button" type="button">
+          <button className="ghost-button" type="button" onClick={onAnalysis} aria-label={analysisAriaLabel(row.symbol, lang)}>
             <BookOpen size={16} />{text.viewAnalysis}
           </button>
         </div>
@@ -2715,11 +4074,13 @@ function GrowthStockCard({
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({ label, value, lang, valueDir }: { label: string; value: ReactNode; lang?: LangCode; valueDir?: 'ltr' | 'rtl' | 'auto' }) {
+  const displayValue = typeof value === 'string' && lang ? localizeDisplayValue(value, lang) : value;
+  const resolvedDir = typeof displayValue === 'string' ? valueTextDirection(displayValue) : undefined;
   return (
     <div className="mini-metric">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong dir={valueDir ?? resolvedDir}>{displayValue}</strong>
     </div>
   );
 }
@@ -2755,8 +4116,8 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal, lead }: { it
       <h3 className="article-title" dir="auto">{title}</h3>
       {summary ? <p className="article-summary" dir="auto">{summary}</p> : null}
       <div className="metric-grid">
-        <MiniMetric label={text.relatedSymbol} value={item.ticker ? item.ticker.toUpperCase() : text.unavailable} />
-        <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.priceUnavailable} />
+        <MiniMetric label={text.relatedSymbol} value={item.ticker ? item.ticker.toUpperCase() : text.unavailable} lang={lang} valueDir={item.ticker ? 'ltr' : undefined} />
+        <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.priceUnavailable} lang={lang} />
       </div>
       <div className="article-actions">
         {url ? (
@@ -2784,87 +4145,154 @@ function CompactNewsRow({ item, text, lang }: { item: GrowthNewsItem; text: type
       </div>
       <h3 className="article-title" dir="auto">{safeArticleTitle(item, false)}</h3>
       <div className="row-between">
-        <span className="badge tone-info">{item.ticker?.toUpperCase() ?? sectorLabel(classifyNewsSector(item), lang)}</span>
+        <span className="badge tone-info" dir={item.ticker ? 'ltr' : 'auto'}>{item.ticker?.toUpperCase() ?? sectorLabel(classifyNewsSector(item), lang)}</span>
         {url ? <a className="link-button" href={url} target="_blank" rel="noopener noreferrer nofollow">{text.readArticle}<ArrowUpRight size={15} /></a> : null}
       </div>
     </article>
   );
 }
 
-function MoversPanel({ text, lang, movers }: { text: typeof COPY[LangCode]; lang: LangCode; movers: StockCategoryMoversResponse | null }) {
+function MoversPanel({ text, lang, movers, onRetry }: { text: typeof COPY[LangCode]; lang: LangCode; movers: StockCategoryMoversResponse | null; onRetry: () => void }) {
   const data = movers?.ok ? movers.data : null;
+  const hasMoverData = Boolean(data && (data.topGainers.length > 0 || data.topLosers.length > 0));
   return (
-    <section className="panel">
+    <section className="section movers-section">
       <SectionHeader title={text.strongestMove} description={movers?.ok ? `${text.source}: ${movers.source}` : text.providerError} />
-      {data ? (
+      {data && hasMoverData ? (
         <div className="movers-grid">
           <MoverList title={text.risingStocks} rows={data.topGainers} lang={lang} tone="positive" />
           <MoverList title={text.fallingStocks} rows={data.topLosers} lang={lang} tone="negative" />
         </div>
       ) : (
-        <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} />
+        <StateBox
+          tone="warning"
+          icon={AlertTriangle}
+          title={text.providerError}
+          description={text.marketClosedNote}
+          actionLabel={text.retry}
+          onAction={onRetry}
+        />
       )}
     </section>
   );
 }
 
 function MoverList({ title, rows, lang, tone }: { title: string; rows: StockCategoryMoverItem[]; lang: LangCode; tone: Tone }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleRows = expanded ? rows : rows.slice(0, MOVER_VISIBLE_LIMIT);
+  const hasMore = rows.length > MOVER_VISIBLE_LIMIT;
   return (
     <div className="mover-list">
-      <strong>{title}</strong>
-      {rows.length === 0 ? <span className="muted">{COPY[lang].unavailable}</span> : rows.map(row => (
+      <div className="mover-list-title">
+        <strong>{title}</strong>
+        <span className="pill">{visibleRows.length}</span>
+      </div>
+      {rows.length === 0 ? <div className="mover-empty">{COPY[lang].unavailable}</div> : visibleRows.map(row => (
         <div className="mover-row" key={row.symbol}>
           <span className="rank">{row.rank}</span>
-          <div>
-            <strong className="symbol">{row.symbol}</strong>
-            <div className="muted">{row.name}</div>
+          <AssetIdentity symbol={row.symbol} name={row.name} assetType="stock" size="sm" className="mover-logo" />
+          <div className="mover-info">
+            <strong className="symbol" dir="ltr">{row.symbol}</strong>
+            <span className="mover-name" dir="auto">{row.name}</span>
           </div>
           <span className={badgeClass(tone)}>{formatPercent(row.changePercent, lang)}</span>
         </div>
       ))}
+      {hasMore ? (
+        <button className="link-button mover-more" type="button" onClick={() => setExpanded(current => !current)}>
+          {expanded ? COPY[lang].expanded : COPY[lang].loadMore}
+        </button>
+      ) : null}
     </div>
   );
 }
 
-function DataStatusPanel({ text, lang, rows }: { text: typeof COPY[LangCode]; lang: LangCode; rows: GrowthStockRow[] }) {
+function DataStatusPanel({ text, lang, rows, lastUpdated }: { text: typeof COPY[LangCode]; lang: LangCode; rows: GrowthStockRow[]; lastUpdated: string | null }) {
   const sources = uniqueOptions(rows.map(row => row.source));
   const delayedCount = rows.filter(row => row.delayed).length;
+  const availableCount = rows.filter(row => row.available && row.price !== null).length;
+  const missingFields = rows.reduce((sum, row) => sum
+    + (row.price === null ? 1 : 0)
+    + (row.changePercent === null ? 1 : 0)
+    + (row.currency ? 0 : 1)
+    + (row.sectorLabel ? 0 : 1)
+    + 9, 0);
+  const condition = missingFields > 0 ? text.someFieldsUnavailable : delayedCount > 0 ? text.delayedData : text.connected;
   return (
     <section className="panel">
       <SectionHeader title={text.dataStatusTitle} description={text.marketClosedNote} />
       <div className="metric-grid">
-        <MiniMetric label={text.quoteSource} value={sources.join(', ') || text.unavailable} />
-        <MiniMetric label={text.delayed} value={String(delayedCount)} />
-        <MiniMetric label={text.trackedStocks} value={String(rows.length)} />
-        <MiniMetric label={text.fundamentalsUnavailable} value={text.unavailable} />
+        <MiniMetric label={text.dataProvider} value={sources.join(', ') || <UnavailableValue text={text} />} lang={lang} />
+        <MiniMetric label={text.lastQuoteUpdate} value={formatDateTime(lastUpdated, lang)} lang={lang} />
+        <MiniMetric label={text.availableStocks} value={`${availableCount}/${rows.length}`} lang={lang} valueDir="ltr" />
+        <MiniMetric label={text.missingFields} value={String(missingFields)} lang={lang} valueDir="ltr" />
+        <MiniMetric label={text.delayed} value={String(delayedCount)} lang={lang} valueDir="ltr" />
+        <MiniMetric label={text.dataCondition} value={condition} lang={lang} />
       </div>
     </section>
   );
 }
 
-function EducationGuide({ text, open, toggle }: { text: typeof COPY[LangCode]; open: DisclosureId[]; toggle: (id: DisclosureId) => void }) {
+function EducationGuide({ text, lang, open, toggle }: { text: typeof COPY[LangCode]; lang: LangCode; open: DisclosureId | null; toggle: (id: DisclosureId) => void }) {
+  const guideTitles: Record<LangCode, Record<DisclosureId, string>> = {
+    ar: {
+      what: 'ما هي أسهم النمو؟',
+      metrics: 'مقاييس النمو',
+      'growth-value': 'النمو مقابل القيمة',
+      'growth-momentum': 'الزخم السعري',
+      'valuation-risk': 'مخاطر التقييم',
+      rates: 'حساسية الفائدة',
+      peg: 'نسبة PEG',
+    },
+    en: {
+      what: 'What are growth stocks?',
+      metrics: 'Growth metrics',
+      'growth-value': 'Growth versus value',
+      'growth-momentum': 'Price momentum',
+      'valuation-risk': 'Valuation risk',
+      rates: 'Rate sensitivity',
+      peg: 'PEG ratio',
+    },
+    fr: {
+      what: 'Définition',
+      metrics: 'Mesures de croissance',
+      'growth-value': 'Croissance et valeur',
+      'growth-momentum': 'Momentum',
+      'valuation-risk': 'Risque de valorisation',
+      rates: 'Sensibilité aux taux',
+      peg: 'Ratio PEG',
+    },
+  };
+  const metricSeparator = lang === 'ar' ? '، ' : ', ';
+  const metricList = [
+    text.revenueGrowth,
+    text.earningsGrowth,
+    text.forwardGrowth,
+    text.grossMargin,
+    text.freeCashFlow,
+  ].join(metricSeparator);
   const items: Array<{ id: DisclosureId; title: string; body: string }> = [
-    { id: 'what', title: text.educationTitle, body: text.subtitle },
-    { id: 'metrics', title: text.revenueGrowth, body: `${text.revenueGrowth}، ${text.earningsGrowth}، ${text.forwardGrowth}، ${text.grossMargin}، ${text.freeCashFlow}. ${text.insufficientMethodology}` },
-    { id: 'growth-value', title: text.tabs.stocks, body: text.stocksDescription },
-    { id: 'growth-momentum', title: text.momentumSort, body: text.comparisonDescription },
-    { id: 'valuation-risk', title: text.valuationRisk, body: text.insufficientMethodology },
-    { id: 'rates', title: text.marketClosedNote, body: text.disclaimer },
-    { id: 'peg', title: text.peg, body: text.insufficientMethodology },
+    { id: 'what', title: guideTitles[lang].what, body: text.subtitle },
+    { id: 'metrics', title: guideTitles[lang].metrics, body: `${metricList}. ${text.insufficientMethodology}` },
+    { id: 'growth-value', title: guideTitles[lang]['growth-value'], body: text.stocksDescription },
+    { id: 'growth-momentum', title: guideTitles[lang]['growth-momentum'], body: text.comparisonDescription },
+    { id: 'valuation-risk', title: guideTitles[lang]['valuation-risk'], body: text.insufficientMethodology },
+    { id: 'rates', title: guideTitles[lang].rates, body: text.marketClosedNote },
+    { id: 'peg', title: guideTitles[lang].peg, body: text.insufficientMethodology },
   ];
   return (
-    <section className="panel">
+    <section className="section guide-section">
       <SectionHeader title={text.educationTitle} description={text.educationDescription} />
       <div className="guide-grid">
         {items.map(item => {
-          const isOpen = open.includes(item.id);
+          const isOpen = open === item.id;
           return (
-            <article key={item.id}>
+            <article className="guide-item" key={item.id}>
               <button className="guide-button" type="button" aria-expanded={isOpen} aria-controls={`guide-${item.id}`} onClick={() => toggle(item.id)}>
-                <span>{item.title}</span>
+                <span dir="auto">{item.title}</span>
                 {isOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
               </button>
-              {isOpen ? <div id={`guide-${item.id}`} className="guide-content">{item.body}</div> : null}
+              {isOpen ? <div id={`guide-${item.id}`} className="guide-content" dir="auto">{item.body}</div> : null}
             </article>
           );
         })}
@@ -2881,12 +4309,12 @@ function SectorCard({ sector, lang, expanded }: { sector: ReturnType<typeof buil
       <h3 className="sector-title">{sector.label}</h3>
       <p className="muted">{sector.description}</p>
       <div className="metric-grid">
-        <MiniMetric label={COPY[lang].trackedStocks} value={String(sector.count || sector.symbols.length)} />
-        <MiniMetric label={COPY[lang].dailyChange} value={formatPercent(sector.averageChange, lang)} />
+        <MiniMetric label={COPY[lang].trackedStocks} value={String(sector.count || sector.symbols.length)} lang={lang} valueDir="ltr" />
+        <MiniMetric label={COPY[lang].dailyChange} value={formatPercent(sector.averageChange, lang)} lang={lang} />
         {expanded ? (
           <>
-            <MiniMetric label={COPY[lang].strongestStock} value={sector.top?.symbol ?? COPY[lang].unavailable} />
-            <MiniMetric label={COPY[lang].valuationRisk} value={COPY[lang].unavailable} />
+            <MiniMetric label={COPY[lang].strongestStock} value={sector.top?.symbol ?? COPY[lang].unavailable} lang={lang} valueDir={sector.top?.symbol ? 'ltr' : undefined} />
+            <MiniMetric label={COPY[lang].valuationRisk} value={COPY[lang].unavailable} lang={lang} />
           </>
         ) : null}
       </div>
@@ -2895,7 +4323,7 @@ function SectorCard({ sector, lang, expanded }: { sector: ReturnType<typeof buil
           <p className="muted"><strong>{COPY[lang].methodology}:</strong> {sector.drivers}</p>
           <p className="muted"><strong>{COPY[lang].valuationRisk}:</strong> {sector.risks}</p>
           <div className="symbol-strip">
-            {sector.symbols.map(symbol => <span key={symbol} className="badge tone-info symbol">{symbol}</span>)}
+            {sector.symbols.map(symbol => <span key={symbol} className="badge tone-info symbol" dir="ltr">{symbol}</span>)}
           </div>
         </>
       ) : null}
@@ -2914,12 +4342,29 @@ function SelectField({ id, label, value, onChange, children }: { id: string; lab
   );
 }
 
-function StateBox({ tone, icon: Icon, title, actionLabel, onAction }: { tone: Tone; icon: LucideIcon; title: string; actionLabel?: string; onAction?: () => void }) {
+function StateBox({
+  tone,
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  tone: Tone;
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
     <div className={`state-box tone-${tone}`} role={tone === 'warning' || tone === 'negative' ? 'alert' : 'status'}>
-      <div className="row-between">
+      <div className="state-copy">
         <Icon size={20} />
-        <strong>{title}</strong>
+        <div>
+          <strong>{title}</strong>
+          {description ? <p>{description}</p> : null}
+        </div>
       </div>
       {actionLabel && onAction ? <button className="ghost-button" type="button" onClick={onAction}>{actionLabel}</button> : null}
     </div>

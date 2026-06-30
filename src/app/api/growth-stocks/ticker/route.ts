@@ -81,24 +81,25 @@ export async function GET() {
       name: stocksBySymbol.get(symbol)?.name ?? GROWTH_TICKER_NAMES[symbol] ?? symbol,
     }));
     const prices = await fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY);
-    const items = watchlist
-      .map(stock => {
-        const price = prices.get(stock.symbol);
-        if (!isUsableMarketPrice(price)) return null;
-        return {
-          symbol: stock.symbol,
-          name: stock.name,
-          price: price.price,
-          currency: 'USD',
-          change: price.change,
-          changePercent: price.changePercent,
-          source: price.source,
-          delayed: price.delayed,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const items = watchlist.map(stock => {
+      const price = prices.get(stock.symbol);
+      const available = isUsableMarketPrice(price);
+      return {
+        symbol: stock.symbol,
+        name: stock.name,
+        price: available ? price.price : null,
+        currency: 'USD',
+        change: available ? price.change : null,
+        changePercent: available ? price.changePercent : null,
+        source: price?.source ?? 'Finnhub/Yahoo Finance fallback',
+        delayed: price?.delayed ?? true,
+        available,
+        unavailableReason: available ? undefined : price?.unavailableReason ?? 'provider_returned_empty_quote',
+      };
+    });
+    const availableCount = items.filter(item => item.available).length;
 
-    if (items.length === 0) {
+    if (availableCount === 0 && items.length === 0) {
       return NextResponse.json(
         {
           ok: false,
@@ -120,6 +121,7 @@ export async function GET() {
         ok: true,
         source: 'Finnhub/Yahoo Finance fallback',
         updated_at: new Date().toISOString(),
+        available_count: availableCount,
         items,
       },
       {
