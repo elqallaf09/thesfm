@@ -38,6 +38,7 @@
 }
 
 .hero,
+.tickerPanel,
 .summaryPanel,
 .panel,
 .methodologyPanel,
@@ -245,11 +246,47 @@
 }
 
 .summaryPanel,
+.tickerPanel,
 .panel,
 .methodologyPanel {
   padding: clamp(18px, 2.2vw, 24px);
   display: grid;
   gap: 18px;
+}
+
+.tickerPanel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.tickerEmptyState {
+  min-height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(148, 163, 184, 0.72);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.86);
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.tickerLoadingRow {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.tickerLoadingRow span {
+  flex: 0 0 210px;
+  height: 112px;
+  border-radius: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  background: linear-gradient(90deg, rgba(241, 245, 249, 0.92), rgba(248, 251, 255, 0.96), rgba(241, 245, 249, 0.92));
 }
 
 .sectionHead {

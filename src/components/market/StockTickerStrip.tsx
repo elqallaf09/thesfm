@@ -40,11 +40,45 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+const MARKET_CURRENCY_ALIASES: Record<string, string> = {
+  KWF: 'KWD',
+};
+
+const MARKET_CURRENCY_SUFFIXES: Array<[RegExp, string]> = [
+  [/\.KW$/i, 'KWD'],
+  [/\.(SR|SA)$/i, 'SAR'],
+  [/\.(AE|DU|AD)$/i, 'AED'],
+  [/\.QA$/i, 'QAR'],
+  [/\.BH$/i, 'BHD'],
+  [/\.OM$/i, 'OMR'],
+];
+
+function normalizeTickerCurrency(value: string | null | undefined) {
+  const currency = String(value ?? '').trim().toUpperCase();
+  if (!currency) return null;
+  return MARKET_CURRENCY_ALIASES[currency] ?? currency;
+}
+
+function inferTickerCurrency(symbol: string, explicitCurrency?: string | null) {
+  const normalized = normalizeTickerCurrency(explicitCurrency);
+  if (normalized && normalized !== 'USD') return normalized;
+
+  const cleanSymbol = String(symbol ?? '').trim().toUpperCase();
+  const suffixCurrency = MARKET_CURRENCY_SUFFIXES.find(([pattern]) => pattern.test(cleanSymbol))?.[1];
+  return suffixCurrency ?? normalized ?? 'USD';
+}
+
+function localeWithLatinDigits(locale: string) {
+  if (!locale) return 'en-US-u-nu-latn';
+  return locale.includes('-u-') ? locale : `${locale}-u-nu-latn`;
+}
+
 function formatMoney(value: number, currency: string, locale: string) {
   try {
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(localeWithLatinDigits(locale), {
       style: 'currency',
       currency,
+      numberingSystem: 'latn',
       maximumFractionDigits: value >= 100 ? 2 : 3,
     }).format(value);
   } catch {
@@ -53,7 +87,8 @@ function formatMoney(value: number, currency: string, locale: string) {
 }
 
 function formatPercent(value: number, locale: string) {
-  const formatted = new Intl.NumberFormat(locale, {
+  const formatted = new Intl.NumberFormat(localeWithLatinDigits(locale), {
+    numberingSystem: 'latn',
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(value);
@@ -66,7 +101,7 @@ function normalizeItem(item: StockTickerStripItem) {
     ...item,
     symbol,
     name: String(item.name ?? symbol).trim() || symbol,
-    currency: String(item.currency ?? 'USD').trim() || 'USD',
+    currency: inferTickerCurrency(symbol, item.currency),
     source: String(item.source ?? '').trim(),
   };
 }
@@ -112,7 +147,7 @@ export function StockTickerStrip({
         const price = available && isFiniteNumber(item.price) ? item.price : null;
         const changePercent = available && isFiniteNumber(item.changePercent) ? item.changePercent : null;
         const tone = changePercent !== null ? (changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral') : 'neutral';
-        const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
+        const TrendIcon = tone === 'up' ? TrendingUp : tone === 'down' ? TrendingDown : null;
         const provider = item.source
           ? sourceLabel
             ? `${sourceLabel}: ${item.source}`
@@ -146,7 +181,7 @@ export function StockTickerStrip({
                   : unavailableLabel}
               </b>
               <em className={`sfm-stock-ticker-change is-${tone}`} dir="ltr">
-                <TrendIcon size={12} />
+                {TrendIcon ? <TrendIcon size={12} /> : <span aria-hidden="true">--</span>}
                 {changePercent !== null ? formatPercent(changePercent, locale) : unavailableLabel}
               </em>
             </div>

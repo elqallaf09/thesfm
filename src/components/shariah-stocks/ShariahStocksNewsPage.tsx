@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { CompanyLogo } from '@/components/asset/CompanyLogo';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import styles from './ShariahStocksNewsPage.module.css';
@@ -54,11 +55,12 @@ type ShariahQuote = {
   sector: string;
   industry: string;
   assetType: ShariahAssetType;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
   source: string;
+  available?: boolean;
   delayed: true;
   shariahStatus: ShariahScreeningStatus;
   statusLabelAr: string;
@@ -1108,6 +1110,10 @@ export function ShariahStocksNewsPage() {
     });
     return `/market-analysis?${params.toString()}`;
   };
+  const shariaTickerItems = tickerResponse?.items ?? [];
+  const shariaTickerLabel = locale === 'ar' ? 'شريط الأسهم الشرعية' : locale === 'fr' ? 'Ticker des actions charia' : 'Sharia stock ticker';
+  const sourceLabel = locale === 'ar' ? 'المصدر' : locale === 'fr' ? 'Source' : 'Source';
+  const unavailableLabel = locale === 'ar' ? 'غير متاح' : locale === 'fr' ? 'Indisponible' : 'Unavailable';
 
   return (
     <div className={styles.page} dir={dir}>
@@ -1134,6 +1140,45 @@ export function ShariahStocksNewsPage() {
               <span>{coreError}</span>
             </div>
           ) : null}
+
+          <section className={styles.tickerPanel} aria-label={shariaTickerLabel}>
+            {coreLoading && shariaTickerItems.length === 0 ? (
+              <div className={styles.tickerLoadingRow} aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, index) => <span key={index} />)}
+              </div>
+            ) : (
+              <StockTickerStrip
+                ariaLabel={shariaTickerLabel}
+                items={shariaTickerItems.map(item => ({
+                  symbol: item.symbol,
+                  name: item.name,
+                  price: item.price,
+                  currency: item.currency,
+                  changePercent: item.changePercent,
+                  source: item.source,
+                  available: item.available ?? (item.price !== null),
+                  meta: statusLabel(item.shariahStatus, locale),
+                }))}
+                locale={locale}
+                unavailableLabel={unavailableLabel}
+                sourceLabel={sourceLabel}
+                direction="ltr"
+                durationSeconds={54}
+                minimumItems={8}
+                status={(
+                  <span className={tickerResponse?.ok ? styles.connectedState : styles.warningState}>
+                    {tickerResponse?.ok ? c.delayed : c.sourceLimited}
+                  </span>
+                )}
+                emptyState={(
+                  <div className={styles.tickerEmptyState} role="status">
+                    <AlertTriangle size={17} />
+                    <span>{unavailableLabel}</span>
+                  </div>
+                )}
+              />
+            )}
+          </section>
 
           <ScreeningSummary c={c} locale={locale} summary={summary} updatedAt={screening?.updated_at ?? tickerResponse?.updated_at ?? null} loading={coreLoading} />
 
