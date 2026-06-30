@@ -14,6 +14,7 @@ type MarketTickerStripProps = {
   direction?: TickerDirection;
   durationSeconds?: number;
   minimumItems?: number;
+  emptyState?: ReactNode;
   status?: ReactNode;
   children: ReactNode;
 };
@@ -47,12 +48,14 @@ export function MarketTickerStrip({
   direction,
   durationSeconds = 44,
   minimumItems = 10,
+  emptyState,
   status,
   children,
 }: MarketTickerStripProps) {
   const [paused, setPaused] = useState(false);
   const [resolvedDirection, setResolvedDirection] = useState<TickerDirection>(direction ?? 'ltr');
   const tickerItems = Children.toArray(children);
+  const hasTickerItems = tickerItems.length > 0;
   const repeatCount = tickerItems.length > 0 ? Math.max(2, Math.ceil(minimumItems / tickerItems.length)) : 1;
   const animationName = resolvedDirection === 'rtl' ? 'sfmMarketTickerScrollRtl' : 'sfmMarketTickerScrollLtr';
   const style = {
@@ -112,16 +115,22 @@ export function MarketTickerStrip({
       onBlur={() => setPaused(false)}
     >
       {status}
-      <div className={joinClasses('market-ticker-viewport', viewportClassName)}>
-        <div className={joinClasses('market-ticker-track', trackClassName)} style={trackStyle}>
-          <div className={joinClasses('market-ticker-set', setClassName)} role="list">
-            {renderSet('primary', false)}
-          </div>
-          <div className={joinClasses('market-ticker-set', setClassName)} aria-hidden="true">
-            {renderSet('duplicate', true)}
+      {hasTickerItems ? (
+        <div className={joinClasses('market-ticker-viewport', viewportClassName)}>
+          <div className={joinClasses('market-ticker-track', trackClassName)} style={trackStyle}>
+            <div className={joinClasses('market-ticker-set', setClassName)} role="list">
+              {renderSet('primary', false)}
+            </div>
+            <div className={joinClasses('market-ticker-set', setClassName)} aria-hidden="true">
+              {renderSet('duplicate', true)}
+            </div>
           </div>
         </div>
-      </div>
+      ) : emptyState ? (
+        <div className={joinClasses('market-ticker-viewport', viewportClassName)} role="status">
+          {emptyState}
+        </div>
+      ) : null}
     </section>
   );
 }

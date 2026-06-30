@@ -41,7 +41,7 @@ import {
   type ReactNode,
 } from 'react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -82,12 +82,14 @@ type EnergyTickerItem = {
   symbol: string;
   name: string;
   sector: string;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
   source: string;
-  delayed: true;
+  delayed: boolean;
+  available?: boolean;
+  unavailableReason?: string;
 };
 
 type EnergyTickerResponse =
@@ -1728,53 +1730,38 @@ function EnergyTicker({ items, loading, text, locale, lang }: {
   locale: string;
   lang: LangCode;
 }) {
-  const direction = lang === 'ar' ? 'rtl' : 'ltr';
-  const renderTickerItem = (item: EnergyTickerItem) => {
-    const tone = toneFor(item.changePercent);
-    return (
-      <article
-        className={`energyTickerItem energyTone-${tone}`}
-        dir={direction}
-        key={item.symbol}
-        role="listitem"
-      >
-        <div className="energyTickerIdentity">
-          <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="xs" decorative />
-          <span dir="ltr">{item.symbol}</span>
-        </div>
-        <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-        <strong>{item.name}</strong>
-        <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-        <div className="energyTickerMeta">
-          <small>{categoryLabel(item.sector, lang)}</small>
-          <small className="energyTickerSource" dir="ltr">{item.source}</small>
-        </div>
-      </article>
-    );
-  };
-
   return (
-    <section className="energyTickerPanel" aria-label={text.marketData} data-direction={direction}>
+    <section className="energyTickerPanel" aria-label={text.marketData} data-direction="ltr">
       {loading ? (
         <div className="energyTickerViewport">
           <div className="energyTickerTrack">
             {Array.from({ length: 8 }, (_, index) => <span className="energyTickerSkeleton" key={index} />)}
           </div>
         </div>
-      ) : items.length > 0 ? (
-        <MarketTickerStrip
+      ) : (
+        <StockTickerStrip
           ariaLabel={text.marketData}
+          items={items.map(item => ({
+            symbol: item.symbol,
+            name: item.name,
+            price: item.price,
+            currency: item.currency,
+            changePercent: item.changePercent,
+            source: item.source,
+            available: item.available,
+            meta: categoryLabel(item.sector, lang),
+          }))}
+          locale={locale}
+          unavailableLabel={text.unavailable}
+          sourceLabel={text.source}
           className="energyTickerStrip"
           viewportClassName="energyTickerViewport"
           trackClassName="energyTickerTrack energyTickerMarquee"
           setClassName="energyTickerSet"
-          direction={direction}
+          direction="ltr"
           durationSeconds={42}
-        >
-          {items.map(renderTickerItem)}
-        </MarketTickerStrip>
-      ) : (
-        <EmptyState title={text.noMarketTitle} body={text.noMarketBody} icon={AlertTriangle} />
+          emptyState={<EmptyState title={text.noMarketTitle} body={text.noMarketBody} icon={AlertTriangle} />}
+        />
       )}
     </section>
   );
@@ -2115,7 +2102,7 @@ function EnergyCompanyExplorer({ items, text, lang, locale, query, setQuery, cat
       .slice()
       .sort((a, b) => {
         if (sort === 'name') return a.name.localeCompare(b.name);
-        if (sort === 'price-desc') return b.price - a.price;
+        if (sort === 'price-desc') return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY);
         if (sort === 'change-asc') return (a.changePercent ?? 0) - (b.changePercent ?? 0);
         return Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0);
       });

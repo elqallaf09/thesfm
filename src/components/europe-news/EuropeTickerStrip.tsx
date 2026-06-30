@@ -21,7 +21,7 @@ function changeTone(value: number | null | undefined) {
   return value > 0 ? 'up' : 'down';
 }
 
-export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel, marketData, formatNumber, formatPercent, direction }: EuropeTickerStripProps) {
+export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel, marketData, formatNumber, formatPercent }: EuropeTickerStripProps) {
   const tickerItems = EUROPE_MARKETS.map(market => {
     const data = marketData[market.id];
     const value = data?.value ?? null;
@@ -47,7 +47,7 @@ export function EuropeTickerStrip({ marketLabels, indexLabels, unavailableLabel,
       viewportClassName="europe-ticker-viewport"
       trackClassName="europe-ticker-track"
       setClassName="europe-ticker-set"
-      direction={direction}
+      direction="ltr"
     >
       {tickerItems.map(({ market, displayValue, displayChange, tone, Icon }) => (
         <div className="europe-ticker-item" key={market.id}>

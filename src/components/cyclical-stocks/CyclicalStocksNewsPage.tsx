@@ -31,7 +31,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -179,6 +179,7 @@ type CyclicalTickerStripItem = Omit<CyclicalTickerItem, 'price' | 'change' | 'ch
   change: number | null;
   changePercent: number | null;
   source: string | null;
+  sectorLabel: string;
 };
 
 type SectorDefinition = {
@@ -1421,41 +1422,28 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalTickerStripItem[];
       </section>
     );
   }
+
   return (
-    <MarketTickerStrip
+    <StockTickerStrip
       ariaLabel={COPY[lang].tickerTitle}
+      items={rows.map(row => ({
+        symbol: row.symbol,
+        name: row.name,
+        price: row.price,
+        currency: row.currency,
+        changePercent: row.changePercent,
+        source: row.source,
+        available: row.price !== null,
+        meta: 'sectorLabel' in row ? row.sectorLabel : undefined,
+      }))}
+      locale={localeFor(lang)}
+      unavailableLabel={COPY[lang].unavailable}
+      sourceLabel={COPY[lang].source}
       className="ticker-strip"
       trackClassName="ticker-track"
       direction="ltr"
       durationSeconds={46}
-    >
-      {rows.map(row => {
-        const cp = row.changePercent;
-        const hasPercent = typeof cp === 'number' && Number.isFinite(cp);
-        const tone = hasPercent ? (cp > 0 ? 'positive' : cp < 0 ? 'negative' : 'neutral') : 'neutral';
-        return (
-          <article
-            className="ticker-item"
-            key={row.symbol}
-            role="listitem"
-            dir="ltr"
-          >
-            <div className="ticker-identity">
-              <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
-              <div>
-                <strong dir="ltr">{row.symbol}</strong>
-                <span>{row.name}</span>
-              </div>
-            </div>
-            <div className="ticker-values">
-              <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
-              <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
-            </div>
-            {row.source ? <small className="ticker-source">{row.source}</small> : null}
-          </article>
-        );
-      })}
-    </MarketTickerStrip>
+    />
   );
 }
 

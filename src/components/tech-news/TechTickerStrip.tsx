@@ -1,8 +1,7 @@
 'use client';
 
-import { Clock3, TrendingDown, TrendingUp } from 'lucide-react';
-import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { Clock3 } from 'lucide-react';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
 const TICKER_ITEMS = [
@@ -32,7 +31,7 @@ type TechTickerStripProps = {
   };
 };
 
-export function TechTickerStrip({ prices, formatPrice, direction, labels }: TechTickerStripProps) {
+export function TechTickerStrip({ prices, formatPrice, labels }: TechTickerStripProps) {
   const tickerItems = TICKER_ITEMS.map(({ symbol, companyName }) => {
     const livePrice = prices.find(item => item.symbol === symbol);
     if (livePrice) return { ...livePrice, companyName };
@@ -51,9 +50,21 @@ export function TechTickerStrip({ prices, formatPrice, direction, labels }: Tech
   });
 
   return (
-    <MarketTickerStrip
+    <StockTickerStrip
       ariaLabel="Tech market ticker"
-      direction={direction}
+      items={tickerItems.map(item => ({
+        symbol: item.symbol,
+        name: item.companyName,
+        price: item.price,
+        currency: 'USD',
+        changePercent: item.changePercent,
+        source: item.source,
+        available: item.available,
+      }))}
+      locale="en-US"
+      unavailableLabel={labels.unavailable}
+      sourceLabel={labels.sourceLabel}
+      direction="ltr"
       className="tech-ticker-strip"
       viewportClassName="tech-ticker-viewport"
       trackClassName="tech-ticker-track"
@@ -64,48 +75,8 @@ export function TechTickerStrip({ prices, formatPrice, direction, labels }: Tech
           {labels.delayedGlobal}
         </span>
       )}
-      >
-      {tickerItems.map(item => {
-        const hasQuote = item.available && item.price !== null && item.changePercent !== null;
-        const cp = item.changePercent;
-        const tone = !hasQuote || cp === 0 || cp === null ? 'neutral' : cp > 0 ? 'up' : 'down';
-        const Icon = tone === 'down' ? TrendingDown : TrendingUp;
-        const symbolLabel = item.companyName || item.symbol;
-        const providerLabel = item.available ? `${labels.sourceLabel}: ${item.source}` : labels.unavailable;
-
-        return (
-          <div className={`tech-ticker-item ${tone}`} key={item.symbol}>
-            <div className="tech-ticker-identity">
-              <AssetIdentity
-                variant="badge"
-                symbol={item.symbol}
-                companyName={symbolLabel}
-                assetType="stock"
-                size="xs"
-                showName
-              />
-              <div>
-                <small>
-                  {providerLabel}
-                </small>
-                <strong dir="ltr">{item.symbol}</strong>
-              </div>
-            </div>
-            <span className="tech-ticker-price" dir="ltr">
-              {item.price === null ? labels.unavailable : formatPrice(item.price)}
-            </span>
-            {hasQuote && cp !== null ? (
-              <b className={`tech-ticker-change ${tone}`}>
-                <Icon size={11} />
-                <span dir="ltr">{`${cp >= 0 ? '+' : ''}${cp.toFixed(2)}%`}</span>
-              </b>
-            ) : (
-              <b className="tech-ticker-change neutral">{labels.unavailable}</b>
-            )}
-          </div>
-        );
-      })}
-    </MarketTickerStrip>
+      formatPrice={value => formatPrice(value)}
+    />
   );
 }
 

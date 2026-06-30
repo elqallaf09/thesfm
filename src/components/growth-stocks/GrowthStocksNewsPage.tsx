@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -3190,9 +3190,28 @@ function TickerStrip({ items, loading, lang, onRetry }: { items: GrowthStockRow[
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
+  return (
+    <StockTickerStrip
+      ariaLabel={COPY[lang].trackedStocks}
+      items={items.map(item => ({
+        symbol: item.symbol,
+        name: item.name,
+        price: item.price,
+        currency: item.currency,
+        changePercent: item.changePercent,
+        source: item.source,
+        available: item.available,
+        meta: item.sectorLabel,
+      }))}
+      locale={LOCALE_BY_LANG[lang]}
+      unavailableLabel={COPY[lang].unavailable}
+      sourceLabel={COPY[lang].source}
+      className="ticker-panel"
+      viewportClassName="ticker-marquee"
+      trackClassName="ticker-track"
+      direction="ltr"
+      durationSeconds={36}
+      emptyState={(
         <StateBox
           tone="info"
           icon={Info}
@@ -3201,34 +3220,8 @@ function TickerStrip({ items, loading, lang, onRetry }: { items: GrowthStockRow[
           actionLabel={COPY[lang].retry}
           onAction={onRetry}
         />
-      </section>
-    );
-  }
-
-  return (
-    <MarketTickerStrip
-      ariaLabel={COPY[lang].trackedStocks}
-      className="ticker-panel"
-      viewportClassName="ticker-marquee"
-      trackClassName="ticker-track"
-      direction={lang === 'ar' ? 'rtl' : 'ltr'}
-      durationSeconds={36}
-    >
-      {items.map(item => (
-        <article className="ticker-item" key={item.symbol} role="listitem" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-          <div className="ticker-top">
-            <span className="ticker-identity">
-              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" className="asset-avatar" decorative />
-              <span className="ticker-symbol" dir="ltr">{item.symbol}</span>
-            </span>
-            {item.changePercent === null ? <UnavailableValue text={COPY[lang]} /> : <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>}
-          </div>
-          <strong className="numeric">{item.price === null ? <UnavailableValue text={COPY[lang]} /> : formatCurrency(item.price, item.currency, lang)}</strong>
-          <span className="ticker-name">{item.name}</span>
-          <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
-        </article>
-      ))}
-    </MarketTickerStrip>
+      )}
+    />
   );
 }
 

@@ -1,8 +1,8 @@
-import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import { fetchDividendStockMetrics } from '@/lib/market/fetchDividendStockMetrics';
-import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
+import { toResilientTickerItem } from '@/lib/market/tickerItems';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -53,83 +53,49 @@ const DIVIDEND_TICKER_NAMES: Record<string, string> = {
   GIS: 'General Mills',
 };
 
-function isUsableMarketPrice(price: TechStockPrice | undefined): price is TechStockPrice & { price: number } {
-  return Boolean(price?.available && price.price !== null && Number.isFinite(price.price) && price.price > 0 && price.source);
-}
+const DIVIDEND_SOURCE = 'Finnhub/Yahoo Finance quote fallback + Finnhub/Yahoo Finance dividend metrics';
+
+type DividendMetrics = Awaited<ReturnType<typeof fetchDividendStockMetrics>>;
 
 export async function GET() {
   const config = getStockCategoryConfig('dividend');
+  const stocksBySymbol = new Map((config?.watchlist ?? []).map(stock => [stock.symbol, stock]));
+  const watchlist = DIVIDEND_TICKER_SYMBOLS.map(symbol => ({
+    symbol,
+    name: stocksBySymbol.get(symbol)?.name ?? DIVIDEND_TICKER_NAMES[symbol] ?? symbol,
+  }));
 
-  if (!config) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: 'DIVIDEND_TICKER_UNAVAILABLE',
-        updated_at: null,
-        source: null,
-        items: [],
-      },
-      { status: 503 },
-    );
-  }
+  const buildItems = (
+    prices?: Awaited<ReturnType<typeof fetchStockPrices>>,
+    metrics?: DividendMetrics,
+  ) =>
+    watchlist.map(stock => {
+      const metric = metrics?.get(stock.symbol);
+      return {
+        ...toResilientTickerItem(stock, prices?.get(stock.symbol), { fallbackSource: DIVIDEND_SOURCE }),
+        dividendYield: metric?.dividendYield ?? null,
+        payoutRatio: metric?.payoutRatio ?? null,
+        annualDividend: metric?.annualDividend ?? null,
+        exDividendDate: metric?.exDividendDate ?? null,
+        paymentDate: metric?.paymentDate ?? null,
+        dividendMetricSource: metric?.available ? metric.source : null,
+      };
+    });
 
   try {
-    const stocksBySymbol = new Map(config.watchlist.map(stock => [stock.symbol, stock]));
-    const watchlist = DIVIDEND_TICKER_SYMBOLS.map(symbol => ({
-      symbol,
-      name: stocksBySymbol.get(symbol)?.name ?? DIVIDEND_TICKER_NAMES[symbol] ?? symbol,
-    }));
     const [prices, metrics] = await Promise.all([
       fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY),
       fetchDividendStockMetrics(watchlist.map(stock => stock.symbol)),
     ]);
-
-    const items = watchlist
-      .map(stock => {
-        const price = prices.get(stock.symbol);
-        if (!isUsableMarketPrice(price)) return null;
-        const metric = metrics.get(stock.symbol);
-        return {
-          symbol: stock.symbol,
-          name: stock.name,
-          price: price.price,
-          currency: 'USD',
-          change: price.change,
-          changePercent: price.changePercent,
-          dividendYield: metric?.dividendYield ?? null,
-          payoutRatio: metric?.payoutRatio ?? null,
-          annualDividend: metric?.annualDividend ?? null,
-          exDividendDate: metric?.exDividendDate ?? null,
-          paymentDate: metric?.paymentDate ?? null,
-          dividendMetricSource: metric?.available ? metric.source : null,
-          source: price.source,
-          delayed: price.delayed,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
-
-    if (items.length === 0) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: 'DIVIDEND_TICKER_UNAVAILABLE',
-          updated_at: null,
-          source: 'Finnhub/Yahoo Finance quote fallback + Finnhub/Yahoo Finance dividend metrics',
-          items: [],
-        },
-        {
-          headers: {
-            'cache-control': 'public, s-maxage=300, stale-while-revalidate=600',
-          },
-        },
-      );
-    }
+    // Always return every configured symbol; missing quotes are flagged unavailable.
+    const items = buildItems(prices, metrics);
 
     return NextResponse.json(
       {
         ok: true,
-        source: 'Finnhub/Yahoo Finance quote fallback + Finnhub/Yahoo Finance dividend metrics',
+        source: DIVIDEND_SOURCE,
         updated_at: new Date().toISOString(),
+        available_count: items.filter(item => item.available).length,
         items,
       },
       {
@@ -144,13 +110,18 @@ export async function GET() {
     });
     return NextResponse.json(
       {
-        ok: false,
-        code: 'DIVIDEND_TICKER_UNAVAILABLE',
-        updated_at: null,
-        source: 'Finnhub/Yahoo Finance quote fallback + Finnhub/Yahoo Finance dividend metrics',
-        items: [],
+        ok: true,
+        code: 'DIVIDEND_TICKER_DEGRADED',
+        source: DIVIDEND_SOURCE,
+        updated_at: new Date().toISOString(),
+        available_count: 0,
+        items: buildItems(),
       },
-      { status: 503 },
+      {
+        headers: {
+          'cache-control': 'public, s-maxage=60, stale-while-revalidate=600',
+        },
+      },
     );
   }
 }

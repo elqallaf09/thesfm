@@ -37,7 +37,7 @@ import {
   type ReactNode,
 } from 'react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -64,12 +64,14 @@ type BankTickerItem = {
   symbol: string;
   name: string;
   sector: string;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
   source: string;
-  delayed: true;
+  delayed: boolean;
+  available?: boolean;
+  unavailableReason?: string;
 };
 
 type BankTickerResponse =
@@ -1029,26 +1031,6 @@ function BankingTicker({
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <section className="bankPanel tickerPanel" aria-labelledby="banking-ticker-title">
-        <div className="sectionHead compact">
-          <div>
-            <h2 id="banking-ticker-title">{text.bankingTicker}</h2>
-            <p>{text.providerDelayed}</p>
-          </div>
-        </div>
-        <div className="bankInlineState" role="status">
-          <AlertTriangle size={19} />
-          <span>
-            <strong>{text.tickerUnavailable}</strong>
-            <em>{text.tickerUnavailableHint}</em>
-          </span>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="bankPanel tickerPanel" aria-labelledby="banking-ticker-title">
       <div className="sectionHead compact">
@@ -1057,37 +1039,37 @@ function BankingTicker({
           <p>{text.providerDelayed}</p>
         </div>
       </div>
-      <MarketTickerStrip
+      <StockTickerStrip
         ariaLabel={text.bankingTicker}
+        items={items.map(item => ({
+          symbol: item.symbol,
+          name: item.name,
+          price: item.price,
+          currency: item.currency,
+          changePercent: item.changePercent,
+          source: item.source,
+          available: item.available,
+          meta: sectorLabel(item.sector, lang, text),
+        }))}
+        locale={locale}
+        unavailableLabel={text.unavailable}
+        sourceLabel={text.dataSource}
         className="bankTickerStrip"
         viewportClassName="bankTickerViewport"
         trackClassName="bankTickerTrack"
         setClassName="bankTickerSet"
-        direction={lang === 'ar' ? 'rtl' : 'ltr'}
+        direction="ltr"
         durationSeconds={46}
-      >
-        {items.map(item => (
-            <article
-              className="bankTickerItem"
-              key={item.symbol}
-              role="listitem"
-              dir={lang === 'ar' ? 'rtl' : 'ltr'}
-            >
-              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
-              <div>
-                <strong dir="ltr">{item.symbol}</strong>
-                <span>{item.name}</span>
-              </div>
-              <div className="tickerNumbers">
-                <b dir="ltr">{formatMoney(item.price, item.currency, locale) || text.unavailable}</b>
-                <em className={`tone-${changeTone(item.changePercent)}`} dir="ltr">
-                  {formatPercent(item.changePercent, locale) || text.unavailable}
-                </em>
-              </div>
-              <small>{sectorLabel(item.sector, lang, text)} · {text.delayedQuote}</small>
-            </article>
-        ))}
-      </MarketTickerStrip>
+        emptyState={(
+          <div className="bankInlineState" role="status">
+            <AlertTriangle size={19} />
+            <span>
+              <strong>{text.tickerUnavailable}</strong>
+              <em>{text.tickerUnavailableHint}</em>
+            </span>
+          </div>
+        )}
+      />
     </section>
   );
 }

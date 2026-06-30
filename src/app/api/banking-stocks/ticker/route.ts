@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
+import { TICKER_FALLBACK_SOURCE, toResilientTickerItem } from '@/lib/market/tickerItems';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -75,77 +76,35 @@ const BANK_SECTORS: Record<string, string> = {
   MCO: 'exchanges_services',
 };
 
-function isUsableMarketPrice(price: TechStockPrice | undefined): price is TechStockPrice & { price: number } {
-  return Boolean(price?.available && price.price !== null && Number.isFinite(price.price) && price.price > 0 && price.source);
-}
-
 export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { max: 60, prefix: 'banking-ticker' });
   if (limited) return limited;
 
   const config = getStockCategoryConfig('banking');
+  const stocksBySymbol = new Map((config?.watchlist ?? []).map(stock => [stock.symbol, stock]));
+  const watchlist = BANK_TICKER_SYMBOLS.map(symbol => ({
+    symbol,
+    name: stocksBySymbol.get(symbol)?.name ?? BANK_TICKER_NAMES[symbol] ?? symbol,
+    sector: BANK_SECTORS[symbol] ?? stocksBySymbol.get(symbol)?.filter ?? 'banking',
+  }));
 
-  if (!config) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: 'BANK_TICKER_UNAVAILABLE',
-        updated_at: null,
-        source: null,
-        items: [],
-      },
-      { status: 503 },
-    );
-  }
+  const buildItems = (prices?: Awaited<ReturnType<typeof fetchStockPrices>>) =>
+    watchlist.map(stock => ({
+      ...toResilientTickerItem(stock, prices?.get(stock.symbol)),
+      sector: stock.sector,
+    }));
 
   try {
-    const stocksBySymbol = new Map(config.watchlist.map(stock => [stock.symbol, stock]));
-    const watchlist = BANK_TICKER_SYMBOLS.map(symbol => ({
-      symbol,
-      name: stocksBySymbol.get(symbol)?.name ?? BANK_TICKER_NAMES[symbol] ?? symbol,
-      sector: BANK_SECTORS[symbol] ?? stocksBySymbol.get(symbol)?.filter ?? 'banking',
-    }));
     const prices = await fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY);
-    const items = watchlist
-      .map(stock => {
-        const price = prices.get(stock.symbol);
-        if (!isUsableMarketPrice(price)) return null;
-        return {
-          symbol: stock.symbol,
-          name: stock.name,
-          sector: stock.sector,
-          price: price.price,
-          currency: 'USD',
-          change: price.change,
-          changePercent: price.changePercent,
-          source: price.source,
-          delayed: price.delayed,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
-
-    if (items.length === 0) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: 'BANK_TICKER_UNAVAILABLE',
-          updated_at: null,
-          source: 'Finnhub/Yahoo Finance fallback',
-          items: [],
-        },
-        {
-          headers: {
-            'cache-control': 'public, s-maxage=300, stale-while-revalidate=600',
-          },
-        },
-      );
-    }
+    // Always return every configured symbol; missing quotes are flagged unavailable.
+    const items = buildItems(prices);
 
     return NextResponse.json(
       {
         ok: true,
-        source: 'Finnhub/Yahoo Finance fallback',
+        source: TICKER_FALLBACK_SOURCE,
         updated_at: new Date().toISOString(),
+        available_count: items.filter(item => item.available).length,
         items,
       },
       {
@@ -160,13 +119,18 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(
       {
-        ok: false,
-        code: 'BANK_TICKER_UNAVAILABLE',
-        updated_at: null,
-        source: 'Finnhub/Yahoo Finance fallback',
-        items: [],
+        ok: true,
+        code: 'BANK_TICKER_DEGRADED',
+        source: TICKER_FALLBACK_SOURCE,
+        updated_at: new Date().toISOString(),
+        available_count: 0,
+        items: buildItems(),
       },
-      { status: 503 },
+      {
+        headers: {
+          'cache-control': 'public, s-maxage=60, stale-while-revalidate=600',
+        },
+      },
     );
   }
 }

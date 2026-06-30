@@ -26,7 +26,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -43,12 +43,14 @@ type NewsSort = 'recent' | 'oldest' | 'movement';
 type DefensiveTickerItem = {
   symbol: string;
   name: string;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
   source: string;
-  delayed: true;
+  delayed: boolean;
+  available?: boolean;
+  unavailableReason?: string;
 };
 
 type DefensiveTickerResponse =
@@ -450,6 +452,8 @@ const STOCK_SECTORS: Record<string, SectorId> = {
   GIS: 'consumer_staples',
   MDLZ: 'consumer_staples',
   HSY: 'consumer_staples',
+  KR: 'consumer_staples',
+  MCD: 'consumer_staples',
   JNJ: 'healthcare',
   ABBV: 'healthcare',
   UNH: 'healthcare',
@@ -798,6 +802,8 @@ function stockName(symbol: string, fallback?: string) {
     GIS: 'General Mills',
     MDLZ: 'Mondelez International',
     HSY: 'Hershey',
+    KR: 'Kroger',
+    MCD: "McDonald's",
     JNJ: 'Johnson & Johnson',
     ABBV: 'AbbVie',
     UNH: 'UnitedHealth Group',
@@ -905,44 +911,32 @@ function DefensiveTicker({ items, loading, error, lang, locale, text }: {
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <section className="def-card def-state" aria-label={text.tickerTitle}>
-        <AlertTriangle size={20} />
-        <strong>{error || text.tickerEmpty}</strong>
-      </section>
-    );
-  }
-
   return (
     <section className="def-card def-ticker-panel" aria-label={text.tickerTitle}>
-      <MarketTickerStrip
+      <StockTickerStrip
         ariaLabel={text.tickerTitle}
+        items={items.map(item => ({
+          symbol: item.symbol,
+          name: stockName(item.symbol, item.name),
+          price: item.price,
+          currency: item.currency,
+          changePercent: item.changePercent,
+          source: item.source,
+          available: item.available,
+          meta: SECTOR_LABELS[lang][sectorForSymbol(item.symbol)],
+        }))}
+        locale={locale}
+        unavailableLabel={text.unavailable}
+        sourceLabel={text.source}
         className="def-ticker-strip"
         viewportClassName="def-ticker-viewport"
         trackClassName="def-ticker-track"
         setClassName="def-ticker-set"
+        direction="ltr"
+        durationSeconds={48}
         status={<span className="def-ticker-status"><Clock3 size={13} />{text.delayed}</span>}
-      >
-        {items.map(item => {
-          const tone = changeTone(item.changePercent);
-          const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
-          return (
-            <article className={`def-ticker-item ${tone}`} key={item.symbol} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
-              <div className="def-ticker-copy">
-                <strong dir="ltr">{item.symbol}</strong>
-                <small>{stockName(item.symbol, item.name)} · {SECTOR_LABELS[lang][sectorForSymbol(item.symbol)]}</small>
-              </div>
-              <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-              <em dir="ltr">
-                <TrendIcon size={13} />
-                {formatPercent(item.changePercent, locale)}
-              </em>
-            </article>
-          );
-        })}
-      </MarketTickerStrip>
+        emptyState={<span className="def-ticker-status"><AlertTriangle size={13} />{error || text.tickerEmpty}</span>}
+      />
     </section>
   );
 }
@@ -1623,6 +1617,9 @@ export function DefensiveStocksNewsPage() {
         .def-ticker-item.up em,.up{background:#DCFCE7;color:#166534}
         .def-ticker-item.down em,.down{background:#FEE2E2;color:#991B1B}
         .def-ticker-item.neutral em,.neutral{background:#E2E8F0;color:#334155}
+        .def-ticker-item.is-unavailable{background:#F8FAFC;border-style:dashed}
+        .def-ticker-item.is-unavailable b{color:var(--def-muted);font-weight:850}
+        .def-ticker-item .def-ticker-unavailable{background:#E2E8F0;color:#475569}
         @keyframes defTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
         @media(hover:hover) and (pointer:fine){
           .def-ticker-strip:hover .def-ticker-track{animation-play-state:paused}

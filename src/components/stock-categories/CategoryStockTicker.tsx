@@ -1,10 +1,9 @@
 'use client';
 
-import { Activity, AlertCircle, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, AlertCircle } from 'lucide-react';
 import type { StockCategoryId, StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
-import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 
 type CategoryStockTickerProps = {
   categoryType: StockCategoryId;
@@ -42,30 +41,6 @@ function langFromLocale(locale: string) {
   if (locale.startsWith('en')) return 'en';
   if (locale.startsWith('fr')) return 'fr';
   return 'ar';
-}
-
-function formatPrice(value: number, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: value >= 100 ? 2 : 3,
-  }).format(value);
-}
-
-function formatPercent(value: number, locale: string) {
-  return `${value > 0 ? '+' : ''}${new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  }).format(value)}%`;
-}
-
-function changeBadgeClass(value: number | null) {
-  if (value === null || value === 0) {
-    return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600/50 dark:bg-slate-800/70 dark:text-slate-100';
-  }
-  return value > 0
-    ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100'
-    : 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-100';
 }
 
 export function CategoryStockTicker({
@@ -137,65 +112,28 @@ export function CategoryStockTicker({
         )}
       </div>
 
-      <MarketTickerStrip
+      <StockTickerStrip
         ariaLabel={text.title}
+        items={tickerItems.map(({ stock, price }) => {
+          const hasPrice = Boolean(price?.available && price.price !== null);
+          return {
+            symbol: stock.symbol,
+            name: stock.name,
+            price: hasPrice ? price?.price ?? null : null,
+            currency: 'USD',
+            changePercent: hasPrice ? price?.changePercent ?? null : null,
+            source: price?.source ?? 'Finnhub',
+            available: hasPrice,
+            meta: stock.filter.replace(/_/g, ' '),
+          };
+        })}
+        locale={locale}
+        unavailableLabel={text.unavailable}
         className="min-w-0"
         viewportClassName="pb-1"
-        direction={direction}
+        direction="ltr"
         durationSeconds={44}
-      >
-        {tickerItems.map(({ stock, price }) => {
-          const hasPrice = Boolean(price?.available && price.price !== null);
-          const changePercent = hasPrice ? price?.changePercent ?? null : null;
-          const positive = changePercent !== null && changePercent > 0;
-          const negative = changePercent !== null && changePercent < 0;
-          const TrendIcon = negative ? TrendingDown : TrendingUp;
-          const categoryLabel = stock.filter.replace(/_/g, ' ');
-
-          return (
-            <article
-              key={stock.symbol}
-              role="listitem"
-              className="min-h-[132px] min-w-[210px] max-w-[250px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
-            >
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <AssetIdentity
-                      variant="badge"
-                      symbol={stock.symbol}
-                      name={stock.name}
-                      assetType="stock"
-                      size="sm"
-                      className="min-w-0 text-slate-950 dark:text-white"
-                      showName={false}
-                      symbolClassName="text-base"
-                    />
-                    {hasPrice && (
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-black ${changeBadgeClass(changePercent)}`} dir="ltr">
-                        <TrendIcon size={12} />
-                        {changePercent === null ? '-' : formatPercent(changePercent, locale)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {stock.name}
-                  </p>
-                </div>
-              </div>
-              {hasPrice && (
-                <p className={`mt-3 text-sm font-black ${positive ? 'text-emerald-700 dark:text-emerald-300' : negative ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`} dir="ltr">
-                  {formatPrice(price!.price!, locale)}
-                </p>
-              )}
-              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-normal text-slate-500 dark:text-slate-400">
-                <span className="truncate">{categoryLabel}</span>
-                <span className="shrink-0" dir="ltr">USD / {price?.source ?? 'Finnhub'}</span>
-              </div>
-            </article>
-          );
-        })}
-      </MarketTickerStrip>
+      />
     </section>
   );
 }

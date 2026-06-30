@@ -30,7 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -48,10 +48,12 @@ type Tone = 'positive' | 'negative' | 'warning' | 'neutral' | 'info';
 type DividendTickerItem = {
   symbol: string;
   name: string;
-  price: number;
+  price: number | null;
   currency: string;
   change: number | null;
   changePercent: number | null;
+  available?: boolean;
+  unavailableReason?: string;
   dividendYield: number | null;
   payoutRatio: number | null;
   annualDividend: number | null;
@@ -1586,49 +1588,30 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
       </section>
     );
   }
-  if (rows.length === 0) {
-    return (
-      <section className="ticker-panel" aria-label={text.trackedCompanies}>
-        <div className="ticker-empty">
-          <Coins size={18} />
-          <span>{text.noStocks}</span>
-        </div>
-      </section>
-    );
-  }
-  const renderItem = (row: DividendStockRow) => (
-    <article className="ticker-item" key={row.symbol} role="listitem" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="ticker-top">
-        <div className="ticker-identity">
-          <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
-          <span className="symbol">{row.symbol}</span>
-        </div>
-        <span className={badgeClass(toneForChange(row.changePercent))}>{formatPercent(row.changePercent, lang)}</span>
-      </div>
-      <strong className="numeric">{formatCurrency(row.price, row.currency, lang)}</strong>
-      <span className="ticker-name">{row.name}</span>
-      {hasDividendData(row) ? (
-        <div className="ticker-metrics">
-          <span>{text.dividendYield}: <b>{formatPercent(row.dividendYield, lang, true)}</b></span>
-          <span>{text.payoutRatio}: <b>{formatPercent(row.payoutRatio, lang, true)}</b></span>
-        </div>
-      ) : (
-        <span className="dividend-empty-inline">{text.insufficientMetrics}</span>
-      )}
-    </article>
-  );
+
   return (
-    <MarketTickerStrip
+    <StockTickerStrip
       ariaLabel={text.trackedCompanies}
+      items={rows.map(row => ({
+        symbol: row.symbol,
+        name: row.name,
+        price: row.price,
+        currency: row.currency,
+        changePercent: row.changePercent,
+        source: row.source,
+        available: row.price !== null,
+        meta: hasDividendData(row) ? text.dividendYield + ': ' + formatPercent(row.dividendYield, lang, true) : text.insufficientMetrics,
+      }))}
+      locale={LOCALE_BY_LANG[lang]}
+      unavailableLabel={text.unavailable}
+      sourceLabel={text.source}
       className="ticker-panel"
       viewportClassName="ticker-viewport"
       trackClassName="ticker-track"
       setClassName="ticker-set"
-      direction={lang === 'ar' ? 'rtl' : 'ltr'}
+      direction="ltr"
       durationSeconds={52}
-    >
-      {rows.map(renderItem)}
-    </MarketTickerStrip>
+    />
   );
 }
 
