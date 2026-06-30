@@ -4,6 +4,7 @@ import {
   shortText,
   stableId,
 } from '../shared';
+import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
 
 const FINNHUB_CALENDAR_TIMEOUT_MS = 9000;
@@ -99,26 +100,9 @@ function isRateLimitError(status: number, message: string) {
   return status === 429 || /rate\s*limit|too many requests|quota/i.test(message);
 }
 
-function requestUrlWithoutToken(url: URL) {
-  const safeUrl = new URL(url.toString());
-  safeUrl.searchParams.delete('token');
-  return safeUrl.toString();
-}
-
-function logFinnhubCalendarRequest(input: {
-  finnhubConfigured: boolean;
-  requestUrl: string;
-  responseStatus: number | null;
-  providerMessage: string;
-  eventCount: number;
-}) {
-  console.info('[economic-calendar] Finnhub request', {
-    finnhubConfigured: input.finnhubConfigured,
-    requestUrl: input.requestUrl,
-    responseStatus: input.responseStatus,
-    responseBodyErrorMessage: input.providerMessage || null,
-    eventsReturned: input.eventCount,
-  });
+function safeNetworkErrorMessage(error: unknown) {
+  if (error instanceof Error) return shortText(error.message || error.name, 200) || error.name;
+  return 'network_error';
 }
 
 export function normalizeFinnhubEconomicEvent(record: FinnhubEconomicRecord, index: number): EconomicCalendarEvent | null {
@@ -173,13 +157,26 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
       url.searchParams.set('from', query.from);
       url.searchParams.set('to', query.to);
       url.searchParams.set('token', apiKey);
-      const safeRequestUrl = requestUrlWithoutToken(url);
 
-      const response = await fetch(url, {
-        cache: query.force ? 'no-store' : undefined,
-        next: query.force ? undefined : { revalidate: 600 },
-        signal: AbortSignal.timeout(FINNHUB_CALENDAR_TIMEOUT_MS),
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          cache: query.force ? 'no-store' : undefined,
+          next: query.force ? undefined : { revalidate: 600 },
+          signal: AbortSignal.timeout(FINNHUB_CALENDAR_TIMEOUT_MS),
+        });
+      } catch (error) {
+        const providerMessage = safeNetworkErrorMessage(error);
+        logEconomicCalendarProviderRequest({
+          provider: 'finnhub',
+          requestStatus: 'network_error',
+          responseStatusCode: null,
+          providerErrorMessage: providerMessage,
+          eventsReturned: 0,
+        });
+        throw new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, providerMessage);
+      }
+
       const text = await response.text().catch(() => '');
       const payload = parseJsonPayload(text);
       const extractedProviderMessage = extractProviderMessage(payload);
@@ -191,12 +188,28 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
           : Array.isArray((payload as Record<string, unknown>).data)
             ? (payload as { data: FinnhubEconomicRecord[] }).data
             : [];
-      logFinnhubCalendarRequest({
-        finnhubConfigured: Boolean(apiKey.trim()),
-        requestUrl: safeRequestUrl,
-        responseStatus: response.status,
-        providerMessage,
-        eventCount: records.length,
+      const events = dedupe(
+        records
+          .map((record, index) => normalizeFinnhubEconomicEvent(record, index))
+          .filter((event): event is EconomicCalendarEvent => Boolean(event))
+          .filter(event => matchesFilters(event, query)),
+      ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
+      const requestStatus = isRateLimitError(response.status, providerMessage)
+        ? 'rate_limited'
+        : isAccessOrPlanError(response.status, providerMessage)
+          ? 'access_denied'
+          : !response.ok
+            ? 'http_error'
+            : events.length === 0
+              ? 'empty_result'
+              : 'success';
+
+      logEconomicCalendarProviderRequest({
+        provider: 'finnhub',
+        requestStatus,
+        responseStatusCode: response.status,
+        providerErrorMessage: providerMessage,
+        eventsReturned: events.length,
       });
 
       if (!response.ok || isAccessOrPlanError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
@@ -209,12 +222,11 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
         throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, providerMessage);
       }
 
-      return dedupe(
-        records
-          .map((record, index) => normalizeFinnhubEconomicEvent(record, index))
-          .filter((event): event is EconomicCalendarEvent => Boolean(event))
-          .filter(event => matchesFilters(event, query)),
-      ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
+      if (events.length === 0) {
+        throw new ProviderError('provider_error', 'calendar_no_events', response.status, providerMessage || 'empty_result');
+      }
+
+      return events;
     },
   };
 }

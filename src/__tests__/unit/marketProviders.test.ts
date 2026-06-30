@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { dedupeEconomicEvents, normalizeFmpEconomicEvent } from '@/lib/providers/economic-calendar/fmp';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
 import { getDividendCalendar } from '@/lib/providers/dividend-calendar';
+import { normalizeEconomicEvents } from '@/lib/market/normalizeEconomicEvents';
 import { toCycleIndicator } from '@/lib/providers/economic-data/common';
 import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar/finnhub';
 import { normalizeTradingEconomicsEvent } from '@/lib/providers/economic-calendar/tradingEconomics';
@@ -234,14 +235,16 @@ describe('economic calendar provider normalization', () => {
       provider: 'finnhub',
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('finnhub.io/api/v1/calendar/economic');
-    const finnhubLog = infoSpy.mock.calls.find(call => call[0] === '[economic-calendar] Finnhub request');
+    const finnhubLog = infoSpy.mock.calls.find(call => call[0] === '[economic-calendar] provider request' && (call[1] as Record<string, unknown> | undefined)?.provider === 'finnhub');
     expect(finnhubLog?.[1]).toMatchObject({
-      finnhubConfigured: true,
-      responseStatus: 200,
-      responseBodyErrorMessage: null,
+      finnhubApiKeyConfigured: true,
+      provider: 'finnhub',
+      requestStatus: 'success',
+      responseStatusCode: 200,
+      providerErrorMessage: null,
       eventsReturned: 1,
     });
-    expect(String((finnhubLog?.[1] as Record<string, unknown> | undefined)?.requestUrl ?? '')).not.toContain('token=');
+    expect(JSON.stringify(finnhubLog?.[1] ?? {})).not.toContain('test-finnhub-key');
   });
 
   it('reports Finnhub calendar access failures as provider access denied when no fallback is configured', async () => {
@@ -368,13 +371,54 @@ describe('economic calendar provider normalization', () => {
     expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
 
-  it('returns success with calendar_no_events when the active provider returns no events', async () => {
+  it('falls back to Trading Economics when Finnhub returns an empty calendar payload', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', 'test-te-key');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        economicCalendar: [],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        {
+          CalendarId: 'te-empty-fallback',
+          Date: '2026-07-11T12:30:00',
+          Country: 'United States',
+          Event: 'Producer Price Index',
+          Importance: 2,
+          Forecast: '0.2%',
+          Previous: '0.1%',
+        },
+      ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-11',
+      to: '2026-07-12',
+      force: true,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('tradingeconomics');
+    expect(result.data[0]).toMatchObject({
+      title: 'Producer Price Index',
+      provider: 'tradingeconomics',
+    });
+  });
+
+  it('returns a clean unavailable response when the configured provider returns no events', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
     vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
     vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       economicCalendar: [],
@@ -387,10 +431,56 @@ describe('economic calendar provider normalization', () => {
       force: true,
     });
 
-    expect(result.status).toBe('success');
+    expect(result.status).toBe('provider_error');
     expect(result.provider).toBe('finnhub');
     expect(result.data).toEqual([]);
     expect(result.messageCode).toBe('calendar_no_events');
+  });
+
+  it('returns a clean provider error on calendar network failure', async () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_API_KEY', '');
+    vi.stubEnv('ECONOMIC_CALENDAR_PROVIDER', '');
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError('fetch failed'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getEconomicCalendar({
+      from: '2026-07-13',
+      to: '2026-07-14',
+      force: true,
+    });
+
+    expect(result.status).toBe('provider_error');
+    expect(result.provider).toBe('finnhub');
+    expect(result.data).toEqual([]);
+    expect(result.messageCode).toBe('provider_temporarily_unavailable');
+    const networkLog = infoSpy.mock.calls.find(call => call[0] === '[economic-calendar] provider request' && (call[1] as Record<string, unknown> | undefined)?.requestStatus === 'network_error');
+    expect(networkLog?.[1]).toMatchObject({
+      finnhubApiKeyConfigured: true,
+      provider: 'finnhub',
+      responseStatusCode: null,
+      eventsReturned: 0,
+    });
+    expect(JSON.stringify(networkLog?.[1] ?? {})).not.toContain('test-finnhub-key');
+  });
+
+  it('does not normalize placeholder calendar rows without a date into real events', () => {
+    expect(normalizeEconomicEvents([
+      {
+        eventName: 'الحدث العام',
+        country: 'غير متاح',
+        currency: 'غير متاح',
+        impact: 'غير متاح',
+        previous: 'غير متاح',
+        forecast: 'غير متاح',
+        actual: 'غير متاح',
+      },
+    ])).toEqual([]);
   });
 
   it('keeps last successful calendar data as stale when a provider is rate-limited', async () => {
@@ -439,10 +529,14 @@ describe('economic calendar provider normalization', () => {
     expect(TR_MARKET.market_calendar_not_configured_body.ar).toBe('تعذر جلب بيانات التقويم الاقتصادي من مزود البيانات الحالي. سيتم عرض الأحداث تلقائياً عند توفر مصدر بيانات يدعم هذه الخدمة.');
     expect(TR_MARKET.market_calendar_access_denied_title.ar).toBe('التقويم الاقتصادي غير متوفر ضمن صلاحية مزود البيانات الحالي.');
     expect(TR_MARKET.market_calendar_access_denied_body.ar).toBe('يمكن تفعيله عند ربط مزود يدعم التقويم الاقتصادي.');
+    expect(TR_MARKET.market_calendar_provider_label.ar).toBe('مزود البيانات');
+    expect(TR_MARKET.market_calendar_provider_unavailable_badge.ar).toBe('غير متاح حالياً');
     expect(TR_MARKET.market_calendar_not_configured_title.en).toBe('Economic calendar is currently unavailable');
     expect(TR_MARKET.market_calendar_not_configured_body.en).toBe('Could not load economic calendar data from the current data provider. Events will appear automatically when a provider that supports this service is available.');
     expect(TR_MARKET.market_calendar_access_denied_title.en).toBe('Economic calendar is not available under the current data provider entitlement.');
     expect(TR_MARKET.market_calendar_access_denied_body.en).toBe('It can be enabled by connecting a provider that supports the economic calendar.');
+    expect(TR_MARKET.market_calendar_provider_label.en).toBe('Data provider');
+    expect(TR_MARKET.market_calendar_provider_unavailable_badge.en).toBe('Unavailable now');
   });
 });
 

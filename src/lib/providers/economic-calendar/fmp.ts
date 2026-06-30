@@ -6,6 +6,7 @@ import {
   shortText,
   stableId,
 } from '../shared';
+import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
 
 const FMP_TIMEOUT_MS = 9000;
@@ -55,6 +56,53 @@ function firstText(record: FmpEconomicCalendarRecord, keys: string[]) {
     if (text) return text;
   }
   return '';
+}
+
+function safeProviderMessageFromText(text: string) {
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/([?&]apikey=)[^&\s]+/gi, '$1[redacted]')
+    .trim()
+    .slice(0, 300);
+}
+
+function extractProviderMessage(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const record = payload as Record<string, unknown>;
+  return shortText(
+    record.error
+      ?? record.message
+      ?? record.Message
+      ?? record['Error Message']
+      ?? record.status
+      ?? '',
+    300,
+  );
+}
+
+function parseJsonPayload(text: string) {
+  if (!text.trim()) return [];
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return {};
+  }
+}
+
+function isAccessError(status: number, message: string) {
+  const text = message.toLowerCase();
+  return status === 401
+    || status === 403
+    || /\b(access|license|licence|permission|plan|subscription|entitlement|unauthori[sz]ed|forbidden|premium|invalid|apikey|api key)\b/.test(text);
+}
+
+function isRateLimitError(status: number, message: string) {
+  return status === 429 || /rate\s*limit|too many requests|quota|limit/i.test(message);
+}
+
+function safeNetworkErrorMessage(error: unknown) {
+  if (error instanceof Error) return shortText(error.message || error.name, 200) || error.name;
+  return 'network_error';
 }
 
 export function normalizeFmpEconomicEvent(record: FmpEconomicCalendarRecord, index: number): EconomicCalendarEvent | null {
@@ -119,44 +167,74 @@ export function createFmpCalendarProvider(apiKey: string): EconomicCalendarProvi
       url.searchParams.set('to', query.to);
       url.searchParams.set('apikey', apiKey);
 
-      const response = await fetch(url, {
-        cache: query.force ? 'no-store' : undefined,
-        next: query.force ? undefined : { revalidate: 600 },
-        signal: AbortSignal.timeout(FMP_TIMEOUT_MS),
-      });
-
-      if (!response.ok) {
-        const status = mapHttpProviderStatus(response.status);
-        throw new ProviderError(status, messageCodeForStatus(status) ?? 'provider_temporarily_unavailable', response.status);
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          cache: query.force ? 'no-store' : undefined,
+          next: query.force ? undefined : { revalidate: 600 },
+          signal: AbortSignal.timeout(FMP_TIMEOUT_MS),
+        });
+      } catch (error) {
+        const providerMessage = safeNetworkErrorMessage(error);
+        logEconomicCalendarProviderRequest({
+          provider: 'fmp',
+          requestStatus: 'network_error',
+          responseStatusCode: null,
+          providerErrorMessage: providerMessage,
+          eventsReturned: 0,
+        });
+        throw new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, providerMessage);
       }
 
-      const payload = await response.json().catch(() => []);
-      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-        const errorText = String(
-          (payload as Record<string, unknown>)['Error Message']
-            ?? (payload as Record<string, unknown>).error
-            ?? (payload as Record<string, unknown>).message
-            ?? '',
-        ).toLowerCase();
-        if (errorText.includes('limit')) {
-          throw new ProviderError('rate_limited', 'provider_rate_limited');
-        }
-        if (errorText.includes('invalid') || errorText.includes('apikey') || errorText.includes('api key') || errorText.includes('unauthorized')) {
-          throw new ProviderError('unauthorized', 'provider_access_denied');
-        }
-      }
+      const text = await response.text().catch(() => '');
+      const payload = parseJsonPayload(text);
+      const extractedProviderMessage = extractProviderMessage(payload);
+      const providerMessage = extractedProviderMessage || (!response.ok ? safeProviderMessageFromText(text) : '');
       const records = Array.isArray(payload)
         ? payload
         : Array.isArray((payload as Record<string, unknown>).data)
           ? (payload as { data: FmpEconomicCalendarRecord[] }).data
           : [];
-
-      return dedupeEconomicEvents(
+      const events = dedupeEconomicEvents(
         records
           .map((record, index) => normalizeFmpEconomicEvent(record, index))
           .filter((event): event is EconomicCalendarEvent => Boolean(event))
           .filter(event => matchesFilters(event, query)),
       ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
+      const requestStatus = isRateLimitError(response.status, providerMessage)
+        ? 'rate_limited'
+        : isAccessError(response.status, providerMessage)
+          ? 'access_denied'
+          : !response.ok
+            ? 'http_error'
+            : events.length === 0
+              ? 'empty_result'
+              : 'success';
+
+      logEconomicCalendarProviderRequest({
+        provider: 'fmp',
+        requestStatus,
+        responseStatusCode: response.status,
+        providerErrorMessage: providerMessage,
+        eventsReturned: events.length,
+      });
+
+      if (!response.ok || isAccessError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
+        if (isRateLimitError(response.status, providerMessage)) {
+          throw new ProviderError('rate_limited', 'provider_rate_limited', response.status, providerMessage);
+        }
+        if (isAccessError(response.status, providerMessage)) {
+          throw new ProviderError('unauthorized', 'provider_access_denied', response.status, providerMessage);
+        }
+        const status = mapHttpProviderStatus(response.status);
+        throw new ProviderError(status, messageCodeForStatus(status) ?? 'provider_temporarily_unavailable', response.status, providerMessage);
+      }
+
+      if (events.length === 0) {
+        throw new ProviderError('provider_error', 'calendar_no_events', response.status, providerMessage || 'empty_result');
+      }
+
+      return events;
     },
   };
 }

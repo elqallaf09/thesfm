@@ -95,6 +95,7 @@ export function normalizeEconomicEvent(record: Record<string, unknown>, index = 
   if (!eventName) return null;
 
   const dateTime = normalizeDateTime(readField(record, FIELD_CANDIDATES.dateTime));
+  if (!dateTime) return null;
   const previous = safeValue(readField(record, FIELD_CANDIDATES.previous));
   const forecast = safeValue(readField(record, FIELD_CANDIDATES.forecast));
   const actual = safeValue(readField(record, FIELD_CANDIDATES.actual));

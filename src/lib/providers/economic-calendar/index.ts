@@ -148,6 +148,7 @@ function logProviderStatus(config: CalendarProviderConfig) {
     provider: config.provider,
     providers: config.providers.map(candidate => candidate.provider),
     configured: config.configured,
+    'FINNHUB_API_KEY configured': Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
     finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
     tradingEconomicsConfigured: Boolean(cleanEnv(process.env.TRADING_ECONOMICS_API_KEY)),
     fmpConfigured: Boolean(cleanEnv(process.env.FMP_API_KEY)),

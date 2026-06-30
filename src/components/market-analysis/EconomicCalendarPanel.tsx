@@ -215,6 +215,10 @@ function resolveCalendarAvailability(state: ApiListState<Record<string, any>>, e
   return 'ready';
 }
 
+function shouldShowCalendarLastUpdated(availability: CalendarAvailability, updatedAt?: string) {
+  return availability === 'ready' && Boolean(updatedAt);
+}
+
 type EconomicExplanationEvent = {
   eventName: string;
   currency: string | null;
@@ -317,7 +321,7 @@ export function EconomicCalendarPanel({
   );
   const availability = resolveCalendarAvailability(state, sortedEvents.length);
   const providerNotConfigured = availability === 'not_configured';
-  const providerFailed = availability === 'error';
+  const providerFailed = availability === 'error' || availability === 'empty';
   const providerAccessDenied = providerFailed && isCalendarProviderAccessDenied(state.code, state.providerStatus);
   const providerRateLimited = providerFailed && isCalendarProviderRateLimited(state.code, state.providerStatus);
   const now = new Date();
@@ -352,7 +356,9 @@ export function EconomicCalendarPanel({
   }, [countryFilter, currencyFilter, impactFilter, searchTerm, timeFilter]);
 
   const visibleEvents = filteredEvents.slice(0, visibleCount);
-  const lastUpdatedLabel = state.updatedAt && !providerNotConfigured ? formatEconomicCalendarDate(new Date(state.updatedAt), locale, unavailable) : unavailable;
+  const showLastUpdated = shouldShowCalendarLastUpdated(availability, state.updatedAt);
+  const lastUpdatedValue = showLastUpdated ? state.updatedAt : undefined;
+  const lastUpdatedLabel = lastUpdatedValue ? formatEconomicCalendarDate(new Date(lastUpdatedValue), locale, unavailable) : unavailable;
   const isTimedOut = state.code === 'MARKET_DATA_TIMEOUT';
   const stateTitle = isTimedOut
     ? t('market_section_timeout_title')
@@ -384,7 +390,7 @@ export function EconomicCalendarPanel({
     : providerRateLimited
       ? t('market_calendar_provider_rate_limited_badge')
     : providerFailed
-      ? t('market_calendar_provider_error_badge')
+      ? t('market_calendar_provider_unavailable_badge')
       : state.loading
         ? t('market_loading_short')
         : t('market_calendar_provider_connected_badge');
@@ -409,7 +415,7 @@ export function EconomicCalendarPanel({
             <span className={`calendar-provider-pill ${providerNotConfigured ? 'warning' : providerFailed ? 'error' : 'connected'}`}>{providerStatusLabel}</span>
             <span>{t('market_calendar_source')}: <b dir="auto">{providerLabel}</b></span>
             <span>{t('market_calendar_timezone')}: <b dir="ltr">{Intl.DateTimeFormat().resolvedOptions().timeZone}</b></span>
-            <span>{t('market_last_updated')}: <b dir="auto">{lastUpdatedLabel}</b></span>
+            {showLastUpdated ? <span>{t('market_last_updated')}: <b dir="auto">{lastUpdatedLabel}</b></span> : null}
           </div>
         </div>
         <MarketSectionRefreshButton
@@ -446,7 +452,7 @@ export function EconomicCalendarPanel({
                   : providerRateLimited
                     ? t('market_calendar_provider_rate_limited_badge')
                     : providerFailed
-                      ? t('market_calendar_provider_error_badge')
+                      ? t('market_calendar_provider_unavailable_badge')
                       : t('market_high_impact_events')}
             </small>
             <strong>{stateTitle}</strong>
@@ -457,6 +463,10 @@ export function EconomicCalendarPanel({
               {availability === 'empty' && hasActiveFilters ? (
                 <button type="button" onClick={clearCalendarFilters}>{t('market_news_clear_filters')}</button>
               ) : null}
+            </div>
+            <div className="economic-calendar-empty-meta">
+              <span>{t('market_calendar_provider_label')}: <b dir="auto">{providerLabel}</b></span>
+              <span>{t('market_calendar_status')}: <b>{providerStatusLabel}</b></span>
             </div>
           </div>
         </div>
@@ -664,16 +674,19 @@ export function EconomicCalendarPanel({
         .economic-calendar-list-footer button,.economic-calendar-list-footer span{border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:10px 16px;font:950 13px Tajawal,Arial,sans-serif}
         .economic-calendar-list-footer button{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
         .economic-calendar-list-footer button:hover,.economic-calendar-list-footer button:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 12px 24px rgba(29,140,255,.16)}
-        .economic-calendar-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;border:1px solid rgba(245,158,11,.24);background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(29,140,255,.06)),var(--sfm-card);border-radius:28px;padding:20px;box-shadow:0 16px 40px rgba(3,18,37,.07)}
-        .economic-calendar-empty-state>span{width:54px;height:54px;border-radius:20px;display:grid;place-items:center;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.24);color:#B45309}
+        .economic-calendar-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid rgba(245,158,11,.22);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(29,140,255,.04)),var(--sfm-card);border-radius:22px;padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.055)}
+        .economic-calendar-empty-state>span{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.22);color:#B45309}
         .economic-calendar-empty-state small{display:block;color:#B45309;font-size:12px;font-weight:950;line-height:1.4;margin-bottom:5px}
-        .economic-calendar-empty-state strong{display:block;color:var(--sfm-foreground);font-size:clamp(18px,2vw,24px);font-weight:950;line-height:1.35}
-        .economic-calendar-empty-state p{margin:8px 0 0;max-width:760px;color:var(--sfm-muted);font-size:14px;font-weight:850;line-height:1.9}
-        .economic-calendar-empty-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
-        .economic-calendar-empty-state button{width:max-content;max-width:100%;min-height:42px;border:1px solid rgba(47,214,192,.26);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+        .economic-calendar-empty-state strong{display:block;color:var(--sfm-foreground);font-size:clamp(17px,1.8vw,22px);font-weight:950;line-height:1.35}
+        .economic-calendar-empty-state p{margin:6px 0 0;max-width:760px;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.75}
+        .economic-calendar-empty-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+        .economic-calendar-empty-state button{width:max-content;max-width:100%;min-height:38px;border:1px solid rgba(47,214,192,.26);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
         .economic-calendar-empty-state button:hover,.economic-calendar-empty-state button:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 12px 24px rgba(29,140,255,.16)}
-        .economic-calendar-empty-state.error{border-color:rgba(239,68,68,.22);background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(29,140,255,.05)),var(--sfm-card)}
-        .economic-calendar-empty-state.error>span{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.22);color:#B91C1C}
+        .economic-calendar-empty-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.4}
+        .economic-calendar-empty-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(100,116,139,.15);background:rgba(100,116,139,.06);border-radius:999px;padding:6px 9px}
+        .economic-calendar-empty-meta b{color:var(--sfm-foreground)}
+        .economic-calendar-empty-state.error{border-color:rgba(239,68,68,.18);background:linear-gradient(135deg,rgba(239,68,68,.055),rgba(29,140,255,.035)),var(--sfm-card)}
+        .economic-calendar-empty-state.error>span{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);color:#B91C1C}
         .dark .calendar-stat-card,.dark .economic-calendar-filter-card,.dark .economic-calendar-table-card,.dark .economic-calendar-event-card{background:#0f1d31;border-color:#1d3050}
         .dark .economic-calendar-status-row>span{background:rgba(148,163,184,.10);border-color:#1d3050}
         .dark .calendar-stat-card i,.dark .economic-calendar-search,.dark .calendar-filter-row button,.dark .economic-calendar-table-card th,.dark .economic-calendar-metric{background:#0a1422;border-color:#1d3050}
@@ -689,7 +702,7 @@ export function EconomicCalendarPanel({
         .dark .economic-calendar-empty-state>span{background:rgba(245,185,66,.12);border-color:rgba(245,185,66,.24);color:#F5B942}
         .dark .economic-calendar-empty-state small{color:#F5B942}
         @media(max-width:980px){.economic-calendar-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.economic-calendar-featured{grid-template-columns:1fr}.economic-calendar-table-card{display:none}.economic-calendar-mobile-list{display:grid}}
-        @media(max-width:640px){.economic-calendar-dashboard{border-radius:24px;padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:24px;padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:22px;padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:16px;border-radius:22px}.economic-calendar-empty-state>span{width:46px;height:46px;border-radius:17px}}
+        @media(max-width:640px){.economic-calendar-dashboard{border-radius:24px;padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:24px;padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:22px;padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:15px;border-radius:20px}.economic-calendar-empty-state>span{width:42px;height:42px;border-radius:15px}}
       `}</style>
     </section>
   );

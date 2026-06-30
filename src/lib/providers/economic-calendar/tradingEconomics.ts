@@ -6,6 +6,7 @@ import {
   shortText,
   stableId,
 } from '../shared';
+import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
 
 const TRADING_ECONOMICS_TIMEOUT_MS = 9000;
@@ -155,6 +156,11 @@ function isRateLimitError(status: number, message: string) {
   return status === 429 || /rate\s*limit|too many requests|quota/i.test(message);
 }
 
+function safeNetworkErrorMessage(error: unknown) {
+  if (error instanceof Error) return shortText(error.message || error.name, 200) || error.name;
+  return 'network_error';
+}
+
 function countryMatches(eventCountry: string | null, queryCountry: string) {
   if (!eventCountry) return false;
   const eventKey = compactKey(eventCountry);
@@ -226,15 +232,57 @@ export function createTradingEconomicsCalendarProvider(apiKey: string): Economic
       const importance = impactToImportance(query.impact);
       if (importance) url.searchParams.set('importance', importance);
 
-      const response = await fetch(url, {
-        cache: query.force ? 'no-store' : undefined,
-        next: query.force ? undefined : { revalidate: 600 },
-        signal: AbortSignal.timeout(TRADING_ECONOMICS_TIMEOUT_MS),
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          cache: query.force ? 'no-store' : undefined,
+          next: query.force ? undefined : { revalidate: 600 },
+          signal: AbortSignal.timeout(TRADING_ECONOMICS_TIMEOUT_MS),
+        });
+      } catch (error) {
+        const providerMessage = safeNetworkErrorMessage(error);
+        logEconomicCalendarProviderRequest({
+          provider: 'tradingeconomics',
+          requestStatus: 'network_error',
+          responseStatusCode: null,
+          providerErrorMessage: providerMessage,
+          eventsReturned: 0,
+        });
+        throw new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, providerMessage);
+      }
+
       const text = await response.text().catch(() => '');
       const payload = parseJsonPayload(text);
       const extractedProviderMessage = extractProviderMessage(payload);
       const providerMessage = extractedProviderMessage || (!response.ok ? safeProviderMessageFromText(text) : '');
+      const records = Array.isArray(payload)
+        ? payload
+        : Array.isArray((payload as Record<string, unknown>).data)
+          ? (payload as { data: TradingEconomicsRecord[] }).data
+          : [];
+      const events = dedupe(
+        records
+          .map((record, index) => normalizeTradingEconomicsEvent(record as TradingEconomicsRecord, index))
+          .filter((event): event is EconomicCalendarEvent => Boolean(event))
+          .filter(event => matchesFilters(event, query)),
+      ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
+      const requestStatus = isRateLimitError(response.status, providerMessage)
+        ? 'rate_limited'
+        : isAccessError(response.status, providerMessage)
+          ? 'access_denied'
+          : !response.ok
+            ? 'http_error'
+            : events.length === 0
+              ? 'empty_result'
+              : 'success';
+
+      logEconomicCalendarProviderRequest({
+        provider: 'tradingeconomics',
+        requestStatus,
+        responseStatusCode: response.status,
+        providerErrorMessage: providerMessage,
+        eventsReturned: events.length,
+      });
 
       if (!response.ok || isAccessError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
         if (isRateLimitError(response.status, providerMessage)) {
@@ -247,18 +295,11 @@ export function createTradingEconomicsCalendarProvider(apiKey: string): Economic
         throw new ProviderError(status, messageCodeForStatus(status) ?? 'provider_temporarily_unavailable', response.status, providerMessage);
       }
 
-      const records = Array.isArray(payload)
-        ? payload
-        : Array.isArray((payload as Record<string, unknown>).data)
-          ? (payload as { data: TradingEconomicsRecord[] }).data
-          : [];
+      if (events.length === 0) {
+        throw new ProviderError('provider_error', 'calendar_no_events', response.status, providerMessage || 'empty_result');
+      }
 
-      return dedupe(
-        records
-          .map((record, index) => normalizeTradingEconomicsEvent(record as TradingEconomicsRecord, index))
-          .filter((event): event is EconomicCalendarEvent => Boolean(event))
-          .filter(event => matchesFilters(event, query)),
-      ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
+      return events;
     },
   };
 }
