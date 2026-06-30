@@ -1727,31 +1727,47 @@ function EnergyTicker({ items, loading, text, locale, lang }: {
   locale: string;
   lang: LangCode;
 }) {
+  const direction = lang === 'ar' ? 'rtl' : 'ltr';
+  const renderTickerItem = (item: EnergyTickerItem) => {
+    const tone = toneFor(item.changePercent);
+    return (
+      <article
+        className={`energyTickerItem energyTone-${tone}`}
+        dir={direction}
+        key={item.symbol}
+        role="listitem"
+      >
+        <div className="energyTickerIdentity">
+          <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="xs" decorative />
+          <span dir="ltr">{item.symbol}</span>
+        </div>
+        <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
+        <strong>{item.name}</strong>
+        <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
+        <div className="energyTickerMeta">
+          <small>{categoryLabel(item.sector, lang)}</small>
+          <small className="energyTickerSource" dir="ltr">{item.source}</small>
+        </div>
+      </article>
+    );
+  };
+
   return (
-    <section className="energyTickerPanel" aria-label={text.marketData}>
+    <section className="energyTickerPanel" aria-label={text.marketData} data-direction={direction}>
       {loading ? (
-        <div className="energyTickerTrack">
-          {Array.from({ length: 8 }, (_, index) => <span className="energyTickerSkeleton" key={index} />)}
+        <div className="energyTickerViewport">
+          <div className="energyTickerTrack">
+            {Array.from({ length: 8 }, (_, index) => <span className="energyTickerSkeleton" key={index} />)}
+          </div>
         </div>
       ) : items.length > 0 ? (
         <div className="energyTickerViewport">
-          <div className="energyTickerTrack">
-            {items.map(item => {
-            const tone = toneFor(item.changePercent);
-            return (
-              <article className={`energyTickerItem energyTone-${tone}`} key={item.symbol}>
-                <div className="energyTickerIdentity">
-                  <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" decorative />
-                  <span dir="ltr">{item.symbol}</span>
-                </div>
-                <strong>{item.name}</strong>
-                <b dir="ltr">{formatMoney(item.price, item.currency, locale)}</b>
-                <em dir="ltr">{formatPercent(item.changePercent, locale)}</em>
-                <small>{categoryLabel(item.sector, lang)}</small>
-                <small>{item.source}</small>
-              </article>
-            );
-            })}
+          <div className="energyTickerTrack energyTickerMarquee" role="list">
+            {[0, 1].map(group => (
+              <div className="energyTickerSet" key={group} aria-hidden={group === 1}>
+                {items.map(renderTickerItem)}
+              </div>
+            ))}
           </div>
         </div>
       ) : (

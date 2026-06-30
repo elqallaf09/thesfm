@@ -3484,29 +3484,46 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyTickerPanel {
           padding: 9px;
           overflow: hidden;
+          max-width: 100%;
         }
         .energyTickerViewport {
           width: 100%;
+          max-width: 100%;
           overflow: hidden;
           min-width: 0;
+          direction: ltr;
+          overscroll-behavior-inline: contain;
         }
         .energyTickerTrack {
           width: max-content;
           min-width: max-content;
           display: flex;
-          gap: 8px;
+          gap: 0;
           overflow: visible;
           padding: 1px;
           direction: ltr;
         }
-        .energyTickerTrack.energyTickerMarquee {
+        .energyTickerTrack:not(.energyTickerMarquee) {
+          gap: 8px;
+        }
+        .energyTickerPanel[data-direction] .energyTickerTrack.energyTickerMarquee {
           animation: energyTickerScroll 42s linear infinite;
           will-change: transform;
         }
+        .energyTickerPanel[data-direction="rtl"] .energyTickerTrack.energyTickerMarquee {
+          animation-name: energyTickerScrollRtl;
+        }
+        .energyTickerSet {
+          display: flex;
+          align-items: stretch;
+          flex: none;
+          gap: 8px;
+          padding-inline-end: 8px;
+        }
         .energyTickerItem,
         .energyTickerSkeleton {
-          flex: 0 0 184px;
-          min-height: 68px;
+          flex: 0 0 206px;
+          min-height: 72px;
           border-radius: 14px;
         }
         .energyTickerSkeleton,
@@ -3520,17 +3537,20 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyTickerItem {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 2px 8px;
-          padding: 9px 10px;
+          gap: 3px 8px;
+          padding: 8px 10px;
           border: 1px solid rgba(29, 140, 255, 0.12);
           background: #fff;
           align-content: center;
+          min-width: 0;
         }
         .energyTickerIdentity {
           min-width: 0;
           display: flex;
           align-items: center;
           gap: 8px;
+          grid-column: 1;
+          grid-row: 1;
         }
         .energyTickerIdentity > span:not(.asset-avatar) {
           color: #0f7891;
@@ -3544,7 +3564,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          grid-column: 1 / -1;
+          grid-column: 1;
+          grid-row: 2;
         }
         .energyTickerItem b,
         .energyTickerItem em {
@@ -3552,15 +3573,67 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           font-weight: 950;
           font-variant-numeric: tabular-nums;
           font-size: 12px;
+          white-space: nowrap;
         }
-        .energyTickerItem small {
+        .energyTickerItem b {
+          color: #07182f;
+          grid-column: 2;
+          grid-row: 1;
+          align-self: center;
+          line-height: 1.2;
+        }
+        .energyTickerItem em {
+          grid-column: 2;
+          grid-row: 2;
+          align-self: center;
+          justify-self: end;
+          border-radius: 999px;
+          padding: 2px 6px;
+          font-size: 11px;
+          line-height: 1.2;
+        }
+        .energyTickerItem.energyTone-positive em {
+          color: #047857;
+          background: #ecfdf5;
+        }
+        .energyTickerItem.energyTone-negative em {
+          color: #b42318;
+          background: #fff1f2;
+        }
+        .energyTickerItem.energyTone-neutral em,
+        .energyTickerItem.energyTone-warning em {
+          color: #475569;
+          background: #f1f5f9;
+        }
+        .energyTickerMeta {
+          grid-column: 1 / -1;
+          grid-row: 3;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .energyTickerMeta small {
           color: #64748b;
           font-size: 10px;
           font-weight: 800;
-          grid-column: 1 / -1;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+        .energyTickerMeta small:first-child {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+        .energyTickerSource {
+          flex: 0 0 auto;
+          max-width: 82px;
+          border-radius: 999px;
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          background: #f0f9ff;
+          color: #036986;
+          padding: 2px 6px;
+          line-height: 1.2;
         }
         .energyTabs {
           min-width: 0;
@@ -4794,6 +4867,10 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
         }
+        @keyframes energyTickerScrollRtl {
+          from { transform: translateX(-50%); }
+          to { transform: translateX(0); }
+        }
         @keyframes energySpin {
           to { transform: rotate(360deg); }
         }
@@ -4801,6 +4878,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           .energyTickerPanel:hover .energyTickerTrack.energyTickerMarquee {
             animation-play-state: paused;
           }
+        }
+        .energyTickerPanel:focus-within .energyTickerTrack.energyTickerMarquee {
+          animation-play-state: paused;
         }
         @media (max-width: 1180px) {
           .energySummaryGrid {
@@ -4857,10 +4937,26 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             border-radius: 16px;
             padding: 8px;
           }
+          .energyTickerViewport {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            touch-action: pan-x;
+          }
           .energyTickerItem,
           .energyTickerSkeleton {
-            flex-basis: 168px;
-            min-height: 64px;
+            flex-basis: 178px;
+            min-height: 66px;
+          }
+          .energyTickerPanel[data-direction] .energyTickerTrack.energyTickerMarquee {
+            animation-duration: 50s;
+          }
+          .energyTickerItem {
+            padding: 7px 9px;
+          }
+          .energyTickerSource {
+            max-width: 68px;
           }
           .energyHero h1 {
             font-size: 30px;
@@ -4988,9 +5084,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           }
         }
         @media (prefers-reduced-motion: reduce) {
-          .energyTickerTrack.energyTickerMarquee {
-            animation: none;
-            transform: none;
+          .energyTickerPanel[data-direction] .energyTickerTrack.energyTickerMarquee {
+            animation: none !important;
+            transform: none !important;
           }
           .energyShell *,
           .energyShell *::before,
