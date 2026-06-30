@@ -125,7 +125,7 @@ export function moduleFromPath(pathname: string) {
   if (pathname.startsWith('/ebooks')) return 'ebooks';
   if (pathname.startsWith('/market')) return 'market';
   if (pathname.startsWith('/ai')) return 'financial_ai';
-  if (pathname.startsWith('/charity') || pathname.startsWith('/zakat')) return 'charity';
+  if (pathname.startsWith('/charity') || pathname.startsWith('/zakat') || pathname.startsWith('/khums')) return 'charity';
   if (pathname.startsWith('/business')) return 'business';
   if (pathname.startsWith('/investment-offers')) return 'investment_offers';
   if (pathname.startsWith('/profile')) return 'profile';

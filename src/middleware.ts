@@ -30,6 +30,7 @@ const protectedPrefixes = [
   '/investment-offers',
   '/projects',
   '/zakat',
+  '/khums',
   '/ai',
   '/charity',
   '/charity-projects',
