@@ -13,6 +13,7 @@ import { isProjectLinkedIncomeRow, personalExpenseRows, personalIncomeRows } fro
 import { useCurrency } from '@/lib/useCurrency';
 import { normalizeNumberInput } from '@/lib/money';
 import { trackEvent } from '@/lib/analytics';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 
 type IncomeType = 'salary' | 'freelance' | 'project' | 'investment' | 'bonus' | 'gift' | 'rent' | 'other';
 type IncomeStatus = 'received' | 'pending' | 'expected' | 'late';
@@ -401,12 +402,12 @@ function formatFileSize(size?: number | null) {
 }
 
 function csvEscape(value: string | number | boolean | null | undefined) {
-  const text = String(value ?? '');
+  const text = normalizeDigits(value);
   return `"${text.replaceAll('"', '""')}"`;
 }
 
 function cleanPdfText(value: unknown) {
-  return String(value ?? '')
+  return normalizeDigits(value)
     .replace(/\u00C2\u00B7/g, ' | ')
     .replace(/\u00B7/g, ' | ')
     .replace(/\uFFFD/g, '')
@@ -426,8 +427,8 @@ function escapePdfHtml(value: unknown) {
 
 function formatDate(value: string | null | undefined, lang: string) {
   const date = dateOnlyToLocalDate(value);
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return normalizeDigits(new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', numberingSystem: 'latn' }).format(date));
 }
 
 function monthKey(value: string | null | undefined) {
@@ -614,7 +615,7 @@ function monthIncomeSummary(rows: IncomeViewRow[], month: string) {
 
 function formatMonthLabel(month: string, locale: string) {
   const range = monthRange(month);
-  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(range.start);
+  return normalizeDigits(new Intl.DateTimeFormat(toLatinNumberLocale(locale), { month: 'long', year: 'numeric', numberingSystem: 'latn' }).format(range.start));
 }
 
 function toFiniteAmount(value: unknown) {
@@ -624,7 +625,7 @@ function toFiniteAmount(value: unknown) {
 
 function formatPercent(value: number, locale: string, signed = false) {
   if (!Number.isFinite(value)) return '';
-  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(Math.abs(value));
+  const formatted = normalizeDigits(new Intl.NumberFormat(toLatinNumberLocale(locale), { maximumFractionDigits: 1, numberingSystem: 'latn' }).format(Math.abs(value)));
   if (!signed) return `${formatted}%`;
   const sign = value > 0 ? '+' : value < 0 ? '-' : '';
   return `${sign}${formatted}%`;
@@ -694,7 +695,7 @@ export default function IncomePage() {
   const [attachmentError, setAttachmentError] = useState('');
   const exportRef = useRef<HTMLDivElement | null>(null);
 
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1231,7 +1232,7 @@ export default function IncomePage() {
               <header>
                 <div class="brand">THE SFM</div>
                 <h1>${escapePdfHtml(pdf('title'))}</h1>
-                <div class="header-meta">${escapePdfHtml(pdf('generatedAt'))}: ${escapePdfHtml(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()))}</div>
+                <div class="header-meta">${escapePdfHtml(pdf('generatedAt'))}: ${escapePdfHtml(normalizeDigits(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', numberingSystem: 'latn' }).format(new Date())))}</div>
               </header>
               <section class="content">
               <div class="pill">${escapePdfHtml(pdf('month'))}: ${escapePdfHtml(formatMonthLabel(selectedMonth, locale))} | ${escapePdfHtml(pdfCalculationBadge)}</div>
@@ -1611,7 +1612,7 @@ export default function IncomePage() {
               </div>
             ) : (
               <>
-                <strong>{new Intl.NumberFormat(locale).format(Math.round(stabilityScore))}/100</strong>
+                <strong>{normalizeDigits(new Intl.NumberFormat(locale, { numberingSystem: 'latn' }).format(Math.round(stabilityScore)))}/100</strong>
                 <span>{stabilityScore >= 70 ? tr('stable', lang) : tr('needsReview', lang)}</span>
               </>
             )}

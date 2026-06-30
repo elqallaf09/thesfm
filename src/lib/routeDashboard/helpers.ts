@@ -2,7 +2,7 @@ import {
   BellIcon, Bot, ChartPie, FolderKanban, GraduationCap, HandHeart,
   Home, PiggyBank, Receipt, ReceiptText, Target, TrendingUp, Upload, Wallet,
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, normalizeDigits, toLatinNumberLocale } from '@/lib/format';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 import { parseMoneyValue } from '@/lib/money';
 import { isProjectLinkedExpenseRow } from '@/lib/data/financeData';
@@ -420,11 +420,11 @@ export function projectExpenseLabel(lang: string) {
 export function normalizeReceiptNumber(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Number(value.toFixed(3));
   if (typeof value !== 'string') return undefined;
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  const arabic = '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
+  const persian = '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9';
   const normalized = value
-    .replace(/[٠-٩]/g, digit => String(arabic.indexOf(digit)))
-    .replace(/[۰-۹]/g, digit => String(persian.indexOf(digit)))
+    .replace(/[\u0660-\u0669]/g, digit => String(arabic.indexOf(digit)))
+    .replace(/[\u06F0-\u06F9]/g, digit => String(persian.indexOf(digit)))
     .replace(/\u066B/g, '.')
     .replace(/\u066C/g, ',')
     .replace(/(?:KWD|KD|USD|SAR|AED|EUR|GBP|EGP|جنيه(?:ا|ات)?|د\.?ك|د\s*ك|ر\.?\s*س|د\.?\s*إ|\$|€|£)/gi, '')
@@ -1173,8 +1173,8 @@ export function expensePeriodDayCount(range: ExpensePeriodRange | null, expenses
 }
 
 export function formatExpenseMonthYear(year: number, month: number, lang: string) {
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(startOfLocalMonth(year, month));
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return normalizeDigits(new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', numberingSystem: 'latn' }).format(startOfLocalMonth(year, month)));
 }
 
 export function expensePeriodOptionLabel(preset: ExpensePeriodPreset, lang: string) {

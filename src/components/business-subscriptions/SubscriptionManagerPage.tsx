@@ -36,7 +36,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { normalizeDigits } from '@/lib/locale';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 import { normalizeNumberInput } from '@/lib/money';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -242,8 +242,8 @@ function formatDateTime(value: unknown, lang: SubscriptionLang = 'ar') {
   if (!value) return REMINDER_CONTROL_TEXT[lang].unavailable;
   const date = new Date(String(value));
   if (!Number.isFinite(date.getTime())) return REMINDER_CONTROL_TEXT[lang].unavailable;
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return normalizeDigits(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', numberingSystem: 'latn' }).format(date));
 }
 
 function isSafeUploadType(file: File) {

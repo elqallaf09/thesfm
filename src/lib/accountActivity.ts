@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 
 export const ACCOUNT_ACTIVITY_TABLE = 'account_activity';
 
@@ -183,13 +184,13 @@ export function formatAccountActivityTimestamp(value: string, lang: AccountActiv
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const dateKey = new Intl.DateTimeFormat('en-CA').format(date);
   const todayKey = new Intl.DateTimeFormat('en-CA').format(now);
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   const yesterdayKey = new Intl.DateTimeFormat('en-CA').format(yesterday);
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date);
+  const time = normalizeDigits(new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', numberingSystem: 'latn' }).format(date));
 
   if (dateKey === todayKey) {
     if (lang === 'ar') return `اليوم، ${time}`;
@@ -203,6 +204,6 @@ export function formatAccountActivityTimestamp(value: string, lang: AccountActiv
     return `Yesterday, ${time}`;
   }
 
-  const day = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  const day = normalizeDigits(new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', numberingSystem: 'latn' }).format(date));
   return `${day}${lang === 'ar' ? '،' : ','} ${time}`;
 }

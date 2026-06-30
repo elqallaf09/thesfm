@@ -108,6 +108,16 @@ export function formatTime(value: unknown, locale?: string | null, options?: Int
   })).format(date));
 }
 
+export function formatDateTime(value: unknown, locale?: string | null, options?: Intl.DateTimeFormatOptions) {
+  const date = parseAppDate(value);
+  if (!date) return '';
+  const config = getLocaleConfig(locale);
+  return normalizeDigits(new Intl.DateTimeFormat(config.intlLocale, withLatinNumbering(options ?? {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })).format(date));
+}
+
 export function formatCurrency(amount: number, currencyCode = 'KWD', locale?: string | null) {
   const config = getLocaleConfig(locale);
   const currency = getCurrency(currencyCode);
@@ -134,4 +144,29 @@ export function formatPercent(value: number, locale?: string | null, options?: I
     maximumFractionDigits: 0,
     ...options,
   });
+}
+
+export function formatAmount(amount: number, currencyCode = 'KWD', locale?: string | null) {
+  return formatCurrency(amount, currencyCode, locale);
+}
+
+export function formatCompactNumber(value: number, locale?: string | null, options?: Intl.NumberFormatOptions) {
+  return formatNumber(value, locale, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+    ...options,
+  });
+}
+
+export function formatRelativeTime(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit,
+  locale?: string | null,
+  options?: Intl.RelativeTimeFormatOptions,
+) {
+  const config = getLocaleConfig(locale);
+  return normalizeDigits(new Intl.RelativeTimeFormat(config.intlLocale, {
+    numeric: 'auto',
+    ...options,
+  }).format(value, unit));
 }

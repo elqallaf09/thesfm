@@ -1,5 +1,6 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { formatMarketPrice } from '@/lib/market/marketCurrency';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 
 export type EducationalSummaryLanguage = 'ar' | 'en' | 'fr';
 
@@ -108,7 +109,7 @@ const COPY = {
 function localeFor(language: EducationalSummaryLanguage) {
   if (language === 'en') return 'en-US';
   if (language === 'fr') return 'fr-FR';
-  return 'ar-KW-u-nu-latn';
+  return 'ar-KW';
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -116,7 +117,10 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function formatNumber(value: number, language: EducationalSummaryLanguage, maximumFractionDigits = 2) {
-  return new Intl.NumberFormat(localeFor(language), { maximumFractionDigits }).format(value);
+  return normalizeDigits(new Intl.NumberFormat(toLatinNumberLocale(localeFor(language)), {
+    maximumFractionDigits,
+    numberingSystem: 'latn',
+  }).format(value));
 }
 
 function formatNativeMoney(input: EducationalMarketSummaryInput, value: number) {

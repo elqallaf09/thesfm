@@ -31,7 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
-import { formatDate, formatNumber } from '@/lib/locale';
+import { formatDate, formatNumber, normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 import { trackEvent } from '@/lib/analytics';
 import { recordAccountActivity } from '@/lib/accountActivity';
 
@@ -1248,19 +1248,22 @@ type PdfColumn = {
 };
 
 function localeForReport(lang: Lang) {
-  if (lang === 'ar') return 'ar-KW-u-nu-latn';
-  if (lang === 'fr') return 'fr-FR';
-  return 'en-US';
+  if (lang === 'ar') return toLatinNumberLocale('ar-KW');
+  if (lang === 'fr') return toLatinNumberLocale('fr-FR');
+  return toLatinNumberLocale('en-US');
 }
 
 function formatReportDateValue(value: unknown, lang: Lang, options?: Intl.DateTimeFormatOptions) {
   const date = value instanceof Date ? value : value ? new Date(String(value)) : null;
   if (!date || !Number.isFinite(date.getTime())) return '';
-  return new Intl.DateTimeFormat(localeForReport(lang), options ?? {
+  return normalizeDigits(new Intl.DateTimeFormat(localeForReport(lang), {
+    ...(options ?? {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(date);
+    }),
+    numberingSystem: 'latn',
+  }).format(date));
 }
 
 function formatReportDateTime(value: unknown, lang: Lang) {
@@ -1277,12 +1280,13 @@ function formatReportAmount(value: unknown, currency: unknown, lang: Lang) {
   const amount = numberValue(value);
   const code = currencyCode(currency, 'KWD');
   const decimals = code === 'KWD' ? 3 : 2;
-  const formatted = new Intl.NumberFormat(localeForReport(lang), {
+  const formatted = normalizeDigits(new Intl.NumberFormat(localeForReport(lang), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(amount);
+    numberingSystem: 'latn',
+  }).format(amount));
   const label = formatReportCurrency(code, code, lang);
-  return lang === 'en' ? `${code} ${formatted}` : `${formatted} ${label}`;
+  return normalizeDigits(lang === 'en' ? `${code} ${formatted}` : `${formatted} ${label}`);
 }
 
 function reportPeriodLabel(filters: Filters, lang: Lang) {
@@ -1293,9 +1297,9 @@ function reportPeriodLabel(filters: Filters, lang: Lang) {
   }
   if (filters.month !== 'all') {
     const monthDate = new Date(Number(filters.year), Number(filters.month) - 1, 1);
-    return new Intl.DateTimeFormat(localeForReport(lang), { month: 'long', year: 'numeric' }).format(monthDate);
+    return normalizeDigits(new Intl.DateTimeFormat(localeForReport(lang), { month: 'long', year: 'numeric', numberingSystem: 'latn' }).format(monthDate));
   }
-  return filters.year;
+  return normalizeDigits(filters.year);
 }
 
 function reportFileName(report: ReportDefinition, filters: Filters, lang: Lang) {

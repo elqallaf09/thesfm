@@ -1,4 +1,5 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 
 export type MarketCurrencySource =
   | 'provider'
@@ -231,7 +232,7 @@ export function getCurrencySymbol(currency: string | null | undefined, locale?: 
 
 function marketLocale(locale?: string | null) {
   if (locale === 'fr') return 'fr-FR';
-  if (locale === 'ar') return 'ar-KW-u-nu-latn';
+  if (locale === 'ar') return 'ar-KW';
   return 'en-US';
 }
 
@@ -257,10 +258,11 @@ function forexRateDecimals(price: number, quoteCurrency: string | null) {
 }
 
 function formatPlainNumber(value: number, locale?: string | null, digits = 2) {
-  return new Intl.NumberFormat(marketNumberLocale(locale), {
+  return normalizeDigits(new Intl.NumberFormat(toLatinNumberLocale(marketNumberLocale(locale)), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(value);
+    numberingSystem: 'latn',
+  }).format(value));
 }
 
 function isKuwaitMarket(symbol?: string | null, exchange?: string | null, market?: string | null) {
@@ -471,13 +473,14 @@ export function formatMarketPrice({
   }
 
   try {
-    return new Intl.NumberFormat(marketLocale(locale), {
+    return normalizeDigits(new Intl.NumberFormat(toLatinNumberLocale(marketLocale(locale)), {
       style: 'currency',
       currency: normalizedCurrency,
       currencyDisplay: 'narrowSymbol',
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
-    }).format(numeric);
+      numberingSystem: 'latn',
+    }).format(numeric));
   } catch {
     return PREFIX_SYMBOLS.has(normalizedCurrency) ? `${sign}${label}${formattedNumber}` : `${sign}${formattedNumber} ${label}`;
   }

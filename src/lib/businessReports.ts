@@ -1,5 +1,6 @@
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/format';
 import { BUSINESS_TEXT, employeeStatusLabel, numericValue, saleStatusLabel, type BusinessLang } from '@/lib/businessOperations';
 
 type ExportColumn<T> = {
@@ -26,7 +27,7 @@ export function isInDateRange(value: unknown, from: string, to: string) {
 }
 
 function escapeCsv(value: unknown) {
-  const text = String(value ?? '');
+  const text = normalizeDigits(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -51,7 +52,7 @@ export function downloadCsv<T>(filename: string, rows: T[], columns: ExportColum
 
 export async function downloadXlsx<T>(filename: string, rows: T[], columns: ExportColumn<T>[], sheetName: string) {
   const XLSX = await import('xlsx');
-  const data = rows.map((row) => Object.fromEntries(columns.map((column) => [column.label, column.value(row)])));
+  const data = rows.map((row) => Object.fromEntries(columns.map((column) => [column.label, normalizeDigits(column.value(row))])));
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
@@ -59,7 +60,7 @@ export async function downloadXlsx<T>(filename: string, rows: T[], columns: Expo
 }
 
 function cleanPdfText(value: unknown) {
-  return String(value ?? '')
+  return normalizeDigits(value)
     .replace(/\u00C2\u00B7/g, ' | ')
     .replace(/\u00B7/g, ' | ')
     .replace(/\uFFFD/g, '')
@@ -82,8 +83,8 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
   const report = window.open('', '_blank', 'noopener,noreferrer,width=980,height=760');
   if (!report) return false;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  const generatedAt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  const generatedAt = normalizeDigits(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', numberingSystem: 'latn' }).format(new Date()));
   const noDataLabel = lang === 'ar' ? 'لا توجد بيانات في هذا التقرير.' : lang === 'fr' ? 'Aucune donnée dans ce rapport.' : 'No data in this report.';
   const filtersLabel = lang === 'ar' ? 'الفلاتر' : lang === 'fr' ? 'Filtres' : 'Filters';
   const totalsLabel = lang === 'ar' ? 'الملخص' : lang === 'fr' ? 'Résumé' : 'Summary';
@@ -162,13 +163,13 @@ export function saleExportColumns(lang: BusinessLang, currency: string) {
 
 export function employeeExportColumns(lang: BusinessLang, currency: string) {
   const text = BUSINESS_TEXT[lang];
-  const percentFormatter = new Intl.NumberFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 });
+  const percentFormatter = new Intl.NumberFormat(toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US'), { maximumFractionDigits: 1, numberingSystem: 'latn' });
   return [
     { key: 'employee_name', label: text.employeeName, value: (row: any) => row.name || row.employee_name || '' },
     { key: 'role', label: text.role, value: (row: any) => row.role || '' },
     { key: 'department', label: text.department, value: (row: any) => row.department || '' },
     { key: 'salary', label: text.salary, value: (row: any) => formatMoney(numericValue(row.salary), row.currency || currency, lang) },
-    { key: 'skill_level', label: text.skillLevel, value: (row: any) => `${percentFormatter.format(numericValue(row.skill_level))}%` },
+    { key: 'skill_level', label: text.skillLevel, value: (row: any) => normalizeDigits(`${percentFormatter.format(numericValue(row.skill_level))}%`) },
     { key: 'status', label: text.status, value: (row: any) => employeeStatusLabel(row.status, lang) },
     { key: 'salary_day', label: text.payrollDueDay, value: (row: any) => row.salary_day || row.payroll_due_day || 25 },
     { key: 'join_date', label: text.joinDate, value: (row: any) => row.join_date ? formatDate(row.join_date, lang) : '' },
@@ -178,7 +179,8 @@ export function employeeExportColumns(lang: BusinessLang, currency: string) {
 
 export function monthLabel(value: string, lang: BusinessLang) {
   const [year, month] = value.split('-').map(Number);
-  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', year: 'numeric' }).format(new Date(year, month - 1, 1));
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  return normalizeDigits(new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', numberingSystem: 'latn' }).format(new Date(year, month - 1, 1)));
 }
 
 export function aggregateBy<T>(rows: T[], getKey: (row: T) => string, getValue: (row: T) => number) {

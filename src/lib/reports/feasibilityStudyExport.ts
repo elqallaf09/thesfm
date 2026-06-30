@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDate, formatNumber, normalizeDigits } from '@/lib/locale';
+import { formatDate, formatDateTime, formatNumber, normalizeDigits } from '@/lib/locale';
 
 export type FeasibilityExportLang = 'ar' | 'en' | 'fr';
 
@@ -115,7 +115,7 @@ function firstNumber(values: unknown[]) {
 
 function firstText(values: unknown[]) {
   for (const value of values) {
-    const text = String(value ?? '').trim();
+    const text = normalizeDigits(value).trim();
     if (text) return text;
   }
   return '';
@@ -129,14 +129,14 @@ function moneyValue(value: number | null, currency: string, lang: FeasibilityExp
 
 function recommendationText(value: unknown, lang: FeasibilityExportLang) {
   if (Array.isArray(value)) {
-    const items = value.map(item => String(item ?? '').trim()).filter(Boolean);
+    const items = value.map(item => normalizeDigits(item).trim()).filter(Boolean);
     return items.length ? items.join('، ') : NOT_SPECIFIED[lang];
   }
   if (value && typeof value === 'object') {
-    const items = Object.values(value).map(item => String(item ?? '').trim()).filter(Boolean);
+    const items = Object.values(value).map(item => normalizeDigits(item).trim()).filter(Boolean);
     return items.length ? items.join('، ') : NOT_SPECIFIED[lang];
   }
-  return String(value ?? '').trim() || NOT_SPECIFIED[lang];
+  return normalizeDigits(value).trim() || NOT_SPECIFIED[lang];
 }
 
 export function buildFeasibilityStudyExportRow(input: FeasibilityExportInput, lang: FeasibilityExportLang): FeasibilityStudyExportRow {
@@ -181,7 +181,7 @@ export function buildFeasibilityStudyExportRow(input: FeasibilityExportInput, la
   const status = String(input.feasibilityStatus || '').trim();
 
   return {
-    project_name: input.projectName || NOT_SPECIFIED[lang],
+    project_name: normalizeDigits(input.projectName) || NOT_SPECIFIED[lang],
     report_date: input.reportDate ? (formatDate(input.reportDate, lang) || NOT_SPECIFIED[lang]) : formatDate(new Date().toISOString(), lang),
     currency,
     capital: moneyValue(capital, currency, lang),
@@ -196,7 +196,7 @@ export function buildFeasibilityStudyExportRow(input: FeasibilityExportInput, la
 }
 
 function cleanPdfText(value: unknown) {
-  return String(value ?? '')
+  return normalizeDigits(value)
     .replace(/\u00C2\u00B7/g, ' | ')
     .replace(/\u00B7/g, ' | ')
     .replace(/\uFFFD/g, '')
@@ -226,8 +226,8 @@ export function printFeasibilityStudyToPdf(options: {
   const labels = PDF_LABELS[options.lang];
   const dir = options.dir ?? (options.lang === 'ar' ? 'rtl' : 'ltr');
   const localeFont = options.lang === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif';
-  const locale = options.lang === 'ar' ? 'ar-KW-u-nu-latn' : options.lang === 'fr' ? 'fr-FR' : 'en-US';
   const generatedAtLabel = options.lang === 'ar' ? 'تاريخ الإنشاء' : options.lang === 'fr' ? 'Généré le' : 'Generated at';
+  const generatedAt = formatDateTime(new Date(), options.lang);
   const emptyLabel = options.lang === 'ar'
     ? 'لا توجد بيانات دراسة جدوى جاهزة للتصدير.'
     : options.lang === 'fr'
@@ -363,7 +363,7 @@ export function printFeasibilityStudyToPdf(options: {
           <header>
             <div class="brand">THE SFM</div>
             <h1>${escapeHtml(options.title)}</h1>
-            <div class="header-meta">${escapeHtml(generatedAtLabel)}: ${escapeHtml(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()))}</div>
+            <div class="header-meta">${escapeHtml(generatedAtLabel)}: ${escapeHtml(generatedAt)}</div>
           </header>
           <section class="content">${cards}</section>
           <footer>THE SFM</footer>

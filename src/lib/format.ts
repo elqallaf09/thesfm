@@ -1,8 +1,12 @@
 export {
   formatCurrency,
+  formatAmount,
+  formatCompactNumber,
   formatDate,
+  formatDateTime,
   formatNumber,
   formatPercent,
+  formatRelativeTime,
   formatTime,
   getDirectionByLocale,
   getLocaleConfig,

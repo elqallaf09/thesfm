@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, formatDate, formatNumber, formatPercent, formatTime, normalizeDigits } from '@/lib/locale';
+import {
+  formatCompactNumber,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  formatPercent,
+  formatRelativeTime,
+  formatTime,
+  normalizeDigits,
+} from '@/lib/locale';
 import { normalizeNumberInput } from '@/lib/money';
 
 const nonLatinDigits = /[\u0660-\u0669\u06F0-\u06F9]/;
@@ -39,6 +49,16 @@ describe('Latin digit formatting', () => {
       minute: '2-digit',
       timeZone: 'Asia/Kuwait',
     }));
+    expectLatinDigitsOnly(formatDateTime(date, 'ar', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Kuwait',
+    }));
+  });
+
+  it('formats compact and relative values with Latin digits in Arabic mode', () => {
+    expectLatinDigitsOnly(formatCompactNumber(1234000, 'ar'));
+    expectLatinDigitsOnly(formatRelativeTime(-3, 'day', 'ar'));
   });
 
   it('normalizes Arabic digit input before numeric use', () => {

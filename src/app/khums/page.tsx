@@ -28,8 +28,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateKhums, type KhumsStatus } from '@/lib/khums';
-import { formatMoney } from '@/lib/formatMoney';
-import { normalizeDigits } from '@/lib/locale';
+import { formatFinancialCurrency } from '@/lib/financialDisplay';
+import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 
 type KhumsPane = 'calculator' | 'payments' | 'reminders' | 'reports';
 type ShareType = 'imam' | 'sayyid' | 'unspecified';
@@ -172,7 +172,7 @@ function downloadTextFile(filename: string, text: string, mime = 'text/csv;chars
 export default function KhumsPage() {
   const { user, loading } = useAuth();
   const { dir, lang } = useLanguage();
-  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const db = supabase as any;
 
   const [activePane, setActivePane] = useState<KhumsPane>('calculator');
@@ -210,12 +210,12 @@ export default function KhumsPage() {
   });
 
   const money = useCallback((amount: number, currency = yearForm.currency) => (
-    formatMoney(Number.isFinite(amount) ? amount : 0, currency || 'KWD', lang)
+    formatFinancialCurrency(Number.isFinite(amount) ? amount : null, currency || 'KWD', lang)
   ), [lang, yearForm.currency]);
 
   const dateLabel = useCallback((date?: string | null) => {
     if (!date) return '-';
-    return new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(locale);
+    return normalizeDigits(new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(locale, { numberingSystem: 'latn' }));
   }, [locale]);
 
   const totalIncome = useMemo(() => INCOME_FIELDS.reduce((sum, field) => sum + Math.max(0, toNumber(incomeValues[field.key])), 0), [incomeValues]);
@@ -610,7 +610,7 @@ export default function KhumsPage() {
           </div>
         )}
 
-        <section className="stat-grid" aria-label="ملخص الخمس">
+        <section className="khums-stat-grid" aria-label="ملخص الخمس">
           {[
             ['إجمالي الدخل', money(khums.totalIncome), Coins],
             ['إجمالي المصاريف', money(khums.totalExpenses), ReceiptText],
@@ -868,7 +868,7 @@ export default function KhumsPage() {
         .khums-loading div{width:46px;height:46px;border-radius:50%;border:3px solid rgba(29,140,255,.14);border-top-color:var(--sfm-primary);animation:spin 1s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
         .khums-content{display:grid;gap:18px;width:100%;max-inline-size:min(1480px,100%);margin-inline:auto;min-width:0}
-        .khums-content > *,.khums-layout > *,.two-column > *,.reports-layout > *,.form-grid > *,.stat-grid > *{min-width:0}
+        .khums-content > *,.khums-layout > *,.two-column > *,.reports-layout > *,.form-grid > *,.khums-stat-grid > *{min-width:0}
         .khums-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:22px;border-radius:28px;padding:clamp(22px,3vw,34px);background:radial-gradient(circle at 14% 14%,rgba(167,243,240,.26),transparent 30%),linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 58%,var(--sfm-card-dark) 140%);color:var(--sfm-card);border:1px solid rgba(167,243,240,.18);box-shadow:0 22px 56px rgba(3,18,37,.20)}
         .eyebrow{display:inline-flex;border:1px solid rgba(167,243,240,.2);background:rgba(167,243,240,.10);color:var(--sfm-soft-cyan);border-radius:999px;padding:7px 11px;font-size:12px;font-weight:950}
         .khums-hero h1{margin:12px 0 8px;font-size:clamp(36px,4vw,54px);line-height:1.08;font-weight:950;letter-spacing:0}
@@ -891,11 +891,11 @@ export default function KhumsPage() {
         .notice.ok{background:#ECFDF5;color:#047857;border-color:rgba(4,120,87,.18)}
         .notice.warn{background:#FFF7ED;color:#B45309;border-color:rgba(180,83,9,.18)}
         .notice.error{background:#FEF2F2;color:#B91C1C;border-color:rgba(185,28,28,.18)}
-        .stat-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
-        .stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:5px 11px;min-height:112px;padding:16px;border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,251,255,.88));border:1px solid rgba(29,140,255,.13);box-shadow:0 12px 28px rgba(3,18,37,.055)}
+        .khums-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(170px,1fr));gap:16px;align-items:stretch;margin-top:4px}
+        .stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;gap:7px 12px;min-height:136px;padding:18px 16px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,251,255,.90));border:1px solid rgba(29,140,255,.13);box-shadow:0 14px 30px rgba(3,18,37,.06)}
         .stat-card span{grid-row:1 / span 2;width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.10));color:var(--sfm-primary);display:grid;place-items:center}
         .stat-card small{color:var(--sfm-muted-readable);font-size:12.5px;font-weight:950;line-height:1.45}
-        .stat-card strong{color:var(--sfm-midnight);font-size:clamp(18px,1.45vw,24px);line-height:1.25;overflow-wrap:anywhere}
+        .stat-card strong{align-self:end;color:var(--sfm-midnight);font-size:clamp(18px,1.35vw,23px);line-height:1.25;overflow-wrap:normal;word-break:keep-all;unicode-bidi:isolate}
         .year-strip{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:12px;border:1px solid rgba(29,140,255,.13);border-radius:18px;background:rgba(255,255,255,.72)}
         .year-strip strong{color:var(--sfm-midnight)}
         .year-strip div{display:flex;gap:8px;overflow-x:auto}
@@ -949,9 +949,9 @@ export default function KhumsPage() {
         .report-table div{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr);gap:12px;align-items:center;border:1px solid rgba(29,140,255,.11);background:var(--sfm-light-card);border-radius:14px;padding:11px}
         .info-card p{margin:0;color:var(--sfm-muted-readable);line-height:1.9;font-weight:800}
         @media(min-width:1025px){.khums-page .sfm-dashboard-page-shell{width:auto;max-width:none;margin-inline-start:var(--sidebar-w);margin-inline-end:0;padding-inline:clamp(22px,2.4vw,36px)}}
-        @media(max-width:1240px){.stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.khums-layout,.two-column,.reports-layout,.payment-layout{grid-template-columns:1fr}}
-        @media(max-width:820px){.khums-hero{grid-template-columns:1fr;align-items:start}.hero-actions{justify-content:flex-start}.module-tabs{display:flex;overflow-x:auto;scrollbar-width:none}.module-tabs::-webkit-scrollbar{display:none}.module-tabs a,.module-tabs button{flex:0 0 auto;min-width:132px}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.year-strip{grid-template-columns:1fr}.section-head{display:grid}.section-head .head-icon{order:-1}.form-grid,.split-grid,.report-table div{grid-template-columns:1fr}}
-        @media(max-width:560px){.khums-content{gap:14px}.khums-hero{padding:20px;border-radius:22px}.hero-actions,.report-actions{display:grid;grid-template-columns:1fr;width:100%}.gold-btn,.dark-btn,.mini-btn{width:100%}.stat-grid{grid-template-columns:1fr}.stat-card{min-height:94px}.panel-card{border-radius:20px;padding:16px}.payment-list article,.reminder-grid article{grid-template-columns:1fr}.reminder-grid article > div:last-child{display:grid}.reminder-grid button{width:100%}}
+        @media(max-width:1240px){.khums-stat-grid{grid-template-columns:repeat(3,minmax(180px,1fr))}.khums-layout,.two-column,.reports-layout,.payment-layout{grid-template-columns:1fr}}
+        @media(max-width:820px){.khums-hero{grid-template-columns:1fr;align-items:start}.hero-actions{justify-content:flex-start}.module-tabs{display:flex;overflow-x:auto;scrollbar-width:none}.module-tabs::-webkit-scrollbar{display:none}.module-tabs a,.module-tabs button{flex:0 0 auto;min-width:132px}.khums-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.year-strip{grid-template-columns:1fr}.section-head{display:grid}.section-head .head-icon{order:-1}.form-grid,.split-grid,.report-table div{grid-template-columns:1fr}}
+        @media(max-width:560px){.khums-content{gap:14px}.khums-hero{padding:20px;border-radius:22px}.hero-actions,.report-actions{display:grid;grid-template-columns:1fr;width:100%}.gold-btn,.dark-btn,.mini-btn{width:100%}.khums-stat-grid{grid-template-columns:1fr}.stat-card{min-height:118px}.panel-card{border-radius:20px;padding:16px}.payment-list article,.reminder-grid article{grid-template-columns:1fr}.reminder-grid article > div:last-child{display:grid}.reminder-grid button{width:100%}}
         @media print{.sfm-shared-sidebar,.khums-hero,.module-tabs,.notice,.hero-actions,.payment-form,.reminder-form,.report-actions{display:none!important}.khums-page{background:#fff}.khums-page .sfm-dashboard-page-shell{margin:0!important;padding:0!important}.panel-card{box-shadow:none;border-color:#d9e2ec}}
       `}</style>
     </div>
@@ -985,7 +985,7 @@ function StatCard({
     <article className="stat-card">
       <span><Icon size={18} /></span>
       <small>{label}</small>
-      <strong>{value}</strong>
+      <strong dir="ltr">{value}</strong>
     </article>
   );
 }
