@@ -538,6 +538,21 @@
   gap: 5px;
 }
 
+.companyButton :global(.company-logo-badge),
+.securityCardIdentity :global(.company-logo-badge) {
+  flex: 0 0 auto;
+}
+
+.companyButton :global(.company-logo-badge img),
+.securityCardIdentity :global(.company-logo-badge img) {
+  max-width: 80%;
+  max-height: 80%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
 .securityCard strong,
 .newsCard h3 {
   color: #0b1830;
@@ -554,7 +569,7 @@
   -webkit-box-orient: vertical;
 }
 
-.securityCardIdentity span {
+.securityTicker {
   width: fit-content;
   max-width: 100%;
   border: 1px solid rgba(14, 116, 144, 0.13);
