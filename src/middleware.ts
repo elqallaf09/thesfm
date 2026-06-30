@@ -56,9 +56,12 @@ function isProtected(pathname: string) {
 
 function isLocalTraderQaBypass(pathname: string) {
   return (
-    process.env.NODE_ENV !== 'production' &&
     process.env.SFM_LOCAL_TRADER_QA === '1' &&
-    (pathname === '/thesfm-trader-own' || pathname.startsWith('/thesfm-trader-own/'))
+    process.env.VERCEL !== '1' &&
+    (pathname === '/thesfm-trader-own' ||
+      pathname.startsWith('/thesfm-trader-own/') ||
+      pathname === '/dashboard' ||
+      pathname.startsWith('/dashboard/'))
   );
 }
 

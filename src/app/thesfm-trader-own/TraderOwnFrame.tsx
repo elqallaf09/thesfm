@@ -21,7 +21,7 @@ type TraderOwnFrameProps = {
   appRoute?: string;
 };
 
-export default async function TraderOwnFrame({ appRoute = 'dashboard' }: TraderOwnFrameProps) {
+export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFrameProps) {
   const access = await getTraderAccess();
 
   if (access.reason === 'unauthenticated') {
@@ -61,11 +61,16 @@ export default async function TraderOwnFrame({ appRoute = 'dashboard' }: TraderO
         body {
           margin: 0;
           background: #020617;
+          overflow: hidden;
         }
         .trader-shell-page {
+          position: fixed;
+          inset: 0;
+          z-index: 2147483000;
           min-height: 100vh;
           width: 100%;
           background: #020617;
+          overflow: hidden;
         }
         .trader-shell-frame {
           display: block;
@@ -81,7 +86,7 @@ export default async function TraderOwnFrame({ appRoute = 'dashboard' }: TraderO
 }
 
 function resolvePublicRoute(appRoute: string) {
-  if (!appRoute || appRoute === 'dashboard') return '/thesfm-trader-own';
+  if (!appRoute || appRoute === 'home') return '/thesfm-trader-own';
   return `/thesfm-trader-own/${appRoute}`;
 }
 

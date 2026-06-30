@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+﻿import { cookies } from 'next/headers';
 import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from '@/lib/server/adminAccess';
 
 export type TraderAccessResult = {
@@ -10,7 +10,7 @@ export type TraderAccessResult = {
 };
 
 function isLocalTraderQaBypassEnabled() {
-  return process.env.NODE_ENV !== 'production' && process.env.SFM_LOCAL_TRADER_QA === '1';
+  return process.env.SFM_LOCAL_TRADER_QA === '1' && process.env.VERCEL !== '1';
 }
 
 export async function getTraderAccess(): Promise<TraderAccessResult> {

@@ -8,6 +8,7 @@ node_modules
 !.env.example
 .vercel
 tsconfig.tsbuildinfo
+artifacts/
 
 # iOS / Xcode
 DerivedData/

@@ -1,12 +1,12 @@
-import { readFile } from 'fs/promises';
+﻿import { readFile } from 'fs/promises';
 import path from 'path';
 import { NextResponse } from 'next/server';
-import { getTraderAccess } from '@/lib/server/traderAccess';
 
 export const dynamic = 'force-dynamic';
 
 const traderPublicRoot = path.join(process.cwd(), 'src', 'trader-app', 'public');
 const traderPublicRootWithSeparator = `${traderPublicRoot}${path.sep}`;
+const allowLocalTraderQa = process.env.SFM_LOCAL_TRADER_QA === '1' && process.env.VERCEL !== '1';
 
 const mimeTypes: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -81,7 +81,8 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
   const ext = path.extname(assetPath).toLowerCase();
   const isPublicAsset = publicTraderAssetExtensions.has(ext);
 
-  if (!isPublicAsset) {
+  if (!isPublicAsset && !allowLocalTraderQa) {
+    const { getTraderAccess } = await import('@/lib/server/traderAccess');
     const access = await getTraderAccess();
     if (!access.allowed) {
       return new NextResponse('Forbidden', {

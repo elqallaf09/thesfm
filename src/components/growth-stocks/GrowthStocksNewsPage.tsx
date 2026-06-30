@@ -986,6 +986,42 @@ function sectorForSymbol(symbol: string): Exclude<SectorId, 'all'> {
   return STOCK_SECTOR[symbol.toUpperCase()] ?? 'digital_platforms';
 }
 
+function estimatedValuationRiskLabel(changePercent: number | null, lang: LangCode) {
+  if (changePercent === null) return COPY[lang].unknownValuation;
+  const absoluteMove = Math.abs(changePercent);
+  if (changePercent >= 8) return localized(lang, 'تقديري: مرتفع', 'Estimated: high', 'Estimé : élevé');
+  if (absoluteMove >= 4) return localized(lang, 'تقديري: متوسط', 'Estimated: medium', 'Estimé : moyen');
+  return localized(lang, 'تقديري: منخفض', 'Estimated: low', 'Estimé : faible');
+}
+
+function estimatedGrowthClassification(changePercent: number | null, lang: LangCode) {
+  if (changePercent === null) {
+    return localized(lang, 'تصنيف سعري مؤقت', 'Price-based provisional class', 'Classe provisoire prix');
+  }
+  if (changePercent >= 8) {
+    return localized(lang, 'نمو بزخم سعري قوي', 'Strong price-momentum growth', 'Croissance à fort momentum');
+  }
+  if (changePercent >= 2) {
+    return localized(lang, 'نمو بزخم إيجابي', 'Positive price-momentum growth', 'Croissance à momentum positif');
+  }
+  if (changePercent <= -4) {
+    return localized(lang, 'نمو تحت ضغط سعري', 'Growth under price pressure', 'Croissance sous pression');
+  }
+  return localized(lang, 'نمو قيد المراقبة', 'Growth under watch', 'Croissance sous surveillance');
+}
+
+function methodologyDescription(row: GrowthStockRow, lang: LangCode) {
+  if (row.price !== null && row.changePercent !== null) {
+    return localized(
+      lang,
+      'تصنيف تقديري مبني على السعر الحالي، التغير اليومي والقطاع إلى حين توفر بيانات أساسية كاملة.',
+      'Provisional classification based on current price, daily move, and sector until full fundamentals are available.',
+      'Classement provisoire fondé sur le prix, la variation quotidienne et le secteur en attendant les fondamentaux complets.',
+    );
+  }
+  return COPY[lang].insufficientMethodology;
+}
+
 function cleanTextValue(value: unknown) {
   const text = String(value ?? '').trim();
   if (!text || /^(undefined|null|nan)$/i.test(text)) return '';
@@ -1025,10 +1061,10 @@ function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockR
       sectorLabel: sectorLabel(sectorId, lang),
       momentumLabel,
       momentumTone: tone,
-      valuationRiskLabel: COPY[lang].unknownValuation,
+      valuationRiskLabel: estimatedValuationRiskLabel(changePercent, lang),
       qualityLabel: COPY[lang].fundamentalsUnavailable,
-      growthClassification: COPY[lang].notEnoughFundamentals,
-      dataCompleteness: 35,
+      growthClassification: estimatedGrowthClassification(changePercent, lang),
+      dataCompleteness: price !== null && changePercent !== null ? 55 : 35,
     });
   }
   return rows;
@@ -1307,6 +1343,11 @@ function removeAriaLabel(symbol: string, lang: LangCode) {
   return lang === 'ar' ? `إزالة سهم ${symbol} من المقارنة` : `Remove ${symbol} from comparison`;
 }
 
+function compareActionLabel(selected: boolean | undefined, text: typeof COPY[LangCode], lang: LangCode) {
+  if (!selected) return text.compare;
+  return localized(lang, 'محدد للمقارنة', 'Selected for comparison', 'Sélectionné');
+}
+
 export function GrowthStocksNewsPage() {
   const { lang, dir } = useLanguage();
   const activeLang = getLang(lang);
@@ -1330,6 +1371,7 @@ export function GrowthStocksNewsPage() {
   const [visibleNewsCount, setVisibleNewsCount] = useState(INITIAL_NEWS_LIMIT);
   const [comparisonSymbols, setComparisonSymbols] = useState<string[]>([]);
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [comparisonAutoOpenRequested, setComparisonAutoOpenRequested] = useState(false);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [comparisonError, setComparisonError] = useState<string | null>(null);
   const [comparisonDetails, setComparisonDetails] = useState<Record<string, GrowthStockDetail>>({});
@@ -1410,9 +1452,9 @@ export function GrowthStocksNewsPage() {
 
   const featuredNews = filteredNews.slice(0, 3);
   const regularNews = filteredNews.slice(3, visibleNewsCount);
-  const comparisonRows = comparisonSymbols
+  const comparisonRows = useMemo(() => comparisonSymbols
     .map(symbol => stockRows.find(row => row.symbol === symbol))
-    .filter((row): row is GrowthStockRow => Boolean(row));
+    .filter((row): row is GrowthStockRow => Boolean(row)), [comparisonSymbols, stockRows]);
 
   const summary = useMemo(() => {
     const rising = stockRows.filter(row => (row.changePercent ?? 0) > 0).length;
@@ -1444,6 +1486,9 @@ export function GrowthStocksNewsPage() {
   };
 
   const toggleComparisonSymbol = (symbol: string) => {
+    if (!comparisonSymbols.includes(symbol) && comparisonSymbols.length < 5) {
+      setComparisonAutoOpenRequested(true);
+    }
     setComparisonSymbols(current => {
       if (current.includes(symbol)) return current.filter(item => item !== symbol);
       if (current.length >= 5) return current;
@@ -1493,16 +1538,29 @@ export function GrowthStocksNewsPage() {
     void loadComparisonDetails(comparisonRows);
   };
 
+  useEffect(() => {
+    if (!comparisonAutoOpenRequested) return;
+    if (comparisonRows.length >= 2) {
+      setComparisonOpen(true);
+      void loadComparisonDetails(comparisonRows);
+    }
+    setComparisonAutoOpenRequested(false);
+  }, [comparisonAutoOpenRequested, comparisonRows, loadComparisonDetails]);
+
   const openAnalysis = (row: GrowthStockRow) => {
     setAnalysisModal({ open: true, row, status: 'loading', detail: null, error: null });
     void fetchGrowthStockDetail(row)
       .then(detail => {
         setAnalysisModal(current => {
           if (current.row?.symbol !== row.symbol) return current;
-          if (!detail.analysis?.success) {
-            return { open: true, row, status: 'error', detail, error: text.analysisError };
-          }
-          return { open: true, row, status: 'ready', detail, error: null };
+          const hasUsableDetail = Boolean(detail.analysis?.success || detail.profile?.success || row.price !== null);
+          return {
+            open: true,
+            row,
+            status: hasUsableDetail ? 'ready' : 'error',
+            detail,
+            error: hasUsableDetail && detail.error ? text.someFieldsUnavailable : hasUsableDetail ? null : text.analysisError,
+          };
         });
       })
       .catch(() => {
@@ -3466,6 +3524,10 @@ function AnalysisDrawer({
 
         {state.status === 'ready' && detail ? (
           <div className="analysis-content">
+            {state.error ? (
+              <StateBox tone="warning" icon={AlertTriangle} title={state.error} description={text.marketClosedNote} />
+            ) : null}
+
             <div className="analysis-summary-grid">
               <MiniMetric label={text.currentPrice} value={latestPrice === null ? <UnavailableValue text={text} /> : formatCurrency(latestPrice, analysis?.currency ?? row.currency, lang)} />
               <MiniMetric label={text.currency} value={analysis?.currency ?? row.currency ?? <UnavailableValue text={text} />} />
@@ -3978,7 +4040,7 @@ function GrowthStockTable({
                         aria-label={compareAriaLabel(row.symbol, lang)}
                         aria-pressed={comparisonSymbols.includes(row.symbol)}
                       >
-                        <BarChart3 size={15} />{text.compare}
+                        <BarChart3 size={15} />{compareActionLabel(comparisonSymbols.includes(row.symbol), text, lang)}
                       </button>
                       <button className="ghost-button" type="button" onClick={() => openAnalysis(row)} aria-label={analysisAriaLabel(row.symbol, lang)}>
                         <BookOpen size={15} />{text.viewAnalysis}
@@ -4053,7 +4115,7 @@ function GrowthStockCard({
           </>
         ) : null}
       </div>
-      <p className="muted">{text.insufficientMethodology}</p>
+      <p className="muted">{methodologyDescription(row, lang)}</p>
       {!compact ? (
         <div className="card-actions">
           <button
@@ -4064,7 +4126,7 @@ function GrowthStockCard({
             aria-label={compareAriaLabel(row.symbol, lang)}
             aria-pressed={selectedForComparison}
           >
-            <BarChart3 size={16} />{selectedForComparison ? text.compare : text.compare}
+            <BarChart3 size={16} />{compareActionLabel(selectedForComparison, text, lang)}
           </button>
           <button className="ghost-button" type="button" onClick={onAnalysis} aria-label={analysisAriaLabel(row.symbol, lang)}>
             <BookOpen size={16} />{text.viewAnalysis}

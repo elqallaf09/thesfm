@@ -22011,3 +22011,26 @@ body[data-app-view] .app-shell,
   max-height: 220px;
   overflow: auto;
 }
+
+/* Visual QA fix: keep the desktop navigation rail in the declared grid rail area. */
+@media (min-width: 761px) {
+  body:not(.intro-running) .app-shell,
+  body[data-app-view] .app-shell,
+  .app-shell {
+    grid-template-areas:
+      "rail topbar topbar"
+      "rail main main"
+      "rail footer footer" !important;
+    align-items: start !important;
+  }
+
+  .desktop-trading-rail {
+    grid-area: rail !important;
+    align-self: start !important;
+    width: var(--terminal-rail, var(--sfm-rail, 178px)) !important;
+    min-width: var(--terminal-rail, var(--sfm-rail, 178px)) !important;
+    max-height: calc(100dvh - 48px) !important;
+    position: sticky !important;
+    top: 18px !important;
+  }
+}

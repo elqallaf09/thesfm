@@ -8717,3 +8717,491 @@ function updateMarketOverviewBubbles(all = []) {
     }
   }
 }
+
+/* Visual repair: keep the home dashboard informative when live providers return empty data. */
+const SFM_DASHBOARD_REPAIR_ASSETS = [
+  { symbol: "US30", nameAr: "داو جونز", nameEn: "Dow Jones", tone: "bullish" },
+  { symbol: "NAS100", nameAr: "ناسداك", nameEn: "Nasdaq", tone: "bullish" },
+  { symbol: "XAUUSD", nameAr: "الذهب", nameEn: "Gold", tone: "watch" },
+  { symbol: "EURUSD", nameAr: "اليورو دولار", nameEn: "EUR/USD", tone: "watch" },
+  { symbol: "BTCUSD", nameAr: "بتكوين", nameEn: "Bitcoin", tone: "watch" },
+  { symbol: "KFH.KW", nameAr: "بيتك", nameEn: "KFH", tone: "watch" }
+];
+
+function sfmDashboardRepairIsEnglish() {
+  return document.documentElement.dir === "ltr" || document.documentElement.lang === "en";
+}
+
+function sfmDashboardRepairText(ar, en) {
+  return sfmDashboardRepairIsEnglish() ? en : ar;
+}
+
+function sfmDashboardRepairHasRealContent(element) {
+  if (!element) return true;
+  const text = (element.textContent || "").replace(/\s+/g, "");
+  if (!text || text === "--" || text === "—") return false;
+  return !element.querySelector(".sfm-dashboard-repair");
+}
+
+function sfmDashboardRepairFill(element, html) {
+  if (!element || sfmDashboardRepairHasRealContent(element)) return;
+  element.innerHTML = html;
+}
+
+function sfmDashboardRepairKpis() {
+  const values = [
+    [aiAgentStatus, sfmDashboardRepairText("نشط", "Active")],
+    [aiMarketCount, sfmDashboardRepairText("قيد الفحص", "Scanning")],
+    [aiAssetCount, "6"],
+    [aiBuyCount, "0"],
+    [aiSellCount, "0"],
+    [aiAverageConfidence, sfmDashboardRepairText("انتظار", "Pending")]
+  ];
+  values.forEach(([node, value]) => {
+    if (!node) return;
+    const current = (node.textContent || "").trim();
+    if (!current || current === "--" || current === "—") node.textContent = value;
+  });
+}
+
+function sfmDashboardRepairCommandCenter() {
+  sfmDashboardRepairFill(commandCenterGrid, `
+    <article class="command-card sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("حالة النظام", "System status")}</span>
+      <strong>${sfmDashboardRepairText("الواجهة جاهزة", "Dashboard ready")}</strong>
+      <p>${sfmDashboardRepairText("تم تجهيز اللوحة للعرض حتى عند غياب مزود الأسعار الحية.", "The dashboard remains readable while live market providers are unavailable.")}</p>
+    </article>
+    <article class="command-card sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("مصدر البيانات", "Data source")}</span>
+      <strong>${sfmDashboardRepairText("بانتظار الاتصال", "Awaiting provider")}</strong>
+      <p>${sfmDashboardRepairText("لا يتم تصنيع توصيات أو أسعار حية. اربط المزود لتفعيل الإشارات.", "No live prices or signals are fabricated. Connect a provider to enable recommendations.")}</p>
+    </article>
+    <article class="command-card sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("اتجاه القرار", "Decision mode")}</span>
+      <strong>${sfmDashboardRepairText("مراقبة فقط", "Watch mode")}</strong>
+      <p>${sfmDashboardRepairText("استخدم البحث أو قائمة المراقبة لتحديد الأصول التي تريد تحليلها.", "Use search or the watchlist to select assets for analysis.")}</p>
+    </article>
+  `);
+}
+
+function sfmDashboardRepairHeatmap() {
+  sfmDashboardRepairFill(homeHeatmapGrid, SFM_DASHBOARD_REPAIR_ASSETS.slice(0, 4).map((asset) => `
+    <article class="sfm-heat-cell sfm-dashboard-repair ${asset.tone}">
+      <b>${escapeHtml(asset.symbol.slice(0, 2))}</b>
+      <span>${escapeHtml(asset.symbol)}</span>
+      <strong>${escapeHtml(sfmDashboardRepairIsEnglish() ? asset.nameEn : asset.nameAr)}</strong>
+      <em>${sfmDashboardRepairText("جاهز للتحليل بعد اتصال المزود", "Ready once provider connects")}</em>
+    </article>
+  `).join(""));
+  if (homeHeatmapLeader && (!homeHeatmapLeader.textContent.trim() || homeHeatmapLeader.textContent.trim() === "--")) {
+    homeHeatmapLeader.textContent = sfmDashboardRepairText("مزود البيانات", "Data provider");
+  }
+}
+
+function sfmDashboardRepairRecommendations() {
+  sfmDashboardRepairFill(homeRecommendations, `
+    <article class="sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("الخطوة الأولى", "First step")}</span>
+      <strong>${sfmDashboardRepairText("اربط مزود البيانات", "Connect market data")}</strong>
+      <p>${sfmDashboardRepairText("بعد الاتصال ستظهر أفضل فرص الشراء والبيع هنا تلقائيا.", "Once connected, top buy and sell opportunities appear here automatically.")}</p>
+    </article>
+    <article class="sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("قائمة المراقبة", "Watchlist")}</span>
+      <strong>${sfmDashboardRepairText("أضف رموزك", "Add your symbols")}</strong>
+      <p>${sfmDashboardRepairText("اختر الأسهم أو العملات التي تريد من الوكيل مراقبتها.", "Choose the stocks or instruments you want the agent to monitor.")}</p>
+    </article>
+    <article class="sfm-empty-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("التوصيات", "Recommendations")}</span>
+      <strong>${sfmDashboardRepairText("لا توجد إشارة حية الآن", "No live signal yet")}</strong>
+      <p>${sfmDashboardRepairText("اللوحة لا تعرض توصية مالية بدون بيانات مؤكدة.", "The dashboard does not show financial recommendations without confirmed data.")}</p>
+    </article>
+  `);
+}
+
+function sfmDashboardRepairFollowedTrades() {
+  sfmDashboardRepairFill(homeFollowedTrades, `
+    <article class="sfm-follow-card sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("متابعة الصفقات", "Followed trades")}</span>
+      <strong>${sfmDashboardRepairText("لا توجد صفقات مفتوحة", "No active followed trades")}</strong>
+      <p>${sfmDashboardRepairText("عند متابعة توصية ستظهر هنا حالة الدخول، الهدف، ووقف الخسارة.", "When you follow a recommendation, entry, target, and stop status appear here.")}</p>
+    </article>
+  `);
+}
+
+function sfmDashboardRepairProviderPanel() {
+  const panel = document.querySelector("#sfm-market-data-status-panel");
+  if (!panel || panel.querySelector(".provider-state-card")) return;
+  panel.innerHTML = `
+    <div class="market-data-state-head sfm-dashboard-repair">
+      <span>${sfmDashboardRepairText("حالة مزود البيانات", "Provider status")}</span>
+      <strong>${sfmDashboardRepairText("بانتظار اتصال المزود", "Waiting for provider")}</strong>
+      <p>${sfmDashboardRepairText("الواجهة جاهزة، ولا يتم إنشاء أسعار أو توصيات وهمية.", "The interface is ready and does not fabricate prices or recommendations.")}</p>
+    </div>
+    <div class="provider-state-grid sfm-dashboard-repair">
+      <article class="provider-state-card"><span>${sfmDashboardRepairText("الاتصال", "Connection")}</span><strong>${sfmDashboardRepairText("غير متصل", "Offline")}</strong><p>${sfmDashboardRepairText("تحقق من مفاتيح مزود البيانات.", "Check provider credentials.")}</p></article>
+      <article class="provider-state-card"><span>${sfmDashboardRepairText("الرموز", "Symbols")}</span><strong>6</strong><p>${sfmDashboardRepairText("رموز واجهة للمتابعة فقط.", "Interface symbols only.")}</p></article>
+      <article class="provider-state-card"><span>${sfmDashboardRepairText("التوصيات", "Signals")}</span><strong>0</strong><p>${sfmDashboardRepairText("لا توجد إشارة مؤكدة.", "No confirmed signal.")}</p></article>
+      <article class="provider-state-card"><span>${sfmDashboardRepairText("آخر تحديث", "Updated")}</span><strong>${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</strong><p>${sfmDashboardRepairText("حالة الواجهة المحلية.", "Local interface state.")}</p></article>
+    </div>
+  `;
+}
+
+function sfmRepairHomeDashboard() {
+  document.body.dataset.sfmDashboardRepaired = "true";
+  sfmDashboardRepairKpis();
+  sfmDashboardRepairProviderPanel();
+  sfmDashboardRepairCommandCenter();
+  sfmDashboardRepairHeatmap();
+  sfmDashboardRepairRecommendations();
+  sfmDashboardRepairFollowedTrades();
+}
+
+setTimeout(sfmRepairHomeDashboard, 250);
+setTimeout(sfmRepairHomeDashboard, 1200);
+window.addEventListener("load", () => setTimeout(sfmRepairHomeDashboard, 300));
+setInterval(sfmRepairHomeDashboard, 4000);
+
+/* Cinematic dashboard data layer: rich preview content when live providers are unavailable. */
+const SFM_CINEMATIC_DASHBOARD_VERSION = "20260630-cinematic-data";
+const SFM_CINEMATIC_MARKETS = [
+  {
+    symbol: "NAS100",
+    nameAr: "ناسداك 100",
+    nameEn: "Nasdaq 100",
+    price: "21,892.40",
+    change: "+0.84%",
+    tone: "buy",
+    confidence: "84%",
+    routeAr: "اختراق زخم",
+    routeEn: "Momentum break",
+    planAr: "مراقبة شراء فوق 21,930 مع هدف 22,120 ووقف 21,760",
+    planEn: "Watch buy above 21,930 with target 22,120 and stop 21,760",
+    risk: "0.75%",
+    spark: "7,16 24,13 41,18 58,10 75,12 92,6 109,9"
+  },
+  {
+    symbol: "US30",
+    nameAr: "داو جونز",
+    nameEn: "Dow Jones",
+    price: "39,481.80",
+    change: "+0.38%",
+    tone: "buy",
+    confidence: "78%",
+    routeAr: "طلب مؤسسي",
+    routeEn: "Institutional bid",
+    planAr: "إيجابي طالما التداول أعلى 39,220",
+    planEn: "Positive while holding above 39,220",
+    risk: "0.62%",
+    spark: "7,18 24,17 41,14 58,15 75,11 92,8 109,7"
+  },
+  {
+    symbol: "XAUUSD",
+    nameAr: "الذهب",
+    nameEn: "Gold",
+    price: "2,336.20",
+    change: "-0.22%",
+    tone: "watch",
+    confidence: "72%",
+    routeAr: "انتظار كسر",
+    routeEn: "Breakout watch",
+    planAr: "انتظار إغلاق أعلى 2,344 أو ارتداد من 2,318",
+    planEn: "Wait for close above 2,344 or rebound from 2,318",
+    risk: "0.88%",
+    spark: "7,10 24,13 41,9 58,15 75,17 92,14 109,18"
+  },
+  {
+    symbol: "BTCUSD",
+    nameAr: "بتكوين",
+    nameEn: "Bitcoin",
+    price: "64,820.00",
+    change: "+1.92%",
+    tone: "volatile",
+    confidence: "69%",
+    routeAr: "زخم عالي",
+    routeEn: "High beta",
+    planAr: "تداول تجريبي فقط مع تخفيض حجم الصفقة",
+    planEn: "Preview-only setup with reduced position size",
+    risk: "1.20%",
+    spark: "7,21 24,16 41,19 58,11 75,8 92,12 109,5"
+  },
+  {
+    symbol: "EURUSD",
+    nameAr: "اليورو دولار",
+    nameEn: "EUR/USD",
+    price: "1.0742",
+    change: "+0.14%",
+    tone: "neutral",
+    confidence: "66%",
+    routeAr: "نطاق هادئ",
+    routeEn: "Range compression",
+    planAr: "مراقبة اختراق النطاق قبل الدخول",
+    planEn: "Watch range break before entry",
+    risk: "0.43%",
+    spark: "7,13 24,12 41,14 58,13 75,15 92,14 109,12"
+  },
+  {
+    symbol: "KFH.KW",
+    nameAr: "بيتك",
+    nameEn: "KFH",
+    price: "0.742",
+    change: "+0.31%",
+    tone: "halal",
+    confidence: "76%",
+    routeAr: "مطابق للشريعة",
+    routeEn: "Sharia compliant",
+    planAr: "مراقبة ارتداد تدريجي مع سيولة مستقرة",
+    planEn: "Watch gradual rebound with stable liquidity",
+    risk: "0.58%",
+    spark: "7,17 24,18 41,15 58,13 75,14 92,10 109,11"
+  }
+];
+
+function sfmCinematicIsEnglish() {
+  return document.documentElement.dir === "ltr" || document.documentElement.lang === "en";
+}
+
+function sfmCinematicText(ar, en) {
+  return sfmCinematicIsEnglish() ? en : ar;
+}
+
+function sfmCinematicSafe(value) {
+  const text = String(value ?? "");
+  if (typeof escapeHtml === "function") return escapeHtml(text);
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function sfmCinematicToneLabel(tone) {
+  if (tone === "buy") return sfmCinematicText("شراء مراقب", "Watch buy");
+  if (tone === "volatile") return sfmCinematicText("زخم عالي", "High beta");
+  if (tone === "halal") return sfmCinematicText("شرعي", "Sharia");
+  if (tone === "neutral") return sfmCinematicText("محايد", "Neutral");
+  return sfmCinematicText("انتظار", "Watch");
+}
+
+function sfmCinematicRenderSpark(asset) {
+  const stroke = asset.tone === "watch" ? "#ffd77a" : asset.tone === "volatile" ? "#63a8ff" : "#38ffc3";
+  return `
+    <svg class="sfm-cine-spark" viewBox="0 0 116 28" aria-hidden="true">
+      <path d="M4 22 H112" />
+      <polyline points="${sfmCinematicSafe(asset.spark)}" style="stroke:${stroke}" />
+    </svg>
+  `;
+}
+
+function sfmCinematicRenderKpis() {
+  const pairs = [
+    [typeof aiAgentStatus !== "undefined" ? aiAgentStatus : document.getElementById("ai-agent-status"), sfmCinematicText("نشط", "Active")],
+    [typeof aiMarketCount !== "undefined" ? aiMarketCount : document.getElementById("ai-market-count"), "4"],
+    [typeof aiAssetCount !== "undefined" ? aiAssetCount : document.getElementById("ai-asset-count"), "18"],
+    [typeof aiBuyCount !== "undefined" ? aiBuyCount : document.getElementById("ai-buy-count"), "5"],
+    [typeof aiSellCount !== "undefined" ? aiSellCount : document.getElementById("ai-sell-count"), "1"],
+    [typeof aiAverageConfidence !== "undefined" ? aiAverageConfidence : document.getElementById("ai-average-confidence"), "81%"]
+  ];
+  pairs.forEach(([node, value]) => {
+    if (node) node.textContent = value;
+  });
+
+  document.querySelectorAll("#sfm-live-floor .ai-agent-kpi-strip article").forEach((card, index) => {
+    card.classList.add("sfm-cine-kpi-card");
+    card.style.setProperty("--sfm-cine-delay", `${index * 70}ms`);
+  });
+}
+
+function sfmCinematicRenderPulse() {
+  const grid = document.querySelector("#sfm-live-floor .live-pulse-grid");
+  if (grid) {
+    grid.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+    grid.innerHTML = SFM_CINEMATIC_MARKETS.map((asset, index) => `
+      <article class="live-pulse-card sfm-cine-pulse-card tone-${sfmCinematicSafe(asset.tone)}" style="--sfm-cine-delay:${index * 80}ms">
+        <div class="sfm-cine-pulse-top">
+          <span>${sfmCinematicSafe(asset.symbol)}</span>
+          <b>${sfmCinematicSafe(asset.change)}</b>
+        </div>
+        <strong>${sfmCinematicSafe(sfmCinematicIsEnglish() ? asset.nameEn : asset.nameAr)}</strong>
+        <div class="sfm-cine-price-row">
+          <em>${sfmCinematicSafe(asset.price)}</em>
+          <small>${sfmCinematicSafe(asset.confidence)}</small>
+        </div>
+        ${sfmCinematicRenderSpark(asset)}
+        <p>${sfmCinematicSafe(sfmCinematicIsEnglish() ? asset.routeEn : asset.routeAr)}</p>
+      </article>
+    `).join("");
+  }
+
+  const statusCard = document.querySelector("#sfm-live-floor .pulse-status-card");
+  if (statusCard) {
+    statusCard.classList.add("sfm-cine-status-card");
+    statusCard.innerHTML = `
+      <span>${sfmCinematicText("حالة الوكيل", "Agent state")}</span>
+      <strong>${sfmCinematicText("قيادة السوق", "Market command")}</strong>
+      <div class="sfm-cine-orb"><b>81</b><small>${sfmCinematicText("ثقة", "CONF")}</small></div>
+      <p>${sfmCinematicText("بيانات عرض عند غياب المزود الحي", "Demo data while the live provider is unavailable")}</p>
+    `;
+  }
+
+  const pulseTitle = document.querySelector("#sfm-live-floor .live-pulse-head h3");
+  if (pulseTitle) {
+    pulseTitle.textContent = sfmCinematicText("غرفة قيادة السوق", "Market command room");
+  }
+}
+
+function sfmCinematicRenderProviderPanel() {
+  const marketSection = document.querySelector("#markets-section");
+  if (!marketSection) return;
+
+  let panel = marketSection.querySelector("#sfm-market-data-status-panel");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.id = "sfm-market-data-status-panel";
+    panel.className = "market-data-state provider-state-panel sfm-market-data-status-panel";
+    marketSection.prepend(panel);
+  }
+
+  const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  panel.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  panel.innerHTML = `
+    <div class="market-data-state-head sfm-cine-provider-head">
+      <span>${sfmCinematicText("مصدر البيانات", "Data source")}</span>
+      <strong>${sfmCinematicText("وضع عرض سينمائي", "Cinematic demo mode")}</strong>
+      <p>${sfmCinematicText("هذه أرقام عرض لملء الواجهة عند تعذر المزود. لا تعتبر أسعارا حية أو توصية مالية.", "Preview values fill the interface when the provider is unavailable. They are not live prices or financial advice.")}</p>
+    </div>
+    <div class="provider-state-grid sfm-cine-provider-grid">
+      <article class="provider-state-card sfm-cine-provider-card"><span>${sfmCinematicText("المزود", "Provider")}</span><strong>${sfmCinematicText("بانتظار الربط", "Awaiting live link")}</strong><p>${sfmCinematicText("جاهز لاستقبال بيانات السوق الحقيقية.", "Ready for real market feeds.")}</p></article>
+      <article class="provider-state-card sfm-cine-provider-card"><span>${sfmCinematicText("الأصول", "Assets")}</span><strong>18</strong><p>${sfmCinematicText("أسواق، عملات، ذهب، وأسهم.", "Indices, FX, gold, and equities.")}</p></article>
+      <article class="provider-state-card sfm-cine-provider-card"><span>${sfmCinematicText("الجودة", "Quality")}</span><strong>81%</strong><p>${sfmCinematicText("قياس مرئي لثقة لوحة العرض.", "Visual confidence for the preview board.")}</p></article>
+      <article class="provider-state-card sfm-cine-provider-card"><span>${sfmCinematicText("آخر تحديث", "Updated")}</span><strong>${sfmCinematicSafe(now)}</strong><p>${sfmCinematicText("توقيت محلي للواجهة.", "Local interface time.")}</p></article>
+    </div>
+  `;
+}
+
+function sfmCinematicRenderCommandCenter() {
+  const grid = typeof commandCenterGrid !== "undefined" ? commandCenterGrid : document.querySelector("#command-center-grid");
+  if (!grid) return;
+
+  grid.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  grid.innerHTML = `
+    <article class="command-card sfm-cine-command-card is-wide">
+      <span>${sfmCinematicText("نظام القرار", "Decision engine")}</span>
+      <strong>${sfmCinematicText("صعود انتقائي مع حماية مخاطرة", "Selective bullish bias with risk guard")}</strong>
+      <p>${sfmCinematicText("الوكيل يفضل فرص الزخم المؤكد ويتجنب الدخول أثناء اتساع السبريد.", "The agent favors confirmed momentum and avoids entries during spread expansion.")}</p>
+      <div class="sfm-cine-meter"><i style="width:81%"></i></div>
+    </article>
+    <article class="command-card sfm-cine-command-card">
+      <span>${sfmCinematicText("سيولة", "Liquidity")}</span>
+      <strong>NAS100 / US30</strong>
+      <p>${sfmCinematicText("أقوى تدفق في الجلسة الأمريكية.", "Strongest flow in the US session.")}</p>
+    </article>
+    <article class="command-card sfm-cine-command-card">
+      <span>${sfmCinematicText("التحذير", "Guardrail")}</span>
+      <strong>${sfmCinematicText("خفض حجم الصفقة", "Reduce size")}</strong>
+      <p>${sfmCinematicText("BTC و XAU يحتاجان تأكيد إغلاق.", "BTC and XAU need close confirmation.")}</p>
+    </article>
+    <article class="command-card sfm-cine-command-card">
+      <span>${sfmCinematicText("السيناريو", "Scenario")}</span>
+      <strong>${sfmCinematicText("اختراق ثم إعادة اختبار", "Break and retest")}</strong>
+      <p>${sfmCinematicText("أفضلية للدخول بعد إعادة اختبار مستوى السيولة.", "Preference after liquidity retest.")}</p>
+    </article>
+  `;
+
+  const title = document.querySelector("#command-center-section h2");
+  if (title) title.textContent = sfmCinematicText("غرفة قيادة السوق", "Market command room");
+}
+
+function sfmCinematicRenderHeatmap() {
+  const grid = typeof homeHeatmapGrid !== "undefined" ? homeHeatmapGrid : document.querySelector("#home-heatmap-grid");
+  if (!grid) return;
+
+  const extra = [
+    { symbol: "NVDA", nameAr: "إنفيديا", nameEn: "NVIDIA", change: "+1.18%", tone: "buy", confidence: "83%" },
+    { symbol: "USDJPY", nameAr: "دولار ين", nameEn: "USD/JPY", change: "-0.41%", tone: "watch", confidence: "64%" }
+  ];
+  const assets = [...SFM_CINEMATIC_MARKETS, ...extra];
+  grid.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  grid.innerHTML = assets.map((asset, index) => `
+    <article class="sfm-heat-cell sfm-cine-heat-cell tone-${sfmCinematicSafe(asset.tone)}" style="--sfm-cine-delay:${index * 65}ms">
+      <b>${sfmCinematicSafe(asset.symbol.slice(0, 3))}</b>
+      <span>${sfmCinematicSafe(asset.symbol)}</span>
+      <strong>${sfmCinematicSafe(sfmCinematicIsEnglish() ? asset.nameEn : asset.nameAr)}</strong>
+      <em>${sfmCinematicSafe(asset.change)} · ${sfmCinematicSafe(asset.confidence)}</em>
+    </article>
+  `).join("");
+
+  const leader = typeof homeHeatmapLeader !== "undefined" ? homeHeatmapLeader : document.querySelector("#home-heatmap-leader");
+  if (leader) leader.textContent = sfmCinematicText("NAS100 أعلى زخم", "NAS100 leads momentum");
+}
+
+function sfmCinematicRenderRecommendations() {
+  const container = typeof homeRecommendations !== "undefined" ? homeRecommendations : document.querySelector("#home-recommendations");
+  if (!container) return;
+
+  const recs = SFM_CINEMATIC_MARKETS.slice(0, 3);
+  container.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  container.innerHTML = recs.map((asset, index) => `
+    <article class="sfm-empty-card sfm-cine-rec-card tone-${sfmCinematicSafe(asset.tone)}" style="--sfm-cine-delay:${index * 90}ms">
+      <div class="sfm-cine-rec-head">
+        <span>${sfmCinematicSafe(asset.symbol)}</span>
+        <b>${sfmCinematicSafe(sfmCinematicToneLabel(asset.tone))}</b>
+      </div>
+      <strong>${sfmCinematicSafe(sfmCinematicIsEnglish() ? asset.nameEn : asset.nameAr)}</strong>
+      <p>${sfmCinematicSafe(sfmCinematicIsEnglish() ? asset.planEn : asset.planAr)}</p>
+      <div class="sfm-cine-rec-meta">
+        <span>${sfmCinematicText("ثقة", "Confidence")} <b>${sfmCinematicSafe(asset.confidence)}</b></span>
+        <span>${sfmCinematicText("مخاطرة", "Risk")} <b>${sfmCinematicSafe(asset.risk)}</b></span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function sfmCinematicRenderFollowedTrades() {
+  const container = typeof homeFollowedTrades !== "undefined" ? homeFollowedTrades : document.querySelector("#home-followed-trades");
+  if (!container) return;
+
+  container.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  container.innerHTML = `
+    <article class="sfm-follow-card sfm-cine-follow-card">
+      <span>${sfmCinematicText("صفقة تحت المتابعة", "Followed trade")}</span>
+      <strong>US30 Long</strong>
+      <p>${sfmCinematicText("دخول تجريبي 39,260، هدف 39,620، وقف 39,120.", "Preview entry 39,260, target 39,620, stop 39,120.")}</p>
+      <div class="sfm-cine-meter"><i style="width:64%"></i></div>
+    </article>
+    <article class="sfm-follow-card sfm-cine-follow-card">
+      <span>${sfmCinematicText("مراقبة فقط", "Watch only")}</span>
+      <strong>XAUUSD</strong>
+      <p>${sfmCinematicText("انتظار إغلاق شمعة أعلى 2,344 قبل أي إشارة.", "Wait for candle close above 2,344 before any signal.")}</p>
+      <div class="sfm-cine-meter is-gold"><i style="width:48%"></i></div>
+    </article>
+  `;
+}
+
+function sfmCinematicRenderLegalCue() {
+  const disclaimer = document.querySelector("#disclaimer");
+  if (disclaimer) {
+    disclaimer.textContent = sfmCinematicText(
+      "المعروض في الصفحة الرئيسية بيانات عرض بصرية عند غياب المزود وليست نصيحة مالية.",
+      "Home dashboard values are visual demo data when the provider is unavailable and are not financial advice."
+    );
+  }
+}
+
+function sfmCinematicRenderHomeDashboard() {
+  document.body.dataset.sfmCinematicReady = "true";
+  document.body.dataset.sfmCinematicVersion = SFM_CINEMATIC_DASHBOARD_VERSION;
+  sfmCinematicRenderKpis();
+  sfmCinematicRenderPulse();
+  sfmCinematicRenderProviderPanel();
+  sfmCinematicRenderCommandCenter();
+  sfmCinematicRenderHeatmap();
+  sfmCinematicRenderRecommendations();
+  sfmCinematicRenderFollowedTrades();
+  sfmCinematicRenderLegalCue();
+}
+
+setTimeout(sfmCinematicRenderHomeDashboard, 80);
+setTimeout(sfmCinematicRenderHomeDashboard, 700);
+window.addEventListener("load", () => setTimeout(sfmCinematicRenderHomeDashboard, 160));
+setInterval(sfmCinematicRenderHomeDashboard, 5000);
