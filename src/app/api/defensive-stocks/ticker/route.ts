@@ -12,22 +12,11 @@ const DEFENSIVE_TICKER_SYMBOLS = [
   'PEP',
   'WMT',
   'COST',
+  'JNJ',
   'CL',
   'KMB',
   'GIS',
   'HSY',
-  'MCD',
-  'KR',
-  'JNJ',
-  'ABBV',
-  'UNH',
-  'MRK',
-  'PFE',
-  'T',
-  'VZ',
-  'NEE',
-  'DUK',
-  'SO',
 ] as const;
 
 const DEFENSIVE_TICKER_NAMES: Record<string, string> = {

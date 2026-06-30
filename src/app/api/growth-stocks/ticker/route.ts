@@ -10,25 +10,15 @@ export const dynamic = 'force-dynamic';
 const GROWTH_TICKER_SYMBOLS = [
   'NVDA',
   'MSFT',
-  'AAPL',
-  'AMZN',
   'GOOGL',
+  'AMZN',
   'META',
   'TSLA',
-  'AVGO',
   'AMD',
   'PLTR',
-  'SNOW',
-  'NOW',
-  'CRM',
-  'SHOP',
-  'UBER',
-  'MELI',
   'DDOG',
-  'NET',
-  'CRWD',
+  'NOW',
   'RBLX',
-  'ABNB',
 ] as const;
 
 const GROWTH_TICKER_NAMES: Record<string, string> = {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Activity, AlertCircle } from 'lucide-react';
 import type { StockCategoryId, StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
@@ -18,6 +18,7 @@ const labels = {
     title: 'شريط الأسهم',
     subtitle: 'رموز مرتبطة بهذا التصنيف فقط.',
     unavailable: 'لا توجد بيانات أسعار متاحة حاليًا.',
+    notAvailable: 'غير متاح',
     shariaUnavailable: 'لا توجد قائمة أسهم شرعية موثقة حاليًا.',
     symbolsOnly: 'تُعرض الرموز فقط عند تعذر جلب الأسعار الحية.',
   },
@@ -25,6 +26,7 @@ const labels = {
     title: 'Stock ticker',
     subtitle: 'Only symbols related to this category.',
     unavailable: 'No price data is available right now.',
+    notAvailable: 'Unavailable',
     shariaUnavailable: 'No verified Sharia-compliant stock list is available right now.',
     symbolsOnly: 'Symbols only are shown when live prices cannot be fetched.',
   },
@@ -32,6 +34,7 @@ const labels = {
     title: 'Bandeau actions',
     subtitle: 'Uniquement les symboles liés à cette catégorie.',
     unavailable: 'Aucune donnée de prix n’est disponible pour le moment.',
+    notAvailable: 'Indisponible',
     shariaUnavailable: 'Aucune liste d’actions conformes à la charia vérifiée n’est disponible actuellement.',
     symbolsOnly: 'Seuls les symboles sont affichés lorsque les prix ne sont pas disponibles.',
   },
@@ -44,7 +47,6 @@ function langFromLocale(locale: string) {
 }
 
 export function CategoryStockTicker({
-  categoryType,
   symbols,
   priceData,
   direction,
@@ -52,29 +54,10 @@ export function CategoryStockTicker({
 }: CategoryStockTickerProps) {
   const lang = langFromLocale(locale);
   const text = labels[lang];
-
-  if (categoryType === 'sharia') {
-    return (
-      <section className="rounded-[1.7rem] border border-amber-200 bg-amber-50/80 p-4 shadow-sm dark:border-amber-500/30 dark:bg-amber-950/20" dir={direction}>
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm dark:bg-slate-900 dark:text-amber-200">
-            <AlertCircle size={18} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-black text-slate-950 dark:text-white">{text.title}</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-100">
-              {text.shariaUnavailable}
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const priceMap = new Map(priceData.map(item => [item.symbol, item]));
+  const priceMap = new Map(priceData.map(item => [item.symbol.toUpperCase(), item]));
   const tickerItems = symbols.slice(0, 20).map(stock => ({
     stock,
-    price: priceMap.get(stock.symbol),
+    price: priceMap.get(stock.symbol.toUpperCase()),
   }));
   const availablePrices = tickerItems.filter(item => item.price?.available && item.price.price !== null);
 
@@ -120,15 +103,15 @@ export function CategoryStockTicker({
             symbol: stock.symbol,
             name: stock.name,
             price: hasPrice ? price?.price ?? null : null,
-            currency: 'USD',
+            currency: null,
             changePercent: hasPrice ? price?.changePercent ?? null : null,
-            source: price?.source ?? 'Finnhub',
+            source: price?.source ?? null,
             available: hasPrice,
             meta: stock.filter.replace(/_/g, ' '),
           };
         })}
         locale={locale}
-        unavailableLabel={text.unavailable}
+        unavailableLabel={text.notAvailable}
         className="min-w-0"
         viewportClassName="pb-1"
         direction="ltr"
@@ -139,4 +122,5 @@ export function CategoryStockTicker({
 }
 
 export default CategoryStockTicker;
+
 

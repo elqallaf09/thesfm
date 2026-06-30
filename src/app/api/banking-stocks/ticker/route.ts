@@ -10,24 +10,12 @@ export const dynamic = 'force-dynamic';
 const BANK_TICKER_SYMBOLS = [
   'JPM',
   'BAC',
-  'WFC',
   'C',
+  'WFC',
   'GS',
   'MS',
   'USB',
   'PNC',
-  'TFC',
-  'SCHW',
-  'BLK',
-  'AXP',
-  'V',
-  'MA',
-  'PYPL',
-  'ICE',
-  'CME',
-  'SPGI',
-  'MCO',
-  'BK',
 ] as const;
 
 const BANK_TICKER_NAMES: Record<string, string> = {

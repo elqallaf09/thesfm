@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -1353,7 +1353,14 @@ export function GrowthStocksNewsPage() {
   const { lang, dir } = useLanguage();
   const activeLang = getLang(lang);
   const text = COPY[activeLang];
-  const [tab, setTab] = useState<GrowthTab>(() => getInitialTab());
+  // Initialize to a deterministic value so the server and the first client render
+  // agree. Reading the URL (`?tab=`) inside the useState initializer caused a
+  // hydration mismatch on refresh: the server always rendered "overview" while the
+  // client hydrated whatever tab the URL carried, so React discarded the server HTML
+  // and the page appeared to flash then break. The real URL tab is applied in an
+  // effect after mount (see below).
+  const [tab, setTab] = useState<GrowthTab>('overview');
+  const tabSyncedFromUrl = useRef(false);
   const [ticker, setTicker] = useState<GrowthTickerResponse | null>(null);
   const [news, setNews] = useState<GrowthNewsResponse | null>(null);
   const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
@@ -1398,9 +1405,21 @@ export function GrowthStocksNewsPage() {
         fetch('/api/growth-stocks/movers?limit=5', { cache: 'no-store' }).then(response => response.json() as Promise<StockCategoryMoversResponse>),
       ]);
 
-      if (tickerResult.status === 'fulfilled') setTicker(tickerResult.value);
-      if (newsResult.status === 'fulfilled') setNews(newsResult.value);
-      if (moversResult.status === 'fulfilled') setMovers(moversResult.value);
+      // Preserve previously valid data: only replace state when the new payload is
+      // itself usable, or when we have nothing to fall back to. A failed/degraded
+      // refresh must not blank out content that is already on screen.
+      if (tickerResult.status === 'fulfilled') {
+        const value = tickerResult.value;
+        setTicker(prev => (value?.ok || !prev ? value : prev));
+      }
+      if (newsResult.status === 'fulfilled') {
+        const value = newsResult.value;
+        setNews(prev => (value?.success || !prev ? value : prev));
+      }
+      if (moversResult.status === 'fulfilled') {
+        const value = moversResult.value;
+        setMovers(prev => (value?.ok || !prev ? value : prev));
+      }
 
       if (tickerResult.status === 'rejected' && newsResult.status === 'rejected') {
         setError(text.providerError);
@@ -1417,7 +1436,18 @@ export function GrowthStocksNewsPage() {
     void loadData('initial');
   }, [loadData]);
 
+  // After mount, adopt the tab from the URL (deep-link support) without causing a
+  // hydration mismatch. Runs once.
   useEffect(() => {
+    const urlTab = getInitialTab();
+    tabSyncedFromUrl.current = true;
+    setTab(current => (urlTab !== current ? urlTab : current));
+  }, []);
+
+  // Keep the URL in sync with the active tab, but only after we've read the initial
+  // value from it, so the first render never rewrites the URL out from under hydration.
+  useEffect(() => {
+    if (!tabSyncedFromUrl.current) return;
     updateTabParam(tab);
   }, [tab]);
 
@@ -1469,6 +1499,24 @@ export function GrowthStocksNewsPage() {
       .sort((a, b) => (b.averageChange ?? -Infinity) - (a.averageChange ?? -Infinity))[0] ?? null;
     return { rising, falling, strongest, calmest, bestSector };
   }, [sectorStats, stockRows]);
+
+  // Development-only diagnostics for the refresh/hydration data flow. Never logs
+  // secrets — only counts and lightweight status flags.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    // eslint-disable-next-line no-console
+    console.debug('[GrowthStocks] state', {
+      tickerItems: ticker?.ok ? ticker.items.length : 0,
+      stockRows: stockRows.length,
+      filteredStocks: filteredStocks.length,
+      newsItems: news?.success ? news.items.length : 0,
+      filteredNews: filteredNews.length,
+      moversOk: movers?.ok ?? false,
+      selectedTab: tab,
+      loading,
+      hasError: Boolean(error),
+    });
+  }, [ticker, news, movers, stockRows.length, filteredStocks.length, filteredNews.length, tab, loading, error]);
 
   const resetStockFilters = () => {
     setStockSearch('');

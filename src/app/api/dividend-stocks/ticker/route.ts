@@ -9,25 +9,15 @@ export const dynamic = 'force-dynamic';
 
 const DIVIDEND_TICKER_SYMBOLS = [
   'JNJ',
-  'PG',
-  'KO',
-  'PEP',
-  'XOM',
-  'CVX',
-  'SO',
-  'DUK',
-  'NEE',
-  'VZ',
-  'T',
-  'O',
   'IBM',
-  'MCD',
-  'PM',
-  'MO',
+  'PG',
+  'XOM',
+  'KO',
   'PFE',
+  'PEP',
+  'CVX',
   'ABBV',
-  'KMB',
-  'GIS',
+  'VZ',
 ] as const;
 
 const DIVIDEND_TICKER_NAMES: Record<string, string> = {

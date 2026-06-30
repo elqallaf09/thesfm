@@ -7,29 +7,19 @@ export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 const ENERGY_TICKER_SYMBOLS = [
+  'XLE',
   'XOM',
   'CVX',
-  'SHEL',
-  'BP',
-  'TTE',
   'COP',
-  'EOG',
-  'OXY',
   'SLB',
-  'HAL',
-  'BKR',
-  'LNG',
-  'ENB',
-  'TRP',
-  'KMI',
+  'NEE',
   'FSLR',
   'ENPH',
-  'NEE',
-  'BEP',
   'PLUG',
 ] as const;
 
 const ENERGY_TICKER_NAMES: Record<string, string> = {
+  XLE: 'Energy Select Sector SPDR Fund',
   XOM: 'Exxon Mobil',
   CVX: 'Chevron',
   SHEL: 'Shell',
@@ -53,6 +43,7 @@ const ENERGY_TICKER_NAMES: Record<string, string> = {
 };
 
 const ENERGY_SECTORS: Record<string, string> = {
+  XLE: 'integrated_oil_gas',
   XOM: 'integrated_oil_gas',
   CVX: 'integrated_oil_gas',
   SHEL: 'integrated_oil_gas',

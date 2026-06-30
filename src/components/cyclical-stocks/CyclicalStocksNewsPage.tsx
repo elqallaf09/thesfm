@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
@@ -217,9 +217,6 @@ const CYCLICAL_TICKER_SYMBOLS = [
   'HD',
   'LOW',
   'LVS',
-  'WYNN',
-  'DAL',
-  'BA',
 ] as const;
 const CYCLICAL_TICKER_SYMBOL_NAMES: Record<string, string> = {
   TSLA: 'Tesla',
@@ -4341,4 +4338,5 @@ export function CyclicalStocksNewsPage() {
 }
 
 export default CyclicalStocksNewsPage;
+
 

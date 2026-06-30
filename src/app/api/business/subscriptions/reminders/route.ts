@@ -104,6 +104,27 @@ type RecipientSendResult = {
   error?: string;
 };
 
+type ReminderSendResult =
+  | {
+      userId: string;
+      dedupeKey: string;
+      channel: 'email';
+      recipientType: ReminderRecipientType;
+      status: 'sent';
+      failureReason: null;
+      sentAt: string | null;
+    }
+  | {
+      userId: string;
+      dedupeKey: string;
+      channel: 'email';
+      recipientType: ReminderRecipientType;
+      status: 'skipped' | 'failed';
+      failureReason: string;
+      error?: string;
+      sentAt: string | null;
+    };
+
 type ReminderResult =
   | { userId: string; dedupeKey: string; status: string; channel: 'in_app'; error?: string }
   | RecipientSendResult;
