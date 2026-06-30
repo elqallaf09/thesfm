@@ -5,6 +5,106 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Reusable market ticker engine shared by stock and market pages. */
+.market-ticker-strip[data-market-ticker="true"] {
+  --market-ticker-gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  contain: inline-size;
+}
+
+.market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport > .market-ticker-track {
+  display: flex;
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+  align-items: stretch;
+  gap: 0;
+  direction: inherit;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.market-ticker-strip[data-market-ticker="true"] .market-ticker-set {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: var(--market-ticker-gap);
+  padding-inline-end: var(--market-ticker-gap);
+  direction: inherit;
+}
+
+.market-ticker-strip[data-market-ticker="true"] [role="listitem"] {
+  flex: 0 0 auto;
+}
+
+.market-ticker-strip[data-market-ticker="true"]:hover > .market-ticker-viewport > .market-ticker-track,
+.market-ticker-strip[data-market-ticker="true"]:focus-within > .market-ticker-viewport > .market-ticker-track,
+.market-ticker-strip[data-market-ticker="true"]:active > .market-ticker-viewport > .market-ticker-track,
+.market-ticker-strip[data-market-ticker="true"].is-paused > .market-ticker-viewport > .market-ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes sfmMarketTickerScrollLtr {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes sfmMarketTickerScrollRtl {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@media (max-width: 640px) {
+  .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
+
+  .market-ticker-strip[data-market-ticker="true"] > .market-ticker-viewport > .market-ticker-track {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .market-ticker-strip[data-market-ticker="true"] .market-ticker-set[aria-hidden="true"] {
+    display: none;
+  }
+
+  .market-ticker-strip[data-market-ticker="true"] .market-ticker-set > [aria-hidden="true"] {
+    display: none;
+  }
+}
+
 .sfm-skip-link {
   position: fixed;
   inset-block-start: 12px;

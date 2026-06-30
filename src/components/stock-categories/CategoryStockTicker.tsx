@@ -4,6 +4,7 @@ import { Activity, AlertCircle, TrendingDown, TrendingUp } from 'lucide-react';
 import type { StockCategoryId, StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 
 type CategoryStockTickerProps = {
   categoryType: StockCategoryId;
@@ -136,55 +137,65 @@ export function CategoryStockTicker({
         )}
       </div>
 
-      <div className="min-w-0 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
-        <div className="flex w-max min-w-full gap-3">
-          {tickerItems.map(({ stock, price }) => {
-            const hasPrice = Boolean(price?.available && price.price !== null);
-            const changePercent = hasPrice ? price?.changePercent ?? null : null;
-            const positive = changePercent !== null && changePercent > 0;
-            const negative = changePercent !== null && changePercent < 0;
-            const TrendIcon = negative ? TrendingDown : TrendingUp;
+      <MarketTickerStrip
+        ariaLabel={text.title}
+        className="min-w-0"
+        viewportClassName="pb-1"
+        direction={direction}
+        durationSeconds={44}
+      >
+        {tickerItems.map(({ stock, price }) => {
+          const hasPrice = Boolean(price?.available && price.price !== null);
+          const changePercent = hasPrice ? price?.changePercent ?? null : null;
+          const positive = changePercent !== null && changePercent > 0;
+          const negative = changePercent !== null && changePercent < 0;
+          const TrendIcon = negative ? TrendingDown : TrendingUp;
+          const categoryLabel = stock.filter.replace(/_/g, ' ');
 
-            return (
-              <article
-                key={stock.symbol}
-                className="min-w-[210px] max-w-[250px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
-              >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <AssetIdentity
-                        variant="badge"
-                        symbol={stock.symbol}
-                        name={stock.name}
-                        assetType="stock"
-                        size="sm"
-                        className="min-w-0 text-slate-950 dark:text-white"
-                        showName={false}
-                        symbolClassName="text-base"
-                      />
-                      {hasPrice && (
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-black ${changeBadgeClass(changePercent)}`} dir="ltr">
-                          <TrendIcon size={12} />
-                          {changePercent === null ? '-' : formatPercent(changePercent, locale)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {stock.name}
-                    </p>
+          return (
+            <article
+              key={stock.symbol}
+              role="listitem"
+              className="min-h-[132px] min-w-[210px] max-w-[250px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <AssetIdentity
+                      variant="badge"
+                      symbol={stock.symbol}
+                      name={stock.name}
+                      assetType="stock"
+                      size="sm"
+                      className="min-w-0 text-slate-950 dark:text-white"
+                      showName={false}
+                      symbolClassName="text-base"
+                    />
+                    {hasPrice && (
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-black ${changeBadgeClass(changePercent)}`} dir="ltr">
+                        <TrendIcon size={12} />
+                        {changePercent === null ? '-' : formatPercent(changePercent, locale)}
+                      </span>
+                    )}
                   </div>
-                </div>
-                {hasPrice && (
-                  <p className={`mt-3 text-sm font-black ${positive ? 'text-emerald-700 dark:text-emerald-300' : negative ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`} dir="ltr">
-                    {formatPrice(price!.price!, locale)}
+                  <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {stock.name}
                   </p>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </div>
+                </div>
+              </div>
+              {hasPrice && (
+                <p className={`mt-3 text-sm font-black ${positive ? 'text-emerald-700 dark:text-emerald-300' : negative ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`} dir="ltr">
+                  {formatPrice(price!.price!, locale)}
+                </p>
+              )}
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-normal text-slate-500 dark:text-slate-400">
+                <span className="truncate">{categoryLabel}</span>
+                <span className="shrink-0" dir="ltr">USD / {price?.source ?? 'Finnhub'}</span>
+              </div>
+            </article>
+          );
+        })}
+      </MarketTickerStrip>
     </section>
   );
 }

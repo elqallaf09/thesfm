@@ -41,6 +41,7 @@ import {
   type ReactNode,
 } from 'react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -821,7 +822,7 @@ const STRATEGY_ROWS = [
 ];
 
 function localeFor(lang: LangCode) {
-  if (lang === 'ar') return 'ar-KW';
+  if (lang === 'ar') return 'ar-KW-u-nu-latn';
   if (lang === 'fr') return 'fr-FR';
   return 'en-US';
 }
@@ -1761,15 +1762,17 @@ function EnergyTicker({ items, loading, text, locale, lang }: {
           </div>
         </div>
       ) : items.length > 0 ? (
-        <div className="energyTickerViewport">
-          <div className="energyTickerTrack energyTickerMarquee" role="list">
-            {[0, 1].map(group => (
-              <div className="energyTickerSet" key={group} aria-hidden={group === 1}>
-                {items.map(renderTickerItem)}
-              </div>
-            ))}
-          </div>
-        </div>
+        <MarketTickerStrip
+          ariaLabel={text.marketData}
+          className="energyTickerStrip"
+          viewportClassName="energyTickerViewport"
+          trackClassName="energyTickerTrack energyTickerMarquee"
+          setClassName="energyTickerSet"
+          direction={direction}
+          durationSeconds={42}
+        >
+          {items.map(renderTickerItem)}
+        </MarketTickerStrip>
       ) : (
         <EmptyState title={text.noMarketTitle} body={text.noMarketBody} icon={AlertTriangle} />
       )}

@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -798,7 +799,7 @@ const SECTORS: Record<Exclude<SectorId, 'all'>, { icon: LucideIcon; labels: Reco
 };
 
 const TAB_IDS: DividendTab[] = ['overview', 'explorer', 'featured', 'calendar', 'news', 'education'];
-const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW', en: 'en-US', fr: 'fr-FR' };
+const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW-u-nu-latn', en: 'en-US', fr: 'fr-FR' };
 const NEWS_INITIAL_LIMIT = 6;
 const NEWS_PAGE_SIZE = 8;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
@@ -1595,8 +1596,8 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
       </section>
     );
   }
-  const renderItem = (row: DividendStockRow, group: number) => (
-    <article className="ticker-item" key={`${group}-${row.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
+  const renderItem = (row: DividendStockRow) => (
+    <article className="ticker-item" key={row.symbol} role="listitem" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="ticker-top">
         <div className="ticker-identity">
           <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
@@ -1617,17 +1618,17 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
     </article>
   );
   return (
-    <section className="ticker-panel" aria-label={text.trackedCompanies}>
-      <div className="ticker-viewport">
-        <div className="ticker-track" role="list">
-          {[0, 1].map(group => (
-            <div className="ticker-set" key={group} aria-hidden={group === 1}>
-              {rows.map(row => renderItem(row, group))}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+    <MarketTickerStrip
+      ariaLabel={text.trackedCompanies}
+      className="ticker-panel"
+      viewportClassName="ticker-viewport"
+      trackClassName="ticker-track"
+      setClassName="ticker-set"
+      direction={lang === 'ar' ? 'rtl' : 'ltr'}
+      durationSeconds={52}
+    >
+      {rows.map(renderItem)}
+    </MarketTickerStrip>
   );
 }
 

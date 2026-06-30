@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -849,7 +850,7 @@ const TAB_IDS: GrowthTab[] = ['overview', 'stocks', 'news', 'sectors'];
 const INITIAL_NEWS_LIMIT = 9;
 const NEWS_PAGE_SIZE = 9;
 const MOVER_VISIBLE_LIMIT = 5;
-const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW', en: 'en-US', fr: 'fr-FR' };
+const LOCALE_BY_LANG: Record<LangCode, string> = { ar: 'ar-KW-u-nu-latn', en: 'en-US', fr: 'fr-FR' };
 
 function getLang(lang: string): LangCode {
   return lang === 'en' || lang === 'fr' ? lang : 'ar';
@@ -2373,6 +2374,17 @@ export function GrowthStocksNewsPage() {
           justify-content: space-between;
           gap: 12px;
         }
+        .ticker-identity {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+        .ticker-identity .asset-avatar {
+          width: 30px;
+          height: 30px;
+          flex: 0 0 30px;
+        }
         .ticker-symbol,
         .symbol {
           direction: ltr;
@@ -3194,23 +3206,29 @@ function TickerStrip({ items, loading, lang, onRetry }: { items: GrowthStockRow[
   }
 
   return (
-    <section className="ticker-panel" aria-label={COPY[lang].trackedStocks}>
-      <div className="ticker-marquee">
-        <div className="ticker-track">
-          {[0, 1].map(group => items.map(item => (
-            <article className="ticker-item" key={`${group}-${item.symbol}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} aria-hidden={group === 1}>
-              <div className="ticker-top">
-                <span className="ticker-symbol" dir="ltr">{item.symbol}</span>
-                {item.changePercent === null ? <UnavailableValue text={COPY[lang]} /> : <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>}
-              </div>
-              <strong className="numeric">{item.price === null ? <UnavailableValue text={COPY[lang]} /> : formatCurrency(item.price, item.currency, lang)}</strong>
-              <span className="ticker-name">{item.name}</span>
-              <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
-            </article>
-          )))}
-        </div>
-      </div>
-    </section>
+    <MarketTickerStrip
+      ariaLabel={COPY[lang].trackedStocks}
+      className="ticker-panel"
+      viewportClassName="ticker-marquee"
+      trackClassName="ticker-track"
+      direction={lang === 'ar' ? 'rtl' : 'ltr'}
+      durationSeconds={36}
+    >
+      {items.map(item => (
+        <article className="ticker-item" key={item.symbol} role="listitem" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+          <div className="ticker-top">
+            <span className="ticker-identity">
+              <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" className="asset-avatar" decorative />
+              <span className="ticker-symbol" dir="ltr">{item.symbol}</span>
+            </span>
+            {item.changePercent === null ? <UnavailableValue text={COPY[lang]} /> : <span className={badgeClass(toneForChange(item.changePercent))}>{formatPercent(item.changePercent, lang)}</span>}
+          </div>
+          <strong className="numeric">{item.price === null ? <UnavailableValue text={COPY[lang]} /> : formatCurrency(item.price, item.currency, lang)}</strong>
+          <span className="ticker-name">{item.name}</span>
+          <span className="mini-meta"><Layers3 size={14} />{item.sectorLabel}</span>
+        </article>
+      ))}
+    </MarketTickerStrip>
   );
 }
 

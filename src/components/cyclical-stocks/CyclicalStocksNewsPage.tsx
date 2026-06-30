@@ -31,6 +31,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -929,7 +930,7 @@ function normalizeSector(value: string | null | undefined, symbol?: string): Exc
 }
 
 function localeFor(lang: LangCode) {
-  if (lang === 'ar') return 'ar-KW';
+  if (lang === 'ar') return 'ar-KW-u-nu-latn';
   if (lang === 'fr') return 'fr-FR';
   return 'en-US';
 }
@@ -1296,7 +1297,6 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'info' }: {
 }
 
 function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loading: boolean; lang: LangCode }) {
-  const loopRows = rows.length > 0 ? [...rows, ...rows] : [];
   if (loading) {
     return (
       <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
@@ -1310,29 +1310,37 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loadin
     return <StateBox icon={AlertTriangle} title={COPY[lang].providerError} tone="warning" />;
   }
   return (
-    <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
-      <div className="ticker-track">
-        {loopRows.map((row, index) => {
-          const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
-          return (
-            <article
-              className="ticker-item"
-              key={`${row.symbol}-${index}`}
-              aria-hidden={index >= rows.length ? true : undefined}
-            >
+    <MarketTickerStrip
+      ariaLabel={COPY[lang].tickerTitle}
+      className="ticker-strip"
+      trackClassName="ticker-track"
+      direction={lang === 'ar' ? 'rtl' : 'ltr'}
+      durationSeconds={46}
+    >
+      {rows.map(row => {
+        const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
+        return (
+          <article
+            className="ticker-item"
+            key={row.symbol}
+            role="listitem"
+            dir={lang === 'ar' ? 'rtl' : 'ltr'}
+          >
+            <div className="ticker-identity">
+              <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
               <div>
                 <strong dir="ltr">{row.symbol}</strong>
                 <span>{row.name}</span>
               </div>
-              <div className="ticker-values">
-                <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
-                <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </section>
+            </div>
+            <div className="ticker-values">
+              <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
+              <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
+            </div>
+          </article>
+        );
+      })}
+    </MarketTickerStrip>
   );
 }
 
@@ -2776,6 +2784,31 @@ export function CyclicalStocksNewsPage() {
           gap: 7px;
           align-content: center;
         }
+        .ticker-identity {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-width: 0;
+        }
+        .ticker-identity > div {
+          min-width: 0;
+        }
+        .ticker-item .ticker-logo {
+          display: inline-grid;
+          flex: 0 0 32px;
+          width: 32px;
+          height: 32px;
+          overflow: hidden;
+          color: #0e7490;
+          font-size: 10px;
+        }
+        .ticker-item .ticker-logo span {
+          display: inline-flex;
+          overflow: visible;
+          color: inherit;
+          font-size: inherit;
+          font-weight: inherit;
+        }
         .ticker-item strong {
           color: var(--cyc-ink);
           font-size: 14px;
@@ -3884,6 +3917,14 @@ export function CyclicalStocksNewsPage() {
         body.dark .state-box p,
         body.dark .dev-hint {
           color: #cbd5e1;
+        }
+        .dark .ticker-item .ticker-logo,
+        body.dark .ticker-item .ticker-logo {
+          color: #67e8f9;
+        }
+        .dark .ticker-item .ticker-logo span,
+        body.dark .ticker-item .ticker-logo span {
+          color: inherit;
         }
         .dark .stock-metrics div,
         .dark .mover-row,
