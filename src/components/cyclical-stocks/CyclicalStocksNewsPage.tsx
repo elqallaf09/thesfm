@@ -174,6 +174,12 @@ type CyclicalStockRow = CyclicalTickerItem & {
   valuationLabel: string;
   dataCompleteness: number;
 };
+type CyclicalTickerStripItem = Omit<CyclicalTickerItem, 'price' | 'change' | 'changePercent' | 'source'> & {
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  source: string | null;
+};
 
 type SectorDefinition = {
   id: Exclude<SectorId, 'all'>;
@@ -197,6 +203,41 @@ const MOVER_LIST_PREVIEW_LIMIT = 3;
 const MOVERS_API_LIMIT = 5;
 
 const TAB_IDS: CyclicalTab[] = ['overview', 'stocks', 'news', 'sectors', 'economic-cycle'];
+const CYCLICAL_TICKER_SYMBOLS = [
+  'TSLA',
+  'CAT',
+  'NCLH',
+  'RCL',
+  'CCL',
+  'LEN',
+  'DE',
+  'GM',
+  'F',
+  'HD',
+  'LOW',
+  'LVS',
+  'WYNN',
+  'DAL',
+  'BA',
+] as const;
+const CYCLICAL_TICKER_SYMBOL_NAMES: Record<string, string> = {
+  TSLA: 'Tesla',
+  CAT: 'Caterpillar',
+  NCLH: 'Norwegian Cruise Line',
+  RCL: 'Royal Caribbean',
+  CCL: 'Carnival',
+  LEN: 'Lennar',
+  DE: 'Deere',
+  GM: 'General Motors',
+  F: 'Ford',
+  HD: 'Home Depot',
+  LOW: "Lowe's",
+  LVS: 'Las Vegas Sands',
+  WYNN: 'Wynn Resorts',
+  DAL: 'Delta Air Lines',
+  BA: 'Boeing',
+};
+type CyclicalTickerDisplaySymbol = (typeof CYCLICAL_TICKER_SYMBOLS)[number];
 
 const SYMBOL_SECTOR: Record<string, Exclude<SectorId, 'all'>> = {
   TSLA: 'autos',
@@ -1143,6 +1184,79 @@ function toStockRow(item: CyclicalTickerItem, lang: LangCode): CyclicalStockRow 
   };
 }
 
+function normalizeTickerNumber(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function toTickerStripRow(item: CyclicalStockRow): CyclicalTickerStripItem {
+  return {
+    ...item,
+    price: normalizeTickerNumber(item.price),
+    change: normalizeTickerNumber(item.change),
+    changePercent: normalizeTickerNumber(item.changePercent),
+    source: item.source?.trim() ? item.source : null,
+  };
+}
+
+function buildFallbackTickerRow(symbol: string, lang: LangCode): CyclicalTickerStripItem {
+  const sectorId = normalizeSector(SYMBOL_SECTOR[symbol], symbol);
+  const sector = sectorDefinition(sectorId);
+  const sensitivityTone: Tone = sector.sensitivity === 'high' ? 'warning' : sector.sensitivity === 'medium' ? 'info' : 'neutral';
+  const sectorSensitivity = sector.sensitivity === 'high'
+    ? COPY[lang].highSectorSensitivity
+    : sector.sensitivity === 'medium'
+      ? COPY[lang].mediumSectorSensitivity
+      : COPY[lang].mixedSectorSensitivity;
+
+  return {
+    symbol,
+    name: CYCLICAL_TICKER_SYMBOL_NAMES[symbol] ?? symbol,
+    sector: SYMBOL_SECTOR[symbol] ?? 'industrials',
+    price: null,
+    currency: 'USD',
+    market: 'US',
+    change: null,
+    changePercent: null,
+    source: null,
+    delayed: false,
+    sectorId,
+    sectorLabel: sector.label[lang],
+    sectorSensitivity,
+    sensitivityTone,
+    methodologyNote: COPY[lang].sensitivityMethodology,
+    qualityLabel: COPY[lang].qualityUnavailable,
+    leverageLabel: COPY[lang].leverageUnavailable,
+    valuationLabel: COPY[lang].valuationUnavailable,
+    dataCompleteness: 0,
+  };
+}
+
+function buildTickerRows(rows: CyclicalStockRow[], lang: LangCode): CyclicalTickerStripItem[] {
+  const rowBySymbol = new Map<string, CyclicalTickerStripItem>();
+  rows.forEach(row => {
+    rowBySymbol.set(row.symbol.toUpperCase(), toTickerStripRow(row));
+  });
+
+  const used = new Set<CyclicalTickerDisplaySymbol>();
+  const orderedRows: CyclicalTickerStripItem[] = [];
+
+  CYCLICAL_TICKER_SYMBOLS.forEach(symbol => {
+    used.add(symbol);
+    const fromApi = rowBySymbol.get(symbol);
+    orderedRows.push(fromApi ?? buildFallbackTickerRow(symbol, lang));
+  });
+
+  rows.forEach(row => {
+    const symbol = row.symbol.toUpperCase() as CyclicalTickerDisplaySymbol | string;
+    if (!used.has(symbol as CyclicalTickerDisplaySymbol)) {
+      used.add(symbol as CyclicalTickerDisplaySymbol);
+      orderedRows.push(toTickerStripRow(row));
+    }
+  });
+
+  return orderedRows;
+}
+
 function stockMatchesSearch(row: CyclicalStockRow, search: string) {
   const query = search.trim().toLowerCase();
   if (!query) return true;
@@ -1296,7 +1410,7 @@ function MetricCard({ icon: Icon, label, value, helper, tone = 'info' }: {
   );
 }
 
-function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loading: boolean; lang: LangCode }) {
+function TickerStrip({ rows, loading, lang }: { rows: CyclicalTickerStripItem[]; loading: boolean; lang: LangCode }) {
   if (loading) {
     return (
       <section className="ticker-strip" aria-label={COPY[lang].tickerTitle}>
@@ -1306,25 +1420,23 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loadin
       </section>
     );
   }
-  if (rows.length === 0) {
-    return <StateBox icon={AlertTriangle} title={COPY[lang].providerError} tone="warning" />;
-  }
   return (
     <MarketTickerStrip
       ariaLabel={COPY[lang].tickerTitle}
       className="ticker-strip"
       trackClassName="ticker-track"
-      direction={lang === 'ar' ? 'rtl' : 'ltr'}
+      direction="ltr"
       durationSeconds={46}
     >
       {rows.map(row => {
-        const tone = (row.changePercent ?? 0) > 0 ? 'positive' : (row.changePercent ?? 0) < 0 ? 'negative' : 'neutral';
+        const hasPercent = typeof row.changePercent === 'number' && Number.isFinite(row.changePercent);
+        const tone = hasPercent ? (row.changePercent > 0 ? 'positive' : row.changePercent < 0 ? 'negative' : 'neutral') : 'neutral';
         return (
           <article
             className="ticker-item"
             key={row.symbol}
             role="listitem"
-            dir={lang === 'ar' ? 'rtl' : 'ltr'}
+            dir="ltr"
           >
             <div className="ticker-identity">
               <AssetIdentity className="ticker-logo" symbol={row.symbol} name={row.name} assetType="stock" size="sm" decorative />
@@ -1337,6 +1449,7 @@ function TickerStrip({ rows, loading, lang }: { rows: CyclicalStockRow[]; loadin
               <b dir="ltr">{formatCurrency(row.price, row.currency, lang)}</b>
               <ToneBadge tone={tone}>{formatPercent(row.changePercent, lang)}</ToneBadge>
             </div>
+            {row.source ? <small className="ticker-source">{row.source}</small> : null}
           </article>
         );
       })}
@@ -2256,6 +2369,7 @@ export function CyclicalStocksNewsPage() {
     () => (ticker?.ok ? ticker.items.map(item => toStockRow(item, activeLang)) : []),
     [activeLang, ticker],
   );
+  const tickerRows = useMemo(() => buildTickerRows(stockRows, activeLang), [stockRows, activeLang]);
 
   const sectorStats = useMemo<SectorStat[]>(() => {
     return SECTORS.map(sector => {
@@ -2367,7 +2481,7 @@ export function CyclicalStocksNewsPage() {
 
           {error ? <StateBox icon={AlertTriangle} title={error} tone="warning" actionLabel={text.retry} onAction={() => void loadData('refresh')} /> : null}
 
-          <TickerStrip rows={stockRows} loading={loading} lang={activeLang} />
+          <TickerStrip rows={tickerRows} loading={loading} lang={activeLang} />
 
           <nav className="tabs" role="tablist" aria-label={text.title}>
             {TAB_IDS.map(item => (
@@ -2745,7 +2859,11 @@ export function CyclicalStocksNewsPage() {
         .ticker-strip {
           width: 100%;
           min-width: 0;
-          overflow: hidden;
+          overflow-x: auto;
+          overflow-y: hidden;
+          overscroll-behavior-x: contain;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
           border: 1px solid var(--cyc-line);
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.82);
@@ -2828,6 +2946,16 @@ export function CyclicalStocksNewsPage() {
           align-items: center;
           justify-content: space-between;
           gap: 10px;
+        }
+        .ticker-source {
+          display: block;
+          margin-top: 2px;
+          overflow: hidden;
+          color: #64748b;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 10px;
+          font-weight: 850;
         }
         .ticker-values b,
         .metric-card strong,
@@ -4195,6 +4323,13 @@ export function CyclicalStocksNewsPage() {
           }
           .ticker-strip {
             padding: 7px;
+            scrollbar-width: none;
+          }
+          .ticker-strip::-webkit-scrollbar {
+            display: none;
+          }
+          .ticker-track {
+            animation-duration: 58s;
           }
           .ticker-item,
           .ticker-skeleton {
