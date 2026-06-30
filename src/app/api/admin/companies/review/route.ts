@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getUserFromBearerToken, isAdminEmail, createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 
 type CompanyReviewStatus = 'approved' | 'rejected' | 'needs_changes' | 'inactive' | 'pending_review';
@@ -127,12 +126,9 @@ async function notifyCompanyOwner(input: {
 }
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('sfm_access_token')?.value;
-  const user = await getUserFromBearerToken(token);
-
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!isAdminEmail(user.email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireAdminApiAccess(req, 'company_reviews');
+  if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
+  const user = auth.user;
 
   const body = await req.json();
   const { companyId, status, adminNotes } = body;
@@ -142,8 +138,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const supabase = createServerSupabaseAdmin();
-  if (!supabase) return NextResponse.json({ error: 'Server configuration error' }, { status: 503 });
+  const supabase = auth.admin;
   const visibleReviewNote = status === 'rejected' || status === 'needs_changes'
     ? (typeof adminNotes === 'string' && adminNotes.trim() ? adminNotes.trim() : null)
     : null;

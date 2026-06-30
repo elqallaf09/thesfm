@@ -1,13 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  ADMIN_SESSION_COOKIE,
-  createServerSupabaseAdmin,
-  getUserFromBearerToken,
-  isAdminAccessCodeConfigured,
-  isAdminEmail,
-  verifyAdminSessionToken,
-} from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { AI_USAGE_FEATURES, isAiUsageFeature, type AiUsageFeature } from '@/lib/server/aiUsage';
 
 export const runtime = 'nodejs';
@@ -42,25 +34,9 @@ function cleanDailyLimit(value: unknown) {
   return Number.isFinite(number) && number >= 0 ? Math.floor(number) : null;
 }
 
-function bearerToken(request: NextRequest) {
-  const header = request.headers.get('authorization') ?? '';
-  return header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
-}
-
-async function currentUser(request: NextRequest) {
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get('sfm_access_token')?.value ?? '';
-  return getUserFromBearerToken(bearerToken(request) || cookieToken);
-}
-
 async function requireAdmin(request: NextRequest) {
-  const user = await currentUser(request);
-  if (!user || !isAdminEmail(user.email)) return null;
-  if (isAdminAccessCodeConfigured()) {
-    const cookieStore = await cookies();
-    if (!verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value, user)) return 'code_required' as const;
-  }
-  return user;
+  const auth = await requireAdminApiAccess(request, 'users_management');
+  return auth.ok ? auth : null;
 }
 
 async function findUserByEmail(admin: NonNullable<ReturnType<typeof createServerSupabaseAdmin>>, email: string): Promise<AdminUserLookup | null> {
@@ -87,12 +63,9 @@ async function resolveTargetUser(
 }
 
 export async function POST(request: NextRequest) {
-  const adminUser = await requireAdmin(request);
-  if (adminUser === 'code_required') return json({ ok: false, code: 'ADMIN_CODE_REQUIRED' }, { status: 428 });
-  if (!adminUser) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
-
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
+  const auth = await requireAdmin(request);
+  if (!auth) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+  const admin = auth.admin;
 
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!payload) return json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
@@ -138,12 +111,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const adminUser = await requireAdmin(request);
-  if (adminUser === 'code_required') return json({ ok: false, code: 'ADMIN_CODE_REQUIRED' }, { status: 428 });
-  if (!adminUser) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
-
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
+  const auth = await requireAdmin(request);
+  if (!auth) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+  const admin = auth.admin;
 
   const url = new URL(request.url);
   const email = cleanEmail(url.searchParams.get('email'));

@@ -1504,7 +1504,6 @@ export function GrowthStocksNewsPage() {
   // secrets — only counts and lightweight status flags.
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
-    // eslint-disable-next-line no-console
     console.debug('[GrowthStocks] state', {
       tickerItems: ticker?.ok ? ticker.items.length : 0,
       stockRows: stockRows.length,

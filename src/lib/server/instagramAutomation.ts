@@ -4,12 +4,9 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import {
-  ADMIN_SESSION_COOKIE,
-  createServerSupabaseAdmin,
   getUserFromBearerToken,
-  isAdminAccessCodeConfigured,
-  isAdminEmail,
-  verifyAdminSessionToken,
+  requireAdminApiAccess,
+  requireAdminPageAccess,
 } from '@/lib/server/adminAccess';
 
 export type InstagramContentType = 'reel' | 'post' | 'story';
@@ -144,27 +141,16 @@ export async function currentAutomationUser(request: NextRequest) {
 }
 
 export async function requireInstagramAutomationAdmin(request: NextRequest) {
-  const user = await currentAutomationUser(request);
-  if (!user || !isAdminEmail(user.email)) return { ok: false as const, code: 'FORBIDDEN', status: 403 };
-  if (isAdminAccessCodeConfigured()) {
-    const cookieStore = await cookies();
-    if (!verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value, user)) {
-      return { ok: false as const, code: 'ADMIN_CODE_REQUIRED', status: 428 };
-    }
-  }
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return { ok: false as const, code: 'SERVICE_NOT_CONFIGURED', status: 503 };
-  return { ok: true as const, user, admin };
+  const auth = await requireAdminApiAccess(request, 'instagram_automation');
+  if (!auth.ok) return { ok: false as const, code: auth.code, status: auth.status };
+  return { ok: true as const, user: auth.user, admin: auth.admin };
 }
 
 export async function requireInstagramAutomationAdminPage(nextPath: string) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('sfm_access_token')?.value;
-  const user = await getUserFromBearerToken(token);
-  if (!user) return { ok: false as const, redirectTo: `/login?next=${encodeURIComponent(nextPath)}` };
-  if (!isAdminEmail(user.email)) return { ok: false as const, redirectTo: '/dashboard' };
-  if (!createServerSupabaseAdmin()) return { ok: false as const, redirectTo: '/dashboard' };
-  return { ok: true as const, user };
+  const auth = await requireAdminPageAccess(nextPath, 'instagram_automation');
+  if (!auth.ok && auth.reason === 'unauthenticated') return { ok: false as const, redirectTo: auth.redirectTo };
+  if (!auth.ok) return { ok: false as const, forbidden: true };
+  return { ok: true as const, user: auth.user };
 }
 
 function cleanText(value: unknown, max = 2000) {

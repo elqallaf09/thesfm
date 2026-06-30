@@ -42,6 +42,7 @@ import {
   UsersRound,
   Wallet,
 } from 'lucide-react';
+import type { AdminPermission } from '@/lib/adminPermissions';
 import { TR } from '@/lib/translations';
 
 export type TranslationKey = keyof typeof TR;
@@ -60,6 +61,8 @@ export type NavigationItem = {
   viewModes?: NavigationViewMode[];
   children?: NavigationItem[];
   adminOnly?: boolean;
+  adminPermission?: AdminPermission;
+  superAdminOnly?: boolean;
 };
 
 export type NavigationGroup = {
@@ -188,10 +191,11 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_admin',
     adminOnly: true,
     items: [
-      { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true },
-      { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true },
-      { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', viewModes: ['simple', 'professional'], adminOnly: true },
-      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', viewModes: ['simple', 'professional'], adminOnly: true },
+      { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'company_reviews' },
+      { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'instagram_automation' },
+      { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },
+      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },
     ],
   },
   {
@@ -224,20 +228,41 @@ export const SUPPORT_LINKS: NavigationItem[] = [
   { id: 'support-terms', icon: FileText, href: '/terms', labelKey: 'nav_support_terms', viewModes: ['simple', 'professional'] },
 ];
 
+export type NavigationAdminAccess = {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  permissions: Partial<Record<AdminPermission, boolean>>;
+};
+
+function canShowAdminItem(item: NavigationItem, adminAccess: boolean | NavigationAdminAccess) {
+  if (!item.adminOnly && !item.superAdminOnly && !item.adminPermission) return true;
+  if (adminAccess === true) return true;
+  if (!adminAccess || adminAccess.isAdmin !== true) return false;
+  if (adminAccess.isSuperAdmin) return true;
+  if (item.superAdminOnly) return false;
+  if (item.adminPermission) return adminAccess.permissions[item.adminPermission] === true;
+  return false;
+}
+
 export function filterNavigationGroups(
   groups: NavigationGroup[],
   viewMode: NavigationViewMode,
-  isAdmin = false,
+  adminAccess: boolean | NavigationAdminAccess = false,
 ) {
-  const visibleGroups = isAdmin ? groups : groups.filter(g => !g.adminOnly);
+  const visibleGroups = groups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => canShowAdminItem(item, adminAccess)),
+    }))
+    .filter(group => !group.adminOnly || group.items.length > 0);
+
   if (viewMode === 'professional') return visibleGroups;
   return visibleGroups
     .map(group => ({
       ...group,
       items: group.items
-        .filter(item => isAdmin || !item.adminOnly)
         .map(item => {
-          const children = item.children?.filter(child => child.action || child.viewModes?.includes('simple'));
+          const children = item.children?.filter(child => canShowAdminItem(child, adminAccess) && (child.action || child.viewModes?.includes('simple')));
           if (children?.length) return { ...item, children };
           return item.action || item.viewModes?.includes('simple') ? item : null;
         })

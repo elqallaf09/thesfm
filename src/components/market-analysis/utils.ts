@@ -318,6 +318,7 @@ export function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'ECONOMIC_CALENDAR_NOT_CONFIGURED' ||
     code === 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' ||
     code === 'PROVIDER_NOT_CONFIGURED' ||
+    code === 'PROVIDER_NOT_ENTITLED' ||
     code === 'PROVIDER_ACCESS_DENIED' ||
     code === 'PROVIDER_RATE_LIMITED' ||
     code === 'PROVIDER_TEMPORARILY_UNAVAILABLE' ||
@@ -342,7 +343,7 @@ export function sanitizeMarketToolMessage(code: string, message: string) {
     code === 'MISSING_PROVIDER' ||
     code === 'SYMBOL_REQUIRED' ||
     code === 'MARKET_DATA_TIMEOUT' ||
-    /ECONOMIC_CALENDAR_|provider_not_configured|provider_access_denied|provider_rate_limited|provider_temporarily_unavailable|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured|data source is not configured/i.test(message)
+    /ECONOMIC_CALENDAR_|provider_not_configured|provider_not_entitled|provider_access_denied|provider_rate_limited|provider_temporarily_unavailable|\b[A-Z0-9_]*(API_)?(KEY|TOKEN|SECRET)\b|provider integration is not configured|data source is not configured/i.test(message)
   ) {
     return '';
   }

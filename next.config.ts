@@ -11,6 +11,37 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: PROJECT_ROOT,
   },
+  webpack(config, { isServer, webpack }) {
+    if (isServer) {
+      config.plugins = config.plugins ?? [];
+      config.plugins.push({
+        apply(compiler: any) {
+          compiler.hooks.thisCompilation.tap('EnsureEmptyPagesManifestPlugin', (compilation: any) => {
+            compilation.hooks.processAssets.tap(
+              {
+                name: 'EnsureEmptyPagesManifestPlugin',
+                stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
+              },
+              () => {
+                if (!compilation.getAsset('pages-manifest.json')) {
+                  compilation.emitAsset(
+                    'pages-manifest.json',
+                    new webpack.sources.RawSource(JSON.stringify({
+                      '/_app': 'pages/_app.js',
+                      '/_document': 'pages/_document.js',
+                      '/_error': 'pages/_error.js',
+                    })),
+                  );
+                }
+              },
+            );
+          });
+        },
+      });
+    }
+
+    return config;
+  },
   async headers() {
     return [
       {

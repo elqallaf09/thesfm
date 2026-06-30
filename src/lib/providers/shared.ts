@@ -1,6 +1,7 @@
 export type ProviderApiStatus =
   | 'success'
   | 'not_configured'
+  | 'not_entitled'
   | 'unauthorized'
   | 'forbidden'
   | 'rate_limited'
@@ -101,6 +102,7 @@ export function mapHttpProviderStatus(status: number): ProviderApiStatus {
 
 export function messageCodeForStatus(status: ProviderApiStatus) {
   if (status === 'not_configured') return 'provider_not_configured';
+  if (status === 'not_entitled') return 'provider_access_denied';
   if (status === 'unauthorized' || status === 'forbidden') return 'provider_access_denied';
   if (status === 'rate_limited') return 'provider_rate_limited';
   if (status === 'invalid_request') return 'provider_invalid_request';

@@ -14,7 +14,7 @@ import { CommandMenuButton } from '@/components/CommandMenuButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { supabase } from '@/integrations/supabase/client';
-import { isAdminEmailClient } from '@/lib/adminUtils';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 import {
   filterNavigationGroups,
   findActiveNavigationGroup,
@@ -51,8 +51,8 @@ export function Sidebar() {
     [activeSource],
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
-  const isAdmin = isAdminEmailClient(user?.email);
-  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, isAdmin), [viewMode, isAdmin]);
+  const { access: adminAccess } = useAdminAccess(user?.id);
+  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, adminAccess), [viewMode, adminAccess]);
   const activeParentItemIds = useMemo(
     () => navGroups.flatMap(group =>
       group.items

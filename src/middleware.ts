@@ -81,18 +81,6 @@ type SessionCheck = {
   supabaseAnonKey?: string;
 };
 
-function isAdminEmail(email?: string | null) {
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) return false;
-  const adminEmails = process.env.ADMIN_EMAILS;
-  if (!adminEmails) return false;
-  const allowedEmails = adminEmails
-    .split(',')
-    .map(item => item.trim().toLowerCase())
-    .filter(Boolean);
-  return allowedEmails.includes(normalizedEmail);
-}
-
 function safeInternalPath(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
   return value;
@@ -171,12 +159,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(mfaUrl);
     }
     const nextPath = safeInternalPath(request.nextUrl.searchParams.get('next'));
-    if (nextPath === '/sfm-admin-control') {
-      const adminTargetUrl = request.nextUrl.clone();
-      adminTargetUrl.pathname = isAdminEmail(session.email) ? nextPath : '/dashboard';
-      adminTargetUrl.search = '';
-      return NextResponse.redirect(adminTargetUrl);
-    }
     if (nextPath && isProtected(nextPath)) {
       const protectedTargetUrl = request.nextUrl.clone();
       protectedTargetUrl.pathname = nextPath;
@@ -192,12 +174,6 @@ export async function middleware(request: NextRequest) {
   if (!isProtected(pathname)) return response;
   if (isLocalTraderQaBypass(pathname)) return response;
   if (hasSession) {
-    if (pathname === '/sfm-admin-control' && !isAdminEmail(session.email)) {
-      const dashboardUrl = request.nextUrl.clone();
-      dashboardUrl.pathname = '/dashboard';
-      dashboardUrl.search = '';
-      return NextResponse.redirect(dashboardUrl);
-    }
     if (request.cookies.get('sfm_mfa_required')?.value === 'true' && pathname !== '/mfa/verify') {
       const mfaUrl = request.nextUrl.clone();
       mfaUrl.pathname = '/mfa/verify';

@@ -1,7 +1,6 @@
 // TEXT translations for charity-projects/page
-import type { Lang } from './_types';
 
-export const TEXT = {
+const RAW_TEXT = {
   ar: {
     title: 'المشاريع الخيرية',
     subtitle: 'خطط للزكاة، الخمس، الكفالات، الصدقات، والمشاريع الخيرية طويلة الأمد بذكاء.',
@@ -1234,6 +1233,196 @@ export const TEXT = {
     sponsorshipDetails: 'Détails du parrainage',
     contributorDetails: 'Détails du contributeur',
     contributionDetails: 'Détails de la contribution',
+  },
+} as const;
+
+const WINDOWS_1252_REVERSE: Record<string, number> = {
+  '€': 0x80,
+  '‚': 0x82,
+  'ƒ': 0x83,
+  '„': 0x84,
+  '…': 0x85,
+  '†': 0x86,
+  '‡': 0x87,
+  'ˆ': 0x88,
+  '‰': 0x89,
+  'Š': 0x8a,
+  '‹': 0x8b,
+  'Œ': 0x8c,
+  'Ž': 0x8e,
+  '‘': 0x91,
+  '’': 0x92,
+  '“': 0x93,
+  '”': 0x94,
+  '•': 0x95,
+  '–': 0x96,
+  '—': 0x97,
+  '˜': 0x98,
+  '™': 0x99,
+  'š': 0x9a,
+  '›': 0x9b,
+  'œ': 0x9c,
+  'ž': 0x9e,
+  'Ÿ': 0x9f,
+};
+
+function repairMojibakeText(value: string) {
+  if (!/[ÃÂØÙ]/.test(value)) return value;
+
+  const bytes = Array.from(value, char => {
+    const code = char.codePointAt(0) ?? 0;
+    return WINDOWS_1252_REVERSE[char] ?? (code <= 0xff ? code : null);
+  });
+
+  if (bytes.some(byte => byte === null)) return value;
+
+  try {
+    const repaired = new TextDecoder('utf-8').decode(new Uint8Array(bytes as number[]));
+    return /[\u0600-\u06ffÀ-ÿ]/.test(repaired) ? repaired : value;
+  } catch {
+    return value;
+  }
+}
+
+function repairTextDictionary<T>(value: T): T {
+  if (typeof value === 'string') return repairMojibakeText(value) as T;
+  if (Array.isArray(value)) return value.map(item => repairTextDictionary(item)) as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, repairTextDictionary(item)]),
+    ) as T;
+  }
+  return value;
+}
+
+const ARABIC_COPY_OVERRIDES = {
+  title: 'المشاريع الخيرية',
+  subtitle: 'خطط للزكاة، الخمس، الكفالات، الصدقات، والمشاريع الخيرية طويلة الأمد بذكاء.',
+  breadcrumb: 'THE SFM / المشاريع الخيرية',
+  newProject: 'مشروع خيري جديد',
+  addReminder: 'إضافة تذكير',
+  uploadDocument: 'رفع مستند',
+  reports: 'التقارير',
+  activeProjects: 'إجمالي المشاريع النشطة',
+  totalDonations: 'إجمالي التبرعات',
+  nextDueDateKpi: 'أقرب موعد',
+  beneficiariesCountKpi: 'عدد المستفيدين',
+  upcomingRemindersKpi: 'التذكيرات القادمة',
+  unavailable: 'غير متاح',
+  projects: 'المشاريع الخيرية',
+  projectListDesc: 'تابع المشاريع الخيرية وحالتها والتبرعات والمواعيد والأثر من مكان واحد.',
+  searchProjects: 'ابحث في المشاريع الخيرية',
+  emptyTitle: 'لا توجد مشاريع خيرية حالياً',
+  emptyBody: 'ابدأ بإضافة مشروع خيري لتتبع التبرعات والمواعيد والأثر.',
+  beneficiaryTracking: 'إدارة المستفيدين',
+  beneficiaryDesc: 'نظم المستفيدين المرتبطين بالمشاريع والكفالات مع بيانات مختصرة ومحترمة.',
+  noBeneficiaries: 'لا توجد مستفيدين حتى الآن',
+  beneficiariesEmptyBody: 'أضف المستفيدين المرتبطين بمشاريعك لتنظيم الحالات والكفالات.',
+  addBeneficiary: 'إضافة مستفيد',
+  contributors: 'المساهمون',
+  familyCollaboration: 'المساهمون',
+  collaborationDesc: 'أضف أفراد العائلة أو المساهمين لتتبع مساهماتهم ونسبة التغطية.',
+  noContributors: 'لم تتم إضافة مساهمين بعد',
+  contributorsEmptyBody: 'أضف أفراد العائلة أو المساهمين لتتبع مساهماتهم ونسبة التغطية.',
+  addContributor: 'إضافة مساهم',
+  documentVault: 'خزانة المستندات',
+  documentVaultDesc: 'احفظ إيصالات التبرعات، شهادات الجمعيات، وتقارير المشاريع في مكان واحد.',
+  noDocuments: 'لا توجد مستندات محفوظة حتى الآن',
+  documentsEmptyBody: 'احفظ إيصالات التبرعات، شهادات الجمعيات، وتقارير المشاريع في مكان واحد.',
+  impactDashboard: 'لوحة الأثر',
+  impactDashboardDesc: 'اعرض أثر التبرعات والمشاريع والمستفيدين بصورة عملية قابلة للمتابعة.',
+  notEnoughImpactData: 'لا توجد بيانات كافية لعرض الأثر حالياً',
+  impactEmptyBody: 'يمكنك إضافة مشاريع خيرية أو تبرعات لبدء تتبع الأثر.',
+  reportsDesc: 'أنشئ تقارير خيرية مختصرة للتبرعات والمستفيدين والزكاة والخمس.',
+  notEnoughReportData: 'لا توجد بيانات كافية لإنشاء تقرير حالياً',
+  emptyReportsBody: 'أضف مشاريع أو تبرعات لبدء إنشاء التقارير.',
+  yearlyCharityReport: 'التقرير الخيري السنوي',
+  zakatKhumsReport: 'تقرير الزكاة والخمس',
+  donationsReport: 'تقرير التبرعات',
+  beneficiariesReport: 'تقرير المستفيدين',
+  exportPdf: 'تصدير PDF',
+  exportExcel: 'تصدير Excel',
+  generateReport: 'إنشاء تقرير',
+  smartZakat: 'حاسبة الزكاة',
+  zakatInputs: 'الأموال النقدية والاستثمارات',
+  cashSavings: 'الأموال النقدية',
+  goldHoldings: 'الذهب',
+  silverHoldings: 'الفضة',
+  zakatableInvestments: 'الاستثمارات',
+  debts: 'الديون',
+  zakatSummaryTitle: 'الملخص',
+  zakatGuidanceTitle: 'التذكيرات والتنبيهات',
+  zakatEstimateDisclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية.',
+  metalsDisclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية. راجع جهة شرعية مختصة للحالات الخاصة.',
+  hijriCalendar: 'التقويم الخيري الهجري',
+  hijriCalendarDesc: 'تابع مواسم العطاء ومواعيد الزكاة والكفالات والتذكيرات القادمة.',
+  upcomingReminders: 'التذكيرات القادمة',
+  charityReminders: 'التذكيرات الخيرية',
+  addAsset: 'حفظ أصل الزكاة',
+  projectName: 'اسم المشروع',
+  organization: 'الجهة المنفذة',
+  status: 'الحالة',
+  target: 'الهدف المالي',
+  collected: 'المحصّل',
+  remaining: 'المتبقي',
+  privacyNote: 'معلومات مختصرة ومحترمة',
+  allStatuses: 'كل الحالات',
+  allTypes: 'كل الأنواع',
+  allCategories: 'كل التصنيفات',
+  searchBeneficiaries: 'ابحث في المستفيدين',
+  searchDocuments: 'ابحث في المستندات',
+  searchOrganization: 'ابحث في الجهات',
+  organizationDirectory: 'دليل الجهات الخيرية',
+  organizationDirectoryDesc: 'اختر جهة منفذة موثوقة واربطها بالمشاريع والتقارير.',
+  noOrganizationsAvailable: 'لا توجد جهات متاحة حالياً.',
+  totalBeneficiaries: 'إجمالي المستفيدين',
+  activeSponsorships: 'الكفالات النشطة',
+  monthlySupportTotal: 'إجمالي الدعم الشهري',
+  upcomingRenewals: 'التجديدات القادمة',
+  totalPledged: 'إجمالي التعهدات',
+  totalPaid: 'إجمالي المدفوع',
+  contributorSummary: 'ملخص المساهمين',
+  contributorPayments: 'مدفوعات المساهمين',
+  recordedDonations: 'التبرعات المسجلة',
+  pending: 'قيد الانتظار',
+  paid: 'مدفوع',
+  partial: 'جزئي',
+  late: 'متأخر',
+  cancelled: 'ملغى',
+  planning: 'قيد التخطيط',
+  fundraising: 'جمع التبرعات',
+  in_progress: 'قيد التنفيذ',
+  completed: 'مكتمل',
+  paused: 'متوقف مؤقتاً',
+  active: 'نشط',
+  dismissed: 'مؤجل',
+  needs_review: 'تحتاج مراجعة',
+  orphan: 'يتيم',
+  family: 'أسرة',
+  student: 'طالب',
+  medical: 'حالة علاجية',
+  elderly: 'كبار السن',
+  refugee: 'لاجئ',
+  project_group: 'مجموعة مشروع',
+  ongoing: 'صدقة جارية',
+  sponsorship: 'كفالة',
+  zakat: 'الزكاة',
+  sacrifice: 'أضحية',
+  endowment: 'وقف',
+  mosque: 'مسجد',
+  water_well: 'بئر ماء',
+  education: 'تعليم',
+  relief: 'إغاثة',
+  other: 'أخرى',
+} as const;
+
+const REPAIRED_TEXT = repairTextDictionary(RAW_TEXT);
+
+export const TEXT = {
+  ...REPAIRED_TEXT,
+  ar: {
+    ...REPAIRED_TEXT.ar,
+    ...ARABIC_COPY_OVERRIDES,
   },
 } as const;
 

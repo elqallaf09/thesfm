@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, getUserFromBearerToken, isAdminEmail } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin, getAdminAccessForUser, getUserFromBearerToken, hasAdminPermission } from '@/lib/server/adminAccess';
 import { COMPANY_LISTING_SELECT_COLUMNS, normalizeCompanyListing } from '@/lib/server/companyListingHelpers';
 
 export const runtime = 'nodejs';
@@ -52,7 +52,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const user = await currentUser(request);
   const row = data as { status?: string; user_id?: string | null };
   const isOwner = Boolean(user?.id && row.user_id === user.id);
-  const isAdmin = isAdminEmail(user?.email);
+  const access = await getAdminAccessForUser(user, admin);
+  const isAdmin = hasAdminPermission(access, 'company_reviews');
   if (row.status !== 'approved' && !isOwner && !isAdmin) {
     return json({ ok: false, code: 'ACCESS_DENIED' }, { status: 403 });
   }

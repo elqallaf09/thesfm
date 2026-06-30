@@ -1,20 +1,17 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { getUserFromBearerToken, isAdminEmail, createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { requireAdminPageAccess } from '@/lib/server/adminAccess';
 import { COMPANY_LISTING_SELECT_COLUMNS, normalizeCompanyListing } from '@/lib/server/companyListingHelpers';
 import CompanyAdminClient from './CompanyAdminClient';
+import { AdminAccessDenied } from '@/components/AdminAccessDenied';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCompaniesPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('sfm_access_token')?.value;
-  const user = await getUserFromBearerToken(token);
-  if (!user) redirect('/login?next=/sfm-admin-control/companies');
-  if (!isAdminEmail(user.email)) redirect('/dashboard');
+  const auth = await requireAdminPageAccess('/sfm-admin-control/companies', 'company_reviews');
+  if (!auth.ok && auth.reason === 'unauthenticated') redirect(auth.redirectTo);
+  if (!auth.ok) return <AdminAccessDenied />;
 
-  const supabase = createServerSupabaseAdmin();
-  if (!supabase) redirect('/dashboard');
+  const supabase = auth.admin;
   const { data: companies, error } = await supabase
     .from('company_listings')
     .select(COMPANY_LISTING_SELECT_COLUMNS)
@@ -27,7 +24,7 @@ export default async function AdminCompaniesPage() {
   return (
     <CompanyAdminClient
       companies={(companies ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>))}
-      adminEmail={user.email ?? ''}
+      adminEmail={auth.user.email ?? ''}
     />
   );
 }

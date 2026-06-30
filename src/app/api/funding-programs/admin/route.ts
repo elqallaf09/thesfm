@@ -1,13 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  ADMIN_SESSION_COOKIE,
-  createServerSupabaseAdmin,
-  getUserFromBearerToken,
-  isAdminAccessCodeConfigured,
-  isAdminEmail,
-  verifyAdminSessionToken,
-} from '@/lib/server/adminAccess';
+import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,28 +64,9 @@ function normalizeUrl(value: unknown) {
   }
 }
 
-async function currentUser(request: NextRequest) {
-  const header = request.headers.get('authorization');
-  const bearerToken = header?.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get('sfm_access_token')?.value ?? '';
-  return getUserFromBearerToken(bearerToken || cookieToken);
-}
-
-async function requireAdmin(request: NextRequest) {
-  const user = await currentUser(request);
-  if (!user || !isAdminEmail(user.email)) return null;
-  if (isAdminAccessCodeConfigured()) {
-    const cookieStore = await cookies();
-    if (!verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value, user)) return 'code_required' as const;
-  }
-  return user;
-}
-
 export async function POST(request: NextRequest) {
-  const user = await requireAdmin(request);
-  if (user === 'code_required') return json({ ok: false, code: 'ADMIN_CODE_REQUIRED' }, { status: 428 });
-  if (!user) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+  const auth = await requireAdminApiAccess(request, 'business_management');
+  if (!auth.ok) return json({ ok: false, code: auth.code }, { status: auth.status });
 
   let payload: Record<string, unknown>;
   try {
@@ -116,8 +89,7 @@ export async function POST(request: NextRequest) {
     return json({ ok: false, code: 'INVALID_AMOUNT_RANGE' }, { status: 400 });
   }
 
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, { status: 503 });
+  const admin = auth.admin;
 
   const record = {
     name_ar: nameAr,

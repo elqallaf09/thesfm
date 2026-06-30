@@ -8,6 +8,7 @@ import {
   type MarketSearchItem,
 } from '@/lib/market/marketService';
 import { findAssetAliasMatches } from '@/lib/market/assetAliases';
+import { findKnownMarketSymbol } from '@/lib/market/knownSymbols';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import symbolDirectory from '../../data/market-symbols.json';
@@ -453,6 +454,11 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
 
   if (query.length < 1) {
     return { ok: false, code: 'INVALID_SYMBOL', message: marketApiMessage('INVALID_SYMBOL'), suggestions: [] };
+  }
+
+  const knownSymbol = findKnownMarketSymbol(query, assetType);
+  if (knownSymbol) {
+    return { ok: true, asset: resolveFromItem(knownSymbol, 'exact_symbol'), suggestions: [knownSymbol] };
   }
 
   const symbolAlias = exactSymbolAlias(query, assetType);

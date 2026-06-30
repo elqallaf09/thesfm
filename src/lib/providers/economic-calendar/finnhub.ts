@@ -89,11 +89,15 @@ function parseJsonPayload(text: string) {
   }
 }
 
-function isAccessOrPlanError(status: number, message: string) {
+function isEntitlementError(status: number, message: string) {
   const text = message.toLowerCase();
-  return status === 401
-    || status === 403
-    || /\b(access|license|licence|permission|plan|subscription|entitlement|unauthori[sz]ed|forbidden|premium|not allowed)\b/.test(text);
+  return status === 403
+    || /\b(access|license|licence|permission|plan|subscription|entitlement|premium|not allowed|not included)\b/.test(text);
+}
+
+function isAuthorizationError(status: number, message: string) {
+  const text = message.toLowerCase();
+  return status === 401 || /\b(unauthori[sz]ed|forbidden|invalid\s+(api\s+)?key|api\s+key)\b/.test(text);
 }
 
 function isRateLimitError(status: number, message: string) {
@@ -196,7 +200,7 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
       ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
       const requestStatus = isRateLimitError(response.status, providerMessage)
         ? 'rate_limited'
-        : isAccessOrPlanError(response.status, providerMessage)
+        : isEntitlementError(response.status, providerMessage) || isAuthorizationError(response.status, providerMessage)
           ? 'access_denied'
           : !response.ok
             ? 'http_error'
@@ -212,11 +216,14 @@ export function createFinnhubCalendarProvider(apiKey: string): EconomicCalendarP
         eventsReturned: events.length,
       });
 
-      if (!response.ok || isAccessOrPlanError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
+      if (!response.ok || isEntitlementError(response.status, providerMessage) || isAuthorizationError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
         if (isRateLimitError(response.status, providerMessage)) {
           throw new ProviderError('rate_limited', 'provider_rate_limited', response.status, providerMessage);
         }
-        if (isAccessOrPlanError(response.status, providerMessage)) {
+        if (isEntitlementError(response.status, providerMessage)) {
+          throw new ProviderError('not_entitled', 'provider_access_denied', response.status, providerMessage);
+        }
+        if (isAuthorizationError(response.status, providerMessage)) {
           throw new ProviderError('forbidden', 'provider_access_denied', response.status, providerMessage);
         }
         throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, providerMessage);

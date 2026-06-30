@@ -1926,6 +1926,479 @@ export function CharityStyles() {
             min-height: 104px !important;
           }
         }
+
+        /* Professional charity dashboard rebuild. */
+        .charity-projects-page {
+          background:
+            radial-gradient(circle at 8% 0%, rgba(47, 214, 192, .10), transparent 30%),
+            var(--sfm-page-gradient) !important;
+          overflow-x: clip !important;
+        }
+
+        .charity-projects-page .sfm-dashboard-page-content.charity-projects-content {
+          width: min(100%, 1280px) !important;
+          max-inline-size: min(1280px, calc(100vw - 32px)) !important;
+          margin-inline: auto !important;
+          gap: clamp(14px, 1.55vw, 22px) !important;
+          min-width: 0 !important;
+        }
+
+        .charity-projects-page .sfm-dashboard-page-content.charity-projects-content > * {
+          inline-size: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .charity-projects-page .cp-hero {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) !important;
+          gap: 18px !important;
+          min-height: 0 !important;
+          padding: clamp(20px, 2.15vw, 28px) !important;
+          border-radius: 26px !important;
+        }
+
+        .charity-projects-page .cp-hero h1 {
+          max-width: 780px !important;
+          font-size: clamp(32px, 3vw, 44px) !important;
+          letter-spacing: 0 !important;
+          text-wrap: balance !important;
+        }
+
+        .charity-projects-page .cp-hero p {
+          max-width: 820px !important;
+          font-size: 15.5px !important;
+          line-height: 1.85 !important;
+        }
+
+        .charity-projects-page .hero-actions {
+          justify-content: flex-start !important;
+          gap: 9px !important;
+          min-width: 0 !important;
+        }
+
+        .charity-projects-page .charity-action-button,
+        .charity-projects-page .mini-gold,
+        .charity-projects-page .ghost-btn,
+        .charity-projects-page .dark-btn,
+        .charity-projects-page .gold-btn,
+        .charity-projects-page .primary-wide,
+        .charity-projects-page .card-actions button,
+        .charity-projects-page .document-actions button,
+        .charity-projects-page .doc-count-btn,
+        .charity-projects-page .report-option-card button,
+        .charity-projects-page .template-card {
+          min-height: 40px !important;
+          width: auto !important;
+          border-radius: 13px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 7px !important;
+          font-weight: 950 !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
+          transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease !important;
+        }
+
+        .charity-projects-page .charity-action-button {
+          border: 1px solid rgba(167, 243, 240, .22) !important;
+          padding: 0 15px !important;
+          cursor: pointer !important;
+          font-family: inherit !important;
+        }
+
+        .charity-projects-page .charity-action-button.primary {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)) !important;
+          color: #fff !important;
+          box-shadow: 0 14px 30px rgba(29, 140, 255, .20) !important;
+        }
+
+        .charity-projects-page .charity-action-button.secondary {
+          background: rgba(255, 255, 255, .10) !important;
+          color: var(--sfm-card) !important;
+        }
+
+        .charity-projects-page .charity-action-button.ghost {
+          background: rgba(255, 255, 255, .96) !important;
+          color: var(--sfm-midnight) !important;
+          border-color: rgba(255, 255, 255, .50) !important;
+        }
+
+        .charity-projects-page :is(.charity-action-button, .mini-gold, .ghost-btn, .dark-btn, .gold-btn, .primary-wide, .card-actions button, .document-actions button, .doc-count-btn, .report-option-card button):hover:not(:disabled) {
+          transform: translateY(-1px) !important;
+          box-shadow: 0 16px 34px rgba(3, 18, 37, .12), 0 0 0 3px rgba(24, 212, 212, .12) !important;
+        }
+
+        .charity-projects-page :is(button, a, input, select, textarea):focus-visible {
+          outline: 3px solid rgba(47, 214, 192, .34) !important;
+          outline-offset: 2px !important;
+        }
+
+        .charity-projects-page .summary-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 12px !important;
+        }
+
+        .charity-projects-page .summary-card.charity-stat-card {
+          height: 100% !important;
+          min-height: 118px !important;
+          grid-template-columns: auto minmax(0, 1fr) !important;
+          grid-template-rows: auto 1fr !important;
+          gap: 7px 12px !important;
+          padding: 17px 16px !important;
+          border-radius: 20px !important;
+        }
+
+        .charity-projects-page .summary-card.charity-stat-card strong,
+        .charity-projects-page :is(.money-row strong, .impact-summary-grid strong, .beneficiary-stats strong, .status-metric-grid strong, .result-grid strong, .price-card strong, .history-row strong, .report-option-card strong, .big-metric strong) {
+          direction: ltr !important;
+          unicode-bidi: isolate !important;
+          font-variant-numeric: tabular-nums !important;
+        }
+
+        .charity-projects-page .summary-card.charity-stat-card small {
+          font-size: 12.5px !important;
+          line-height: 1.45 !important;
+          font-weight: 950 !important;
+        }
+
+        .charity-projects-page .summary-card.charity-stat-card strong {
+          align-self: end !important;
+          font-size: clamp(18px, 1.35vw, 23px) !important;
+          line-height: 1.25 !important;
+          overflow-wrap: normal !important;
+          word-break: keep-all !important;
+        }
+
+        .charity-projects-page .page-section-tabs.charity-tabs {
+          min-height: 62px !important;
+          border: 1px solid rgba(29, 140, 255, .13) !important;
+          border-radius: 22px !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(234,246,255,.84)) !important;
+          box-shadow: 0 14px 34px rgba(3,18,37,.07) !important;
+        }
+
+        .charity-projects-page .page-section-tabs.charity-tabs button {
+          min-height: 48px !important;
+          border-radius: 15px !important;
+          font-size: 13px !important;
+          text-align: center !important;
+        }
+
+        .charity-projects-page .page-section-tabs.charity-tabs button.active {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-primary-dark)) !important;
+          color: #fff !important;
+          border-color: rgba(167,243,240,.30) !important;
+        }
+
+        .charity-projects-page .charity-overview-grid {
+          grid-template-columns: minmax(0, 1.14fr) minmax(320px, .86fr) !important;
+          gap: 16px !important;
+        }
+
+        .charity-projects-page :is(.overview-main-stack, .overview-side-stack) {
+          display: grid !important;
+          gap: 16px !important;
+          min-width: 0 !important;
+        }
+
+        .charity-projects-page :is(.warm-card, .summary-card, .project-card, .beneficiary-card, .contributor-card, .document-card, .organization-card, .report-option-card, .reminder-card, .season-card, .alert-panel, .impact-panel, .template-card) {
+          border-radius: 22px !important;
+          border: 1px solid rgba(29, 140, 255, .14) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,251,255,.94)) !important;
+          box-shadow: 0 14px 34px rgba(3,18,37,.065) !important;
+        }
+
+        .charity-projects-page :is(.project-dashboard, .family-collaboration, .beneficiary-tracking, .document-vault, .report-dashboard, #impact-dashboard, #charity-organization-directory) {
+          padding: clamp(18px, 2vw, 24px) !important;
+          display: grid !important;
+          gap: 15px !important;
+          min-height: auto !important;
+        }
+
+        .charity-projects-page :is(.section-head, .charity-section-header, .vault-head) {
+          align-items: center !important;
+          margin-bottom: 0 !important;
+          gap: 14px !important;
+        }
+
+        .charity-projects-page :is(.section-head h2, .charity-section-header h2) {
+          letter-spacing: 0 !important;
+          text-wrap: balance !important;
+        }
+
+        .charity-projects-page :is(.section-head p, .charity-section-header p) {
+          max-width: 760px !important;
+          margin-top: 6px !important;
+        }
+
+        .charity-projects-page .charity-section-icon {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 15px !important;
+          display: grid !important;
+          place-items: center !important;
+          background: rgba(29, 140, 255, .10) !important;
+          color: var(--sfm-primary) !important;
+          border: 1px solid rgba(29, 140, 255, .12) !important;
+        }
+
+        .charity-projects-page .document-tools,
+        .charity-projects-page .report-toolbar,
+        .charity-projects-page .report-card {
+          display: grid !important;
+          grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(160px, .34fr)) !important;
+          gap: 10px !important;
+          align-items: center !important;
+          width: 100% !important;
+        }
+
+        .charity-projects-page .document-tools-two {
+          grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(170px, .4fr)) !important;
+        }
+
+        .charity-projects-page .report-toolbar {
+          grid-template-columns: minmax(220px, .35fr) minmax(0, 1fr) !important;
+        }
+
+        .charity-projects-page .report-toolbar .section-actions {
+          justify-content: flex-end !important;
+        }
+
+        .charity-projects-page :is(.project-grid, .beneficiary-grid, .contributor-grid, .organization-grid, .document-grid, .report-grid, .project-impact-grid) {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)) !important;
+          gap: 12px !important;
+        }
+
+        .charity-projects-page .report-grid {
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+        }
+
+        .charity-projects-page .document-grid {
+          grid-template-columns: 1fr !important;
+        }
+
+        .charity-projects-page .document-card {
+          grid-template-columns: auto minmax(0, 1fr) auto !important;
+          align-items: center !important;
+          padding: 14px !important;
+        }
+
+        .charity-projects-page :is(.project-card, .beneficiary-card, .contributor-card, .organization-card, .document-card, .report-option-card, .reminder-card) {
+          padding: 15px !important;
+          min-height: auto !important;
+        }
+
+        .charity-projects-page .report-option-card.charity-report-card {
+          display: grid !important;
+          grid-template-columns: auto minmax(0, 1fr) !important;
+          align-items: start !important;
+          gap: 12px !important;
+          min-height: 170px !important;
+        }
+
+        .charity-projects-page .report-card-icon {
+          width: 42px !important;
+          height: 42px !important;
+          border-radius: 14px !important;
+          display: grid !important;
+          place-items: center !important;
+          background: rgba(29, 140, 255, .10) !important;
+          color: var(--sfm-primary) !important;
+        }
+
+        .charity-projects-page .report-option-card.charity-report-card button {
+          grid-column: 1 / -1 !important;
+          justify-self: start !important;
+          padding-inline: 14px !important;
+        }
+
+        .charity-projects-page .impact-report-card label,
+        .charity-projects-page .impact-report-card .impact-lines,
+        .charity-projects-page .impact-report-card .muted {
+          grid-column: 1 / -1 !important;
+        }
+
+        .charity-projects-page .sfm-empty-state.charity-empty-state {
+          min-height: 116px !important;
+          padding: 16px !important;
+          border-radius: 18px !important;
+          text-align: center !important;
+          border: 1px dashed rgba(29,140,255,.22) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(234,246,255,.68)) !important;
+        }
+
+        .charity-projects-page .zakat-premium-grid {
+          grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(280px, .78fr) !important;
+          gap: 14px !important;
+        }
+
+        .charity-projects-page .zakat-panel,
+        .charity-projects-page .asset-input-box,
+        .charity-projects-page .non-zakat-box,
+        .charity-projects-page .manual-price-box,
+        .charity-projects-page .result-grid div,
+        .charity-projects-page .price-card {
+          border-radius: 18px !important;
+          min-width: 0 !important;
+        }
+
+        .charity-projects-page .form-grid {
+          gap: 12px !important;
+        }
+
+        .charity-projects-page .form-grid input,
+        .charity-projects-page .form-grid select,
+        .charity-projects-page .form-grid textarea,
+        .charity-projects-page .document-tools input,
+        .charity-projects-page .document-tools select,
+        .charity-projects-page .report-toolbar select {
+          min-height: 44px !important;
+          border-radius: 13px !important;
+        }
+
+        .charity-projects-page [dir='ltr'],
+        .charity-projects-page :is(code, .ticker, .symbol) {
+          direction: ltr !important;
+          unicode-bidi: isolate !important;
+        }
+
+        .dark .charity-projects-page :is(.warm-card, .summary-card, .project-card, .beneficiary-card, .contributor-card, .document-card, .organization-card, .report-option-card, .reminder-card, .season-card, .alert-panel, .impact-panel, .template-card) {
+          background: linear-gradient(180deg, rgba(16,47,82,.90), rgba(8,24,42,.94)) !important;
+          border-color: rgba(167,243,240,.14) !important;
+          box-shadow: 0 14px 34px rgba(0,0,0,.20) !important;
+        }
+
+        .dark .charity-projects-page .page-section-tabs.charity-tabs {
+          background: linear-gradient(135deg, rgba(8,24,42,.94), rgba(16,47,82,.86)) !important;
+          border-color: rgba(167,243,240,.14) !important;
+        }
+
+        .dark .charity-projects-page .page-section-tabs.charity-tabs button {
+          background: rgba(10,20,34,.72) !important;
+          border-color: rgba(167,243,240,.12) !important;
+          color: var(--sfm-body) !important;
+        }
+
+        .dark .charity-projects-page .page-section-tabs.charity-tabs button.active {
+          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-primary-dark)) !important;
+          color: #fff !important;
+        }
+
+        .dark .charity-projects-page .charity-action-button.ghost {
+          background: rgba(8,24,42,.76) !important;
+          color: var(--sfm-heading) !important;
+          border-color: rgba(167,243,240,.18) !important;
+        }
+
+        .dark .charity-projects-page :is(.section-head h2, .charity-section-header h2, .project-card strong, .beneficiary-card strong, .contributor-card strong, .document-card strong, .report-option-card strong, .summary-card strong) {
+          color: var(--sfm-heading) !important;
+        }
+
+        .dark .charity-projects-page :is(.section-head p, .charity-section-header p, .muted, .document-card small, .report-option-card p) {
+          color: var(--sfm-body) !important;
+        }
+
+        @media (min-width: 1025px) {
+          .charity-projects-page .sfm-dashboard-page-shell {
+            width: auto !important;
+            max-width: none !important;
+            margin-inline-start: var(--sidebar-w) !important;
+            margin-inline-end: 0 !important;
+            padding-inline: clamp(22px, 2.4vw, 36px) !important;
+          }
+        }
+
+        @media (max-width: 1260px) {
+          .charity-projects-page .summary-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
+
+          .charity-projects-page .charity-overview-grid,
+          .charity-projects-page .zakat-premium-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .charity-projects-page .guidance-panel {
+            grid-column: 1 / -1 !important;
+          }
+        }
+
+        @media (max-width: 920px) {
+          .charity-projects-page .sfm-dashboard-page-content.charity-projects-content {
+            max-inline-size: min(100%, calc(100vw - 24px)) !important;
+          }
+
+          .charity-projects-page .summary-grid,
+          .charity-projects-page .beneficiary-stats,
+          .charity-projects-page .impact-summary-grid,
+          .charity-projects-page .status-metric-grid,
+          .charity-projects-page .money-row,
+          .charity-projects-page .result-grid,
+          .charity-projects-page .price-status-grid,
+          .charity-projects-page .document-tools,
+          .charity-projects-page .document-tools-two,
+          .charity-projects-page .report-toolbar,
+          .charity-projects-page .report-card,
+          .charity-projects-page .document-card {
+            grid-template-columns: 1fr !important;
+          }
+
+          .charity-projects-page .report-toolbar .section-actions {
+            justify-content: flex-start !important;
+          }
+
+          .charity-projects-page .page-section-tabs.charity-tabs {
+            display: flex !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+          }
+
+          .charity-projects-page .page-section-tabs.charity-tabs button {
+            flex: 0 0 auto !important;
+            min-width: 142px !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .charity-projects-page .sfm-dashboard-page-content.charity-projects-content {
+            max-inline-size: min(100%, calc(100vw - 18px)) !important;
+            gap: 14px !important;
+          }
+
+          .charity-projects-page .cp-hero {
+            padding: 18px !important;
+            border-radius: 22px !important;
+          }
+
+          .charity-projects-page .hero-actions,
+          .charity-projects-page .section-actions,
+          .charity-projects-page .card-actions,
+          .charity-projects-page .document-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            width: 100% !important;
+          }
+
+          .charity-projects-page :is(.charity-action-button, .mini-gold, .ghost-btn, .dark-btn, .gold-btn, .primary-wide, .card-actions button, .document-actions button, .doc-count-btn) {
+            width: 100% !important;
+            white-space: normal !important;
+          }
+
+          .charity-projects-page .summary-grid,
+          .charity-projects-page .form-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .charity-projects-page :is(.section-head, .charity-section-header, .vault-head) {
+            display: grid !important;
+          }
+
+          .charity-projects-page .charity-section-icon {
+            order: -1 !important;
+          }
+        }
       `}</style>
     </>
   );

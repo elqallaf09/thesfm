@@ -24,7 +24,6 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { PageTabs } from '@/components/layout/PageTabs';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -41,6 +40,15 @@ import { DocumentModal } from './_DocumentModal';
 import { BeneficiaryModal, BeneficiaryDetailsModal } from './_BeneficiaryModal';
 import { ContributorModal } from './_ContributorModal';
 import { CharityStyles } from './_styles';
+import {
+  CharityActionButton,
+  CharityEmptyState,
+  CharityFormSection,
+  CharityReportCard,
+  CharitySectionHeader,
+  CharityStatCard,
+  CharityTabs,
+} from './_dashboardComponents';
 
 export default function CharityProjectsPage() {
   const router = useRouter();
@@ -48,11 +56,11 @@ export default function CharityProjectsPage() {
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
   const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
-  const unavailableLabel = lang === 'fr' ? 'Indisponible' : lang === 'en' ? 'Unavailable' : 'غير متاح';
+  const unavailableLabel = tr.unavailable ?? (lang === 'fr' ? 'Indisponible' : lang === 'en' ? 'Unavailable' : 'غير متاح');
   const zakatShortcut = {
     ar: {
       title: 'إدارة الزكاة',
-      description: 'انتقل إلى صفحة الزكاة لحساب النصاب، تتبع الحول، وحفظ حسابات الزكاة.',
+      description: 'انتقل إلى صفحة الزكاة لحساب النصاب، وتتبع الحول، وحفظ حسابات الزكاة.',
       button: 'فتح صفحة الزكاة',
     },
     en: {
@@ -61,13 +69,13 @@ export default function CharityProjectsPage() {
       button: 'Open Zakat Page',
     },
     fr: {
-      title: 'Gérer la zakat',
+      title: 'G?rer la zakat',
       description: 'Ouvrez la page Zakat pour calculer le nisab, suivre le hawl et enregistrer les calculs de zakat.',
       button: 'Ouvrir la page Zakat',
     },
   }[lang as Lang] ?? {
     title: 'إدارة الزكاة',
-    description: 'انتقل إلى صفحة الزكاة لحساب النصاب، تتبع الحول، وحفظ حسابات الزكاة.',
+    description: 'انتقل إلى صفحة الزكاة لحساب النصاب، وتتبع الحول، وحفظ حسابات الزكاة.',
     button: 'فتح صفحة الزكاة',
   };
   const db = supabase as any;
@@ -1187,11 +1195,11 @@ export default function CharityProjectsPage() {
     label: tr[status],
     value: numberLabel(projects.filter(project => project.status === status).length),
   }));
-  const charityTabs = [
+  const charityTabs: Array<{ id: CharityProjectsTab; label: string; count?: number }> = [
     { id: 'overview', label: lang === 'ar' ? 'نظرة عامة' : lang === 'fr' ? 'Aperçu' : 'Overview' },
-    { id: 'projects', label: lang === 'ar' ? 'مشاريع خيرية' : tr.projects, count: projects.length },
+    { id: 'projects', label: tr.projects, count: projects.length },
     { id: 'beneficiaries', label: tr.beneficiaryTracking, count: beneficiaries.length },
-    { id: 'contributors', label: lang === 'ar' ? 'المساهمون' : tr.contributors, count: contributors.length },
+    { id: 'contributors', label: tr.contributors, count: contributors.length },
     { id: 'documents', label: tr.documentVault, count: documents.length },
     { id: 'impact', label: tr.impactDashboard },
     { id: 'reports', label: tr.reports },
@@ -1208,18 +1216,18 @@ export default function CharityProjectsPage() {
             <p>{tr.subtitle}</p>
           </div>
           <div className="hero-actions">
-            <button className="gold-btn" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+            <CharityActionButton variant="primary" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
               <Plus size={17} /> {tr.newProject}
-            </button>
-            <button className="dark-btn" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>
+            </CharityActionButton>
+            <CharityActionButton variant="secondary" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>
               <CalendarDays size={17} /> {tr.addReminder}
-            </button>
-            <button className="dark-btn" type="button" onClick={() => setActiveTab('reports')}>
+            </CharityActionButton>
+            <CharityActionButton variant="secondary" type="button" onClick={() => setActiveTab('reports')}>
               <FileText size={17} /> {tr.reports}
-            </button>
-            <button className="ghost-btn" type="button" onClick={() => { resetDocumentForm(); setDocumentOpen(true); }}>
+            </CharityActionButton>
+            <CharityActionButton variant="ghost" type="button" onClick={() => { resetDocumentForm(); setDocumentOpen(true); }}>
               <FileUp size={17} /> {tr.uploadDocument}
-            </button>
+            </CharityActionButton>
             <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
@@ -1227,24 +1235,16 @@ export default function CharityProjectsPage() {
         {message && <div className="notice">{message}</div>}
 
         <section className="summary-grid">
-          {summaryCards.map(card => {
-            const Icon = card.icon;
-            return (
-              <article className="warm-card summary-card" key={card.label}>
-                <span><Icon size={18} /></span>
-                <small>{card.label}</small>
-                <strong>{card.value}</strong>
-              </article>
-            );
-          })}
+          {summaryCards.map(card => (
+            <CharityStatCard key={card.label} icon={card.icon} label={card.label} value={card.value} />
+          ))}
         </section>
 
-        <PageTabs
+        <CharityTabs
           tabs={charityTabs}
           active={activeTab}
-          onChange={id => setActiveTab(id as CharityProjectsTab)}
+          onChange={setActiveTab}
           ariaLabel={tr.title}
-          className="charity-tabs"
         />
 
         <section className="charity-overview-grid" hidden={activeTab !== 'overview'}>
@@ -1572,11 +1572,7 @@ export default function CharityProjectsPage() {
             </div>
           </article>
 
-          <article className="warm-card span-5">
-            <div className="section-head">
-              <div><small>Hijri MVP</small><h2>{tr.hawlTracking}</h2></div>
-              <CalendarDays size={24} />
-            </div>
+          <CharityFormSection className="warm-card span-5" eyebrow={tr.hijriEstimated} title={tr.hawlTracking} icon={<CalendarDays size={24} />}>
             <div className="form-grid one">
               <label><span>{tr.assetName}</span><input value={assetForm.asset_name} onChange={e => setAssetForm(prev => ({ ...prev, asset_name: e.target.value }))} /></label>
               <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{assetTypeLabel(type)}</option>)}</select></label>
@@ -1586,14 +1582,14 @@ export default function CharityProjectsPage() {
               <label className="check-row"><input type="checkbox" checked={assetForm.is_zakatable} onChange={e => setAssetForm(prev => ({ ...prev, is_zakatable: e.target.checked }))} /><span>{tr.reminder}</span></label>
               <button className="primary-wide" onClick={saveAsset}><Save size={16} /> {tr.addAsset}</button>
             </div>
-          </article>
+          </CharityFormSection>
         </section>
 
         <section className="warm-card project-dashboard" hidden={activeTab !== 'projects'}>
           <div className="section-head vault-head">
             <div>
               <small>{tr.projects}</small>
-              <h2>{lang === 'ar' ? 'مشاريع خيرية' : tr.projects}</h2>
+              <h2>{tr.projects}</h2>
               <p>{tr.projectListDesc}</p>
             </div>
             <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
@@ -2203,14 +2199,12 @@ export default function CharityProjectsPage() {
         </section>
 
         <section className="warm-card report-dashboard" id="charity-reports" hidden={activeTab !== 'reports'}>
-          <div className="section-head vault-head">
-            <div>
-              <small>{tr.reports}</small>
-              <h2>{tr.reports}</h2>
-              <p>{tr.reportsDesc}</p>
-            </div>
-            <FileText size={22} />
-          </div>
+          <CharitySectionHeader
+            eyebrow={tr.reports}
+            title={tr.reports}
+            description={tr.reportsDesc}
+            icon={<FileText size={22} />}
+          />
           <div className="report-toolbar">
             <label>
               <span>{tr.reportYear}</span>
@@ -2228,12 +2222,11 @@ export default function CharityProjectsPage() {
             </div>
           </div>
           {!hasReportData && (
-            <EmptyState
-              className="charity-empty-state compact"
+            <CharityEmptyState
               icon={<AlertTriangle size={28} />}
               title={tr.notEnoughReportData}
               description={tr.emptyReportsBody}
-              actions={(
+              action={(
                 <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
                   <Plus size={15} /> {tr.newProject}
                 </button>
@@ -2241,44 +2234,31 @@ export default function CharityProjectsPage() {
             />
           )}
           <div className="report-grid">
-            <article className="report-option-card">
-              <FileText size={20} />
-              <div>
-                <strong>{tr.yearlyCharityReport}</strong>
-                <p>{tr.yearlyReportDesc}</p>
-              </div>
-              <button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData}>{tr.generateReport}</button>
-            </article>
-            <article className="report-option-card">
-              <Calculator size={20} />
-              <div>
-                <strong>{tr.zakatKhumsReport}</strong>
-                <p>{tr.zakatKhumsReportDesc}</p>
-              </div>
-              <button type="button" onClick={() => router.push('/zakat')} disabled={assets.length === 0 && zakatHistory.length === 0}>{tr.generateReport}</button>
-            </article>
-            <article className="report-option-card">
-              <HandCoins size={20} />
-              <div>
-                <strong>{tr.donationsReport}</strong>
-                <p>{tr.donationsReportDesc}</p>
-              </div>
-              <button type="button" onClick={exportExcel} disabled={exportingExcel || donations.length === 0}>{tr.exportExcel}</button>
-            </article>
-            <article className="report-option-card">
-              <HeartHandshake size={20} />
-              <div>
-                <strong>{tr.beneficiariesReport}</strong>
-                <p>{tr.beneficiariesReportDesc}</p>
-              </div>
-              <button type="button" onClick={() => setActiveTab('beneficiaries')} disabled={beneficiaries.length === 0}>{tr.beneficiaryTracking}</button>
-            </article>
-            <article className="report-option-card impact-report-card">
-              <Sparkles size={20} />
-              <div>
-                <strong>{tr.impact}</strong>
-                <p>{tr.incomeMissing}</p>
-              </div>
+            <CharityReportCard
+              icon={<FileText size={20} />}
+              title={tr.yearlyCharityReport}
+              description={tr.yearlyReportDesc}
+              action={<button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData}>{tr.generateReport}</button>}
+            />
+            <CharityReportCard
+              icon={<Calculator size={20} />}
+              title={tr.zakatKhumsReport}
+              description={tr.zakatKhumsReportDesc}
+              action={<button type="button" onClick={() => router.push('/zakat')} disabled={assets.length === 0 && zakatHistory.length === 0}>{tr.generateReport}</button>}
+            />
+            <CharityReportCard
+              icon={<HandCoins size={20} />}
+              title={tr.donationsReport}
+              description={tr.donationsReportDesc}
+              action={<button type="button" onClick={exportExcel} disabled={exportingExcel || donations.length === 0}>{tr.exportExcel}</button>}
+            />
+            <CharityReportCard
+              icon={<HeartHandshake size={20} />}
+              title={tr.beneficiariesReport}
+              description={tr.beneficiariesReportDesc}
+              action={<button type="button" onClick={() => setActiveTab('beneficiaries')} disabled={beneficiaries.length === 0}>{tr.beneficiaryTracking}</button>}
+            />
+            <CharityReportCard className="impact-report-card" icon={<Sparkles size={20} />} title={tr.impact} description={tr.incomeMissing}>
               <label className="impact-input"><span>{tr.donationAmount}</span><input inputMode="decimal" value={impactDonation} onChange={e => setImpactDonation(e.target.value)} placeholder="0.000" /></label>
               {incomeTotal <= 0 ? <p className="muted">{tr.incomeMissing}</p> : impactPct !== null && impactValue > 0 ? (
                 <div className="impact-lines">
@@ -2287,7 +2267,7 @@ export default function CharityProjectsPage() {
                   {impactPct > 20 && <p className="warn">{tr.highWarning}</p>}
                 </div>
               ) : <p className="muted">{tr.incomeMissing}</p>}
-            </article>
+            </CharityReportCard>
           </div>
         </section>
       </DashboardPageShell>

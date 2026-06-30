@@ -45,7 +45,10 @@ type CalendarProviderDiagnostics = {
   finnhubConfigured: boolean;
   tradingEconomicsConfigured: boolean;
   fmpConfigured: boolean;
-  status: 'available' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
+  status: 'available' | 'not_configured' | 'success' | 'not_entitled' | 'provider_error' | 'rate_limited';
+  entitlementStatus: 'not_checked' | 'available' | 'not_entitled' | 'blocked' | 'rate_limited' | 'unknown';
+  responseStatusCode: number | null;
+  eventsReturned: number | null;
   lastFetchStatus: string | null;
   lastFetchTime: string | null;
   lastSuccessfulUpdate: string | null;
@@ -60,6 +63,9 @@ let diagnostics: CalendarProviderDiagnostics = {
   tradingEconomicsConfigured: false,
   fmpConfigured: false,
   status: 'not_configured',
+  entitlementStatus: 'not_checked',
+  responseStatusCode: null,
+  eventsReturned: null,
   lastFetchStatus: null,
   lastFetchTime: null,
   lastSuccessfulUpdate: null,
@@ -168,6 +174,9 @@ export function getEconomicCalendarProviderStatus() {
     tradingEconomicsConfigured: Boolean(cleanEnv(process.env.TRADING_ECONOMICS_API_KEY)),
     fmpConfigured: Boolean(cleanEnv(process.env.FMP_API_KEY)),
     status: config.configured ? diagnostics.status === 'not_configured' ? 'available' : diagnostics.status : 'not_configured',
+    entitlementStatus: config.configured ? diagnostics.entitlementStatus : 'not_checked',
+    responseStatusCode: config.configured ? diagnostics.responseStatusCode : null,
+    eventsReturned: config.configured ? diagnostics.eventsReturned : null,
   });
   return {
     configured: config.configured,
@@ -177,6 +186,9 @@ export function getEconomicCalendarProviderStatus() {
     finnhubConfigured: diagnostics.finnhubConfigured,
     tradingEconomicsConfigured: diagnostics.tradingEconomicsConfigured,
     fmpConfigured: diagnostics.fmpConfigured,
+    entitlementStatus: diagnostics.entitlementStatus,
+    responseStatusCode: diagnostics.responseStatusCode,
+    eventsReturned: diagnostics.eventsReturned,
     lastFetchStatus: diagnostics.lastFetchStatus,
     lastFetchTime: diagnostics.lastFetchTime,
     lastSuccessfulUpdate: diagnostics.lastSuccessfulUpdate,
@@ -223,6 +235,9 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
     tradingEconomicsConfigured: Boolean(cleanEnv(process.env.TRADING_ECONOMICS_API_KEY)),
     fmpConfigured: Boolean(cleanEnv(process.env.FMP_API_KEY)),
     status: config.configured ? 'available' : 'not_configured',
+    entitlementStatus: 'not_checked',
+    responseStatusCode: null,
+    eventsReturned: null,
   });
   if (!config.configured) {
     return {
@@ -271,6 +286,9 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
             provider: candidate.provider,
             configured: true,
             status: 'success',
+            entitlementStatus: 'available',
+            responseStatusCode: null,
+            eventsReturned: data.length,
             lastFetchStatus: 'success',
             lastFetchTime: updatedAt,
             lastSuccessfulUpdate: updatedAt,
@@ -298,7 +316,20 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
       updateDiagnostics({
         provider: terminalProvider,
         configured: true,
-        status: terminalError.status === 'rate_limited' ? 'rate_limited' : 'provider_error',
+        status: terminalError.status === 'rate_limited'
+          ? 'rate_limited'
+          : terminalError.status === 'not_entitled'
+            ? 'not_entitled'
+            : 'provider_error',
+        entitlementStatus: terminalError.status === 'not_entitled'
+          ? 'not_entitled'
+          : terminalError.status === 'rate_limited'
+            ? 'rate_limited'
+            : terminalError.status === 'unauthorized' || terminalError.status === 'forbidden'
+              ? 'blocked'
+              : 'unknown',
+        responseStatusCode: terminalError.providerStatus ?? null,
+        eventsReturned: 0,
         lastFetchStatus: terminalError.status,
         lastFetchTime: failedAt,
       });

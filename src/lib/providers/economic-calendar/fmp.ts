@@ -89,11 +89,15 @@ function parseJsonPayload(text: string) {
   }
 }
 
-function isAccessError(status: number, message: string) {
+function isEntitlementError(status: number, message: string) {
   const text = message.toLowerCase();
-  return status === 401
-    || status === 403
-    || /\b(access|license|licence|permission|plan|subscription|entitlement|unauthori[sz]ed|forbidden|premium|invalid|apikey|api key)\b/.test(text);
+  return status === 403
+    || /\b(access|license|licence|permission|plan|subscription|entitlement|premium|not included)\b/.test(text);
+}
+
+function isAuthorizationError(status: number, message: string) {
+  const text = message.toLowerCase();
+  return status === 401 || /\b(unauthori[sz]ed|forbidden|invalid|apikey|api\s+key)\b/.test(text);
 }
 
 function isRateLimitError(status: number, message: string) {
@@ -203,7 +207,7 @@ export function createFmpCalendarProvider(apiKey: string): EconomicCalendarProvi
       ).sort((a, b) => new Date(a.dateTimeUtc).getTime() - new Date(b.dateTimeUtc).getTime());
       const requestStatus = isRateLimitError(response.status, providerMessage)
         ? 'rate_limited'
-        : isAccessError(response.status, providerMessage)
+        : isEntitlementError(response.status, providerMessage) || isAuthorizationError(response.status, providerMessage)
           ? 'access_denied'
           : !response.ok
             ? 'http_error'
@@ -219,11 +223,14 @@ export function createFmpCalendarProvider(apiKey: string): EconomicCalendarProvi
         eventsReturned: events.length,
       });
 
-      if (!response.ok || isAccessError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
+      if (!response.ok || isEntitlementError(response.status, providerMessage) || isAuthorizationError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
         if (isRateLimitError(response.status, providerMessage)) {
           throw new ProviderError('rate_limited', 'provider_rate_limited', response.status, providerMessage);
         }
-        if (isAccessError(response.status, providerMessage)) {
+        if (isEntitlementError(response.status, providerMessage)) {
+          throw new ProviderError('not_entitled', 'provider_access_denied', response.status, providerMessage);
+        }
+        if (isAuthorizationError(response.status, providerMessage)) {
           throw new ProviderError('unauthorized', 'provider_access_denied', response.status, providerMessage);
         }
         const status = mapHttpProviderStatus(response.status);

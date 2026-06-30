@@ -84,4 +84,5 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_instagram_automation: { ar: 'أتمتة إنستغرام', en: 'Instagram Automation', fr: 'Automatisation Instagram' },
   nav_smart_trading_terminal: { ar: 'محطة التداول الذكية', en: 'Smart Trading Terminal', fr: 'Terminal de trading intelligent' },
   nav_group_admin: { ar: 'إدارة المنصة', en: 'Platform Admin', fr: 'Administration' },
+  nav_admin_permissions: { ar: 'إدارة صلاحيات الأدمن', en: 'Admin Permissions', fr: 'Permissions admin' },
 };

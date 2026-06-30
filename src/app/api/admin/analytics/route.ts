@@ -1,13 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import {
-  ADMIN_SESSION_COOKIE,
-  createServerSupabaseAdmin,
-  getUserFromBearerToken,
-  isAdminAccessCodeConfigured,
-  isAdminEmail,
-  verifyAdminSessionToken,
-} from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
 
 type AnalyticsRow = {
   id: string;
@@ -368,15 +360,8 @@ async function loadSessionRows(
 }
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('sfm_access_token')?.value;
-  const user = await getUserFromBearerToken(token);
-
-  if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
-  if (!isAdminEmail(user.email)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  if (isAdminAccessCodeConfigured() && !verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value, user)) {
-    return NextResponse.json({ error: 'admin_code_required' }, { status: 428 });
-  }
+  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
+  if (!auth.ok) return NextResponse.json({ error: auth.code.toLowerCase() }, { status: auth.status });
 
   const url = new URL(request.url);
   const range = url.searchParams.get('range') || '30d';
@@ -385,7 +370,7 @@ export async function GET(request: Request) {
   const from = filterStart(range, url.searchParams.get('from'));
   const to = filterEnd(range, url.searchParams.get('to'));
 
-  const admin = createServerSupabaseAdmin();
+  const admin = auth.admin;
   if (!admin) {
     console.warn('[admin-analytics] service role is not configured; returning empty analytics payload');
     return NextResponse.json(

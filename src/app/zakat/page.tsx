@@ -73,7 +73,7 @@ type ZakatCalculation = {
   notes: string | null;
 };
 
-const TEXT = {
+const RAW_TEXT = {
   ar: {
     title: 'الزكاة',
     subtitle: 'احسب زكاتك، تابع الحول، واربط أصولك ومدخراتك بحساب ذكي ومنظم.',
@@ -376,6 +376,102 @@ const TEXT = {
   },
 } as const;
 
+const WINDOWS_1252_REVERSE: Record<string, number> = {
+  '€': 0x80,
+  '‚': 0x82,
+  'ƒ': 0x83,
+  '„': 0x84,
+  '…': 0x85,
+  '†': 0x86,
+  '‡': 0x87,
+  'ˆ': 0x88,
+  '‰': 0x89,
+  'Š': 0x8a,
+  '‹': 0x8b,
+  'Œ': 0x8c,
+  'Ž': 0x8e,
+  '‘': 0x91,
+  '’': 0x92,
+  '“': 0x93,
+  '”': 0x94,
+  '•': 0x95,
+  '–': 0x96,
+  '—': 0x97,
+  '˜': 0x98,
+  '™': 0x99,
+  'š': 0x9a,
+  '›': 0x9b,
+  'œ': 0x9c,
+  'ž': 0x9e,
+  'Ÿ': 0x9f,
+};
+
+function repairMojibakeText(value: string) {
+  if (!/[ÃÂØÙ]/.test(value)) return value;
+
+  const bytes = Array.from(value, char => {
+    const code = char.codePointAt(0) ?? 0;
+    return WINDOWS_1252_REVERSE[char] ?? (code <= 0xff ? code : null);
+  });
+
+  if (bytes.some(byte => byte === null)) return value;
+
+  try {
+    const repaired = new TextDecoder('utf-8').decode(new Uint8Array(bytes as number[]));
+    return /[\u0600-\u06ffÀ-ÿ]/.test(repaired) ? repaired : value;
+  } catch {
+    return value;
+  }
+}
+
+function repairTextDictionary<T>(value: T): T {
+  if (typeof value === 'string') return repairMojibakeText(value) as T;
+  if (Array.isArray(value)) return value.map(item => repairTextDictionary(item)) as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, repairTextDictionary(item)]),
+    ) as T;
+  }
+  return value;
+}
+
+const ZAKAT_ARABIC_OVERRIDES = {
+  title: 'الزكاة',
+  subtitle: 'احسب الزكاة، وتتبع الحول، ونظم الأموال النقدية والذهب والفضة والاستثمارات والديون.',
+  breadcrumb: 'THE SFM / الزكاة',
+  calculator: 'حاسبة الزكاة',
+  zakatInputs: 'الأموال النقدية',
+  cash: 'الأموال النقدية',
+  gold: 'الذهب والفضة',
+  silver: 'الفضة',
+  investments: 'الاستثمارات',
+  debts: 'الديون',
+  zakatSummary: 'الملخص',
+  guidance: 'التذكيرات والتنبيهات',
+  saveCalculation: 'حفظ الحساب',
+  saveZakatCalculation: 'حفظ حساب الزكاة',
+  disclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية.',
+  metalsDisclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية. راجع جهة شرعية مختصة للحالات الخاصة.',
+  openCharityProjects: 'المشاريع الخيرية',
+  noHistory: 'لا توجد حسابات زكاة محفوظة حتى الآن.',
+  noDueDate: 'غير متاح',
+  noSavedCalculation: 'غير متاح',
+  estimatedZakat: 'الزكاة التقديرية',
+  netZakatBase: 'صافي الوعاء الزكوي',
+  selectedNisab: 'النصاب المستخدم',
+  nextHawlDate: 'أقرب موعد حول',
+  lastSaved: 'آخر حساب محفوظ',
+} as const;
+
+const REPAIRED_TEXT = repairTextDictionary(RAW_TEXT);
+const TEXT = {
+  ...REPAIRED_TEXT,
+  ar: {
+    ...REPAIRED_TEXT.ar,
+    ...ZAKAT_ARABIC_OVERRIDES,
+  },
+} as const;
+
 const goldKarats = ['24', '22', '21', '18'] as const;
 const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silver', 'non_zakat'];
 const nonZakatOptions = ['personalHome', 'personalCar', 'householdFurniture', 'personalTools', 'residentialLand', 'personalUseAssets', 'other'] as const;
@@ -663,7 +759,7 @@ export default function ZakatPage() {
     },
   ];
   const zakatTabs = [
-    { id: 'calculator', label: lang === 'ar' ? 'الحاسبة' : lang === 'fr' ? 'Calculateur' : 'Calculator' },
+    { id: 'calculator', label: lang === 'ar' ? 'الزكاة' : lang === 'fr' ? 'Calculateur' : 'Calculator' },
     { id: 'assets', label: lang === 'ar' ? 'الأصول والحول' : lang === 'fr' ? 'Actifs et hawl' : 'Assets & Hawl', count: assets.length },
     { id: 'history', label: lang === 'ar' ? 'السجل' : lang === 'fr' ? 'Historique' : 'History', count: history.length },
     { id: 'reminders', label: lang === 'ar' ? 'التذكيرات' : lang === 'fr' ? 'Rappels' : 'Reminders', count: assets.length },
@@ -863,13 +959,13 @@ export default function ZakatPage() {
             <div className="price-grid">
               <div className="price-card">
                 <small>{tr.goldPriceToday}</small>
-                <strong>{toNum(zakat.goldPrice) > 0 ? `${money(toNum(zakat.goldPrice))} / ${lang === 'ar' ? 'جرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
+                <strong>{toNum(zakat.goldPrice) > 0 ? `${money(toNum(zakat.goldPrice))} / ${lang === 'ar' ? 'غرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
                 <span>{priceStatusLabel}</span>
                 <em>{tr.lastUpdated}: {goldPriceLastUpdated ? timeLabel(goldPriceLastUpdated) : tr.updating}</em>
               </div>
               <div className="price-card">
                 <small>{tr.silverPriceToday}</small>
-                <strong>{toNum(zakat.silverPrice) > 0 ? `${money(toNum(zakat.silverPrice))} / ${lang === 'ar' ? 'جرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
+                <strong>{toNum(zakat.silverPrice) > 0 ? `${money(toNum(zakat.silverPrice))} / ${lang === 'ar' ? 'غرام' : lang === 'fr' ? 'gramme' : 'gram'}` : tr.updating}</strong>
                 <span>{priceStatusLabel}</span>
                 <em>{tr.lastUpdated}: {silverPriceLastUpdated ? timeLabel(silverPriceLastUpdated) : tr.updating}</em>
               </div>
@@ -988,7 +1084,7 @@ export default function ZakatPage() {
 
         /* Zakat route production polish for the Charity Projects module. */
         .zakat-page{--zakat-radius-xl:26px;--zakat-radius-lg:20px;--zakat-border:rgba(29,140,255,.15);--zakat-shadow:0 18px 44px rgba(3,18,37,.075);background:radial-gradient(circle at 8% 0%,rgba(47,214,192,.10),transparent 30%),var(--sfm-page-gradient);overflow-x:clip}
-        .zakat-page .sfm-dashboard-page-content.zakat-content{width:min(100%,1480px);max-inline-size:min(1480px,calc(100vw - 32px));margin-inline:auto;gap:clamp(16px,1.8vw,24px);min-width:0}
+        .zakat-page .sfm-dashboard-page-content.zakat-content{width:min(100%,1280px);max-inline-size:min(1280px,calc(100vw - 32px));margin-inline:auto;gap:clamp(16px,1.8vw,24px);min-width:0}
         .zakat-page .sfm-dashboard-page-content.zakat-content > *{inline-size:100%;min-width:0}
         .zakat-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,max-content);align-items:center;border-radius:var(--zakat-radius-xl);min-height:0}
         .zakat-hero h1{font-size:clamp(32px,3.2vw,46px);letter-spacing:0;text-wrap:balance}.zakat-hero p{font-size:15.5px;max-width:780px}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}
