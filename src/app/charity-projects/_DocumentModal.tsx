@@ -41,7 +41,10 @@ export function DocumentModal({
     <div className="modal-backdrop" role="presentation">
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="modal-head">
-          <h2 id={titleId}>{tr.uploadDocument}</h2>
+          <div>
+            <span className="modal-kicker">{tr.documentVault}</span>
+            <h2 id={titleId}>{tr.uploadDocument}</h2>
+          </div>
           <button type="button" aria-label={tr.cancel} onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-form-stack">

@@ -1217,6 +1217,9 @@ export default function CharityProjectsPage() {
             <button className="dark-btn" type="button" onClick={() => setActiveTab('reports')}>
               <FileText size={17} /> {tr.reports}
             </button>
+            <button className="ghost-btn" type="button" onClick={() => { resetDocumentForm(); setDocumentOpen(true); }}>
+              <FileUp size={17} /> {tr.uploadDocument}
+            </button>
             <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
@@ -1244,154 +1247,158 @@ export default function CharityProjectsPage() {
           className="charity-tabs"
         />
 
-        <section className="warm-card hijri-calendar" hidden={activeTab !== 'overview'}>
-          <div className="section-head vault-head">
-            <div>
-              <small>{tr.hijriEstimated}</small>
-              <h2>{tr.hijriCalendar}</h2>
-              <p>{tr.hijriCalendarDesc}</p>
-            </div>
-            <div className="section-actions">
-              <button className="mini-gold" type="button" onClick={() => {
-                resetReminderForm();
-                setReminderOpen(true);
-              }}>
-                <CalendarDays size={16} /> {tr.addReminder}
-              </button>
-              <button className="ghost-btn" type="button" onClick={() => {
-                document.getElementById('upcoming-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}>
-                <Pencil size={16} /> {tr.editReminders}
-              </button>
-            </div>
-          </div>
-          <div className="calendar-grid">
-            <article className="season-panel calendar-season-panel">
-              <strong>{tr.seasonalReminders}</strong>
-              <div className="season-grid">
-                {calendarCards.map(card => {
-                  const Icon = card.icon;
-                  return (
-                    <article className="season-card" key={card.title}>
-                      <div className="season-card-icon"><Icon size={18} /></div>
-                      <div>
-                        <b>{card.title}</b>
-                        <strong>{card.value}</strong>
-                        <small>{card.description}</small>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </article>
-            <article className="alert-panel calendar-alert-panel">
-              <strong>{tr.smartAlerts}</strong>
-              {urgentReminders.length === 0 ? <p>{tr.noUrgentAlerts}</p> : urgentReminders.map(reminder => (
-                <div className="alert-line" key={reminder.id}>
-                  <b>{reminder.title}</b>
-                  <span>{reminderTimingLabel(reminder)} • {dateLabel(reminder.due_date)}</span>
+        <section className="charity-overview-grid" hidden={activeTab !== 'overview'}>
+          <div className="overview-main-stack">
+            <section className="warm-card hijri-calendar">
+              <div className="section-head vault-head">
+                <div>
+                  <small>{tr.hijriEstimated}</small>
+                  <h2>{tr.hijriCalendar}</h2>
+                  <p>{tr.hijriCalendarDesc}</p>
                 </div>
-              ))}
-            </article>
-          </div>
-          <p className="nisab"><CalendarDays size={15} /> {tr.notificationNote}</p>
-        </section>
+                <div className="section-actions">
+                  <button className="mini-gold" type="button" onClick={() => {
+                    resetReminderForm();
+                    setReminderOpen(true);
+                  }}>
+                    <CalendarDays size={16} /> {tr.addReminder}
+                  </button>
+                  <button className="ghost-btn" type="button" onClick={() => {
+                    document.getElementById('upcoming-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}>
+                    <Pencil size={16} /> {tr.editReminders}
+                  </button>
+                </div>
+              </div>
+              <div className="calendar-grid">
+                <article className="season-panel calendar-season-panel">
+                  <strong>{tr.seasonalReminders}</strong>
+                  <div className="season-grid">
+                    {calendarCards.map(card => {
+                      const Icon = card.icon;
+                      return (
+                        <article className="season-card" key={card.title}>
+                          <div className="season-card-icon"><Icon size={18} /></div>
+                          <div>
+                            <b>{card.title}</b>
+                            <strong>{card.value}</strong>
+                            <small>{card.description}</small>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </article>
+                <article className="alert-panel calendar-alert-panel">
+                  <strong>{tr.smartAlerts}</strong>
+                  {urgentReminders.length === 0 ? <p>{tr.noUrgentAlerts}</p> : urgentReminders.map(reminder => (
+                    <div className="alert-line" key={reminder.id}>
+                      <b>{reminder.title}</b>
+                      <span>{reminderTimingLabel(reminder)} • {dateLabel(reminder.due_date)}</span>
+                    </div>
+                  ))}
+                </article>
+              </div>
+              <p className="nisab"><CalendarDays size={15} /> {tr.notificationNote}</p>
+            </section>
 
-        <section className="warm-card reminders-section" id="upcoming-reminders" hidden={activeTab !== 'overview'}>
-          <div className="section-head">
-            <div>
-              <small>{tr.charityReminders}</small>
-              <h2>{tr.upcomingReminders}</h2>
-            </div>
-            <button className="mini-gold" type="button" onClick={() => {
-              resetReminderForm();
-              setReminderOpen(true);
-            }}><CalendarDays size={16} /> {tr.addReminder}</button>
+            <section className="warm-card overview-impact-card">
+              <div className="section-head vault-head">
+                <div>
+                  <small>{tr.impactDashboard}</small>
+                  <h2>{tr.impactDashboard}</h2>
+                  <p>{tr.impactDashboardDesc}</p>
+                </div>
+                <button className="mini-gold" type="button" onClick={() => setActiveTab('impact')}>
+                  <Sparkles size={15} /> {tr.impactDashboard}
+                </button>
+              </div>
+              <div className="impact-summary-grid compact-impact">
+                <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
+                <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
+                <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
+                <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
+              </div>
+              {!hasImpactData && (
+                <EmptyState
+                  className="charity-empty-state compact"
+                  icon={<Sparkles size={28} />}
+                  title={tr.notEnoughImpactData}
+                  description={tr.impactEmptyBody}
+                  actions={(
+                    <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
+                      <Plus size={15} /> {tr.newProject}
+                    </button>
+                  )}
+                />
+              )}
+            </section>
           </div>
-          {activeReminders.length === 0 ? (
-            <EmptyState
-              className="charity-empty-state compact"
-              icon={<CalendarDays size={28} />}
-              title={tr.noReminders}
-              description={tr.reminderEmptyBody}
-              actions={(
+
+          <div className="overview-side-stack">
+            <section className="warm-card reminders-section" id="upcoming-reminders">
+              <div className="section-head">
+                <div>
+                  <small>{tr.charityReminders}</small>
+                  <h2>{tr.upcomingReminders}</h2>
+                </div>
                 <button className="mini-gold" type="button" onClick={() => {
                   resetReminderForm();
                   setReminderOpen(true);
-                }}>
-                  <CalendarDays size={15} /> {tr.addReminder}
-                </button>
+                }}><CalendarDays size={16} /> {tr.addReminder}</button>
+              </div>
+              {activeReminders.length === 0 ? (
+                <EmptyState
+                  className="charity-empty-state compact"
+                  icon={<CalendarDays size={28} />}
+                  title={tr.noReminders}
+                  description={tr.reminderEmptyBody}
+                  actions={(
+                    <button className="mini-gold" type="button" onClick={() => {
+                      resetReminderForm();
+                      setReminderOpen(true);
+                    }}>
+                      <CalendarDays size={15} /> {tr.addReminder}
+                    </button>
+                  )}
+                />
+              ) : (
+                <div className="reminder-grid">
+                  {activeReminders.map(reminder => {
+                    const relatedProject = projects.find(project => project.id === reminder.related_project_id)?.name;
+                    const relatedAsset = assets.find(asset => asset.id === reminder.related_zakat_asset_id)?.asset_name;
+                    const relatedCommitment = commitments.find(commitment => commitment.id === reminder.related_commitment_id)?.name;
+                    return (
+                      <article className={`reminder-card ${reminder.priority}`} key={reminder.id}>
+                        <div className="reminder-top">
+                          <div>
+                            <strong>{reminder.title}</strong>
+                            <span>{reminderTypeLabel(reminder.reminder_type)}</span>
+                          </div>
+                          <b>{tr[reminder.priority]}</b>
+                        </div>
+                        <div className="badge-row">
+                          <span>{dateLabel(reminder.due_date)}</span>
+                          {reminder.hijri_date && <span>{tr.hijriDate}: {reminder.hijri_date}</span>}
+                          <span>{tr.daysBefore.replace('{days}', String(reminder.remind_before_days))}</span>
+                        </div>
+                        <small>{reminderTimingLabel(reminder)} • {tr.hijriEstimated}</small>
+                        {(relatedProject || relatedAsset || relatedCommitment) && <p>{relatedProject || relatedAsset || relatedCommitment}</p>}
+                        {reminder.notes && <p>{reminder.notes}</p>}
+                        <div className="card-actions">
+                          <button type="button" onClick={() => updateReminderStatus(reminder, 'completed')} aria-label={tr.completedAction}>{tr.completedAction}</button>
+                          <button type="button" onClick={() => updateReminderStatus(reminder, 'dismissed')} aria-label={tr.dismissAction}>{tr.dismissAction}</button>
+                          <button type="button" onClick={() => openReminderEditor(reminder)} aria-label={tr.edit}>{tr.edit}</button>
+                          <button type="button" onClick={() => deleteReminder(reminder)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               )}
-            />
-          ) : (
-            <div className="reminder-grid">
-              {activeReminders.map(reminder => {
-                const relatedProject = projects.find(project => project.id === reminder.related_project_id)?.name;
-                const relatedAsset = assets.find(asset => asset.id === reminder.related_zakat_asset_id)?.asset_name;
-                const relatedCommitment = commitments.find(commitment => commitment.id === reminder.related_commitment_id)?.name;
-                return (
-                  <article className={`reminder-card ${reminder.priority}`} key={reminder.id}>
-                    <div className="reminder-top">
-                      <div>
-                        <strong>{reminder.title}</strong>
-                        <span>{reminderTypeLabel(reminder.reminder_type)}</span>
-                      </div>
-                      <b>{tr[reminder.priority]}</b>
-                    </div>
-                    <div className="badge-row">
-                      <span>{dateLabel(reminder.due_date)}</span>
-                      {reminder.hijri_date && <span>{tr.hijriDate}: {reminder.hijri_date}</span>}
-                      <span>{tr.daysBefore.replace('{days}', String(reminder.remind_before_days))}</span>
-                    </div>
-                    <small>{reminderTimingLabel(reminder)} • {tr.hijriEstimated}</small>
-                    {(relatedProject || relatedAsset || relatedCommitment) && <p>{relatedProject || relatedAsset || relatedCommitment}</p>}
-                    {reminder.notes && <p>{reminder.notes}</p>}
-                    <div className="card-actions">
-                      <button type="button" onClick={() => updateReminderStatus(reminder, 'completed')} aria-label={tr.completedAction}>{tr.completedAction}</button>
-                      <button type="button" onClick={() => updateReminderStatus(reminder, 'dismissed')} aria-label={tr.dismissAction}>{tr.dismissAction}</button>
-                      <button type="button" onClick={() => openReminderEditor(reminder)} aria-label={tr.edit}>{tr.edit}</button>
-                      <button type="button" onClick={() => deleteReminder(reminder)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+            </section>
 
-        <section className="warm-card overview-impact-card" hidden={activeTab !== 'overview'}>
-          <div className="section-head vault-head">
-            <div>
-              <small>{tr.impactDashboard}</small>
-              <h2>{tr.impactDashboard}</h2>
-              <p>{tr.impactDashboardDesc}</p>
-            </div>
-            <button className="mini-gold" type="button" onClick={() => setActiveTab('impact')}>
-              <Sparkles size={15} /> {tr.impactDashboard}
-            </button>
-          </div>
-          <div className="impact-summary-grid compact-impact">
-            <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
-            <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
-            <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
-            <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
-          </div>
-          {!hasImpactData && (
-            <EmptyState
-              className="charity-empty-state compact"
-              icon={<Sparkles size={28} />}
-              title={tr.notEnoughImpactData}
-              description={tr.impactEmptyBody}
-              actions={(
-                <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
-                  <Plus size={15} /> {tr.newProject}
-                </button>
-              )}
-            />
-          )}
-        </section>
-
-        <section className="main-grid quick-action-grid" hidden={activeTab !== 'overview'}>
+            <section className="main-grid quick-action-grid">
           <article className="warm-card span-7 zakat-shortcut-card">
             <div className="section-head">
               <div><small>{tr.zakat}</small><h2>{zakatShortcut.title}</h2></div>
@@ -1712,6 +1719,8 @@ export default function CharityProjectsPage() {
               })}
             </div>
           )}
+            </section>
+          </div>
         </section>
 
         <section className="split-grid project-support-grid" hidden={activeTab !== 'projects'}>
@@ -1746,7 +1755,7 @@ export default function CharityProjectsPage() {
             </div>
             <ShieldCheck size={22} />
           </div>
-          <div className="document-tools">
+          <div className="document-tools document-tools-two">
             <label aria-label={tr.searchOrganization}><Search size={16} /><input value={organizationSearch} onChange={e => setOrganizationSearch(e.target.value)} placeholder={tr.searchOrganization} /></label>
             <select value={organizationVerificationFilter} onChange={e => setOrganizationVerificationFilter(e.target.value as 'all' | VerificationStatus)} aria-label={tr.verifiedOrganizations}>
               <option value="all">{tr.allOrganizations}</option>
@@ -2393,7 +2402,10 @@ export default function CharityProjectsPage() {
         <div className="modal-backdrop" role="presentation">
           <div className="modal small" role="dialog" aria-modal="true" aria-labelledby="charity-donation-modal-title">
             <div className="modal-head">
-              <h2 id="charity-donation-modal-title">{tr.addDonation}</h2>
+              <div>
+                <span className="modal-kicker">{tr.donationAmount}</span>
+                <h2 id="charity-donation-modal-title">{tr.addDonation}</h2>
+              </div>
               <button type="button" aria-label={tr.cancel} onClick={() => setDonationProject(null)}><X size={18} /></button>
             </div>
             <label className="impact-input"><span>{donationProject.name}</span><input inputMode="decimal" value={donationAmount} onChange={e => setDonationAmount(e.target.value)} placeholder="0.000" /></label>
