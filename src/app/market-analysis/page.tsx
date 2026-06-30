@@ -21,6 +21,7 @@ import { normalizeEconomicEvents, type EconomicImpact, type NormalizedEconomicEv
 import type { AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
 import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem, MarketTrend } from '@/lib/market/marketService';
 import { marketSymbolSuggestions, normalizeAssetType, normalizeMarketSymbolInput, validateSymbol } from '@/lib/market/marketService';
+import { findKnownMarketSymbol, isKnownExactMarketSymbol } from '@/lib/market/knownSymbols';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
 import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TRADING_OVERLAPS } from '@/lib/trading/sessions';
 
@@ -165,9 +166,18 @@ function findBestSearchMatch(items: MarketSearchSuggestion[], query: string) {
   return ranked[0]?.item;
 }
 
-function canSearchMarketQuery(query: string) {
+function knownMarketSuggestion(query: string, assetType: MarketAssetFilter = 'all'): MarketSearchSuggestion | undefined {
+  const known = findKnownMarketSymbol(query, assetType);
+  if (!known) return undefined;
+  return {
+    ...known,
+    provider: 'THE SFM',
+  };
+}
+
+function canSearchMarketQuery(query: string, assetType: MarketAssetFilter = 'all') {
   const cleanQuery = query.trim();
-  return cleanQuery.length >= 2 || Boolean(validateSymbol(cleanQuery));
+  return cleanQuery.length >= 2 || isKnownExactMarketSymbol(cleanQuery, assetType);
 }
 
 function isMarketTimeframe(value: unknown): value is MarketTimeframe {
@@ -1008,7 +1018,8 @@ export default function MarketAnalysisPage() {
     const cleanQuery = query.trim();
     const requestId = searchRequestIdRef.current + 1;
     searchRequestIdRef.current = requestId;
-    if (!canSearchMarketQuery(cleanQuery)) {
+    const exactKnownSuggestion = knownMarketSuggestion(cleanQuery, assetType);
+    if (!canSearchMarketQuery(cleanQuery, assetType)) {
       setSearchResults([]);
       setSearchMessage('');
       setSearchLoading(false);
@@ -1017,8 +1028,8 @@ export default function MarketAnalysisPage() {
     }
 
     let cancelled = false;
-    setSearchLoading(true);
-    setSearchResults([]);
+    setSearchLoading(!exactKnownSuggestion);
+    setSearchResults(exactKnownSuggestion ? [exactKnownSuggestion] : []);
     setSearchMessage('');
     const timeout = window.setTimeout(async () => {
       try {
@@ -1027,6 +1038,7 @@ export default function MarketAnalysisPage() {
         const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
         if (cancelled || searchRequestIdRef.current !== requestId) return;
         const responseItems = [
+          ...(exactKnownSuggestion ? [exactKnownSuggestion] : []),
           ...(data.resolved ? [data.resolved] : []),
           ...(data.results ?? []),
           ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
@@ -1301,13 +1313,13 @@ export default function MarketAnalysisPage() {
 
   const analyzeSearchSelection = useCallback(async (item?: MarketSearchItem) => {
     const cleanQuery = query.trim();
-    if (!item && !canSearchMarketQuery(cleanQuery)) {
+    if (!item && !canSearchMarketQuery(cleanQuery, assetType)) {
       setError(t('market_select_asset_to_start'));
       return;
     }
 
     let suggestionCandidates = searchResults;
-    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : findBestSearchMatch(searchResults, cleanQuery);
+    let selectedItem: MarketSearchSuggestion | undefined = item ? normalizeSearchItem(item) : knownMarketSuggestion(cleanQuery, assetType) ?? findBestSearchMatch(searchResults, cleanQuery);
     if (!selectedItem && cleanQuery) {
       const requestId = searchRequestIdRef.current + 1;
       searchRequestIdRef.current = requestId;
@@ -1318,6 +1330,7 @@ export default function MarketAnalysisPage() {
         const data = await fetchJsonWithTimeout<MarketSearchResponse>(`/api/market/search?${params.toString()}`, 8000, true);
         if (searchRequestIdRef.current !== requestId) return;
         const responseItems = [
+          ...(knownMarketSuggestion(cleanQuery, assetType) ? [knownMarketSuggestion(cleanQuery, assetType)!] : []),
           ...(data.resolved ? [data.resolved] : []),
           ...(data.results ?? []),
           ...normalizeErrorSuggestions(data.suggestions, cleanQuery, false),
@@ -1403,7 +1416,7 @@ export default function MarketAnalysisPage() {
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      if (!searchOpen && query.trim().length >= 2) setSearchOpen(true);
+      if (!searchOpen && canSearchMarketQuery(query, assetType)) setSearchOpen(true);
       if (hasResults) {
         setHighlightedSearchIndex(current => Math.min(current + 1, searchResults.length - 1));
       }
@@ -1418,11 +1431,11 @@ export default function MarketAnalysisPage() {
       return;
     }
 
-    if (event.key === 'Enter' && searchOpen && hasResults) {
+    if (event.key === 'Enter') {
       event.preventDefault();
-      void analyzeSearchSelection(searchResults[highlightedSearchIndex] ?? searchResults[0]);
+      void analyzeSearchSelection(searchOpen && hasResults ? searchResults[highlightedSearchIndex] ?? searchResults[0] : undefined);
     }
-  }, [analyzeSearchSelection, highlightedSearchIndex, query, searchOpen, searchResults]);
+  }, [analyzeSearchSelection, assetType, highlightedSearchIndex, query, searchOpen, searchResults]);
 
   const removeAlert = useCallback(async (alert: SavedAlert, index: number) => {
     if (alert.id && user && !isGuest) {
@@ -1906,6 +1919,26 @@ export default function MarketAnalysisPage() {
     dataStatusLabel: selectedDataStatusLabel,
     trendLabel: t(technicalTrendLabelKey(selected.trend)),
     riskLabel: t(`market_risk_${selected.riskLevel}`),
+  } : selectedAsset ? {
+    symbol: selectedAsset.symbol,
+    providerSymbol: selectedAsset.providerSymbol ?? selectedAsset.symbol,
+    companyName: selectedAsset.name ?? selectedAsset.symbol,
+    assetType: selectedAsset.assetType,
+    exchange: selectedAsset.exchange,
+    currency: selectedAsset.currency ?? null,
+    currencyLabel: marketCurrencyLabel(selectedAsset.currency ?? null, lang),
+    currentPrice: null,
+    currentPriceLabel: t('market_unavailable'),
+    priceChange: null,
+    priceChangePercent: 0,
+    priceChangeLabel: t('market_unavailable'),
+    quoteTimestamp: null,
+    quoteTimestampLabel: t('market_unavailable'),
+    dataProvider: 'Yahoo Finance',
+    dataStatus: 'unavailable',
+    dataStatusLabel: t('market_unavailable'),
+    trendLabel: t('market_unavailable'),
+    riskLabel: t('market_unavailable'),
   } : null;
   const reportLines = selected ? [
     `${t('market_report_trend')}: ${t(`market_trend_${selected.trend}`)} ${percent(selected.changePercent)}`,
@@ -1959,14 +1992,14 @@ export default function MarketAnalysisPage() {
                     role="combobox"
                     aria-autocomplete="list"
                     aria-label={t('market_search_label')}
-                    aria-expanded={searchOpen && canSearchMarketQuery(query)}
+                    aria-expanded={searchOpen && canSearchMarketQuery(query, assetType)}
                     aria-controls="market-search-results"
                     aria-activedescendant={searchOpen && searchResults[highlightedSearchIndex] ? `market-search-option-${highlightedSearchIndex}` : undefined}
                     dir="ltr"
                     onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
                     onChange={event => {
                       const nextQuery = event.target.value;
-                      const canSearchNextQuery = canSearchMarketQuery(nextQuery);
+                      const canSearchNextQuery = canSearchMarketQuery(nextQuery, assetType);
                       searchRequestIdRef.current += 1;
                       setQuery(nextQuery);
                       setError('');
@@ -1980,12 +2013,12 @@ export default function MarketAnalysisPage() {
                       }
                       setSearchOpen(canSearchNextQuery);
                     }}
-                    onFocus={() => setSearchOpen(canSearchMarketQuery(query))}
+                    onFocus={() => setSearchOpen(canSearchMarketQuery(query, assetType))}
                     onKeyDown={handleSearchKeyDown}
                     placeholder={t('market_search_placeholder')}
                   />
                 </div>
-                {searchOpen && canSearchMarketQuery(query) && (
+                {searchOpen && canSearchMarketQuery(query, assetType) && (
                   <div id="market-search-results" className="market-search-results" role="listbox" aria-label={t('market_search_results')} dir={dir}>
                     {searchLoading ? (
                       <p role="status">{t('loading')}</p>
@@ -2038,7 +2071,7 @@ export default function MarketAnalysisPage() {
                   <option value="index">{t('market_asset_index')}</option>
                 </select>
               </label>
-              <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && query.trim().length < 2)}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
+              <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && !canSearchMarketQuery(query, assetType))}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
             </form>
           </div>
           <div className={`market-hero-card ${assetSnapshot ? 'selected compact' : 'empty'}`}>
@@ -2317,8 +2350,8 @@ export default function MarketAnalysisPage() {
                   <span className={`data-badge ${assetSnapshot.dataStatus}`}>
                     {selected.cached ? t('market_cached_data') : assetSnapshot.dataStatusLabel}
                   </span>
-                  <h2 dir="ltr">{assetSnapshot.symbol}</h2>
-                  <p>{assetSnapshot.companyName}</p>
+                  <h2>{assetSnapshot.companyName}</h2>
+                  <p><span dir="ltr">{assetSnapshot.symbol}</span></p>
                   <small>{t('market_asset_type_label')}: {t(assetTypeTranslationKey(assetSnapshot.assetType))} · {assetSnapshot.exchange ?? t('market_unavailable')}</small>
                 </div>
               </div>
@@ -3177,8 +3210,8 @@ export default function MarketAnalysisPage() {
         @media(max-width:460px){.technical-selected-summary{grid-template-columns:1fr}.technical-search{min-height:46px}.technical-symbol-favorite{width:30px;height:30px}.technical-symbol-pill{min-height:40px}.portfolio-metric-grid,.performance-metric-grid{grid-template-columns:1fr}}
 
         :global(.market-shell){
-          --market-page-max:1480px;
-          --market-gutter:clamp(16px,2vw,32px);
+          --market-page-max:1280px;
+          --market-gutter:clamp(16px,1.8vw,24px);
           --market-radius-lg:24px;
           --market-radius-md:16px;
           --market-navy:#061a2f;
@@ -3201,7 +3234,7 @@ export default function MarketAnalysisPage() {
           max-width:100%!important;
           min-width:0!important;
           display:grid!important;
-          gap:24px!important;
+          gap:20px!important;
           padding:var(--market-gutter)!important;
           background:var(--market-bg)!important;
           box-sizing:border-box!important;
@@ -3214,23 +3247,28 @@ export default function MarketAnalysisPage() {
           box-sizing:border-box!important;
         }
         @media(min-width:1025px){
-          :global([dir="rtl"].market-shell .market-main){
-            padding-inline-start:calc(var(--sidebar-w,230px) + var(--market-gutter))!important;
-            padding-inline-end:var(--market-gutter)!important;
+          :global(.market-shell .market-main){
+            width:calc(100% - var(--sidebar-w,230px))!important;
+            max-width:calc(100% - var(--sidebar-w,230px))!important;
+            margin-inline-start:var(--sidebar-w,230px)!important;
+            margin-inline-end:0!important;
+            padding-block:24px!important;
+            padding-inline:var(--market-gutter)!important;
           }
+          :global([dir="rtl"].market-shell .market-main),
           :global([dir="ltr"].market-shell .market-main){
-            padding-inline-end:calc(var(--sidebar-w,230px) + var(--market-gutter))!important;
             padding-inline-start:var(--market-gutter)!important;
+            padding-inline-end:var(--market-gutter)!important;
           }
         }
         :global(.market-hero){
           position:relative!important;
           display:grid!important;
-          grid-template-columns:minmax(0,1fr) minmax(280px,360px)!important;
+          grid-template-columns:minmax(0,1.45fr) minmax(240px,300px)!important;
           align-items:stretch!important;
-          gap:clamp(18px,2.2vw,30px)!important;
+          gap:clamp(16px,2vw,24px)!important;
           min-height:unset!important;
-          padding:clamp(22px,2.4vw,34px)!important;
+          padding:clamp(20px,2.2vw,28px)!important;
           border-radius:28px!important;
           background:radial-gradient(circle at 16% 0%,rgba(32,212,207,.20),transparent 30%),linear-gradient(135deg,#061a2f 0%,#08243d 54%,#0f4b61 100%)!important;
           border:1px solid rgba(173,232,255,.18)!important;
@@ -3247,7 +3285,7 @@ export default function MarketAnalysisPage() {
           display:grid!important;
           align-content:center!important;
           gap:12px!important;
-          max-width:900px!important;
+          max-width:100%!important;
           min-width:0!important;
         }
         :global(.market-eyebrow){
@@ -3277,7 +3315,7 @@ export default function MarketAnalysisPage() {
         }
         :global(.market-hero p){
           margin:0!important;
-          max-width:780px!important;
+          max-width:860px!important;
           color:#d8e8f4!important;
           font-size:clamp(14px,1.05vw,16px)!important;
           line-height:1.8!important;
@@ -3285,7 +3323,7 @@ export default function MarketAnalysisPage() {
         }
         :global(.market-search-panel){
           display:grid!important;
-          grid-template-columns:minmax(280px,1fr) minmax(170px,220px) minmax(150px,190px)!important;
+          grid-template-columns:minmax(320px,1fr) minmax(170px,220px) minmax(150px,190px)!important;
           align-items:end!important;
           gap:12px!important;
           margin-top:8px!important;
@@ -3365,12 +3403,12 @@ export default function MarketAnalysisPage() {
           z-index:1!important;
           align-self:stretch!important;
           min-width:0!important;
-          min-height:220px!important;
+          min-height:156px!important;
           display:grid!important;
           align-content:center!important;
-          gap:12px!important;
-          padding:22px!important;
-          border-radius:22px!important;
+          gap:10px!important;
+          padding:18px!important;
+          border-radius:20px!important;
           background:rgba(255,255,255,.97)!important;
           color:#071a2f!important;
           border:1px solid rgba(190,225,244,.86)!important;
@@ -3398,9 +3436,9 @@ export default function MarketAnalysisPage() {
           font-weight:850!important;
         }
         :global(.market-hero-card-icon){
-          width:46px!important;
-          height:46px!important;
-          border-radius:16px!important;
+          width:42px!important;
+          height:42px!important;
+          border-radius:15px!important;
           display:grid!important;
           place-items:center!important;
           background:linear-gradient(135deg,rgba(31,149,255,.14),rgba(32,212,207,.18))!important;
@@ -3558,7 +3596,7 @@ export default function MarketAnalysisPage() {
         }
         :global(.market-active-dashboard){
           display:grid!important;
-          gap:20px!important;
+          gap:16px!important;
           min-width:0!important;
         }
         :global(.market-card-grid){
@@ -3566,29 +3604,29 @@ export default function MarketAnalysisPage() {
         }
         :global(.market-default-dashboard){
           display:grid!important;
-          gap:22px!important;
-          padding:clamp(18px,2vw,24px)!important;
-          border-radius:28px!important;
+          gap:16px!important;
+          padding:clamp(16px,1.8vw,20px)!important;
+          border-radius:24px!important;
           border:1px solid var(--market-border)!important;
           background:rgba(255,255,255,.92)!important;
           box-shadow:var(--market-shadow)!important;
         }
         :global(.market-empty-state){
-          min-height:174px!important;
+          min-height:118px!important;
           display:grid!important;
           grid-template-columns:auto minmax(0,1fr)!important;
           align-items:center!important;
-          gap:18px!important;
-          padding:24px!important;
-          border-radius:24px!important;
+          gap:16px!important;
+          padding:18px!important;
+          border-radius:20px!important;
           text-align:start!important;
           border:1px solid rgba(32,212,207,.18)!important;
           background:linear-gradient(135deg,rgba(31,149,255,.08),rgba(32,212,207,.08)),#f8fcff!important;
         }
         :global(.market-empty-state-icon){
-          width:56px!important;
-          height:56px!important;
-          border-radius:18px!important;
+          width:48px!important;
+          height:48px!important;
+          border-radius:16px!important;
           display:grid!important;
           place-items:center!important;
           background:linear-gradient(135deg,var(--market-blue),var(--market-cyan))!important;
@@ -3598,22 +3636,22 @@ export default function MarketAnalysisPage() {
         :global(.market-empty-state strong){
           display:block!important;
           color:#071a2f!important;
-          font-size:clamp(20px,2vw,26px)!important;
+          font-size:clamp(18px,1.65vw,22px)!important;
           line-height:1.3!important;
           font-weight:950!important;
           margin-bottom:6px!important;
         }
         :global(.market-empty-state p){
           margin:0!important;
-          max-width:760px!important;
+          max-width:720px!important;
           color:#52667a!important;
           font-size:14px!important;
           line-height:1.8!important;
           font-weight:850!important;
         }
         :global(.market-empty-state button){
-          min-height:42px!important;
-          margin-top:12px!important;
+          min-height:38px!important;
+          margin-top:10px!important;
           border:1px solid rgba(32,212,207,.25)!important;
           border-radius:999px!important;
           background:rgba(32,212,207,.12)!important;
@@ -3624,7 +3662,7 @@ export default function MarketAnalysisPage() {
         }
         :global(.market-default-modules){
           display:grid!important;
-          gap:14px!important;
+          gap:12px!important;
         }
         :global(.market-default-section-head span){
           color:#071a2f!important;
@@ -3634,15 +3672,15 @@ export default function MarketAnalysisPage() {
         :global(.market-quick-grid){
           display:grid!important;
           grid-template-columns:repeat(4,minmax(0,1fr))!important;
-          gap:14px!important;
+          gap:12px!important;
         }
         :global(.market-quick-card){
-          min-height:190px!important;
+          min-height:148px!important;
           display:grid!important;
           align-content:start!important;
-          gap:14px!important;
-          padding:18px!important;
-          border-radius:22px!important;
+          gap:10px!important;
+          padding:16px!important;
+          border-radius:20px!important;
           border:1px solid var(--market-border)!important;
           background:#ffffff!important;
           box-shadow:0 10px 28px rgba(7,28,52,.06)!important;
@@ -3654,9 +3692,9 @@ export default function MarketAnalysisPage() {
           box-shadow:0 18px 40px rgba(7,28,52,.10)!important;
         }
         :global(.market-quick-icon){
-          width:44px!important;
-          height:44px!important;
-          border-radius:16px!important;
+          width:40px!important;
+          height:40px!important;
+          border-radius:15px!important;
           display:grid!important;
           place-items:center!important;
           background:rgba(31,149,255,.10)!important;
@@ -3677,7 +3715,7 @@ export default function MarketAnalysisPage() {
           font-weight:850!important;
         }
         :global(.market-quick-card button){
-          min-height:40px!important;
+          min-height:36px!important;
           width:max-content!important;
           max-width:100%!important;
           border-radius:999px!important;
@@ -3726,14 +3764,14 @@ export default function MarketAnalysisPage() {
           background:linear-gradient(135deg,var(--market-blue),var(--market-cyan))!important;
         }
         :global(.market-hero.compact-result){
-          width:min(1450px,100%)!important;
+          width:100%!important;
           margin-inline:auto!important;
-          padding:22px!important;
+          padding:20px!important;
           align-items:stretch!important;
-          grid-template-columns:minmax(0,1fr) minmax(260px,340px)!important;
+          grid-template-columns:minmax(0,1.45fr) minmax(240px,300px)!important;
         }
         :global(.market-analysis-result-workspace){
-          width:min(1450px,100%)!important;
+          width:100%!important;
           margin-inline:auto!important;
           display:grid!important;
           grid-template-columns:minmax(0,1fr)!important;
