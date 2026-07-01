@@ -4684,6 +4684,10 @@ function DividendStyles() {
           align-items: stretch;
           flex-direction: column;
         }
+        .featured-card .stock-head {
+          align-items: flex-start;
+          flex-direction: row;
+        }
         .primary-button,
         .ghost-button,
         .refresh-button {
