@@ -249,7 +249,7 @@ export async function generateSignalForSymbol(rawSymbol: string, assetTypeInput?
 }
 
 export async function generateSignalsForUniverse(symbols: string[], options?: { forceFresh?: boolean; concurrency?: number }) {
-  const unique = Array.from(new Set(symbols.map(normalizeSymbol).filter(Boolean))).slice(0, 60);
+  const unique = Array.from(new Set(symbols.map(normalizeSymbol).filter(Boolean)));
   const concurrency = Math.max(1, Math.min(options?.concurrency ?? 4, unique.length || 1));
   const output: MarketSignal[] = [];
   let cursor = 0;
@@ -275,7 +275,7 @@ export async function getLatestSignalsFromDb(admin: DbClient | null, filters: Si
     .from('market_signals')
     .select('id,symbol,asset_name,asset_type,market,currency,action,action_label_ar,confidence,risk_level,current_price,target_price,stop_loss,timeframe,reasons,warnings,provider,data_quality,score_breakdown,technical_summary,created_at,expires_at')
     .order('created_at', { ascending: false })
-    .limit(Math.max(50, Math.min(500, (filters.limit ?? 30) * 8)));
+    .limit(filters.limit ? Math.max(50, filters.limit * 8) : 500);
 
   if (filters.action && filters.action !== 'all') query = query.eq('action', filters.action);
   if (filters.market) query = query.ilike('market', `%${filters.market}%`);
@@ -292,9 +292,8 @@ export async function getLatestSignalsFromDb(admin: DbClient | null, filters: Si
       if (seen.has(signal.symbol)) return false;
       seen.add(signal.symbol);
       return true;
-    })
-    .slice(0, filters.limit ?? 30);
-  return { ok: true as const, signals };
+    });
+  return { ok: true as const, signals: typeof filters.limit === 'number' ? signals.slice(0, filters.limit) : signals };
 }
 
 export async function getLatestSignalFromDb(admin: DbClient | null, symbol: string) {
@@ -388,9 +387,9 @@ export async function persistMarketSignals(admin: DbClient | null, signals: Mark
 }
 
 export function filterSignals(signals: MarketSignal[], filters: SignalListFilters = {}) {
-  return signals
+  const filtered = signals
     .filter(signal => !filters.action || filters.action === 'all' || signal.action === filters.action)
     .filter(signal => !filters.market || signal.market.toLowerCase().includes(filters.market.toLowerCase()))
-    .filter(signal => !Number.isFinite(Number(filters.minConfidence)) || signal.confidence >= Number(filters.minConfidence))
-    .slice(0, filters.limit ?? 30);
+    .filter(signal => !Number.isFinite(Number(filters.minConfidence)) || signal.confidence >= Number(filters.minConfidence));
+  return typeof filters.limit === 'number' ? filtered.slice(0, filters.limit) : filtered;
 }

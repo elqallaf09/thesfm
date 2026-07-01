@@ -60,6 +60,16 @@ export async function GET(request: Request) {
         : 'economic-calendar';
 
   const configured = Boolean(process.env.TRADING_ECONOMICS_API_KEY || process.env.FMP_API_KEY || process.env.FINNHUB_API_KEY);
+  const routeReason = result.failureReason ?? result.messageCode ?? (count === 0 ? 'calendar_no_events' : null);
+  const loaded = count > 0
+    ? [{ provider: result.provider, reason: 'calendar_events_loaded', count }]
+    : [];
+  const failed = result.failureReason
+    ? [{ provider: result.provider, reason: result.failureReason, status: result.status }]
+    : [];
+  const skipped = count === 0 && !result.failureReason
+    ? [{ provider: result.provider, reason: result.messageCode ?? 'calendar_no_events' }]
+    : [];
   console.info('[trader-calendar] request', {
     provider: result.provider || null,
     endpoint,
@@ -78,6 +88,11 @@ export async function GET(request: Request) {
     count,
     status,
     error: result.failureReason ?? null,
+    loaded,
+    failed,
+    skipped,
+    providerId: result.provider,
+    reason: routeReason,
     data: result.data,
     resultCount: count,
     lastUpdated: result.lastUpdated,

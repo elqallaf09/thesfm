@@ -1,27 +1,27 @@
 import { NextResponse } from 'next/server';
-import { CONNECTED_PROVIDER, fetchTraderQuotes, resolveTraderMarket } from '@/lib/trader/marketQuotes';
+import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const market = resolveTraderMarket(url.searchParams.get('market'));
   const forceFresh = url.searchParams.has('refresh');
+  const { market, symbolMeta, catalog } = await resolveTraderMarketDynamic(url.searchParams.get('market'), {
+    forceFresh: forceFresh || url.searchParams.has('discover'),
+  });
   const requestedSymbols = String(url.searchParams.get('symbols') ?? '')
     .split(',')
     .map(symbol => symbol.trim())
-    .filter(Boolean)
-    .slice(0, 60);
+    .filter(Boolean);
   const symbols = requestedSymbols.length ? requestedSymbols : market.symbols;
 
-  const quotes = await fetchTraderQuotes(symbols, { forceFresh });
-  const available = quotes.filter(q => q.price !== null);
+  const quoteLoad = await fetchTraderQuotesDetailed(symbols, { forceFresh, symbolMeta });
+  const quotes = quoteLoad.quotes;
+  const available = quotes.filter(q => q.available && q.price !== null);
   const unavailable = quotes
-    .filter(q => q.price === null)
+    .filter(q => !q.available)
     .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
 
-  // Live prices plus rule-based technical signals (SMA20/50 + RSI-14) derived
-  // from real Yahoo Finance history. Not financial advice.
   const recommendations = available.map(q => ({
     symbol: q.symbol,
     requestedSymbol: q.requestedSymbol,
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
     displaySymbol: q.displaySymbol,
     providerSymbol: q.providerSymbol,
     providerSymbolUsed: q.providerSymbolUsed,
+    provider: q.provider,
     fallbackUsed: q.fallbackUsed,
     name: q.name,
     assetType: q.assetType,
@@ -48,7 +49,6 @@ export async function GET(request: Request) {
     sparkline: q.sparkline,
     history: q.history,
     chartAvailable: q.chartAvailable,
-    provider: q.provider,
     providerStatus: q.providerStatus,
     source: q.source,
     delayed: q.delayed,
@@ -62,10 +62,25 @@ export async function GET(request: Request) {
     recommendations,
     unavailable,
     smartAlerts: [],
-    dataProvider: CONNECTED_PROVIDER,
+    dataProvider: getConnectedProvider(),
+    symbolDiscovery: {
+      totalSymbolsDiscovered: catalog.diagnostics.totalSymbolsDiscovered,
+      totalMarketSymbols: market.totalSymbols,
+      source: market.source,
+      cacheStatus: catalog.diagnostics.cacheStatus,
+      providerLatencyMs: catalog.diagnostics.providerLatencyMs,
+    },
+    loaded: quoteLoad.loaded,
+    failed: quoteLoad.failed,
+    skipped: quoteLoad.skipped,
+    provider: quoteLoad.provider,
+    reason: quoteLoad.reason,
+    providerLatencyMs: quoteLoad.providerLatencyMs,
+    cacheStatus: quoteLoad.cacheStatus,
+    resultCount: recommendations.length,
     message: recommendations.length
       ? null
-      : 'لم يُرجِع المزود أسعاراً حية لرموز هذا السوق حالياً.',
+      : 'The configured providers returned no usable quotes for this market.',
   }, {
     headers: { 'Cache-Control': 'no-store' },
   });

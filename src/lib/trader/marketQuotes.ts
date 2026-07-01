@@ -1,219 +1,156 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
-import { providerSymbolsForAlias } from '@/lib/market/providerSymbolAliases';
+import { cleanEnv } from '@/lib/market/providerConfig';
+import type { MarketAssetType } from '@/lib/market/marketService';
+import { providerSymbolsForAlias, providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
+import {
+  getStaticTraderMarket,
+  providerCapabilityMatrix,
+  resolveTraderMarketFromCatalog,
+  TRADER_MARKET_SEEDS,
+  type TraderAssetType,
+  type TraderCatalogSymbol,
+  type TraderMarketDef,
+  type TraderQuoteProvider,
+} from '@/lib/trader/marketCatalog';
 
-// Trader terminal market catalogue. Mirrors the MARKETS list in
-// src/trader-app/public/app.js so the API can serve live quotes for the same
-// symbols the UI renders. Prices come from Yahoo Finance (no API key required).
-// Signals are rule-based technical readings derived from real price history —
-// not financial advice and not fabricated data.
-
-export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderSignal = 'buy' | 'sell' | 'wait' | 'watch';
+export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable';
+type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'OpenBB';
 
-type MarketDef = {
-  id: string;
-  ar: string;
-  en: string;
-  currency: string;
-  symbols: string[];
+type MarketDef = TraderMarketDef;
+type QuoteIssue = {
+  symbol: string;
+  provider: TraderQuoteProvider;
+  reason: string;
 };
 
-export const TRADER_MARKETS: MarketDef[] = [
-  { id: 'us-stocks', ar: 'الأسهم الأمريكية', en: 'US Stocks', currency: 'USD', symbols: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'TSLA'] },
-  { id: 'forex', ar: 'العملات', en: 'Forex', currency: 'Pair', symbols: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD'] },
-  { id: 'crypto', ar: 'الأصول الرقمية', en: 'Crypto', currency: 'USD', symbols: ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD'] },
-  { id: 'commodities', ar: 'السلع', en: 'Commodities', currency: 'USD', symbols: ['XAUUSD', 'XAGUSD', 'WTI', 'BRENT'] },
-  { id: 'indices', ar: 'المؤشرات', en: 'Indices', currency: 'USD', symbols: ['SPX', 'NDX', 'DJI', 'DXY'] },
-  { id: 'etfs', ar: 'الصناديق المتداولة', en: 'ETFs', currency: 'USD', symbols: ['SPY', 'QQQ', 'GLD', 'IWM'] },
-  { id: 'gcc', ar: 'أسواق الخليج', en: 'Gulf Markets', currency: 'Mixed', symbols: ['2222.SR', 'EMAAR.AE', 'QNBK.QA', 'KFH.KW'] },
-  { id: 'saudi', ar: 'السوق السعودي', en: 'Saudi Market', currency: 'SAR', symbols: ['2222.SR', '1120.SR', '7010.SR'] },
-  { id: 'kuwait', ar: 'بورصة الكويت', en: 'Kuwait Market', currency: 'KWD', symbols: ['KFH.KW', 'NBK.KW', 'ZAIN.KW'] },
-  { id: 'uae', ar: 'سوق الإمارات', en: 'UAE Market', currency: 'AED', symbols: ['EMAAR.AE', 'FAB.AE', 'ETISALAT.AE'] },
-  { id: 'qatar', ar: 'سوق قطر', en: 'Qatar Market', currency: 'QAR', symbols: ['QNBK.QA', 'IQCD.QA', 'QIBK.QA'] },
-  { id: 'bahrain', ar: 'سوق البحرين', en: 'Bahrain Market', currency: 'BHD', symbols: ['AUB.BH', 'GFH.BH', 'BATELCO.BH'] },
-  { id: 'oman', ar: 'سوق عمان', en: 'Oman Market', currency: 'OMR', symbols: ['BKMB.OM', 'OMINV.OM'] },
-  { id: 'europe', ar: 'الأسهم الأوروبية', en: 'European Stocks', currency: 'EUR', symbols: ['ASML.AS', 'SAP.DE', 'NESN.SW', 'MC.PA'] },
-  { id: 'asia', ar: 'الأسهم الآسيوية', en: 'Asian Stocks', currency: 'Mixed', symbols: ['7203.T', '9988.HK', 'TSM', '005930.KS'] },
-  { id: 'technology', ar: 'أسهم التقنية', en: 'Technology', currency: 'USD', symbols: ['AAPL', 'MSFT', 'GOOGL', 'ORCL', 'CRM'] },
-  { id: 'ai', ar: 'أسهم الذكاء الاصطناعي', en: 'AI Stocks', currency: 'USD', symbols: ['NVDA', 'MSFT', 'GOOGL', 'AMD', 'PLTR'] },
-  { id: 'semiconductors', ar: 'أشباه الموصلات', en: 'Semiconductors', currency: 'USD', symbols: ['NVDA', 'AMD', 'TSM', 'AVGO', 'INTC'] },
-  { id: 'energy', ar: 'الطاقة', en: 'Energy Stocks', currency: 'Mixed', symbols: ['XOM', 'CVX', '2222.SR', 'OXY'] },
-  { id: 'banking', ar: 'البنوك', en: 'Banking Stocks', currency: 'Mixed', symbols: ['JPM', 'BAC', 'NBK.KW', 'QNBK.QA'] },
-  { id: 'food', ar: 'الأغذية والاستهلاك', en: 'Food / Consumer', currency: 'USD', symbols: ['KO', 'PEP', 'MCD', 'COST'] },
-  { id: 'healthcare', ar: 'الصحة والدواء', en: 'Pharma / Healthcare', currency: 'USD', symbols: ['LLY', 'PFE', 'JNJ', 'MRK'] },
-];
-
-type TraderSymbolResolution = {
-  requestedSymbol: string;
-  canonicalSymbol: string;
-  displaySymbol: string;
-  name: string;
-  primaryYahooSymbol: string;
-  yahooSymbols: string[];
+export type TraderQuoteLoadResult = {
+  quotes: TraderQuote[];
+  loaded: Array<{ symbol: string; provider: TraderQuoteProvider; providerSymbol: string | null }>;
+  failed: QuoteIssue[];
+  skipped: QuoteIssue[];
+  provider: TraderQuoteProvider | null;
+  reason: string | null;
+  providerLatencyMs: Partial<Record<TraderQuoteProvider, number>>;
+  cacheStatus: 'live' | 'provider-cache' | 'not_configured';
+  generatedAt: string;
 };
 
-type TraderCardSymbolConfig = {
-  canonicalSymbol: string;
-  displaySymbol: string;
-  name: string;
-  yahooSymbols: string[];
-  aliases: string[];
+type ProviderQuote = {
+  provider: TraderQuoteProvider;
+  providerName: TraderQuoteSource;
+  providerSymbol: string;
+  name?: string | null;
+  price: number;
+  change: number | null;
+  changePercent: number | null;
+  currency: string | null;
+  updatedAt: string | null;
 };
 
-const TRADER_CARD_SYMBOLS: TraderCardSymbolConfig[] = [
-  {
-    canonicalSymbol: 'BTCUSD',
-    displaySymbol: 'BTC/USD',
-    name: 'Bitcoin / US Dollar',
-    yahooSymbols: ['BTC-USD'],
-    aliases: ['BTC/USD', 'BTCUSD', 'BTC-USD'],
-  },
-  {
-    canonicalSymbol: 'ETHUSD',
-    displaySymbol: 'ETH/USD',
-    name: 'Ethereum / US Dollar',
-    yahooSymbols: ['ETH-USD'],
-    aliases: ['ETH/USD', 'ETHUSD', 'ETH-USD'],
-  },
-  {
-    canonicalSymbol: 'XAUUSD',
-    displaySymbol: 'XAUUSD',
-    name: 'Gold / US Dollar',
-    yahooSymbols: ['GC=F', 'XAUUSD=X'],
-    aliases: ['XAUUSD', 'XAU/USD', 'GC=F', 'GOLD'],
-  },
-  {
-    canonicalSymbol: 'XAGUSD',
-    displaySymbol: 'XAGUSD',
-    name: 'Silver / US Dollar',
-    yahooSymbols: ['SI=F', 'XAGUSD=X'],
-    aliases: ['XAGUSD', 'XAG/USD', 'SI=F', 'SILVER'],
-  },
-  {
-    canonicalSymbol: 'NAS100',
-    displaySymbol: 'NAS100',
-    name: 'Nasdaq 100',
-    yahooSymbols: ['^NDX', 'NQ=F'],
-    aliases: ['NAS100', '^NDX', 'NQ=F'],
-  },
-  {
-    canonicalSymbol: 'US30',
-    displaySymbol: 'US30',
-    name: 'Dow Jones Industrial Average',
-    yahooSymbols: ['^DJI', 'YM=F'],
-    aliases: ['US30', '^DJI', 'YM=F'],
-  },
-  {
-    canonicalSymbol: 'OIL',
-    displaySymbol: 'Oil',
-    name: 'Crude Oil',
-    yahooSymbols: ['CL=F', 'USOIL'],
-    aliases: ['OIL', 'USOIL', 'CL=F'],
-  },
-];
+type YahooChartResult = {
+  price: number | null;
+  previousClose: number | null;
+  currency: string | null;
+  closes: number[];
+  marketTime: string | null;
+};
 
-// Display symbol -> Yahoo Finance symbol for cases where the trader symbol
-// differs from Yahoo's ticker format. Anything not listed is used as-is.
+const FMP_BASE_URL = 'https://financialmodelingprep.com/stable';
+const FMP_BATCH_SIZE = 80;
+const QUOTE_CONCURRENCY = 6;
+
+export const TRADER_MARKETS: MarketDef[] = TRADER_MARKET_SEEDS.map(market => ({
+  ...market,
+  source: 'seed',
+  totalSymbols: market.symbols.length,
+}));
+
 const YAHOO_SYMBOL: Record<string, string> = {
-  // Forex
-  EURUSD: 'EURUSD=X', GBPUSD: 'GBPUSD=X', USDJPY: 'USDJPY=X', USDCHF: 'USDCHF=X', AUDUSD: 'AUDUSD=X',
-  // Crypto
-  BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD', BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD',
-  // Commodities (front-month futures)
-  XAUUSD: 'GC=F', XAGUSD: 'SI=F', WTI: 'CL=F', OIL: 'CL=F', USOIL: 'CL=F', BRENT: 'BZ=F',
-  // Indices
-  SPX: '^GSPC', NDX: '^NDX', NAS100: '^NDX', DJI: '^DJI', US30: '^DJI', DXY: 'DX-Y.NYB',
+  EURUSD: 'EURUSD=X',
+  GBPUSD: 'GBPUSD=X',
+  USDJPY: 'USDJPY=X',
+  USDCHF: 'USDCHF=X',
+  AUDUSD: 'AUDUSD=X',
+  BTCUSD: 'BTC-USD',
+  ETHUSD: 'ETH-USD',
+  SOLUSD: 'SOL-USD',
+  BNBUSD: 'BNB-USD',
+  XRPUSD: 'XRP-USD',
+  XAUUSD: 'GC=F',
+  XAGUSD: 'SI=F',
+  WTI: 'CL=F',
+  BRENT: 'BZ=F',
+  US30: '^DJI',
+  NAS100: '^NDX',
+  SPX500: '^GSPC',
+  DAX: '^GDAXI',
+  FTSE: '^FTSE',
+  CAC40: '^FCHI',
+  NIKKEI: '^N225',
+  HSI: '^HSI',
+  SPX: '^GSPC',
+  NDX: '^NDX',
+  DJI: '^DJI',
+  DXY: 'DX-Y.NYB',
 };
 
 const YAHOO_FALLBACK_SYMBOLS: Record<string, string[]> = {
   XAUUSD: ['GC=F', 'XAUUSD=X'],
   XAGUSD: ['SI=F', 'XAGUSD=X'],
-  NAS100: ['^NDX', 'NQ=F'],
-  US30: ['^DJI', 'YM=F'],
-  OIL: ['CL=F', 'USOIL'],
-  WTI: ['CL=F', 'USOIL'],
   USDJPY: ['USDJPY=X', 'JPY=X'],
+  US30: ['^DJI', 'YM=F'],
+  NAS100: ['^NDX', 'NQ=F'],
+  SPX500: ['^GSPC', 'ES=F'],
+  DAX: ['^GDAXI'],
+  FTSE: ['^FTSE'],
+  CAC40: ['^FCHI'],
+  NIKKEI: ['^N225'],
+  HSI: ['^HSI'],
 };
 
-const CRYPTO_BASES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'USDT']);
-
-function normalizedSymbolKey(value: unknown) {
-  return String(value ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[/-]/g, '');
-}
-
-function rawSymbolKey(value: unknown) {
-  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');
-}
-
-function symbolMatches(value: unknown, candidates: string[]) {
-  const raw = rawSymbolKey(value);
-  const normalized = normalizedSymbolKey(value);
-  return candidates.some(candidate => rawSymbolKey(candidate) === raw || normalizedSymbolKey(candidate) === normalized);
-}
-
-function uniqueSymbols(symbols: Array<string | null | undefined>) {
-  return Array.from(new Set(symbols.map(symbol => String(symbol ?? '').trim()).filter(Boolean)));
-}
-
-function resolveTraderCardSymbol(input: string): TraderSymbolResolution {
-  const requestedSymbol = rawSymbolKey(input);
-  const configured = TRADER_CARD_SYMBOLS.find(config => symbolMatches(requestedSymbol, [config.displaySymbol, config.canonicalSymbol, ...config.aliases, ...config.yahooSymbols]));
-  if (configured) {
-    return {
-      requestedSymbol,
-      canonicalSymbol: configured.canonicalSymbol,
-      displaySymbol: configured.displaySymbol,
-      name: configured.name,
-      primaryYahooSymbol: configured.yahooSymbols[0] ?? configured.canonicalSymbol,
-      yahooSymbols: uniqueSymbols(configured.yahooSymbols),
-    };
-  }
-
-  const providerAliases = providerSymbolsForAlias(requestedSymbol);
-  const yahooFallbacks = YAHOO_FALLBACK_SYMBOLS[requestedSymbol] ?? [];
-  const directYahoo = YAHOO_SYMBOL[requestedSymbol] ?? requestedSymbol;
-  const yahooSymbols = uniqueSymbols([
-    ...yahooFallbacks,
-    ...providerAliases,
-    directYahoo,
-    requestedSymbol,
-  ]);
-
-  return {
-    requestedSymbol,
-    canonicalSymbol: requestedSymbol,
-    displaySymbol: requestedSymbol,
-    name: requestedSymbol,
-    primaryYahooSymbol: yahooSymbols[0] ?? requestedSymbol,
-    yahooSymbols,
-  };
-}
+const CRYPTO_BASES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'USDT', 'AVAX', 'DOT', 'LTC', 'BCH', 'LINK']);
 
 function numberOrNull(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-// Trim floating-point noise while preserving forex/crypto precision.
+function textOrNull(value: unknown): string | null {
+  const text = String(value ?? '').trim();
+  return text || null;
+}
+
 function round(value: number | null): number | null {
   return value === null ? null : Number(value.toFixed(6));
 }
 
-function classifyAssetType(symbol: string): TraderAssetType {
+function upper(value: unknown) {
+  return String(value ?? '').trim().toUpperCase();
+}
+
+function unique(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const item = String(value ?? '').trim();
+    const key = item.toUpperCase();
+    if (!item || seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+}
+
+function classifyAssetType(symbol: string, meta?: TraderCatalogSymbol): TraderAssetType {
+  if (meta?.assetType) return meta.assetType;
   const s = symbol.toUpperCase();
-  const compact = normalizedSymbolKey(s);
-  const base = s.replace(/[.\-=].*$/, '').replace('/', '');
-  if (CRYPTO_BASES.has(base.replace(/USDT?$/, '')) && /USD/.test(s)) return 'crypto';
-  if (CRYPTO_BASES.has(compact.replace(/USDT?$/, '').replace(/USD$/, '')) && /USD/.test(compact)) return 'crypto';
-  if (/^(XAUUSD|XAGUSD|WTI|BRENT|OIL|USOIL|CL=F|SI=F|GC=F)$/.test(s) || /^(XAUUSD|XAGUSD|OIL|USOIL)$/.test(compact)) return 'commodity';
-  if (/^(SPX|NDX|DJI|DXY|NAS100|US30|\^NDX|\^DJI|NQ=F|YM=F)$/.test(s)) return 'index';
-  if (/^(SPY|QQQ|GLD|IWM)$/.test(s)) return 'fund';
+  const base = s.replace(/[.\-=].*$/, '');
+  if (CRYPTO_BASES.has(base.replace(/USDT?$/, '').replace(/USD$/, '')) && /USD/.test(s)) return 'crypto';
+  if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s)) return 'commodity';
+  if (/^(US30|NAS100|SPX500|DAX|FTSE|CAC40|NIKKEI|HSI|SPX|NDX|DJI|DXY|\^)/.test(s)) return 'index';
+  if (/^(SPY|QQQ|GLD|IWM|VOO|DIA)$/.test(s) || meta?.assetType === 'fund') return 'fund';
   if (/^[A-Z]{6}$/.test(base) && !s.includes('.')) return 'forex';
   return 'stock';
 }
@@ -222,21 +159,18 @@ function defaultCurrency(symbol: string): string | null {
   const s = symbol.toUpperCase();
   if (/\.KW$/.test(s)) return 'KWD';
   if (/\.SR$|\.SA$/.test(s)) return 'SAR';
-  if (/\.AE$/.test(s)) return 'AED';
+  if (/\.AE$|\.DU$|\.AD$/.test(s)) return 'AED';
   if (/\.QA$/.test(s)) return 'QAR';
   if (/\.OM$/.test(s)) return 'OMR';
   if (/\.BH$/.test(s)) return 'BHD';
-  if (/\.T$/.test(s)) return 'JPY';
-  if (/\.HK$/.test(s)) return 'HKD';
-  if (/\.DE$|\.AS$|\.PA$/.test(s)) return 'EUR';
+  if (/\.T$|^NIKKEI$/.test(s)) return 'JPY';
+  if (/\.HK$|^HSI$/.test(s)) return 'HKD';
+  if (/\.DE$|\.AS$|\.PA$|^DAX$|^CAC40$/.test(s)) return 'EUR';
   if (/\.SW$/.test(s)) return 'CHF';
   if (/\.KS$/.test(s)) return 'KRW';
-  const compact = normalizedSymbolKey(s);
-  if (/^[A-Z]{6}$/.test(compact)) return compact.slice(3);
+  if (/^[A-Z]{6}$/.test(s)) return s.slice(3);
   return 'USD';
 }
-
-// ── Technical indicators (computed from real close prices) ──────────────────
 
 function sma(closes: number[], period: number): number | null {
   if (closes.length < period) return null;
@@ -260,7 +194,6 @@ function rsi(closes: number[], period = 14): number | null {
   return 100 - 100 / (1 + rs);
 }
 
-// Annualized volatility (%) from daily returns.
 function annualizedVolatility(closes: number[]): number | null {
   if (closes.length < 3) return null;
   const returns: number[] = [];
@@ -273,37 +206,10 @@ function annualizedVolatility(closes: number[]): number | null {
   return Math.sqrt(variance) * Math.sqrt(252) * 100;
 }
 
-// Transparent rule-based signal: trend (price vs SMA20/SMA50, SMA cross) plus
-// RSI momentum. Score > 0 leans bullish, < 0 bearish; |score| drives confidence.
-function deriveSignal(args: {
-  price: number | null;
-  closes: number[];
-  sma20: number | null;
-  sma50: number | null;
-  rsiValue: number | null;
-  changePercent: number | null;
-  partial: boolean;
-}): { signal: TraderSignal; confidence: number | null } {
-  const { price, closes, sma20, sma50, rsiValue, changePercent, partial } = args;
-  if (price === null || closes.length < 2) return { signal: 'watch', confidence: null };
-
+function deriveSignal(price: number | null, sma20: number | null, sma50: number | null, rsiValue: number | null, changePercent?: number | null): { signal: TraderSignal; confidence: number | null } {
+  if (price === null) return { signal: 'watch', confidence: null };
   let score = 0;
   let weight = 0;
-  const firstClose = closes[0];
-  const recentBase = closes[Math.max(0, closes.length - 6)];
-  const trendPercent = firstClose > 0 ? ((price - firstClose) / firstClose) * 100 : 0;
-  const recentMomentum = recentBase > 0 ? ((price - recentBase) / recentBase) * 100 : changePercent;
-
-  if (Number.isFinite(trendPercent)) {
-    weight += 1;
-    if (trendPercent >= 2) score += 1;
-    else if (trendPercent <= -2) score -= 1;
-  }
-  if (recentMomentum !== null && Number.isFinite(recentMomentum)) {
-    weight += 1;
-    if (recentMomentum >= 0.4) score += 1;
-    else if (recentMomentum <= -0.4) score -= 1;
-  }
   if (sma20 !== null) { score += price > sma20 ? 1 : -1; weight += 1; }
   if (sma50 !== null) { score += price > sma50 ? 1 : -1; weight += 1; }
   if (sma20 !== null && sma50 !== null) { score += sma20 > sma50 ? 1 : -1; weight += 1; }
@@ -314,17 +220,19 @@ function deriveSignal(args: {
     else if (rsiValue >= 55) score += 0.5;
     else if (rsiValue <= 45) score -= 0.5;
   }
+  if (weight === 0 && changePercent !== null && changePercent !== undefined) {
+    if (changePercent > 0.35) return { signal: 'buy', confidence: 56 };
+    if (changePercent < -0.35) return { signal: 'sell', confidence: 56 };
+  }
   if (weight === 0) return { signal: 'watch', confidence: null };
 
-  let signal: TraderSignal = 'wait';
+  let signal: TraderSignal = 'watch';
   if (score >= 2) signal = 'buy';
   else if (score <= -2) signal = 'sell';
-  else if (score > 0 || score < 0) signal = 'watch';
 
   const strength = Math.min(1, Math.abs(score) / weight);
-  const rawConfidence = signal === 'wait' ? 42 : Math.round(45 + strength * 45);
-  const confidenceCap = partial ? 62 : closes.length < 20 ? 70 : 88;
-  return { signal, confidence: Math.max(35, Math.min(confidenceCap, rawConfidence)) };
+  const confidence = Math.round(45 + strength * 45);
+  return { signal, confidence: Math.max(40, Math.min(92, confidence)) };
 }
 
 function riskFromVolatility(volatility: number | null, assetType: TraderAssetType): 'low' | 'medium' | 'high' {
@@ -341,6 +249,7 @@ export type TraderQuote = {
   displaySymbol: string;
   providerSymbol: string | null;
   providerSymbolUsed: string | null;
+  provider: TraderQuoteProvider | null;
   fallbackUsed: boolean;
   name: string;
   assetType: TraderAssetType;
@@ -360,30 +269,372 @@ export type TraderQuote = {
   history: Array<{ close: number }>;
   chartAvailable: boolean;
   dataQuality: TraderDataQuality;
-  provider: 'Yahoo Finance';
   providerStatus: {
-    yahooFinance: {
-      provider: 'Yahoo Finance';
-      status: 'available' | 'partial' | 'unavailable';
-      symbol: string | null;
-      fallbackUsed: boolean;
-    };
+    requestedSymbol: string;
+    providerSymbolUsed: string | null;
+    fallbackUsed: boolean;
+    lastUpdated: string | null;
+    dataQuality: TraderDataQuality;
+    provider: TraderQuoteProvider | null;
+    source: TraderQuoteSource;
   };
-  source: 'Yahoo Finance';
-  delayed: true;
+  source: TraderQuoteSource;
+  delayed: boolean;
   available: boolean;
   unavailableReason?: string;
   lastUpdated: string | null;
   updatedAt: string | null;
 };
 
-type YahooChartResult = {
-  price: number | null;
-  previousClose: number | null;
-  currency: string | null;
-  closes: number[];
-  marketTime: string | null;
-};
+function quoteStatus(args: {
+  display: string;
+  providerSymbol: string | null;
+  fallbackUsed: boolean;
+  updatedAt: string | null;
+  dataQuality: TraderDataQuality;
+  provider: TraderQuoteProvider | null;
+  source: TraderQuoteSource;
+}): TraderQuote['providerStatus'] {
+  return {
+    requestedSymbol: args.display,
+    providerSymbolUsed: args.providerSymbol,
+    fallbackUsed: args.fallbackUsed,
+    lastUpdated: args.updatedAt,
+    dataQuality: args.dataQuality,
+    provider: args.provider,
+    source: args.source,
+  };
+}
+
+function quoteIdentity(display: string, meta?: TraderCatalogSymbol) {
+  return {
+    symbol: display,
+    requestedSymbol: display,
+    canonicalSymbol: meta?.symbol ?? display,
+    displaySymbol: display,
+  };
+}
+
+function unavailableQuote(display: string, reason: string, meta?: TraderCatalogSymbol): TraderQuote {
+  const source: TraderQuoteSource = 'Financial Modeling Prep';
+  const dataQuality: TraderDataQuality = 'unavailable';
+  return {
+    ...quoteIdentity(display, meta),
+    providerSymbol: null,
+    providerSymbolUsed: null,
+    provider: null,
+    fallbackUsed: false,
+    name: meta?.name ?? display,
+    assetType: classifyAssetType(display, meta),
+    price: null,
+    change: null,
+    changePercent: null,
+    previousClose: null,
+    currency: meta?.currency ?? defaultCurrency(display),
+    signal: 'watch',
+    signalAvailable: false,
+    confidence: null,
+    riskLevel: 'medium',
+    rsi: null,
+    sma20: null,
+    sma50: null,
+    sparkline: [],
+    history: [],
+    chartAvailable: false,
+    dataQuality,
+    providerStatus: quoteStatus({ display, providerSymbol: null, fallbackUsed: false, updatedAt: null, dataQuality, provider: null, source }),
+    source,
+    delayed: false,
+    available: false,
+    unavailableReason: reason,
+    lastUpdated: null,
+    updatedAt: null,
+  };
+}
+
+function candidateSymbols(display: string, provider: TraderQuoteProvider, meta?: TraderCatalogSymbol) {
+  const aliasAssetType = (meta?.assetType === 'fund'
+    ? 'etf'
+    : meta?.assetType === 'commodity'
+      ? 'commodity'
+      : meta?.assetType) as MarketAssetType | undefined;
+  const aliases = provider === 'fmp' || provider === 'finnhub' || provider === 'yahoo'
+    ? providerSymbolsForProviderAlias(display, provider, aliasAssetType)
+    : [];
+  const metaSymbols = meta?.providerSymbols[provider] ?? [];
+  if (provider === 'yahoo') {
+    return unique([
+      ...(YAHOO_FALLBACK_SYMBOLS[upper(display)] ?? []),
+      ...aliases,
+      ...providerSymbolsForAlias(display),
+      ...metaSymbols,
+      YAHOO_SYMBOL[upper(display)] ?? null,
+      meta?.providerSymbol,
+      display,
+    ]);
+  }
+  if (provider === 'fmp') {
+    return unique([...aliases, ...metaSymbols, meta?.providerSymbol, display]);
+  }
+  return unique([...aliases, ...metaSymbols, meta?.providerSymbol, display]);
+}
+
+function metaMap(symbolMeta?: TraderCatalogSymbol[]) {
+  const map = new Map<string, TraderCatalogSymbol>();
+  for (const item of symbolMeta ?? []) {
+    map.set(upper(item.symbol), item);
+    map.set(upper(item.providerSymbol), item);
+    for (const provider of Object.keys(item.providerSymbols) as TraderQuoteProvider[]) {
+      for (const symbol of item.providerSymbols[provider] ?? []) map.set(upper(symbol), item);
+    }
+  }
+  return map;
+}
+
+function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: TraderCatalogSymbol): TraderQuote {
+  const assetType = classifyAssetType(display, meta);
+  const normalized = normalizeMarketPrice({
+    price: quote.price,
+    currency: quote.currency ?? meta?.currency,
+    providerCurrency: quote.currency,
+    symbol: display,
+    providerSymbol: quote.providerSymbol,
+    assetType,
+  });
+  const changeNorm = normalizeMarketPrice({
+    price: quote.change,
+    currency: quote.currency ?? meta?.currency,
+    providerCurrency: quote.currency,
+    symbol: display,
+    providerSymbol: quote.providerSymbol,
+    assetType,
+    priceUnit: normalized.priceUnit,
+  });
+  const { signal, confidence } = deriveSignal(normalized.price, null, null, null, quote.changePercent);
+  const price = round(normalized.price);
+  const change = round(changeNorm.price);
+  const updatedAt = quote.updatedAt;
+  const dataQuality: TraderDataQuality = price !== null && price > 0 ? 'partial' : 'unavailable';
+  const fallbackUsed = quote.provider !== 'fmp';
+  return {
+    ...quoteIdentity(display, meta),
+    providerSymbol: quote.providerSymbol,
+    providerSymbolUsed: quote.providerSymbol,
+    provider: quote.provider,
+    fallbackUsed,
+    name: quote.name || meta?.name || display,
+    assetType,
+    price,
+    change,
+    changePercent: round(quote.changePercent),
+    previousClose: price !== null && change !== null ? round(price - change) : null,
+    currency: normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
+    signal,
+    signalAvailable: price !== null,
+    confidence,
+    riskLevel: riskFromVolatility(null, assetType),
+    rsi: null,
+    sma20: null,
+    sma50: null,
+    sparkline: [],
+    history: [],
+    chartAvailable: false,
+    dataQuality,
+    providerStatus: quoteStatus({ display, providerSymbol: quote.providerSymbol, fallbackUsed, updatedAt, dataQuality, provider: quote.provider, source: quote.providerName }),
+    source: quote.providerName,
+    delayed: fallbackUsed,
+    available: price !== null && price > 0,
+    lastUpdated: updatedAt,
+    updatedAt,
+  };
+}
+
+function fmpQuoteFromRecord(record: Record<string, unknown>): ProviderQuote | null {
+  const symbol = textOrNull(record.symbol);
+  const price = numberOrNull(record.price ?? record.regularMarketPrice);
+  if (!symbol || price === null || price <= 0) return null;
+  const timestamp = numberOrNull(record.timestamp);
+  return {
+    provider: 'fmp',
+    providerName: 'Financial Modeling Prep',
+    providerSymbol: symbol,
+    name: textOrNull(record.name),
+    price,
+    change: numberOrNull(record.change ?? record.changes),
+    changePercent: numberOrNull(record.changesPercentage ?? record.changePercentage ?? record.changePercent),
+    currency: textOrNull(record.currency),
+    updatedAt: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString(),
+  };
+}
+
+async function fetchFmpBatch(symbols: string[], apiKey: string, forceFresh?: boolean) {
+  const url = new URL(`${FMP_BASE_URL}/batch-quote`);
+  url.searchParams.set('symbols', symbols.join(','));
+  url.searchParams.set('apikey', apiKey);
+  const response = await fetch(url, {
+    cache: forceFresh ? 'no-store' : undefined,
+    next: forceFresh ? undefined : { revalidate: 60 },
+    signal: AbortSignal.timeout(10_000),
+    headers: { accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw new Error(`fmp_batch_quote_http_${response.status}`);
+  return Array.isArray(payload)
+    ? payload.map(item => item && typeof item === 'object' ? fmpQuoteFromRecord(item as Record<string, unknown>) : null).filter((item): item is ProviderQuote => Boolean(item))
+    : [];
+}
+
+async function fetchFmpQuoteCollection(endpoint: string, apiKey: string, forceFresh?: boolean) {
+  const url = new URL(`${FMP_BASE_URL}/${endpoint}`);
+  url.searchParams.set('apikey', apiKey);
+  const response = await fetch(url, {
+    cache: forceFresh ? 'no-store' : undefined,
+    next: forceFresh ? undefined : { revalidate: 60 },
+    signal: AbortSignal.timeout(10_000),
+    headers: { accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw new Error(`fmp_${endpoint}_http_${response.status}`);
+  return Array.isArray(payload)
+    ? payload.map(item => item && typeof item === 'object' ? fmpQuoteFromRecord(item as Record<string, unknown>) : null).filter((item): item is ProviderQuote => Boolean(item))
+    : [];
+}
+
+async function fetchFmpSingle(symbol: string, apiKey: string, forceFresh?: boolean) {
+  const url = new URL(`${FMP_BASE_URL}/quote`);
+  url.searchParams.set('symbol', symbol);
+  url.searchParams.set('apikey', apiKey);
+  const response = await fetch(url, {
+    cache: forceFresh ? 'no-store' : undefined,
+    next: forceFresh ? undefined : { revalidate: 60 },
+    signal: AbortSignal.timeout(8_000),
+    headers: { accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw new Error(`fmp_quote_http_${response.status}`);
+  const records = Array.isArray(payload) ? payload : payload && typeof payload === 'object' ? [payload] : [];
+  for (const record of records) {
+    const quote = fmpQuoteFromRecord(record as Record<string, unknown>);
+    if (quote) return quote;
+  }
+  return null;
+}
+
+async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, TraderCatalogSymbol>, forceFresh?: boolean) {
+  const apiKey = cleanEnv(process.env.FMP_API_KEY);
+  const quotes = new Map<string, TraderQuote>();
+  const loaded: TraderQuoteLoadResult['loaded'] = [];
+  const failed: QuoteIssue[] = [];
+  const skipped: QuoteIssue[] = [];
+  const latencyStart = Date.now();
+  if (!apiKey) {
+    symbols.forEach(symbol => skipped.push({ symbol, provider: 'fmp', reason: 'fmp_not_configured' }));
+    return { quotes, loaded, failed, skipped, latencyMs: 0 };
+  }
+
+  const candidateBySymbol = new Map<string, string[]>();
+  const primaryToDisplay = new Map<string, string[]>();
+  const collectionDisplays = new Map<string, string[]>();
+  for (const symbol of symbols) {
+    const meta = metaBySymbol.get(upper(symbol));
+    const candidates = candidateSymbols(symbol, 'fmp', meta);
+    candidateBySymbol.set(symbol, candidates);
+    const primary = candidates[0];
+    if (!primary) {
+      skipped.push({ symbol, provider: 'fmp', reason: 'no_fmp_provider_symbol' });
+      continue;
+    }
+    const assetType = classifyAssetType(symbol, meta);
+    const collectionEndpoint = assetType === 'forex'
+      ? 'batch-forex-quotes'
+      : assetType === 'crypto'
+        ? 'batch-crypto-quotes'
+        : assetType === 'commodity'
+          ? 'batch-commodity-quotes'
+          : assetType === 'index'
+            ? 'batch-index-quotes'
+            : null;
+    if (collectionEndpoint) {
+      collectionDisplays.set(collectionEndpoint, [...(collectionDisplays.get(collectionEndpoint) ?? []), symbol]);
+      continue;
+    }
+    const key = upper(primary);
+    primaryToDisplay.set(key, [...(primaryToDisplay.get(key) ?? []), symbol]);
+  }
+
+  for (const [endpoint, displays] of collectionDisplays) {
+    try {
+      const records = await fetchFmpQuoteCollection(endpoint, apiKey, forceFresh);
+      const byProviderSymbol = new Map(records.map(record => [upper(record.providerSymbol), record]));
+      for (const display of displays) {
+        const meta = metaBySymbol.get(upper(display));
+        const match = (candidateBySymbol.get(display) ?? [])
+          .map(candidate => byProviderSymbol.get(upper(candidate)))
+          .find(Boolean);
+        if (!match) continue;
+        const quote = normalizeProviderQuote(display, match, meta);
+        if (quote.available) {
+          quotes.set(display, quote);
+          loaded.push({ symbol: display, provider: 'fmp', providerSymbol: quote.providerSymbol });
+        }
+      }
+    } catch (error) {
+      displays.forEach(symbol => failed.push({
+        symbol,
+        provider: 'fmp',
+        reason: error instanceof Error ? error.message : `fmp_${endpoint}_failed`,
+      }));
+    }
+  }
+
+  const primaries = Array.from(primaryToDisplay.keys());
+  for (let start = 0; start < primaries.length; start += FMP_BATCH_SIZE) {
+    const chunk = primaries.slice(start, start + FMP_BATCH_SIZE);
+    try {
+      const records = await fetchFmpBatch(chunk, apiKey, forceFresh);
+      for (const providerQuote of records) {
+        const displays = primaryToDisplay.get(upper(providerQuote.providerSymbol)) ?? [];
+        for (const display of displays) {
+          const meta = metaBySymbol.get(upper(display));
+          const quote = normalizeProviderQuote(display, providerQuote, meta);
+          if (quote.available) {
+            quotes.set(display, quote);
+            loaded.push({ symbol: display, provider: 'fmp', providerSymbol: quote.providerSymbol });
+          }
+        }
+      }
+    } catch (error) {
+      for (const providerSymbol of chunk) {
+        for (const display of primaryToDisplay.get(providerSymbol) ?? []) {
+          failed.push({ symbol: display, provider: 'fmp', reason: error instanceof Error ? error.message : 'fmp_batch_quote_failed' });
+        }
+      }
+    }
+  }
+
+  const missing = symbols.filter(symbol => !quotes.has(symbol));
+  await runConcurrent(missing, QUOTE_CONCURRENCY, async (symbol) => {
+    const candidates = candidateBySymbol.get(symbol) ?? [];
+    if (candidates.length === 0) return;
+    for (const candidate of candidates) {
+      try {
+        const providerQuote = await fetchFmpSingle(candidate, apiKey, forceFresh);
+        if (!providerQuote) continue;
+        const meta = metaBySymbol.get(upper(symbol));
+        const quote = normalizeProviderQuote(symbol, providerQuote, meta);
+        if (quote.available) {
+          quotes.set(symbol, quote);
+          loaded.push({ symbol, provider: 'fmp', providerSymbol: quote.providerSymbol });
+          return;
+        }
+      } catch (error) {
+        failed.push({ symbol, provider: 'fmp', reason: error instanceof Error ? error.message : 'fmp_quote_failed' });
+      }
+    }
+  });
+
+  return { quotes, loaded, failed, skipped, latencyMs: Date.now() - latencyStart };
+}
 
 async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<YahooChartResult | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=3mo&interval=1d`;
@@ -423,64 +674,14 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   };
 }
 
-function providerStatusFor(status: 'available' | 'partial' | 'unavailable', symbol: string | null, fallbackUsed: boolean): TraderQuote['providerStatus'] {
-  return {
-    yahooFinance: {
-      provider: 'Yahoo Finance',
-      status,
-      symbol,
-      fallbackUsed,
-    },
-  };
-}
-
-function unavailableQuote(resolution: TraderSymbolResolution, reason: string): TraderQuote {
-  return {
-    symbol: resolution.displaySymbol,
-    requestedSymbol: resolution.requestedSymbol,
-    canonicalSymbol: resolution.canonicalSymbol,
-    displaySymbol: resolution.displaySymbol,
-    providerSymbol: null,
-    providerSymbolUsed: null,
-    fallbackUsed: false,
-    name: resolution.name,
-    assetType: classifyAssetType(resolution.canonicalSymbol),
-    price: null,
-    change: null,
-    changePercent: null,
-    previousClose: null,
-    currency: defaultCurrency(resolution.canonicalSymbol),
-    signal: 'watch',
-    signalAvailable: false,
-    confidence: null,
-    riskLevel: 'medium',
-    rsi: null,
-    sma20: null,
-    sma50: null,
-    sparkline: [],
-    history: [],
-    chartAvailable: false,
-    dataQuality: 'unavailable',
-    provider: 'Yahoo Finance',
-    providerStatus: providerStatusFor('unavailable', null, false),
-    source: 'Yahoo Finance',
-    delayed: true,
-    available: false,
-    unavailableReason: reason,
-    lastUpdated: null,
-    updatedAt: null,
-  };
-}
-
-async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQuote> {
-  const resolution = resolveTraderCardSymbol(display);
-  const assetType = classifyAssetType(resolution.canonicalSymbol);
-  const yahooSymbols = resolution.yahooSymbols;
-  const primaryYahoo = resolution.primaryYahooSymbol;
+async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forceFresh?: boolean): Promise<TraderQuote> {
+  const assetType = classifyAssetType(display, meta);
+  const symbols = candidateSymbols(display, 'yahoo', meta);
+  const primaryYahoo = symbols[0] ?? display;
 
   let chart: YahooChartResult | null = null;
   let yahoo = primaryYahoo;
-  for (const candidate of yahooSymbols) {
+  for (const candidate of symbols) {
     const attempt = await fetchChart(candidate, forceFresh);
     if (attempt && attempt.price !== null) {
       chart = attempt;
@@ -490,38 +691,37 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
     chart ??= attempt;
   }
 
-  // Fallback: quote endpoint gives a price but no history (no computed signal).
   if (!chart || chart.price === null) {
     const normalized = await fetchYahooNormalizedQuote({
-      requestedSymbol: resolution.displaySymbol,
-      symbols: yahooSymbols,
-      name: resolution.name,
+      requestedSymbol: display,
+      symbols,
+      name: meta?.name ?? display,
       forceFresh,
       debugContext: { route: 'trader/marketQuotes', mode: 'quote_fallback' },
     }).catch(() => null);
 
     if (!normalized || !normalized.available || normalized.price === null) {
-      return unavailableQuote(resolution, normalized?.unavailableReason ?? 'provider_returned_empty_quote');
+      return unavailableQuote(display, normalized?.unavailableReason ?? 'provider_returned_empty_quote', meta);
     }
-    const symbolUsed = normalized.symbolUsed ?? yahoo;
-    const fallbackUsed = symbolUsed !== primaryYahoo;
-    const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: resolution.canonicalSymbol, market: resolution.canonicalSymbol });
+    const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: display, market: display, assetType });
     const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
-      return {
-        symbol: resolution.displaySymbol,
-        requestedSymbol: resolution.requestedSymbol,
-        canonicalSymbol: resolution.canonicalSymbol,
-        displaySymbol: resolution.displaySymbol,
-        providerSymbol: symbolUsed,
-        providerSymbolUsed: symbolUsed,
-        fallbackUsed,
-        name: normalized.name || resolution.name,
+    const price = round(norm.price);
+    const change = round(normalized.change !== null ? normalized.change / divisor : null);
+    const updatedAt = normalized.marketTime;
+    const dataQuality: TraderDataQuality = 'partial';
+    return {
+      ...quoteIdentity(display, meta),
+      providerSymbol: normalized.symbolUsed ?? yahoo,
+      providerSymbolUsed: normalized.symbolUsed ?? yahoo,
+      provider: 'yahoo',
+      fallbackUsed: true,
+      name: normalized.name || meta?.name || display,
       assetType,
-      price: round(norm.price),
-      change: round(normalized.change !== null ? normalized.change / divisor : null),
+      price,
+      change,
       changePercent: round(normalized.changePercent),
-      previousClose: null,
-      currency: norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? defaultCurrency(resolution.canonicalSymbol),
+      previousClose: price !== null && change !== null ? round(price - change) : null,
+      currency: norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? meta?.currency ?? defaultCurrency(display),
       signal: 'watch',
       signalAvailable: true,
       confidence: null,
@@ -532,48 +732,41 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
       sparkline: [],
       history: [],
       chartAvailable: false,
-      dataQuality: 'partial',
-      provider: 'Yahoo Finance',
-      providerStatus: providerStatusFor('partial', symbolUsed, fallbackUsed),
+      dataQuality,
+      providerStatus: quoteStatus({ display, providerSymbol: normalized.symbolUsed ?? yahoo, fallbackUsed: true, updatedAt, dataQuality, provider: 'yahoo', source: 'Yahoo Finance' }),
       source: 'Yahoo Finance',
       delayed: true,
       available: true,
-      unavailableReason: 'chart_history_unavailable',
-      lastUpdated: normalized.marketTime,
-      updatedAt: normalized.marketTime,
+      lastUpdated: updatedAt,
+      updatedAt,
     };
   }
 
-  // Normalize price unit (Kuwait fils, London pence, …) and apply the same
-  // divisor to the whole close series so indicators stay consistent.
-  const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: resolution.canonicalSymbol, market: resolution.canonicalSymbol });
+  const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: display, market: display, assetType });
   const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
   const price = norm.price;
-  const closes = chart.closes.map(value => value / divisor).filter(value => Number.isFinite(value) && value > 0);
+  const closes = chart.closes.map(value => value / divisor);
   const previousClose = chart.previousClose !== null ? chart.previousClose / divisor : null;
   const change = price !== null && previousClose !== null ? price - previousClose : null;
   const changePercent = change !== null && previousClose ? (change / previousClose) * 100 : null;
-  const currency = norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? defaultCurrency(resolution.canonicalSymbol);
-  const chartAvailable = closes.length >= 2;
-  const dataQuality: TraderDataQuality = chartAvailable ? 'delayed' : 'partial';
-
+  const currency = norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? meta?.currency ?? defaultCurrency(display);
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
   const rsiValue = rsi(closes, 14);
-  const { signal, confidence } = deriveSignal({ price, closes, sma20, sma50, rsiValue, changePercent, partial: dataQuality === 'partial' });
-  const riskLevel = riskFromVolatility(annualizedVolatility(closes), assetType);
-  const fallbackUsed = yahoo !== primaryYahoo;
+  const { signal, confidence } = deriveSignal(price, sma20, sma50, rsiValue, changePercent);
   const sparkline = closes.slice(-40).map(value => round(value)).filter((value): value is number => value !== null);
+  const history = closes.slice(-120).map(close => ({ close: round(close) ?? close }));
+  const chartAvailable = closes.length >= 2;
+  const dataQuality: TraderDataQuality = chartAvailable ? 'delayed' : 'partial';
+  const updatedAt = chart.marketTime;
 
   return {
-    symbol: resolution.displaySymbol,
-    requestedSymbol: resolution.requestedSymbol,
-    canonicalSymbol: resolution.canonicalSymbol,
-    displaySymbol: resolution.displaySymbol,
+    ...quoteIdentity(display, meta),
     providerSymbol: yahoo,
     providerSymbolUsed: yahoo,
-    fallbackUsed,
-    name: resolution.name,
+    provider: 'yahoo',
+    fallbackUsed: true,
+    name: meta?.name ?? display,
     assetType,
     price: round(price),
     change: round(change),
@@ -583,55 +776,220 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
     signal,
     signalAvailable: price !== null,
     confidence,
-    riskLevel,
+    riskLevel: riskFromVolatility(annualizedVolatility(closes), assetType),
     rsi: rsiValue !== null ? Number(rsiValue.toFixed(1)) : null,
     sma20: sma20 !== null ? Number(sma20.toFixed(4)) : null,
     sma50: sma50 !== null ? Number(sma50.toFixed(4)) : null,
     sparkline,
-    history: sparkline.map(close => ({ close })),
+    history,
     chartAvailable,
     dataQuality,
-    provider: 'Yahoo Finance',
-    providerStatus: providerStatusFor(dataQuality === 'delayed' ? 'available' : 'partial', yahoo, fallbackUsed),
+    providerStatus: quoteStatus({ display, providerSymbol: yahoo, fallbackUsed: true, updatedAt, dataQuality, provider: 'yahoo', source: 'Yahoo Finance' }),
     source: 'Yahoo Finance',
     delayed: true,
     available: price !== null,
-    unavailableReason: chartAvailable ? undefined : 'chart_history_unavailable',
-    lastUpdated: chart.marketTime,
-    updatedAt: chart.marketTime,
+    lastUpdated: updatedAt,
+    updatedAt,
   };
 }
 
-// Fetch quotes for a list of symbols with a bounded concurrency so we do not
-// fan out dozens of simultaneous requests to Yahoo.
-export async function fetchTraderQuotes(symbols: string[], options?: { forceFresh?: boolean; concurrency?: number }): Promise<TraderQuote[]> {
-  const unique = Array.from(new Set(symbols.map(s => s.trim().toUpperCase()).filter(Boolean)));
-  const concurrency = Math.max(1, Math.min(options?.concurrency ?? 6, unique.length || 1));
-  const results: TraderQuote[] = [];
-  let cursor = 0;
+async function fetchFinnhubQuote(display: string, meta?: TraderCatalogSymbol): Promise<TraderQuote> {
+  const apiKey = cleanEnv(process.env.FINNHUB_API_KEY);
+  if (!apiKey) return unavailableQuote(display, 'finnhub_not_configured', meta);
+  const candidates = candidateSymbols(display, 'finnhub', meta);
+  for (const candidate of candidates) {
+    const url = new URL('https://finnhub.io/api/v1/quote');
+    url.searchParams.set('symbol', candidate);
+    url.searchParams.set('token', apiKey);
+    const response = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+      headers: { accept: 'application/json' },
+    }).catch(() => null);
+    if (!response?.ok) continue;
+    const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+    const price = numberOrNull(payload?.c);
+    if (price === null || price <= 0) continue;
+    return normalizeProviderQuote(display, {
+      provider: 'finnhub',
+      providerName: 'Finnhub',
+      providerSymbol: candidate,
+      name: meta?.name ?? display,
+      price,
+      change: numberOrNull(payload?.d),
+      changePercent: numberOrNull(payload?.dp),
+      currency: meta?.currency ?? defaultCurrency(display),
+      updatedAt: numberOrNull(payload?.t) ? new Date(Number(payload?.t) * 1000).toISOString() : new Date().toISOString(),
+    }, meta);
+  }
+  return unavailableQuote(display, 'finnhub_returned_empty_quote', meta);
+}
 
-  async function worker() {
-    while (cursor < unique.length) {
+async function fetchOpenbbQuote(display: string, meta?: TraderCatalogSymbol): Promise<TraderQuote> {
+  const baseUrl = cleanEnv(process.env.OPENBB_API_URL).replace(/\/+$/, '');
+  if (!baseUrl) return unavailableQuote(display, 'openbb_not_configured', meta);
+  const candidates = candidateSymbols(display, 'openbb', meta);
+  const token = cleanEnv(process.env.OPENBB_API_KEY);
+  for (const candidate of candidates) {
+    const url = new URL(`${baseUrl}/api/v1/equity/price/quote`);
+    url.searchParams.set('symbol', candidate);
+    const response = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        accept: 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    }).catch(() => null);
+    if (!response?.ok) continue;
+    const payload = await response.json().catch(() => null) as Record<string, unknown> | Record<string, unknown>[] | null;
+    const record = Array.isArray(payload) ? payload[0] : payload;
+    const price = numberOrNull(record?.price ?? record?.last_price ?? record?.close);
+    if (price === null || price <= 0) continue;
+    return normalizeProviderQuote(display, {
+      provider: 'openbb',
+      providerName: 'OpenBB',
+      providerSymbol: candidate,
+      name: meta?.name ?? display,
+      price,
+      change: numberOrNull(record?.change),
+      changePercent: numberOrNull(record?.change_percent ?? record?.changePercent),
+      currency: textOrNull(record?.currency) ?? meta?.currency ?? defaultCurrency(display),
+      updatedAt: textOrNull(record?.timestamp ?? record?.date) ?? new Date().toISOString(),
+    }, meta);
+  }
+  return unavailableQuote(display, 'openbb_returned_empty_quote', meta);
+}
+
+async function runConcurrent<T>(items: T[], concurrency: number, worker: (item: T, index: number) => Promise<void>) {
+  let cursor = 0;
+  async function run() {
+    while (cursor < items.length) {
       const index = cursor;
       cursor += 1;
-      results[index] = await fetchOne(unique[index], options?.forceFresh);
+      await worker(items[index]!, index);
     }
   }
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length || 1)) }, () => run()));
+}
 
-  await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return results;
+async function fetchFallbackProvider(
+  provider: Exclude<TraderQuoteProvider, 'fmp'>,
+  symbols: string[],
+  metaBySymbol: Map<string, TraderCatalogSymbol>,
+  forceFresh?: boolean,
+) {
+  const quotes = new Map<string, TraderQuote>();
+  const loaded: TraderQuoteLoadResult['loaded'] = [];
+  const failed: QuoteIssue[] = [];
+  const skipped: QuoteIssue[] = [];
+  const startedAt = Date.now();
+
+  await runConcurrent(symbols, QUOTE_CONCURRENCY, async (symbol) => {
+    const meta = metaBySymbol.get(upper(symbol));
+    const quote = provider === 'yahoo'
+      ? await fetchYahooQuote(symbol, meta, forceFresh)
+      : provider === 'finnhub'
+        ? await fetchFinnhubQuote(symbol, meta)
+        : await fetchOpenbbQuote(symbol, meta);
+    if (quote.available) {
+      quotes.set(symbol, quote);
+      loaded.push({ symbol, provider, providerSymbol: quote.providerSymbol });
+    } else if (quote.unavailableReason?.endsWith('_not_configured')) {
+      skipped.push({ symbol, provider, reason: quote.unavailableReason });
+    } else {
+      failed.push({ symbol, provider, reason: quote.unavailableReason ?? 'provider_returned_empty_quote' });
+    }
+  });
+
+  return { quotes, loaded, failed, skipped, latencyMs: Date.now() - startedAt };
+}
+
+export async function fetchTraderQuotesDetailed(
+  symbols: string[],
+  options?: { forceFresh?: boolean; concurrency?: number; symbolMeta?: TraderCatalogSymbol[] },
+): Promise<TraderQuoteLoadResult> {
+  const uniqueSymbols = Array.from(new Set(symbols.map(s => s.trim().toUpperCase()).filter(Boolean)));
+  const byMeta = metaMap(options?.symbolMeta);
+  const quotes = new Map<string, TraderQuote>();
+  const loaded: TraderQuoteLoadResult['loaded'] = [];
+  const failed: QuoteIssue[] = [];
+  const skipped: QuoteIssue[] = [];
+  const providerLatencyMs: Partial<Record<TraderQuoteProvider, number>> = {};
+
+  const fmp = await fetchFmpQuotes(uniqueSymbols, byMeta, options?.forceFresh);
+  providerLatencyMs.fmp = fmp.latencyMs;
+  fmp.quotes.forEach((quote, symbol) => quotes.set(symbol, quote));
+  loaded.push(...fmp.loaded);
+  failed.push(...fmp.failed);
+  skipped.push(...fmp.skipped);
+
+  for (const provider of ['yahoo', 'finnhub', 'openbb'] as const) {
+    const remaining = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+    if (remaining.length === 0) break;
+    const result = await fetchFallbackProvider(provider, remaining, byMeta, options?.forceFresh);
+    providerLatencyMs[provider] = result.latencyMs;
+    result.quotes.forEach((quote, symbol) => quotes.set(symbol, quote));
+    loaded.push(...result.loaded);
+    failed.push(...result.failed);
+    skipped.push(...result.skipped);
+  }
+
+  const orderedQuotes = uniqueSymbols.map(symbol => quotes.get(symbol) ?? unavailableQuote(symbol, 'all_providers_returned_no_quote', byMeta.get(upper(symbol))));
+  const firstLoadedProvider = loaded[0]?.provider ?? null;
+  return {
+    quotes: orderedQuotes,
+    loaded,
+    failed,
+    skipped,
+    provider: firstLoadedProvider,
+    reason: firstLoadedProvider ? null : 'all_providers_returned_no_quote',
+    providerLatencyMs,
+    cacheStatus: firstLoadedProvider ? 'live' : 'not_configured',
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+export async function fetchTraderQuotes(
+  symbols: string[],
+  options?: { forceFresh?: boolean; concurrency?: number; symbolMeta?: TraderCatalogSymbol[] },
+): Promise<TraderQuote[]> {
+  return (await fetchTraderQuotesDetailed(symbols, options)).quotes;
 }
 
 export function resolveTraderMarket(marketId: string | null | undefined): MarketDef {
-  const raw = String(marketId ?? '').trim().toLowerCase();
-  const alias = raw === 'us' || raw === 'stocks' || raw === '' ? 'us-stocks' : raw;
-  return TRADER_MARKETS.find(m => m.id === alias) ?? TRADER_MARKETS[0];
+  return getStaticTraderMarket(marketId);
 }
 
-export const CONNECTED_PROVIDER = {
-  active: 'Yahoo Finance',
-  requested: 'yahoo',
-  provider: 'Yahoo Finance',
-  configured: true,
-  status: 'connected' as const,
-};
+export async function resolveTraderMarketDynamic(marketId: string | null | undefined, options?: { forceFresh?: boolean }) {
+  return resolveTraderMarketFromCatalog(marketId, options);
+}
+
+export function getConnectedProvider() {
+  const capabilities = providerCapabilityMatrix();
+  const active: TraderQuoteProvider = capabilities.fmp.configured
+    ? 'fmp'
+    : capabilities.finnhub.configured
+      ? 'finnhub'
+      : capabilities.openbb.configured
+        ? 'openbb'
+        : 'yahoo';
+  const label = active === 'fmp'
+    ? 'FMP'
+    : active === 'finnhub'
+      ? 'Finnhub'
+      : active === 'openbb'
+        ? 'OpenBB'
+        : 'Yahoo Finance';
+  return {
+    active: label,
+    requested: 'fmp',
+    provider: label,
+    configured: active === 'yahoo' ? true : capabilities[active].configured,
+    status: 'connected' as const,
+    fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub', 'OpenBB'],
+    capabilityMatrix: capabilities,
+  };
+}
+
+export const CONNECTED_PROVIDER = getConnectedProvider();

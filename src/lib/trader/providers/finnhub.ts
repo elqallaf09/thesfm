@@ -136,7 +136,7 @@ export async function fetchFinnhubEarningsCalendar(apiKey: string, query: Trader
 }
 
 export async function fetchFinnhubDividendsCalendar(apiKey: string, query: TraderCalendarQuery): Promise<TraderDividendEvent[]> {
-  const symbols = (query.symbols?.length ? query.symbols : []).slice(0, 30);
+  const symbols = query.symbols?.length ? query.symbols : [];
   if (symbols.length === 0) return [];
   const settled = await Promise.allSettled(symbols.map(symbol => fetchFinnhubPayload('stock/dividend', apiKey, query, { symbol })));
   const events: TraderDividendEvent[] = [];

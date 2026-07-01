@@ -15,8 +15,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
   const symbols = (searchParams.get('symbols') || '')
     .split(',')
     .map((symbol) => symbol.trim().toUpperCase())
-    .filter(Boolean)
-    .slice(0, 30);
+    .filter(Boolean);
 
   return {
     market: 'US',

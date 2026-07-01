@@ -33,9 +33,9 @@ function hasCronAccess(request: NextRequest) {
 }
 
 function normalizeSymbols(value: unknown) {
-  if (Array.isArray(value)) return value.map(String).map(item => item.trim().toUpperCase()).filter(Boolean).slice(0, 80);
+  if (Array.isArray(value)) return value.map(String).map(item => item.trim().toUpperCase()).filter(Boolean);
   if (typeof value === 'string') {
-    return value.split(',').map(item => item.trim().toUpperCase()).filter(Boolean).slice(0, 80);
+    return value.split(',').map(item => item.trim().toUpperCase()).filter(Boolean);
   }
   return [];
 }
@@ -70,6 +70,12 @@ export async function POST(request: NextRequest) {
     inserted: persisted.inserted,
     notifications: persisted.notifications,
     followedTrades: persisted.followedTrades,
+    loaded: signals.filter(signal => signal.dataQuality !== 'unavailable').map(signal => ({ symbol: signal.symbol, provider: signal.provider, reason: 'signal_loaded' })),
+    failed: signals.filter(signal => signal.dataQuality === 'unavailable').map(signal => ({ symbol: signal.symbol, provider: signal.provider, reason: signal.warnings?.[0] || 'signal_unavailable' })),
+    skipped: [],
+    provider: 'provider-refresh',
+    reason: signals.length ? null : 'no_signals_generated',
+    resultCount: signals.length,
     signals,
   }, { status: persisted.ok ? 200 : 500 });
 }

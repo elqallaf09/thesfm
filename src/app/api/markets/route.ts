@@ -1,26 +1,51 @@
 import { NextResponse } from 'next/server';
-import { CONNECTED_PROVIDER, TRADER_MARKETS } from '@/lib/trader/marketQuotes';
+import { getConnectedProvider } from '@/lib/trader/marketQuotes';
+import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 
 export const dynamic = 'force-dynamic';
 
-// Static market directory (name / symbol / currency / source). Live prices are
-// served per-market by /api/recommendations to keep this listing fast.
-export async function GET() {
-  const markets = TRADER_MARKETS.flatMap(market =>
-    market.symbols.map(symbol => ({
-      market: market.id,
-      marketName: market.en,
-      name: market.en,
-      label: market.ar,
-      symbol,
-      currency: market.currency,
-      source: 'Yahoo Finance',
-    })),
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const catalog = await getTraderMarketCatalog({
+    forceFresh: url.searchParams.has('refresh') || url.searchParams.has('discover'),
+  });
+
+  const markets = catalog.markets.flatMap(market =>
+    catalog.symbols
+      .filter(symbol => symbol.marketIds.includes(market.id))
+      .map(symbol => ({
+        market: market.id,
+        marketName: market.en,
+        name: symbol.name || market.en,
+        label: market.ar,
+        symbol: symbol.symbol,
+        providerSymbol: symbol.providerSymbol,
+        providerSymbols: symbol.providerSymbols,
+        assetType: symbol.assetType,
+        exchange: symbol.exchange,
+        country: symbol.country,
+        currency: symbol.currency || market.currency,
+        source: symbol.source === 'fmp' ? 'FMP' : symbol.source,
+      })),
   );
 
   return NextResponse.json({
+    ok: true,
     markets,
-    dataProvider: CONNECTED_PROVIDER,
+    groups: catalog.markets,
+    dataProvider: getConnectedProvider(),
+    capabilityMatrix: catalog.capabilityMatrix,
+    diagnostics: catalog.diagnostics,
+    loaded: catalog.symbols.map(symbol => ({
+      symbol: symbol.symbol,
+      provider: symbol.source,
+      reason: 'symbol_discovered',
+    })),
+    failed: catalog.diagnostics.failedSymbols,
+    skipped: catalog.diagnostics.unsupportedSymbols,
+    provider: catalog.diagnostics.provider,
+    reason: catalog.diagnostics.reason,
+    resultCount: markets.length,
   }, {
     headers: { 'Cache-Control': 'no-store' },
   });

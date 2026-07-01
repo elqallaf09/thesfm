@@ -1,7 +1,7 @@
 import type { ProviderApiStatus } from '@/lib/providers/shared';
 
 export type TraderCalendarProvider = 'fmp' | 'finnhub' | 'tradingeconomics';
-export type TraderProviderName = TraderCalendarProvider | 'yahoo';
+export type TraderProviderName = TraderCalendarProvider | 'yahoo' | 'openbb';
 export type TraderCalendarFeature = 'earnings' | 'dividends' | 'ipos' | 'economic';
 export type TraderProviderFeature = TraderCalendarFeature | 'prices' | 'news';
 export type TraderCalendarRange = 'today' | '7' | '30' | '90' | 'all';
@@ -120,6 +120,7 @@ export type TraderProviderStatusResponse = {
     fmpConfigured: boolean;
     finnhubConfigured: boolean;
     tradingEconomicsConfigured: boolean;
+    openbbConfigured: boolean;
   };
   features: Record<TraderProviderFeature, TraderFeatureStatus>;
   dataProvider: {

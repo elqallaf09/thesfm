@@ -64,7 +64,7 @@ async function scannerRunPayload(request: NextRequest) {
   if (typeof body.riskLevel === 'string') search.set('riskLevel', body.riskLevel);
   if (typeof body.timeHorizon === 'string') search.set('timeHorizon', body.timeHorizon);
   if (typeof body.minimumConfidence === 'number') search.set('minimumConfidence', String(body.minimumConfidence));
-  if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.slice(0, 30).join(','));
+  if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.join(','));
 
   const filters = parseScannerFilters(search);
   const results = filterResults(await runScanner(filters, true), filters);

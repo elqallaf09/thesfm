@@ -634,7 +634,7 @@
   function calendarQuery(force) {
     const params = new URLSearchParams({ range: state.calendarRange || "30" });
     if (force) params.set("refresh", "1");
-    const symbols = unique([...(state.watch || []), ...defaults]).slice(0, 20);
+    const symbols = unique([...(state.watch || []), ...defaults]);
     if (symbols.length) params.set("symbols", symbols.join(","));
     return params.toString();
   }
@@ -838,8 +838,7 @@
   }
   function dashboardSymbols() {
     const market = currentMarket();
-    const extra = market.id === "kuwait" ? market.symbols : [];
-    return unique([...leadershipCore, ...extra]);
+    return unique([...leadershipCore, ...(market.symbols || [])]);
   }
   function findAssetForSymbol(symbol, list) {
     const aliases = symbolAliases(symbol);
@@ -1038,6 +1037,12 @@
   function systemCard() { const s = providerCopy(); return `<article class="status-card"><span class="eyebrow">SYSTEM</span><strong>${h(s.title)}</strong><p>${h(s.copy)}</p><span class="state-badge ${s.className === "online" ? "ok" : "warn"}">${h(s.raw)}</span></article>`; }
   function diagnostics() {
     const ps = state.providerStatus || {}, p = ps.dataProvider || state.provider || {}, features = ps.features || {};
+    const diag = ps.diagnostics || state.markets.diagnostics || (state.rec && state.rec.symbolDiscovery) || {};
+    const failedRows = arr(ps.failed).concat(arr(state.rec.failed), arr(state.markets.failed));
+    const skippedRows = arr(ps.skipped).concat(arr(state.rec.skipped), arr(state.markets.skipped));
+    const latency = diag.providerLatencyMs && typeof diag.providerLatencyMs === "object"
+      ? Object.entries(diag.providerLatencyMs).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => `${k}: ${Math.round(Number(v))}ms`).join(", ")
+      : "--";
     const calendarCounts = ["earnings", "dividends", "ipos", "economic"].map(key => {
       const f = features[key] || {};
       return `${featureTitle(key)}: ${resultCountText(f.resultCount)}`;
@@ -1048,6 +1053,12 @@
       ["مهيأ؟", p.configured === true ? "نعم" : "لا"],
       ["آخر تحديث", latinDateTime(p.lastUpdated)],
       ["عدد النتائج", p.resultCount === null || p.resultCount === undefined ? calendarCounts : resultCountText(p.resultCount)],
+      ["إجمالي الرموز المكتشفة", resultCountText(diag.totalSymbolsDiscovered)],
+      ["إجمالي الرموز المحملة", resultCountText(diag.totalSymbolsLoaded ?? ps.resultCount ?? state.markets.resultCount)],
+      ["رموز فشلت", failedRows.length ? failedRows.slice(0, 6).map(item => `${item.symbol || item.provider || "provider"}: ${item.reason || item.status || "failed"}`).join(" | ") : "--"],
+      ["رموز غير مدعومة / متخطاة", skippedRows.length ? skippedRows.slice(0, 6).map(item => `${item.symbol || item.provider || "provider"}: ${item.reason || "skipped"}`).join(" | ") : "--"],
+      ["زمن استجابة المزود", latency],
+      ["حالة الكاش", diag.cacheStatus || state.rec.cacheStatus || state.markets.cacheStatus || "--"],
       ["سبب التعذر", p.failureReason || state.rec.message || state.markets.message || state.news.message || "--"],
       ["الميزات المدعومة", arr(p.supportedFeatures).join(", ") || "--"]
     ];
@@ -1547,7 +1558,7 @@
     const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
     const configured = p.configured === true || Boolean(p.active);
     const raw = p.status || (configured ? "configured" : "not_configured");
-    const ok = configured && ["success", "available", "configured"].includes(String(raw));
+    const ok = configured && ["success", "available", "configured", "connected"].includes(String(raw));
     if (ok) return { title: "المزود متصل", copy: `المزود النشط: ${providerName(p.active || p.provider)}`, className: "online", raw };
     return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw };
   }

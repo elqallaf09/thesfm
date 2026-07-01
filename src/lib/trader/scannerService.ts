@@ -16,7 +16,6 @@ import type {
 
 const SCAN_FRESHNESS_MS = 10 * 60 * 1000;
 const FORCE_SCAN_COOLDOWN_MS = 5 * 60 * 1000;
-const SCAN_SYMBOL_LIMIT = 30;
 
 type ScanCache = {
   results: StockAnalysisResult[];
@@ -197,7 +196,7 @@ async function runScanInternal(filters: ScannerFilters = { market: 'US' }) {
     lastErrorCode: null,
   };
 
-  const universe = getUsStockUniverse(filters.symbols).slice(0, SCAN_SYMBOL_LIMIT);
+  const universe = getUsStockUniverse(filters.symbols);
   const results: StockAnalysisResult[] = [];
   let failedAssets = 0;
 

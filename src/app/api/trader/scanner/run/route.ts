@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   if (typeof body.sharia_status === 'string') search.set('sharia_status', body.sharia_status);
   if (typeof body.shariaStatus === 'string') search.set('shariaStatus', body.shariaStatus);
   if (typeof body.minimumConfidence === 'number') search.set('minimumConfidence', String(body.minimumConfidence));
-  if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.slice(0, 30).join(','));
+  if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.join(','));
 
   const filters = parseScannerFilters(search);
   const results = filterResults(await runScanner(filters, true), filters);

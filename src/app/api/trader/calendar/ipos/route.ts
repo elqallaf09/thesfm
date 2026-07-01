@@ -52,6 +52,16 @@ export async function GET(request: Request) {
   const status = mapRouteStatus(result.status, count);
 
   const configured = Boolean(process.env.FMP_API_KEY);
+  const routeReason = result.failureReason ?? result.messageCode ?? (count === 0 ? 'calendar_no_events' : null);
+  const loaded = count > 0
+    ? [{ provider: result.provider, reason: 'calendar_events_loaded', count }]
+    : [];
+  const failed = result.failureReason
+    ? [{ provider: result.provider, reason: result.failureReason, status: result.status }]
+    : [];
+  const skipped = count === 0 && !result.failureReason
+    ? [{ provider: result.provider, reason: result.messageCode ?? 'calendar_no_events' }]
+    : [];
   console.info('[trader-calendar] request', {
     provider: result.provider || null,
     endpoint: result.provider === 'fmp' ? 'https://financialmodelingprep.com/stable/ipos-calendar' : 'ipos-calendar',
@@ -70,6 +80,11 @@ export async function GET(request: Request) {
     count,
     status,
     error: result.failureReason ?? null,
+    loaded,
+    failed,
+    skipped,
+    providerId: result.provider,
+    reason: routeReason,
     data: result.data,
     resultCount: count,
     lastUpdated: result.lastUpdated,

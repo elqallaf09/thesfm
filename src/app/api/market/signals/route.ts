@@ -31,19 +31,19 @@ function normalizeSymbols(value: string | null) {
   return String(value ?? '')
     .split(',')
     .map(symbol => symbol.trim().toUpperCase())
-    .filter(Boolean)
-    .slice(0, 60);
+    .filter(Boolean);
 }
 
 function parseFilters(searchParams: URLSearchParams): SignalListFilters & { refresh: boolean } {
   const minConfidence = Number(searchParams.get('minConfidence') ?? searchParams.get('confidence'));
-  const limit = Number(searchParams.get('limit'));
+  const requestedLimit = searchParams.get('limit');
+  const limit = Number(requestedLimit);
   return {
     market: searchParams.get('market'),
     action: normalizeAction(searchParams.get('action')),
     minConfidence: Number.isFinite(minConfidence) ? minConfidence : null,
     symbols: normalizeSymbols(searchParams.get('symbols')),
-    limit: Number.isFinite(limit) ? Math.max(1, Math.min(100, limit)) : 30,
+    limit: requestedLimit && requestedLimit !== 'all' && Number.isFinite(limit) ? Math.max(1, limit) : undefined,
     refresh: searchParams.get('refresh') === '1' || searchParams.get('refresh') === 'true',
   };
 }
@@ -60,6 +60,12 @@ export async function GET(request: NextRequest) {
         source: 'database',
         signals: stored.signals,
         items: stored.signals,
+        loaded: stored.signals.filter(signal => signal.dataQuality !== 'unavailable').map(signal => ({ symbol: signal.symbol, provider: signal.provider, reason: 'signal_loaded' })),
+        failed: [],
+        skipped: [],
+        provider: 'database',
+        reason: null,
+        resultCount: stored.signals.length,
       });
     }
   }
@@ -79,6 +85,12 @@ export async function GET(request: NextRequest) {
     source: 'provider-on-demand',
     signals,
     items: signals,
+    loaded: signals.filter(signal => signal.dataQuality !== 'unavailable').map(signal => ({ symbol: signal.symbol, provider: signal.provider, reason: 'signal_loaded' })),
+    failed: signals.filter(signal => signal.dataQuality === 'unavailable').map(signal => ({ symbol: signal.symbol, provider: signal.provider, reason: signal.warnings?.[0] || 'signal_unavailable' })),
+    skipped: [],
+    provider: 'provider-on-demand',
+    reason: signals.length ? null : 'no_signals_generated',
+    resultCount: signals.length,
     warning: admin ? undefined : 'Supabase service role is not configured; signals were calculated without persistence.',
   });
 }

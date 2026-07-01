@@ -105,7 +105,7 @@ function normalizeAsset(symbol: string): TradableAsset {
 export function getUsStockUniverse(symbols?: string[]) {
   const requested = Array.isArray(symbols) && symbols.length > 0
     ? symbols
-    : [...US_UNIVERSE_SYMBOLS];
+    : Array.from(directory.keys());
   const seen = new Set<string>();
 
   return requested
@@ -116,6 +116,5 @@ export function getUsStockUniverse(symbols?: string[]) {
       seen.add(symbol);
       return true;
     })
-    .slice(0, 30)
     .map(normalizeAsset);
 }
