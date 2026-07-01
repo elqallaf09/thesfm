@@ -10,6 +10,7 @@ import {
 import { findAssetAliasMatches } from '@/lib/market/assetAliases';
 import { findKnownMarketSymbol } from '@/lib/market/knownSymbols';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { providerAliasToMarketSearchItem, resolveProviderSymbolAlias } from '@/lib/market/providerSymbolAliases';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import symbolDirectory from '../../data/market-symbols.json';
 
