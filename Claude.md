@@ -69,6 +69,11 @@ src/
 - Location: `src/app/page.tsx`
 - Description: Supports a broad currency list with Kuwaiti Dinar as the default.
 
+### AI Trading Terminal (thesfm-trader-own)
+- Status: Implemented
+- Location: `src/trader-app/public/app.js` (static SPA served via `src/app/thesfm-trader-own/app/[[...path]]/route.ts`), data endpoints `src/app/api/markets/route.ts` and `src/app/api/recommendations/route.ts`, shared helper `src/lib/trader/marketQuotes.ts`.
+- Description: Arabic trading terminal (dashboard, markets, heatmap, scanner, watchlist, symbol details). Market data is served live from Yahoo Finance (no API key) through `src/lib/trader/marketQuotes.ts`, which maps trader symbols (forex `=X`, crypto `-USD`, commodity futures, `^` indices) to Yahoo tickers and fetches 3-month daily history with bounded concurrency. `/api/recommendations?market=<id>` returns per-market quotes plus rule-based technical signals (buy/sell/watch) with confidence and risk derived from SMA20/SMA50 alignment and RSI-14 — transparent indicator readings, not fabricated advice. `/api/markets` returns the market directory and reports the provider as connected. Prices are normalized with `normalizeMarketPrice` so Gulf subunit quotes (Kuwait fils / `KWF`) are converted to major units (e.g. `KFH.KW` 771 → 0.77 KWD). Symbols Yahoo cannot serve degrade to an `unavailable` list rather than showing placeholder data. Company logos in the SPA use the FMP image endpoint for US tickers with a Google favicon fallback (the previous `logo.clearbit.com` service was discontinued).
+
 ## Current State
 - [x] Username/password login and registration as homepage entry
 - [x] Registration fields for username, password, email, and age
@@ -88,9 +93,11 @@ src/
 - [x] Arabic/English language selector
 - [x] Moving market ticker with external data route
 - [x] Boursa Kuwait-inspired visual background
+- [x] AI trading terminal wired to live Yahoo Finance quotes with rule-based technical signals and Gulf price-unit normalization
 
 ## Maintenance Log
 - 2026-05-12: Added username/password authentication, user profiles, monthly income source database tables, income setup UI, and connected saved income sources to the financial manager.
 - 2026-05-12: Added project knowledge base and documented financial manager, market ticker API, language support, and current implementation state.
 - 2026-05-12: Updated registration to collect email and age, added bilingual financial examples, optional chart display, goal suggestions, manual warnings, and print optimization.
 - 2026-05-12: Added profile management with phone fields and password change, monthly income updates from the profile panel, independent charitable works percentages, and goal duration units.
+- 2026-07-01: Fixed trader app logos (Clearbit discontinued → FMP + Google favicon). Wired the AI trading terminal's `/api/markets` and `/api/recommendations` from hardcoded "not_configured" stubs to live Yahoo Finance data via `src/lib/trader/marketQuotes.ts`, added rule-based technical buy/sell/watch signals (SMA20/50 + RSI-14) with confidence/risk, and normalized Gulf subunit prices (Kuwait fils → KWD).
