@@ -45,14 +45,17 @@ describe('market symbol resolver exact ticker support', () => {
     expect(isKnownExactMarketSymbol(input, 'stock')).toBe(true);
   });
 
-  it('resolves BOUBYAN.KW when the bundled market directory supports it', async () => {
-    const result = await resolveMarketSymbol('BOUBYAN.KW', 'stock');
+  it.each([
+    ['BOUBYAN.KW', 'BOUBYAN.KW', 'boubyan'],
+    ['KFH.KW', 'KFH.KW', 'kuwait finance house'],
+  ])('resolves Kuwait provider symbol %s when the bundled market directory supports it', async (input, expectedSymbol, expectedName) => {
+    const result = await resolveMarketSymbol(input, 'stock');
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.asset.symbol).toBe('BOUBYAN.KW');
-    expect(result.asset.providerSymbol).toBe('BOUBYAN.KW');
-    expect(result.asset.name.toLowerCase()).toContain('boubyan');
+    expect(result.asset.symbol).toBe(expectedSymbol);
+    expect(result.asset.providerSymbol).toBe(input);
+    expect(result.asset.name.toLowerCase()).toContain(expectedName);
   });
 
   it.each([
