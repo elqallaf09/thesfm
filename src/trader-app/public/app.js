@@ -11,6 +11,11 @@
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
+  const INITIAL_LOADING_MAX_MS = 4500;
+  const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 8000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
+  const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
+  const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
+  const DEV_DIAGNOSTICS = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.hostname.endsWith(".local");
 
   const routes = {
     dashboard: "غرفة قيادة السوق", markets: "خريطة الأسواق", "ai-scanner": "ماسح الذكاء الاصطناعي",
@@ -108,6 +113,7 @@
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
+    errors: {},
     cache: new Map(), marketCache: new Map()
   };
 
@@ -117,59 +123,98 @@
     state.route = readRoute();
     bind();
     render();
-    await hydrate();
-    state.loading = false;
-    render();
-    afterRoute();
+    let released = false;
+    const releaseLoading = () => {
+      if (released) return;
+      released = true;
+      state.loading = false;
+      render();
+      afterRoute();
+    };
+    const loadingTimer = window.setTimeout(releaseLoading, INITIAL_LOADING_MAX_MS);
+    try {
+      await hydrate();
+    } catch (error) {
+      devLog("boot", "failed", { message: errorMessage(error) });
+    } finally {
+      window.clearTimeout(loadingTimer);
+      releaseLoading();
+      renderAfterData();
+    }
   }
 
   async function hydrate() {
     const commandSymbols = dashboardSymbols();
-    const [rec, commandCards, signals, signalAlerts, mk, news, followed] = await Promise.all([
+    const settled = await Promise.allSettled([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
       get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`),
       get("/market/signals?limit=60"),
       get("/market/signal-alerts?limit=50"),
       get("/markets"), get("/market-news?limit=12"), get("/followed-trades")
     ]);
+    const [rec, commandCards, signals, signalAlerts, mk, news, followed] = settled.map((result, index) => settledValue(result, ["quotes", "quotes", "signals", "signals", "quotes", "news", "quotes"][index]));
     state.rec = rec; state.commandCards = commandCards; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
     state.provider = commandCards.dataProvider || rec.dataProvider || mk.dataProvider || news.dataProvider || commandCards.provider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
     await loadCalendars(false);
+    renderAfterData();
   }
 
-  async function get(path) {
-    try {
-      const res = await fetch(`${API}${path}`, { headers: { Accept: "application/json" }, credentials: "same-origin" });
-      const body = await res.json().catch(() => ({}));
-      return res.ok ? { ok: true, ...body } : { ok: false, status: res.status, message: body.message || body.error || res.statusText, dataProvider: body.dataProvider || null };
-    } catch (error) { return { ok: false, message: error.message, dataProvider: null }; }
+  async function get(path, options = {}) {
+    return requestJson(path, { method: "GET", ...options });
   }
-  async function post(path, body) {
+  async function post(path, body, options = {}) {
+    return requestJson(path, { method: "POST", body, ...options });
+  }
+  async function requestJson(path, options = {}) {
+    const label = options.label || requestLabel(path);
+    const timeoutMs = options.timeoutMs || timeoutFor(path, label);
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
     try {
       const res = await fetch(`${API}${path}`, {
-        method: "POST",
+        method: options.method || "GET",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify(body || {})
+        signal: controller.signal,
+        body: options.method === "POST" ? JSON.stringify(options.body || {}) : undefined
       });
-      const data = await res.json().catch(() => ({}));
-      return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, message: data.message || data.error || res.statusText, ...data };
+      const contentType = res.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+      const body = isJson ? await res.json().catch(() => ({})) : {};
+      const routeUnavailable = res.status === 404 || (!isJson && /html|text\/plain/i.test(contentType));
+      const payload = res.ok && isJson
+        ? { ok: true, ...body }
+        : {
+            ...body,
+            ok: false,
+            status: res.status,
+            message: routeUnavailable ? ROUTE_UNAVAILABLE_MESSAGE : (body.message || body.error || res.statusText || UNAVAILABLE_MESSAGE),
+            routeUnavailable,
+            dataProvider: body.dataProvider || null
+          };
+      logRequestResult(label, path, timeoutMs, payload);
+      return payload;
     } catch (error) {
-      return { ok: false, message: error.message };
+      const timeoutError = timedOut || errorName(error) === "AbortError" || errorName(error) === "TimeoutError";
+      const payload = {
+        ok: false,
+        timeout: timeoutError,
+        message: timeoutError ? UNAVAILABLE_MESSAGE : errorMessage(error),
+        dataProvider: null
+      };
+      logRequestResult(label, path, timeoutMs, payload);
+      return payload;
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
   async function saveSignalPreferences(prefs) {
-    try {
-      const res = await fetch(`${API}/market/signal-preferences`, {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify(prefs)
-      });
-      return res.ok;
-    } catch (_error) {
-      return false;
-    }
+    const result = await post("/market/signal-preferences", prefs, { label: "signals", timeoutMs: REQUEST_TIMEOUTS.signals });
+    return result.ok === true;
   }
 
   /* ─────────────────────────── Router ─────────────────────────── */
@@ -182,7 +227,20 @@
       const tf = event.target.closest("[data-timeframe]");
       if (tf) { event.preventDefault(); state.timeframe = tf.dataset.timeframe; render(); return; }
       const cr = event.target.closest("[data-calendar-range]");
-      if (cr) { event.preventDefault(); state.calendarRange = cr.dataset.calendarRange || "30"; state.calendarLoading = true; render(); loadCalendars(true).then(() => { state.calendarLoading = false; render(); afterRoute(); }); return; }
+      if (cr) {
+        event.preventDefault();
+        state.calendarRange = cr.dataset.calendarRange || "30";
+        state.calendarLoading = true;
+        render();
+        loadCalendars(true).catch((error) => {
+          devLog("calendar", "failed", { message: errorMessage(error) });
+        }).finally(() => {
+          state.calendarLoading = false;
+          render();
+          afterRoute();
+        });
+        return;
+      }
       const detail = event.target.closest("[data-symbol-details]");
       if (detail) { event.preventDefault(); const s = sym(detail.dataset.symbolDetails); if (s) navigate(`${ROOT}/symbol/${encodeURIComponent(s)}`); return; }
       const add = event.target.closest("[data-quick-add]");
@@ -221,7 +279,39 @@
     render();
     afterRoute();
   }
-  function retryRoute() { state.cache.clear(); state.marketCache.clear(); state.loading = true; render(); hydrate().then(() => { state.loading = false; render(); afterRoute(); }); }
+  async function retryRoute() {
+    state.errors = {};
+    if (state.route.id === "calendar") state.calendarLoading = true;
+    render();
+    try {
+      if (state.route.id === "markets" && state.route.market) {
+        state.marketCache.delete(state.route.market);
+        await loadMarket(state.route.market, true);
+      } else if (state.route.id === "symbol-details" && state.route.symbol) {
+        state.cache.delete(sym(state.route.symbol));
+        await loadSymbol(state.route.symbol, true);
+      } else if (state.route.id === "calendar") {
+        await loadCalendars(true);
+      } else if (state.route.id === "news") {
+        state.news = await get("/market-news?limit=12", { label: "news" });
+      } else if (state.route.id === "ai-scanner" || state.route.id === "recommendations") {
+        state.rec = {};
+        state.signals = {};
+        await ensureScanData(true);
+      } else {
+        state.marketCache.clear();
+        await hydrate();
+      }
+      toast("تمت إعادة المحاولة.");
+    } catch (error) {
+      devLog("retry", "failed", { route: state.route.id, message: errorMessage(error) });
+      toast(UNAVAILABLE_MESSAGE);
+    } finally {
+      state.calendarLoading = false;
+      render();
+      afterRoute();
+    }
+  }
 
   function readRoute() {
     const q = new URLSearchParams(location.search).get("route");
@@ -283,7 +373,6 @@
   function dashboardPage() {
     const rec = recs(), news = newsItems(), alerts = smartAlerts();
     const movers = sortMovers(rec);
-    const tableItems = rec.length ? rec.slice(0, 14) : dashboardSymbols().map(s => ({ symbol: s, name: "غير متاح" }));
     return `<div class="page-stack">
       ${commandCenter(rec)}
       ${marketOverview(rec)}
@@ -293,10 +382,10 @@
         ${moverPanel("TOP GAINERS", "الأكثر ارتفاعاً", movers.gainers.slice(0, 3), "up")}
         ${moverPanel("TOP LOSERS", "الأكثر انخفاضاً", movers.losers.slice(0, 3), "down")}
       </section>
-      <section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">SYMBOLS & RECOMMENDATIONS</span><h2>الرموز والتوصيات</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>عرض الكل</a></div>${watchlistTable(tableItems)}</section>
+      <section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">SYMBOLS & RECOMMENDATIONS</span><h2>الرموز والتوصيات</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>عرض الكل</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, "لم يرجع مزود الأسعار أو التوصيات بيانات قابلة للعرض.", "الإعدادات", `${ROOT}/settings`)}</section>
       <section class="dashboard-lower-grid">
-        <article class="panel"><span class="eyebrow">MARKET NEWS</span><h2>آخر الأخبار</h2>${news.length ? newsList(news.slice(0, 3)) : emptyState("البيانات غير متاحة حالياً", "مزود الأخبار لم يرجع عناصر حالية.", "صفحة الأخبار", `${ROOT}/news`)}</article>
-        <article class="panel"><span class="eyebrow">AI ANALYSIS</span><h2>حالة التحليل الذكي</h2>${alerts.length ? alertList(alerts) : emptyState("بعض البيانات متأخرة", "سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article>
+        <article class="panel"><span class="eyebrow">MARKET NEWS</span><h2>آخر الأخبار</h2>${news.length ? newsList(news.slice(0, 3)) : unavailableSection(state.news, "مزود الأخبار لم يرجع عناصر حالية.", "صفحة الأخبار", `${ROOT}/news`)}</article>
+        <article class="panel"><span class="eyebrow">AI ANALYSIS</span><h2>حالة التحليل الذكي</h2>${alerts.length ? alertList(alerts) : unavailableSection(state.signals, "سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article>
         <article class="panel"><span class="eyebrow">SYSTEM STATUS</span><h2>حالة النظام</h2>${diagnostics()}</article>
       </section>
       ${disclaimer()}
@@ -403,7 +492,7 @@
       <section class="metric-grid">${stat("الكل", r.length, "All")}${stat("شراء", buy.length, "Buy")}${stat("بيع", sell.length, "Sell")}${stat("انتظار", wait.length, "Wait")}</section>
       <section class="panel"><span class="eyebrow">SIGNALS</span><h2>قائمة التوصيات</h2>
         <div class="seg-tabs"><button class="is-active" data-tab="rec" data-value="all">الكل</button><button data-tab="rec" data-value="buy">شراء</button><button data-tab="rec" data-value="sell">بيع</button><button data-tab="rec" data-value="wait">انتظار</button><button data-tab="rec" data-value="high">ثقة عالية</button></div>
-        <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : emptyState("لا توجد توصيات حية", "محرك التوصيات لم يرجع نتائج من المزود.", "افتح الماسح", `${ROOT}/ai-scanner`)}</div>
+        <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : unavailableSection(state.rec, "محرك التوصيات لم يرجع نتائج من المزود.", "افتح الماسح", `${ROOT}/ai-scanner`)}</div>
       </section>${disclaimer()}</div>`;
   }
 
@@ -421,7 +510,7 @@
   function newsPage() {
     const n = newsItems();
     return `<div class="page-stack">${hero("أخبار السوق", "تُقرأ الأخبار من مزود حقيقي. عند غيابه نعرض رسالة واضحة بدل عناوين مصطنعة.", "NEWS")}
-      <section class="news-grid">${n.length ? n.map(newsCard).join("") : emptyState("لا توجد أخبار حية", state.news.message || "مزود الأخبار لم يرجع عناصر قابلة للعرض.", "الإعدادات", `${ROOT}/settings`)}</section></div>`;
+      <section class="news-grid">${n.length ? n.map(newsCard).join("") : unavailableSection(state.news, "مزود الأخبار لم يرجع عناصر قابلة للعرض.", "الإعدادات", `${ROOT}/settings`)}</section></div>`;
   }
 
   function calendarPage() {
@@ -499,22 +588,33 @@
 
   function calendarEmptyState(response) {
     const status = String((response && response.status) || "not_configured");
-    let title = "لا يوجد مزود متصل";
-    let body = "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
+    let title = UNAVAILABLE_MESSAGE;
+    let body = (response && response.message) || "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
     let settings = true;
-    if (status === "success") {
+    if (response && response.routeUnavailable) {
+      title = ROUTE_UNAVAILABLE_MESSAGE;
+      body = "تعذر الوصول إلى مسار البيانات المطلوب.";
+      settings = false;
+    } else if (response && response.timeout) {
+      title = UNAVAILABLE_MESSAGE;
+      body = "انتهت مهلة الطلب. يمكنك إعادة المحاولة بدون إعادة تحميل الصفحة.";
+      settings = false;
+    } else if (status === "success") {
       title = "لا توجد أحداث ضمن الفترة الحالية";
       body = "جرّب تغيير الفترة أو السوق أو نوع الحدث.";
       settings = false;
+    } else if (status === "not_configured" || status === "missing_provider") {
+      title = "لا يوجد مزود متصل";
+      body = "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
     } else if (["not_entitled", "forbidden", "unauthorized"].includes(status)) {
       title = "الميزة غير متاحة ضمن صلاحية المزود الحالي";
       body = "تحتاج هذه البيانات إلى خطة تدعم هذا النوع من التقويم.";
     } else if (status === "rate_limited") {
-      title = "تجاوز حد الاستخدام";
-      body = "المزود أعاد حد استخدام مؤقت. جرّب لاحقاً أو غيّر المزود.";
+      title = "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
+      body = response && (response.cached || response.stale) ? "بيانات مخزنة مؤقتاً معروضة إلى أن يسمح المزود بتحديث جديد." : "جرّب لاحقاً أو استخدم زر إعادة المحاولة بعد دقيقة.";
       settings = false;
     } else if (status === "provider_error" || status === "invalid_request") {
-      title = "فشل الاتصال بالمزود";
+      title = UNAVAILABLE_MESSAGE;
       body = "تعذر جلب البيانات من المزود الحالي. لم يتم عرض أي بيانات بديلة.";
       settings = false;
     }
@@ -554,7 +654,7 @@
       not_entitled: "غير متاح ضمن الصلاحية",
       forbidden: "غير متاح ضمن الصلاحية",
       unauthorized: "فشل التصريح",
-      rate_limited: "تجاوز حد الاستخدام",
+      rate_limited: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً",
       provider_error: "فشل الاتصال",
       invalid_request: "طلب غير صالح"
     };
@@ -562,7 +662,7 @@
   }
 
   function providerName(provider) {
-    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", manual: "إدخال يدوي" };
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", openbb: "OpenBB", manual: "إدخال يدوي" };
     const raw = String(provider || "").trim();
     return names[raw.toLowerCase()] || raw || "غير متصل";
   }
@@ -640,71 +740,81 @@
   }
   async function loadCalendars(force) {
     const qs = calendarQuery(force);
-    const [providerStatus, earnings, dividends, ipos, economic] = await Promise.all([
-      get("/trader/provider-status"),
-      get(`/trader/calendar/earnings?${qs}`),
-      get(`/trader/calendar/dividends?${qs}`),
-      get(`/trader/calendar/ipos?${qs}`),
-      get(`/trader/calendar/economic?${qs}`)
+    const settled = await Promise.allSettled([
+      get("/trader/provider-status", { label: "providerStatus" }),
+      get(`/trader/calendar/earnings?${qs}`, { label: "calendar" }),
+      get(`/trader/calendar/dividends?${qs}`, { label: "calendar" }),
+      get(`/trader/calendar/ipos?${qs}`, { label: "calendar" }),
+      get(`/trader/calendar/economic?${qs}`, { label: "calendar" })
     ]);
+    const [providerStatus, earnings, dividends, ipos, economic] = settled.map((result, index) => settledValue(result, index === 0 ? "providerStatus" : "calendar"));
     state.providerStatus = providerStatus || {};
     state.calendar = { earnings, dividends, ipos, economic };
     if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
+    renderAfterData();
   }
-  async function loadMarket(id) {
-    if (state.marketCache.has(id)) { render(); return; }
+  async function loadMarket(id, force = false) {
+    if (!force && state.marketCache.has(id)) { render(); return; }
     const m = MARKETS.find(x => x.id === id); if (!m) return;
-    const [data, signals] = await Promise.all([
-      get(`/recommendations?market=${marketApi(m.apiMarket)}`),
-      get(`/market/signals?symbols=${encodeURIComponent(m.symbols.join(","))}&limit=${m.symbols.length}`)
+    const settled = await Promise.allSettled([
+      get(`/recommendations?market=${marketApi(m.apiMarket)}`, { label: "quotes" }),
+      get(`/market/signals?symbols=${encodeURIComponent(m.symbols.join(","))}&limit=${m.symbols.length}`, { label: "signals" })
     ]);
+    const [data, signals] = settled.map((result, index) => settledValue(result, index === 0 ? "quotes" : "signals"));
     state.marketCache.set(id, { ...data, signals: signals.signals || signals.items || [] });
     if (state.route.id === "markets" && state.route.market === id) render();
   }
-  async function ensureScanData() {
-    if (recs().length || state.rec.message) return;
-    const [data, signals] = await Promise.all([
-      get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
-      get("/market/signals?limit=60")
+  async function ensureScanData(force = false) {
+    if (!force && (recs().length || state.rec.message)) return;
+    const settled = await Promise.allSettled([
+      get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`, { label: "quotes" }),
+      get("/market/signals?limit=60", { label: "signals" })
     ]);
+    const [data, signals] = settled.map((result, index) => settledValue(result, index === 0 ? "quotes" : "signals"));
     state.rec = data; state.signals = signals;
     if (data.dataProvider) state.provider = data.dataProvider;
     if (["ai-scanner", "recommendations"].includes(state.route.id)) render();
   }
-  async function loadSymbol(symbol) {
+  async function loadSymbol(symbol, force = false) {
     const target = document.getElementById("symbol-details-body"); if (!target) return;
     const key = sym(symbol);
-    if (state.cache.has(key)) { target.innerHTML = symbolContent(state.cache.get(key)); return; }
-    const [profile, search, tech, sig, hist] = await Promise.all([
-      get(`/market/asset-profile?symbol=${encodeURIComponent(key)}`),
-      get(`/market/search?q=${encodeURIComponent(key)}&limit=5`),
-      get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`),
-      get(`/market/signals/${encodeURIComponent(key)}`),
-      get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`)
-    ]);
-    const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
-    const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
-    const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
-    const historyPoints = arr(hist.points || hist.history);
-    const techAsset = rawTech && typeof rawTech === "object" ? {
-      price: rawTech.currentPrice || rawTech.price,
-      currentPrice: rawTech.currentPrice || rawTech.price,
-      currency: rawTech.currency,
-      source: rawTech.source,
-      exchange: rawTech.exchange || rawTech.market,
-      history: historyPoints
-    } : historyPoints.length ? { history: historyPoints } : {};
-    const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
-    const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
-    const detail = {
-      asset, tech: rawTech, providerStatus,
-      available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
-      source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
-      message: profile.message || search.message || "لا توجد بيانات كافية من المزود لهذا الرمز.",
-      rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
-    };
-    state.cache.set(key, detail);
-    if (state.route.id === "symbol-details" && state.route.symbol === key) target.innerHTML = symbolContent(detail);
+    if (!force && state.cache.has(key)) { target.innerHTML = symbolContent(state.cache.get(key)); return; }
+    try {
+      const settled = await Promise.allSettled([
+        get(`/market/asset-profile?symbol=${encodeURIComponent(key)}`, { label: "quotes" }),
+        get(`/market/search?q=${encodeURIComponent(key)}&limit=5`, { label: "quotes" }),
+        get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`, { label: "signals" }),
+        get(`/market/signals/${encodeURIComponent(key)}`, { label: "signals" }),
+        get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`, { label: "quotes" })
+      ]);
+      const [profile, search, tech, sig, hist] = settled.map((result, index) => settledValue(result, index === 2 || index === 3 ? "signals" : "quotes"));
+      const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
+      const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
+      const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
+      const historyPoints = arr(hist.points || hist.history);
+      const techAsset = rawTech && typeof rawTech === "object" ? {
+        price: rawTech.currentPrice || rawTech.price,
+        currentPrice: rawTech.currentPrice || rawTech.price,
+        currency: rawTech.currency,
+        source: rawTech.source,
+        exchange: rawTech.exchange || rawTech.market,
+        history: historyPoints
+      } : historyPoints.length ? { history: historyPoints } : {};
+      const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
+      const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
+      const detail = {
+        asset, tech: rawTech, providerStatus,
+        available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
+        source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
+        message: profile.message || search.message || UNAVAILABLE_MESSAGE,
+        rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
+      };
+      state.cache.set(key, detail);
+      if (state.route.id === "symbol-details" && state.route.symbol === key) target.innerHTML = symbolContent(detail);
+    } catch (error) {
+      devLog("quotes", "failed", { route: "symbol-details", symbol: key, message: errorMessage(error) });
+      target.innerHTML = `<div class="panel">${emptyState(UNAVAILABLE_MESSAGE, errorMessage(error), "الإعدادات", `${ROOT}/settings`)}</div>`;
+    }
   }
 
   function symbolContent(detail) {
@@ -1038,8 +1148,13 @@
   function diagnostics() {
     const ps = state.providerStatus || {}, p = ps.dataProvider || state.provider || {}, features = ps.features || {};
     const diag = ps.diagnostics || state.markets.diagnostics || (state.rec && state.rec.symbolDiscovery) || {};
+    const summary = ps.summary || diag.summary || state.rec.summary || {};
     const failedRows = arr(ps.failed).concat(arr(state.rec.failed), arr(state.markets.failed));
     const skippedRows = arr(ps.skipped).concat(arr(state.rec.skipped), arr(state.markets.skipped));
+    const failedSummary = summary.failedSymbols !== undefined ? `${latinNumber(summary.failedSymbols)} رمز` : (failedRows.length ? `${latinNumber(failedRows.length)} رمز` : "--");
+    const cachedSummary = summary.cachedSymbols !== undefined ? `${latinNumber(summary.cachedSymbols)} رمز` : "--";
+    const rateLimitSkipped = summary.skippedDueToRateLimit !== undefined ? `${latinNumber(summary.skippedDueToRateLimit)} طلب` : "--";
+    const skippedSummary = skippedRows.length ? `${latinNumber(skippedRows.length)} رمز` : "--";
     const latency = diag.providerLatencyMs && typeof diag.providerLatencyMs === "object"
       ? Object.entries(diag.providerLatencyMs).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => `${k}: ${Math.round(Number(v))}ms`).join(", ")
       : "--";
@@ -1055,8 +1170,10 @@
       ["عدد النتائج", p.resultCount === null || p.resultCount === undefined ? calendarCounts : resultCountText(p.resultCount)],
       ["إجمالي الرموز المكتشفة", resultCountText(diag.totalSymbolsDiscovered)],
       ["إجمالي الرموز المحملة", resultCountText(diag.totalSymbolsLoaded ?? ps.resultCount ?? state.markets.resultCount)],
-      ["رموز فشلت", failedRows.length ? failedRows.slice(0, 6).map(item => `${item.symbol || item.provider || "provider"}: ${item.reason || item.status || "failed"}`).join(" | ") : "--"],
-      ["رموز غير مدعومة / متخطاة", skippedRows.length ? skippedRows.slice(0, 6).map(item => `${item.symbol || item.provider || "provider"}: ${item.reason || "skipped"}`).join(" | ") : "--"],
+      ["رموز فشلت", failedSummary],
+      ["بيانات مخزنة مؤقتاً", cachedSummary],
+      ["متخطى بسبب حد الاستخدام", rateLimitSkipped],
+      ["رموز غير مدعومة / متخطاة", skippedSummary],
       ["زمن استجابة المزود", latency],
       ["حالة الكاش", diag.cacheStatus || state.rec.cacheStatus || state.markets.cacheStatus || "--"],
       ["سبب التعذر", p.failureReason || state.rec.message || state.markets.message || state.news.message || "--"],
@@ -1221,6 +1338,11 @@
   }
   function stat(label, value, helper) { return `<article class="stat-card"><span class="card-kicker">${h(helper)}</span><strong>${h(String(value))}</strong><small>${h(label)}</small></article>`; }
   function hero(title, body, kicker) { return `<section class="page-hero"><span class="eyebrow">${h(kicker)}</span><h2>${title}</h2><p>${h(body)}</p></section>`; }
+  function unavailableSection(response, fallbackBody, label, href) {
+    const unavailableTitle = response && response.routeUnavailable ? ROUTE_UNAVAILABLE_MESSAGE : UNAVAILABLE_MESSAGE;
+    const body = (response && response.message) || fallbackBody || UNAVAILABLE_MESSAGE;
+    return emptyState(unavailableTitle, body, label, href);
+  }
   function emptyState(title, body, label, href) { return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`; }
   function miniEmpty() { return `<div class="empty-state compact"><p>لا توجد بيانات حالياً من المزود.</p></div>`; }
   function marketUnavailable(m, data) { return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
@@ -1522,7 +1644,7 @@
   function riskShort(v) { const k = riskKey(v); return k === "high" ? "عالية" : k === "low" ? "منخفضة" : "متوسطة"; }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
   function riskLabel(r) { return r === "conservative" ? "محافظ" : r === "aggressive" ? "هجومي" : "متوازن"; }
-  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "live") return "مباشرة"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "غير متاح"; }
+  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "live") return "مباشرة"; if (v === "cached") return "بيانات مخزنة مؤقتاً"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "غير متاح"; }
   function signalPrefs() {
     const s = state.settings || {};
     const enabledMarkets = Array.isArray(s.enabledMarkets) && s.enabledMarkets.length
@@ -1554,11 +1676,80 @@
   function unique(v) { return Array.from(new Set(v.map(sym).filter(Boolean))); }
   function read(k, f) { try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : f; } catch (_e) { return f; } }
   function write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_e) {} }
+  function renderAfterData() { if (!state.loading) render(); }
+  function requestLabel(path) {
+    if (path.includes("/trader/provider-status")) return "providerStatus";
+    if (path.includes("/trader/calendar/")) return "calendar";
+    if (path.includes("/market-news")) return "news";
+    if (path.includes("/market/signals") || path.includes("/market/signal-") || path.includes("/market/technical-analysis")) return "signals";
+    return "quotes";
+  }
+  function timeoutFor(path, label) {
+    if (label === "providerStatus") return REQUEST_TIMEOUTS.providerStatus;
+    if (label === "calendar") return REQUEST_TIMEOUTS.calendar;
+    if (label === "news") return REQUEST_TIMEOUTS.news;
+    if (label === "signals") return REQUEST_TIMEOUTS.signals;
+    if (path.includes("/recommendations") || path.includes("/market/history") || path.includes("/market/asset-profile") || path.includes("/markets")) return REQUEST_TIMEOUTS.quotes;
+    return REQUEST_TIMEOUTS.default;
+  }
+  function settledValue(result, label) {
+    if (result.status === "fulfilled") return result.value || failurePayload(label);
+    const payload = failurePayload(label, errorMessage(result.reason));
+    devLog(label, "failed", { message: payload.message });
+    return payload;
+  }
+  function failurePayload(label, message) {
+    return {
+      ok: false,
+      message: message || UNAVAILABLE_MESSAGE,
+      status: "unavailable",
+      data: [],
+      items: [],
+      results: [],
+      failed: [{ provider: label, reason: message || "request_failed", status: "failed" }]
+    };
+  }
+  function errorName(error) { return error && typeof error === "object" && "name" in error ? String(error.name) : ""; }
+  function errorMessage(error) { return error && typeof error === "object" && "message" in error ? String(error.message || UNAVAILABLE_MESSAGE) : String(error || UNAVAILABLE_MESSAGE); }
+  function responseFailed(payload) {
+    if (!payload || payload.ok === false || payload.timeout || payload.routeUnavailable) return true;
+    const status = String(payload.status || payload.legacyStatus || payload.dataProvider?.status || "").toLowerCase();
+    return ["provider_error", "invalid_request", "not_configured", "missing_provider", "unauthorized", "forbidden", "rate_limited"].includes(status);
+  }
+  function logRequestResult(label, path, timeoutMs, payload) {
+    const failed = responseFailed(payload);
+    devLog(label, failed ? "failed" : "loaded", {
+      path: safeLogPath(path),
+      status: payload?.status || null,
+      httpStatus: payload?.statusCode || payload?.providerStatusCode || null,
+      resultCount: payload?.resultCount ?? payload?.count ?? arr(payload?.data || payload?.items || payload?.results).length,
+      timedOut: Boolean(payload?.timeout)
+    });
+    if (payload && payload.timeout) devLog(label, "timed out", { path: safeLogPath(path), timeoutMs });
+  }
+  function safeLogPath(path) {
+    try {
+      const url = new URL(path, location.origin);
+      ["apiKey", "apikey", "token", "key"].forEach(key => url.searchParams.delete(key));
+      return `${url.pathname}${url.search}`;
+    } catch (_error) {
+      return String(path).replace(/([?&](?:apiKey|apikey|token|key)=)[^&]+/gi, "$1[redacted]");
+    }
+  }
+  function devLog(area, status, details) {
+    if (!DEV_DIAGNOSTICS) return;
+    const method = status === "loaded" ? "info" : "warn";
+    console[method](`[trader] ${area} ${status}`, details || {});
+  }
   function providerCopy() {
+    if (state.providerStatus && state.providerStatus.ok === false) {
+      return { title: "حالة المزود غير متاحة", copy: state.providerStatus.message || UNAVAILABLE_MESSAGE, className: "warning", raw: "provider_status_failed" };
+    }
     const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
     const configured = p.configured === true || Boolean(p.active);
     const raw = p.status || (configured ? "configured" : "not_configured");
     const ok = configured && ["success", "available", "configured", "connected"].includes(String(raw));
+    if (String(raw) === "rate_limited") return { title: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", copy: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", className: "warning", raw };
     if (ok) return { title: "المزود متصل", copy: `المزود النشط: ${providerName(p.active || p.provider)}`, className: "online", raw };
     return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw };
   }

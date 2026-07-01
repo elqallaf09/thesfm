@@ -1008,6 +1008,7 @@ function localizeDetailText(value, fallback = "--") {
 function localizeDataQuality(value) {
   const key = String(value || "").trim().toLowerCase();
   if (key === "live") return detailText("مباشر", "Live");
+  if (key === "cached") return detailText("بيانات مخزنة مؤقتاً", "Cached data");
   if (key === "delayed") return detailText("متأخر", "Delayed");
   if (key === "partial") return detailText("جزئي", "Partial");
   if (key === "unavailable") return unavailableText();

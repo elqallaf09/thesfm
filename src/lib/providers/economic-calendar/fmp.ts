@@ -8,6 +8,7 @@ import {
 } from '../shared';
 import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
 
 const FMP_TIMEOUT_MS = 9000;
 
@@ -173,7 +174,7 @@ export function createFmpCalendarProvider(apiKey: string): EconomicCalendarProvi
 
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await fmpQueuedFetch(url, {
           cache: query.force ? 'no-store' : undefined,
           next: query.force ? undefined : { revalidate: 600 },
           signal: AbortSignal.timeout(FMP_TIMEOUT_MS),

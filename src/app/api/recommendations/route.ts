@@ -3,19 +3,38 @@ import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDyn
 
 export const dynamic = 'force-dynamic';
 
+function clampInteger(value: string | null, fallback: number, min: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const forceFresh = url.searchParams.has('refresh');
+  const discover = url.searchParams.has('discover');
+  const marketId = url.searchParams.get('market');
   const { market, symbolMeta, catalog } = await resolveTraderMarketDynamic(url.searchParams.get('market'), {
-    forceFresh: forceFresh || url.searchParams.has('discover'),
+    forceFresh,
+    includeFmpDiscovery: discover,
   });
   const requestedSymbols = String(url.searchParams.get('symbols') ?? '')
     .split(',')
     .map(symbol => symbol.trim())
     .filter(Boolean);
-  const symbols = requestedSymbols.length ? requestedSymbols : market.symbols;
+  const page = clampInteger(url.searchParams.get('page'), 1, 1, 10_000);
+  const pageSize = clampInteger(url.searchParams.get('limit') ?? url.searchParams.get('pageSize'), requestedSymbols.length ? 120 : 24, 1, 120);
+  const search = String(url.searchParams.get('q') ?? url.searchParams.get('search') ?? '').trim().toUpperCase();
+  const sourceSymbols = requestedSymbols.length ? requestedSymbols : market.symbols;
+  const filteredSymbols = search
+    ? sourceSymbols.filter(symbol => symbol.toUpperCase().includes(search))
+    : sourceSymbols;
+  const offset = requestedSymbols.length ? 0 : (page - 1) * pageSize;
+  const symbols = filteredSymbols.slice(offset, offset + pageSize);
+  const symbolSet = new Set(symbols.map(symbol => symbol.toUpperCase()));
+  const selectedMeta = symbolMeta.filter(symbol => symbolSet.has(symbol.symbol.toUpperCase()) || symbolSet.has(symbol.providerSymbol.toUpperCase()));
 
-  const quoteLoad = await fetchTraderQuotesDetailed(symbols, { forceFresh, symbolMeta });
+  const quoteLoad = await fetchTraderQuotesDetailed(symbols, { forceFresh, symbolMeta: selectedMeta });
   const quotes = quoteLoad.quotes;
   const available = quotes.filter(q => q.available && q.price !== null);
   const unavailable = quotes
@@ -66,6 +85,11 @@ export async function GET(request: Request) {
     symbolDiscovery: {
       totalSymbolsDiscovered: catalog.diagnostics.totalSymbolsDiscovered,
       totalMarketSymbols: market.totalSymbols,
+      loadedPageSymbols: symbols.length,
+      page,
+      pageSize,
+      hasMore: offset + symbols.length < filteredSymbols.length,
+      selectedMarket: marketId ?? market.id,
       source: market.source,
       cacheStatus: catalog.diagnostics.cacheStatus,
       providerLatencyMs: catalog.diagnostics.providerLatencyMs,
@@ -77,6 +101,7 @@ export async function GET(request: Request) {
     reason: quoteLoad.reason,
     providerLatencyMs: quoteLoad.providerLatencyMs,
     cacheStatus: quoteLoad.cacheStatus,
+    summary: quoteLoad.summary,
     resultCount: recommendations.length,
     message: recommendations.length
       ? null

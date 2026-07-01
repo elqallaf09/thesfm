@@ -6,6 +6,7 @@ import {
   stableId,
 } from '@/lib/providers/shared';
 import { createFmpCalendarProvider } from '@/lib/providers/economic-calendar/fmp';
+import { fmpQueuedFetch } from './fmpRuntime';
 import type {
   TraderCalendarQuery,
   TraderDividendEvent,
@@ -98,7 +99,7 @@ async function fetchFmpRecords(
 
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await fmpQueuedFetch(url, {
         cache: query.force ? 'no-store' : undefined,
         next: query.force ? undefined : { revalidate: 3600 },
         signal: AbortSignal.timeout(FMP_TIMEOUT_MS),

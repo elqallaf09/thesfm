@@ -5,17 +5,17 @@ import { shortText } from '@/lib/providers/shared';
 
 export const dynamic = 'force-dynamic';
 
-type CalendarRouteStatus = 'connected' | 'missing_provider' | 'provider_error' | 'not_entitled' | 'empty';
+type CalendarRouteStatus = 'connected' | 'missing_provider' | 'provider_error' | 'not_entitled' | 'rate_limited' | 'empty';
 
 function mapRouteStatus(status: string, count: number): CalendarRouteStatus {
   if (status === 'not_configured') return 'missing_provider';
   if (status === 'not_entitled') return 'not_entitled';
+  if (status === 'rate_limited') return 'rate_limited';
   if (status === 'success') return count > 0 ? 'connected' : 'empty';
   if (
     status === 'provider_error'
     || status === 'unauthorized'
     || status === 'forbidden'
-    || status === 'rate_limited'
     || status === 'invalid_request'
   ) {
     return 'provider_error';
@@ -96,6 +96,8 @@ export async function GET(request: Request) {
     resultCount: count,
     lastUpdated: result.lastUpdated,
     lastSuccessfulUpdate: result.lastSuccessfulUpdate,
+    cached: result.cached,
+    stale: result.stale,
     messageCode: result.messageCode,
     legacyStatus: legacyStatusFromRouteStatus(status),
   };

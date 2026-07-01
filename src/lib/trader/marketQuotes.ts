@@ -3,6 +3,7 @@ import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/
 import { cleanEnv } from '@/lib/market/providerConfig';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { providerSymbolsForAlias, providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
+import { ProviderError } from '@/lib/providers/shared';
 import {
   getStaticTraderMarket,
   providerCapabilityMatrix,
@@ -13,9 +14,17 @@ import {
   type TraderMarketDef,
   type TraderQuoteProvider,
 } from '@/lib/trader/marketCatalog';
+import {
+  FmpRateLimitError,
+  fmpQueuedFetch,
+  getFmpRuntimeStatus,
+  isFmpRateLimited,
+  markFmpCacheAvailable,
+} from '@/lib/trader/providers/fmpRuntime';
+import { getOpenbbBaseUrl, getOpenbbHealthStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderSignal = 'buy' | 'sell' | 'watch';
-export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable';
+export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
 type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'OpenBB';
 
 type MarketDef = TraderMarketDef;
@@ -34,6 +43,12 @@ export type TraderQuoteLoadResult = {
   reason: string | null;
   providerLatencyMs: Partial<Record<TraderQuoteProvider, number>>;
   cacheStatus: 'live' | 'provider-cache' | 'not_configured';
+  summary: {
+    loadedSymbols: number;
+    failedSymbols: number;
+    cachedSymbols: number;
+    skippedDueToRateLimit: number;
+  };
   generatedAt: string;
 };
 
@@ -60,6 +75,10 @@ type YahooChartResult = {
 const FMP_BASE_URL = 'https://financialmodelingprep.com/stable';
 const FMP_BATCH_SIZE = 80;
 const QUOTE_CONCURRENCY = 6;
+const QUOTE_CACHE_MS = 60 * 1000;
+const QUOTE_STALE_MS = 10 * 60 * 1000;
+
+const quoteCache = new Map<string, { quote: TraderQuote; expiresAt: number; staleUntil: number }>();
 
 export const TRADER_MARKETS: MarketDef[] = TRADER_MARKET_SEEDS.map(market => ({
   ...market,
@@ -449,6 +468,56 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
   };
 }
 
+function quoteCacheKey(symbol: string) {
+  return upper(symbol);
+}
+
+function cachedQuote(symbol: string, options: { allowStale?: boolean; forceFresh?: boolean } = {}) {
+  const entry = quoteCache.get(quoteCacheKey(symbol));
+  if (!entry) return null;
+  const now = Date.now();
+  if (!options.forceFresh && entry.expiresAt > now) return withCachedQuality(entry.quote);
+  if (options.allowStale && entry.staleUntil > now) return withCachedQuality(entry.quote);
+  if (entry.staleUntil <= now) quoteCache.delete(quoteCacheKey(symbol));
+  return null;
+}
+
+function storeQuoteCache(symbol: string, quote: TraderQuote) {
+  if (!quote.available || quote.price === null) return;
+  const now = Date.now();
+  quoteCache.set(quoteCacheKey(symbol), {
+    quote,
+    expiresAt: now + QUOTE_CACHE_MS,
+    staleUntil: now + QUOTE_STALE_MS,
+  });
+  markFmpCacheAvailable(`quote:${quoteCacheKey(symbol)}`);
+}
+
+function withCachedQuality(quote: TraderQuote): TraderQuote {
+  return {
+    ...quote,
+    dataQuality: 'cached',
+    delayed: true,
+    providerStatus: {
+      ...quote.providerStatus,
+      dataQuality: 'cached',
+    },
+  };
+}
+
+function providerErrorReason(error: unknown, fallback: string) {
+  if (error instanceof ProviderError) return error.messageCode;
+  if (error instanceof FmpRateLimitError) return 'provider_rate_limited';
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/rate_limited|http_429|429/.test(message)) return 'provider_rate_limited';
+  if (/timeout|aborted|network/i.test(message)) return 'provider_temporarily_unavailable';
+  return fallback;
+}
+
+function isRateLimitReason(reason: string) {
+  return reason === 'provider_rate_limited' || /rate_limited|429/.test(reason);
+}
+
 function fmpQuoteFromRecord(record: Record<string, unknown>): ProviderQuote | null {
   const symbol = textOrNull(record.symbol);
   const price = numberOrNull(record.price ?? record.regularMarketPrice);
@@ -471,14 +540,17 @@ async function fetchFmpBatch(symbols: string[], apiKey: string, forceFresh?: boo
   const url = new URL(`${FMP_BASE_URL}/batch-quote`);
   url.searchParams.set('symbols', symbols.join(','));
   url.searchParams.set('apikey', apiKey);
-  const response = await fetch(url, {
+  const response = await fmpQueuedFetch(url, {
     cache: forceFresh ? 'no-store' : undefined,
     next: forceFresh ? undefined : { revalidate: 60 },
     signal: AbortSignal.timeout(10_000),
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
-  if (!response.ok) throw new Error(`fmp_batch_quote_http_${response.status}`);
+  if (!response.ok) {
+    if (response.status === 429) throw new FmpRateLimitError();
+    throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
+  }
   return Array.isArray(payload)
     ? payload.map(item => item && typeof item === 'object' ? fmpQuoteFromRecord(item as Record<string, unknown>) : null).filter((item): item is ProviderQuote => Boolean(item))
     : [];
@@ -487,14 +559,17 @@ async function fetchFmpBatch(symbols: string[], apiKey: string, forceFresh?: boo
 async function fetchFmpQuoteCollection(endpoint: string, apiKey: string, forceFresh?: boolean) {
   const url = new URL(`${FMP_BASE_URL}/${endpoint}`);
   url.searchParams.set('apikey', apiKey);
-  const response = await fetch(url, {
+  const response = await fmpQueuedFetch(url, {
     cache: forceFresh ? 'no-store' : undefined,
     next: forceFresh ? undefined : { revalidate: 60 },
     signal: AbortSignal.timeout(10_000),
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
-  if (!response.ok) throw new Error(`fmp_${endpoint}_http_${response.status}`);
+  if (!response.ok) {
+    if (response.status === 429) throw new FmpRateLimitError();
+    throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
+  }
   return Array.isArray(payload)
     ? payload.map(item => item && typeof item === 'object' ? fmpQuoteFromRecord(item as Record<string, unknown>) : null).filter((item): item is ProviderQuote => Boolean(item))
     : [];
@@ -504,14 +579,17 @@ async function fetchFmpSingle(symbol: string, apiKey: string, forceFresh?: boole
   const url = new URL(`${FMP_BASE_URL}/quote`);
   url.searchParams.set('symbol', symbol);
   url.searchParams.set('apikey', apiKey);
-  const response = await fetch(url, {
+  const response = await fmpQueuedFetch(url, {
     cache: forceFresh ? 'no-store' : undefined,
     next: forceFresh ? undefined : { revalidate: 60 },
     signal: AbortSignal.timeout(8_000),
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
-  if (!response.ok) throw new Error(`fmp_quote_http_${response.status}`);
+  if (!response.ok) {
+    if (response.status === 429) throw new FmpRateLimitError();
+    throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
+  }
   const records = Array.isArray(payload) ? payload : payload && typeof payload === 'object' ? [payload] : [];
   for (const record of records) {
     const quote = fmpQuoteFromRecord(record as Record<string, unknown>);
@@ -527,9 +605,10 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
   const failed: QuoteIssue[] = [];
   const skipped: QuoteIssue[] = [];
   const latencyStart = Date.now();
+  let rateLimited = false;
   if (!apiKey) {
     symbols.forEach(symbol => skipped.push({ symbol, provider: 'fmp', reason: 'fmp_not_configured' }));
-    return { quotes, loaded, failed, skipped, latencyMs: 0 };
+    return { quotes, loaded, failed, skipped, latencyMs: 0, rateLimited: false };
   }
 
   const candidateBySymbol = new Map<string, string[]>();
@@ -579,16 +658,21 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
         }
       }
     } catch (error) {
+      const reason = providerErrorReason(error, `fmp_${endpoint}_failed`);
       displays.forEach(symbol => failed.push({
         symbol,
         provider: 'fmp',
-        reason: error instanceof Error ? error.message : `fmp_${endpoint}_failed`,
+        reason,
       }));
+      if (isRateLimitReason(reason)) {
+        rateLimited = true;
+        break;
+      }
     }
   }
 
   const primaries = Array.from(primaryToDisplay.keys());
-  for (let start = 0; start < primaries.length; start += FMP_BATCH_SIZE) {
+  for (let start = 0; !rateLimited && start < primaries.length; start += FMP_BATCH_SIZE) {
     const chunk = primaries.slice(start, start + FMP_BATCH_SIZE);
     try {
       const records = await fetchFmpBatch(chunk, apiKey, forceFresh);
@@ -604,15 +688,22 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
         }
       }
     } catch (error) {
+      const reason = providerErrorReason(error, 'fmp_batch_quote_failed');
       for (const providerSymbol of chunk) {
         for (const display of primaryToDisplay.get(providerSymbol) ?? []) {
-          failed.push({ symbol: display, provider: 'fmp', reason: error instanceof Error ? error.message : 'fmp_batch_quote_failed' });
+          failed.push({ symbol: display, provider: 'fmp', reason });
         }
       }
+      if (isRateLimitReason(reason)) rateLimited = true;
     }
   }
 
   const missing = symbols.filter(symbol => !quotes.has(symbol));
+  if (rateLimited || isFmpRateLimited()) {
+    missing.forEach(symbol => skipped.push({ symbol, provider: 'fmp', reason: 'provider_rate_limited' }));
+    return { quotes, loaded, failed, skipped, latencyMs: Date.now() - latencyStart, rateLimited: true };
+  }
+
   await runConcurrent(missing, QUOTE_CONCURRENCY, async (symbol) => {
     const candidates = candidateBySymbol.get(symbol) ?? [];
     if (candidates.length === 0) return;
@@ -628,12 +719,17 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
           return;
         }
       } catch (error) {
-        failed.push({ symbol, provider: 'fmp', reason: error instanceof Error ? error.message : 'fmp_quote_failed' });
+        const reason = providerErrorReason(error, 'fmp_quote_failed');
+        failed.push({ symbol, provider: 'fmp', reason });
+        if (isRateLimitReason(reason)) {
+          rateLimited = true;
+          return;
+        }
       }
     }
   });
 
-  return { quotes, loaded, failed, skipped, latencyMs: Date.now() - latencyStart };
+  return { quotes, loaded, failed, skipped, latencyMs: Date.now() - latencyStart, rateLimited };
 }
 
 async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<YahooChartResult | null> {
@@ -826,10 +922,9 @@ async function fetchFinnhubQuote(display: string, meta?: TraderCatalogSymbol): P
 }
 
 async function fetchOpenbbQuote(display: string, meta?: TraderCatalogSymbol): Promise<TraderQuote> {
-  const baseUrl = cleanEnv(process.env.OPENBB_API_URL).replace(/\/+$/, '');
+  const baseUrl = getOpenbbBaseUrl();
   if (!baseUrl) return unavailableQuote(display, 'openbb_not_configured', meta);
   const candidates = candidateSymbols(display, 'openbb', meta);
-  const token = cleanEnv(process.env.OPENBB_API_KEY);
   for (const candidate of candidates) {
     const url = new URL(`${baseUrl}/api/v1/equity/price/quote`);
     url.searchParams.set('symbol', candidate);
@@ -838,7 +933,6 @@ async function fetchOpenbbQuote(display: string, meta?: TraderCatalogSymbol): Pr
       signal: AbortSignal.timeout(8000),
       headers: {
         accept: 'application/json',
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
     }).catch(() => null);
     if (!response?.ok) continue;
@@ -916,20 +1010,81 @@ export async function fetchTraderQuotesDetailed(
   const failed: QuoteIssue[] = [];
   const skipped: QuoteIssue[] = [];
   const providerLatencyMs: Partial<Record<TraderQuoteProvider, number>> = {};
+  let cachedSymbols = 0;
 
-  const fmp = await fetchFmpQuotes(uniqueSymbols, byMeta, options?.forceFresh);
+  for (const symbol of uniqueSymbols) {
+    const cached = cachedQuote(symbol, { forceFresh: options?.forceFresh });
+    if (!cached) continue;
+    quotes.set(symbol, cached);
+    cachedSymbols += 1;
+    loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
+  }
+
+  const fmpSymbols = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  const fmp = await fetchFmpQuotes(fmpSymbols, byMeta, options?.forceFresh);
   providerLatencyMs.fmp = fmp.latencyMs;
-  fmp.quotes.forEach((quote, symbol) => quotes.set(symbol, quote));
+  fmp.quotes.forEach((quote, symbol) => {
+    quotes.set(symbol, quote);
+    storeQuoteCache(symbol, quote);
+  });
   loaded.push(...fmp.loaded);
   failed.push(...fmp.failed);
   skipped.push(...fmp.skipped);
 
-  for (const provider of ['yahoo', 'finnhub', 'openbb'] as const) {
+  if (fmp.rateLimited) {
+    for (const symbol of uniqueSymbols.filter(symbol => !quotes.has(symbol))) {
+      const cached = cachedQuote(symbol, { allowStale: true });
+      if (!cached) continue;
+      quotes.set(symbol, cached);
+      cachedSymbols += 1;
+      loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
+    }
+  }
+
+  for (const provider of ['yahoo'] as const) {
     const remaining = uniqueSymbols.filter(symbol => !quotes.has(symbol));
     if (remaining.length === 0) break;
     const result = await fetchFallbackProvider(provider, remaining, byMeta, options?.forceFresh);
     providerLatencyMs[provider] = result.latencyMs;
-    result.quotes.forEach((quote, symbol) => quotes.set(symbol, quote));
+    result.quotes.forEach((quote, symbol) => {
+      quotes.set(symbol, quote);
+      storeQuoteCache(symbol, quote);
+    });
+    loaded.push(...result.loaded);
+    failed.push(...result.failed);
+    skipped.push(...result.skipped);
+  }
+
+  let remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  if (remainingAfterYahoo.length > 0) {
+    const openbbStatus = getOpenbbBaseUrl()
+      ? await getOpenbbHealthStatus({ force: options?.forceFresh })
+      : null;
+    if (openbbStatus?.healthy) {
+      const result = await fetchFallbackProvider('openbb', remainingAfterYahoo, byMeta, options?.forceFresh);
+      providerLatencyMs.openbb = result.latencyMs;
+      result.quotes.forEach((quote, symbol) => {
+        quotes.set(symbol, quote);
+        storeQuoteCache(symbol, quote);
+      });
+      loaded.push(...result.loaded);
+      failed.push(...result.failed);
+      skipped.push(...result.skipped);
+    } else if (!openbbStatus?.configured) {
+      skipped.push({ symbol: 'OpenBB', provider: 'openbb', reason: 'openbb_not_configured' });
+    } else {
+      skipped.push({ symbol: 'OpenBB', provider: 'openbb', reason: 'openbb_unhealthy' });
+    }
+  }
+
+  remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  if (remainingAfterYahoo.length > 0 && cleanEnv(process.env.FINNHUB_API_KEY)) {
+    const result = await fetchFallbackProvider('finnhub', remainingAfterYahoo, byMeta, options?.forceFresh);
+    providerLatencyMs.finnhub = result.latencyMs;
+    result.quotes.forEach((quote, symbol) => {
+      quotes.set(symbol, quote);
+      storeQuoteCache(symbol, quote);
+    });
     loaded.push(...result.loaded);
     failed.push(...result.failed);
     skipped.push(...result.skipped);
@@ -945,7 +1100,13 @@ export async function fetchTraderQuotesDetailed(
     provider: firstLoadedProvider,
     reason: firstLoadedProvider ? null : 'all_providers_returned_no_quote',
     providerLatencyMs,
-    cacheStatus: firstLoadedProvider ? 'live' : 'not_configured',
+    cacheStatus: cachedSymbols > 0 ? 'provider-cache' : firstLoadedProvider ? 'live' : 'not_configured',
+    summary: {
+      loadedSymbols: loaded.length,
+      failedSymbols: failed.length,
+      cachedSymbols,
+      skippedDueToRateLimit: getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), cachedSymbols > 0).skippedDueToRateLimit,
+    },
     generatedAt: new Date().toISOString(),
   };
 }
@@ -961,7 +1122,7 @@ export function resolveTraderMarket(marketId: string | null | undefined): Market
   return getStaticTraderMarket(marketId);
 }
 
-export async function resolveTraderMarketDynamic(marketId: string | null | undefined, options?: { forceFresh?: boolean }) {
+export async function resolveTraderMarketDynamic(marketId: string | null | undefined, options?: { forceFresh?: boolean; includeFmpDiscovery?: boolean }) {
   return resolveTraderMarketFromCatalog(marketId, options);
 }
 
@@ -969,27 +1130,21 @@ export function getConnectedProvider() {
   const capabilities = providerCapabilityMatrix();
   const active: TraderQuoteProvider = capabilities.fmp.configured
     ? 'fmp'
-    : capabilities.finnhub.configured
-      ? 'finnhub'
-      : capabilities.openbb.configured
-        ? 'openbb'
-        : 'yahoo';
-  const label = active === 'fmp'
-    ? 'FMP'
-    : active === 'finnhub'
-      ? 'Finnhub'
-      : active === 'openbb'
-        ? 'OpenBB'
-        : 'Yahoo Finance';
+    : 'yahoo';
+  const label = active === 'fmp' ? 'FMP' : 'Yahoo Finance';
   return {
     active: label,
     requested: 'fmp',
     provider: label,
     configured: active === 'yahoo' ? true : capabilities[active].configured,
     status: 'connected' as const,
-    fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub', 'OpenBB'],
+    fallbackOrder: ['FMP', 'Yahoo Finance', 'OpenBB', 'Finnhub'],
     capabilityMatrix: capabilities,
   };
 }
 
 export const CONNECTED_PROVIDER = getConnectedProvider();
+
+export function __resetTraderQuoteCacheForTests() {
+  quoteCache.clear();
+}

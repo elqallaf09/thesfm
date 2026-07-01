@@ -9,6 +9,13 @@ import {
   providerSymbolsForProviderAlias,
   resolveProviderSymbolAlias,
 } from '@/lib/market/providerSymbolAliases';
+import {
+  FmpRateLimitError,
+  fmpQueuedFetch,
+  getFmpRuntimeStatus,
+  markFmpCacheAvailable,
+} from '@/lib/trader/providers/fmpRuntime';
+import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
 export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub' | 'openbb';
@@ -43,6 +50,12 @@ export type TraderCatalogSymbol = {
 export type ProviderCapability = {
   provider: TraderQuoteProvider;
   configured: boolean;
+  healthy: boolean;
+  status: 'healthy' | 'rate_limited' | 'not_configured' | 'degraded' | 'provider_error';
+  rateLimited: boolean;
+  lastSuccessfulFetch: string | null;
+  lastError: string | null;
+  cacheAvailable: boolean;
   supportsQuotes: boolean;
   supportsTechnicalAnalysis: boolean;
   supportsEarnings: boolean;
@@ -60,7 +73,15 @@ export type CatalogDiagnostics = {
   failedSymbols: Array<{ symbol: string; provider: string; reason: string }>;
   unsupportedSymbols: Array<{ symbol: string; provider: string; reason: string }>;
   providerLatencyMs: Record<string, number | null>;
-  cacheStatus: 'hit' | 'miss' | 'disabled';
+  cacheStatus: 'hit' | 'miss' | 'stale' | 'disabled';
+  summary: {
+    loadedSymbols: number;
+    failedSymbols: number;
+    cachedSymbols: number;
+    skippedDueToRateLimit: number;
+    fmpStatus: string;
+    openbbStatus: string;
+  };
   sources: Record<string, number>;
   generatedAt: string;
 };
@@ -75,7 +96,8 @@ export type TraderMarketCatalog = {
 type SeedMarket = Omit<TraderMarketDef, 'source' | 'totalSymbols'>;
 type RawSymbolRecord = Record<string, unknown>;
 
-const CATALOG_CACHE_MS = 6 * 60 * 60 * 1000;
+const CATALOG_CACHE_MS = 12 * 60 * 60 * 1000;
+const CATALOG_STALE_MS = 24 * 60 * 60 * 1000;
 const FMP_DISCOVERY_TIMEOUT_MS = 12_000;
 
 export const TRADER_MARKET_SEEDS: SeedMarket[] = [
@@ -126,7 +148,7 @@ const STATIC_SOURCE_RECORDS: Array<{ records: RawSymbolRecord[]; source: 'bundle
 ];
 
 const MARKET_ID_SET = new Set(TRADER_MARKET_SEEDS.map(market => market.id));
-let catalogCache: { expiresAt: number; value: TraderMarketCatalog } | null = null;
+const catalogCache = new Map<string, { expiresAt: number; staleUntil: number; value: TraderMarketCatalog }>();
 
 function upper(value: unknown) {
   return String(value ?? '').trim().toUpperCase();
@@ -300,35 +322,18 @@ function seedRecords() {
   return records.filter(Boolean);
 }
 
-async function fetchFmpEndpoint(endpoint: string, apiKey: string) {
-  const url = new URL(`https://financialmodelingprep.com/stable/${endpoint}`);
-  url.searchParams.set('apikey', apiKey);
-  const startedAt = Date.now();
-  const response = await fetch(url, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(FMP_DISCOVERY_TIMEOUT_MS),
-    headers: { accept: 'application/json' },
-  });
-  const payload = await response.json().catch(() => null) as unknown;
-  if (!response.ok) throw new Error(`fmp_${endpoint}_http_${response.status}`);
-  return {
-    data: Array.isArray(payload) ? payload as RawSymbolRecord[] : [],
-    latencyMs: Date.now() - startedAt,
-  };
+function sanitizeFmpDiscoveryReason(error: unknown) {
+  if (error instanceof FmpRateLimitError) return 'provider_rate_limited';
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/rate_limited|http_429|429/.test(message)) return 'provider_rate_limited';
+  if (/not_configured/.test(message)) return 'fmp_not_configured';
+  if (/timeout|aborted|network/i.test(message)) return 'provider_temporarily_unavailable';
+  return 'fmp_discovery_failed';
 }
 
-async function discoverFmpSymbols() {
-  const apiKey = cleanEnv(process.env.FMP_API_KEY);
-  if (!apiKey) {
-    return {
-      records: [] as TraderCatalogSymbol[],
-      latencyMs: null as number | null,
-      failed: [] as CatalogDiagnostics['failedSymbols'],
-      reason: 'fmp_not_configured',
-    };
-  }
-
-  const endpoints = [
+function fmpDiscoveryEndpoints(marketId?: string | null) {
+  const normalized = String(marketId ?? '').trim().toLowerCase();
+  const all = [
     { endpoint: 'stock-list', assetType: undefined },
     { endpoint: 'etf-list', assetType: 'etf' },
     { endpoint: 'indexes-list', assetType: 'index' },
@@ -336,54 +341,117 @@ async function discoverFmpSymbols() {
     { endpoint: 'batch-crypto-quotes', assetType: 'crypto' },
     { endpoint: 'batch-commodity-quotes', assetType: 'commodity' },
   ] as const;
-  const settled = await Promise.allSettled(endpoints.map(item => fetchFmpEndpoint(item.endpoint, apiKey)));
-  const records: TraderCatalogSymbol[] = [];
-  const failed: CatalogDiagnostics['failedSymbols'] = [];
-  let latencyMs = 0;
 
-  settled.forEach((result, index) => {
-    const { endpoint, assetType } = endpoints[index]!;
-    if (result.status === 'rejected') {
-      failed.push({ symbol: endpoint, provider: 'fmp', reason: result.reason instanceof Error ? result.reason.message : 'fmp_discovery_failed' });
-      return;
-    }
-    latencyMs += result.value.latencyMs;
-    result.value.data.forEach(item => {
-      const normalized = normalizeRecord({
-        ...item,
-        assetType: assetType ?? item.type,
-      }, 'fmp');
-      if (normalized) records.push(normalized);
-    });
+  if (normalized === 'etfs') return all.filter(item => item.endpoint === 'etf-list');
+  if (normalized === 'indices') return all.filter(item => item.endpoint === 'indexes-list');
+  if (normalized === 'forex') return all.filter(item => item.endpoint === 'batch-forex-quotes');
+  if (normalized === 'crypto') return all.filter(item => item.endpoint === 'batch-crypto-quotes');
+  if (normalized === 'commodities') return all.filter(item => item.endpoint === 'batch-commodity-quotes');
+  if (normalized) return all.filter(item => item.endpoint === 'stock-list');
+  return all;
+}
+
+async function fetchFmpEndpoint(endpoint: string, apiKey: string) {
+  const url = new URL(`https://financialmodelingprep.com/stable/${endpoint}`);
+  url.searchParams.set('apikey', apiKey);
+  const startedAt = Date.now();
+  const response = await fmpQueuedFetch(url, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(FMP_DISCOVERY_TIMEOUT_MS),
+    headers: { accept: 'application/json' },
   });
-
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) {
+    if (response.status === 429) throw new FmpRateLimitError();
+    throw new Error(`fmp_discovery_http_${response.status}`);
+  }
+  markFmpCacheAvailable(`symbols:${endpoint}`);
   return {
-    records,
-    latencyMs,
-    failed,
-    reason: failed.length === endpoints.length ? 'fmp_discovery_failed' : null,
+    data: Array.isArray(payload) ? payload as RawSymbolRecord[] : [],
+    latencyMs: Date.now() - startedAt,
   };
 }
 
-function capabilityMatrix() {
+async function discoverFmpSymbols(options: { marketId?: string | null } = {}) {
+  const apiKey = cleanEnv(process.env.FMP_API_KEY);
+  if (!apiKey) {
+    return {
+      records: [] as TraderCatalogSymbol[],
+      latencyMs: null as number | null,
+      failed: [] as CatalogDiagnostics['failedSymbols'],
+      reason: 'fmp_not_configured',
+      rateLimited: false,
+    };
+  }
+
+  const endpoints = fmpDiscoveryEndpoints(options.marketId);
+  const records: TraderCatalogSymbol[] = [];
+  const failed: CatalogDiagnostics['failedSymbols'] = [];
+  let latencyMs = 0;
+  let rateLimited = false;
+
+  for (const { endpoint, assetType } of endpoints) {
+    try {
+      const result = await fetchFmpEndpoint(endpoint, apiKey);
+      latencyMs += result.latencyMs;
+      result.data.forEach(item => {
+        const normalized = normalizeRecord({
+          ...item,
+          assetType: assetType ?? item.type,
+        }, 'fmp');
+        if (normalized) records.push(normalized);
+      });
+    } catch (error) {
+      const reason = sanitizeFmpDiscoveryReason(error);
+      failed.push({ symbol: endpoint, provider: 'fmp', reason });
+      if (reason === 'provider_rate_limited') {
+        rateLimited = true;
+        break;
+      }
+    }
+  }
+
+  return {
+    records,
+    latencyMs: latencyMs || null,
+    failed,
+    reason: rateLimited ? 'provider_rate_limited' : failed.length === endpoints.length ? 'fmp_discovery_failed' : null,
+    rateLimited,
+  };
+}
+
+function capabilityMatrix(cacheAvailable = false) {
   const fmpConfigured = Boolean(cleanEnv(process.env.FMP_API_KEY));
   const finnhubConfigured = Boolean(cleanEnv(process.env.FINNHUB_API_KEY));
-  const openbbConfigured = Boolean(cleanEnv(process.env.OPENBB_API_URL) || cleanEnv(process.env.OPENBB_API_KEY));
+  const fmpStatus = getFmpRuntimeStatus(fmpConfigured, cacheAvailable);
+  const openbbStatus = getOpenbbConfiguredStatus();
   return {
     fmp: {
       provider: 'fmp',
       configured: fmpConfigured,
+      healthy: fmpStatus.healthy,
+      status: fmpStatus.status,
+      rateLimited: fmpStatus.rateLimited,
+      lastSuccessfulFetch: fmpStatus.lastSuccessfulFetch,
+      lastError: fmpStatus.lastError,
+      cacheAvailable: fmpStatus.cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,
       supportsEarnings: true,
       supportsDividends: true,
       supportsIpos: true,
       supportsEconomicCalendar: true,
-      reason: fmpConfigured ? null : 'fmp_not_configured',
+      reason: fmpConfigured ? fmpStatus.lastError : 'fmp_not_configured',
     },
     yahoo: {
       provider: 'yahoo',
       configured: true,
+      healthy: true,
+      status: 'healthy',
+      rateLimited: false,
+      lastSuccessfulFetch: null,
+      lastError: null,
+      cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,
       supportsEarnings: false,
@@ -395,6 +463,12 @@ function capabilityMatrix() {
     finnhub: {
       provider: 'finnhub',
       configured: finnhubConfigured,
+      healthy: finnhubConfigured,
+      status: finnhubConfigured ? 'healthy' : 'not_configured',
+      rateLimited: false,
+      lastSuccessfulFetch: null,
+      lastError: finnhubConfigured ? null : 'finnhub_not_configured',
+      cacheAvailable: false,
       supportsQuotes: true,
       supportsTechnicalAnalysis: false,
       supportsEarnings: true,
@@ -405,14 +479,20 @@ function capabilityMatrix() {
     },
     openbb: {
       provider: 'openbb',
-      configured: openbbConfigured,
+      configured: openbbStatus.configured,
+      healthy: openbbStatus.healthy,
+      status: openbbStatus.status,
+      rateLimited: false,
+      lastSuccessfulFetch: openbbStatus.lastSuccessfulFetch,
+      lastError: openbbStatus.lastError,
+      cacheAvailable: openbbStatus.cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,
       supportsEarnings: false,
       supportsDividends: false,
       supportsIpos: false,
       supportsEconomicCalendar: false,
-      reason: openbbConfigured ? null : 'openbb_not_configured',
+      reason: openbbStatus.configured ? openbbStatus.lastError : 'openbb_not_configured',
     },
   } satisfies Record<TraderQuoteProvider, ProviderCapability>;
 }
@@ -438,13 +518,22 @@ function buildMarkets(symbols: TraderCatalogSymbol[]): TraderMarketDef[] {
   });
 }
 
-export async function getTraderMarketCatalog(options: { forceFresh?: boolean } = {}): Promise<TraderMarketCatalog> {
+function catalogCacheKey(options: { includeFmpDiscovery?: boolean; marketId?: string | null }) {
+  return [
+    options.includeFmpDiscovery ? 'fmp' : 'bundled',
+    String(options.marketId ?? '').trim().toLowerCase() || 'all',
+  ].join(':');
+}
+
+export async function getTraderMarketCatalog(options: { forceFresh?: boolean; includeFmpDiscovery?: boolean; marketId?: string | null } = {}): Promise<TraderMarketCatalog> {
   const now = Date.now();
-  if (!options.forceFresh && catalogCache && catalogCache.expiresAt > now) {
+  const key = catalogCacheKey(options);
+  const cached = catalogCache.get(key);
+  if (!options.forceFresh && cached && cached.expiresAt > now) {
     return {
-      ...catalogCache.value,
+      ...cached.value,
       diagnostics: {
-        ...catalogCache.value.diagnostics,
+        ...cached.value.diagnostics,
         cacheStatus: 'hit',
       },
     };
@@ -456,7 +545,35 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean } =
     group.records.forEach(record => addRecord(bySymbol, normalizeRecord(record, group.source)));
   }
 
-  const fmp = await discoverFmpSymbols();
+  const fmp = options.includeFmpDiscovery
+    ? await discoverFmpSymbols({ marketId: options.marketId })
+    : {
+        records: [] as TraderCatalogSymbol[],
+        latencyMs: null as number | null,
+        failed: [] as CatalogDiagnostics['failedSymbols'],
+        reason: 'fmp_discovery_skipped',
+        rateLimited: false,
+      };
+
+  if (fmp.rateLimited && cached && cached.staleUntil > now) {
+    return {
+      ...cached.value,
+      diagnostics: {
+        ...cached.value.diagnostics,
+        reason: 'provider_rate_limited',
+        failedSymbols: fmp.failed,
+        cacheStatus: 'stale',
+        summary: {
+          ...cached.value.diagnostics.summary,
+          cachedSymbols: cached.value.symbols.length,
+          failedSymbols: fmp.failed.length,
+          skippedDueToRateLimit: getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), true).skippedDueToRateLimit,
+          fmpStatus: 'rate_limited',
+        },
+      },
+    };
+  }
+
   fmp.records.forEach(record => addRecord(bySymbol, record));
 
   const allSymbols = Array.from(bySymbol.values())
@@ -467,6 +584,8 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean } =
     acc[symbol.source] = (acc[symbol.source] ?? 0) + 1;
     return acc;
   }, {});
+  const fmpRuntime = getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), Boolean(cached));
+  const openbbRuntime = getOpenbbConfiguredStatus();
   const diagnostics: CatalogDiagnostics = {
     provider: cleanEnv(process.env.FMP_API_KEY) ? 'fmp' : 'bundled',
     reason: fmp.reason,
@@ -479,7 +598,15 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean } =
     providerLatencyMs: {
       fmp: fmp.latencyMs,
     },
-    cacheStatus: 'miss',
+    cacheStatus: options.includeFmpDiscovery ? 'miss' : 'disabled',
+    summary: {
+      loadedSymbols: symbols.length,
+      failedSymbols: fmp.failed.length,
+      cachedSymbols: cached?.value.symbols.length ?? 0,
+      skippedDueToRateLimit: fmpRuntime.skippedDueToRateLimit,
+      fmpStatus: fmpRuntime.status,
+      openbbStatus: openbbRuntime.status,
+    },
     sources,
     generatedAt: new Date().toISOString(),
   };
@@ -487,9 +614,9 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean } =
     markets,
     symbols,
     diagnostics,
-    capabilityMatrix: capabilityMatrix(),
+    capabilityMatrix: capabilityMatrix(Boolean(cached)),
   };
-  catalogCache = { expiresAt: now + CATALOG_CACHE_MS, value };
+  catalogCache.set(key, { expiresAt: now + CATALOG_CACHE_MS, staleUntil: now + CATALOG_STALE_MS, value });
   return value;
 }
 
@@ -504,8 +631,8 @@ export function getStaticTraderMarket(marketId: string | null | undefined): Trad
   };
 }
 
-export async function resolveTraderMarketFromCatalog(marketId: string | null | undefined, options: { forceFresh?: boolean } = {}) {
-  const catalog = await getTraderMarketCatalog(options);
+export async function resolveTraderMarketFromCatalog(marketId: string | null | undefined, options: { forceFresh?: boolean; includeFmpDiscovery?: boolean } = {}) {
+  const catalog = await getTraderMarketCatalog({ ...options, marketId });
   const fallback = getStaticTraderMarket(marketId);
   const market = catalog.markets.find(item => item.id === fallback.id) ?? fallback;
   const symbolMeta = catalog.symbols.filter(symbol => symbol.marketIds.includes(market.id));
