@@ -561,13 +561,14 @@ describe('dividend calendar provider', () => {
     expect(result.messageCode).toBe('provider_not_configured');
   });
 
-  it('prefers Finnhub dividends calendar when FINNHUB_API_KEY is configured', async () => {
+  it('prefers FMP dividends calendar when FMP_API_KEY is configured', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
 
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
       {
         symbol: 'KO',
+        companyName: 'Coca-Cola',
         date: '2026-07-12',
         amount: 0.51,
         currency: 'USD',
@@ -581,7 +582,7 @@ describe('dividend calendar provider', () => {
     const result = await getDividendCalendar(dividendQuery);
 
     expect(result.status).toBe('success');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('fmp');
     expect(result.data[0]).toMatchObject({
       symbol: 'KO',
       companyName: 'Coca-Cola',
@@ -590,9 +591,9 @@ describe('dividend calendar provider', () => {
       dividendAmount: 0.51,
       exDividendDate: '2026-07-12',
       paymentDate: '2026-08-01',
-      provider: 'finnhub',
+      provider: 'fmp',
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('finnhub.io/api/v1/stock/dividend');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('financialmodelingprep.com/stable/dividends-calendar');
   });
 
   it('falls back to FMP direct dividends calendar when Finnhub is not configured', async () => {
@@ -626,8 +627,8 @@ describe('dividend calendar provider', () => {
   });
 
   it('reports dividend provider access failures without returning fabricated events', async () => {
-    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
-    vi.stubEnv('FMP_API_KEY', '');
+    vi.stubEnv('FINNHUB_API_KEY', '');
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
 
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
       error: 'Forbidden',
@@ -637,7 +638,7 @@ describe('dividend calendar provider', () => {
     const result = await getDividendCalendar(dividendQuery);
 
     expect(result.status).toBe('forbidden');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('fmp');
     expect(result.data).toEqual([]);
     expect(result.messageCode).toBe('provider_access_denied');
   });
