@@ -15,9 +15,10 @@ import {
   getFmpRuntimeStatus,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
+import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub';
+export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub';
 
 export type TraderMarketDef = {
   id: string;
@@ -79,6 +80,7 @@ export type CatalogDiagnostics = {
     cachedSymbols: number;
     skippedDueToRateLimit: number;
     fmpStatus: string;
+    openbbStatus: string;
   };
   sources: Record<string, number>;
   generatedAt: string;
@@ -249,6 +251,7 @@ function providerSymbolsFor(symbol: string, assetType: TraderAssetType, provider
   return {
     fmp: uniq([...(fmpAlias.length ? fmpAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}USD` : null]),
     yahoo: uniq([...(yahooAlias.length ? yahooAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}-USD` : null]),
+    openbb: uniq([providerSymbol, base]),
     finnhub: uniq([...(finnhubAlias.length ? finnhubAlias : []), providerSymbol, base]),
   };
 }
@@ -291,7 +294,7 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   target.currency ||= next.currency;
   target.name = target.name === target.symbol && next.name !== next.symbol ? next.name : target.name;
   target.providerSymbol = target.providerSymbol || next.providerSymbol;
-  for (const provider of ['fmp', 'yahoo', 'finnhub'] as TraderQuoteProvider[]) {
+  for (const provider of ['fmp', 'yahoo', 'openbb', 'finnhub'] as TraderQuoteProvider[]) {
     target.providerSymbols[provider] = uniq([...(target.providerSymbols[provider] ?? []), ...(next.providerSymbols[provider] ?? [])]);
   }
   if (target.source !== next.source) target.source = target.source === 'fmp' || next.source === 'fmp' ? 'fmp' : 'bundled';
@@ -431,6 +434,7 @@ function capabilityMatrix(cacheAvailable = false) {
   const fmpConfigured = Boolean(cleanEnv(process.env.FMP_API_KEY));
   const finnhubConfigured = Boolean(cleanEnv(process.env.FINNHUB_API_KEY));
   const fmpStatus = getFmpRuntimeStatus(fmpConfigured, cacheAvailable);
+  const openbbStatus = getOpenbbConfiguredStatus();
   return {
     fmp: {
       provider: 'fmp',
@@ -465,6 +469,23 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsIpos: false,
       supportsEconomicCalendar: false,
       reason: null,
+    },
+    openbb: {
+      provider: 'openbb',
+      configured: openbbStatus.configured,
+      healthy: openbbStatus.healthy,
+      status: openbbStatus.status,
+      rateLimited: false,
+      lastSuccessfulFetch: openbbStatus.lastSuccessfulFetch,
+      lastError: openbbStatus.lastError,
+      cacheAvailable: openbbStatus.cacheAvailable,
+      supportsQuotes: true,
+      supportsTechnicalAnalysis: true,
+      supportsEarnings: false,
+      supportsDividends: false,
+      supportsIpos: false,
+      supportsEconomicCalendar: false,
+      reason: openbbStatus.configured ? openbbStatus.lastError : 'openbb_not_configured',
     },
     finnhub: {
       provider: 'finnhub',
@@ -558,6 +579,7 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
           failedSymbols: fmp.failed.length,
           skippedDueToRateLimit: getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), true).skippedDueToRateLimit,
           fmpStatus: 'rate_limited',
+          openbbStatus: getOpenbbConfiguredStatus().status,
         },
       },
     };
@@ -593,6 +615,7 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
       cachedSymbols: cached?.value.symbols.length ?? 0,
       skippedDueToRateLimit: fmpRuntime.skippedDueToRateLimit,
       fmpStatus: fmpRuntime.status,
+      openbbStatus: getOpenbbConfiguredStatus().status,
     },
     sources,
     generatedAt: new Date().toISOString(),

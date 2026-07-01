@@ -69,6 +69,7 @@ const PROVIDER_FEATURES: Record<TraderProviderName, TraderProviderFeature[]> = {
   finnhub: ['earnings', 'dividends', 'economic', 'news'],
   tradingeconomics: ['economic'],
   yahoo: ['prices'],
+  openbb: ['prices'],
 };
 
 const CALENDAR_SUPPORTED_PROVIDERS: Record<TraderCalendarFeature, TraderCalendarProvider[]> = {
@@ -97,7 +98,7 @@ function createInitialFeatureState(): Record<TraderProviderFeature, TraderFeatur
       lastUpdated: null,
       lastSuccessfulUpdate: null,
       failureReason: null,
-      supportedProviders: ['fmp', 'yahoo', 'finnhub'],
+      supportedProviders: ['fmp', 'yahoo', 'openbb', 'finnhub'],
       supportedFeatures: PROVIDER_FEATURES.fmp,
     },
     news: {
@@ -135,6 +136,7 @@ function configuredKeys() {
     fmp: cleanEnv(process.env.FMP_API_KEY),
     finnhub: cleanEnv(process.env.FINNHUB_API_KEY),
     tradingeconomics: cleanEnv(process.env.TRADING_ECONOMICS_API_KEY),
+    openbb: cleanEnv(process.env.OPENBB_SERVICE_URL),
   };
 }
 
@@ -553,7 +555,7 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       provider: priceProvider,
       status: priceProvider === 'fmp' && fmpRuntime.rateLimited ? 'rate_limited' : 'available',
       failureReason: priceProvider === 'fmp' ? fmpRuntime.lastError : null,
-      supportedProviders: ['fmp', 'yahoo', 'finnhub'],
+      supportedProviders: ['fmp', 'yahoo', 'openbb', 'finnhub'],
       supportedFeatures: PROVIDER_FEATURES[priceProvider],
     },
     news: {
@@ -576,6 +578,7 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       fmpConfigured: Boolean(keys.fmp),
       finnhubConfigured: Boolean(keys.finnhub),
       tradingEconomicsConfigured: Boolean(keys.tradingeconomics),
+      openbbConfigured: Boolean(keys.openbb),
     },
     features,
     dataProvider: {

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const pageSize = clampInteger(url.searchParams.get('limit') ?? url.searchParams.get('pageSize'), selectedMarket || search ? 100 : 120, 1, 250);
   const catalog = await getTraderMarketCatalog({
     forceFresh: url.searchParams.has('refresh'),
-    includeFmpDiscovery: url.searchParams.has('discover'),
+    includeFmpDiscovery: url.searchParams.has('discover') && Boolean(selectedMarket),
     marketId: selectedMarket,
   });
 

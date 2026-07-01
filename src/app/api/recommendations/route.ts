@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const marketId = url.searchParams.get('market');
   const { market, symbolMeta, catalog } = await resolveTraderMarketDynamic(url.searchParams.get('market'), {
     forceFresh,
-    includeFmpDiscovery: discover,
+    includeFmpDiscovery: discover && Boolean(marketId),
   });
   const requestedSymbols = String(url.searchParams.get('symbols') ?? '')
     .split(',')
