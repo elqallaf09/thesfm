@@ -12,7 +12,7 @@ export type DividendStockMetric = {
   currency: string | null;
   source: 'Finnhub' | 'Yahoo Finance' | 'FMP';
   available: boolean;
-  dividendDataLabel?: 'upcoming' | 'latestHistorical' | null;
+  dividendDataLabel?: string | null;
   unavailableReason?: string;
 };
 

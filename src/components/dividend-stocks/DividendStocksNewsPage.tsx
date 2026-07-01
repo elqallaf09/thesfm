@@ -64,7 +64,7 @@ type DividendTickerItem = {
   paymentDate: string | null;
   recordDate: string | null;
   declarationDate: string | null;
-  dividendDataLabel?: 'upcoming' | 'latestHistorical' | null;
+  dividendDataLabel?: string | null;
   dividendMetricSource: string | null;
   source: string;
   delayed: boolean;
