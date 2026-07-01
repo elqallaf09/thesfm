@@ -118,7 +118,8 @@
   };
 
   /* ─────────────────────────── Boot ─────────────────────────── */
-  document.addEventListener("DOMContentLoaded", boot);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
   async function boot() {
     state.route = readRoute();
     bind();
