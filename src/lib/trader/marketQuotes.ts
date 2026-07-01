@@ -9,7 +9,8 @@ import { providerSymbolsForAlias } from '@/lib/market/providerSymbolAliases';
 // not financial advice and not fabricated data.
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderSignal = 'buy' | 'sell' | 'watch';
+export type TraderSignal = 'buy' | 'sell' | 'wait' | 'watch';
+export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable';
 
 type MarketDef = {
   id: string;
@@ -44,6 +45,75 @@ export const TRADER_MARKETS: MarketDef[] = [
   { id: 'healthcare', ar: 'الصحة والدواء', en: 'Pharma / Healthcare', currency: 'USD', symbols: ['LLY', 'PFE', 'JNJ', 'MRK'] },
 ];
 
+type TraderSymbolResolution = {
+  requestedSymbol: string;
+  canonicalSymbol: string;
+  displaySymbol: string;
+  name: string;
+  primaryYahooSymbol: string;
+  yahooSymbols: string[];
+};
+
+type TraderCardSymbolConfig = {
+  canonicalSymbol: string;
+  displaySymbol: string;
+  name: string;
+  yahooSymbols: string[];
+  aliases: string[];
+};
+
+const TRADER_CARD_SYMBOLS: TraderCardSymbolConfig[] = [
+  {
+    canonicalSymbol: 'BTCUSD',
+    displaySymbol: 'BTC/USD',
+    name: 'Bitcoin / US Dollar',
+    yahooSymbols: ['BTC-USD'],
+    aliases: ['BTC/USD', 'BTCUSD', 'BTC-USD'],
+  },
+  {
+    canonicalSymbol: 'ETHUSD',
+    displaySymbol: 'ETH/USD',
+    name: 'Ethereum / US Dollar',
+    yahooSymbols: ['ETH-USD'],
+    aliases: ['ETH/USD', 'ETHUSD', 'ETH-USD'],
+  },
+  {
+    canonicalSymbol: 'XAUUSD',
+    displaySymbol: 'XAUUSD',
+    name: 'Gold / US Dollar',
+    yahooSymbols: ['GC=F', 'XAUUSD=X'],
+    aliases: ['XAUUSD', 'XAU/USD', 'GC=F', 'GOLD'],
+  },
+  {
+    canonicalSymbol: 'XAGUSD',
+    displaySymbol: 'XAGUSD',
+    name: 'Silver / US Dollar',
+    yahooSymbols: ['SI=F', 'XAGUSD=X'],
+    aliases: ['XAGUSD', 'XAG/USD', 'SI=F', 'SILVER'],
+  },
+  {
+    canonicalSymbol: 'NAS100',
+    displaySymbol: 'NAS100',
+    name: 'Nasdaq 100',
+    yahooSymbols: ['^NDX', 'NQ=F'],
+    aliases: ['NAS100', '^NDX', 'NQ=F'],
+  },
+  {
+    canonicalSymbol: 'US30',
+    displaySymbol: 'US30',
+    name: 'Dow Jones Industrial Average',
+    yahooSymbols: ['^DJI', 'YM=F'],
+    aliases: ['US30', '^DJI', 'YM=F'],
+  },
+  {
+    canonicalSymbol: 'OIL',
+    displaySymbol: 'Oil',
+    name: 'Crude Oil',
+    yahooSymbols: ['CL=F', 'USOIL'],
+    aliases: ['OIL', 'USOIL', 'CL=F'],
+  },
+];
+
 // Display symbol -> Yahoo Finance symbol for cases where the trader symbol
 // differs from Yahoo's ticker format. Anything not listed is used as-is.
 const YAHOO_SYMBOL: Record<string, string> = {
@@ -52,18 +122,78 @@ const YAHOO_SYMBOL: Record<string, string> = {
   // Crypto
   BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD', BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD',
   // Commodities (front-month futures)
-  XAUUSD: 'GC=F', XAGUSD: 'SI=F', WTI: 'CL=F', BRENT: 'BZ=F',
+  XAUUSD: 'GC=F', XAGUSD: 'SI=F', WTI: 'CL=F', OIL: 'CL=F', USOIL: 'CL=F', BRENT: 'BZ=F',
   // Indices
-  SPX: '^GSPC', NDX: '^NDX', DJI: '^DJI', DXY: 'DX-Y.NYB',
+  SPX: '^GSPC', NDX: '^NDX', NAS100: '^NDX', DJI: '^DJI', US30: '^DJI', DXY: 'DX-Y.NYB',
 };
 
 const YAHOO_FALLBACK_SYMBOLS: Record<string, string[]> = {
   XAUUSD: ['GC=F', 'XAUUSD=X'],
   XAGUSD: ['SI=F', 'XAGUSD=X'],
+  NAS100: ['^NDX', 'NQ=F'],
+  US30: ['^DJI', 'YM=F'],
+  OIL: ['CL=F', 'USOIL'],
+  WTI: ['CL=F', 'USOIL'],
   USDJPY: ['USDJPY=X', 'JPY=X'],
 };
 
 const CRYPTO_BASES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'USDT']);
+
+function normalizedSymbolKey(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/[/-]/g, '');
+}
+
+function rawSymbolKey(value: unknown) {
+  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function symbolMatches(value: unknown, candidates: string[]) {
+  const raw = rawSymbolKey(value);
+  const normalized = normalizedSymbolKey(value);
+  return candidates.some(candidate => rawSymbolKey(candidate) === raw || normalizedSymbolKey(candidate) === normalized);
+}
+
+function uniqueSymbols(symbols: Array<string | null | undefined>) {
+  return Array.from(new Set(symbols.map(symbol => String(symbol ?? '').trim()).filter(Boolean)));
+}
+
+function resolveTraderCardSymbol(input: string): TraderSymbolResolution {
+  const requestedSymbol = rawSymbolKey(input);
+  const configured = TRADER_CARD_SYMBOLS.find(config => symbolMatches(requestedSymbol, [config.displaySymbol, config.canonicalSymbol, ...config.aliases, ...config.yahooSymbols]));
+  if (configured) {
+    return {
+      requestedSymbol,
+      canonicalSymbol: configured.canonicalSymbol,
+      displaySymbol: configured.displaySymbol,
+      name: configured.name,
+      primaryYahooSymbol: configured.yahooSymbols[0] ?? configured.canonicalSymbol,
+      yahooSymbols: uniqueSymbols(configured.yahooSymbols),
+    };
+  }
+
+  const providerAliases = providerSymbolsForAlias(requestedSymbol);
+  const yahooFallbacks = YAHOO_FALLBACK_SYMBOLS[requestedSymbol] ?? [];
+  const directYahoo = YAHOO_SYMBOL[requestedSymbol] ?? requestedSymbol;
+  const yahooSymbols = uniqueSymbols([
+    ...yahooFallbacks,
+    ...providerAliases,
+    directYahoo,
+    requestedSymbol,
+  ]);
+
+  return {
+    requestedSymbol,
+    canonicalSymbol: requestedSymbol,
+    displaySymbol: requestedSymbol,
+    name: requestedSymbol,
+    primaryYahooSymbol: yahooSymbols[0] ?? requestedSymbol,
+    yahooSymbols,
+  };
+}
 
 function numberOrNull(value: unknown): number | null {
   const parsed = Number(value);
@@ -77,10 +207,12 @@ function round(value: number | null): number | null {
 
 function classifyAssetType(symbol: string): TraderAssetType {
   const s = symbol.toUpperCase();
-  const base = s.replace(/[.\-=].*$/, '');
+  const compact = normalizedSymbolKey(s);
+  const base = s.replace(/[.\-=].*$/, '').replace('/', '');
   if (CRYPTO_BASES.has(base.replace(/USDT?$/, '')) && /USD/.test(s)) return 'crypto';
-  if (/^(XAUUSD|XAGUSD|WTI|BRENT)$/.test(s)) return 'commodity';
-  if (/^(SPX|NDX|DJI|DXY)$/.test(s)) return 'index';
+  if (CRYPTO_BASES.has(compact.replace(/USDT?$/, '').replace(/USD$/, '')) && /USD/.test(compact)) return 'crypto';
+  if (/^(XAUUSD|XAGUSD|WTI|BRENT|OIL|USOIL|CL=F|SI=F|GC=F)$/.test(s) || /^(XAUUSD|XAGUSD|OIL|USOIL)$/.test(compact)) return 'commodity';
+  if (/^(SPX|NDX|DJI|DXY|NAS100|US30|\^NDX|\^DJI|NQ=F|YM=F)$/.test(s)) return 'index';
   if (/^(SPY|QQQ|GLD|IWM)$/.test(s)) return 'fund';
   if (/^[A-Z]{6}$/.test(base) && !s.includes('.')) return 'forex';
   return 'stock';
@@ -99,7 +231,8 @@ function defaultCurrency(symbol: string): string | null {
   if (/\.DE$|\.AS$|\.PA$/.test(s)) return 'EUR';
   if (/\.SW$/.test(s)) return 'CHF';
   if (/\.KS$/.test(s)) return 'KRW';
-  if (/^[A-Z]{6}$/.test(s)) return s.slice(3);
+  const compact = normalizedSymbolKey(s);
+  if (/^[A-Z]{6}$/.test(compact)) return compact.slice(3);
   return 'USD';
 }
 
@@ -142,10 +275,35 @@ function annualizedVolatility(closes: number[]): number | null {
 
 // Transparent rule-based signal: trend (price vs SMA20/SMA50, SMA cross) plus
 // RSI momentum. Score > 0 leans bullish, < 0 bearish; |score| drives confidence.
-function deriveSignal(price: number | null, sma20: number | null, sma50: number | null, rsiValue: number | null): { signal: TraderSignal; confidence: number | null } {
-  if (price === null) return { signal: 'watch', confidence: null };
+function deriveSignal(args: {
+  price: number | null;
+  closes: number[];
+  sma20: number | null;
+  sma50: number | null;
+  rsiValue: number | null;
+  changePercent: number | null;
+  partial: boolean;
+}): { signal: TraderSignal; confidence: number | null } {
+  const { price, closes, sma20, sma50, rsiValue, changePercent, partial } = args;
+  if (price === null || closes.length < 2) return { signal: 'watch', confidence: null };
+
   let score = 0;
   let weight = 0;
+  const firstClose = closes[0];
+  const recentBase = closes[Math.max(0, closes.length - 6)];
+  const trendPercent = firstClose > 0 ? ((price - firstClose) / firstClose) * 100 : 0;
+  const recentMomentum = recentBase > 0 ? ((price - recentBase) / recentBase) * 100 : changePercent;
+
+  if (Number.isFinite(trendPercent)) {
+    weight += 1;
+    if (trendPercent >= 2) score += 1;
+    else if (trendPercent <= -2) score -= 1;
+  }
+  if (recentMomentum !== null && Number.isFinite(recentMomentum)) {
+    weight += 1;
+    if (recentMomentum >= 0.4) score += 1;
+    else if (recentMomentum <= -0.4) score -= 1;
+  }
   if (sma20 !== null) { score += price > sma20 ? 1 : -1; weight += 1; }
   if (sma50 !== null) { score += price > sma50 ? 1 : -1; weight += 1; }
   if (sma20 !== null && sma50 !== null) { score += sma20 > sma50 ? 1 : -1; weight += 1; }
@@ -158,13 +316,15 @@ function deriveSignal(price: number | null, sma20: number | null, sma50: number 
   }
   if (weight === 0) return { signal: 'watch', confidence: null };
 
-  let signal: TraderSignal = 'watch';
+  let signal: TraderSignal = 'wait';
   if (score >= 2) signal = 'buy';
   else if (score <= -2) signal = 'sell';
+  else if (score > 0 || score < 0) signal = 'watch';
 
   const strength = Math.min(1, Math.abs(score) / weight);
-  const confidence = Math.round(45 + strength * 45);
-  return { signal, confidence: Math.max(40, Math.min(92, confidence)) };
+  const rawConfidence = signal === 'wait' ? 42 : Math.round(45 + strength * 45);
+  const confidenceCap = partial ? 62 : closes.length < 20 ? 70 : 88;
+  return { signal, confidence: Math.max(35, Math.min(confidenceCap, rawConfidence)) };
 }
 
 function riskFromVolatility(volatility: number | null, assetType: TraderAssetType): 'low' | 'medium' | 'high' {
@@ -176,24 +336,44 @@ function riskFromVolatility(volatility: number | null, assetType: TraderAssetTyp
 
 export type TraderQuote = {
   symbol: string;
+  requestedSymbol: string;
+  canonicalSymbol: string;
+  displaySymbol: string;
   providerSymbol: string | null;
+  providerSymbolUsed: string | null;
   fallbackUsed: boolean;
   name: string;
   assetType: TraderAssetType;
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  previousClose: number | null;
   currency: string | null;
   signal: TraderSignal;
+  signalAvailable: boolean;
   confidence: number | null;
   riskLevel: 'low' | 'medium' | 'high';
   rsi: number | null;
   sma20: number | null;
   sma50: number | null;
+  sparkline: number[];
+  history: Array<{ close: number }>;
+  chartAvailable: boolean;
+  dataQuality: TraderDataQuality;
+  provider: 'Yahoo Finance';
+  providerStatus: {
+    yahooFinance: {
+      provider: 'Yahoo Finance';
+      status: 'available' | 'partial' | 'unavailable';
+      symbol: string | null;
+      fallbackUsed: boolean;
+    };
+  };
   source: 'Yahoo Finance';
   delayed: true;
   available: boolean;
   unavailableReason?: string;
+  lastUpdated: string | null;
   updatedAt: string | null;
 };
 
@@ -243,41 +423,60 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   };
 }
 
-function unavailableQuote(display: string, reason: string): TraderQuote {
+function providerStatusFor(status: 'available' | 'partial' | 'unavailable', symbol: string | null, fallbackUsed: boolean): TraderQuote['providerStatus'] {
   return {
-    symbol: display,
+    yahooFinance: {
+      provider: 'Yahoo Finance',
+      status,
+      symbol,
+      fallbackUsed,
+    },
+  };
+}
+
+function unavailableQuote(resolution: TraderSymbolResolution, reason: string): TraderQuote {
+  return {
+    symbol: resolution.displaySymbol,
+    requestedSymbol: resolution.requestedSymbol,
+    canonicalSymbol: resolution.canonicalSymbol,
+    displaySymbol: resolution.displaySymbol,
     providerSymbol: null,
+    providerSymbolUsed: null,
     fallbackUsed: false,
-    name: display,
-    assetType: classifyAssetType(display),
+    name: resolution.name,
+    assetType: classifyAssetType(resolution.canonicalSymbol),
     price: null,
     change: null,
     changePercent: null,
-    currency: defaultCurrency(display),
+    previousClose: null,
+    currency: defaultCurrency(resolution.canonicalSymbol),
     signal: 'watch',
+    signalAvailable: false,
     confidence: null,
     riskLevel: 'medium',
     rsi: null,
     sma20: null,
     sma50: null,
+    sparkline: [],
+    history: [],
+    chartAvailable: false,
+    dataQuality: 'unavailable',
+    provider: 'Yahoo Finance',
+    providerStatus: providerStatusFor('unavailable', null, false),
     source: 'Yahoo Finance',
     delayed: true,
     available: false,
     unavailableReason: reason,
+    lastUpdated: null,
     updatedAt: null,
   };
 }
 
 async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQuote> {
-  const assetType = classifyAssetType(display);
-  const upperDisplay = display.toUpperCase();
-  const yahooSymbols = Array.from(new Set([
-    ...(YAHOO_FALLBACK_SYMBOLS[upperDisplay] ?? []),
-    ...providerSymbolsForAlias(display),
-    YAHOO_SYMBOL[upperDisplay] ?? display,
-    display,
-  ].filter(Boolean)));
-  const primaryYahoo = yahooSymbols[0] ?? display;
+  const resolution = resolveTraderCardSymbol(display);
+  const assetType = classifyAssetType(resolution.canonicalSymbol);
+  const yahooSymbols = resolution.yahooSymbols;
+  const primaryYahoo = resolution.primaryYahooSymbol;
 
   let chart: YahooChartResult | null = null;
   let yahoo = primaryYahoo;
@@ -294,77 +493,111 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
   // Fallback: quote endpoint gives a price but no history (no computed signal).
   if (!chart || chart.price === null) {
     const normalized = await fetchYahooNormalizedQuote({
-      requestedSymbol: display,
+      requestedSymbol: resolution.displaySymbol,
       symbols: yahooSymbols,
-      name: display,
+      name: resolution.name,
       forceFresh,
       debugContext: { route: 'trader/marketQuotes', mode: 'quote_fallback' },
     }).catch(() => null);
 
     if (!normalized || !normalized.available || normalized.price === null) {
-      return unavailableQuote(display, normalized?.unavailableReason ?? 'provider_returned_empty_quote');
+      return unavailableQuote(resolution, normalized?.unavailableReason ?? 'provider_returned_empty_quote');
     }
-    const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: display, market: display });
+    const symbolUsed = normalized.symbolUsed ?? yahoo;
+    const fallbackUsed = symbolUsed !== primaryYahoo;
+    const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: resolution.canonicalSymbol, market: resolution.canonicalSymbol });
     const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
       return {
-        symbol: display,
-        providerSymbol: normalized.symbolUsed ?? yahoo,
-        fallbackUsed: (normalized.symbolUsed ?? yahoo) !== primaryYahoo,
-        name: normalized.name || display,
+        symbol: resolution.displaySymbol,
+        requestedSymbol: resolution.requestedSymbol,
+        canonicalSymbol: resolution.canonicalSymbol,
+        displaySymbol: resolution.displaySymbol,
+        providerSymbol: symbolUsed,
+        providerSymbolUsed: symbolUsed,
+        fallbackUsed,
+        name: normalized.name || resolution.name,
       assetType,
       price: round(norm.price),
       change: round(normalized.change !== null ? normalized.change / divisor : null),
       changePercent: round(normalized.changePercent),
-      currency: norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? defaultCurrency(display),
+      previousClose: null,
+      currency: norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? defaultCurrency(resolution.canonicalSymbol),
       signal: 'watch',
+      signalAvailable: true,
       confidence: null,
       riskLevel: riskFromVolatility(null, assetType),
       rsi: null,
       sma20: null,
       sma50: null,
+      sparkline: [],
+      history: [],
+      chartAvailable: false,
+      dataQuality: 'partial',
+      provider: 'Yahoo Finance',
+      providerStatus: providerStatusFor('partial', symbolUsed, fallbackUsed),
       source: 'Yahoo Finance',
       delayed: true,
       available: true,
+      unavailableReason: 'chart_history_unavailable',
+      lastUpdated: normalized.marketTime,
       updatedAt: normalized.marketTime,
     };
   }
 
   // Normalize price unit (Kuwait fils, London pence, …) and apply the same
   // divisor to the whole close series so indicators stay consistent.
-  const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: display, market: display });
+  const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: resolution.canonicalSymbol, market: resolution.canonicalSymbol });
   const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
   const price = norm.price;
-  const closes = chart.closes.map(value => value / divisor);
+  const closes = chart.closes.map(value => value / divisor).filter(value => Number.isFinite(value) && value > 0);
   const previousClose = chart.previousClose !== null ? chart.previousClose / divisor : null;
   const change = price !== null && previousClose !== null ? price - previousClose : null;
   const changePercent = change !== null && previousClose ? (change / previousClose) * 100 : null;
-  const currency = norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? defaultCurrency(display);
+  const currency = norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? defaultCurrency(resolution.canonicalSymbol);
+  const chartAvailable = closes.length >= 2;
+  const dataQuality: TraderDataQuality = chartAvailable ? 'delayed' : 'partial';
 
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
   const rsiValue = rsi(closes, 14);
-  const { signal, confidence } = deriveSignal(price, sma20, sma50, rsiValue);
+  const { signal, confidence } = deriveSignal({ price, closes, sma20, sma50, rsiValue, changePercent, partial: dataQuality === 'partial' });
   const riskLevel = riskFromVolatility(annualizedVolatility(closes), assetType);
+  const fallbackUsed = yahoo !== primaryYahoo;
+  const sparkline = closes.slice(-40).map(value => round(value)).filter((value): value is number => value !== null);
 
   return {
-    symbol: display,
+    symbol: resolution.displaySymbol,
+    requestedSymbol: resolution.requestedSymbol,
+    canonicalSymbol: resolution.canonicalSymbol,
+    displaySymbol: resolution.displaySymbol,
     providerSymbol: yahoo,
-    fallbackUsed: yahoo !== primaryYahoo,
-    name: display,
+    providerSymbolUsed: yahoo,
+    fallbackUsed,
+    name: resolution.name,
     assetType,
     price: round(price),
     change: round(change),
     changePercent: round(changePercent),
+    previousClose: round(previousClose),
     currency,
     signal,
+    signalAvailable: price !== null,
     confidence,
     riskLevel,
     rsi: rsiValue !== null ? Number(rsiValue.toFixed(1)) : null,
     sma20: sma20 !== null ? Number(sma20.toFixed(4)) : null,
     sma50: sma50 !== null ? Number(sma50.toFixed(4)) : null,
+    sparkline,
+    history: sparkline.map(close => ({ close })),
+    chartAvailable,
+    dataQuality,
+    provider: 'Yahoo Finance',
+    providerStatus: providerStatusFor(dataQuality === 'delayed' ? 'available' : 'partial', yahoo, fallbackUsed),
     source: 'Yahoo Finance',
     delayed: true,
     available: price !== null,
+    unavailableReason: chartAvailable ? undefined : 'chart_history_unavailable',
+    lastUpdated: chart.marketTime,
     updatedAt: chart.marketTime,
   };
 }

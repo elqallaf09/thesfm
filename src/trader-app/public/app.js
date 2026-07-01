@@ -103,7 +103,7 @@
   /* ─────────────────────────── State ─────────────────────────── */
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {},
+    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, commandCards: {},
     calendarRange: "30", calendarLoading: false,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
@@ -124,14 +124,16 @@
   }
 
   async function hydrate() {
-    const [rec, signals, signalAlerts, mk, news, followed] = await Promise.all([
+    const commandSymbols = dashboardSymbols();
+    const [rec, commandCards, signals, signalAlerts, mk, news, followed] = await Promise.all([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
+      get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`),
       get("/market/signals?limit=60"),
       get("/market/signal-alerts?limit=50"),
       get("/markets"), get("/market-news?limit=12"), get("/followed-trades")
     ]);
-    state.rec = rec; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
-    state.provider = rec.dataProvider || mk.dataProvider || news.dataProvider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
+    state.rec = rec; state.commandCards = commandCards; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
+    state.provider = commandCards.dataProvider || rec.dataProvider || mk.dataProvider || news.dataProvider || commandCards.provider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
     await loadCalendars(false);
   }
 
@@ -769,26 +771,47 @@
     return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(kicker)}</span><strong>${h(String(value))}</strong><small>${h(label || "غير متاح")}</small></article>`;
   }
   function marketLeadership(rec) {
+    const commandRec = mergeRecLists(legacyRecsFrom(state.commandCards), rec);
     return `<section class="panel market-leadership">
       <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(currentMarket().ar)}</span></div>
-      <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, rec))).join("")}</div>
+      <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, commandRec))).join("")}</div>
     </section>`;
   }
   function leadershipCard(symbol, asset) {
     const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
-    const display = symbol === "BTCUSD" ? "BTC/USD" : symbol;
-    const c = currency({ ...a, symbol });
+    const display = a.displaySymbol || displaySymbolFor(symbol);
+    const detailSymbol = a.canonicalSymbol || symbol;
+    const c = currency({ ...a, symbol: detailSymbol });
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
     const conf = num(a.confidence, a.score, a.aiConfidence);
-    const source = a.source || a.provider || (state.provider && (state.provider.active || state.provider.provider));
+    const source = providerName(a.provider || a.source || (state.provider && (state.provider.active || state.provider.provider)) || "Yahoo Finance");
+    const sig = (a.signalAvailable === false || (!a.signal && !a.recommendation && !a.action)) ? null : signal(a);
+    const quality = a.dataQuality || (p === null ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
-    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
-      <div class="asset-head">${logo({ ...a, symbol })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || "غير متاح")}</small></div></div>
-      <div class="leadership-price"><strong class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</span></div>
+    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
+      <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
+      <div class="leadership-price"><strong class="ltr">${h(p === null ? "السعر غير متاح" : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "التغير غير متاح" : change(chg))}</span></div>
       ${sparkline(a, chg)}
-      <div class="leadership-foot"><span>${conf === null ? "ثقة غير متاحة" : `ثقة ${Math.round(conf)}%`}</span><b>${h(source || "غير متاح")}</b></div>
+      <div class="leadership-foot">
+        <span class="signal-badge ${sig || "unavailable"}">${h(sig ? sigLabel(sig) : "إشارة غير متاحة")}</span>
+        <span class="quality-badge">${h(conf === null ? "الثقة غير متاحة" : `الثقة ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
+      </div>
+      <div class="leadership-provider-row">
+        <b>${h(source)}</b>
+        <span class="ltr">${h(a.providerSymbolUsed || a.providerSymbol || "--")}</span>
+        <span>${a.fallbackUsed === true ? "fallback: yes" : "fallback: no"}</span>
+        <span>${h(providerFlag("fmp"))}</span>
+        <span>${h(providerFlag("finnhub"))}</span>
+        <time class="ltr">${h(latinDateTime(a.lastUpdated || a.updatedAt))}</time>
+      </div>
     </button>`;
+  }
+  function providerFlag(key) {
+    const providers = state.providerStatus && state.providerStatus.providers;
+    const provider = providers && providers[key];
+    const label = key === "fmp" ? "FMP" : key === "finnhub" ? "Finnhub" : key;
+    return `${label}: ${provider && provider.configured ? "on" : "off"}`;
   }
   function opportunityHeatmap(rec) {
     const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
@@ -820,21 +843,48 @@
   }
   function findAssetForSymbol(symbol, list) {
     const aliases = symbolAliases(symbol);
-    return list.find(x => aliases.includes(sym(x.symbol || x.ticker || x.code))) || null;
+    return list.find(x => [x.symbol, x.displaySymbol, x.canonicalSymbol, x.providerSymbolUsed, x.providerSymbol, x.ticker, x.code].some(v => aliases.includes(sym(v)))) || null;
   }
   function symbolAliases(symbol) {
     const s = sym(symbol);
     const map = {
-      NAS100: ["NAS100", "NDX", "IXIC"],
-      US30: ["US30", "DJI"],
+      NAS100: ["NAS100", "NDX", "^NDX", "NQ=F", "IXIC"],
+      "^NDX": ["NAS100", "NDX", "^NDX", "NQ=F", "IXIC"],
+      US30: ["US30", "DJI", "^DJI", "YM=F"],
+      "^DJI": ["US30", "DJI", "^DJI", "YM=F"],
       BTCUSD: ["BTCUSD", "BTC-USD", "BTC/USD"],
-      XAUUSD: ["XAUUSD", "GC=F", "GOLD"]
+      "BTC-USD": ["BTCUSD", "BTC-USD", "BTC/USD"],
+      "BTC/USD": ["BTCUSD", "BTC-USD", "BTC/USD"],
+      XAUUSD: ["XAUUSD", "GC=F", "XAUUSD=X", "GOLD"],
+      "GC=F": ["XAUUSD", "GC=F", "XAUUSD=X", "GOLD"],
+      "XAUUSD=X": ["XAUUSD", "GC=F", "XAUUSD=X", "GOLD"],
+      ETHUSD: ["ETHUSD", "ETH-USD", "ETH/USD"],
+      "ETH-USD": ["ETHUSD", "ETH-USD", "ETH/USD"],
+      "ETH/USD": ["ETHUSD", "ETH-USD", "ETH/USD"],
+      XAGUSD: ["XAGUSD", "SI=F", "XAGUSD=X", "SILVER"],
+      "SI=F": ["XAGUSD", "SI=F", "XAGUSD=X", "SILVER"],
+      "XAGUSD=X": ["XAGUSD", "SI=F", "XAGUSD=X", "SILVER"],
+      OIL: ["OIL", "WTI", "USOIL", "CL=F"],
+      WTI: ["OIL", "WTI", "USOIL", "CL=F"],
+      USOIL: ["OIL", "WTI", "USOIL", "CL=F"],
+      "CL=F": ["OIL", "WTI", "USOIL", "CL=F"]
     };
     return map[s] || [s];
   }
+  function displaySymbolFor(symbol) {
+    const s = sym(symbol);
+    if (["BTCUSD", "BTC-USD", "BTC/USD"].includes(s)) return "BTC/USD";
+    if (["ETHUSD", "ETH-USD", "ETH/USD"].includes(s)) return "ETH/USD";
+    if (["NAS100", "^NDX", "NQ=F"].includes(s)) return "NAS100";
+    if (["US30", "^DJI", "YM=F"].includes(s)) return "US30";
+    if (["GC=F", "XAUUSD=X"].includes(s)) return "XAUUSD";
+    if (["SI=F", "XAGUSD=X"].includes(s)) return "XAGUSD";
+    if (["OIL", "USOIL", "CL=F"].includes(s)) return "Oil";
+    return symbol;
+  }
   function sparkline(asset, chg) {
     const series = arr(asset.history || asset.sparkline || asset.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
-    if (series.length < 2) return `<div class="leadership-sparkline empty">غير متاح</div>`;
+    if (series.length < 2) return `<div class="leadership-sparkline empty">الشارت غير متاح</div>`;
     const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1;
     const points = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(34 - (v - min) / rng * 30).toFixed(2)}`).join(" ");
     const tone = chg === null ? (series[series.length - 1] >= series[0] ? "up" : "down") : chg >= 0 ? "up" : "down";
