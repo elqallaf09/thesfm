@@ -539,6 +539,31 @@ function normalizeStored(row: StoredNotificationRow): SmartNotification {
   };
 }
 
+function normalizeSignalNotification(row: Record<string, any>): SmartNotification {
+  const action = String(row.action ?? '').toLowerCase();
+  const event = String(row.event ?? '').toLowerCase();
+  const severity: SmartNotificationSeverity =
+    event.includes('stop_loss') || event.includes('high_risk') ? 'danger'
+      : action === 'sell' ? 'warning'
+        : action === 'buy' ? 'success'
+          : 'info';
+  const symbol = String(row.symbol ?? '').trim().toUpperCase();
+  return {
+    id: `signal:${row.id}`,
+    title: String(row.title ?? (symbol || 'Market signal')),
+    message: String(row.message ?? ''),
+    type: 'market',
+    severity,
+    sourceModule: 'signal',
+    sourceId: String(row.signal_id ?? row.id ?? ''),
+    actionUrl: symbol ? `/market-analysis?symbol=${encodeURIComponent(symbol)}` : '/market-analysis',
+    status: row.read_at ? 'read' : 'unread',
+    dueDate: null,
+    createdAt: row.created_at ?? row.sent_at ?? null,
+    isDynamic: true,
+  };
+}
+
 function dynamicStorageKey(userId: string) {
   return `sfm_dynamic_notifications:${userId}`;
 }
@@ -615,6 +640,20 @@ export function NotificationsPage() {
       const storedError = storedResult.error?.message;
 
       const sourceResult = await loadUserDataTables(db, user.id, SOURCE_TABLES);
+      let signalNotifications: SmartNotification[] = [];
+      try {
+        const response = await fetch('/api/market/signal-alerts?limit=50', {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+        if (response.ok) {
+          const payload = await response.json();
+          const rows = Array.isArray(payload.notifications) ? payload.notifications : Array.isArray(payload.items) ? payload.items : [];
+          signalNotifications = rows.map((row: Record<string, any>) => normalizeSignalNotification(row));
+        }
+      } catch {
+        signalNotifications = [];
+      }
       const nextSourceData = {
         ...(sourceResult.records as NotificationSourceData),
         income: personalIncomeRows(sourceResult.records.income ?? []),
@@ -652,7 +691,10 @@ export function NotificationsPage() {
       }
 
       if (!cancelled) {
-        setStoredNotifications(((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored));
+        setStoredNotifications([
+          ...((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored),
+          ...signalNotifications,
+        ]);
         setSourceData(nextSourceData);
         setSourceDiagnostics(nextDiagnostics);
         setIsLoading(false);
@@ -672,7 +714,13 @@ export function NotificationsPage() {
 
   const notifications = useMemo(() => {
     const byId = new Map<string, SmartNotification>();
-    storedNotifications.forEach(notice => byId.set(`stored:${notice.id}`, notice));
+    storedNotifications.forEach(notice => {
+      if (notice.isDynamic && dynamicState.archived.includes(notice.id)) return;
+      const normalized = notice.isDynamic && dynamicState.read.includes(notice.id)
+        ? { ...notice, status: 'read' as const }
+        : notice;
+      byId.set(`stored:${notice.id}`, normalized);
+    });
     dynamicNotifications.forEach(notice => byId.set(notice.id, notice));
     return Array.from(byId.values()).sort((a, b) => {
       const severityRank = { danger: 0, warning: 1, info: 2, success: 3 } as Record<SmartNotificationSeverity, number>;
@@ -680,7 +728,7 @@ export function NotificationsPage() {
       const dueB = parseDate(b.dueDate ?? b.createdAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return severityRank[a.severity] - severityRank[b.severity] || dueA - dueB;
     });
-  }, [dynamicNotifications, storedNotifications]);
+  }, [dynamicNotifications, dynamicState.archived, dynamicState.read, storedNotifications]);
 
   const visibleNotifications = useMemo(() => notifications.filter(notice => filterNotification(notice, filter, query)), [filter, notifications, query]);
   const failedSourceEntries = useMemo(() => {
@@ -740,6 +788,17 @@ export function NotificationsPage() {
   }, [user]);
 
   const markAsRead = useCallback(async (notice: SmartNotification) => {
+    if (notice.sourceModule === 'signal') {
+      updateDynamicState(state => ({ ...state, read: Array.from(new Set([...state.read, notice.id])) }));
+      const rawId = notice.id.startsWith('signal:') ? notice.id.slice('signal:'.length) : notice.id;
+      await fetch('/api/market/signal-alerts/read', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [rawId] }),
+      }).catch(() => undefined);
+      return;
+    }
     if (notice.isDynamic) {
       updateDynamicState(state => ({ ...state, read: Array.from(new Set([...state.read, notice.id])) }));
       return;

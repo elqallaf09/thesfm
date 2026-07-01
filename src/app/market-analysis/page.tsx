@@ -8,6 +8,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
+import { MarketSignalMiniBadge, MarketSignalPanel } from '@/components/market/MarketSignalPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -19,6 +20,7 @@ import { generateEducationalMarketSummary, type EducationalSummaryLanguage } fro
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeEconomicEvents, type EconomicImpact, type NormalizedEconomicEvent } from '@/lib/market/normalizeEconomicEvents';
 import type { AssetProfileResponse } from '@/lib/market/fetchAssetProfile';
+import type { MarketSignal } from '@/lib/market/signalEngine';
 import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketResult, MarketSearchItem, MarketTrend } from '@/lib/market/marketService';
 import { marketSymbolSuggestions, normalizeAssetType, normalizeMarketSymbolInput, validateSymbol } from '@/lib/market/marketService';
 import { findKnownMarketSymbol, isKnownExactMarketSymbol } from '@/lib/market/knownSymbols';
@@ -230,6 +232,9 @@ export default function MarketAnalysisPage() {
   const searchRequestIdRef = useRef(0);
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [marketSignal, setMarketSignal] = useState<MarketSignal | null>(null);
+  const [marketSignalLoading, setMarketSignalLoading] = useState(false);
+  const [watchlistSignals, setWatchlistSignals] = useState<Record<string, MarketSignal>>({});
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1492,6 +1497,69 @@ export default function MarketAnalysisPage() {
   const selectedProviderMarketSymbol = selected?.providerSymbol ?? selectedAsset?.providerSymbol ?? null;
   const selectedMarketAssetType = selected?.assetType ?? selectedAsset?.assetType ?? null;
   const selectedCurrencyLabel = marketCurrencyLabel(selectedCurrency, lang);
+  const watchlistSignalKey = useMemo(() => watchlist
+    .map(item => item.symbol.trim().toUpperCase())
+    .filter(Boolean)
+    .sort()
+    .join(','), [watchlist]);
+
+  useEffect(() => {
+    const symbol = selectedMarketSymbol?.trim();
+    if (!symbol || !selectedMarketAssetType) {
+      setMarketSignal(null);
+      setMarketSignalLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setMarketSignalLoading(true);
+    const params = new URLSearchParams({ assetType: selectedMarketAssetType });
+    fetch(`/api/market/signals/${encodeURIComponent(symbol)}?${params.toString()}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (controller.signal.aborted) return;
+        setMarketSignal((payload?.signal ?? payload?.item ?? null) as MarketSignal | null);
+      })
+      .catch(fetchError => {
+        if (!isAbortLikeError(fetchError)) setMarketSignal(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMarketSignalLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [selectedMarketAssetType, selectedMarketSymbol]);
+
+  useEffect(() => {
+    if (!watchlistSignalKey) {
+      setWatchlistSignals({});
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      symbols: watchlistSignalKey,
+      limit: String(Math.max(1, watchlistSignalKey.split(',').length)),
+    });
+    fetch(`/api/market/signals?${params.toString()}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (controller.signal.aborted) return;
+        const signals = Array.isArray(payload?.signals) ? payload.signals as MarketSignal[] : [];
+        setWatchlistSignals(Object.fromEntries(signals.map(signal => [signal.symbol.toUpperCase(), signal])));
+      })
+      .catch(fetchError => {
+        if (!isAbortLikeError(fetchError)) setWatchlistSignals({});
+      });
+
+    return () => controller.abort();
+  }, [watchlistSignalKey]);
   const selectedPriceHistory = useMemo(
     () => chartHistory.length > 0 ? chartHistory : selected?.history ?? [],
     [chartHistory, selected?.history],
@@ -2408,6 +2476,8 @@ export default function MarketAnalysisPage() {
               <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
             </section>
 
+            <MarketSignalPanel signal={marketSignal} loading={marketSignalLoading} />
+
             <div className="analysis-columns">
               <div className="analysis-main-column">
                 <section className={`market-panel analysis-signal-overview ${decision?.tone ?? ''}`} aria-labelledby="analysis-signal-heading">
@@ -2845,6 +2915,7 @@ export default function MarketAnalysisPage() {
                       })}>
                         <AssetIdentity variant="badge" size="xs" symbol={asset.symbol} name={asset.name ?? asset.symbol} assetType={asset.assetType} exchange={asset.exchange ?? undefined} showName={false} />
                       </button>
+                      <MarketSignalMiniBadge signal={watchlistSignals[asset.symbol.toUpperCase()]} />
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
@@ -3060,6 +3131,7 @@ export default function MarketAnalysisPage() {
                       })}>
                         <AssetIdentity variant="badge" size="xs" symbol={asset.symbol} name={asset.name ?? asset.symbol} assetType={asset.assetType} exchange={asset.exchange ?? undefined} showName={false} />
                       </button>
+                      <MarketSignalMiniBadge signal={watchlistSignals[asset.symbol.toUpperCase()]} />
                       <button type="button" aria-label={t('delete')} onClick={() => void removeWatchlist(asset)}><Trash2 size={13} /></button>
                     </span>
                   ))}
