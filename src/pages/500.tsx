@@ -1,5 +1,3 @@
-import NextErrorComponent from 'next/error';
-
 export default function ServerErrorPage() {
-  return <NextErrorComponent statusCode={500} />;
+  return <h1>500</h1>;
 }
