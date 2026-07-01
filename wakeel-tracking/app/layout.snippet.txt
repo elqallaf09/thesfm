@@ -1,0 +1,17 @@
+// app/layout.snippet — كيف تركّب Analytics في app/layout.tsx الموجود عندك
+
+// 1) أضف الاستيراد بأعلى الملف:
+import Analytics from "@/components/Analytics";
+
+// 2) ضع <Analytics /> داخل <body> (قبل {children} أو بعده):
+//
+// export default function RootLayout({ children }) {
+//   return (
+//     <html lang="ar" dir="rtl">
+//       <body>
+//         <Analytics />
+//         {children}
+//       </body>
+//     </html>
+//   );
+// }

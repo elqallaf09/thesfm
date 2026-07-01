@@ -346,3 +346,4 @@ export function EuropeNewsPage() {
 }
 
 export default EuropeNewsPage;
+
