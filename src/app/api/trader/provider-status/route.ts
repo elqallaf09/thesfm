@@ -56,6 +56,13 @@ export async function GET() {
       },
     },
     // Keep compatibility with existing trader-app consumers.
+    features: status.features,
+    dataProvider: status.dataProvider,
+    providerFlags: {
+      fmpConfigured,
+      finnhubConfigured,
+      tradingEconomicsConfigured,
+    },
     legacy: {
       providers: {
         fmpConfigured,
@@ -67,6 +74,12 @@ export async function GET() {
     },
     generatedAt: now,
   };
+
+  console.info('[trader-provider-status] providers', {
+    fmp: response.providers.fmp,
+    finnhub: response.providers.finnhub,
+    tradingEconomics: response.providers.tradingEconomics,
+  });
 
   return NextResponse.json(response, {
     headers: { 'Cache-Control': 'private, no-store' },
