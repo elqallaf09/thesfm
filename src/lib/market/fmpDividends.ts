@@ -299,6 +299,11 @@ function logDiagnostics(scope: string, diagnostics: FmpDividendDiagnostics) {
   });
 }
 
+function shouldTryNextFmpEndpoint(attempt: FmpDividendDiagnostics['attempts'][number]) {
+  return attempt.normalizedResultCount === 0
+    && ['success', 'empty', 'provider_error'].includes(attempt.status);
+}
+
 export async function getFmpDividendCalendar({
   from,
   to,
@@ -341,7 +346,7 @@ export async function getFmpDividendCalendar({
       status: result.diagnostics.status === 'empty' && normalized.length > 0 ? 'success' as const : result.diagnostics.status,
     };
     attempts.push(attempt);
-    if (normalized.length > 0 || !['empty', 'provider_error'].includes(attempt.status)) {
+    if (!shouldTryNextFmpEndpoint(attempt)) {
       events = normalized;
       break;
     }
@@ -405,7 +410,7 @@ export async function getFmpDividendsForSymbol(symbol: string): Promise<FmpSymbo
       status: result.diagnostics.status === 'empty' && normalized.length > 0 ? 'success' as const : result.diagnostics.status,
     };
     attempts.push(attempt);
-    if (normalized.length > 0 || !['empty', 'provider_error'].includes(attempt.status)) {
+    if (!shouldTryNextFmpEndpoint(attempt)) {
       events = normalized;
       break;
     }
