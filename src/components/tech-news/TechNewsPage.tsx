@@ -14,11 +14,10 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { TechNewsCard } from '@/components/tech-news/TechNewsCard';
 import {
   TechNewsFilters,
@@ -725,8 +724,7 @@ export function TechNewsPage() {
   );
 
   return (
-    <div className={`tech-news-shell ${getNewsPageBackground('tech')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="tech" className="tech-news-shell" dir={dir}>
       <main className="tech-news-main">
         <TechNewsHeader
           title={ui.title}
@@ -1781,7 +1779,7 @@ export function TechNewsPage() {
           .spinning{animation:none}
         }
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

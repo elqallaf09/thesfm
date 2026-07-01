@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Newspaper, RefreshCcw, Search } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import { EUROPE_MARKETS, getEuropeMarket, type EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import type { EuropeNewsItem } from '@/lib/europe/parseEuropeRssFeeds';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { EuropeMarketSelector } from '@/components/europe-news/EuropeMarketSelector';
 import { EuropeMarketSummary } from '@/components/europe-news/EuropeMarketSummary';
 import { EuropeNewsCard } from '@/components/europe-news/EuropeNewsCard';
@@ -160,8 +159,7 @@ export function EuropeNewsPage() {
   const searchPlaceholder = t('europe_news_search_market_placeholder').replace('{market}', marketLabels[selectedMarket]);
 
   return (
-    <div className={`europe-news-shell ${getNewsPageBackground('europe')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="europe" className="europe-news-shell" dir={dir}>
       <main className="europe-news-main">
         <EuropeTickerStrip
           marketLabels={marketLabels}
@@ -341,7 +339,7 @@ export function EuropeNewsPage() {
         @media(max-width:720px){.europe-news-main{padding-inline:14px}.europe-news-header{display:grid}.europe-news-header-actions{justify-content:flex-start}.europe-news-title-icon{width:50px;height:50px}.europe-news-header h1{font-size:29px}.europe-news-market-grid,.europe-news-summary{grid-template-columns:1fr}.europe-news-summary-market{justify-items:start;min-width:0}.europe-news-summary-market p{text-align:start}.europe-news-card,.europe-news-search{border-radius:18px}.europe-news-meta{display:grid;gap:8px}.europe-ticker-strip{margin-inline:-2px}.europe-ticker-viewport{overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}.europe-ticker-item span{max-width:210px}}
         @media(prefers-reduced-motion:reduce){.europe-ticker-viewport{overflow-x:auto;scrollbar-width:thin}.europe-ticker-track{animation-duration:60s}.europe-ticker-set[aria-hidden="true"]{display:none}}
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

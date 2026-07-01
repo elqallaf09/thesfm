@@ -5492,3 +5492,349 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   --news-glow-a: rgba(22, 163, 74, 0.14);
   --news-glow-b: rgba(245, 185, 66, 0.12);
 }
+
+/* Unified THE SFM news/category page shell */
+.news-page-shell[data-news-page-shell="true"] {
+  --news-bg: #F5FBFF;
+  --news-bg-soft: #ECF8F7;
+  --news-card: #FFFFFF;
+  --news-card-strong: #F8FCFF;
+  --news-border: #DCEAF2;
+  --news-text: #061B33;
+  --news-muted: #6B7C91;
+  --news-accent: #14B8A6;
+  --news-shell-max: 1280px;
+  --news-shell-gutter: clamp(18px, 2.4vw, 32px);
+  --news-section-gap: clamp(16px, 1.8vw, 24px);
+  --news-radius: 22px;
+  --news-shadow: 0 20px 54px rgba(3, 18, 37, 0.08);
+  min-height: 100dvh;
+  color: var(--news-text);
+  font-family: Tajawal, Arial, sans-serif;
+  overflow-x: clip;
+}
+
+.news-page-shell[data-news-page-shell="true"][data-news-wide="true"] {
+  --news-shell-max: 1360px;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] {
+  --news-bg: #06111F;
+  --news-bg-soft: #0A1728;
+  --news-card: #0F2238;
+  --news-card-strong: #15314F;
+  --news-border: #1E3A5F;
+  --news-text: #F3F7FB;
+  --news-muted: #B8C6D8;
+  --news-accent: #22D3EE;
+  --news-shadow: 0 22px 58px rgba(0, 0, 0, 0.28);
+}
+
+.news-page-shell[data-news-category="tech"] { --news-accent: #0EA5E9; }
+.news-page-shell[data-news-category="crypto"] { --news-accent: #06B6D4; }
+.news-page-shell[data-news-category="banking"] { --news-accent: #D4A037; }
+.news-page-shell[data-news-category="energy"] { --news-accent: #16A34A; }
+.news-page-shell[data-news-category="gulf"] { --news-accent: #0F766E; }
+.news-page-shell[data-news-category="europe"] { --news-accent: #2563EB; }
+.news-page-shell[data-news-category="sharia"] { --news-accent: #0D9488; }
+.news-page-shell[data-news-category="growth"] { --news-accent: #22C55E; }
+.news-page-shell[data-news-category="dividend"],
+.news-page-shell[data-news-category="high-income"] { --news-accent: #16A34A; }
+.news-page-shell[data-news-category="defensive"] { --news-accent: #2563EB; }
+.news-page-shell[data-news-category="cyclical"] { --news-accent: #F97316; }
+.news-page-shell[data-news-category="healthcare"] { --news-accent: #0EA5E9; }
+.news-page-shell[data-news-category="food"] { --news-accent: #65A30D; }
+
+.news-page-shell[data-news-page-shell="true"],
+.news-page-shell[data-news-page-shell="true"] * {
+  box-sizing: border-box;
+}
+
+.news-page-shell[data-news-page-shell="true"] > main {
+  position: relative;
+  z-index: 1;
+  min-width: 0 !important;
+  overflow-x: clip !important;
+}
+
+.news-page-shell[data-news-page-shell="true"] > main > *,
+.news-page-shell[data-news-page-shell="true"] > main > .container,
+.news-page-shell[data-news-page-shell="true"] > main > .def-container,
+.news-page-shell[data-news-page-shell="true"] > main > .energyContainer,
+.news-page-shell[data-news-page-shell="true"] > main > .bankContainer,
+.news-page-shell[data-news-page-shell="true"] > main.stock-category-main > div:first-child {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+}
+
+@media (min-width: 1025px) {
+  .news-page-shell[data-news-page-shell="true"] > main {
+    --news-sidebar-width: var(--sidebar-w, 230px);
+    --news-shell-available: calc(100vw - var(--news-sidebar-width));
+    --news-shell-width: min(var(--news-shell-max), calc(var(--news-shell-available) - (var(--news-shell-gutter) * 2)));
+    --news-shell-side-gap: max(var(--news-shell-gutter), calc((var(--news-shell-available) - var(--news-shell-width)) / 2));
+    width: var(--news-shell-width) !important;
+    max-width: var(--news-shell-width) !important;
+    margin-inline-start: calc(var(--news-sidebar-width) + var(--news-shell-side-gap)) !important;
+    margin-inline-end: var(--news-shell-side-gap) !important;
+    padding: 24px 0 48px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .news-page-shell[data-news-page-shell="true"] > main {
+    width: min(100%, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin-inline: auto !important;
+    padding: 16px 0 44px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .news-page-shell[data-news-page-shell="true"] > main {
+    width: min(100%, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+    padding-block: 12px 36px !important;
+  }
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .crypto-hero,
+  .gulf-news-header,
+  .europe-news-header,
+  .bankHero,
+  .energyHero,
+  .def-hero,
+  .hero,
+  .hero-copy,
+  .hero-panel,
+  .news-hero
+) {
+  min-width: 0;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-ticker-strip,
+  .crypto-ticker-panel,
+  .gulf-ticker-strip,
+  .europe-ticker-strip,
+  .bankTickerPanel,
+  .energyTickerPanel,
+  .def-ticker-panel,
+  .ticker-panel,
+  .news-ticker-section
+) {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-ticker-strip,
+  .crypto-ticker-panel,
+  .gulf-ticker-strip,
+  .europe-ticker-strip,
+  .bankPanel.tickerPanel,
+  .bankTickerPanel,
+  .energyTickerPanel,
+  .def-ticker-panel,
+  .ticker-panel,
+  .ticker-strip,
+  .news-ticker-section
+) {
+  border-color: var(--news-border) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 252, 255, 0.9)) !important;
+  box-shadow: var(--news-shadow) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-ticker-strip,
+  .crypto-ticker-panel,
+  .gulf-ticker-strip,
+  .europe-ticker-strip,
+  .bankPanel.tickerPanel,
+  .bankTickerPanel,
+  .energyTickerPanel,
+  .def-ticker-panel,
+  .ticker-panel,
+  .ticker-strip,
+  .news-ticker-section
+) {
+  border-color: var(--news-border) !important;
+  background: linear-gradient(180deg, rgba(15, 34, 56, 0.94), rgba(10, 23, 40, 0.94)) !important;
+  box-shadow: var(--news-shadow) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .sfm-stock-ticker-card,
+  .bankTickerItem,
+  .energyTickerItem,
+  .tech-ticker-item,
+  .def-ticker-item,
+  .ticker-item
+) {
+  border-color: var(--news-border) !important;
+  background: linear-gradient(180deg, var(--news-card), var(--news-card-strong)) !important;
+  color: var(--news-text) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .sfm-stock-ticker-title strong,
+  .sfm-stock-ticker-values b,
+  .bankTickerItem strong,
+  .bankTickerItem b,
+  .energyTickerItem strong,
+  .energyTickerItem b,
+  .tech-ticker-item strong,
+  .def-ticker-item strong,
+  .ticker-item strong
+) {
+  color: var(--news-text) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .sfm-stock-ticker-title span,
+  .sfm-stock-ticker-foot small,
+  .bankTickerItem span,
+  .bankTickerItem small,
+  .energyTickerItem span,
+  .energyTickerItem small,
+  .tech-ticker-item span,
+  .def-ticker-item span,
+  .ticker-item span,
+  .ticker-item small
+) {
+  color: var(--news-muted) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-ticker-delay-badge,
+  .crypto-ticker-status,
+  .crypto-section-head span,
+  .sfm-stock-ticker-change.is-neutral
+) {
+  border-color: rgba(34, 211, 238, 0.22) !important;
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #BAE6FD !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .sfm-stock-ticker-empty,
+  .bankSkeletonCard,
+  .energyTickerSkeleton,
+  .ticker-skeleton,
+  .ticker-loading
+) {
+  border-color: var(--news-border) !important;
+  background: rgba(21, 49, 79, 0.72) !important;
+  color: var(--news-muted) !important;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-layout,
+  .crypto-content-grid,
+  .gulf-news-content-layout,
+  .europe-news-content-layout,
+  .bankContentGrid,
+  .workspace-grid,
+  .featured-layout,
+  .overview-grid,
+  .news-grid,
+  .news-grid-layout,
+  .news-grid-section,
+  .news-grid
+) {
+  min-width: 0;
+  align-items: start;
+  gap: var(--news-section-gap);
+}
+
+@media (min-width: 1181px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-layout,
+    .crypto-content-grid,
+    .gulf-news-content-layout,
+    .europe-news-content-layout,
+    .bankContentGrid
+  ) {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.32fr) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-layout,
+    .crypto-content-grid,
+    .gulf-news-content-layout,
+    .europe-news-content-layout,
+    .bankContentGrid
+  ) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-side-panel,
+    .crypto-sidebar,
+    .gulf-news-side-panel,
+    .europe-news-side-panel,
+    .bankSideRail
+  ) {
+    position: static !important;
+    top: auto !important;
+  }
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-disclaimer,
+  .crypto-disclaimer,
+  .gulf-news-disclaimer,
+  .europe-news-disclaimer,
+  .bankDisclaimer,
+  .energyDisclaimer,
+  .def-disclaimer,
+  .footer-note,
+  .disclaimerPanel,
+  .news-disclaimer
+) {
+  max-width: 100%;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(input, select, textarea, button) {
+  letter-spacing: 0;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-card,
+  .crypto-news-card,
+  .crypto-compact-row,
+  .gulf-news-card,
+  .europe-news-card,
+  .bankNewsCard,
+  .energyNewsCard,
+  .def-news-card,
+  .card,
+  article
+) {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-feed.grid,
+    .crypto-card-grid,
+    .gulf-news-grid,
+    .europe-news-grid,
+    .def-news-grid,
+    .news-grid,
+    .stock-grid,
+    .featured-grid,
+    .sector-grid,
+    .summary-grid,
+    .movers-grid
+  ) {
+    grid-template-columns: 1fr !important;
+  }
+}

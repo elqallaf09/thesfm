@@ -31,10 +31,9 @@ import {
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type DividendTab = 'overview' | 'explorer' | 'featured' | 'calendar' | 'news' | 'education';
@@ -1646,8 +1645,7 @@ export function DividendStocksNewsPage() {
   const hasCalendarFilters = Boolean(calendarRange !== '90' || calendarMarket !== 'all' || calendarSymbol !== 'all' || calendarType !== 'all');
 
   return (
-    <div className={`page ${getNewsPageBackground('high-income')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="high-income" className="page" dir={dir} wide>
       <main className="main">
         <div className="container">
           <header className="hero">
@@ -1835,7 +1833,7 @@ export function DividendStocksNewsPage() {
         />
       ) : null}
       <DividendStyles />
-    </div>
+    </NewsPageShell>
   );
 }
 

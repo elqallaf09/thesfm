@@ -35,12 +35,11 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import Sidebar from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import styles from './ShariahStocksNewsPage.module.css';
 
 type LangCode = 'ar' | 'en' | 'fr';
@@ -1117,8 +1116,7 @@ export function ShariahStocksNewsPage() {
   const unavailableLabel = locale === 'ar' ? 'غير متاح' : locale === 'fr' ? 'Indisponible' : 'Unavailable';
 
   return (
-    <div className={`${styles.page} ${getNewsPageBackground('sharia')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="sharia" className={styles.page} dir={dir} wide>
       <main id="main-content" className={styles.main}>
         <div className={styles.container}>
           <ShariaStocksHeader
@@ -1313,7 +1311,7 @@ export function ShariahStocksNewsPage() {
         }}
         marketAnalysisHref={marketAnalysisHref}
       />
-    </div>
+    </NewsPageShell>
   );
 }
 

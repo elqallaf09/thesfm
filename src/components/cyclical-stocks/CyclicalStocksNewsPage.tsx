@@ -32,10 +32,9 @@ import {
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type CyclicalTab = 'overview' | 'stocks' | 'news' | 'sectors' | 'economic-cycle';
@@ -2439,8 +2438,7 @@ export function CyclicalStocksNewsPage() {
   const hasActiveNewsFilters = newsSearch.trim() || newsSectorValue !== 'all' || newsSourceValue !== 'all' || newsSymbolValue !== 'all' || newsTimeValue !== 'all' || newsSortValue !== 'latest';
 
   return (
-    <div className={`page ${getNewsPageBackground('cyclical')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="cyclical" className="page" dir={dir} wide>
       <main id="main-content" className="main">
         <div className="container">
           <header className="hero">
@@ -4334,7 +4332,7 @@ export function CyclicalStocksNewsPage() {
           }
         }
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

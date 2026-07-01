@@ -14,12 +14,11 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import { GULF_MARKETS, getGulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 import type { GulfNewsItem } from '@/lib/gulf/parseRssFeeds';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { GulfExchangeSelector } from '@/components/gulf-news/GulfExchangeSelector';
 import { GulfMarketSummary } from '@/components/gulf-news/GulfMarketSummary';
 import { GulfNewsCard } from '@/components/gulf-news/GulfNewsCard';
@@ -374,8 +373,7 @@ export function GulfNewsPage() {
   const searchPlaceholder = t('gulf_news_search_market_placeholder').replace('{market}', marketLabels[selectedMarket]);
 
   return (
-    <div className={`gulf-news-shell ${getNewsPageBackground('gulf')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="gulf" className="gulf-news-shell" dir={dir}>
       <main className="gulf-news-main">
         <GulfTickerStrip
           labels={marketLabels}
@@ -809,7 +807,7 @@ export function GulfNewsPage() {
         @media(max-width:720px){.gulf-news-main{padding-top:92px;padding-inline:12px;overflow-x:hidden}.gulf-news-header{padding:18px;border-radius:20px}.gulf-news-title-row{min-width:0}.gulf-news-header-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;justify-content:stretch}.gulf-news-icon-btn{width:100%;min-height:44px}.gulf-news-status-bar{justify-content:flex-start}.gulf-news-exchange-grid{display:flex;overflow-x:auto;scroll-padding-inline:12px}.gulf-news-exchange-grid button{min-width:min(82vw,260px);min-height:112px}.gulf-news-pulse-grid{grid-template-columns:1fr}.gulf-news-summary{padding:16px}.gulf-news-summary-identity{align-items:flex-start}.gulf-news-summary-code{width:52px;height:52px}.gulf-news-results-toolbar h2{font-size:18px}.gulf-news-card{padding:15px}.gulf-news-card h2{font-size:17px;overflow-wrap:anywhere}.gulf-news-card p{font-size:13px}.gulf-news-meta{display:grid}.gulf-news-read-link{justify-content:center;min-height:44px}.gulf-news-filter-row select{min-height:44px}.gulf-news-state{padding:22px 14px;border-radius:20px}.gulf-news-state button{min-height:44px}.gulf-news-view-toggle button{min-height:44px}.gulf-ticker-item span{max-width:68vw;overflow:hidden;text-overflow:ellipsis}.gulf-news-market-pulse{padding:14px;border-radius:20px}}
         @media(prefers-reduced-motion:reduce){.gulf-ticker-viewport{overflow-x:auto;scrollbar-width:thin}.gulf-ticker-track{animation-duration:60s}.gulf-ticker-set[aria-hidden="true"]{display:none}}
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

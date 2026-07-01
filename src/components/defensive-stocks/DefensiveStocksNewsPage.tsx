@@ -28,11 +28,10 @@ import {
 } from 'lucide-react';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type HubTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -1491,8 +1490,7 @@ export function DefensiveStocksNewsPage() {
   const moversSource = movers?.ok ? `${movers.source} · ${formatDateTime(movers.updated_at, locale)}` : text.delayed;
 
   return (
-    <div className={`defensive-hub ${getNewsPageBackground('defensive')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="defensive" className="defensive-hub" dir={dir} wide>
       <main className="def-main">
         <div className="def-container">
           <DefensiveTicker items={tickerItems} loading={loading} error={marketError} lang={activeLang} locale={locale} text={text} />
@@ -1795,7 +1793,7 @@ export function DefensiveStocksNewsPage() {
           .spinning{animation:none}
         }
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

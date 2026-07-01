@@ -38,11 +38,10 @@ import {
 } from 'react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type Tone = 'positive' | 'negative' | 'neutral' | 'warning';
@@ -2166,8 +2165,7 @@ export function BankNewsPage() {
   const lastStockUpdate = newestTimestamp([marketUpdatedAt, ...snapshotItems.map(item => item.lastUpdated)]);
 
   return (
-    <div className={`bankingShell ${getNewsPageBackground('banking')}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category="banking" className="bankingShell" dir={dir} wide>
       <main id="main-content" className="bankingWorkspace">
         <BankingHeader
           text={text}
@@ -3654,7 +3652,7 @@ export function BankNewsPage() {
           }
         }
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 

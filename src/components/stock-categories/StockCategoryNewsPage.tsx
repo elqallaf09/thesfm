@@ -19,7 +19,7 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
+import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { CategoryStockTicker } from '@/components/stock-categories/CategoryStockTicker';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -27,7 +27,6 @@ import { getStockCategoryConfig, type StockCategoryFilterKey, type StockCategory
 import type { StockCategoryNewsItem, StockCategoryNewsPayload } from '@/lib/market/fetchStockCategoryNews';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
-import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import type { TR } from '@/lib/translations';
 
 type NewsApiResponse = StockCategoryNewsPayload | { success: false; error?: string; reason?: string };
@@ -535,8 +534,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
   if (!config) {
     return (
-      <div className={`min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white ${getNewsPageBackground('defensive')}`} dir={dir}>
-        <Sidebar />
+      <NewsPageShell category="defensive" className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
         <main className="stock-category-main">
           <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
             <AlertTriangle className="mx-auto mb-3 text-rose-500" />
@@ -547,13 +545,12 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;padding:6rem 1rem 2.5rem}
           @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
         `}</style>
-      </div>
+      </NewsPageShell>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white ${getNewsPageBackground(config.id)}`} dir={dir}>
-      <Sidebar />
+    <NewsPageShell category={config.id} className="min-h-screen text-slate-950 dark:text-white" dir={dir} wide>
       <main className="stock-category-main">
         <div className="mx-auto grid w-full max-w-[1440px] gap-6">
           <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
@@ -1099,7 +1096,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
         @media(min-width:640px){.stock-category-main{padding-inline:1.5rem}}
         @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
       `}</style>
-    </div>
+    </NewsPageShell>
   );
 }
 
