@@ -1,11 +1,11 @@
-const CACHE_NAME = "the-sfm-trader-v20260701-trade-performance-1";
+const CACHE_NAME = "the-sfm-trader-v20260701-cinematic-3d-1";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/styles.css?v=20260630-cinema",
   "/desktop-balance.css?v=20260630-cinema",
-  "/cinema.css?v=20260701-trade-performance-1",
+  "/cinema.css?v=20260701-cinematic-3d-1",
   "/app.js?v=20260701-trade-performance-1",
   "/detail.js",
   "/manifest.webmanifest",
