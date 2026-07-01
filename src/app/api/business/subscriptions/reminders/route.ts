@@ -845,7 +845,7 @@ async function sendRecipientReminderEmail(input: {
   fromName: string;
   force?: boolean;
   runToken?: string;
-}) {
+}): Promise<ReminderSendResult> {
   const recipientValidation = validateReminderRecipientEmail(input.recipientEmail, input.recipientType);
   const subject = String(input.template?.subject ?? '').trim();
   const text = String(input.template?.text ?? '').trim();
@@ -1628,7 +1628,7 @@ export async function GET(request: NextRequest) {
         subscriberName: context.subscriber.name,
         businessName: context.subscriber.businessName,
       });
-      const customerSend = await sendRecipientReminderEmail({
+      const customerSend: ReminderSendResult = await sendRecipientReminderEmail({
         db,
         candidate,
         context,
@@ -1642,8 +1642,8 @@ export async function GET(request: NextRequest) {
       const customerResult = emailResultForRecipient(customerSend);
       results.push(customerResult);
       const customerSendStatus: ReminderEmailStatus = customerSend.status;
-      const customerFailureReason = (customerSend as RecipientSendResult).failureReason ?? null;
-      const customerError = (customerSend as RecipientSendResult).error ?? null;
+      const customerFailureReason = customerSend.failureReason ?? null;
+      const customerError = customerSend.status !== 'sent' ? customerSend.error ?? null : null;
       applyRecipientOutcome(runSummary, {
         recipientType: 'customer',
         status: customerSendStatus,
@@ -1681,7 +1681,7 @@ export async function GET(request: NextRequest) {
         customerEmailStatus: customerSend.status,
         customerFailureReason: customerSend.failureReason,
       });
-      const subscriberSend = await sendRecipientReminderEmail({
+      const subscriberSend: ReminderSendResult = await sendRecipientReminderEmail({
         db,
         candidate,
         context,
@@ -1695,8 +1695,8 @@ export async function GET(request: NextRequest) {
       const subscriberResult = emailResultForRecipient(subscriberSend);
       results.push(subscriberResult);
       const subscriberSendStatus: ReminderEmailStatus = subscriberSend.status;
-      const subscriberFailureReason = (subscriberSend as RecipientSendResult).failureReason ?? null;
-      const subscriberError = (subscriberSend as RecipientSendResult).error ?? null;
+      const subscriberFailureReason = subscriberSend.failureReason ?? null;
+      const subscriberError = subscriberSend.status !== 'sent' ? subscriberSend.error ?? null : null;
       applyRecipientOutcome(runSummary, {
         recipientType: 'subscriber',
         status: subscriberSendStatus,
