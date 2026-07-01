@@ -62,6 +62,15 @@ add column if not exists created_at timestamptz not null default now();
 alter table public.instagram_automation_posts
 add column if not exists updated_at timestamptz not null default now();
 
+alter table public.instagram_automation_events
+add column if not exists actor_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.instagram_automation_events
+alter column actor_user_id set default auth.uid();
+
+alter table public.instagram_automation_events
+add column if not exists created_at timestamptz not null default now();
+
 create index if not exists instagram_automation_posts_status_created_idx
   on public.instagram_automation_posts(status, created_at desc);
 create index if not exists instagram_automation_posts_created_by_idx
@@ -70,7 +79,7 @@ create index if not exists instagram_automation_posts_content_type_idx
   on public.instagram_automation_posts(content_type, created_at desc);
 create index if not exists instagram_automation_events_post_created_idx
   on public.instagram_automation_events(post_id, created_at desc);
-create index if not exists instagram_automation_events_actor_created_idx
+create index if not exists instagram_automation_events_actor_user_idx
   on public.instagram_automation_events(actor_user_id, created_at desc);
 
 create or replace function public.set_instagram_automation_updated_at()
