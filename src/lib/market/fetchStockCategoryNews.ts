@@ -24,6 +24,7 @@ export type StockCategoryNewsItem = {
   sector: StockCategoryFilterKey;
   sectors: StockCategoryFilterKey[];
   source: string;
+  provider: 'Finnhub' | 'Yahoo Finance' | 'Google News';
   datetime: number | null;
   publishedAt: string;
   url: string;
@@ -214,6 +215,7 @@ function mapNewsItem(
     sector: stock.filter,
     sectors,
     source: String(item.source ?? 'Finnhub').trim() || 'Finnhub',
+    provider: 'Finnhub',
     datetime: typeof item.datetime === 'number' ? item.datetime : null,
     publishedAt,
     url,
@@ -310,6 +312,7 @@ function parseRssItems(config: StockCategoryConfig, feed: { source: string; url:
       sector: matchedStock?.filter ?? fallbackFilter,
       sectors,
       source: feed.source,
+      provider: feed.source === 'Yahoo Finance' ? 'Yahoo Finance' : 'Google News',
       datetime: Math.floor(new Date(publishedAt).getTime() / 1000),
       publishedAt,
       url,

@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       ticker: item.ticker,
       sector: item.sector,
       sectors: item.sectors,
+      provider: item.provider,
       price: item.price,
       change: item.change,
       changePercent: item.changePercent,

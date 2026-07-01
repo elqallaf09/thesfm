@@ -39,6 +39,8 @@ type LangCode = 'ar' | 'en' | 'fr';
 type DividendTab = 'overview' | 'explorer' | 'featured' | 'calendar' | 'news' | 'education';
 type SectorId = 'all' | 'consumer_goods' | 'energy' | 'banks' | 'telecom' | 'utilities' | 'reits' | 'healthcare' | 'industrials' | 'technology';
 type NewsTimeFilter = 'all' | 'day' | 'week' | 'month';
+type NewsImpactFilter = 'all' | 'high' | 'medium' | 'low' | 'unavailable';
+type NewsTypeFilter = 'all' | 'dividends' | 'high_yield' | 'earnings' | 'fixed_income' | 'defensive' | 'telecom' | 'utilities' | 'energy' | 'reits' | 'consumer_staples';
 type NewsSort = 'latest' | 'oldest' | 'strongestMove';
 type StockSort = 'quality' | 'yield' | 'payout' | 'exDate' | 'name' | 'change';
 type CalendarRange = '30' | '90' | 'all';
@@ -59,6 +61,9 @@ type DividendTickerItem = {
   annualDividend: number | null;
   exDividendDate: string | null;
   paymentDate: string | null;
+  recordDate: string | null;
+  declarationDate: string | null;
+  dividendDataLabel?: 'upcoming' | 'latestHistorical' | null;
   dividendMetricSource: string | null;
   source: string;
   delayed: boolean;
@@ -100,6 +105,7 @@ type DividendNewsItem = {
   change?: number | null;
   changePercent?: number | null;
   priceSource?: string | null;
+  provider?: string | null;
   delayed?: boolean;
 };
 
@@ -167,7 +173,7 @@ type DividendCalendarProviderStatus = {
 };
 
 type DividendCalendarResponse = {
-  status: 'success' | 'not_configured' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'provider_error' | 'invalid_request';
+  status: 'success' | 'not_configured' | 'not_entitled' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'provider_error' | 'invalid_request';
   provider: 'finnhub' | 'fmp' | null;
   providerStatus?: DividendCalendarProviderStatus;
   configured: boolean;
@@ -181,6 +187,8 @@ type DividendCalendarResponse = {
   code: string | null;
   ok: boolean;
   success: boolean;
+  lastSuccessfulUpdate?: string | null;
+  updated_at?: string | null;
   availableFilters?: {
     markets?: string[];
     symbols?: string[];
@@ -195,9 +203,9 @@ type DividendCalendarResponse = {
 
 const COPY = {
   ar: {
-    badge: 'مركز أبحاث الدخل',
-    title: 'مركز أسهم التوزيعات',
-    subtitle: 'اكتشف وقارن أسهم الشركات التي توزع أرباحاً دورية، وتابع مواعيد الاستحقاق والدفع وأهم الأخبار المرتبطة بها.',
+    badge: 'أسهم الدخل المرتفع',
+    title: 'أخبار أسهم الدخل المرتفع',
+    subtitle: 'تابع أخبار وأسعار الشركات ذات التوزيعات والعوائد المرتفعة من مزودي البيانات الحقيقيين، مع عرض واضح عند نقص البيانات.',
     refresh: 'تحديث البيانات',
     refreshing: 'جارٍ التحديث...',
     connected: 'بيانات السوق متصلة',
@@ -212,32 +220,39 @@ const COPY = {
     tabs: {
       overview: 'نظرة عامة',
       explorer: 'مستكشف الأسهم',
-      featured: 'أسهم توزيعات مميزة',
+      featured: 'أسهم دخل مميزة',
       calendar: 'تقويم التوزيعات',
       news: 'الأخبار',
       education: 'الدليل التعليمي',
     },
-    snapshotTitle: 'لمحة سوق التوزيعات',
+    tickerTitle: 'شريط أسهم الدخل المرتفع',
+    tickerDescription: 'رموز أسهم الدخل المرتفع المطلوبة مع عرض غير متاح عند غياب السعر.',
+    snapshotTitle: 'ملخص أسهم الدخل المرتفع',
+    snapshotDescription: 'ملخص سريع للتغطية والعائد وجودة البيانات المتاحة من المزود.',
     trackedCompanies: 'شركات مراقبة',
     averageYield: 'متوسط العائد',
     upcomingEvents: 'أحداث قادمة',
     averagePayout: 'متوسط نسبة الدفع',
     marketsCovered: 'الأسواق المغطاة',
     dataQuality: 'جودة البيانات',
-    explorerTitle: 'مستكشف أسهم التوزيعات',
-    explorerDescription: 'جدول مقارنة عملي لأسهم التوزيعات المتاحة من مزود البيانات، مع إظهار القيم غير المتوفرة بوضوح.',
-    featuredTitle: 'أسهم توزيعات مميزة',
+    explorerTitle: 'مستكشف أسهم الدخل المرتفع',
+    explorerDescription: 'جدول مقارنة عملي لأسهم الدخل المرتفع المتاحة من مزود البيانات، مع إظهار القيم غير المتوفرة بوضوح.',
+    featuredTitle: 'أسهم دخل مرتفع مميزة',
     featuredDescription: 'أسهم بارزة وفق معايير تحليلية تعتمد فقط على العائد ونسبة الدفع والتواريخ المتوفرة من المزود.',
     calendarTitle: 'تقويم التوزيعات',
     calendarDescription: 'تمييز واضح بين تاريخ الاستحقاق وتاريخ الدفع عند توفرهما من المصدر.',
-    newsTitle: 'أخبار التوزيعات',
-    newsDescription: 'أخبار مرتبطة بتوزيعات الشركات، الأرباح، التدفقات النقدية، وخفض أو رفع التوزيعات.',
+    newsTitle: 'أخبار أسهم الدخل المرتفع',
+    newsDescription: 'أخبار مرتبطة بالتوزيعات، العوائد المرتفعة، أرباح الشركات، القطاعات الدفاعية، الاتصالات، المرافق، الطاقة، وREITs.',
+    newsFiltersTitle: 'البحث والتصفية',
+    newsFiltersDescription: 'صفّ الأخبار حسب البحث، الشركة أو الرمز، القطاع، المصدر، التأثير، التاريخ، ونوع الخبر.',
+    newsResultsTitle: 'نتائج الأخبار',
+    newsResultsDescription: 'بطاقات أخبار مدمجة من مزودي البيانات الحقيقيين فقط.',
     educationTitle: 'الدليل التعليمي للتوزيعات',
     educationDescription: 'تعلم المفاهيم الأساسية في بطاقات مختصرة قابلة للفتح عند الحاجة.',
     strategyTitle: 'نمو التوزيعات مقابل الدخل المرتفع',
     strategyDescription: 'مقارنة تعليمية تساعد على فصل استراتيجية الدخل الحالي عن نمو الدخل المستقبلي.',
     searchPlaceholder: 'ابحث عن شركة أو رمز...',
-    newsSearchPlaceholder: 'ابحث في أخبار التوزيعات...',
+    newsSearchPlaceholder: 'ابحث في أخبار أسهم الدخل المرتفع...',
     search: 'البحث',
     sector: 'القطاع',
     allSectors: 'كل القطاعات',
@@ -298,6 +313,17 @@ const COPY = {
     declarationDate: 'تاريخ الإعلان',
     dividendAmount: 'قيمة التوزيع',
     providerStatus: 'حالة المزود',
+    dividendProvider: 'مزود التوزيعات',
+    connectionStatus: 'حالة الاتصال',
+    connectedStatus: 'متصل',
+    failedStatus: 'فشل',
+    unconfiguredStatus: 'غير مهيأ',
+    providerEventsCount: 'عدد الأحداث',
+    stocksWithPaymentDate: 'عدد الأسهم التي لديها تاريخ دفع',
+    unavailableValuesCount: 'عدد القيم غير المتاحة',
+    latestDividendAvailable: 'آخر توزيع متاح',
+    providerRateLimited: 'تم تجاوز حد مزود البيانات حالياً.',
+    providerAccessDenied: 'تعذر الوصول إلى مزود البيانات. تحقق من صلاحية مفتاح FMP أو الخطة.',
     providerConfigured: 'المزود متصل',
     providerNotConfiguredBadge: 'غير متصل',
     providerErrorBadge: 'خطأ في المزود',
@@ -308,10 +334,11 @@ const COPY = {
     calendarUnavailableText: 'لم يتم ربط مزود بيانات يدعم تقويم التوزيعات بعد.',
     calendarErrorTitle: 'تعذر جلب بيانات التوزيعات حالياً',
     calendarErrorText: 'حاول مرة أخرى بعد قليل.',
-    noCalendarEventsFiltered: 'لا توجد توزيعات ضمن الفترة المحددة',
-    noCalendarTextFiltered: 'جرّب تغيير الفترة أو السوق أو إزالة بعض عوامل التصفية.',
+    noCalendarEventsFiltered: 'لا توجد توزيعات ضمن الفترة المحددة.',
+    noCalendarTextFiltered: 'جرّب تغيير الفترة أو إزالة بعض عوامل التصفية.',
     allTypes: 'كل أنواع التوزيعات',
     allSymbols: 'كل الرموز',
+    allSources: 'كل المصادر',
     range30: '30 يوماً',
     range90: '90 يوماً',
     rangeAll: 'كل الأحداث',
@@ -319,7 +346,8 @@ const COPY = {
     noCalendarText: 'جرّب تغيير الفترة الزمنية أو السوق أو إزالة بعض عوامل التصفية.',
     noStocks: 'لم يتم العثور على أسهم مطابقة',
     noStocksText: 'جرّب تعديل معايير العائد أو السوق أو القطاع.',
-    noNews: 'لا توجد أخبار توزيعات متاحة حالياً',
+    noNews: 'لا توجد أخبار متاحة حالياً لأسهم الدخل المرتفع.',
+    noNewsBody: 'سيتم عرض الأخبار عند توفرها من مزود البيانات.',
     retry: 'إعادة المحاولة',
     latest: 'الأحدث',
     oldest: 'الأقدم',
@@ -332,7 +360,30 @@ const COPY = {
     changeSort: 'أقوى حركة',
     sourceFilter: 'المصدر',
     symbolFilter: 'الشركة / الرمز',
-    timeRange: 'الفترة',
+    impactFilter: 'التأثير',
+    dateFilter: 'التاريخ',
+    timeRange: 'التاريخ',
+    newsTypeFilter: 'نوع الخبر',
+    allImpacts: 'كل مستويات التأثير',
+    highImpact: 'مرتفع',
+    mediumImpact: 'متوسط',
+    lowImpact: 'منخفض',
+    unavailableImpact: 'غير متاح',
+    allNewsTypes: 'كل أنواع الأخبار',
+    newsTypeDividends: 'توزيعات الأرباح',
+    newsTypeHighYield: 'عوائد مرتفعة',
+    newsTypeEarnings: 'أرباح الشركات',
+    newsTypeFixedIncome: 'دخل ثابت',
+    newsTypeDefensive: 'أسهم دفاعية',
+    newsTypeTelecom: 'اتصالات',
+    newsTypeUtilities: 'مرافق',
+    newsTypeEnergy: 'طاقة',
+    newsTypeReits: 'عقارات REITs',
+    newsTypeConsumerStaples: 'سلع استهلاكية',
+    publishedDate: 'تاريخ النشر',
+    providerLabel: 'المزود',
+    companyName: 'اسم الشركة',
+    impactLevel: 'مستوى التأثير',
     allTime: 'كل الفترات',
     lastDay: 'آخر 24 ساعة',
     lastWeek: 'آخر 7 أيام',
@@ -382,9 +433,9 @@ const COPY = {
     providerError: 'تعذر تحديث البيانات حالياً. يتم عرض آخر بيانات متاحة إن وجدت.',
   },
   en: {
-    badge: 'Income research center',
-    title: 'Dividend Stocks Center',
-    subtitle: 'Discover and compare dividend-paying companies, follow ex-dividend and payment dates, and track related news.',
+    badge: 'High income stocks',
+    title: 'High Income Stocks News',
+    subtitle: 'Track real provider news and quotes for higher-income, dividend-focused companies, with clear unavailable states when data is missing.',
     refresh: 'Refresh data',
     refreshing: 'Refreshing...',
     connected: 'Market data connected',
@@ -396,28 +447,35 @@ const COPY = {
     provider: 'Provider',
     source: 'Source',
     unavailable: 'Unavailable',
-    tabs: { overview: 'Overview', explorer: 'Stock Explorer', featured: 'Featured Dividend Stocks', calendar: 'Dividend Calendar', news: 'News', education: 'Education' },
-    snapshotTitle: 'Dividend market snapshot',
+    tabs: { overview: 'Overview', explorer: 'Stock Explorer', featured: 'Featured Income Stocks', calendar: 'Dividend Calendar', news: 'News', education: 'Education' },
+    tickerTitle: 'High income stocks ticker',
+    tickerDescription: 'Requested high-income symbols remain visible, even when live quotes are unavailable.',
+    snapshotTitle: 'High income stocks summary',
+    snapshotDescription: 'Quick summary of coverage, yield, and provider data quality.',
     trackedCompanies: 'Tracked companies',
     averageYield: 'Average yield',
     upcomingEvents: 'Upcoming events',
     averagePayout: 'Average payout',
     marketsCovered: 'Markets covered',
     dataQuality: 'Data quality',
-    explorerTitle: 'Dividend stock explorer',
+    explorerTitle: 'High income stock explorer',
     explorerDescription: 'A practical comparison table using real provider fields. Missing metrics remain clearly unavailable.',
-    featuredTitle: 'Featured dividend stocks',
+    featuredTitle: 'Featured high income stocks',
     featuredDescription: 'Analytical highlights based only on available yield, payout, and dividend-date fields.',
     calendarTitle: 'Dividend calendar',
     calendarDescription: 'Clearly separates ex-dividend dates from payment dates when provided by the source.',
-    newsTitle: 'Dividend news',
-    newsDescription: 'News around dividends, earnings, cash flow, increases, cuts, and suspensions.',
+    newsTitle: 'High Income Stocks News',
+    newsDescription: 'News around dividends, high yields, corporate earnings, defensive sectors, telecom, utilities, energy, and REITs.',
+    newsFiltersTitle: 'Search and filters',
+    newsFiltersDescription: 'Filter news by search, company or symbol, sector, source, impact, date, and news type.',
+    newsResultsTitle: 'News results',
+    newsResultsDescription: 'Compact cards from real news providers only.',
     educationTitle: 'Dividend education guide',
     educationDescription: 'Concise lessons that stay collapsed until needed.',
     strategyTitle: 'Dividend growth versus high income',
     strategyDescription: 'Educational comparison between current income and future income growth.',
     searchPlaceholder: 'Search company or symbol...',
-    newsSearchPlaceholder: 'Search dividend news...',
+    newsSearchPlaceholder: 'Search high income stocks news...',
     search: 'Search',
     sector: 'Sector',
     allSectors: 'All sectors',
@@ -478,6 +536,17 @@ const COPY = {
     declarationDate: 'Declaration date',
     dividendAmount: 'Dividend amount',
     providerStatus: 'Provider status',
+    dividendProvider: 'Dividend provider',
+    connectionStatus: 'Connection status',
+    connectedStatus: 'Connected',
+    failedStatus: 'Failed',
+    unconfiguredStatus: 'Not configured',
+    providerEventsCount: 'Event count',
+    stocksWithPaymentDate: 'Stocks with payment date',
+    unavailableValuesCount: 'Unavailable values',
+    latestDividendAvailable: 'Latest available dividend',
+    providerRateLimited: 'The dividend data provider rate limit has been reached.',
+    providerAccessDenied: 'The dividend provider could not be accessed. Check the FMP key or plan.',
     providerConfigured: 'Provider configured',
     providerNotConfiguredBadge: 'Not configured',
     providerErrorBadge: 'Provider error',
@@ -488,10 +557,11 @@ const COPY = {
     calendarUnavailableText: 'No data provider that supports the dividends calendar has been connected yet.',
     calendarErrorTitle: 'Unable to fetch dividend data right now',
     calendarErrorText: 'Please try again shortly.',
-    noCalendarEventsFiltered: 'No dividends in the selected period',
-    noCalendarTextFiltered: 'Try changing the period, market, or removing some filters.',
+    noCalendarEventsFiltered: 'No dividends in the selected period.',
+    noCalendarTextFiltered: 'Try changing the period or removing some filters.',
     allTypes: 'All dividend types',
     allSymbols: 'All symbols',
+    allSources: 'All sources',
     range30: '30 days',
     range90: '90 days',
     rangeAll: 'All events',
@@ -499,7 +569,8 @@ const COPY = {
     noCalendarText: 'Try changing the date range, market, or filters.',
     noStocks: 'No matching dividend stocks',
     noStocksText: 'Adjust yield, market, or sector filters.',
-    noNews: 'No dividend news is currently available',
+    noNews: 'No high income stocks news is currently available.',
+    noNewsBody: 'News will be shown when it becomes available from the data provider.',
     retry: 'Retry',
     latest: 'Latest',
     oldest: 'Oldest',
@@ -512,7 +583,30 @@ const COPY = {
     changeSort: 'Strongest move',
     sourceFilter: 'Source',
     symbolFilter: 'Company / symbol',
-    timeRange: 'Time range',
+    impactFilter: 'Impact',
+    dateFilter: 'Date',
+    timeRange: 'Date',
+    newsTypeFilter: 'News type',
+    allImpacts: 'All impact levels',
+    highImpact: 'High',
+    mediumImpact: 'Medium',
+    lowImpact: 'Low',
+    unavailableImpact: 'Unavailable',
+    allNewsTypes: 'All news types',
+    newsTypeDividends: 'Dividends',
+    newsTypeHighYield: 'High yields',
+    newsTypeEarnings: 'Corporate earnings',
+    newsTypeFixedIncome: 'Fixed income',
+    newsTypeDefensive: 'Defensive stocks',
+    newsTypeTelecom: 'Telecom',
+    newsTypeUtilities: 'Utilities',
+    newsTypeEnergy: 'Energy',
+    newsTypeReits: 'Real estate REITs',
+    newsTypeConsumerStaples: 'Consumer staples',
+    publishedDate: 'Published date',
+    providerLabel: 'Provider',
+    companyName: 'Company name',
+    impactLevel: 'Impact level',
     allTime: 'All time',
     lastDay: 'Last 24 hours',
     lastWeek: 'Last 7 days',
@@ -562,9 +656,9 @@ const COPY = {
     providerError: 'Unable to refresh data right now. Showing latest available data when present.',
   },
   fr: {
-    badge: 'Centre revenu',
-    title: 'Centre des actions à dividendes',
-    subtitle: 'Découvrez et comparez les sociétés versant des dividendes, suivez les dates ex-dividende et les actualités associées.',
+    badge: 'Actions à revenu élevé',
+    title: 'Actualités des actions à revenu élevé',
+    subtitle: 'Suivez les actualités et cours réels des sociétés orientées revenu élevé, avec des états indisponibles clairs si les données manquent.',
     refresh: 'Actualiser',
     refreshing: 'Actualisation...',
     connected: 'Données connectées',
@@ -576,22 +670,29 @@ const COPY = {
     provider: 'Fournisseur',
     source: 'Source',
     unavailable: 'Indisponible',
-    tabs: { overview: 'Vue générale', explorer: 'Explorateur', featured: 'Actions en vedette', calendar: 'Calendrier', news: 'Actualités', education: 'Éducation' },
-    snapshotTitle: 'Aperçu des dividendes',
+    tabs: { overview: 'Vue générale', explorer: 'Explorateur', featured: 'Actions revenu', calendar: 'Calendrier', news: 'Actualités', education: 'Éducation' },
+    tickerTitle: 'Bandeau actions à revenu élevé',
+    tickerDescription: 'Les symboles suivis restent visibles même si les cours sont indisponibles.',
+    snapshotTitle: 'Résumé des actions à revenu élevé',
+    snapshotDescription: 'Résumé rapide de la couverture, du rendement et de la qualité des données.',
     trackedCompanies: 'Sociétés suivies',
     averageYield: 'Rendement moyen',
     upcomingEvents: 'Événements à venir',
     averagePayout: 'Payout moyen',
     marketsCovered: 'Marchés couverts',
     dataQuality: 'Qualité données',
-    explorerTitle: 'Explorateur dividendes',
+    explorerTitle: 'Explorateur actions à revenu élevé',
     explorerDescription: 'Table de comparaison avec les champs réels disponibles.',
-    featuredTitle: 'Actions à dividendes en vedette',
+    featuredTitle: 'Actions à revenu élevé en vedette',
     featuredDescription: 'Sélection analytique basée sur rendement, payout et dates disponibles.',
     calendarTitle: 'Calendrier des dividendes',
     calendarDescription: 'Sépare clairement date ex-dividende et date de paiement.',
-    newsTitle: 'Actualités dividendes',
-    newsDescription: 'Actualités sur dividendes, résultats, cash-flow et annonces.',
+    newsTitle: 'Actualités des actions à revenu élevé',
+    newsDescription: 'Actualités sur dividendes, rendements élevés, résultats, secteurs défensifs, télécoms, services publics, énergie et REITs.',
+    newsFiltersTitle: 'Recherche et filtres',
+    newsFiltersDescription: 'Filtrez par recherche, société ou symbole, secteur, source, impact, date et type d’actualité.',
+    newsResultsTitle: 'Résultats des actualités',
+    newsResultsDescription: 'Cartes compactes issues uniquement de fournisseurs réels.',
     educationTitle: 'Guide des dividendes',
     educationDescription: 'Leçons concises et repliées par défaut.',
     strategyTitle: 'Croissance des dividendes et revenu élevé',
@@ -658,6 +759,17 @@ const COPY = {
     declarationDate: 'Date d’annonce',
     dividendAmount: 'Montant du dividende',
     providerStatus: 'Statut du fournisseur',
+    dividendProvider: 'Fournisseur dividendes',
+    connectionStatus: 'Statut de connexion',
+    connectedStatus: 'Connecte',
+    failedStatus: 'Echec',
+    unconfiguredStatus: 'Non configure',
+    providerEventsCount: 'Nombre d evenements',
+    stocksWithPaymentDate: 'Actions avec date de paiement',
+    unavailableValuesCount: 'Valeurs indisponibles',
+    latestDividendAvailable: 'Dernier dividende disponible',
+    providerRateLimited: 'La limite du fournisseur de dividendes est atteinte.',
+    providerAccessDenied: 'Le fournisseur de dividendes est inaccessible. Verifiez la cle ou le plan FMP.',
     providerConfigured: 'Fournisseur configuré',
     providerNotConfiguredBadge: 'Non configuré',
     providerErrorBadge: 'Erreur fournisseur',
@@ -672,6 +784,7 @@ const COPY = {
     noCalendarTextFiltered: 'Modifiez la période, le marché ou certains filtres.',
     allTypes: 'Tous les types',
     allSymbols: 'Tous les symboles',
+    allSources: 'Toutes les sources',
     range30: '30 jours',
     range90: '90 jours',
     rangeAll: 'Tous',
@@ -679,7 +792,8 @@ const COPY = {
     noCalendarText: 'Modifiez la période ou les filtres.',
     noStocks: 'Aucune action correspondante',
     noStocksText: 'Ajustez rendement, marché ou secteur.',
-    noNews: 'Aucune actualité disponible',
+    noNews: 'Aucune actualité disponible pour les actions à revenu élevé.',
+    noNewsBody: 'Les actualités seront affichées lorsqu’elles seront disponibles auprès du fournisseur de données.',
     retry: 'Réessayer',
     latest: 'Récentes',
     oldest: 'Anciennes',
@@ -692,7 +806,30 @@ const COPY = {
     changeSort: 'Variation',
     sourceFilter: 'Source',
     symbolFilter: 'Société / symbole',
-    timeRange: 'Période',
+    impactFilter: 'Impact',
+    dateFilter: 'Date',
+    timeRange: 'Date',
+    newsTypeFilter: 'Type d’actualité',
+    allImpacts: 'Tous les impacts',
+    highImpact: 'Élevé',
+    mediumImpact: 'Moyen',
+    lowImpact: 'Faible',
+    unavailableImpact: 'Indisponible',
+    allNewsTypes: 'Tous les types',
+    newsTypeDividends: 'Dividendes',
+    newsTypeHighYield: 'Rendements élevés',
+    newsTypeEarnings: 'Résultats',
+    newsTypeFixedIncome: 'Revenu fixe',
+    newsTypeDefensive: 'Actions défensives',
+    newsTypeTelecom: 'Télécoms',
+    newsTypeUtilities: 'Services publics',
+    newsTypeEnergy: 'Énergie',
+    newsTypeReits: 'Immobilier REITs',
+    newsTypeConsumerStaples: 'Biens essentiels',
+    publishedDate: 'Date de publication',
+    providerLabel: 'Fournisseur',
+    companyName: 'Société',
+    impactLevel: 'Niveau d’impact',
     allTime: 'Toutes',
     lastDay: '24 h',
     lastWeek: '7 jours',
@@ -746,13 +883,13 @@ const COPY = {
 const SECTORS: Record<Exclude<SectorId, 'all'>, { icon: LucideIcon; labels: Record<LangCode, string>; symbols: string[]; description: Record<LangCode, string> }> = {
   consumer_goods: {
     icon: Coins,
-    labels: { ar: 'السلع الاستهلاكية', en: 'Consumer staples', fr: 'Consommation de base' },
+    labels: { ar: 'سلع استهلاكية', en: 'Consumer staples', fr: 'Biens essentiels' },
     symbols: ['KO', 'PEP', 'PG', 'KMB', 'GIS', 'MCD', 'MO', 'PM'],
     description: { ar: 'شركات ذات طلب يومي نسبي وقدرة تاريخية على توزيع أرباح دورية.', en: 'Recurring-demand companies with a history of periodic distributions.', fr: 'Sociétés de demande récurrente avec dividendes.' },
   },
   energy: {
     icon: LineChart,
-    labels: { ar: 'الطاقة', en: 'Energy', fr: 'Énergie' },
+    labels: { ar: 'طاقة', en: 'Energy', fr: 'Énergie' },
     symbols: ['XOM', 'CVX'],
     description: { ar: 'توزيعات قد تكون قوية لكنها حساسة لدورات النفط والغاز.', en: 'Potentially strong distributions, sensitive to oil and gas cycles.', fr: 'Dividendes potentiels, sensibles aux cycles énergie.' },
   },
@@ -764,19 +901,19 @@ const SECTORS: Record<Exclude<SectorId, 'all'>, { icon: LucideIcon; labels: Reco
   },
   telecom: {
     icon: WalletCards,
-    labels: { ar: 'الاتصالات', en: 'Telecom', fr: 'Télécoms' },
+    labels: { ar: 'اتصالات', en: 'Telecom', fr: 'Télécoms' },
     symbols: ['VZ', 'T'],
     description: { ar: 'دخل دوري مع إنفاق رأسمالي مرتفع ومراقبة للديون.', en: 'Recurring income with high capex and debt monitoring.', fr: 'Revenu récurrent avec capex et dette.' },
   },
   utilities: {
     icon: ShieldCheck,
-    labels: { ar: 'المرافق العامة', en: 'Utilities', fr: 'Services publics' },
+    labels: { ar: 'مرافق', en: 'Utilities', fr: 'Services publics' },
     symbols: ['NEE', 'DUK', 'SO'],
     description: { ar: 'قطاعات منظمة تميل إلى توزيعات مستقرة نسبياً.', en: 'Regulated sectors that often support steadier payouts.', fr: 'Secteurs régulés et dividendes stables.' },
   },
   reits: {
     icon: Building2,
-    labels: { ar: 'العقارات وREIT', en: 'REITs', fr: 'REIT' },
+    labels: { ar: 'عقارات REITs', en: 'Real estate REITs', fr: 'Immobilier REITs' },
     symbols: ['O'],
     description: { ar: 'توزيعات عقارية تتأثر بالفائدة والإشغال والرافعة.', en: 'Real-estate income affected by rates, occupancy, and leverage.', fr: 'Revenu immobilier sensible aux taux.' },
   },
@@ -841,12 +978,30 @@ function hasDate(value: string | null | undefined) {
   return !Number.isNaN(date.getTime());
 }
 
-function hasDividendData(row: Pick<DividendTickerItem, 'dividendYield' | 'payoutRatio' | 'annualDividend' | 'exDividendDate' | 'paymentDate'>) {
+function hasDividendData(row: Pick<DividendTickerItem, 'dividendYield' | 'payoutRatio' | 'annualDividend' | 'exDividendDate' | 'paymentDate' | 'recordDate' | 'declarationDate'>) {
   return normalizeRatioToPercent(row.dividendYield) !== null
     || normalizeRatioToPercent(row.payoutRatio) !== null
     || hasNumber(row.annualDividend)
     || hasDate(row.exDividendDate)
-    || hasDate(row.paymentDate);
+    || hasDate(row.paymentDate)
+    || hasDate(row.recordDate)
+    || hasDate(row.declarationDate);
+}
+
+function unavailableDividendFieldCount(row: DividendTickerItem) {
+  const fields = [
+    normalizeRatioToPercent(row.dividendYield),
+    row.annualDividend,
+    row.exDividendDate,
+    row.recordDate,
+    row.paymentDate,
+    row.declarationDate,
+  ];
+  return fields.filter(value => {
+    if (typeof value === 'number') return !Number.isFinite(value);
+    if (typeof value === 'string') return !hasDate(value);
+    return true;
+  }).length;
 }
 
 function formatNumber(value: number | null | undefined, lang: LangCode, options?: Intl.NumberFormatOptions) {
@@ -976,7 +1131,7 @@ function qualityFor(row: DividendTickerItem, lang: LangCode): { score: number | 
     score += payoutScore;
     reasons.push(payoutPct <= 65 ? COPY[lang].sustainablePayout : COPY[lang].elevatedPayout);
   }
-  if (row.exDividendDate || row.paymentDate) {
+  if (row.exDividendDate || row.paymentDate || row.recordDate || row.declarationDate) {
     score += 18;
     reasons.push(COPY[lang].datesAvailable);
   }
@@ -1024,6 +1179,83 @@ function newsSector(item: DividendNewsItem): SectorId {
   if (/tech|ibm|technology|تقنية/.test(text)) return 'technology';
   if (/industrial|manufacturing|صناعة/.test(text)) return 'industrials';
   return 'consumer_goods';
+}
+
+function newsText(item: DividendNewsItem) {
+  return [
+    item.title,
+    item.headline,
+    item.summary,
+    item.titleOriginal,
+    item.summaryOriginal,
+    item.companyName,
+    item.ticker,
+    item.sector,
+    ...(item.sectors ?? []),
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function newsImpact(item: DividendNewsItem): NewsImpactFilter {
+  if (typeof item.changePercent !== 'number' || !Number.isFinite(item.changePercent)) return 'unavailable';
+  const absoluteMove = Math.abs(item.changePercent);
+  if (absoluteMove >= 3) return 'high';
+  if (absoluteMove >= 1) return 'medium';
+  return 'low';
+}
+
+function newsImpactLabel(impact: NewsImpactFilter, text: typeof COPY[LangCode]) {
+  if (impact === 'high') return text.highImpact;
+  if (impact === 'medium') return text.mediumImpact;
+  if (impact === 'low') return text.lowImpact;
+  if (impact === 'unavailable') return text.unavailableImpact;
+  return text.allImpacts;
+}
+
+function newsProvider(item: DividendNewsItem) {
+  if (item.provider) return item.provider;
+  const source = item.source.toLowerCase();
+  if (source.includes('yahoo')) return 'Yahoo Finance';
+  if (source.includes('google')) return 'Google News';
+  return 'Finnhub';
+}
+
+function newsTypes(item: DividendNewsItem): NewsTypeFilter[] {
+  const text = newsText(item);
+  const symbol = item.ticker?.toUpperCase();
+  const sector = newsSector(item);
+  const types = new Set<NewsTypeFilter>();
+  const hasAny = (keywords: string[]) => keywords.some(keyword => text.includes(keyword));
+
+  if (hasAny(['dividend', 'distribution', 'payout', 'ex-dividend', 'ex dividend', 'توزيع', 'توزيعات'])) types.add('dividends');
+  if (hasAny(['high yield', 'high-yield', 'yield', 'income', 'عائد', 'عوائد', 'دخل'])) types.add('high_yield');
+  if (hasAny(['earnings', 'profit', 'revenue', 'quarter', 'results', 'أرباح', 'إيرادات', 'نتائج'])) types.add('earnings');
+  if (hasAny(['fixed income', 'bond', 'treasury', 'income fund', 'دخل ثابت', 'سندات'])) types.add('fixed_income');
+  if (hasAny(['defensive', 'consumer staples', 'healthcare', 'utility', 'utilities', 'دفاعية'])) types.add('defensive');
+  if (sector === 'telecom' || symbol === 'T' || symbol === 'VZ' || hasAny(['telecom', 'telecommunications', 'wireless', 'verizon', 'at&t', 'اتصالات'])) types.add('telecom');
+  if (sector === 'utilities' || ['SO', 'DUK', 'NEE'].includes(symbol ?? '') || hasAny(['utility', 'utilities', 'electric', 'power', 'مرافق'])) types.add('utilities');
+  if (sector === 'energy' || ['XOM', 'CVX'].includes(symbol ?? '') || hasAny(['energy', 'oil', 'gas', 'exxon', 'chevron', 'طاقة', 'نفط'])) types.add('energy');
+  if (sector === 'reits' || symbol === 'O' || hasAny(['reit', 'realty income', 'real estate investment trust', 'عقارات'])) types.add('reits');
+  if (sector === 'consumer_goods' || ['KO', 'PEP', 'PG', 'MO', 'PM'].includes(symbol ?? '') || hasAny(['consumer staples', 'consumer goods', 'coca-cola', 'pepsico', 'procter', 'سلع استهلاكية'])) types.add('consumer_staples');
+  if (['consumer_goods', 'healthcare', 'telecom', 'utilities'].includes(sector)) types.add('defensive');
+
+  return Array.from(types);
+}
+
+function newsTypeLabel(type: NewsTypeFilter, text: typeof COPY[LangCode]) {
+  const labels: Record<NewsTypeFilter, string> = {
+    all: text.allNewsTypes,
+    dividends: text.newsTypeDividends,
+    high_yield: text.newsTypeHighYield,
+    earnings: text.newsTypeEarnings,
+    fixed_income: text.newsTypeFixedIncome,
+    defensive: text.newsTypeDefensive,
+    telecom: text.newsTypeTelecom,
+    utilities: text.newsTypeUtilities,
+    energy: text.newsTypeEnergy,
+    reits: text.newsTypeReits,
+    consumer_staples: text.newsTypeConsumerStaples,
+  };
+  return labels[type];
 }
 
 function isWithinTimeFilter(value: string, filter: NewsTimeFilter) {
@@ -1082,14 +1314,14 @@ function uniqueOptions(values: Array<string | null | undefined>) {
 
 function getInitialState() {
   if (typeof window === 'undefined') {
-    return { tab: 'overview' as DividendTab, stockSearch: '', stockSector: 'all' as SectorId, stockSort: 'quality' as StockSort, yieldMin: '', payoutMax: '' };
+    return { tab: 'news' as DividendTab, stockSearch: '', stockSector: 'all' as SectorId, stockSort: 'quality' as StockSort, yieldMin: '', payoutMax: '' };
   }
   const params = new URLSearchParams(window.location.search);
   const tab = params.get('tab') as DividendTab | null;
   const sector = params.get('sector') as SectorId | null;
   const sort = params.get('sort') as StockSort | null;
   return {
-    tab: tab && TAB_IDS.includes(tab) ? tab : 'overview',
+    tab: tab && TAB_IDS.includes(tab) ? tab : 'news',
     stockSearch: params.get('q') ?? '',
     stockSector: sector && (sector === 'all' || sector in SECTORS) ? sector : 'all',
     stockSort: sort && ['quality', 'yield', 'payout', 'exDate', 'name', 'change'].includes(sort) ? sort : 'quality',
@@ -1149,7 +1381,9 @@ export function DividendStocksNewsPage() {
   const [newsSector, setNewsSector] = useState<SectorId>('all');
   const [newsSource, setNewsSource] = useState('all');
   const [newsSymbol, setNewsSymbol] = useState('all');
+  const [newsImpactFilter, setNewsImpactFilter] = useState<NewsImpactFilter>('all');
   const [newsTime, setNewsTime] = useState<NewsTimeFilter>('all');
+  const [newsTypeFilter, setNewsTypeFilter] = useState<NewsTypeFilter>('all');
   const [newsSort, setNewsSort] = useState<NewsSort>('latest');
   const [visibleNews, setVisibleNews] = useState(NEWS_INITIAL_LIMIT);
   const [openEducation, setOpenEducation] = useState<EducationId | null>(null);
@@ -1326,14 +1560,18 @@ export function DividendStocksNewsPage() {
       const sectorMatch = newsSector === 'all' || newsSector === newsSectorForItem(item);
       const sourceMatch = newsSource === 'all' || item.source === newsSource;
       const symbolMatch = newsSymbol === 'all' || item.ticker?.toUpperCase() === newsSymbol;
+      const impactMatch = newsImpactFilter === 'all' || newsImpact(item) === newsImpactFilter;
+      const typeMatch = newsTypeFilter === 'all' || newsTypes(item).includes(newsTypeFilter);
       return sectorMatch
         && sourceMatch
         && symbolMatch
+        && impactMatch
+        && typeMatch
         && isWithinTimeFilter(item.publishedAt, newsTime)
         && matchesNewsSearch(item, newsSearch);
     });
     return sortNews(items, newsSort);
-  }, [dedupedNews, newsSearch, newsSector, newsSort, newsSource, newsSymbol, newsTime]);
+  }, [dedupedNews, newsImpactFilter, newsSearch, newsSector, newsSort, newsSource, newsSymbol, newsTime, newsTypeFilter]);
 
   const snapshot = useMemo(() => {
     const yields = rows.map(row => normalizeRatioToPercent(row.dividendYield)).filter((value): value is number => value !== null);
@@ -1341,7 +1579,7 @@ export function DividendStocksNewsPage() {
     const avgYield = yields.length ? yields.reduce((sum, value) => sum + value, 0) / yields.length : null;
     const avgPayout = payouts.length ? payouts.reduce((sum, value) => sum + value, 0) / payouts.length : null;
     const markets = new Set(rows.map(row => row.currency || 'USD'));
-    const quality = rows.length ? Math.round((rows.filter(row => row.dividendYield !== null || row.payoutRatio !== null || row.exDividendDate || row.paymentDate).length / rows.length) * 100) : null;
+    const quality = rows.length ? Math.round((rows.filter(row => hasDividendData(row)).length / rows.length) * 100) : null;
     return { avgYield, avgPayout, markets: markets.size, quality };
   }, [rows]);
 
@@ -1365,7 +1603,9 @@ export function DividendStocksNewsPage() {
     setNewsSector('all');
     setNewsSource('all');
     setNewsSymbol('all');
+    setNewsImpactFilter('all');
     setNewsTime('all');
+    setNewsTypeFilter('all');
     setNewsSort('latest');
     setVisibleNews(NEWS_INITIAL_LIMIT);
   };
@@ -1391,7 +1631,7 @@ export function DividendStocksNewsPage() {
   };
 
   const hasStockFilters = Boolean(stockSearch.trim() || stockSector !== 'all' || stockSort !== 'quality' || yieldMin || payoutMax);
-  const hasNewsFilters = Boolean(newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsTime !== 'all' || newsSort !== 'latest');
+  const hasNewsFilters = Boolean(newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsImpactFilter !== 'all' || newsTime !== 'all' || newsTypeFilter !== 'all' || newsSort !== 'latest');
   const hasCalendarFilters = Boolean(calendarRange !== '90' || calendarMarket !== 'all' || calendarSymbol !== 'all' || calendarType !== 'all');
 
   return (
@@ -1426,6 +1666,14 @@ export function DividendStocksNewsPage() {
           {error ? <StateBox tone="warning" icon={AlertTriangle} title={text.providerError} actionLabel={text.retry} onAction={() => void refreshAll()} /> : null}
 
           <TickerStrip rows={rows} loading={loading} text={text} lang={activeLang} />
+          <SummarySection
+            text={text}
+            lang={activeLang}
+            loading={loading || calendarLoading}
+            rows={rows}
+            events={events}
+            snapshot={snapshot}
+          />
 
           <nav className="tabs" role="tablist" aria-label={text.title}>
             {TAB_IDS.map(item => (
@@ -1444,7 +1692,6 @@ export function DividendStocksNewsPage() {
               events={events}
               featuredRows={featuredRows.slice(0, 4)}
               newsItems={filteredNews.slice(0, 4)}
-              snapshot={snapshot}
               setTab={changeTab}
               methodologyOpen={methodologyOpen}
               setMethodologyOpen={setMethodologyOpen}
@@ -1494,6 +1741,7 @@ export function DividendStocksNewsPage() {
               text={text}
               lang={activeLang}
               events={events}
+              rows={rows}
               loading={calendarLoading}
               range={calendarRange}
               setRange={setCalendarRange}
@@ -1525,7 +1773,9 @@ export function DividendStocksNewsPage() {
               sector={newsSector}
               source={newsSource}
               symbol={newsSymbol}
+              impact={newsImpactFilter}
               time={newsTime}
+              newsType={newsTypeFilter}
               sort={newsSort}
               sources={sources}
               symbols={symbols}
@@ -1533,7 +1783,9 @@ export function DividendStocksNewsPage() {
               setSector={setNewsSector}
               setSource={setNewsSource}
               setSymbol={setNewsSymbol}
+              setImpact={setNewsImpactFilter}
               setTime={setNewsTime}
+              setNewsType={setNewsTypeFilter}
               setSort={setNewsSort}
               reset={resetNewsFilters}
               hasFilters={hasNewsFilters}
@@ -1579,10 +1831,13 @@ function newsSectorForItem(item: DividendNewsItem): SectorId {
 function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; loading: boolean; text: typeof COPY[LangCode]; lang: LangCode }) {
   if (loading) {
     return (
-      <section className="ticker-panel" aria-label={text.trackedCompanies}>
-        <div className="ticker-viewport">
-          <div className="ticker-track ticker-skeleton-track">
-            {Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}
+      <section className="section" aria-label={text.tickerTitle}>
+        <SectionHeader title={text.tickerTitle} description={text.tickerDescription} />
+        <div className="ticker-panel">
+          <div className="ticker-viewport">
+            <div className="ticker-track ticker-skeleton-track">
+              {Array.from({ length: 6 }).map((_, index) => <div className="ticker-item skeleton" key={index} />)}
+            </div>
           </div>
         </div>
       </section>
@@ -1590,28 +1845,59 @@ function TickerStrip({ rows, loading, text, lang }: { rows: DividendStockRow[]; 
   }
 
   return (
-    <StockTickerStrip
-      ariaLabel={text.trackedCompanies}
-      items={rows.map(row => ({
-        symbol: row.symbol,
-        name: row.name,
-        price: row.price,
-        currency: row.currency,
-        changePercent: row.changePercent,
-        source: row.source,
-        available: row.price !== null,
-        meta: hasDividendData(row) ? text.dividendYield + ': ' + formatPercent(row.dividendYield, lang, true) : text.insufficientMetrics,
-      }))}
-      locale={LOCALE_BY_LANG[lang]}
-      unavailableLabel={text.unavailable}
-      sourceLabel={text.source}
-      className="ticker-panel"
-      viewportClassName="ticker-viewport"
-      trackClassName="ticker-track"
-      setClassName="ticker-set"
-      direction="ltr"
-      durationSeconds={52}
-    />
+    <section className="section" aria-label={text.tickerTitle}>
+      <SectionHeader title={text.tickerTitle} description={text.tickerDescription} />
+      <StockTickerStrip
+        ariaLabel={text.tickerTitle}
+        items={rows.map(row => ({
+          symbol: row.symbol,
+          name: row.name,
+          price: row.price,
+          currency: row.currency,
+          changePercent: row.changePercent,
+          source: row.source,
+          available: row.price !== null,
+          meta: hasDividendData(row) ? text.dividendYield + ': ' + formatPercent(row.dividendYield, lang, true) : text.insufficientMetrics,
+        }))}
+        locale={LOCALE_BY_LANG[lang]}
+        unavailableLabel={text.unavailable}
+        sourceLabel={text.source}
+        className="ticker-panel"
+        viewportClassName="ticker-viewport"
+        trackClassName="ticker-track"
+        setClassName="ticker-set"
+        direction="ltr"
+        durationSeconds={52}
+      />
+    </section>
+  );
+}
+
+function SummarySection({
+  text,
+  lang,
+  loading,
+  rows,
+  events,
+  snapshot,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  loading: boolean;
+  rows: DividendStockRow[];
+  events: DividendEvent[];
+  snapshot: { avgYield: number | null; avgPayout: number | null; markets: number; quality: number | null };
+}) {
+  return (
+    <section className="section">
+      <SectionHeader title={text.snapshotTitle} description={text.snapshotDescription} />
+      <div className="summary-grid">
+        <MetricCard icon={Building2} label={text.trackedCompanies} value={String(rows.length)} help={text.marketsCovered} loading={loading} tone="info" />
+        <MetricCard icon={Coins} label={text.averageYield} value={formatPercent(snapshot.avgYield, lang)} help={text.dividendYield} loading={loading} tone="positive" />
+        <MetricCard icon={CalendarDays} label={text.upcomingEvents} value={String(events.length)} help={text.exDividendDate} loading={loading} tone="warning" />
+        <MetricCard icon={ShieldCheck} label={text.dataQuality} value={snapshot.quality === null ? text.unavailable : `${snapshot.quality}%`} help={text.provider} loading={loading} tone="neutral" />
+      </div>
+    </section>
   );
 }
 
@@ -1623,7 +1909,6 @@ function OverviewTab({
   events,
   featuredRows,
   newsItems,
-  snapshot,
   setTab,
   methodologyOpen,
   setMethodologyOpen,
@@ -1639,7 +1924,6 @@ function OverviewTab({
   events: DividendEvent[];
   featuredRows: DividendStockRow[];
   newsItems: DividendNewsItem[];
-  snapshot: { avgYield: number | null; avgPayout: number | null; markets: number; quality: number | null };
   setTab: (tab: DividendTab) => void;
   methodologyOpen: boolean;
   setMethodologyOpen: (open: boolean) => void;
@@ -1650,16 +1934,6 @@ function OverviewTab({
 }) {
   return (
     <div className="stack">
-      <section className="section">
-        <SectionHeader title={text.snapshotTitle} description={text.delayed} />
-        <div className="summary-grid">
-          <MetricCard icon={Building2} label={text.trackedCompanies} value={String(rows.length)} help={text.marketsCovered} loading={loading} tone="info" />
-          <MetricCard icon={Coins} label={text.averageYield} value={formatPercent(snapshot.avgYield, lang)} help={text.dividendYield} loading={loading} tone="positive" />
-          <MetricCard icon={CalendarDays} label={text.upcomingEvents} value={String(events.length)} help={text.exDividendDate} loading={loading} tone="warning" />
-          <MetricCard icon={ShieldCheck} label={text.dataQuality} value={snapshot.quality === null ? text.unavailable : `${snapshot.quality}%`} help={text.provider} loading={loading} tone="neutral" />
-        </div>
-      </section>
-
       <div className="workspace-grid">
         <div className="stack">
           <section className="section">
@@ -1684,7 +1958,9 @@ function OverviewTab({
           <section className="panel">
             <SectionHeader title={text.newsTitle} description={text.newsDescription} action={<button className="ghost-button" type="button" onClick={() => setTab('news')}>{text.showAllNews}</button>} />
             <div className="side-news">
-              {newsItems.slice(0, 4).map(item => <CompactNewsRow key={item.id || item.url} item={item} text={text} lang={lang} />)}
+              {newsItems.length > 0
+                ? newsItems.slice(0, 4).map(item => <CompactNewsRow key={item.id || item.url} item={item} text={text} lang={lang} />)
+                : <StateBox tone="info" icon={Newspaper} title={text.noNews} body={text.noNewsBody} />}
             </div>
           </section>
 
@@ -1765,7 +2041,9 @@ function ExplorerTab({
                   <th>{text.currentPrice}</th>
                   <th>{text.dividendYield}</th>
                   <th>{text.payoutRatio}</th>
+                  <th>{text.declarationDate}</th>
                   <th>{text.exDividendDate}</th>
+                  <th>{text.recordDate}</th>
                   <th>{text.paymentDate}</th>
                   <th>{text.riskLevel}</th>
                   <th>{text.action}</th>
@@ -1817,6 +2095,7 @@ function CalendarTab({
   text,
   lang,
   events,
+  rows,
   loading,
   range,
   setRange,
@@ -1837,6 +2116,7 @@ function CalendarTab({
   text: typeof COPY[LangCode];
   lang: LangCode;
   events: DividendEvent[];
+  rows: DividendStockRow[];
   loading: boolean;
   range: CalendarRange;
   setRange: (range: CalendarRange) => void;
@@ -1863,18 +2143,18 @@ function CalendarTab({
   const providerLabel = status === 'not_configured'
     ? text.providerNotConfiguredBadge
     : status === 'success'
-      ? `${text.providerConfigured}: ${(response?.provider ?? '').toUpperCase() || text.provider}`
+      ? `${text.providerConfigured}: FMP`
       : text.providerErrorBadge;
   const emptyTitle = status === 'not_configured'
     ? text.calendarUnavailableTitle
     : status === 'success'
       ? text.noCalendarEventsFiltered
       : text.calendarErrorTitle;
-  const emptyBody = status === 'not_configured'
-    ? text.calendarUnavailableText
-    : status === 'success'
-      ? text.noCalendarTextFiltered
-      : text.calendarErrorText;
+  let emptyBody: string = text.calendarErrorText;
+  if (status === 'not_configured') emptyBody = text.calendarUnavailableText;
+  else if (status === 'success') emptyBody = text.noCalendarTextFiltered;
+  else if (status === 'rate_limited') emptyBody = text.providerRateLimited;
+  else if ((['unauthorized', 'forbidden', 'not_entitled'] as string[]).includes(status)) emptyBody = text.providerAccessDenied;
   const marketOptions = uniqueOptions([...markets, market !== 'all' ? market : null]);
   const symbolOptions = uniqueOptions([...symbols, symbol !== 'all' ? symbol : null]);
   const typeOptions = uniqueOptions([...types, type !== 'all' ? type : null]);
@@ -1914,6 +2194,13 @@ function CalendarTab({
           </button>
         </div>
       </div>
+      <DividendProviderStatusCard
+        text={text}
+        lang={lang}
+        response={response}
+        rows={rows}
+        events={events}
+      />
       {loading ? <SkeletonGrid count={4} /> : events.length === 0 ? (
         <DividendEventEmptyState
           text={text}
@@ -1930,6 +2217,52 @@ function CalendarTab({
   );
 }
 
+function DividendProviderStatusCard({
+  text,
+  lang,
+  response,
+  rows,
+  events,
+}: {
+  text: typeof COPY[LangCode];
+  lang: LangCode;
+  response: DividendCalendarResponse | null;
+  rows: DividendStockRow[];
+  events: DividendEvent[];
+}) {
+  const status = response?.status ?? 'provider_error';
+  const connectionLabel = status === 'success'
+    ? text.connectedStatus
+    : status === 'not_configured'
+      ? text.unconfiguredStatus
+      : text.failedStatus;
+  const paymentDateCount = rows.filter(row => hasDate(row.paymentDate)).length;
+  const unavailableCount = rows.reduce((sum, row) => sum + unavailableDividendFieldCount(row), 0);
+  const updatedAt = response?.lastSuccessfulUpdate
+    ?? response?.updated_at
+    ?? response?.providerStatus?.lastSuccessfulUpdate
+    ?? response?.providerStatus?.lastFetchTime
+    ?? null;
+  const tone: Tone = status === 'success' ? 'positive' : status === 'not_configured' ? 'warning' : 'negative';
+
+  return (
+    <div className="provider-status-card">
+      <div className="provider-status-head">
+        <span className="eyebrow">{text.providerStatus}</span>
+        <span className={badgeClass(tone)}>{connectionLabel}</span>
+      </div>
+      <div className="metric-grid provider-status-grid">
+        <MiniMetric label={text.dividendProvider} value="FMP" />
+        <MiniMetric label={text.connectionStatus} value={connectionLabel} />
+        <MiniMetric label={text.providerEventsCount} value={String(response?.rawEventCount ?? events.length)} />
+        <MiniMetric label={text.stocksWithPaymentDate} value={String(paymentDateCount)} />
+        <MiniMetric label={text.unavailableValuesCount} value={String(unavailableCount)} />
+        <MiniMetric label={text.lastUpdate} value={formatDateTime(updatedAt, lang)} />
+      </div>
+    </div>
+  );
+}
+
 function NewsTab({
   text,
   lang,
@@ -1941,7 +2274,9 @@ function NewsTab({
   sector,
   source,
   symbol,
+  impact,
   time,
+  newsType,
   sort,
   sources,
   symbols,
@@ -1949,7 +2284,9 @@ function NewsTab({
   setSector,
   setSource,
   setSymbol,
+  setImpact,
   setTime,
+  setNewsType,
   setSort,
   reset,
   hasFilters,
@@ -1966,7 +2303,9 @@ function NewsTab({
   sector: SectorId;
   source: string;
   symbol: string;
+  impact: NewsImpactFilter;
   time: NewsTimeFilter;
+  newsType: NewsTypeFilter;
   sort: NewsSort;
   sources: string[];
   symbols: string[];
@@ -1974,7 +2313,9 @@ function NewsTab({
   setSector: (value: SectorId) => void;
   setSource: (value: string) => void;
   setSymbol: (value: string) => void;
+  setImpact: (value: NewsImpactFilter) => void;
   setTime: (value: NewsTimeFilter) => void;
+  setNewsType: (value: NewsTypeFilter) => void;
   setSort: (value: NewsSort) => void;
   reset: () => void;
   hasFilters: boolean;
@@ -1983,32 +2324,43 @@ function NewsTab({
 }) {
   const visible = items.slice(0, visibleCount);
   return (
-    <section className="section">
-      <SectionHeader title={text.newsTitle} description={text.newsDescription} action={<span className="pill">{text.resultCount}: {items.length}</span>} />
-      <NewsFilters
-        text={text}
-        lang={lang}
-        search={search}
-        sector={sector}
-        source={source}
-        symbol={symbol}
-        time={time}
-        sort={sort}
-        sources={sources}
-        symbols={symbols}
-        setSearch={setSearch}
-        setSector={setSector}
-        setSource={setSource}
-        setSymbol={setSymbol}
-        setTime={setTime}
-        setSort={setSort}
-        reset={reset}
-        hasFilters={hasFilters}
-      />
-      {loading ? <SkeletonGrid count={6} /> : items.length === 0 ? (
-        <StateBox tone="info" icon={Newspaper} title={text.noNews} actionLabel={hasFilters ? text.clearFilters : undefined} onAction={hasFilters ? reset : undefined} />
-      ) : (
-        <>
+    <div className="stack">
+      <section className="section" aria-label={text.newsTitle}>
+        <SectionHeader title={text.newsTitle} description={text.newsDescription} action={<span className="pill">{text.resultCount}: {items.length}</span>} />
+      </section>
+      <section className="section news-subsection" aria-label={text.newsFiltersTitle}>
+        <SectionHeader title={text.newsFiltersTitle} description={text.newsFiltersDescription} />
+        <NewsFilters
+          text={text}
+          lang={lang}
+          search={search}
+          sector={sector}
+          source={source}
+          symbol={symbol}
+          impact={impact}
+          time={time}
+          newsType={newsType}
+          sort={sort}
+          sources={sources}
+          symbols={symbols}
+          setSearch={setSearch}
+          setSector={setSector}
+          setSource={setSource}
+          setSymbol={setSymbol}
+          setImpact={setImpact}
+          setTime={setTime}
+          setNewsType={setNewsType}
+          setSort={setSort}
+          reset={reset}
+          hasFilters={hasFilters}
+        />
+      </section>
+      <section className="section news-subsection" aria-label={text.newsResultsTitle}>
+        <SectionHeader title={text.newsResultsTitle} description={text.newsResultsDescription} action={<span className="pill">{text.resultCount}: {items.length}</span>} />
+        {loading ? <SkeletonGrid count={6} /> : items.length === 0 ? (
+          <StateBox tone="info" icon={Newspaper} title={text.noNews} body={text.noNewsBody} actionLabel={hasFilters ? text.clearFilters : undefined} onAction={hasFilters ? reset : undefined} />
+        ) : (
+          <>
           <div className="news-grid">
             {visible.map(item => (
               <NewsCard
@@ -2022,9 +2374,10 @@ function NewsTab({
             ))}
           </div>
           {visibleCount < items.length ? <button className="primary-button" type="button" onClick={() => setVisibleCount(visibleCount + NEWS_PAGE_SIZE)}>{text.loadMore}</button> : null}
-        </>
-      )}
-    </section>
+          </>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -2116,14 +2469,16 @@ function DividendFilters({ text, lang, search, sector, sort, yieldMin, payoutMax
   );
 }
 
-function NewsFilters({ text, lang, search, sector, source, symbol, time, sort, sources, symbols, setSearch, setSector, setSource, setSymbol, setTime, setSort, reset, hasFilters }: {
+function NewsFilters({ text, lang, search, sector, source, symbol, impact, time, newsType, sort, sources, symbols, setSearch, setSector, setSource, setSymbol, setImpact, setTime, setNewsType, setSort, reset, hasFilters }: {
   text: typeof COPY[LangCode];
   lang: LangCode;
   search: string;
   sector: SectorId;
   source: string;
   symbol: string;
+  impact: NewsImpactFilter;
   time: NewsTimeFilter;
+  newsType: NewsTypeFilter;
   sort: NewsSort;
   sources: string[];
   symbols: string[];
@@ -2131,7 +2486,9 @@ function NewsFilters({ text, lang, search, sector, source, symbol, time, sort, s
   setSector: (value: SectorId) => void;
   setSource: (value: string) => void;
   setSymbol: (value: string) => void;
+  setImpact: (value: NewsImpactFilter) => void;
   setTime: (value: NewsTimeFilter) => void;
+  setNewsType: (value: NewsTypeFilter) => void;
   setSort: (value: NewsSort) => void;
   reset: () => void;
   hasFilters: boolean;
@@ -2150,18 +2507,38 @@ function NewsFilters({ text, lang, search, sector, source, symbol, time, sort, s
         {Object.keys(SECTORS).map(id => <option key={id} value={id}>{SECTORS[id as Exclude<SectorId, 'all'>].labels[lang]}</option>)}
       </SelectField>
       <SelectField id="dividend-news-symbol" label={text.symbolFilter} value={symbol} onChange={setSymbol}>
-        <option value="all">{text.allSectors}</option>
+        <option value="all">{text.allSymbols}</option>
         {symbols.map(option => <option key={option} value={option}>{option}</option>)}
       </SelectField>
       <SelectField id="dividend-news-source" label={text.sourceFilter} value={source} onChange={setSource}>
-        <option value="all">{text.allSectors}</option>
+        <option value="all">{text.allSources}</option>
         {sources.map(option => <option key={option} value={option}>{option}</option>)}
       </SelectField>
-      <SelectField id="dividend-news-time" label={text.timeRange} value={time} onChange={value => setTime(value as NewsTimeFilter)}>
+      <SelectField id="dividend-news-impact" label={text.impactFilter} value={impact} onChange={value => setImpact(value as NewsImpactFilter)}>
+        <option value="all">{text.allImpacts}</option>
+        <option value="high">{text.highImpact}</option>
+        <option value="medium">{text.mediumImpact}</option>
+        <option value="low">{text.lowImpact}</option>
+        <option value="unavailable">{text.unavailableImpact}</option>
+      </SelectField>
+      <SelectField id="dividend-news-time" label={text.dateFilter} value={time} onChange={value => setTime(value as NewsTimeFilter)}>
         <option value="all">{text.allTime}</option>
         <option value="day">{text.lastDay}</option>
         <option value="week">{text.lastWeek}</option>
         <option value="month">{text.lastMonth}</option>
+      </SelectField>
+      <SelectField id="dividend-news-type" label={text.newsTypeFilter} value={newsType} onChange={value => setNewsType(value as NewsTypeFilter)}>
+        <option value="all">{text.allNewsTypes}</option>
+        <option value="dividends">{text.newsTypeDividends}</option>
+        <option value="high_yield">{text.newsTypeHighYield}</option>
+        <option value="earnings">{text.newsTypeEarnings}</option>
+        <option value="fixed_income">{text.newsTypeFixedIncome}</option>
+        <option value="defensive">{text.newsTypeDefensive}</option>
+        <option value="telecom">{text.newsTypeTelecom}</option>
+        <option value="utilities">{text.newsTypeUtilities}</option>
+        <option value="energy">{text.newsTypeEnergy}</option>
+        <option value="reits">{text.newsTypeReits}</option>
+        <option value="consumer_staples">{text.newsTypeConsumerStaples}</option>
       </SelectField>
       <SelectField id="dividend-news-sort" label={text.sort} value={sort} onChange={value => setSort(value as NewsSort)}>
         <option value="latest">{text.latest}</option>
@@ -2184,7 +2561,6 @@ function FeaturedGrid({ rows, text, lang, loading, compact }: { rows: DividendSt
 }
 
 function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
-  const hasData = hasDividendData(row);
   return (
     <article className="card featured-card">
       <div className="stock-head">
@@ -2199,8 +2575,8 @@ function FeaturedStockCard({ row, text, lang, compact }: { row: DividendStockRow
         <span>{text.score}</span>
         <strong>{row.qualityScore === null ? text.unavailable : row.qualityScore}</strong>
       </div>
-      {hasData ? <DividendMetricGrid row={row} text={text} lang={lang} compact={compact} /> : <DividendDataNotice text={text} />}
-      {hasData ? <p className="muted"><strong>{text.reason}:</strong> {row.selectionReason}</p> : null}
+      <DividendMetricGrid row={row} text={text} lang={lang} compact={compact} />
+      <p className="muted"><strong>{text.reason}:</strong> {row.selectionReason}</p>
       {row.highYieldWarning ? <p className="warning-line"><AlertTriangle size={15} />{text.highYieldWarning}</p> : null}
     </article>
   );
@@ -2219,7 +2595,6 @@ function StockTableRow({
   onOpenDetails: (row: DividendStockRow) => void;
   isOpening: boolean;
 }) {
-  const hasData = hasDividendData(row);
   const ariaLabel = `${text.viewDetailsAriaPrefix} ${row.symbol}`;
   return (
     <tr>
@@ -2233,17 +2608,18 @@ function StockTableRow({
         </div>
       </td>
       <td className="numeric">{formatCurrency(row.price, row.currency, lang)}</td>
-      {hasData ? (
-        <>
-          <td className="numeric">{normalizeRatioToPercent(row.dividendYield) === null ? text.unavailable : formatPercent(row.dividendYield, lang, true)}</td>
-          <td className="numeric">{normalizeRatioToPercent(row.payoutRatio) === null ? text.unavailable : formatPercent(row.payoutRatio, lang, true)}</td>
-          <td>{hasDate(row.exDividendDate) ? formatDate(row.exDividendDate, lang) : text.unavailable}</td>
-          <td>{hasDate(row.paymentDate) ? formatDate(row.paymentDate, lang) : text.unavailable}</td>
-        </>
-      ) : (
-        <td colSpan={4}><span className="dividend-empty-inline">{text.insufficientDividendData}</span></td>
-      )}
-      <td><span className={badgeClass(row.riskTone)}>{row.riskLabel}</span></td>
+      <td className="numeric">{normalizeRatioToPercent(row.dividendYield) === null ? text.unavailable : formatPercent(row.dividendYield, lang, true)}</td>
+      <td className="numeric">{normalizeRatioToPercent(row.payoutRatio) === null ? text.unavailable : formatPercent(row.payoutRatio, lang, true)}</td>
+      <td>{hasDate(row.declarationDate) ? formatDate(row.declarationDate, lang) : text.unavailable}</td>
+      <td>{hasDate(row.exDividendDate) ? formatDate(row.exDividendDate, lang) : text.unavailable}</td>
+      <td>{hasDate(row.recordDate) ? formatDate(row.recordDate, lang) : text.unavailable}</td>
+      <td>{hasDate(row.paymentDate) ? formatDate(row.paymentDate, lang) : text.unavailable}</td>
+      <td>
+        <div className="risk-cell">
+          <span className={badgeClass(row.riskTone)}>{row.riskLabel}</span>
+          {row.dividendDataLabel === 'latestHistorical' ? <span className="badge tone-info">{text.latestDividendAvailable}</span> : null}
+        </div>
+      </td>
       <td>
         <button
           className="link-button"
@@ -2276,7 +2652,6 @@ function DividendMobileCard({
   onOpenDetails: (row: DividendStockRow) => void;
   isOpening: boolean;
 }) {
-  const hasData = hasDividendData(row);
   const ariaLabel = `${text.viewDetailsAriaPrefix} ${row.symbol}`;
   return (
     <article className="card">
@@ -2288,15 +2663,16 @@ function DividendMobileCard({
         </div>
         <span className={badgeClass(row.riskTone)}>{row.riskLabel}</span>
       </div>
-      {hasData ? (
-        <div className="metric-grid">
-          <MiniMetric label={text.currentPrice} value={formatCurrency(row.price, row.currency, lang)} />
-          {normalizeRatioToPercent(row.dividendYield) !== null ? <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} /> : null}
-          {normalizeRatioToPercent(row.payoutRatio) !== null ? <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} /> : null}
-          {hasDate(row.exDividendDate) ? <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} /> : null}
-          {hasDate(row.paymentDate) ? <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} /> : null}
-        </div>
-      ) : <DividendDataNotice text={text} />}
+      <div className="metric-grid">
+        <MiniMetric label={text.currentPrice} value={formatCurrency(row.price, row.currency, lang)} />
+        <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} />
+        <MiniMetric label={text.dividendAmount} value={formatCurrency(row.annualDividend, row.currency, lang)} />
+        <MiniMetric label={text.declarationDate} value={formatDate(row.declarationDate, lang)} />
+        <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} />
+        <MiniMetric label={text.recordDate} value={formatDate(row.recordDate, lang)} />
+        <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} />
+        {row.dividendDataLabel === 'latestHistorical' ? <MiniMetric label={text.dataDate} value={text.latestDividendAvailable} /> : null}
+      </div>
       <button
         className="primary-button"
         type="button"
@@ -2336,7 +2712,7 @@ function StockDetailsDrawer({
   const symbol = (row?.symbol ?? loadingSymbol ?? '').toUpperCase();
   const providerValue = Array.from(new Set([row?.source, row?.dividendMetricSource, provider].filter(Boolean))).join(' / ') || null;
   const dividendStatus = row ? [row.qualityLabel, row.payoutQuality].filter(Boolean).join(' / ') : text.unavailable;
-  const showUnavailable = !loading && (!row || !hasDividendData(row));
+  const showUnavailable = !loading && !row;
 
   return (
     <div className="details-overlay" onMouseDown={onClose}>
@@ -2384,10 +2760,13 @@ function StockDetailsDrawer({
               <DetailItem label={text.currentPrice}><span className="numeric">{formatCurrency(row.price, row.currency, lang)}</span></DetailItem>
               <DetailItem label={text.currency}><span className="symbol">{row.currency || text.unavailable}</span></DetailItem>
               <DetailItem label={text.dividendYield}><span className="numeric">{formatPercent(row.dividendYield, lang, true)}</span></DetailItem>
-              <DetailItem label={text.dividendPerShare}><span className="numeric">{formatCurrency(row.annualDividend, row.currency, lang)}</span></DetailItem>
+              <DetailItem label={text.dividendAmount}><span className="numeric">{formatCurrency(row.annualDividend, row.currency, lang)}</span></DetailItem>
               <DetailItem label={text.payoutRatio}><span className="numeric">{formatPercent(row.payoutRatio, lang, true)}</span></DetailItem>
+              <DetailItem label={text.declarationDate}>{formatDate(row.declarationDate, lang)}</DetailItem>
               <DetailItem label={text.exDividendDate}>{formatDate(row.exDividendDate, lang)}</DetailItem>
+              <DetailItem label={text.recordDate}>{formatDate(row.recordDate, lang)}</DetailItem>
               <DetailItem label={text.paymentDate}>{formatDate(row.paymentDate, lang)}</DetailItem>
+              {row.dividendDataLabel === 'latestHistorical' ? <DetailItem label={text.dataDate}>{text.latestDividendAvailable}</DetailItem> : null}
               <DetailItem label={text.sector}>{row.sectorLabel}</DetailItem>
               <DetailItem label={text.riskLevel}><span className={badgeClass(row.riskTone)}>{row.riskLabel}</span></DetailItem>
               <DetailItem label={text.dividendStatus}>{dividendStatus}</DetailItem>
@@ -2419,21 +2798,15 @@ function DetailItem({ label, children }: { label: string; children: ReactNode })
 function DividendMetricGrid({ row, text, lang, compact }: { row: DividendStockRow; text: typeof COPY[LangCode]; lang: LangCode; compact?: boolean }) {
   return (
     <div className="metric-grid">
-      {normalizeRatioToPercent(row.dividendYield) !== null ? <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} /> : null}
-      {normalizeRatioToPercent(row.payoutRatio) !== null ? <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} /> : null}
-      {hasDate(row.exDividendDate) ? <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} /> : null}
-      {hasDate(row.paymentDate) ? <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} /> : null}
-      {!compact && hasNumber(row.annualDividend) ? <MiniMetric label={text.dividendPerShare} value={formatCurrency(row.annualDividend, row.currency, lang)} /> : null}
-      {!compact && row.dividendMetricSource ? <MiniMetric label={text.dataDate} value={row.dividendMetricSource} /> : null}
-    </div>
-  );
-}
-
-function DividendDataNotice({ text }: { text: typeof COPY[LangCode] }) {
-  return (
-    <div className="dividend-data-notice">
-      <Info size={16} />
-      <span>{text.insufficientDividendData}</span>
+      <MiniMetric label={text.dividendYield} value={formatPercent(row.dividendYield, lang, true)} />
+      <MiniMetric label={text.dividendAmount} value={formatCurrency(row.annualDividend, row.currency, lang)} />
+      <MiniMetric label={text.exDividendDate} value={formatDate(row.exDividendDate, lang)} />
+      <MiniMetric label={text.paymentDate} value={formatDate(row.paymentDate, lang)} />
+      {!compact ? <MiniMetric label={text.payoutRatio} value={formatPercent(row.payoutRatio, lang, true)} /> : null}
+      {!compact ? <MiniMetric label={text.declarationDate} value={formatDate(row.declarationDate, lang)} /> : null}
+      {!compact ? <MiniMetric label={text.recordDate} value={formatDate(row.recordDate, lang)} /> : null}
+      {row.dividendDataLabel === 'latestHistorical' ? <MiniMetric label={text.dataDate} value={text.latestDividendAvailable} /> : null}
+      {!compact && row.dividendMetricSource ? <MiniMetric label={text.source} value={row.dividendMetricSource} /> : null}
     </div>
   );
 }
@@ -2553,17 +2926,22 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: Di
   const url = safeUrl(item.url);
   const title = safeArticleTitle(item, showOriginal);
   const summary = safeArticleSummary(item, showOriginal);
+  const impact = newsImpact(item);
+  const type = newsTypes(item)[0] ?? null;
   return (
     <article className="card article-card">
       <div className="article-meta">
         <span>{item.source}</span>
         <span>{formatRelative(item.publishedAt, lang)}</span>
         <span>{sectorLabel(newsSector(item), lang)}</span>
+        {type ? <span>{newsTypeLabel(type, text)}</span> : null}
         {item.isTranslated && !showOriginal ? <span className="badge tone-info">{text.machineTranslation}</span> : null}
       </div>
       <h3 className="article-title" dir="auto">{title}</h3>
       {summary ? <p className="article-summary" dir="auto">{summary}</p> : null}
       <div className="metric-grid">
+        <MiniMetric label={text.source} value={item.source || text.unavailable} />
+        <MiniMetric label={text.publishedDate} value={formatDateTime(item.publishedAt, lang)} />
         <div className="mini-metric asset-mini-metric">
           <span>{text.relatedSymbol}</span>
           {item.ticker ? (
@@ -2578,6 +2956,9 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: Di
             />
           ) : <strong>{text.unavailable}</strong>}
         </div>
+        <MiniMetric label={text.companyName} value={item.companyName ?? text.unavailable} />
+        <MiniMetric label={text.impactLevel} value={newsImpactLabel(impact, text)} />
+        <MiniMetric label={text.providerLabel} value={newsProvider(item)} />
         <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.unavailable} />
       </div>
       <div className="article-actions">
@@ -3479,6 +3860,26 @@ function DividendStyles() {
       .calendar-filter-panel {
         margin: 12px 0 16px;
       }
+      .provider-status-card {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(58, 124, 154, 0.14);
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(10, 42, 75, 0.07);
+      }
+      .provider-status-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .provider-status-grid {
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      }
       .calendar-filter-actions {
         display: flex;
         align-items: center;
@@ -3575,7 +3976,7 @@ function DividendStyles() {
       }
       .stock-table {
         width: 100%;
-        min-width: 920px;
+        min-width: 1120px;
         border-collapse: separate;
         border-spacing: 0;
       }
@@ -3611,6 +4012,12 @@ function DividendStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .risk-cell {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 7px;
       }
       .mobile-card-list {
         display: none;
@@ -3882,6 +4289,11 @@ function DividendStyles() {
         background:
           linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 184, 166, 0.1)),
           #0f172a;
+      }
+      .dark .provider-status-card {
+        border-color: rgba(125, 211, 252, 0.18);
+        background: rgba(15, 23, 42, 0.9);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
       }
       .dark .event-empty-copy strong,
       .dark .asset-mini-name {

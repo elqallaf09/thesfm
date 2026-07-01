@@ -37,7 +37,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_stock_news_menu: { ar:'أخبار البورصات والأسهم', en:'Stock Exchange & Stock News', fr:'Actualités des bourses et actions' },
   nav_defensive_stocks: { ar:'أخبار الأسهم الدفاعية', en:'Defensive Stocks News', fr:'Actualités des actions défensives' },
   nav_growth_stocks: { ar:'أخبار أسهم النمو', en:'Growth Stocks News', fr:'Actualités des actions de croissance' },
-  nav_dividend_stocks: { ar:'أخبار أسهم التوزيعات', en:'Dividend Stocks News', fr:'Actualités des actions à dividendes' },
+  nav_dividend_stocks: { ar:'أخبار أسهم الدخل المرتفع', en:'High Income Stocks News', fr:'Actualités des actions à revenu élevé' },
   nav_cyclical_stocks: { ar:'أخبار الأسهم الدورية', en:'Cyclical Stocks News', fr:'Actualités des actions cycliques' },
   nav_energy_stocks: { ar:'أخبار الطاقة', en:'Energy News', fr:'Actualités de l’énergie' },
   nav_banking_stocks: { ar:'أخبار البنوك', en:'Banking News', fr:'Actualités bancaires' },
