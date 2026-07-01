@@ -7,7 +7,7 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260701-terminal-6";
+  const VER = "20260701-terminal-7";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
@@ -264,6 +264,7 @@
     const tableItems = rec.length ? rec.slice(0, 14) : dashboardSymbols().map(s => ({ symbol: s, name: "غير متاح" }));
     return `<div class="page-stack">
       ${commandCenter(rec)}
+      ${marketOverview(rec)}
       ${marketLeadership(rec)}
       ${opportunityHeatmap(rec)}
       <section class="market-movers-grid">

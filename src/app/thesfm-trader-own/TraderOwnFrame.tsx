@@ -60,7 +60,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
         html,
         body {
           margin: 0;
-          background: #020617;
+          background: #06111F;
           overflow: hidden;
         }
         .trader-shell-page {
@@ -69,7 +69,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
           z-index: 2147483000;
           min-height: 100vh;
           width: 100%;
-          background: #020617;
+          background: #06111F;
           overflow: hidden;
         }
         .trader-shell-frame {
@@ -78,7 +78,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
           min-height: 100vh;
           height: 100dvh;
           border: 0;
-          background: #020617;
+          background: #06111F;
         }
       `}</style>
     </main>
@@ -100,22 +100,22 @@ function GateStyles() {
         padding: 24px;
         color: #f8fafc;
         background:
-          radial-gradient(circle at 18% 12%, rgba(16, 185, 129, .20), transparent 34%),
-          radial-gradient(circle at 82% 18%, rgba(212, 175, 55, .18), transparent 30%),
-          linear-gradient(135deg, #020617, #071414 52%, #050816);
+          radial-gradient(circle at 18% 12%, rgba(34, 211, 238, .14), transparent 34%),
+          radial-gradient(circle at 82% 18%, rgba(20, 184, 166, .12), transparent 30%),
+          linear-gradient(135deg, #06111F, #0A1728 52%, #06111F);
       }
       .trader-gate-card {
         width: min(620px, 100%);
-        border: 1px solid rgba(212, 175, 55, .30);
-        border-radius: 28px;
+        border: 1px solid #24486F;
+        border-radius: 22px;
         padding: 34px;
-        background: linear-gradient(180deg, rgba(8, 17, 28, .92), rgba(4, 12, 20, .86));
-        box-shadow: 0 30px 90px rgba(0, 0, 0, .42);
+        background: linear-gradient(180deg, rgba(15, 34, 56, .96), rgba(10, 23, 40, .94));
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .34);
       }
       .trader-gate-eyebrow {
         display: inline-flex;
         margin-bottom: 14px;
-        color: #d4af37;
+        color: #22D3EE;
         font-size: 12px;
         font-weight: 900;
         letter-spacing: .08em;
@@ -144,7 +144,7 @@ function GateStyles() {
         color: #f8fafc;
         text-decoration: none;
         font-weight: 900;
-        background: rgba(45, 212, 191, .10);
+        background: rgba(59, 130, 246, .16);
       }
     `}</style>
   );
