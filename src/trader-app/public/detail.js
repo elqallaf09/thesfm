@@ -704,16 +704,16 @@ function renderDetail(data) {
   elements.expectedPrice.textContent = formatMoney(item.expectedPrice, item.currency);
   elements.targetOne.textContent = formatMoney(item.target1 || item.expectedPrice, item.currency);
   elements.targetTwo.textContent = formatMoney(item.target2, item.currency);
-  elements.stopLoss.textContent = item.stopLoss ? formatMoney(item.stopLoss, item.currency) : "--";
+  elements.stopLoss.textContent = item.stopLoss ? formatMoney(item.stopLoss, item.currency) : unavailableText();
   elements.support.textContent = formatMoney(item.support, item.currency);
   elements.resistance.textContent = formatMoney(item.resistance, item.currency);
-  elements.riskReward.textContent = item.riskReward ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : "--";
+  elements.riskReward.textContent = item.riskReward ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : unavailableText();
   elements.expectedMove.textContent = formatPercent(item.expectedMovePct);
   elements.duration.textContent = localizeDetailText(item.duration);
   elements.score.textContent = `${finalScore.score}% · ${localizeScoreLabel(finalScore.label)}`;
   elements.risk.textContent = localizeRiskLabel(item.risk);
-  elements.quality.textContent = item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : "--";
-  elements.dataHealth.textContent = item.dataHealth ? `${item.dataHealth.score}% · ${localizeDetailText(item.dataHealth.label || "صحة البيانات")}` : "--";
+  elements.quality.textContent = item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : unavailableText();
+  elements.dataHealth.textContent = item.dataHealth ? `${item.dataHealth.score}% · ${localizeDetailText(item.dataHealth.label || "صحة البيانات")}` : unavailableText();
 
   elements.decisionPanel.className = `decision-panel decision-${decision.kind}`;
   elements.decisionTitle.textContent = localizeDetailText(decision.title);
@@ -732,16 +732,28 @@ function renderDetail(data) {
 }
 
 function renderGeneralInfo(profile, market, item) {
+  const providerStatus = item.providerStatus || {};
+  const providerSymbolUsed = providerStatus.providerSymbolUsed || item.providerSymbol || unavailableText();
+  const fallbackUsed = providerStatus.fallbackUsed === true
+    ? detailText("نعم", "Yes")
+    : providerStatus.fallbackUsed === false
+      ? detailText("لا", "No")
+      : unavailableText();
+  const dataQuality = providerStatus.dataQuality ? localizeDataQuality(providerStatus.dataQuality) : unavailableText();
   elements.generalInfo.innerHTML = `
     ${renderInfoRow(detailText("الاختصاص", "Specialty"), localizeDetailText(profile.specialty || "--"))}
     ${renderInfoRow(detailText("السوق", "Market"), localizeMarketLabel(profile, market))}
     ${renderInfoRow(detailText("المنطقة", "Region"), localizeRegion(profile.region || market.region || "--"))}
     ${renderInfoRow(detailText("البورصة", "Exchange"), localizeDetailText(profile.exchangeName || item.exchangeName || "--"))}
     ${renderInfoRow(detailText("العملة", "Currency"), profile.currency || item.currency || "--")}
+    ${renderInfoRow(detailText("رمز المزود المستخدم", "Provider symbol used"), providerSymbolUsed)}
+    ${renderInfoRow(detailText("استخدم fallback؟", "Fallback used?"), fallbackUsed)}
+    ${renderInfoRow(detailText("آخر تحديث", "Last updated"), formatDateTime(providerStatus.lastUpdated || item.dataTimestamp || item.generatedAt))}
+    ${renderInfoRow(detailText("جودة البيانات", "Data quality"), dataQuality)}
     ${renderInfoRow(detailText("حالة السوق", "Market status"), localizeDetailText(item.marketState || "--"))}
     ${renderInfoRow(detailText("ملاحظة المزود", "Provider note"), localizeDetailText(item.providerDelayNote || market.note || "--"))}
-    ${renderInfoRow(detailText("حجم التداول النسبي", "Relative volume"), item.relativeVolume ? `${formatNumber(item.relativeVolume, { maximumFractionDigits: 2 })}x` : "--")}
-    ${renderInfoRow("VWAP", item.indicators?.vwap ? formatMoney(item.indicators.vwap, item.currency) : "--")}
+    ${renderInfoRow(detailText("حجم التداول النسبي", "Relative volume"), item.relativeVolume ? `${formatNumber(item.relativeVolume, { maximumFractionDigits: 2 })}x` : unavailableText())}
+    ${renderInfoRow("VWAP", item.indicators?.vwap ? formatMoney(item.indicators.vwap, item.currency) : unavailableText())}
   `;
 }
 
@@ -825,7 +837,7 @@ function renderBacktest(item) {
     ${renderInfoRow(detailText("عدد العينات", "Samples"), item.backtest?.samples ?? "--")}
     ${renderInfoRow(detailText("أفق الاختبار", "Test horizon"), item.backtest?.horizonDays ? detailText(`${item.backtest.horizonDays} يوم`, `${item.backtest.horizonDays} days`) : "--")}
     ${renderInfoRow(detailText("متوسط العائد", "Average return"), Number.isFinite(item.backtest?.avgReturnPct) ? formatPercent(item.backtest.avgReturnPct) : "--")}
-    ${renderInfoRow(detailText("جودة التحليل", "Analysis quality"), item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : "--")}
+    ${renderInfoRow(detailText("جودة التحليل", "Analysis quality"), item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : unavailableText())}
     ${renderInfoRow(detailText("خطة التنفيذ", "Execution plan"), localizeDetailText(item.tradePlan?.note || "--"))}
     ${renderInfoRow(detailText("ملاحظات المخاطرة", "Risk notes"), localizeJoinedList(item.risk?.notes, "--"))}
   `;
@@ -870,10 +882,11 @@ function buildDecision(item) {
 }
 
 function renderInfoRow(label, value) {
+  const displayValue = value === null || value === undefined || value === "" || value === "--" ? unavailableText() : value;
   return `
     <div class="info-row">
       <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
+      <strong>${escapeHtml(displayValue)}</strong>
     </div>
   `;
 }
@@ -980,12 +993,38 @@ function detailText(arabic, english) {
   return isDetailEnglishLanguage() ? english : arabic;
 }
 
+function unavailableText() {
+  return detailText("غير متاح", "Unavailable");
+}
+
 function localizeDetailText(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   const text = String(value);
   return isDetailEnglishLanguage()
     ? translateDetailArabicToEnglish(text)
     : translateDetailEnglishToArabic(text);
+}
+
+function localizeDataQuality(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (key === "live") return detailText("مباشر", "Live");
+  if (key === "delayed") return detailText("متأخر", "Delayed");
+  if (key === "partial") return detailText("جزئي", "Partial");
+  if (key === "unavailable") return unavailableText();
+  return localizeDetailText(value || unavailableText());
+}
+
+function formatDateTime(value) {
+  const timestamp = Date.parse(value || "");
+  if (!Number.isFinite(timestamp)) return unavailableText();
+  return normalizeDigits(new Date(timestamp).toLocaleString(NUMBER_LOCALE, {
+    ...NUMBER_OPTIONS,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }));
 }
 
 function localizeActionLabel(actionOrLabel, fallbackLabel = "") {
@@ -1046,10 +1085,12 @@ function localizeRegion(value) {
 }
 
 function localizeConfidenceText(value) {
+  if (!Number.isFinite(Number(value))) return unavailableText();
   return detailText(`${value}% ثقة`, `${value}% confidence`);
 }
 
 function localizeAgreementText(consensus = {}) {
+  if (!Number.isFinite(Number(consensus.agreementPct))) return unavailableText();
   const agreement = consensus.agreementPct || 0;
   const coverage = consensus.coverage || 0;
   const total = consensus.total || 0;
@@ -1294,9 +1335,9 @@ function initMarketBackground() {
 }
 
 function formatMoney(value, currency) {
-  if (value === null || value === undefined || value === "") return "--";
+  if (value === null || value === undefined || value === "") return unavailableText();
   const number = Number(value);
-  if (!Number.isFinite(number)) return "--";
+  if (!Number.isFinite(number)) return unavailableText();
   const normalizedCurrency = normalizeCurrencyCode(currency);
   const digits = Math.abs(number) < 1 ? 4 : 2;
   return `${formatNumber(number, {
@@ -1329,7 +1370,9 @@ function normalizeCurrencyCode(currency) {
 }
 
 function formatPercent(value) {
-  const number = Number(value || 0);
+  if (value === null || value === undefined || value === "") return unavailableText();
+  const number = Number(value);
+  if (!Number.isFinite(number)) return unavailableText();
   const prefix = number > 0 ? "+" : "";
   return `${prefix}${formatNumber(number, {
     minimumFractionDigits: 2,
@@ -1339,7 +1382,7 @@ function formatPercent(value) {
 
 function formatNumber(value, options = {}) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return "--";
+  if (!Number.isFinite(number)) return unavailableText();
   return normalizeDigits(number.toLocaleString(NUMBER_LOCALE, {
     ...NUMBER_OPTIONS,
     ...options

@@ -558,6 +558,17 @@ async function loadInvestmentRecords(admin: DbClient | null, userId: string | nu
   return rows.map(investmentToRecord).filter((record): record is TradePerformanceRecord => Boolean(record));
 }
 
+async function loadSignalHistory(admin: DbClient | null) {
+  if (!admin) return [];
+  return maybeSelect<Record<string, unknown>>(
+    admin
+      .from('signal_history')
+      .select('id,symbol,old_action,new_action,old_confidence,new_confidence,reason,created_at')
+      .order('created_at', { ascending: false })
+      .limit(50),
+  );
+}
+
 function quoteForRecord(record: TradePerformanceRecord, quotes: Map<string, TraderQuote>) {
   const exact = quotes.get(record.symbol);
   if (exact) return exact;
@@ -642,6 +653,7 @@ export async function buildTradePerformancePayload(input: {
   const recommendationRecords = await loadRecommendationRecords(input.admin, input.userId);
   const watchlistRecords = await loadWatchlistRecords(input.admin, input.userId, signalRecords);
   const investmentRecords = await loadInvestmentRecords(input.admin, input.userId);
+  const signalHistory = await loadSignalHistory(input.admin);
 
   const records = dedupeRecords([
     ...followedRecords,
@@ -660,7 +672,7 @@ export async function buildTradePerformancePayload(input: {
     savedTrades: refreshed.length,
     updatedPrices: refreshed.filter(record => record.priceUpdated).length,
     missingPrices: refreshed.filter(record => !record.priceUpdated).length,
-    sourceCounts: sourceCounts(refreshed),
+    sourceCounts: { ...sourceCounts(refreshed), signal_history: signalHistory.length },
     message: refreshed.length ? null : 'لا توجد صفقات متابعة محفوظة أو إشارات محفوظة حالياً.',
   };
 
@@ -670,6 +682,7 @@ export async function buildTradePerformancePayload(input: {
     trades: refreshed,
     items: refreshed,
     summary: summarizeTrades(refreshed),
+    signalHistory,
     dataStatus,
     dataProvider: CONNECTED_PROVIDER,
   };

@@ -560,8 +560,9 @@
   }
 
   function providerName(provider) {
-    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance" };
-    return names[String(provider || "").toLowerCase()] || "غير متصل";
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", manual: "إدخال يدوي" };
+    const raw = String(provider || "").trim();
+    return names[raw.toLowerCase()] || raw || "غير متصل";
   }
 
   function resultCountText(value) { return value === null || value === undefined ? "--" : `${latinNumber(value)} نتيجة`; }
@@ -672,26 +673,30 @@
     const target = document.getElementById("symbol-details-body"); if (!target) return;
     const key = sym(symbol);
     if (state.cache.has(key)) { target.innerHTML = symbolContent(state.cache.get(key)); return; }
-    const [profile, search, tech, sig] = await Promise.all([
+    const [profile, search, tech, sig, hist] = await Promise.all([
       get(`/market/asset-profile?symbol=${encodeURIComponent(key)}`),
       get(`/market/search?q=${encodeURIComponent(key)}&limit=5`),
       get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`),
-      get(`/market/signals/${encodeURIComponent(key)}`)
+      get(`/market/signals/${encodeURIComponent(key)}`),
+      get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`)
     ]);
     const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
     const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
     const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
+    const historyPoints = arr(hist.points || hist.history);
     const techAsset = rawTech && typeof rawTech === "object" ? {
       price: rawTech.currentPrice || rawTech.price,
       currentPrice: rawTech.currentPrice || rawTech.price,
       currency: rawTech.currency,
       source: rawTech.source,
-      exchange: rawTech.exchange || rawTech.market
-    } : {};
+      exchange: rawTech.exchange || rawTech.market,
+      history: historyPoints
+    } : historyPoints.length ? { history: historyPoints } : {};
+    const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
     const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
     const detail = {
-      asset, tech: rawTech,
-      available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech),
+      asset, tech: rawTech, providerStatus,
+      available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
       source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
       message: profile.message || search.message || "لا توجد بيانات كافية من المزود لهذا الرمز.",
       rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
@@ -704,11 +709,17 @@
     const a = detail.asset, c = currency(a), sig = detail.rec ? signal(detail.rec) : null;
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, detail.rec && detail.rec.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
+    const ps = detail.providerStatus || {};
+    const providerSymbolUsed = ps.providerSymbolUsed || a.providerSymbol || (detail.rec && detail.rec.providerSymbol) || "غير متاح";
+    const fallbackUsed = ps.fallbackUsed === true ? "نعم" : ps.fallbackUsed === false ? "لا" : "غير متاح";
+    const lastUpdated = latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
+    const quality = ps.dataQuality ? dataQualityLabel(ps.dataQuality) : "غير متاح";
     return `<div class="detail-layout">
       <article class="panel detail-main">
         <div class="asset-head big">${logo(a, "lg")}<div class="asset-title"><strong class="symbol-code">${h(a.symbol)}</strong><small>${h(a.name || "اسم الأصل غير متوفر من المزود")}</small></div>
           ${sig ? `<span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""} big">${h(sigLabel(sig))}</span>` : ""}</div>
         <div class="detail-grid">${detailCard("السعر", price(p, c), "Price")}${detailCard("التغير", change(chg), "Change")}${detailCard("العملة", c, "Currency")}${detailCard("النوع", a.assetType || assetType(a.symbol), "Type")}${detailCard("السوق", a.exchange || a.market || "--", "Exchange")}${detailCard("المصدر", detail.source || "--", "Source")}</div>
+        <div class="detail-grid">${detailCard("رمز المزود المستخدم", providerSymbolUsed, "Provider symbol")}${detailCard("استخدم fallback؟", fallbackUsed, "Fallback")}${detailCard("آخر تحديث", lastUpdated === "--" ? "غير متاح" : lastUpdated, "Last updated")}${detailCard("جودة البيانات", quality, "Data quality")}</div>
         <div class="card-actions"><button class="action-btn" data-quick-add="${h(a.symbol)}">أضف للمتابعة</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">أنشئ تنبيه</button></div>
         ${miniChart(a)}
       </article>
@@ -1005,6 +1016,18 @@
     }
     return null;
   }
+  function hasChartHistory(asset, tech) {
+    return arr(asset.history || asset.sparkline || asset.candles).length >= 2
+      || arr((tech || {}).history || (tech || {}).ohlc || (tech || {}).candles).length >= 2;
+  }
+  function validTechnicalLevel(value, currentPrice, side, hasHistory) {
+    if (!hasHistory || value === null || currentPrice === null || value <= 0 || currentPrice <= 0) return null;
+    const distance = Math.abs(value - currentPrice) / currentPrice;
+    if (distance > 0.75) return null;
+    if (side === "support" && value > currentPrice * 1.1) return null;
+    if (side === "resistance" && value < currentPrice * 0.9) return null;
+    return value;
+  }
   function trendText(value) {
     const raw = String(value || "");
     const s = raw.toLowerCase();
@@ -1022,29 +1045,31 @@
     const piv = t.pivotPoints || t.pivots || {};
     const supports = Array.isArray(t.support) ? t.support : Array.isArray(levels.support) ? levels.support : [];
     const resistances = Array.isArray(t.resistance) ? t.resistance : Array.isArray(levels.resistance) ? levels.resistance : [];
+    const current = firstNum(a.price, a.lastPrice, a.regularMarketPrice, a.close, t.currentPrice, t.price);
+    const canShowLevels = hasChartHistory(a, t);
     const rsi = firstNum(t.rsi, t.rsi14, t.RSI, ind.rsi, ind.rsi14);
     const macd = firstNum(t.macd, t.macdValue, ind.macd, ind.macdValue), macdSig = firstNum(t.macdSignal, t.signalLine, ind.macdSignal, ind.signalLine);
     const ma50 = firstNum(t.ma50, t.sma50, t.ema50, ma.ma50, ma.sma50, ma.ema50, ind.sma50, ind.ema50);
     const ma200 = firstNum(t.ma200, t.sma200, t.ema200, ma.ma200, ma.sma200, ma.ema200, ind.sma200, ind.ema200);
     const vol = firstNum(t.volatility, t.atr, t.atr14, ind.atr, ind.atr14);
-    const s1 = firstNum(t.s1, t.support1, supports[0], levels.s1, piv.s1, t.support);
-    const s2 = firstNum(t.s2, t.support2, supports[1], levels.s2, piv.s2);
-    const r1 = firstNum(t.r1, t.resistance1, resistances[0], levels.r1, piv.r1, t.resistance);
-    const r2 = firstNum(t.r2, t.resistance2, resistances[1], levels.r2, piv.r2);
+    const s1 = validTechnicalLevel(firstNum(t.s1, t.support1, supports[0], levels.s1, piv.s1, t.support), current, "support", canShowLevels);
+    const s2 = validTechnicalLevel(firstNum(t.s2, t.support2, supports[1], levels.s2, piv.s2), current, "support", canShowLevels);
+    const r1 = validTechnicalLevel(firstNum(t.r1, t.resistance1, resistances[0], levels.r1, piv.r1, t.resistance), current, "resistance", canShowLevels);
+    const r2 = validTechnicalLevel(firstNum(t.r2, t.resistance2, resistances[1], levels.r2, piv.r2), current, "resistance", canShowLevels);
     const trend = trendText(t.trend || t.direction || ind.trend || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : ""));
     const rsiTag = rsi === null ? "" : rsi >= 70 ? " (تشبع شرائي)" : rsi <= 30 ? " (تشبع بيعي)" : "";
     const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? " · إيجابي" : " · سلبي") : "";
     const rows = [
-      ["الاتجاه العام", trend || "--"],
-      ["RSI (14)", rsi === null ? "--" : Math.round(rsi) + rsiTag],
-      ["MACD", macd === null ? "--" : (Math.round(macd * 1000) / 1000) + macdTag],
+      ["الاتجاه العام", trend || "غير متاح"],
+      ["RSI (14)", rsi === null ? "غير متاح" : Math.round(rsi) + rsiTag],
+      ["MACD", macd === null ? "غير متاح" : (Math.round(macd * 1000) / 1000) + macdTag],
       ["متوسط 50", price(ma50, c)], ["متوسط 200", price(ma200, c)],
       ["دعم 1", price(s1, c)], ["دعم 2", price(s2, c)],
       ["مقاومة 1", price(r1, c)], ["مقاومة 2", price(r2, c)],
-      ["التذبذب", vol === null ? "--" : (Math.round(vol * 100) / 100)],
-      ["التوصية الفنية", t.recommendation || t.action || t.signal || "--"]
+      ["التذبذب", vol === null ? "غير متاح" : (Math.round(vol * 100) / 100)],
+      ["التوصية الفنية", t.recommendation || t.action || t.signal || "غير متاح"]
     ];
-    return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td class="ltr">${h(v == null || v === "" ? "--" : v)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td class="ltr">${h(v == null || v === "" || v === "--" ? "غير متاح" : v)}</td></tr>`).join("")}</tbody></table></div>`;
   }
   function riskReward(rec, c) {
     if (!rec) return "";
@@ -1086,7 +1111,7 @@
       <p class="muted-note ltr">These are educational analytical signals based on available data and are not financial advice.</p>
     </div>`;
   }
-  function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(value || "--")}</strong><p>${h(label)}</p></article>`; }
+  function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(value || "غير متاح")}</strong><p>${h(label)}</p></article>`; }
 
   /* ── multi-strategy consensus engine: combine several classic strategies,
      take the most-agreed (most accurate) verdict. ── */
@@ -1345,6 +1370,8 @@
       signal: x.action || base.signal,
       recommendation: x.action || base.recommendation,
       action: x.action || base.action,
+      id: x.id || base.id,
+      sourceSignalId: x.id || x.sourceSignalId || x.source_signal_id || base.sourceSignalId,
       actionLabelAr: x.actionLabelAr || x.action_label_ar,
       confidence: num(x.confidence, base.confidence),
       score: num(x.confidence, base.score),
@@ -1434,7 +1461,7 @@
   function riskShort(v) { const k = riskKey(v); return k === "high" ? "عالية" : k === "low" ? "منخفضة" : "متوسطة"; }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
   function riskLabel(r) { return r === "conservative" ? "محافظ" : r === "aggressive" ? "هجومي" : "متوازن"; }
-  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "live") return "مباشرة"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "--"; }
+  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "live") return "مباشرة"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "غير متاح"; }
   function signalPrefs() {
     const s = state.settings || {};
     const enabledMarkets = Array.isArray(s.enabledMarkets) && s.enabledMarkets.length
@@ -1458,8 +1485,8 @@
   function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$/i.test(s)) return "EUR"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || ["XAUUSD", "XAGUSD", "WTI", "BRENT"].includes(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
   function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|GLD|IWM|VOO)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
-  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "--" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
-  function change(v) { return v === null || v === undefined ? "--" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
+  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "غير متاح" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
+  function change(v) { return v === null || v === undefined ? "غير متاح" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
   function date(v) { if (!v) return "--"; const d = new Date(Number(v) ? Number(v) * (String(v).length <= 10 ? 1000 : 1) : v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short" }); }
   function num(...values) { for (const v of values) { if (v === null || v === undefined || v === "") continue; const n = Number(v); if (Number.isFinite(n)) return n; } return null; }
   function arr(v) { if (Array.isArray(v)) return v; if (v && typeof v === "object") return Object.values(v).filter(x => x && typeof x === "object"); return []; }

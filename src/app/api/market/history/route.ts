@@ -186,9 +186,10 @@ export async function GET(request: NextRequest) {
   const candidates = uniqueCandidates([
     providerSymbolInput,
     normalized?.providerSymbol,
-    symbolInput,
     ...(normalized?.alternatives ?? []),
+    symbolInput,
   ]);
+  const primaryProviderSymbol = candidates[0] ?? null;
 
   if (candidates.length === 0) {
     return NextResponse.json({
@@ -231,6 +232,13 @@ export async function GET(request: NextRequest) {
       success: true,
       symbol: displaySymbol,
       providerSymbol,
+      providerStatus: {
+        provider: result.source ?? 'Yahoo Finance',
+        providerSymbolUsed: providerSymbol,
+        fallbackUsed: Boolean(primaryProviderSymbol && providerSymbol !== primaryProviderSymbol),
+        lastUpdated: new Date().toISOString(),
+        dataQuality: 'delayed',
+      },
       range: requestedRange,
       period,
       interval,
@@ -250,6 +258,13 @@ export async function GET(request: NextRequest) {
     code,
     symbol: displaySymbol,
     providerSymbol,
+    providerStatus: {
+      provider: 'Yahoo Finance',
+      providerSymbolUsed: providerSymbol,
+      fallbackUsed: Boolean(primaryProviderSymbol && providerSymbol !== primaryProviderSymbol),
+      lastUpdated: new Date().toISOString(),
+      dataQuality: 'unavailable',
+    },
     range: requestedRange,
     period,
     interval,

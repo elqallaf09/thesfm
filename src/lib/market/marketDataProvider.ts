@@ -650,6 +650,18 @@ function yahooQuoteSymbols(providerSymbol: string, displaySymbol: string, assetT
     if (/^[A-Z]{6}$/.test(pair)) symbols.add(`${pair}=X`);
   }
 
+  if (assetType === 'gold' || assetType === 'commodity') {
+    const pair = compact(display || provider).replace(/=F$/, '');
+    if (pair === 'XAUUSD' || display === 'GOLD' || provider === 'GC=F') {
+      symbols.add('GC=F');
+      symbols.add('XAUUSD=X');
+    }
+    if (pair === 'XAGUSD' || display === 'SILVER' || provider === 'SI=F') {
+      symbols.add('SI=F');
+      symbols.add('XAGUSD=X');
+    }
+  }
+
   return Array.from(symbols).filter(Boolean);
 }
 

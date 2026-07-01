@@ -1558,10 +1558,13 @@ export function DividendStocksNewsPage() {
     return sortStocks(rowsFiltered, stockSort);
   }, [payoutMax, rows, stockSearch, stockSector, stockSort, yieldMin]);
 
-  const featuredRows = useMemo(() => rows
-    .filter(row => row.qualityScore !== null)
-    .sort((a, b) => (b.qualityScore ?? -Infinity) - (a.qualityScore ?? -Infinity))
-    .slice(0, 8), [rows]);
+  const featuredRows = useMemo(() => {
+    const sorted = rows
+      .slice()
+      .sort((a, b) => (b.qualityScore ?? -Infinity) - (a.qualityScore ?? -Infinity));
+    const scored = sorted.filter(row => row.qualityScore !== null);
+    return (scored.length >= 6 ? scored : sorted).slice(0, 9);
+  }, [rows]);
 
   const filteredNews = useMemo(() => {
     const items = dedupedNews.filter(item => {

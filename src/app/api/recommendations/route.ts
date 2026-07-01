@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   // from real Yahoo Finance history. Not financial advice.
   const recommendations = available.map(q => ({
     symbol: q.symbol,
+    providerSymbol: q.providerSymbol,
+    fallbackUsed: q.fallbackUsed,
     name: q.name,
     assetType: q.assetType,
     price: q.price,
@@ -33,6 +35,7 @@ export async function GET(request: Request) {
     sma50: q.sma50,
     source: q.source,
     delayed: q.delayed,
+    dataQuality: q.available ? (q.rsi === null ? 'partial' : 'delayed') : 'unavailable',
     updatedAt: q.updatedAt,
   }));
 

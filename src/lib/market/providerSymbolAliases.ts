@@ -111,9 +111,10 @@ export function resolveProviderSymbolAlias(value: unknown, assetType?: MarketAss
 }
 
 export function providerAliasToMarketSearchItem(alias: ProviderSymbolAlias): MarketSearchItem {
+  const primaryProviderSymbol = alias.providerSymbols[0] ?? alias.displaySymbol;
   return {
     symbol: alias.displaySymbol,
-    providerSymbol: alias.providerSymbols[0],
+    providerSymbol: primaryProviderSymbol,
     name: alias.name,
     assetType: alias.assetType,
     exchange: alias.exchange,

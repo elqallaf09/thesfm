@@ -188,6 +188,7 @@ function buildAgentDetailPayload(
   candidate: TraderDetailCandidate | null,
   sparkline: number[],
   cached: boolean,
+  providerStatus?: Record<string, unknown>,
 ) {
   const analysisCurrency = candidate?.currency || 'USD';
   const action = actionFromAgent(analysis.suggestedAction);
@@ -210,6 +211,7 @@ function buildAgentDetailPayload(
     status: 'success',
     symbol: analysis.symbol,
     analysis,
+    providerStatus,
     profile: {
       symbol: analysis.symbol,
       name,
@@ -260,6 +262,7 @@ function buildAgentDetailPayload(
       generatedAt: analysis.updatedAt,
       dataTimestamp: analysis.updatedAt,
       provider: analysis.source,
+      providerStatus,
       delayed: false,
       support: analysis.support[0] ?? null,
       resistance: analysis.resistance[0] ?? null,
@@ -311,7 +314,7 @@ function buildAgentDetailPayload(
       },
       dataHealth: {
         score: analysis.dataStatus === 'available' ? 100 : 0,
-        label: analysis.source,
+        label: providerStatus?.dataQuality === 'partial' ? 'partial' : analysis.source,
       },
       tradePlan: {
         note: 'Use risk management and confirm market liquidity before execution.',
@@ -569,10 +572,11 @@ export async function POST(
         code: result.analysis.code,
         message: result.analysis.message,
         provider: result.provider,
+        providerStatus: result.providerStatus,
       });
     }
 
-    const payload = buildAgentDetailPayload(result.analysis, result.candidate, result.sparkline, false);
+    const payload = buildAgentDetailPayload(result.analysis, result.candidate, result.sparkline, false, result.providerStatus);
     setCachedDetail(normalized, payload);
     return noStoreJson({ ok: true, ...payload });
   } catch {

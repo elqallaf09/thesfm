@@ -1,22 +1,90 @@
 import { NextResponse } from 'next/server';
-import { getTraderAccess } from '@/lib/server/traderAccess';
 import { buildTraderCalendarQuery, getTraderCalendar } from '@/lib/trader/providers/providerStatus';
+import { shortText } from '@/lib/providers/shared';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  const access = await getTraderAccess();
-  if (!access.allowed) {
-    return NextResponse.json(
-      { error: access.reason === 'unauthenticated' ? 'unauthenticated' : 'trader_access_denied' },
-      { status: access.reason === 'unauthenticated' ? 401 : 403 },
-    );
-  }
+type CalendarRouteStatus = 'connected' | 'missing_provider' | 'provider_error' | 'not_entitled' | 'empty';
 
+function normalizeRange(value: string | null): 'today' | '7' | '30' | '90' | 'all' {
+  if (value === 'today' || value === '7' || value === '30' || value === '90' || value === 'all') {
+    return value;
+  }
+  return '30';
+}
+
+function mapRouteStatus(status: string, count: number): CalendarRouteStatus {
+  if (status === 'not_configured') return 'missing_provider';
+  if (status === 'not_entitled') return 'not_entitled';
+  if (status === 'success') return count > 0 ? 'connected' : 'empty';
+  if (
+    status === 'provider_error'
+    || status === 'unauthorized'
+    || status === 'forbidden'
+    || status === 'rate_limited'
+    || status === 'invalid_request'
+  ) {
+    return 'provider_error';
+  }
+  return 'provider_error';
+}
+
+function providerDisplayName(provider: 'fmp' | 'finnhub' | 'tradingeconomics' | null): 'FMP' | 'Finnhub' | 'Trading Economics' | null {
+  if (provider === 'fmp') return 'FMP';
+  if (provider === 'finnhub') return 'Finnhub';
+  if (provider === 'tradingeconomics') return 'Trading Economics';
+  return null;
+}
+
+function legacyStatusFromRouteStatus(status: CalendarRouteStatus) {
+  if (status === 'connected' || status === 'empty') return status === 'connected' ? 'success' : 'empty';
+  if (status === 'missing_provider') return 'not_configured';
+  return 'provider_error';
+}
+
+export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = buildTraderCalendarQuery(url.searchParams);
+  query.range = normalizeRange(url.searchParams.get('range'));
+
   const result = await getTraderCalendar('economic', query);
-  return NextResponse.json(result, {
+  const count = result.resultCount ?? 0;
+  const status = mapRouteStatus(result.status, count);
+
+  const endpoint = result.provider === 'tradingeconomics'
+    ? 'https://api.tradingeconomics.com/calendar'
+    : result.provider === 'fmp'
+      ? 'https://financialmodelingprep.com/stable/economic-calendar'
+      : result.provider === 'finnhub'
+        ? 'https://finnhub.io/api/v1/calendar/economic'
+        : 'economic-calendar';
+
+  const configured = Boolean(process.env.TRADING_ECONOMICS_API_KEY || process.env.FMP_API_KEY || process.env.FINNHUB_API_KEY);
+  console.info('[trader-calendar] request', {
+    provider: result.provider || null,
+    endpoint,
+    configured,
+    statusCode: result.providerStatusCode ?? null,
+    status,
+    resultCount: count,
+    errorMessage: result.failureReason ? shortText(result.failureReason, 260) : null,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    provider: providerDisplayName(result.provider),
+    range: Number(query.range === 'all' ? 0 : query.range) || 30,
+    results: result.data,
+    count,
+    status,
+    error: result.failureReason ?? null,
+    data: result.data,
+    resultCount: count,
+    lastUpdated: result.lastUpdated,
+    lastSuccessfulUpdate: result.lastSuccessfulUpdate,
+    messageCode: result.messageCode,
+    legacyStatus: legacyStatusFromRouteStatus(status),
+  }, {
     headers: { 'Cache-Control': 'private, no-store' },
   });
 }

@@ -14,6 +14,7 @@ import {
   type MarketAgentTimeframe,
 } from '@/lib/market/marketAgent';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
+import { resolveProviderSymbolAlias } from '@/lib/market/providerSymbolAliases';
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
@@ -38,6 +39,8 @@ type DetailSearchItem = MarketSearchItem & {
 export type TraderDetailCandidate = {
   displaySymbol: string;
   providerSymbol: string;
+  primaryProviderSymbol?: string | null;
+  fallbackUsed?: boolean;
   providerAssetType: MarketAssetType;
   responseAssetType: MarketAgentAssetType;
   name?: string | null;
@@ -54,11 +57,19 @@ export type TraderDetailCandidate = {
 export type TraderDetailAnalysisResult = {
   status: 'success' | 'no_data';
   symbol: string;
+  providerSymbol?: string | null;
   candidate: TraderDetailCandidate | null;
   analysis: MarketAgentResponse;
   sparkline: number[];
   provider: string | null;
   providerCode?: string | null;
+  providerStatus: {
+    provider: string;
+    providerSymbolUsed: string | null;
+    fallbackUsed: boolean;
+    lastUpdated: string;
+    dataQuality: 'live' | 'delayed' | 'partial' | 'unavailable';
+  };
 };
 
 const GLOBAL_STOCK_SUFFIXES = [
@@ -100,6 +111,8 @@ function candidateFromNormalized(normalized: NormalizedMarketSymbol, requestedAs
   return {
     displaySymbol,
     providerSymbol: normalized.providerSymbol,
+    primaryProviderSymbol: normalized.providerSymbol,
+    fallbackUsed: false,
     providerAssetType,
     responseAssetType: requestedAssetType === 'stock' ? agentAssetTypeFromProvider(providerAssetType) : requestedAssetType,
   };
@@ -113,6 +126,8 @@ function candidateFromSearchItem(item: DetailSearchItem, requestedAssetType: Mar
   return {
     displaySymbol: providerSymbol === requestedSymbol ? requestedSymbol : fallbackDisplay,
     providerSymbol,
+    primaryProviderSymbol: providerSymbol,
+    fallbackUsed: false,
     providerAssetType,
     responseAssetType: requestedAssetType === 'stock' ? agentAssetTypeFromProvider(providerAssetType) : requestedAssetType,
     name: item.companyNameEn || item.name || fallbackDisplay,
@@ -125,6 +140,34 @@ function candidateFromSearchItem(item: DetailSearchItem, requestedAssetType: Mar
     marketLabel: item.marketLabel,
     priceUnit: item.priceUnit,
   };
+}
+
+function aliasCandidates(symbol: string, requestedAssetType: MarketAgentAssetType): TraderDetailCandidate[] {
+  const requestedSymbol = normalizeTraderDetailSymbol(symbol);
+  const alias = resolveProviderSymbolAlias(requestedSymbol, providerAssetTypeForAgent(requestedAssetType))
+    ?? resolveProviderSymbolAlias(requestedSymbol);
+  if (!alias) return [];
+
+  const responseAssetType = requestedAssetType === 'stock'
+    ? agentAssetTypeFromProvider(alias.assetType)
+    : requestedAssetType;
+  const primaryProviderSymbol = alias.providerSymbols[0] ?? alias.displaySymbol;
+
+  return alias.providerSymbols.map((providerSymbol, index) => ({
+    displaySymbol: requestedSymbol || alias.displaySymbol,
+    providerSymbol,
+    primaryProviderSymbol,
+    fallbackUsed: index > 0,
+    providerAssetType: alias.assetType,
+    responseAssetType,
+    name: alias.name,
+    currency: alias.currency,
+    exchange: alias.exchange,
+    exchangeLabelAr: alias.exchange,
+    exchangeLabelEn: alias.exchange,
+    region: alias.country,
+    marketLabel: alias.exchange,
+  }));
 }
 
 function directGlobalStockCandidates(symbol: string, requestedAssetType: MarketAgentAssetType): TraderDetailCandidate[] {
@@ -149,13 +192,17 @@ function directGlobalStockCandidates(symbol: string, requestedAssetType: MarketA
 function uniqueCandidates(candidates: Array<TraderDetailCandidate | null | undefined>) {
   const seen = new Set<string>();
   return candidates
-    .filter((candidate): candidate is TraderDetailCandidate => Boolean(candidate))
-    .map(candidate => ({
-      ...candidate,
-      displaySymbol: validateSymbol(candidate.displaySymbol) ?? candidate.displaySymbol.toUpperCase(),
-      providerSymbol: validateSymbol(candidate.providerSymbol),
-    }))
-    .filter((candidate): candidate is TraderDetailCandidate => Boolean(candidate.providerSymbol))
+    .flatMap((candidate): TraderDetailCandidate[] => {
+      if (!candidate) return [];
+      const providerSymbol = validateSymbol(candidate.providerSymbol);
+      if (!providerSymbol) return [];
+      return [{
+        ...candidate,
+        displaySymbol: validateSymbol(candidate.displaySymbol) ?? candidate.displaySymbol.toUpperCase(),
+        providerSymbol,
+        primaryProviderSymbol: validateSymbol(candidate.primaryProviderSymbol ?? providerSymbol),
+      }];
+    })
     .filter(candidate => {
       const key = `${candidate.providerSymbol}:${candidate.providerAssetType}`;
       if (seen.has(key)) return false;
@@ -165,7 +212,7 @@ function uniqueCandidates(candidates: Array<TraderDetailCandidate | null | undef
     .slice(0, 48);
 }
 
-export async function resolveTraderDetailCandidates(rawSymbol: string, requestedAssetType = inferAgentAssetType(rawSymbol)) {
+export async function resolveTraderDetailCandidates(rawSymbol: string, requestedAssetType = inferAgentAssetType(rawSymbol)): Promise<TraderDetailCandidate[]> {
   const requestedSymbol = normalizeTraderDetailSymbol(rawSymbol);
   const providerAssetType = providerAssetTypeForAgent(requestedAssetType);
   const [resolved, directoryResults] = await Promise.all([
@@ -180,6 +227,7 @@ export async function resolveTraderDetailCandidates(rawSymbol: string, requested
     : [];
 
   return uniqueCandidates([
+    ...aliasCandidates(requestedSymbol, requestedAssetType),
     ...directoryResults.map(item => candidateFromSearchItem(item, requestedAssetType, requestedSymbol)),
     ...resolverItems.map(item => candidateFromSearchItem(item as DetailSearchItem, requestedAssetType, requestedSymbol)),
     normalized ? candidateFromNormalized(normalized, requestedAssetType, requestedSymbol) : null,
@@ -195,18 +243,21 @@ export async function runTraderDetailAnalysis(rawSymbol: string, timeframe: Mark
   let lastCandidate = candidates[0] ?? null;
   let lastProvider = 'yahoo';
   let lastCode: string | null = null;
+  let lastUpdated = new Date().toISOString();
 
   for (const candidate of candidates) {
     lastCandidate = candidate;
-    const historyResult = await proxyHistory(candidate.providerSymbol, candidate.providerAssetType, config.period, config.interval) as ProxyHistoryResponse;
+    const providerSymbol = candidate.providerSymbol || candidate.displaySymbol;
+    const historyResult = await proxyHistory(providerSymbol, candidate.providerAssetType, config.period, config.interval) as ProxyHistoryResponse;
     lastProvider = String(historyResult.source ?? 'yahoo');
     lastCode = typeof historyResult.code === 'string' ? historyResult.code : null;
+    lastUpdated = new Date().toISOString();
     if (!historyResult.success || !Array.isArray(historyResult.history) || historyResult.history.length === 0) continue;
 
     const rawPoints = normalizeMarketAgentPoints(historyResult.history);
     const normalizedCurrency = normalizeMarketAgentCurrencyPoints(rawPoints, {
       symbol,
-      providerSymbol: candidate.providerSymbol,
+      providerSymbol,
       assetType: candidate.providerAssetType,
       providerCurrency: historyResult.currency ?? candidate.currency,
     });
@@ -215,7 +266,7 @@ export async function runTraderDetailAnalysis(rawSymbol: string, timeframe: Mark
       symbol,
       assetType: candidate.responseAssetType,
       timeframe,
-      providerSymbol: candidate.providerSymbol,
+      providerSymbol,
       providerAssetType: candidate.providerAssetType,
       currency: normalizedCurrency.currency,
       source: lastProvider,
@@ -226,11 +277,19 @@ export async function runTraderDetailAnalysis(rawSymbol: string, timeframe: Mark
       return {
         status: 'success',
         symbol,
+        providerSymbol,
         candidate,
         analysis,
         sparkline: points.slice(-90).map(point => point.close).filter(Number.isFinite),
         provider: lastProvider,
         providerCode: lastCode,
+        providerStatus: {
+          provider: lastProvider,
+          providerSymbolUsed: providerSymbol,
+          fallbackUsed: Boolean(candidate.fallbackUsed || (candidate.primaryProviderSymbol && providerSymbol !== candidate.primaryProviderSymbol)),
+          lastUpdated: analysis.updatedAt,
+          dataQuality: 'delayed',
+        },
       };
     }
   }
@@ -249,6 +308,13 @@ export async function runTraderDetailAnalysis(rawSymbol: string, timeframe: Mark
     sparkline: [],
     provider: lastProvider,
     providerCode: lastCode,
+    providerStatus: {
+      provider: lastProvider,
+      providerSymbolUsed: lastCandidate?.providerSymbol ?? null,
+      fallbackUsed: Boolean(lastCandidate?.fallbackUsed || (lastCandidate?.primaryProviderSymbol && lastCandidate.providerSymbol !== lastCandidate.primaryProviderSymbol)),
+      lastUpdated,
+      dataQuality: 'unavailable',
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
+import { providerSymbolsForAlias } from '@/lib/market/providerSymbolAliases';
 
 // Trader terminal market catalogue. Mirrors the MARKETS list in
 // src/trader-app/public/app.js so the API can serve live quotes for the same
@@ -54,6 +55,12 @@ const YAHOO_SYMBOL: Record<string, string> = {
   XAUUSD: 'GC=F', XAGUSD: 'SI=F', WTI: 'CL=F', BRENT: 'BZ=F',
   // Indices
   SPX: '^GSPC', NDX: '^NDX', DJI: '^DJI', DXY: 'DX-Y.NYB',
+};
+
+const YAHOO_FALLBACK_SYMBOLS: Record<string, string[]> = {
+  XAUUSD: ['GC=F', 'XAUUSD=X'],
+  XAGUSD: ['SI=F', 'XAGUSD=X'],
+  USDJPY: ['USDJPY=X', 'JPY=X'],
 };
 
 const CRYPTO_BASES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'USDT']);
@@ -169,6 +176,8 @@ function riskFromVolatility(volatility: number | null, assetType: TraderAssetTyp
 
 export type TraderQuote = {
   symbol: string;
+  providerSymbol: string | null;
+  fallbackUsed: boolean;
   name: string;
   assetType: TraderAssetType;
   price: number | null;
@@ -237,6 +246,8 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
 function unavailableQuote(display: string, reason: string): TraderQuote {
   return {
     symbol: display,
+    providerSymbol: null,
+    fallbackUsed: false,
     name: display,
     assetType: classifyAssetType(display),
     price: null,
@@ -259,18 +270,32 @@ function unavailableQuote(display: string, reason: string): TraderQuote {
 
 async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQuote> {
   const assetType = classifyAssetType(display);
-  const yahoo = YAHOO_SYMBOL[display.toUpperCase()] ?? display;
+  const upperDisplay = display.toUpperCase();
+  const yahooSymbols = Array.from(new Set([
+    ...(YAHOO_FALLBACK_SYMBOLS[upperDisplay] ?? []),
+    ...providerSymbolsForAlias(display),
+    YAHOO_SYMBOL[upperDisplay] ?? display,
+    display,
+  ].filter(Boolean)));
+  const primaryYahoo = yahooSymbols[0] ?? display;
 
-  let chart = await fetchChart(yahoo, forceFresh);
-  if ((!chart || chart.price === null) && yahoo !== display) {
-    chart = await fetchChart(display, forceFresh);
+  let chart: YahooChartResult | null = null;
+  let yahoo = primaryYahoo;
+  for (const candidate of yahooSymbols) {
+    const attempt = await fetchChart(candidate, forceFresh);
+    if (attempt && attempt.price !== null) {
+      chart = attempt;
+      yahoo = candidate;
+      break;
+    }
+    chart ??= attempt;
   }
 
   // Fallback: quote endpoint gives a price but no history (no computed signal).
   if (!chart || chart.price === null) {
     const normalized = await fetchYahooNormalizedQuote({
       requestedSymbol: display,
-      symbols: Array.from(new Set([yahoo, display].filter(Boolean))),
+      symbols: yahooSymbols,
       name: display,
       forceFresh,
       debugContext: { route: 'trader/marketQuotes', mode: 'quote_fallback' },
@@ -281,9 +306,11 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
     }
     const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: display, market: display });
     const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
-    return {
-      symbol: display,
-      name: normalized.name || display,
+      return {
+        symbol: display,
+        providerSymbol: normalized.symbolUsed ?? yahoo,
+        fallbackUsed: (normalized.symbolUsed ?? yahoo) !== primaryYahoo,
+        name: normalized.name || display,
       assetType,
       price: round(norm.price),
       change: round(normalized.change !== null ? normalized.change / divisor : null),
@@ -321,6 +348,8 @@ async function fetchOne(display: string, forceFresh?: boolean): Promise<TraderQu
 
   return {
     symbol: display,
+    providerSymbol: yahoo,
+    fallbackUsed: yahoo !== primaryYahoo,
     name: display,
     assetType,
     price: round(price),

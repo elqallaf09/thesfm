@@ -15,6 +15,8 @@ type TechnicalSymbolCandidate = {
   symbol: string;
   assetType: MarketAssetType;
   displaySymbol: string;
+  primaryProviderSymbol: string;
+  fallbackUsed: boolean;
 };
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -37,7 +39,13 @@ function addCandidate(list: TechnicalSymbolCandidate[], candidate: TechnicalSymb
   if (!symbol || !displaySymbol) return;
   const key = `${symbol}:${candidate.assetType}`;
   if (!list.some(item => `${item.symbol}:${item.assetType}` === key)) {
-    list.push({ symbol, assetType: candidate.assetType, displaySymbol });
+    list.push({
+      symbol,
+      assetType: candidate.assetType,
+      displaySymbol,
+      primaryProviderSymbol: candidate.primaryProviderSymbol,
+      fallbackUsed: candidate.fallbackUsed || symbol !== candidate.primaryProviderSymbol,
+    });
   }
 }
 
@@ -50,18 +58,44 @@ function technicalSymbolCandidates(normalized: NormalizedMarketSymbol, providerS
         symbol: providerNormalized.providerSymbol,
         assetType: providerNormalized.assetType,
         displaySymbol: normalized.displaySymbol,
+        primaryProviderSymbol: providerNormalized.providerSymbol,
+        fallbackUsed: false,
       });
-      providerNormalized.alternatives.forEach(symbol => {
-        addCandidate(candidates, { symbol, assetType: providerNormalized.assetType, displaySymbol: normalized.displaySymbol });
+      providerNormalized.alternatives.forEach((symbol, index) => {
+        addCandidate(candidates, {
+          symbol,
+          assetType: providerNormalized.assetType,
+          displaySymbol: normalized.displaySymbol,
+          primaryProviderSymbol: providerNormalized.providerSymbol,
+          fallbackUsed: index > 0 || symbol !== providerNormalized.providerSymbol,
+        });
       });
     } else {
-      addCandidate(candidates, { symbol: providerSymbolInput, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
+      addCandidate(candidates, {
+        symbol: providerSymbolInput,
+        assetType: normalized.assetType,
+        displaySymbol: normalized.displaySymbol,
+        primaryProviderSymbol: normalized.providerSymbol,
+        fallbackUsed: providerSymbolInput !== normalized.providerSymbol,
+      });
     }
   }
 
-  addCandidate(candidates, { symbol: normalized.providerSymbol, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
-  normalized.alternatives.forEach(symbol => {
-    addCandidate(candidates, { symbol, assetType: normalized.assetType, displaySymbol: normalized.displaySymbol });
+  addCandidate(candidates, {
+    symbol: normalized.providerSymbol,
+    assetType: normalized.assetType,
+    displaySymbol: normalized.displaySymbol,
+    primaryProviderSymbol: normalized.providerSymbol,
+    fallbackUsed: false,
+  });
+  normalized.alternatives.forEach((symbol, index) => {
+    addCandidate(candidates, {
+      symbol,
+      assetType: normalized.assetType,
+      displaySymbol: normalized.displaySymbol,
+      primaryProviderSymbol: normalized.providerSymbol,
+      fallbackUsed: index > 0 || symbol !== normalized.providerSymbol,
+    });
   });
 
   return candidates.slice(0, 8);
@@ -99,12 +133,21 @@ function partialOhlcResponse(
   interval: string,
 ) {
   const updatedAt = analysis.fetchedAt ?? analysis.quote?.timestamp ?? new Date().toISOString();
+  const providerSymbolUsed = analysis.providerSymbol ?? normalized.providerSymbol;
+  const usedCandidate = attemptedSymbols.find(item => item.symbol === providerSymbolUsed) ?? attemptedSymbols[0];
   return NextResponse.json({
     ok: false,
     success: false,
     code: 'OHLC_DATA_NOT_AVAILABLE',
     symbol: normalized.displaySymbol,
     providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
+    providerStatus: {
+      provider: analysis.source ?? 'Yahoo Finance',
+      providerSymbolUsed,
+      fallbackUsed: Boolean(usedCandidate?.fallbackUsed),
+      lastUpdated: updatedAt,
+      dataQuality: 'partial',
+    },
     interval,
     currentPrice: analysis.latestPrice ?? null,
     message: 'Price data is available, but daily candle OHLC data is not sufficient to calculate pivot points.',
@@ -127,6 +170,7 @@ function partialOhlcResponse(
 }
 
 function providerFailureResponse(firstError: Record<string, unknown> | null, candidates: TechnicalSymbolCandidate[], normalized: NormalizedMarketSymbol) {
+  const candidate = candidates[0];
   return NextResponse.json({
     ok: false,
     success: false,
@@ -134,6 +178,13 @@ function providerFailureResponse(firstError: Record<string, unknown> | null, can
     message: 'Market data provider is unavailable for technical analysis right now.',
     symbol: normalized.displaySymbol,
     providerSymbol: normalized.providerSymbol,
+    providerStatus: {
+      provider: 'Yahoo Finance',
+      providerSymbolUsed: candidate?.symbol ?? normalized.providerSymbol,
+      fallbackUsed: Boolean(candidate?.fallbackUsed),
+      lastUpdated: new Date().toISOString(),
+      dataQuality: 'unavailable',
+    },
     providerCode: typeof firstError?.code === 'string' ? firstError.code : undefined,
     updated_at: new Date().toISOString(),
     attemptedSymbols: candidates.map(item => item.symbol),
@@ -222,6 +273,13 @@ export async function GET(request: NextRequest) {
       code: undefined,
       symbol: normalized.displaySymbol,
       providerSymbol: analysis.providerSymbol ?? candidate.symbol,
+      providerStatus: {
+        provider: analysis.source ?? 'Yahoo Finance',
+        providerSymbolUsed: analysis.providerSymbol ?? candidate.symbol,
+        fallbackUsed: Boolean(candidate.fallbackUsed),
+        lastUpdated: analysis.fetchedAt ?? new Date().toISOString(),
+        dataQuality: analysis.dataStatus ?? 'delayed',
+      },
       name: analysis.name,
       interval,
       currentPrice: analysis.latestPrice ?? null,

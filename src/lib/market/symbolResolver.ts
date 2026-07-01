@@ -181,6 +181,46 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     aliases: ['xau', 'xauusd', 'xau/usd', 'gold', 'gold usd', 'Ø°Ù‡Ø¨', 'Ø§Ù„Ø°Ù‡Ø¨'],
   },
   {
+    symbol: 'XAGUSD',
+    providerSymbol: 'SI=F',
+    name: 'Silver / US Dollar',
+    assetType: 'commodity',
+    exchange: 'COMEX',
+    country: 'Global',
+    currency: 'USD',
+    aliases: ['xag', 'xagusd', 'xag/usd', 'silver', 'silver usd'],
+  },
+  {
+    symbol: 'EURUSD',
+    providerSymbol: 'EURUSD=X',
+    name: 'EUR/USD',
+    assetType: 'forex',
+    exchange: 'FX',
+    country: 'Global',
+    currency: 'USD',
+    aliases: ['eurusd', 'eur/usd', 'euro dollar'],
+  },
+  {
+    symbol: 'GBPUSD',
+    providerSymbol: 'GBPUSD=X',
+    name: 'GBP/USD',
+    assetType: 'forex',
+    exchange: 'FX',
+    country: 'Global',
+    currency: 'USD',
+    aliases: ['gbpusd', 'gbp/usd', 'pound dollar'],
+  },
+  {
+    symbol: 'USDJPY',
+    providerSymbol: 'USDJPY=X',
+    name: 'USD/JPY',
+    assetType: 'forex',
+    exchange: 'FX',
+    country: 'Global',
+    currency: 'JPY',
+    aliases: ['usdjpy', 'usd/jpy', 'jpy=x', 'dollar yen'],
+  },
+  {
     symbol: 'BTCUSD',
     providerSymbol: 'BTC-USD',
     name: 'Bitcoin / US Dollar',
@@ -189,6 +229,16 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     country: 'Global',
     currency: 'USD',
     aliases: ['btc', 'btcusd', 'btc/usd', 'bitcoin', 'bitcoin usd', 'Ø¨ÙŠØªÙƒÙˆÙŠÙ†'],
+  },
+  {
+    symbol: 'ETHUSD',
+    providerSymbol: 'ETH-USD',
+    name: 'Ethereum / US Dollar',
+    assetType: 'crypto',
+    exchange: 'Crypto',
+    country: 'Global',
+    currency: 'USD',
+    aliases: ['eth', 'ethusd', 'eth/usd', 'ethereum', 'ethereum usd'],
   },
 ];
 
@@ -460,6 +510,12 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   const knownSymbol = findKnownMarketSymbol(query, assetType);
   if (knownSymbol) {
     return { ok: true, asset: resolveFromItem(knownSymbol, 'exact_symbol'), suggestions: [knownSymbol] };
+  }
+
+  const providerAlias = resolveProviderSymbolAlias(query, assetType);
+  if (providerAlias) {
+    const item = providerAliasToMarketSearchItem(providerAlias);
+    return { ok: true, asset: resolveFromItem(item, 'alias'), suggestions: [item] };
   }
 
   const symbolAlias = exactSymbolAlias(query, assetType);

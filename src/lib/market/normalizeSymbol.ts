@@ -84,10 +84,11 @@ export function normalizeMarketSymbol(input: unknown, assetTypeInput?: unknown):
 
   const aliased = resolveProviderSymbolAlias(raw, requestedAssetType);
   if (aliased) {
+    const primaryProviderSymbol = aliased.providerSymbols[0] ?? aliased.displaySymbol;
     return {
       inputSymbol: raw,
       displaySymbol: aliased.displaySymbol,
-      providerSymbol: aliased.providerSymbols[0],
+      providerSymbol: primaryProviderSymbol,
       assetType: requestedAssetType && requestedAssetType !== 'stock' ? requestedAssetType : aliased.assetType,
       alternatives: uniqueSymbols([...aliased.providerSymbols, ...aliased.aliases]),
     };
