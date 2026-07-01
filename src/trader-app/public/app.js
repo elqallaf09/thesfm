@@ -944,18 +944,22 @@
     const TYPE_AR = { stock: "أسهم", crypto: "كريبتو", commodity: "سلع", forex: "عملات", fund: "صناديق", index: "مؤشرات" };
     return `<div class="alloc">${Object.entries(groups).map(([t, v]) => `<div class="alloc-row"><span>${h(TYPE_AR[t] || t)}</span><div class="mo-bar"><i style="width:${Math.round(v / total * 100)}%"></i></div><b>${Math.round(v / total * 100)}%</b></div>`).join("")}</div>`;
   }
-  function tradeCol(title, items, tone) { return `<article class="trade-column ${tone}"><h3>${h(title)} <span class="col-count">${items.length}</span></h3>${items.length ? items.map(tradeCard).join("") : `<div class="empty-state compact"><p>لا توجد بيانات في هذا التصنيف.</p></div>`}</article>`; }
+  function tradeCol(title, items, tone) { return `<article class="trade-column ${tone}"><h3>${h(title)} <span class="col-count">${items.length}</span></h3>${items.length ? items.map(tradeCard).join("") : `<div class="trade-mini-empty">لا توجد صفقات في هذا التصنيف.</div>`}</article>`; }
   function tradeCard(t) {
-    const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.pnl, t.profitLoss, t.returnPercent), sig = signal(a);
+    const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), sig = tradeAction(t);
+    const status = tradeStatus(t), current = num(t.currentPrice, t.current), entry = num(t.entryPrice, t.entry), target = num(t.targetPrice, t.target), stop = num(t.stopLoss, t.stop);
     return `<article class="trade-item"><div class="asset-head">${logo({ symbol: s })}<div class="asset-title"><strong class="ltr">${h(s)}</strong><small>${h(a.name || t.status || "متابعة")}</small></div></div>
-      <div class="trade-row"><span>الدخول<b class="ltr">${h(price(num(t.entry, t.entryPrice), c))}</b></span><span>الحالي<b class="ltr">${h(price(num(t.current, t.currentPrice), c))}</b></span><span>P/L<b class="${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</b></span></div>
-      <div class="rec-foot"><span class="status-tag">${h(t.status || t.state || "متابعة")}</span><button class="ghost-btn sm" data-symbol-details="${h(s)}">تفاصيل</button></div></article>`;
+      <div class="badge-row"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></div>
+      <div class="trade-row"><span>الدخول<b class="ltr">${h(price(entry, c))}</b></span><span>الحالي<b class="ltr">${h(current === null ? "--" : price(current, c))}</b></span><span>P/L<b class="${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</b></span></div>
+      <div class="trade-row"><span>الهدف<b class="ltr">${h(price(target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(price(stop, c))}</b></span><span>الثقة<b class="ltr">${h(t.confidence == null ? "--" : Math.round(Number(t.confidence)) + "%")}</b></span></div>
+      ${t.priceMessage ? `<p class="trade-warning">${h(t.priceMessage)}</p>` : ""}
+      <div class="rec-foot"><small>${h(providerName(t.provider) || t.sourceType || "--")}</small><button class="ghost-btn sm" data-symbol-details="${h(s)}">فتح التحليل</button></div></article>`;
   }
   function tradeList(items) { return `<div class="trade-list">${items.map(tradeCard).join("")}</div>`; }
   function tradeJournalTable(items) {
-    const rows = items.map(t => { const s = sym(t.symbol || t.asset || "--"), c = currency({ symbol: s }), pnl = num(t.pnl, t.profitLoss, t.returnPercent);
-      return `<tr><td class="wt-asset"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong></span></button></td><td>${h(t.action || signal(t) || "--")}</td><td class="ltr">${h(price(num(t.entry, t.entryPrice), c))}</td><td class="ltr">${h(price(num(t.current, t.currentPrice), c))}</td><td class="ltr">${h(price(num(t.target, t.targetPrice), c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</td><td><span class="status-tag">${h(t.status || t.state || "--")}</span></td><td>${h(t.source || t.provider || "--")}</td></tr>`; }).join("");
-    return `<div class="table-shell"><table><thead><tr><th>الرمز</th><th>الإجراء</th><th>الدخول</th><th>الحالي</th><th>الهدف</th><th>P/L</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const rows = items.map(t => { const s = sym(t.symbol || t.asset || "--"), c = currency({ symbol: s, currency: t.currency }), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), status = tradeStatus(t);
+      return `<tr><td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong><small>${h(t.assetName || t.name || "--")}</small></span></button></td><td data-label="الإجراء">${h(sigLabel(tradeAction(t)))}</td><td class="ltr" data-label="الدخول">${h(price(num(t.entryPrice, t.entry), c))}</td><td class="ltr" data-label="الحالي">${h(price(num(t.currentPrice, t.current), c))}</td><td class="ltr" data-label="الهدف">${h(price(num(t.targetPrice, t.target), c))}</td><td class="ltr" data-label="وقف الخسارة">${h(price(num(t.stopLoss, t.stop), c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}" data-label="P/L">${pnl === null ? "--" : pnl + "%"}</td><td data-label="الحالة"><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></td><td data-label="المصدر">${h(providerName(t.provider) || t.sourceType || "--")}</td></tr>`; }).join("");
+    return `<div class="table-shell trade-journal-table"><table><thead><tr><th>الرمز</th><th>الإجراء</th><th>الدخول</th><th>الحالي</th><th>الهدف</th><th>وقف الخسارة</th><th>P/L</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function newsList(items) { return `<div class="news-list">${items.map(newsCard).join("")}</div>`; }
   function newsCard(n) {
@@ -1199,12 +1203,96 @@
   function removeWatch(raw) { const s = sym(raw); state.watch = state.watch.filter(x => x !== s); write(keys.watch, state.watch); toast(`تمت إزالة ${s}.`); render(); }
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: `متابعة ${s}`, message: "تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
+  function tradeDraftFromAsset(asset, sourceType = "manual") {
+    const a = norm(asset), action = signal(a), now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
+    return {
+      id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      symbol: a.symbol,
+      assetName: a.name || a.assetName || a.symbol,
+      assetLogo: a.assetLogo || a.logoUrl || null,
+      market: a.market || "",
+      action,
+      entryPrice: entry,
+      currentPrice: num(a.currentPrice, a.price, a.lastPrice, entry),
+      targetPrice: num(a.targetPrice, a.target, a.target1),
+      stopLoss: num(a.stopLoss, a.stop),
+      confidence: num(a.confidence, a.score),
+      riskLevel: riskKey(a.riskLevel || a.risk),
+      timeframe: a.timeframe || a.duration || (action === "watch" ? "تحت المتابعة" : "1-3 أسابيع"),
+      status: action === "wait" ? "waiting" : action === "watch" ? "watching" : "open",
+      openedAt: now,
+      updatedAt: now,
+      provider: a.provider || a.source || "Yahoo Finance",
+      sourceSignalId: a.sourceSignalId || a.source_signal_id || null,
+      sourceType,
+      notes: a.notes || a.reason || "",
+      currency: a.currency || currency(a),
+      payload: a
+    };
+  }
+  async function persistFollowedTrade(draft) {
+    const result = await post("/followed-trades", draft);
+    if (result.ok) {
+      toast("تمت إضافة الصفقة إلى أداء الصفقات.");
+    } else {
+      state.localTrades = [draft, ...state.localTrades].slice(0, 80);
+      write(keys.followed, state.localTrades);
+      toast("تم حفظ الصفقة محلياً؛ سجّل الدخول أو طبّق migrations للحفظ في قاعدة البيانات.");
+    }
+    await refreshFollowedTrades(false);
+  }
+  function followRecommendationTrade(raw) {
+    const s = sym(raw), rec = matchRec(s);
+    if (!rec) return toast("لم أجد توصية محفوظة لهذا الرمز حالياً.");
+    persistFollowedTrade(tradeDraftFromAsset(rec, "recommendation_card"));
+  }
+  async function refreshFollowedTrades(force) {
+    const data = await get(`/followed-trades${force ? "?refresh=1" : ""}`);
+    if (data.ok) {
+      state.followed = data;
+      if (force) toast("تم تحديث أسعار صفقات المتابعة.");
+      render();
+      afterRoute();
+    } else {
+      toast("تعذر تحديث صفقات المتابعة حالياً.");
+    }
+  }
+  async function runSignalRefresh() {
+    const result = await post("/market/signals/refresh", { symbols: defaults, force: true });
+    if (!result.ok) {
+      await get(`/market/signals?symbols=${encodeURIComponent(defaults.join(","))}&refresh=1&limit=${defaults.length}`);
+      toast("تم تشغيل فحص إشارات محلي؛ الحفظ التلقائي يحتاج صلاحية قاعدة البيانات.");
+    } else {
+      toast("تم تشغيل فحص الإشارات وحفظ المرشحات المتاحة.");
+    }
+    await refreshFollowedTrades(true);
+  }
   function toast(message) { const root = document.getElementById("toast-root"); if (!root) return; const node = document.createElement("div"); node.className = "toast"; node.textContent = message; root.appendChild(node); setTimeout(() => node.remove(), 3200); }
 
   // form submits via delegation (forms re-render, so use document-level submit)
-  document.addEventListener("submit", (e) => {
+  document.addEventListener("submit", async (e) => {
     if (e.target.id === "alert-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast("اكتب رمزاً."); state.alerts = [{ symbol: s, type: f.get("type"), value: f.get("value"), title: `تنبيه ${s}`, createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
     if (e.target.id === "holding-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast("اكتب رمزاً."); state.holdings = [{ symbol: s, qty: f.get("qty"), entry: f.get("entry") }, ...state.holdings].slice(0, 50); write(keys.holdings, state.holdings); toast(`تمت إضافة مركز ${s}.`); render(); }
+    if (e.target.id === "followed-trade-form") {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const s = sym(f.get("symbol"));
+      if (!s) return toast("اكتب رمزاً.");
+      const draft = tradeDraftFromAsset({
+        symbol: s,
+        action: f.get("action"),
+        entryPrice: f.get("entryPrice"),
+        currentPrice: f.get("entryPrice"),
+        targetPrice: f.get("targetPrice"),
+        stopLoss: f.get("stopLoss"),
+        confidence: f.get("confidence"),
+        notes: f.get("notes"),
+        status: f.get("action") === "wait" ? "waiting" : f.get("action") === "watch" ? "watching" : "open",
+        provider: "manual"
+      }, "manual");
+      await persistFollowedTrade(draft);
+      e.target.reset();
+    }
     if (e.target.id === "settings-form") {
       e.preventDefault();
       const f = new FormData(e.target);
@@ -1295,11 +1383,47 @@
   }
   function smartAlerts() { return [...signalNotifications(), ...arr(state.rec.smartAlerts || state.rec.alerts || state.rec.signals)]; }
   function newsItems() { return arr(state.news.items || state.news.articles || state.news.news || state.news.data || state.news.results); }
-  function trades() { return arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed); }
+  function trades() { return mergeTradeLists(arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed), state.localTrades || []); }
   function matchRec(s) { const k = sym(s); return recs().find(x => sym(x.symbol) === k) || null; }
   function topPicks(r, n) { return [...r].sort((a, b) => (num(b.confidence, b.score, b.aiConfidence) || 0) - (num(a.confidence, a.score, a.aiConfidence) || 0)).slice(0, n); }
   function sortMovers(r) { const withChg = r.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
-  function groupTrades(items) { const g = { win: [], loss: [], wait: [], follow: [] }; items.forEach(t => { const st = String(t.status || t.state || "").toLowerCase(), pnl = num(t.pnl, t.profitLoss, t.returnPercent); if (st.includes("win") || (pnl !== null && pnl > 0)) g.win.push(t); else if (st.includes("loss") || st.includes("fail") || (pnl !== null && pnl < 0)) g.loss.push(t); else if (st.includes("wait") || st.includes("pending") || st.includes("انتظار")) g.wait.push(t); else g.follow.push(t); }); return g; }
+  function mergeTradeLists(server, local) {
+    const seen = new Set(), output = [];
+    [...server, ...local].forEach(item => {
+      const s = sym(item.symbol || item.asset || item.ticker), key = item.id || `${s}:${item.action || item.signal}:${item.openedAt || item.createdAt || ""}`;
+      if (!s || seen.has(key)) return;
+      seen.add(key);
+      output.push({ ...item, symbol: s });
+    });
+    return output.sort((a, b) => new Date(b.openedAt || b.createdAt || 0) - new Date(a.openedAt || a.createdAt || 0));
+  }
+  function tradeAction(t) { return signal({ action: t.action, signal: t.signal, recommendation: t.recommendation, type: t.type }); }
+  function tradeStatus(t) {
+    const st = String(t.status || t.state || "").toLowerCase();
+    if (st.includes("won") || st.includes("win") || st.includes("target") || st.includes("رابح")) return "won";
+    if (st.includes("lost") || st.includes("loss") || st.includes("stop") || st.includes("خاسر")) return "lost";
+    if (st.includes("expire") || st.includes("منتهي")) return "expired";
+    if (st.includes("wait") || st.includes("pending") || st.includes("انتظار")) return "waiting";
+    if (st.includes("watch") || st.includes("متابعة") || st.includes("مراقبة")) return "watching";
+    if (st.includes("open") || st.includes("مفتوح")) return "open";
+    const action = tradeAction(t);
+    return action === "wait" ? "waiting" : action === "watch" ? "watching" : "open";
+  }
+  function tradeStatusLabel(st) { return st === "won" ? "رابحة" : st === "lost" ? "خاسرة" : st === "open" ? "مفتوحة" : st === "waiting" ? "انتظار" : st === "expired" ? "منتهية" : "تحت المتابعة"; }
+  function tradeStatusTone(st) { return st === "won" ? "ok" : st === "lost" ? "bad" : st === "waiting" ? "warn" : st === "expired" ? "muted" : ""; }
+  function groupTrades(items) {
+    const g = { win: [], loss: [], open: [], wait: [], follow: [] };
+    items.forEach(t => {
+      const st = tradeStatus(t);
+      if (st === "won") g.win.push(t);
+      else if (st === "lost") g.loss.push(t);
+      else if (st === "open") g.open.push(t);
+      else if (st === "waiting") g.wait.push(t);
+      else g.follow.push(t);
+    });
+    return g;
+  }
+  function tradeSummary(items) { const g = groupTrades(items), resolved = g.win.length + g.loss.length; return { ...g, successRate: resolved ? Math.round(g.win.length / resolved * 100) : null }; }
   function norm(x) { x = x || {}; const s = sym(x.symbol || x.ticker || x.code || x.asset || x.name || ""); return { ...x, symbol: s, name: x.name || x.companyName || x.assetName || x.longName || s }; }
   function signal(x) { const raw = String(x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase(); if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy"; if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell"; if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait"; return "watch"; }
   function sigLabel(s) { return s === "buy" ? "شراء" : s === "sell" ? "بيع" : s === "wait" ? "انتظار" : "مراقبة"; }

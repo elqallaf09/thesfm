@@ -1,5 +1,6 @@
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
+import { resolveProviderSymbolAlias } from '@/lib/market/providerSymbolAliases';
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 const CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
@@ -19,8 +20,8 @@ const CRYPTO_PAIRS: Record<string, { display: string; provider: string; alternat
   return pairs;
 }, {});
 const METAL_PAIRS: Record<string, { display: string; provider: string; assetType: MarketAssetType; alternatives: string[] }> = {
-  XAUUSD: { display: 'XAU/USD', provider: 'XAUUSD', assetType: 'gold', alternatives: ['XAUUSD', 'XAU/USD', 'GC=F'] },
-  XAGUSD: { display: 'XAG/USD', provider: 'XAGUSD', assetType: 'commodity', alternatives: ['XAGUSD', 'XAG/USD', 'SI=F'] },
+  XAUUSD: { display: 'XAUUSD', provider: 'GC=F', assetType: 'gold', alternatives: ['GC=F', 'XAUUSD=X', 'XAUUSD', 'XAU/USD', 'GOLD'] },
+  XAGUSD: { display: 'XAGUSD', provider: 'SI=F', assetType: 'commodity', alternatives: ['SI=F', 'XAGUSD=X', 'XAGUSD', 'XAG/USD', 'SILVER'] },
 };
 
 export type NormalizedMarketSymbol = {
@@ -80,6 +81,17 @@ export function normalizeMarketSymbol(input: unknown, assetTypeInput?: unknown):
   const requestedAssetType = explicitAssetType(assetTypeInput);
 
   if (!compact || !validateSymbol(compact)) return null;
+
+  const aliased = resolveProviderSymbolAlias(raw, requestedAssetType);
+  if (aliased) {
+    return {
+      inputSymbol: raw,
+      displaySymbol: aliased.displaySymbol,
+      providerSymbol: aliased.providerSymbols[0],
+      assetType: requestedAssetType && requestedAssetType !== 'stock' ? requestedAssetType : aliased.assetType,
+      alternatives: uniqueSymbols([...aliased.providerSymbols, ...aliased.aliases]),
+    };
+  }
 
   const metal = METAL_PAIRS[compact] ?? (compact === 'XAU' || compact === 'GOLD' ? METAL_PAIRS.XAUUSD : null) ?? (compact === 'XAG' || compact === 'SILVER' ? METAL_PAIRS.XAGUSD : null);
   if (metal) {

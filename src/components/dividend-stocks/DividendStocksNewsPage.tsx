@@ -1315,7 +1315,7 @@ function uniqueOptions(values: Array<string | null | undefined>) {
 
 function getInitialState() {
   if (typeof window === 'undefined') {
-    return { tab: 'news' as DividendTab, stockSearch: '', stockSector: 'all' as SectorId, stockSort: 'quality' as StockSort, yieldMin: '', payoutMax: '' };
+    return { tab: 'overview' as DividendTab, stockSearch: '', stockSector: 'all' as SectorId, stockSort: 'quality' as StockSort, yieldMin: '', payoutMax: '' };
   }
   const params = new URLSearchParams(window.location.search);
   const tab = params.get('tab') as DividendTab | null;
