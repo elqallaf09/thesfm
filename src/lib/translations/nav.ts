@@ -34,7 +34,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_europe_news: { ar:'أخبار الأسواق الأوروبية', en:'European Market News', fr:'Actualités des marchés européens' },
   nav_tech_news: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },
   nav_crypto_news: { ar:'أخبار العملات الرقمية', en:'Crypto News', fr:'Actualités crypto' },
-  nav_stock_news_menu: { ar:'أخبار الأسهم', en:'Stock News', fr:'Actualités boursières' },
+  nav_stock_news_menu: { ar:'أخبار البورصات والأسهم', en:'Stock Exchange & Stock News', fr:'Actualités des bourses et actions' },
   nav_defensive_stocks: { ar:'أخبار الأسهم الدفاعية', en:'Defensive Stocks News', fr:'Actualités des actions défensives' },
   nav_growth_stocks: { ar:'أخبار أسهم النمو', en:'Growth Stocks News', fr:'Actualités des actions de croissance' },
   nav_dividend_stocks: { ar:'أخبار أسهم التوزيعات', en:'Dividend Stocks News', fr:'Actualités des actions à dividendes' },
