@@ -53,6 +53,15 @@ create table if not exists public.instagram_automation_events (
   created_at timestamptz not null default now()
 );
 
+alter table public.instagram_automation_posts
+add column if not exists created_by uuid references auth.users(id) on delete set null;
+
+alter table public.instagram_automation_posts
+add column if not exists created_at timestamptz not null default now();
+
+alter table public.instagram_automation_posts
+add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists instagram_automation_posts_status_created_idx
   on public.instagram_automation_posts(status, created_at desc);
 create index if not exists instagram_automation_posts_created_by_idx
