@@ -680,7 +680,7 @@
   }
 
   function providerName(provider) {
-    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", openbb: "OpenBB", manual: "إدخال يدوي" };
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", manual: "إدخال يدوي" };
     const raw = String(provider || "").trim();
     return names[raw.toLowerCase()] || raw || "غير متصل";
   }
@@ -1266,11 +1266,6 @@
         details
       });
     }
-    const hasOpenbbMissing = rows.some(row => String(row && (row.reason || row.error || row.message || "")).includes("openbb_not_configured"))
-      || ps.providers?.openbb?.configured === false;
-    if (hasOpenbbMissing) {
-      groups.push({ provider: "OpenBB", status: "missing", summary: "OpenBB غير مهيأ", details: [] });
-    }
     return groups;
   }
   function formatProviderError(error, options = {}) {
@@ -1287,12 +1282,12 @@
     if (!value || value === "[object Object]") return empty;
     if (isRateLimitText(value)) return "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
     const lower = value.toLowerCase();
-    if (lower.includes("openbb_not_configured")) return "OpenBB غير مهيأ";
     if (lower.includes("fmp_not_configured")) return "FMP غير مهيأ";
     if (lower.includes("provider_not_configured") || lower.includes("missing_provider")) return "مزود البيانات غير مهيأ";
+    if (/^[a-z0-9_-]+_not_configured$/i.test(value)) return "مزود البيانات غير مهيأ";
     if (lower.includes("provider_temporarily_unavailable")) return "مزود البيانات غير متاح مؤقتاً";
     if (lower.includes("provider_access_denied") || lower.includes("unauthorized") || lower.includes("forbidden")) return "صلاحية المزود لا تسمح بعرض هذه البيانات";
-    if (/^fmp_[a-z0-9_-]+$/i.test(value) || /^openbb_[a-z0-9_-]+$/i.test(value)) return "تعذر تحديث أحد مسارات المزود";
+    if (/^[a-z0-9_-]+_[a-z0-9_-]+$/i.test(value)) return "تعذر تحديث أحد مسارات المزود";
     return value.length > 140 ? `${value.slice(0, 137).trim()}...` : value;
   }
   function formatProviderValue(value) {

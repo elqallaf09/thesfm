@@ -47,7 +47,7 @@ function routeLabel(value: string | null | undefined) {
     'batch-index-quotes': 'index quotes',
     'batch-quote': 'stock quotes',
   };
-  return labels[key] ?? key || 'provider route';
+  return labels[key] ?? (key || 'provider route');
 }
 
 function normalizeFmpStatus(args: {
