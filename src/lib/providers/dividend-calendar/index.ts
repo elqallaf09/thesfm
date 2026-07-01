@@ -47,16 +47,12 @@ let diagnostics: DividendCalendarDiagnostics = {
 let lastLoggedStatus = '';
 
 export function getDividendCalendarProviderConfig(): DividendCalendarProviderConfig {
-  const finnhubKey = cleanEnv(process.env.FINNHUB_API_KEY);
   const fmpKey = cleanEnv(process.env.FMP_API_KEY);
 
-  if (finnhubKey) {
-    return { configured: true, provider: 'finnhub', apiKey: finnhubKey, missingEnvName: null };
-  }
   if (fmpKey) {
     return { configured: true, provider: 'fmp', apiKey: fmpKey, missingEnvName: null };
   }
-  return { configured: false, provider: null, apiKey: '', missingEnvName: 'FINNHUB_API_KEY or FMP_API_KEY' };
+  return { configured: false, provider: null, apiKey: '', missingEnvName: 'FMP_API_KEY' };
 }
 
 function cacheKey(provider: DividendCalendarProviderName, query: DividendCalendarQuery) {
