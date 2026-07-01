@@ -49,11 +49,13 @@ export function CharityTabs({
   active,
   onChange,
   ariaLabel,
+  className = 'charity-tabs',
 }: {
   tabs: Array<PageTabItem & { id: CharityProjectsTab }>;
   active: CharityProjectsTab;
   onChange: (id: CharityProjectsTab) => void;
   ariaLabel: string;
+  className?: string;
 }) {
   return (
     <PageTabs
@@ -61,7 +63,7 @@ export function CharityTabs({
       active={active}
       onChange={id => onChange(id as CharityProjectsTab)}
       ariaLabel={ariaLabel}
-      className="charity-tabs"
+      className={className}
     />
   );
 }

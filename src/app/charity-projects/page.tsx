@@ -69,7 +69,7 @@ export default function CharityProjectsPage() {
       button: 'Open Zakat Page',
     },
     fr: {
-      title: 'G?rer la zakat',
+      title: 'Gérer la zakat',
       description: 'Ouvrez la page Zakat pour calculer le nisab, suivre le hawl et enregistrer les calculs de zakat.',
       button: 'Ouvrir la page Zakat',
     },
@@ -1245,6 +1245,7 @@ export default function CharityProjectsPage() {
           active={activeTab}
           onChange={setActiveTab}
           ariaLabel={tr.title}
+          className="charity-tabs"
         />
 
         <section className="charity-overview-grid" hidden={activeTab !== 'overview'}>
