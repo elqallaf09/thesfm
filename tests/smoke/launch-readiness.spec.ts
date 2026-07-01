@@ -46,6 +46,29 @@ test.describe('launch smoke coverage', () => {
     }
   });
 
+  test('continue as guest works from the registration view', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', message => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
+    await expectUsablePage(page, '/login?mode=register');
+    const guestButton = page.locator('button.guest-btn').first();
+    await expect(guestButton).toBeVisible();
+    await guestButton.click();
+    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
+
+    await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('sfm_guest_mode'))).toBe('true');
+    const cookie = await page.evaluate(() => document.cookie);
+    expect(cookie).toContain('sfm_guest=true');
+    expect(cookie).not.toContain('sfm_auth=true');
+    expect(cookie).not.toContain('sfm_access_token=');
+
+    await expectUsablePage(page, '/sfm-admin-control');
+    await expect(page).toHaveURL(/\/login\?next=.*sfm-admin-control/);
+    expect(consoleErrors).toEqual([]);
+  });
+
   test('dashboard route loads or redirects safely', async ({ page }) => {
     if (userEmail && userPassword) await signIn(page, userEmail, userPassword);
     await expectUsablePage(page, '/dashboard');

@@ -33,7 +33,7 @@ const FINANCIAL_WISDOM_TIPS = [
 ];
 
 export function AuthForm() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, continueAsGuest } = useAuth();
   const router = useRouter();
   const [language, setLanguage] = useState<'ar' | 'en' | 'fr'>('ar');
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -47,6 +47,7 @@ export function AuthForm() {
   const [gender, setGender] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
@@ -121,6 +122,19 @@ export function AuthForm() {
   };
 
   const usernameToEmail = (u: string) => `${u.trim().toLowerCase()}@smart-finance.local`;
+
+  const handleGuestLogin = () => {
+    if (guestLoading) return;
+    setGuestLoading(true);
+    setError('');
+    try {
+      continueAsGuest();
+      window.location.href = '/dashboard';
+    } catch (err) {
+      setGuestLoading(false);
+      setError(err instanceof Error ? err.message : t.operationFailed);
+    }
+  };
 
   const handleForgotPassword = async () => {
 
@@ -590,7 +604,7 @@ export function AuthForm() {
           )}
 
           {/* ══ PRIMARY BUTTON ══ */}
-          <button type="submit" className="auth-btn-primary" style={{marginTop:'20px', marginBottom:'16px'}} disabled={loading}>
+          <button type="submit" className="auth-btn-primary" style={{marginTop:'20px', marginBottom:'16px'}} disabled={loading || guestLoading}>
             {loading ? (
               <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'50%', border:'2px solid rgba(27,36,48,0.2)', borderTopColor:'var(--sfm-foreground)', width:'18px', height:'18px'}} />{t.processing}</>
             ) : showForgotPassword
@@ -619,9 +633,11 @@ export function AuthForm() {
                   </button>
                 </div>
                 <button type="button" className="auth-btn-secondary"
-                  onClick={() => { router.push('/guest'); }}>
+                  onClick={handleGuestLogin}
+                  disabled={guestLoading}
+                  aria-busy={guestLoading}>
                   <i className="ti ti-user-circle" style={{fontSize:'18px'}} aria-hidden="true" />
-                  {t.guestLogin}
+                  {guestLoading ? t.processing : t.guestLogin}
                 </button>
               </div>
             </>

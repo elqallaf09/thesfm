@@ -436,6 +436,7 @@ function LoginContent() {
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [socialLoading, setSocialLoading] = useState<'google' | null>(null);
+  const [guestSubmitting, setGuestSubmitting] = useState(false);
 
   const nextPath = useMemo(() => {
     const requested = searchParams?.get('next') || '/dashboard';
@@ -840,7 +841,7 @@ function LoginContent() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || guestSubmitting) return;
     redirectingRef.current = false;
     setMessage(null);
     if (supabaseConfigError) {
@@ -879,9 +880,20 @@ function LoginContent() {
   }
 
   function enterGuestMode() {
-    continueAsGuest();
-    router.refresh();
-    router.replace('/dashboard');
+    if (guestSubmitting) return;
+    setGuestSubmitting(true);
+    setMessage(null);
+    try {
+      continueAsGuest();
+      redirectingRef.current = true;
+      window.location.href = '/dashboard';
+    } catch (error) {
+      setGuestSubmitting(false);
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : text.errorLoginGeneric,
+      });
+    }
   }
 
   const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : text.login;
@@ -1091,8 +1103,8 @@ function LoginContent() {
           <button
             type="submit"
             className="submit-btn"
-            disabled={submitting || !!socialLoading}
-            aria-busy={submitting}
+            disabled={submitting || !!socialLoading || guestSubmitting}
+            aria-busy={submitting || guestSubmitting}
           >
             {submitting
               ? (mode === 'register' ? text.saving : text.signingIn)
@@ -1117,7 +1129,7 @@ function LoginContent() {
               type="button"
               className="social-btn google-btn"
               onClick={() => void signInWithGoogle()}
-              disabled={!!socialLoading || submitting}
+              disabled={!!socialLoading || submitting || guestSubmitting}
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
@@ -1151,9 +1163,15 @@ function LoginContent() {
               {text.forgotLink}
             </button>
           )}
-          {mode === 'login' && (
-            <button type="button" className="link-btn guest-btn" onClick={enterGuestMode}>
-              {text.guest}
+          {(mode === 'login' || mode === 'register') && (
+            <button
+              type="button"
+              className="link-btn guest-btn"
+              onClick={enterGuestMode}
+              disabled={guestSubmitting}
+              aria-busy={guestSubmitting}
+            >
+              {guestSubmitting ? text.signingIn : text.guest}
             </button>
           )}
           {mode === 'register' && signupStep === 2 && (

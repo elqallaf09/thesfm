@@ -11,7 +11,7 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   isGuest: boolean;
-  continueAsGuest: () => void;
+  continueAsGuest: () => boolean;
   signIn: (username: string, password: string) => Promise<{
     error: Error | null;
     user?: User | null;
@@ -24,6 +24,9 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const GUEST_MODE_STORAGE_KEY = 'sfm_guest_mode';
+const GUEST_STARTED_AT_STORAGE_KEY = 'sfm_guest_started_at';
+const GUEST_COOKIE_NAME = 'sfm_guest';
 
 function cleanObject<T extends Record<string, unknown>>(payload: T) {
   return Object.fromEntries(
@@ -34,27 +37,33 @@ function cleanObject<T extends Record<string, unknown>>(payload: T) {
 function getStoredGuestMode() {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage?.getItem('sfm_guest_mode') === 'true';
+    if (window.localStorage?.getItem(GUEST_MODE_STORAGE_KEY) === 'true') return true;
   } catch {
-    return false;
+    // Fall back to the guest cookie when localStorage is unavailable.
   }
+  return document.cookie
+    .split(';')
+    .map(part => part.trim())
+    .includes(`${GUEST_COOKIE_NAME}=true`);
 }
 
 function setStoredGuestMode() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
-    window.localStorage?.setItem('sfm_guest_mode', 'true');
-    window.localStorage?.setItem('sfm_guest_started_at', new Date().toISOString());
+    window.localStorage?.setItem(GUEST_MODE_STORAGE_KEY, 'true');
+    window.localStorage?.setItem(GUEST_STARTED_AT_STORAGE_KEY, new Date().toISOString());
+    return window.localStorage?.getItem(GUEST_MODE_STORAGE_KEY) === 'true';
   } catch {
     // Some embedded or privacy-restricted browsers can block localStorage.
+    return false;
   }
 }
 
 function clearStoredGuestMode() {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage?.removeItem('sfm_guest_mode');
-    window.localStorage?.removeItem('sfm_guest_started_at');
+    window.localStorage?.removeItem(GUEST_MODE_STORAGE_KEY);
+    window.localStorage?.removeItem(GUEST_STARTED_AT_STORAGE_KEY);
   } catch {
     // Keep auth state usable even when localStorage is unavailable.
   }
@@ -65,11 +74,16 @@ function isConfirmedAuthEmail(user: User | null) {
 }
 
 function syncAuthCookies(nextSession: Session | null, guestMode: boolean) {
-  if (typeof document === 'undefined') return;
-  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
-  document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
-  document.cookie = `sfm_guest=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
+  if (typeof document === 'undefined') return false;
+  try {
+    const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
+    document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
+    document.cookie = `${GUEST_COOKIE_NAME}=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
+    return guestMode ? getStoredGuestMode() : !getStoredGuestMode();
+  } catch {
+    return false;
+  }
 }
 
 function normalizeLoginEmail(value: string) {
@@ -99,6 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         syncAuthCookies(data.session, !data.session && guestMode);
       })
       .catch(error => {
+        if (mounted) {
+          const guestMode = getStoredGuestMode();
+          setSession(null);
+          setUser(null);
+          setIsGuest(guestMode);
+          syncAuthCookies(null, guestMode);
+        }
         if (process.env.NODE_ENV === 'development') {
           console.warn('[auth] failed to load initial session', {
             message: error instanceof Error ? error.message : String(error),
@@ -132,11 +153,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     isGuest,
     continueAsGuest: () => {
-      setStoredGuestMode();
-      syncAuthCookies(null, true);
+      const stored = setStoredGuestMode();
+      const cookiesSynced = syncAuthCookies(null, true);
+      if (!stored && !cookiesSynced) {
+        throw new Error('Guest mode is unavailable in this browser.');
+      }
       setSession(null);
       setUser(null);
       setIsGuest(true);
+      return true;
     },
     signIn: async (username: string, password: string) => {
       try {
