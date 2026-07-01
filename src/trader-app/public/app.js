@@ -10,6 +10,7 @@
   const VER = "20260701-terminal-6";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
+  const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
 
   const routes = {
     dashboard: "غرفة قيادة السوق", markets: "خريطة الأسواق", "ai-scanner": "ماسح الذكاء الاصطناعي",
@@ -86,7 +87,7 @@
   };
   const CRYPTO = { BTC: ["₿", "#f7931a"], ETH: ["Ξ", "#627eea"], BNB: ["◆", "#f3ba2f"], SOL: ["◎", "#14f195"], XRP: ["✕", "#23292f"], ADA: ["₳", "#0033ad"], DOGE: ["Ð", "#c2a633"], USDT: ["₮", "#26a17b"] };
   const GULF_FLAG = { KW: "🇰🇼", SR: "🇸🇦", SA: "🇸🇦", AE: "🇦🇪", QA: "🇶🇦", BH: "🇧🇭", OM: "🇴🇲" };
-  // ticker -> company domain (Clearbit high-quality logos; falls back to FMP then badge)
+  // ticker -> company domain for favicon fallback; failed images remove themselves and leave the badge.
   const DOMAINS = {
     AAPL: "apple.com", MSFT: "microsoft.com", GOOGL: "google.com", GOOG: "google.com", NVDA: "nvidia.com",
     AMZN: "amazon.com", META: "meta.com", TSLA: "tesla.com", AMD: "amd.com", INTC: "intel.com",
@@ -102,7 +103,7 @@
   /* ─────────────────────────── State ─────────────────────────── */
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {},
+    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {},
     calendarRange: "30", calendarLoading: false,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []),
@@ -123,11 +124,13 @@
   }
 
   async function hydrate() {
-    const [rec, mk, news, followed] = await Promise.all([
+    const [rec, signals, signalAlerts, mk, news, followed] = await Promise.all([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
+      get("/market/signals?limit=60"),
+      get("/market/signal-alerts?limit=50"),
       get("/markets"), get("/market-news?limit=12"), get("/followed-trades")
     ]);
-    state.rec = rec; state.markets = mk; state.news = news; state.followed = followed;
+    state.rec = rec; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
     state.provider = rec.dataProvider || mk.dataProvider || news.dataProvider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
     await loadCalendars(false);
   }
@@ -138,6 +141,19 @@
       const body = await res.json().catch(() => ({}));
       return res.ok ? { ok: true, ...body } : { ok: false, status: res.status, message: body.message || body.error || res.statusText, dataProvider: body.dataProvider || null };
     } catch (error) { return { ok: false, message: error.message, dataProvider: null }; }
+  }
+  async function saveSignalPreferences(prefs) {
+    try {
+      const res = await fetch(`${API}/market/signal-preferences`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(prefs)
+      });
+      return res.ok;
+    } catch (_error) {
+      return false;
+    }
   }
 
   /* ─────────────────────────── Router ─────────────────────────── */
@@ -243,26 +259,23 @@
 
   /* ─────────────────────────── Pages ─────────────────────────── */
   function dashboardPage() {
-    const rec = recs(), news = newsItems(), followed = trades(), alerts = smartAlerts();
+    const rec = recs(), news = newsItems(), alerts = smartAlerts();
+    const movers = sortMovers(rec);
+    const tableItems = rec.length ? rec.slice(0, 14) : dashboardSymbols().map(s => ({ symbol: s, name: "غير متاح" }));
     return `<div class="page-stack">
-      <section class="command-hero">
-        <div class="hero-copy"><span class="eyebrow">LIVE READINESS / NO SYNTHETIC DATA</span><h2>ترمينال تداول وتحليل ذكي يقرأ السوق عند اتصال البيانات.</h2><p>كل الأسعار والتوصيات تأتي من مزود حقيقي. عند غيابه نعرض حالة واضحة بدل أرقام وهمية، مع صفحات كاملة للتنقل والتحليل.</p>
-          <div class="hero-actions"><a class="action-btn" href="${ROOT}/ai-scanner" data-route-link>افتح ماسح الذكاء</a><a class="ghost-btn" href="${ROOT}/markets" data-route-link>استعرض الأسواق</a><button class="ghost-btn" data-symbol-details="AAPL">جرّب صفحة رمز</button></div>
-        </div>
-        <div class="hero-panel">${systemCard()}</div>
+      ${commandCenter(rec)}
+      ${marketLeadership(rec)}
+      ${opportunityHeatmap(rec)}
+      <section class="market-movers-grid">
+        ${moverPanel("TOP GAINERS", "الأكثر ارتفاعاً", movers.gainers.slice(0, 3), "up")}
+        ${moverPanel("TOP LOSERS", "الأكثر انخفاضاً", movers.losers.slice(0, 3), "down")}
       </section>
-      ${marketOverview(rec)}
-      ${exploreCarousel()}
-      <section class="metric-grid">${stat("التوصيات الحية", rec.length, "Live signals")}${stat("الأخبار", news.length, "Market news")}${stat("قائمة المتابعة", state.watch.length, "Watchlist")}${stat("صفقات متابعة", followed.length, "Followed trades")}</section>
-      <section class="dash-split">
-        <article class="panel watchlist-panel"><div class="panel-head"><div><span class="eyebrow">SMART WATCHLIST</span><h2>قائمة المتابعة الذكية</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>عرض الكل</a></div>${rec.length ? watchlistTable(rec.slice(0, 8)) : emptyState("لا توجد توصيات حية", "محرك التوصيات لم يرجع نتائج. لا نملأ الجدول ببيانات وهمية.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article>
-        <aside class="dash-rail">
-          <article class="panel"><span class="eyebrow">AI TOP PICKS</span><h2>أفضل الفرص</h2>${rec.length ? assetList(topPicks(rec, 3)) : emptyState("لا توجد فرص حية", "بانتظار توصيات من المزود.", "الإعدادات", `${ROOT}/settings`)}</article>
-          <article class="panel"><span class="eyebrow">MARKET NEWS</span><h2>آخر الأخبار</h2>${news.length ? newsList(news.slice(0, 3)) : emptyState("لا توجد أخبار", "مزود الأخبار لم يرجع عناصر حالية.", "صفحة الأخبار", `${ROOT}/news`)}</article>
-          <article class="panel">${biasPanel(rec)}</article>
-        </aside>
+      <section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">SYMBOLS & RECOMMENDATIONS</span><h2>الرموز والتوصيات</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>عرض الكل</a></div>${watchlistTable(tableItems)}</section>
+      <section class="dashboard-lower-grid">
+        <article class="panel"><span class="eyebrow">MARKET NEWS</span><h2>آخر الأخبار</h2>${news.length ? newsList(news.slice(0, 3)) : emptyState("البيانات غير متاحة حالياً", "مزود الأخبار لم يرجع عناصر حالية.", "صفحة الأخبار", `${ROOT}/news`)}</article>
+        <article class="panel"><span class="eyebrow">AI ANALYSIS</span><h2>حالة التحليل الذكي</h2>${alerts.length ? alertList(alerts) : emptyState("بعض البيانات متأخرة", "سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article>
+        <article class="panel"><span class="eyebrow">SYSTEM STATUS</span><h2>حالة النظام</h2>${diagnostics()}</article>
       </section>
-      <section class="alert-grid"><article class="panel"><span class="eyebrow">AI ANALYSIS</span><h2>حالة التحليل الذكي</h2>${alerts.length ? alertList(alerts) : emptyState("لا توجد إشارات تحليل جاهزة", "سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article><article class="panel"><span class="eyebrow">SYSTEM STATUS</span><h2>حالة النظام</h2>${diagnostics()}</article></section>
       ${disclaimer()}
     </div>`;
   }
@@ -557,13 +570,22 @@
 
   function settingsPage() {
     const s = state.settings;
+    const prefs = signalPrefs();
+    const marketOptions = ["US", "Kuwait", "Saudi", "UAE", "Qatar", "Bahrain", "Oman", "Forex", "Crypto", "Commodities"];
     return `<div class="page-stack">${hero("إعدادات النظام", "حالة المزود وتفضيلات العرض وسلوك البيانات. توضح لماذا قد تكون التوصيات أو الأخبار فارغة.", "SETTINGS")}
       <section class="settings-grid">
         <article class="panel"><span class="eyebrow">PROVIDER</span><h2>مزود البيانات</h2>${diagnostics()}<div class="row-actions"><button class="ghost-btn" data-retry>إعادة الفحص</button></div></article>
-        <article class="panel"><span class="eyebrow">PREFERENCES</span><h2>التفضيلات</h2>
+        <article class="panel"><span class="eyebrow">SIGNAL PREFERENCES</span><h2>تفضيلات الإشارات</h2>
           <form id="settings-form" class="stack-form">
             <label>السوق الافتراضي<select name="defaultMarket">${MARKETS.map(m => `<option value="${m.id}" ${s.defaultMarket === m.id ? "selected" : ""}>${h(m.ar)}</option>`).join("")}</select></label>
             <label>ملف المخاطر<select name="risk">${["conservative", "balanced", "aggressive"].map(r => `<option value="${r}" ${s.risk === r ? "selected" : ""}>${riskLabel(r)}</option>`).join("")}</select></label>
+            <label>حد الثقة الأدنى<input name="signalMinConfidence" inputmode="numeric" value="${h(prefs.minConfidence)}" /></label>
+            <label>الأسواق المفعلة<select name="enabledMarkets" multiple>${marketOptions.map(m => `<option value="${h(m)}" ${prefs.enabledMarkets.includes(m) ? "selected" : ""}>${h(m)}</option>`).join("")}</select></label>
+            <label><input type="checkbox" name="buyAlertsEnabled" ${prefs.buyAlertsEnabled ? "checked" : ""} /> تنبيهات الشراء</label>
+            <label><input type="checkbox" name="sellAlertsEnabled" ${prefs.sellAlertsEnabled ? "checked" : ""} /> تنبيهات البيع</label>
+            <label><input type="checkbox" name="waitAlertsEnabled" ${prefs.waitAlertsEnabled ? "checked" : ""} /> تنبيهات الانتظار والمراقبة</label>
+            <label><input type="checkbox" name="inAppAlertsEnabled" ${prefs.inAppAlertsEnabled ? "checked" : ""} /> تنبيهات داخل المنصة</label>
+            <label><input type="checkbox" name="emailAlertsEnabled" ${prefs.emailAlertsEnabled ? "checked" : ""} /> البريد الإلكتروني عند توفر الخدمة</label>
             <button class="action-btn" type="submit">حفظ</button>
           </form>
         </article>
@@ -606,24 +628,32 @@
   async function loadMarket(id) {
     if (state.marketCache.has(id)) { render(); return; }
     const m = MARKETS.find(x => x.id === id); if (!m) return;
-    const data = await get(`/recommendations?market=${marketApi(m.apiMarket)}`);
-    state.marketCache.set(id, data);
+    const [data, signals] = await Promise.all([
+      get(`/recommendations?market=${marketApi(m.apiMarket)}`),
+      get(`/market/signals?symbols=${encodeURIComponent(m.symbols.join(","))}&limit=${m.symbols.length}`)
+    ]);
+    state.marketCache.set(id, { ...data, signals: signals.signals || signals.items || [] });
     if (state.route.id === "markets" && state.route.market === id) render();
   }
   async function ensureScanData() {
     if (recs().length || state.rec.message) return;
-    const data = await get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`);
-    state.rec = data; if (data.dataProvider) state.provider = data.dataProvider;
+    const [data, signals] = await Promise.all([
+      get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
+      get("/market/signals?limit=60")
+    ]);
+    state.rec = data; state.signals = signals;
+    if (data.dataProvider) state.provider = data.dataProvider;
     if (["ai-scanner", "recommendations"].includes(state.route.id)) render();
   }
   async function loadSymbol(symbol) {
     const target = document.getElementById("symbol-details-body"); if (!target) return;
     const key = sym(symbol);
     if (state.cache.has(key)) { target.innerHTML = symbolContent(state.cache.get(key)); return; }
-    const [profile, search, tech] = await Promise.all([
+    const [profile, search, tech, sig] = await Promise.all([
       get(`/market/asset-profile?symbol=${encodeURIComponent(key)}`),
       get(`/market/search?q=${encodeURIComponent(key)}&limit=5`),
-      get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`)
+      get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`),
+      get(`/market/signals/${encodeURIComponent(key)}`)
     ]);
     const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
     const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
@@ -633,7 +663,7 @@
       available: Boolean(profile.ok && (rawProfile.symbol || found.symbol || found.name)),
       source: profile.source || search.source || asset.source || "--",
       message: profile.message || search.message || "لا توجد بيانات كافية من المزود لهذا الرمز.",
-      rec: matchRec(key)
+      rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
     };
     state.cache.set(key, detail);
     if (state.route.id === "symbol-details" && state.route.symbol === key) target.innerHTML = symbolContent(detail);
@@ -654,7 +684,7 @@
       <aside class="detail-side">
         <article class="panel consensus-panel"><span class="eyebrow">STRATEGY CONSENSUS</span><h2>إجماع الاستراتيجيات</h2>${strategyConsensus(a, detail.tech, detail.rec)}</article>
         <article class="panel"><span class="eyebrow">TECHNICAL</span><h2>التحليل الفني</h2>${detail.available ? technical(a, detail.tech, c) : emptyState("لا توجد بيانات تحليل كافية", detail.message, "الإعدادات", `${ROOT}/settings`)}</article>
-        <article class="panel"><span class="eyebrow">AI SUMMARY</span><h2>ملخص الذكاء</h2>${detail.rec ? `<p>${h(detail.rec.reason || detail.rec.summary || "قراءة تحليلية من المزود.")}</p><div class="detail-grid">${detailCard("التوصية", sigLabel(sig), "Action")}${detailCard("الثقة", confText(detail.rec), "Confidence")}${detailCard("المخاطرة", riskShort(detail.rec.risk || detail.rec.riskLevel), "Risk")}${detailCard("المدة", detail.rec.timeframe || detail.rec.horizon || detail.rec.duration || "--", "Horizon")}</div>${riskReward(detail.rec, c)}` : emptyState("لا يوجد ملخص ذكاء", "لم يرجع المزود توصية لهذا الرمز.", "", "")}</article>
+        <article class="panel"><span class="eyebrow">AI SIGNAL</span><h2>الإشارة والتحليل</h2>${detail.rec ? signalAnalysis(detail.rec, c) : emptyState("لا توجد إشارة كافية", "لم يرجع المزود بيانات كافية لهذا الرمز.", "", "")}</article>
         <article class="panel"><span class="eyebrow">RELATED NEWS</span><h2>أخبار مرتبطة</h2>${relatedNews(a.symbol)}</article>
       </aside></div>`;
   }
@@ -680,6 +710,94 @@
         </div>
       </div></section>`;
   }
+  function commandCenter(rec) {
+    const p = providerCopy(), b = marketBias(rec), market = currentMarket();
+    const buy = rec.filter(x => signal(x) === "buy").length, sell = rec.filter(x => signal(x) === "sell").length;
+    const configured = p.className === "online";
+    return `<section class="terminal-command-center" aria-label="Market summary">
+      ${commandMetric("PROVIDER", configured ? "متصل" : "غير مهيأ", p.active || p.raw || p.title, configured ? "ok" : "warn")}
+      ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : "غير متاح", b.conf ? b.label : "بانتظار البيانات", b.tone || "neutral")}
+      ${commandMetric("BUY SIGNALS", buy, "فرص شراء", "ok")}
+      ${commandMetric("SELL SIGNALS", sell, "فرص بيع", "bad")}
+      ${commandMetric("ANALYZED ASSETS", rec.length || "غير متاح", "أصول محللة", rec.length ? "ok" : "neutral")}
+      ${commandMetric("ACTIVE MARKET", market.ar, `${market.en} · ${market.currency}`, "blue")}
+    </section>`;
+  }
+  function commandMetric(kicker, value, label, tone) {
+    return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(kicker)}</span><strong>${h(String(value))}</strong><small>${h(label || "غير متاح")}</small></article>`;
+  }
+  function marketLeadership(rec) {
+    return `<section class="panel market-leadership">
+      <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(currentMarket().ar)}</span></div>
+      <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, rec))).join("")}</div>
+    </section>`;
+  }
+  function leadershipCard(symbol, asset) {
+    const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
+    const display = symbol === "BTCUSD" ? "BTC/USD" : symbol;
+    const c = currency({ ...a, symbol });
+    const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+    const chg = num(a.changePercent, a.percentChange);
+    const conf = num(a.confidence, a.score, a.aiConfidence);
+    const source = a.source || a.provider || (state.provider && (state.provider.active || state.provider.provider));
+    const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
+    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
+      <div class="asset-head">${logo({ ...a, symbol })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || "غير متاح")}</small></div></div>
+      <div class="leadership-price"><strong class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</span></div>
+      ${sparkline(a, chg)}
+      <div class="leadership-foot"><span>${conf === null ? "ثقة غير متاحة" : `ثقة ${Math.round(conf)}%`}</span><b>${h(source || "غير متاح")}</b></div>
+    </button>`;
+  }
+  function opportunityHeatmap(rec) {
+    const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
+    return `<section class="panel opportunity-heatmap">
+      <div class="panel-head"><div><span class="eyebrow">OPPORTUNITY HEATMAP</span><h2>خريطة حرارة الفرص</h2></div><span class="state-badge">${rec.length ? `${rec.length} أصل` : "البيانات غير متاحة حالياً"}</span></div>
+      <div class="opportunity-heat-grid">${symbols.map(s => heatmapCard(s, findAssetForSymbol(s, rec))).join("")}</div>
+    </section>`;
+  }
+  function heatmapCard(symbol, asset) {
+    const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
+    const chg = num(a.changePercent, a.percentChange);
+    const hasSignal = Boolean(asset && (a.signal || a.recommendation || a.action || a.side || a.type));
+    const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
+    const conf = num(a.confidence, a.score, a.aiConfidence);
+    return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
+      ${logo({ ...a, symbol }, "sm")}
+      <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
+      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</span>
+      <em>${hasSignal ? h(sigLabel(signal(a))) : "غير متاح"}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
+    </button>`;
+  }
+  function moverPanel(kicker, title, items, tone) {
+    return `<article class="panel market-movers-panel ${tone}"><div class="panel-head"><div><span class="eyebrow">${h(kicker)}</span><h2>${h(title)}</h2></div></div>${items.length ? assetList(items) : emptyState("البيانات غير متاحة حالياً", "لم يرجع المزود تغيّر الأسعار الكافي لعرض هذه القائمة.", "افتح الإعدادات", `${ROOT}/settings`)}</article>`;
+  }
+  function dashboardSymbols() {
+    const market = currentMarket();
+    const extra = market.id === "kuwait" ? market.symbols : [];
+    return unique([...leadershipCore, ...extra]);
+  }
+  function findAssetForSymbol(symbol, list) {
+    const aliases = symbolAliases(symbol);
+    return list.find(x => aliases.includes(sym(x.symbol || x.ticker || x.code))) || null;
+  }
+  function symbolAliases(symbol) {
+    const s = sym(symbol);
+    const map = {
+      NAS100: ["NAS100", "NDX", "IXIC"],
+      US30: ["US30", "DJI"],
+      BTCUSD: ["BTCUSD", "BTC-USD", "BTC/USD"],
+      XAUUSD: ["XAUUSD", "GC=F", "GOLD"]
+    };
+    return map[s] || [s];
+  }
+  function sparkline(asset, chg) {
+    const series = arr(asset.history || asset.sparkline || asset.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
+    if (series.length < 2) return `<div class="leadership-sparkline empty">غير متاح</div>`;
+    const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1;
+    const points = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(34 - (v - min) / rng * 30).toFixed(2)}`).join(" ");
+    const tone = chg === null ? (series[series.length - 1] >= series[0] ? "up" : "down") : chg >= 0 ? "up" : "down";
+    return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
+  }
   function marketMap() {
     return `<div class="world-map" aria-hidden="true">${SESSIONS.map(([c, top, left], i) => `<span class="map-node node-${i}" style="top:${top}%;left:${left}%"><i></i><b>${h(c)}</b></span>`).join("")}
       <svg viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg></div>`;
@@ -698,20 +816,21 @@
   }
   function watchlistTable(items, opts = {}) {
     const rows = items.map(x => {
-      const a = norm(x), c = currency(a), sig = signal(a);
+      const a = norm(x), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "";
       const conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
       const chg = num(a.changePercent, a.percentChange), tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
+      const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></span></button></td>
-        <td class="ltr">${h(price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</td>
-        <td><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></td>
-        <td class="ltr">${conf === null ? "--" : Math.round(conf) + "%"}</td>
-        <td class="ltr">${tgt === null ? "--" : price(tgt, c)}</td>
-        <td>${h(a.timeframe || a.horizon || a.duration || "--")}</td>
-        <td><span class="risk-pill ${riskTone(a.risk || a.riskLevel)}">${h(riskShort(a.risk || a.riskLevel))}</span></td>
-        <td class="ltr">${score === null ? "--" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
+        <td class="wt-asset"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
+        <td class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</td>
+        <td><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
+        <td class="ltr">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
+        <td class="ltr">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
+        <td>${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
+        <td>${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
+        <td class="ltr">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
         <td class="row-actions"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
       </tr>`;
     }).join("");
@@ -727,18 +846,19 @@
   }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
-    const a = norm(asset), c = currency(a), sig = signal(a), conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+    const a = norm(asset), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "", conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+    const chg = num(a.changePercent, a.percentChange);
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">إزالة</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
-      <div class="asset-metrics"><span>السعر<b class="ltr">${h(price(p, c))}</b></span><span>ثقة AI<b>${conf === null ? "--" : `${Math.round(conf)}%`}</b></span></div>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span><span class="status-tag">${h(recStatus(a))}</span></div>
+      <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">تحليل</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">متابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${sig}" data-symbol-details="${h(a.symbol)}"><strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</small></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
@@ -835,6 +955,38 @@
     const rr = Math.round(reward / risk * 100) / 100;
     return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف", price(tgt, c), "Target")}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("العائد/المخاطرة", rr + ":1", "R/R")}</div>`;
   }
+  function signalAnalysis(rec, c) {
+    const sig = signal(rec), conf = confText(rec);
+    const reasons = arr(rec.reasons).map(String).filter(Boolean).slice(0, 5);
+    const warnings = arr(rec.warnings).map(String).filter(Boolean).slice(0, 5);
+    const score = rec.scoreBreakdown || rec.score_breakdown || {};
+    const quality = rec.dataQuality || rec.data_quality || "--";
+    const provider = rec.provider || rec.source || "--";
+    const summary = rec.reason || rec.summary || reasons[0] || "قراءة تحليلية مبنية على البيانات المتاحة.";
+    const scoreRows = [
+      ["فني", score.technicalScore, 40],
+      ["زخم", score.momentumScore, 20],
+      ["أخبار", score.newsScore, 15],
+      ["أساسيات", score.fundamentalsScore, 15]
+    ].filter(([, value]) => value !== undefined && value !== null);
+    return `<div class="signal-analysis">
+      <p>${h(summary)}</p>
+      <div class="detail-grid">
+        ${detailCard("الإشارة", sigLabel(sig), "Action")}
+        ${detailCard("الثقة", conf, "Confidence")}
+        ${detailCard("المخاطرة", riskShort(rec.risk || rec.riskLevel), "Risk")}
+        ${detailCard("المدة", rec.timeframe || rec.horizon || rec.duration || "--", "Horizon")}
+        ${detailCard("مزود البيانات", provider, "Provider")}
+        ${detailCard("جودة البيانات", dataQualityLabel(quality), "Quality")}
+      </div>
+      ${riskReward(rec, c)}
+      ${scoreRows.length ? `<div class="table-shell"><table><tbody>${scoreRows.map(([label, value, max]) => `<tr><th>${h(label)}</th><td class="ltr">${h(latinNumber(value))} / ${h(max)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+      ${reasons.length ? `<div class="trade-list">${reasons.map(r => `<article class="trade-item"><strong>سبب</strong><p>${h(r)}</p></article>`).join("")}</div>` : ""}
+      ${warnings.length ? `<div class="trade-list">${warnings.map(w => `<article class="trade-item"><strong>تنبيه مخاطرة</strong><p>${h(w)}</p></article>`).join("")}</div>` : ""}
+      <p class="muted-note">هذه إشارات تحليلية تعليمية مبنية على البيانات المتاحة، ولا تُعد نصيحة مالية أو توصية ملزمة بالشراء أو البيع. القرار النهائي مسؤولية المستخدم.</p>
+      <p class="muted-note ltr">These are educational analytical signals based on available data and are not financial advice.</p>
+    </div>`;
+  }
   function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(value || "--")}</strong><p>${h(label)}</p></article>`; }
 
   /* ── multi-strategy consensus engine: combine several classic strategies,
@@ -925,11 +1077,20 @@
   }
   function marketGlyph(m) { const G = { forex: "💱", "us-stocks": "🇺🇸", kuwait: "🇰🇼", saudi: "🇸🇦", uae: "🇦🇪", qatar: "🇶🇦", bahrain: "🇧🇭", oman: "🇴🇲", gcc: "🕌", europe: "🇪🇺", asia: "🌏", crypto: "₿", commodities: "🛢", indices: "📊", etfs: "📦", technology: "💻", ai: "🤖", semiconductors: "🔌", energy: "⚡", banking: "🏦", healthcare: "💊", food: "🍔" }; return G[m.id] || "📈"; }
 
-  function status() { const s = providerCopy(), pill = document.getElementById("provider-status"); if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span>${h(s.copy)}</span>`; const dot = document.getElementById("sidebar-status-dot"), title = document.getElementById("sidebar-status-title"), copy = document.getElementById("sidebar-status-copy"); if (dot) dot.className = `status-dot ${s.className}`; if (title) title.textContent = s.title; if (copy) copy.textContent = s.copy; }
+  function status() {
+    const s = providerCopy(), pill = document.getElementById("provider-status");
+    if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span>${h(s.copy)}</span>`;
+    const dot = document.getElementById("sidebar-status-dot"), title = document.getElementById("sidebar-status-title"), copy = document.getElementById("sidebar-status-copy");
+    if (dot) dot.className = `status-dot ${s.className}`;
+    if (title) title.textContent = s.title;
+    if (copy) copy.textContent = s.copy;
+    const session = document.getElementById("session-status"), market = currentMarket();
+    if (session) session.textContent = `${market.ar} · ${market.currency}`;
+  }
   function ticker() {
     const row = document.getElementById("ticker-row"); if (!row) return;
-    const idx = [["SPX", "S&P 500"], ["NDX", "NASDAQ 100"], ["DJI", "Dow Jones"], ["XAUUSD", "Gold"], ["WTI", "Oil"], ["BTCUSD", "BTC/USD"]];
-    row.innerHTML = idx.map(([s, label]) => { const r = matchRec(s) || {}; const p = num(r.price, r.currentPrice, r.lastPrice); const chg = num(r.changePercent, r.percentChange); return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${p === null ? "— " + h(currency({ symbol: s })) : price(p, currency({ symbol: s }))} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${change(chg)}</i>`}</small></span></button>`; }).join("");
+    const idx = [["NAS100", "NAS100"], ["US30", "US30"], ["XAUUSD", "Gold"], ["WTI", "Oil"], ["BTCUSD", "BTC/USD"], ["KFH.KW", "KFH"]];
+    row.innerHTML = idx.map(([s, label]) => { const r = findAssetForSymbol(s, recs()) || {}; const p = num(r.price, r.currentPrice, r.lastPrice); const chg = num(r.changePercent, r.percentChange); return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...r, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${p === null ? "غير متاح" : price(p, currency({ ...r, symbol: s }))} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${change(chg)}</i>`}</small></span></button>`; }).join("");
   }
   function statusBar() {
     const bar = document.getElementById("terminal-statusbar"); if (!bar) return;
@@ -949,7 +1110,22 @@
   document.addEventListener("submit", (e) => {
     if (e.target.id === "alert-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast("اكتب رمزاً."); state.alerts = [{ symbol: s, type: f.get("type"), value: f.get("value"), title: `تنبيه ${s}`, createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
     if (e.target.id === "holding-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast("اكتب رمزاً."); state.holdings = [{ symbol: s, qty: f.get("qty"), entry: f.get("entry") }, ...state.holdings].slice(0, 50); write(keys.holdings, state.holdings); toast(`تمت إضافة مركز ${s}.`); render(); }
-    if (e.target.id === "settings-form") { e.preventDefault(); const f = new FormData(e.target); state.settings.defaultMarket = f.get("defaultMarket"); state.settings.risk = f.get("risk"); write(keys.settings, state.settings); toast("تم حفظ الإعدادات."); retryRoute(); }
+    if (e.target.id === "settings-form") {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      state.settings.defaultMarket = f.get("defaultMarket");
+      state.settings.risk = f.get("risk");
+      state.settings.signalMinConfidence = Math.max(0, Math.min(95, Number(f.get("signalMinConfidence")) || 70));
+      state.settings.enabledMarkets = f.getAll("enabledMarkets").map(String).filter(Boolean);
+      state.settings.buyAlertsEnabled = f.get("buyAlertsEnabled") === "on";
+      state.settings.sellAlertsEnabled = f.get("sellAlertsEnabled") === "on";
+      state.settings.waitAlertsEnabled = f.get("waitAlertsEnabled") === "on";
+      state.settings.inAppAlertsEnabled = f.get("inAppAlertsEnabled") === "on";
+      state.settings.emailAlertsEnabled = f.get("emailAlertsEnabled") === "on";
+      write(keys.settings, state.settings);
+      saveSignalPreferences(signalPrefs()).then(ok => toast(ok ? "تم حفظ تفضيلات الإشارات." : "تم حفظها محلياً؛ يلزم تسجيل الدخول لحفظها في الحساب."));
+      retryRoute();
+    }
   });
   document.addEventListener("click", (e) => {
     const acc = e.target.closest("[data-acc]"); if (acc) { acc.closest(".accordion").classList.toggle("is-open"); }
@@ -957,9 +1133,72 @@
   });
 
   /* ───────────────────── Selectors / utils ───────────────────── */
-  function recsFrom(data) { return arr((data && (data.recommendations || data.items || data.data || data.results))).map(norm).filter(x => x.symbol); }
-  function recs() { return recsFrom(state.rec); }
-  function smartAlerts() { return arr(state.rec.smartAlerts || state.rec.alerts || state.rec.signals); }
+  function legacyRecsFrom(data) { return arr((data && (data.recommendations || data.items || data.data || data.results))).map(norm).filter(x => x.symbol); }
+  function signalsFrom(data) { return arr(data && (data.signals || data.items || data.data || data.results)).map(signalToRec).filter(x => x.symbol); }
+  function recsFrom(data) { return mergeRecLists(signalsFrom(data), legacyRecsFrom(data)); }
+  function recs() { return mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); }
+  function mergeRecLists(primary, fallback) {
+    const map = new Map();
+    fallback.forEach(item => { if (item.symbol) map.set(sym(item.symbol), item); });
+    primary.forEach(item => {
+      const key = sym(item.symbol);
+      if (key) map.set(key, { ...(map.get(key) || {}), ...item });
+    });
+    return Array.from(map.values());
+  }
+  function signalToRec(x) {
+    x = x || {};
+    const base = norm({ ...x, name: x.assetName || x.asset_name || x.name });
+    const currentPrice = num(x.currentPrice, x.current_price, x.price, base.price);
+    const targetPrice = num(x.targetPrice, x.target_price, x.target, base.target);
+    const stopLoss = num(x.stopLoss, x.stop_loss, x.stop, base.stopLoss);
+    const reasons = arr(x.reasons).map(String).filter(Boolean);
+    const warnings = arr(x.warnings).map(String).filter(Boolean);
+    return {
+      ...base,
+      assetType: x.assetType || x.asset_type || base.assetType,
+      market: x.market || base.market,
+      currency: x.currency || base.currency,
+      signal: x.action || base.signal,
+      recommendation: x.action || base.recommendation,
+      action: x.action || base.action,
+      actionLabelAr: x.actionLabelAr || x.action_label_ar,
+      confidence: num(x.confidence, base.confidence),
+      score: num(x.confidence, base.score),
+      price: currentPrice,
+      currentPrice,
+      target: targetPrice,
+      targetPrice,
+      stopLoss,
+      stop: stopLoss,
+      riskLevel: x.riskLevel || x.risk_level || base.riskLevel,
+      dataQuality: x.dataQuality || x.data_quality,
+      provider: x.provider || base.provider || "Yahoo Finance",
+      source: x.provider || base.source,
+      timeframe: x.timeframe || base.timeframe,
+      reasons,
+      warnings,
+      reason: reasons[0] || x.reason || base.reason,
+      summary: x.summary || reasons.join(" · "),
+      status: x.status || (x.action === "wait" ? "انتظار" : x.action === "watch" ? "تحت المتابعة" : "open"),
+      scoreBreakdown: x.scoreBreakdown || x.score_breakdown,
+      technicalSummary: x.technicalSummary || x.technical_summary,
+      disclaimerAr: x.disclaimerAr,
+      disclaimerEn: x.disclaimerEn,
+      lastUpdated: x.lastUpdated || x.last_updated || x.created_at
+    };
+  }
+  function signalNotifications() { return arr(state.signalAlerts.notifications || state.signalAlerts.items || state.signalAlerts.data || state.signalAlerts.results); }
+  function signalHistoryItems() {
+    const rows = arr(state.signals.history || state.signals.signalHistory || state.signals.signal_history);
+    if (rows.length) return rows.map(row => ({
+      title: row.title || `تغيرت الإشارة على ${sym(row.symbol)}`,
+      symbol: row.symbol,
+      message: row.message || `${sigLabel(row.old_action || row.oldAction || "watch")} → ${sigLabel(row.new_action || row.newAction || "watch")} · ${latinNumber(row.new_confidence || row.newConfidence)}%`
+    }));
+    return signalNotifications().filter(item => String(item.event || "").includes("change") || String(item.title || "").includes("تغير")).slice(0, 4);
+  }
+  function smartAlerts() { return [...signalNotifications(), ...arr(state.rec.smartAlerts || state.rec.alerts || state.rec.signals)]; }
   function newsItems() { return arr(state.news.items || state.news.articles || state.news.news || state.news.data || state.news.results); }
   function trades() { return arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed); }
   function matchRec(s) { const k = sym(s); return recs().find(x => sym(x.symbol) === k) || null; }
@@ -967,8 +1206,8 @@
   function sortMovers(r) { const withChg = r.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
   function groupTrades(items) { const g = { win: [], loss: [], wait: [], follow: [] }; items.forEach(t => { const st = String(t.status || t.state || "").toLowerCase(), pnl = num(t.pnl, t.profitLoss, t.returnPercent); if (st.includes("win") || (pnl !== null && pnl > 0)) g.win.push(t); else if (st.includes("loss") || st.includes("fail") || (pnl !== null && pnl < 0)) g.loss.push(t); else if (st.includes("wait") || st.includes("pending") || st.includes("انتظار")) g.wait.push(t); else g.follow.push(t); }); return g; }
   function norm(x) { x = x || {}; const s = sym(x.symbol || x.ticker || x.code || x.asset || x.name || ""); return { ...x, symbol: s, name: x.name || x.companyName || x.assetName || x.longName || s }; }
-  function signal(x) { const raw = String(x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase(); if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy"; if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell"; return "watch"; }
-  function sigLabel(s) { return s === "buy" ? "شراء" : s === "sell" ? "بيع" : "متابعة"; }
+  function signal(x) { const raw = String(x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase(); if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy"; if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell"; if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait"; return "watch"; }
+  function sigLabel(s) { return s === "buy" ? "شراء" : s === "sell" ? "بيع" : s === "wait" ? "انتظار" : "مراقبة"; }
   function recStatus(x) { const s = String(x.status || x.state || "open").toLowerCase(); if (s.includes("complet") || s.includes("مكتمل")) return "مكتملة"; if (s.includes("fail") || s.includes("فاشل")) return "فاشلة"; if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "منتهية"; if (s.includes("watch") || s.includes("متابعة")) return "تحت المتابعة"; return "مفتوحة"; }
   function recStatusTone(x) { const s = recStatus(x); return s === "مكتملة" ? "ok" : s === "فاشلة" ? "bad" : s === "منتهية" ? "muted" : ""; }
   function confText(x) { const c = num(x.confidence, x.score, x.aiConfidence); return c === null ? "--" : Math.round(c) + "%"; }
@@ -976,9 +1215,29 @@
   function riskShort(v) { const k = riskKey(v); return k === "high" ? "عالية" : k === "low" ? "منخفضة" : "متوسطة"; }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
   function riskLabel(r) { return r === "conservative" ? "محافظ" : r === "aggressive" ? "هجومي" : "متوازن"; }
+  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "live") return "مباشرة"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "--"; }
+  function signalPrefs() {
+    const s = state.settings || {};
+    const enabledMarkets = Array.isArray(s.enabledMarkets) && s.enabledMarkets.length
+      ? s.enabledMarkets
+      : ["US", "Kuwait", "Saudi", "UAE", "Qatar", "Bahrain", "Oman", "Forex", "Crypto", "Commodities"];
+    return {
+      minConfidence: Math.max(0, Math.min(95, Number(s.signalMinConfidence) || 70)),
+      riskProfile: s.risk || "balanced",
+      enabledMarkets,
+      buyAlertsEnabled: s.buyAlertsEnabled !== false,
+      sellAlertsEnabled: s.sellAlertsEnabled !== false,
+      waitAlertsEnabled: s.waitAlertsEnabled === true,
+      inAppAlertsEnabled: s.inAppAlertsEnabled !== false,
+      emailAlertsEnabled: s.emailAlertsEnabled === true,
+      telegramAlertsEnabled: false,
+      pushAlertsEnabled: false
+    };
+  }
   function marketApi(id) { const m = MARKETS.find(x => x.id === id); return m ? m.apiMarket : (id || "us-stocks"); }
-  function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$/i.test(s)) return "EUR"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || ["XAUUSD", "XAGUSD", "WTI", "BRENT"].includes(s)) return "USD"; if (/^(SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
-  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|GLD|IWM|VOO)$/.test(s)) return "fund"; if (/^(SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "index"; return "stock"; }
+  function currentMarket() { return MARKETS.find(x => x.id === state.settings.defaultMarket) || MARKETS[0]; }
+  function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$/i.test(s)) return "EUR"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || ["XAUUSD", "XAGUSD", "WTI", "BRENT"].includes(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
+  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|GLD|IWM|VOO)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "--" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
   function change(v) { return v === null || v === undefined ? "--" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
