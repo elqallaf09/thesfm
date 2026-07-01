@@ -49,9 +49,26 @@ const protectedPrefixes = [
 ];
 
 const authPages = ['/login', '/reset-password'];
+const guestAllowedPaths = new Set([
+  '/dashboard',
+  '/income',
+  '/expenses',
+  '/expenses/monthly-subscriptions',
+  '/invest',
+  '/savings',
+  '/goals',
+  '/reports',
+  '/reports-center',
+  '/ai',
+  '/market-analysis',
+]);
 
 function isProtected(pathname: string) {
   return protectedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isGuestAllowed(pathname: string) {
+  return guestAllowedPaths.has(pathname);
 }
 
 function isLocalTraderQaBypass(pathname: string) {
@@ -150,6 +167,7 @@ export async function middleware(request: NextRequest) {
 
   const session = await getSupabaseSession(request);
   const hasSession = session.hasSession;
+  const hasGuestSession = request.cookies.get('sfm_guest')?.value === 'true';
 
   if (authPages.includes(pathname) && hasSession) {
     if (request.cookies.get('sfm_mfa_required')?.value === 'true') {
@@ -173,6 +191,7 @@ export async function middleware(request: NextRequest) {
 
   if (!isProtected(pathname)) return response;
   if (isLocalTraderQaBypass(pathname)) return response;
+  if (!hasSession && hasGuestSession && isGuestAllowed(pathname)) return response;
   if (hasSession) {
     if (request.cookies.get('sfm_mfa_required')?.value === 'true' && pathname !== '/mfa/verify') {
       const mfaUrl = request.nextUrl.clone();

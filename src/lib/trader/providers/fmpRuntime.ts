@@ -135,6 +135,10 @@ export async function fmpQueuedFetch(input: RequestInfo | URL, init?: NextFetchI
   }
 
   return enqueue(async () => {
+    if (isFmpRateLimited()) {
+      skippedDueToRateLimit += 1;
+      throw new FmpRateLimitError();
+    }
     const response = await fetch(input, init);
     if (response.status === 429) markFmpRateLimited(response);
     else if (response.ok) markFmpSuccess();

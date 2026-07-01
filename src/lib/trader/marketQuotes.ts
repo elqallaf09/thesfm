@@ -21,11 +21,10 @@ import {
   isFmpRateLimited,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
-import { getOpenbbBaseUrl, getOpenbbHealthStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
-type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'OpenBB';
+type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub';
 
 type MarketDef = TraderMarketDef;
 type QuoteIssue = {
@@ -921,40 +920,6 @@ async function fetchFinnhubQuote(display: string, meta?: TraderCatalogSymbol): P
   return unavailableQuote(display, 'finnhub_returned_empty_quote', meta);
 }
 
-async function fetchOpenbbQuote(display: string, meta?: TraderCatalogSymbol): Promise<TraderQuote> {
-  const baseUrl = getOpenbbBaseUrl();
-  if (!baseUrl) return unavailableQuote(display, 'openbb_not_configured', meta);
-  const candidates = candidateSymbols(display, 'openbb', meta);
-  for (const candidate of candidates) {
-    const url = new URL(`${baseUrl}/api/v1/equity/price/quote`);
-    url.searchParams.set('symbol', candidate);
-    const response = await fetch(url, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        accept: 'application/json',
-      },
-    }).catch(() => null);
-    if (!response?.ok) continue;
-    const payload = await response.json().catch(() => null) as Record<string, unknown> | Record<string, unknown>[] | null;
-    const record = Array.isArray(payload) ? payload[0] : payload;
-    const price = numberOrNull(record?.price ?? record?.last_price ?? record?.close);
-    if (price === null || price <= 0) continue;
-    return normalizeProviderQuote(display, {
-      provider: 'openbb',
-      providerName: 'OpenBB',
-      providerSymbol: candidate,
-      name: meta?.name ?? display,
-      price,
-      change: numberOrNull(record?.change),
-      changePercent: numberOrNull(record?.change_percent ?? record?.changePercent),
-      currency: textOrNull(record?.currency) ?? meta?.currency ?? defaultCurrency(display),
-      updatedAt: textOrNull(record?.timestamp ?? record?.date) ?? new Date().toISOString(),
-    }, meta);
-  }
-  return unavailableQuote(display, 'openbb_returned_empty_quote', meta);
-}
-
 async function runConcurrent<T>(items: T[], concurrency: number, worker: (item: T, index: number) => Promise<void>) {
   let cursor = 0;
   async function run() {
@@ -983,9 +948,7 @@ async function fetchFallbackProvider(
     const meta = metaBySymbol.get(upper(symbol));
     const quote = provider === 'yahoo'
       ? await fetchYahooQuote(symbol, meta, forceFresh)
-      : provider === 'finnhub'
-        ? await fetchFinnhubQuote(symbol, meta)
-        : await fetchOpenbbQuote(symbol, meta);
+      : await fetchFinnhubQuote(symbol, meta);
     if (quote.available) {
       quotes.set(symbol, quote);
       loaded.push({ symbol, provider, providerSymbol: quote.providerSymbol });
@@ -1055,29 +1018,7 @@ export async function fetchTraderQuotesDetailed(
     skipped.push(...result.skipped);
   }
 
-  let remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
-  if (remainingAfterYahoo.length > 0) {
-    const openbbStatus = getOpenbbBaseUrl()
-      ? await getOpenbbHealthStatus({ force: options?.forceFresh })
-      : null;
-    if (openbbStatus?.healthy) {
-      const result = await fetchFallbackProvider('openbb', remainingAfterYahoo, byMeta, options?.forceFresh);
-      providerLatencyMs.openbb = result.latencyMs;
-      result.quotes.forEach((quote, symbol) => {
-        quotes.set(symbol, quote);
-        storeQuoteCache(symbol, quote);
-      });
-      loaded.push(...result.loaded);
-      failed.push(...result.failed);
-      skipped.push(...result.skipped);
-    } else if (!openbbStatus?.configured) {
-      skipped.push({ symbol: 'OpenBB', provider: 'openbb', reason: 'openbb_not_configured' });
-    } else {
-      skipped.push({ symbol: 'OpenBB', provider: 'openbb', reason: 'openbb_unhealthy' });
-    }
-  }
-
-  remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  const remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
   if (remainingAfterYahoo.length > 0 && cleanEnv(process.env.FINNHUB_API_KEY)) {
     const result = await fetchFallbackProvider('finnhub', remainingAfterYahoo, byMeta, options?.forceFresh);
     providerLatencyMs.finnhub = result.latencyMs;
@@ -1138,7 +1079,7 @@ export function getConnectedProvider() {
     provider: label,
     configured: active === 'yahoo' ? true : capabilities[active].configured,
     status: 'connected' as const,
-    fallbackOrder: ['FMP', 'Yahoo Finance', 'OpenBB', 'Finnhub'],
+    fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub'],
     capabilityMatrix: capabilities,
   };
 }

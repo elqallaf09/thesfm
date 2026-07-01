@@ -106,6 +106,7 @@ async function fetchFmpRecords(
         headers: { accept: 'application/json' },
       });
     } catch (error) {
+      if (error instanceof ProviderError) throw error;
       const message = error instanceof Error ? shortText(error.message || error.name, 220) : 'network_error';
       throw new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, message);
     }

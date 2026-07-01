@@ -41,6 +41,7 @@ function getStoredGuestMode() {
   } catch {
     // Fall back to the guest cookie when localStorage is unavailable.
   }
+  if (typeof document === 'undefined') return false;
   return document.cookie
     .split(';')
     .map(part => part.trim())
