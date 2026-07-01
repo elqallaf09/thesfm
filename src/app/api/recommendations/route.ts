@@ -1,21 +1,45 @@
 import { NextResponse } from 'next/server';
+import { CONNECTED_PROVIDER, fetchTraderQuotes, resolveTraderMarket } from '@/lib/trader/marketQuotes';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const market = url.searchParams.get('market') || 'us';
+  const market = resolveTraderMarket(url.searchParams.get('market'));
+  const forceFresh = url.searchParams.has('refresh');
+
+  const quotes = await fetchTraderQuotes(market.symbols, { forceFresh });
+  const available = quotes.filter(q => q.available && q.price !== null);
+  const unavailable = quotes
+    .filter(q => !q.available)
+    .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
+
+  // Live quotes only — no fabricated buy/sell signals. Items carry prices and
+  // default to a neutral "watch" state in the UI.
+  const recommendations = available.map(q => ({
+    symbol: q.symbol,
+    name: q.name,
+    assetType: q.assetType,
+    price: q.price,
+    currentPrice: q.price,
+    change: q.change,
+    changePercent: q.changePercent,
+    currency: q.currency,
+    source: q.source,
+    delayed: q.delayed,
+    updatedAt: q.updatedAt,
+    signal: 'watch',
+  }));
 
   return NextResponse.json({
-    market,
-    recommendations: [],
-    unavailable: [],
+    market: market.id,
+    recommendations,
+    unavailable,
     smartAlerts: [],
-    dataProvider: {
-      active: null,
-      requested: null,
-      configured: false,
-      status: 'not_configured',
-    },
-    message: 'Market data provider is not configured.',
+    dataProvider: CONNECTED_PROVIDER,
+    message: recommendations.length
+      ? null
+      : 'لم يُرجِع المزود أسعاراً حية لرموز هذا السوق حالياً.',
   }, {
     headers: { 'Cache-Control': 'no-store' },
   });
