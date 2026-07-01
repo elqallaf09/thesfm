@@ -27,6 +27,7 @@ import { getStockCategoryConfig, type StockCategoryFilterKey, type StockCategory
 import type { StockCategoryNewsItem, StockCategoryNewsPayload } from '@/lib/market/fetchStockCategoryNews';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import type { TR } from '@/lib/translations';
 
 type NewsApiResponse = StockCategoryNewsPayload | { success: false; error?: string; reason?: string };
@@ -534,7 +535,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
+      <div className={`min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white ${getNewsPageBackground('defensive')}`} dir={dir}>
         <Sidebar />
         <main className="stock-category-main">
           <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
@@ -551,7 +552,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white" dir={dir}>
+    <div className={`min-h-screen bg-[radial-gradient(circle_at_top,#e0f7ff_0%,#f8fbff_36%,#eef6ff_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,#0b2b4a_0%,#06182d_38%,#020817_100%)] dark:text-white ${getNewsPageBackground(config.id)}`} dir={dir}>
       <Sidebar />
       <main className="stock-category-main">
         <div className="mx-auto grid w-full max-w-[1440px] gap-6">

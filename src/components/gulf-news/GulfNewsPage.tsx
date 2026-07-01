@@ -19,6 +19,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { GULF_MARKETS, getGulfMarket, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 import type { GulfNewsItem } from '@/lib/gulf/parseRssFeeds';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { GulfExchangeSelector } from '@/components/gulf-news/GulfExchangeSelector';
 import { GulfMarketSummary } from '@/components/gulf-news/GulfMarketSummary';
 import { GulfNewsCard } from '@/components/gulf-news/GulfNewsCard';
@@ -373,7 +374,7 @@ export function GulfNewsPage() {
   const searchPlaceholder = t('gulf_news_search_market_placeholder').replace('{market}', marketLabels[selectedMarket]);
 
   return (
-    <div className="gulf-news-shell" dir={dir}>
+    <div className={`gulf-news-shell ${getNewsPageBackground('gulf')}`} dir={dir}>
       <Sidebar />
       <main className="gulf-news-main">
         <GulfTickerStrip

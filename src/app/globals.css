@@ -5199,3 +5199,296 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             transition-duration: 0.001ms !important;
           }
         }
+
+/* Subtle reusable news page backgrounds */
+.news-page-bg {
+  --news-bg-base: linear-gradient(180deg, #f8fbff 0%, #eef6ff 48%, #ffffff 100%);
+  --news-glow-a: rgba(29, 140, 255, 0.12);
+  --news-glow-b: rgba(24, 212, 212, 0.10);
+  --news-glow-c: rgba(245, 185, 66, 0.08);
+  --news-glow-a-position: 10% 0%;
+  --news-glow-b-position: 88% 14%;
+  --news-glow-c-position: 50% 100%;
+  --news-bg-pattern: linear-gradient(90deg, rgba(29, 140, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(24, 212, 212, 0.05) 1px, transparent 1px);
+  --news-bg-pattern-size: 64px 64px, 64px 64px;
+  --news-pattern-opacity: 0.30;
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--news-bg-base) !important;
+}
+
+@supports not (overflow: clip) {
+  .news-page-bg {
+    overflow-x: hidden;
+  }
+}
+
+.news-page-bg > main {
+  position: relative;
+  z-index: 1;
+}
+
+.news-page-bg::before,
+.news-page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.news-page-bg::before {
+  background:
+    radial-gradient(circle at var(--news-glow-a-position), var(--news-glow-a), transparent 32rem),
+    radial-gradient(circle at var(--news-glow-b-position), var(--news-glow-b), transparent 30rem),
+    radial-gradient(circle at var(--news-glow-c-position), var(--news-glow-c), transparent 34rem);
+}
+
+.news-page-bg::after {
+  background-image: var(--news-bg-pattern);
+  background-position: var(--news-bg-pattern-position, 0 0);
+  background-size: var(--news-bg-pattern-size);
+  opacity: var(--news-pattern-opacity);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.48) 46%, rgba(0, 0, 0, 0.18));
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.48) 46%, rgba(0, 0, 0, 0.18));
+}
+
+.dark .news-page-bg {
+  --news-bg-base: linear-gradient(180deg, #061a2e 0%, #071626 52%, #08111f 100%);
+  --news-glow-a: rgba(29, 140, 255, 0.14);
+  --news-glow-b: rgba(24, 212, 212, 0.10);
+  --news-glow-c: rgba(245, 185, 66, 0.07);
+  --news-pattern-opacity: 0.22;
+}
+
+.news-bg-tech {
+  --news-bg-base: linear-gradient(180deg, #f4fbff 0%, #eef8ff 48%, #fbfdff 100%);
+  --news-glow-a: rgba(14, 165, 233, 0.16);
+  --news-glow-b: rgba(34, 211, 238, 0.13);
+  --news-bg-pattern: linear-gradient(90deg, rgba(14, 165, 233, 0.10) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(14, 165, 233, 0.08) 1px, transparent 1px),
+    radial-gradient(circle, rgba(34, 211, 238, 0.18) 1.2px, transparent 1.8px);
+  --news-bg-pattern-size: 44px 44px, 44px 44px, 88px 88px;
+}
+
+.news-bg-crypto {
+  --news-bg-base: linear-gradient(180deg, #f8f6ff 0%, #f0f9ff 48%, #fbfdff 100%);
+  --news-glow-a: rgba(124, 58, 237, 0.13);
+  --news-glow-b: rgba(6, 182, 212, 0.14);
+  --news-glow-c: rgba(59, 130, 246, 0.10);
+  --news-bg-pattern: radial-gradient(circle, rgba(124, 58, 237, 0.22) 1.4px, transparent 2px),
+    linear-gradient(32deg, transparent 0 48%, rgba(6, 182, 212, 0.08) 49%, transparent 51%),
+    linear-gradient(148deg, transparent 0 48%, rgba(59, 130, 246, 0.07) 49%, transparent 51%);
+  --news-bg-pattern-size: 92px 92px, 132px 132px, 132px 132px;
+}
+
+.news-bg-banking {
+  --news-bg-base: linear-gradient(180deg, #f8fafc 0%, #f1f6fb 50%, #fffefa 100%);
+  --news-glow-a: rgba(6, 26, 46, 0.08);
+  --news-glow-b: rgba(212, 160, 55, 0.12);
+  --news-glow-c: rgba(29, 140, 255, 0.08);
+  --news-bg-pattern: linear-gradient(115deg, transparent 0 46%, rgba(6, 26, 46, 0.08) 47%, transparent 49%),
+    linear-gradient(90deg, transparent 0 68%, rgba(212, 160, 55, 0.10) 69%, transparent 70%);
+  --news-bg-pattern-size: 116px 116px, 156px 156px;
+}
+
+.news-bg-energy {
+  --news-bg-base: linear-gradient(180deg, #f4fbf4 0%, #eef9f0 46%, #fffdf5 100%);
+  --news-glow-a: rgba(16, 185, 129, 0.14);
+  --news-glow-b: rgba(245, 185, 66, 0.13);
+  --news-glow-c: rgba(20, 184, 166, 0.08);
+  --news-bg-pattern: repeating-radial-gradient(ellipse at 16% 78%, rgba(16, 185, 129, 0.10) 0 1px, transparent 2px 18px),
+    linear-gradient(22deg, transparent 0 43%, rgba(245, 185, 66, 0.10) 44%, transparent 46%);
+  --news-bg-pattern-size: 180px 92px, 120px 120px;
+}
+
+.news-bg-gulf {
+  --news-bg-base: linear-gradient(180deg, #f3fbfa 0%, #f1faf6 46%, #fffdf6 100%);
+  --news-glow-a: rgba(15, 118, 110, 0.14);
+  --news-glow-b: rgba(212, 160, 55, 0.12);
+  --news-glow-c: rgba(20, 184, 166, 0.09);
+  --news-bg-pattern: linear-gradient(35deg, transparent 0 46%, rgba(15, 118, 110, 0.08) 47%, transparent 49%),
+    linear-gradient(145deg, transparent 0 56%, rgba(212, 160, 55, 0.08) 57%, transparent 59%),
+    radial-gradient(circle at 24px 28px, rgba(15, 118, 110, 0.12) 1.2px, transparent 2px);
+  --news-bg-pattern-size: 128px 128px, 128px 128px, 96px 96px;
+}
+
+.news-bg-europe {
+  --news-bg-base: linear-gradient(180deg, #f4f8ff 0%, #edf5ff 50%, #fbfdff 100%);
+  --news-glow-a: rgba(37, 99, 235, 0.14);
+  --news-glow-b: rgba(14, 165, 233, 0.10);
+  --news-glow-c: rgba(245, 185, 66, 0.07);
+  --news-bg-pattern: linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px),
+    linear-gradient(30deg, transparent 0 48%, rgba(37, 99, 235, 0.07) 49%, transparent 51%),
+    radial-gradient(circle, rgba(245, 185, 66, 0.16) 1px, transparent 1.6px);
+  --news-bg-pattern-size: 72px 72px, 144px 144px, 96px 96px;
+}
+
+.news-bg-sharia {
+  --news-bg-base: linear-gradient(180deg, #f4fbf9 0%, #eef9f4 50%, #fffdf6 100%);
+  --news-glow-a: rgba(13, 148, 136, 0.12);
+  --news-glow-b: rgba(212, 160, 55, 0.11);
+  --news-glow-c: rgba(20, 184, 166, 0.08);
+  --news-bg-pattern: linear-gradient(45deg, transparent 0 47%, rgba(13, 148, 136, 0.08) 48%, transparent 50%),
+    linear-gradient(135deg, transparent 0 47%, rgba(212, 160, 55, 0.07) 48%, transparent 50%);
+  --news-bg-pattern-size: 58px 58px, 58px 58px;
+}
+
+.news-bg-growth {
+  --news-bg-base: linear-gradient(180deg, #f3fbff 0%, #edfdf7 50%, #fbfdff 100%);
+  --news-glow-a: rgba(34, 197, 94, 0.14);
+  --news-glow-b: rgba(34, 211, 238, 0.12);
+  --news-glow-c: rgba(29, 140, 255, 0.09);
+  --news-bg-pattern: linear-gradient(28deg, transparent 0 45%, rgba(34, 197, 94, 0.10) 46%, transparent 48%),
+    linear-gradient(28deg, transparent 0 56%, rgba(34, 211, 238, 0.08) 57%, transparent 59%);
+  --news-bg-pattern-size: 108px 108px, 168px 168px;
+}
+
+.news-bg-dividend {
+  --news-bg-base: linear-gradient(180deg, #f4fbf8 0%, #eef8ff 48%, #fbfdff 100%);
+  --news-glow-a: rgba(16, 185, 129, 0.13);
+  --news-glow-b: rgba(29, 140, 255, 0.09);
+  --news-glow-c: rgba(20, 184, 166, 0.08);
+  --news-bg-pattern: radial-gradient(circle, rgba(16, 185, 129, 0.16) 1.3px, transparent 2px),
+    linear-gradient(180deg, rgba(29, 140, 255, 0.07) 1px, transparent 1px);
+  --news-bg-pattern-size: 76px 76px, 128px 128px;
+}
+
+.news-bg-defensive {
+  --news-bg-base: linear-gradient(180deg, #f3fbfb 0%, #eef7f9 50%, #fbfdff 100%);
+  --news-glow-a: rgba(37, 99, 235, 0.10);
+  --news-glow-b: rgba(16, 185, 129, 0.11);
+  --news-glow-c: rgba(14, 165, 233, 0.08);
+  --news-bg-pattern: linear-gradient(135deg, transparent 0 45%, rgba(37, 99, 235, 0.08) 46%, transparent 48%),
+    linear-gradient(225deg, transparent 0 45%, rgba(16, 185, 129, 0.07) 46%, transparent 48%);
+  --news-bg-pattern-size: 86px 86px, 86px 86px;
+}
+
+.news-bg-cyclical {
+  --news-bg-base: linear-gradient(180deg, #f6faff 0%, #eef7fb 48%, #fff9f2 100%);
+  --news-glow-a: rgba(37, 99, 235, 0.12);
+  --news-glow-b: rgba(249, 115, 22, 0.10);
+  --news-glow-c: rgba(14, 165, 233, 0.08);
+  --news-bg-pattern: repeating-radial-gradient(circle at 42px 42px, rgba(37, 99, 235, 0.10) 0 1px, transparent 2px 18px),
+    linear-gradient(115deg, transparent 0 47%, rgba(249, 115, 22, 0.08) 48%, transparent 50%);
+  --news-bg-pattern-size: 118px 118px, 150px 150px;
+}
+
+.news-bg-healthcare {
+  --news-bg-base: linear-gradient(180deg, #f4fbff 0%, #effafa 48%, #fbfdff 100%);
+  --news-glow-a: rgba(14, 165, 233, 0.12);
+  --news-glow-b: rgba(20, 184, 166, 0.12);
+  --news-glow-c: rgba(37, 99, 235, 0.07);
+  --news-bg-pattern: radial-gradient(circle, rgba(20, 184, 166, 0.18) 1.2px, transparent 2px),
+    linear-gradient(90deg, transparent 0 47%, rgba(14, 165, 233, 0.08) 48%, transparent 50%),
+    linear-gradient(180deg, transparent 0 47%, rgba(14, 165, 233, 0.08) 48%, transparent 50%);
+  --news-bg-pattern-size: 92px 92px, 88px 88px, 88px 88px;
+}
+
+.news-bg-food {
+  --news-bg-base: linear-gradient(180deg, #fbfaf4 0%, #f3fbf4 48%, #fffefa 100%);
+  --news-glow-a: rgba(34, 197, 94, 0.10);
+  --news-glow-b: rgba(245, 185, 66, 0.12);
+  --news-glow-c: rgba(20, 184, 166, 0.07);
+  --news-bg-pattern: linear-gradient(90deg, rgba(34, 197, 94, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, transparent 0 72%, rgba(245, 185, 66, 0.08) 73%, transparent 75%),
+    radial-gradient(circle, rgba(34, 197, 94, 0.13) 1.1px, transparent 1.8px);
+  --news-bg-pattern-size: 108px 108px, 96px 96px, 72px 72px;
+}
+
+.news-bg-high-income {
+  --news-bg-base: linear-gradient(180deg, #f4fbf6 0%, #f1faf0 48%, #fffdf4 100%);
+  --news-glow-a: rgba(22, 163, 74, 0.13);
+  --news-glow-b: rgba(212, 160, 55, 0.14);
+  --news-glow-c: rgba(20, 184, 166, 0.08);
+  --news-bg-pattern: radial-gradient(circle, rgba(22, 163, 74, 0.14) 1.2px, transparent 2px),
+    linear-gradient(90deg, transparent 0 66%, rgba(212, 160, 55, 0.09) 67%, transparent 69%),
+    linear-gradient(180deg, rgba(22, 163, 74, 0.06) 1px, transparent 1px);
+  --news-bg-pattern-size: 74px 74px, 138px 138px, 118px 118px;
+}
+
+.dark .news-bg-tech {
+  --news-bg-base: linear-gradient(180deg, #061827 0%, #071f36 52%, #08111f 100%);
+  --news-glow-a: rgba(14, 165, 233, 0.18);
+  --news-glow-b: rgba(34, 211, 238, 0.12);
+}
+
+.dark .news-bg-crypto {
+  --news-bg-base: linear-gradient(180deg, #0a1026 0%, #081a2f 50%, #06111f 100%);
+  --news-glow-a: rgba(124, 58, 237, 0.18);
+  --news-glow-b: rgba(34, 211, 238, 0.12);
+}
+
+.dark .news-bg-banking {
+  --news-bg-base: linear-gradient(180deg, #071525 0%, #08182b 52%, #0a121d 100%);
+  --news-glow-a: rgba(29, 140, 255, 0.10);
+  --news-glow-b: rgba(245, 185, 66, 0.13);
+}
+
+.dark .news-bg-energy {
+  --news-bg-base: linear-gradient(180deg, #071a18 0%, #0a1f25 50%, #08131e 100%);
+  --news-glow-a: rgba(16, 185, 129, 0.14);
+  --news-glow-b: rgba(245, 185, 66, 0.10);
+}
+
+.dark .news-bg-gulf {
+  --news-bg-base: linear-gradient(180deg, #061a22 0%, #071f2a 52%, #08121d 100%);
+  --news-glow-a: rgba(20, 184, 166, 0.14);
+  --news-glow-b: rgba(245, 185, 66, 0.10);
+}
+
+.dark .news-bg-europe {
+  --news-bg-base: linear-gradient(180deg, #06172c 0%, #071d34 52%, #07111f 100%);
+  --news-glow-a: rgba(59, 130, 246, 0.17);
+  --news-glow-b: rgba(14, 165, 233, 0.10);
+}
+
+.dark .news-bg-sharia {
+  --news-bg-base: linear-gradient(180deg, #061b1c 0%, #082225 52%, #08131e 100%);
+  --news-glow-a: rgba(20, 184, 166, 0.13);
+  --news-glow-b: rgba(245, 185, 66, 0.10);
+}
+
+.dark .news-bg-growth {
+  --news-bg-base: linear-gradient(180deg, #061a22 0%, #07212b 52%, #07131f 100%);
+  --news-glow-a: rgba(34, 197, 94, 0.15);
+  --news-glow-b: rgba(34, 211, 238, 0.11);
+}
+
+.dark .news-bg-dividend {
+  --news-bg-base: linear-gradient(180deg, #071a20 0%, #0a1f2b 52%, #07131f 100%);
+  --news-glow-a: rgba(16, 185, 129, 0.14);
+  --news-glow-b: rgba(29, 140, 255, 0.10);
+}
+
+.dark .news-bg-defensive {
+  --news-bg-base: linear-gradient(180deg, #071a26 0%, #081f2a 52%, #07131f 100%);
+  --news-glow-a: rgba(59, 130, 246, 0.12);
+  --news-glow-b: rgba(16, 185, 129, 0.11);
+}
+
+.dark .news-bg-cyclical {
+  --news-bg-base: linear-gradient(180deg, #071728 0%, #0a1d2b 52%, #11151d 100%);
+  --news-glow-a: rgba(59, 130, 246, 0.13);
+  --news-glow-b: rgba(249, 115, 22, 0.11);
+}
+
+.dark .news-bg-healthcare {
+  --news-bg-base: linear-gradient(180deg, #061927 0%, #071f2b 52%, #07131f 100%);
+  --news-glow-a: rgba(14, 165, 233, 0.13);
+  --news-glow-b: rgba(20, 184, 166, 0.12);
+}
+
+.dark .news-bg-food {
+  --news-bg-base: linear-gradient(180deg, #101716 0%, #0b1f21 52%, #0a141c 100%);
+  --news-glow-a: rgba(34, 197, 94, 0.11);
+  --news-glow-b: rgba(245, 185, 66, 0.10);
+}
+
+.dark .news-bg-high-income {
+  --news-bg-base: linear-gradient(180deg, #071916 0%, #0a201f 52%, #0a141c 100%);
+  --news-glow-a: rgba(22, 163, 74, 0.14);
+  --news-glow-b: rgba(245, 185, 66, 0.12);
+}

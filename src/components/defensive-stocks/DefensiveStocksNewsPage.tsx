@@ -32,6 +32,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type HubTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -1490,7 +1491,7 @@ export function DefensiveStocksNewsPage() {
   const moversSource = movers?.ok ? `${movers.source} · ${formatDateTime(movers.updated_at, locale)}` : text.delayed;
 
   return (
-    <div className="defensive-hub" dir={dir}>
+    <div className={`defensive-hub ${getNewsPageBackground('defensive')}`} dir={dir}>
       <Sidebar />
       <main className="def-main">
         <div className="def-container">

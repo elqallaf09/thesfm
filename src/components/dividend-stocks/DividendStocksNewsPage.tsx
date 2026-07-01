@@ -34,6 +34,7 @@ import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type DividendTab = 'overview' | 'explorer' | 'featured' | 'calendar' | 'news' | 'education';
@@ -1635,7 +1636,7 @@ export function DividendStocksNewsPage() {
   const hasCalendarFilters = Boolean(calendarRange !== '90' || calendarMarket !== 'all' || calendarSymbol !== 'all' || calendarType !== 'all');
 
   return (
-    <div className="page" dir={dir}>
+    <div className={`page ${getNewsPageBackground('high-income')}`} dir={dir}>
       <Sidebar />
       <main className="main">
         <div className="container">

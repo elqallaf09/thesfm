@@ -31,6 +31,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
 import type { CryptoMarketCoin, CryptoMarketPayload } from '@/lib/market/fetchCryptoMarketData';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type ApiResponse = CryptoNewsPayload | { success: false; error?: string; code?: string };
@@ -765,7 +766,7 @@ export function CryptoNewsPage() {
   const shownCount = featuredItems.length + visibleFeedItems.length;
 
   return (
-    <div className="crypto-news-shell" dir={dir}>
+    <div className={`crypto-news-shell ${getNewsPageBackground('crypto')}`} dir={dir}>
       <Sidebar />
       <main className="crypto-news-main">
         <header className="crypto-hero">

@@ -42,6 +42,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type Tone = 'positive' | 'negative' | 'neutral' | 'warning';
@@ -2165,7 +2166,7 @@ export function BankNewsPage() {
   const lastStockUpdate = newestTimestamp([marketUpdatedAt, ...snapshotItems.map(item => item.lastUpdated)]);
 
   return (
-    <div className="bankingShell" dir={dir}>
+    <div className={`bankingShell ${getNewsPageBackground('banking')}`} dir={dir}>
       <Sidebar />
       <main id="main-content" className="bankingWorkspace">
         <BankingHeader

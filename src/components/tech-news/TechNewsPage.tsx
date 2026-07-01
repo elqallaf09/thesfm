@@ -18,6 +18,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { TechNewsCard } from '@/components/tech-news/TechNewsCard';
 import {
   TechNewsFilters,
@@ -724,7 +725,7 @@ export function TechNewsPage() {
   );
 
   return (
-    <div className="tech-news-shell" dir={dir}>
+    <div className={`tech-news-shell ${getNewsPageBackground('tech')}`} dir={dir}>
       <Sidebar />
       <main className="tech-news-main">
         <TechNewsHeader

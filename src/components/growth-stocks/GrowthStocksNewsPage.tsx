@@ -37,6 +37,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type GrowthTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -1634,7 +1635,7 @@ export function GrowthStocksNewsPage() {
   const hasActiveNewsFilters = newsSearch.trim() || newsSector !== 'all' || newsSource !== 'all' || newsSymbol !== 'all' || newsTime !== 'all' || newsSort !== 'latest';
 
   return (
-    <div className="page growth-stocks-page" dir={dir}>
+    <div className={`page growth-stocks-page ${getNewsPageBackground('growth')}`} dir={dir}>
       <Sidebar />
       <main className="main">
         <div className="container">

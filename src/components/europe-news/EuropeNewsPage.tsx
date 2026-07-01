@@ -7,6 +7,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { EUROPE_MARKETS, getEuropeMarket, type EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import type { EuropeNewsItem } from '@/lib/europe/parseEuropeRssFeeds';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 import { EuropeMarketSelector } from '@/components/europe-news/EuropeMarketSelector';
 import { EuropeMarketSummary } from '@/components/europe-news/EuropeMarketSummary';
 import { EuropeNewsCard } from '@/components/europe-news/EuropeNewsCard';
@@ -159,7 +160,7 @@ export function EuropeNewsPage() {
   const searchPlaceholder = t('europe_news_search_market_placeholder').replace('{market}', marketLabels[selectedMarket]);
 
   return (
-    <div className="europe-news-shell" dir={dir}>
+    <div className={`europe-news-shell ${getNewsPageBackground('europe')}`} dir={dir}>
       <Sidebar />
       <main className="europe-news-main">
         <EuropeTickerStrip

@@ -46,6 +46,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { getNewsPageBackground } from '@/lib/news/pageBackground';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type Tone = 'positive' | 'negative' | 'neutral' | 'warning';
@@ -2896,7 +2897,7 @@ export function EnergyNewsPage() {
   };
 
   return (
-    <div className="energyShell" data-dir={dir} dir={dir}>
+    <div className={`energyShell ${getNewsPageBackground('energy')}`} data-dir={dir} dir={dir}>
       <Sidebar />
       <main className="energyWorkspace" dir={dir}>
         <div className="energyContainer">
