@@ -14,8 +14,8 @@ export async function GET(request: Request) {
     .filter(q => !q.available)
     .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
 
-  // Live quotes only — no fabricated buy/sell signals. Items carry prices and
-  // default to a neutral "watch" state in the UI.
+  // Live prices plus rule-based technical signals (SMA20/50 + RSI-14) derived
+  // from real Yahoo Finance history. Not financial advice.
   const recommendations = available.map(q => ({
     symbol: q.symbol,
     name: q.name,
@@ -25,10 +25,15 @@ export async function GET(request: Request) {
     change: q.change,
     changePercent: q.changePercent,
     currency: q.currency,
+    signal: q.signal,
+    confidence: q.confidence,
+    riskLevel: q.riskLevel,
+    rsi: q.rsi,
+    sma20: q.sma20,
+    sma50: q.sma50,
     source: q.source,
     delayed: q.delayed,
     updatedAt: q.updatedAt,
-    signal: 'watch',
   }));
 
   return NextResponse.json({
