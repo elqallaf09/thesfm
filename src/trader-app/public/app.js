@@ -7,7 +7,7 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260701-terminal-5";
+  const VER = "20260701-terminal-6";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
 
@@ -102,7 +102,9 @@
   /* ─────────────────────────── State ─────────────────────────── */
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, markets: {}, news: {}, followed: {}, provider: {},
+    rec: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {},
+    calendarRange: "30", calendarLoading: false,
+    calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
     cache: new Map(), marketCache: new Map()
@@ -127,6 +129,7 @@
     ]);
     state.rec = rec; state.markets = mk; state.news = news; state.followed = followed;
     state.provider = rec.dataProvider || mk.dataProvider || news.dataProvider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
+    await loadCalendars(false);
   }
 
   async function get(path) {
@@ -146,6 +149,8 @@
       if (tab) { event.preventDefault(); onTab(tab); return; }
       const tf = event.target.closest("[data-timeframe]");
       if (tf) { event.preventDefault(); state.timeframe = tf.dataset.timeframe; render(); return; }
+      const cr = event.target.closest("[data-calendar-range]");
+      if (cr) { event.preventDefault(); state.calendarRange = cr.dataset.calendarRange || "30"; state.calendarLoading = true; render(); loadCalendars(true).then(() => { state.calendarLoading = false; render(); afterRoute(); }); return; }
       const detail = event.target.closest("[data-symbol-details]");
       if (detail) { event.preventDefault(); const s = sym(detail.dataset.symbolDetails); if (s) navigate(`${ROOT}/symbol/${encodeURIComponent(s)}`); return; }
       const add = event.target.closest("[data-quick-add]");
@@ -382,13 +387,165 @@
   }
 
   function calendarPage() {
-    return `<div class="page-stack">${hero("تقويم السوق", "جاهز لربط التقويم الاقتصادي وأحداث الأرباح والتوزيعات. لا نعرض أحداثاً غير مؤكدة.", "CALENDAR")}
-      <section class="settings-grid">
-        <article class="panel"><span class="eyebrow">ECONOMIC</span><h2>الأحداث الاقتصادية</h2>${emptyState("لا يوجد مزود تقويم متصل", "عند ربط مزود ستظهر الأحداث مع الوقت والتأثير والسوق المتأثر.", "الإعدادات", `${ROOT}/settings`)}</article>
-        <article class="panel"><span class="eyebrow">EARNINGS</span><h2>نتائج الشركات</h2>${emptyState("لا توجد نتائج أرباح حية", "لا نعرض مواعيد أرباح بدون مصدر موثوق.", "الأخبار", `${ROOT}/news`)}</article>
-        <article class="panel"><span class="eyebrow">DIVIDENDS</span><h2>التوزيعات</h2>${emptyState("لا توجد توزيعات", "بانتظار مزود بيانات التوزيعات.", "", "")}</article>
-        <article class="panel"><span class="eyebrow">IPO</span><h2>الاكتتابات</h2>${emptyState("لا توجد اكتتابات", "بانتظار مزود بيانات الاكتتابات.", "", "")}</article>
+    const c = state.calendar || {};
+    return `<div class="page-stack trader-calendar-page">${hero("تقويم السوق", "تقويم حي لأرباح الشركات والتوزيعات والاكتتابات والأحداث الاقتصادية من مزودين حقيقيين. عند تعذر البيانات نعرض السبب بوضوح بدون بيانات وهمية.", "CALENDAR")}
+      <section class="panel trader-calendar-toolbar">
+        <div><span class="eyebrow">DATE RANGE</span><h2>فترة العرض</h2></div>
+        <div class="calendar-ranges">${calendarRangeButtons()}</div>
+      </section>
+      ${calendarProviderOverview()}
+      <section class="calendar-grid">
+        ${calendarPanel("earnings", "EARNINGS", "أرباح الشركات", c.earnings, earningsRows)}
+        ${calendarPanel("dividends", "DIVIDENDS", "التوزيعات", c.dividends, dividendRows)}
+        ${calendarPanel("ipos", "IPO", "الاكتتابات", c.ipos, ipoRows)}
+        ${calendarPanel("economic", "ECONOMIC", "التقويم الاقتصادي", c.economic, economicRows)}
       </section></div>`;
+  }
+
+  function calendarRangeButtons() {
+    const ranges = [["today", "اليوم"], ["7", "7 أيام"], ["30", "30 يوم"], ["90", "90 يوم"], ["all", "الكل"]];
+    return ranges.map(([value, label]) => `<button class="${state.calendarRange === value ? "is-active" : ""}" data-calendar-range="${h(value)}">${h(label)}</button>`).join("");
+  }
+
+  function calendarProviderOverview() {
+    const ps = state.providerStatus || {}, features = ps.features || {};
+    const rows = [
+      ["أرباح الشركات", features.earnings],
+      ["التوزيعات", features.dividends],
+      ["الاكتتابات", features.ipos],
+      ["التقويم الاقتصادي", features.economic]
+    ];
+    return `<section class="provider-state-panel trader-provider-panel">
+      <div class="panel-head"><div><span class="eyebrow">PROVIDER STATUS</span><h2>مزود البيانات</h2></div><button class="ghost-btn" data-retry>إعادة المحاولة</button></div>
+      <div class="provider-state-grid">${rows.map(([label, feature]) => providerFeatureCard(label, feature)).join("")}</div>
+    </section>`;
+  }
+
+  function providerFeatureCard(label, feature) {
+    feature = feature || {};
+    const tone = featureStatusTone(feature.status);
+    return `<article class="provider-state-card">
+      <span>${h(label)}</span>
+      <strong>${h(providerName(feature.provider))}</strong>
+      <p>${h(featureStatusLabel(feature.status))}</p>
+      <em class="state-badge ${tone}">${h(resultCountText(feature.resultCount))}</em>
+    </article>`;
+  }
+
+  function calendarPanel(kind, eyebrow, title, response, rowRenderer) {
+    response = response || {};
+    const rows = arr(response.data);
+    return `<article class="panel trader-calendar-panel calendar-${h(kind)}">
+      <div class="panel-head calendar-panel-head">
+        <div><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
+        <div class="calendar-head-actions">${providerBadge(response)}<button class="ghost-btn compact-btn" data-retry>إعادة المحاولة</button></div>
+      </div>
+      <div class="calendar-meta">
+        <span>آخر تحديث: <b>${h(latinDateTime(response.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
+        <span>الفترة: <b class="ltr">${h(rangeText(response.range))}</b></span>
+        <span>النتائج: <b class="ltr">${h(latinNumber(response.resultCount ?? rows.length))}</b></span>
+      </div>
+      ${state.calendarLoading ? calendarLoadingState() : rows.length ? rowRenderer(rows) : calendarEmptyState(response)}
+    </article>`;
+  }
+
+  function providerBadge(response) {
+    const status = response && response.status;
+    const tone = featureStatusTone(status);
+    return `<span class="state-badge ${tone}">${h(providerName(response && response.provider))} · ${h(featureStatusLabel(status))}</span>`;
+  }
+
+  function calendarLoadingState() {
+    return `<div class="empty-state compact"><span class="empty-glyph">◌</span><h3>جاري تحديث التقويم</h3><p>نراجع المزود المتصل ونحدّث النتائج للفترة المختارة.</p></div>`;
+  }
+
+  function calendarEmptyState(response) {
+    const status = String((response && response.status) || "not_configured");
+    let title = "لا يوجد مزود متصل";
+    let body = "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
+    let settings = true;
+    if (status === "success") {
+      title = "لا توجد أحداث ضمن الفترة الحالية";
+      body = "جرّب تغيير الفترة أو السوق أو نوع الحدث.";
+      settings = false;
+    } else if (["not_entitled", "forbidden", "unauthorized"].includes(status)) {
+      title = "الميزة غير متاحة ضمن صلاحية المزود الحالي";
+      body = "تحتاج هذه البيانات إلى خطة تدعم هذا النوع من التقويم.";
+    } else if (status === "rate_limited") {
+      title = "تجاوز حد الاستخدام";
+      body = "المزود أعاد حد استخدام مؤقت. جرّب لاحقاً أو غيّر المزود.";
+      settings = false;
+    } else if (status === "provider_error" || status === "invalid_request") {
+      title = "فشل الاتصال بالمزود";
+      body = "تعذر جلب البيانات من المزود الحالي. لم يتم عرض أي بيانات بديلة.";
+      settings = false;
+    }
+    return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>الإعدادات</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`;
+  }
+
+  function earningsRows(rows) {
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>الرمز</th><th>الشركة</th><th>تاريخ الإعلان</th><th>الفترة المالية</th><th>EPS المتوقع</th><th>EPS الفعلي</th><th>الإيراد المتوقع</th><th>الوقت</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(r.symbol || "--")}</td><td>${h(r.companyName || "--")}</td><td class="ltr">${h(latinDateOnly(r.reportDate))}</td><td class="ltr">${h(r.fiscalDateEnding || "--")}</td><td class="ltr">${h(latinNumber(r.epsEstimate))}</td><td class="ltr">${h(latinNumber(r.epsActual))}</td><td class="ltr">${h(latinNumber(r.revenueEstimate))}</td><td class="ltr">${h(r.time || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function dividendRows(rows) {
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>الرمز</th><th>الشركة</th><th>تاريخ الإعلان</th><th>تاريخ الاستحقاق</th><th>تاريخ التسجيل</th><th>تاريخ الدفع</th><th>التوزيع</th><th>العائد</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(r.symbol || "--")}</td><td>${h(r.companyName || "--")}</td><td class="ltr">${h(latinDateOnly(r.declarationDate))}</td><td class="ltr">${h(latinDateOnly(r.exDividendDate))}</td><td class="ltr">${h(latinDateOnly(r.recordDate))}</td><td class="ltr">${h(latinDateOnly(r.paymentDate))}</td><td class="ltr">${h(latinNumber(r.dividendAmount))}</td><td class="ltr">${h(percentText(r.dividendYield))}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function ipoRows(rows) {
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>الشركة</th><th>الرمز</th><th>السوق</th><th>تاريخ الاكتتاب</th><th>نطاق السعر</th><th>الأسهم</th><th>القيمة السوقية</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td>${h(r.companyName || "--")}</td><td class="ltr">${h(r.symbol || "--")}</td><td class="ltr">${h(r.exchange || "--")}</td><td class="ltr">${h(latinDateOnly(r.ipoDate))}</td><td class="ltr">${h(r.priceRange || "--")}</td><td class="ltr">${h(latinNumber(r.shares))}</td><td class="ltr">${h(latinNumber(r.marketCap))}</td><td>${h(r.status || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function economicRows(rows) {
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>الوقت</th><th>الدولة</th><th>العملة</th><th>الحدث</th><th>الأهمية</th><th>السابق</th><th>المتوقع</th><th>الفعلي</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || "--")}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(r.event || "--")}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function featureStatusTone(status) {
+    status = String(status || "");
+    if (status === "success" || status === "available" || status === "configured") return "ok";
+    if (["not_entitled", "forbidden", "unauthorized", "rate_limited"].includes(status)) return "warn";
+    return "";
+  }
+
+  function featureStatusLabel(status) {
+    status = String(status || "not_configured");
+    const labels = {
+      success: "متصل",
+      available: "متاح",
+      configured: "متاح",
+      not_configured: "غير مهيأ",
+      not_entitled: "غير متاح ضمن الصلاحية",
+      forbidden: "غير متاح ضمن الصلاحية",
+      unauthorized: "فشل التصريح",
+      rate_limited: "تجاوز حد الاستخدام",
+      provider_error: "فشل الاتصال",
+      invalid_request: "طلب غير صالح"
+    };
+    return labels[status] || status;
+  }
+
+  function providerName(provider) {
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance" };
+    return names[String(provider || "").toLowerCase()] || "غير متصل";
+  }
+
+  function resultCountText(value) { return value === null || value === undefined ? "--" : `${latinNumber(value)} نتيجة`; }
+  function valueText(value) { return value === null || value === undefined || value === "" ? "--" : String(value); }
+  function percentText(value) { return value === null || value === undefined || value === "" ? "--" : `${latinNumber(value)}%`; }
+  function impactLabel(value) { const v = String(value || "unknown"); return v === "high" ? "مرتفع" : v === "medium" ? "متوسط" : v === "low" ? "منخفض" : "غير محدد"; }
+  function rangeText(range) { return range && range.from && range.to ? `${range.from} → ${range.to}` : "--"; }
+  function latinNumber(value) {
+    if (value === null || value === undefined || value === "" || Number.isNaN(Number(value))) return "--";
+    return Number(value).toLocaleString("en-US", { maximumFractionDigits: 4 });
+  }
+  function latinDateOnly(value) {
+    if (!value) return "--";
+    const date = new Date(String(value).includes("T") ? value : `${value}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? "--" : date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+  }
+  function latinDateTime(value) {
+    if (!value) return "--";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
   }
 
   function educationPage() {
@@ -426,6 +583,26 @@
   }
 
   /* ───────────────────── Async loaders ───────────────────── */
+  function calendarQuery(force) {
+    const params = new URLSearchParams({ range: state.calendarRange || "30" });
+    if (force) params.set("refresh", "1");
+    const symbols = unique([...(state.watch || []), ...defaults]).slice(0, 20);
+    if (symbols.length) params.set("symbols", symbols.join(","));
+    return params.toString();
+  }
+  async function loadCalendars(force) {
+    const qs = calendarQuery(force);
+    const [providerStatus, earnings, dividends, ipos, economic] = await Promise.all([
+      get("/trader/provider-status"),
+      get(`/trader/calendar/earnings?${qs}`),
+      get(`/trader/calendar/dividends?${qs}`),
+      get(`/trader/calendar/ipos?${qs}`),
+      get(`/trader/calendar/economic?${qs}`)
+    ]);
+    state.providerStatus = providerStatus || {};
+    state.calendar = { earnings, dividends, ipos, economic };
+    if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
+  }
   async function loadMarket(id) {
     if (state.marketCache.has(id)) { render(); return; }
     const m = MARKETS.find(x => x.id === id); if (!m) return;
@@ -604,7 +781,24 @@
   function localAlertRow(a, i) { const T = { price: "سعر", percent: "نسبة %", signal: "إشارة AI", news: "خبر" }; return `<article class="trade-item alert-row"><div><strong class="ltr">${h(a.symbol)}</strong><p>${h(T[a.type] || a.type)}${a.value ? " · " + h(a.value) : ""} · ${h(date(a.createdAt))}</p></div><button class="icon-btn danger" data-del-alert="${i}">✕</button></article>`; }
 
   function systemCard() { const s = providerCopy(); return `<article class="status-card"><span class="eyebrow">SYSTEM</span><strong>${h(s.title)}</strong><p>${h(s.copy)}</p><span class="state-badge ${s.className === "online" ? "ok" : "warn"}">${h(s.raw)}</span></article>`; }
-  function diagnostics() { const p = state.provider || {}; const rows = [["الحالة", providerCopy().raw], ["المزود النشط", p.active || p.requested || p.provider || "--"], ["مهيأ؟", p.configured === true ? "نعم" : "لا"], ["رسالة النظام", state.rec.message || state.markets.message || state.news.message || "--"]]; return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td>${h(v)}</td></tr>`).join("")}</tbody></table></div>`; }
+  function diagnostics() {
+    const ps = state.providerStatus || {}, p = ps.dataProvider || state.provider || {}, features = ps.features || {};
+    const calendarCounts = ["earnings", "dividends", "ipos", "economic"].map(key => {
+      const f = features[key] || {};
+      return `${featureTitle(key)}: ${resultCountText(f.resultCount)}`;
+    }).join(" · ");
+    const rows = [
+      ["الحالة", featureStatusLabel(p.status || providerCopy().raw)],
+      ["المزود النشط", providerName(p.active || p.requested || p.provider)],
+      ["مهيأ؟", p.configured === true ? "نعم" : "لا"],
+      ["آخر تحديث", latinDateTime(p.lastUpdated)],
+      ["عدد النتائج", p.resultCount === null || p.resultCount === undefined ? calendarCounts : resultCountText(p.resultCount)],
+      ["سبب التعذر", p.failureReason || state.rec.message || state.markets.message || state.news.message || "--"],
+      ["الميزات المدعومة", arr(p.supportedFeatures).join(", ") || "--"]
+    ];
+    return `<div class="table-shell"><table><tbody>${rows.map(([k, v]) => `<tr><th>${h(k)}</th><td>${h(v)}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  function featureTitle(key) { return key === "earnings" ? "الأرباح" : key === "dividends" ? "التوزيعات" : key === "ipos" ? "الاكتتابات" : key === "economic" ? "الاقتصادي" : key; }
   function providerMarkets() { const rows = arr(state.markets.markets || state.markets.data || state.markets.results); if (!rows.length) return emptyState("لا توجد قائمة أسواق من المزود", state.markets.message || providerCopy().copy, "الإعدادات", `${ROOT}/settings`); return `<div class="table-shell"><table><thead><tr><th>السوق</th><th>الرمز</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(m => `<tr><td>${h(m.name || m.label || "--")}</td><td class="ltr">${h(m.symbol || m.code || "--")}</td><td class="ltr">${h(m.currency || "--")}</td><td>${h(m.source || m.provider || "--")}</td></tr>`).join("")}</tbody></table></div>`; }
   function confBuckets(r) { const b = { high: 0, mid: 0, low: 0 }; r.forEach(x => { const c = num(x.confidence, x.score, x.aiConfidence); if (c === null) return; if (c >= 70) b.high++; else if (c >= 45) b.mid++; else b.low++; }); return b; }
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
@@ -794,6 +988,13 @@
   function unique(v) { return Array.from(new Set(v.map(sym).filter(Boolean))); }
   function read(k, f) { try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : f; } catch (_e) { return f; } }
   function write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_e) {} }
-  function providerCopy() { const p = state.provider || {}, configured = p.configured === true || Boolean(p.active), raw = p.status || (configured ? "configured" : "not_configured"); if (configured && !String(raw).includes("not")) return { title: "المزود متصل", copy: `المزود النشط: ${p.active || p.provider || "متصل"}`, className: "online", raw }; return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw }; }
+  function providerCopy() {
+    const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
+    const configured = p.configured === true || Boolean(p.active);
+    const raw = p.status || (configured ? "configured" : "not_configured");
+    const ok = configured && ["success", "available", "configured"].includes(String(raw));
+    if (ok) return { title: "المزود متصل", copy: `المزود النشط: ${providerName(p.active || p.provider)}`, className: "online", raw };
+    return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw };
+  }
   function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 })();
