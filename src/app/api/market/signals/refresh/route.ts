@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     generated: signals.length,
     inserted: persisted.inserted,
     notifications: persisted.notifications,
+    followedTrades: persisted.followedTrades,
     signals,
   }, { status: persisted.ok ? 200 : 500 });
 }

@@ -7,8 +7,8 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260701-terminal-7";
-  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1" };
+  const VER = "20260701-trade-performance-1";
+  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
 
@@ -106,7 +106,7 @@
     rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {},
     calendarRange: "30", calendarLoading: false,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
-    watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []),
+    watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
     cache: new Map(), marketCache: new Map()
   };
@@ -142,6 +142,20 @@
       return res.ok ? { ok: true, ...body } : { ok: false, status: res.status, message: body.message || body.error || res.statusText, dataProvider: body.dataProvider || null };
     } catch (error) { return { ok: false, message: error.message, dataProvider: null }; }
   }
+  async function post(path, body) {
+    try {
+      const res = await fetch(`${API}${path}`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body || {})
+      });
+      const data = await res.json().catch(() => ({}));
+      return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, message: data.message || data.error || res.statusText, ...data };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  }
   async function saveSignalPreferences(prefs) {
     try {
       const res = await fetch(`${API}/market/signal-preferences`, {
@@ -175,6 +189,12 @@
       if (remove) { event.preventDefault(); removeWatch(remove.dataset.removeWatch); return; }
       const alertBtn = event.target.closest("[data-create-alert]");
       if (alertBtn) { event.preventDefault(); createAlert(alertBtn.dataset.createAlert); return; }
+      const followTrade = event.target.closest("[data-follow-trade]");
+      if (followTrade) { event.preventDefault(); followRecommendationTrade(followTrade.dataset.followTrade); return; }
+      const refreshTrades = event.target.closest("[data-refresh-trades]");
+      if (refreshTrades) { event.preventDefault(); refreshFollowedTrades(true); return; }
+      const runSignals = event.target.closest("[data-run-signals]");
+      if (runSignals) { event.preventDefault(); runSignalRefresh(); return; }
       const delAlert = event.target.closest("[data-del-alert]");
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
       const retry = event.target.closest("[data-retry]");
@@ -386,11 +406,13 @@
   }
 
   function performancePage() {
-    const g = groupTrades(trades());
-    return `<div class="page-stack">${hero("أداء الصفقات", "الصفقات الرابحة، الخاسرة، الانتظار، وتحت المتابعة في لوحة واحدة. كل صف يعرض الرمز والشعار والسعر والهدف والحالة والمصدر.", "TRADE PERFORMANCE")}
-      <section class="metric-grid">${stat("رابحة", g.win.length, "Winning")}${stat("خاسرة", g.loss.length, "Losing")}${stat("انتظار", g.wait.length, "Pending")}${stat("متابعة", g.follow.length, "Following")}</section>
-      <section class="trade-board">${tradeCol("الصفقات الرابحة", g.win, "win")}${tradeCol("الصفقات الخاسرة", g.loss, "loss")}${tradeCol("صفقات الانتظار", g.wait, "wait")}${tradeCol("الصفقات تحت المتابعة", g.follow, "follow")}</section>
-      ${trades().length ? `<section class="panel"><span class="eyebrow">JOURNAL</span><h2>سجل تفصيلي</h2>${tradeJournalTable(trades())}</section>` : ""}
+    const all = trades(), g = groupTrades(all), summary = tradeSummary(all);
+    return `<div class="page-stack trade-performance-page">${hero("أداء الصفقات", "نتائج إشارات الشراء والبيع المحفوظة، صفقات المتابعة اليدوية، وسجلات التوصيات. لا تُعرض نتائج وهمية عند غياب السجلات.", "TRADE PERFORMANCE")}
+      ${tradeProviderStatus(all)}
+      <section class="metric-grid trade-summary-grid">${stat("الصفقات الرابحة", g.win.length, "Winning")}${stat("الصفقات الخاسرة", g.loss.length, "Losing")}${stat("الصفقات المفتوحة", g.open.length, "Open")}${stat("تحت المتابعة", g.follow.length, "Watching")}${stat("نسبة النجاح", summary.successRate === null ? "--" : summary.successRate + "%", "Win rate")}</section>
+      ${all.length ? `<section class="trade-board">${tradeCol("الصفقات الرابحة", g.win, "win")}${tradeCol("الصفقات الخاسرة", g.loss, "loss")}${tradeCol("الصفقات المفتوحة", g.open, "open")}${tradeCol("صفقات الانتظار", g.wait, "wait")}${tradeCol("الصفقات تحت المتابعة", g.follow, "follow")}</section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">JOURNAL</span><h2>سجل تفصيلي</h2></div><button class="ghost-btn" data-refresh-trades>تحديث الأسعار</button></div>${tradeJournalTable(all)}</section>` : performanceEmptyState()}
+      ${followedTradeForm()}
       ${disclaimer()}</div>`;
   }
 
@@ -658,11 +680,19 @@
     ]);
     const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
     const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
-    const asset = norm({ symbol: key, ...found, ...rawProfile });
+    const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
+    const techAsset = rawTech && typeof rawTech === "object" ? {
+      price: rawTech.currentPrice || rawTech.price,
+      currentPrice: rawTech.currentPrice || rawTech.price,
+      currency: rawTech.currency,
+      source: rawTech.source,
+      exchange: rawTech.exchange || rawTech.market
+    } : {};
+    const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
     const detail = {
-      asset, tech: tech.ok ? (tech.analysis || tech.data || tech) : null,
-      available: Boolean(profile.ok && (rawProfile.symbol || found.symbol || found.name)),
-      source: profile.source || search.source || asset.source || "--",
+      asset, tech: rawTech,
+      available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech),
+      source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
       message: profile.message || search.message || "لا توجد بيانات كافية من المزود لهذا الرمز.",
       rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
     };
@@ -823,16 +853,16 @@
       const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
-        <td class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</td>
-        <td><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
-        <td class="ltr">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
-        <td class="ltr">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
-        <td>${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
-        <td>${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
-        <td class="ltr">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
-        <td class="row-actions"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
+        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
+        <td class="ltr" data-label="السعر">${h(p === null ? "غير متاح" : price(p, c))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? "غير متاح" : change(chg))}</td>
+        <td data-label="التوصية"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
+        <td class="ltr" data-label="الثقة">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
+        <td class="ltr" data-label="الهدف">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
+        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
+        <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
+        <td class="ltr" data-label="سكور AI">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
+        <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
       </tr>`;
     }).join("");
     return `<div class="table-shell watchlist-table"><table><thead><tr><th>الأصل</th><th>السعر</th><th>التغير</th><th>التوصية</th><th>الثقة</th><th>الهدف</th><th>المدة</th><th>المخاطرة</th><th>سكور AI</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -843,7 +873,7 @@
     const p = num(a.price, a.lastPrice, a.currentPrice), tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
     return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
       <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(p, c))}</b></span><span>الهدف<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>وقف<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>ثقة<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
-      <div class="rec-foot"><span class="status-tag ${recStatusTone(a)}">${h(recStatus(a))}</span><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل / تفاصيل</button></div></article>`;
+      <div class="rec-foot"><span class="status-tag ${recStatusTone(a)}">${h(recStatus(a))}</span><div class="row-actions compact-actions"><button class="action-btn sm" data-follow-trade="${h(a.symbol)}" type="button">متابعة الصفقة</button><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
   }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
@@ -853,7 +883,7 @@
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
       <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span><span class="status-tag">${h(recStatus(a))}</span></div>
       <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
-      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">تحليل</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">متابعة</button>${remove}</div></article>`;
+      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
@@ -867,6 +897,45 @@
     return `<div class="table-shell"><table><thead><tr><th>الأصل</th><th>الكمية</th><th>الدخول</th><th>الحالي</th><th>القيمة</th><th>ر/خ</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function holdingForm() { return `<form id="holding-form" class="inline-form"><input name="symbol" dir="ltr" placeholder="الرمز" /><input name="qty" inputmode="decimal" placeholder="الكمية" /><input name="entry" inputmode="decimal" placeholder="سعر الدخول" /><button class="action-btn" type="submit">إضافة مركز</button></form>`; }
+  function tradeProviderStatus(items) {
+    const status = state.followed.dataStatus || {};
+    const p = state.followed.dataProvider || state.provider || {};
+    const provider = status.provider || providerName(p.active || p.provider) || "Yahoo Finance";
+    const rows = [
+      ["مزود الأسعار", provider],
+      ["آخر تحديث", latinDateTime(status.lastUpdated || new Date().toISOString())],
+      ["عدد الصفقات المحفوظة", latinNumber(status.savedTrades ?? items.length)],
+      ["تم تحديث سعرها", latinNumber(status.updatedPrices ?? items.filter(x => x.priceUpdated || num(x.currentPrice, x.current) !== null).length)],
+      ["بدون بيانات سعر", latinNumber(status.missingPrices ?? items.filter(x => x.priceMessage || num(x.currentPrice, x.current) === null).length)]
+    ];
+    return `<section class="panel trade-data-status"><div class="panel-head"><div><span class="eyebrow">DATA SOURCE</span><h2>حالة بيانات الأداء</h2></div><button class="ghost-btn" data-refresh-trades>تحديث الأسعار</button></div><div class="trade-status-grid">${rows.map(([label, value]) => `<span><small>${h(label)}</small><b class="ltr">${h(String(value || "--"))}</b></span>`).join("")}</div>${status.message ? `<p class="muted-note">${h(status.message)}</p>` : ""}</section>`;
+  }
+  function performanceEmptyState() {
+    return `<section class="empty-state trade-empty-state">
+      <span class="empty-glyph">◎</span>
+      <h3>لا توجد صفقات متابعة حتى الآن</h3>
+      <p>ستظهر هنا نتائج إشارات الشراء والبيع بعد حفظها أو متابعتها من صفحة التوصيات أو التحليل.</p>
+      <div class="row-actions">
+        <a class="action-btn" href="${ROOT}/recommendations" data-route-link>فتح التوصيات</a>
+        <button class="ghost-btn" data-run-signals type="button">تشغيل فحص الإشارات</button>
+        <a class="ghost-btn" href="#followed-trade-form">إضافة صفقة متابعة</a>
+      </div>
+    </section>`;
+  }
+  function followedTradeForm() {
+    return `<section class="panel trade-manual-panel"><div class="panel-head"><div><span class="eyebrow">MANUAL TRACK</span><h2>إضافة صفقة متابعة</h2></div></div>
+      <form id="followed-trade-form" class="trade-form-grid">
+        <label>الرمز<input name="symbol" dir="ltr" placeholder="AAPL" required /></label>
+        <label>الإجراء<select name="action"><option value="buy">buy</option><option value="sell">sell</option><option value="wait">wait</option><option value="watch">watch</option></select></label>
+        <label>سعر الدخول<input name="entryPrice" inputmode="decimal" placeholder="0.00" required /></label>
+        <label>الهدف<input name="targetPrice" inputmode="decimal" placeholder="0.00" /></label>
+        <label>وقف الخسارة<input name="stopLoss" inputmode="decimal" placeholder="0.00" /></label>
+        <label>الثقة<input name="confidence" inputmode="numeric" placeholder="اختياري" /></label>
+        <label class="wide">ملاحظات<input name="notes" placeholder="اختياري" /></label>
+        <button class="action-btn" type="submit">إضافة صفقة متابعة</button>
+      </form>
+    </section>`;
+  }
   function allocation(items) {
     if (!items.length) return miniEmpty();
     const groups = {};
@@ -925,15 +994,40 @@
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: ["منخفضة", "ok"], medium: ["متوسطة", "warn"], high: ["مرتفعة", "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${L[k][0]}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
   function miniChart(a) { const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null); if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني من المزود.</div>`; const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1; const pts = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(40 - (v - min) / rng * 38).toFixed(2)}`).join(" "); const up = series[series.length - 1] >= series[0]; return `<svg class="detail-chart" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="${pts}" class="${up ? "up" : "down"}"></polyline></svg>`; }
+  function firstNum(...values) {
+    for (const value of values) {
+      const n = Array.isArray(value) ? num(...value) : num(value);
+      if (n !== null) return n;
+    }
+    return null;
+  }
+  function trendText(value) {
+    const raw = String(value || "");
+    const s = raw.toLowerCase();
+    if (!s) return "";
+    if (s.includes("bull") || s.includes("up") || s.includes("صاعد")) return "صاعد";
+    if (s.includes("bear") || s.includes("down") || s.includes("هابط")) return "هابط";
+    if (s.includes("side") || s.includes("neutral") || s.includes("flat") || s.includes("جانبي") || s.includes("محايد")) return "جانبي";
+    return raw;
+  }
   function technical(a, tech, c) {
     const t = tech || {};
-    const rsi = num(t.rsi, t.rsi14, t.RSI);
-    const macd = num(t.macd, t.macdValue), macdSig = num(t.macdSignal, t.signalLine);
-    const ma50 = num(t.ma50, t.sma50, t.ema50), ma200 = num(t.ma200, t.sma200, t.ema200);
-    const vol = num(t.volatility, t.atr, t.atr14);
-    const s1 = num(t.support, t.s1, t.support1), s2 = num(t.s2, t.support2);
-    const r1 = num(t.resistance, t.r1, t.resistance1), r2 = num(t.r2, t.resistance2);
-    const trend = t.trend || t.direction || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : null);
+    const ind = t.indicators || {};
+    const ma = t.movingAverages || t.averages || {};
+    const levels = t.levels || {};
+    const piv = t.pivotPoints || t.pivots || {};
+    const supports = Array.isArray(t.support) ? t.support : Array.isArray(levels.support) ? levels.support : [];
+    const resistances = Array.isArray(t.resistance) ? t.resistance : Array.isArray(levels.resistance) ? levels.resistance : [];
+    const rsi = firstNum(t.rsi, t.rsi14, t.RSI, ind.rsi, ind.rsi14);
+    const macd = firstNum(t.macd, t.macdValue, ind.macd, ind.macdValue), macdSig = firstNum(t.macdSignal, t.signalLine, ind.macdSignal, ind.signalLine);
+    const ma50 = firstNum(t.ma50, t.sma50, t.ema50, ma.ma50, ma.sma50, ma.ema50, ind.sma50, ind.ema50);
+    const ma200 = firstNum(t.ma200, t.sma200, t.ema200, ma.ma200, ma.sma200, ma.ema200, ind.sma200, ind.ema200);
+    const vol = firstNum(t.volatility, t.atr, t.atr14, ind.atr, ind.atr14);
+    const s1 = firstNum(t.s1, t.support1, supports[0], levels.s1, piv.s1, t.support);
+    const s2 = firstNum(t.s2, t.support2, supports[1], levels.s2, piv.s2);
+    const r1 = firstNum(t.r1, t.resistance1, resistances[0], levels.r1, piv.r1, t.resistance);
+    const r2 = firstNum(t.r2, t.resistance2, resistances[1], levels.r2, piv.r2);
+    const trend = trendText(t.trend || t.direction || ind.trend || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : ""));
     const rsiTag = rsi === null ? "" : rsi >= 70 ? " (تشبع شرائي)" : rsi <= 30 ? " (تشبع بيعي)" : "";
     const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? " · إيجابي" : " · سلبي") : "";
     const rows = [

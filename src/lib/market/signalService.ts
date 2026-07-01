@@ -17,6 +17,7 @@ import {
   normalizeSignalPreferences,
   type UserSignalPreferences,
 } from '@/lib/market/signalAlerts';
+import { autoTrackSignalTrades } from '@/lib/trader/tradePerformance';
 
 type DbClient = SupabaseClient<any, 'public', any>;
 
@@ -344,9 +345,10 @@ async function insertSignalNotifications(admin: DbClient, signal: MarketSignal, 
 }
 
 export async function persistMarketSignals(admin: DbClient | null, signals: MarketSignal[]) {
-  if (!admin) return { ok: false as const, code: 'SERVICE_NOT_CONFIGURED', inserted: 0, notifications: 0 };
+  if (!admin) return { ok: false as const, code: 'SERVICE_NOT_CONFIGURED', inserted: 0, notifications: 0, followedTrades: 0 };
   let inserted = 0;
   let notifications = 0;
+  let followedTrades = 0;
   for (const signal of signals) {
     const previousResult = await getLatestSignalFromDb(admin, signal.symbol);
     const previous = previousResult.signal;
@@ -371,6 +373,8 @@ export async function persistMarketSignals(admin: DbClient | null, signals: Mark
 
     const notificationResult = await insertSignalNotifications(admin, signal, previous);
     notifications += notificationResult.inserted;
+    const tracked = await autoTrackSignalTrades(admin, signal, data?.id || null);
+    followedTrades += tracked.inserted;
 
     if (data?.id) {
       await admin
@@ -380,7 +384,7 @@ export async function persistMarketSignals(admin: DbClient | null, signals: Mark
         .is('signal_id', null);
     }
   }
-  return { ok: true as const, inserted, notifications };
+  return { ok: true as const, inserted, notifications, followedTrades };
 }
 
 export function filterSignals(signals: MarketSignal[], filters: SignalListFilters = {}) {

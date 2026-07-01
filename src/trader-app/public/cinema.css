@@ -1495,6 +1495,112 @@ body,
 .hero-copy h2, .page-hero h2, .panel h2, .asset-title small, .market-tile strong { overflow-wrap: anywhere; }
 .ticker-strip { scrollbar-width: thin; }
 
+/* phone density + watchlist cards */
+@media (max-width: 720px) {
+  .terminal-stage { padding: 8px 8px 18px; }
+  .terminal-topbar, .ticker-strip, .page-hero, .command-hero, .panel { border-radius: 18px; }
+  .panel { padding: 14px; }
+  .watchlist-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    border: 0;
+    background: transparent;
+  }
+  .watchlist-table table,
+  .watchlist-table tbody {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0 !important;
+  }
+  .watchlist-table thead { display: none; }
+  .watchlist-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .watchlist-table tr {
+    display: grid !important;
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(8, 20, 32, 0.64);
+  }
+  .watchlist-table th,
+  .watchlist-table td {
+    display: block !important;
+    min-width: 0;
+    padding: 0;
+    border-bottom: 0;
+    text-align: start;
+    white-space: normal;
+  }
+  .watchlist-table td::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--muted-2);
+    content: attr(data-label);
+    font: 800 0.62rem var(--font-ar);
+  }
+  .watchlist-table .wt-asset,
+  .watchlist-table .row-actions {
+    grid-column: 1 / -1;
+  }
+  .watchlist-table .wt-asset::before,
+  .watchlist-table .row-actions::before {
+    display: none;
+  }
+  .wt-asset button {
+    width: 100%;
+    min-width: 0;
+  }
+  .wt-asset small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .watchlist-table .row-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .watchlist-table .row-actions .ghost-btn {
+    flex: 1;
+    min-height: 38px;
+  }
+  .watchlist-table .icon-btn {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+  }
+  .detail-side .table-shell {
+    overflow: visible;
+  }
+  .detail-side .table-shell th,
+  .detail-side .table-shell td {
+    padding: 9px 10px;
+    white-space: normal;
+  }
+  .detail-side .table-shell td.ltr {
+    text-align: left;
+  }
+}
+
+@media (max-width: 380px) {
+  .watchlist-table tr,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .mobile-nav a {
+    font-size: 0.72rem;
+  }
+}
+
 @media (max-width: 480px) {
   .hero-copy h2, .page-hero h2 { font-size: clamp(1.25rem, 5.4vw, 1.7rem) !important; letter-spacing: 0 !important; }
   .command-hero, .page-hero { padding: 16px !important; }

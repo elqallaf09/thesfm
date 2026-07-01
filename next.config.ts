@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: PROJECT_ROOT,
   },
+  webpack(config, { dev }) {
+    if (!dev && process.platform === "win32") {
+      config.cache = false;
+    }
+    return config;
+  },
   async headers() {
     return [
       {

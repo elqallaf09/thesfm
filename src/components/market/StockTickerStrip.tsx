@@ -6,7 +6,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 
 type TickerDirection = 'ltr' | 'rtl';
-type TickerAssetType = 'stock' | 'etf' | 'crypto';
+type TickerAssetType = 'stock' | 'etf' | 'crypto' | 'unknown';
 
 export type StockTickerStripItem = {
   symbol: string;
