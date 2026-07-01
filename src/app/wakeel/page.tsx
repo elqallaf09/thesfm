@@ -1,4 +1,4 @@
-﻿import Wakeel from "@/components/Wakeel";
+import Wakeel from '@/components/Wakeel';
 
 export default function Page() {
   return <Wakeel />;
