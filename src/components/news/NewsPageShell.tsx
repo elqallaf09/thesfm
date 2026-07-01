@@ -44,6 +44,8 @@ export function NewsPageShell({
   );
 }
 
+export const MarketNewsPageShell = NewsPageShell;
+
 export function NewsHero({ children, className = '', ...props }: DivProps) {
   return <div className={classNames('news-hero', className)} {...props}>{children}</div>;
 }

@@ -1294,6 +1294,136 @@
   padding: 18px;
 }
 
+:global(.dark) .page {
+  background: transparent;
+  color: var(--news-text);
+}
+
+:global(.dark) .hero,
+:global(.dark) .tickerPanel,
+:global(.dark) .summaryPanel,
+:global(.dark) .panel,
+:global(.dark) .methodologyPanel,
+:global(.dark) .disclaimerPanel,
+:global(.dark) .alertPanel,
+:global(.dark) .summaryCard,
+:global(.dark) .metricTile,
+:global(.dark) .securityCard,
+:global(.dark) .newsCard,
+:global(.dark) .newsRow,
+:global(.dark) .criteriaCard,
+:global(.dark) .filterPanel,
+:global(.dark) .searchField,
+:global(.dark) .selectField,
+:global(.dark) .tableWrap,
+:global(.dark) .mobileCard,
+:global(.dark) .drawer,
+:global(.dark) .detailMetaGrid,
+:global(.dark) .ratioTable,
+:global(.dark) .investmentSeparation,
+:global(.dark) .emptyState {
+  border-color: var(--news-border);
+  background: linear-gradient(180deg, var(--news-card), var(--news-card-strong));
+  color: var(--news-text);
+  box-shadow: var(--news-shadow);
+}
+
+:global(.dark) .hero {
+  background:
+    radial-gradient(circle at 16% 8%, color-mix(in srgb, var(--news-accent) 28%, transparent), transparent 34%),
+    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--news-accent-2) 22%, transparent), transparent 38%),
+    linear-gradient(135deg, rgba(8, 28, 35, 0.98), rgba(9, 33, 47, 0.94));
+}
+
+:global(.dark) .hero h1,
+:global(.dark) .sectionHead h2,
+:global(.dark) .drawerHeader h2,
+:global(.dark) .summaryCard strong,
+:global(.dark) .metricTile strong,
+:global(.dark) .securityCard h3,
+:global(.dark) .newsCard h3,
+:global(.dark) .criteriaCard strong,
+:global(.dark) .ratioRow strong {
+  color: var(--news-text);
+}
+
+:global(.dark) .hero p,
+:global(.dark) .sectionHead p,
+:global(.dark) .methodologyPanel p,
+:global(.dark) .panel p,
+:global(.dark) .drawerBody p,
+:global(.dark) .criteriaCard p,
+:global(.dark) .securityCard p,
+:global(.dark) .newsCard p,
+:global(.dark) .metricTile span,
+:global(.dark) .summaryCard span,
+:global(.dark) .ratioRow span,
+:global(.dark) .emptyState {
+  color: var(--news-muted);
+}
+
+:global(.dark) .eyebrow,
+:global(.dark) .sectionKicker,
+:global(.dark) .pill,
+:global(.dark) .connectedState,
+:global(.dark) .qualityBadge {
+  border-color: color-mix(in srgb, var(--news-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--news-accent) 12%, transparent);
+  color: #99f6e4;
+}
+
+:global(.dark) .warningState {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+:global(.dark) .searchField input,
+:global(.dark) .selectField select,
+:global(.dark) .searchField div,
+:global(.dark) .timeframeBar button {
+  border-color: var(--news-border);
+  background: rgba(8, 24, 40, 0.72);
+  color: var(--news-text);
+}
+
+:global(.dark) .searchField input::placeholder {
+  color: var(--news-muted);
+}
+
+:global(.dark) .tickerEmptyState {
+  border-color: var(--news-border);
+  background: rgba(8, 24, 40, 0.58);
+  color: var(--news-muted);
+}
+
+:global(.dark) .tickerLoadingRow span,
+:global(.dark) .skeletonRows span {
+  background: linear-gradient(90deg, rgba(28, 57, 86, 0.72), rgba(47, 83, 116, 0.62), rgba(28, 57, 86, 0.72));
+  background-size: 180% 100%;
+  border-color: var(--news-border);
+}
+
+:global(.dark) .screenerTable th {
+  background: rgba(7, 20, 34, 0.98);
+  color: var(--news-text);
+}
+
+:global(.dark) .screenerTable td,
+:global(.dark) .screenerTable small,
+:global(.dark) .newsRow span,
+:global(.dark) .newsRow time,
+:global(.dark) .newsCard header span,
+:global(.dark) .newsCard header time,
+:global(.dark) .newsMeta span {
+  color: var(--news-muted);
+}
+
+:global(.dark) .companyButtonText strong,
+:global(.dark) .newsRow strong {
+  color: var(--news-text);
+}
+
 @media (max-width: 1180px) {
   .summaryGrid,
   .fundGrid {

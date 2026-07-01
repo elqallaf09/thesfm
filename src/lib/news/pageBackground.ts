@@ -28,9 +28,13 @@ const NEWS_BACKGROUND_CLASSES: Record<NewsPageBackgroundCategory, string> = {
   cyclical: 'news-bg-cyclical',
   healthcare: 'news-bg-healthcare',
   food: 'news-bg-food',
-  'high-income': 'news-bg-dividend news-bg-high-income',
+  'high-income': 'news-bg-high-income',
 };
 
+export function getNewsBackgroundVariant(category: NewsPageBackgroundCategory) {
+  return NEWS_BACKGROUND_CLASSES[category];
+}
+
 export function getNewsPageBackground(category: NewsPageBackgroundCategory) {
-  return `news-page-bg ${NEWS_BACKGROUND_CLASSES[category]}`;
+  return `news-page-bg ${getNewsBackgroundVariant(category)}`;
 }

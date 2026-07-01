@@ -5203,16 +5203,16 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 /* Subtle reusable news page backgrounds */
 .news-page-bg {
   --news-bg-base: linear-gradient(180deg, #f8fbff 0%, #eef6ff 48%, #ffffff 100%);
-  --news-glow-a: rgba(29, 140, 255, 0.12);
-  --news-glow-b: rgba(24, 212, 212, 0.10);
-  --news-glow-c: rgba(245, 185, 66, 0.08);
+  --news-glow-a: rgba(29, 140, 255, 0.10);
+  --news-glow-b: rgba(24, 212, 212, 0.08);
+  --news-glow-c: rgba(245, 185, 66, 0.06);
   --news-glow-a-position: 10% 0%;
   --news-glow-b-position: 88% 14%;
   --news-glow-c-position: 50% 100%;
   --news-bg-pattern: linear-gradient(90deg, rgba(29, 140, 255, 0.06) 1px, transparent 1px),
     linear-gradient(180deg, rgba(24, 212, 212, 0.05) 1px, transparent 1px);
   --news-bg-pattern-size: 64px 64px, 64px 64px;
-  --news-pattern-opacity: 0.30;
+  --news-pattern-opacity: 0.22;
   position: relative;
   isolation: isolate;
   overflow-x: clip;
@@ -5257,10 +5257,10 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 
 .dark .news-page-bg {
   --news-bg-base: linear-gradient(180deg, #061a2e 0%, #071626 52%, #08111f 100%);
-  --news-glow-a: rgba(29, 140, 255, 0.14);
-  --news-glow-b: rgba(24, 212, 212, 0.10);
-  --news-glow-c: rgba(245, 185, 66, 0.07);
-  --news-pattern-opacity: 0.22;
+  --news-glow-a: rgba(29, 140, 255, 0.12);
+  --news-glow-b: rgba(24, 212, 212, 0.08);
+  --news-glow-c: rgba(245, 185, 66, 0.05);
+  --news-pattern-opacity: 0.16;
 }
 
 .news-bg-tech {
@@ -5507,8 +5507,12 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   --news-shell-gutter: clamp(18px, 2.4vw, 32px);
   --news-section-gap: clamp(16px, 1.8vw, 24px);
   --news-radius: 22px;
+  --news-radius-compact: 16px;
   --news-shadow: 0 20px 54px rgba(3, 18, 37, 0.08);
+  --sidebar-width: var(--sidebar-w, 220px);
   min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
   color: var(--news-text);
   font-family: Tajawal, Arial, sans-serif;
   overflow-x: clip;
@@ -5553,7 +5557,10 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 .news-page-shell[data-news-page-shell="true"] > main {
   position: relative;
   z-index: 1;
+  display: grid !important;
+  gap: var(--news-section-gap) !important;
   min-width: 0 !important;
+  box-sizing: border-box !important;
   overflow-x: clip !important;
 }
 
@@ -5571,7 +5578,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 
 @media (min-width: 1025px) {
   .news-page-shell[data-news-page-shell="true"] > main {
-    --news-sidebar-width: var(--sidebar-w, 230px);
+    --news-sidebar-width: var(--sidebar-w, 220px);
     --news-shell-available: calc(100vw - var(--news-sidebar-width));
     --news-shell-width: min(var(--news-shell-max), calc(var(--news-shell-available) - (var(--news-shell-gutter) * 2)));
     --news-shell-side-gap: max(var(--news-shell-gutter), calc((var(--news-shell-available) - var(--news-shell-width)) / 2));
@@ -5584,6 +5591,10 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 }
 
 @media (max-width: 1024px) {
+  .news-page-shell[data-news-page-shell="true"] {
+    min-height: calc(100dvh - 74px);
+  }
+
   .news-page-shell[data-news-page-shell="true"] > main {
     width: min(100%, calc(100vw - 32px)) !important;
     max-width: calc(100vw - 32px) !important;
@@ -5630,6 +5641,324 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   width: 100%;
   max-width: 100%;
   overflow: hidden;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .crypto-hero,
+  .gulf-news-header,
+  .europe-news-header,
+  .bankHero,
+  .energyHero,
+  .def-hero,
+  .hero,
+  .news-hero,
+  .tech-news-card,
+  .crypto-panel,
+  .crypto-featured,
+  .crypto-movers,
+  .crypto-filter-panel,
+  .crypto-results-bar,
+  .crypto-news-card,
+  .crypto-compact-row,
+  .crypto-side-card,
+  .crypto-disclaimer,
+  .crypto-state,
+  .gulf-news-card,
+  .europe-news-card,
+  .bankPanel,
+  .bankNewsCard,
+  .energyPanel,
+  .energyNewsCard,
+  .def-card,
+  .def-tabs,
+  .def-data-status,
+  .def-filter-card,
+  .def-stock-card,
+  .def-news-card,
+  .def-sector-card,
+  .def-disclaimer,
+  .panel,
+  .summaryPanel,
+  .methodologyPanel,
+  .disclaimerPanel,
+  .alertPanel,
+  .state-box,
+  .emptyState,
+  .news-empty-state
+) {
+  border-color: var(--news-border) !important;
+  border-radius: var(--news-radius) !important;
+  box-shadow: var(--news-shadow) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .tech-news-card,
+  .tech-news-side-panel,
+  .tech-news-disclaimer,
+  .crypto-hero,
+  .crypto-panel,
+  .crypto-featured,
+  .crypto-movers,
+  .crypto-filter-panel,
+  .crypto-results-bar,
+  .crypto-news-card,
+  .crypto-compact-row,
+  .crypto-side-card,
+  .crypto-disclaimer,
+  .gulf-news-header,
+  .gulf-news-card,
+  .gulf-news-side-panel,
+  .gulf-news-disclaimer,
+  .europe-news-header,
+  .europe-news-card,
+  .europe-news-side-panel,
+  .europe-news-disclaimer,
+  .bankHero,
+  .bankHeroStatus,
+  .bankHeaderMeta,
+  .bankPanel,
+  .bankSection,
+  .bankMetricCard,
+  .bankStockCard,
+  .bankNewsCard,
+  .bankFilterPanel,
+  .bankDisclaimer,
+  .bankWarning,
+  .bankEmptyState,
+  .quickAnalysisPanel,
+  .energyHero,
+  .energyPanel,
+  .energySummaryCard,
+  .energyCompanyCard,
+  .energyNewsCard,
+  .energyDisclaimer,
+  .energyInlineWarning,
+  .energyEducationCard,
+  .energyCalendarCard,
+  .energyCommodityCard,
+  .energySectorCard,
+  .def-card,
+  .def-tabs,
+  .def-data-status,
+  .def-filter-card,
+  .def-stock-card,
+  .def-news-card,
+  .def-sector-card,
+  .def-disclaimer,
+  .def-metric-card,
+  .hero,
+  .hero-panel,
+  .tabs,
+  .panel,
+  .summaryPanel,
+  .methodologyPanel,
+  .disclaimerPanel,
+  .alertPanel,
+  .filter-panel,
+  .comparison-panel,
+  .highlighted-panel,
+  .macro-panel,
+  .movers-panel,
+  .accordion-card,
+  .metric-card,
+  .stock-table-card,
+  .sector-card,
+  .news-card,
+  .card,
+  .state-box,
+  .emptyState,
+  .news-empty-state,
+  article
+) {
+  border-color: var(--news-border) !important;
+  background: linear-gradient(180deg, var(--news-card), var(--news-card-strong)) !important;
+  color: var(--news-text) !important;
+  box-shadow: var(--news-shadow) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .crypto-hero,
+  .gulf-news-header,
+  .europe-news-header,
+  .bankHero,
+  .energyHero,
+  .def-hero,
+  .hero,
+  .news-hero
+) {
+  background:
+    radial-gradient(circle at 14% 12%, color-mix(in srgb, var(--news-accent) 30%, transparent), transparent 34%),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--news-accent-2) 24%, transparent), transparent 38%),
+    linear-gradient(135deg, rgba(8, 22, 38, 0.98), rgba(13, 36, 58, 0.93)) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .tech-news-card,
+  .tech-news-side-panel,
+  .tech-news-disclaimer,
+  .crypto-hero,
+  .crypto-panel,
+  .crypto-featured,
+  .crypto-movers,
+  .crypto-filter-panel,
+  .crypto-results-bar,
+  .crypto-news-card,
+  .crypto-compact-row,
+  .crypto-side-card,
+  .crypto-disclaimer,
+  .gulf-news-header,
+  .gulf-news-card,
+  .gulf-news-side-panel,
+  .gulf-news-disclaimer,
+  .europe-news-header,
+  .europe-news-card,
+  .europe-news-side-panel,
+  .europe-news-disclaimer,
+  .bankHero,
+  .bankHeroStatus,
+  .bankHeaderMeta,
+  .bankPanel,
+  .bankSection,
+  .bankMetricCard,
+  .bankStockCard,
+  .bankNewsCard,
+  .bankFilterPanel,
+  .bankDisclaimer,
+  .bankWarning,
+  .bankEmptyState,
+  .quickAnalysisPanel,
+  .energyHero,
+  .energyPanel,
+  .energySummaryCard,
+  .energyCompanyCard,
+  .energyNewsCard,
+  .energyDisclaimer,
+  .energyInlineWarning,
+  .energyEducationCard,
+  .energyCalendarCard,
+  .energyCommodityCard,
+  .energySectorCard,
+  .def-card,
+  .def-tabs,
+  .def-data-status,
+  .def-filter-card,
+  .def-stock-card,
+  .def-news-card,
+  .def-sector-card,
+  .def-disclaimer,
+  .def-metric-card,
+  .hero,
+  .hero-panel,
+  .tabs,
+  .panel,
+  .summaryPanel,
+  .methodologyPanel,
+  .disclaimerPanel,
+  .alertPanel,
+  .filter-panel,
+  .comparison-panel,
+  .highlighted-panel,
+  .macro-panel,
+  .movers-panel,
+  .accordion-card,
+  .metric-card,
+  .stock-table-card,
+  .sector-card,
+  .news-card,
+  .card,
+  .state-box,
+  .emptyState,
+  .news-empty-state,
+  article
+) :is(h1, h2, h3, h4, h5, h6, strong, b, label, summary) {
+  color: var(--news-text) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-header,
+  .tech-news-card,
+  .tech-news-side-panel,
+  .tech-news-disclaimer,
+  .crypto-hero,
+  .crypto-panel,
+  .crypto-featured,
+  .crypto-movers,
+  .crypto-filter-panel,
+  .crypto-results-bar,
+  .crypto-news-card,
+  .crypto-compact-row,
+  .crypto-side-card,
+  .crypto-disclaimer,
+  .gulf-news-header,
+  .gulf-news-card,
+  .gulf-news-side-panel,
+  .gulf-news-disclaimer,
+  .europe-news-header,
+  .europe-news-card,
+  .europe-news-side-panel,
+  .europe-news-disclaimer,
+  .bankHero,
+  .bankHeroStatus,
+  .bankHeaderMeta,
+  .bankPanel,
+  .bankSection,
+  .bankMetricCard,
+  .bankStockCard,
+  .bankNewsCard,
+  .bankFilterPanel,
+  .bankDisclaimer,
+  .bankWarning,
+  .bankEmptyState,
+  .quickAnalysisPanel,
+  .energyHero,
+  .energyPanel,
+  .energySummaryCard,
+  .energyCompanyCard,
+  .energyNewsCard,
+  .energyDisclaimer,
+  .energyInlineWarning,
+  .energyEducationCard,
+  .energyCalendarCard,
+  .energyCommodityCard,
+  .energySectorCard,
+  .def-card,
+  .def-tabs,
+  .def-data-status,
+  .def-filter-card,
+  .def-stock-card,
+  .def-news-card,
+  .def-sector-card,
+  .def-disclaimer,
+  .def-metric-card,
+  .hero,
+  .hero-panel,
+  .tabs,
+  .panel,
+  .summaryPanel,
+  .methodologyPanel,
+  .disclaimerPanel,
+  .alertPanel,
+  .filter-panel,
+  .comparison-panel,
+  .highlighted-panel,
+  .macro-panel,
+  .movers-panel,
+  .accordion-card,
+  .metric-card,
+  .stock-table-card,
+  .sector-card,
+  .news-card,
+  .card,
+  .state-box,
+  .emptyState,
+  .news-empty-state,
+  article
+) :is(p, small, li, dd, dt) {
+  color: var(--news-muted) !important;
 }
 
 .news-page-shell[data-news-page-shell="true"] :is(
@@ -5739,6 +6068,10 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   .gulf-news-content-layout,
   .europe-news-content-layout,
   .bankContentGrid,
+  .energyOverviewGrid,
+  .overviewGrid,
+  .summaryGrid,
+  .filterPanel,
   .workspace-grid,
   .featured-layout,
   .overview-grid,
@@ -5770,7 +6103,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
     .crypto-content-grid,
     .gulf-news-content-layout,
     .europe-news-content-layout,
-    .bankContentGrid
+    .bankContentGrid,
+    .energyOverviewGrid,
+    .overviewGrid
   ) {
     grid-template-columns: 1fr !important;
   }
@@ -5780,7 +6115,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
     .crypto-sidebar,
     .gulf-news-side-panel,
     .europe-news-side-panel,
-    .bankSideRail
+    .bankSideRail,
+    .overviewAside
   ) {
     position: static !important;
     top: auto !important;
@@ -5807,6 +6143,40 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 }
 
 .news-page-shell[data-news-page-shell="true"] :is(
+  input,
+  select,
+  textarea
+) {
+  border-color: var(--news-border) !important;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-state,
+  .crypto-state,
+  .gulf-news-state,
+  .europe-news-state,
+  .def-state,
+  .state-box,
+  .emptyState,
+  .news-empty-state
+) {
+  background: rgba(255, 255, 255, 0.76) !important;
+}
+
+.dark .news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-state,
+  .crypto-state,
+  .gulf-news-state,
+  .europe-news-state,
+  .def-state,
+  .state-box,
+  .emptyState,
+  .news-empty-state
+) {
+  background: rgba(15, 34, 56, 0.76) !important;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
   .tech-news-card,
   .crypto-news-card,
   .crypto-compact-row,
@@ -5822,6 +6192,12 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 }
 
 @media (max-width: 640px) {
+  .news-page-shell[data-news-page-shell="true"],
+  .news-page-shell[data-news-page-shell="true"] > main,
+  .news-page-shell[data-news-page-shell="true"] > main > * {
+    overflow-x: clip !important;
+  }
+
   .news-page-shell[data-news-page-shell="true"] :is(
     .tech-news-feed.grid,
     .crypto-card-grid,
@@ -5833,8 +6209,49 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
     .featured-grid,
     .sector-grid,
     .summary-grid,
+    .summaryGrid,
+    .compactStockGrid,
+    .fundGrid,
+    .filterPanel,
+    .cardMetrics,
     .movers-grid
   ) {
     grid-template-columns: 1fr !important;
+  }
+
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .market-ticker-viewport,
+    .tech-ticker-viewport,
+    .crypto-ticker-viewport,
+    .gulf-ticker-viewport,
+    .europe-ticker-viewport,
+    .bankTickerViewport,
+    .energyTickerViewport,
+    .def-ticker-viewport,
+    .ticker-viewport,
+    .tableWrap,
+    .table-wrapper
+  ) {
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .news-page-shell[data-news-page-shell="true"] :is(
+    h1,
+    h2,
+    h3,
+    p,
+    span,
+    strong,
+    small,
+    b,
+    em,
+    a,
+    button,
+    label
+  ) {
+    overflow-wrap: anywhere;
   }
 }
