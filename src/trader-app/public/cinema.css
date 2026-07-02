@@ -38,12 +38,22 @@ body {
   overflow-x: hidden;
   color: var(--text);
   background:
-    radial-gradient(circle at 78% 12%, rgba(21, 184, 255, 0.18), transparent 28rem),
-    radial-gradient(circle at 12% 28%, rgba(69, 240, 162, 0.12), transparent 24rem),
+    radial-gradient(circle at 78% 12%, rgba(21, 184, 255, 0.14), transparent 28rem),
+    radial-gradient(circle at 12% 28%, rgba(69, 240, 162, 0.09), transparent 24rem),
+    linear-gradient(180deg, rgba(2, 6, 10, 0.6) 0%, rgba(7, 21, 34, 0.48) 52%, rgba(2, 4, 9, 0.78) 100%),
+    url("/assets/trading-cinematic-bg.jpg") center / cover no-repeat fixed,
     linear-gradient(135deg, #02060a 0%, #071522 52%, #020409 100%);
   font-family: var(--font-ar);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
+}
+
+@media (max-width: 720px) {
+  /* الجوال: fixed attachment ثقيل على iOS، نستخدم scroll مع تغطية كاملة */
+  body {
+    background-attachment: scroll;
+    background-position: center top;
+  }
 }
 
 body::before {

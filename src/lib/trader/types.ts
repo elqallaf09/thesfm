@@ -69,6 +69,17 @@ export type TechnicalSnapshot = {
   support: number | null;
   resistance: number | null;
   trend: 'bullish' | 'bearish' | 'mixed' | 'unknown';
+  ema9?: number | null;
+  ema21?: number | null;
+  adx14?: number | null;
+  plusDI?: number | null;
+  minusDI?: number | null;
+  stochK?: number | null;
+  stochD?: number | null;
+  bbUpper?: number | null;
+  bbLower?: number | null;
+  bbPos?: number | null;
+  obvSlope?: number | null;
 };
 
 export type StockAnalysisResult = {
@@ -99,6 +110,22 @@ export type StockAnalysisResult = {
   provider: string;
   delayed: boolean;
   currency: string;
+  backtest?: {
+    samples: number;
+    wins: number;
+    winRate: number | null;
+    horizonDays: number;
+    tpAtrMultiple: number;
+    slAtrMultiple: number;
+    label: string;
+  };
+  precisionMode?: {
+    enabled: boolean;
+    required: number;
+    measuredWinRate: number | null;
+    samples: number;
+    passed: boolean;
+  };
 };
 
 export type ScannerStatus = {
