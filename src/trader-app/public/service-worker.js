@@ -1,13 +1,14 @@
-const CACHE_NAME = "the-sfm-trader-v20260703-symbol-details-layout";
+const CACHE_NAME = "the-sfm-trader-v20260703-compact-calendar";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/styles.css?v=20260630-cinema",
   "/desktop-balance.css?v=20260630-cinema",
-  "/cinema.css?v=20260703-symbol-details-layout",
-  "/app.js?v=20260703-symbol-details-layout",
-  "/detail.js?v=20260703-symbol-details-layout",
+  "/cinema.css?v=20260703-compact-calendar",
+  "/app.js?v=20260703-compact-calendar",
+  "/detail.js?v=20260703-compact-calendar",
+  "/detail.js?v=20260703-compact-calendar",
   "/manifest.webmanifest",
   "/assets/sfm-trader-logo.svg",
   "/assets/trading-cinematic-bg.jpg",
