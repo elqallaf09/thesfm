@@ -98,12 +98,23 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
   if (!needsChart && !needsChange) return quote;
 
   try {
-    const providerSymbol = quote.providerSymbolUsed || quote.providerSymbol || quote.symbol;
-    const historyResult = await fetchYahooHistory(providerSymbol, historyAssetType(quote.assetType), '1mo', '1d');
-    if (!historyResult.success) return quote;
-    const closes = (historyResult.history ?? [])
-      .map((point: { close?: number }) => (Number.isFinite(point?.close) ? Number(point.close) : null))
-      .filter((value: number | null): value is number => value !== null && value > 0);
+    // جرّب ترجمات ياهو للرمز بالترتيب (GC=F للذهب، ^DJI لداو جونز...) بدل رمز المزود الاحتياطي فقط
+    const candidates = unique([
+      ...candidateSymbols(quote.symbol, 'yahoo'),
+      quote.providerSymbolUsed,
+      quote.providerSymbol,
+      quote.symbol,
+    ]).slice(0, 4);
+
+    let closes: number[] = [];
+    for (const candidate of candidates) {
+      const historyResult = await fetchYahooHistory(candidate, historyAssetType(quote.assetType), '1mo', '1d');
+      if (!historyResult.success) continue;
+      const extracted = (historyResult.history ?? [])
+        .map((point: { close?: number }) => (Number.isFinite(point?.close) ? Number(point.close) : null))
+        .filter((value: number | null): value is number => value !== null && value > 0);
+      if (extracted.length >= 2) { closes = extracted; break; }
+    }
     if (closes.length < 2) return quote;
 
     const enriched: TraderQuote = { ...quote };

@@ -888,15 +888,27 @@
   }
   function marketOverview(rec) {
     const b = marketBias(rec);
+    const verdict = b.en === "AWAITING" ? "--" : b.en.replace("NEUTRAL — PRECISION GATE", "NEUTRAL");
     return `<section class="panel market-overview">
       <div class="panel-head"><div><span class="eyebrow">MARKET OVERVIEW</span><h2>نظرة عامة على الأسواق</h2></div><div class="mo-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${t}</button>`).join("")}</div></div>
-      <div class="mo-body">
-        ${marketMap()}
-        <div class="mo-gauges">
-          <div class="mo-gauge"><span class="card-kicker">MARKET SENTIMENT</span><strong class="state-${b.tone}">${h(b.en)}</strong><div class="mo-bar"><i style="width:${b.bull}%"></i></div><small>${h(b.label)}${b.note ? " · " + h(b.note) : ""} · إطار ${h(state.timeframe)}</small></div>
-          <div class="mo-gauge"><span class="card-kicker">AI CONFIDENCE</span><strong>${b.conf ? b.conf + "%" : "--"}</strong><div class="mo-bar"><i class="conf" style="width:${b.conf}%"></i></div><small>${b.conf >= 70 ? "ثقة عالية" : b.conf ? "ثقة متوسطة" : "بانتظار البيانات"}</small></div>
+      ${marketMap()}
+    </section>
+    <section class="panel ai-market-analysis">
+      <div class="panel-head"><div><span class="eyebrow">AI MARKET ANALYSIS</span><h2>تحليل السوق الذكي</h2></div></div>
+      <div class="ai-analysis-body">
+        <div>
+          <span class="card-kicker">OVERALL MARKET BIAS</span>
+          <div class="ai-analysis-verdict ${b.tone}">${h(verdict)}</div>
+          <small class="muted-note">${h(b.label)}${b.note ? " · " + h(b.note) : ""} · إطار ${h(state.timeframe)} · الثقة ${b.conf ? b.conf + "%" : "--"}</small>
+          <div class="ai-bias-rows" style="margin-top:14px">
+            <div class="ai-bias-row bull"><span>صاعد</span><span class="bar"><i style="width:${b.bull}%"></i></span><b class="ltr">${b.bull}%</b></div>
+            <div class="ai-bias-row bear"><span>هابط</span><span class="bar"><i style="width:${b.bear}%"></i></span><b class="ltr">${b.bear}%</b></div>
+            <div class="ai-bias-row neut"><span>محايد</span><span class="bar"><i style="width:${b.neutral}%"></i></span><b class="ltr">${b.neutral}%</b></div>
+          </div>
         </div>
-      </div></section>`;
+        <div class="ai-analysis-bull ${b.tone === "warn" ? "bearish" : ""}" aria-hidden="true"></div>
+      </div>
+    </section>`;
   }
   function commandCenter(rec) {
     const p = providerCopy(), b = marketBias(rec), market = currentMarket();
