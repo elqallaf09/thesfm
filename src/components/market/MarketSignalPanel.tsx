@@ -19,9 +19,12 @@ type MarketSignalPanelProps = {
 
 const ACTION_BADGE: Record<MarketSignalAction, { label: string; className: string }> = {
   buy: { label: 'شراء', className: 'buy' },
-  sell: { label: 'بيع', className: 'sell' },
+  cautious_buy: { label: 'شراء بحذر', className: 'cautious-buy' },
+  sell: { label: 'تجنب / بيع', className: 'sell' },
+  sell_or_avoid: { label: 'تجنب / بيع', className: 'sell' },
   wait: { label: 'انتظار', className: 'wait' },
   watch: { label: 'مراقبة', className: 'watch' },
+  insufficient_data: { label: 'بيانات غير كافية', className: 'insufficient' },
 };
 
 const RISK_LABELS: Record<MarketSignalRiskLevel, string> = {
@@ -51,6 +54,16 @@ function formatPrice(value: number | null | undefined, currency?: string | null)
   const abs = Math.abs(Number(value));
   const digits = abs < 1 ? 6 : abs < 10 ? 4 : 2;
   return `${formatNumber(value, digits)} ${currency || ''}`.trim();
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (!Number.isFinite(Number(value))) return '—';
+  return `${formatNumber(value, 2)}%`;
+}
+
+function formatRiskReward(value: number | null | undefined) {
+  if (!Number.isFinite(Number(value))) return '—';
+  return `${formatNumber(value, 2)}:1`;
 }
 
 function actionLabel(action: MarketSignalAction) {
@@ -102,9 +115,11 @@ export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, '
         }
         .market-signal-mini b{font:inherit;color:inherit;direction:ltr}
         .market-signal-mini.buy{background:#dcfce7;color:#166534;border-color:#86efac}
+        .market-signal-mini.cautious-buy{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
         .market-signal-mini.sell{background:#fee2e2;color:#991b1b;border-color:#fecaca}
         .market-signal-mini.wait{background:#fef3c7;color:#92400e;border-color:#fde68a}
         .market-signal-mini.watch{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+        .market-signal-mini.insufficient{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
       `}</style>
     </span>
   );
@@ -122,7 +137,7 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
         <div>
           <span className="market-signal-eyebrow">
             <Bell size={14} />
-            إشارات وتحذيرات AI
+            إشارة التداول
           </span>
           <h2>{signal?.symbol ? `تحليل الإشارة: ${signal.symbol}` : 'تحليل الإشارة'}</h2>
         </div>
@@ -143,6 +158,7 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
               <span>الثقة</span>
               <strong dir="ltr">{confidence}%</strong>
               <Meter value={confidence} />
+              <p className="market-signal-explanation">{signal.signalExplanationAr || signal.reasons[0] || badge.label}</p>
             </div>
             <div className="market-signal-price">
               <small>السعر الحالي</small>
@@ -153,6 +169,9 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
           <div className="market-signal-grid">
             <Metric icon={<Target size={16} />} label="الهدف" value={formatPrice(signal.targetPrice, signal.currency)} />
             <Metric icon={<ShieldAlert size={16} />} label="وقف الخسارة" value={formatPrice(signal.stopLoss, signal.currency)} />
+            <Metric icon={<Target size={16} />} label="الصعود المتوقع" value={formatPercent(signal.upsidePercent)} />
+            <Metric icon={<ShieldAlert size={16} />} label="الهبوط إلى وقف الخسارة" value={formatPercent(signal.downsidePercent)} />
+            <Metric icon={<Gauge size={16} />} label="نسبة العائد إلى المخاطرة" value={formatRiskReward(signal.riskRewardRatio)} />
             <Metric icon={<Clock3 size={16} />} label="الأفق الزمني" value={signal.timeframe || '1-3 أسابيع'} />
             <Metric icon={<Gauge size={16} />} label="المخاطر" value={risk} />
             <Metric icon={<Database size={16} />} label="المزود" value={signal.provider || '--'} />
@@ -232,9 +251,11 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
           border:1px solid rgba(15,23,42,.1);
         }
         .market-signal-badge.buy{background:#dcfce7;color:#166534;border-color:#86efac}
+        .market-signal-badge.cautious-buy{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
         .market-signal-badge.sell{background:#fee2e2;color:#991b1b;border-color:#fecaca}
         .market-signal-badge.wait{background:#fef3c7;color:#92400e;border-color:#fde68a}
         .market-signal-badge.watch{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+        .market-signal-badge.insufficient{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
         .market-signal-loading,.market-signal-empty{
           display:flex;
           align-items:center;
@@ -282,6 +303,13 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
           height:100%;
           border-radius:999px;
           background:linear-gradient(90deg,#2563eb,#16a34a);
+        }
+        .market-signal-explanation{
+          margin:10px 0 0;
+          color:#475569;
+          font-size:12px;
+          line-height:1.6;
+          font-weight:800;
         }
         .market-signal-grid{
           display:grid;

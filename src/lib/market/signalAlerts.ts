@@ -80,7 +80,9 @@ function price(value: number | null | undefined, currency: string) {
 
 function actionAr(action: MarketSignalAction) {
   if (action === 'buy') return 'شراء';
-  if (action === 'sell') return 'بيع';
+  if (action === 'cautious_buy') return 'شراء بحذر';
+  if (action === 'sell' || action === 'sell_or_avoid') return 'تجنب / بيع';
+  if (action === 'insufficient_data') return 'بيانات غير كافية';
   if (action === 'watch') return 'مراقبة';
   return 'انتظار';
 }
@@ -94,15 +96,16 @@ function marketEnabled(signal: MarketSignal, prefs: UserSignalPreferences) {
 }
 
 function actionEnabled(action: MarketSignalAction, prefs: UserSignalPreferences) {
-  if (action === 'buy') return prefs.buyAlertsEnabled;
-  if (action === 'sell') return prefs.sellAlertsEnabled;
+  if (action === 'buy' || action === 'cautious_buy') return prefs.buyAlertsEnabled;
+  if (action === 'sell' || action === 'sell_or_avoid') return prefs.sellAlertsEnabled;
   return prefs.waitAlertsEnabled;
 }
 
 function riskAllowed(signal: MarketSignal, prefs: UserSignalPreferences) {
+  const defensiveSignal = signal.action === 'sell' || signal.action === 'sell_or_avoid';
   if (prefs.riskProfile === 'aggressive') return true;
-  if (prefs.riskProfile === 'conservative') return signal.riskLevel === 'low' || signal.action === 'sell';
-  return signal.riskLevel !== 'high' || signal.action === 'sell';
+  if (prefs.riskProfile === 'conservative') return signal.riskLevel === 'low' || defensiveSignal;
+  return signal.riskLevel !== 'high' || defensiveSignal;
 }
 
 function channelEnabled(channel: SignalAlertChannel, prefs: UserSignalPreferences) {
@@ -118,16 +121,16 @@ export function shouldNotifySignal(signal: MarketSignal, prefs: UserSignalPrefer
   if (!marketEnabled(signal, prefs)) return false;
   if (!riskAllowed(signal, prefs)) return false;
   if (!actionEnabled(signal.action, prefs) && event !== 'stop_loss_crossed' && event !== 'high_risk') return false;
-  if (signal.action !== 'sell' && signal.confidence < prefs.minConfidence && event !== 'signal_changed' && event !== 'stop_loss_crossed') return false;
+  if (signal.action !== 'sell' && signal.action !== 'sell_or_avoid' && signal.confidence < prefs.minConfidence && event !== 'signal_changed' && event !== 'stop_loss_crossed') return false;
   return true;
 }
 
 export function detectSignalNotificationEvents(current: MarketSignal, previous?: MarketSignal | null): SignalNotificationEvent[] {
   const events: SignalNotificationEvent[] = [];
   if (!previous) {
-    if (current.action === 'buy') events.push('new_buy');
-    if (current.action === 'sell') events.push('new_sell');
-    if (current.action === 'wait' || current.action === 'watch') events.push('wait_watch');
+    if (current.action === 'buy' || current.action === 'cautious_buy') events.push('new_buy');
+    if (current.action === 'sell' || current.action === 'sell_or_avoid') events.push('new_sell');
+    if (current.action === 'wait' || current.action === 'watch' || current.action === 'insufficient_data') events.push('wait_watch');
   } else {
     if (previous.action !== current.action) events.push('signal_changed');
     if (Math.abs(current.confidence - previous.confidence) >= 15) events.push('confidence_change');
@@ -136,8 +139,8 @@ export function detectSignalNotificationEvents(current: MarketSignal, previous?:
   if (
     current.currentPrice !== null &&
     current.targetPrice !== null &&
-    ((current.action === 'buy' && current.currentPrice >= current.targetPrice) ||
-      (current.action === 'sell' && current.currentPrice <= current.targetPrice))
+    (((current.action === 'buy' || current.action === 'cautious_buy') && current.currentPrice >= current.targetPrice) ||
+      ((current.action === 'sell' || current.action === 'sell_or_avoid') && current.currentPrice <= current.targetPrice))
   ) {
     events.push('target_reached');
   }
@@ -145,13 +148,13 @@ export function detectSignalNotificationEvents(current: MarketSignal, previous?:
   if (
     current.currentPrice !== null &&
     current.stopLoss !== null &&
-    ((current.action === 'buy' && current.currentPrice <= current.stopLoss) ||
-      (current.action === 'sell' && current.currentPrice >= current.stopLoss))
+    (((current.action === 'buy' || current.action === 'cautious_buy') && current.currentPrice <= current.stopLoss) ||
+      ((current.action === 'sell' || current.action === 'sell_or_avoid') && current.currentPrice >= current.stopLoss))
   ) {
     events.push('stop_loss_crossed');
   }
 
-  if (current.riskLevel === 'high' && (current.action === 'buy' || current.action === 'sell')) events.push('high_risk');
+  if (current.riskLevel === 'high' && (current.action === 'buy' || current.action === 'cautious_buy' || current.action === 'sell' || current.action === 'sell_or_avoid')) events.push('high_risk');
   return Array.from(new Set(events));
 }
 
@@ -173,8 +176,8 @@ export function buildSignalNotification(
       action: signal.action,
       event,
       channel,
-      title: `إشارة شراء الآن على ${signal.symbol}`,
-      message: `إشارة شراء الآن: ${base}${target}${stop}.${disclaimer}`,
+      title: `${signal.actionLabelAr} على ${signal.symbol}`,
+      message: `${signal.actionLabelAr}: ${base}${target}${stop}.${disclaimer}`,
     };
   }
 
@@ -184,8 +187,8 @@ export function buildSignalNotification(
       action: signal.action,
       event,
       channel,
-      title: `إشارة بيع الآن على ${signal.symbol}`,
-      message: `إشارة بيع الآن: ${base}${reason}.${disclaimer}`,
+      title: `${signal.actionLabelAr} على ${signal.symbol}`,
+      message: `${signal.actionLabelAr}: ${base}${reason}.${disclaimer}`,
     };
   }
 

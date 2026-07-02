@@ -3,11 +3,13 @@ import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import {
+  classifyTradingSignal,
   generateMarketSignal,
   signalFromMarketAnalysis,
   unavailableMarketSignal,
   type MarketSignal,
   type MarketSignalAction,
+  type MarketSignalActionLabelAr,
   type MarketSignalDataQuality,
   type MarketSignalRiskLevel,
 } from '@/lib/market/signalEngine';
@@ -29,7 +31,7 @@ type SignalRow = {
   market?: string;
   currency?: string;
   action?: MarketSignalAction;
-  action_label_ar?: MarketSignal['actionLabelAr'];
+  action_label_ar?: MarketSignalActionLabelAr;
   confidence?: number;
   risk_level?: MarketSignalRiskLevel;
   current_price?: number | null;
@@ -58,6 +60,7 @@ export const SIGNAL_REFRESH_UNIVERSE = [
   'AAPL',
   'TSLA',
   'NVDA',
+  'BTCUSD',
   'BTC-USD',
   'ETH-USD',
   'EURUSD',
@@ -106,17 +109,39 @@ function safeArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
 }
 
-function actionLabelAr(action: MarketSignalAction): MarketSignal['actionLabelAr'] {
-  if (action === 'buy') return 'إشارة شراء الآن';
-  if (action === 'sell') return 'إشارة بيع الآن';
-  if (action === 'watch') return 'تحت المراقبة';
-  return 'انتظار';
-}
-
 export function dbRowToMarketSignal(row: SignalRow): MarketSignal {
-  const action = row.action === 'buy' || row.action === 'sell' || row.action === 'wait' || row.action === 'watch'
-    ? row.action
-    : 'watch';
+  const confidence = Number.isFinite(Number(row.confidence)) ? Math.min(95, Math.max(0, Number(row.confidence))) : 0;
+  const currentPrice = Number.isFinite(Number(row.current_price)) ? Number(row.current_price) : null;
+  const targetPrice = Number.isFinite(Number(row.target_price)) ? Number(row.target_price) : null;
+  const stopLoss = Number.isFinite(Number(row.stop_loss)) ? Number(row.stop_loss) : null;
+  const dataQuality: MarketSignalDataQuality = row.data_quality === 'live' || row.data_quality === 'delayed' || row.data_quality === 'partial' || row.data_quality === 'unavailable'
+    ? row.data_quality
+    : 'partial';
+  const technicalSummary = row.technical_summary && typeof row.technical_summary === 'object'
+    ? row.technical_summary as MarketSignal['technicalSummary']
+    : {
+      trendDirection: 'unknown' as const,
+      rsi: null,
+      macd: null,
+      macdSignal: null,
+      macdHistogram: null,
+      sma20: null,
+      sma50: null,
+      sma200: null,
+      support: null,
+      resistance: null,
+      volatility: null,
+      volumeTrend: 'unknown' as const,
+    };
+  const classification = classifyTradingSignal({
+    currentPrice,
+    targetPrice,
+    stopLoss,
+    confidence,
+    dataQuality,
+    technicalSummary,
+  });
+  const action = classification.action;
   return {
     symbol: normalizeSymbol(row.symbol),
     assetName: String(row.asset_name || row.symbol || ''),
@@ -124,19 +149,23 @@ export function dbRowToMarketSignal(row: SignalRow): MarketSignal {
     market: String(row.market || 'US'),
     currency: String(row.currency || 'USD'),
     action,
-    actionLabelAr: row.action_label_ar || actionLabelAr(action),
-    confidence: Number.isFinite(Number(row.confidence)) ? Math.min(95, Math.max(0, Number(row.confidence))) : 0,
+    actionLabelAr: classification.actionLabelAr,
+    actionLabelEn: classification.actionLabelEn,
+    confidence,
     riskLevel: row.risk_level === 'low' || row.risk_level === 'medium' || row.risk_level === 'high' ? row.risk_level : 'medium',
-    currentPrice: Number.isFinite(Number(row.current_price)) ? Number(row.current_price) : null,
-    targetPrice: Number.isFinite(Number(row.target_price)) ? Number(row.target_price) : null,
-    stopLoss: Number.isFinite(Number(row.stop_loss)) ? Number(row.stop_loss) : null,
+    currentPrice,
+    targetPrice,
+    stopLoss,
+    upsidePercent: classification.upsidePercent,
+    downsidePercent: classification.downsidePercent,
+    riskRewardRatio: classification.riskRewardRatio,
+    signalExplanationAr: classification.signalExplanationAr,
+    signalExplanationEn: classification.signalExplanationEn,
     timeframe: String(row.timeframe || '1-3 أسابيع'),
     reasons: safeArray(row.reasons),
     warnings: safeArray(row.warnings),
     provider: String(row.provider || 'Yahoo Finance'),
-    dataQuality: row.data_quality === 'live' || row.data_quality === 'delayed' || row.data_quality === 'partial' || row.data_quality === 'unavailable'
-      ? row.data_quality
-      : 'partial',
+    dataQuality,
     lastUpdated: row.created_at || new Date().toISOString(),
     scoreBreakdown: row.score_breakdown && typeof row.score_breakdown === 'object'
       ? row.score_breakdown as MarketSignal['scoreBreakdown']
@@ -149,22 +178,7 @@ export function dbRowToMarketSignal(row: SignalRow): MarketSignal {
         dataQualityPenalty: -20,
         totalScore: 0,
       },
-    technicalSummary: row.technical_summary && typeof row.technical_summary === 'object'
-      ? row.technical_summary as MarketSignal['technicalSummary']
-      : {
-        trendDirection: 'unknown',
-        rsi: null,
-        macd: null,
-        macdSignal: null,
-        macdHistogram: null,
-        sma20: null,
-        sma50: null,
-        sma200: null,
-        support: null,
-        resistance: null,
-        volatility: null,
-        volumeTrend: 'unknown',
-      },
+    technicalSummary,
     disclaimerAr: 'هذه إشارات تحليلية تعليمية مبنية على البيانات المتاحة، ولا تُعد نصيحة مالية أو توصية ملزمة بالشراء أو البيع. القرار النهائي مسؤولية المستخدم.',
     disclaimerEn: 'These are educational analytical signals based on available data and are not financial advice.',
   };

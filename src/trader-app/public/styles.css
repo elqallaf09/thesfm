@@ -22189,6 +22189,47 @@ body[data-app-view] .app-shell,
   background: rgba(145, 167, 255, 0.13) !important;
 }
 
+.state-badge.cautious,
+.trading-signal-badge.cautious,
+.market-leadership .signal-badge.cautious {
+  color: #052e1b !important;
+  background: #a7f3d0 !important;
+  border-color: rgba(52, 211, 153, 0.7) !important;
+}
+
+.state-badge.muted,
+.trading-signal-badge.muted,
+.market-leadership .signal-badge.muted {
+  color: #cbd5e1 !important;
+  background: rgba(148, 163, 184, 0.14) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+.signal-explanation {
+  margin: 2px 0 0 !important;
+  color: rgba(221, 234, 244, 0.76) !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  font-weight: 800 !important;
+}
+
+.rec-card .signal-explanation,
+.asset-card .signal-explanation {
+  padding: 0 2px !important;
+}
+
+.watchlist-status.ok {
+  color: #052e1b !important;
+  background: #86efac !important;
+  border-color: rgba(74, 222, 128, 0.7) !important;
+}
+
+.watchlist-status.muted {
+  color: #cbd5e1 !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+}
+
 .market-leadership .quality-badge {
   justify-content: flex-start !important;
   color: rgba(221, 234, 244, 0.76) !important;

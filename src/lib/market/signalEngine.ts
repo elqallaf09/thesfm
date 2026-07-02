@@ -9,7 +9,16 @@ import {
   type MarketAgentPrecisionMode,
 } from '@/lib/market/marketAgent';
 
-export type MarketSignalAction = 'buy' | 'sell' | 'wait' | 'watch';
+export type MarketSignalAction =
+  | 'buy'
+  | 'cautious_buy'
+  | 'watch'
+  | 'sell_or_avoid'
+  | 'insufficient_data'
+  | 'sell'
+  | 'wait';
+export type MarketSignalActionLabelAr = 'شراء' | 'شراء بحذر' | 'مراقبة' | 'تجنب / بيع' | 'بيانات غير كافية' | 'انتظار';
+export type MarketSignalActionLabelEn = 'Buy' | 'Cautious Buy' | 'Watch' | 'Avoid / Sell' | 'Insufficient data' | 'Wait';
 export type MarketSignalRiskLevel = 'low' | 'medium' | 'high';
 export type MarketSignalDataQuality = 'live' | 'delayed' | 'partial' | 'unavailable';
 export type MarketSignalProvider = 'Yahoo Finance' | 'FMP' | 'Finnhub' | 'Trading Economics' | 'THE SFM' | string;
@@ -98,12 +107,18 @@ export type MarketSignal = {
   market: string;
   currency: string;
   action: MarketSignalAction;
-  actionLabelAr: 'إشارة شراء الآن' | 'إشارة بيع الآن' | 'انتظار' | 'تحت المراقبة';
+  actionLabelAr: MarketSignalActionLabelAr;
+  actionLabelEn: MarketSignalActionLabelEn;
   confidence: number;
   riskLevel: MarketSignalRiskLevel;
   currentPrice: number | null;
   targetPrice: number | null;
   stopLoss: number | null;
+  upsidePercent: number | null;
+  downsidePercent: number | null;
+  riskRewardRatio: number | null;
+  signalExplanationAr: string;
+  signalExplanationEn: string;
   timeframe: string;
   reasons: string[];
   warnings: string[];
@@ -155,6 +170,31 @@ function roundPrice(value: number | null | undefined, reference?: number | null)
   const absReference = Math.abs(Number(reference ?? price));
   const digits = absReference >= 100 ? 2 : absReference >= 10 ? 3 : absReference >= 1 ? 4 : 6;
   return round(price, digits);
+}
+
+export function calculateSignalRiskMetrics(input: {
+  currentPrice?: number | null;
+  targetPrice?: number | null;
+  stopLoss?: number | null;
+}) {
+  const currentPrice = finiteNumber(input.currentPrice);
+  const targetPrice = finiteNumber(input.targetPrice);
+  const stopLoss = finiteNumber(input.stopLoss);
+  const upsidePercent = currentPrice !== null && currentPrice > 0 && targetPrice !== null
+    ? ((targetPrice - currentPrice) / currentPrice) * 100
+    : null;
+  const downsidePercent = currentPrice !== null && currentPrice > 0 && stopLoss !== null
+    ? ((currentPrice - stopLoss) / currentPrice) * 100
+    : null;
+  const riskRewardRatio = upsidePercent !== null && downsidePercent !== null && downsidePercent !== 0
+    ? upsidePercent / downsidePercent
+    : null;
+
+  return {
+    upsidePercent: round(upsidePercent, 2),
+    downsidePercent: round(downsidePercent, 2),
+    riskRewardRatio: round(riskRewardRatio, 2),
+  };
 }
 
 function average(values: number[]) {
@@ -446,11 +486,22 @@ function actionFromScore(score: number, risk: MarketSignalRiskLevel, dataQuality
   return 'wait';
 }
 
-function actionLabelAr(action: MarketSignalAction): MarketSignal['actionLabelAr'] {
-  if (action === 'buy') return 'إشارة شراء الآن';
-  if (action === 'sell') return 'إشارة بيع الآن';
-  if (action === 'watch') return 'تحت المراقبة';
-  return 'انتظار';
+export function actionLabelAr(action: MarketSignalAction): MarketSignalActionLabelAr {
+  if (action === 'buy') return 'شراء';
+  if (action === 'cautious_buy') return 'شراء بحذر';
+  if (action === 'sell' || action === 'sell_or_avoid') return 'تجنب / بيع';
+  if (action === 'insufficient_data') return 'بيانات غير كافية';
+  if (action === 'wait') return 'انتظار';
+  return 'مراقبة';
+}
+
+export function actionLabelEn(action: MarketSignalAction): MarketSignalActionLabelEn {
+  if (action === 'buy') return 'Buy';
+  if (action === 'cautious_buy') return 'Cautious Buy';
+  if (action === 'sell' || action === 'sell_or_avoid') return 'Avoid / Sell';
+  if (action === 'insufficient_data') return 'Insufficient data';
+  if (action === 'wait') return 'Wait';
+  return 'Watch';
 }
 
 function confidenceForAction(action: MarketSignalAction, score: number, dataQuality: MarketSignalDataQuality) {
@@ -462,6 +513,73 @@ function confidenceForAction(action: MarketSignalAction, score: number, dataQual
   if (dataQuality === 'partial') confidence = Math.min(confidence, 65);
   if (dataQuality === 'unavailable') confidence = Math.min(confidence, 45);
   return clamp(Math.round(confidence), 0, 95);
+}
+
+export function classifyTradingSignal(input: {
+  currentPrice?: number | null;
+  targetPrice?: number | null;
+  stopLoss?: number | null;
+  confidence?: number | null;
+  dataQuality?: MarketSignalDataQuality | null;
+  technicalSummary?: Partial<MarketSignalTechnicalSummary> | null;
+}) {
+  const currentPrice = finiteNumber(input.currentPrice);
+  const targetPrice = finiteNumber(input.targetPrice);
+  const stopLoss = finiteNumber(input.stopLoss);
+  const confidence = clamp(Math.round(finiteNumber(input.confidence) ?? 0), 0, 100);
+  const metrics = calculateSignalRiskMetrics({ currentPrice, targetPrice, stopLoss });
+  const technicalIncomplete =
+    input.dataQuality === 'unavailable' ||
+    !input.technicalSummary ||
+    input.technicalSummary.trendDirection === 'unknown';
+
+  let action: MarketSignalAction = 'watch';
+  let signalExplanationAr = 'لا توجد إشارة تداول كافية حالياً.';
+  let signalExplanationEn = 'There is not enough confirmation for a trading signal right now.';
+
+  if (currentPrice === null || currentPrice <= 0 || targetPrice === null || targetPrice <= 0 || input.dataQuality === 'unavailable') {
+    action = 'insufficient_data';
+    signalExplanationAr = 'البيانات الفنية غير مكتملة.';
+    signalExplanationEn = 'Technical data is incomplete.';
+  } else if (targetPrice < currentPrice && confidence >= 55) {
+    action = 'sell_or_avoid';
+    signalExplanationAr = 'الهدف أدنى من السعر الحالي والثقة تدعم تجنب الصفقة أو البيع.';
+    signalExplanationEn = 'The target is below the current price, and confidence supports avoiding or selling.';
+  } else if (targetPrice > currentPrice && confidence >= 60 && (metrics.riskRewardRatio ?? Number.NEGATIVE_INFINITY) >= 1.5) {
+    action = 'buy';
+    signalExplanationAr = 'الهدف أعلى من السعر الحالي ونسبة العائد إلى المخاطرة كافية للشراء.';
+    signalExplanationEn = 'The target is above the current price and the risk/reward ratio supports a buy.';
+  } else if (targetPrice > currentPrice && confidence >= 50) {
+    action = 'cautious_buy';
+    const weakRiskReward = metrics.riskRewardRatio !== null && metrics.riskRewardRatio < 1.5;
+    signalExplanationAr = weakRiskReward
+      ? 'الهدف أعلى من السعر الحالي، لكن الثقة متوسطة ونسبة العائد إلى المخاطرة غير كافية للشراء القوي.'
+      : technicalIncomplete
+        ? 'الهدف أعلى من السعر الحالي، لكن البيانات الفنية غير مكتملة.'
+        : 'الهدف أعلى من السعر الحالي، لكن الثقة متوسطة.';
+    signalExplanationEn = weakRiskReward
+      ? 'The target is above the current price, but confidence is moderate and risk/reward is not enough for a strong buy.'
+      : technicalIncomplete
+        ? 'The target is above the current price, but technical data is incomplete.'
+        : 'The target is above the current price, but confidence is moderate.';
+  } else if (targetPrice <= currentPrice && stopLoss !== null && stopLoss < currentPrice) {
+    action = 'watch';
+    signalExplanationAr = 'الهدف لا يتجاوز السعر الحالي، لذلك تبقى الإشارة للمراقبة.';
+    signalExplanationEn = 'The target does not exceed the current price, so the signal remains a watch.';
+  } else if (targetPrice > currentPrice) {
+    action = 'watch';
+    signalExplanationAr = 'الهدف أعلى من السعر الحالي، لكن الثقة دون الحد الأدنى.';
+    signalExplanationEn = 'The target is above the current price, but confidence is below the minimum threshold.';
+  }
+
+  return {
+    action,
+    actionLabelAr: actionLabelAr(action),
+    actionLabelEn: actionLabelEn(action),
+    signalExplanationAr,
+    signalExplanationEn,
+    ...metrics,
+  };
 }
 
 function targetAndStop(input: {
@@ -521,6 +639,8 @@ function buildReasons(input: {
   if (input.fundamentals.earningsTrend === 'negative') reasons.push('المؤشرات الأساسية المتاحة تظهر ضغطاً على الأرباح.');
   if (input.action === 'wait') reasons.push('النتيجة بين منطقتي الشراء والبيع، لذلك الأفضل انتظار تأكيد أقوى.');
   if (input.action === 'watch') reasons.push('الإشارة تحت المراقبة بسبب جودة بيانات جزئية أو قوة غير كافية.');
+  if (input.action === 'cautious_buy') reasons.push('الهدف أعلى من السعر الحالي، لكن الإشارة مصنفة كشراء بحذر بسبب الثقة أو العائد إلى المخاطرة.');
+  if (input.action === 'sell_or_avoid' || input.action === 'sell') reasons.push('الهدف دون السعر الحالي أو المخاطر أعلى من العائد المتوقع، لذلك الإشارة للتجنب أو البيع.');
   reasons.push(`النتيجة المركبة الحالية ${input.score}/100 بناءً على السعر والمؤشرات والمخاطر وجودة البيانات.`);
   return Array.from(new Set(reasons)).slice(0, 6);
 }
@@ -634,6 +754,15 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
   }
   const provider = input.provider || 'Yahoo Finance';
   const currency = String(input.currency || 'USD').toUpperCase();
+  const classification = classifyTradingSignal({
+    currentPrice: price,
+    targetPrice,
+    stopLoss,
+    confidence,
+    dataQuality,
+    technicalSummary,
+  });
+  action = classification.action;
 
   return {
     symbol: input.symbol.trim().toUpperCase(),
@@ -642,14 +771,20 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
     market: input.market?.trim() || inferMarket(input.symbol, String(input.assetType)),
     currency,
     action,
-    actionLabelAr: actionLabelAr(action),
+    actionLabelAr: classification.actionLabelAr,
+    actionLabelEn: classification.actionLabelEn,
     confidence,
     riskLevel: risk,
     currentPrice: roundPrice(price, price),
     targetPrice,
     stopLoss,
-    timeframe: action === 'watch' ? 'تحت المراقبة' : '1-3 أسابيع',
-    reasons: [gateReasonAr, ...buildReasons({ action, score: totalScore, summary: technicalSummary, fundamentals, news: input.newsSentiment, dataQuality })].filter(Boolean),
+    upsidePercent: classification.upsidePercent,
+    downsidePercent: classification.downsidePercent,
+    riskRewardRatio: classification.riskRewardRatio,
+    signalExplanationAr: classification.signalExplanationAr,
+    signalExplanationEn: classification.signalExplanationEn,
+    timeframe: action === 'insufficient_data' ? 'بيانات غير كافية' : action === 'watch' ? 'مراقبة' : '1-3 أسابيع',
+    reasons: [classification.signalExplanationAr, gateReasonAr, ...buildReasons({ action, score: totalScore, summary: technicalSummary, fundamentals, news: input.newsSentiment, dataQuality })].filter(Boolean),
     warnings: preWarnings,
     provider,
     dataQuality,

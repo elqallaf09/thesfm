@@ -23,7 +23,16 @@ function json(data: unknown, init?: ResponseInit) {
 }
 
 function normalizeAction(value: string | null): SignalListFilters['action'] {
-  if (value === 'buy' || value === 'sell' || value === 'wait' || value === 'watch' || value === 'all') return value;
+  if (
+    value === 'buy' ||
+    value === 'cautious_buy' ||
+    value === 'watch' ||
+    value === 'sell_or_avoid' ||
+    value === 'insufficient_data' ||
+    value === 'sell' ||
+    value === 'wait' ||
+    value === 'all'
+  ) return value;
   return null;
 }
 
