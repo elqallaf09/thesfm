@@ -105,7 +105,7 @@ async function analyzeAsset(asset: TradableAsset) {
       name: asset.name,
       debugContext: { service: 'thesfm-trader-scanner', market: 'US' },
     }),
-    fetchYahooHistory(asset.providerSymbol, 'stock', '1y', '1d'),
+    fetchYahooHistory(asset.providerSymbol, 'stock', '2y', '1d'),
   ]);
 
   const quote = toMarketQuote(asset, quoteResult);

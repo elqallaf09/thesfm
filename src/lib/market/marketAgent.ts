@@ -42,6 +42,8 @@ export type MarketAgentSuccessResponse = {
   suggestedAction: MarketAgentAction;
   confidence: number;
   riskLevel: MarketAgentRiskLevel;
+  backtest?: MarketAgentBacktest;
+  precisionMode?: MarketAgentPrecisionMode;
   entryZone: { from: number; to: number };
   stopLoss: number | null;
   takeProfit: number[];
@@ -110,10 +112,10 @@ const MIN_RELIABLE_POINTS = 50;
 const EPSILON = 0.0000001;
 
 export const MARKET_AGENT_TIMEFRAME_CONFIG: Record<MarketAgentTimeframe, { period: string; interval: string; aggregateHours?: number }> = {
-  '15m': { period: '5d', interval: '15m' },
-  '1h': { period: '1mo', interval: '1h' },
-  '4h': { period: '3mo', interval: '1h', aggregateHours: 4 },
-  '1D': { period: '1y', interval: '1d' },
+  '15m': { period: '1mo', interval: '15m' },
+  '1h': { period: '3mo', interval: '1h' },
+  '4h': { period: '6mo', interval: '1h', aggregateHours: 4 },
+  '1D': { period: '2y', interval: '1d' },
   '1W': { period: '5y', interval: '1wk' },
 };
 
@@ -395,6 +397,215 @@ function percentDistance(left: number, right: number) {
   return Math.abs(left - right) / Math.max(Math.abs(right), EPSILON) * 100;
 }
 
+// ── وضع الدقة العالية (موحّد مع محرك الماسح analysisEngine) ──────────
+const AGENT_PRECISION_MIN_WINRATE = Math.min(Math.max(Number(process.env.PRECISION_MIN_WINRATE) || 90, 50), 99);
+const AGENT_PRECISION_MIN_SAMPLES = Math.min(Math.max(Number(process.env.PRECISION_MIN_SAMPLES) || 8, 3), 60);
+const AGENT_TP1_ATR_MULTIPLE = 0.9;
+const AGENT_SL_ATR_MULTIPLE = 1.8;
+const AGENT_BACKTEST_HORIZON = 15;
+
+export type MarketAgentBacktest = {
+  samples: number;
+  wins: number;
+  winRate: number | null;
+  horizonBars: number;
+  tpAtrMultiple: number;
+  slAtrMultiple: number;
+  label: string;
+};
+
+export type MarketAgentPrecisionMode = {
+  enabled: boolean;
+  required: number;
+  measuredWinRate: number | null;
+  samples: number;
+  passed: boolean;
+};
+
+type AgentEvaluation = {
+  price: number;
+  ema20: number | null;
+  ema50: number | null;
+  ema200: number | null;
+  rsi: number | null;
+  macd: ReturnType<typeof calculateMacd>;
+  atr: number | null;
+  volatilityPct: number;
+  levels: ReturnType<typeof supportResistance>;
+  latestVolume: number | null;
+  averageVolume: number | null;
+  previousClose: number;
+  bullishScore: number;
+  bearishScore: number;
+  waitScore: number;
+  totalSignals: number;
+  conflictingSignals: number;
+  overextended: boolean;
+  suggestedAction: MarketAgentAction;
+};
+
+// نفس منطق القرار مستخرج في دالة واحدة حتى يعيد الاختبار الخلفي تشغيل
+// القرار الحقيقي نفسه على كل نقطة تاريخية (لا نسخة مبسطة منه).
+function evaluateAgentSnapshot(points: MarketAgentPricePoint[]): AgentEvaluation | null {
+  const closes = points.map(point => point.close).filter(Number.isFinite);
+  const currentPrice = closes.at(-1);
+  if (!Number.isFinite(currentPrice) || Number(currentPrice) <= 0) return null;
+  const price = Number(currentPrice);
+  const ema20 = calculateEma(closes, 20);
+  const ema50 = calculateEma(closes, 50);
+  const ema200 = calculateEma(closes, 200);
+  const rsi = calculateRsi(closes);
+  const macd = calculateMacd(closes);
+  const atr = calculateAtr(points);
+  const volatilityPct = atr ? (atr / price) * 100 : (standardDeviation(closes.slice(-30)) / price) * 100;
+  const levels = supportResistance(points, price);
+  const latestVolume = points.at(-1)?.volume ?? null;
+  const averageVolume = average(points.slice(-20).map(point => point.volume).filter((value): value is number => Number.isFinite(value)));
+  const previousClose = closes.at(-2) ?? price;
+
+  let bullishScore = 0;
+  let bearishScore = 0;
+  let waitScore = 0;
+  let totalSignals = 0;
+  const addSignal = (side: 'bullish' | 'bearish' | 'wait', weight = 1) => {
+    totalSignals += weight;
+    if (side === 'bullish') bullishScore += weight;
+    else if (side === 'bearish') bearishScore += weight;
+    else waitScore += weight;
+  };
+
+  if (ema20 !== null && ema50 !== null) {
+    if (price > ema20 && price > ema50) addSignal('bullish', 2);
+    else if (price < ema20 && price < ema50) addSignal('bearish', 2);
+    else addSignal('wait', 2);
+
+    if (ema20 > ema50) addSignal('bullish', 2);
+    else if (ema20 < ema50) addSignal('bearish', 2);
+    else addSignal('wait', 2);
+  }
+
+  if (ema50 !== null && ema200 !== null) {
+    if (ema50 > ema200 && price > ema50) addSignal('bullish', 1);
+    else if (ema50 < ema200 && price < ema50) addSignal('bearish', 1);
+    else addSignal('wait', 1);
+  }
+
+  if (rsi !== null) {
+    if (rsi >= 45 && rsi <= 70) addSignal('bullish', 1);
+    else if (rsi < 45 && rsi >= 25) addSignal('bearish', 1);
+    else addSignal('wait', 2);
+  }
+
+  if (macd.trend === 'bullish') addSignal('bullish', 2);
+  else if (macd.trend === 'bearish') addSignal('bearish', 2);
+  else addSignal('wait', 1);
+
+  const nearestSupport = levels.support[0];
+  const nearestResistance = levels.resistance[0];
+  if (nearestSupport && percentDistance(price, nearestSupport) <= Math.max(1.2, volatilityPct * 0.7)) addSignal('bullish', 1);
+  if (nearestResistance && percentDistance(price, nearestResistance) <= Math.max(1.2, volatilityPct * 0.7)) addSignal('bearish', 1);
+  if (nearestResistance && price > nearestResistance) addSignal('bullish', 1);
+  if (nearestSupport && price < nearestSupport) addSignal('bearish', 1);
+
+  if (latestVolume && averageVolume) {
+    if (latestVolume > averageVolume * 1.05 && price > previousClose) addSignal('bullish', 1);
+    else if (latestVolume > averageVolume * 1.05 && price < previousClose) addSignal('bearish', 1);
+    else addSignal('wait', 0.5);
+  }
+
+  const conflictingSignals = Math.min(bullishScore, bearishScore) + waitScore * 0.5;
+  const overextended = rsi !== null && (rsi > 75 || rsi < 25);
+  let suggestedAction: MarketAgentAction = 'wait';
+  if (!overextended && bullishScore >= bearishScore + 2 && bullishScore >= waitScore + 1) suggestedAction = 'buy';
+  if (!overextended && bearishScore >= bullishScore + 2 && bearishScore >= waitScore + 1) suggestedAction = 'sell';
+
+  return {
+    price,
+    ema20,
+    ema50,
+    ema200,
+    rsi,
+    macd,
+    atr,
+    volatilityPct,
+    levels,
+    latestVolume,
+    averageVolume,
+    previousClose,
+    bullishScore,
+    bearishScore,
+    waitScore,
+    totalSignals,
+    conflictingSignals,
+    overextended,
+    suggestedAction,
+  };
+}
+
+// اختبار خلفي بمحاكاة أول ملامسة: أيهما يُلمس أولا، الهدف الأول أم الوقف؟
+function backtestAgentFirstTouch(points: MarketAgentPricePoint[]): MarketAgentBacktest {
+  const horizonBars = AGENT_BACKTEST_HORIZON;
+  const samples: { success: boolean }[] = [];
+  const limit = points.length - horizonBars;
+  const start = Math.max(MIN_RELIABLE_POINTS, Math.min(200, Math.floor(points.length * 0.35)));
+
+  for (let index = start; index < limit; index += 3) {
+    const history = points.slice(0, index + 1);
+    const evaluation = evaluateAgentSnapshot(history);
+    if (!evaluation || evaluation.suggestedAction === 'wait') continue;
+
+    const entry = evaluation.price;
+    const atrValue = Math.max(evaluation.atr ?? 0, entry * 0.004);
+    const direction = evaluation.suggestedAction === 'buy' ? 1 : -1;
+    const takeProfit = entry + direction * atrValue * AGENT_TP1_ATR_MULTIPLE;
+    const stopLoss = entry - direction * atrValue * AGENT_SL_ATR_MULTIPLE;
+    let outcome: boolean | null = null;
+
+    for (let step = index + 1; step <= index + horizonBars; step += 1) {
+      const point = points[step];
+      if (!point || !Number.isFinite(point.close)) continue;
+      const high = Number.isFinite(point.high) ? Number(point.high) : point.close;
+      const low = Number.isFinite(point.low) ? Number(point.low) : point.close;
+      const hitStop = direction === 1 ? low <= stopLoss : high >= stopLoss;
+      const hitTarget = direction === 1 ? high >= takeProfit : low <= takeProfit;
+      if (hitStop) { outcome = false; break; } // تحفظي: تلامس الاثنين بنفس الشمعة يُحسب خسارة
+      if (hitTarget) { outcome = true; break; }
+    }
+
+    if (outcome === null) {
+      const exit = points[index + horizonBars]?.close;
+      outcome = Number.isFinite(exit) ? (direction === 1 ? Number(exit) > entry : Number(exit) < entry) : false;
+    }
+
+    samples.push({ success: outcome });
+  }
+
+  if (samples.length < 3) {
+    return {
+      samples: samples.length,
+      wins: 0,
+      winRate: null,
+      horizonBars,
+      tpAtrMultiple: AGENT_TP1_ATR_MULTIPLE,
+      slAtrMultiple: AGENT_SL_ATR_MULTIPLE,
+      label: 'بيانات غير كافية',
+    };
+  }
+
+  const wins = samples.filter(sample => sample.success).length;
+  const winRate = Math.round((wins / samples.length) * 1000) / 10;
+
+  return {
+    samples: samples.length,
+    wins,
+    winRate,
+    horizonBars,
+    tpAtrMultiple: AGENT_TP1_ATR_MULTIPLE,
+    slAtrMultiple: AGENT_SL_ATR_MULTIPLE,
+    label: `${winRate}% إصابة الهدف الأول`,
+  };
+}
+
 function buildSummaryArabic(input: {
   symbol: string;
   direction: MarketAgentDirection;
@@ -457,85 +668,68 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
   const points = normalizeMarketAgentPoints(history);
   if (points.length < MIN_RELIABLE_POINTS) return insufficientResponse(input);
 
-  const closes = points.map(point => point.close).filter(Number.isFinite);
-  const currentPrice = closes.at(-1);
-  if (!Number.isFinite(currentPrice) || Number(currentPrice) <= 0) return insufficientResponse(input);
-  const price = Number(currentPrice);
-  const ema20 = calculateEma(closes, 20);
-  const ema50 = calculateEma(closes, 50);
-  const ema200 = calculateEma(closes, 200);
-  const rsi = calculateRsi(closes);
-  const macd = calculateMacd(closes);
-  const atr = calculateAtr(points);
-  const volatilityPct = atr ? (atr / price) * 100 : (standardDeviation(closes.slice(-30)) / price) * 100;
-  const levels = supportResistance(points, price);
-  const latestVolume = points.at(-1)?.volume ?? null;
-  const averageVolume = average(points.slice(-20).map(point => point.volume).filter((value): value is number => Number.isFinite(value)));
-  const previousClose = closes.at(-2) ?? price;
+  const evaluation = evaluateAgentSnapshot(points);
+  if (!evaluation) return insufficientResponse(input);
+
+  const {
+    price,
+    ema20,
+    ema50,
+    ema200,
+    rsi,
+    macd,
+    atr,
+    volatilityPct,
+    levels,
+    latestVolume,
+    averageVolume,
+    bullishScore,
+    bearishScore,
+    waitScore,
+    totalSignals,
+    conflictingSignals,
+    overextended,
+  } = evaluation;
+  let { suggestedAction } = evaluation;
   const pivot = pivotPoints(points.at(-1)!, price);
-
-  let bullishScore = 0;
-  let bearishScore = 0;
-  let waitScore = 0;
-  let totalSignals = 0;
-  const addSignal = (side: 'bullish' | 'bearish' | 'wait', weight = 1) => {
-    totalSignals += weight;
-    if (side === 'bullish') bullishScore += weight;
-    else if (side === 'bearish') bearishScore += weight;
-    else waitScore += weight;
-  };
-
-  if (ema20 !== null && ema50 !== null) {
-    if (price > ema20 && price > ema50) addSignal('bullish', 2);
-    else if (price < ema20 && price < ema50) addSignal('bearish', 2);
-    else addSignal('wait', 2);
-
-    if (ema20 > ema50) addSignal('bullish', 2);
-    else if (ema20 < ema50) addSignal('bearish', 2);
-    else addSignal('wait', 2);
-  }
-
-  if (ema50 !== null && ema200 !== null) {
-    if (ema50 > ema200 && price > ema50) addSignal('bullish', 1);
-    else if (ema50 < ema200 && price < ema50) addSignal('bearish', 1);
-    else addSignal('wait', 1);
-  }
-
-  if (rsi !== null) {
-    if (rsi >= 45 && rsi <= 70) addSignal('bullish', 1);
-    else if (rsi < 45 && rsi >= 25) addSignal('bearish', 1);
-    else addSignal('wait', 2);
-  }
-
-  if (macd.trend === 'bullish') addSignal('bullish', 2);
-  else if (macd.trend === 'bearish') addSignal('bearish', 2);
-  else addSignal('wait', 1);
-
   const nearestSupport = levels.support[0];
   const nearestResistance = levels.resistance[0];
-  if (nearestSupport && percentDistance(price, nearestSupport) <= Math.max(1.2, volatilityPct * 0.7)) addSignal('bullish', 1);
-  if (nearestResistance && percentDistance(price, nearestResistance) <= Math.max(1.2, volatilityPct * 0.7)) addSignal('bearish', 1);
-  if (nearestResistance && price > nearestResistance) addSignal('bullish', 1);
-  if (nearestSupport && price < nearestSupport) addSignal('bearish', 1);
 
-  if (latestVolume && averageVolume) {
-    if (latestVolume > averageVolume * 1.05 && price > previousClose) addSignal('bullish', 1);
-    else if (latestVolume > averageVolume * 1.05 && price < previousClose) addSignal('bearish', 1);
-    else addSignal('wait', 0.5);
-  }
-
-  const conflictingSignals = Math.min(bullishScore, bearishScore) + waitScore * 0.5;
-  const overextended = rsi !== null && (rsi > 75 || rsi < 25);
-  let suggestedAction: MarketAgentAction = 'wait';
-  if (!overextended && bullishScore >= bearishScore + 2 && bullishScore >= waitScore + 1) suggestedAction = 'buy';
-  if (!overextended && bearishScore >= bullishScore + 2 && bearishScore >= waitScore + 1) suggestedAction = 'sell';
-
-  const direction: MarketAgentDirection = suggestedAction === 'buy' ? 'bullish' : suggestedAction === 'sell' ? 'bearish' : 'neutral';
   const winningScore = suggestedAction === 'buy' ? bullishScore : suggestedAction === 'sell' ? bearishScore : Math.max(waitScore, Math.abs(bullishScore - bearishScore));
   const rawConfidence = suggestedAction === 'wait'
     ? 48 + Math.min(24, (winningScore / Math.max(totalSignals, 1)) * 30) - Math.min(12, conflictingSignals * 2)
     : 52 + Math.min(35, (winningScore / Math.max(totalSignals, 1)) * 40) - Math.min(12, conflictingSignals * 1.5);
-  const confidence = Math.max(35, Math.min(85, Math.round(rawConfidence)));
+  let confidence = Math.max(35, Math.min(85, Math.round(rawConfidence)));
+
+  // ── بوابة الدقة العالية (موحّدة مع محرك الماسح) ────────────────────
+  const backtest = backtestAgentFirstTouch(points);
+  const precisionMode: MarketAgentPrecisionMode = {
+    enabled: true,
+    required: AGENT_PRECISION_MIN_WINRATE,
+    measuredWinRate: backtest.winRate,
+    samples: backtest.samples,
+    passed: false,
+  };
+  let gateNoteArabic = '';
+
+  if (suggestedAction !== 'wait') {
+    if (backtest.winRate === null || backtest.samples < AGENT_PRECISION_MIN_SAMPLES) {
+      suggestedAction = 'wait';
+      confidence = Math.min(confidence, 58);
+      gateNoteArabic = ` وضع الدقة العالية: عينات الاختبار الخلفي (${backtest.samples}) غير كافية لإثبات نسبة نجاح ${AGENT_PRECISION_MIN_WINRATE}%، لذلك تحوّلت الإشارة إلى انتظار.`;
+    } else if (backtest.winRate < AGENT_PRECISION_MIN_WINRATE) {
+      suggestedAction = 'wait';
+      confidence = Math.min(confidence, 62);
+      gateNoteArabic = ` وضع الدقة العالية: نسبة إصابة هذا الإعداد تاريخياً ${backtest.winRate}% وهي أقل من الحد المطلوب ${AGENT_PRECISION_MIN_WINRATE}%، لذلك تحوّلت الإشارة إلى انتظار.`;
+    } else {
+      const smoothedWinRate = ((backtest.wins + 2) / (backtest.samples + 4)) * 100;
+      precisionMode.passed = true;
+      confidence = Math.min(96, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
+      gateNoteArabic = ` اجتازت الإشارة فلتر الدقة العالية: إصابة الهدف الأول ${backtest.winRate}% عبر ${backtest.samples} صفقة تاريخية على نفس الرمز والإطار.`;
+    }
+  }
+
+  const direction: MarketAgentDirection = suggestedAction === 'buy' ? 'bullish' : suggestedAction === 'sell' ? 'bearish' : 'neutral';
 
   const alignedSignals = suggestedAction === 'buy' ? bullishScore : suggestedAction === 'sell' ? bearishScore : waitScore;
   const conflictHigh = Math.abs(bullishScore - bearishScore) < 2 || waitScore >= Math.max(bullishScore, bearishScore) * 0.65;
@@ -553,17 +747,18 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
       ? { from: roundPrice(price - zonePadding, price)!, to: roundPrice(Math.max(price, nearestResistance ?? price) + zonePadding * 0.25, price)! }
       : { from: roundPrice(price - zonePadding, price)!, to: roundPrice(price + zonePadding, price)! };
 
+  // نفس هندسة الاختبار الخلفي: الهدف الأول 0.9×ATR (احتمال إصابة مرتفع)
+  // والوقف 1.8×ATR خلف الهيكل — حتى تكون نسبة النجاح المعروضة مقاسة على نفس الأرقام المنشورة.
   const stopLoss = suggestedAction === 'buy'
-    ? roundPrice(Math.min(nearestSupport ?? price - range, price - range * 1.5), price)
+    ? roundPrice(Math.min(nearestSupport ? nearestSupport - range * 0.15 : Number.POSITIVE_INFINITY, price - range * AGENT_SL_ATR_MULTIPLE), price)
     : suggestedAction === 'sell'
-      ? roundPrice(Math.max(nearestResistance ?? price + range, price + range * 1.5), price)
+      ? roundPrice(Math.max(nearestResistance ? nearestResistance + range * 0.15 : Number.NEGATIVE_INFINITY, price + range * AGENT_SL_ATR_MULTIPLE), price)
       : null;
 
-  const riskDistance = stopLoss ? Math.abs(price - stopLoss) : range;
   const takeProfit = suggestedAction === 'buy'
-    ? [...levels.resistance.filter(level => level > price), price + riskDistance * 1.5, price + riskDistance * 2.4, price + riskDistance * 3.2]
+    ? [price + range * AGENT_TP1_ATR_MULTIPLE, price + range * 2.2, ...levels.resistance.filter(level => level > price + range * 2.2)]
     : suggestedAction === 'sell'
-      ? [...levels.support.filter(level => level < price), price - riskDistance * 1.5, price - riskDistance * 2.4, price - riskDistance * 3.2]
+      ? [price - range * AGENT_TP1_ATR_MULTIPLE, price - range * 2.2, ...levels.support.filter(level => level < price - range * 2.2)]
       : [];
   const uniqueTakeProfit = takeProfit
     .filter(value => value > 0)
@@ -584,7 +779,7 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
     macd: macd.trend,
     trend: shortTerm,
     conflict: conflictHigh,
-  });
+  }) + gateNoteArabic;
 
   return {
     ok: true,
@@ -597,6 +792,8 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
     suggestedAction,
     confidence,
     riskLevel,
+    backtest,
+    precisionMode,
     entryZone,
     stopLoss,
     takeProfit: uniqueTakeProfit,
