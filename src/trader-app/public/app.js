@@ -1946,16 +1946,16 @@
       const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
+        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || unavailableMark())}</small></span></button></td>
         <td data-label="السوق">${exchangeBadge(a)}</td>
-        <td class="ltr" data-label="السعر">${h(p === null ? "غير متاح" : price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? "غير متاح" : change(chg))}</td>
+        <td class="ltr" data-label="السعر">${h(p === null ? unavailableMark() : price(p, c))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? unavailableMark() : change(chg))}</td>
         <td data-label="إشارة التداول"><span class="state-badge ${signalToneClass(sig)}">${h(sigLabel(sig))}</span></td>
-        <td class="ltr" data-label="الثقة">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
-        <td class="ltr" data-label="الهدف">${metrics.target === null ? "غير متاح" : price(metrics.target, c)}</td>
-        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
-        <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
-        <td class="ltr" data-label="سكور AI">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
+        <td class="ltr" data-label="الثقة">${conf === null ? unavailableMark() : Math.round(conf) + "%"}</td>
+        <td class="ltr" data-label="الهدف">${metrics.target === null ? unavailableMark() : price(metrics.target, c)}</td>
+        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || unavailableMark())}</td>
+        <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : unavailableMark()}</td>
+        <td class="ltr" data-label="سكور AI">${score === null ? unavailableMark() : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
         <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
       </tr>`;
     }).join("");
@@ -1976,7 +1976,7 @@
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">إزالة</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
       <div class="badge-row"><span class="currency-badge">${h(c)}</span>${exchangeBadge(a)}<span class="state-badge trading-signal-badge ${signalToneClass(sig)}" title="إشارة التداول">${h(sigLabel(sig))}</span><span class="status-tag watchlist-status ${isInWatchlist(a.symbol) ? "ok" : "muted"}">${h(watchlistStatusLabel(a.symbol))}</span></div>
-      <div class="asset-metrics"><span>السعر<b class="ltr">${h(metrics.current === null ? "غير متاح" : price(metrics.current, c))}</b></span><span>الهدف<b class="ltr">${h(metrics.target === null ? "غير متاح" : price(metrics.target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(metrics.stop === null ? "غير متاح" : price(metrics.stop, c))}</b></span><span>الصعود المتوقع<b class="ltr">${h(formatSignalPercent(metrics.upsidePercent))}</b></span><span>الهبوط إلى وقف الخسارة<b class="ltr">${h(formatSignalPercent(metrics.downsidePercent))}</b></span><span>العائد/المخاطرة<b class="ltr">${h(formatRiskRewardRatio(metrics.riskRewardRatio))}</b></span><span>ثقة AI<b>${metrics.confidence === null ? "غير متاح" : `${Math.round(metrics.confidence)}%`}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span></div>
+      <div class="asset-metrics"><span>السعر<b class="ltr">${h(metrics.current === null ? unavailableMark() : price(metrics.current, c))}</b></span><span>الهدف<b class="ltr">${h(metrics.target === null ? unavailableMark() : price(metrics.target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(metrics.stop === null ? unavailableMark() : price(metrics.stop, c))}</b></span><span>الصعود المتوقع<b class="ltr">${h(formatSignalPercent(metrics.upsidePercent))}</b></span><span>الهبوط إلى وقف الخسارة<b class="ltr">${h(formatSignalPercent(metrics.downsidePercent))}</b></span><span>العائد/المخاطرة<b class="ltr">${h(formatRiskRewardRatio(metrics.riskRewardRatio))}</b></span><span>ثقة AI<b>${metrics.confidence === null ? unavailableMark() : `${Math.round(metrics.confidence)}%`}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? unavailableMark() : change(chg))}</b></span></div>
       <p class="signal-explanation">${h(metrics.explanation)}</p>
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
@@ -1986,7 +1986,7 @@
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(meta.en)}</span></div><strong>${h(meta.ar)}</strong><p>${h(marketExchange)} · العملة <span class="ltr">${h(contextCurrency({ marketId: meta.id }))}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = tradeMetricsForAsset(a).signal, chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : signalCardClass(sig)}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = tradeMetricsForAsset(a).signal, chg = changePercentValue(a); return `<button class="heat-cell ${chg === null ? "unavailable" : signalCardClass(sig)}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? unavailableMark() : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
