@@ -161,7 +161,7 @@ function buildStockDetailPayload(result: StockAnalysisResult) {
         label: result.riskLevel,
         notes: result.warnings,
       },
-      backtest: {
+      backtest: result.backtest ?? {
         label: 'Not calculated',
         samples: null,
         horizonDays: null,
@@ -252,7 +252,6 @@ function buildAgentDetailPayload(
       signal: action,
       action,
       actionLabel: action,
-      backtest: analysis.backtest ?? null,
       precisionMode: analysis.precisionMode ?? null,
       risk: { level: analysis.riskLevel, label: analysis.riskLevel, notes: analysis.riskLevel === 'high' ? ['High volatility relative to the current signal.'] : [] },
       riskLevel: analysis.riskLevel,
@@ -304,7 +303,7 @@ function buildAgentDetailPayload(
         movePct: percentMove(analysis.currentPrice, targetPrice),
         confidence: Math.max(35, analysis.confidence - index * 7),
       })),
-      backtest: {
+      backtest: analysis.backtest ?? {
         label: 'Not calculated',
         samples: null,
         horizonDays: null,
