@@ -1,7 +1,52 @@
 import type { NextConfig } from "next";
+import fs from "node:fs";
+import path from "node:path";
+
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
 const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
+const IS_WINDOWS_BUILD = process.platform === "win32";
+
+function writeTextIfMissing(filePath: string, content: string) {
+  if (fs.existsSync(filePath)) return;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, "utf8");
+}
+
+function writeJsonIfMissing(filePath: string, value: unknown) {
+  writeTextIfMissing(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function ensureWindowsServerManifests() {
+  const serverDir = path.join(PROJECT_ROOT, ".next", "server");
+
+  writeJsonIfMissing(path.join(serverDir, "pages-manifest.json"), {
+    "/_app": "pages/_app.js",
+    "/_document": "pages/_document.js",
+    "/_error": "pages/_error.js",
+    "/404": "pages/404.js",
+    "/500": "pages/500.js",
+  });
+  writeJsonIfMissing(path.join(serverDir, "middleware-manifest.json"), {
+    version: 3,
+    sortedMiddleware: [],
+    middleware: {},
+    functions: {},
+  });
+  writeJsonIfMissing(path.join(serverDir, "functions-config-manifest.json"), {
+    version: 1,
+    functions: {},
+  });
+  writeTextIfMissing(
+    path.join(serverDir, "middleware-build-manifest.js"),
+    "self.__BUILD_MANIFEST={};self.__BUILD_MANIFEST_CB&&self.__BUILD_MANIFEST_CB();\n",
+  );
+  writeTextIfMissing(
+    path.join(serverDir, "middleware-react-loadable-manifest.js"),
+    "self.__REACT_LOADABLE_MANIFEST={};\n",
+  );
+}
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
@@ -13,8 +58,14 @@ const nextConfig: NextConfig = {
     root: PROJECT_ROOT,
   },
   webpack(config, { dev }) {
-    if (!dev && process.platform === "win32") {
+    if (!dev && IS_WINDOWS_BUILD) {
       config.cache = false;
+      config.plugins ??= [];
+      config.plugins.push({
+        apply(compiler: { hooks: { done: { tap: (name: string, callback: () => void) => void } } }) {
+          compiler.hooks.done.tap("EnsureWindowsServerManifests", ensureWindowsServerManifests);
+        },
+      });
     }
     return config;
   },

@@ -1,3 +1,5 @@
+import Error from 'next/error';
+
 export default function ServerErrorPage() {
-  return <h1>500</h1>;
+  return <Error statusCode={500} />;
 }
