@@ -8,7 +8,6 @@ const STATIC_ASSETS = [
   "/cinema.css?v=20260703-compact-calendar",
   "/app.js?v=20260703-compact-calendar",
   "/detail.js?v=20260703-compact-calendar",
-  "/detail.js?v=20260703-compact-calendar",
   "/manifest.webmanifest",
   "/assets/sfm-trader-logo.svg",
   "/assets/trading-cinematic-bg.jpg",
