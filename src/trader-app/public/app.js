@@ -7,23 +7,12 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260703-compact-calendar";
-  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1", calendarUi: "sfmTraderCalendarUi:v1" };
+  const VER = "20260701-trade-performance-1";
+  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
   const INITIAL_LOADING_MAX_MS = 4500;
   const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 8000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
-  const CALENDAR_SECTION_KEYS = ["earnings", "dividends", "ipos", "economic"];
-  const CALENDAR_PREVIEW_LIMIT = 10;
-  const CALENDAR_EXPANDED_LIMIT = 50;
-  const MAJOR_EARNINGS_SYMBOLS = new Set(["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "AVGO", "LLY", "JPM", "V", "UNH", "XOM", "MA", "WMT", "PG", "COST", "HD", "NFLX", "AMD", "CRM", "ORCL", "ADBE", "BAC", "KO", "PEP", "MCD", "DIS", "CSCO", "INTC", "PFE", "MRK", "JNJ"]);
-  const DEFAULT_CALENDAR_UI = {
-    open: { earnings: true, dividends: false, ipos: false, economic: false },
-    expanded: {},
-    earningsFilter: "all",
-    earningsSearch: "",
-    earningsSort: { key: "reportDate", dir: "asc" }
-  };
   const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
   const DEV_DIAGNOSTICS = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.hostname.endsWith(".local");
@@ -60,34 +49,6 @@
     ["food", "الأغذية والاستهلاك", "Food / Consumer", "Sector", "USD", ["KO", "PEP", "MCD", "COST"], "", "food"],
     ["healthcare", "الصحة والدواء", "Pharma / Healthcare", "Sector", "USD", ["LLY", "PFE", "JNJ", "MRK"], "", "healthcare"]
   ].map(([id, ar, en, family, currency, symbols, tone, apiMarket]) => ({ id, ar, en, family, currency, symbols, tone, apiMarket }));
-
-  const MARKET_METADATA = {
-    "us-stocks": { id: "us-stocks", ar: "الأسهم الأمريكية", en: "US Stocks", assetAr: "أسهم", assetEn: "Stocks", currency: "USD", country: "US", exchange: "US" },
-    etfs: { id: "etfs", ar: "الصناديق المتداولة", en: "ETFs", assetAr: "الصناديق المتداولة", assetEn: "ETFs", currency: "USD", country: "US", exchange: "US" },
-    crypto: { id: "crypto", ar: "العملات الرقمية", en: "Crypto", assetAr: "العملات الرقمية", assetEn: "Crypto", currency: "USD", exchange: "Crypto" },
-    forex: { id: "forex", ar: "العملات", en: "Forex", assetAr: "عملات", assetEn: "Forex", currency: "USD", exchange: "Forex" },
-    commodities: { id: "commodities", ar: "السلع", en: "Commodities", assetAr: "سلع", assetEn: "Commodities", currency: "USD" },
-    metals: { id: "metals", ar: "المعادن", en: "Metals", assetAr: "المعادن", assetEn: "Metals", currency: "USD", exchange: "Metals" },
-    indices: { id: "indices", ar: "المؤشرات", en: "Indices", assetAr: "مؤشرات", assetEn: "Indices", currency: "USD" },
-    gcc: { id: "gcc", ar: "أسواق الخليج", en: "Gulf Markets", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    kuwait: { id: "kuwait", ar: "بورصة الكويت", en: "Boursa Kuwait", assetAr: "أسهم", assetEn: "Stocks", currency: "KWD", country: "KW", exchange: "Boursa Kuwait" },
-    saudi: { id: "saudi", ar: "السوق السعودي", en: "Saudi Exchange", assetAr: "أسهم", assetEn: "Stocks", currency: "SAR", country: "SA", exchange: "Tadawul" },
-    uae: { id: "uae", ar: "سوق الإمارات", en: "UAE Markets", assetAr: "أسهم", assetEn: "Stocks", currency: "AED", country: "AE", exchange: "ADX/DFM" },
-    qatar: { id: "qatar", ar: "بورصة قطر", en: "Qatar Exchange", assetAr: "أسهم", assetEn: "Stocks", currency: "QAR", country: "QA", exchange: "Qatar Exchange" },
-    bahrain: { id: "bahrain", ar: "بورصة البحرين", en: "Bahrain Bourse", assetAr: "أسهم", assetEn: "Stocks", currency: "BHD", country: "BH", exchange: "Bahrain Bourse" },
-    oman: { id: "oman", ar: "بورصة عمان", en: "Oman Exchange", assetAr: "أسهم", assetEn: "Stocks", currency: "OMR", country: "OM", exchange: "Muscat Stock Exchange" },
-    europe: { id: "europe", ar: "الأسواق الأوروبية", en: "European Markets", assetAr: "أسهم", assetEn: "Stocks", currency: "EUR" },
-    asia: { id: "asia", ar: "الأسواق الآسيوية", en: "Asian Markets", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    technology: { id: "technology", ar: "أسهم التقنية", en: "Technology", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    ai: { id: "ai", ar: "أسهم الذكاء الاصطناعي", en: "AI Stocks", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    semiconductors: { id: "semiconductors", ar: "أشباه الموصلات", en: "Semiconductors", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    energy: { id: "energy", ar: "الطاقة", en: "Energy Stocks", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    banking: { id: "banking", ar: "البنوك", en: "Banking Stocks", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    food: { id: "food", ar: "الأغذية والاستهلاك", en: "Food / Consumer", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" },
-    healthcare: { id: "healthcare", ar: "الصحة والدواء", en: "Pharma / Healthcare", assetAr: "أسهم", assetEn: "Stocks", currency: "USD" }
-  };
-  const ETF_SYMBOLS = new Set(["SPY", "QQQ", "VOO", "DIA", "IWM", "GLD", "SLV", "TLT", "VTI"]);
-  const METAL_SYMBOLS = new Set(["XAUUSD", "XAGUSD", "GOLD", "SILVER", "GC=F", "SI=F"]);
 
   const EXPLORE = ["forex", "us-stocks", "kuwait", "saudi", "uae", "qatar", "bahrain", "europe", "asia", "crypto", "commodities", "indices", "etfs", "technology", "ai", "semiconductors", "energy", "banking", "healthcare", "food"];
 
@@ -147,14 +108,12 @@
   /* ─────────────────────────── State ─────────────────────────── */
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, traderStatus: {}, commandCards: {},
+    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, commandCards: {},
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
-    calendarLoadingSections: { earnings: false, dividends: false, ipos: false, economic: false },
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
-    calendarUi: normalizeCalendarUi(read(keys.calendarUi, {})),
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
-    errors: {}, analysisLoading: false,
+    errors: {},
     cache: new Map(), marketCache: new Map()
   };
 
@@ -193,13 +152,11 @@
       get("/market/signals?limit=60"),
       get("/market/signal-alerts?limit=50"),
       get("/markets"), get("/market-news?limit=12"), get("/followed-trades"),
-      get("/trader/provider-status", { label: "providerStatus" }),
-      get("/trader/status", { label: "providerStatus" })
+      get("/trader/provider-status", { label: "providerStatus" })
     ]);
-    const [rec, commandCards, signals, signalAlerts, mk, news, followed, providerStatus, traderStatus] = settled.map((result, index) => settledValue(result, ["quotes", "quotes", "signals", "signals", "quotes", "news", "quotes", "providerStatus", "providerStatus"][index]));
+    const [rec, commandCards, signals, signalAlerts, mk, news, followed, providerStatus] = settled.map((result, index) => settledValue(result, ["quotes", "quotes", "signals", "signals", "quotes", "news", "quotes", "providerStatus"][index]));
     state.rec = rec; state.commandCards = commandCards; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
     state.providerStatus = providerStatus || {};
-    state.traderStatus = traderStatus || {};
     state.provider = providerStatus.dataProvider || commandCards.dataProvider || rec.dataProvider || mk.dataProvider || news.dataProvider || commandCards.provider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
     renderAfterData();
   }
@@ -271,28 +228,16 @@
       if (tab) { event.preventDefault(); onTab(tab); return; }
       const tf = event.target.closest("[data-timeframe]");
       if (tf) { event.preventDefault(); state.timeframe = tf.dataset.timeframe; render(); return; }
-      const symbolTf = event.target.closest("[data-symbol-timeframe]");
-      if (symbolTf) {
-        event.preventDefault();
-        state.timeframe = symbolTf.dataset.symbolTimeframe || "1Y";
-        if (state.route.id === "symbol-details" && state.route.symbol) {
-          state.cache.delete(sym(state.route.symbol));
-          loadSymbol(state.route.symbol, true);
-        }
-        return;
-      }
       const cr = event.target.closest("[data-calendar-range]");
       if (cr) {
         event.preventDefault();
         state.calendarRange = cr.dataset.calendarRange || "30";
         state.calendarLoading = true;
-        setCalendarSectionLoading(true);
         render();
         loadCalendars(true).catch((error) => {
           devLog("calendar", "failed", { message: errorMessage(error) });
         }).finally(() => {
           state.calendarLoading = false;
-          setCalendarSectionLoading(false);
           render();
           afterRoute();
         });
@@ -312,41 +257,12 @@
       if (refreshTrades) { event.preventDefault(); refreshFollowedTrades(true); return; }
       const runSignals = event.target.closest("[data-run-signals]");
       if (runSignals) { event.preventDefault(); runSignalRefresh(); return; }
-      const runAnalysis = event.target.closest("[data-run-analysis]");
-      if (runAnalysis) { event.preventDefault(); runAnalysisRefresh(); return; }
-      const refreshProvider = event.target.closest("[data-refresh-provider]");
-      if (refreshProvider) { event.preventDefault(); refreshProviderStatus(true); return; }
       const delAlert = event.target.closest("[data-del-alert]");
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
-      const calendarRetry = event.target.closest("[data-calendar-retry]");
-      if (calendarRetry) { event.preventDefault(); refreshCalendarSection(calendarRetry.dataset.calendarRetry); return; }
-      const calendarToggle = event.target.closest("[data-calendar-toggle]");
-      if (calendarToggle) { event.preventDefault(); toggleCalendarSection(calendarToggle.dataset.calendarToggle); return; }
-      const calendarShow = event.target.closest("[data-calendar-show]");
-      if (calendarShow) { event.preventDefault(); setCalendarExpanded(calendarShow.dataset.calendarShow, calendarShow.dataset.calendarMode === "more"); return; }
-      const earningsFilter = event.target.closest("[data-earnings-filter]");
-      if (earningsFilter) { event.preventDefault(); updateCalendarUi({ earningsFilter: earningsFilter.dataset.earningsFilter || "all", expanded: { ...(state.calendarUi.expanded || {}), earnings: false } }); return; }
-      const earningsSort = event.target.closest("[data-earnings-sort]");
-      if (earningsSort) { event.preventDefault(); setEarningsSort(earningsSort.dataset.earningsSort); return; }
       const retry = event.target.closest("[data-retry]");
       if (retry) { event.preventDefault(); retryRoute(); return; }
       const collapse = event.target.closest("#sidebar-collapse");
       if (collapse) { event.preventDefault(); document.getElementById("app-shell").classList.toggle("is-collapsed"); return; }
-    });
-    document.addEventListener("input", (event) => {
-      const search = event.target.closest("[data-earnings-search]");
-      if (!search) return;
-      state.calendarUi.earningsSearch = search.value || "";
-      state.calendarUi.expanded = { ...(state.calendarUi.expanded || {}), earnings: false };
-      saveCalendarUi();
-      render();
-      requestAnimationFrame(() => {
-        const input = document.querySelector("[data-earnings-search]");
-        if (!input) return;
-        input.focus();
-        const end = input.value.length;
-        try { input.setSelectionRange(end, end); } catch (_e) {}
-      });
     });
     document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -367,10 +283,7 @@
   }
   async function retryRoute() {
     state.errors = {};
-    if (state.route.id === "calendar") {
-      state.calendarLoading = true;
-      setCalendarSectionLoading(true);
-    }
+    if (state.route.id === "calendar") state.calendarLoading = true;
     render();
     try {
       if (state.route.id === "markets" && state.route.market) {
@@ -397,7 +310,6 @@
       toast(UNAVAILABLE_MESSAGE);
     } finally {
       state.calendarLoading = false;
-      if (state.route.id === "calendar") setCalendarSectionLoading(false);
       render();
       afterRoute();
     }
@@ -426,7 +338,6 @@
 
   /* ─────────────────────────── Render ─────────────────────────── */
   function render() {
-    applyLanguageDirection();
     const title = document.getElementById("page-title");
     if (title) title.textContent = routes[state.route.id] || routes.dashboard;
     document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
@@ -436,17 +347,6 @@
     content.innerHTML = state.loading ? loading() : page();
   }
 
-  function isArabic() {
-    return state.settings.lang !== "en";
-  }
-
-  function applyLanguageDirection() {
-    const lang = isArabic() ? "ar" : "en";
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
-    if (document.body) document.body.setAttribute("dir", document.documentElement.dir);
-  }
-
   function afterRoute() {
     const id = state.route.id;
     if (id === "symbol-details" && state.route.symbol) loadSymbol(state.route.symbol);
@@ -454,13 +354,11 @@
     if (id === "ai-scanner" || id === "recommendations") ensureScanData();
     if (id === "calendar" && !state.calendarLoaded && !state.calendarLoading) {
       state.calendarLoading = true;
-      setCalendarSectionLoading(true);
       render();
       loadCalendars(false).catch((error) => {
         devLog("calendar", "failed", { message: errorMessage(error) });
       }).finally(() => {
         state.calendarLoading = false;
-        setCalendarSectionLoading(false);
         render();
       });
     }
@@ -476,7 +374,7 @@
     if (id === "recommendations") return recPage();
     if (id === "trade-performance") return performancePage();
     if (id === "news") return newsPage();
-    if (id === "calendar") return calendarPageCompact();
+    if (id === "calendar") return calendarPage();
     if (id === "education") return educationPage();
     if (id === "settings") return settingsPage();
     if (id === "symbol-details") return symbolPage(state.route.symbol);
@@ -516,13 +414,11 @@
   function marketDetailPage(id) {
     const m = MARKETS.find(x => x.id === id);
     if (!m) return marketsPage();
-    const meta = marketMetadata(id);
-    const marketCurrency = contextCurrency({ marketId: meta.id });
     const cached = state.marketCache.get(id);
     const list = cached ? recsFrom(cached) : [];
     const movers = cached ? sortMovers(list) : { gainers: [], losers: [], active: [] };
     const body = cached ? (list.length
-      ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", marketCurrency, "Currency")}</section>
+      ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", m.currency, "Currency")}</section>
          <section class="panel"><span class="eyebrow">HEATMAP</span><h2>خريطة حرارة ${h(m.ar)}</h2>${heatmap(list)}</section>
          <section class="dash-split">
            <article class="panel"><span class="eyebrow">PRICE CARDS</span><h2>الرموز والتوصيات</h2>${watchlistTable(list.slice(0, 12))}</article>
@@ -535,7 +431,7 @@
       : marketUnavailable(m, cached)) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري تحميل ${h(m.ar)}</h2></div></div>`;
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ كل الأسواق</a>
-      ${hero(`${meta.ar} <span class="ltr">· ${h(meta.en)}</span>`, `${meta.assetAr} · العملة الأساسية: ${marketCurrency}. الرموز المعروضة مرجعية وتُعرض أسعارها فقط عند توفرها من المزود.`, "MARKET")}
+      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. الرموز المعروضة مرجعية وتُعرض أسعارها فقط عند توفرها من المزود.`, "MARKET")}
       <section class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</section>
       ${body}
       ${disclaimer()}
@@ -606,7 +502,7 @@
     const r = recs(), buy = r.filter(x => signal(x) === "buy"), sell = r.filter(x => signal(x) === "sell"), wait = r.filter(x => !["buy", "sell"].includes(signal(x)));
     return `<div class="page-stack">${hero("التوصيات والتحليل", "توصيات الذكاء مع حالة كل صفقة: مفتوحة، تحت المتابعة، مكتملة، فاشلة أو منتهية. كل بطاقة لها زر تحليل.", "RECOMMENDATIONS")}
       <section class="metric-grid">${stat("الكل", r.length, "All")}${stat("شراء", buy.length, "Buy")}${stat("بيع", sell.length, "Sell")}${stat("انتظار", wait.length, "Wait")}</section>
-      <section class="panel"><span class="eyebrow">SIGNALS</span><h2>قائمة التوصيات</h2>
+      <section class="panel"><span class="eyebrow">SIGNALS</span><h2>قائمة التوصيات</h2><div class="rec-market-chips">${MARKETS.map(m => `<button class="chip ${state.settings.defaultMarket === m.id ? "is-active" : ""}" data-rec-market="${m.id}">${h(m.ar)}</button>`).join("")}</div>
         <div class="seg-tabs"><button class="is-active" data-tab="rec" data-value="all">الكل</button><button data-tab="rec" data-value="buy">شراء</button><button data-tab="rec" data-value="sell">بيع</button><button data-tab="rec" data-value="wait">انتظار</button><button data-tab="rec" data-value="high">ثقة عالية</button></div>
         <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : unavailableSection(state.rec, "محرك التوصيات لم يرجع نتائج من المزود.", "افتح الماسح", `${ROOT}/ai-scanner`)}</div>
       </section>${disclaimer()}</div>`;
@@ -659,246 +555,94 @@
 
   function calendarRangeButtons() {
     const ranges = [["today", "اليوم"], ["7", "7 أيام"], ["30", "30 يوم"], ["90", "90 يوم"], ["all", "الكل"]];
-    return ranges.map(([value, label]) => `<button class="${state.calendarRange === value ? "is-active" : ""}" data-calendar-range="${h(value)}" ${state.calendarLoading ? "disabled" : ""}>${h(label)}</button>`).join("");
+    return ranges.map(([value, label]) => `<button class="${state.calendarRange === value ? "is-active" : ""}" data-calendar-range="${h(value)}">${h(label)}</button>`).join("");
   }
 
   function calendarProviderOverview() {
-    const cards = calendarStatusCards();
-    return `<section class="provider-state-panel trader-provider-panel calendar-provider-overview">
-      <div class="panel-head">
-        <div><span class="eyebrow">PROVIDER STATUS</span><h2>حالة البيانات حسب الميزة</h2></div>
-        <button class="ghost-btn" data-refresh-provider>تحديث حالة المزود</button>
-      </div>
-      <div class="feature-status-grid">${cards.map(providerFeatureCard).join("")}</div>
-      ${calendarTechnicalDetails(cards)}
+    const ps = state.providerStatus || {}, features = ps.features || {};
+    const rows = [
+      ["أرباح الشركات", features.earnings],
+      ["التوزيعات", features.dividends],
+      ["الاكتتابات", features.ipos],
+      ["التقويم الاقتصادي", features.economic]
+    ];
+    return `<section class="provider-state-panel trader-provider-panel">
+      <div class="panel-head"><div><span class="eyebrow">PROVIDER STATUS</span><h2>مزود البيانات</h2></div><button class="ghost-btn" data-retry>إعادة المحاولة</button></div>
+      <div class="provider-state-grid">${rows.map(([label, feature]) => providerFeatureCard(label, feature)).join("")}</div>
     </section>`;
   }
 
-  function calendarStatusCards() {
-    const ps = state.providerStatus || {};
-    const overall = normalizedProviderStatus();
-    return [
-      {
-        key: "overall",
-        label: "صحة المزود العامة",
-        provider: overall.provider,
-        status: providerHealthStatus(overall),
-        count: overall.loadedCount,
-        lastUpdated: overall.lastUpdated,
-        message: providerHealthMessage(overall),
-        loading: false
-      },
-      featureStatusFromResponse("symbols_prices", "الرموز والأسعار", state.markets && (state.markets.data || state.markets.markets || state.markets.items) ? state.markets : state.rec, {
-        provider: (ps.dataProvider && (ps.dataProvider.active || ps.dataProvider.provider)) || overall.provider,
-        fallbackStatus: overall.status === "rate_limited" ? "rate_limited" : "available"
-      }),
-      featureStatusFromResponse("earnings", "أرباح الشركات", state.calendar.earnings),
-      featureStatusFromResponse("dividends", "التوزيعات", state.calendar.dividends),
-      featureStatusFromResponse("ipos", "الاكتتابات", state.calendar.ipos),
-      featureStatusFromResponse("economic", "التقويم الاقتصادي", state.calendar.economic),
-      featureStatusFromResponse("market_news", "الأخبار", state.news)
-    ];
-  }
-
-  function providerFeatureCard(card) {
-    const tone = featureStatusTone(card.status);
-    return `<article class="feature-status-card ${tone || "neutral"}" data-feature-card="${h(card.key)}">
-      <div class="feature-status-top"><span>${h(card.label)}</span><em class="state-badge ${tone || "neutral"}">${h(featureStatusLabel(card.status))}</em></div>
-      <strong>${h(providerName(card.provider))}</strong>
-      <dl>
-        <div><dt>آخر تحديث</dt><dd class="ltr">${h(latinDateTime(card.lastUpdated))}</dd></div>
-        <div><dt>الصفوف</dt><dd class="ltr">${h(latinNumber(card.count))}</dd></div>
-      </dl>
-      <p>${h(card.loading ? "جاري تحديث هذه الميزة..." : card.message)}</p>
+  function providerFeatureCard(label, feature) {
+    feature = feature || {};
+    const tone = featureStatusTone(feature.status);
+    return `<article class="provider-state-card">
+      <span>${h(label)}</span>
+      <strong>${h(providerName(feature.provider))}</strong>
+      <p>${h(featureStatusLabel(feature.status))}</p>
+      <em class="state-badge ${tone}">${h(resultCountText(feature.resultCount))}</em>
     </article>`;
   }
 
   function calendarPanel(kind, eyebrow, title, response, rowRenderer) {
     response = response || {};
     const rows = arr(response.data);
-    const status = featureStatusFromResponse(kind, title, response);
-    const loading = calendarSectionLoading(kind);
     return `<article class="panel trader-calendar-panel calendar-${h(kind)}">
       <div class="panel-head calendar-panel-head">
         <div><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
-        <div class="calendar-head-actions">${providerBadge(status)}${calendarRetryButton(kind, status, loading)}</div>
+        <div class="calendar-head-actions">${providerBadge(response)}<button class="ghost-btn compact-btn" data-retry>إعادة المحاولة</button></div>
       </div>
       <div class="calendar-meta">
-        <span>المزود: <b>${h(providerName(status.provider))}</b></span>
-        <span>آخر تحديث: <b>${h(latinDateTime(status.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
+        <span>آخر تحديث: <b>${h(latinDateTime(response.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
         <span>الفترة: <b class="ltr">${h(rangeText(response.range))}</b></span>
-        <span>النتائج: <b class="ltr">${h(latinNumber(status.count))}</b></span>
+        <span>النتائج: <b class="ltr">${h(latinNumber(response.resultCount ?? rows.length))}</b></span>
       </div>
-      ${loading ? calendarLoadingState(title) : rows.length ? rowRenderer(rows) : calendarEmptyState(kind, status, response)}
+      ${state.calendarLoading ? calendarLoadingState() : rows.length ? rowRenderer(rows) : calendarEmptyState(response)}
     </article>`;
   }
 
-  function providerBadge(status) {
-    const tone = featureStatusTone(status.status);
-    return `<span class="state-badge ${tone || "neutral"}">${h(featureStatusLabel(status.status))}</span>`;
+  function providerBadge(response) {
+    const status = response && response.status;
+    const tone = featureStatusTone(status);
+    return `<span class="state-badge ${tone}">${h(providerName(response && response.provider))} · ${h(featureStatusLabel(status))}</span>`;
   }
 
-  function calendarRetryButton(kind, status, loading) {
-    if (status.status === "not_configured" || status.status === "unauthorized") return "";
-    return `<button class="ghost-btn compact-btn" data-calendar-retry="${h(kind)}" ${loading ? "disabled" : ""}>${loading ? "جاري التحديث" : "إعادة المحاولة"}</button>`;
+  function calendarLoadingState() {
+    return `<div class="empty-state compact"><span class="empty-glyph">◌</span><h3>جاري تحديث التقويم</h3><p>نراجع المزود المتصل ونحدّث النتائج للفترة المختارة.</p></div>`;
   }
 
-  function calendarLoadingState(title) {
-    return `<div class="empty-state compact"><span class="empty-glyph">◌</span><h3>جاري تحديث ${h(title || "التقويم")}</h3><p>نراجع endpoint هذه الميزة ونحدّث النتائج للفترة المختارة.</p></div>`;
-  }
-
-  function calendarEmptyState(kind, statusInfo, response) {
-    const status = statusInfo.status;
-    let title = statusInfo.message || UNAVAILABLE_MESSAGE;
-    let body = statusInfo.message || "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
-    let settings = status === "not_configured";
-    let retry = !["not_configured", "unauthorized"].includes(status);
+  function calendarEmptyState(response) {
+    const status = String((response && response.status) || "not_configured");
+    let title = UNAVAILABLE_MESSAGE;
+    let body = (response && response.message) || "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
+    let settings = true;
     if (response && response.routeUnavailable) {
       title = ROUTE_UNAVAILABLE_MESSAGE;
       body = "تعذر الوصول إلى مسار البيانات المطلوب.";
       settings = false;
-      retry = true;
     } else if (response && response.timeout) {
       title = UNAVAILABLE_MESSAGE;
       body = "انتهت مهلة الطلب. يمكنك إعادة المحاولة بدون إعادة تحميل الصفحة.";
       settings = false;
-      retry = true;
-    } else if (status === "empty") {
-      title = emptyTitleForCalendar(kind);
-      body = "غيّر الفترة الزمنية أو اتركها كما هي؛ عدم وجود نتائج هنا ليس خطأ في المزود.";
+    } else if (status === "success") {
+      title = "لا توجد أحداث ضمن الفترة الحالية";
+      body = "جرّب تغيير الفترة أو السوق أو نوع الحدث.";
       settings = false;
-      retry = true;
-    } else if (status === "not_configured") {
+    } else if (status === "not_configured" || status === "missing_provider") {
       title = "لا يوجد مزود متصل";
       body = "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
-    } else if (status === "unauthorized") {
-      title = "الميزة غير متاحة في الخطة الحالية";
-      body = "هذه البيانات غير متاحة في الخطة الحالية لمزود البيانات.";
-      settings = false;
-      retry = false;
+    } else if (["not_entitled", "forbidden", "unauthorized"].includes(status)) {
+      title = "الميزة غير متاحة ضمن صلاحية المزود الحالي";
+      body = "تحتاج هذه البيانات إلى خطة تدعم هذا النوع من التقويم.";
     } else if (status === "rate_limited") {
       title = "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
       body = response && (response.cached || response.stale) ? "بيانات مخزنة مؤقتاً معروضة إلى أن يسمح المزود بتحديث جديد." : "جرّب لاحقاً أو استخدم زر إعادة المحاولة بعد دقيقة.";
       settings = false;
-      retry = true;
-    } else if (status === "provider_error") {
+    } else if (status === "provider_error" || status === "invalid_request") {
       title = UNAVAILABLE_MESSAGE;
       body = "تعذر جلب البيانات من المزود الحالي. لم يتم عرض أي بيانات بديلة.";
       settings = false;
-      retry = true;
     }
-    return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(title)}</h3><p>${h(body)}</p>${calendarSetupHelp(kind, status)}<div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>الإعدادات</a>` : ""}${retry ? `<button class="ghost-btn" data-calendar-retry="${h(kind)}" ${calendarSectionLoading(kind) ? "disabled" : ""}>إعادة المحاولة</button>` : ""}</div></div>`;
-  }
-
-  function featureStatusFromResponse(key, label, response, options = {}) {
-    response = response || {};
-    const count = featureCount(response);
-    let status = normalizeFeatureStatus(response.status || response.providerStatus || response.legacyStatus || options.fallbackStatus, count);
-    if (response.ok === false && response.routeUnavailable) status = "provider_error";
-    if (response.ok === false && response.timeout) status = "provider_error";
-    const provider = featureProvider(response, options.provider);
-    return {
-      key,
-      label,
-      status,
-      provider,
-      count,
-      lastUpdated: response.lastUpdated || response.lastSuccessfulUpdate || response.updated_at || response.generatedAt || null,
-      message: featureMessage(key, status, response),
-      loading: calendarSectionLoading(key)
-    };
-  }
-
-  function normalizeFeatureStatus(status, count) {
-    const value = String(status || "").trim().toLowerCase();
-    if (["success", "available", "healthy", "configured", "connected"].includes(value)) return count > 0 ? "available" : "empty";
-    if (["empty", "no_data", "no_results"].includes(value)) return "empty";
-    if (["rate_limited", "provider_rate_limited", "429", "http_429", "limited"].includes(value)) return "rate_limited";
-    if (["not_entitled", "forbidden", "unauthorized", "access_denied", "401", "403"].includes(value)) return "unauthorized";
-    if (["not_configured", "missing_provider", "missing_api_key", "missing"].includes(value)) return "not_configured";
-    return count > 0 ? "available" : "provider_error";
-  }
-
-  function featureCount(response) {
-    const values = [response && response.count, response && response.resultCount, response && response.total];
-    for (const value of values) {
-      if (value === null || value === undefined || value === "") continue;
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) return parsed;
-    }
-    return arr(response && (response.data || response.items || response.events || response.markets || response.results)).length;
-  }
-
-  function featureProvider(response, fallback) {
-    return response && (response.provider || response.providerId || response.source || response.dataProvider?.active || response.dataProvider?.provider || fallback) || fallback || null;
-  }
-
-  function featureMessage(key, status, response) {
-    if (response && /[\u0600-\u06FF]/.test(String(response.message || ""))) return response.message;
-    if (status === "available") return "توجد بيانات صالحة لهذه الميزة.";
-    if (status === "empty") return emptyTitleForCalendar(key);
-    if (status === "rate_limited") return "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً.";
-    if (status === "unauthorized") return "هذه البيانات غير متاحة في الخطة الحالية لمزود البيانات.";
-    if (status === "not_configured") return "لم يتم تفعيل مزود البيانات لهذه الميزة.";
-    return "تعذر تحميل البيانات من مزود هذه الميزة.";
-  }
-
-  function emptyTitleForCalendar(kind) {
-    const titles = {
-      dividends: "لا توجد توزيعات ضمن الفترة المحددة",
-      ipos: "لا توجد اكتتابات ضمن الفترة المحددة",
-      earnings: "لا توجد أرباح ضمن الفترة المحددة",
-      economic: "لا توجد بيانات ضمن الفترة المحددة",
-      economic_calendar: "لا توجد بيانات ضمن الفترة المحددة",
-      market_news: "لا توجد أخبار ضمن الفترة المحددة",
-      symbols_prices: "لا توجد بيانات أسعار أو رموز متاحة حالياً"
-    };
-    return titles[kind] || "لا توجد بيانات ضمن الفترة المحددة";
-  }
-
-  function calendarSetupHelp(kind, status) {
-    if (status !== "not_configured" && status !== "unauthorized") return "";
-    const requirements = {
-      earnings: ["<code>FMP_API_KEY</code> للأرباح.", "<code>FINNHUB_API_KEY</code> كبديل للأرباح عند دعمه."],
-      dividends: ["<code>FMP_API_KEY</code> للتوزيعات.", "<code>FINNHUB_API_KEY</code> كبديل للتوزيعات عند دعمه."],
-      ipos: ["<code>FMP_API_KEY</code> للاكتتابات.", "تأكد أن خطة FMP تدعم IPO calendar."],
-      economic: ["<code>TRADING_ECONOMICS_API_KEY</code> للتقويم الاقتصادي الأساسي.", "<code>FMP_API_KEY</code> أو <code>FINNHUB_API_KEY</code> كبديل عند دعم الخطة."]
-    };
-    const rows = requirements[kind] || ["فعّل مفتاح المزود المطلوب لهذه الميزة."];
-    const planNote = status === "unauthorized" ? `<li>تأكد أن خطة المزود تدعم هذه البيانات.</li>` : "";
-    return `<details class="calendar-setup-help">
-      <summary>إعدادات هذه الميزة</summary>
-      <ul>
-        ${rows.map(row => `<li>${row}</li>`).join("")}
-        ${planNote}
-      </ul>
-    </details>`;
-  }
-
-  function calendarTechnicalDetails(cards) {
-    return `<details class="provider-diagnostics-panel calendar-technical-details">
-      <summary>تفاصيل تقنية</summary>
-      <div class="provider-diagnostic-groups">
-        ${cards.map(card => `<section class="provider-diagnostic-group"><strong>${h(card.label)}</strong><ul><li><code class="ltr">${h(card.key)}</code><span>${h(card.status)} · ${h(providerName(card.provider))} · ${h(latinNumber(card.count))}</span></li></ul></section>`).join("")}
-      </div>
-    </details>`;
-  }
-
-  function providerHealthStatus(overall) {
-    const status = normalizeFeatureStatus(overall.status, overall.loadedCount);
-    if (status === "empty" && overall.configured) return "available";
-    return status;
-  }
-
-  function providerHealthMessage(overall) {
-    if (!overall.configured) return "مفتاح المزود غير مفعّل.";
-    if (overall.status === "rate_limited") return "المزود يعمل لكن بعض المسارات محدودة مؤقتاً.";
-    if (overall.status === "error") return "المزود مهيأ لكن فحص الصحة أعاد خطأ.";
-    return "المزود مهيأ وفحص الاتصال الأساسي يعمل.";
-  }
-
-  function calendarSectionLoading(kind) {
-    return Boolean(state.calendarLoadingSections && state.calendarLoadingSections[kind]);
+    return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>الإعدادات</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`;
   }
 
   function earningsRows(rows) {
@@ -917,417 +661,38 @@
     return `<div class="table-shell calendar-table"><table><thead><tr><th>الوقت</th><th>الدولة</th><th>العملة</th><th>الحدث</th><th>الأهمية</th><th>السابق</th><th>المتوقع</th><th>الفعلي</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || "--")}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(r.event || "--")}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
-  function calendarPageCompact() {
-    const c = state.calendar || {};
-    const sections = [
-      ["earnings", "EARNINGS", calendarText("أرباح الشركات", "Earnings"), c.earnings, earningsRowsCompact],
-      ["dividends", "DIVIDENDS", calendarText("التوزيعات", "Dividends"), c.dividends, dividendRowsCompact],
-      ["ipos", "IPO", calendarText("الاكتتابات", "IPOs"), c.ipos, ipoRowsCompact],
-      ["economic", "ECONOMIC", calendarText("التقويم الاقتصادي", "Economic Calendar"), c.economic, economicRowsCompact]
-    ];
-    return `<div class="page-stack trader-calendar-page">${hero(calendarText("تقويم السوق", "Market Calendar"), calendarText("تقويم حي لأرباح الشركات والتوزيعات والاكتتابات والأحداث الاقتصادية من مزودين حقيقيين. عند تعذر البيانات نعرض السبب بوضوح بدون بيانات وهمية.", "Live earnings, dividends, IPOs, and economic events from real providers with clear states when data is unavailable."), "CALENDAR")}
-      <section class="panel trader-calendar-toolbar">
-        <div><span class="eyebrow">DATE RANGE</span><h2>${h(calendarText("فترة العرض", "Range"))}</h2></div>
-        <div class="calendar-ranges">${calendarRangeButtons()}</div>
-      </section>
-      ${calendarProviderOverview()}
-      <section class="calendar-grid">${sections.map(section => calendarPanelCompact(...section)).join("")}</section>
-    </div>`;
-  }
-
-  function calendarPanelCompact(kind, eyebrow, title, response, rowRenderer) {
-    response = response || {};
-    const rawRows = calendarRowsFromResponse(response);
-    const rows = kind === "earnings" ? rawRows.filter(earningsMeaningfulRow) : rawRows;
-    const status = featureStatusFromResponse(kind, title, response);
-    const loading = calendarSectionLoading(kind);
-    const open = calendarSectionOpen(kind);
-    const partial = kind === "earnings" && rawRows.length > 0 && (rows.length < rawRows.length || earningsPartialData(rows));
-    const body = open
-      ? (loading ? calendarLoadingState(title) : rows.length ? rowRenderer(rows, rawRows, response) : calendarMeaningfulEmpty(kind, status, rawRows))
-      : calendarCollapsedSummary(kind, rows, status, response);
-    return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${open ? "is-open" : "is-collapsed"}">
-      <div class="calendar-card-head">
-        <button class="calendar-toggle" type="button" data-calendar-toggle="${h(kind)}" aria-expanded="${open ? "true" : "false"}" aria-label="${h(open ? calendarText("غلق", "Collapse") : calendarText("فتح", "Expand"))}">
-          <span class="calendar-chevron">${open ? "⌃" : "⌄"}</span>
-        </button>
-        <div class="calendar-title-block"><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
-        <div class="calendar-header-badges">
-          <span class="state-badge provider">${h(providerName(status.provider))}</span>
-          ${providerBadge(status)}
-          ${partial ? `<span class="state-badge warn">${h(calendarText("بيانات جزئية", "Partial data"))}</span>` : ""}
-        </div>
-        <div class="calendar-header-meta">
-          <span>${h(calendarText("النتائج", "Items"))}: <b class="ltr">${h(latinNumber(rows.length))}</b></span>
-          <span>${h(calendarText("آخر تحديث", "Updated"))}: <b class="ltr">${h(latinDateTime(status.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
-          <span>${h(calendarText("الفترة", "Range"))}: <b class="ltr">${h(rangeText(response.range))}</b></span>
-        </div>
-        <div class="calendar-head-actions">${calendarRetryButtonCompact(kind, status, loading)}</div>
-      </div>
-      <div class="calendar-card-body">${body}</div>
-    </article>`;
-  }
-
-  function normalizeCalendarUi(value) {
-    value = value && typeof value === "object" ? value : {};
-    const open = { ...DEFAULT_CALENDAR_UI.open, ...(value.open || {}) };
-    const expanded = { ...(value.expanded || {}) };
-    const filters = new Set(["all", "actual", "revenue", "major"]);
-    const sort = value.earningsSort && typeof value.earningsSort === "object" ? value.earningsSort : DEFAULT_CALENDAR_UI.earningsSort;
-    const sortKey = ["symbol", "company", "reportDate", "time", "epsActual", "epsEstimate", "surprise", "revenue", "source"].includes(sort.key) ? sort.key : "reportDate";
-    return {
-      open,
-      expanded,
-      earningsFilter: filters.has(value.earningsFilter) ? value.earningsFilter : "all",
-      earningsSearch: String(value.earningsSearch || ""),
-      earningsSort: { key: sortKey, dir: sort.dir === "desc" ? "desc" : "asc" }
-    };
-  }
-
-  function saveCalendarUi() {
-    state.calendarUi = normalizeCalendarUi(state.calendarUi);
-    write(keys.calendarUi, state.calendarUi);
-  }
-
-  function updateCalendarUi(patch) {
-    state.calendarUi = normalizeCalendarUi({ ...(state.calendarUi || {}), ...patch });
-    saveCalendarUi();
-    render();
-    afterRoute();
-  }
-
-  function toggleCalendarSection(kind) {
-    if (!CALENDAR_SECTION_KEYS.includes(kind)) return;
-    updateCalendarUi({ open: { ...(state.calendarUi.open || {}), [kind]: !calendarSectionOpen(kind) } });
-  }
-
-  function setCalendarExpanded(kind, expanded) {
-    if (!CALENDAR_SECTION_KEYS.includes(kind)) return;
-    updateCalendarUi({ expanded: { ...(state.calendarUi.expanded || {}), [kind]: expanded === true } });
-  }
-
-  function setEarningsSort(key) {
-    const current = state.calendarUi.earningsSort || DEFAULT_CALENDAR_UI.earningsSort;
-    const dir = current.key === key && current.dir === "asc" ? "desc" : "asc";
-    updateCalendarUi({ earningsSort: { key, dir }, expanded: { ...(state.calendarUi.expanded || {}), earnings: false } });
-  }
-
-  function calendarSectionOpen(kind) {
-    const open = (state.calendarUi && state.calendarUi.open) || DEFAULT_CALENDAR_UI.open;
-    return open[kind] !== undefined ? open[kind] !== false : kind === "earnings";
-  }
-
-  function calendarRowsFromResponse(response) {
-    return arr(response && (response.data || response.items || response.events || response.results));
-  }
-
-  function calendarText(ar, en) {
-    return isArabic() ? ar : en;
-  }
-
-  function calendarDash() {
-    return "—";
-  }
-
-  function calendarRetryButtonCompact(kind, status, loading) {
-    if (status.status === "not_configured" || status.status === "unauthorized") return "";
-    return `<button class="ghost-btn compact-btn" data-calendar-retry="${h(kind)}" ${loading ? "disabled" : ""}>${h(loading ? calendarText("جاري التحديث", "Refreshing") : calendarText("إعادة المحاولة", "Retry"))}</button>`;
-  }
-
-  function calendarMeaningfulEmpty(kind, status, rawRows) {
-    if (kind === "earnings" && rawRows.length) {
-      return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(calendarText("لا توجد بيانات أرباح مفيدة ضمن الفترة المحددة", "No meaningful earnings data found for the selected range"))}</h3><p>${h(calendarText("استبعدنا الصفوف التي لا تحتوي على رمز وتاريخ وقيمة أرباح أو إيراد مفيدة.", "Rows without a symbol, date, and meaningful EPS or revenue were hidden."))}</p>${calendarRetryButtonCompact(kind, status, false)}</div>`;
-    }
-    return calendarEmptyState(kind, status, {});
-  }
-
-  function calendarCollapsedSummary(kind, rows, status, response) {
-    const sample = rows.slice(0, 4).map(row => collapsedCalendarLabel(kind, row)).filter(Boolean);
-    return `<div class="calendar-collapsed-summary">
-      <span><b class="ltr">${h(latinNumber(rows.length))}</b><small>${h(calendarText("صفوف", "rows"))}</small></span>
-      <span><small>${h(calendarText("الحالة", "status"))}</small><b>${h(featureStatusLabel(status.status))}</b></span>
-      <span><small>${h(calendarText("آخر تحديث", "updated"))}</small><b class="ltr">${h(latinDateTime(status.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
-      ${sample.length ? `<span><small>${h(calendarText("لمحة", "preview"))}</small><b>${h(sample.join(" · "))}</b></span>` : ""}
-    </div>`;
-  }
-
-  function collapsedCalendarLabel(kind, row) {
-    if (kind === "earnings") return [sym(row.symbol), row.companyName || row.company].filter(Boolean).join(" ");
-    if (kind === "dividends") return [sym(row.symbol), latinDateOnly(row.exDividendDate || row.paymentDate)].filter(Boolean).join(" ");
-    if (kind === "ipos") return [row.companyName || row.company, sym(row.symbol)].filter(Boolean).join(" ");
-    if (kind === "economic") return [row.currency || row.country, row.event].filter(Boolean).join(" ");
-    return "";
-  }
-
-  function calendarRowWindow(kind, rows) {
-    const expanded = Boolean(state.calendarUi && state.calendarUi.expanded && state.calendarUi.expanded[kind]);
-    const limit = expanded ? CALENDAR_EXPANDED_LIMIT : CALENDAR_PREVIEW_LIMIT;
-    return { expanded, visible: rows.slice(0, limit), limit };
-  }
-
-  function calendarTableFooter(kind, total, visibleCount, expanded) {
-    const hasMore = total > CALENDAR_PREVIEW_LIMIT;
-    const text = total > CALENDAR_EXPANDED_LIMIT && expanded
-      ? calendarText(`يتم عرض أول ${CALENDAR_EXPANDED_LIMIT} من ${total}`, `Showing first ${CALENDAR_EXPANDED_LIMIT} of ${total}`)
-      : calendarText(`يتم عرض ${visibleCount} من ${total}`, `Showing ${visibleCount} of ${total}`);
-    return `<div class="calendar-table-footer">
-      <span>${h(text)}</span>
-      ${hasMore ? `<button class="ghost-btn compact-btn" type="button" data-calendar-show="${h(kind)}" data-calendar-mode="${expanded ? "less" : "more"}">${h(expanded ? calendarText("إظهار القليل", "Show less") : calendarText("إظهار المزيد", "Show more"))}</button>` : ""}
-    </div>`;
-  }
-
-  function calendarSortButton(key, label) {
-    const sort = state.calendarUi.earningsSort || DEFAULT_CALENDAR_UI.earningsSort;
-    const active = sort.key === key;
-    const icon = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
-    return `<button type="button" data-earnings-sort="${h(key)}">${h(label)} <span>${h(icon)}</span></button>`;
-  }
-
-  function earningsRowsCompact(rows) {
-    const filtered = sortedEarningsRows(filterEarningsRows(rows));
-    if (!filtered.length) {
-      return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(calendarText("لا توجد بيانات أرباح مفيدة ضمن الفترة المحددة", "No meaningful earnings data found for the selected range"))}</h3><p>${h(calendarText("جرّب إزالة البحث أو تغيير الفلتر السريع.", "Try clearing the search or changing the quick filter."))}</p></div>`;
-    }
-    const view = calendarRowWindow("earnings", filtered);
-    return `${earningsControls(filtered.length, rows.length)}<div class="table-shell calendar-table"><table><thead><tr>
-      <th>${calendarSortButton("symbol", calendarText("الرمز", "Symbol"))}</th>
-      <th>${calendarSortButton("company", calendarText("الشركة", "Company"))}</th>
-      <th>${calendarSortButton("reportDate", calendarText("تاريخ الإعلان", "Report date"))}</th>
-      <th>${calendarSortButton("time", calendarText("الوقت", "Time"))}</th>
-      <th>${calendarSortButton("epsActual", calendarText("EPS الفعلي", "Actual EPS"))}</th>
-      <th>${calendarSortButton("epsEstimate", calendarText("EPS المتوقع", "Estimate EPS"))}</th>
-      <th>${calendarSortButton("surprise", calendarText("المفاجأة", "Surprise"))}</th>
-      <th>${calendarSortButton("revenue", calendarText("الإيراد", "Revenue"))}</th>
-      <th>${calendarSortButton("source", calendarText("المصدر", "Source"))}</th>
-    </tr></thead><tbody>${view.visible.map(r => `<tr>
-      <td class="ltr strong-symbol">${h(sym(r.symbol) || calendarDash())}</td>
-      <td>${h(r.companyName || r.company || calendarDash())}</td>
-      <td class="ltr">${h(latinDateOnly(r.reportDate || r.date))}</td>
-      <td class="ltr">${h(r.time || r.reportTime || calendarDash())}</td>
-      <td class="ltr">${h(formatEarningsNumber(earningsActualEps(r)))}</td>
-      <td class="ltr">${h(formatEarningsNumber(earningsEstimateEps(r)))}</td>
-      <td class="ltr">${h(formatEarningsNumber(earningsSurprise(r)))}</td>
-      <td class="ltr">${h(formatRevenueValue(r))}</td>
-      <td>${h(providerName(r.provider || r.source))}</td>
-    </tr>`).join("")}</tbody></table></div>${calendarTableFooter("earnings", filtered.length, view.visible.length, view.expanded)}`;
-  }
-
-  function earningsControls(filteredCount, totalCount) {
-    const ui = state.calendarUi || DEFAULT_CALENDAR_UI;
-    const filters = [
-      ["all", calendarText("الكل", "All")],
-      ["actual", calendarText("EPS فعلي", "Actual EPS")],
-      ["revenue", calendarText("إيراد", "Revenue")],
-      ["major", calendarText("الشركات الكبرى", "Major")]
-    ];
-    return `<div class="calendar-controls">
-      <input type="search" data-earnings-search value="${h(ui.earningsSearch || "")}" placeholder="${h(calendarText("بحث بالرمز أو الشركة", "Search symbol or company"))}" aria-label="${h(calendarText("بحث أرباح الشركات", "Search earnings"))}">
-      <div class="calendar-filter-pills">${filters.map(([key, label]) => `<button type="button" data-earnings-filter="${h(key)}" aria-pressed="${ui.earningsFilter === key ? "true" : "false"}">${h(label)}</button>`).join("")}</div>
-      <span class="calendar-filter-count"><b class="ltr">${h(latinNumber(filteredCount))}</b> / <span class="ltr">${h(latinNumber(totalCount))}</span></span>
-    </div>`;
-  }
-
-  function filterEarningsRows(rows) {
-    const ui = state.calendarUi || DEFAULT_CALENDAR_UI;
-    const query = String(ui.earningsSearch || "").trim().toLowerCase();
-    return rows.filter(row => {
-      if (!earningsMeaningfulRow(row)) return false;
-      if (query) {
-        const haystack = `${sym(row.symbol)} ${row.companyName || ""} ${row.company || ""}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-      if (ui.earningsFilter === "actual") return earningsActualEps(row) !== null;
-      if (ui.earningsFilter === "revenue") return earningsRevenueValue(row) !== null;
-      if (ui.earningsFilter === "major") return isMajorEarningsRow(row);
-      return true;
-    });
-  }
-
-  function sortedEarningsRows(rows) {
-    const sort = (state.calendarUi && state.calendarUi.earningsSort) || DEFAULT_CALENDAR_UI.earningsSort;
-    const dir = sort.dir === "desc" ? -1 : 1;
-    return [...rows].sort((a, b) => compareCalendarValues(earningsSortValue(a, sort.key), earningsSortValue(b, sort.key)) * dir);
-  }
-
-  function compareCalendarValues(a, b) {
-    const emptyA = a === null || a === undefined || a === "";
-    const emptyB = b === null || b === undefined || b === "";
-    if (emptyA && emptyB) return 0;
-    if (emptyA) return 1;
-    if (emptyB) return -1;
-    if (typeof a === "number" && typeof b === "number") return a - b;
-    return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
-  }
-
-  function earningsSortValue(row, key) {
-    if (key === "symbol") return sym(row.symbol);
-    if (key === "company") return row.companyName || row.company || "";
-    if (key === "time") return row.time || row.reportTime || "";
-    if (key === "epsActual") return earningsActualEps(row);
-    if (key === "epsEstimate") return earningsEstimateEps(row);
-    if (key === "surprise") return earningsSurprise(row);
-    if (key === "revenue") return earningsRevenueValue(row);
-    if (key === "source") return providerName(row.provider || row.source);
-    return Date.parse(row.reportDate || row.date || "") || 0;
-  }
-
-  function earningsMeaningfulRow(row) {
-    if (!sym(row && row.symbol)) return false;
-    if (!(row.reportDate || row.date)) return false;
-    return earningsActualEps(row) !== null || earningsEstimateEps(row) !== null || earningsRevenueValue(row) !== null;
-  }
-
-  function earningsPartialData(rows) {
-    if (!rows.length) return false;
-    const weak = rows.filter(row => {
-      const meaningful = [earningsActualEps(row), earningsEstimateEps(row), earningsRevenueValue(row)].filter(value => value !== null).length;
-      return meaningful <= 1 || earningsSurprise(row) === null;
-    }).length;
-    return weak / rows.length >= 0.45;
-  }
-
-  function earningsActualEps(row) {
-    const value = num(row && row.epsActual, row && row.actualEps, row && row.actualEPS);
-    if (value === null) return null;
-    if (value !== 0) return value;
-    if (row.epsActualIsRealZero === true || row.actualEpsReported === true || row.epsActualReported === true) return 0;
-    const surprise = num(row.epsSurprise, row.surprise, row.surpriseAmount);
-    const revenueActual = num(row.revenueActual, row.actualRevenue, row.revenue);
-    const estimate = earningsEstimateEps(row);
-    if (surprise !== null || revenueActual !== null || (estimate !== null && estimate === 0)) return 0;
-    return null;
-  }
-
-  function earningsEstimateEps(row) {
-    return num(row && row.epsEstimate, row && row.estimateEps, row && row.estimatedEPS);
-  }
-
-  function earningsSurprise(row) {
-    const explicit = num(row && row.epsSurprise, row && row.surprise, row && row.surpriseAmount);
-    if (explicit !== null) return explicit;
-    const actual = earningsActualEps(row);
-    const estimate = earningsEstimateEps(row);
-    if (actual !== null && estimate !== null) return actual - estimate;
-    return null;
-  }
-
-  function earningsRevenueValue(row) {
-    return num(row && row.revenueActual, row && row.actualRevenue, row && row.revenue, row && row.revenueEstimate, row && row.revenueEstimated, row && row.estimatedRevenue);
-  }
-
-  function isMajorEarningsRow(row) {
-    const symbol = sym(row && row.symbol);
-    const marketCap = num(row && row.marketCap, row && row.market_cap);
-    return MAJOR_EARNINGS_SYMBOLS.has(symbol) || row.isLargeCap === true || row.largeCap === true || (marketCap !== null && marketCap >= 100_000_000_000);
-  }
-
-  function formatEarningsNumber(value) {
-    const parsed = num(value);
-    if (parsed === null) return calendarDash();
-    if (Math.abs(parsed) >= 1000) return latinNumber(Math.round(parsed));
-    return latinNumber(Number.isInteger(parsed) ? parsed : Number(parsed.toFixed(3)));
-  }
-
-  function formatRevenueValue(row) {
-    const actual = num(row && row.revenueActual, row && row.actualRevenue, row && row.revenue);
-    const estimate = num(row && row.revenueEstimate, row && row.revenueEstimated, row && row.estimatedRevenue);
-    if (actual !== null) return formatRevenueNumber(actual);
-    if (estimate !== null) return `${formatRevenueNumber(estimate)} ${calendarText("متوقع", "est")}`;
-    return calendarDash();
-  }
-
-  function formatRevenueNumber(value) {
-    const parsed = num(value);
-    if (parsed === null) return calendarDash();
-    const abs = Math.abs(parsed);
-    if (abs >= 1_000_000_000) return `${latinNumber((parsed / 1_000_000_000).toFixed(2))}B`;
-    if (abs >= 1_000_000) return `${latinNumber((parsed / 1_000_000).toFixed(1))}M`;
-    if (abs >= 1_000) return `${latinNumber((parsed / 1_000).toFixed(1))}K`;
-    return latinNumber(parsed);
-  }
-
-  function dividendRowsCompact(rows) {
-    const view = calendarRowWindow("dividends", rows);
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الرمز", "Symbol"))}</th><th>${h(calendarText("الشركة", "Company"))}</th><th>${h(calendarText("تاريخ الإعلان", "Declaration"))}</th><th>${h(calendarText("تاريخ الاستحقاق", "Ex-date"))}</th><th>${h(calendarText("تاريخ التسجيل", "Record"))}</th><th>${h(calendarText("تاريخ الدفع", "Payment"))}</th><th>${h(calendarText("التوزيع", "Dividend"))}</th><th>${h(calendarText("العائد", "Yield"))}</th><th>${h(calendarText("العملة", "Currency"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td class="ltr">${h(r.symbol || calendarDash())}</td><td>${h(r.companyName || calendarDash())}</td><td class="ltr">${h(latinDateOnly(r.declarationDate))}</td><td class="ltr">${h(latinDateOnly(r.exDividendDate))}</td><td class="ltr">${h(latinDateOnly(r.recordDate))}</td><td class="ltr">${h(latinDateOnly(r.paymentDate))}</td><td class="ltr">${h(formatEarningsNumber(r.dividendAmount))}</td><td class="ltr">${h(percentText(r.dividendYield))}</td><td class="ltr">${h(r.currency || calendarDash())}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("dividends", rows.length, view.visible.length, view.expanded)}`;
-  }
-
-  function ipoRowsCompact(rows) {
-    const view = calendarRowWindow("ipos", rows);
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الشركة", "Company"))}</th><th>${h(calendarText("الرمز", "Symbol"))}</th><th>${h(calendarText("السوق", "Exchange"))}</th><th>${h(calendarText("تاريخ الاكتتاب", "IPO date"))}</th><th>${h(calendarText("نطاق السعر", "Price range"))}</th><th>${h(calendarText("الأسهم", "Shares"))}</th><th>${h(calendarText("القيمة السوقية", "Market cap"))}</th><th>${h(calendarText("الحالة", "Status"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td>${h(r.companyName || calendarDash())}</td><td class="ltr">${h(r.symbol || calendarDash())}</td><td class="ltr">${h(r.exchange || calendarDash())}</td><td class="ltr">${h(latinDateOnly(r.ipoDate))}</td><td class="ltr">${h(r.priceRange || calendarDash())}</td><td class="ltr">${h(formatEarningsNumber(r.shares))}</td><td class="ltr">${h(formatRevenueNumber(num(r.marketCap)))}</td><td>${h(r.status || calendarDash())}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("ipos", rows.length, view.visible.length, view.expanded)}`;
-  }
-
-  function economicRowsCompact(rows) {
-    const view = calendarRowWindow("economic", rows);
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الوقت", "Time"))}</th><th>${h(calendarText("الدولة", "Country"))}</th><th>${h(calendarText("العملة", "Currency"))}</th><th>${h(calendarText("الحدث", "Event"))}</th><th>${h(calendarText("الأهمية", "Impact"))}</th><th>${h(calendarText("السابق", "Previous"))}</th><th>${h(calendarText("المتوقع", "Forecast"))}</th><th>${h(calendarText("الفعلي", "Actual"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || calendarDash())}</td><td class="ltr">${h(r.currency || calendarDash())}</td><td>${h(r.event || calendarDash())}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("economic", rows.length, view.visible.length, view.expanded)}`;
-  }
-
   function featureStatusTone(status) {
     status = String(status || "");
     if (status === "success" || status === "available" || status === "configured") return "ok";
-    if (status === "empty" || status === "not_configured") return "neutral";
     if (["not_entitled", "forbidden", "unauthorized", "rate_limited"].includes(status)) return "warn";
-    if (status === "provider_error" || status === "invalid_request" || status === "error") return "bad";
-    return "neutral";
+    return "";
   }
 
   function featureStatusLabel(status) {
     status = String(status || "not_configured");
-    if (!isArabic()) {
-      const englishLabels = {
-        success: "Available",
-        available: "Available",
-        empty: "No data",
-        configured: "Connected",
-        connected: "Connected",
-        healthy: "Connected",
-        partial: "Partial data",
-        degraded: "Partial data",
-        missing: "Not configured",
-        error: "Provider error",
-        not_configured: "Not configured",
-        not_entitled: "Plan limited",
-        forbidden: "Plan limited",
-        unauthorized: "Plan limited",
-        rate_limited: "Rate limited",
-        provider_error: "Unavailable",
-        invalid_request: "Invalid request"
-      };
-      return englishLabels[status] || status;
-    }
     const labels = {
-      success: "متاح",
+      success: "متصل",
       available: "متاح",
-      empty: "لا توجد بيانات",
-      configured: "متصل",
+      configured: "متاح",
       connected: "متصل",
       healthy: "متصل",
-      partial: "جزئي",
-      degraded: "جزئي",
-      missing: "غير مفعّل",
-      error: "خطأ مزود",
-      not_configured: "غير مفعّل",
-      not_entitled: "غير مدعوم في الخطة",
-      forbidden: "غير مدعوم في الخطة",
-      unauthorized: "غير مدعوم في الخطة",
-      rate_limited: "محدود مؤقتاً",
-      provider_error: "تعذر التحميل",
+      partial: "متاح جزئياً",
+      degraded: "متاح جزئياً",
+      missing: "غير مهيأ",
+      error: "فشل الاتصال",
+      not_configured: "غير مهيأ",
+      not_entitled: "غير متاح ضمن الصلاحية",
+      forbidden: "غير متاح ضمن الصلاحية",
+      unauthorized: "فشل التصريح",
+      rate_limited: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً",
+      provider_error: "فشل الاتصال",
       invalid_request: "طلب غير صالح"
     };
     return labels[status] || status;
   }
 
   function providerName(provider) {
-    const names = {
-      fmp: "FMP",
-      finnhub: "Finnhub",
-      twelve_data: "Twelve Data",
-      twelvedata: "Twelve Data",
-      "twelve data": "Twelve Data",
-      tradingeconomics: "Trading Economics",
-      yahoo: "Yahoo Finance",
-      "yahoo finance": "Yahoo Finance",
-      manual: "إدخال يدوي"
-    };
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", manual: "إدخال يدوي" };
     const raw = String(provider || "").trim();
     return names[raw.toLowerCase()] || raw || "غير متصل";
   }
@@ -1348,9 +713,7 @@
   }
   function latinDateTime(value) {
     if (!value) return "--";
-    const raw = String(value).trim();
-    const numeric = /^\d{10,13}$/.test(raw) ? Number(raw) : null;
-    const date = numeric === null ? new Date(value) : new Date(raw.length === 10 ? numeric * 1000 : numeric);
+    const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString("en-US", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
   }
 
@@ -1398,48 +761,12 @@
   }
 
   /* ───────────────────── Async loaders ───────────────────── */
-  function setCalendarSectionLoading(value, kind) {
-    const sections = { ...(state.calendarLoadingSections || {}) };
-    const keys = kind ? [kind] : ["earnings", "dividends", "ipos", "economic"];
-    keys.forEach(key => { sections[key] = Boolean(value); });
-    state.calendarLoadingSections = sections;
-  }
-
-  function calendarEndpoint(kind) {
-    const endpoints = { earnings: "earnings", dividends: "dividends", ipos: "ipos", economic: "economic" };
-    return endpoints[kind] || null;
-  }
-
   function calendarQuery(force) {
     const params = new URLSearchParams({ range: state.calendarRange || "30" });
     if (force) params.set("refresh", "1");
     const symbols = unique([...(state.watch || []), ...defaults]);
     if (symbols.length) params.set("symbols", symbols.join(","));
     return params.toString();
-  }
-  async function loadCalendarFeature(kind, force) {
-    const endpoint = calendarEndpoint(kind);
-    if (!endpoint) return null;
-    const response = await get(`/trader/calendar/${endpoint}?${calendarQuery(force)}`, { label: "calendar" });
-    state.calendar = { ...(state.calendar || {}), [kind]: response || {} };
-    state.calendarLoaded = true;
-    return response;
-  }
-  async function refreshCalendarSection(kind) {
-    kind = calendarEndpoint(kind) ? kind : "";
-    if (!kind || calendarSectionLoading(kind)) return;
-    setCalendarSectionLoading(true, kind);
-    render();
-    try {
-      await loadCalendarFeature(kind, true);
-      toast("تم تحديث هذه الميزة.");
-    } catch (error) {
-      devLog("calendar", "failed", { feature: kind, message: errorMessage(error) });
-      toast(UNAVAILABLE_MESSAGE);
-    } finally {
-      setCalendarSectionLoading(false, kind);
-      render();
-    }
   }
   async function loadCalendars(force) {
     const qs = calendarQuery(force);
@@ -1489,36 +816,29 @@
         get(`/market/search?q=${encodeURIComponent(key)}&limit=5`, { label: "quotes" }),
         get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`, { label: "signals" }),
         get(`/market/signals/${encodeURIComponent(key)}`, { label: "signals" }),
-        get(`/market/history?symbol=${encodeURIComponent(key)}&range=${encodeURIComponent(state.timeframe || "1Y")}`, { label: "quotes" })
+        get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`, { label: "quotes" })
       ]);
       const [profile, search, tech, sig, hist] = settled.map((result, index) => settledValue(result, index === 2 || index === 3 ? "signals" : "quotes"));
       const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
       const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
       const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
-      const historyPoints = normalizeChartData(hist.chartData || hist.chart_data || hist.points || hist.history || hist.data || hist.candles);
+      const historyPoints = arr(hist.points || hist.history);
       const techAsset = rawTech && typeof rawTech === "object" ? {
         price: rawTech.currentPrice || rawTech.price,
         currentPrice: rawTech.currentPrice || rawTech.price,
         currency: rawTech.currency,
         source: rawTech.source,
         exchange: rawTech.exchange || rawTech.market,
-        exchangeCode: rawTech.exchangeCode || rawTech.exchange_code,
-        market: rawTech.market,
-        country: rawTech.country,
-        assetType: rawTech.assetType || rawTech.asset_type,
-        metadataDiagnostics: rawTech.metadataDiagnostics || rawTech.metadata_diagnostics,
-        chartData: historyPoints,
         history: historyPoints
       } : historyPoints.length ? { history: historyPoints } : {};
-      const rec = sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key);
-      const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || rawProfile.providerStatus || (rec && rec.providerStatus) || {};
-      const asset = norm({ symbol: key, ...found, ...rawProfile, ...(rec || {}), ...techAsset, providerStatus, chartData: historyPoints, history: historyPoints });
+      const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
+      const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
       const detail = {
         asset, tech: rawTech, providerStatus,
         available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
-        source: asset.source || profile.source || search.source || (rawTech && rawTech.source) || "--",
+        source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
         message: profile.message || search.message || UNAVAILABLE_MESSAGE,
-        rec
+        rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
       };
       state.cache.set(key, detail);
       if (state.route.id === "symbol-details" && state.route.symbol === key) target.innerHTML = symbolContent(detail);
@@ -1528,87 +848,10 @@
     }
   }
 
-  function isBuySignalName(value) { return value === "buy" || value === "cautious_buy"; }
-  function isSellSignalName(value) { return value === "sell" || value === "sell_or_avoid"; }
-  function signalToneClass(value) {
-    if (value === "buy") return "ok";
-    if (value === "cautious_buy") return "cautious";
-    if (isSellSignalName(value)) return "warn";
-    if (value === "insufficient_data") return "muted";
-    return "";
-  }
-  function signalCardClass(value) {
-    if (isBuySignalName(value)) return "buy";
-    if (isSellSignalName(value)) return "sell";
-    if (value === "insufficient_data") return "unavailable";
-    return "watch";
-  }
-  function riskMetricsFromPrices(current, target, stop) {
-    const upsidePercent = current !== null && current > 0 && target !== null ? ((target - current) / current) * 100 : null;
-    const downsidePercent = current !== null && current > 0 && stop !== null ? ((current - stop) / current) * 100 : null;
-    const riskRewardRatio = upsidePercent !== null && downsidePercent !== null && downsidePercent !== 0 ? upsidePercent / downsidePercent : null;
-    return {
-      upsidePercent: upsidePercent === null ? null : Math.round(upsidePercent * 100) / 100,
-      downsidePercent: downsidePercent === null ? null : Math.round(downsidePercent * 100) / 100,
-      riskRewardRatio: riskRewardRatio === null ? null : Math.round(riskRewardRatio * 100) / 100
-    };
-  }
-  function classifySignalMetrics({ current, target, stop, confidence, dataQuality }) {
-    const metrics = riskMetricsFromPrices(current, target, stop);
-    const conf = confidence === null ? 0 : Math.max(0, Math.min(100, Math.round(confidence)));
-    let signal = "watch";
-    let explanation = "لا توجد إشارة تداول كافية حالياً.";
-    if (current === null || current <= 0 || target === null || target <= 0 || dataQuality === "unavailable") {
-      signal = "insufficient_data";
-      explanation = "البيانات الفنية غير مكتملة.";
-    } else if (target < current && conf >= 55) {
-      signal = "sell_or_avoid";
-      explanation = "الهدف أدنى من السعر الحالي والثقة تدعم تجنب الصفقة أو البيع.";
-    } else if (target > current && conf >= 60 && (metrics.riskRewardRatio ?? Number.NEGATIVE_INFINITY) >= 1.5) {
-      signal = "buy";
-      explanation = "الهدف أعلى من السعر الحالي ونسبة العائد إلى المخاطرة كافية للشراء.";
-    } else if (target > current && conf >= 50) {
-      signal = "cautious_buy";
-      explanation = metrics.riskRewardRatio !== null && metrics.riskRewardRatio < 1.5
-        ? "الهدف أعلى من السعر الحالي، لكن الثقة متوسطة ونسبة العائد إلى المخاطرة غير كافية للشراء القوي."
-        : "الهدف أعلى من السعر الحالي، لكن الثقة متوسطة.";
-    } else if (target <= current && stop !== null && stop < current) {
-      explanation = "الهدف لا يتجاوز السعر الحالي، لذلك تبقى الإشارة للمراقبة.";
-    } else if (target > current) {
-      explanation = "الهدف أعلى من السعر الحالي، لكن الثقة دون الحد الأدنى.";
-    }
-    return { signal, explanation, ...metrics };
-  }
-  function formatSignalPercent(value) {
-    return value === null || value === undefined || Number.isNaN(Number(value)) ? "—" : `${Number(value).toFixed(2)}%`;
-  }
-  function formatRiskRewardRatio(value) {
-    return value === null || value === undefined || Number.isNaN(Number(value)) ? "—" : `${Number(value).toFixed(2)}:1`;
-  }
-  function isInWatchlist(symbol) {
-    const s = sym(symbol);
-    return state.watch.some(item => sym(item) === s);
-  }
-  function watchlistStatusLabel(symbol) {
-    return isInWatchlist(symbol) ? "في قائمة المتابعة" : "غير مضافة للمتابعة";
-  }
-  function tradeMetricsForAsset(asset) {
-    const a = norm(asset);
-    const current = num(a.currentPrice, a.current_price, a.price, a.lastPrice, a.regularMarketPrice, a.close);
-    const entry = num(a.entryPrice, a.entry, current);
-    const target = num(a.targetPrice, a.target_price, a.target, a.priceTarget, a.target1);
-    const stop = num(a.stopLoss, a.stop_loss, a.stop, a.stopPrice);
-    const confidence = num(a.confidence, a.score, a.aiConfidence);
-    const dataQuality = String(a.dataQuality || a.data_quality || (current === null ? "unavailable" : "partial")).toLowerCase();
-    const classification = classifySignalMetrics({ current, target, stop, confidence, dataQuality });
-    const pnlPercent = current !== null && entry !== null && entry !== 0 ? ((current - entry) / entry) * 100 : null;
-    return { current, entry, target, stop, confidence, pnlPercent, signal: classification.signal, explanation: classification.explanation, upsidePercent: classification.upsidePercent, downsidePercent: classification.downsidePercent, riskRewardRatio: classification.riskRewardRatio };
-  }
-
-  function legacySymbolContent(detail) {
-    const a = detail.asset, c = currency(a), recMetrics = detail.rec ? tradeMetricsForAsset(detail.rec) : null, sig = recMetrics ? recMetrics.signal : null;
+  function symbolContent(detail) {
+    const a = detail.asset, c = currency(a), sig = detail.rec ? signal(detail.rec) : null;
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, detail.rec && detail.rec.currentPrice);
-    const chg = changePercentValue(a);
+    const chg = num(a.changePercent, a.percentChange);
     const ps = detail.providerStatus || {};
     const providerSymbolUsed = ps.providerSymbolUsed || a.providerSymbol || (detail.rec && detail.rec.providerSymbol) || "غير متاح";
     const fallbackUsed = ps.fallbackUsed === true ? "نعم" : ps.fallbackUsed === false ? "لا" : "غير متاح";
@@ -1617,7 +860,7 @@
     return `<div class="detail-layout">
       <article class="panel detail-main">
         <div class="asset-head big">${logo(a, "lg")}<div class="asset-title"><strong class="symbol-code">${h(a.symbol)}</strong><small>${h(a.name || "اسم الأصل غير متوفر من المزود")}</small></div>
-          ${sig ? `<span class="state-badge ${signalToneClass(sig)} big">${h(sigLabel(sig))}</span>` : ""}</div>
+          ${sig ? `<span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""} big">${h(sigLabel(sig))}</span>` : ""}</div>
         <div class="detail-grid">${detailCard("السعر", price(p, c), "Price")}${detailCard("التغير", change(chg), "Change")}${detailCard("العملة", c, "Currency")}${detailCard("النوع", a.assetType || assetType(a.symbol), "Type")}${detailCard("السوق", a.exchange || a.market || "--", "Exchange")}${detailCard("المصدر", detail.source || "--", "Source")}</div>
         <div class="detail-grid">${detailCard("رمز المزود المستخدم", providerSymbolUsed, "Provider symbol")}${detailCard("استخدم fallback؟", fallbackUsed, "Fallback")}${detailCard("آخر تحديث", lastUpdated === "--" ? "غير متاح" : lastUpdated, "Last updated")}${detailCard("جودة البيانات", quality, "Data quality")}</div>
         <div class="card-actions"><button class="action-btn" data-quick-add="${h(a.symbol)}">أضف للمتابعة</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">أنشئ تنبيه</button></div>
@@ -1632,109 +875,8 @@
   }
 
   /* ───────────────────── Components ───────────────────── */
-  function symbolContent(detail) {
-    const a = norm({ ...(detail.asset || {}), providerStatus: detail.providerStatus || (detail.asset && detail.asset.providerStatus) });
-    const rec = detail.rec ? norm(detail.rec) : null;
-    const c = currency(a);
-    const recMetrics = rec ? tradeMetricsForAsset(rec) : null;
-    const sig = recMetrics ? recMetrics.signal : null;
-    const p = num(a.price, a.currentPrice, a.lastPrice, a.regularMarketPrice, a.close, rec && rec.currentPrice);
-    const chg = num(a.changePercent, rec && rec.changePercent);
-    const chgClass = chg === null ? "" : chg >= 0 ? "up" : "down";
-    const provider = providerName(a.provider || a.source || detail.source);
-    const quality = dataQualityLabel(a.dataQuality);
-    const lastUpdated = latinDateTime(a.lastUpdated || a.updatedAt || (rec && rec.lastUpdated));
-    return `<div class="symbol-terminal-page">
-      <article class="panel symbol-trade-header">
-        <div class="symbol-title-block">
-          ${logo(a, "lg")}
-          <div class="asset-title">
-            <span class="eyebrow">تفاصيل الرمز</span>
-            <strong class="symbol-code ltr">${h(a.symbol)}</strong>
-            <small>${h(a.name || "اسم الأصل غير متوفر من المزود")}</small>
-          </div>
-        </div>
-        <div class="symbol-price-block">
-          <strong class="ltr">${h(price(p, c))}</strong>
-          <span class="ltr ${chgClass}">${h(change(chg))}</span>
-        </div>
-        <div class="symbol-header-badges">
-          <span class="state-badge ${sig ? signalToneClass(sig) : ""}">${h(sig ? sigLabel(sig) : "بيانات غير كافية")}</span>
-          <span class="quality-badge">${h(quality)}</span>
-          <span class="currency-badge ltr">${h(c)}</span>
-        </div>
-        <div class="symbol-header-actions">
-          <button class="action-btn" data-quick-add="${h(a.symbol)}">أضف للمتابعة</button>
-          <button class="ghost-btn" data-create-alert="${h(a.symbol)}">أنشئ تنبيه</button>
-        </div>
-      </article>
-
-      <section class="symbol-primary-grid">
-        <article class="panel symbol-chart-card">
-          <div class="panel-head">
-            <div><span class="eyebrow">الرسم السعري</span><h2>حركة السعر</h2></div>
-            <div class="chart-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button type="button" data-symbol-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${h(t)}</button>`).join("")}</div>
-          </div>
-          ${miniChart(a, { large: true })}
-        </article>
-
-        <article class="panel symbol-summary-card">
-          <div class="panel-head"><div><span class="eyebrow">ملخص البيانات</span><h2>البيانات الأساسية</h2></div></div>
-          <div class="symbol-summary-grid">
-            ${symbolSummaryTile("السعر", price(p, c), "القيمة الحالية")}
-            ${symbolSummaryTile("التغير", change(chg), "مقارنة بالإغلاق السابق")}
-            ${symbolSummaryTile("الإغلاق السابق", price(a.previousClose, c), "Previous close")}
-            ${symbolSummaryTile("السوق", exchangeText(a), "السوق / البورصة")}
-            ${symbolSummaryTile("المزود", provider, "مصدر السعر")}
-            ${symbolSummaryTile("آخر تحديث", lastUpdated, "وقت المزود")}
-          </div>
-          ${technicalDetails(a, detail)}
-        </article>
-      </section>
-
-      <section class="symbol-analysis-grid">
-        ${symbolAnalysisPanel("إجماع الاستراتيجيات", "قراءة مجمعة من المؤشرات المتاحة", strategyConsensus(a, detail.tech, rec), true)}
-        ${symbolAnalysisPanel("التحليل الفني", "مؤشرات الدعم والزخم والاتجاه", detail.available ? technical(a, detail.tech, c) : emptyState("بيانات غير كافية", detail.message, "الإعدادات", `${ROOT}/settings`), true)}
-        ${symbolAnalysisPanel("الإشارة والتحليل", "خطة التداول عند توفر إشارة حقيقية", rec ? signalAnalysis(rec, c) : emptyState("بيانات غير كافية", "لم يرجع المزود ببيانات كافية لهذا الرمز.", "", ""), false)}
-        ${symbolAnalysisPanel("أخبار مرتبطة", "أحدث الأخبار المتصلة بالرمز", relatedNews(a.symbol), false)}
-      </section>
-    </div>`;
-  }
-
-  function symbolSummaryTile(label, value, helper) {
-    return `<article class="symbol-summary-tile"><span>${h(label)}</span><strong class="ltr">${h(displayValue(value))}</strong><small>${h(helper || "")}</small></article>`;
-  }
-  function symbolAnalysisPanel(title, helper, body, open) {
-    return `<details class="panel symbol-analysis-card" ${open ? "open" : ""}><summary><span><small>تحليل</small><strong>${h(title)}</strong></span><em>${h(helper)}</em><b aria-hidden="true">+</b></summary><div class="symbol-analysis-body">${body}</div></details>`;
-  }
-  function technicalDetails(asset, detail) {
-    const a = norm(asset || {});
-    const rows = [
-      ["البورصة", exchangeText(a)],
-      ["السوق", marketText(a)],
-      ["المزود", providerName(a.provider || a.source || detail.source)],
-      ["رمز المزود", a.providerSymbolUsed || a.providerSymbol || "—"],
-      ["استخدام مصدر بديل", fallbackLabel(a.fallbackUsed)],
-      ["جودة البيانات", dataQualityLabel(a.dataQuality)],
-      ["آخر تحديث", latinDateTime(a.lastUpdated || a.updatedAt)],
-      ["عدد نقاط الرسم", String((a.chartData || []).length || "—")]
-    ];
-    return `<details class="technical-details"><summary>تفاصيل تقنية</summary><div class="technical-details-grid">${rows.map(([label, value]) => technicalDetailRow(label, value)).join("")}</div></details>`;
-  }
-  function technicalDetailRow(label, value) {
-    return `<span class="technical-detail-row"><small>${h(label)}</small><b class="ltr">${h(displayValue(value))}</b></span>`;
-  }
-  function fallbackLabel(value) {
-    if (value === true) return "نعم";
-    if (value === false) return "لا";
-    return "—";
-  }
-  function displayValue(value) {
-    return value === null || value === undefined || value === "" || value === "--" || value === "غير متاح" ? "—" : String(value);
-  }
-
   function marketBias(rec) {
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length, total = rec.length;
+    const buy = rec.filter(x => signal(x) === "buy").length, sell = rec.filter(x => signal(x) === "sell").length, total = rec.length;
     if (!total) return { label: "بانتظار البيانات", en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: "" };
     const cf = rec.map(x => num(x.confidence, x.score, x.aiConfidence)).filter(v => v !== null);
     const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
@@ -1769,8 +911,8 @@
     </section>`;
   }
   function commandCenter(rec) {
-    const p = providerCopy(), b = marketBias(rec), context = activeMarketContext();
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length;
+    const p = providerCopy(), b = marketBias(rec), market = currentMarket();
+    const buy = rec.filter(x => signal(x) === "buy").length, sell = rec.filter(x => signal(x) === "sell").length;
     const configured = p.className === "online";
     return `<section class="terminal-command-center" aria-label="Market summary">
       ${commandMetric("PROVIDER", configured ? "متصل" : "غير مهيأ", p.active || p.raw || p.title, configured ? "ok" : "warn")}
@@ -1778,33 +920,16 @@
       ${commandMetric("BUY SIGNALS", buy, "فرص شراء", "ok")}
       ${commandMetric("SELL SIGNALS", sell, "فرص بيع", "bad")}
       ${commandMetric("ANALYZED ASSETS", rec.length || "غير متاح", "أصول محللة", rec.length ? "ok" : "neutral")}
-      ${commandMetric("ACTIVE MARKET", context.marketName, `${context.marketNameEn} · ${context.currency}`, "blue")}
+      ${commandMetric("ACTIVE MARKET", market.ar, `${market.en} · ${market.currency}`, "blue")}
     </section>`;
   }
   function commandMetric(kicker, value, label, tone) {
     return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(kicker)}</span><strong>${h(String(value))}</strong><small>${h(label || "غير متاح")}</small></article>`;
   }
-  function commandCenter(rec) {
-    const p = providerCopy(), b = marketBias(rec), context = activeMarketContext();
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length;
-    const configured = p.className === "online";
-    const analysis = analysisSummary(rec);
-    return `<section class="terminal-command-center" aria-label="Market summary">
-      ${commandMetric("PROVIDER", configured ? tx("\u0645\u062a\u0635\u0644", "Connected") : tx("\u063a\u064a\u0631 \u0645\u0647\u064a\u0623", "Unavailable"), p.active || p.raw || p.title, configured ? "ok" : "warn")}
-      ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : unavailableMark(), b.conf ? b.label : tx("\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a", "Waiting for data"), b.tone || "neutral")}
-      ${commandMetric("BUY SIGNALS", buy, tx("\u0641\u0631\u0635 \u0634\u0631\u0627\u0621", "Buy signals"), "ok")}
-      ${commandMetric("SELL SIGNALS", sell, tx("\u0641\u0631\u0635 \u0628\u064a\u0639", "Sell signals"), "bad")}
-      ${commandMetric("ANALYZED ASSETS", analysis.hasRun ? analysis.count : unavailableMark(), analysis.label, analysis.hasRun ? "ok" : "neutral", `<button class="ghost-btn sm" data-run-analysis type="button">${h(analysis.action)}</button>`)}
-      ${commandMetric("ACTIVE MARKET", context.marketName, `${context.marketNameEn} · ${context.currency}`, "blue")}
-    </section>`;
-  }
-  function commandMetric(kicker, value, label, tone, action = "") {
-    return `<article class="command-metric ${tone || ""} analysis-command-metric"><span class="card-kicker">${h(kicker)}</span><strong>${h(String(value))}</strong><small>${h(label || unavailableMark())}</small>${action}</article>`;
-  }
   function marketLeadership(rec) {
     const commandRec = mergeRecLists(legacyRecsFrom(state.commandCards), rec);
     return `<section class="panel market-leadership">
-      <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(activeMarketContext().marketName)}</span></div>
+      <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(currentMarket().ar)}</span></div>
       <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, commandRec))).join("")}</div>
     </section>`;
   }
@@ -1824,26 +949,36 @@
     const detailSymbol = a.canonicalSymbol || symbol;
     const c = currency({ ...a, symbol: detailSymbol });
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
-    const chg = changePercentValue(a);
+    const chg = num(a.changePercent, a.percentChange);
     const conf = num(a.confidence, a.score, a.aiConfidence);
-    const source = providerName(a.provider || a.source || (state.provider && (state.provider.active || state.provider.provider)));
-    const hasSignal = a.signalAvailable !== false && Boolean(a.signal || a.recommendation || a.action || a.side || a.type);
-    const sig = hasSignal ? tradeMetricsForAsset(a).signal : null;
+    const source = providerName(a.provider || a.source || (state.provider && (state.provider.active || state.provider.provider)) || "Yahoo Finance");
+    const sig = (a.signalAvailable === false || (!a.signal && !a.recommendation && !a.action)) ? null : signal(a);
     const quality = a.dataQuality || (p === null ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
-    return `<article class="leadership-card ${stateClass}">
-      <button class="leadership-card-action" data-symbol-details="${h(detailSymbol)}" type="button">
+    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
       <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
-      <div class="leadership-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
+      <div class="leadership-price"><strong class="ltr">${h(p === null ? "السعر غير متاح" : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "التغير غير متاح" : change(chg))}</span></div>
       ${sparkline(a, chg)}
       <div class="leadership-foot">
-      <span class="signal-badge ${sig ? signalCardClass(sig) : "unavailable"}">${h(sig ? sigLabel(sig) : "إشارة غير متاحة")}</span>
+        <span class="signal-badge ${sig || "unavailable"}">${h(sig ? sigLabel(sig) : "إشارة غير متاحة")}</span>
         <span class="quality-badge">${h(conf === null ? "الثقة غير متاحة" : `الثقة ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
         ${precisionBadge(a)}
       </div>
-      </button>
-      ${technicalDetails({ ...a, source }, { source })}
-    </article>`;
+      <div class="leadership-provider-row">
+        <b>${h(source)}</b>
+        <span class="ltr">${h(a.providerSymbolUsed || a.providerSymbol || "--")}</span>
+        <span>${a.fallbackUsed === true ? "fallback: yes" : "fallback: no"}</span>
+        <span>${h(providerFlag("fmp"))}</span>
+        <span>${h(providerFlag("finnhub"))}</span>
+        <time class="ltr">${h(latinDateTime(a.lastUpdated || a.updatedAt))}</time>
+      </div>
+    </button>`;
+  }
+  function providerFlag(key) {
+    const providers = state.providerStatus && state.providerStatus.providers;
+    const provider = providers && providers[key];
+    const label = key === "fmp" ? "FMP" : key === "finnhub" ? "Finnhub" : key;
+    return `${label}: ${provider && provider.configured ? "on" : "off"}`;
   }
   function opportunityHeatmap(rec) {
     const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
@@ -1854,16 +989,15 @@
   }
   function heatmapCard(symbol, asset) {
     const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
-    const chg = changePercentValue(a);
+    const chg = num(a.changePercent, a.percentChange);
     const hasSignal = Boolean(asset && (a.signal || a.recommendation || a.action || a.side || a.type));
-    const sig = hasSignal ? tradeMetricsForAsset(a).signal : null;
     const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
     const conf = num(a.confidence, a.score, a.aiConfidence);
     return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
       ${logo({ ...a, symbol }, "sm")}
       <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
       <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</span>
-      <em>${sig ? h(sigLabel(sig)) : "غير متاح"}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
+      <em>${hasSignal ? h(sigLabel(signal(a))) : "غير متاح"}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
     </button>`;
   }
   function moverPanel(kicker, title, items, tone) {
@@ -1940,53 +1074,49 @@
   }
   function watchlistTable(items, opts = {}) {
     const rows = items.map(x => {
-      const a = norm(x), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
-      const conf = metrics.confidence, p = metrics.current;
-      const chg = changePercentValue(a), score = num(a.aiScore, a.score, a.rating);
+      const a = norm(x), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "";
+      const conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+      const chg = num(a.changePercent, a.percentChange), tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
       const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || unavailableMark())}</small></span></button></td>
-        <td data-label="السوق">${exchangeBadge(a)}</td>
-        <td class="ltr" data-label="السعر">${h(p === null ? unavailableMark() : price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? unavailableMark() : change(chg))}</td>
-        <td data-label="إشارة التداول"><span class="state-badge ${signalToneClass(sig)}">${h(sigLabel(sig))}</span></td>
-        <td class="ltr" data-label="الثقة">${conf === null ? unavailableMark() : Math.round(conf) + "%"}</td>
-        <td class="ltr" data-label="الهدف">${metrics.target === null ? unavailableMark() : price(metrics.target, c)}</td>
-        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || unavailableMark())}</td>
-        <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : unavailableMark()}</td>
-        <td class="ltr" data-label="سكور AI">${score === null ? unavailableMark() : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
+        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
+        <td class="ltr" data-label="السعر">${h(p === null ? "غير متاح" : price(p, c))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? "غير متاح" : change(chg))}</td>
+        <td data-label="التوصية"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
+        <td class="ltr" data-label="الثقة">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
+        <td class="ltr" data-label="الهدف">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
+        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
+        <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
+        <td class="ltr" data-label="سكور AI">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
         <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
       </tr>`;
     }).join("");
-    return `<div class="table-shell watchlist-table"><table><thead><tr><th>الأصل</th><th>السوق</th><th>السعر</th><th>التغير</th><th>إشارة التداول</th><th>الثقة</th><th>الهدف</th><th>المدة</th><th>المخاطرة</th><th>سكور AI</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    return `<div class="table-shell watchlist-table"><table><thead><tr><th>الأصل</th><th>السعر</th><th>التغير</th><th>التوصية</th><th>الثقة</th><th>الهدف</th><th>المدة</th><th>المخاطرة</th><th>سكور AI</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
   function recCard(x) {
-    const a = norm(x), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
-    return `<article class="rec-card ${signalCardClass(sig)}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small><small>${exchangeBadge(a)}</small></div><span class="state-badge trading-signal-badge ${signalToneClass(sig)}" title="إشارة التداول">${h(sigLabel(sig))}</span></div>
-      <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(metrics.current, c))}</b></span><span>الهدف<b class="ltr">${h(metrics.target === null ? "--" : price(metrics.target, c))}</b></span><span>وقف<b class="ltr">${h(metrics.stop === null ? "--" : price(metrics.stop, c))}</b></span><span>الصعود المتوقع<b class="ltr">${h(formatSignalPercent(metrics.upsidePercent))}</b></span><span>الهبوط إلى وقف الخسارة<b class="ltr">${h(formatSignalPercent(metrics.downsidePercent))}</b></span><span>العائد/المخاطرة<b class="ltr">${h(formatRiskRewardRatio(metrics.riskRewardRatio))}</b></span><span>ثقة<b>${metrics.confidence === null ? "--" : Math.round(metrics.confidence) + "%"}</b></span></div>
-      <p class="signal-explanation">${h(metrics.explanation)}</p>
-      <div class="rec-foot"><span class="status-tag watchlist-status ${isInWatchlist(a.symbol) ? "ok" : "muted"}">${h(watchlistStatusLabel(a.symbol))}</span><div class="row-actions compact-actions"><button class="action-btn sm" data-follow-trade="${h(a.symbol)}" type="button">متابعة الصفقة</button><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
+    const a = norm(x), c = currency(a), sig = signal(a), conf = num(a.confidence, a.score, a.aiConfidence);
+    const p = num(a.price, a.lastPrice, a.currentPrice), tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
+    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
+      <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(p, c))}</b></span><span>الهدف<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>وقف<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>ثقة<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
+      <div class="rec-foot"><span class="status-tag ${recStatusTone(a)}">${h(recStatus(a))}</span><div class="row-actions compact-actions"><button class="action-btn sm" data-follow-trade="${h(a.symbol)}" type="button">متابعة الصفقة</button><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
   }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
-    const a = norm(asset), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
-    const chg = changePercentValue(a);
+    const a = norm(asset), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "", conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+    const chg = num(a.changePercent, a.percentChange);
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">إزالة</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span>${exchangeBadge(a)}<span class="state-badge trading-signal-badge ${signalToneClass(sig)}" title="إشارة التداول">${h(sigLabel(sig))}</span><span class="status-tag watchlist-status ${isInWatchlist(a.symbol) ? "ok" : "muted"}">${h(watchlistStatusLabel(a.symbol))}</span></div>
-      <div class="asset-metrics"><span>السعر<b class="ltr">${h(metrics.current === null ? unavailableMark() : price(metrics.current, c))}</b></span><span>الهدف<b class="ltr">${h(metrics.target === null ? unavailableMark() : price(metrics.target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(metrics.stop === null ? unavailableMark() : price(metrics.stop, c))}</b></span><span>الصعود المتوقع<b class="ltr">${h(formatSignalPercent(metrics.upsidePercent))}</b></span><span>الهبوط إلى وقف الخسارة<b class="ltr">${h(formatSignalPercent(metrics.downsidePercent))}</b></span><span>العائد/المخاطرة<b class="ltr">${h(formatRiskRewardRatio(metrics.riskRewardRatio))}</b></span><span>ثقة AI<b>${metrics.confidence === null ? unavailableMark() : `${Math.round(metrics.confidence)}%`}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? unavailableMark() : change(chg))}</b></span></div>
-      <p class="signal-explanation">${h(metrics.explanation)}</p>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span><span class="status-tag">${h(recStatus(a))}</span></div>
+      <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
-    const meta = marketMetadata(m.id);
-    const marketExchange = metadataDisplayValue(meta.exchange, inferExchangeFromSymbol((m.symbols || [])[0]), m.family);
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(meta.en)}</span></div><strong>${h(meta.ar)}</strong><p>${h(marketExchange)} · العملة <span class="ltr">${h(contextCurrency({ marketId: meta.id }))}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = tradeMetricsForAsset(a).signal, chg = changePercentValue(a); return `<button class="heat-cell ${chg === null ? "unavailable" : signalCardClass(sig)}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? unavailableMark() : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
@@ -1997,7 +1127,7 @@
   function tradeProviderStatus(items) {
     const status = state.followed.dataStatus || {};
     const p = state.followed.dataProvider || state.provider || {};
-    const provider = status.provider || providerName(p.active || p.provider) || "—";
+    const provider = status.provider || providerName(p.active || p.provider) || "Yahoo Finance";
     const rows = [
       ["مزود الأسعار", provider],
       ["آخر تحديث", latinDateTime(status.lastUpdated || new Date().toISOString())],
@@ -2043,23 +1173,20 @@
   }
   function tradeCol(title, items, tone) { return `<article class="trade-column ${tone}"><h3>${h(title)} <span class="col-count">${items.length}</span></h3>${items.length ? items.map(tradeCard).join("") : `<div class="trade-mini-empty">لا توجد صفقات في هذا التصنيف.</div>`}</article>`; }
   function tradeCard(t) {
-    const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), metrics = tradeMetricsForAsset({ ...a, action: tradeAction(t) }), sig = metrics.signal;
-    const status = tradeStatus(t), current = metrics.current, entry = metrics.entry, target = metrics.target, stop = metrics.stop;
+    const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), sig = tradeAction(t);
+    const status = tradeStatus(t), current = num(t.currentPrice, t.current), entry = num(t.entryPrice, t.entry), target = num(t.targetPrice, t.target), stop = num(t.stopLoss, t.stop);
     return `<article class="trade-item"><div class="asset-head">${logo({ symbol: s })}<div class="asset-title"><strong class="ltr">${h(s)}</strong><small>${h(a.name || t.status || "متابعة")}</small></div></div>
-      <div class="badge-row"><span class="state-badge trading-signal-badge ${signalToneClass(sig)}" title="إشارة التداول">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></div>
+      <div class="badge-row"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></div>
       <div class="trade-row"><span>الدخول<b class="ltr">${h(price(entry, c))}</b></span><span>الحالي<b class="ltr">${h(current === null ? "--" : price(current, c))}</b></span><span>P/L<b class="${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</b></span></div>
       <div class="trade-row"><span>الهدف<b class="ltr">${h(price(target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(price(stop, c))}</b></span><span>الثقة<b class="ltr">${h(t.confidence == null ? "--" : Math.round(Number(t.confidence)) + "%")}</b></span></div>
-      <div class="trade-row"><span>الصعود المتوقع<b class="ltr">${h(formatSignalPercent(metrics.upsidePercent))}</b></span><span>الهبوط إلى وقف الخسارة<b class="ltr">${h(formatSignalPercent(metrics.downsidePercent))}</b></span><span>العائد/المخاطرة<b class="ltr">${h(formatRiskRewardRatio(metrics.riskRewardRatio))}</b></span></div>
-      <p class="signal-explanation">${h(metrics.explanation)}</p>
       ${t.priceMessage ? `<p class="trade-warning">${h(t.priceMessage)}</p>` : ""}
       <div class="rec-foot"><small>${h(providerName(t.provider) || t.sourceType || "--")}</small><button class="ghost-btn sm" data-symbol-details="${h(s)}">فتح التحليل</button></div></article>`;
   }
   function tradeList(items) { return `<div class="trade-list">${items.map(tradeCard).join("")}</div>`; }
   function tradeJournalTable(items) {
     const rows = items.map(t => { const s = sym(t.symbol || t.asset || "--"), c = currency({ symbol: s, currency: t.currency }), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), status = tradeStatus(t);
-      const metrics = tradeMetricsForAsset({ ...t, symbol: s, action: tradeAction(t) });
-      return `<tr><td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong><small>${h(t.assetName || t.name || "--")}</small></span></button></td><td data-label="إشارة التداول"><span class="state-badge ${signalToneClass(metrics.signal)}">${h(sigLabel(metrics.signal))}</span></td><td class="ltr" data-label="الدخول">${h(price(num(t.entryPrice, t.entry), c))}</td><td class="ltr" data-label="الحالي">${h(price(num(t.currentPrice, t.current), c))}</td><td class="ltr" data-label="الهدف">${h(price(num(t.targetPrice, t.target), c))}</td><td class="ltr" data-label="وقف الخسارة">${h(price(num(t.stopLoss, t.stop), c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}" data-label="P/L">${pnl === null ? "--" : pnl + "%"}</td><td data-label="الحالة"><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></td><td data-label="المصدر">${h(providerName(t.provider) || t.sourceType || "--")}</td></tr>`; }).join("");
-    return `<div class="table-shell trade-journal-table"><table><thead><tr><th>الرمز</th><th>إشارة التداول</th><th>الدخول</th><th>الحالي</th><th>الهدف</th><th>وقف الخسارة</th><th>P/L</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      return `<tr><td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong><small>${h(t.assetName || t.name || "--")}</small></span></button></td><td data-label="الإجراء">${h(sigLabel(tradeAction(t)))}</td><td class="ltr" data-label="الدخول">${h(price(num(t.entryPrice, t.entry), c))}</td><td class="ltr" data-label="الحالي">${h(price(num(t.currentPrice, t.current), c))}</td><td class="ltr" data-label="الهدف">${h(price(num(t.targetPrice, t.target), c))}</td><td class="ltr" data-label="وقف الخسارة">${h(price(num(t.stopLoss, t.stop), c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}" data-label="P/L">${pnl === null ? "--" : pnl + "%"}</td><td data-label="الحالة"><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></td><td data-label="المصدر">${h(providerName(t.provider) || t.sourceType || "--")}</td></tr>`; }).join("");
+    return `<div class="table-shell trade-journal-table"><table><thead><tr><th>الرمز</th><th>الإجراء</th><th>الدخول</th><th>الحالي</th><th>الهدف</th><th>وقف الخسارة</th><th>P/L</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function newsList(items) { return `<div class="news-list">${items.map(newsCard).join("")}</div>`; }
   function newsCard(n) {
@@ -2080,7 +1207,7 @@
     const tone = normalizedStatusTone(normalized.status);
     const cards = [
       ["حالة المزود", featureStatusLabel(normalized.status), "Status", tone],
-      ["المزود المستخدم", normalized.provider, "Provider", ""],
+      ["المزود النشط", normalized.provider, "Provider", ""],
       ["حالة الاتصال", normalized.configured ? "مهيأ" : "غير مهيأ", "Connection", normalized.configured ? "ok" : "warn"],
       ["عدد الرموز المكتشفة", countText(normalized.discoveredCount), "Discovered", ""],
       ["عدد الرموز المحملة", countText(normalized.loadedCount), "Loaded", "ok"],
@@ -2118,7 +1245,7 @@
     const discoveredCount = numberValue(diag.totalSymbolsDiscovered, loadedCount);
     const errorSummary = raw.errorSummary || formatProviderError(p.failureReason || ps.providers?.fmp?.error || state.rec.message || state.markets.message || null, { empty: "" });
     return {
-      provider: providerName(raw.provider || p.active || p.requested || p.provider || providerEvidence().provider || ""),
+      provider: providerName(raw.provider || p.active || p.requested || p.provider || "FMP"),
       configured: raw.configured !== undefined ? Boolean(raw.configured) : p.configured === true || Boolean(p.active || p.provider),
       status,
       supportedFeatures: arr(raw.supportedFeatures || p.supportedFeatures),
@@ -2249,34 +1376,11 @@
   function isRateLimitText(value) { return /429|rate_limited|rate limit|too many|provider_rate_limited|http_429/i.test(String(value || "")); }
   function isLatinMetric(value) { return /^[\d\s.,:%A-Za-z/_-]+$/.test(String(value || "")); }
   function featureTitle(key) { return key === "earnings" ? "الأرباح" : key === "dividends" ? "التوزيعات" : key === "ipos" ? "الاكتتابات" : key === "economic" ? "الاقتصادي" : key; }
-  function providerMarkets() {
-    const rows = arr(state.markets.markets || state.markets.data || state.markets.results);
-    if (!rows.length) return emptyState("لا توجد قائمة أسواق من المزود", state.markets.message || providerCopy().copy, "الإعدادات", `${ROOT}/settings`);
-    return `<div class="table-shell"><table><thead><tr><th>السوق</th><th>البورصة</th><th>الرمز</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(m => {
-      const normalized = norm(m);
-      return `<tr><td>${h(metadataDisplayValue(m.name, m.label, normalized.market))}</td><td>${h(exchangeText(normalized))}</td><td class="ltr">${h(m.symbol || m.code || "--")}</td><td class="ltr">${h(metadataDisplayValue(m.currency, normalized.currency))}</td><td>${h(m.source || m.provider || "--")}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
-  }
+  function providerMarkets() { const rows = arr(state.markets.markets || state.markets.data || state.markets.results); if (!rows.length) return emptyState("لا توجد قائمة أسواق من المزود", state.markets.message || providerCopy().copy, "الإعدادات", `${ROOT}/settings`); return `<div class="table-shell"><table><thead><tr><th>السوق</th><th>الرمز</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(m => `<tr><td>${h(m.name || m.label || "--")}</td><td class="ltr">${h(m.symbol || m.code || "--")}</td><td class="ltr">${h(m.currency || "--")}</td><td>${h(m.source || m.provider || "--")}</td></tr>`).join("")}</tbody></table></div>`; }
   function confBuckets(r) { const b = { high: 0, mid: 0, low: 0 }; r.forEach(x => { const c = num(x.confidence, x.score, x.aiConfidence); if (c === null) return; if (c >= 70) b.high++; else if (c >= 45) b.mid++; else b.low++; }); return b; }
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: ["منخفضة", "ok"], medium: ["متوسطة", "warn"], high: ["مرتفعة", "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${L[k][0]}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
-  function miniChart(a, options = {}) {
-    const large = options.large === true;
-    const points = normalizeChartData(a.chartData || a.history || a.sparkline || a.candles);
-    const series = points.map(p => num(p.close, p.value, p.price, p)).filter(v => v !== null);
-    if (series.length < 2) {
-      return `<div class="chart-empty ${large ? "large" : ""}"><div><strong>لا توجد بيانات رسم بياني</strong><p>لم يرجع المزود نقاطاً كافية لهذا الإطار الزمني.</p></div></div>`;
-    }
-    const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1;
-    const height = large ? 100 : 40;
-    const padding = large ? 6 : 2;
-    const pts = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(height - padding - (v - min) / rng * (height - padding * 2)).toFixed(2)}`).join(" ");
-    const up = series[series.length - 1] >= series[0];
-    return `<div class="detail-chart-wrap ${large ? "large" : ""}">
-      <svg class="detail-chart ${large ? "large" : ""}" viewBox="0 0 100 ${height}" preserveAspectRatio="none"><polyline points="${pts}" class="${up ? "up" : "down"}"></polyline></svg>
-      ${large ? `<div class="chart-caption"><span>${h(state.timeframe || "1Y")}</span><b class="ltr ${up ? "up" : "down"}">${h(change(((series[series.length - 1] - series[0]) / (series[0] || 1)) * 100))}</b></div>` : ""}
-    </div>`;
-  }
+  function miniChart(a) { const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null); if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني من المزود.</div>`; const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1; const pts = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(40 - (v - min) / rng * 38).toFixed(2)}`).join(" "); const up = series[series.length - 1] >= series[0]; return `<svg class="detail-chart" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="${pts}" class="${up ? "up" : "down"}"></polyline></svg>`; }
   function firstNum(...values) {
     for (const value of values) {
       const n = Array.isArray(value) ? num(...value) : num(value);
@@ -2346,28 +1450,26 @@
   }
   function riskReward(rec, c) {
     if (!rec) return "";
-    const metrics = tradeMetricsForAsset(rec);
-    const entry = metrics.entry;
+    const entry = num(rec.entry, rec.entryPrice, rec.price, rec.currentPrice);
     const tps = arr(rec.takeProfit).map(Number).filter(Number.isFinite);
-    const tgt1 = num(metrics.target, tps[0]);
+    const tgt1 = num(rec.target, rec.targetPrice, tps[0]);
     const tgt2 = num(rec.target2, tps[1]);
-    const sl = metrics.stop;
+    const sl = num(rec.stopLoss, rec.stop);
     if (entry === null || tgt1 === null || sl === null) return "";
     const risk = Math.abs(entry - sl); if (!risk) return "";
     const rr1 = Math.round(Math.abs(tgt1 - entry) / risk * 100) / 100;
     const rr2 = tgt2 === null ? null : Math.round(Math.abs(tgt2 - entry) / risk * 100) / 100;
-    return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف 1 · احتمال مرتفع", price(tgt1, c), "TP1")}${tgt2 !== null ? detailCard("الهدف 2 · تمديد", price(tgt2, c), "TP2") : ""}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("الصعود المتوقع", formatSignalPercent(metrics.upsidePercent), "Upside")}${detailCard("الهبوط إلى وقف الخسارة", formatSignalPercent(metrics.downsidePercent), "Downside")}${detailCard("نسبة العائد إلى المخاطرة", formatRiskRewardRatio(metrics.riskRewardRatio), "R/R")}${detailCard("العائد/المخاطرة", rr2 !== null ? `${rr2}:1 · TP2` : `${rr1}:1 · TP1`, "Legacy R/R")}</div>
+    return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف 1 · احتمال مرتفع", price(tgt1, c), "TP1")}${tgt2 !== null ? detailCard("الهدف 2 · تمديد", price(tgt2, c), "TP2") : ""}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("العائد/المخاطرة", rr2 !== null ? `${rr2}:1 · TP2` : `${rr1}:1 · TP1`, "R/R")}</div>
     <p class="muted-note">الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة — وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.</p>`;
   }
   function signalAnalysis(rec, c) {
-    const metrics = tradeMetricsForAsset(rec);
-    const sig = metrics.signal, conf = metrics.confidence === null ? "--" : Math.round(metrics.confidence) + "%";
+    const sig = signal(rec), conf = confText(rec);
     const reasons = arr(rec.reasons).map(String).filter(Boolean).slice(0, 5);
     const warnings = arr(rec.warnings).map(String).filter(Boolean).slice(0, 5);
     const score = rec.scoreBreakdown || rec.score_breakdown || {};
     const quality = rec.dataQuality || rec.data_quality || "--";
     const provider = rec.provider || rec.source || "--";
-    const summary = rec.signalExplanationAr || rec.signal_explanation_ar || metrics.explanation || rec.reason || rec.summary || reasons[0] || "قراءة تحليلية مبنية على البيانات المتاحة.";
+    const summary = rec.reason || rec.summary || reasons[0] || "قراءة تحليلية مبنية على البيانات المتاحة.";
     const scoreRows = [
       ["فني", score.technicalScore, 40],
       ["زخم", score.momentumScore, 20],
@@ -2382,9 +1484,6 @@
       <div class="detail-grid">
         ${detailCard("الإشارة", sigLabel(sig), "Action")}
         ${detailCard("الثقة", conf, "Confidence")}
-        ${detailCard("الصعود المتوقع", formatSignalPercent(metrics.upsidePercent), "Upside")}
-        ${detailCard("الهبوط إلى وقف الخسارة", formatSignalPercent(metrics.downsidePercent), "Downside")}
-        ${detailCard("نسبة العائد إلى المخاطرة", formatRiskRewardRatio(metrics.riskRewardRatio), "R/R")}
         ${precisionRate !== null ? detailCard("الدقة التاريخية", `${precisionRate}%${pm && pm.passed ? " ✓" : ""}`, "Backtest") : ""}
         ${bt && num(bt.samples) !== null ? detailCard("عينات الاختبار", latinNumber(bt.samples), "Samples") : ""}
         ${detailCard("المخاطرة", riskShort(rec.risk || rec.riskLevel), "Risk")}
@@ -2400,49 +1499,42 @@
       <p class="muted-note ltr">These are educational analytical signals based on available data and are not financial advice.</p>
     </div>`;
   }
-  function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(displayValue(value))}</strong><p>${h(label)}</p></article>`; }
+  function detailCard(label, value, helper) { return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="ltr">${h(value || "غير متاح")}</strong><p>${h(label)}</p></article>`; }
 
   /* ── multi-strategy consensus engine: combine several classic strategies,
      take the most-agreed (most accurate) verdict. ── */
   function strategySignals(asset, tech, rec) {
     const t = tech || {}, sigs = [];
-    const indicators = t.indicators || t.technicalIndicators || t.technical || {};
-    const moving = t.movingAverages || t.moving_averages || indicators.movingAverages || indicators.moving_averages || {};
-    const levels = t.levels || t.keyLevels || t.supportResistance || {};
-    const price = num(asset.price, asset.lastPrice, asset.regularMarketPrice, asset.close, rec && rec.currentPrice, t.price, t.currentPrice);
-    const ma50 = num(t.ma50, t.sma50, t.ema50, moving.ma50, moving.sma50, moving.ema50), ma200 = num(t.ma200, t.sma200, t.ema200, moving.ma200, moving.sma200, moving.ema200);
-    const rsi = num(t.rsi, t.rsi14, t.RSI, indicators.rsi, indicators.rsi14), macd = num(t.macd, t.macdValue, indicators.macd, indicators.macdValue), macdSig = num(t.macdSignal, t.signalLine, indicators.macdSignal, indicators.signalLine);
-    const s1 = num(t.support, t.s1, t.support1, levels.support, levels.s1, levels.support1), r1 = num(t.resistance, t.r1, t.resistance1, levels.resistance, levels.r1, levels.resistance1);
+    const price = num(asset.price, asset.lastPrice, asset.regularMarketPrice, asset.close, rec && rec.currentPrice, t.price);
+    const ma50 = num(t.ma50, t.sma50, t.ema50), ma200 = num(t.ma200, t.sma200, t.ema200);
+    const rsi = num(t.rsi, t.rsi14, t.RSI), macd = num(t.macd, t.macdValue), macdSig = num(t.macdSignal, t.signalLine);
+    const s1 = num(t.support, t.s1, t.support1), r1 = num(t.resistance, t.r1, t.resistance1);
     const chg = num(asset.changePercent, asset.percentChange, rec && rec.expectedMovePct);
-    const push = (name, signal, weight, note, kind = "technical") => sigs.push({ name, signal, weight, note, kind });
+    const push = (name, signal, weight, note) => sigs.push({ name, signal, weight, note });
     if (ma50 !== null && ma200 !== null) push("اتجاه — تقاطع المتوسطات", ma50 >= ma200 ? "buy" : "sell", 1.3, ma50 >= ma200 ? "المتوسط 50 فوق 200 (تقاطع ذهبي)" : "المتوسط 50 تحت 200 (تقاطع موت)");
     if (rsi !== null) push("RSI — تشبع/ارتداد", rsi <= 30 ? "buy" : rsi >= 70 ? "sell" : "neutral", 1.0, rsi <= 30 ? `تشبع بيعي (${Math.round(rsi)})` : rsi >= 70 ? `تشبع شرائي (${Math.round(rsi)})` : `محايد (${Math.round(rsi)})`);
     if (macd !== null && macdSig !== null) push("MACD — زخم", macd >= macdSig ? "buy" : "sell", 1.1, macd >= macdSig ? "تقاطع إيجابي" : "تقاطع سلبي");
     if (price !== null && ma50 !== null) push("السعر مقابل المتوسط 50", price >= ma50 ? "buy" : "sell", 0.9, price >= ma50 ? "السعر فوق المتوسط" : "السعر تحت المتوسط");
     if (price !== null && s1 !== null && r1 !== null) { const mid = (s1 + r1) / 2; push("الدعم/المقاومة", price <= s1 * 1.02 ? "buy" : price >= r1 * 0.98 ? "sell" : price >= mid ? "buy" : "neutral", 0.8, price <= s1 * 1.02 ? "قرب الدعم" : price >= r1 * 0.98 ? "قرب المقاومة" : "داخل النطاق"); }
-    if (chg !== null) push("الزخم اللحظي", chg > 0.3 ? "buy" : chg < -0.3 ? "sell" : "neutral", 0.7, `${chg > 0 ? "+" : ""}${Number(chg).toFixed(2)}%`, "price");
-    if (rec) {
-      const recMetrics = tradeMetricsForAsset(rec);
-      push("توصية المزود (AI)", recMetrics.signal, 1.2, sigLabel(recMetrics.signal) + (recMetrics.confidence !== null ? ` · ${Math.round(recMetrics.confidence)}%` : ""), "provider");
-    }
+    if (chg !== null) push("الزخم اللحظي", chg > 0.3 ? "buy" : chg < -0.3 ? "sell" : "neutral", 0.7, `${chg > 0 ? "+" : ""}${Number(chg).toFixed(2)}%`);
+    if (rec) push("توصية المزود (AI)", signal(rec), 1.2, sigLabel(signal(rec)) + (num(rec.confidence, rec.score) !== null ? ` · ${Math.round(num(rec.confidence, rec.score))}%` : ""));
     return sigs;
   }
   function consensus(sigs) {
     let buy = 0, sell = 0, neutral = 0, tw = 0;
-    sigs.forEach(s => { if (isBuySignalName(s.signal)) buy += s.weight; else if (isSellSignalName(s.signal)) sell += s.weight; else neutral += s.weight; tw += s.weight; });
+    sigs.forEach(s => { if (s.signal === "buy") buy += s.weight; else if (s.signal === "sell") sell += s.weight; else neutral += s.weight; tw += s.weight; });
     if (!tw) return { signal: "watch", agreement: 0, score: 0, buy: 0, sell: 0, neutral: 0, count: 0 };
     const top = Math.max(buy, sell, neutral);
-    const sigName = (top === buy && buy > 0) ? "buy" : (top === sell && sell > 0) ? "sell_or_avoid" : "watch";
+    const sigName = (top === buy && buy > 0) ? "buy" : (top === sell && sell > 0) ? "sell" : "watch";
     const agreement = Math.round(top / tw * 100);
     const coverage = Math.min(1, sigs.length / 6);
     return { signal: sigName, agreement, score: Math.round(agreement * coverage), buy: Math.round(buy / tw * 100), sell: Math.round(sell / tw * 100), neutral: Math.round(neutral / tw * 100), count: sigs.length };
   }
   function strategyConsensus(asset, tech, rec) {
     const sigs = strategySignals(asset, tech, rec), c = consensus(sigs);
-    const technicalCount = sigs.filter(item => item.kind === "technical").length;
-    if (technicalCount < 2) return emptyState("بيانات غير كافية", "يحتاج إجماع الاستراتيجيات إلى مؤشرين فنيين على الأقل قبل حساب الثقة. لن نعرض 100% مراقبة عند غياب المؤشرات.", "الإعدادات", `${ROOT}/settings`);
-    const tone = signalToneClass(c.signal);
-    const rows = sigs.map(s => `<div class="strat-row"><span class="strat-name">${h(s.name)}</span><span class="strat-note">${h(s.note)}</span><span class="vote ${signalToneClass(s.signal)}">${h(sigLabel(s.signal))}</span></div>`).join("");
+    if (!sigs.length) return emptyState("لا توجد بيانات كافية للاستراتيجيات", "يحتاج محرك الإجماع مؤشرات فنية أو توصية من المزود لتشغيل الاستراتيجيات.", "الإعدادات", `${ROOT}/settings`);
+    const tone = c.signal === "buy" ? "ok" : c.signal === "sell" ? "warn" : "";
+    const rows = sigs.map(s => `<div class="strat-row"><span class="strat-name">${h(s.name)}</span><span class="strat-note">${h(s.note)}</span><span class="vote ${s.signal === "buy" ? "ok" : s.signal === "sell" ? "warn" : ""}">${h(sigLabel(s.signal))}</span></div>`).join("");
     return `<div class="strategy-consensus">
       <div class="consensus-head"><div><span class="card-kicker">CONSENSUS · أُخذت الإشارة الأكثر اتفاقاً (الأدق)</span><strong class="state-${tone}">${h(sigLabel(c.signal))}</strong></div><div class="consensus-score"><b>${c.agreement}%</b><small>اتفاق · ${c.count} استراتيجية</small></div></div>
       <div class="bias-rows">
@@ -2463,8 +1555,8 @@
   }
   function emptyState(title, body, label, href) { return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`; }
   function miniEmpty() { return `<div class="empty-state compact"><p>لا توجد بيانات حالياً من المزود.</p></div>`; }
-  function marketUnavailable(m, data) { const meta = marketMetadata(m.id); return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(meta.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
-    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", contextCurrency({ marketId: meta.id }), "Currency")}${detailCard("الحالة", providerCopy().raw, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
+  function marketUnavailable(m, data) { return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
+    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", m.currency, "Currency")}${detailCard("الحالة", providerCopy().raw, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
     <div class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}"><span class="ltr">${h(s)}</span></button>`).join("")}</div>
     <div class="row-actions"><button class="ghost-btn" data-retry>إعادة المحاولة</button></div></section>`; }
   function disclaimer() { return `<section class="disclaimer-note"><strong>تنبيه:</strong> جميع المحتويات لأغراض تعليمية ومعلوماتية فقط ولا تُعد نصيحة استثمارية. التداول ينطوي على مخاطرة قد تصل لكامل رأس المال.</section>`; }
@@ -2502,37 +1594,20 @@
   }
   function marketGlyph(m) { const G = { forex: "💱", "us-stocks": "🇺🇸", kuwait: "🇰🇼", saudi: "🇸🇦", uae: "🇦🇪", qatar: "🇶🇦", bahrain: "🇧🇭", oman: "🇴🇲", gcc: "🕌", europe: "🇪🇺", asia: "🌏", crypto: "₿", commodities: "🛢", indices: "📊", etfs: "📦", technology: "💻", ai: "🤖", semiconductors: "🔌", energy: "⚡", banking: "🏦", healthcare: "💊", food: "🍔" }; return G[m.id] || "📈"; }
 
-  function providerToolbarDetails(s) {
-    const context = activeMarketContext();
-    const available = s.availableProviders && s.availableProviders.length ? s.availableProviders : availableProviderNames();
-    const providerList = available.length ? available.join(isArabic() ? "، " : ", ") : unavailableMark();
-    const rows = [
-      [tx("السوق", "Market"), context.marketName],
-      [tx("الفئة", "Category"), context.assetClass],
-      [tx("العملة", "Currency"), context.currency],
-      [tx("المزود المستخدم", "Used provider"), s.provider || unavailableMark()],
-      [tx("المزودون المتاحون", "Available providers"), providerList]
-    ];
-    return `<details class="provider-toolbar-details"><summary>${h(tx("المزودون", "Providers"))}</summary><div class="provider-toolbar-list">${rows.map(([label, value]) => `<span>${h(label)}</span><b class="ltr">${h(value)}</b>`).join("")}</div></details>`;
-  }
   function status() {
     const s = providerCopy(), pill = document.getElementById("provider-status");
-    if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span class="provider-pill-main"><small>${h(s.title)}</small><strong>${h(s.provider || s.copy)}</strong></span>${s.fallbackUsed ? `<span class="provider-pill-tag">${h(tx("مزود بديل", "Fallback"))}</span>` : ""}${providerToolbarDetails(s)}`;
+    if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span>${h(s.copy)}</span>`;
     const dot = document.getElementById("sidebar-status-dot"), title = document.getElementById("sidebar-status-title"), copy = document.getElementById("sidebar-status-copy");
     if (dot) dot.className = `status-dot ${s.className}`;
     if (title) title.textContent = s.title;
     if (copy) copy.textContent = s.copy;
-    const session = document.getElementById("session-status");
-    if (session) {
-      const context = activeMarketContext();
-      session.textContent = marketHeaderText(context);
-      session.title = `${tx("السوق", "Market")}: ${context.marketName} · ${tx("الفئة", "Category")}: ${context.assetClass} · ${tx("العملة", "Currency")}: ${context.currency}`;
-    }
+    const session = document.getElementById("session-status"), market = currentMarket();
+    if (session) session.textContent = `${market.ar} · ${market.currency}`;
   }
   function ticker() {
     const row = document.getElementById("ticker-row"); if (!row) return;
     const idx = [["NAS100", "NAS100"], ["US30", "US30"], ["XAUUSD", "Gold"], ["WTI", "Oil"], ["BTCUSD", "BTC/USD"], ["KFH.KW", "KFH"]];
-    row.innerHTML = idx.map(([s, label]) => { const r = norm({ ...(findAssetForSymbol(s, recs()) || {}), symbol: s }); const p = num(r.price, r.currentPrice, r.lastPrice); const chg = num(r.changePercent, r.percentChange); return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo(r)}<span><strong>${h(label)}</strong><small class="ltr">${p === null ? "—" : price(p, currency(r))} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${change(chg)}</i>`}</small></span></button>`; }).join("");
+    row.innerHTML = idx.map(([s, label]) => { const r = findAssetForSymbol(s, recs()) || {}; const p = num(r.price, r.currentPrice, r.lastPrice); const chg = num(r.changePercent, r.percentChange); return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...r, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${p === null ? "غير متاح" : price(p, currency({ ...r, symbol: s }))} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${change(chg)}</i>`}</small></span></button>`; }).join("");
   }
   function statusBar() {
     const bar = document.getElementById("terminal-statusbar"); if (!bar) return;
@@ -2547,7 +1622,7 @@
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: `متابعة ${s}`, message: "تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {
-    const a = norm(asset), metrics = tradeMetricsForAsset(a), action = metrics.signal, now = new Date().toISOString(), entry = metrics.entry;
+    const a = norm(asset), action = signal(a), now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
     return {
       id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       symbol: a.symbol,
@@ -2561,11 +1636,11 @@
       stopLoss: num(a.stopLoss, a.stop),
       confidence: num(a.confidence, a.score),
       riskLevel: riskKey(a.riskLevel || a.risk),
-      timeframe: a.timeframe || a.duration || "1-3 أسابيع",
-      status: action === "wait" ? "waiting" : "open",
+      timeframe: a.timeframe || a.duration || (action === "watch" ? "تحت المتابعة" : "1-3 أسابيع"),
+      status: action === "wait" ? "waiting" : action === "watch" ? "watching" : "open",
       openedAt: now,
       updatedAt: now,
-      provider: a.provider || a.source || "",
+      provider: a.provider || a.source || "Yahoo Finance",
       sourceSignalId: a.sourceSignalId || a.source_signal_id || null,
       sourceType,
       notes: a.notes || a.reason || "",
@@ -2609,46 +1684,6 @@
       toast("تم تشغيل فحص الإشارات وحفظ المرشحات المتاحة.");
     }
     await refreshFollowedTrades(true);
-  }
-  async function runAnalysisRefresh() {
-    if (state.analysisLoading) return;
-    state.analysisLoading = true;
-    render();
-    const symbols = unique([...dashboardSymbols(), ...recs().map(item => item.symbol), ...defaults]).slice(0, 80);
-    let result = {};
-    try {
-      result = await post("/market/signals/refresh", { symbols, force: true }, { label: "signals", timeoutMs: REQUEST_TIMEOUTS.signals });
-      if (!result || result.ok === false) {
-        result = await get(`/market/signals?symbols=${encodeURIComponent(symbols.join(","))}&refresh=1&limit=${symbols.length}`, { label: "signals" });
-      }
-      const processed = numberValue(result.requested, result.scannedAssets, result.processedAssets, result.analyzedAssets, arr(result.signals || result.items || result.data || result.results).length, symbols.length);
-      state.signals = { ...(result || {}), requested: processed, ranAt: result.generatedAt || result.updatedAt || new Date().toISOString() };
-      state.traderStatus = await get("/trader/status", { label: "providerStatus" });
-      toast(isArabic() ? "\u062a\u0645 \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644." : "Analysis completed.");
-    } catch (error) {
-      devLog("signals", "failed", { route: "run-analysis", message: errorMessage(error) });
-      toast(isArabic() ? "\u062a\u0639\u0630\u0631 \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644." : "Analysis could not run.");
-    } finally {
-      state.analysisLoading = false;
-      render();
-      afterRoute();
-    }
-  }
-  async function refreshProviderStatus(force) {
-    try {
-      const suffix = force ? "?refresh=1&discover=1" : "";
-      const [providerStatus, traderStatus] = await Promise.all([
-        get(`/trader/provider-status${suffix}`, { label: "providerStatus" }),
-        get("/trader/status", { label: "providerStatus" })
-      ]);
-      state.providerStatus = providerStatus || {};
-      state.traderStatus = traderStatus || {};
-      if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
-      render();
-    } catch (error) {
-      devLog("providerStatus", "failed", { route: "refresh-provider", message: errorMessage(error) });
-      toast(isArabic() ? "\u062a\u0639\u0630\u0631 \u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0632\u0648\u062f." : "Provider status could not refresh.");
-    }
   }
   function toast(message) { const root = document.getElementById("toast-root"); if (!root) return; const node = document.createElement("div"); node.className = "toast"; node.textContent = message; root.appendChild(node); setTimeout(() => node.remove(), 3200); }
 
@@ -2718,9 +1753,6 @@
     const currentPrice = num(x.currentPrice, x.current_price, x.price, base.price);
     const targetPrice = num(x.targetPrice, x.target_price, x.target, base.target);
     const stopLoss = num(x.stopLoss, x.stop_loss, x.stop, base.stopLoss);
-    const confidence = num(x.confidence, base.confidence);
-    const dataQuality = x.dataQuality || x.data_quality || base.dataQuality;
-    const classification = classifySignalMetrics({ current: currentPrice, target: targetPrice, stop: stopLoss, confidence, dataQuality });
     const reasons = arr(x.reasons).map(String).filter(Boolean);
     const warnings = arr(x.warnings).map(String).filter(Boolean);
     return {
@@ -2728,44 +1760,35 @@
       assetType: x.assetType || x.asset_type || base.assetType,
       market: x.market || base.market,
       currency: x.currency || base.currency,
-      signal: classification.signal,
-      recommendation: classification.signal,
-      action: classification.signal,
+      signal: x.action || base.signal,
+      recommendation: x.action || base.recommendation,
+      action: x.action || base.action,
       id: x.id || base.id,
       sourceSignalId: x.id || x.sourceSignalId || x.source_signal_id || base.sourceSignalId,
       actionLabelAr: x.actionLabelAr || x.action_label_ar,
-      actionLabelEn: x.actionLabelEn || x.action_label_en,
-      confidence,
+      confidence: num(x.confidence, base.confidence),
       score: num(x.confidence, base.score),
       price: currentPrice,
       currentPrice,
-      previousClose: base.previousClose,
-      change: base.change,
-      changePercent: base.changePercent,
       target: targetPrice,
       targetPrice,
       stopLoss,
       stop: stopLoss,
       riskLevel: x.riskLevel || x.risk_level || base.riskLevel,
-      dataQuality,
-      provider: x.provider || base.provider,
-      source: x.source || x.provider || base.source,
-      providerSymbol: base.providerSymbol,
-      providerSymbolUsed: base.providerSymbolUsed,
-      fallbackUsed: base.fallbackUsed,
-      providerStatus: base.providerStatus,
+      dataQuality: x.dataQuality || x.data_quality,
+      provider: x.provider || base.provider || "Yahoo Finance",
+      source: x.provider || base.source,
       timeframe: x.timeframe || base.timeframe,
       reasons,
       warnings,
-      reason: classification.explanation || reasons[0] || x.reason || base.reason,
-      signalExplanationAr: x.signalExplanationAr || x.signal_explanation_ar || classification.explanation,
+      reason: reasons[0] || x.reason || base.reason,
       summary: x.summary || reasons.join(" · "),
-      status: x.status || base.status || "open",
+      status: x.status || (x.action === "wait" ? "انتظار" : x.action === "watch" ? "تحت المتابعة" : "open"),
       scoreBreakdown: x.scoreBreakdown || x.score_breakdown,
       technicalSummary: x.technicalSummary || x.technical_summary,
       disclaimerAr: x.disclaimerAr,
       disclaimerEn: x.disclaimerEn,
-      lastUpdated: x.lastUpdated || x.last_updated || x.created_at || base.lastUpdated
+      lastUpdated: x.lastUpdated || x.last_updated || x.created_at
     };
   }
   function signalNotifications() { return arr(state.signalAlerts.notifications || state.signalAlerts.items || state.signalAlerts.data || state.signalAlerts.results); }
@@ -2783,7 +1806,7 @@
   function trades() { return mergeTradeLists(arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed), state.localTrades || []); }
   function matchRec(s) { const k = sym(s); return recs().find(x => sym(x.symbol) === k) || null; }
   function topPicks(r, n) { return [...r].sort((a, b) => (num(b.confidence, b.score, b.aiConfidence) || 0) - (num(a.confidence, a.score, a.aiConfidence) || 0)).slice(0, n); }
-  function sortMovers(r) { const normalized = r.map(norm); const withChg = normalized.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(normalized, normalized.length) }; }
+  function sortMovers(r) { const withChg = r.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
   function mergeTradeLists(server, local) {
     const seen = new Set(), output = [];
     [...server, ...local].forEach(item => {
@@ -2794,7 +1817,7 @@
     });
     return output.sort((a, b) => new Date(b.openedAt || b.createdAt || 0) - new Date(a.openedAt || a.createdAt || 0));
   }
-  function tradeAction(t) { return signal({ action: t.action, signal: t.signal, recommendation: t.recommendation, actionLabelAr: t.actionLabelAr || t.action_label_ar, type: t.type }); }
+  function tradeAction(t) { return signal({ action: t.action, signal: t.signal, recommendation: t.recommendation, type: t.type }); }
   function tradeStatus(t) {
     const st = String(t.status || t.state || "").toLowerCase();
     if (st.includes("won") || st.includes("win") || st.includes("target") || st.includes("رابح")) return "won";
@@ -2821,250 +1844,9 @@
     return g;
   }
   function tradeSummary(items) { const g = groupTrades(items), resolved = g.win.length + g.loss.length; return { ...g, successRate: resolved ? Math.round(g.win.length / resolved * 100) : null }; }
-  function norm(x) { return normalizeMarketData(x || {}); }
-  function firstDefined(...values) {
-    for (const value of values) {
-      if (value !== null && value !== undefined && value !== "") return value;
-    }
-    return null;
-  }
-  function firstText(...values) {
-    const value = firstDefined(...values);
-    return value === null ? "" : String(value).trim();
-  }
-  function unspecifiedMetadataText() { return "\u063a\u064a\u0631 \u0645\u062d\u062f\u062f"; }
-  function isMissingMetadata(value) {
-    const text = String(value ?? "").trim();
-    return !text || text === "--" || text === "\u2014" || text === "غير متاح" || text === "ØºÙŠØ± Ù…ØªØ§Ø­";
-  }
-  function metadataFirst(...values) {
-    for (const value of values) {
-      if (!isMissingMetadata(value)) return String(value).trim();
-    }
-    return "";
-  }
-  function metadataDisplayValue(...values) {
-    return metadataFirst(...values) || unspecifiedMetadataText();
-  }
-  function inferExchangeFromSymbol(symbol) {
-    const s = sym(symbol);
-    if (["AAPL", "MSFT", "NVDA", "GOOGL", "QQQ"].includes(s)) return "NASDAQ";
-    if (["SPY", "IWM", "GLD", "VOO", "DIA", "SLV", "TLT", "VTI"].includes(s)) return "NYSE Arca";
-    if (s === "EMAAR.AE" || /\.AE$|\.DU$/i.test(s)) return "Dubai Financial Market";
-    if (/\.AD$/i.test(s)) return "Abu Dhabi Securities Exchange";
-    if (/\.KW$/i.test(s)) return "Boursa Kuwait";
-    if (/\.SR$|\.SA$/i.test(s)) return "Tadawul";
-    if (/\.OM$/i.test(s)) return "Muscat Stock Exchange";
-    if (/^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|AVAX|DOT|LTC|BCH|LINK)[-_/]?(USD|USDT)$/i.test(s)) return "Crypto";
-    if (/^(XAUUSD|XAGUSD)$/i.test(s)) return "Metals";
-    if (/^[A-Z]{6}$/.test(s)) return "Forex";
-    return "";
-  }
-  function inferMarketFromSymbol(symbol) {
-    const s = sym(symbol);
-    if (["SPY", "QQQ", "IWM", "GLD", "VOO", "DIA", "SLV", "TLT", "VTI"].includes(s)) return "US ETFs";
-    if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "UAE Market";
-    if (/\.KW$/i.test(s)) return "Kuwait Market";
-    if (/\.SR$|\.SA$/i.test(s)) return "Saudi Market";
-    if (/\.OM$/i.test(s)) return "Oman Market";
-    if (/^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|AVAX|DOT|LTC|BCH|LINK)[-_/]?(USD|USDT)$/i.test(s)) return "Crypto";
-    if (/^(XAUUSD|XAGUSD)$/i.test(s)) return "Metals";
-    if (/^[A-Z]{6}$/.test(s)) return "Forex";
-    if (/^[A-Z]{1,5}$/.test(s)) return "US Stocks";
-    return "";
-  }
-  function inferCountryFromSymbol(symbol) {
-    const s = sym(symbol);
-    if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "AE";
-    if (/\.KW$/i.test(s)) return "KW";
-    if (/\.SR$|\.SA$/i.test(s)) return "SA";
-    if (/\.OM$/i.test(s)) return "OM";
-    if (/\.QA$/i.test(s)) return "QA";
-    if (/\.BH$/i.test(s)) return "BH";
-    if (/^[A-Z]{1,5}$/.test(s) || ["SPY", "QQQ", "IWM", "GLD"].includes(s)) return "US";
-    return "";
-  }
-  function exchangeText(asset) {
-    const a = asset || {}, ps = a.providerStatus || {}, diag = a.metadataDiagnostics || a.metadata_diagnostics || {};
-    return metadataDisplayValue(a.exchange, a.exchangeName, a.exchange_name, a.fullExchangeName, ps.exchange, ps.exchangeName, diag.finalExchange, inferExchangeFromSymbol(a.symbol));
-  }
-  function marketText(asset) {
-    const a = asset || {}, diag = a.metadataDiagnostics || a.metadata_diagnostics || {};
-    return metadataDisplayValue(a.market, a.marketName, a.market_name, diag.finalMarket, inferMarketFromSymbol(a.symbol));
-  }
-  function exchangeBadge(asset) {
-    return `<span class="status-tag exchange-badge">${h(exchangeText(asset))}</span>`;
-  }
-  function boolValue(value) {
-    if (value === true || value === false) return value;
-    if (value === null || value === undefined || value === "") return null;
-    const text = String(value).trim().toLowerCase();
-    if (["true", "yes", "1", "fallback", "fallback_used"].includes(text)) return true;
-    if (["false", "no", "0", "primary", "none"].includes(text)) return false;
-    return null;
-  }
-  function providerKey(value, providerSymbol) {
-    const symbolHint = String(providerSymbol || "").toUpperCase();
-    const raw = String(value || "").trim().toLowerCase();
-    if (/^(BINANCE|COINBASE|KRAKEN|FOREXCOM|OANDA|FXCM|TVC|NASDAQ|NYSE|AMEX):/.test(symbolHint)) return "finnhub";
-    if (raw.includes("twelve")) return "twelve_data";
-    if (raw.includes("financialmodelingprep") || raw === "fmp") return "fmp";
-    if (raw.includes("finnhub")) return "finnhub";
-    if (raw.includes("yahoo")) return "yahoo";
-    if (raw.includes("manual")) return "manual";
-    return raw || "";
-  }
-  function normalizeProvider(value, providerSymbol) {
-    return providerKey(value, providerSymbol) || providerKey(inferProviderFromSymbol(providerSymbol), providerSymbol) || "";
-  }
-  function inferProviderFromSymbol(providerSymbol) {
-    const value = String(providerSymbol || "").toUpperCase();
-    if (/^(BINANCE|COINBASE|KRAKEN|FOREXCOM|OANDA|FXCM|TVC|NASDAQ|NYSE|AMEX):/.test(value)) return "finnhub";
-    return "";
-  }
-  function normalizeDataQuality(value, priceValue, chartData) {
-    const raw = String(value || "").trim().toLowerCase();
-    if (["live", "realtime", "real_time"].includes(raw)) return "live";
-    if (["cached", "cache"].includes(raw)) return "cached";
-    if (["delayed", "delay"].includes(raw)) return "delayed";
-    if (["partial", "limited", "stale"].includes(raw)) return "partial";
-    if (["unavailable", "missing", "none", "error"].includes(raw)) return "unavailable";
-    if (priceValue === null && !chartData.length) return "unavailable";
-    return priceValue !== null ? "partial" : "unavailable";
-  }
-  function normalizeChartPoint(point, index) {
-    if (point === null || point === undefined) return null;
-    if (typeof point === "number") return Number.isFinite(point) ? { value: point, close: point, index } : null;
-    if (typeof point !== "object") {
-      const value = num(point);
-      return value === null ? null : { value, close: value, index };
-    }
-    const close = num(point.close, point.c, point.price, point.value, point.adjClose, point.adj_close, point.y);
-    if (close === null) return null;
-    const time = firstDefined(point.date, point.datetime, point.timestamp, point.time, point.t, point.x, index);
-    return {
-      ...point,
-      time,
-      value: close,
-      close,
-      open: num(point.open, point.o),
-      high: num(point.high, point.h),
-      low: num(point.low, point.l),
-      volume: num(point.volume, point.v)
-    };
-  }
-  function normalizeYahooChartData(value) {
-    const result = value && value.chart && arr(value.chart.result)[0];
-    if (!result) return [];
-    const timestamps = arr(result.timestamp);
-    const quote = result.indicators && arr(result.indicators.quote)[0];
-    const closes = arr(quote && quote.close);
-    return closes.map((close, index) => normalizeChartPoint({
-      close,
-      open: quote && arr(quote.open)[index],
-      high: quote && arr(quote.high)[index],
-      low: quote && arr(quote.low)[index],
-      volume: quote && arr(quote.volume)[index],
-      time: timestamps[index] ? timestamps[index] * 1000 : index
-    }, index)).filter(Boolean);
-  }
-  function normalizeChartData(value) {
-    if (!value) return [];
-    if (value.chart && value.chart.result) return normalizeYahooChartData(value);
-    if (Array.isArray(value)) return value.map(normalizeChartPoint).filter(Boolean);
-    if (Array.isArray(value.values)) return value.values.map(normalizeChartPoint).filter(Boolean);
-    if (Array.isArray(value.data)) return value.data.map(normalizeChartPoint).filter(Boolean);
-    if (Array.isArray(value.candles)) return value.candles.map(normalizeChartPoint).filter(Boolean);
-    const closes = arr(value.close || value.c);
-    if (closes.length) {
-      const times = arr(value.datetime || value.timestamp || value.time || value.t);
-      const opens = arr(value.open || value.o), highs = arr(value.high || value.h), lows = arr(value.low || value.l), volumes = arr(value.volume || value.v);
-      return closes.map((close, index) => normalizeChartPoint({ close, open: opens[index], high: highs[index], low: lows[index], volume: volumes[index], time: times[index] || index }, index)).filter(Boolean);
-    }
-    return arr(value).map(normalizeChartPoint).filter(Boolean);
-  }
-  function normalizeMarketData(input) {
-    const x = input || {};
-    const ps = x.providerStatus || x.provider_status || {};
-    const symbol = sym(x.symbol || x.ticker || x.code || x.asset || x.displaySymbol || x.name || "");
-    const providerSymbol = firstText(ps.providerSymbolUsed, ps.providerSymbol, x.providerSymbolUsed, x.provider_symbol_used, x.providerSymbol, x.provider_symbol, x.symbolUsed, x.symbol_used, x.finnhubSymbol, x.fmpSymbol);
-    const chartData = normalizeChartData(x.chartData || x.chart_data || x.history || x.sparkline || x.candles || x.values);
-    const priceValue = num(x.price, x.currentPrice, x.current_price, x.lastPrice, x.last_price, x.regularMarketPrice, x.regular_market_price, x.close, x.c, x.latestPrice, x.latest_price);
-    const previousClose = num(x.previousClose, x.previous_close, x.regularMarketPreviousClose, x.regular_market_previous_close, x.prevClose, x.pc, x.chartPreviousClose);
-    let changeValue = num(x.change, x.priceChange, x.price_change, x.regularMarketChange, x.regular_market_change, x.changes, x.d);
-    let changePercent = num(x.changePercent, x.change_percent, x.percentChange, x.percent_change, x.regularMarketChangePercent, x.regular_market_change_percent, x.changesPercentage, x.dp);
-    if (changeValue === null && priceValue !== null && previousClose !== null) changeValue = priceValue - previousClose;
-    if (changePercent === null && priceValue !== null && previousClose !== null && previousClose !== 0) changePercent = ((priceValue - previousClose) / previousClose) * 100;
-    if (changePercent === null && changeValue !== null && previousClose !== null && previousClose !== 0) changePercent = (changeValue / previousClose) * 100;
-    const providerRaw = firstText(ps.provider, ps.source, x.provider, x.source, x.providerName, x.provider_name, x.dataProvider && (x.dataProvider.active || x.dataProvider.provider || x.dataProvider.name));
-    const provider = normalizeProvider(providerRaw, providerSymbol);
-    const fallbackUsed = boolValue(firstDefined(ps.fallbackUsed, ps.fallback_used, x.fallbackUsed, x.fallback_used));
-    const lastUpdated = firstText(ps.lastUpdated, ps.updatedAt, x.lastUpdated, x.last_updated, x.updatedAt, x.updated_at, x.generatedAt, x.t ? Number(x.t) * 1000 : "");
-    const dataQuality = normalizeDataQuality(firstText(ps.dataQuality, ps.data_quality, x.dataQuality, x.data_quality, x.quality), priceValue, chartData);
-    const metadataDiagnostics = x.metadataDiagnostics || x.metadata_diagnostics || x.diagnostics || {};
-    const exchange = metadataFirst(x.exchange, x.exchangeName, x.exchange_name, x.fullExchangeName, ps.exchange, ps.exchangeName, metadataDiagnostics.finalExchange, inferExchangeFromSymbol(symbol));
-    const exchangeCode = metadataFirst(x.exchangeCode, x.exchange_code, ps.exchangeCode, ps.exchange_code, metadataDiagnostics.finalExchangeCode);
-    const market = metadataFirst(x.market, x.marketName, x.market_name, metadataDiagnostics.finalMarket, inferMarketFromSymbol(symbol));
-    const country = metadataFirst(x.country, x.countryCode, x.country_code, metadataDiagnostics.finalCountry, inferCountryFromSymbol(symbol));
-    const currencyValue = metadataFirst(x.currency, x.currencyCode, x.currency_code, x.quoteCurrency, ps.currency, metadataDiagnostics.finalCurrency) || currency({ ...x, symbol });
-    const assetTypeValue = metadataFirst(x.assetType, x.asset_type, x.quoteType, x.instrumentType, metadataDiagnostics.finalAssetType) || assetType(symbol, x.assetType || x.asset_type || x.quoteType || x.instrumentType);
-    return {
-      ...x,
-      symbol,
-      name: x.name || x.companyName || x.assetName || x.longName || x.shortName || symbol,
-      exchange,
-      exchangeCode,
-      market,
-      country,
-      currency: currencyValue,
-      assetType: assetTypeValue,
-      metadataDiagnostics,
-      price: priceValue,
-      currentPrice: priceValue,
-      lastPrice: priceValue,
-      previousClose,
-      change: changeValue,
-      changePercent,
-      provider,
-      source: providerName(provider || providerRaw),
-      providerSymbol: providerSymbol || symbol,
-      providerSymbolUsed: providerSymbol || symbol,
-      fallbackUsed,
-      dataQuality,
-      lastUpdated: lastUpdated || x.lastUpdated || x.updatedAt,
-      updatedAt: lastUpdated || x.updatedAt || x.lastUpdated,
-      chartData,
-      history: chartData.length ? chartData : x.history,
-      providerStatus: {
-        ...ps,
-        provider,
-        source: providerName(provider || providerRaw),
-        providerSymbolUsed: providerSymbol || symbol,
-        exchange,
-        exchangeCode,
-        market,
-        country,
-        currency: currencyValue,
-        assetType: assetTypeValue,
-        fallbackUsed,
-        dataQuality,
-        lastUpdated: lastUpdated || ps.lastUpdated || x.lastUpdated || x.updatedAt
-      }
-    };
-  }
-  function signal(x) {
-    x = x || {};
-    const raw = String(x.signal || x.recommendation || x.action || x.actionLabelAr || x.action_label_ar || x.side || x.type || "watch").toLowerCase();
-    if (raw.includes("insufficient") || raw.includes("بيانات غير كافية")) return "insufficient_data";
-    if (raw.includes("cautious") || raw.includes("بحذر")) return "cautious_buy";
-    if (raw.includes("avoid") || raw.includes("sell_or_avoid") || raw.includes("تجنب")) return "sell_or_avoid";
-    if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy";
-    if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell_or_avoid";
-    if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait";
-    return "watch";
-  }
-  function sigLabel(s) { return s === "buy" ? "شراء" : s === "cautious_buy" ? "شراء بحذر" : isSellSignalName(s) ? "تجنب / بيع" : s === "insufficient_data" ? "بيانات غير كافية" : s === "wait" ? "انتظار" : "مراقبة"; }
-  function sigLabelEn(s) { return s === "buy" ? "Buy" : s === "cautious_buy" ? "Cautious Buy" : isSellSignalName(s) ? "Avoid / Sell" : s === "insufficient_data" ? "Insufficient data" : s === "wait" ? "Wait" : "Watch"; }
+  function norm(x) { x = x || {}; const s = sym(x.symbol || x.ticker || x.code || x.asset || x.name || ""); return { ...x, symbol: s, name: x.name || x.companyName || x.assetName || x.longName || s }; }
+  function signal(x) { const raw = String(x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase(); if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy"; if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell"; if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait"; return "watch"; }
+  function sigLabel(s) { return s === "buy" ? "شراء" : s === "sell" ? "بيع" : s === "wait" ? "انتظار" : "مراقبة"; }
   function recStatus(x) { const s = String(x.status || x.state || "open").toLowerCase(); if (s.includes("complet") || s.includes("مكتمل")) return "مكتملة"; if (s.includes("fail") || s.includes("فاشل")) return "فاشلة"; if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "منتهية"; if (s.includes("watch") || s.includes("متابعة")) return "تحت المتابعة"; return "مفتوحة"; }
   function recStatusTone(x) { const s = recStatus(x); return s === "مكتملة" ? "ok" : s === "فاشلة" ? "bad" : s === "منتهية" ? "muted" : ""; }
   function confText(x) { const c = num(x.confidence, x.score, x.aiConfidence); return c === null ? "--" : Math.round(c) + "%"; }
@@ -3093,119 +1875,11 @@
   }
   function marketApi(id) { const m = MARKETS.find(x => x.id === id); return m ? m.apiMarket : (id || "us-stocks"); }
   function currentMarket() { return MARKETS.find(x => x.id === state.settings.defaultMarket) || MARKETS[0]; }
-  function marketMetadata(id) {
-    const key = String(id || "").trim();
-    if (MARKET_METADATA[key]) return MARKET_METADATA[key];
-    const m = MARKETS.find(x => x.id === key) || currentMarket();
-    return MARKET_METADATA[m.id] || { id: m.id, ar: m.ar, en: m.en, assetAr: m.family, assetEn: m.family, currency: m.currency || "USD" };
-  }
-  function compactMarketSymbol(symbol) {
-    return sym(symbol).replace(/[-_/]/g, "").replace(/=X$/i, "");
-  }
-  function inferMarketIdFromSymbol(symbol, explicitAssetType) {
-    const s = sym(symbol), compact = compactMarketSymbol(s), type = String(explicitAssetType || "").toLowerCase();
-    if (type.includes("crypto") || /^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|AVAX|DOT|LTC|BCH|LINK)(USD|USDT)?$/.test(compact)) return "crypto";
-    if (type.includes("commodity") || type.includes("metal") || METAL_SYMBOLS.has(compact) || /^(XAUUSD|XAGUSD|GOLD|SILVER|GC=F|SI=F)$/.test(s)) return "metals";
-    if (type.includes("forex") || type.includes("currency") || /^[A-Z]{6}$/.test(compact)) return "forex";
-    if (type.includes("etf") || type.includes("fund") || ETF_SYMBOLS.has(s)) return "etfs";
-    if (/\.KW$/i.test(s)) return "kuwait";
-    if (/\.SR$|\.SA$/i.test(s)) return "saudi";
-    if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "uae";
-    if (/\.QA$/i.test(s)) return "qatar";
-    if (/\.BH$/i.test(s)) return "bahrain";
-    if (/\.OM$/i.test(s)) return "oman";
-    if (/\.L$|\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|\.SW$/i.test(s)) return "europe";
-    if (/\.T$|\.HK$|\.KS$/i.test(s)) return "asia";
-    return "us-stocks";
-  }
-  function contextCurrency(input = {}) {
-    const explicit = String(input.currency || input.currencyCode || input.quoteCurrency || "").trim().toUpperCase();
-    if (explicit && explicit !== "KWF") return explicit;
-    const s = sym(input.symbol || input.ticker || "");
-    const compact = compactMarketSymbol(s);
-    if (/USDT$/.test(compact)) return "USDT";
-    const inferredMarket = inferMarketIdFromSymbol(s, input.assetType || input.asset_type || input.type);
-    if (inferredMarket === "forex" && compact.length >= 6) return compact.slice(3, 6);
-    if (/\.T$/i.test(s)) return "JPY";
-    if (/\.HK$/i.test(s)) return "HKD";
-    if (/\.SW$/i.test(s)) return "CHF";
-    if (/\.KS$/i.test(s)) return "KRW";
-    return marketMetadata(input.marketId || inferredMarket).currency || "USD";
-  }
-  function selectedRouteSymbol() {
-    return state.route.id === "symbol-details" ? sym(state.route.symbol) : "";
-  }
-  function selectedRouteAsset() {
-    const selected = selectedRouteSymbol();
-    if (selected && state.cache.has(selected)) return norm(state.cache.get(selected).asset || {});
-    if (selected) return norm(findAssetForSymbol(selected, recs()) || { symbol: selected });
-    if (state.route.id === "markets" && state.route.market && state.marketCache.has(state.route.market)) {
-      const list = recsFrom(state.marketCache.get(state.route.market)).map(norm);
-      return list.find(a => a.provider || a.source) || list[0] || null;
-    }
-    return null;
-  }
-  function activeMarketContext() {
-    const asset = selectedRouteAsset();
-    const symbol = asset ? sym(asset.symbol) : selectedRouteSymbol();
-    const routeMarket = state.route.id === "markets" && state.route.market ? state.route.market : "";
-    const marketId = symbol ? inferMarketIdFromSymbol(symbol, asset && asset.assetType) : (routeMarket || state.settings.defaultMarket || "us-stocks");
-    const meta = marketMetadata(marketId);
-    const rawProvider = asset && (asset.provider || asset.source || asset.providerStatus?.provider);
-    const provider = rawProvider ? providerName(rawProvider) : null;
-    return {
-      marketId: meta.id,
-      marketName: isArabic() ? meta.ar : meta.en,
-      marketNameAr: meta.ar,
-      marketNameEn: meta.en,
-      assetClass: isArabic() ? meta.assetAr : meta.assetEn,
-      currency: contextCurrency({ ...(asset || {}), symbol, marketId: meta.id }),
-      country: (asset && asset.country) || meta.country || null,
-      exchange: (asset && (asset.exchange || asset.market)) || meta.exchange || null,
-      selectedSymbol: symbol || null,
-      selectedProvider: provider || null,
-      fallbackUsed: Boolean(asset && asset.fallbackUsed),
-      availableProviders: availableProviderNames()
-    };
-  }
-  function marketHeaderText(context = activeMarketContext()) {
-    return `${context.marketName} · ${context.currency}`;
-  }
-  function currency(a) { return contextCurrency(a || {}); }
+  function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$/i.test(s)) return "EUR"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || ["XAUUSD", "XAGUSD", "WTI", "BRENT"].includes(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
   function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|GLD|IWM|VOO)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
-  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "—" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
-  function change(v) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
-  function isArabic() { return (state.settings.lang || "ar") !== "en"; }
-  function tx(ar, en) { return isArabic() ? ar : en; }
-  function unavailableMark() { return "\u2014"; }
-  function changePercentValue(asset) {
-    const a = norm(asset || {});
-    const direct = num(a.changesPercentage, a.changePercentage, a.percentChange, a.changePercent, a.changes_percentage, a.change_percentage, a.percent_change, a.change_percent);
-    if (direct !== null) return direct;
-    const priceValue = num(a.price, a.currentPrice, a.current_price, a.lastPrice, a.regularMarketPrice, a.close);
-    const previousClose = num(a.previousClose, a.previous_close, a.prevClose, a.previous, a.priorClose, a.open);
-    if (priceValue !== null && previousClose !== null && previousClose !== 0) return ((priceValue - previousClose) / previousClose) * 100;
-    const absoluteChange = num(a.change, a.changes, a.priceChange, a.price_change);
-    if (priceValue !== null && absoluteChange !== null) {
-      const derivedPrevious = priceValue - absoluteChange;
-      if (derivedPrevious !== 0) return (absoluteChange / derivedPrevious) * 100;
-    }
-    return null;
-  }
-  function analysisSummary(rec) {
-    const signals = state.signals || {};
-    const signalRows = arr(signals.signals || signals.items || signals.data || signals.results);
-    const processed = numberValue(signals.requested, signals.scannedAssets, signals.processedAssets, signals.analyzedAssets, signals.analysisCount, signals.count, signalRows.length);
-    const hasRun = Boolean(signals.ranAt || signals.generatedAt || signals.updatedAt || signals.refreshedAt || processed > 0);
-    const count = hasRun ? processed : 0;
-    const label = hasRun
-      ? tx("\u0623\u0635\u0648\u0644 \u0645\u062d\u0644\u0644\u0629", "Analyzed assets")
-      : tx("\u0644\u0645 \u064a\u062a\u0645 \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644 \u0628\u0639\u062f", "Analysis has not run yet");
-    return { hasRun, count, label, action: state.analysisLoading ? tx("\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u0634\u063a\u064a\u0644", "Running") : tx("\u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644", "Run Analysis") };
-  }
-  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? unavailableMark() : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
-  function change(v) { return v === null || v === undefined || Number.isNaN(Number(v)) ? unavailableMark() : `${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
+  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "غير متاح" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
+  function change(v) { return v === null || v === undefined ? "غير متاح" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
   function date(v) { if (!v) return "--"; const d = new Date(Number(v) ? Number(v) * (String(v).length <= 10 ? 1000 : 1) : v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short" }); }
   function num(...values) { for (const v of values) { if (v === null || v === undefined || v === "") continue; const n = Number(v); if (Number.isFinite(n)) return n; } return null; }
   function arr(v) { if (Array.isArray(v)) return v; if (v && typeof v === "object") return Object.values(v).filter(x => x && typeof x === "object"); return []; }
@@ -3277,204 +1951,32 @@
     const method = status === "loaded" ? "info" : "warn";
     console[method](`[trader] ${area} ${status}`, details || {});
   }
-  function addProviderName(list, provider) {
-    const raw = typeof provider === "object" && provider ? (provider.provider || provider.id || provider.name || provider.active) : provider;
-    if (!raw) return;
-    const name = providerName(raw);
-    if (!name || name === providerName("")) return;
-    if (!list.includes(name)) list.push(name);
-  }
-  function availableProviderNames() {
-    const list = [];
-    const sources = [state.providerStatus || {}, state.traderStatus || {}];
-    sources.forEach(source => {
-      if (Array.isArray(source.availableProviders)) source.availableProviders.forEach(provider => addProviderName(list, provider));
-      [source.providers, source.providerMatrix].forEach(matrix => {
-        if (!matrix || typeof matrix !== "object") return;
-        Object.entries(matrix).forEach(([key, value]) => {
-          if (key.endsWith("Configured")) {
-            if (value === true) addProviderName(list, key.replace(/Configured$/, ""));
-            return;
-          }
-          if (value === true) addProviderName(list, key);
-          if (value && typeof value === "object") {
-            const status = String(value.status || "").toLowerCase();
-            if (value.configured === true || value.healthy === true || ["healthy", "available", "configured", "connected", "success"].includes(status)) {
-              addProviderName(list, value.provider || key);
-            }
-          }
-        });
-      });
-      addProviderName(list, source.normalizedStatus && source.normalizedStatus.provider);
-      addProviderName(list, source.dataProvider && (source.dataProvider.active || source.dataProvider.provider));
-    });
-    addProviderName(list, state.provider && (state.provider.active || state.provider.provider));
-    return list;
-  }
-  function providerEvidence() {
-    const asset = selectedRouteAsset();
-    if (asset && (asset.provider || asset.source || asset.providerStatus?.provider)) {
-      return {
-        provider: asset.provider || asset.source || asset.providerStatus?.provider,
-        fallbackUsed: Boolean(asset.fallbackUsed || asset.providerStatus?.fallbackUsed),
-        raw: asset.dataQuality || "symbol_quote",
-        scope: "symbol"
-      };
-    }
-    if (state.route.id === "markets" && state.route.market && state.marketCache.has(state.route.market)) {
-      const cached = state.marketCache.get(state.route.market) || {};
-      const firstAsset = recsFrom(cached).map(norm).find(item => item.provider || item.source);
-      const cachedProvider = cached.dataProvider && (cached.dataProvider.active || cached.dataProvider.provider);
-      if (firstAsset || cachedProvider) {
-        return {
-          provider: (firstAsset && (firstAsset.provider || firstAsset.source)) || cachedProvider,
-          fallbackUsed: Boolean(firstAsset && firstAsset.fallbackUsed),
-          raw: cached.status || "market_quotes",
-          scope: "market"
-        };
-      }
-    }
-    const ps = state.providerStatus || {};
-    const p = ps.dataProvider || state.provider || {};
-    return {
-      provider: ps.normalizedStatus?.provider || p.active || p.provider || null,
-      fallbackUsed: false,
-      raw: p.status || ps.status || "primary_provider",
-      scope: "primary"
-    };
-  }
   function providerCopy() {
     if (state.providerStatus && state.providerStatus.ok === false) {
-      const evidence = providerEvidence();
-      if (evidence.provider) {
-        const provider = providerName(evidence.provider);
-        return { title: tx("المزود المستخدم", "Used provider"), copy: `${tx("المزود المستخدم", "Used provider")}: ${provider}`, className: "warning", raw: "provider_status_failed", provider, active: provider, fallbackUsed: evidence.fallbackUsed, availableProviders: availableProviderNames() };
-      }
-      return { title: tx("حالة المزود غير متاحة", "Provider status unavailable"), copy: formatProviderError(state.providerStatus.message, { empty: UNAVAILABLE_MESSAGE }), className: "warning", raw: "provider_status_failed", provider: null, active: null, fallbackUsed: false, availableProviders: availableProviderNames() };
+      return { title: "حالة المزود غير متاحة", copy: formatProviderError(state.providerStatus.message, { empty: UNAVAILABLE_MESSAGE }), className: "warning", raw: "provider_status_failed" };
     }
     const normalized = state.providerStatus && state.providerStatus.normalizedStatus;
     if (normalized && normalized.status === "rate_limited") {
-      const provider = providerName(normalized.provider || "fmp");
-      return { title: tx("المزود المستخدم", "Used provider"), copy: `${tx("المزود المستخدم", "Used provider")}: ${provider}`, className: "warning", raw: "rate_limited", provider, active: provider, fallbackUsed: true, availableProviders: availableProviderNames() };
+      return { title: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", copy: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", className: "warning", raw: "rate_limited" };
     }
-    const evidence = providerEvidence();
     const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
     const configured = p.configured === true || Boolean(p.active);
     const raw = p.status || (configured ? "configured" : "not_configured");
     const ok = configured && ["success", "available", "configured", "connected", "healthy"].includes(String(raw));
-    if (evidence.provider) {
-      const provider = providerName(evidence.provider);
-      const title = evidence.fallbackUsed ? tx("مزود بديل", "Fallback provider") : evidence.scope === "primary" ? tx("المزود الأساسي", "Primary provider") : tx("المزود المستخدم", "Used provider");
-      return { title, copy: `${title}: ${provider}`, className: evidence.fallbackUsed ? "warning" : "online", raw: evidence.raw || raw, provider, active: provider, fallbackUsed: evidence.fallbackUsed, availableProviders: availableProviderNames() };
-    }
-    if (String(raw) === "rate_limited") return { title: tx("تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", "Provider rate limit reached"), copy: tx("تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", "The provider is temporarily rate limited. Cached data will be shown when available."), className: "warning", raw, provider: null, active: null, fallbackUsed: true, availableProviders: availableProviderNames() };
-    if (ok) {
-      const provider = providerName(p.active || p.provider);
-      return { title: tx("المزود الأساسي", "Primary provider"), copy: `${tx("المزود الأساسي", "Primary provider")}: ${provider}`, className: "online", raw, provider, active: provider, fallbackUsed: false, availableProviders: availableProviderNames() };
-    }
-    return { title: tx("المزود غير مهيأ", "Provider not configured"), copy: tx("لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", "No live market provider is configured, so fake prices or recommendations are not shown."), className: "warning", raw, provider: null, active: null, fallbackUsed: false, availableProviders: availableProviderNames() };
+    if (String(raw) === "rate_limited") return { title: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", copy: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", className: "warning", raw };
+    if (ok) return { title: "المزود متصل", copy: `المزود النشط: ${providerName(p.active || p.provider)}`, className: "online", raw };
+    return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw };
   }
-  function isArabic() { return (state.settings.lang || "ar") !== "en"; }
-  function tx(ar, en) { return isArabic() ? ar : en; }
-  function unavailableMark() { return "\u2014"; }
-  function changePercentValue(asset) {
-    const a = asset || {};
-    const direct = num(a.changesPercentage, a.changePercentage, a.percentChange, a.changePercent, a.changes_percentage, a.change_percentage, a.percent_change, a.change_percent);
-    if (direct !== null) return direct;
-    const priceValue = num(a.price, a.currentPrice, a.current_price, a.lastPrice, a.regularMarketPrice, a.close);
-    const previousClose = num(a.previousClose, a.previous_close, a.prevClose, a.previous, a.priorClose, a.open);
-    if (priceValue !== null && previousClose !== null && previousClose !== 0) return ((priceValue - previousClose) / previousClose) * 100;
-    const absoluteChange = num(a.change, a.changes, a.priceChange, a.price_change);
-    if (priceValue !== null && absoluteChange !== null) {
-      const derivedPrevious = priceValue - absoluteChange;
-      if (derivedPrevious !== 0) return (absoluteChange / derivedPrevious) * 100;
-    }
-    return null;
-  }
-  function norm(x) {
-    return normalizeMarketData(x || {});
-  }
-  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? unavailableMark() : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
-  function change(v) { return v === null || v === undefined || Number.isNaN(Number(v)) ? unavailableMark() : `${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
-  function analysisSummary(rec = recs()) {
-    const signals = state.signals || {};
-    const signalRows = arr(signals.signals || signals.items || signals.data || signals.results);
-    const processed = numberValue(signals.requested, signals.scannedAssets, signals.processedAssets, signals.analyzedAssets, signals.analysisCount, signals.count, signalRows.length);
-    const hasRun = Boolean(signals.ranAt || signals.generatedAt || signals.updatedAt || signals.refreshedAt || processed > 0);
-    return {
-      hasRun,
-      count: hasRun ? processed : 0,
-      label: hasRun ? tx("\u0623\u0635\u0648\u0644 \u0645\u062d\u0644\u0644\u0629", "Analyzed assets") : tx("\u0644\u0645 \u064a\u062a\u0645 \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644 \u0628\u0639\u062f", "Analysis has not run yet"),
-      action: state.analysisLoading ? tx("\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u0634\u063a\u064a\u0644", "Running") : tx("\u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u062d\u0644\u064a\u0644", "Run Analysis")
-    };
-  }
-  function commandCenter(rec) {
-    const p = providerCopy(), b = marketBias(rec), context = activeMarketContext();
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length;
-    const configured = p.className === "online";
-    const analysis = analysisSummary(rec);
-    return `<section class="terminal-command-center" aria-label="Market summary">
-      ${commandMetric("PROVIDER", configured ? tx("\u0645\u062a\u0635\u0644", "Connected") : tx("\u063a\u064a\u0631 \u0645\u0647\u064a\u0623", "Unavailable"), p.active || p.raw || p.title, configured ? "ok" : "warn")}
-      ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : unavailableMark(), b.conf ? b.label : tx("\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a", "Waiting for data"), b.tone || "neutral")}
-      ${commandMetric("BUY SIGNALS", buy, tx("\u0641\u0631\u0635 \u0634\u0631\u0627\u0621", "Buy signals"), "ok")}
-      ${commandMetric("SELL SIGNALS", sell, tx("\u0641\u0631\u0635 \u0628\u064a\u0639", "Sell signals"), "bad")}
-      ${commandMetric("ANALYZED ASSETS", analysis.hasRun ? analysis.count : unavailableMark(), analysis.label, analysis.hasRun ? "ok" : "neutral", `<button class="ghost-btn sm" data-run-analysis type="button">${h(analysis.action)}</button>`)}
-      ${commandMetric("ACTIVE MARKET", context.marketName, `${context.marketNameEn} · ${context.currency}`, "blue")}
-    </section>`;
-  }
-  function commandMetric(kicker, value, label, tone, action = "") {
-    return `<article class="command-metric ${tone || ""} analysis-command-metric"><span class="card-kicker">${h(kicker)}</span><strong>${h(String(value))}</strong><small>${h(label || unavailableMark())}</small>${action}</article>`;
-  }
-  function diagnostics() {
-    const normalized = normalizedProviderStatus();
-    const available = ["available", "success", "connected", "configured", "healthy"].includes(String(normalized.status || "").toLowerCase());
-    const connectionOk = normalized.configured && !["failed", "unavailable", "not_configured"].includes(String(normalized.status || "").toLowerCase());
-    const tone = available ? "ok" : connectionOk ? "warn" : "bad";
-    const labels = {
-      title: tx("\u062d\u0627\u0644\u0629 \u0627\u0644\u0646\u0638\u0627\u0645", "System status"),
-      copy: tx("\u0645\u0644\u062e\u0635 \u0645\u0632\u0648\u062f \u0627\u0644\u0633\u0648\u0642 \u0648\u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0631\u0645\u0648\u0632.", "Market provider and symbol loading summary."),
-      providerStatus: tx("\u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0632\u0648\u062f", "Provider status"),
-      activeProvider: tx("\u0627\u0644\u0645\u0632\u0648\u062f \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645", "Used provider"),
-      connection: tx("\u0627\u0644\u0627\u062a\u0635\u0627\u0644", "Connection"),
-      discovered: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u0643\u062a\u0634\u0641\u0629", "Discovered symbols"),
-      loaded: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062d\u0645\u0644\u0629", "Loaded symbols"),
-      cached: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062e\u0632\u0646\u0629", "Cached symbols"),
-      failed: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062a\u0639\u062b\u0631\u0629", "Failed symbols"),
-      skipped: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062a\u062c\u0627\u0648\u0632\u0629", "Skipped symbols"),
-      updated: tx("\u0622\u062e\u0631 \u062a\u062d\u062f\u064a\u062b", "Last updated"),
-      features: tx("\u0627\u0644\u0645\u064a\u0632\u0627\u062a \u0627\u0644\u0645\u062f\u0639\u0648\u0645\u0629", "Supported features"),
-      refresh: tx("\u062a\u062d\u062f\u064a\u062b", "Refresh"),
-      details: tx("\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u062a\u0642\u0646\u064a\u0629", "Technical details"),
-      available: tx("\u0645\u062a\u0627\u062d", "Available"),
-      unavailable: tx("\u063a\u064a\u0631 \u0645\u062a\u0627\u062d", "Unavailable"),
-      connected: tx("\u0645\u062a\u0635\u0644", "Connected"),
-      disconnected: tx("\u063a\u064a\u0631 \u0645\u062a\u0635\u0644", "Disconnected")
-    };
-    const items = [
-      [labels.providerStatus, available ? labels.available : labels.unavailable, tone],
-      [labels.activeProvider, normalized.provider || providerCopy().provider || unavailableMark(), ""],
-      [labels.connection, connectionOk ? labels.connected : labels.disconnected, connectionOk ? "ok" : "bad"],
-      [labels.discovered, countText(normalized.discoveredCount), ""],
-      [labels.loaded, countText(normalized.loadedCount), normalized.loadedCount > 0 ? "ok" : "warn"],
-      [labels.cached, countText(normalized.cachedCount), normalized.cachedCount > 0 ? "ok" : ""],
-      [labels.failed, countText(normalized.failedCount), normalized.failedCount > 0 ? "bad" : "ok"],
-      [labels.skipped, countText(normalized.skippedCount), normalized.skippedCount > 0 ? "warn" : "ok"],
-      [labels.updated, latinDateTime(normalized.lastUpdated), ""]
-    ];
-    const features = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(featureLabel) : [unavailableMark()];
-    const details = diagnosticDetails(normalized)
-      .replace(/<\/?details[^>]*>/g, "")
-      .replace(/<summary>[^<]*<\/summary>/, "");
-    return `<section class="system-status-panel" dir="${isArabic() ? "rtl" : "ltr"}">
-      <div class="system-status-head">
-        <div><span class="eyebrow">SYSTEM STATUS</span><h3>${h(labels.title)}</h3><p>${h(labels.copy)}</p></div>
-        <div class="system-status-actions"><span class="system-status-badge ${tone}">${h(available ? labels.available : labels.unavailable)}</span><button class="ghost-btn sm" data-refresh-provider type="button">${h(labels.refresh)}</button></div>
-      </div>
-      <div class="system-status-grid">${items.map(([label, value, itemTone]) => `<article class="system-status-item"><span>${h(label)}</span><strong class="ltr">${h(String(value || unavailableMark()))}</strong>${itemTone ? `<i class="system-mini-dot ${itemTone}"></i>` : ""}</article>`).join("")}</div>
-      <div class="system-feature-list"><span>${h(labels.features)}</span><div>${features.map(feature => `<b class="system-feature-chip ${feature === unavailableMark() ? "muted" : ""}">${h(feature)}</b>`).join("")}</div></div>
-      <details class="provider-diagnostics-panel technical-details"><summary>${h(labels.details)}</summary>${details.replace(/^<details[^>]*><summary>.*?<\/summary>|<\/details>$/g, "")}</details>
-    </section>`;
-  }
-  function sortMovers(r) { const withChg = r.map(norm).filter(x => changePercentValue(x) !== null); const byChg = [...withChg].sort((a, b) => changePercentValue(b) - changePercentValue(a)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
   function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+
+  document.addEventListener("click", async (e) => {
+    const chip = e.target.closest("[data-rec-market]");
+    if (!chip) return;
+    state.settings.defaultMarket = chip.dataset.recMarket;
+    try { localStorage.setItem(keys.settings, JSON.stringify(state.settings)); } catch {}
+    render();
+    state.rec = await get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`, { label: "quotes" });
+    render();
+  });
+
 })();
