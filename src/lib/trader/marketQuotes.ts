@@ -1,5 +1,6 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
+import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import type { MarketAssetType } from '@/lib/market/marketService';
@@ -99,6 +100,12 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
   if (!needsChart && !needsChange) return quote;
 
   try {
+    const cacheKey = `yhist:${upper(quote.symbol)}:1mo:1d`;
+    const cached = await getPersistentCache<number[]>(cacheKey);
+    if (Array.isArray(cached) && cached.length >= 2) {
+      return applyHistoryToQuote(quote, cached, needsChart, needsChange);
+    }
+
     // جرّب ترجمات ياهو للرمز بالترتيب (GC=F للذهب، ^DJI لداو جونز...) بدل رمز المزود الاحتياطي فقط
     const candidates = unique([
       ...candidateSymbols(quote.symbol, 'yahoo'),
@@ -118,30 +125,35 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
     }
     if (closes.length < 2) return quote;
 
-    const enriched: TraderQuote = { ...quote };
-    if (needsChart) {
-      enriched.sparkline = closes.slice(-30);
-      enriched.history = closes.slice(-30).map((close: number) => ({ close }));
-      enriched.chartAvailable = true;
-    }
-    if (needsChange) {
-      // التغير يُحسب من نفس السلسلة فقط — خلط سعر المزود مع سلسلة رمز مختلف
-      // المقياس (مؤشر مقابل CFD) ينتج نسباً وهمية مثل +21%
-      const latest = closes[closes.length - 1];
-      const previous = closes[closes.length - 2];
-      const pct = previous > 0 ? ((latest - previous) / previous) * 100 : null;
-      if (pct !== null && Math.abs(pct) <= 20) {
-        enriched.changePercent = round(pct);
-        if (quote.price !== null) {
-          enriched.previousClose = round(quote.price / (1 + pct / 100));
-          enriched.change = round(quote.price - (quote.price / (1 + pct / 100)));
-        }
-      }
-    }
-    return enriched;
+    void setPersistentCache(cacheKey, closes.slice(-32), 30 * 60 * 1000);
+    return applyHistoryToQuote(quote, closes, needsChart, needsChange);
   } catch {
     return quote;
   }
+}
+
+function applyHistoryToQuote(quote: TraderQuote, closes: number[], needsChart: boolean, needsChange: boolean): TraderQuote {
+  const enriched: TraderQuote = { ...quote };
+  if (needsChart) {
+    enriched.sparkline = closes.slice(-30);
+    enriched.history = closes.slice(-30).map((close: number) => ({ close }));
+    enriched.chartAvailable = true;
+  }
+  if (needsChange) {
+    // التغير يُحسب من نفس السلسلة فقط — خلط سعر المزود مع سلسلة رمز مختلف
+    // المقياس (مؤشر مقابل CFD) ينتج نسباً وهمية مثل +21%
+    const latest = closes[closes.length - 1];
+    const previous = closes[closes.length - 2];
+    const pct = previous > 0 ? ((latest - previous) / previous) * 100 : null;
+    if (pct !== null && Math.abs(pct) <= 20) {
+      enriched.changePercent = round(pct);
+      if (quote.price !== null) {
+        enriched.previousClose = round(quote.price / (1 + pct / 100));
+        enriched.change = round(quote.price - (quote.price / (1 + pct / 100)));
+      }
+    }
+  }
+  return enriched;
 }
 
 async function enrichQuotesWithHistory(quotes: TraderQuote[]): Promise<TraderQuote[]> {

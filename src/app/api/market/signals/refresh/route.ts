@@ -79,3 +79,11 @@ export async function POST(request: NextRequest) {
     signals,
   }, { status: persisted.ok ? 200 : 500 });
 }
+
+// Vercel Cron يستدعي GET — نفس منطق POST مع صلاحية الكرون فقط
+export async function GET(request: NextRequest) {
+  if (!hasCronAccess(request)) {
+    return json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+  }
+  return POST(request);
+}
