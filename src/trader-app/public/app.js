@@ -481,11 +481,13 @@
   function marketDetailPage(id) {
     const m = MARKETS.find(x => x.id === id);
     if (!m) return marketsPage();
+    const meta = marketMetadata(id);
+    const marketCurrency = contextCurrency({ marketId: meta.id });
     const cached = state.marketCache.get(id);
     const list = cached ? recsFrom(cached) : [];
     const movers = cached ? sortMovers(list) : { gainers: [], losers: [], active: [] };
     const body = cached ? (list.length
-      ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", m.currency, "Currency")}</section>
+      ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", marketCurrency, "Currency")}</section>
          <section class="panel"><span class="eyebrow">HEATMAP</span><h2>خريطة حرارة ${h(m.ar)}</h2>${heatmap(list)}</section>
          <section class="dash-split">
            <article class="panel"><span class="eyebrow">PRICE CARDS</span><h2>الرموز والتوصيات</h2>${watchlistTable(list.slice(0, 12))}</article>
@@ -498,7 +500,7 @@
       : marketUnavailable(m, cached)) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري تحميل ${h(m.ar)}</h2></div></div>`;
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ كل الأسواق</a>
-      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. الرموز المعروضة مرجعية وتُعرض أسعارها فقط عند توفرها من المزود.`, "MARKET")}
+      ${hero(`${meta.ar} <span class="ltr">· ${h(meta.en)}</span>`, `${meta.assetAr} · العملة الأساسية: ${marketCurrency}. الرموز المعروضة مرجعية وتُعرض أسعارها فقط عند توفرها من المزود.`, "MARKET")}
       <section class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</section>
       ${body}
       ${disclaimer()}
@@ -1401,7 +1403,7 @@
   function marketLeadership(rec) {
     const commandRec = mergeRecLists(legacyRecsFrom(state.commandCards), rec);
     return `<section class="panel market-leadership">
-      <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(currentMarket().ar)}</span></div>
+      <div class="panel-head"><div><span class="eyebrow">MARKET COMMAND</span><h2>غرفة قيادة السوق</h2></div><span class="state-badge">${h(activeMarketContext().marketName)}</span></div>
       <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, commandRec))).join("")}</div>
     </section>`;
   }
@@ -1578,8 +1580,9 @@
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
-    const marketExchange = metadataDisplayValue(m.exchange, inferExchangeFromSymbol((m.symbols || [])[0]), m.family);
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(marketExchange)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
+    const meta = marketMetadata(m.id);
+    const marketExchange = metadataDisplayValue(meta.exchange, inferExchangeFromSymbol((m.symbols || [])[0]), m.family);
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(meta.en)}</span></div><strong>${h(meta.ar)}</strong><p>${h(marketExchange)} · العملة <span class="ltr">${h(contextCurrency({ marketId: meta.id }))}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
   }
   function heatmap(items) {
     return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = tradeMetricsForAsset(a).signal, chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : signalCardClass(sig)}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
@@ -1676,7 +1679,7 @@
     const tone = normalizedStatusTone(normalized.status);
     const cards = [
       ["حالة المزود", featureStatusLabel(normalized.status), "Status", tone],
-      ["المزود النشط", normalized.provider, "Provider", ""],
+      ["المزود المستخدم", normalized.provider, "Provider", ""],
       ["حالة الاتصال", normalized.configured ? "مهيأ" : "غير مهيأ", "Connection", normalized.configured ? "ok" : "warn"],
       ["عدد الرموز المكتشفة", countText(normalized.discoveredCount), "Discovered", ""],
       ["عدد الرموز المحملة", countText(normalized.loadedCount), "Loaded", "ok"],
@@ -1714,7 +1717,7 @@
     const discoveredCount = numberValue(diag.totalSymbolsDiscovered, loadedCount);
     const errorSummary = raw.errorSummary || formatProviderError(p.failureReason || ps.providers?.fmp?.error || state.rec.message || state.markets.message || null, { empty: "" });
     return {
-      provider: providerName(raw.provider || p.active || p.requested || p.provider || "FMP"),
+      provider: providerName(raw.provider || p.active || p.requested || p.provider || providerEvidence().provider || ""),
       configured: raw.configured !== undefined ? Boolean(raw.configured) : p.configured === true || Boolean(p.active || p.provider),
       status,
       supportedFeatures: arr(raw.supportedFeatures || p.supportedFeatures),
@@ -2059,8 +2062,8 @@
   }
   function emptyState(title, body, label, href) { return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`; }
   function miniEmpty() { return `<div class="empty-state compact"><p>لا توجد بيانات حالياً من المزود.</p></div>`; }
-  function marketUnavailable(m, data) { return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
-    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", m.currency, "Currency")}${detailCard("الحالة", providerCopy().raw, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
+  function marketUnavailable(m, data) { const meta = marketMetadata(m.id); return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(meta.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
+    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", contextCurrency({ marketId: meta.id }), "Currency")}${detailCard("الحالة", providerCopy().raw, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
     <div class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}"><span class="ltr">${h(s)}</span></button>`).join("")}</div>
     <div class="row-actions"><button class="ghost-btn" data-retry>إعادة المحاولة</button></div></section>`; }
   function disclaimer() { return `<section class="disclaimer-note"><strong>تنبيه:</strong> جميع المحتويات لأغراض تعليمية ومعلوماتية فقط ولا تُعد نصيحة استثمارية. التداول ينطوي على مخاطرة قد تصل لكامل رأس المال.</section>`; }
@@ -3030,7 +3033,7 @@
       title: tx("\u062d\u0627\u0644\u0629 \u0627\u0644\u0646\u0638\u0627\u0645", "System status"),
       copy: tx("\u0645\u0644\u062e\u0635 \u0645\u0632\u0648\u062f \u0627\u0644\u0633\u0648\u0642 \u0648\u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0631\u0645\u0648\u0632.", "Market provider and symbol loading summary."),
       providerStatus: tx("\u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0632\u0648\u062f", "Provider status"),
-      activeProvider: tx("\u0627\u0644\u0645\u0632\u0648\u062f \u0627\u0644\u0646\u0634\u0637", "Active provider"),
+      activeProvider: tx("\u0627\u0644\u0645\u0632\u0648\u062f \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645", "Used provider"),
       connection: tx("\u0627\u0644\u0627\u062a\u0635\u0627\u0644", "Connection"),
       discovered: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u0643\u062a\u0634\u0641\u0629", "Discovered symbols"),
       loaded: tx("\u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062d\u0645\u0644\u0629", "Loaded symbols"),
@@ -3048,7 +3051,7 @@
     };
     const items = [
       [labels.providerStatus, available ? labels.available : labels.unavailable, tone],
-      [labels.activeProvider, normalized.provider || "FMP Provider", ""],
+      [labels.activeProvider, normalized.provider || providerCopy().provider || unavailableMark(), ""],
       [labels.connection, connectionOk ? labels.connected : labels.disconnected, connectionOk ? "ok" : "bad"],
       [labels.discovered, countText(normalized.discoveredCount), ""],
       [labels.loaded, countText(normalized.loadedCount), normalized.loadedCount > 0 ? "ok" : "warn"],
