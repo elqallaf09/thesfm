@@ -552,16 +552,19 @@ export function analyzeStock(input: {
 
   const atrValue = snapshot.atr14;
   let targetPrice: number | null = null;
+  let target2: number | null = null;
   let stopLoss: number | null = null;
   if (atrValue !== null && signal === 'buy') {
     // نفس هندسة الاختبار الخلفي: هدف أول قريب (0.9 ATR) باحتمال إصابة مرتفع + وقف واسع خلف الدعم
     targetPrice = round(input.quote.price + atrValue * TP1_ATR_MULTIPLE, 2);
+    target2 = round(input.quote.price + atrValue * 2.2, 2);
     stopLoss = round(Math.min(
       snapshot.support !== null ? snapshot.support - atrValue * 0.15 : Number.POSITIVE_INFINITY,
       input.quote.price - atrValue * SL_ATR_MULTIPLE,
     ), 2);
   } else if (atrValue !== null && signal === 'sell') {
     targetPrice = round(input.quote.price - atrValue * TP1_ATR_MULTIPLE, 2);
+    target2 = round(input.quote.price - atrValue * 2.2, 2);
     stopLoss = round(Math.max(
       snapshot.resistance !== null ? snapshot.resistance + atrValue * 0.15 : Number.NEGATIVE_INFINITY,
       input.quote.price + atrValue * SL_ATR_MULTIPLE,
@@ -606,6 +609,7 @@ export function analyzeStock(input: {
     confidence,
     currentPrice: input.quote.price,
     targetPrice,
+    target2,
     stopLoss,
     expectedTimeframe: signal === 'hold' ? null : 'weeks',
     expectedTimeframeLabel: signal === 'hold' ? null : '2-6 weeks',

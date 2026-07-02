@@ -96,6 +96,7 @@ export type StockAnalysisResult = {
   confidence: number;
   currentPrice: number;
   targetPrice: number | null;
+  target2?: number | null;
   stopLoss: number | null;
   expectedTimeframe: TimeHorizon;
   expectedTimeframeLabel: string | null;

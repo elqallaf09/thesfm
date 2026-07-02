@@ -906,6 +906,16 @@
       <div class="leadership-grid">${dashboardSymbols().map(s => leadershipCard(s, findAssetForSymbol(s, commandRec))).join("")}</div>
     </section>`;
   }
+  function precisionBadge(a) {
+    const pm = a.precisionMode || a.precision || null;
+    const bt = a.backtest || null;
+    const rate = num(pm && pm.measuredWinRate, bt && bt.winRate);
+    if (rate === null) return "";
+    const req = pm && num(pm.required) !== null ? Math.round(num(pm.required)) : 90;
+    const passed = pm ? pm.passed === true : false;
+    const text = passed ? `✓ دقة تاريخية ${rate}%` : `دقة تاريخية ${rate}% · حد النشر ${req}%`;
+    return `<span class="precision-badge ${passed ? "pass" : "info"}" title="نسبة إصابة الهدف الأول في الاختبار الخلفي على نفس الرمز">${h(text)}</span>`;
+  }
   function leadershipCard(symbol, asset) {
     const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
     const display = a.displaySymbol || displaySymbolFor(symbol);
@@ -925,6 +935,7 @@
       <div class="leadership-foot">
         <span class="signal-badge ${sig || "unavailable"}">${h(sig ? sigLabel(sig) : "إشارة غير متاحة")}</span>
         <span class="quality-badge">${h(conf === null ? "الثقة غير متاحة" : `الثقة ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
+        ${precisionBadge(a)}
       </div>
       <div class="leadership-provider-row">
         <b>${h(source)}</b>
@@ -1386,10 +1397,15 @@
     const ma50 = firstNum(t.ma50, t.sma50, t.ema50, ma.ma50, ma.sma50, ma.ema50, ind.sma50, ind.ema50);
     const ma200 = firstNum(t.ma200, t.sma200, t.ema200, ma.ma200, ma.sma200, ma.ema200, ind.sma200, ind.ema200);
     const vol = firstNum(t.volatility, t.atr, t.atr14, ind.atr, ind.atr14);
-    const s1 = validTechnicalLevel(firstNum(t.s1, t.support1, supports[0], levels.s1, piv.s1, t.support), current, "support", canShowLevels);
-    const s2 = validTechnicalLevel(firstNum(t.s2, t.support2, supports[1], levels.s2, piv.s2), current, "support", canShowLevels);
-    const r1 = validTechnicalLevel(firstNum(t.r1, t.resistance1, resistances[0], levels.r1, piv.r1, t.resistance), current, "resistance", canShowLevels);
-    const r2 = validTechnicalLevel(firstNum(t.r2, t.resistance2, resistances[1], levels.r2, piv.r2), current, "resistance", canShowLevels);
+    const s1raw = validTechnicalLevel(firstNum(t.s1, t.support1, supports[0], levels.s1, piv.s1, t.support), current, "support", canShowLevels);
+    const s2raw = validTechnicalLevel(firstNum(t.s2, t.support2, supports[1], levels.s2, piv.s2), current, "support", canShowLevels);
+    const r1raw = validTechnicalLevel(firstNum(t.r1, t.resistance1, resistances[0], levels.r1, piv.r1, t.resistance), current, "resistance", canShowLevels);
+    const r2raw = validTechnicalLevel(firstNum(t.r2, t.resistance2, resistances[1], levels.r2, piv.r2), current, "resistance", canShowLevels);
+    // توحيد الترتيب: دعم 1 هو الأقرب تحت السعر، مقاومة 1 هي الأقرب فوقه — مهما اختلف مصدر كل مستوى
+    const sLevels = [s1raw, s2raw].filter(v => v !== null && (current === null || v <= current * 1.002)).sort((a, b) => b - a);
+    const rLevels = [r1raw, r2raw].filter(v => v !== null && (current === null || v >= current * 0.998)).sort((a, b) => a - b);
+    const s1 = sLevels[0] ?? null, s2 = sLevels[1] ?? null;
+    const r1 = rLevels[0] ?? null, r2 = rLevels[1] ?? null;
     const trend = trendText(t.trend || t.direction || ind.trend || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : ""));
     const rsiTag = rsi === null ? "" : rsi >= 70 ? " (تشبع شرائي)" : rsi <= 30 ? " (تشبع بيعي)" : "";
     const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? " · إيجابي" : " · سلبي") : "";
@@ -1407,11 +1423,17 @@
   }
   function riskReward(rec, c) {
     if (!rec) return "";
-    const entry = num(rec.entry, rec.entryPrice, rec.price, rec.currentPrice), tgt = num(rec.target, rec.targetPrice), sl = num(rec.stopLoss, rec.stop);
-    if (entry === null || tgt === null || sl === null) return "";
-    const reward = Math.abs(tgt - entry), risk = Math.abs(entry - sl); if (!risk) return "";
-    const rr = Math.round(reward / risk * 100) / 100;
-    return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف", price(tgt, c), "Target")}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("العائد/المخاطرة", rr + ":1", "R/R")}</div>`;
+    const entry = num(rec.entry, rec.entryPrice, rec.price, rec.currentPrice);
+    const tps = arr(rec.takeProfit).map(Number).filter(Number.isFinite);
+    const tgt1 = num(rec.target, rec.targetPrice, tps[0]);
+    const tgt2 = num(rec.target2, tps[1]);
+    const sl = num(rec.stopLoss, rec.stop);
+    if (entry === null || tgt1 === null || sl === null) return "";
+    const risk = Math.abs(entry - sl); if (!risk) return "";
+    const rr1 = Math.round(Math.abs(tgt1 - entry) / risk * 100) / 100;
+    const rr2 = tgt2 === null ? null : Math.round(Math.abs(tgt2 - entry) / risk * 100) / 100;
+    return `<div class="detail-grid">${detailCard("الدخول", price(entry, c), "Entry")}${detailCard("الهدف 1 · احتمال مرتفع", price(tgt1, c), "TP1")}${tgt2 !== null ? detailCard("الهدف 2 · تمديد", price(tgt2, c), "TP2") : ""}${detailCard("وقف الخسارة", price(sl, c), "Stop")}${detailCard("العائد/المخاطرة", rr2 !== null ? `${rr2}:1 · TP2` : `${rr1}:1 · TP1`, "R/R")}</div>
+    <p class="muted-note">الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة — وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.</p>`;
   }
   function signalAnalysis(rec, c) {
     const sig = signal(rec), conf = confText(rec);
@@ -1427,11 +1449,16 @@
       ["أخبار", score.newsScore, 15],
       ["أساسيات", score.fundamentalsScore, 15]
     ].filter(([, value]) => value !== undefined && value !== null);
+    const pm = rec.precisionMode || rec.precision || null;
+    const bt = rec.backtest || null;
+    const precisionRate = num(pm && pm.measuredWinRate, bt && bt.winRate);
     return `<div class="signal-analysis">
       <p>${h(summary)}</p>
       <div class="detail-grid">
         ${detailCard("الإشارة", sigLabel(sig), "Action")}
         ${detailCard("الثقة", conf, "Confidence")}
+        ${precisionRate !== null ? detailCard("الدقة التاريخية", `${precisionRate}%${pm && pm.passed ? " ✓" : ""}`, "Backtest") : ""}
+        ${bt && num(bt.samples) !== null ? detailCard("عينات الاختبار", latinNumber(bt.samples), "Samples") : ""}
         ${detailCard("المخاطرة", riskShort(rec.risk || rec.riskLevel), "Risk")}
         ${detailCard("المدة", rec.timeframe || rec.horizon || rec.duration || "--", "Horizon")}
         ${detailCard("مزود البيانات", provider, "Provider")}

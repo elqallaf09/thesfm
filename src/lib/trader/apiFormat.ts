@@ -85,6 +85,9 @@ export function toTraderRecommendation(result: StockAnalysisResult) {
     scoreBreakdown: result.scoreBreakdown,
     technicals: result.technicals,
     analysisMethod: result.analysisMethod,
+    target2: result.target2 ?? null,
+    backtest: result.backtest ?? null,
+    precisionMode: result.precisionMode ?? null,
   };
 }
 
