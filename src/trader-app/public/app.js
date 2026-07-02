@@ -882,6 +882,350 @@
     return `<div class="table-shell calendar-table"><table><thead><tr><th>الوقت</th><th>الدولة</th><th>العملة</th><th>الحدث</th><th>الأهمية</th><th>السابق</th><th>المتوقع</th><th>الفعلي</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || "--")}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(r.event || "--")}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
+  function calendarPageCompact() {
+    const c = state.calendar || {};
+    const sections = [
+      ["earnings", "EARNINGS", calendarText("أرباح الشركات", "Earnings"), c.earnings, earningsRowsCompact],
+      ["dividends", "DIVIDENDS", calendarText("التوزيعات", "Dividends"), c.dividends, dividendRowsCompact],
+      ["ipos", "IPO", calendarText("الاكتتابات", "IPOs"), c.ipos, ipoRowsCompact],
+      ["economic", "ECONOMIC", calendarText("التقويم الاقتصادي", "Economic Calendar"), c.economic, economicRowsCompact]
+    ];
+    return `<div class="page-stack trader-calendar-page">${hero(calendarText("تقويم السوق", "Market Calendar"), calendarText("تقويم حي لأرباح الشركات والتوزيعات والاكتتابات والأحداث الاقتصادية من مزودين حقيقيين. عند تعذر البيانات نعرض السبب بوضوح بدون بيانات وهمية.", "Live earnings, dividends, IPOs, and economic events from real providers with clear states when data is unavailable."), "CALENDAR")}
+      <section class="panel trader-calendar-toolbar">
+        <div><span class="eyebrow">DATE RANGE</span><h2>${h(calendarText("فترة العرض", "Range"))}</h2></div>
+        <div class="calendar-ranges">${calendarRangeButtons()}</div>
+      </section>
+      ${calendarProviderOverview()}
+      <section class="calendar-grid">${sections.map(section => calendarPanelCompact(...section)).join("")}</section>
+    </div>`;
+  }
+
+  function calendarPanelCompact(kind, eyebrow, title, response, rowRenderer) {
+    response = response || {};
+    const rawRows = calendarRowsFromResponse(response);
+    const rows = kind === "earnings" ? rawRows.filter(earningsMeaningfulRow) : rawRows;
+    const status = featureStatusFromResponse(kind, title, response);
+    const loading = calendarSectionLoading(kind);
+    const open = calendarSectionOpen(kind);
+    const partial = kind === "earnings" && rawRows.length > 0 && (rows.length < rawRows.length || earningsPartialData(rows));
+    const body = open
+      ? (loading ? calendarLoadingState(title) : rows.length ? rowRenderer(rows, rawRows, response) : calendarMeaningfulEmpty(kind, status, rawRows))
+      : calendarCollapsedSummary(kind, rows, status, response);
+    return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${open ? "is-open" : "is-collapsed"}">
+      <div class="calendar-card-head">
+        <button class="calendar-toggle" type="button" data-calendar-toggle="${h(kind)}" aria-expanded="${open ? "true" : "false"}" aria-label="${h(open ? calendarText("غلق", "Collapse") : calendarText("فتح", "Expand"))}">
+          <span class="calendar-chevron">${open ? "⌃" : "⌄"}</span>
+        </button>
+        <div class="calendar-title-block"><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
+        <div class="calendar-header-badges">
+          <span class="state-badge provider">${h(providerName(status.provider))}</span>
+          ${providerBadge(status)}
+          ${partial ? `<span class="state-badge warn">${h(calendarText("بيانات جزئية", "Partial data"))}</span>` : ""}
+        </div>
+        <div class="calendar-header-meta">
+          <span>${h(calendarText("النتائج", "Items"))}: <b class="ltr">${h(latinNumber(rows.length))}</b></span>
+          <span>${h(calendarText("آخر تحديث", "Updated"))}: <b class="ltr">${h(latinDateTime(status.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
+          <span>${h(calendarText("الفترة", "Range"))}: <b class="ltr">${h(rangeText(response.range))}</b></span>
+        </div>
+        <div class="calendar-head-actions">${calendarRetryButtonCompact(kind, status, loading)}</div>
+      </div>
+      <div class="calendar-card-body">${body}</div>
+    </article>`;
+  }
+
+  function normalizeCalendarUi(value) {
+    value = value && typeof value === "object" ? value : {};
+    const open = { ...DEFAULT_CALENDAR_UI.open, ...(value.open || {}) };
+    const expanded = { ...(value.expanded || {}) };
+    const filters = new Set(["all", "actual", "revenue", "major"]);
+    const sort = value.earningsSort && typeof value.earningsSort === "object" ? value.earningsSort : DEFAULT_CALENDAR_UI.earningsSort;
+    const sortKey = ["symbol", "company", "reportDate", "time", "epsActual", "epsEstimate", "surprise", "revenue", "source"].includes(sort.key) ? sort.key : "reportDate";
+    return {
+      open,
+      expanded,
+      earningsFilter: filters.has(value.earningsFilter) ? value.earningsFilter : "all",
+      earningsSearch: String(value.earningsSearch || ""),
+      earningsSort: { key: sortKey, dir: sort.dir === "desc" ? "desc" : "asc" }
+    };
+  }
+
+  function saveCalendarUi() {
+    state.calendarUi = normalizeCalendarUi(state.calendarUi);
+    write(keys.calendarUi, state.calendarUi);
+  }
+
+  function updateCalendarUi(patch) {
+    state.calendarUi = normalizeCalendarUi({ ...(state.calendarUi || {}), ...patch });
+    saveCalendarUi();
+    render();
+    afterRoute();
+  }
+
+  function toggleCalendarSection(kind) {
+    if (!CALENDAR_SECTION_KEYS.includes(kind)) return;
+    updateCalendarUi({ open: { ...(state.calendarUi.open || {}), [kind]: !calendarSectionOpen(kind) } });
+  }
+
+  function setCalendarExpanded(kind, expanded) {
+    if (!CALENDAR_SECTION_KEYS.includes(kind)) return;
+    updateCalendarUi({ expanded: { ...(state.calendarUi.expanded || {}), [kind]: expanded === true } });
+  }
+
+  function setEarningsSort(key) {
+    const current = state.calendarUi.earningsSort || DEFAULT_CALENDAR_UI.earningsSort;
+    const dir = current.key === key && current.dir === "asc" ? "desc" : "asc";
+    updateCalendarUi({ earningsSort: { key, dir }, expanded: { ...(state.calendarUi.expanded || {}), earnings: false } });
+  }
+
+  function calendarSectionOpen(kind) {
+    const open = (state.calendarUi && state.calendarUi.open) || DEFAULT_CALENDAR_UI.open;
+    return open[kind] !== undefined ? open[kind] !== false : kind === "earnings";
+  }
+
+  function calendarRowsFromResponse(response) {
+    return arr(response && (response.data || response.items || response.events || response.results));
+  }
+
+  function calendarText(ar, en) {
+    return isArabic() ? ar : en;
+  }
+
+  function calendarDash() {
+    return "—";
+  }
+
+  function calendarRetryButtonCompact(kind, status, loading) {
+    if (status.status === "not_configured" || status.status === "unauthorized") return "";
+    return `<button class="ghost-btn compact-btn" data-calendar-retry="${h(kind)}" ${loading ? "disabled" : ""}>${h(loading ? calendarText("جاري التحديث", "Refreshing") : calendarText("إعادة المحاولة", "Retry"))}</button>`;
+  }
+
+  function calendarMeaningfulEmpty(kind, status, rawRows) {
+    if (kind === "earnings" && rawRows.length) {
+      return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(calendarText("لا توجد بيانات أرباح مفيدة ضمن الفترة المحددة", "No meaningful earnings data found for the selected range"))}</h3><p>${h(calendarText("استبعدنا الصفوف التي لا تحتوي على رمز وتاريخ وقيمة أرباح أو إيراد مفيدة.", "Rows without a symbol, date, and meaningful EPS or revenue were hidden."))}</p>${calendarRetryButtonCompact(kind, status, false)}</div>`;
+    }
+    return calendarEmptyState(kind, status, {});
+  }
+
+  function calendarCollapsedSummary(kind, rows, status, response) {
+    const sample = rows.slice(0, 4).map(row => collapsedCalendarLabel(kind, row)).filter(Boolean);
+    return `<div class="calendar-collapsed-summary">
+      <span><b class="ltr">${h(latinNumber(rows.length))}</b><small>${h(calendarText("صفوف", "rows"))}</small></span>
+      <span><small>${h(calendarText("الحالة", "status"))}</small><b>${h(featureStatusLabel(status.status))}</b></span>
+      <span><small>${h(calendarText("آخر تحديث", "updated"))}</small><b class="ltr">${h(latinDateTime(status.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
+      ${sample.length ? `<span><small>${h(calendarText("لمحة", "preview"))}</small><b>${h(sample.join(" · "))}</b></span>` : ""}
+    </div>`;
+  }
+
+  function collapsedCalendarLabel(kind, row) {
+    if (kind === "earnings") return [sym(row.symbol), row.companyName || row.company].filter(Boolean).join(" ");
+    if (kind === "dividends") return [sym(row.symbol), latinDateOnly(row.exDividendDate || row.paymentDate)].filter(Boolean).join(" ");
+    if (kind === "ipos") return [row.companyName || row.company, sym(row.symbol)].filter(Boolean).join(" ");
+    if (kind === "economic") return [row.currency || row.country, row.event].filter(Boolean).join(" ");
+    return "";
+  }
+
+  function calendarRowWindow(kind, rows) {
+    const expanded = Boolean(state.calendarUi && state.calendarUi.expanded && state.calendarUi.expanded[kind]);
+    const limit = expanded ? CALENDAR_EXPANDED_LIMIT : CALENDAR_PREVIEW_LIMIT;
+    return { expanded, visible: rows.slice(0, limit), limit };
+  }
+
+  function calendarTableFooter(kind, total, visibleCount, expanded) {
+    const hasMore = total > CALENDAR_PREVIEW_LIMIT;
+    const text = total > CALENDAR_EXPANDED_LIMIT && expanded
+      ? calendarText(`يتم عرض أول ${CALENDAR_EXPANDED_LIMIT} من ${total}`, `Showing first ${CALENDAR_EXPANDED_LIMIT} of ${total}`)
+      : calendarText(`يتم عرض ${visibleCount} من ${total}`, `Showing ${visibleCount} of ${total}`);
+    return `<div class="calendar-table-footer">
+      <span>${h(text)}</span>
+      ${hasMore ? `<button class="ghost-btn compact-btn" type="button" data-calendar-show="${h(kind)}" data-calendar-mode="${expanded ? "less" : "more"}">${h(expanded ? calendarText("إظهار القليل", "Show less") : calendarText("إظهار المزيد", "Show more"))}</button>` : ""}
+    </div>`;
+  }
+
+  function calendarSortButton(key, label) {
+    const sort = state.calendarUi.earningsSort || DEFAULT_CALENDAR_UI.earningsSort;
+    const active = sort.key === key;
+    const icon = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
+    return `<button type="button" data-earnings-sort="${h(key)}">${h(label)} <span>${h(icon)}</span></button>`;
+  }
+
+  function earningsRowsCompact(rows) {
+    const filtered = sortedEarningsRows(filterEarningsRows(rows));
+    if (!filtered.length) {
+      return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(calendarText("لا توجد بيانات أرباح مفيدة ضمن الفترة المحددة", "No meaningful earnings data found for the selected range"))}</h3><p>${h(calendarText("جرّب إزالة البحث أو تغيير الفلتر السريع.", "Try clearing the search or changing the quick filter."))}</p></div>`;
+    }
+    const view = calendarRowWindow("earnings", filtered);
+    return `${earningsControls(filtered.length, rows.length)}<div class="table-shell calendar-table"><table><thead><tr>
+      <th>${calendarSortButton("symbol", calendarText("الرمز", "Symbol"))}</th>
+      <th>${calendarSortButton("company", calendarText("الشركة", "Company"))}</th>
+      <th>${calendarSortButton("reportDate", calendarText("تاريخ الإعلان", "Report date"))}</th>
+      <th>${calendarSortButton("time", calendarText("الوقت", "Time"))}</th>
+      <th>${calendarSortButton("epsActual", calendarText("EPS الفعلي", "Actual EPS"))}</th>
+      <th>${calendarSortButton("epsEstimate", calendarText("EPS المتوقع", "Estimate EPS"))}</th>
+      <th>${calendarSortButton("surprise", calendarText("المفاجأة", "Surprise"))}</th>
+      <th>${calendarSortButton("revenue", calendarText("الإيراد", "Revenue"))}</th>
+      <th>${calendarSortButton("source", calendarText("المصدر", "Source"))}</th>
+    </tr></thead><tbody>${view.visible.map(r => `<tr>
+      <td class="ltr strong-symbol">${h(sym(r.symbol) || calendarDash())}</td>
+      <td>${h(r.companyName || r.company || calendarDash())}</td>
+      <td class="ltr">${h(latinDateOnly(r.reportDate || r.date))}</td>
+      <td class="ltr">${h(r.time || r.reportTime || calendarDash())}</td>
+      <td class="ltr">${h(formatEarningsNumber(earningsActualEps(r)))}</td>
+      <td class="ltr">${h(formatEarningsNumber(earningsEstimateEps(r)))}</td>
+      <td class="ltr">${h(formatEarningsNumber(earningsSurprise(r)))}</td>
+      <td class="ltr">${h(formatRevenueValue(r))}</td>
+      <td>${h(providerName(r.provider || r.source))}</td>
+    </tr>`).join("")}</tbody></table></div>${calendarTableFooter("earnings", filtered.length, view.visible.length, view.expanded)}`;
+  }
+
+  function earningsControls(filteredCount, totalCount) {
+    const ui = state.calendarUi || DEFAULT_CALENDAR_UI;
+    const filters = [
+      ["all", calendarText("الكل", "All")],
+      ["actual", calendarText("EPS فعلي", "Actual EPS")],
+      ["revenue", calendarText("إيراد", "Revenue")],
+      ["major", calendarText("الشركات الكبرى", "Major")]
+    ];
+    return `<div class="calendar-controls">
+      <input type="search" data-earnings-search value="${h(ui.earningsSearch || "")}" placeholder="${h(calendarText("بحث بالرمز أو الشركة", "Search symbol or company"))}" aria-label="${h(calendarText("بحث أرباح الشركات", "Search earnings"))}">
+      <div class="calendar-filter-pills">${filters.map(([key, label]) => `<button type="button" data-earnings-filter="${h(key)}" aria-pressed="${ui.earningsFilter === key ? "true" : "false"}">${h(label)}</button>`).join("")}</div>
+      <span class="calendar-filter-count"><b class="ltr">${h(latinNumber(filteredCount))}</b> / <span class="ltr">${h(latinNumber(totalCount))}</span></span>
+    </div>`;
+  }
+
+  function filterEarningsRows(rows) {
+    const ui = state.calendarUi || DEFAULT_CALENDAR_UI;
+    const query = String(ui.earningsSearch || "").trim().toLowerCase();
+    return rows.filter(row => {
+      if (!earningsMeaningfulRow(row)) return false;
+      if (query) {
+        const haystack = `${sym(row.symbol)} ${row.companyName || ""} ${row.company || ""}`.toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      if (ui.earningsFilter === "actual") return earningsActualEps(row) !== null;
+      if (ui.earningsFilter === "revenue") return earningsRevenueValue(row) !== null;
+      if (ui.earningsFilter === "major") return isMajorEarningsRow(row);
+      return true;
+    });
+  }
+
+  function sortedEarningsRows(rows) {
+    const sort = (state.calendarUi && state.calendarUi.earningsSort) || DEFAULT_CALENDAR_UI.earningsSort;
+    const dir = sort.dir === "desc" ? -1 : 1;
+    return [...rows].sort((a, b) => compareCalendarValues(earningsSortValue(a, sort.key), earningsSortValue(b, sort.key)) * dir);
+  }
+
+  function compareCalendarValues(a, b) {
+    const emptyA = a === null || a === undefined || a === "";
+    const emptyB = b === null || b === undefined || b === "";
+    if (emptyA && emptyB) return 0;
+    if (emptyA) return 1;
+    if (emptyB) return -1;
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  function earningsSortValue(row, key) {
+    if (key === "symbol") return sym(row.symbol);
+    if (key === "company") return row.companyName || row.company || "";
+    if (key === "time") return row.time || row.reportTime || "";
+    if (key === "epsActual") return earningsActualEps(row);
+    if (key === "epsEstimate") return earningsEstimateEps(row);
+    if (key === "surprise") return earningsSurprise(row);
+    if (key === "revenue") return earningsRevenueValue(row);
+    if (key === "source") return providerName(row.provider || row.source);
+    return Date.parse(row.reportDate || row.date || "") || 0;
+  }
+
+  function earningsMeaningfulRow(row) {
+    if (!sym(row && row.symbol)) return false;
+    if (!(row.reportDate || row.date)) return false;
+    return earningsActualEps(row) !== null || earningsEstimateEps(row) !== null || earningsRevenueValue(row) !== null;
+  }
+
+  function earningsPartialData(rows) {
+    if (!rows.length) return false;
+    const weak = rows.filter(row => {
+      const meaningful = [earningsActualEps(row), earningsEstimateEps(row), earningsRevenueValue(row)].filter(value => value !== null).length;
+      return meaningful <= 1 || earningsSurprise(row) === null;
+    }).length;
+    return weak / rows.length >= 0.45;
+  }
+
+  function earningsActualEps(row) {
+    const value = num(row && row.epsActual, row && row.actualEps, row && row.actualEPS);
+    if (value === null) return null;
+    if (value !== 0) return value;
+    if (row.epsActualIsRealZero === true || row.actualEpsReported === true || row.epsActualReported === true) return 0;
+    const surprise = num(row.epsSurprise, row.surprise, row.surpriseAmount);
+    const revenueActual = num(row.revenueActual, row.actualRevenue, row.revenue);
+    const estimate = earningsEstimateEps(row);
+    if (surprise !== null || revenueActual !== null || (estimate !== null && estimate === 0)) return 0;
+    return null;
+  }
+
+  function earningsEstimateEps(row) {
+    return num(row && row.epsEstimate, row && row.estimateEps, row && row.estimatedEPS);
+  }
+
+  function earningsSurprise(row) {
+    const explicit = num(row && row.epsSurprise, row && row.surprise, row && row.surpriseAmount);
+    if (explicit !== null) return explicit;
+    const actual = earningsActualEps(row);
+    const estimate = earningsEstimateEps(row);
+    if (actual !== null && estimate !== null) return actual - estimate;
+    return null;
+  }
+
+  function earningsRevenueValue(row) {
+    return num(row && row.revenueActual, row && row.actualRevenue, row && row.revenue, row && row.revenueEstimate, row && row.revenueEstimated, row && row.estimatedRevenue);
+  }
+
+  function isMajorEarningsRow(row) {
+    const symbol = sym(row && row.symbol);
+    const marketCap = num(row && row.marketCap, row && row.market_cap);
+    return MAJOR_EARNINGS_SYMBOLS.has(symbol) || row.isLargeCap === true || row.largeCap === true || (marketCap !== null && marketCap >= 100_000_000_000);
+  }
+
+  function formatEarningsNumber(value) {
+    const parsed = num(value);
+    if (parsed === null) return calendarDash();
+    if (Math.abs(parsed) >= 1000) return latinNumber(Math.round(parsed));
+    return latinNumber(Number.isInteger(parsed) ? parsed : Number(parsed.toFixed(3)));
+  }
+
+  function formatRevenueValue(row) {
+    const actual = num(row && row.revenueActual, row && row.actualRevenue, row && row.revenue);
+    const estimate = num(row && row.revenueEstimate, row && row.revenueEstimated, row && row.estimatedRevenue);
+    if (actual !== null) return formatRevenueNumber(actual);
+    if (estimate !== null) return `${formatRevenueNumber(estimate)} ${calendarText("متوقع", "est")}`;
+    return calendarDash();
+  }
+
+  function formatRevenueNumber(value) {
+    const parsed = num(value);
+    if (parsed === null) return calendarDash();
+    const abs = Math.abs(parsed);
+    if (abs >= 1_000_000_000) return `${latinNumber((parsed / 1_000_000_000).toFixed(2))}B`;
+    if (abs >= 1_000_000) return `${latinNumber((parsed / 1_000_000).toFixed(1))}M`;
+    if (abs >= 1_000) return `${latinNumber((parsed / 1_000).toFixed(1))}K`;
+    return latinNumber(parsed);
+  }
+
+  function dividendRowsCompact(rows) {
+    const view = calendarRowWindow("dividends", rows);
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الرمز", "Symbol"))}</th><th>${h(calendarText("الشركة", "Company"))}</th><th>${h(calendarText("تاريخ الإعلان", "Declaration"))}</th><th>${h(calendarText("تاريخ الاستحقاق", "Ex-date"))}</th><th>${h(calendarText("تاريخ التسجيل", "Record"))}</th><th>${h(calendarText("تاريخ الدفع", "Payment"))}</th><th>${h(calendarText("التوزيع", "Dividend"))}</th><th>${h(calendarText("العائد", "Yield"))}</th><th>${h(calendarText("العملة", "Currency"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td class="ltr">${h(r.symbol || calendarDash())}</td><td>${h(r.companyName || calendarDash())}</td><td class="ltr">${h(latinDateOnly(r.declarationDate))}</td><td class="ltr">${h(latinDateOnly(r.exDividendDate))}</td><td class="ltr">${h(latinDateOnly(r.recordDate))}</td><td class="ltr">${h(latinDateOnly(r.paymentDate))}</td><td class="ltr">${h(formatEarningsNumber(r.dividendAmount))}</td><td class="ltr">${h(percentText(r.dividendYield))}</td><td class="ltr">${h(r.currency || calendarDash())}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("dividends", rows.length, view.visible.length, view.expanded)}`;
+  }
+
+  function ipoRowsCompact(rows) {
+    const view = calendarRowWindow("ipos", rows);
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الشركة", "Company"))}</th><th>${h(calendarText("الرمز", "Symbol"))}</th><th>${h(calendarText("السوق", "Exchange"))}</th><th>${h(calendarText("تاريخ الاكتتاب", "IPO date"))}</th><th>${h(calendarText("نطاق السعر", "Price range"))}</th><th>${h(calendarText("الأسهم", "Shares"))}</th><th>${h(calendarText("القيمة السوقية", "Market cap"))}</th><th>${h(calendarText("الحالة", "Status"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td>${h(r.companyName || calendarDash())}</td><td class="ltr">${h(r.symbol || calendarDash())}</td><td class="ltr">${h(r.exchange || calendarDash())}</td><td class="ltr">${h(latinDateOnly(r.ipoDate))}</td><td class="ltr">${h(r.priceRange || calendarDash())}</td><td class="ltr">${h(formatEarningsNumber(r.shares))}</td><td class="ltr">${h(formatRevenueNumber(num(r.marketCap)))}</td><td>${h(r.status || calendarDash())}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("ipos", rows.length, view.visible.length, view.expanded)}`;
+  }
+
+  function economicRowsCompact(rows) {
+    const view = calendarRowWindow("economic", rows);
+    return `<div class="table-shell calendar-table"><table><thead><tr><th>${h(calendarText("الوقت", "Time"))}</th><th>${h(calendarText("الدولة", "Country"))}</th><th>${h(calendarText("العملة", "Currency"))}</th><th>${h(calendarText("الحدث", "Event"))}</th><th>${h(calendarText("الأهمية", "Impact"))}</th><th>${h(calendarText("السابق", "Previous"))}</th><th>${h(calendarText("المتوقع", "Forecast"))}</th><th>${h(calendarText("الفعلي", "Actual"))}</th><th>${h(calendarText("المصدر", "Source"))}</th></tr></thead><tbody>${view.visible.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || calendarDash())}</td><td class="ltr">${h(r.currency || calendarDash())}</td><td>${h(r.event || calendarDash())}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>${calendarTableFooter("economic", rows.length, view.visible.length, view.expanded)}`;
+  }
+
   function featureStatusTone(status) {
     status = String(status || "");
     if (status === "success" || status === "available" || status === "configured") return "ok";
@@ -893,6 +1237,28 @@
 
   function featureStatusLabel(status) {
     status = String(status || "not_configured");
+    if (!isArabic()) {
+      const englishLabels = {
+        success: "Available",
+        available: "Available",
+        empty: "No data",
+        configured: "Connected",
+        connected: "Connected",
+        healthy: "Connected",
+        partial: "Partial data",
+        degraded: "Partial data",
+        missing: "Not configured",
+        error: "Provider error",
+        not_configured: "Not configured",
+        not_entitled: "Plan limited",
+        forbidden: "Plan limited",
+        unauthorized: "Plan limited",
+        rate_limited: "Rate limited",
+        provider_error: "Unavailable",
+        invalid_request: "Invalid request"
+      };
+      return englishLabels[status] || status;
+    }
     const labels = {
       success: "متاح",
       available: "متاح",

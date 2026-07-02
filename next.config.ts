@@ -6,6 +6,12 @@ const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ?
 const PROJECT_ROOT = process.cwd();
 const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
 const IS_WINDOWS_BUILD = process.platform === "win32";
+const WINDOWS_BUILD_EXPERIMENTS = IS_WINDOWS_BUILD
+  ? {
+      cpus: 1,
+      webpackBuildWorker: false,
+    }
+  : {};
 
 function writeTextIfMissing(filePath: string, content: string) {
   if (fs.existsSync(filePath)) return;
@@ -57,6 +63,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: PROJECT_ROOT,
   },
+  experimental: WINDOWS_BUILD_EXPERIMENTS,
   webpack(config, { dev }) {
     if (!dev && IS_WINDOWS_BUILD) {
       config.cache = false;
