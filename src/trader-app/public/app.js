@@ -149,7 +149,7 @@
     const settled = await Promise.allSettled([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
       get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`),
-      get(`/market/signals?symbols=${encodeURIComponent(commandSymbols.join(","))}&limit=${commandSymbols.length}`, { label: "signals" }),
+      get("/market/signals?limit=60"),
       get("/market/signal-alerts?limit=50"),
       get("/markets"), get("/market-news?limit=12"), get("/followed-trades"),
       get("/trader/provider-status", { label: "providerStatus" })
@@ -692,172 +692,9 @@
   }
 
   function providerName(provider) {
-    const names = {
-      fmp: "FMP",
-      finnhub: "Finnhub",
-      twelve_data: "Twelve Data",
-      "twelve data": "Twelve Data",
-      eodhd: "EODHD",
-      marketstack: "Marketstack",
-      tradingeconomics: "Trading Economics",
-      yahoo: "Yahoo Finance",
-      "yahoo finance": "Yahoo Finance",
-      openbb: "OpenBB",
-      manual: "إدخال يدوي"
-    };
+    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "Yahoo Finance", "yahoo finance": "Yahoo Finance", manual: "إدخال يدوي" };
     const raw = String(provider || "").trim();
     return names[raw.toLowerCase()] || raw || "غير متصل";
-  }
-
-  function clampValue(value, min, max) { return Math.max(min, Math.min(max, value)); }
-  function valueFromPath(source, path) {
-    return path.split(".").reduce((current, key) => current && typeof current === "object" ? current[key] : undefined, source);
-  }
-  function firstNumberFrom(source, paths) {
-    for (const path of paths) {
-      const value = valueFromPath(source, path);
-      const parsed = Array.isArray(value) ? num(...value) : num(value);
-      if (parsed !== null) return parsed;
-    }
-    return null;
-  }
-  function closeSeriesFromAsset(a) {
-    return arr(a.history || a.sparkline || a.candles || a.chart || a.prices)
-      .map(point => typeof point === "number" ? point : num(point.close, point.c, point.price, point.value, point.adjClose))
-      .filter(value => value !== null && value > 0);
-  }
-  function candleSeriesFromAsset(a) {
-    return arr(a.history || a.candles || a.chart || a.prices)
-      .map(point => ({
-        high: num(point.high, point.h, point.close, point.c, point.price, point.value),
-        low: num(point.low, point.l, point.close, point.c, point.price, point.value),
-        close: num(point.close, point.c, point.price, point.value, point.adjClose)
-      }))
-      .filter(point => point.close !== null && point.close > 0);
-  }
-  function average(values) {
-    const clean = values.filter(value => Number.isFinite(value));
-    return clean.length ? clean.reduce((sum, value) => sum + value, 0) / clean.length : null;
-  }
-  function averageTrueRangeFromAsset(a) {
-    const explicit = firstNumberFrom(a, ["atr", "atr14", "technical.atr", "technical.atr14", "technicals.atr", "technicals.atr14"]);
-    if (explicit !== null && explicit > 0) return explicit;
-    const candles = candleSeriesFromAsset(a);
-    if (candles.length >= 3) {
-      const ranges = candles.slice(-15).map((point, index, slice) => {
-        const previous = index ? slice[index - 1].close : point.close;
-        const highLow = point.high !== null && point.low !== null ? Math.abs(point.high - point.low) : 0;
-        const highPrev = point.high !== null && previous !== null ? Math.abs(point.high - previous) : 0;
-        const lowPrev = point.low !== null && previous !== null ? Math.abs(point.low - previous) : 0;
-        return Math.max(highLow, highPrev, lowPrev);
-      }).filter(value => value > 0);
-      const atr = average(ranges);
-      if (atr !== null && atr > 0) return atr;
-    }
-    const closes = closeSeriesFromAsset(a);
-    if (closes.length >= 3) {
-      const moves = closes.slice(1).map((value, index) => Math.abs(value - closes[index])).filter(value => value > 0);
-      const avgMove = average(moves.slice(-14));
-      if (avgMove !== null && avgMove > 0) return avgMove;
-    }
-    return null;
-  }
-  function simpleAverageSeries(values, period) {
-    if (values.length < period) return null;
-    return average(values.slice(-period));
-  }
-  function emaSeries(values, period) {
-    if (values.length < period) return null;
-    const k = 2 / (period + 1);
-    return values.slice(1).reduce((ema, value) => value * k + ema * (1 - k), values[0]);
-  }
-  function rsiFromSeries(values, period = 14) {
-    if (values.length <= period) return null;
-    let gains = 0, losses = 0;
-    values.slice(-period - 1).forEach((value, index, slice) => {
-      if (!index) return;
-      const diff = value - slice[index - 1];
-      if (diff >= 0) gains += diff;
-      else losses += Math.abs(diff);
-    });
-    if (losses === 0) return 100;
-    const rs = gains / losses;
-    return 100 - (100 / (1 + rs));
-  }
-  function trendSignalForAsset(a, priceValue, existingSignal) {
-    if (existingSignal && existingSignal !== "watch") return existingSignal;
-    const closes = closeSeriesFromAsset(a);
-    const sma20 = firstNumberFrom(a, ["sma20", "technical.sma20", "technicals.sma20"]) ?? simpleAverageSeries(closes, 20);
-    const sma50 = firstNumberFrom(a, ["sma50", "technical.sma50", "technicals.sma50"]) ?? simpleAverageSeries(closes, 50);
-    const ema20 = firstNumberFrom(a, ["ema20", "technical.ema20", "technicals.ema20"]) ?? emaSeries(closes, 20);
-    const rsiValue = firstNumberFrom(a, ["rsi", "rsi14", "technical.rsi", "technical.rsi14", "technicals.rsi", "technicals.rsi14"]) ?? rsiFromSeries(closes);
-    if (priceValue === null) return existingSignal || "watch";
-    if ((sma20 !== null && sma50 !== null && sma20 > sma50 && priceValue >= sma20) || (ema20 !== null && priceValue >= ema20 && (rsiValue === null || rsiValue < 72))) return "buy";
-    if ((sma20 !== null && sma50 !== null && sma20 < sma50 && priceValue <= sma20) || (ema20 !== null && priceValue <= ema20 && (rsiValue === null || rsiValue > 28))) return "sell";
-    return existingSignal || "watch";
-  }
-  function tradeMetricsForAsset(asset) {
-    const a = norm(asset);
-    const current = num(a.currentPrice, a.price, a.lastPrice, a.regularMarketPrice, a.close);
-    const entry = num(a.entryPrice, a.entry, a.entryValue, current);
-    const closes = closeSeriesFromAsset(a);
-    const atr = averageTrueRangeFromAsset(a);
-    const support = firstNumberFrom(a, ["support", "support1", "levels.support", "levels.support1", "technical.support", "technicals.support"]) ?? (closes.length ? Math.min(...closes.slice(-40)) : null);
-    const resistance = firstNumberFrom(a, ["resistance", "resistance1", "levels.resistance", "levels.resistance1", "technical.resistance", "technicals.resistance"]) ?? (closes.length ? Math.max(...closes.slice(-40)) : null);
-    const rsiValue = firstNumberFrom(a, ["rsi", "rsi14", "technical.rsi", "technical.rsi14", "technicals.rsi", "technicals.rsi14"]) ?? rsiFromSeries(closes);
-    const sma20 = firstNumberFrom(a, ["sma20", "technical.sma20", "technicals.sma20"]) ?? simpleAverageSeries(closes, 20);
-    const sma50 = firstNumberFrom(a, ["sma50", "technical.sma50", "technicals.sma50"]) ?? simpleAverageSeries(closes, 50);
-    const explicitSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type) ? signal(a) : "";
-    const direction = trendSignalForAsset(a, current, explicitSignal || "watch");
-    const base = entry ?? current;
-    const fallbackBand = base !== null ? Math.max(base * 0.018, Math.abs(base * (num(a.changePercent, a.percentChange) || 0) / 100)) : null;
-    const band = atr ?? fallbackBand;
-    let target = num(a.targetPrice, a.target, a.priceTarget, a.target1);
-    let stop = num(a.stopLoss, a.stop, a.stopPrice);
-    if (base !== null && band !== null) {
-      if (target === null) {
-        if (direction === "sell") target = support !== null && support < base ? support : base - band * 2;
-        else target = resistance !== null && resistance > base ? resistance : base + band * 2;
-      }
-      if (stop === null) {
-        if (direction === "sell") stop = resistance !== null && resistance > base ? resistance : base + band;
-        else stop = support !== null && support < base ? support : base - band;
-      }
-    }
-    const existingConfidence = num(a.confidence, a.score, a.aiConfidence);
-    let confidence = existingConfidence;
-    if (confidence === null && current !== null) {
-      const trendAligned = direction === "buy"
-        ? (sma20 !== null && current >= sma20) || (sma20 !== null && sma50 !== null && sma20 >= sma50)
-        : direction === "sell"
-          ? (sma20 !== null && current <= sma20) || (sma20 !== null && sma50 !== null && sma20 <= sma50)
-          : false;
-      const rsiAligned = rsiValue === null || (direction === "buy" ? rsiValue < 72 : direction === "sell" ? rsiValue > 28 : rsiValue >= 35 && rsiValue <= 65);
-      confidence = clampValue(50 + (trendAligned ? 10 : 0) + (rsiAligned ? 8 : 0) + (atr !== null || support !== null || resistance !== null ? 6 : 0) - (direction === "watch" ? 8 : 0), 35, 78);
-    }
-    const pnlPercent = current !== null && entry !== null && entry !== 0 ? ((current - entry) / entry) * 100 : null;
-    return {
-      current,
-      entry,
-      target: target !== null ? Math.max(0, target) : null,
-      stop: stop !== null ? Math.max(0, stop) : null,
-      confidence,
-      pnlPercent,
-      signal: direction,
-      risk: a.risk || a.riskLevel || (band !== null && base !== null ? (band / base > 0.045 ? "high" : band / base < 0.018 ? "low" : "medium") : null),
-      timeframe: a.timeframe || a.horizon || a.duration || (direction === "watch" ? "متابعة" : "1-3 أسابيع")
-    };
-  }
-  function providerBadge(asset) {
-    const a = norm(asset);
-    const status = a.providerStatus || {};
-    const provider = providerName(a.provider || a.source || status.provider || status.activeProvider || status.active);
-    const quality = dataQualityLabel(a.dataQuality || status.dataQuality || (a.delayed ? "delayed" : a.fallbackUsed ? "partial" : ""));
-    const tone = /غير|فشل|not|error|unavailable/i.test(provider + " " + quality) ? "warn" : a.fallbackUsed ? "fallback" : "ok";
-    return `<span class="provider-mini-badge ${tone}"><b>${h(provider)}</b><small>${h(quality)}</small></span>`;
-  }
-  function formattedPercent(value) {
-    return value === null || value === undefined || Number.isNaN(Number(value)) ? "غير متاح" : `${value >= 0 ? "+" : ""}${Number(value).toFixed(2)}%`;
   }
 
   function resultCountText(value) { return value === null || value === undefined ? "--" : `${latinNumber(value)} نتيجة`; }
@@ -960,10 +797,9 @@
   }
   async function ensureScanData(force = false) {
     if (!force && (recs().length || state.rec.message)) return;
-    const symbols = dashboardSymbols();
     const settled = await Promise.allSettled([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`, { label: "quotes" }),
-      get(`/market/signals?symbols=${encodeURIComponent(symbols.join(","))}&limit=${symbols.length}`, { label: "signals" })
+      get("/market/signals?limit=60", { label: "signals" })
     ]);
     const [data, signals] = settled.map((result, index) => settledValue(result, index === 0 ? "quotes" : "signals"));
     state.rec = data; state.signals = signals;
@@ -1041,11 +877,14 @@
   /* ───────────────────── Components ───────────────────── */
   function marketBias(rec) {
     const buy = rec.filter(x => signal(x) === "buy").length, sell = rec.filter(x => signal(x) === "sell").length, total = rec.length;
-    if (!total) return { label: "بانتظار البيانات", en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "" };
-    const bull = Math.round((buy / total) * 100), bear = Math.round((sell / total) * 100), neutral = Math.max(0, 100 - bull - bear);
+    if (!total) return { label: "بانتظار البيانات", en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: "" };
     const cf = rec.map(x => num(x.confidence, x.score, x.aiConfidence)).filter(v => v !== null);
     const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
-    return { label: bull >= 55 ? "صاعد" : bull <= 40 ? "هابط" : "محايد", en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "" };
+    const actionable = buy + sell;
+    // بدون إشارات منشورة، السوق ليس "هابطاً" — بوابة الدقة حاجبة فقط
+    if (!actionable) return { label: "محايد · وضع الدقة نشط", en: "NEUTRAL — PRECISION GATE", bull: 0, bear: 0, neutral: 100, conf, tone: "", note: `لا توجد إشارات تتجاوز حد النشر حالياً (${total} أصل قيد المراقبة)` };
+    const bull = Math.round((buy / actionable) * 100), bear = 100 - bull, neutral = Math.round(((total - actionable) / total) * 100);
+    return { label: bull >= 55 ? "صاعد" : bull <= 40 ? "هابط" : "محايد", en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: `${buy} شراء · ${sell} بيع من أصل ${total}` };
   }
   function marketOverview(rec) {
     const b = marketBias(rec);
@@ -1054,7 +893,7 @@
       <div class="mo-body">
         ${marketMap()}
         <div class="mo-gauges">
-          <div class="mo-gauge"><span class="card-kicker">MARKET SENTIMENT</span><strong class="state-${b.tone}">${h(b.en)}</strong><div class="mo-bar"><i style="width:${b.bull}%"></i></div><small>${h(b.label)} · ${b.bull}% شراء · إطار ${h(state.timeframe)}</small></div>
+          <div class="mo-gauge"><span class="card-kicker">MARKET SENTIMENT</span><strong class="state-${b.tone}">${h(b.en)}</strong><div class="mo-bar"><i style="width:${b.bull}%"></i></div><small>${h(b.label)}${b.note ? " · " + h(b.note) : ""} · إطار ${h(state.timeframe)}</small></div>
           <div class="mo-gauge"><span class="card-kicker">AI CONFIDENCE</span><strong>${b.conf ? b.conf + "%" : "--"}</strong><div class="mo-bar"><i class="conf" style="width:${b.conf}%"></i></div><small>${b.conf >= 70 ? "ثقة عالية" : b.conf ? "ثقة متوسطة" : "بانتظار البيانات"}</small></div>
         </div>
       </div></section>`;
@@ -1223,43 +1062,42 @@
   }
   function watchlistTable(items, opts = {}) {
     const rows = items.map(x => {
-      const a = norm(x), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
-      const p = metrics.current, chg = num(a.changePercent, a.percentChange), score = num(a.aiScore, a.score, a.rating, metrics.confidence);
-      const risk = metrics.risk;
+      const a = norm(x), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "";
+      const conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+      const chg = num(a.changePercent, a.percentChange), tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
+      const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button>${providerBadge(a)}</td>
+        <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
         <td class="ltr" data-label="السعر">${h(p === null ? "غير متاح" : price(p, c))}</td>
         <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? "غير متاح" : change(chg))}</td>
-        <td class="ltr" data-label="الدخول">${h(metrics.entry === null ? "غير متاح" : price(metrics.entry, c))}</td>
-        <td class="ltr" data-label="الهدف">${h(metrics.target === null ? "غير متاح" : price(metrics.target, c))}</td>
-        <td class="ltr" data-label="وقف الخسارة">${h(metrics.stop === null ? "غير متاح" : price(metrics.stop, c))}</td>
-        <td class="ltr ${metrics.pnlPercent === null ? "" : metrics.pnlPercent >= 0 ? "up" : "down"}" data-label="P/L">${h(formattedPercent(metrics.pnlPercent))}</td>
-        <td class="ltr" data-label="الثقة">${metrics.confidence === null ? "غير متاح" : Math.round(metrics.confidence) + "%"}</td>
-        <td data-label="التوصية"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></td>
+        <td data-label="التوصية"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
+        <td class="ltr" data-label="الثقة">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
+        <td class="ltr" data-label="الهدف">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
+        <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
         <td data-label="المخاطرة">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : "غير متاح"}</td>
         <td class="ltr" data-label="سكور AI">${score === null ? "غير متاح" : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
         <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button>${rm}</td>
       </tr>`;
     }).join("");
-    return `<div class="table-shell watchlist-table"><table><thead><tr><th>الأصل</th><th>السعر</th><th>التغير</th><th>الدخول</th><th>الهدف</th><th>وقف الخسارة</th><th>P/L</th><th>الثقة</th><th>التوصية</th><th>المخاطرة</th><th>سكور AI</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    return `<div class="table-shell watchlist-table"><table><thead><tr><th>الأصل</th><th>السعر</th><th>التغير</th><th>التوصية</th><th>الثقة</th><th>الهدف</th><th>المدة</th><th>المخاطرة</th><th>سكور AI</th><th>إجراء</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
   function recCard(x) {
-    const a = norm(x), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
-    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></div><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
-      <div class="badge-row">${providerBadge(a)}<span class="currency-badge">${h(c)}</span></div>
-      <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(metrics.current, c))}</b></span><span>الدخول<b class="ltr">${h(price(metrics.entry, c))}</b></span><span>الهدف<b class="ltr">${h(price(metrics.target, c))}</b></span><span>وقف<b class="ltr">${h(price(metrics.stop, c))}</b></span><span>P/L<b class="${metrics.pnlPercent === null ? "" : metrics.pnlPercent >= 0 ? "up" : "down"}">${h(formattedPercent(metrics.pnlPercent))}</b></span><span>ثقة<b>${metrics.confidence === null ? "غير متاح" : Math.round(metrics.confidence) + "%"}</b></span></div>
+    const a = norm(x), c = currency(a), sig = signal(a), conf = num(a.confidence, a.score, a.aiConfidence);
+    const p = num(a.price, a.lastPrice, a.currentPrice), tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
+    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
+      <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(p, c))}</b></span><span>الهدف<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>وقف<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>ثقة<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
       <div class="rec-foot"><span class="status-tag ${recStatusTone(a)}">${h(recStatus(a))}</span><div class="row-actions compact-actions"><button class="action-btn sm" data-follow-trade="${h(a.symbol)}" type="button">متابعة الصفقة</button><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
   }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
-    const a = norm(asset), c = currency(a), metrics = tradeMetricsForAsset(a), sig = metrics.signal;
+    const a = norm(asset), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "", conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">إزالة</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span>${providerBadge(a)}</div>
-      <div class="asset-metrics"><span>السعر<b class="ltr">${h(metrics.current === null ? "غير متاح" : price(metrics.current, c))}</b></span><span>الدخول<b class="ltr">${h(metrics.entry === null ? "غير متاح" : price(metrics.entry, c))}</b></span><span>الهدف<b class="ltr">${h(metrics.target === null ? "غير متاح" : price(metrics.target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(metrics.stop === null ? "غير متاح" : price(metrics.stop, c))}</b></span><span>P/L<b class="${metrics.pnlPercent === null ? "" : metrics.pnlPercent >= 0 ? "up" : "down"}">${h(formattedPercent(metrics.pnlPercent))}</b></span><span>ثقة AI<b>${metrics.confidence === null ? "غير متاح" : `${Math.round(metrics.confidence)}%`}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span></div>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span><span class="status-tag">${h(recStatus(a))}</span></div>
+      <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
@@ -1324,20 +1162,18 @@
   function tradeCol(title, items, tone) { return `<article class="trade-column ${tone}"><h3>${h(title)} <span class="col-count">${items.length}</span></h3>${items.length ? items.map(tradeCard).join("") : `<div class="trade-mini-empty">لا توجد صفقات في هذا التصنيف.</div>`}</article>`; }
   function tradeCard(t) {
     const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), sig = tradeAction(t);
-    const metrics = tradeMetricsForAsset({ ...a, action: sig });
-    const status = tradeStatus(t), current = metrics.current, entry = metrics.entry, target = metrics.target, stop = metrics.stop;
-    const shownPnl = pnl ?? metrics.pnlPercent;
+    const status = tradeStatus(t), current = num(t.currentPrice, t.current), entry = num(t.entryPrice, t.entry), target = num(t.targetPrice, t.target), stop = num(t.stopLoss, t.stop);
     return `<article class="trade-item"><div class="asset-head">${logo({ symbol: s })}<div class="asset-title"><strong class="ltr">${h(s)}</strong><small>${h(a.name || t.status || "متابعة")}</small></div></div>
-      <div class="badge-row"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span>${providerBadge(t)}</div>
-      <div class="trade-row"><span>الدخول<b class="ltr">${h(price(entry, c))}</b></span><span>الحالي<b class="ltr">${h(price(current, c))}</b></span><span>P/L<b class="${shownPnl === null ? "" : shownPnl >= 0 ? "up" : "down"}">${h(formattedPercent(shownPnl))}</b></span></div>
-      <div class="trade-row"><span>الهدف<b class="ltr">${h(price(target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(price(stop, c))}</b></span><span>الثقة<b class="ltr">${h(metrics.confidence === null ? "غير متاح" : Math.round(metrics.confidence) + "%")}</b></span></div>
+      <div class="badge-row"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></div>
+      <div class="trade-row"><span>الدخول<b class="ltr">${h(price(entry, c))}</b></span><span>الحالي<b class="ltr">${h(current === null ? "--" : price(current, c))}</b></span><span>P/L<b class="${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</b></span></div>
+      <div class="trade-row"><span>الهدف<b class="ltr">${h(price(target, c))}</b></span><span>وقف الخسارة<b class="ltr">${h(price(stop, c))}</b></span><span>الثقة<b class="ltr">${h(t.confidence == null ? "--" : Math.round(Number(t.confidence)) + "%")}</b></span></div>
       ${t.priceMessage ? `<p class="trade-warning">${h(t.priceMessage)}</p>` : ""}
       <div class="rec-foot"><small>${h(providerName(t.provider) || t.sourceType || "--")}</small><button class="ghost-btn sm" data-symbol-details="${h(s)}">فتح التحليل</button></div></article>`;
   }
   function tradeList(items) { return `<div class="trade-list">${items.map(tradeCard).join("")}</div>`; }
   function tradeJournalTable(items) {
-    const rows = items.map(t => { const s = sym(t.symbol || t.asset || "--"), c = currency({ symbol: s, currency: t.currency }), metrics = tradeMetricsForAsset({ ...t, symbol: s, action: tradeAction(t) }), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent) ?? metrics.pnlPercent, status = tradeStatus(t);
-      return `<tr><td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong><small>${h(t.assetName || t.name || "غير متاح")}</small></span></button></td><td data-label="الإجراء">${h(sigLabel(tradeAction(t)))}</td><td class="ltr" data-label="الدخول">${h(price(metrics.entry, c))}</td><td class="ltr" data-label="الحالي">${h(price(metrics.current, c))}</td><td class="ltr" data-label="الهدف">${h(price(metrics.target, c))}</td><td class="ltr" data-label="وقف الخسارة">${h(price(metrics.stop, c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}" data-label="P/L">${h(formattedPercent(pnl))}</td><td data-label="الحالة"><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></td><td data-label="المصدر">${h(providerName(t.provider) || t.sourceType || "غير متصل")}</td></tr>`; }).join("");
+    const rows = items.map(t => { const s = sym(t.symbol || t.asset || "--"), c = currency({ symbol: s, currency: t.currency }), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), status = tradeStatus(t);
+      return `<tr><td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(s)}">${logo({ symbol: s })}<span><strong class="ltr">${h(s)}</strong><small>${h(t.assetName || t.name || "--")}</small></span></button></td><td data-label="الإجراء">${h(sigLabel(tradeAction(t)))}</td><td class="ltr" data-label="الدخول">${h(price(num(t.entryPrice, t.entry), c))}</td><td class="ltr" data-label="الحالي">${h(price(num(t.currentPrice, t.current), c))}</td><td class="ltr" data-label="الهدف">${h(price(num(t.targetPrice, t.target), c))}</td><td class="ltr" data-label="وقف الخسارة">${h(price(num(t.stopLoss, t.stop), c))}</td><td class="ltr ${pnl === null ? "" : pnl >= 0 ? "up" : "down"}" data-label="P/L">${pnl === null ? "--" : pnl + "%"}</td><td data-label="الحالة"><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></td><td data-label="المصدر">${h(providerName(t.provider) || t.sourceType || "--")}</td></tr>`; }).join("");
     return `<div class="table-shell trade-journal-table"><table><thead><tr><th>الرمز</th><th>الإجراء</th><th>الدخول</th><th>الحالي</th><th>الهدف</th><th>وقف الخسارة</th><th>P/L</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function newsList(items) { return `<div class="news-list">${items.map(newsCard).join("")}</div>`; }
@@ -1456,11 +1292,6 @@
         details
       });
     }
-    const hasOpenbbMissing = rows.some(row => String(row && (row.reason || row.error || row.message || "")).includes("openbb_not_configured"))
-      || ps.providers?.openbb?.configured === false;
-    if (hasOpenbbMissing) {
-      groups.push({ provider: "OpenBB", status: "missing", summary: "OpenBB غير مهيأ", details: [] });
-    }
     return groups;
   }
   function formatProviderError(error, options = {}) {
@@ -1477,14 +1308,12 @@
     if (!value || value === "[object Object]") return empty;
     if (isRateLimitText(value)) return "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
     const lower = value.toLowerCase();
-    if (lower.includes("openbb_not_configured")) return "OpenBB غير مهيأ";
     if (lower.includes("fmp_not_configured")) return "FMP غير مهيأ";
-    if (lower.includes("not_configured")) return "مزود البيانات غير متاح حالياً";
     if (lower.includes("provider_not_configured") || lower.includes("missing_provider")) return "مزود البيانات غير مهيأ";
+    if (/^[a-z0-9_-]+_not_configured$/i.test(value)) return "مزود البيانات غير مهيأ";
     if (lower.includes("provider_temporarily_unavailable")) return "مزود البيانات غير متاح مؤقتاً";
     if (lower.includes("provider_access_denied") || lower.includes("unauthorized") || lower.includes("forbidden")) return "صلاحية المزود لا تسمح بعرض هذه البيانات";
-    if (/^openbb_[a-z0-9_-]+$/i.test(value)) return "تعذر تحديث أحد مسارات المزود";
-    if (/^fmp_[a-z0-9_-]+$/i.test(value)) return "تعذر تحديث أحد مسارات المزود";
+    if (/^[a-z0-9_-]+_[a-z0-9_-]+$/i.test(value)) return "تعذر تحديث أحد مسارات المزود";
     return value.length > 140 ? `${value.slice(0, 137).trim()}...` : value;
   }
   function formatProviderValue(value) {
@@ -1781,7 +1610,7 @@
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: `متابعة ${s}`, message: "تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {
-    const a = norm(asset), metrics = tradeMetricsForAsset(a), action = metrics.signal, now = new Date().toISOString(), entry = metrics.entry;
+    const a = norm(asset), action = signal(a), now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
     return {
       id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       symbol: a.symbol,
@@ -1790,12 +1619,12 @@
       market: a.market || "",
       action,
       entryPrice: entry,
-      currentPrice: metrics.current ?? entry,
-      targetPrice: metrics.target,
-      stopLoss: metrics.stop,
-      confidence: metrics.confidence,
-      riskLevel: riskKey(metrics.risk),
-      timeframe: metrics.timeframe,
+      currentPrice: num(a.currentPrice, a.price, a.lastPrice, entry),
+      targetPrice: num(a.targetPrice, a.target, a.target1),
+      stopLoss: num(a.stopLoss, a.stop),
+      confidence: num(a.confidence, a.score),
+      riskLevel: riskKey(a.riskLevel || a.risk),
+      timeframe: a.timeframe || a.duration || (action === "watch" ? "تحت المتابعة" : "1-3 أسابيع"),
       status: action === "wait" ? "waiting" : action === "watch" ? "watching" : "open",
       openedAt: now,
       updatedAt: now,
