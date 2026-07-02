@@ -330,8 +330,10 @@ async function insertSignalNotifications(admin: DbClient, signal: MarketSignal, 
       symbol: signal.symbol,
       action: signal.action,
       event: draft.event,
-      title: draft.title,
-      message: draft.message,
+      title: signal.precisionMode?.passed ? `⚡ إشارة نخبة · ${draft.title}` : draft.title,
+      message: signal.precisionMode?.passed && signal.backtest?.winRate !== null && signal.backtest?.winRate !== undefined
+        ? `${draft.message} · اجتازت بوابة الدقة العالية بنسبة إصابة تاريخية ${signal.backtest.winRate}% عبر ${signal.backtest.samples} صفقة.`
+        : draft.message,
       channel: draft.channel,
       status: draft.channel === 'in-app' ? 'created' : 'queued',
       sent_at: draft.channel === 'in-app' ? new Date().toISOString() : null,

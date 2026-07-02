@@ -508,10 +508,22 @@
       </section>${disclaimer()}</div>`;
   }
 
+  function precisionLivePanel() {
+    const pl = state.followed && state.followed.precisionLive;
+    if (!pl || !num(pl.total)) return "";
+    const resolved = (pl.won || 0) + (pl.lost || 0);
+    const liveRate = pl.successRate === null || pl.successRate === undefined ? "--" : `${pl.successRate}%`;
+    return `<section class="panel precision-live-panel">
+      <div class="panel-head"><div><span class="eyebrow">PRECISION · FORWARD TEST</span><h2>الدقة الحية — إشارات بوابة الـ90%</h2></div><span class="precision-badge ${resolved && pl.successRate >= 90 ? "pass" : "info"}">${h(resolved ? `نجاح حي ${liveRate}` : "بانتظار أول نتيجة")}</span></div>
+      <div class="metric-grid">${stat("إشارات متتبعة", pl.total, "Tracked")}${stat("أصابت الهدف", pl.won || 0, "Won")}${stat("لمست الوقف", pl.lost || 0, "Lost")}${stat("مفتوحة", pl.open || 0, "Open")}${stat("النجاح الحي", liveRate, "Live rate")}</div>
+      <p class="muted-note">كل إشارة اجتازت بوابة الدقة تُسجَّل تلقائياً بهدفها ووقفها المنشورَين، وتُحسم فوز/خسارة حسب أول ملامسة فعلية — هذا هو الإثبات الحي لنسبة النجاح، وليس الاختبار التاريخي وحده.</p>
+    </section>`;
+  }
   function performancePage() {
     const all = trades(), g = groupTrades(all), summary = tradeSummary(all);
     return `<div class="page-stack trade-performance-page">${hero("أداء الصفقات", "نتائج إشارات الشراء والبيع المحفوظة، صفقات المتابعة اليدوية، وسجلات التوصيات. لا تُعرض نتائج وهمية عند غياب السجلات.", "TRADE PERFORMANCE")}
       ${tradeProviderStatus(all)}
+      ${precisionLivePanel()}
       <section class="metric-grid trade-summary-grid">${stat("الصفقات الرابحة", g.win.length, "Winning")}${stat("الصفقات الخاسرة", g.loss.length, "Losing")}${stat("الصفقات المفتوحة", g.open.length, "Open")}${stat("تحت المتابعة", g.follow.length, "Watching")}${stat("نسبة النجاح", summary.successRate === null ? "--" : summary.successRate + "%", "Win rate")}</section>
       ${all.length ? `<section class="trade-board">${tradeCol("الصفقات الرابحة", g.win, "win")}${tradeCol("الصفقات الخاسرة", g.loss, "loss")}${tradeCol("الصفقات المفتوحة", g.open, "open")}${tradeCol("صفقات الانتظار", g.wait, "wait")}${tradeCol("الصفقات تحت المتابعة", g.follow, "follow")}</section>
       <section class="panel"><div class="panel-head"><div><span class="eyebrow">JOURNAL</span><h2>سجل تفصيلي</h2></div><button class="ghost-btn" data-refresh-trades>تحديث الأسعار</button></div>${tradeJournalTable(all)}</section>` : performanceEmptyState()}

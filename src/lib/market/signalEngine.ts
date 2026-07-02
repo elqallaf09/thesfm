@@ -1,4 +1,13 @@
 import type { MarketAnalysis, MarketAssetType, MarketHistoryPoint, MarketRiskLevel } from '@/lib/market/marketService';
+import {
+  AGENT_PRECISION_MIN_SAMPLES,
+  AGENT_PRECISION_MIN_WINRATE,
+  AGENT_SL_ATR_MULTIPLE,
+  AGENT_TP1_ATR_MULTIPLE,
+  backtestAgentFirstTouch,
+  type MarketAgentBacktest,
+  type MarketAgentPrecisionMode,
+} from '@/lib/market/marketAgent';
 
 export type MarketSignalAction = 'buy' | 'sell' | 'wait' | 'watch';
 export type MarketSignalRiskLevel = 'low' | 'medium' | 'high';
@@ -103,6 +112,8 @@ export type MarketSignal = {
   lastUpdated: string;
   scoreBreakdown: MarketSignalScoreBreakdown;
   technicalSummary: MarketSignalTechnicalSummary;
+  backtest?: MarketAgentBacktest;
+  precisionMode?: MarketAgentPrecisionMode;
   disclaimerAr: typeof MARKET_SIGNAL_DISCLAIMER_AR;
   disclaimerEn: typeof MARKET_SIGNAL_DISCLAIMER_EN;
 };
@@ -530,6 +541,24 @@ function buildWarnings(input: {
   return Array.from(new Set(warnings));
 }
 
+function wilderAtrFromSummary(summary: NumericSummary, period = 14): number | null {
+  const length = Math.min(summary.highs.length, summary.lows.length, summary.closes.length);
+  if (length < period + 2) return null;
+  const trueRanges: number[] = [];
+  for (let index = 1; index < length; index += 1) {
+    trueRanges.push(Math.max(
+      summary.highs[index] - summary.lows[index],
+      Math.abs(summary.highs[index] - summary.closes[index - 1]),
+      Math.abs(summary.lows[index] - summary.closes[index - 1]),
+    ));
+  }
+  let value = trueRanges.slice(0, period).reduce((sum, item) => sum + item, 0) / period;
+  for (let index = period; index < trueRanges.length; index += 1) {
+    value = (value * (period - 1) + trueRanges[index]) / period;
+  }
+  return Number.isFinite(value) ? value : null;
+}
+
 export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
   const history = Array.isArray(input.history) ? input.history : [];
   const numericHistory = normalizeHistory(history);
@@ -546,9 +575,63 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
   const totalScore = clamp(Math.round(tech + momentum + news + fundamental + riskAdj + qualityPenalty), 0, 100);
   const risk = riskLevel(technicalSummary, totalScore, fundamentals.riskLevel);
   const preWarnings = buildWarnings({ dataQuality, risk, summary: technicalSummary, news: input.newsSentiment });
-  const action = actionFromScore(totalScore, risk, dataQuality, preWarnings);
-  const { targetPrice, stopLoss } = targetAndStop({ action, price, summary: technicalSummary, history });
-  const confidence = confidenceForAction(action, totalScore, dataQuality);
+  let action = actionFromScore(totalScore, risk, dataQuality, preWarnings);
+
+  // ── بوابة الدقة العالية (موحّدة مع بقية المحركات) ──────────────────
+  const backtest = backtestAgentFirstTouch(history.map(point => ({
+    open: point.open,
+    high: point.high,
+    low: point.low,
+    close: point.close,
+    volume: point.volume,
+  })));
+  const precisionMode: MarketAgentPrecisionMode = {
+    enabled: true,
+    required: AGENT_PRECISION_MIN_WINRATE,
+    measuredWinRate: backtest.winRate,
+    samples: backtest.samples,
+    passed: false,
+  };
+  let gateReasonAr = '';
+  let gateBlocked = false;
+
+  if (action === 'buy' || action === 'sell') {
+    if (backtest.winRate === null || backtest.samples < AGENT_PRECISION_MIN_SAMPLES) {
+      action = 'wait';
+      gateBlocked = true;
+      gateReasonAr = `وضع الدقة العالية: عينات الاختبار الخلفي (${backtest.samples}) غير كافية لإثبات نسبة نجاح ${AGENT_PRECISION_MIN_WINRATE}%، لذلك لا تُنشر الإشارة.`;
+    } else if (backtest.winRate < AGENT_PRECISION_MIN_WINRATE) {
+      action = 'wait';
+      gateBlocked = true;
+      gateReasonAr = `وضع الدقة العالية: نسبة إصابة هذا الإعداد تاريخياً ${backtest.winRate}% وهي أقل من الحد المطلوب ${AGENT_PRECISION_MIN_WINRATE}%.`;
+    } else {
+      precisionMode.passed = true;
+      gateReasonAr = `اجتازت الإشارة فلتر الدقة العالية: إصابة الهدف الأول ${backtest.winRate}% عبر ${backtest.samples} صفقة تاريخية على نفس الرمز.`;
+    }
+  }
+
+  let { targetPrice, stopLoss } = targetAndStop({ action, price, summary: technicalSummary, history });
+
+  // نفس هندسة الاختبار الخلفي للإشارات المجتازة: هدف أول 0.9×ATR ووقف 1.8×ATR
+  // خلف الهيكل — حتى يقيس التتبع الحي نفس الأرقام التي بُنيت عليها نسبة النجاح.
+  if (precisionMode.passed && price !== null && (action === 'buy' || action === 'sell')) {
+    const atrValue = wilderAtrFromSummary(numericHistory);
+    const range = Math.max(atrValue ?? 0, price * 0.004);
+    const direction = action === 'buy' ? 1 : -1;
+    targetPrice = roundPrice(price + direction * range * AGENT_TP1_ATR_MULTIPLE, price);
+    const structural = action === 'buy' ? technicalSummary.support : technicalSummary.resistance;
+    stopLoss = roundPrice(action === 'buy'
+      ? Math.min(structural !== null ? structural - range * 0.15 : Number.POSITIVE_INFINITY, price - range * AGENT_SL_ATR_MULTIPLE)
+      : Math.max(structural !== null ? structural + range * 0.15 : Number.NEGATIVE_INFINITY, price + range * AGENT_SL_ATR_MULTIPLE), price);
+  }
+
+  let confidence = confidenceForAction(action, totalScore, dataQuality);
+  if (precisionMode.passed && backtest.winRate !== null) {
+    const smoothedWinRate = ((backtest.wins + 2) / (backtest.samples + 4)) * 100;
+    confidence = Math.min(96, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
+  } else if (gateBlocked) {
+    confidence = Math.min(confidence, 62);
+  }
   const provider = input.provider || 'Yahoo Finance';
   const currency = String(input.currency || 'USD').toUpperCase();
 
@@ -566,7 +649,7 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
     targetPrice,
     stopLoss,
     timeframe: action === 'watch' ? 'تحت المراقبة' : '1-3 أسابيع',
-    reasons: buildReasons({ action, score: totalScore, summary: technicalSummary, fundamentals, news: input.newsSentiment, dataQuality }),
+    reasons: [gateReasonAr, ...buildReasons({ action, score: totalScore, summary: technicalSummary, fundamentals, news: input.newsSentiment, dataQuality })].filter(Boolean),
     warnings: preWarnings,
     provider,
     dataQuality,
@@ -581,6 +664,8 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
       totalScore,
     },
     technicalSummary,
+    backtest,
+    precisionMode,
     disclaimerAr: MARKET_SIGNAL_DISCLAIMER_AR,
     disclaimerEn: MARKET_SIGNAL_DISCLAIMER_EN,
   };

@@ -398,10 +398,10 @@ function percentDistance(left: number, right: number) {
 }
 
 // ── وضع الدقة العالية (موحّد مع محرك الماسح analysisEngine) ──────────
-const AGENT_PRECISION_MIN_WINRATE = Math.min(Math.max(Number(process.env.PRECISION_MIN_WINRATE) || 90, 50), 99);
-const AGENT_PRECISION_MIN_SAMPLES = Math.min(Math.max(Number(process.env.PRECISION_MIN_SAMPLES) || 8, 3), 60);
-const AGENT_TP1_ATR_MULTIPLE = 0.9;
-const AGENT_SL_ATR_MULTIPLE = 1.8;
+export const AGENT_PRECISION_MIN_WINRATE = Math.min(Math.max(Number(process.env.PRECISION_MIN_WINRATE) || 90, 50), 99);
+export const AGENT_PRECISION_MIN_SAMPLES = Math.min(Math.max(Number(process.env.PRECISION_MIN_SAMPLES) || 8, 3), 60);
+export const AGENT_TP1_ATR_MULTIPLE = 0.9;
+export const AGENT_SL_ATR_MULTIPLE = 1.8;
 const AGENT_BACKTEST_HORIZON = 15;
 
 export type MarketAgentBacktest = {
@@ -543,7 +543,7 @@ function evaluateAgentSnapshot(points: MarketAgentPricePoint[]): AgentEvaluation
 }
 
 // اختبار خلفي بمحاكاة أول ملامسة: أيهما يُلمس أولا، الهدف الأول أم الوقف؟
-function backtestAgentFirstTouch(points: MarketAgentPricePoint[]): MarketAgentBacktest {
+export function backtestAgentFirstTouch(points: MarketAgentPricePoint[]): MarketAgentBacktest {
   const horizonBars = AGENT_BACKTEST_HORIZON;
   const samples: { success: boolean }[] = [];
   const limit = points.length - horizonBars;

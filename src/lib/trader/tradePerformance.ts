@@ -676,12 +676,17 @@ export async function buildTradePerformancePayload(input: {
     message: refreshed.length ? null : 'لا توجد صفقات متابعة محفوظة أو إشارات محفوظة حالياً.',
   };
 
+  // التتبع الحي لإشارات الدقة العالية: نسبة النجاح الفعلية المقاسة على الأهداف المنشورة
+  const precisionRecords = refreshed.filter(record => record.sourceType === 'precision_signal');
+  const precisionLive = summarizeTrades(precisionRecords);
+
   return {
     ok: true,
     followedTrades: refreshed,
     trades: refreshed,
     items: refreshed,
     summary: summarizeTrades(refreshed),
+    precisionLive,
     signalHistory,
     dataStatus,
     dataProvider: CONNECTED_PROVIDER,
@@ -758,7 +763,8 @@ export async function autoTrackSignalTrades(admin: DbClient | null, signal: Mark
     if (signal.confidence < 70) return { inserted: 0 };
   }
 
-  const baseRecord = signalToTradeRecord({ ...signal, id: sourceSignalId });
+  const precisionPassed = signal.precisionMode?.passed === true;
+  const baseRecord = signalToTradeRecord({ ...signal, id: sourceSignalId }, precisionPassed ? 'precision_signal' : 'market_signal');
   if (!baseRecord) return { inserted: 0 };
 
   let preferenceRows: Array<Record<string, unknown>> = [];
@@ -788,7 +794,7 @@ export async function autoTrackSignalTrades(admin: DbClient | null, signal: Mark
       .eq('user_id', userId)
       .eq('symbol', baseRecord.symbol)
       .eq('action', baseRecord.action)
-      .eq('source_type', 'market_signal')
+      .in('source_type', ['market_signal', 'precision_signal'])
       .in('status', ['open', 'waiting', 'watching'])
       .limit(1)
       .maybeSingle();
