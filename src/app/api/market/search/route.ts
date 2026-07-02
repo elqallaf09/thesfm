@@ -3,11 +3,19 @@ import { createClient } from '@supabase/supabase-js';
 import { proxySearch } from '@/lib/market/marketDataProvider';
 import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import {
+  classifyShariahCompliance,
+  normalizeShariahStatus,
+  shariahClassificationFields,
+  type ShariahScreeningData,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
 import { marketExchangeAliases, normalizeMarketExchange } from '@/lib/market/marketExchangeOptions';
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
+import { normalizeTraderSymbolMetadata } from '@/lib/trader/marketMetadata';
 
 type MarketSymbolRow = {
   symbol: string;
@@ -15,12 +23,22 @@ type MarketSymbolRow = {
   name?: string | null;
   asset_type: string;
   exchange: string | null;
+  exchange_code?: string | null;
   market?: string | null;
+  metadata?: Record<string, unknown> | null;
   display_symbol?: string | null;
   company_name_ar?: string | null;
   company_name_en?: string | null;
   country: string | null;
   currency: string | null;
+  sector?: string | null;
+  shariah_status?: string | null;
+  shariah_reason?: string | null;
+  shariah_source?: string | null;
+  shariah_last_reviewed_at?: string | null;
+  shariah_manual_override?: boolean | null;
+  shariah_reviewed_by?: string | null;
+  shariah_screening_data?: ShariahScreeningData | null;
 };
 
 function getSupabaseServerClient() {
@@ -77,9 +95,55 @@ function searchRank(item: MarketSearchItem, query: string) {
   return 0;
 }
 
-function filterAndRankResults(items: MarketSearchItem[], query: string, assetType?: MarketAssetType) {
+function ensureShariahItem(item: MarketSearchItem): MarketSearchItem {
+  if (item.shariahStatus) return item;
+  const shariah = classifyShariahCompliance({
+    symbol: item.symbol,
+    name: item.name,
+    assetType: item.assetType,
+    exchange: item.exchange,
+    country: item.country,
+  });
+  return {
+    ...item,
+    ...shariahClassificationFields(shariah),
+  };
+}
+
+function normalizeSearchAssetType(value: unknown, fallback: MarketAssetType): MarketAssetType {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === 'fund') return 'etf';
+  return raw ? normalizeAssetType(raw) : fallback;
+}
+
+function normalizeSearchItem(item: MarketSearchItem): MarketSearchItem {
+  const metadata = normalizeTraderSymbolMetadata({
+    symbol: item.symbol,
+    displaySymbol: item.displaySymbol ?? item.symbol,
+    providerSymbol: item.providerSymbol,
+    assetType: item.assetType,
+    catalog: item as Record<string, unknown>,
+  });
+  return {
+    ...item,
+    displaySymbol: metadata.displaySymbol ?? item.displaySymbol ?? item.symbol,
+    providerSymbol: metadata.providerSymbol ?? item.providerSymbol,
+    assetType: normalizeSearchAssetType(metadata.assetType, item.assetType),
+    exchange: metadata.exchange ?? item.exchange,
+    exchangeCode: metadata.exchangeCode ?? item.exchangeCode,
+    market: metadata.market ?? item.market,
+    country: metadata.country ?? item.country,
+    currency: metadata.currency ?? item.currency,
+    metadataDiagnostics: metadata.diagnostics,
+  };
+}
+
+function filterAndRankResults(items: MarketSearchItem[], query: string, assetType?: MarketAssetType, shariahStatus?: ShariahStatus | null) {
   return items
+    .map(normalizeSearchItem)
+    .map(ensureShariahItem)
     .filter(item => !assetType || normalizeAssetType(item.assetType) === assetType)
+    .filter(item => !shariahStatus || item.shariahStatus === shariahStatus)
     .map(item => ({ item, rank: searchRank(item, query) }))
     .filter(entry => !query || entry.rank > 0)
     .sort((a, b) => b.rank - a.rank || a.item.symbol.localeCompare(b.item.symbol))
@@ -90,38 +154,66 @@ function mapMarketSymbol(row: MarketSymbolRow): MarketSearchItem {
   const symbol = String(row.display_symbol || row.symbol).toUpperCase();
   const providerSymbol = String(row.provider_symbol || symbol).toUpperCase();
   const assetType = normalizeAssetType(row.asset_type);
+  const metadata = normalizeTraderSymbolMetadata({
+    symbol,
+    displaySymbol: row.display_symbol ?? symbol,
+    providerSymbol,
+    assetType,
+    catalog: row as Record<string, unknown>,
+  });
   const resolvedCurrency = resolveMarketCurrency({
-    providerCurrency: row.currency,
+    providerCurrency: metadata.currency ?? row.currency,
     symbol,
     providerSymbol,
-    exchange: row.exchange,
-    country: row.country,
+    exchange: metadata.exchange ?? row.exchange,
+    country: metadata.country ?? row.country,
     assetType,
+  });
+  const shariah = classifyShariahCompliance({
+    symbol,
+    name: row.company_name_en ?? row.company_name_ar ?? row.name ?? symbol,
+    assetType,
+    exchange: metadata.exchange ?? row.exchange,
+    country: metadata.country ?? row.country,
+    sector: row.sector,
+    shariahStatus: row.shariah_status,
+    shariahReason: row.shariah_reason,
+    shariahSource: row.shariah_source,
+    shariahLastReviewedAt: row.shariah_last_reviewed_at,
+    shariahManualOverride: row.shariah_manual_override,
+    shariahReviewedBy: row.shariah_reviewed_by,
+    shariahScreeningData: row.shariah_screening_data,
   });
   return {
     symbol,
     providerSymbol,
     name: row.company_name_en ?? row.company_name_ar ?? row.name ?? symbol,
-    assetType,
-    exchange: row.market ?? row.exchange ?? undefined,
-    country: row.country ?? undefined,
+    displaySymbol: metadata.displaySymbol ?? symbol,
+    assetType: normalizeSearchAssetType(metadata.assetType, assetType),
+    exchange: metadata.exchange ?? row.exchange ?? row.market ?? undefined,
+    exchangeCode: metadata.exchangeCode ?? row.exchange_code ?? undefined,
+    market: metadata.market ?? row.market ?? undefined,
+    country: metadata.country ?? row.country ?? undefined,
     currency: resolvedCurrency.currency ?? undefined,
     currencySource: resolvedCurrency.source,
+    metadataDiagnostics: metadata.diagnostics,
+    ...shariahClassificationFields(shariah),
   };
 }
 
-async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType, exchange?: string | null) {
+async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType, exchange?: string | null, shariahStatus?: ShariahStatus | null) {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
   const exchangeAliases = marketExchangeAliases(exchange);
   let request = supabase
     .from('market_symbols')
-    .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, country, currency')
+    .select('symbol, provider_symbol, name, asset_type, exchange, exchange_code, market, metadata, display_symbol, company_name_ar, company_name_en, sector, country, currency, shariah_status, shariah_reason, shariah_source, shariah_last_reviewed_at, shariah_manual_override, shariah_reviewed_by, shariah_screening_data')
     .eq('is_active', true)
     .limit(40);
 
   if (assetType) request = request.eq('asset_type', assetType);
+  if (shariahStatus) request = request.eq('shariah_status', shariahStatus);
   if (exchangeAliases.length > 0) request = request.in('exchange', exchangeAliases);
 
   if (query) {
@@ -157,6 +249,10 @@ export async function GET(request: NextRequest) {
   const assetTypeParam = searchParams.get('assetType');
   const assetType = assetTypeParam && assetTypeParam !== 'all' ? normalizeAssetType(assetTypeParam) : undefined;
   const exchange = normalizeMarketExchange(searchParams.get('exchange') ?? searchParams.get('market'));
+  const shariahStatus = normalizeShariahStatus(
+    searchParams.get('shariahStatus') ?? searchParams.get('sharia_status') ?? searchParams.get('shariaStatus'),
+    null,
+  );
   const hasExchangeFilter = Boolean(exchange);
   const shouldSearchUSUniverse = (!hasExchangeFilter || exchange === 'US') && (!assetType || assetType === 'stock' || assetType === 'etf');
   const shouldUseResolver = !hasExchangeFilter;
@@ -166,16 +262,18 @@ export async function GET(request: NextRequest) {
       ? [resolved.asset, ...resolved.suggestions]
       : resolved.suggestions
     : [];
+  const resolvedItem = resolved?.ok ? normalizeSearchItem(resolved.asset) : null;
 
   const directoryResults = searchBundledMarketSymbols({
     query,
     assetType,
     exchange,
+    shariahStatus,
     limit: hasExchangeFilter ? 40 : 16,
   });
-  const supabaseResults = await searchSupabaseSymbols(query, assetType, exchange);
+  const supabaseResults = await searchSupabaseSymbols(query, assetType, exchange, shariahStatus);
   const usResults = shouldSearchUSUniverse ? await searchUSSymbols(query, assetType) : null;
-  const primaryDirectoryResults = filterAndRankResults(directoryResults, query, assetType);
+  const primaryDirectoryResults = filterAndRankResults(directoryResults, query, assetType, shariahStatus);
   if (primaryDirectoryResults.length > 0 || (supabaseResults && supabaseResults.length > 0)) {
     const merged = filterAndRankResults(mergeMarketSearchResults(
       mergeMarketSearchResults(
@@ -183,15 +281,16 @@ export async function GET(request: NextRequest) {
         usResults?.results ?? [],
       ),
       resolverSuggestions,
-    ), query, assetType).slice(0, 20);
+    ), query, assetType, shariahStatus).slice(0, 20);
     return NextResponse.json({
       ok: true,
       success: true,
       query,
       exchange,
+      shariahStatus,
       source: usResults ? `market_symbols+${usResults.source}` : 'market_symbols',
       results: merged,
-      resolved: resolved?.ok ? resolved.asset : null,
+      resolved: resolvedItem,
     });
   }
 
@@ -199,47 +298,50 @@ export async function GET(request: NextRequest) {
     const merged = filterAndRankResults(mergeMarketSearchResults(
       usResults.results,
       resolverSuggestions,
-    ), query, assetType).slice(0, 20);
+    ), query, assetType, shariahStatus).slice(0, 20);
     return NextResponse.json({
       ok: true,
       success: true,
       query,
       exchange,
+      shariahStatus,
       source: usResults.source,
       fallback: false,
       results: merged,
-      resolved: resolved?.ok ? resolved.asset : null,
+      resolved: resolvedItem,
     });
   }
 
-  const resolverResults = filterAndRankResults(mergeMarketSearchResults([], resolverSuggestions), query, assetType).slice(0, 20);
+  const resolverResults = filterAndRankResults(mergeMarketSearchResults([], resolverSuggestions), query, assetType, shariahStatus).slice(0, 20);
   if (resolverResults.length > 0) {
     return NextResponse.json({
       ok: true,
       success: true,
       query,
       exchange,
+      shariahStatus,
       source: resolved?.ok ? 'resolver' : 'resolver-suggestions',
       fallback: false,
       results: resolverResults,
-      resolved: resolved?.ok ? resolved.asset : null,
+      resolved: resolvedItem,
     });
   }
 
   const result = hasExchangeFilter ? null : await proxySearch(query, assetType);
   const liveResults = Array.isArray(result?.results) ? result.results as MarketSearchItem[] : [];
-  const fallbackResults = filterAndRankResults(mergeMarketSearchResults(liveResults, []), query, assetType).slice(0, 20);
+  const fallbackResults = filterAndRankResults(mergeMarketSearchResults(liveResults, []), query, assetType, shariahStatus).slice(0, 20);
   if (fallbackResults.length > 0) {
     return NextResponse.json({
       ok: true,
       success: true,
       query,
       exchange,
+      shariahStatus,
       source: result?.source ?? 'resolver',
       fallback: result?.fallback,
       marketDataService: result?.marketDataService,
       results: fallbackResults,
-      resolved: resolved?.ok ? resolved.asset : null,
+      resolved: resolvedItem,
     });
   }
 
@@ -247,6 +349,7 @@ export async function GET(request: NextRequest) {
     ok: true,
     ...(result ?? {}),
     exchange,
+    shariahStatus,
     results: [],
     resolved: null,
   });

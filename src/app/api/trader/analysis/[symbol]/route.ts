@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTraderAccess } from '@/lib/server/traderAccess';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { classifyShariahCompliance, shariahClassificationFields } from '@/lib/market/shariah-screening';
 import { toTraderRecommendation } from '@/lib/trader/apiFormat';
 import { getCachedScannerResults } from '@/lib/trader/scannerService';
 import {
@@ -80,8 +81,30 @@ function candidateMarketLabelEn(candidate: TraderDetailCandidate | null) {
   return candidate?.exchangeLabelEn || candidate?.exchange || 'Market';
 }
 
+function shariahForDetail(symbol: string, candidate: TraderDetailCandidate | null, extra?: { name?: string | null; assetType?: string | null; sector?: string | null }) {
+  const fields = shariahClassificationFields(classifyShariahCompliance({
+    symbol,
+    name: extra?.name ?? candidateName(candidate, symbol),
+    assetType: extra?.assetType ?? candidate?.responseAssetType,
+    exchange: candidate?.exchangeLabelEn ?? candidate?.exchange,
+    country: candidate?.region,
+    sector: extra?.sector ?? candidate?.marketLabel,
+  }));
+  return {
+    ...fields,
+    shariaStatus: fields.shariahStatus,
+    shariaSource: fields.shariahSource,
+    shariaCheckedAt: fields.shariahLastReviewedAt,
+  };
+}
+
 function buildStockDetailPayload(result: StockAnalysisResult) {
   const recommendation = toTraderRecommendation(result);
+  const shariah = shariahForDetail(result.symbol, null, {
+    name: result.name,
+    assetType: 'stock',
+    sector: result.sector,
+  });
   const expectedMovePct = percentMove(result.currentPrice, result.targetPrice);
   const riskReward = riskRewardRatio(result.currentPrice, result.targetPrice, result.stopLoss);
 
@@ -99,9 +122,7 @@ function buildStockDetailPayload(result: StockAnalysisResult) {
       region: 'Americas',
       exchangeName: result.exchange || 'US exchange',
       currency: result.currency,
-      shariaStatus: 'unknown',
-      shariaSource: 'Internal classification requires review',
-      shariaCheckedAt: null,
+      ...shariah,
     },
     market: {
       label: 'السوق الأمريكي',
@@ -199,6 +220,10 @@ function buildAgentDetailPayload(
   const marketLabel = candidateMarketLabel(candidate);
   const marketLabelEn = candidateMarketLabelEn(candidate);
   const name = candidateName(candidate, analysis.symbol);
+  const shariah = shariahForDetail(analysis.symbol, candidate, {
+    name,
+    assetType: analysis.assetType,
+  });
   const reasons = [
     analysis.summaryArabic,
     analysis.trends.shortTerm !== 'neutral' ? `Short-term trend: ${analysis.trends.shortTerm}` : null,
@@ -222,9 +247,7 @@ function buildAgentDetailPayload(
       region: candidate?.region || marketLabelEn,
       exchangeName: marketLabelEn,
       currency: analysisCurrency,
-      shariaStatus: 'unknown',
-      shariaSource: 'Internal classification requires review',
-      shariaCheckedAt: null,
+      ...shariah,
     },
     market: {
       label: marketLabel,
@@ -270,6 +293,7 @@ function buildAgentDetailPayload(
       riskReward,
       marketState: analysis.dataStatus,
       providerDelayNote: analysis.source,
+      ...shariah,
       relativeVolume: null,
       indicators: {
         rsi14: analysis.indicators.rsi,
@@ -340,6 +364,7 @@ function buildStoredDetailPayload(row: StoredScanRow, candidate: TraderDetailCan
   const marketLabelEn = candidateMarketLabelEn(candidate);
   const expectedMovePct = percentMove(currentPrice, targetPrice);
   const riskReward = riskRewardRatio(currentPrice, targetPrice, stopLoss);
+  const shariah = shariahForDetail(row.symbol, candidate, { name });
 
   return {
     cached: true,
@@ -355,9 +380,7 @@ function buildStoredDetailPayload(row: StoredScanRow, candidate: TraderDetailCan
       region: candidate?.region || marketLabelEn,
       exchangeName: marketLabelEn,
       currency,
-      shariaStatus: 'unknown',
-      shariaSource: 'Internal classification requires review',
-      shariaCheckedAt: null,
+      ...shariah,
     },
     market: {
       label: marketLabel,
@@ -401,6 +424,7 @@ function buildStoredDetailPayload(row: StoredScanRow, candidate: TraderDetailCan
       riskReward,
       marketState: row.delayed ? 'Delayed data' : 'Provider data',
       providerDelayNote: row.provider || 'stored scanner result',
+      ...shariah,
       relativeVolume: null,
       indicators: {},
       timeframeConsensus: {

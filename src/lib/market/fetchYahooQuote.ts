@@ -7,6 +7,12 @@ type YahooQuoteResponse = {
       shortName?: string;
       longName?: string;
       currency?: string;
+      exchange?: string;
+      exchangeName?: string;
+      fullExchangeName?: string;
+      quoteSourceName?: string;
+      market?: string;
+      quoteType?: string;
       regularMarketPrice?: number;
       regularMarketChange?: number;
       regularMarketChangePercent?: number;
@@ -23,6 +29,13 @@ type YahooChartResponse = {
         shortName?: string;
         longName?: string;
         currency?: string;
+        exchange?: string;
+        exchangeName?: string;
+        fullExchangeName?: string;
+        quoteSourceName?: string;
+        market?: string;
+        quoteType?: string;
+        instrumentType?: string;
         regularMarketPrice?: number;
         regularMarketTime?: number;
         previousClose?: number;
@@ -40,6 +53,10 @@ export type YahooNormalizedQuote = {
   change: number | null;
   changePercent: number | null;
   currency: string | null;
+  exchange: string | null;
+  exchangeCode: string | null;
+  market: string | null;
+  assetType: string | null;
   marketTime: string | null;
   source: 'Yahoo Finance';
   delayed: true;
@@ -72,6 +89,10 @@ function unavailableNormalizedQuote(requestedSymbol: string, name: string, unava
     change: null,
     changePercent: null,
     currency: null,
+    exchange: null,
+    exchangeCode: null,
+    market: null,
+    assetType: null,
     marketTime: null,
     source: 'Yahoo Finance',
     delayed: true,
@@ -261,6 +282,10 @@ async function fetchYahooQuoteEndpoint(
     change,
     changePercent,
     currency: quote?.currency ?? null,
+    exchange: quote?.fullExchangeName ?? quote?.exchangeName ?? quote?.exchange ?? quote?.quoteSourceName ?? null,
+    exchangeCode: quote?.exchange ?? null,
+    market: quote?.market ?? null,
+    assetType: quote?.quoteType ?? null,
     marketTime: marketTimeFromUnix(quote?.regularMarketTime),
     source: 'Yahoo Finance',
     delayed: true,
@@ -317,6 +342,10 @@ async function fetchYahooChartEndpoint(
     change,
     changePercent: changePercent !== null && Number.isFinite(changePercent) ? changePercent : null,
     currency: meta?.currency ?? null,
+    exchange: meta?.fullExchangeName ?? meta?.exchangeName ?? meta?.exchange ?? meta?.quoteSourceName ?? null,
+    exchangeCode: meta?.exchange ?? null,
+    market: meta?.market ?? null,
+    assetType: meta?.quoteType ?? meta?.instrumentType ?? null,
     marketTime: marketTimeFromUnix(meta?.regularMarketTime),
     source: 'Yahoo Finance',
     delayed: true,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { addUtcDays, formatIsoDate, validIsoDate, type ProviderApiResponse } from '@/lib/providers/shared';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
 import type { EconomicCalendarEvent, EconomicCalendarQuery } from '@/lib/providers/economic-calendar/types';
@@ -103,15 +104,20 @@ function jsonResponse(
   status = 200,
 ) {
   const items = result.data.map(toUiEvent);
-  const hasData = items.length > 0;
-  const ok = result.status === 'success' || hasData;
   const code = result.status === 'success'
     ? result.messageCode ? safeCode(result.messageCode, 'CALENDAR_NO_EVENTS') : null
     : safeCode(result.messageCode, result.status);
+  const diagnostic = createMarketFeatureDiagnostic({
+    feature: 'economic_calendar',
+    provider: providerDisplayName(result.provider) ?? result.provider,
+    providerStatus: result.status,
+    data: items,
+    lastUpdated: result.lastSuccessfulUpdate,
+  });
 
   return NextResponse.json({
-    status: result.status,
-    provider: result.provider,
+    ...diagnostic,
+    providerId: result.provider,
     data: items,
     items,
     events: items,
@@ -121,10 +127,10 @@ function jsonResponse(
     updated_at: result.lastSuccessfulUpdate,
     messageCode: result.messageCode,
     code,
-    ok,
-    success: result.status === 'success',
+    success: diagnostic.ok,
     source: providerDisplayName(result.provider) ?? result.provider,
-    providerStatus: result.status,
+    providerStatus: diagnostic.status,
+    legacyStatus: result.status,
   }, {
     status,
     headers: result.status === 'success' ? SUCCESS_HEADERS : ERROR_HEADERS,

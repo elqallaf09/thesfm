@@ -4,6 +4,13 @@ import dfmListedSymbols from '@/data/market-symbols/dfm-listed.json';
 import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import {
+  classifyShariahCompliance,
+  normalizeShariahStatus,
+  shariahClassificationFields,
+  type ShariahScreeningData,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
+import {
   getMarketExchangeOption,
   marketExchangeLabel,
   normalizeMarketExchange,
@@ -28,6 +35,13 @@ export type MarketSymbolRecord = {
   source?: string | null;
   last_synced_at?: string | null;
   aliases?: string[] | null;
+  shariah_status?: string | null;
+  shariah_reason?: string | null;
+  shariah_source?: string | null;
+  shariah_last_reviewed_at?: string | null;
+  shariah_manual_override?: boolean | null;
+  shariah_reviewed_by?: string | null;
+  shariah_screening_data?: ShariahScreeningData | null;
 };
 
 export type MarketSymbolSearchResult = MarketSearchItem & {
@@ -47,6 +61,7 @@ type SearchParams = {
   query: string;
   assetType?: MarketAssetType;
   exchange?: MarketExchangeId | string | null;
+  shariahStatus?: ShariahStatus | 'all' | string | null;
   limit?: number;
 };
 
@@ -203,6 +218,21 @@ export function marketSymbolRecordToSearchItem(record: MarketSymbolRecord): Mark
   const assetType = normalizeAssetType(record.asset_type);
   const nameEn = String(record.company_name_en || record.name || record.company_name_ar || symbol).trim();
   const nameAr = record.company_name_ar ? String(record.company_name_ar).trim() : undefined;
+  const shariah = classifyShariahCompliance({
+    symbol,
+    name: nameEn,
+    assetType,
+    exchange: record.exchange,
+    country: record.country,
+    sector: record.sector,
+    shariahStatus: record.shariah_status,
+    shariahReason: record.shariah_reason,
+    shariahSource: record.shariah_source,
+    shariahLastReviewedAt: record.shariah_last_reviewed_at,
+    shariahManualOverride: record.shariah_manual_override,
+    shariahReviewedBy: record.shariah_reviewed_by,
+    shariahScreeningData: record.shariah_screening_data,
+  });
 
   return {
     symbol,
@@ -223,27 +253,33 @@ export function marketSymbolRecordToSearchItem(record: MarketSymbolRecord): Mark
     priceUnit: record.price_unit ?? 'major',
     source: record.source ?? option?.sourceUrl,
     lastSyncedAt: record.last_synced_at ?? null,
+    ...shariahClassificationFields(shariah),
   };
 }
 
-export function searchBundledMarketSymbols({ query, assetType, exchange, limit = 24 }: SearchParams) {
+export function searchBundledMarketSymbols({ query, assetType, exchange, shariahStatus, limit = 24 }: SearchParams) {
   const normalizedAssetType = assetType ? normalizeAssetType(assetType) : undefined;
-  return BUNDLED_SYMBOLS
+  const normalizedShariahStatus = normalizeShariahStatus(shariahStatus, null);
+  const mapped = BUNDLED_SYMBOLS
     .filter(record => record.is_active !== false)
     .filter(record => recordMatchesExchange(record, exchange))
     .filter(record => !normalizedAssetType || normalizeAssetType(record.asset_type) === normalizedAssetType)
     .map(record => ({ record, score: scoreRecord(record, query) }))
     .filter(entry => !query || entry.score > 0)
     .sort((a, b) => b.score - a.score || cleanSymbol(a.record.symbol).localeCompare(cleanSymbol(b.record.symbol)))
-    .slice(0, limit)
     .map(entry => marketSymbolRecordToSearchItem(entry.record));
+  const filtered = normalizedShariahStatus
+    ? mapped.filter(item => item.shariahStatus === normalizedShariahStatus)
+    : mapped;
+  return filtered.slice(0, limit);
 }
 
-export function listBundledMarketSymbols({ query = '', assetType, exchange, limit = 250 }: Partial<SearchParams> = {}) {
+export function listBundledMarketSymbols({ query = '', assetType, exchange, shariahStatus, limit = 250 }: Partial<SearchParams> = {}) {
   return searchBundledMarketSymbols({
     query,
     assetType,
     exchange,
+    shariahStatus,
     limit,
   });
 }

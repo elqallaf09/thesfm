@@ -253,16 +253,12 @@ function changeBadgeClass(value: number | null) {
 }
 
 function shariaStatusLabelKey(status: StockCategoryNewsItem['shariaStatus']): keyof typeof TR {
-  if (status === 'possible') return 'stock_category_sharia_status_possible';
   if (status === 'needs_review') return 'stock_category_sharia_status_review';
   if (status === 'non_compliant') return 'stock_category_sharia_status_non_compliant';
   return 'stock_category_sharia_status_unclassified';
 }
 
 function shariaStatusBadgeClass(status: StockCategoryNewsItem['shariaStatus']) {
-  if (status === 'possible') {
-    return 'border-teal-300 bg-teal-100 text-teal-800 dark:border-teal-500/40 dark:bg-teal-900/40 dark:text-teal-100';
-  }
   if (status === 'needs_review') {
     return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-100';
   }
@@ -809,7 +805,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-300">
                               <p>
                                 <span className="font-black text-slate-900 dark:text-white">{tr('stock_category_sharia_compliance_status')}: </span>
-                                <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-rose-700 dark:text-rose-200' : item.shariaStatus === 'needs_review' ? 'text-amber-700 dark:text-amber-200' : item.shariaStatus === 'possible' ? 'text-teal-700 dark:text-teal-200' : 'text-slate-700 dark:text-slate-200'}`}>
+                                <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-rose-700 dark:text-rose-200' : item.shariaStatus === 'needs_review' ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200'}`}>
                                   {tr(shariaStatusLabelKey(item.shariaStatus))}
                                 </span>
                               </p>

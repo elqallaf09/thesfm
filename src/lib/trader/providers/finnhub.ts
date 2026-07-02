@@ -17,14 +17,46 @@ const FINNHUB_TIMEOUT_MS = 9000;
 
 type ProviderRecord = Record<string, unknown>;
 
+type NumberField = {
+  value: number | null;
+  present: boolean;
+};
+
+function hasProviderValue(value: unknown) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return false;
+    return !/^(?:--|—|n\/a|na|null|none|undefined)$/i.test(text);
+  }
+  return true;
+}
+
 function textOrNull(value: unknown, maxLength = 180) {
   const text = shortText(value, maxLength);
   return text || null;
 }
 
 function numberOrNull(value: unknown) {
-  const parsed = Number(value);
+  if (!hasProviderValue(value)) return null;
+  const parsed = typeof value === 'string' ? Number(value.replace(/,/g, '')) : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function numberField(...values: unknown[]): NumberField {
+  for (const value of values) {
+    if (!hasProviderValue(value)) continue;
+    return {
+      value: numberOrNull(value),
+      present: true,
+    };
+  }
+  return { value: null, present: false };
+}
+
+function positiveNumberField(...values: unknown[]): NumberField {
+  const field = numberField(...values);
+  return field.value !== null && field.value > 0 ? field : { ...field, value: null };
 }
 
 function scalarOrNull(value: unknown): string | number | null {
@@ -40,6 +72,26 @@ function dateOnlyOrNull(value: unknown) {
   if (match) return match[0];
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function isTodayOrFuture(reportDate: string) {
+  const today = new Date();
+  const todayIso = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+    .toISOString()
+    .slice(0, 10);
+  return reportDate >= todayIso;
+}
+
+function normalizeActualEps(field: NumberField, reportDate: string) {
+  if (!field.present || field.value === null) return null;
+  if (field.value === 0 && isTodayOrFuture(reportDate)) return null;
+  return field.value;
+}
+
+function deriveEpsSurprise(actual: number | null, estimate: number | null, explicit: number | null) {
+  if (explicit !== null) return explicit;
+  if (actual === null || estimate === null) return null;
+  return Number((actual - estimate).toFixed(6));
 }
 
 function dateTimeOrNull(value: unknown) {
@@ -118,15 +170,27 @@ export async function fetchFinnhubEarningsCalendar(apiKey: string, query: Trader
     const symbol = shortText(record.symbol, 40).toUpperCase();
     const reportDate = dateOnlyOrNull(record.date);
     if (!symbol || !reportDate) return;
+    const epsEstimate = numberField(record.epsEstimate, record.estimatedEPS).value;
+    const epsActual = normalizeActualEps(numberField(record.epsActual, record.actualEPS), reportDate);
+    const revenueActual = positiveNumberField(record.revenue, record.revenueActual, record.actualRevenue).value;
+    const revenueEstimate = positiveNumberField(record.revenueEstimate, record.estimatedRevenue).value;
+    const epsSurprise = deriveEpsSurprise(
+      epsActual,
+      epsEstimate,
+      numberField(record.epsSurprise, record.surprise, record.surpriseAmount).value,
+    );
+    if (epsActual === null && epsEstimate === null && revenueActual === null && revenueEstimate === null) return;
     events.push({
       id: stableId(['finnhub-earnings', symbol, reportDate, index].join('-'), `finnhub-earnings-${index}`),
       symbol,
       companyName: textOrNull(record.companyName ?? record.name, 180) ?? symbol,
       reportDate,
       fiscalDateEnding: dateOnlyOrNull(record.period),
-      epsEstimate: numberOrNull(record.epsEstimate),
-      epsActual: numberOrNull(record.epsActual),
-      revenueEstimate: numberOrNull(record.revenueEstimate),
+      epsEstimate,
+      epsActual,
+      epsSurprise,
+      revenueActual,
+      revenueEstimate,
       time: textOrNull(record.hour, 40),
       source: 'Finnhub',
       provider: 'finnhub',
@@ -168,6 +232,11 @@ export async function fetchFinnhubDividendsCalendar(apiKey: string, query: Trade
         });
       });
   });
+  if (events.length === 0 && settled.length > 0 && settled.every(result => result.status === 'rejected')) {
+    const firstRejected = settled.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (firstRejected?.reason instanceof ProviderError) throw firstRejected.reason;
+    throw new ProviderError('provider_error', 'provider_temporarily_unavailable');
+  }
   return events;
 }
 

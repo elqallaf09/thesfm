@@ -45,6 +45,8 @@ export type TraderEarningsEvent = {
   fiscalDateEnding: string | null;
   epsEstimate: number | null;
   epsActual: number | null;
+  epsSurprise: number | null;
+  revenueActual: number | null;
   revenueEstimate: number | null;
   time: string | null;
   source: string;

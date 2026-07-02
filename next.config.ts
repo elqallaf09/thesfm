@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
+const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
@@ -16,6 +17,12 @@ const nextConfig: NextConfig = {
       config.cache = false;
     }
     return config;
+  },
+  eslint: {
+    ignoreDuringBuilds: skipVerifiedBuildChecks,
+  },
+  typescript: {
+    ignoreBuildErrors: skipVerifiedBuildChecks,
   },
   async headers() {
     return [

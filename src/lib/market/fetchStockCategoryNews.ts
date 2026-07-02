@@ -34,7 +34,7 @@ export type StockCategoryNewsItem = {
   change: number | null;
   priceSource: TechStockPrice['source'] | null;
   delayed: true;
-  shariaStatus?: 'possible' | 'needs_review' | 'unclassified' | 'non_compliant';
+  shariaStatus?: 'needs_review' | 'unclassified' | 'non_compliant';
 };
 
 export type StockCategoryNewsPayload = {

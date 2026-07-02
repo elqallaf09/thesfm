@@ -2,9 +2,17 @@ import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
+import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { providerSymbolsForAlias, providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
+import {
+  classifyShariahCompliance,
+  shariahClassificationFields,
+  type ShariahScreeningData,
+  type ShariahScreeningMethod,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
 import { ProviderError } from '@/lib/providers/shared';
 import {
   getStaticTraderMarket,
@@ -16,6 +24,7 @@ import {
   type TraderMarketDef,
   type TraderQuoteProvider,
 } from '@/lib/trader/marketCatalog';
+import { normalizeTraderSymbolMetadata, type TraderSymbolMetadataDiagnostics } from '@/lib/trader/marketMetadata';
 import {
   FmpRateLimitError,
   fmpQueuedFetch,
@@ -26,7 +35,7 @@ import {
 
 export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
-type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub';
+type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'Twelve Data' | 'EODHD' | 'Marketstack';
 
 type MarketDef = TraderMarketDef;
 type QuoteIssue = {
@@ -61,7 +70,14 @@ type ProviderQuote = {
   price: number;
   change: number | null;
   changePercent: number | null;
+  previousClose: number | null;
   currency: string | null;
+  exchange?: string | null;
+  exchangeCode?: string | null;
+  market?: string | null;
+  country?: string | null;
+  assetType?: string | null;
+  raw?: Record<string, unknown> | null;
   updatedAt: string | null;
 };
 
@@ -69,6 +85,10 @@ type YahooChartResult = {
   price: number | null;
   previousClose: number | null;
   currency: string | null;
+  exchange: string | null;
+  exchangeCode: string | null;
+  market: string | null;
+  assetType: string | null;
   closes: number[];
   marketTime: string | null;
 };
@@ -248,6 +268,23 @@ function round(value: number | null): number | null {
   return value === null ? null : Number(value.toFixed(6));
 }
 
+function deriveChangePercentFromProvider(args: {
+  explicitPercent: number | null;
+  price: number | null;
+  previousClose: number | null;
+  change: number | null;
+}) {
+  if (args.explicitPercent !== null) return args.explicitPercent;
+  if (args.price !== null && args.previousClose !== null && args.previousClose !== 0) {
+    return ((args.price - args.previousClose) / args.previousClose) * 100;
+  }
+  if (args.price !== null && args.change !== null) {
+    const inferredPreviousClose = args.price - args.change;
+    if (inferredPreviousClose !== 0) return (args.change / inferredPreviousClose) * 100;
+  }
+  return null;
+}
+
 function upper(value: unknown) {
   return String(value ?? '').trim().toUpperCase();
 }
@@ -380,6 +417,11 @@ export type TraderQuote = {
   changePercent: number | null;
   previousClose: number | null;
   currency: string | null;
+  exchange: string | null;
+  exchangeCode: string | null;
+  market: string | null;
+  country: string | null;
+  metadataDiagnostics: TraderSymbolMetadataDiagnostics;
   signal: TraderSignal;
   signalAvailable: boolean;
   confidence: number | null;
@@ -406,6 +448,14 @@ export type TraderQuote = {
   unavailableReason?: string;
   lastUpdated: string | null;
   updatedAt: string | null;
+  shariahStatus: ShariahStatus;
+  shariahReason: string | null;
+  shariahSource: string | null;
+  shariahLastReviewedAt: string | null;
+  shariahManualOverride: boolean;
+  shariahReviewedBy: string | null;
+  shariahScreeningData: ShariahScreeningData;
+  shariahMethod: ShariahScreeningMethod;
 };
 
 function quoteStatus(args: {
@@ -437,9 +487,73 @@ function quoteIdentity(display: string, meta?: TraderCatalogSymbol) {
   };
 }
 
+function metadataCatalogRecord(meta?: TraderCatalogSymbol): Record<string, unknown> | null {
+  if (!meta) return null;
+  return {
+    symbol: meta.symbol,
+    displaySymbol: meta.symbol,
+    providerSymbol: meta.providerSymbol,
+    name: meta.name,
+    assetType: meta.assetType,
+    exchange: meta.exchange,
+    exchangeCode: meta.exchangeCode,
+    market: meta.market,
+    country: meta.country,
+    currency: meta.currency,
+    source: meta.source,
+  };
+}
+
+function quoteMetadata(
+  display: string,
+  quote: Partial<ProviderQuote | YahooChartResult> | Record<string, unknown> | null,
+  meta?: TraderCatalogSymbol,
+) {
+  const quoteRecord = quote as Record<string, unknown> | null;
+  return normalizeTraderSymbolMetadata({
+    symbol: display,
+    displaySymbol: meta?.symbol ?? display,
+    provider: quoteRecord?.provider ?? quoteRecord?.providerName,
+    providerSymbol: quoteRecord?.providerSymbol,
+    assetType: meta?.assetType ?? quoteRecord?.assetType,
+    quote: quoteRecord,
+    catalog: metadataCatalogRecord(meta),
+  });
+}
+
+function metadataQuoteFields(metadata: ReturnType<typeof quoteMetadata>): Pick<TraderQuote, 'exchange' | 'exchangeCode' | 'market' | 'country' | 'metadataDiagnostics'> {
+  return {
+    exchange: metadata.exchange ?? null,
+    exchangeCode: metadata.exchangeCode ?? null,
+    market: metadata.market ?? null,
+    country: metadata.country ?? null,
+    metadataDiagnostics: metadata.diagnostics,
+  };
+}
+
+function quoteShariahFields(display: string, assetType: TraderAssetType, meta?: TraderCatalogSymbol, name?: string | null) {
+  const shariah = classifyShariahCompliance({
+    symbol: meta?.symbol ?? display,
+    name: name || meta?.name || display,
+    assetType,
+    exchange: meta?.exchange,
+    country: meta?.country,
+    shariahStatus: meta?.shariahStatus,
+    shariahReason: meta?.shariahReason,
+    shariahSource: meta?.shariahSource,
+    shariahLastReviewedAt: meta?.shariahLastReviewedAt,
+    shariahManualOverride: meta?.shariahManualOverride,
+    shariahReviewedBy: meta?.shariahReviewedBy,
+    shariahScreeningData: meta?.shariahScreeningData,
+  });
+  return shariahClassificationFields(shariah);
+}
+
 function unavailableQuote(display: string, reason: string, meta?: TraderCatalogSymbol): TraderQuote {
   const source: TraderQuoteSource = 'Financial Modeling Prep';
   const dataQuality: TraderDataQuality = 'unavailable';
+  const assetType = classifyAssetType(display, meta);
+  const metadata = quoteMetadata(display, null, meta);
   return {
     ...quoteIdentity(display, meta),
     providerSymbol: null,
@@ -447,12 +561,13 @@ function unavailableQuote(display: string, reason: string, meta?: TraderCatalogS
     provider: null,
     fallbackUsed: false,
     name: meta?.name ?? display,
-    assetType: classifyAssetType(display, meta),
+    assetType,
     price: null,
     change: null,
     changePercent: null,
     previousClose: null,
-    currency: meta?.currency ?? defaultCurrency(display),
+    currency: metadata.currency ?? meta?.currency ?? defaultCurrency(display),
+    ...metadataQuoteFields(metadata),
     signal: 'watch',
     signalAvailable: false,
     confidence: null,
@@ -471,6 +586,7 @@ function unavailableQuote(display: string, reason: string, meta?: TraderCatalogS
     unavailableReason: reason,
     lastUpdated: null,
     updatedAt: null,
+    ...quoteShariahFields(display, assetType, meta),
   };
 }
 
@@ -532,12 +648,33 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     assetType,
     priceUnit: normalized.priceUnit,
   });
-  const { signal, confidence } = deriveSignal(normalized.price, null, null, null, quote.changePercent);
   const price = round(normalized.price);
   const change = round(changeNorm.price);
+  const previousClose = round(
+    quote.previousClose !== null
+      ? normalizeMarketPrice({
+          price: quote.previousClose,
+          currency: quote.currency ?? meta?.currency,
+          providerCurrency: quote.currency,
+          symbol: display,
+          providerSymbol: quote.providerSymbol,
+          assetType,
+          priceUnit: normalized.priceUnit,
+        }).price
+      : price !== null && change !== null
+        ? price - change
+        : null,
+  );
+  const changePercent = round(quote.changePercent ?? (
+    price !== null && previousClose !== null && previousClose !== 0
+      ? ((price - previousClose) / previousClose) * 100
+      : null
+  ));
+  const { signal, confidence } = deriveSignal(normalized.price, null, null, null, changePercent);
   const updatedAt = quote.updatedAt;
   const dataQuality: TraderDataQuality = price !== null && price > 0 ? 'partial' : 'unavailable';
   const fallbackUsed = quote.provider !== 'fmp';
+  const metadata = quoteMetadata(display, quote, meta);
   return {
     ...quoteIdentity(display, meta),
     providerSymbol: quote.providerSymbol,
@@ -548,9 +685,10 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     assetType,
     price,
     change,
-    changePercent: round(quote.changePercent),
-    previousClose: price !== null && change !== null ? round(price - change) : null,
-    currency: normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
+    changePercent,
+    previousClose,
+    currency: metadata.currency ?? normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
+    ...metadataQuoteFields(metadata),
     signal,
     signalAvailable: price !== null,
     confidence,
@@ -568,6 +706,7 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     available: price !== null && price > 0,
     lastUpdated: updatedAt,
     updatedAt,
+    ...quoteShariahFields(display, assetType, meta, quote.name),
   };
 }
 
@@ -626,15 +765,38 @@ function fmpQuoteFromRecord(record: Record<string, unknown>): ProviderQuote | nu
   const price = numberOrNull(record.price ?? record.regularMarketPrice);
   if (!symbol || price === null || price <= 0) return null;
   const timestamp = numberOrNull(record.timestamp);
+  const change = numberOrNull(record.change ?? record.changes);
+  const previousClose = numberOrNull(record.previousClose ?? record.previous_close ?? record.prevClose);
+  const explicitPercent = numberOrNull(
+    record.changesPercentage
+      ?? record.changePercentage
+      ?? record.percentChange
+      ?? record.changePercent
+      ?? record.change_percentage
+      ?? record.percent_change
+      ?? record.change_percent,
+  );
   return {
     provider: 'fmp',
     providerName: 'Financial Modeling Prep',
     providerSymbol: symbol,
     name: textOrNull(record.name),
     price,
-    change: numberOrNull(record.change ?? record.changes),
-    changePercent: numberOrNull(record.changesPercentage ?? record.changePercentage ?? record.changePercent),
+    change,
+    changePercent: deriveChangePercentFromProvider({
+      explicitPercent,
+      price,
+      previousClose,
+      change,
+    }),
+    previousClose,
     currency: textOrNull(record.currency),
+    exchange: textOrNull(record.exchange ?? record.exchangeName ?? record.stockExchange ?? record.exchangeShortName),
+    exchangeCode: textOrNull(record.exchangeShortName ?? record.mic ?? record.exchangeCode ?? record.exchange_code),
+    market: textOrNull(record.market ?? record.exchangeName ?? record.stockExchange),
+    country: textOrNull(record.country),
+    assetType: textOrNull(record.assetType ?? record.asset_type ?? record.type),
+    raw: record,
     updatedAt: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString(),
   };
 }
@@ -868,6 +1030,10 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
     price,
     previousClose,
     currency: typeof meta.currency === 'string' ? meta.currency : null,
+    exchange: textOrNull(meta.fullExchangeName ?? meta.exchangeName ?? meta.exchange ?? meta.quoteSourceName),
+    exchangeCode: textOrNull(meta.exchange),
+    market: textOrNull(meta.market),
+    assetType: textOrNull(meta.quoteType ?? meta.instrumentType),
     closes,
     marketTime: marketTime ? new Date(marketTime * 1000).toISOString() : null,
   };
@@ -908,6 +1074,17 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     const change = round(normalized.change !== null ? normalized.change / divisor : null);
     const updatedAt = normalized.marketTime;
     const dataQuality: TraderDataQuality = 'partial';
+    const metadata = quoteMetadata(display, {
+      provider: 'yahoo',
+      providerName: 'Yahoo Finance',
+      providerSymbol: normalized.symbolUsed ?? yahoo,
+      name: normalized.name,
+      currency: normalized.currency,
+      exchange: normalized.exchange,
+      exchangeCode: normalized.exchangeCode,
+      market: normalized.market,
+      assetType: normalized.assetType,
+    }, meta);
     return {
       ...quoteIdentity(display, meta),
       providerSymbol: normalized.symbolUsed ?? yahoo,
@@ -920,7 +1097,8 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       change,
       changePercent: round(normalized.changePercent),
       previousClose: price !== null && change !== null ? round(price - change) : null,
-      currency: norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? meta?.currency ?? defaultCurrency(display),
+      currency: metadata.currency ?? norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? meta?.currency ?? defaultCurrency(display),
+      ...metadataQuoteFields(metadata),
       signal: 'watch',
       signalAvailable: true,
       confidence: null,
@@ -938,6 +1116,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       available: true,
       lastUpdated: updatedAt,
       updatedAt,
+      ...quoteShariahFields(display, assetType, meta, normalized.name),
     };
   }
 
@@ -948,7 +1127,17 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
   const previousClose = chart.previousClose !== null ? chart.previousClose / divisor : null;
   const change = price !== null && previousClose !== null ? price - previousClose : null;
   const changePercent = change !== null && previousClose ? (change / previousClose) * 100 : null;
-  const currency = norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? meta?.currency ?? defaultCurrency(display);
+  const metadata = quoteMetadata(display, {
+    provider: 'yahoo',
+    providerName: 'Yahoo Finance',
+    providerSymbol: yahoo,
+    currency: chart.currency,
+    exchange: chart.exchange,
+    exchangeCode: chart.exchangeCode,
+    market: chart.market,
+    assetType: chart.assetType,
+  }, meta);
+  const currency = metadata.currency ?? norm.currency ?? normalizeMarketCurrencyCode(chart.currency) ?? meta?.currency ?? defaultCurrency(display);
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
   const rsiValue = rsi(closes, 14);
@@ -972,6 +1161,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     changePercent: round(changePercent),
     previousClose: round(previousClose),
     currency,
+    ...metadataQuoteFields(metadata),
     signal,
     signalAvailable: price !== null,
     confidence,
@@ -989,6 +1179,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     available: price !== null,
     lastUpdated: updatedAt,
     updatedAt,
+    ...quoteShariahFields(display, assetType, meta),
   };
 }
 
@@ -1017,7 +1208,14 @@ async function fetchFinnhubQuote(display: string, meta?: TraderCatalogSymbol): P
       price,
       change: numberOrNull(payload?.d),
       changePercent: numberOrNull(payload?.dp),
+      previousClose: numberOrNull(payload?.pc),
       currency: meta?.currency ?? defaultCurrency(display),
+      exchange: textOrNull(payload?.exchange ?? meta?.exchange),
+      exchangeCode: textOrNull(payload?.mic ?? meta?.exchangeCode),
+      market: textOrNull(payload?.market ?? meta?.market),
+      country: textOrNull(payload?.country ?? meta?.country),
+      assetType: textOrNull(payload?.type ?? meta?.assetType),
+      raw: payload,
       updatedAt: numberOrNull(payload?.t) ? new Date(Number(payload?.t) * 1000).toISOString() : new Date().toISOString(),
     }, meta);
   }

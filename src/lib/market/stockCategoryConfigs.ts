@@ -444,13 +444,11 @@ export const STOCK_CATEGORY_CONFIGS: StockCategoryConfig[] = [
     shariaCaution: true,
     filters: [
       commonFilterAll,
-      { key: 'possible', labelKey: 'stock_category_sharia_status_possible', keywords: [] },
       { key: 'needs_review', labelKey: 'stock_category_sharia_status_review', keywords: [] },
       { key: 'unclassified', labelKey: 'stock_category_sharia_status_unclassified', keywords: [] },
       { key: 'non_compliant', labelKey: 'stock_category_sharia_status_non_compliant', keywords: [] },
     ],
     metricCards: [
-      { labelKey: 'stock_category_sharia_status_possible', bodyKey: 'stock_category_sharia_status_possible_body' },
       { labelKey: 'stock_category_sharia_status_review', bodyKey: 'stock_category_sharia_status_review_body' },
       { labelKey: 'stock_category_sharia_status_unclassified', bodyKey: 'stock_category_sharia_status_unclassified_body' },
     ],

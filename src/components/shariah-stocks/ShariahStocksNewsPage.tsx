@@ -202,7 +202,7 @@ type QuickAnalysisResult = {
 const PAGE_SIZE = 12;
 const NEWS_PAGE_SIZE = 9;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
-const STATUS_ORDER: ShariahScreeningStatus[] = ['compliant', 'review', 'non_compliant', 'unknown'];
+const STATUS_ORDER: ShariahScreeningStatus[] = ['compliant', 'needs_review', 'non_compliant', 'unclassified'];
 const TABS: ShariahTab[] = ['overview', 'screener', 'funds', 'news', 'methodology'];
 const QUICK_TIMEFRAMES: QuickTimeframe[] = ['15m', '1h', '4h', '1D', '1W'];
 
@@ -227,9 +227,9 @@ const COPY = {
     summaryBody: 'النتائج آلية ومبنية على المنهجية والبيانات المتاحة. نقص البيانات لا يعني الاجتياز ولا الإخفاق.',
     totalScreened: 'إجمالي الشركات والأدوات',
     compliant: 'متوافق مع الضوابط',
-    review: 'يحتاج إلى مراجعة شرعية',
+    needs_review: 'يحتاج إلى مراجعة شرعية',
     nonCompliant: 'غير متوافق مع الضوابط',
-    unknown: 'بيانات غير كافية',
+    unclassified: 'بيانات غير كافية',
     notScreened: 'لم يتم الفحص بعد',
     complete: 'بيانات مكتملة',
     partial: 'بيانات جزئية',
@@ -354,9 +354,9 @@ const COPY = {
     summaryBody: 'Results are automated and depend on the shown methodology and available data. Missing data is not treated as a pass or fail.',
     totalScreened: 'Total instruments',
     compliant: 'Aligned with methodology',
-    review: 'Needs review',
+    needs_review: 'Needs review',
     nonCompliant: 'Not aligned with methodology',
-    unknown: 'Insufficient data',
+    unclassified: 'Insufficient data',
     notScreened: 'Not screened yet',
     complete: 'Complete data',
     partial: 'Partial data',
@@ -481,9 +481,9 @@ const COPY = {
     summaryBody: 'Les résultats sont automatisés et dépendent de la méthodologie et des données disponibles.',
     totalScreened: 'Instruments suivis',
     compliant: 'Aligné avec la méthodologie',
-    review: 'À revoir',
+    needs_review: 'À revoir',
     nonCompliant: 'Non aligné',
-    unknown: 'Données insuffisantes',
+    unclassified: 'Données insuffisantes',
     notScreened: 'Non filtré',
     complete: 'Données complètes',
     partial: 'Données partielles',
@@ -598,14 +598,14 @@ function normalizeLang(lang: string | undefined): LangCode {
 function statusLabel(status: ShariahScreeningStatus, lang: LangCode) {
   const c = COPY[lang];
   if (status === 'compliant') return c.compliant;
-  if (status === 'review') return c.review;
+  if (status === 'needs_review') return c.needs_review;
   if (status === 'non_compliant') return c.nonCompliant;
-  return c.unknown;
+  return c.unclassified;
 }
 
 function statusClass(status: ShariahScreeningStatus) {
   if (status === 'compliant') return styles.statusCompliant;
-  if (status === 'review') return styles.statusReview;
+  if (status === 'needs_review') return styles.statusReview;
   if (status === 'non_compliant') return styles.statusNonCompliant;
   return styles.statusUnknown;
 }
@@ -615,7 +615,7 @@ function completenessLabel(value: DataCompleteness, lang: LangCode) {
   if (value === 'complete') return c.complete;
   if (value === 'partial') return c.partial;
   if (value === 'not_screened') return c.notScreened;
-  return c.unknown;
+  return c.unclassified;
 }
 
 function formatDate(value: string | null | undefined, lang: LangCode, includeTime = false) {
@@ -706,9 +706,9 @@ function isStaleScreening(value: string | null | undefined) {
 }
 
 function deriveCompleteness(item: ScreeningItem): DataCompleteness {
-  if (!item.lastScreenedAt && item.shariahStatus === 'unknown') return 'not_screened';
-  if (item.shariahStatus === 'unknown') return 'insufficient';
-  if (item.shariahStatus === 'review') return 'partial';
+  if (!item.lastScreenedAt && item.shariahStatus === 'unclassified') return 'not_screened';
+  if (item.shariahStatus === 'unclassified') return 'insufficient';
+  if (item.shariahStatus === 'needs_review') return 'partial';
   return 'complete';
 }
 
@@ -720,7 +720,7 @@ function explainReason(item: ScreeningItem, lang: LangCode) {
   if (item.shariahStatus === 'compliant') {
     return `يعرض السجل الحالي نشاطًا في ${activity} مع نتيجة توافق وفق الضوابط المتاحة. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
   }
-  if (item.shariahStatus === 'review') {
+  if (item.shariahStatus === 'needs_review') {
     return `يحتاج نشاط ${activity} إلى مراجعة شرعية دورية بسبب طبيعة النشاط أو مزيج الإيرادات. لا تتوفر النسب التفصيلية في واجهة المزود الحالية.`;
   }
   if (item.shariahStatus === 'non_compliant') {
@@ -977,7 +977,7 @@ export function ShariahStocksNewsPage() {
   const filteredNews = useMemo(() => {
     const query = normalizedText(newsSearch);
     const filtered = newsItems.filter(item => {
-      const relatedStatus = item.shariahStatus ?? 'unknown';
+      const relatedStatus = item.shariahStatus ?? 'unclassified';
       const title = item.title || item.headline || item.titleOriginal || '';
       const haystack = normalizedText(`${title} ${item.summary ?? ''} ${item.source} ${item.companyName ?? ''} ${item.ticker ?? ''}`);
       const sourceOk = newsSourceFilter === 'all' || item.source === newsSourceFilter;
@@ -992,7 +992,7 @@ export function ShariahStocksNewsPage() {
   }, [newsItems, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter]);
 
   const summary = useMemo(() => {
-    const counts = { compliant: 0, review: 0, non_compliant: 0, unknown: 0 } as Record<ShariahScreeningStatus, number>;
+    const counts = { compliant: 0, needs_review: 0, non_compliant: 0, unclassified: 0 } as Record<ShariahScreeningStatus, number>;
     for (const item of securities) counts[item.shariahStatus] += 1;
     const staleCount = securities.filter(item => item.stale).length;
     return {
@@ -1388,9 +1388,9 @@ function ScreeningSummary({
   const cards = [
     { label: c.totalScreened, value: summary.total, icon: Building2 },
     { label: c.compliant, value: summary.counts.compliant, icon: ShieldCheck, status: 'compliant' as ShariahScreeningStatus },
-    { label: c.review, value: summary.counts.review, icon: Eye, status: 'review' as ShariahScreeningStatus },
+    { label: c.needs_review, value: summary.counts.needs_review, icon: Eye, status: 'needs_review' as ShariahScreeningStatus },
     { label: c.nonCompliant, value: summary.counts.non_compliant, icon: ShieldAlert, status: 'non_compliant' as ShariahScreeningStatus },
-    { label: c.unknown, value: summary.insufficient, icon: AlertTriangle, status: 'unknown' as ShariahScreeningStatus },
+    { label: c.unclassified, value: summary.insufficient, icon: AlertTriangle, status: 'unclassified' as ShariahScreeningStatus },
   ];
   return (
     <section className={styles.summaryPanel} aria-labelledby="screening-summary-title">
@@ -1580,8 +1580,8 @@ function OverviewTab({
             {[
               [c.totalScreened, loading ? '...' : String(summary.total)],
               [c.compliant, loading ? '...' : String(summary.counts.compliant)],
-              [c.review, loading ? '...' : String(summary.counts.review)],
-              [c.unknown, loading ? '...' : String(summary.insufficient)],
+              [c.needs_review, loading ? '...' : String(summary.counts.needs_review)],
+              [c.unclassified, loading ? '...' : String(summary.insufficient)],
             ].map(([label, value]) => (
               <div key={label}>
                 <span>{label}</span>
@@ -2008,18 +2008,18 @@ function StatusBadge({ status, label }: { status: ShariahScreeningStatus; label:
 function shariaTickerStatusLabel(status: ShariahScreeningStatus, locale: LangCode) {
   if (locale === 'ar') {
     if (status === 'compliant') return 'متوافق مع المنهجية';
-    if (status === 'review') return 'يحتاج مراجعة';
+    if (status === 'needs_review') return 'يحتاج مراجعة';
     if (status === 'non_compliant') return 'غير متوافق مع المنهجية';
     return 'غير مصنف';
   }
   if (locale === 'fr') {
     if (status === 'compliant') return 'Aligné avec la méthodologie';
-    if (status === 'review') return 'À réviser';
+    if (status === 'needs_review') return 'À réviser';
     if (status === 'non_compliant') return 'Non aligné';
     return 'Non classé';
   }
   if (status === 'compliant') return 'Aligned with methodology';
-  if (status === 'review') return 'Needs review';
+  if (status === 'needs_review') return 'Needs review';
   if (status === 'non_compliant') return 'Not aligned';
   return 'Unclassified';
 }
@@ -2117,7 +2117,7 @@ function NewsCard({
   const title = item.title || item.headline || item.titleOriginal || c.notAvailable;
   const summary = item.summary || item.summaryOriginal || '';
   const href = safeUrl(item.url);
-  const status = item.shariahStatus ?? related?.shariahStatus ?? 'unknown';
+  const status = item.shariahStatus ?? related?.shariahStatus ?? 'unclassified';
   return (
     <article className={styles.newsCard}>
       <header>

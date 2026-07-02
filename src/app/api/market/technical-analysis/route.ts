@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
 import { hasOhlcPoint, calculatePivotPoints, trendFromAverages, type OhlcPoint } from '@/lib/trading/technical';
+import { normalizeTraderSymbolMetadata } from '@/lib/trader/marketMetadata';
 
 export const revalidate = 300;
 
@@ -135,8 +137,41 @@ function partialOhlcResponse(
   const updatedAt = analysis.fetchedAt ?? analysis.quote?.timestamp ?? new Date().toISOString();
   const providerSymbolUsed = analysis.providerSymbol ?? normalized.providerSymbol;
   const usedCandidate = attemptedSymbols.find(item => item.symbol === providerSymbolUsed) ?? attemptedSymbols[0];
+  const metadata = normalizeTraderSymbolMetadata({
+    symbol: normalized.displaySymbol,
+    displaySymbol: normalized.displaySymbol,
+    provider: analysis.source,
+    providerSymbol: providerSymbolUsed,
+    assetType: normalized.assetType,
+    quote: analysis as Record<string, unknown>,
+  });
+  const available = {
+    symbol: normalized.displaySymbol,
+    providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
+    price: analysis.latestPrice,
+    currentPrice: analysis.latestPrice,
+    currency: metadata.currency ?? analysis.currency ?? analysis.quote?.currency,
+    exchange: metadata.exchange,
+    exchangeCode: metadata.exchangeCode,
+    market: metadata.market,
+    country: metadata.country,
+    metadataDiagnostics: metadata.diagnostics,
+    source: analysis.source ?? 'yahoo',
+    updatedAt,
+    rsi: analysis.indicators.rsi,
+    sma20: analysis.indicators.sma20,
+    sma50: analysis.indicators.sma50,
+    trend: trendFromAverages(analysis.latestPrice, analysis.indicators.sma20, analysis.indicators.sma50),
+  };
+  const diagnostic = createMarketFeatureDiagnostic({
+    feature: 'technical_analysis',
+    provider: analysis.source ?? 'Yahoo Finance',
+    providerStatus: 'empty',
+    data: [],
+    lastUpdated: updatedAt,
+  });
   return NextResponse.json({
-    ok: false,
+    ...diagnostic,
     success: false,
     code: 'OHLC_DATA_NOT_AVAILABLE',
     symbol: normalized.displaySymbol,
@@ -150,44 +185,59 @@ function partialOhlcResponse(
     },
     interval,
     currentPrice: analysis.latestPrice ?? null,
-    message: 'Price data is available, but daily candle OHLC data is not sufficient to calculate pivot points.',
+    exchange: metadata.exchange,
+    exchangeCode: metadata.exchangeCode,
+    market: metadata.market,
+    country: metadata.country,
+    metadataDiagnostics: metadata.diagnostics,
+    providerMessage: 'Price data is available, but daily candle OHLC data is not sufficient to calculate pivot points.',
     updated_at: updatedAt,
     attemptedSymbols: attemptedSymbols.map(item => item.symbol),
-    available: {
-      symbol: normalized.displaySymbol,
-      providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
-      price: analysis.latestPrice,
-      currentPrice: analysis.latestPrice,
-      currency: analysis.currency ?? analysis.quote?.currency,
-      source: analysis.source ?? 'yahoo',
-      updatedAt,
-      rsi: analysis.indicators.rsi,
-      sma20: analysis.indicators.sma20,
-      sma50: analysis.indicators.sma50,
-      trend: trendFromAverages(analysis.latestPrice, analysis.indicators.sma20, analysis.indicators.sma50),
-    },
+    available,
+    legacyOk: false,
   }, { status: 200, headers: cacheHeaders });
 }
 
 function providerFailureResponse(firstError: Record<string, unknown> | null, candidates: TechnicalSymbolCandidate[], normalized: NormalizedMarketSymbol) {
   const candidate = candidates[0];
+  const updatedAt = new Date().toISOString();
+  const code = typeof firstError?.code === 'string' ? firstError.code : undefined;
+  const metadata = normalizeTraderSymbolMetadata({
+    symbol: normalized.displaySymbol,
+    displaySymbol: normalized.displaySymbol,
+    providerSymbol: candidate?.symbol ?? normalized.providerSymbol,
+    assetType: normalized.assetType,
+  });
+  const diagnostic = createMarketFeatureDiagnostic({
+    feature: 'technical_analysis',
+    provider: 'Yahoo Finance',
+    providerStatus: code && /rate|limit|429/i.test(code) ? 'rate_limited' : 'provider_error',
+    data: [],
+    lastUpdated: updatedAt,
+  });
   return NextResponse.json({
-    ok: false,
+    ...diagnostic,
     success: false,
     code: 'PROVIDER_UNAVAILABLE',
-    message: 'Market data provider is unavailable for technical analysis right now.',
     symbol: normalized.displaySymbol,
     providerSymbol: normalized.providerSymbol,
+    exchange: metadata.exchange,
+    exchangeCode: metadata.exchangeCode,
+    market: metadata.market,
+    country: metadata.country,
+    currency: metadata.currency,
+    metadataDiagnostics: metadata.diagnostics,
     providerStatus: {
       provider: 'Yahoo Finance',
       providerSymbolUsed: candidate?.symbol ?? normalized.providerSymbol,
       fallbackUsed: Boolean(candidate?.fallbackUsed),
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: updatedAt,
       dataQuality: 'unavailable',
     },
-    providerCode: typeof firstError?.code === 'string' ? firstError.code : undefined,
-    updated_at: new Date().toISOString(),
+    providerCode: code,
+    updated_at: updatedAt,
     attemptedSymbols: candidates.map(item => item.symbol),
+    legacyOk: false,
   }, { status: 200, headers: cacheHeaders });
 }
 
@@ -199,11 +249,18 @@ export async function GET(request: NextRequest) {
   const interval = searchParams.get('interval')?.trim() || '1d';
 
   if (!symbol) {
+    const diagnostic = createMarketFeatureDiagnostic({
+      feature: 'technical_analysis',
+      provider: null,
+      providerStatus: 'provider_error',
+      data: [],
+      message: 'Symbol is required.',
+      lastUpdated: null,
+    });
     return NextResponse.json({
-      ok: false,
+      ...diagnostic,
       success: false,
       code: 'SYMBOL_REQUIRED',
-      message: 'Symbol is required.',
       items: [],
       updated_at: null,
     }, { status: 400, headers: cacheHeaders });
@@ -211,11 +268,18 @@ export async function GET(request: NextRequest) {
 
   const normalized = normalizeMarketSymbol(symbol, assetType) ?? normalizeMarketSymbol(providerSymbol || symbol, assetType);
   if (!normalized) {
+    const diagnostic = createMarketFeatureDiagnostic({
+      feature: 'technical_analysis',
+      provider: null,
+      providerStatus: 'provider_error',
+      data: [],
+      message: 'Symbol is not supported.',
+      lastUpdated: null,
+    });
     return NextResponse.json({
-      ok: false,
+      ...diagnostic,
       success: false,
       code: 'UNSUPPORTED_SYMBOL',
-      message: 'Symbol is not supported.',
       symbol,
       updated_at: null,
     }, { status: 422, headers: cacheHeaders });
@@ -223,11 +287,18 @@ export async function GET(request: NextRequest) {
 
   const candidates = technicalSymbolCandidates(normalized, providerSymbol);
   if (candidates.length === 0) {
+    const diagnostic = createMarketFeatureDiagnostic({
+      feature: 'technical_analysis',
+      provider: null,
+      providerStatus: 'provider_error',
+      data: [],
+      message: 'Symbol is not supported.',
+      lastUpdated: null,
+    });
     return NextResponse.json({
-      ok: false,
+      ...diagnostic,
       success: false,
       code: 'UNSUPPORTED_SYMBOL',
-      message: 'Symbol is not supported.',
       symbol,
       updated_at: null,
     }, { status: 422, headers: cacheHeaders });
@@ -267,23 +338,27 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
-    return NextResponse.json({
-      ok: true,
-      success: true,
-      code: undefined,
+    const updatedAt = analysis.fetchedAt ?? new Date().toISOString();
+    const metadata = normalizeTraderSymbolMetadata({
+      symbol: normalized.displaySymbol,
+      displaySymbol: normalized.displaySymbol,
+      provider: analysis.source,
+      providerSymbol: analysis.providerSymbol ?? candidate.symbol,
+      assetType: normalized.assetType,
+      quote: analysis as Record<string, unknown>,
+    });
+    const responseData = {
       symbol: normalized.displaySymbol,
       providerSymbol: analysis.providerSymbol ?? candidate.symbol,
-      providerStatus: {
-        provider: analysis.source ?? 'Yahoo Finance',
-        providerSymbolUsed: analysis.providerSymbol ?? candidate.symbol,
-        fallbackUsed: Boolean(candidate.fallbackUsed),
-        lastUpdated: analysis.fetchedAt ?? new Date().toISOString(),
-        dataQuality: analysis.dataStatus ?? 'delayed',
-      },
       name: analysis.name,
       interval,
       currentPrice: analysis.latestPrice ?? null,
-      currency: analysis.currency ?? analysis.quote?.currency ?? null,
+      currency: metadata.currency ?? analysis.currency ?? analysis.quote?.currency ?? null,
+      exchange: metadata.exchange,
+      exchangeCode: metadata.exchangeCode,
+      market: metadata.market,
+      country: metadata.country,
+      metadataDiagnostics: metadata.diagnostics,
       trend: trendFromAverages(analysis.latestPrice, analysis.indicators.sma20, analysis.indicators.sma50),
       support: [analysis.levels.support],
       resistance: [analysis.levels.resistance],
@@ -295,8 +370,30 @@ export async function GET(request: NextRequest) {
       },
       summary: analysis.summary,
       source: analysis.source ?? 'yahoo',
-      updated_at: analysis.fetchedAt ?? new Date().toISOString(),
+      updated_at: updatedAt,
+    };
+    const diagnostic = createMarketFeatureDiagnostic({
+      feature: 'technical_analysis',
+      provider: analysis.source ?? 'Yahoo Finance',
+      providerStatus: 'available',
+      data: [responseData],
+      lastUpdated: updatedAt,
+    });
+
+    return NextResponse.json({
+      ...diagnostic,
+      success: true,
+      code: undefined,
+      ...responseData,
+      providerStatus: {
+        provider: analysis.source ?? 'Yahoo Finance',
+        providerSymbolUsed: analysis.providerSymbol ?? candidate.symbol,
+        fallbackUsed: Boolean(candidate.fallbackUsed),
+        lastUpdated: updatedAt,
+        dataQuality: analysis.dataStatus ?? 'delayed',
+      },
       attemptedSymbols: candidates.map(item => item.symbol),
+      legacyOk: true,
     }, { status: 200, headers: cacheHeaders });
   }
 

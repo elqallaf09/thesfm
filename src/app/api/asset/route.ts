@@ -73,9 +73,13 @@ function profilePayload(symbol: string, candidate: TraderDetailCandidate | null,
     region: candidate?.region || labelEn,
     exchangeName: labelEn,
     currency: currency || candidate?.currency || null,
-    shariaStatus: 'unknown',
-    shariaSource: 'Internal classification requires review',
+    shariaStatus: 'unclassified',
+    shariahStatus: 'unclassified',
+    shariahReason: 'No verified Shariah screening data is available.',
+    shariaSource: null,
+    shariahSource: null,
     shariaCheckedAt: null,
+    shariahLastReviewedAt: null,
   };
 }
 

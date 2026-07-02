@@ -20,9 +20,41 @@ const FMP_STABLE_BASE = 'https://financialmodelingprep.com/stable';
 
 type ProviderRecord = Record<string, unknown>;
 
+type NumberField = {
+  value: number | null;
+  present: boolean;
+};
+
+function hasProviderValue(value: unknown) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return false;
+    return !/^(?:--|—|n\/a|na|null|none|undefined)$/i.test(text);
+  }
+  return true;
+}
+
 function numberOrNull(value: unknown): number | null {
-  const parsed = Number(value);
+  if (!hasProviderValue(value)) return null;
+  const parsed = typeof value === 'string' ? Number(value.replace(/,/g, '')) : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function numberField(...values: unknown[]): NumberField {
+  for (const value of values) {
+    if (!hasProviderValue(value)) continue;
+    return {
+      value: numberOrNull(value),
+      present: true,
+    };
+  }
+  return { value: null, present: false };
+}
+
+function positiveNumberField(...values: unknown[]): NumberField {
+  const field = numberField(...values);
+  return field.value !== null && field.value > 0 ? field : { ...field, value: null };
 }
 
 function textOrNull(value: unknown, maxLength = 180): string | null {
@@ -37,6 +69,26 @@ function dateOnlyOrNull(value: unknown): string | null {
   if (match) return match[0];
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function isTodayOrFuture(reportDate: string) {
+  const today = new Date();
+  const todayIso = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+    .toISOString()
+    .slice(0, 10);
+  return reportDate >= todayIso;
+}
+
+function normalizeActualEps(field: NumberField, reportDate: string) {
+  if (!field.present || field.value === null) return null;
+  if (field.value === 0 && isTodayOrFuture(reportDate)) return null;
+  return field.value;
+}
+
+function deriveEpsSurprise(actual: number | null, estimate: number | null, explicit: number | null) {
+  if (explicit !== null) return explicit;
+  if (actual === null || estimate === null) return null;
+  return Number((actual - estimate).toFixed(6));
 }
 
 function sanitizeProviderMessage(message: string) {
@@ -149,15 +201,27 @@ export async function fetchFmpEarningsCalendar(apiKey: string, query: TraderCale
       const reportDate = dateOnlyOrNull(record.date ?? record.reportDate ?? record.earningDate);
       if (!symbol || !reportDate) return null;
       const companyName = textOrNull(record.companyName ?? record.name, 180) ?? symbol;
+      const epsEstimate = numberField(record.epsEstimated, record.epsEstimate, record.estimatedEPS).value;
+      const epsActual = normalizeActualEps(numberField(record.eps, record.epsActual, record.actualEPS), reportDate);
+      const revenueActual = positiveNumberField(record.revenue, record.revenueActual, record.actualRevenue).value;
+      const revenueEstimate = positiveNumberField(record.revenueEstimated, record.revenueEstimate, record.estimatedRevenue).value;
+      const epsSurprise = deriveEpsSurprise(
+        epsActual,
+        epsEstimate,
+        numberField(record.epsSurprise, record.surprise, record.surpriseAmount).value,
+      );
+      if (epsActual === null && epsEstimate === null && revenueActual === null && revenueEstimate === null) return null;
       return {
         id: stableId(['fmp-earnings', symbol, reportDate, index].join('-'), `fmp-earnings-${index}`),
         symbol,
         companyName,
         reportDate,
         fiscalDateEnding: dateOnlyOrNull(record.fiscalDateEnding ?? record.fiscalDate ?? record.periodEnding),
-        epsEstimate: numberOrNull(record.epsEstimated ?? record.epsEstimate ?? record.estimatedEPS),
-        epsActual: numberOrNull(record.eps ?? record.epsActual ?? record.actualEPS),
-        revenueEstimate: numberOrNull(record.revenueEstimated ?? record.revenueEstimate ?? record.estimatedRevenue),
+        epsEstimate,
+        epsActual,
+        epsSurprise,
+        revenueActual,
+        revenueEstimate,
         time: textOrNull(record.time ?? record.hour, 40),
         source: 'Financial Modeling Prep',
         provider: 'fmp' as const,

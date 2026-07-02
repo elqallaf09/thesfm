@@ -1,4 +1,10 @@
-export type ShariaStatus = 'compliant' | 'non_compliant' | 'review_required' | 'unsupported';
+import {
+  normalizeShariahStatus,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
+
+export type ShariaStatus = ShariahStatus;
+export type TraderShariaStatus = ShariahStatus;
 
 export type ShariaReasonCode =
   | 'prohibited_business_activity'
@@ -10,28 +16,29 @@ export type ShariaReasonCode =
   | 'source_unavailable'
   | 'conflicting_sources'
   | 'not_yet_reviewed'
+  | 'asset_type_unclassified'
   | 'other_verified_reason';
 
 export type TraderShariaClassification = {
-  status: ShariaStatus;
-  label_ar: string;
-  reason_code: ShariaReasonCode | null;
+  status: TraderShariaStatus;
+  label_ar?: string;
+  reason_code: ShariaReasonCode | string | null;
   reason_ar: string | null;
   source: string | null;
   standard: string | null;
   reviewed_at: string | null;
-  valid_until: string | null;
+  valid_until?: string | null;
   data_version?: string | null;
   reviewer_id?: string | null;
 };
 
 export const SHARIA_REVIEW_VALIDITY_DAYS = 365;
 
-const STATUS_LABEL_AR: Record<ShariaStatus, string> = {
-  compliant: 'متوافق شرعياً',
-  non_compliant: 'غير متوافق شرعياً',
-  review_required: 'يحتاج مراجعة',
-  unsupported: 'غير منطبق',
+const STATUS_LABEL_AR: Record<TraderShariaStatus, string> = {
+  compliant: 'مطابق للشريعة',
+  non_compliant: 'غير مطابق للشريعة',
+  needs_review: 'يحتاج مراجعة',
+  unclassified: 'غير مصنّف',
 };
 
 const REVIEW_REASON_AR: Record<ShariaReasonCode, string> = {
@@ -44,18 +51,18 @@ const REVIEW_REASON_AR: Record<ShariaReasonCode, string> = {
   source_unavailable: 'المصدر غير متاح',
   conflicting_sources: 'توجد نتائج متعارضة',
   not_yet_reviewed: 'لا يوجد تصنيف موثق',
+  asset_type_unclassified: 'لا توجد بيانات تصنيف موثوقة كافية لهذا النوع من الأصول',
   other_verified_reason: 'سبب آخر موثق',
 };
 
-export function normalizeShariaStatus(value: unknown): ShariaStatus {
-  const raw = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (['compliant', 'sharia_compliant', 'halal', 'approved'].includes(raw)) return 'compliant';
-  if (['non_compliant', 'not_compliant', 'noncompliant', 'haram', 'rejected'].includes(raw)) return 'non_compliant';
-  if (['unsupported', 'not_applicable', 'not_applicable_to_asset', 'na', 'n_a'].includes(raw)) return 'unsupported';
-  return 'review_required';
+export function normalizeShariaStatus(value: unknown): TraderShariaStatus {
+  return normalizeShariahStatus(value, 'unclassified') ?? 'unclassified';
 }
 
-export function isShariaClassificationExpired(classification: Pick<TraderShariaClassification, 'reviewed_at' | 'valid_until'>, now = new Date()) {
+export function isShariaClassificationExpired(
+  classification: Pick<TraderShariaClassification, 'reviewed_at' | 'valid_until'>,
+  now = new Date(),
+) {
   if (classification.valid_until) {
     const validUntil = new Date(classification.valid_until);
     if (!Number.isNaN(validUntil.getTime()) && validUntil.getTime() < now.getTime()) return true;
@@ -72,11 +79,14 @@ export function isShariaClassificationExpired(classification: Pick<TraderShariaC
   return false;
 }
 
-export function getEffectiveShariaStatus(classification: TraderShariaClassification, now = new Date()): ShariaStatus {
-  if (classification.status === 'compliant' && isShariaClassificationExpired(classification, now)) {
-    return 'review_required';
-  }
-  return classification.status;
+export function getEffectiveShariaStatus(
+  classification: TraderShariaClassification | null | undefined,
+  now = new Date(),
+): TraderShariaStatus {
+  const normalized = normalizeShariaClassification(classification, buildReviewRequiredShariaClassification());
+  if (normalized.status === 'unclassified' || normalized.status === 'needs_review') return normalized.status;
+  if (!normalized.reviewed_at) return 'needs_review';
+  return isShariaClassificationExpired(normalized, now) ? 'needs_review' : normalized.status;
 }
 
 export function buildReviewRequiredShariaClassification(
@@ -84,10 +94,10 @@ export function buildReviewRequiredShariaClassification(
   overrides: Partial<TraderShariaClassification> = {},
 ): TraderShariaClassification {
   return {
-    status: 'review_required',
-    label_ar: STATUS_LABEL_AR.review_required,
+    status: 'needs_review',
+    label_ar: STATUS_LABEL_AR.needs_review,
     reason_code: reasonCode,
-    reason_ar: REVIEW_REASON_AR[reasonCode],
+    reason_ar: REVIEW_REASON_AR[reasonCode] ?? REVIEW_REASON_AR.not_yet_reviewed,
     source: null,
     standard: null,
     reviewed_at: null,
@@ -96,12 +106,12 @@ export function buildReviewRequiredShariaClassification(
   };
 }
 
-export function buildUnsupportedShariaClassification(reasonCode: ShariaReasonCode = 'not_yet_reviewed'): TraderShariaClassification {
+export function buildUnsupportedShariaClassification(reasonCode: ShariaReasonCode = 'asset_type_unclassified'): TraderShariaClassification {
   return {
-    status: 'unsupported',
-    label_ar: STATUS_LABEL_AR.unsupported,
+    status: 'unclassified',
+    label_ar: STATUS_LABEL_AR.unclassified,
     reason_code: reasonCode,
-    reason_ar: null,
+    reason_ar: REVIEW_REASON_AR[reasonCode] ?? REVIEW_REASON_AR.asset_type_unclassified,
     source: null,
     standard: null,
     reviewed_at: null,
@@ -109,12 +119,15 @@ export function buildUnsupportedShariaClassification(reasonCode: ShariaReasonCod
   };
 }
 
-export function normalizeShariaClassification(input: unknown, fallback: TraderShariaClassification): TraderShariaClassification {
+export function normalizeShariaClassification(
+  input: unknown,
+  fallback: TraderShariaClassification = buildReviewRequiredShariaClassification(),
+): TraderShariaClassification {
   if (!input || typeof input !== 'object') return fallback;
   const record = input as Record<string, unknown>;
   const status = normalizeShariaStatus(record.status);
-  const reasonCode = typeof record.reason_code === 'string' && record.reason_code in REVIEW_REASON_AR
-    ? record.reason_code as ShariaReasonCode
+  const reasonCode = typeof record.reason_code === 'string'
+    ? record.reason_code
     : fallback.reason_code;
 
   return {
@@ -123,7 +136,9 @@ export function normalizeShariaClassification(input: unknown, fallback: TraderSh
     reason_code: reasonCode,
     reason_ar: typeof record.reason_ar === 'string' && record.reason_ar.trim()
       ? record.reason_ar
-      : reasonCode ? REVIEW_REASON_AR[reasonCode] : fallback.reason_ar,
+      : reasonCode && reasonCode in REVIEW_REASON_AR
+        ? REVIEW_REASON_AR[reasonCode as ShariaReasonCode]
+        : fallback.reason_ar,
     source: typeof record.source === 'string' && record.source.trim() ? record.source : fallback.source,
     standard: typeof record.standard === 'string' && record.standard.trim() ? record.standard : fallback.standard,
     reviewed_at: typeof record.reviewed_at === 'string' && record.reviewed_at.trim() ? record.reviewed_at : fallback.reviewed_at,

@@ -7,10 +7,10 @@ export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 function normalizeShariahStatus(status: unknown) {
-  if (status === 'possible') return 'review';
-  if (status === 'needs_review') return 'review';
+  if (status === 'possible') return 'needs_review';
+  if (status === 'needs_review') return 'needs_review';
   if (status === 'non_compliant') return 'non_compliant';
-  return 'unknown';
+  return 'unclassified';
 }
 
 export async function GET(request: Request) {

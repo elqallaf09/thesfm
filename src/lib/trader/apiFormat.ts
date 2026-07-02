@@ -3,7 +3,6 @@ import {
   buildReviewRequiredShariaClassification,
   getEffectiveShariaStatus,
   normalizeShariaStatus,
-  type ShariaStatus,
 } from '@/lib/trader/sharia';
 
 export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilters {
@@ -16,6 +15,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
     .split(',')
     .map((symbol) => symbol.trim().toUpperCase())
     .filter(Boolean);
+  const normalizedShariaStatus = normalizeShariaStatus(shariaStatus);
 
   return {
     market: 'US',
@@ -24,9 +24,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
     timeHorizon: timeHorizon === 'intraday' || timeHorizon === 'days' || timeHorizon === 'weeks' || timeHorizon === 'months'
       ? timeHorizon
       : 'all',
-    shariaStatus: ['compliant', 'non_compliant', 'review_required', 'unsupported'].includes(shariaStatus)
-      ? shariaStatus as ShariaStatus
-      : 'all',
+    shariaStatus: shariaStatus === 'all' ? 'all' : normalizedShariaStatus,
     minimumConfidence: Number.isFinite(confidenceValue) && confidenceValue > 0 ? Math.min(95, Math.max(0, confidenceValue)) : undefined,
     symbols: symbols.length ? symbols : undefined,
   };
@@ -54,6 +52,13 @@ export function toTraderRecommendation(result: StockAnalysisResult) {
     currency: result.currency,
     sharia,
     shariaStatus: getEffectiveShariaStatus(sharia),
+    shariahStatus: getEffectiveShariaStatus(sharia),
+    shariahReason: 'Available scanner data does not include full Shariah screening inputs.',
+    shariahSource: sharia.source,
+    shariahLastReviewedAt: sharia.reviewed_at,
+    shariahManualOverride: false,
+    shariahReviewedBy: null,
+    shariahScreeningData: {},
     shariaSource: sharia.source,
     shariaReasonCode: sharia.reason_code,
     shariaReasonAr: sharia.reason_ar,

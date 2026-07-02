@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getTraderProviderStatus } from '@/lib/trader/providers/providerStatus';
 import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
@@ -50,6 +51,14 @@ function routeLabel(value: string | null | undefined) {
     'batch-quote': 'stock quotes',
   };
   return labels[key] ?? (key || 'provider route');
+}
+
+function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
+  return Array.from(new Set(Object.entries(capabilityMatrix)
+    .filter(([, capability]) => capability.supportsQuotes !== false
+      && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
+    .map(([provider]) => traderProviderDisplayName(provider))
+    .filter((provider): provider is string => Boolean(provider))));
 }
 
 function normalizeFmpStatus(args: {
@@ -180,6 +189,7 @@ export async function GET(request: Request) {
     cachedSymbols: catalog.diagnostics.summary.cachedSymbols,
     skippedDueToRateLimit: catalog.diagnostics.summary.skippedDueToRateLimit,
   };
+  const availableProviders = availableQuoteProviders(catalog.capabilityMatrix);
 
   const dataProvider = fmpRuntime.rateLimited
     ? {
@@ -284,6 +294,7 @@ export async function GET(request: Request) {
     },
     normalizedStatus,
     diagnosticGroups: diagnosticSummary,
+    availableProviders,
     // Keep compatibility with existing trader-app consumers.
     features: status.features,
     dataProvider,

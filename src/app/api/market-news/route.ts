@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { addUtcDays, clampNumber, formatIsoDate, normalizeTitle, validIsoDate, type ProviderApiResponse } from '@/lib/providers/shared';
 import { getMarketNews } from '@/lib/providers/news';
 import type { MarketNewsArticle, MarketNewsQuery, MarketNewsScope } from '@/lib/providers/news/types';
@@ -99,27 +100,30 @@ function applyLocalFilters(articles: MarketNewsArticle[], searchParams: URLSearc
 function jsonResponse(result: ProviderApiResponse<MarketNewsArticle[]>, searchParams: URLSearchParams, status = 200) {
   const filtered = result.status === 'success' ? applyLocalFilters(result.data, searchParams) : result.data;
   const items = filtered.map(toUiArticle);
-  const hasData = items.length > 0;
-  const ok = result.status === 'success' || hasData;
   const code = result.status === 'success'
     ? result.messageCode ? safeCode(result.messageCode, 'NEWS_NO_RESULTS') : null
     : safeCode(result.messageCode, result.status);
+  const diagnostic = createMarketFeatureDiagnostic({
+    feature: 'market_news',
+    provider: result.provider === 'finnhub' ? 'Finnhub' : result.provider,
+    providerStatus: result.status,
+    data: items,
+    lastUpdated: result.lastSuccessfulUpdate,
+  });
 
   return NextResponse.json({
-    status: result.status,
-    provider: result.provider,
-    data: items,
-    items,
+    ...diagnostic,
     cached: result.cached,
     stale: result.stale,
     lastSuccessfulUpdate: result.lastSuccessfulUpdate,
     updated_at: result.lastSuccessfulUpdate,
     messageCode: result.messageCode,
     code,
-    ok,
+    items,
     success: result.status === 'success',
     source: result.provider,
-    total: items.length,
+    total: diagnostic.count,
+    legacyStatus: result.status,
   }, {
     status,
     headers: result.status === 'success' ? SUCCESS_HEADERS : ERROR_HEADERS,

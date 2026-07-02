@@ -488,29 +488,36 @@ const DETAIL_ACTION_LABELS = {
   hold: { ar: "انتظار", en: "Wait" }
 };
 const DETAIL_SHARIA_LABELS = {
-  compliant: { ar: "مطابق للشريعة", en: "Sharia compliant" },
-  not_compliant: { ar: "غير مطابق للشريعة", en: "Not Sharia compliant" },
-  doubtful: { ar: "يحتاج مراجعة شرعية", en: "Requires Sharia review" },
-  unknown: { ar: "غير معروف", en: "Unknown" }
+  compliant: { ar: "مطابق للشريعة", en: "Shariah-compliant" },
+  non_compliant: { ar: "غير مطابق للشريعة", en: "Not Shariah-compliant" },
+  needs_review: { ar: "يحتاج مراجعة", en: "Needs review" },
+  unclassified: { ar: "غير مصنّف", en: "Unclassified" }
 };
 const DETAIL_SHARIA_DESCRIPTIONS = {
   compliant: {
-    ar: "مصنف داخلياً كمتوافق مع الشريعة حسب البيانات المتاحة في التطبيق.",
-    en: "Internally classified as Sharia compliant based on the data available in the app."
+    ar: "تم تصنيفه كمطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق أو بيانات فحص مكتملة.",
+    en: "Classified as Shariah-compliant by a manual review, trusted provider, or complete screening data."
   },
-  not_compliant: {
-    ar: "مصنف داخلياً كغير متوافق مع الشريعة، ويفضل تجنبه إذا كان شرطك الالتزام الشرعي.",
-    en: "Internally classified as not Sharia compliant; it is better to avoid it if Sharia compliance is required."
+  non_compliant: {
+    ar: "تم تصنيفه كغير مطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق أو بيانات فحص متاحة.",
+    en: "Classified as not Shariah-compliant by a manual review, trusted provider, or available screening data."
   },
-  doubtful: {
-    ar: "التصنيف الشرعي غير محسوم في بيانات التطبيق ويحتاج مراجعة جهة فحص شرعي.",
-    en: "The Sharia classification is not conclusive in the app data and requires review by a Sharia screening provider."
+  needs_review: {
+    ar: "البيانات المتاحة غير كافية لإصدار تصنيف نهائي، لذلك يحتاج الأصل إلى مراجعة شرعية.",
+    en: "Available data is not enough for a final classification, so this asset needs Shariah review."
   },
-  unknown: {
-    ar: "لا يوجد تصنيف شرعي مؤكد لهذا الرمز داخل التطبيق حالياً.",
-    en: "No confirmed Sharia classification is available for this symbol in the app right now."
+  unclassified: {
+    ar: "لا توجد بيانات تصنيف شرعي موثوقة كافية لهذا الرمز حالياً.",
+    en: "No verified Shariah classification data is available for this symbol right now."
   }
 };
+function normalizeDetailShariaStatus(value) {
+  const raw = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (raw === "compliant" || raw === "shariah_compliant" || raw === "sharia_compliant") return "compliant";
+  if (raw === "non_compliant" || raw === "not_compliant" || raw === "noncompliant") return "non_compliant";
+  if (raw === "needs_review" || raw === "review" || raw === "review_required" || raw === "doubtful") return "needs_review";
+  return "unclassified";
+}
 const DETAIL_RISK_LABELS = {
   low: { ar: "مخاطرة منخفضة", en: "Low risk" },
   medium: { ar: "مخاطرة متوسطة", en: "Medium risk" },
@@ -691,7 +698,7 @@ function renderDetail(data) {
   document.title = `${item.symbol} - the-sfm trader`;
   elements.symbol.textContent = item.symbol;
   elements.name.textContent = localizeInstrumentName(item.name);
-  elements.market.textContent = `${localizeMarketLabel(profile, market)} · ${localizeDetailText(profile.exchangeName || item.exchangeName || "--")}`;
+  elements.market.textContent = `${localizeMarketLabel(profile, market)} · ${metadataDetailText(profile.exchangeName, profile.exchange, item.exchangeName, item.exchange, item.metadataDiagnostics?.finalExchange)}`;
   elements.heading.textContent = `${localizeInstrumentName(item.name)} (${item.symbol})`;
   elements.summary.textContent = localizeDetailText(profile.summary || detailText("لا تتوفر معلومات وصفية كافية لهذا الرمز.", "Not enough descriptive information is available for this symbol."));
 
@@ -733,6 +740,9 @@ function renderDetail(data) {
 
 function renderGeneralInfo(profile, market, item) {
   const providerStatus = item.providerStatus || {};
+  const diagnostics = item.metadataDiagnostics || profile.metadataDiagnostics || {};
+  const exchange = metadataDetailText(profile.exchangeName, profile.exchange, item.exchangeName, item.exchange, diagnostics.finalExchange);
+  const marketLabel = metadataDetailText(profile.marketLabel, profile.market, item.market, diagnostics.finalMarket, localizeMarketLabel(profile, market));
   const providerSymbolUsed = providerStatus.providerSymbolUsed || item.providerSymbol || unavailableText();
   const fallbackUsed = providerStatus.fallbackUsed === true
     ? detailText("نعم", "Yes")
@@ -742,9 +752,9 @@ function renderGeneralInfo(profile, market, item) {
   const dataQuality = providerStatus.dataQuality ? localizeDataQuality(providerStatus.dataQuality) : unavailableText();
   elements.generalInfo.innerHTML = `
     ${renderInfoRow(detailText("الاختصاص", "Specialty"), localizeDetailText(profile.specialty || "--"))}
-    ${renderInfoRow(detailText("السوق", "Market"), localizeMarketLabel(profile, market))}
+    ${renderInfoRow(detailText("السوق", "Market"), marketLabel)}
     ${renderInfoRow(detailText("المنطقة", "Region"), localizeRegion(profile.region || market.region || "--"))}
-    ${renderInfoRow(detailText("البورصة", "Exchange"), localizeDetailText(profile.exchangeName || item.exchangeName || "--"))}
+    ${renderInfoRow(detailText("البورصة", "Exchange"), exchange)}
     ${renderInfoRow(detailText("العملة", "Currency"), profile.currency || item.currency || "--")}
     ${renderInfoRow(detailText("رمز المزود المستخدم", "Provider symbol used"), providerSymbolUsed)}
     ${renderInfoRow(detailText("استخدم fallback؟", "Fallback used?"), fallbackUsed)}
@@ -758,15 +768,17 @@ function renderGeneralInfo(profile, market, item) {
 }
 
 function renderSharia(profile) {
-  const statusClass = profile.shariaStatus === "compliant" ? "buy" : profile.shariaStatus === "not_compliant" ? "sell" : "hold";
+  const status = normalizeDetailShariaStatus(profile.shariahStatus || profile.shariaStatus);
+  const statusClass = status === "compliant" ? "buy" : status === "non_compliant" ? "sell" : "hold";
   elements.shariaBox.innerHTML = `
     <div class="sharia-status-detail ${statusClass}">
       <strong>${escapeHtml(localizeShariaLabel(profile))}</strong>
       <span>${escapeHtml(localizeShariaDescription(profile))}</span>
     </div>
     <div class="info-list">
-      ${renderInfoRow(detailText("المصدر", "Source"), localizeDetailText(profile.shariaSource || "تصنيف داخلي قابل للتحديث"))}
-      ${renderInfoRow(detailText("آخر مراجعة", "Last review"), profile.shariaCheckedAt || "--")}
+      ${renderInfoRow(detailText("المصدر", "Source"), localizeDetailText(profile.shariahSource || profile.shariaSource || "غير متوفر"))}
+      ${renderInfoRow(detailText("آخر مراجعة", "Last review"), profile.shariahLastReviewedAt || profile.shariaCheckedAt || "--")}
+      ${renderInfoRow(detailText("السبب", "Reason"), localizeDetailText(profile.shariahReason || profile.shariaDescription || "--"))}
     </div>
   `;
 }
@@ -902,10 +914,10 @@ function calculateFinalScore(item) {
   const agreementPoints = clamp(Number(item.timeframeConsensus?.agreementPct || 0), 0, 100) * 0.15;
   const shariaPoints = {
     compliant: 20,
-    doubtful: 8,
-    unknown: 4,
-    not_compliant: 0
-  }[item.shariaStatus] ?? 4;
+    needs_review: 8,
+    unclassified: 4,
+    non_compliant: 0
+  }[normalizeDetailShariaStatus(item.shariahStatus || item.shariaStatus)] ?? 4;
   const riskPoints = {
     low: 15,
     medium: 9,
@@ -997,6 +1009,18 @@ function unavailableText() {
   return detailText("غير متاح", "Unavailable");
 }
 
+function unspecifiedMetadataText() {
+  return detailText("غير محدد", "Unspecified");
+}
+
+function metadataDetailText(...values) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text && text !== "--" && text !== "—" && text !== unavailableText()) return localizeDetailText(text);
+  }
+  return unspecifiedMetadataText();
+}
+
 function localizeDetailText(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   const text = String(value);
@@ -1058,17 +1082,17 @@ function localizeTimeframeLabel(frame) {
 }
 
 function localizeShariaLabel(profile) {
-  const status = profile?.shariaStatus || "unknown";
+  const status = normalizeDetailShariaStatus(profile?.shariahStatus || profile?.shariaStatus);
   if (DETAIL_SHARIA_LABELS[status]) return detailText(DETAIL_SHARIA_LABELS[status].ar, DETAIL_SHARIA_LABELS[status].en);
-  return localizeDetailText(profile?.shariaLabel || DETAIL_SHARIA_LABELS.unknown.ar);
+  return localizeDetailText(profile?.shariaLabel || DETAIL_SHARIA_LABELS.unclassified.ar);
 }
 
 function localizeShariaDescription(profile) {
-  const status = profile?.shariaStatus || "unknown";
+  const status = normalizeDetailShariaStatus(profile?.shariahStatus || profile?.shariaStatus);
   if (DETAIL_SHARIA_DESCRIPTIONS[status]) {
     return detailText(DETAIL_SHARIA_DESCRIPTIONS[status].ar, DETAIL_SHARIA_DESCRIPTIONS[status].en);
   }
-  return localizeDetailText(profile?.shariaDescription || DETAIL_SHARIA_DESCRIPTIONS.unknown.ar);
+  return localizeDetailText(profile?.shariaDescription || DETAIL_SHARIA_DESCRIPTIONS.unclassified.ar);
 }
 
 function localizeMarketLabel(profile, market) {

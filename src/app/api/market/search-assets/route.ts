@@ -5,6 +5,13 @@ import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/m
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import {
+  classifyShariahCompliance,
+  normalizeShariahStatus,
+  shariahClassificationFields,
+  type ShariahScreeningData,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
+import {
   exchangeRequiresSymbolSync,
   marketExchangeAliases,
   marketExchangeLabel,
@@ -36,6 +43,13 @@ type MarketSymbolRow = {
   price_unit?: 'major' | 'fils' | 'pence' | null;
   source?: string | null;
   last_synced_at?: string | null;
+  shariah_status?: string | null;
+  shariah_reason?: string | null;
+  shariah_source?: string | null;
+  shariah_last_reviewed_at?: string | null;
+  shariah_manual_override?: boolean | null;
+  shariah_reviewed_by?: string | null;
+  shariah_screening_data?: ShariahScreeningData | null;
 };
 
 type AssetCandidate = {
@@ -55,6 +69,14 @@ type AssetCandidate = {
   source?: string | null;
   lastSyncedAt?: string | null;
   sourceHint: string;
+  shariahStatus: ShariahStatus;
+  shariahReason: string | null;
+  shariahSource: string | null;
+  shariahLastReviewedAt: string | null;
+  shariahManualOverride: boolean;
+  shariahReviewedBy: string | null;
+  shariahScreeningData: ShariahScreeningData;
+  shariahMethod: string;
 };
 
 type AssetSearchItem = {
@@ -78,6 +100,21 @@ type AssetSearchItem = {
   search_source: string;
   available: boolean;
   unavailable_reason?: string;
+  shariah_status: ShariahStatus;
+  shariah_reason: string | null;
+  shariah_source: string | null;
+  shariah_last_reviewed_at: string | null;
+  shariah_manual_override: boolean;
+  shariah_reviewed_by: string | null;
+  shariah_screening_data: ShariahScreeningData;
+  shariahStatus: ShariahStatus;
+  shariahReason: string | null;
+  shariahSource: string | null;
+  shariahLastReviewedAt: string | null;
+  shariahManualOverride: boolean;
+  shariahReviewedBy: string | null;
+  shariahScreeningData: ShariahScreeningData;
+  shariahMethod: string;
 };
 
 const MAX_RESULTS = 32;
@@ -115,6 +152,58 @@ function supabaseLikeFilters(query: string, fields: string[]) {
     .join(',');
 }
 
+function shariahForCandidate(input: {
+  symbol: string;
+  name?: string | null;
+  assetType?: MarketAssetType | string | null;
+  market?: string | null;
+  country?: string | null;
+  sector?: string | null;
+  shariahStatus?: string | ShariahStatus | null;
+  shariahReason?: string | null;
+  shariahSource?: string | null;
+  shariahLastReviewedAt?: string | null;
+  shariahManualOverride?: boolean | null;
+  shariahReviewedBy?: string | null;
+  shariahScreeningData?: ShariahScreeningData | null;
+}) {
+  return shariahClassificationFields(classifyShariahCompliance({
+    symbol: input.symbol,
+    name: input.name,
+    assetType: input.assetType,
+    exchange: input.market,
+    country: input.country,
+    sector: input.sector,
+    shariahStatus: input.shariahStatus,
+    shariahReason: input.shariahReason,
+    shariahSource: input.shariahSource,
+    shariahLastReviewedAt: input.shariahLastReviewedAt,
+    shariahManualOverride: input.shariahManualOverride,
+    shariahReviewedBy: input.shariahReviewedBy,
+    shariahScreeningData: input.shariahScreeningData,
+  }));
+}
+
+function assetItemShariahFields(candidate: AssetCandidate) {
+  return {
+    shariah_status: candidate.shariahStatus,
+    shariah_reason: candidate.shariahReason,
+    shariah_source: candidate.shariahSource,
+    shariah_last_reviewed_at: candidate.shariahLastReviewedAt,
+    shariah_manual_override: candidate.shariahManualOverride,
+    shariah_reviewed_by: candidate.shariahReviewedBy,
+    shariah_screening_data: candidate.shariahScreeningData,
+    shariahStatus: candidate.shariahStatus,
+    shariahReason: candidate.shariahReason,
+    shariahSource: candidate.shariahSource,
+    shariahLastReviewedAt: candidate.shariahLastReviewedAt,
+    shariahManualOverride: candidate.shariahManualOverride,
+    shariahReviewedBy: candidate.shariahReviewedBy,
+    shariahScreeningData: candidate.shariahScreeningData,
+    shariahMethod: candidate.shariahMethod,
+  };
+}
+
 function mapMarketSymbol(row: MarketSymbolRow): AssetCandidate {
   const exchangeId = normalizeMarketExchange(row.exchange);
   const symbol = String(row.display_symbol || row.symbol).trim().toUpperCase();
@@ -123,6 +212,21 @@ function mapMarketSymbol(row: MarketSymbolRow): AssetCandidate {
   const nameAr = row.company_name_ar ? String(row.company_name_ar).trim() : undefined;
   const marketEn = exchangeId ? marketExchangeLabel(exchangeId, 'en') : row.market ?? row.exchange ?? undefined;
   const marketAr = exchangeId ? marketExchangeLabel(exchangeId, 'ar') : row.market ?? row.exchange ?? undefined;
+  const shariah = shariahForCandidate({
+    symbol,
+    name: nameEn,
+    assetType: row.asset_type,
+    market: row.exchange,
+    country: row.country,
+    sector: row.sector,
+    shariahStatus: row.shariah_status,
+    shariahReason: row.shariah_reason,
+    shariahSource: row.shariah_source,
+    shariahLastReviewedAt: row.shariah_last_reviewed_at,
+    shariahManualOverride: row.shariah_manual_override,
+    shariahReviewedBy: row.shariah_reviewed_by,
+    shariahScreeningData: row.shariah_screening_data,
+  });
   return {
     symbol,
     providerSymbol,
@@ -140,10 +244,11 @@ function mapMarketSymbol(row: MarketSymbolRow): AssetCandidate {
     source: row.source ?? undefined,
     lastSyncedAt: row.last_synced_at ?? undefined,
     sourceHint: row.source ?? 'supabase',
+    ...shariah,
   };
 }
 
-async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType, exchange?: string | null) {
+async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType, exchange?: string | null, shariahStatus?: ShariahStatus | null) {
   const supabase = getSupabaseServerClient();
   if (!supabase) return [];
 
@@ -151,11 +256,12 @@ async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType,
     const exchangeAliases = marketExchangeAliases(exchange);
     let request = supabase
       .from('market_symbols')
-      .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, sector, country, currency, price_unit, source, last_synced_at')
+      .select('symbol, provider_symbol, name, asset_type, exchange, market, display_symbol, company_name_ar, company_name_en, sector, country, currency, price_unit, source, last_synced_at, shariah_status, shariah_reason, shariah_source, shariah_last_reviewed_at, shariah_manual_override, shariah_reviewed_by, shariah_screening_data')
       .eq('is_active', true)
       .limit(48);
 
     if (assetType) request = request.eq('asset_type', assetType);
+    if (shariahStatus) request = request.eq('shariah_status', shariahStatus);
     if (exchangeAliases.length > 0) request = request.in('exchange', exchangeAliases);
 
     if (query) {
@@ -209,6 +315,22 @@ async function searchSupabaseSymbols(query: string, assetType?: MarketAssetType,
 function candidateFromSearchItem(item: MarketSearchItem, sourceHint: string): AssetCandidate {
   const symbol = item.symbol.toUpperCase();
   const providerSymbol = item.providerSymbol?.toUpperCase();
+  const shariah = item.shariahStatus
+    ? shariahForCandidate({
+        symbol,
+        name: item.name,
+        assetType: item.assetType,
+        market: item.exchange,
+        country: item.country,
+        shariahStatus: item.shariahStatus,
+        shariahReason: item.shariahReason,
+        shariahSource: item.shariahSource,
+        shariahLastReviewedAt: item.shariahLastReviewedAt,
+        shariahManualOverride: item.shariahManualOverride,
+        shariahReviewedBy: item.shariahReviewedBy,
+        shariahScreeningData: item.shariahScreeningData,
+      })
+    : shariahForCandidate({ symbol, name: item.name, assetType: item.assetType, market: item.exchange, country: item.country });
   return {
     symbol,
     providerSymbol,
@@ -220,12 +342,27 @@ function candidateFromSearchItem(item: MarketSearchItem, sourceHint: string): As
     country: item.country,
     currency: item.currency,
     sourceHint,
+    ...shariah,
   };
 }
 
 function candidateFromDirectory(item: MarketSymbolSearchResult): AssetCandidate {
   const symbol = item.symbol.toUpperCase();
   const providerSymbol = item.providerSymbol?.toUpperCase();
+  const shariah = shariahForCandidate({
+    symbol,
+    name: item.companyNameEn ?? item.name,
+    assetType: item.assetType,
+    market: item.exchangeLabelEn ?? item.exchange,
+    country: item.country,
+    shariahStatus: item.shariahStatus,
+    shariahReason: item.shariahReason,
+    shariahSource: item.shariahSource,
+    shariahLastReviewedAt: item.shariahLastReviewedAt,
+    shariahManualOverride: item.shariahManualOverride,
+    shariahReviewedBy: item.shariahReviewedBy,
+    shariahScreeningData: item.shariahScreeningData,
+  });
   return {
     symbol,
     providerSymbol,
@@ -243,10 +380,18 @@ function candidateFromDirectory(item: MarketSymbolSearchResult): AssetCandidate 
     source: item.exchangeLabelEn ?? item.exchange ?? 'Market symbol directory',
     lastSyncedAt: item.lastSyncedAt,
     sourceHint: item.source ?? 'market_symbol_directory',
+    ...shariah,
   };
 }
 
 function candidateFromAlias(alias: ReturnType<typeof findAssetAliasMatches>[number]): AssetCandidate {
+  const shariah = shariahForCandidate({
+    symbol: alias.symbol,
+    name: alias.nameEn ?? alias.nameAr,
+    assetType: alias.assetType,
+    market: alias.marketEn,
+    country: undefined,
+  });
   return {
     symbol: alias.symbol,
     providerSymbol: alias.symbolCandidates[0],
@@ -260,6 +405,7 @@ function candidateFromAlias(alias: ReturnType<typeof findAssetAliasMatches>[numb
     marketEn: alias.marketEn,
     currency: alias.currency,
     sourceHint: 'alias',
+    ...shariah,
   };
 }
 
@@ -354,6 +500,7 @@ function normalizeResult(candidate: AssetCandidate, quote: NormalizedMarketQuote
     search_source: candidate.sourceHint,
     available: true,
     unavailable_reason: undefined,
+    ...assetItemShariahFields(candidate),
   };
 }
 
@@ -391,6 +538,7 @@ function unavailableResult(candidate: AssetCandidate, unavailableReason = 'price
     search_source: candidate.sourceHint,
     available: false,
     unavailable_reason: unavailableReason,
+    ...assetItemShariahFields(candidate),
   };
 }
 
@@ -419,6 +567,11 @@ async function directQuoteCandidate(query: string, assetType?: MarketAssetType):
     assetType: MarketAssetType;
   };
 
+  const shariah = shariahForCandidate({
+    symbol: valid.displaySymbol ?? valid.symbol,
+    name: valid.displaySymbol ?? valid.symbol,
+    assetType: valid.assetType,
+  });
   return {
     symbol: valid.displaySymbol ?? valid.symbol,
     providerSymbol: valid.providerSymbol,
@@ -427,6 +580,7 @@ async function directQuoteCandidate(query: string, assetType?: MarketAssetType):
     assetType: valid.assetType,
     currency: undefined,
     sourceHint: 'direct_quote',
+    ...shariah,
   };
 }
 
@@ -435,6 +589,10 @@ export async function GET(request: NextRequest) {
   const query = cleanSearchTerm(searchParams.get('q') ?? searchParams.get('query') ?? '');
   const assetType = searchParams.get('assetType') ? normalizeAssetType(searchParams.get('assetType')) : undefined;
   const exchange = normalizeMarketExchange(searchParams.get('exchange') ?? searchParams.get('market'));
+  const shariahStatus = normalizeShariahStatus(
+    searchParams.get('shariahStatus') ?? searchParams.get('sharia_status') ?? searchParams.get('shariaStatus'),
+    null,
+  );
 
   if (query.length < 2 && !validateSymbol(query)) {
     return NextResponse.json({ ok: true, query, items: [], message: 'NO_RESULTS' });
@@ -448,13 +606,14 @@ export async function GET(request: NextRequest) {
       query,
       assetType,
       exchange,
+      shariahStatus,
       limit: hasExchangeFilter ? 48 : 16,
     }).map(candidateFromDirectory);
     const aliasCandidates = (!hasExchangeFilter || exchange === 'BOURSA_KUWAIT')
       ? findAssetAliasMatches(query).map(candidateFromAlias)
       : [];
     const [supabaseCandidates, usResults, proxyResult, directCandidate] = await Promise.all([
-      searchSupabaseSymbols(query, assetType, exchange),
+      searchSupabaseSymbols(query, assetType, exchange, shariahStatus),
       shouldSearchUSUniverse ? searchUSSymbols(query, assetType) : Promise.resolve(null),
       shouldSearchExternal ? proxySearch(query, assetType) : Promise.resolve(null),
       shouldSearchExternal ? directQuoteCandidate(query, assetType) : Promise.resolve(null),
@@ -474,7 +633,9 @@ export async function GET(request: NextRequest) {
       ...supabaseCandidates,
       ...mergedSearchItems.map(item => candidateFromSearchItem(item, usResults ? `market_search+${usResults.source}` : 'market_search')),
       ...(directCandidate ? [directCandidate] : []),
-    ]).slice(0, MAX_RESULTS);
+    ])
+      .filter(candidate => !shariahStatus || candidate.shariahStatus === shariahStatus)
+      .slice(0, MAX_RESULTS);
 
     const candidatesToEnrich = candidates.slice(0, PRICE_ENRICH_LIMIT);
     const enriched = await Promise.allSettled(candidatesToEnrich.map(enrichCandidate));
@@ -499,6 +660,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       query,
       exchange,
+      shariahStatus,
       items,
       message: items.length > 0 ? undefined : needsSync ? 'SYMBOLS_SYNCING' : 'NO_RESULTS',
     }, {

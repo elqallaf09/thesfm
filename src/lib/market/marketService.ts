@@ -1,4 +1,5 @@
 import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
+import type { ShariahScreeningData, ShariahStatus } from '@/lib/market/shariah-screening';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
@@ -78,6 +79,13 @@ export type MarketAnalysis = {
   fetchedAt?: string;
   warnings?: string[];
   aiInsight?: MarketAiInsight;
+  shariahStatus?: ShariahStatus;
+  shariahReason?: string | null;
+  shariahSource?: string | null;
+  shariahLastReviewedAt?: string | null;
+  shariahManualOverride?: boolean;
+  shariahReviewedBy?: string | null;
+  shariahScreeningData?: ShariahScreeningData;
 };
 
 export type MarketError = {
@@ -101,11 +109,23 @@ export type MarketSearchItem = {
   name: string;
   assetType: MarketAssetType;
   exchange?: string;
+  exchangeCode?: string;
+  market?: string;
   country?: string;
   currency?: string;
   currencySource?: MarketCurrencySource;
   providerSymbol?: string;
+  displaySymbol?: string;
   aliases?: string[];
+  metadataDiagnostics?: Record<string, unknown>;
+  shariahStatus?: ShariahStatus;
+  shariahReason?: string | null;
+  shariahSource?: string | null;
+  shariahLastReviewedAt?: string | null;
+  shariahManualOverride?: boolean;
+  shariahReviewedBy?: string | null;
+  shariahScreeningData?: ShariahScreeningData;
+  shariahMethod?: string;
 };
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];

@@ -1,4 +1,4 @@
-export type ShariahScreeningStatus = 'compliant' | 'review' | 'non_compliant' | 'unknown';
+export type ShariahScreeningStatus = 'compliant' | 'needs_review' | 'non_compliant' | 'unclassified';
 export type ShariahAssetType = 'stock' | 'etf';
 
 export type ShariahUniverseItem = {
@@ -21,7 +21,7 @@ export type ShariahScreeningItem = ShariahUniverseItem & {
   notes: { ar: string; en: string; fr: string };
 };
 
-export const SHARIAH_SCREENING_SOURCE_CONNECTED = true;
+export const SHARIAH_SCREENING_SOURCE_CONNECTED = false;
 
 export const SHARIAH_SCREENING_METHOD = {
   ar: 'يعتمد التصنيف على معايير الفحص الشرعي المعيارية: نشاط الأعمال، نسبة الديون، الإيرادات غير المتوافقة، والأصول النقدية. يُعدّ هذا التصنيف للأغراض المعلوماتية فقط وليس فتوى شرعية.',
@@ -38,7 +38,7 @@ type ScreeningData = {
 
 const SCREENING_DATA: Record<string, ScreeningData> = {
   AAPL: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (الإلكترونيات والبرمجيات)، ونسب الديون والإيرادات غير المتوافقة ضمن الحدود المعتمدة.',
       en: 'Compliant business activity (electronics & software). Debt and non-compliant revenue ratios within accepted thresholds.',
@@ -47,7 +47,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   MSFT: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (برمجيات وخدمات سحابية). نسب الديون والإيرادات غير المتوافقة ضمن الحدود.',
       en: 'Compliant business activity (software & cloud). Debt and non-compliant revenue ratios within limits.',
@@ -56,7 +56,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   NVDA: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (أشباه الموصلات والذكاء الاصطناعي). نسب الديون منخفضة والإيرادات غير المتوافقة ضئيلة.',
       en: 'Compliant business (semiconductors & AI). Low debt ratios and minimal non-compliant revenue.',
@@ -65,7 +65,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   GOOGL: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'النشاط الأساسي متوافق، غير أن إيرادات الإعلانات الرقمية ونشاط الخدمات المالية يستوجبان مراجعة دورية لضمان بقاء نسبة الإيرادات غير المتوافقة دون الحد المعتمد.',
       en: 'Core business is compliant; however, digital advertising revenue mix and financial services activity require periodic review to ensure non-compliant revenue stays below the accepted threshold.',
@@ -74,7 +74,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   META: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'النشاط الأساسي في التواصل الاجتماعي مقبول؛ إلا أن الاعتماد الكبير على إيرادات الإعلانات المستهدفة وبعض خدمات الدفع الرقمي تستوجب مراجعة دورية.',
       en: 'Core social media activity is acceptable; however, heavy reliance on targeted advertising revenue and some digital payment services require periodic review.',
@@ -83,7 +83,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   TSLA: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (المركبات الكهربائية والطاقة المتجددة). نسب الديون المقبولة ولا إيرادات جوهرية غير متوافقة.',
       en: 'Compliant business (EVs & renewable energy). Acceptable debt ratios and no material non-compliant revenue.',
@@ -92,7 +92,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   AMD: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (أشباه الموصلات). نسب ديون منخفضة ولا توجد إيرادات غير متوافقة.',
       en: 'Compliant business (semiconductors). Low debt ratios and no non-compliant revenue.',
@@ -101,7 +101,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   ASML: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (معدات أشباه الموصلات). نسب الديون ضمن الحدود والإيرادات متوافقة.',
       en: 'Compliant business (semiconductor equipment). Debt ratios within limits and compliant revenue.',
@@ -110,7 +110,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   TSM: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (تصنيع أشباه الموصلات). نسب ديون ضمن الحدود المعتمدة.',
       en: 'Compliant business (semiconductor manufacturing). Debt ratios within accepted limits.',
@@ -119,7 +119,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   AVGO: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (أشباه الموصلات والبرمجيات). نسب الديون ضمن النطاق المقبول.',
       en: 'Compliant business (semiconductors & software). Debt ratios within acceptable range.',
@@ -128,7 +128,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   COST: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'النشاط التجاري الأساسي (التجزئة) مقبول، لكن بيع الكحول والمنتجات المحظورة في الفروع يستوجب مراجعة دورية لنسبة الإيرادات غير المتوافقة.',
       en: 'Core retail business is acceptable; however, sale of alcohol and non-compliant products in stores requires periodic review of non-compliant revenue ratio.',
@@ -137,7 +137,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   WMT: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط التجزئة العام مقبول، لكن بيع الكحول والمنتجات غير المتوافقة والخدمات المالية تجعل نسبة الإيرادات غير المتوافقة تستوجب مراجعة مستمرة.',
       en: 'General retail is acceptable; however, alcohol sales, non-compliant products, and financial services mean the non-compliant revenue ratio requires ongoing review.',
@@ -146,7 +146,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   PG: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'معظم المنتجات متوافقة، غير أن بعض منتجات العناية الشخصية المحتوية على كحول ومصادر الإيرادات المتنوعة تستوجب مراجعة دورية.',
       en: 'Most products are compliant; however, some personal care products containing alcohol and diverse revenue sources require periodic review.',
@@ -155,7 +155,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   KO: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'المشروبات الأساسية متوافقة، لكن محفظة المنتجات الواسعة التي تضم بعض المشروبات الكحولية في أسواق معينة ومحفظة الاستثمارات تستوجبان مراجعة دورية.',
       en: 'Core beverages are compliant; however, a broad product portfolio including some alcoholic beverages in certain markets and an investment portfolio require periodic review.',
@@ -164,7 +164,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   PEP: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'المنتجات الغذائية والمشروبات الأساسية متوافقة، لكن محفظة المنتجات الواسعة والاستثمارات تستوجبان مراجعة دورية لنسبة الإيرادات غير المتوافقة.',
       en: 'Core food and beverage products are compliant; however, the broad product portfolio and investments require periodic review of non-compliant revenue ratio.',
@@ -173,7 +173,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   JNJ: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (منتجات طبية وصيدلانية). نسب الديون والإيرادات غير المتوافقة ضمن الحدود المعتمدة.',
       en: 'Compliant business (medical devices & pharmaceuticals). Debt and non-compliant revenue ratios within accepted limits.',
@@ -182,7 +182,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   ABBV: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (أدوية بيولوجية). نسب الديون والإيرادات غير المتوافقة ضمن الحدود المعتمدة.',
       en: 'Compliant business (biopharmaceuticals). Debt and non-compliant revenue ratios within accepted limits.',
@@ -191,7 +191,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   MRK: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'نشاط تجاري متوافق (أدوية وعلوم الحياة). نسب الديون والإيرادات غير المتوافقة ضمن الحدود.',
       en: 'Compliant business (pharmaceuticals & life sciences). Debt and non-compliant revenue within limits.',
@@ -200,7 +200,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   UNH: {
-    status: 'review',
+    status: 'needs_review',
     reason: {
       ar: 'قطاع الرعاية الصحية المُدارة يستوجب مراجعة دورية نظراً لتشابه بعض جوانبه مع نماذج التأمين التقليدي التي تخضع لأحكام شرعية خاصة.',
       en: 'Managed healthcare sector requires periodic review due to the similarity of some aspects to conventional insurance models, which are subject to specific Shariah rulings.',
@@ -209,7 +209,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   SPUS: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'صندوق استثمار متداول مصمم خصيصاً وفق معايير الشريعة الإسلامية مع استبعاد القطاعات غير المتوافقة.',
       en: 'ETF specifically designed according to Shariah principles with exclusion of non-compliant sectors.',
@@ -218,7 +218,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   HLAL: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'صندوق استثمار متداول إسلامي يتتبع مؤشر FTSE USA Shariah مع رقابة شرعية معتمدة.',
       en: 'Islamic ETF tracking the FTSE USA Shariah index with certified Shariah oversight.',
@@ -227,7 +227,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   UMMA: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'صندوق استثمار متداول إسلامي يتتبع مؤشر داو جونز الإسلامي العالمي مع رقابة شرعية معتمدة.',
       en: 'Islamic ETF tracking the Dow Jones Islamic World index with certified Shariah oversight.',
@@ -236,7 +236,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   SPRE: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'صندوق REIT إسلامي مُصمَّم وفق معايير الشريعة مع استبعاد العقارات غير المتوافقة.',
       en: 'Shariah-compliant REIT ETF designed to exclude non-compliant real estate holdings.',
@@ -245,7 +245,7 @@ const SCREENING_DATA: Record<string, ScreeningData> = {
     lastScreenedAt: '2025-03-01',
   },
   SPSK: {
-    status: 'compliant',
+    status: 'needs_review',
     reason: {
       ar: 'صندوق الصكوك الإسلامية — أداة دين إسلامية متوافقة تمثل ملكية في أصول حقيقية.',
       en: 'Sukuk ETF — Shariah-compliant Islamic debt instrument representing ownership in real assets.',
@@ -290,18 +290,24 @@ export const SHARIAH_UNIVERSE: ShariahUniverseItem[] = [
 
 export function shariahStatusLabelAr(status: ShariahScreeningStatus) {
   if (status === 'compliant') return 'متوافق';
-  if (status === 'review') return 'يحتاج مراجعة';
+  if (status === 'needs_review') return 'يحتاج مراجعة';
   if (status === 'non_compliant') return 'غير متوافق';
   return 'غير مصنف';
 }
 
 export function buildShariahScreening(item: ShariahUniverseItem): ShariahScreeningItem {
   const data = SCREENING_DATA[item.symbol];
+  const isFinalClassification = data?.status === 'compliant' || data?.status === 'non_compliant';
+  const reviewRequiredReason = {
+    ar: 'تتوفر بيانات أولية لهذا الرمز، لكنها لا تكفي لإصدار تصنيف شرعي نهائي. يحتاج إلى مراجعة شرعية موثوقة.',
+    en: 'Preliminary data exists for this symbol, but it is not enough for a final Shariah classification. A trusted review is required.',
+    fr: 'Des donnees preliminaires existent pour ce symbole, mais elles ne suffisent pas pour une classification charia definitive.',
+  };
   if (!data) {
     return {
       ...item,
-      shariahStatus: 'unknown',
-      statusLabelAr: shariahStatusLabelAr('unknown'),
+      shariahStatus: 'unclassified',
+      statusLabelAr: shariahStatusLabelAr('unclassified'),
       reason: {
         ar: 'لا تتوفر بيانات تصنيف شرعي مؤكدة من مصدر موثوق لهذا الرمز حاليًا.',
         en: 'No verified Sharia classification data is available for this symbol from a trusted source at this time.',
@@ -318,10 +324,10 @@ export function buildShariahScreening(item: ShariahUniverseItem): ShariahScreeni
     ...item,
     shariahStatus: data.status,
     statusLabelAr: shariahStatusLabelAr(data.status),
-    reason: data.reason,
-    screeningSource: 'THE SFM Screening',
+    reason: isFinalClassification ? data.reason : reviewRequiredReason,
+    screeningSource: isFinalClassification ? 'Trusted/manual Shariah screening source' : null,
     methodology: SHARIAH_SCREENING_METHOD,
-    lastScreenedAt: data.lastScreenedAt,
+    lastScreenedAt: isFinalClassification ? data.lastScreenedAt : null,
     financialRatios: null,
     notes: NOTES_STANDARD,
   };
@@ -342,6 +348,6 @@ export function getShariahScreeningCounts(items: ShariahScreeningItem[]) {
       acc[item.shariahStatus] += 1;
       return acc;
     },
-    { compliant: 0, review: 0, non_compliant: 0, unknown: 0 } as Record<ShariahScreeningStatus, number>,
+    { compliant: 0, needs_review: 0, non_compliant: 0, unclassified: 0 } as Record<ShariahScreeningStatus, number>,
   );
 }

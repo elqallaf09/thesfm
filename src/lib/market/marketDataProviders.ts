@@ -14,6 +14,7 @@ export type MarketDataProviderContext = {
   assetType?: MarketAssetType | string | null;
   name?: string | null;
   exchange?: string | null;
+  exchangeCode?: string | null;
   country?: string | null;
   currency?: string | null;
   excludeProviders?: MarketDataProviderName[];
@@ -35,6 +36,9 @@ export type NormalizedMarketQuote = {
   volume: number | null;
   market: string | null;
   exchange: string | null;
+  exchangeCode: string | null;
+  country: string | null;
+  assetType: string | null;
   provider: MarketDataProviderName;
   providerName: string;
   delayType: MarketDelayType;
@@ -229,6 +233,9 @@ function normalizeQuote(input: {
   volume?: unknown;
   market?: unknown;
   exchange?: unknown;
+  exchangeCode?: unknown;
+  country?: unknown;
+  assetType?: unknown;
   delayType: MarketDelayType;
   lastUpdated?: unknown;
   context?: MarketDataProviderContext;
@@ -286,6 +293,9 @@ function normalizeQuote(input: {
     volume: numberOrNull(input.volume),
     market: textOrNull(input.market ?? input.context?.market),
     exchange: textOrNull(input.exchange ?? input.context?.exchange),
+    exchangeCode: textOrNull(input.exchangeCode ?? input.context?.exchangeCode),
+    country: textOrNull(input.country ?? input.context?.country),
+    assetType: textOrNull(input.assetType ?? input.context?.assetType),
     provider: input.provider,
     providerName: input.providerName,
     delayType: input.delayType,
@@ -504,6 +514,9 @@ class TwelveDataProvider extends BaseProvider {
         volume: body.volume,
         market: market ?? body.exchange,
         exchange: body.exchange ?? candidate.exchange,
+        exchangeCode: body.mic_code ?? candidate.exchange,
+        country: body.country,
+        assetType: body.type ?? body.instrument_type,
         delayType: body.is_market_open === true ? 'realtime' : 'delayed',
         lastUpdated: body.datetime ?? body.timestamp,
         context,
@@ -557,6 +570,8 @@ class TwelveDataProvider extends BaseProvider {
       name: String(row.instrument_name ?? row.name ?? row.symbol ?? ''),
       assetType: normalizeAssetType(row.instrument_type ?? context?.assetType),
       exchange: textOrNull(row.exchange) ?? undefined,
+      exchangeCode: textOrNull(row.mic_code ?? row.exchange) ?? undefined,
+      market: textOrNull(row.exchange) ?? undefined,
       country: textOrNull(row.country) ?? undefined,
       currency: textOrNull(row.currency) ?? undefined,
     })).filter(item => item.symbol && item.name);
@@ -600,7 +615,10 @@ class FinnhubProvider extends BaseProvider {
         previousClose: body.pc,
         volume: null,
         market,
-        exchange: context?.exchange,
+        exchange: body.exchange ?? context?.exchange,
+        exchangeCode: body.mic ?? context?.exchangeCode,
+        country: body.country ?? context?.country,
+        assetType: body.type ?? context?.assetType,
         delayType: 'delayed',
         lastUpdated: body.t,
         context,
@@ -749,6 +767,9 @@ class EodhdProvider extends BaseProvider {
         volume: body.volume,
         market,
         exchange: body.exchange ?? context?.exchange,
+        exchangeCode: body.exchangeCode ?? body.exchange ?? context?.exchangeCode,
+        country: body.country ?? context?.country,
+        assetType: body.type ?? context?.assetType,
         delayType: 'delayed',
         lastUpdated: body.timestamp ?? body.date,
         context,
@@ -836,6 +857,8 @@ class EodhdProvider extends BaseProvider {
       name: String(row.Name ?? row.name ?? row.Code ?? ''),
       assetType: normalizeAssetType(row.Type ?? context?.assetType),
       exchange: textOrNull(row.Exchange) ?? undefined,
+      exchangeCode: textOrNull(row.Exchange) ?? undefined,
+      market: textOrNull(row.Exchange) ?? undefined,
       country: textOrNull(row.Country) ?? undefined,
       currency: textOrNull(row.Currency) ?? undefined,
     })).filter(item => item.symbol && item.name);
@@ -900,6 +923,9 @@ class MarketstackProvider extends BaseProvider {
         volume: row.volume,
         market,
         exchange: row.exchange ?? context?.exchange,
+        exchangeCode: row.exchange ?? context?.exchangeCode,
+        country: row.country ?? context?.country,
+        assetType: row.type ?? context?.assetType,
         delayType: 'eod',
         lastUpdated: row.date,
         context,
@@ -937,8 +963,11 @@ class YahooProvider extends BaseProvider {
       change: quote.change,
       changePercent: quote.changePercent,
       previousClose: quote.change !== null && quote.price !== null ? quote.price - quote.change : null,
-      market,
-      exchange: context?.exchange,
+      market: quote.market ?? market,
+      exchange: quote.exchange ?? context?.exchange,
+      exchangeCode: quote.exchangeCode ?? context?.exchangeCode,
+      country: context?.country,
+      assetType: quote.assetType ?? context?.assetType,
       delayType: 'delayed',
       lastUpdated: quote.marketTime,
       context,

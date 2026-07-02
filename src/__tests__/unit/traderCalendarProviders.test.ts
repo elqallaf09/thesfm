@@ -76,6 +76,48 @@ describe('trader calendar providers', () => {
     expect(JSON.stringify(infoSpy.mock.calls)).not.toContain('test-fmp-key');
   });
 
+  it('does not treat missing/default zero actual EPS as meaningful future earnings data', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple Inc.',
+        date: '2099-07-15',
+        epsEstimated: 1.48,
+        eps: 0,
+        revenueEstimated: 95000000000,
+      },
+    ]), { status: 200 })));
+
+    const result = await getTraderCalendar('earnings', { ...query, from: '2099-07-01', to: '2099-07-31' });
+
+    expect(result.status).toBe('success');
+    expect(result.data[0]).toMatchObject({
+      symbol: 'AAPL',
+      epsActual: null,
+      epsEstimate: 1.48,
+      revenueEstimate: 95000000000,
+    });
+  });
+
+  it('filters earnings rows that only contain a symbol and report date', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      { symbol: 'EMPTY', companyName: 'Empty Fields Inc.', date: '2099-07-16', eps: '', epsEstimated: '', revenueEstimated: '' },
+      { symbol: 'MSFT', companyName: 'Microsoft Corp.', date: '2099-07-20', epsEstimated: 2.91 },
+    ]), { status: 200 })));
+
+    const result = await getTraderCalendar('earnings', { ...query, from: '2099-07-01', to: '2099-07-31' });
+
+    expect(result.status).toBe('success');
+    expect(result.resultCount).toBe(1);
+    expect(result.data.map(item => item.symbol)).toEqual(['MSFT']);
+  });
+
   it('treats a provider empty array as connected with no current events', async () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');

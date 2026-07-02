@@ -155,6 +155,6 @@ export type ScannerFilters = {
   minimumConfidence?: number;
   riskLevel?: RiskLevel | 'all';
   timeHorizon?: Exclude<TimeHorizon, null> | 'all';
-  shariaStatus?: 'compliant' | 'non_compliant' | 'review_required' | 'unsupported' | 'all';
+  shariaStatus?: 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified' | 'all';
   symbols?: string[];
 };

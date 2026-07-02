@@ -1,13 +1,13 @@
-const CACHE_NAME = "the-sfm-trader-v20260703-map-cover";
+const CACHE_NAME = "the-sfm-trader-v20260703-symbol-details-layout";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/styles.css?v=20260630-cinema",
   "/desktop-balance.css?v=20260630-cinema",
-  "/cinema.css?v=20260703-map-cover",
-  "/app.js?v=20260702-worldmap-bull",
-  "/detail.js?v=20260630-cinema",
+  "/cinema.css?v=20260703-symbol-details-layout",
+  "/app.js?v=20260703-symbol-details-layout",
+  "/detail.js?v=20260703-symbol-details-layout",
   "/manifest.webmanifest",
   "/assets/sfm-trader-logo.svg",
   "/assets/trading-cinematic-bg.jpg",
@@ -47,7 +47,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first for JS/CSS (always fresh), cache-first for images
   const isAsset = /\.(png|ico|svg|webp|jpg|jpeg|gif|woff2?)(\?|$)/.test(url.pathname);
   if (isAsset) {
     event.respondWith(
