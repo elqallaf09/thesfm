@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findAssetAliasMatches, normalizeAssetSearchText } from '@/lib/market/assetAliases';
-import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
+import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import {
@@ -288,9 +288,9 @@ function quoteSymbols(candidate: AssetCandidate) {
   ].filter(Boolean).map(symbol => String(symbol).toUpperCase())));
 }
 
-function normalizeQuoteUnits(quote: YahooNormalizedQuote, candidate: AssetCandidate) {
+function normalizeQuoteUnits(quote: NormalizedMarketQuote, candidate: AssetCandidate) {
   const providerSymbols = quoteSymbols(candidate);
-  const providerSymbol = quote.symbolUsed ?? candidate.providerSymbol ?? providerSymbols[0] ?? candidate.symbol;
+  const providerSymbol = quote.providerSymbol ?? candidate.providerSymbol ?? providerSymbols[0] ?? candidate.symbol;
   const resolvedCurrency = resolveMarketCurrency({
     providerCurrency: quote.currency ?? candidate.currency,
     symbol: candidate.symbol,
@@ -331,14 +331,14 @@ function normalizeQuoteUnits(quote: YahooNormalizedQuote, candidate: AssetCandid
   };
 }
 
-function normalizeResult(candidate: AssetCandidate, quote: YahooNormalizedQuote): AssetSearchItem {
+function normalizeResult(candidate: AssetCandidate, quote: NormalizedMarketQuote): AssetSearchItem {
   const normalizedQuote = normalizeQuoteUnits(quote, candidate);
   return {
     name: candidate.nameAr ?? candidate.name,
     name_ar: candidate.nameAr,
     name_en: candidate.nameEn ?? candidate.name,
     symbol: candidate.symbol,
-    provider_symbol: quote.symbolUsed ?? candidate.providerSymbol ?? quoteSymbols(candidate)[0] ?? null,
+    provider_symbol: quote.providerSymbol ?? candidate.providerSymbol ?? quoteSymbols(candidate)[0] ?? null,
     market: candidate.marketAr ?? candidate.market ?? null,
     market_ar: candidate.marketAr,
     market_en: candidate.marketEn ?? candidate.market,
@@ -349,11 +349,11 @@ function normalizeResult(candidate: AssetCandidate, quote: YahooNormalizedQuote)
     price: normalizedQuote.price,
     change: normalizedQuote.change,
     change_percent: quote.changePercent,
-    updated_at: quote.marketTime,
-    source: quote.source,
+    updated_at: quote.lastUpdated,
+    source: quote.providerName,
     search_source: candidate.sourceHint,
-    available: quote.available,
-    unavailable_reason: quote.unavailableReason,
+    available: true,
+    unavailable_reason: undefined,
   };
 }
 
@@ -395,18 +395,18 @@ function unavailableResult(candidate: AssetCandidate, unavailableReason = 'price
 }
 
 async function enrichCandidate(candidate: AssetCandidate): Promise<AssetSearchItem> {
-  const quote = await fetchYahooNormalizedQuote({
-    requestedSymbol: candidate.symbol,
-    symbols: quoteSymbols(candidate),
+  const providerSymbol = candidate.providerSymbol ?? quoteSymbols(candidate)[0] ?? candidate.symbol;
+  const result = await getQuoteWithFallback(providerSymbol, candidate.marketEn ?? candidate.market, {
+    symbol: candidate.symbol,
+    assetType: candidate.assetType,
     name: candidate.nameEn ?? candidate.name,
-    debugContext: {
-      route: '/api/market/search-assets',
-      searchSource: candidate.sourceHint,
-      assetType: candidate.assetType,
-    },
+    exchange: candidate.marketEn ?? candidate.market,
+    country: candidate.country,
+    currency: candidate.currency,
   });
+  if (!result.ok) return unavailableResult(candidate, result.latestError ?? 'price_provider_unavailable');
 
-  return normalizeResult(candidate, quote);
+  return normalizeResult(candidate, result.data);
 }
 
 async function directQuoteCandidate(query: string, assetType?: MarketAssetType): Promise<AssetCandidate | null> {

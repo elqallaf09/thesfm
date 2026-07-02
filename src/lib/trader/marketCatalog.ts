@@ -18,7 +18,7 @@ import {
 import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub';
+export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
 
 export type TraderMarketDef = {
   id: string;
@@ -253,6 +253,9 @@ function providerSymbolsFor(symbol: string, assetType: TraderAssetType, provider
     yahoo: uniq([...(yahooAlias.length ? yahooAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}-USD` : null]),
     openbb: uniq([providerSymbol, base]),
     finnhub: uniq([...(finnhubAlias.length ? finnhubAlias : []), providerSymbol, base]),
+    twelve_data: uniq([providerSymbol, base]),
+    eodhd: uniq([providerSymbol, base]),
+    marketstack: uniq([providerSymbol, base]),
   };
 }
 
@@ -294,7 +297,7 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   target.currency ||= next.currency;
   target.name = target.name === target.symbol && next.name !== next.symbol ? next.name : target.name;
   target.providerSymbol = target.providerSymbol || next.providerSymbol;
-  for (const provider of ['fmp', 'yahoo', 'openbb', 'finnhub'] as TraderQuoteProvider[]) {
+  for (const provider of ['fmp', 'yahoo', 'openbb', 'finnhub', 'twelve_data', 'eodhd', 'marketstack'] as TraderQuoteProvider[]) {
     target.providerSymbols[provider] = uniq([...(target.providerSymbols[provider] ?? []), ...(next.providerSymbols[provider] ?? [])]);
   }
   if (target.source !== next.source) target.source = target.source === 'fmp' || next.source === 'fmp' ? 'fmp' : 'bundled';
@@ -433,9 +436,46 @@ async function discoverFmpSymbols(options: { marketId?: string | null } = {}) {
 function capabilityMatrix(cacheAvailable = false) {
   const fmpConfigured = Boolean(cleanEnv(process.env.FMP_API_KEY));
   const finnhubConfigured = Boolean(cleanEnv(process.env.FINNHUB_API_KEY));
+  const twelveDataConfigured = Boolean(cleanEnv(process.env.TWELVE_DATA_API_KEY));
+  const eodhdConfigured = Boolean(cleanEnv(process.env.EODHD_API_KEY));
+  const marketstackConfigured = Boolean(cleanEnv(process.env.MARKETSTACK_API_KEY));
   const fmpStatus = getFmpRuntimeStatus(fmpConfigured, cacheAvailable);
   const openbbStatus = getOpenbbConfiguredStatus();
+  const configuredCapability = (provider: TraderQuoteProvider, configured: boolean, supports: Partial<ProviderCapability> = {}): ProviderCapability => ({
+    provider,
+    configured,
+    healthy: configured,
+    status: configured ? 'healthy' : 'not_configured',
+    rateLimited: false,
+    lastSuccessfulFetch: null,
+    lastError: configured ? null : `${provider}_not_configured`,
+    cacheAvailable: false,
+    supportsQuotes: true,
+    supportsTechnicalAnalysis: true,
+    supportsEarnings: false,
+    supportsDividends: false,
+    supportsIpos: false,
+    supportsEconomicCalendar: false,
+    reason: configured ? null : `${provider}_not_configured`,
+    ...supports,
+  });
   return {
+    twelve_data: configuredCapability('twelve_data', twelveDataConfigured, {
+      supportsTechnicalAnalysis: true,
+    }),
+    finnhub: configuredCapability('finnhub', finnhubConfigured, {
+      supportsTechnicalAnalysis: true,
+      supportsEarnings: true,
+      supportsDividends: true,
+      supportsEconomicCalendar: true,
+    }),
+    eodhd: configuredCapability('eodhd', eodhdConfigured, {
+      supportsTechnicalAnalysis: true,
+      supportsDividends: true,
+    }),
+    marketstack: configuredCapability('marketstack', marketstackConfigured, {
+      supportsTechnicalAnalysis: false,
+    }),
     fmp: {
       provider: 'fmp',
       configured: fmpConfigured,
@@ -486,23 +526,6 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsIpos: false,
       supportsEconomicCalendar: false,
       reason: openbbStatus.configured ? openbbStatus.lastError : 'openbb_not_configured',
-    },
-    finnhub: {
-      provider: 'finnhub',
-      configured: finnhubConfigured,
-      healthy: finnhubConfigured,
-      status: finnhubConfigured ? 'healthy' : 'not_configured',
-      rateLimited: false,
-      lastSuccessfulFetch: null,
-      lastError: finnhubConfigured ? null : 'finnhub_not_configured',
-      cacheAvailable: false,
-      supportsQuotes: true,
-      supportsTechnicalAnalysis: false,
-      supportsEarnings: true,
-      supportsDividends: true,
-      supportsIpos: false,
-      supportsEconomicCalendar: true,
-      reason: finnhubConfigured ? null : 'finnhub_not_configured',
     },
   } satisfies Record<TraderQuoteProvider, ProviderCapability>;
 }

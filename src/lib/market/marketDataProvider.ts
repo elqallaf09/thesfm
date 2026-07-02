@@ -10,6 +10,13 @@ import {
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import { fetchYahooNormalizedQuote, type YahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
+import {
+  getCandlesWithFallback,
+  getQuoteWithFallback,
+  searchSymbolsWithFallback,
+  type NormalizedMarketCandle,
+  type NormalizedMarketQuote,
+} from '@/lib/market/marketDataProviders';
 import symbolDirectory from '../../data/market-symbols.json';
 
 const MARKET_DATA_TIMEOUT_MS = 12000;
@@ -306,6 +313,38 @@ function dailyChangePercent(closes: number[]) {
   return ((Number(latest) - Number(previous)) / Number(previous)) * 100;
 }
 
+function sma(values: number[], period: number) {
+  if (!values.length || period <= 0) return null;
+  const slice = values.slice(-period).filter(value => Number.isFinite(value));
+  if (!slice.length) return null;
+  return average(slice);
+}
+
+function rsi(values: number[], period = 14) {
+  const clean = values.filter(value => Number.isFinite(value));
+  if (clean.length < 2) return null;
+  return calculateRsi(clean.slice(-(period + 1)));
+}
+
+function annualizedVolatility(closes: number[]) {
+  const returns: number[] = [];
+  for (let index = 1; index < closes.length; index += 1) {
+    const previous = closes[index - 1];
+    const current = closes[index];
+    if (previous > 0 && current > 0) returns.push((current - previous) / previous);
+  }
+  if (returns.length < 2) return null;
+  return standardDeviation(returns) * Math.sqrt(252) * 100;
+}
+
+function riskFromVolatility(volatility: number | null, assetType: MarketAssetType): 'low' | 'medium' | 'high' {
+  if (volatility === null) return assetType === 'crypto' ? 'high' : 'medium';
+  if (assetType === 'crypto' && volatility >= 35) return 'high';
+  if (volatility >= 45) return 'high';
+  if (volatility >= 18) return 'medium';
+  return 'low';
+}
+
 function isRealProviderPayload(data: Record<string, any>) {
   const source = String(data.source ?? 'yahoo').trim().toLowerCase();
   return data.success === true
@@ -539,6 +578,199 @@ async function enrichWithStockFundamentals(marketAnalysis: MarketAnalysis, provi
     fundamentalsUnavailableReason: fallback.reason,
     fundamentalsSource: marketAnalysis.fundamentalsSource,
   };
+}
+
+function marketHistoryFromProviderCandles(candles: NormalizedMarketCandle[], input: {
+  symbol: string;
+  providerSymbol: string;
+  assetType: MarketAssetType;
+  currency?: string | null;
+  exchange?: unknown;
+  market?: unknown;
+}) {
+  const resolvedCurrency = resolveMarketCurrency({
+    providerCurrency: input.currency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    exchange: input.exchange,
+    market: input.market,
+    assetType: input.assetType,
+  });
+  const lastClose = candles.at(-1)?.close ?? null;
+  const priceUnit = detectPriceUnit({
+    price: lastClose,
+    currency: resolvedCurrency.currency,
+    providerCurrency: input.currency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    exchange: typeof input.exchange === 'string' ? input.exchange : undefined,
+    market: typeof input.market === 'string' ? input.market : undefined,
+    assetType: input.assetType,
+  });
+  const normalizeValue = (value: unknown) => normalizeMarketPrice({
+    price: optionalFiniteNumber(value) ?? null,
+    currency: resolvedCurrency.currency,
+    providerCurrency: input.currency,
+    symbol: input.symbol,
+    providerSymbol: input.providerSymbol,
+    exchange: typeof input.exchange === 'string' ? input.exchange : undefined,
+    market: typeof input.market === 'string' ? input.market : undefined,
+    assetType: input.assetType,
+    priceUnit,
+  }).price;
+  return candles
+    .map(point => ({
+      date: String(point.date || point.timestamp || '').trim(),
+      open: normalizeValue(point.open) ?? undefined,
+      high: normalizeValue(point.high) ?? undefined,
+      low: normalizeValue(point.low) ?? undefined,
+      close: normalizeValue(point.close) ?? 0,
+      volume: optionalFiniteNumber(point.volume) ?? null,
+    }))
+    .filter(point => point.date && point.close > 0);
+}
+
+function analysisFromProviderQuote(input: {
+  quote: NormalizedMarketQuote;
+  candles: NormalizedMarketCandle[];
+  displaySymbol: string;
+  assetType: MarketAssetType;
+  friendlyName?: string;
+  exchange?: unknown;
+  country?: unknown;
+  providerCurrency?: unknown;
+}): MarketAnalysis & { displaySymbol?: string; marketDataService?: ProxyState } {
+  const { quote, displaySymbol, assetType } = input;
+  const exchange = quote.exchange ?? (typeof input.exchange === 'string' ? input.exchange : undefined);
+  const market = quote.market ?? exchange;
+  const history = marketHistoryFromProviderCandles(input.candles, {
+    symbol: displaySymbol,
+    providerSymbol: quote.providerSymbol,
+    assetType,
+    currency: quote.currency ?? (typeof input.providerCurrency === 'string' ? input.providerCurrency : undefined),
+    exchange,
+    market,
+  });
+  const closes = history.map(point => point.close).filter(value => Number.isFinite(value) && value > 0);
+  if (closes.at(-1) !== quote.price) closes.push(quote.price);
+  const latestPrice = quote.price;
+  const previousClose = quote.previousClose ?? closes.at(-2) ?? latestPrice;
+  const change = quote.change ?? (previousClose ? latestPrice - previousClose : 0);
+  const changePercent = quote.changePercent ?? (previousClose ? (change / previousClose) * 100 : 0);
+  const sma20Value = sma(closes, Math.min(20, closes.length)) ?? latestPrice;
+  const sma50Value = sma(closes, Math.min(50, closes.length)) ?? sma20Value;
+  const rsiValue = rsi(closes, Math.min(14, Math.max(2, closes.length - 1))) ?? 50;
+  const volatility = annualizedVolatility(closes) ?? Math.min(100, Math.max(Math.abs(changePercent), 2));
+  const lows = history.map(point => point.low ?? point.close).filter(value => Number.isFinite(value) && value > 0);
+  const highs = history.map(point => point.high ?? point.close).filter(value => Number.isFinite(value) && value > 0);
+  const support = lows.length ? Math.min(...lows.slice(-40)) : Math.max(0, latestPrice - Math.max(Math.abs(change), latestPrice * 0.02));
+  const resistance = highs.length ? Math.max(...highs.slice(-40)) : latestPrice + Math.max(Math.abs(change), latestPrice * 0.02);
+  const trend = latestPrice > sma20Value && sma20Value >= sma50Value ? 'bullish' : latestPrice < sma20Value && sma20Value <= sma50Value ? 'bearish' : 'neutral';
+  const riskLevel = riskFromVolatility(volatility, assetType === 'gold' ? 'commodity' : assetType);
+  const dataStatus = quote.delayType === 'realtime' ? 'live' : quote.delayType === 'cached' ? 'delayed' : 'delayed';
+  const warnings = [
+    ...(quote.cached ? ['Cached market data was used.'] : []),
+    ...(history.length === 0 ? ['Historical candles are not available for this response.'] : []),
+    ...(quote.delayType === 'eod' ? ['End-of-day market data was used.'] : []),
+  ];
+
+  return {
+    success: true,
+    provider: quote.provider,
+    dataStatus,
+    source: quote.providerName,
+    fallback: false,
+    symbol: displaySymbol,
+    displaySymbol,
+    providerSymbol: quote.providerSymbol,
+    name: input.friendlyName || quote.name || displaySymbol,
+    assetType,
+    currency: quote.currency,
+    exchange,
+    country: typeof input.country === 'string' ? input.country : undefined,
+    market: market ?? undefined,
+    lastUpdated: quote.lastUpdated ?? new Date().toISOString(),
+    latestPrice,
+    changePercent,
+    quote: {
+      price: latestPrice,
+      change,
+      changePercent,
+      currency: quote.currency,
+      timestamp: quote.lastUpdated ?? new Date().toISOString(),
+    },
+    fundamentals: undefined,
+    fundamentalsAvailable: false,
+    fundamentalsUnavailableReason: fundamentalsReason(assetType, undefined),
+    fundamentalsSource: undefined,
+    technicals: {
+      source: quote.providerName,
+      ohlc: history,
+    },
+    trend,
+    riskLevel,
+    indicators: {
+      rsi: Number(rsiValue.toFixed(2)),
+      sma20: Number(sma20Value.toFixed(6)),
+      sma50: Number(sma50Value.toFixed(6)),
+      volatility: Number(volatility.toFixed(2)),
+    },
+    levels: {
+      support: Number(support.toFixed(6)),
+      resistance: Number(resistance.toFixed(6)),
+    },
+    history,
+    summary: `Market data loaded from ${quote.providerName}.`,
+    cached: quote.cached,
+    cacheAgeSeconds: quote.cacheAgeSeconds,
+    fetchedAt: new Date().toISOString(),
+    warnings,
+    marketDataService: quote.provider === 'yahoo' ? 'degraded' : 'connected',
+  };
+}
+
+async function analyzeWithProviderFallback(input: {
+  providerSymbol: string;
+  displaySymbol: string;
+  assetType: MarketAssetType;
+  friendlyName?: string;
+  exchange?: unknown;
+  country?: unknown;
+  providerCurrency?: unknown;
+  forceFresh?: boolean;
+}): Promise<(MarketAnalysis & { displaySymbol?: string; marketDataService?: ProxyState }) | null> {
+  const quoteResult = await getQuoteWithFallback(input.providerSymbol, typeof input.exchange === 'string' ? input.exchange : undefined, {
+    symbol: input.displaySymbol,
+    assetType: input.assetType,
+    name: input.friendlyName,
+    exchange: typeof input.exchange === 'string' ? input.exchange : undefined,
+    country: typeof input.country === 'string' ? input.country : undefined,
+    currency: typeof input.providerCurrency === 'string' ? input.providerCurrency : undefined,
+    forceFresh: input.forceFresh,
+  });
+  if (!quoteResult.ok) return null;
+
+  const candleResult = await getCandlesWithFallback(input.providerSymbol, typeof input.exchange === 'string' ? input.exchange : undefined, '1day', {
+    symbol: input.displaySymbol,
+    assetType: input.assetType,
+    name: input.friendlyName,
+    exchange: typeof input.exchange === 'string' ? input.exchange : undefined,
+    country: typeof input.country === 'string' ? input.country : undefined,
+    currency: quoteResult.data.currency ?? (typeof input.providerCurrency === 'string' ? input.providerCurrency : undefined),
+    forceFresh: input.forceFresh,
+  });
+  let analysis = analysisFromProviderQuote({
+    quote: quoteResult.data,
+    candles: candleResult.ok ? candleResult.data : [],
+    displaySymbol: input.displaySymbol,
+    assetType: input.assetType,
+    friendlyName: input.friendlyName,
+    exchange: input.exchange,
+    country: input.country,
+    providerCurrency: quoteResult.data.currency ?? input.providerCurrency,
+  });
+  analysis = await enrichWithStockFundamentals(analysis, quoteResult.data.providerSymbol) as MarketAnalysis & { displaySymbol?: string; marketDataService?: ProxyState };
+  return analysis;
 }
 
 async function analyzeWithYahooFallback(input: {
@@ -829,6 +1061,23 @@ export async function proxyAnalyze(
   const assetType = normalizedSymbol.assetType;
   const displaySymbol = validateSymbol(metaInput?.displaySymbol) ?? normalizedSymbol.displaySymbol ?? providerSymbol;
   const friendlyName = typeof metaInput?.name === 'string' ? metaInput.name.trim().slice(0, 120) : '';
+  const providerPrimary = await analyzeWithProviderFallback({
+    providerSymbol,
+    displaySymbol,
+    assetType,
+    friendlyName,
+    exchange: metaInput?.exchange,
+    country: metaInput?.country,
+    providerCurrency: metaInput?.currency,
+  });
+  if (providerPrimary) {
+    return {
+      ...providerPrimary,
+      fallbackReason: undefined,
+      marketDataService: providerPrimary.provider === 'yahoo' ? 'degraded' : 'connected',
+    };
+  }
+
   const yahooPrimary = await analyzeWithYahooFallback({
     providerSymbol,
     displaySymbol,
@@ -977,6 +1226,36 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const assetType = normalizeAssetType(assetTypeInput);
   const period = String(periodInput ?? '6m');
   const interval = String(intervalInput ?? '').trim();
+  const providerHistory = await getCandlesWithFallback(symbol, undefined, interval || '1day', {
+    symbol,
+    assetType,
+  });
+  if (providerHistory.ok && providerHistory.data.length > 0) {
+    const providerName = providerHistory.provider === 'twelve_data'
+      ? 'Twelve Data'
+      : providerHistory.provider === 'finnhub'
+        ? 'Finnhub'
+        : providerHistory.provider === 'eodhd'
+          ? 'EODHD'
+          : providerHistory.provider === 'marketstack'
+            ? 'Marketstack'
+            : 'Yahoo Finance';
+    return {
+      success: true,
+      source: providerName,
+      fallbackProvider: providerHistory.provider,
+      marketDataService: providerHistory.provider === 'yahoo' ? 'degraded' : 'connected',
+      symbol,
+      providerSymbol: symbol,
+      assetType,
+      period,
+      interval: interval || undefined,
+      history: providerHistory.data,
+      cached: false,
+      cacheAgeSeconds: undefined,
+    };
+  }
+
   const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined);
   if (yahoo.success && yahoo.history.length > 0) {
     return {
@@ -989,16 +1268,16 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const params = new URLSearchParams({ symbol, assetType, period });
   if (interval) params.set('interval', interval);
   const result = await fetchRemoteMarketProvider('/market/history', params, { timeoutMs: MARKET_DATA_TIMEOUT_MS });
-  const providerHistory = Array.isArray(result.configured && result.available ? result.data?.history : null)
+  const remoteProviderHistory = Array.isArray(result.configured && result.available ? result.data?.history : null)
     ? result.configured && result.available ? result.data.history : []
     : [];
-  if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock' && providerHistory.length > 0) {
+  if (result.configured && result.available && result.data?.success && result.data?.fallback !== true && result.data?.source !== 'mock' && remoteProviderHistory.length > 0) {
     return { ...result.data, period, interval: interval || undefined, cached: result.fromCache, cacheAgeSeconds: result.cacheAgeSeconds };
   }
 
   const providerCode = result.configured && !result.available
     ? result.code || (result.timedOut ? 'market_data_timeout' : 'provider_no_data')
-    : result.configured && result.available && result.data?.success && providerHistory.length === 0
+    : result.configured && result.available && result.data?.success && remoteProviderHistory.length === 0
       ? 'provider_no_data'
       : 'market_data_unreachable';
   const yahooError = yahoo.success ? null : yahoo.error;
@@ -1064,6 +1343,18 @@ export async function proxySearch(queryInput: unknown, assetTypeInput: unknown) 
       fallback: false,
       marketDataService: 'connected',
       results: directoryResults,
+    };
+  }
+
+  const providerResults = await searchSymbolsWithFallback(query, undefined, { assetType });
+  if (providerResults.length > 0) {
+    return {
+      success: true,
+      query,
+      source: 'market_data_providers',
+      fallback: false,
+      marketDataService: 'connected',
+      results: providerResults,
     };
   }
 

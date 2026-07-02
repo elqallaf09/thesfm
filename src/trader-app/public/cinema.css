@@ -1026,6 +1026,137 @@ tr:last-child td {
   }
 }
 
+/* Market provider + watchlist hardening */
+.provider-mini-badge {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(102, 215, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(8, 20, 32, 0.72);
+  color: var(--text);
+  font-size: 0.66rem;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.provider-mini-badge b,
+.provider-mini-badge small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-mini-badge b {
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-weight: 900;
+}
+
+.provider-mini-badge small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.provider-mini-badge.ok {
+  border-color: rgba(67, 221, 146, 0.24);
+  background: rgba(67, 221, 146, 0.08);
+}
+
+.provider-mini-badge.fallback {
+  border-color: rgba(255, 209, 102, 0.28);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.provider-mini-badge.warn {
+  border-color: rgba(255, 96, 119, 0.28);
+  background: rgba(255, 96, 119, 0.08);
+}
+
+.watchlist-table table {
+  min-width: 1080px;
+  table-layout: fixed;
+}
+
+.watchlist-table th,
+.watchlist-table td {
+  overflow-wrap: anywhere;
+}
+
+.watchlist-table th:nth-child(1),
+.watchlist-table td:nth-child(1) { width: 190px; }
+.watchlist-table th:nth-child(4),
+.watchlist-table td:nth-child(4),
+.watchlist-table th:nth-child(5),
+.watchlist-table td:nth-child(5),
+.watchlist-table th:nth-child(6),
+.watchlist-table td:nth-child(6) { width: 94px; }
+.watchlist-table th:nth-child(8),
+.watchlist-table td:nth-child(8),
+.watchlist-table th:nth-child(9),
+.watchlist-table td:nth-child(9),
+.watchlist-table th:nth-child(10),
+.watchlist-table td:nth-child(10),
+.watchlist-table th:nth-child(11),
+.watchlist-table td:nth-child(11) { width: 82px; }
+.watchlist-table th:nth-child(12),
+.watchlist-table td:nth-child(12) { width: 92px; }
+
+.asset-metrics,
+.rec-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+}
+
+@media (max-width: 720px) {
+  .watchlist-table table {
+    min-width: 0;
+  }
+
+  .watchlist-table tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .watchlist-table td {
+    min-height: 42px;
+  }
+
+  .watchlist-table .wt-asset {
+    display: flex !important;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .watchlist-table .provider-mini-badge {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .asset-metrics,
+  .rec-metrics,
+  .trade-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .watchlist-table tr,
+  .asset-metrics,
+  .rec-metrics,
+  .trade-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .provider-mini-badge {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 .provider-diagnostics-ui {
   min-width: 0 !important;
   display: grid !important;

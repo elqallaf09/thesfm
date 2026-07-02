@@ -6,6 +6,9 @@ import { __resetOpenbbRuntimeForTests } from '@/lib/trader/providers/openbb';
 
 function clearProviderEnvs() {
   vi.stubEnv('FMP_API_KEY', '');
+  vi.stubEnv('TWELVE_DATA_API_KEY', '');
+  vi.stubEnv('EODHD_API_KEY', '');
+  vi.stubEnv('MARKETSTACK_API_KEY', '');
   vi.stubEnv('FINNHUB_API_KEY', '');
   vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
   vi.stubEnv('OPENBB_SERVICE_URL', '');

@@ -1,4 +1,5 @@
 import { normalizeAssetType, validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
+import { getCompanyProfileWithFallback, getLogoWithFallback, type NormalizedCompanyProfile } from '@/lib/market/marketDataProviders';
 import staticUsSymbols from '@/data/us-symbols.json';
 
 export type AssetProfileHolding = {
@@ -35,6 +36,7 @@ export type AssetProfile = {
   employeeCount?: number | string;
   ceo?: string;
   currency?: string;
+  logoUrl?: string;
   dataLimitations?: string[];
 };
 
@@ -468,6 +470,24 @@ function profileFromFinnhub(data: Record<string, unknown>): AssetProfile {
   });
 }
 
+function profileFromNormalizedProvider(data: NormalizedCompanyProfile): AssetProfile {
+  return compactProfile({
+    name: data.name,
+    ticker: data.symbol,
+    exchange: data.exchange,
+    sector: data.sector,
+    industry: data.industry,
+    country: data.country,
+    website: data.website,
+    description: data.description,
+    marketCap: data.marketCap,
+    employees: data.employees,
+    employeeCount: data.employees,
+    currency: data.currency,
+    logoUrl: data.logo ?? undefined,
+  });
+}
+
 function profileFromDirectory(symbol: string, providerSymbol: string, input: FetchAssetProfileInput): AssetProfile {
   const row = staticUsSymbolRows.find(item => {
     const itemSymbol = String(item.symbol ?? '').toUpperCase();
@@ -626,6 +646,35 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
     exchange: input.exchange,
   });
 
+  providersTried.push('Market data providers');
+  const providerProfile = await getCompanyProfileWithFallback(providerSymbol, input.exchange, {
+    symbol,
+    assetType,
+    name: input.name,
+    exchange: input.exchange,
+  });
+  if (providerProfile.ok) {
+    profile = mergeProfiles(profileFromNormalizedProvider(providerProfile.data), profile);
+    source = providerProfile.data.provider === 'finnhub'
+      ? 'Finnhub'
+      : providerProfile.data.provider === 'eodhd'
+        ? 'EODHD'
+        : providerProfile.data.provider === 'twelve_data'
+          ? 'Twelve Data'
+          : providerProfile.data.provider === 'marketstack'
+            ? 'Marketstack'
+            : 'Market data providers';
+  }
+  if (!profile.logoUrl) {
+    const logo = await getLogoWithFallback(providerSymbol, input.exchange, {
+      symbol,
+      assetType,
+      name: input.name,
+      exchange: input.exchange,
+    });
+    if (logo.ok && logo.logo) profile.logoUrl = logo.logo;
+  }
+
   if (assetType === 'stock') {
     providersTried.push('Finnhub');
     const finnhub = await fetchFinnhubProfile(providerSymbol);
@@ -655,7 +704,7 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
   }) : {};
   if (yahooHasData && usefulProfileFields(yahooProfile).length > 0) {
     profile = mergeProfiles(yahooProfile, profile);
-    source = source === 'Finnhub' ? 'Finnhub/Yahoo Finance' : 'Yahoo Finance';
+    source = source !== 'Symbol directory' ? `${source}/Yahoo Finance` : 'Yahoo Finance';
   }
 
   if (assetType === 'stock') {

@@ -1,4 +1,5 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
+import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import type { MarketAssetType } from '@/lib/market/marketService';
@@ -24,7 +25,7 @@ import {
 
 export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
-type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub';
+type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'Twelve Data' | 'EODHD' | 'Marketstack';
 
 type MarketDef = TraderMarketDef;
 type QuoteIssue = {
@@ -464,6 +465,66 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     available: price !== null && price > 0,
     lastUpdated: updatedAt,
     updatedAt,
+  };
+}
+
+function traderProviderFromMarketProvider(provider: NormalizedMarketQuote['provider']): TraderQuoteProvider {
+  if (provider === 'twelve_data') return 'twelve_data';
+  if (provider === 'eodhd') return 'eodhd';
+  if (provider === 'marketstack') return 'marketstack';
+  if (provider === 'finnhub') return 'finnhub';
+  return 'yahoo';
+}
+
+function traderSourceFromMarketProvider(quote: NormalizedMarketQuote): TraderQuoteSource {
+  if (quote.provider === 'twelve_data') return 'Twelve Data';
+  if (quote.provider === 'eodhd') return 'EODHD';
+  if (quote.provider === 'marketstack') return 'Marketstack';
+  if (quote.provider === 'finnhub') return 'Finnhub';
+  return 'Yahoo Finance';
+}
+
+function normalizeUnifiedProviderQuote(display: string, quote: NormalizedMarketQuote, meta?: TraderCatalogSymbol): TraderQuote {
+  const provider = traderProviderFromMarketProvider(quote.provider);
+  const source = traderSourceFromMarketProvider(quote);
+  const assetType = classifyAssetType(display, meta);
+  const price = round(quote.price);
+  const change = round(quote.change);
+  const changePercent = round(quote.changePercent);
+  const { signal, confidence } = deriveSignal(price, null, null, null, changePercent);
+  const dataQuality: TraderDataQuality = quote.cached ? 'cached' : quote.delayType === 'realtime' ? 'partial' : 'delayed';
+  const currency = quote.currency ?? meta?.currency ?? defaultCurrency(display);
+  const fallbackUsed = provider !== 'twelve_data';
+  return {
+    ...quoteIdentity(display, meta),
+    providerSymbol: quote.providerSymbol,
+    providerSymbolUsed: quote.providerSymbol,
+    provider,
+    fallbackUsed,
+    name: quote.name || meta?.name || display,
+    assetType,
+    price,
+    change,
+    changePercent,
+    previousClose: round(quote.previousClose),
+    currency,
+    signal,
+    signalAvailable: price !== null,
+    confidence,
+    riskLevel: riskFromVolatility(null, assetType),
+    rsi: null,
+    sma20: null,
+    sma50: null,
+    sparkline: [],
+    history: [],
+    chartAvailable: false,
+    dataQuality,
+    providerStatus: quoteStatus({ display, providerSymbol: quote.providerSymbol, fallbackUsed, updatedAt: quote.lastUpdated, dataQuality, provider, source }),
+    source,
+    delayed: quote.delayType !== 'realtime',
+    available: price !== null && price > 0,
+    lastUpdated: quote.lastUpdated,
+    updatedAt: quote.lastUpdated,
   };
 }
 
@@ -932,8 +993,55 @@ async function runConcurrent<T>(items: T[], concurrency: number, worker: (item: 
   await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length || 1)) }, () => run()));
 }
 
+async function fetchUnifiedProviderQuotes(
+  symbols: string[],
+  metaBySymbol: Map<string, TraderCatalogSymbol>,
+  forceFresh?: boolean,
+) {
+  const quotes = new Map<string, TraderQuote>();
+  const loaded: TraderQuoteLoadResult['loaded'] = [];
+  const failed: QuoteIssue[] = [];
+  const skipped: QuoteIssue[] = [];
+  const providerLatencyMs: Partial<Record<TraderQuoteProvider, number>> = {};
+  const startedAt = Date.now();
+
+  await runConcurrent(symbols, QUOTE_CONCURRENCY, async (symbol) => {
+    const meta = metaBySymbol.get(upper(symbol));
+    const assetType = classifyAssetType(symbol, meta);
+    const providerSymbol = meta?.providerSymbol ?? symbol;
+    const started = Date.now();
+    const result = await getQuoteWithFallback(providerSymbol, meta?.exchange, {
+      symbol,
+      assetType: assetType === 'fund' ? 'etf' : assetType,
+      name: meta?.name,
+      exchange: meta?.exchange,
+      country: meta?.country,
+      currency: meta?.currency,
+      excludeProviders: ['yahoo'],
+      forceFresh,
+    });
+
+    if (result.ok) {
+      const quote = normalizeUnifiedProviderQuote(symbol, result.data, meta);
+      quotes.set(symbol, quote);
+      const provider = quote.provider ?? 'twelve_data';
+      loaded.push({ symbol, provider, providerSymbol: quote.providerSymbol });
+      providerLatencyMs[provider] = Math.max(providerLatencyMs[provider] ?? 0, Date.now() - started);
+      return;
+    }
+
+    const configuredAttempts = result.attempts.filter(attempt => attempt.code !== 'not_configured');
+    const reason = result.latestError ?? 'all_providers_returned_no_quote';
+    if (configuredAttempts.length === 0) skipped.push({ symbol, provider: 'twelve_data', reason: 'market_data_providers_not_configured' });
+    else failed.push({ symbol, provider: 'twelve_data', reason });
+  });
+
+  providerLatencyMs.twelve_data ??= Date.now() - startedAt;
+  return { quotes, loaded, failed, skipped, latencyMs: Date.now() - startedAt, providerLatencyMs };
+}
+
 async function fetchFallbackProvider(
-  provider: Exclude<TraderQuoteProvider, 'fmp'>,
+  provider: 'yahoo' | 'finnhub',
   symbols: string[],
   metaBySymbol: Map<string, TraderCatalogSymbol>,
   forceFresh?: boolean,
@@ -983,6 +1091,17 @@ export async function fetchTraderQuotesDetailed(
     loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
   }
 
+  const unifiedSymbols = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  const unified = await fetchUnifiedProviderQuotes(unifiedSymbols, byMeta, options?.forceFresh);
+  unified.quotes.forEach((quote, symbol) => {
+    quotes.set(symbol, quote);
+    storeQuoteCache(symbol, quote);
+  });
+  Object.assign(providerLatencyMs, unified.providerLatencyMs);
+  loaded.push(...unified.loaded);
+  failed.push(...unified.failed);
+  skipped.push(...unified.skipped);
+
   const fmpSymbols = uniqueSymbols.filter(symbol => !quotes.has(symbol));
   const fmp = await fetchFmpQuotes(fmpSymbols, byMeta, options?.forceFresh);
   providerLatencyMs.fmp = fmp.latencyMs;
@@ -1004,32 +1123,16 @@ export async function fetchTraderQuotesDetailed(
     }
   }
 
-  for (const provider of ['yahoo'] as const) {
-    const remaining = uniqueSymbols.filter(symbol => !quotes.has(symbol));
-    if (remaining.length === 0) break;
-    const result = await fetchFallbackProvider(provider, remaining, byMeta, options?.forceFresh);
-    providerLatencyMs[provider] = result.latencyMs;
-    result.quotes.forEach((quote, symbol) => {
-      quotes.set(symbol, quote);
-      storeQuoteCache(symbol, quote);
-    });
-    loaded.push(...result.loaded);
-    failed.push(...result.failed);
-    skipped.push(...result.skipped);
-  }
-
-  const remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
-  if (remainingAfterYahoo.length > 0 && cleanEnv(process.env.FINNHUB_API_KEY)) {
-    const result = await fetchFallbackProvider('finnhub', remainingAfterYahoo, byMeta, options?.forceFresh);
-    providerLatencyMs.finnhub = result.latencyMs;
-    result.quotes.forEach((quote, symbol) => {
-      quotes.set(symbol, quote);
-      storeQuoteCache(symbol, quote);
-    });
-    loaded.push(...result.loaded);
-    failed.push(...result.failed);
-    skipped.push(...result.skipped);
-  }
+  const yahooSymbols = uniqueSymbols.filter(symbol => !quotes.has(symbol));
+  const yahoo = await fetchFallbackProvider('yahoo', yahooSymbols, byMeta, options?.forceFresh);
+  providerLatencyMs.yahoo = yahoo.latencyMs;
+  yahoo.quotes.forEach((quote, symbol) => {
+    quotes.set(symbol, quote);
+    storeQuoteCache(symbol, quote);
+  });
+  loaded.push(...yahoo.loaded);
+  failed.push(...yahoo.failed);
+  skipped.push(...yahoo.skipped);
 
   const orderedQuotes = uniqueSymbols.map(symbol => quotes.get(symbol) ?? unavailableQuote(symbol, 'all_providers_returned_no_quote', byMeta.get(upper(symbol))));
   const firstLoadedProvider = loaded[0]?.provider ?? null;
@@ -1069,17 +1172,34 @@ export async function resolveTraderMarketDynamic(marketId: string | null | undef
 
 export function getConnectedProvider() {
   const capabilities = providerCapabilityMatrix();
-  const active: TraderQuoteProvider = capabilities.fmp.configured
-    ? 'fmp'
-    : 'yahoo';
-  const label = active === 'fmp' ? 'FMP' : 'Yahoo Finance';
+  const active: TraderQuoteProvider = capabilities.twelve_data.configured
+    ? 'twelve_data'
+    : capabilities.finnhub.configured
+      ? 'finnhub'
+      : capabilities.eodhd.configured
+        ? 'eodhd'
+        : capabilities.marketstack.configured
+          ? 'marketstack'
+          : capabilities.fmp.configured
+            ? 'fmp'
+            : 'yahoo';
+  const labels: Record<TraderQuoteProvider, string> = {
+    twelve_data: 'Twelve Data',
+    finnhub: 'Finnhub',
+    eodhd: 'EODHD',
+    marketstack: 'Marketstack',
+    fmp: 'FMP',
+    yahoo: 'Yahoo Finance',
+    openbb: 'OpenBB',
+  };
+  const label = labels[active];
   return {
     active: label,
-    requested: 'fmp',
+    requested: 'twelve_data',
     provider: label,
     configured: active === 'yahoo' ? true : capabilities[active].configured,
-    status: 'connected' as const,
-    fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub'],
+    status: capabilities[active].status,
+    fallbackOrder: ['Twelve Data', 'Finnhub', 'EODHD', 'Marketstack', 'Yahoo Finance'],
     capabilityMatrix: capabilities,
   };
 }

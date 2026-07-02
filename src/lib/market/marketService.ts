@@ -27,7 +27,7 @@ export type MarketHistoryPoint = {
 
 export type MarketAnalysis = {
   success: true;
-  provider?: 'yahoo';
+  provider?: string;
   dataStatus?: MarketDataStatus;
   symbol: string;
   providerSymbol?: string;
@@ -86,7 +86,7 @@ export type MarketError = {
   error: string;
   suggestions?: string[];
   correction?: string | null;
-  provider?: 'yahoo';
+  provider?: string;
   dataStatus?: 'unavailable';
   source?: string;
   fallback?: false;
