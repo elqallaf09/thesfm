@@ -441,7 +441,7 @@
     if (id === "recommendations") return recPage();
     if (id === "trade-performance") return performancePage();
     if (id === "news") return newsPage();
-    if (id === "calendar") return calendarPage();
+    if (id === "calendar") return calendarPageCompact();
     if (id === "education") return educationPage();
     if (id === "settings") return settingsPage();
     if (id === "symbol-details") return symbolPage(state.route.symbol);
