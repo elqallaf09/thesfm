@@ -8,11 +8,22 @@
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
   const VER = "20260703-market-status-ui";
-  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
+  const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1", calendarUi: "sfmTraderCalendarUi:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
   const INITIAL_LOADING_MAX_MS = 4500;
   const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 8000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
+  const CALENDAR_SECTION_KEYS = ["earnings", "dividends", "ipos", "economic"];
+  const CALENDAR_PREVIEW_LIMIT = 10;
+  const CALENDAR_EXPANDED_LIMIT = 50;
+  const MAJOR_EARNINGS_SYMBOLS = new Set(["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "AVGO", "LLY", "JPM", "V", "UNH", "XOM", "MA", "WMT", "PG", "COST", "HD", "NFLX", "AMD", "CRM", "ORCL", "ADBE", "BAC", "KO", "PEP", "MCD", "DIS", "CSCO", "INTC", "PFE", "MRK", "JNJ"]);
+  const DEFAULT_CALENDAR_UI = {
+    open: { earnings: true, dividends: false, ipos: false, economic: false },
+    expanded: {},
+    earningsFilter: "all",
+    earningsSearch: "",
+    earningsSort: { key: "reportDate", dir: "asc" }
+  };
   const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
   const DEV_DIAGNOSTICS = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.hostname.endsWith(".local");
@@ -140,6 +151,7 @@
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
     calendarLoadingSections: { earnings: false, dividends: false, ipos: false, economic: false },
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
+    calendarUi: normalizeCalendarUi(read(keys.calendarUi, {})),
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
     errors: {}, analysisLoading: false,
@@ -308,10 +320,33 @@
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
       const calendarRetry = event.target.closest("[data-calendar-retry]");
       if (calendarRetry) { event.preventDefault(); refreshCalendarSection(calendarRetry.dataset.calendarRetry); return; }
+      const calendarToggle = event.target.closest("[data-calendar-toggle]");
+      if (calendarToggle) { event.preventDefault(); toggleCalendarSection(calendarToggle.dataset.calendarToggle); return; }
+      const calendarShow = event.target.closest("[data-calendar-show]");
+      if (calendarShow) { event.preventDefault(); setCalendarExpanded(calendarShow.dataset.calendarShow, calendarShow.dataset.calendarMode === "more"); return; }
+      const earningsFilter = event.target.closest("[data-earnings-filter]");
+      if (earningsFilter) { event.preventDefault(); updateCalendarUi({ earningsFilter: earningsFilter.dataset.earningsFilter || "all", expanded: { ...(state.calendarUi.expanded || {}), earnings: false } }); return; }
+      const earningsSort = event.target.closest("[data-earnings-sort]");
+      if (earningsSort) { event.preventDefault(); setEarningsSort(earningsSort.dataset.earningsSort); return; }
       const retry = event.target.closest("[data-retry]");
       if (retry) { event.preventDefault(); retryRoute(); return; }
       const collapse = event.target.closest("#sidebar-collapse");
       if (collapse) { event.preventDefault(); document.getElementById("app-shell").classList.toggle("is-collapsed"); return; }
+    });
+    document.addEventListener("input", (event) => {
+      const search = event.target.closest("[data-earnings-search]");
+      if (!search) return;
+      state.calendarUi.earningsSearch = search.value || "";
+      state.calendarUi.expanded = { ...(state.calendarUi.expanded || {}), earnings: false };
+      saveCalendarUi();
+      render();
+      requestAnimationFrame(() => {
+        const input = document.querySelector("[data-earnings-search]");
+        if (!input) return;
+        input.focus();
+        const end = input.value.length;
+        try { input.setSelectionRange(end, end); } catch (_e) {}
+      });
     });
     document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
       event.preventDefault();
