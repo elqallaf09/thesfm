@@ -1,15 +1,18 @@
-const CACHE_NAME = "the-sfm-trader-v20260701-cinematic-3d-1";
+const CACHE_NAME = "the-sfm-trader-v20260703-map-cover";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/styles.css?v=20260630-cinema",
   "/desktop-balance.css?v=20260630-cinema",
-  "/cinema.css?v=20260701-cinematic-3d-1",
-  "/app.js?v=20260701-trade-performance-1",
-  "/detail.js",
+  "/cinema.css?v=20260703-map-cover",
+  "/app.js?v=20260702-worldmap-bull",
+  "/detail.js?v=20260630-cinema",
   "/manifest.webmanifest",
   "/assets/sfm-trader-logo.svg",
+  "/assets/trading-cinematic-bg.jpg",
+  "/assets/world-dotted-map.png",
+  "/assets/ai-bull-wireframe.png",
   "/the-sfm-trader-icon-256.png",
   "/the-sfm-trader-icon-512.png"
 ];

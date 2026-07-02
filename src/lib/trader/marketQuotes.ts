@@ -77,8 +77,9 @@ const FMP_BATCH_SIZE = 80;
 const QUOTE_CONCURRENCY = 6;
 const QUOTE_CACHE_MS = 3 * 60 * 1000;
 const QUOTE_STALE_MS = 30 * 60 * 1000;
-const ENRICH_MAX_SYMBOLS = 48;
+const ENRICH_MAX_SYMBOLS = 24;
 const ENRICH_CONCURRENCY = 6;
+const ENRICH_TIME_BUDGET_MS = 4500;
 
 function historyAssetType(assetType: TraderAssetType): 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index' {
   if (assetType === 'crypto') return 'crypto';
@@ -104,7 +105,7 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
       quote.providerSymbolUsed,
       quote.providerSymbol,
       quote.symbol,
-    ]).slice(0, 4);
+    ]).slice(0, 2);
 
     let closes: number[] = [];
     for (const candidate of candidates) {
@@ -124,12 +125,17 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
       enriched.chartAvailable = true;
     }
     if (needsChange) {
-      const latest = quote.price ?? closes[closes.length - 1];
+      // التغير يُحسب من نفس السلسلة فقط — خلط سعر المزود مع سلسلة رمز مختلف
+      // المقياس (مؤشر مقابل CFD) ينتج نسباً وهمية مثل +21%
+      const latest = closes[closes.length - 1];
       const previous = closes[closes.length - 2];
-      if (previous > 0 && latest !== null) {
-        enriched.previousClose = round(previous);
-        enriched.change = round(latest - previous);
-        enriched.changePercent = round(((latest - previous) / previous) * 100);
+      const pct = previous > 0 ? ((latest - previous) / previous) * 100 : null;
+      if (pct !== null && Math.abs(pct) <= 20) {
+        enriched.changePercent = round(pct);
+        if (quote.price !== null) {
+          enriched.previousClose = round(quote.price / (1 + pct / 100));
+          enriched.change = round(quote.price - (quote.price / (1 + pct / 100)));
+        }
       }
     }
     return enriched;
@@ -147,7 +153,9 @@ async function enrichQuotesWithHistory(quotes: TraderQuote[]): Promise<TraderQuo
   if (!targets.length) return quotes;
 
   const output = quotes.slice();
+  const startedAt = Date.now();
   for (let cursor = 0; cursor < targets.length; cursor += ENRICH_CONCURRENCY) {
+    if (Date.now() - startedAt > ENRICH_TIME_BUDGET_MS) break; // لا نؤخر الاستجابة أبداً
     const batch = targets.slice(cursor, cursor + ENRICH_CONCURRENCY);
     const settled = await Promise.allSettled(batch.map(({ quote }) => enrichQuoteWithHistory(quote)));
     settled.forEach((result, position) => {

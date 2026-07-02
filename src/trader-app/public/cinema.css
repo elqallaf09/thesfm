@@ -1072,13 +1072,13 @@ tr:last-child td {
 }
 .world-map {
   position: relative;
-  min-height: 320px;
+  min-height: 360px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background:
     radial-gradient(ellipse 60% 50% at 30% 30%, rgba(85, 215, 255, 0.07), transparent 60%),
     radial-gradient(ellipse 50% 50% at 75% 65%, rgba(69, 240, 162, 0.05), transparent 60%),
-    url("/assets/world-dotted-map.png") center / contain no-repeat,
+    url("/assets/world-dotted-map.png") center / cover no-repeat,
     rgba(3, 10, 18, 0.6);
   overflow: hidden;
 }
