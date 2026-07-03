@@ -1057,7 +1057,7 @@
     return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
   }
   function marketMap() {
-    return `<div class="world-map" aria-hidden="true">${SESSIONS.map(([c, top, left], i) => `<span class="map-node node-${i}" style="top:${top}%;left:${left}%"><i></i><b>${h(c)}</b></span>`).join("")}
+    return `<div class="world-map" aria-hidden="true"><img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />${SESSIONS.map(([c, top, left], i) => `<span class="map-node node-${i}" style="top:${top}%;left:${left}%"><i></i><b>${h(c)}</b></span>`).join("")}
       <svg viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg></div>`;
   }
   function biasPanel(rec) {

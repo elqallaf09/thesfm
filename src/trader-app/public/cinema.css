@@ -4144,3 +4144,6 @@ a.badge:focus-visible,
 .rec-market-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .rec-market-chips .chip { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(15,34,56,.55); color: var(--muted); font-size: 12px; cursor: pointer; }
 .rec-market-chips .chip.is-active { border-color: rgba(85,215,255,.5); color: #7fe3ff; background: rgba(30,80,120,.35); }
+
+.world-map-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.9; pointer-events: none; }
+.world-map > *:not(.world-map-img) { position: relative; z-index: 1; }
