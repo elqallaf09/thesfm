@@ -1,0 +1,306 @@
+- generic [active] [ref=f2e1]:
+  - link "تخطّي إلى المحتوى":
+    - /url: "#main-content"
+  - region "Notifications alt+T"
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - link "THE SFM" [ref=f2e4] [cursor=pointer]:
+        - /url: /dashboard
+        - img "THE SFM" [ref=f2e5]
+        - generic [ref=f2e6]:
+          - strong [ref=f2e7]: THE SFM
+          - text: THE SFM / محطة التداول الذكية
+      - generic [ref=f2e8]:
+        - button "بحث سريع" [ref=f2e9] [cursor=pointer]:
+          - img [ref=f2e10]
+        - button "تغيير وضع العرض" [ref=f2e13] [cursor=pointer]:
+          - img [ref=f2e14]
+        - button "اختيار اللغة" [ref=f2e21] [cursor=pointer]:
+          - img [ref=f2e22]
+          - text: العربيةAR
+          - img [ref=f2e27]
+        - button "فتح القائمة" [ref=f2e29] [cursor=pointer]:
+          - img [ref=f2e30]
+    - main [ref=f2e31]:
+      - iframe [ref=f2e32]:
+        - generic [ref=f3e2]:
+          - complementary "Trader navigation" [ref=f3e3]:
+            - generic [ref=f3e4]:
+              - link "the-sfm trader AI market command center" [ref=f3e5] [cursor=pointer]:
+                - /url: /thesfm-trader-own
+                - generic [ref=f3e6]: S
+                - generic [ref=f3e7]:
+                  - strong [ref=f3e8]: the-sfm trader
+                  - text: AI market command center
+              - button "طي القائمة" [ref=f3e9] [cursor=pointer]: «
+            - navigation [ref=f3e10]:
+              - link "القيادة Dashboard" [ref=f3e11] [cursor=pointer]:
+                - /url: /thesfm-trader-own/dashboard
+                - generic [ref=f3e12]: القيادة
+                - generic [ref=f3e13]: Dashboard
+              - link "الأسواق Markets" [ref=f3e14] [cursor=pointer]:
+                - /url: /thesfm-trader-own/markets
+                - generic [ref=f3e15]: الأسواق
+                - generic [ref=f3e16]: Markets
+              - link "ماسح الذكاء AI Scanner" [ref=f3e17] [cursor=pointer]:
+                - /url: /thesfm-trader-own/ai-scanner
+                - generic [ref=f3e18]: ماسح الذكاء
+                - generic [ref=f3e19]: AI Scanner
+              - link "قائمة المتابعة Watchlist" [ref=f3e20] [cursor=pointer]:
+                - /url: /thesfm-trader-own/watchlist
+                - generic [ref=f3e21]: قائمة المتابعة
+                - generic [ref=f3e22]: Watchlist
+              - link "المحفظة Portfolio" [ref=f3e23] [cursor=pointer]:
+                - /url: /thesfm-trader-own/portfolio
+                - generic [ref=f3e24]: المحفظة
+                - generic [ref=f3e25]: Portfolio
+              - link "التنبيهات Alerts" [ref=f3e26] [cursor=pointer]:
+                - /url: /thesfm-trader-own/alerts
+                - generic [ref=f3e27]: التنبيهات
+                - generic [ref=f3e28]: Alerts
+              - link "التوصيات Recommendations" [ref=f3e29] [cursor=pointer]:
+                - /url: /thesfm-trader-own/recommendations
+                - generic [ref=f3e30]: التوصيات
+                - generic [ref=f3e31]: Recommendations
+              - link "أداء الصفقات Trade Performance" [ref=f3e32] [cursor=pointer]:
+                - /url: /thesfm-trader-own/trade-performance
+                - generic [ref=f3e33]: أداء الصفقات
+                - generic [ref=f3e34]: Trade Performance
+              - link "الأخبار News" [ref=f3e35] [cursor=pointer]:
+                - /url: /thesfm-trader-own/news
+                - generic [ref=f3e36]: الأخبار
+                - generic [ref=f3e37]: News
+              - link "التقويم Calendar" [ref=f3e38] [cursor=pointer]:
+                - /url: /thesfm-trader-own/calendar
+                - generic [ref=f3e39]: التقويم
+                - generic [ref=f3e40]: Calendar
+              - link "التعليم Education" [ref=f3e41] [cursor=pointer]:
+                - /url: /thesfm-trader-own/education
+                - generic [ref=f3e42]: التعليم
+                - generic [ref=f3e43]: Education
+              - link "الإعدادات Settings" [ref=f3e44] [cursor=pointer]:
+                - /url: /thesfm-trader-own/settings
+                - generic [ref=f3e45]: الإعدادات
+                - generic [ref=f3e46]: Settings
+              - link "تفاصيل الرمز Symbol Details" [ref=f3e47] [cursor=pointer]:
+                - /url: /thesfm-trader-own/symbol-details
+                - generic [ref=f3e48]: تفاصيل الرمز
+                - generic [ref=f3e49]: Symbol Details
+            - link "AI PRO محرك التحليل الذكي فعّل الماسح للحصول على أقوى الإشارات اللحظية." [ref=f3e50] [cursor=pointer]:
+              - /url: /thesfm-trader-own/ai-scanner
+              - generic [ref=f3e51]: AI PRO
+              - strong [ref=f3e52]: محرك التحليل الذكي
+              - text: فعّل الماسح للحصول على أقوى الإشارات اللحظية.
+            - generic [ref=f3e55]:
+              - strong [ref=f3e56]: المزود متصل
+              - text: "المزود النشط: Yahoo Finance"
+            - link "SFM Trader عضو · الإعدادات" [ref=f3e57] [cursor=pointer]:
+              - /url: /thesfm-trader-own/settings
+              - generic [ref=f3e58]: M
+              - generic [ref=f3e59]:
+                - strong [ref=f3e60]: SFM Trader
+                - text: عضو · الإعدادات
+          - generic [ref=f3e61]:
+            - banner [ref=f3e62]:
+              - generic [ref=f3e63]:
+                - generic [ref=f3e64]: AI TRADING TERMINAL
+                - heading "التوصيات والتحليل" [level=1] [ref=f3e65]
+              - generic [ref=f3e66]:
+                - generic [ref=f3e67]: ابحث عن سهم أو رمز
+                - textbox "ابحث عن سهم أو رمز" [ref=f3e68]:
+                  - /placeholder: AAPL, BTCUSD, XAUUSD...
+                - button "تحليل" [ref=f3e69] [cursor=pointer]
+              - generic [ref=f3e70]:
+                - generic [ref=f3e190]: "المزود النشط: Yahoo Finance"
+                - link "التنبيهات" [ref=f3e74] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/alerts
+                - link "الإعدادات" [ref=f3e75] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/settings
+                - generic [ref=f3e76]: بورصة الكويت · KWD
+            - region "Market ticker" [ref=f3e77]:
+              - button "NAS100 غير متاح" [ref=f3e191] [cursor=pointer]:
+                - generic [ref=f3e192]: NAS
+                - generic [ref=f3e193]:
+                  - strong [ref=f3e194]: NAS100
+                  - generic [ref=f3e195]: غير متاح
+              - button "US30 غير متاح" [ref=f3e196] [cursor=pointer]:
+                - generic [ref=f3e197]: US3
+                - generic [ref=f3e198]:
+                  - strong [ref=f3e199]: US30
+                  - generic [ref=f3e200]: غير متاح
+              - button "Gold غير متاح" [ref=f3e201] [cursor=pointer]:
+                - generic [ref=f3e202]: Au
+                - generic [ref=f3e203]:
+                  - strong [ref=f3e204]: Gold
+                  - generic [ref=f3e205]: غير متاح
+              - button "Oil غير متاح" [ref=f3e206] [cursor=pointer]:
+                - generic [ref=f3e207]: ⛽
+                - generic [ref=f3e208]:
+                  - strong [ref=f3e209]: Oil
+                  - generic [ref=f3e210]: غير متاح
+              - button "BTC/USD غير متاح" [ref=f3e211] [cursor=pointer]:
+                - generic [ref=f3e212]: ₿
+                - generic [ref=f3e213]:
+                  - strong [ref=f3e214]: BTC/USD
+                  - generic [ref=f3e215]: غير متاح
+              - button "KFH 0.773 KWD +4.43%" [ref=f3e216] [cursor=pointer]:
+                - generic [ref=f3e217]: 🇰🇼
+                - generic [ref=f3e218]:
+                  - strong [ref=f3e219]: KFH
+                  - generic [ref=f3e220]: 0.773 KWD +4.43%
+            - main [ref=f3e108]:
+              - generic [ref=f3e221]:
+                - generic [ref=f3e222]:
+                  - generic [ref=f3e223]: RECOMMENDATIONS
+                  - heading "التوصيات والتحليل" [level=2] [ref=f3e224]
+                  - paragraph [ref=f3e225]: "توصيات الذكاء مع حالة كل صفقة: مفتوحة، تحت المتابعة، مكتملة، فاشلة أو منتهية. كل بطاقة لها زر تحليل."
+                - generic [ref=f3e226]:
+                  - article [ref=f3e227]:
+                    - text: All
+                    - strong [ref=f3e228]: "3"
+                    - text: الكل
+                  - article [ref=f3e229]:
+                    - text: Buy
+                    - strong [ref=f3e230]: "0"
+                    - text: شراء
+                  - article [ref=f3e231]:
+                    - text: Sell
+                    - strong [ref=f3e232]: "0"
+                    - text: بيع
+                  - article [ref=f3e233]:
+                    - text: Wait
+                    - strong [ref=f3e234]: "3"
+                    - text: انتظار
+                - generic [ref=f3e235]:
+                  - generic [ref=f3e236]: SIGNALS
+                  - heading "قائمة التوصيات" [level=2] [ref=f3e237]
+                  - generic [ref=f3e238]:
+                    - button "الأسهم الأمريكية" [ref=f3e239] [cursor=pointer]
+                    - button "العملات" [ref=f3e240] [cursor=pointer]
+                    - button "الأصول الرقمية" [ref=f3e241] [cursor=pointer]
+                    - button "السلع" [ref=f3e242] [cursor=pointer]
+                    - button "المؤشرات" [ref=f3e243] [cursor=pointer]
+                    - button "الصناديق المتداولة" [ref=f3e244] [cursor=pointer]
+                    - button "أسواق الخليج" [ref=f3e245] [cursor=pointer]
+                    - button "السوق السعودي" [ref=f3e246] [cursor=pointer]
+                    - button "بورصة الكويت" [ref=f3e247] [cursor=pointer]
+                    - button "سوق الإمارات" [ref=f3e248] [cursor=pointer]
+                    - button "سوق قطر" [ref=f3e249] [cursor=pointer]
+                    - button "سوق البحرين" [ref=f3e250] [cursor=pointer]
+                    - button "سوق عمان" [ref=f3e251] [cursor=pointer]
+                    - button "الأسهم الأوروبية" [ref=f3e252] [cursor=pointer]
+                    - button "الأسهم الآسيوية" [ref=f3e253] [cursor=pointer]
+                    - button "أسهم التقنية" [ref=f3e254] [cursor=pointer]
+                    - button "أسهم الذكاء الاصطناعي" [ref=f3e255] [cursor=pointer]
+                    - button "أشباه الموصلات" [ref=f3e256] [cursor=pointer]
+                    - button "الطاقة" [ref=f3e257] [cursor=pointer]
+                    - button "البنوك" [ref=f3e258] [cursor=pointer]
+                    - button "الأغذية والاستهلاك" [ref=f3e259] [cursor=pointer]
+                    - button "الصحة والدواء" [ref=f3e260] [cursor=pointer]
+                  - generic [ref=f3e261]:
+                    - button "الكل" [ref=f3e262] [cursor=pointer]
+                    - button "شراء" [ref=f3e263] [cursor=pointer]
+                    - button "بيع" [ref=f3e264] [cursor=pointer]
+                    - button "انتظار" [ref=f3e265] [cursor=pointer]
+                    - button "ثقة عالية" [ref=f3e266] [cursor=pointer]
+                  - generic [ref=f3e268]:
+                    - article [ref=f3e269]:
+                      - generic [ref=f3e270]:
+                        - generic [ref=f3e271]: 🇰🇼
+                        - generic [ref=f3e272]:
+                          - strong [ref=f3e273]: KFH.KW
+                          - generic [ref=f3e274]: KFH.KW
+                        - generic [ref=f3e275]: مراقبة
+                      - generic [ref=f3e276]:
+                        - generic [ref=f3e277]:
+                          - text: السعر
+                          - generic [ref=f3e278]: 0.773 KWD
+                        - generic [ref=f3e279]:
+                          - text: الهدف
+                          - generic [ref=f3e280]: "--"
+                        - generic [ref=f3e281]:
+                          - text: وقف
+                          - generic [ref=f3e282]: "--"
+                        - generic [ref=f3e283]:
+                          - text: ثقة
+                          - generic [ref=f3e284]: 60%
+                      - generic [ref=f3e285]:
+                        - generic [ref=f3e286]: مفتوحة
+                        - generic [ref=f3e287]:
+                          - button "متابعة الصفقة" [ref=f3e288] [cursor=pointer]
+                          - button "فتح التحليل" [ref=f3e289] [cursor=pointer]
+                    - article [ref=f3e290]:
+                      - generic [ref=f3e291]:
+                        - generic [ref=f3e292]: 🇰🇼
+                        - generic [ref=f3e293]:
+                          - strong [ref=f3e294]: NBK.KW
+                          - generic [ref=f3e295]: NBK.KW
+                        - generic [ref=f3e296]: مراقبة
+                      - generic [ref=f3e297]:
+                        - generic [ref=f3e298]:
+                          - text: السعر
+                          - generic [ref=f3e299]: 0.805 KWD
+                        - generic [ref=f3e300]:
+                          - text: الهدف
+                          - generic [ref=f3e301]: "--"
+                        - generic [ref=f3e302]:
+                          - text: وقف
+                          - generic [ref=f3e303]: "--"
+                        - generic [ref=f3e304]:
+                          - text: ثقة
+                          - generic [ref=f3e305]: 59%
+                      - generic [ref=f3e306]:
+                        - generic [ref=f3e307]: مفتوحة
+                        - generic [ref=f3e308]:
+                          - button "متابعة الصفقة" [ref=f3e309] [cursor=pointer]
+                          - button "فتح التحليل" [ref=f3e310] [cursor=pointer]
+                    - article [ref=f3e311]:
+                      - generic [ref=f3e312]:
+                        - generic [ref=f3e313]: 🇰🇼
+                        - generic [ref=f3e314]:
+                          - strong [ref=f3e315]: ZAIN.KW
+                          - generic [ref=f3e316]: ZAIN.KW
+                        - generic [ref=f3e317]: مراقبة
+                      - generic [ref=f3e318]:
+                        - generic [ref=f3e319]:
+                          - text: السعر
+                          - generic [ref=f3e320]: 0.603 KWD
+                        - generic [ref=f3e321]:
+                          - text: الهدف
+                          - generic [ref=f3e322]: "--"
+                        - generic [ref=f3e323]:
+                          - text: وقف
+                          - generic [ref=f3e324]: "--"
+                        - generic [ref=f3e325]:
+                          - text: ثقة
+                          - generic [ref=f3e326]: 60%
+                      - generic [ref=f3e327]:
+                        - generic [ref=f3e328]: مفتوحة
+                        - generic [ref=f3e329]:
+                          - button "متابعة الصفقة" [ref=f3e330] [cursor=pointer]
+                          - button "فتح التحليل" [ref=f3e331] [cursor=pointer]
+                - generic [ref=f3e332]:
+                  - strong [ref=f3e333]: "تنبيه:"
+                  - text: جميع المحتويات لأغراض تعليمية ومعلوماتية فقط ولا تُعد نصيحة استثمارية. التداول ينطوي على مخاطرة قد تصل لكامل رأس المال.
+            - contentinfo [ref=f3e165]:
+              - generic [ref=f3e334]:
+                - generic [ref=f3e335]: البيانات اللحظية
+                - strong [ref=f3e336]: متصلة
+                - emphasis [ref=f3e337]: Real-time
+              - generic [ref=f3e338]:
+                - generic [ref=f3e339]: الأسواق
+                - strong [ref=f3e340]: "120"
+                - emphasis [ref=f3e341]: Markets
+              - generic [ref=f3e342]:
+                - generic [ref=f3e343]: الأصول المحللة
+                - strong [ref=f3e344]: "3"
+                - emphasis [ref=f3e345]: Analyzed
+              - generic [ref=f3e346]:
+                - generic [ref=f3e347]: قائمة المتابعة
+                - strong [ref=f3e348]: "0"
+                - emphasis [ref=f3e349]: Watchlist
+              - generic [ref=f3e350]:
+                - generic [ref=f3e351]: آخر تحديث
+                - strong [ref=f3e352]: ١٠:٥٨:١٣ م
+                - emphasis [ref=f3e353]: Updated
+              - strong [ref=f3e356]: النظام يعمل

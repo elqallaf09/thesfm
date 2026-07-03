@@ -7,7 +7,7 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260701-trade-performance-1";
+  const VER = "20260703-market-universe-1";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
@@ -24,30 +24,55 @@
     calendar: "تقويم السوق", education: "مركز التعليم", settings: "إعدادات النظام", "symbol-details": "تفاصيل الرمز"
   };
 
-  // [id, ar, en, family, currency, sampleSymbols, tone, apiMarket]
+  const MARKET_SYMBOLS = {
+    usStocks: ["AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA", "GOOGL", "NFLX", "AMD", "INTC", "JPM", "BAC", "V", "MA", "DIS", "KO", "PEP", "MCD", "WMT", "COST"],
+    forex: ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD", "NZDUSD", "EURJPY", "GBPJPY"],
+    crypto: ["BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD", "ADAUSD", "DOGEUSD"],
+    commodities: ["XAUUSD", "XAGUSD", "WTI", "BRENT", "GC=F", "SI=F", "CL=F", "BZ=F"],
+    indices: ["US30", "NAS100", "SPX500", "DAX", "FTSE", "CAC40", "NIKKEI", "HSI", "DXY"],
+    etfs: ["SPY", "QQQ", "VOO", "DIA", "IWM", "GLD", "SLV", "VTI", "VEA", "VWO", "AGG", "BND", "TLT", "HYG"],
+    gcc: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "KFH.KW", "NBK.KW", "ZAIN.KW", "BOUBYAN.KW", "EMAAR.AE", "FAB.AE", "ETISALAT.AE", "DIB.AE", "QNBK.QA", "QIBK.QA", "IQCD.QA", "AUB.BH", "GFH.BH", "BATELCO.BH", "BKMB.OM", "OMINV.OM"],
+    saudi: ["2222.SR", "1120.SR", "1180.SR", "2010.SR", "7010.SR", "1211.SR", "1010.SR", "1020.SR", "1050.SR", "1060.SR", "1080.SR", "2020.SR", "2380.SR", "2280.SR", "4002.SR", "4004.SR", "4013.SR", "4164.SR", "4190.SR", "4300.SR", "8010.SR", "8210.SR", "7203.SR", "7020.SR"],
+    kuwait: ["KFH.KW", "NBK.KW", "ZAIN.KW", "BOUBYAN.KW", "GBK.KW", "BURG.KW", "CBK.KW", "AGLTY.KW", "KIB.KW", "WARBA.KW", "MABANEE.KW", "HUMANSOFT.KW", "STC.KW", "ALIMTIAZ.KW", "GULFBANK.KW", "NIND.KW", "KAMCO.KW", "MEZZAN.KW", "JAZEERA.KW", "ALAFCO.KW"],
+    uae: ["EMAAR.AE", "DIB.AE", "DEWA.AE", "SALIK.AE", "DU.AE", "DFM.AE", "EMIRATESNBD.AE", "AIRARABIA.AE", "EMAARDEV.AE", "TALABAT.AE", "FAB.AE", "ETISALAT.AE"],
+    qatar: ["QNBK.QA", "QIBK.QA", "IQCD.QA", "MARK.QA", "CBQK.QA", "DHBK.QA", "ABQK.QA", "QIIK.QA", "QISI.QA", "ORDS.QA", "VFQS.QA", "QEWS.QA", "MPHC.QA", "QGTS.QA", "QAMC.QA", "BRES.QA", "ERES.QA", "UDCD.QA", "GWCS.QA", "MERS.QA"],
+    bahrain: ["AUB.BH", "GFH.BH", "BATELCO.BH", "NBB.BH", "BBK.BH", "ABC.BH", "BISB.BH", "SALAM.BH", "ZAINBH.BH", "ALBH.BH", "SEEF.BH", "ESTERAD.BH", "TRAFCO.BH", "KHCB.BH"],
+    oman: ["BKMB.OM", "OMINV.OM", "NBOB.OM", "OMAB.OM", "ORED.OM", "MSMI.OM", "RAYS.OM", "SMNP.OM", "ALMI.OM", "DHOF.OM", "OQGN.OM", "NAPI.OM", "DBIH.OM", "HBMO.OM", "MAZOON.OM"],
+    europe: ["ASML.AS", "SAP.DE", "NESN.SW", "MC.PA", "SHEL.L", "NOVO-B.CO", "AZN.L", "HSBA.L", "ULVR.L", "SIE.DE", "OR.PA", "TTE.PA", "AIR.PA", "SU.PA", "AI.PA", "IBE.MC", "SAN.MC", "ITX.MC", "ENEL.MI", "UCG.MI", "ROG.SW", "NOVN.SW"],
+    asia: ["7203.T", "9988.HK", "TSM", "005930.KS", "6758.T", "9984.T", "0700.HK", "1299.HK", "2330.TW", "2317.TW", "BABA", "SONY", "TM", "NIO", "JD", "BIDU"],
+    technology: ["AAPL", "MSFT", "GOOGL", "GOOG", "ORCL", "CRM", "ADBE", "NOW", "SNOW", "PANW", "CRWD", "SHOP", "INTU", "ADP", "IBM", "CSCO", "NET", "UBER", "PLTR", "DELL"],
+    ai: ["NVDA", "MSFT", "GOOGL", "GOOG", "AMD", "PLTR", "META", "AMZN", "AVGO", "TSM", "ASML", "CRM", "NOW", "SNOW", "AI", "PATH", "SOUN", "ARM", "SMCI", "MU"],
+    semiconductors: ["NVDA", "AMD", "INTC", "AVGO", "TSM", "ASML", "QCOM", "TXN", "MU", "AMAT", "LRCX", "KLAC", "MRVL", "MCHP", "ON", "NXPI", "ADI", "MPWR", "ARM", "SMCI", "TER", "SWKS", "QRVO", "LSCC", "COHR", "UMC", "GFS", "WOLF"],
+    energy: ["XOM", "CVX", "2222.SR", "OXY", "COP", "SLB", "EOG", "MPC", "PSX", "VLO", "HAL", "BKR", "SHEL.L", "TTE.PA", "ADNOCDIST.AE", "ADNOCGAS.AD"],
+    banking: ["JPM", "BAC", "WFC", "C", "GS", "MS", "USB", "PNC", "TD", "RY", "HSBA.L", "SAN.MC", "UCG.MI", "NBK.KW", "KFH.KW", "QNBK.QA", "QIBK.QA", "1120.SR", "1180.SR", "AUB.BH", "BKMB.OM"],
+    food: ["KO", "PEP", "MCD", "COST", "WMT", "PG", "MDLZ", "SBUX", "YUM", "KHC", "GIS", "K", "HSY", "TSN", "ULVR.L", "NESN.SW"],
+    healthcare: ["LLY", "PFE", "JNJ", "MRK", "UNH", "ABBV", "ABT", "TMO", "DHR", "BMY", "AMGN", "GILD", "ISRG", "VRTX", "AZN.L", "NOVN.SW", "ROG.SW"]
+  };
+
+  // [id, ar, en, family, currency, monitoredSymbols, tone, apiMarket]
   const MARKETS = [
-    ["us-stocks", "الأسهم الأمريكية", "US Stocks", "Equities", "USD", ["AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA"], "featured", "us-stocks"],
-    ["forex", "العملات", "Forex", "FX", "Pair", ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD"], "", "forex"],
-    ["crypto", "الأصول الرقمية", "Crypto", "Digital", "USD", ["BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD"], "featured", "crypto"],
-    ["commodities", "السلع", "Commodities", "Macro", "USD", ["XAUUSD", "XAGUSD", "WTI", "BRENT"], "", "commodities"],
-    ["indices", "المؤشرات", "Indices", "Benchmarks", "Local", ["SPX", "NDX", "DJI", "DXY"], "", "indices"],
-    ["etfs", "الصناديق المتداولة", "ETFs", "Funds", "USD", ["SPY", "QQQ", "GLD", "IWM"], "", "etfs"],
-    ["gcc", "أسواق الخليج", "Gulf Markets", "Regional", "Mixed", ["2222.SR", "EMAAR.AE", "QNBK.QA", "KFH.KW"], "", "gcc"],
-    ["saudi", "السوق السعودي", "Saudi Market", "Tadawul", "SAR", ["2222.SR", "1120.SR", "7010.SR"], "", "saudi"],
-    ["kuwait", "بورصة الكويت", "Kuwait Market", "Boursa", "KWD", ["KFH.KW", "NBK.KW", "ZAIN.KW"], "", "kuwait"],
-    ["uae", "سوق الإمارات", "UAE Market", "ADX/DFM", "AED", ["EMAAR.AE", "FAB.AE", "ETISALAT.AE"], "", "uae"],
-    ["qatar", "سوق قطر", "Qatar Market", "QSE", "QAR", ["QNBK.QA", "IQCD.QA", "QIBK.QA"], "", "qatar"],
-    ["bahrain", "سوق البحرين", "Bahrain Market", "BHB", "BHD", ["AUB.BH", "GFH.BH", "BATELCO.BH"], "", "bahrain"],
-    ["oman", "سوق عمان", "Oman Market", "MSX", "OMR", ["BKMB.OM", "OMINV.OM"], "", "oman"],
-    ["europe", "الأسهم الأوروبية", "European Stocks", "Global", "EUR", ["ASML.AS", "SAP.DE", "NESN.SW", "MC.PA"], "", "europe"],
-    ["asia", "الأسهم الآسيوية", "Asian Stocks", "Global", "Mixed", ["7203.T", "9988.HK", "TSM", "005930.KS"], "", "asia"],
-    ["technology", "أسهم التقنية", "Technology", "Sector", "USD", ["AAPL", "MSFT", "GOOGL", "ORCL", "CRM"], "", "technology"],
-    ["ai", "أسهم الذكاء الاصطناعي", "AI Stocks", "Sector", "USD", ["NVDA", "MSFT", "GOOGL", "AMD", "PLTR"], "featured", "ai"],
-    ["semiconductors", "أشباه الموصلات", "Semiconductors", "Sector", "USD", ["NVDA", "AMD", "TSM", "AVGO", "INTC"], "", "semiconductors"],
-    ["energy", "الطاقة", "Energy Stocks", "Sector", "Mixed", ["XOM", "CVX", "2222.SR", "OXY"], "", "energy"],
-    ["banking", "البنوك", "Banking Stocks", "Sector", "Mixed", ["JPM", "BAC", "NBK.KW", "QNBK.QA"], "", "banking"],
-    ["food", "الأغذية والاستهلاك", "Food / Consumer", "Sector", "USD", ["KO", "PEP", "MCD", "COST"], "", "food"],
-    ["healthcare", "الصحة والدواء", "Pharma / Healthcare", "Sector", "USD", ["LLY", "PFE", "JNJ", "MRK"], "", "healthcare"]
+    ["us-stocks", "الأسهم الأمريكية", "US Stocks", "Equities", "USD", MARKET_SYMBOLS.usStocks, "featured", "us-stocks"],
+    ["forex", "العملات", "Forex", "FX", "Pair", MARKET_SYMBOLS.forex, "", "forex"],
+    ["crypto", "الأصول الرقمية", "Crypto", "Digital", "USD", MARKET_SYMBOLS.crypto, "featured", "crypto"],
+    ["commodities", "السلع", "Commodities", "Macro", "USD", MARKET_SYMBOLS.commodities, "", "commodities"],
+    ["indices", "المؤشرات", "Indices", "Benchmarks", "Local", MARKET_SYMBOLS.indices, "", "indices"],
+    ["etfs", "الصناديق المتداولة", "ETFs", "Funds", "USD", MARKET_SYMBOLS.etfs, "", "etfs"],
+    ["gcc", "أسواق الخليج", "Gulf Markets", "Regional", "Mixed", MARKET_SYMBOLS.gcc, "", "gcc"],
+    ["saudi", "السوق السعودي", "Saudi Market", "Tadawul", "SAR", MARKET_SYMBOLS.saudi, "", "saudi"],
+    ["kuwait", "بورصة الكويت", "Kuwait Market", "Boursa", "KWD", MARKET_SYMBOLS.kuwait, "", "kuwait"],
+    ["uae", "سوق الإمارات", "UAE Market", "ADX/DFM", "AED", MARKET_SYMBOLS.uae, "", "uae"],
+    ["qatar", "سوق قطر", "Qatar Market", "QSE", "QAR", MARKET_SYMBOLS.qatar, "", "qatar"],
+    ["bahrain", "سوق البحرين", "Bahrain Market", "BHB", "BHD", MARKET_SYMBOLS.bahrain, "", "bahrain"],
+    ["oman", "سوق عمان", "Oman Market", "MSX", "OMR", MARKET_SYMBOLS.oman, "", "oman"],
+    ["europe", "الأسهم الأوروبية", "European Stocks", "Global", "EUR", MARKET_SYMBOLS.europe, "", "europe"],
+    ["asia", "الأسهم الآسيوية", "Asian Stocks", "Global", "Mixed", MARKET_SYMBOLS.asia, "", "asia"],
+    ["technology", "أسهم التقنية", "Technology", "Sector", "USD", MARKET_SYMBOLS.technology, "", "technology"],
+    ["ai", "أسهم الذكاء الاصطناعي", "AI Stocks", "Sector", "USD", MARKET_SYMBOLS.ai, "featured", "ai"],
+    ["semiconductors", "أشباه الموصلات", "Semiconductors", "Sector", "USD", MARKET_SYMBOLS.semiconductors, "", "semiconductors"],
+    ["energy", "الطاقة", "Energy Stocks", "Sector", "Mixed", MARKET_SYMBOLS.energy, "", "energy"],
+    ["banking", "البنوك", "Banking Stocks", "Sector", "Mixed", MARKET_SYMBOLS.banking, "", "banking"],
+    ["food", "الأغذية والاستهلاك", "Food / Consumer", "Sector", "USD", MARKET_SYMBOLS.food, "", "food"],
+    ["healthcare", "الصحة والدواء", "Pharma / Healthcare", "Sector", "USD", MARKET_SYMBOLS.healthcare, "", "healthcare"]
   ].map(([id, ar, en, family, currency, symbols, tone, apiMarket]) => ({ id, ar, en, family, currency, symbols, tone, apiMarket }));
 
   const EXPLORE = ["forex", "us-stocks", "kuwait", "saudi", "uae", "qatar", "bahrain", "europe", "asia", "crypto", "commodities", "indices", "etfs", "technology", "ai", "semiconductors", "energy", "banking", "healthcare", "food"];
@@ -446,7 +471,7 @@
       : marketUnavailable(m, cached)) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري تحميل ${h(m.ar)}</h2></div></div>`;
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ كل الأسواق</a>
-      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. الرموز المعروضة مرجعية وتُعرض أسعارها فقط عند توفرها من المزود.`, "MARKET")}
+      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. نتابع ${latinNumber(m.symbols.length)} رمزاً حقيقياً، وتُعرض الأسعار والتحليلات فقط عند توفرها من المزود.`, "MARKET")}
       <section class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</section>
       ${body}
       ${disclaimer()}
@@ -1114,6 +1139,13 @@
       "^NDX": ["NAS100", "NDX", "^NDX", "NQ=F", "IXIC"],
       US30: ["US30", "DJI", "^DJI", "YM=F"],
       "^DJI": ["US30", "DJI", "^DJI", "YM=F"],
+      SPX500: ["SPX500", "SPX", "^GSPC", "ES=F"],
+      "^GSPC": ["SPX500", "SPX", "^GSPC", "ES=F"],
+      DAX: ["DAX", "^GDAXI", "GER40"],
+      FTSE: ["FTSE", "^FTSE", "UK100"],
+      CAC40: ["CAC40", "^FCHI", "FRA40"],
+      NIKKEI: ["NIKKEI", "^N225", "JP225"],
+      HSI: ["HSI", "^HSI", "HK50"],
       BTCUSD: ["BTCUSD", "BTC-USD", "BTC/USD"],
       "BTC-USD": ["BTCUSD", "BTC-USD", "BTC/USD"],
       "BTC/USD": ["BTCUSD", "BTC-USD", "BTC/USD"],
@@ -1129,7 +1161,9 @@
       OIL: ["OIL", "WTI", "USOIL", "CL=F"],
       WTI: ["OIL", "WTI", "USOIL", "CL=F"],
       USOIL: ["OIL", "WTI", "USOIL", "CL=F"],
-      "CL=F": ["OIL", "WTI", "USOIL", "CL=F"]
+      "CL=F": ["OIL", "WTI", "USOIL", "CL=F"],
+      BRENT: ["BRENT", "UKOIL", "BZ=F"],
+      "BZ=F": ["BRENT", "UKOIL", "BZ=F"]
     };
     return map[s] || [s];
   }
@@ -1139,9 +1173,16 @@
     if (["ETHUSD", "ETH-USD", "ETH/USD"].includes(s)) return "ETH/USD";
     if (["NAS100", "^NDX", "NQ=F"].includes(s)) return "NAS100";
     if (["US30", "^DJI", "YM=F"].includes(s)) return "US30";
+    if (["SPX", "^GSPC", "ES=F"].includes(s)) return "SPX500";
+    if (["^GDAXI", "GER40"].includes(s)) return "DAX";
+    if (["^FTSE", "UK100"].includes(s)) return "FTSE";
+    if (["^FCHI", "FRA40"].includes(s)) return "CAC40";
+    if (["^N225", "JP225"].includes(s)) return "NIKKEI";
+    if (["^HSI", "HK50"].includes(s)) return "HSI";
     if (["GC=F", "XAUUSD=X"].includes(s)) return "XAUUSD";
     if (["SI=F", "XAGUSD=X"].includes(s)) return "XAGUSD";
     if (["OIL", "USOIL", "CL=F"].includes(s)) return "Oil";
+    if (["UKOIL", "BZ=F"].includes(s)) return "BRENT";
     return symbol;
   }
   function sparkline(asset, chg) {
@@ -1209,7 +1250,10 @@
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${m.symbols.slice(0, 4).map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}</div></a>`;
+    const visible = m.symbols.slice(0, 8);
+    const hidden = Math.max(0, m.symbols.length - visible.length);
+    const more = hidden ? `<span class="badge sm muted market-more"><span class="ltr">+${latinNumber(hidden)}</span></span>` : "";
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span> · <span class="ltr">${latinNumber(m.symbols.length)}</span> رمزاً للمتابعة</p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div></a>`;
   }
   function heatmap(items) {
     return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
@@ -2166,8 +2210,8 @@
   }
   function marketApi(id) { const m = MARKETS.find(x => x.id === id); return m ? m.apiMarket : (id || "us-stocks"); }
   function currentMarket() { return MARKETS.find(x => x.id === state.settings.defaultMarket) || MARKETS[0]; }
-  function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$/i.test(s)) return "EUR"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || ["XAUUSD", "XAGUSD", "WTI", "BRENT"].includes(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
-  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|NDX|DJI|DXY|IXIC)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|GLD|IWM|VOO)$/.test(s)) return "fund"; return "stock"; }
+  function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$|\.MI$|\.MC$/i.test(s)) return "EUR"; if (/\.L$/i.test(s)) return "GBP"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || /^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
+  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s) || /XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|XLK|XLF|XLE|XLV|XLY|XLI|XLP|XLU|VNQ|SOXX)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "غير متاح" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
   function change(v) { return v === null || v === undefined ? "غير متاح" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }

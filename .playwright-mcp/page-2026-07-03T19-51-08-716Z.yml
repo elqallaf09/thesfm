@@ -1,0 +1,436 @@
+- generic:
+  - link "تخطّي إلى المحتوى":
+    - /url: "#main-content"
+  - region "Notifications alt+T"
+  - main [ref=f3e1]:
+    - iframe [active] [ref=f3e2]:
+      - generic [ref=f4e2]:
+        - complementary "Trader navigation" [ref=f4e3]:
+          - generic [ref=f4e4]:
+            - link "the-sfm trader AI market command center" [ref=f4e5] [cursor=pointer]:
+              - /url: /thesfm-trader-own
+              - generic [ref=f4e6]: S
+              - generic [ref=f4e7]:
+                - strong [ref=f4e8]: the-sfm trader
+                - text: AI market command center
+            - button "طي القائمة" [ref=f4e9] [cursor=pointer]: «
+          - navigation [ref=f4e10]:
+            - link "القيادة Dashboard" [ref=f4e11] [cursor=pointer]:
+              - /url: /thesfm-trader-own/dashboard
+              - generic [ref=f4e12]: القيادة
+              - generic [ref=f4e13]: Dashboard
+            - link "الأسواق Markets" [active] [ref=f4e14] [cursor=pointer]:
+              - /url: /thesfm-trader-own/markets
+              - generic [ref=f4e15]: الأسواق
+              - generic [ref=f4e16]: Markets
+            - link "ماسح الذكاء AI Scanner" [ref=f4e17] [cursor=pointer]:
+              - /url: /thesfm-trader-own/ai-scanner
+              - generic [ref=f4e18]: ماسح الذكاء
+              - generic [ref=f4e19]: AI Scanner
+            - link "قائمة المتابعة Watchlist" [ref=f4e20] [cursor=pointer]:
+              - /url: /thesfm-trader-own/watchlist
+              - generic [ref=f4e21]: قائمة المتابعة
+              - generic [ref=f4e22]: Watchlist
+            - link "المحفظة Portfolio" [ref=f4e23] [cursor=pointer]:
+              - /url: /thesfm-trader-own/portfolio
+              - generic [ref=f4e24]: المحفظة
+              - generic [ref=f4e25]: Portfolio
+            - link "التنبيهات Alerts" [ref=f4e26] [cursor=pointer]:
+              - /url: /thesfm-trader-own/alerts
+              - generic [ref=f4e27]: التنبيهات
+              - generic [ref=f4e28]: Alerts
+            - link "التوصيات Recommendations" [ref=f4e29] [cursor=pointer]:
+              - /url: /thesfm-trader-own/recommendations
+              - generic [ref=f4e30]: التوصيات
+              - generic [ref=f4e31]: Recommendations
+            - link "أداء الصفقات Trade Performance" [ref=f4e32] [cursor=pointer]:
+              - /url: /thesfm-trader-own/trade-performance
+              - generic [ref=f4e33]: أداء الصفقات
+              - generic [ref=f4e34]: Trade Performance
+            - link "الأخبار News" [ref=f4e35] [cursor=pointer]:
+              - /url: /thesfm-trader-own/news
+              - generic [ref=f4e36]: الأخبار
+              - generic [ref=f4e37]: News
+            - link "التقويم Calendar" [ref=f4e38] [cursor=pointer]:
+              - /url: /thesfm-trader-own/calendar
+              - generic [ref=f4e39]: التقويم
+              - generic [ref=f4e40]: Calendar
+            - link "التعليم Education" [ref=f4e41] [cursor=pointer]:
+              - /url: /thesfm-trader-own/education
+              - generic [ref=f4e42]: التعليم
+              - generic [ref=f4e43]: Education
+            - link "الإعدادات Settings" [ref=f4e44] [cursor=pointer]:
+              - /url: /thesfm-trader-own/settings
+              - generic [ref=f4e45]: الإعدادات
+              - generic [ref=f4e46]: Settings
+            - link "تفاصيل الرمز Symbol Details" [ref=f4e47] [cursor=pointer]:
+              - /url: /thesfm-trader-own/symbol-details
+              - generic [ref=f4e48]: تفاصيل الرمز
+              - generic [ref=f4e49]: Symbol Details
+          - link "AI PRO محرك التحليل الذكي فعّل الماسح للحصول على أقوى الإشارات اللحظية." [ref=f4e50] [cursor=pointer]:
+            - /url: /thesfm-trader-own/ai-scanner
+            - generic [ref=f4e51]: AI PRO
+            - strong [ref=f4e52]: محرك التحليل الذكي
+            - text: فعّل الماسح للحصول على أقوى الإشارات اللحظية.
+          - generic [ref=f4e55]:
+            - strong [ref=f4e56]: المزود متصل
+            - text: "المزود النشط: Yahoo Finance"
+          - link "SFM Trader عضو · الإعدادات" [ref=f4e57] [cursor=pointer]:
+            - /url: /thesfm-trader-own/settings
+            - generic [ref=f4e58]: M
+            - generic [ref=f4e59]:
+              - strong [ref=f4e60]: SFM Trader
+              - text: عضو · الإعدادات
+        - generic [ref=f4e61]:
+          - banner [ref=f4e62]:
+            - generic [ref=f4e63]:
+              - generic [ref=f4e64]: AI TRADING TERMINAL
+              - heading "خريطة الأسواق" [level=1] [ref=f4e660]
+            - generic [ref=f4e66]:
+              - generic [ref=f4e67]: ابحث عن سهم أو رمز
+              - textbox "ابحث عن سهم أو رمز" [ref=f4e68]:
+                - /placeholder: AAPL, BTCUSD, XAUUSD...
+              - button "تحليل" [ref=f4e69] [cursor=pointer]
+            - generic [ref=f4e70]:
+              - generic [ref=f4e662]: "المزود النشط: Yahoo Finance"
+              - link "التنبيهات" [ref=f4e74] [cursor=pointer]:
+                - /url: /thesfm-trader-own/alerts
+              - link "الإعدادات" [ref=f4e75] [cursor=pointer]:
+                - /url: /thesfm-trader-own/settings
+              - generic [ref=f4e76]: الأسهم الأمريكية · USD
+          - region "Market ticker" [ref=f4e77]:
+            - button "NAS100 غير متاح" [ref=f4e663] [cursor=pointer]:
+              - generic [ref=f4e664]: NAS
+              - generic [ref=f4e665]:
+                - strong [ref=f4e666]: NAS100
+                - generic [ref=f4e667]: غير متاح
+            - button "US30 غير متاح" [ref=f4e668] [cursor=pointer]:
+              - generic [ref=f4e669]: US3
+              - generic [ref=f4e670]:
+                - strong [ref=f4e671]: US30
+                - generic [ref=f4e672]: غير متاح
+            - button "Gold غير متاح" [ref=f4e673] [cursor=pointer]:
+              - generic [ref=f4e674]: Au
+              - generic [ref=f4e675]:
+                - strong [ref=f4e676]: Gold
+                - generic [ref=f4e677]: غير متاح
+            - button "Oil غير متاح" [ref=f4e678] [cursor=pointer]:
+              - generic [ref=f4e679]: ⛽
+              - generic [ref=f4e680]:
+                - strong [ref=f4e681]: Oil
+                - generic [ref=f4e682]: غير متاح
+            - button "BTC/USD غير متاح" [ref=f4e683] [cursor=pointer]:
+              - generic [ref=f4e684]: ₿
+              - generic [ref=f4e685]:
+                - strong [ref=f4e686]: BTC/USD
+                - generic [ref=f4e687]: غير متاح
+            - button "KFH غير متاح" [ref=f4e688] [cursor=pointer]:
+              - generic [ref=f4e689]: 🇰🇼
+              - generic [ref=f4e690]:
+                - strong [ref=f4e691]: KFH
+                - generic [ref=f4e692]: غير متاح
+          - main [ref=f4e108]:
+            - generic [ref=f4e693]:
+              - generic [ref=f4e694]:
+                - generic [ref=f4e695]: MARKETS
+                - heading "خريطة أسواق كاملة" [level=2] [ref=f4e696]
+                - paragraph [ref=f4e697]: الأسهم، الخليج، العملات، الكريبتو، السلع، المؤشرات، الصناديق والقطاعات. كل بطاقة تعرض العملة الخاصة بالأصل ولا ترث عملة السوق المختار.
+              - generic [ref=f4e698]:
+                - link "🇺🇸 US Stocks الأسهم الأمريكية Equities · العملة USD AAPL MSFT NVDA AMZN" [ref=f4e699] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/us-stocks
+                  - generic [ref=f4e700]:
+                    - generic [ref=f4e701]: 🇺🇸
+                    - generic [ref=f4e702]: US Stocks
+                  - strong [ref=f4e703]: الأسهم الأمريكية
+                  - paragraph [ref=f4e704]: Equities · العملة USD
+                  - generic [ref=f4e705]:
+                    - generic [ref=f4e707]: AAPL
+                    - generic [ref=f4e709]: MSFT
+                    - generic [ref=f4e711]: NVDA
+                    - generic [ref=f4e713]: AMZN
+                - link "💱 Forex العملات FX · العملة Pair EURUSD GBPUSD USDJPY USDCHF" [ref=f4e714] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/forex
+                  - generic [ref=f4e715]:
+                    - generic [ref=f4e716]: 💱
+                    - generic [ref=f4e717]: Forex
+                  - strong [ref=f4e718]: العملات
+                  - paragraph [ref=f4e719]: FX · العملة Pair
+                  - generic [ref=f4e720]:
+                    - generic [ref=f4e722]: EURUSD
+                    - generic [ref=f4e724]: GBPUSD
+                    - generic [ref=f4e726]: USDJPY
+                    - generic [ref=f4e728]: USDCHF
+                - link "₿ Crypto الأصول الرقمية Digital · العملة USD BTCUSD ETHUSD SOLUSD BNBUSD" [ref=f4e729] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/crypto
+                  - generic [ref=f4e730]:
+                    - generic [ref=f4e731]: ₿
+                    - generic [ref=f4e732]: Crypto
+                  - strong [ref=f4e733]: الأصول الرقمية
+                  - paragraph [ref=f4e734]: Digital · العملة USD
+                  - generic [ref=f4e735]:
+                    - generic [ref=f4e737]: BTCUSD
+                    - generic [ref=f4e739]: ETHUSD
+                    - generic [ref=f4e741]: SOLUSD
+                    - generic [ref=f4e743]: BNBUSD
+                - link "🛢 Commodities السلع Macro · العملة USD XAUUSD XAGUSD WTI BRENT" [ref=f4e744] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/commodities
+                  - generic [ref=f4e745]:
+                    - generic [ref=f4e746]: 🛢
+                    - generic [ref=f4e747]: Commodities
+                  - strong [ref=f4e748]: السلع
+                  - paragraph [ref=f4e749]: Macro · العملة USD
+                  - generic [ref=f4e750]:
+                    - generic [ref=f4e752]: XAUUSD
+                    - generic [ref=f4e754]: XAGUSD
+                    - generic [ref=f4e756]: WTI
+                    - generic [ref=f4e758]: BRENT
+                - link "📊 Indices المؤشرات Benchmarks · العملة Local SPX NDX DJI DXY" [ref=f4e759] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/indices
+                  - generic [ref=f4e760]:
+                    - generic [ref=f4e761]: 📊
+                    - generic [ref=f4e762]: Indices
+                  - strong [ref=f4e763]: المؤشرات
+                  - paragraph [ref=f4e764]: Benchmarks · العملة Local
+                  - generic [ref=f4e765]:
+                    - generic [ref=f4e767]: SPX
+                    - generic [ref=f4e769]: NDX
+                    - generic [ref=f4e771]: DJI
+                    - generic [ref=f4e773]: DXY
+                - link "📦 ETFs الصناديق المتداولة Funds · العملة USD SPY QQQ GLD IWM" [ref=f4e774] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/etfs
+                  - generic [ref=f4e775]:
+                    - generic [ref=f4e776]: 📦
+                    - generic [ref=f4e777]: ETFs
+                  - strong [ref=f4e778]: الصناديق المتداولة
+                  - paragraph [ref=f4e779]: Funds · العملة USD
+                  - generic [ref=f4e780]:
+                    - generic [ref=f4e782]: SPY
+                    - generic [ref=f4e784]: QQQ
+                    - generic [ref=f4e786]: GLD
+                    - generic [ref=f4e788]: IWM
+                - link "🕌 Gulf Markets أسواق الخليج Regional · العملة Mixed 2222.SR EMAAR.AE QNBK.QA KFH.KW" [ref=f4e789] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/gcc
+                  - generic [ref=f4e790]:
+                    - generic [ref=f4e791]: 🕌
+                    - generic [ref=f4e792]: Gulf Markets
+                  - strong [ref=f4e793]: أسواق الخليج
+                  - paragraph [ref=f4e794]: Regional · العملة Mixed
+                  - generic [ref=f4e795]:
+                    - generic [ref=f4e797]: 2222.SR
+                    - generic [ref=f4e799]: EMAAR.AE
+                    - generic [ref=f4e801]: QNBK.QA
+                    - generic [ref=f4e803]: KFH.KW
+                - link "🇸🇦 Saudi Market السوق السعودي Tadawul · العملة SAR 2222.SR 1120.SR 7010.SR" [ref=f4e804] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/saudi
+                  - generic [ref=f4e805]:
+                    - generic [ref=f4e806]: 🇸🇦
+                    - generic [ref=f4e807]: Saudi Market
+                  - strong [ref=f4e808]: السوق السعودي
+                  - paragraph [ref=f4e809]: Tadawul · العملة SAR
+                  - generic [ref=f4e810]:
+                    - generic [ref=f4e812]: 2222.SR
+                    - generic [ref=f4e814]: 1120.SR
+                    - generic [ref=f4e816]: 7010.SR
+                - link "🇰🇼 Kuwait Market بورصة الكويت Boursa · العملة KWD KFH.KW NBK.KW ZAIN.KW" [ref=f4e817] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/kuwait
+                  - generic [ref=f4e818]:
+                    - generic [ref=f4e819]: 🇰🇼
+                    - generic [ref=f4e820]: Kuwait Market
+                  - strong [ref=f4e821]: بورصة الكويت
+                  - paragraph [ref=f4e822]: Boursa · العملة KWD
+                  - generic [ref=f4e823]:
+                    - generic [ref=f4e825]: KFH.KW
+                    - generic [ref=f4e827]: NBK.KW
+                    - generic [ref=f4e829]: ZAIN.KW
+                - link "🇦🇪 UAE Market سوق الإمارات ADX/DFM · العملة AED EMAAR.AE FAB.AE ETISALAT.AE" [ref=f4e830] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/uae
+                  - generic [ref=f4e831]:
+                    - generic [ref=f4e832]: 🇦🇪
+                    - generic [ref=f4e833]: UAE Market
+                  - strong [ref=f4e834]: سوق الإمارات
+                  - paragraph [ref=f4e835]: ADX/DFM · العملة AED
+                  - generic [ref=f4e836]:
+                    - generic [ref=f4e838]: EMAAR.AE
+                    - generic [ref=f4e840]: FAB.AE
+                    - generic [ref=f4e842]: ETISALAT.AE
+                - link "🇶🇦 Qatar Market سوق قطر QSE · العملة QAR QNBK.QA IQCD.QA QIBK.QA" [ref=f4e843] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/qatar
+                  - generic [ref=f4e844]:
+                    - generic [ref=f4e845]: 🇶🇦
+                    - generic [ref=f4e846]: Qatar Market
+                  - strong [ref=f4e847]: سوق قطر
+                  - paragraph [ref=f4e848]: QSE · العملة QAR
+                  - generic [ref=f4e849]:
+                    - generic [ref=f4e851]: QNBK.QA
+                    - generic [ref=f4e853]: IQCD.QA
+                    - generic [ref=f4e855]: QIBK.QA
+                - link "🇧🇭 Bahrain Market سوق البحرين BHB · العملة BHD AUB.BH GFH.BH BATELCO.BH" [ref=f4e856] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/bahrain
+                  - generic [ref=f4e857]:
+                    - generic [ref=f4e858]: 🇧🇭
+                    - generic [ref=f4e859]: Bahrain Market
+                  - strong [ref=f4e860]: سوق البحرين
+                  - paragraph [ref=f4e861]: BHB · العملة BHD
+                  - generic [ref=f4e862]:
+                    - generic [ref=f4e864]: AUB.BH
+                    - generic [ref=f4e866]: GFH.BH
+                    - generic [ref=f4e868]: BATELCO.BH
+                - link "🇴🇲 Oman Market سوق عمان MSX · العملة OMR BKMB.OM OMINV.OM" [ref=f4e869] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/oman
+                  - generic [ref=f4e870]:
+                    - generic [ref=f4e871]: 🇴🇲
+                    - generic [ref=f4e872]: Oman Market
+                  - strong [ref=f4e873]: سوق عمان
+                  - paragraph [ref=f4e874]: MSX · العملة OMR
+                  - generic [ref=f4e875]:
+                    - generic [ref=f4e877]: BKMB.OM
+                    - generic [ref=f4e879]: OMINV.OM
+                - link "🇪🇺 European Stocks الأسهم الأوروبية Global · العملة EUR ASML.AS SAP.DE NESN.SW MC.PA" [ref=f4e880] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/europe
+                  - generic [ref=f4e881]:
+                    - generic [ref=f4e882]: 🇪🇺
+                    - generic [ref=f4e883]: European Stocks
+                  - strong [ref=f4e884]: الأسهم الأوروبية
+                  - paragraph [ref=f4e885]: Global · العملة EUR
+                  - generic [ref=f4e886]:
+                    - generic [ref=f4e888]: ASML.AS
+                    - generic [ref=f4e890]: SAP.DE
+                    - generic [ref=f4e892]: NESN.SW
+                    - generic [ref=f4e894]: MC.PA
+                - link "🌏 Asian Stocks الأسهم الآسيوية Global · العملة Mixed 7203.T 9988.HK TSM 005930.KS" [ref=f4e895] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/asia
+                  - generic [ref=f4e896]:
+                    - generic [ref=f4e897]: 🌏
+                    - generic [ref=f4e898]: Asian Stocks
+                  - strong [ref=f4e899]: الأسهم الآسيوية
+                  - paragraph [ref=f4e900]: Global · العملة Mixed
+                  - generic [ref=f4e901]:
+                    - generic [ref=f4e903]: 7203.T
+                    - generic [ref=f4e905]: 9988.HK
+                    - generic [ref=f4e907]: TSM
+                    - generic [ref=f4e909]: 005930.KS
+                - link "💻 Technology أسهم التقنية Sector · العملة USD AAPL MSFT GOOGL ORCL" [ref=f4e910] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/technology
+                  - generic [ref=f4e911]:
+                    - generic [ref=f4e912]: 💻
+                    - generic [ref=f4e913]: Technology
+                  - strong [ref=f4e914]: أسهم التقنية
+                  - paragraph [ref=f4e915]: Sector · العملة USD
+                  - generic [ref=f4e916]:
+                    - generic [ref=f4e918]: AAPL
+                    - generic [ref=f4e920]: MSFT
+                    - generic [ref=f4e922]: GOOGL
+                    - generic [ref=f4e924]: ORCL
+                - link "🤖 AI Stocks أسهم الذكاء الاصطناعي Sector · العملة USD NVDA MSFT GOOGL AMD" [ref=f4e925] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/ai
+                  - generic [ref=f4e926]:
+                    - generic [ref=f4e927]: 🤖
+                    - generic [ref=f4e928]: AI Stocks
+                  - strong [ref=f4e929]: أسهم الذكاء الاصطناعي
+                  - paragraph [ref=f4e930]: Sector · العملة USD
+                  - generic [ref=f4e931]:
+                    - generic [ref=f4e933]: NVDA
+                    - generic [ref=f4e935]: MSFT
+                    - generic [ref=f4e937]: GOOGL
+                    - generic [ref=f4e939]: AMD
+                - link "🔌 Semiconductors أشباه الموصلات Sector · العملة USD NVDA AMD TSM AVGO" [ref=f4e940] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/semiconductors
+                  - generic [ref=f4e941]:
+                    - generic [ref=f4e942]: 🔌
+                    - generic [ref=f4e943]: Semiconductors
+                  - strong [ref=f4e944]: أشباه الموصلات
+                  - paragraph [ref=f4e945]: Sector · العملة USD
+                  - generic [ref=f4e946]:
+                    - generic [ref=f4e948]: NVDA
+                    - generic [ref=f4e950]: AMD
+                    - generic [ref=f4e952]: TSM
+                    - generic [ref=f4e954]: AVGO
+                - link "⚡ Energy Stocks الطاقة Sector · العملة Mixed XOM CVX 2222.SR OXY" [ref=f4e955] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/energy
+                  - generic [ref=f4e956]:
+                    - generic [ref=f4e957]: ⚡
+                    - generic [ref=f4e958]: Energy Stocks
+                  - strong [ref=f4e959]: الطاقة
+                  - paragraph [ref=f4e960]: Sector · العملة Mixed
+                  - generic [ref=f4e961]:
+                    - generic [ref=f4e963]: XOM
+                    - generic [ref=f4e965]: CVX
+                    - generic [ref=f4e967]: 2222.SR
+                    - generic [ref=f4e969]: OXY
+                - link "🏦 Banking Stocks البنوك Sector · العملة Mixed JPM BAC NBK.KW QNBK.QA" [ref=f4e970] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/banking
+                  - generic [ref=f4e971]:
+                    - generic [ref=f4e972]: 🏦
+                    - generic [ref=f4e973]: Banking Stocks
+                  - strong [ref=f4e974]: البنوك
+                  - paragraph [ref=f4e975]: Sector · العملة Mixed
+                  - generic [ref=f4e976]:
+                    - generic [ref=f4e978]: JPM
+                    - generic [ref=f4e980]: BAC
+                    - generic [ref=f4e982]: NBK.KW
+                    - generic [ref=f4e984]: QNBK.QA
+                - link "🍔 Food / Consumer الأغذية والاستهلاك Sector · العملة USD KO PEP MCD COST" [ref=f4e985] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/food
+                  - generic [ref=f4e986]:
+                    - generic [ref=f4e987]: 🍔
+                    - generic [ref=f4e988]: Food / Consumer
+                  - strong [ref=f4e989]: الأغذية والاستهلاك
+                  - paragraph [ref=f4e990]: Sector · العملة USD
+                  - generic [ref=f4e991]:
+                    - generic [ref=f4e993]: KO
+                    - generic [ref=f4e995]: PEP
+                    - generic [ref=f4e997]: MCD
+                    - generic [ref=f4e999]: COST
+                - link "💊 Pharma / Healthcare الصحة والدواء Sector · العملة USD LLY PFE JNJ MRK" [ref=f4e1000] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/markets/healthcare
+                  - generic [ref=f4e1001]:
+                    - generic [ref=f4e1002]: 💊
+                    - generic [ref=f4e1003]: Pharma / Healthcare
+                  - strong [ref=f4e1004]: الصحة والدواء
+                  - paragraph [ref=f4e1005]: Sector · العملة USD
+                  - generic [ref=f4e1006]:
+                    - generic [ref=f4e1008]: LLY
+                    - generic [ref=f4e1010]: PFE
+                    - generic [ref=f4e1012]: JNJ
+                    - generic [ref=f4e1014]: MRK
+              - generic [ref=f4e1015]:
+                - generic [ref=f4e1016]: PROVIDER MARKETS
+                - heading "بيانات الأسواق من المزود" [level=2] [ref=f4e1017]
+                - table [ref=f4e1019]:
+                  - rowgroup [ref=f4e1020]:
+                    - row "السوق الرمز العملة المصدر" [ref=f4e1021]:
+                      - columnheader "السوق" [ref=f4e1022]
+                      - columnheader "الرمز" [ref=f4e1023]
+                      - columnheader "العملة" [ref=f4e1024]
+                      - columnheader "المصدر" [ref=f4e1025]
+                  - rowgroup [ref=f4e1026]:
+                    - row "005930.KS 005930.KS KRW seed" [ref=f4e1027]:
+                      - cell "005930.KS" [ref=f4e1028]
+                      - cell "005930.KS" [ref=f4e1029]
+                      - cell "KRW" [ref=f4e1030]
+                      - cell "seed" [ref=f4e1031]
+          - contentinfo [ref=f4e113]:
+            - generic [ref=f4e1032]:
+              - generic [ref=f4e1033]: البيانات اللحظية
+              - strong [ref=f4e1034]: متصلة
+              - emphasis [ref=f4e1035]: Real-time
+            - generic [ref=f4e1036]:
+              - generic [ref=f4e1037]: الأسواق
+              - strong [ref=f4e1038]: "1"
+              - emphasis [ref=f4e1039]: Markets
+            - generic [ref=f4e1040]:
+              - generic [ref=f4e1041]: الأصول المحللة
+              - strong [ref=f4e1042]: "1"
+              - emphasis [ref=f4e1043]: Analyzed
+            - generic [ref=f4e1044]:
+              - generic [ref=f4e1045]: قائمة المتابعة
+              - strong [ref=f4e1046]: "0"
+              - emphasis [ref=f4e1047]: Watchlist
+            - generic [ref=f4e1048]:
+              - generic [ref=f4e1049]: آخر تحديث
+              - strong [ref=f4e1050]: ١٠:٥١:٠٣ م
+              - emphasis [ref=f4e1051]: Updated
+            - strong [ref=f4e1054]: النظام يعمل
+  - button "Open Next.js Dev Tools" [ref=f3e8] [cursor=pointer]:
+    - img [ref=f3e9]
+  - alert [ref=f3e12]

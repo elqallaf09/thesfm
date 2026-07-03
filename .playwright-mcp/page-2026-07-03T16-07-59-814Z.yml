@@ -1,0 +1,643 @@
+- generic [active]:
+  - link "تخطّي إلى المحتوى":
+    - /url: "#main-content"
+  - region "Notifications alt+T"
+  - main [ref=f3e1]:
+    - iframe [ref=f3e2]:
+      - generic [ref=f4e2]:
+        - complementary "Trader navigation" [ref=f4e3]:
+          - generic [ref=f4e4]:
+            - link "the-sfm trader AI market command center" [ref=f4e5] [cursor=pointer]:
+              - /url: /thesfm-trader-own
+              - generic [ref=f4e6]: S
+              - generic [ref=f4e7]:
+                - strong [ref=f4e8]: the-sfm trader
+                - text: AI market command center
+            - button "طي القائمة" [ref=f4e9] [cursor=pointer]: «
+          - navigation [ref=f4e10]:
+            - link "القيادة Dashboard" [ref=f4e11] [cursor=pointer]:
+              - /url: /thesfm-trader-own/dashboard
+              - generic [ref=f4e12]: القيادة
+              - generic [ref=f4e13]: Dashboard
+            - link "الأسواق Markets" [ref=f4e14] [cursor=pointer]:
+              - /url: /thesfm-trader-own/markets
+              - generic [ref=f4e15]: الأسواق
+              - generic [ref=f4e16]: Markets
+            - link "ماسح الذكاء AI Scanner" [ref=f4e17] [cursor=pointer]:
+              - /url: /thesfm-trader-own/ai-scanner
+              - generic [ref=f4e18]: ماسح الذكاء
+              - generic [ref=f4e19]: AI Scanner
+            - link "قائمة المتابعة Watchlist" [ref=f4e20] [cursor=pointer]:
+              - /url: /thesfm-trader-own/watchlist
+              - generic [ref=f4e21]: قائمة المتابعة
+              - generic [ref=f4e22]: Watchlist
+            - link "المحفظة Portfolio" [ref=f4e23] [cursor=pointer]:
+              - /url: /thesfm-trader-own/portfolio
+              - generic [ref=f4e24]: المحفظة
+              - generic [ref=f4e25]: Portfolio
+            - link "التنبيهات Alerts" [ref=f4e26] [cursor=pointer]:
+              - /url: /thesfm-trader-own/alerts
+              - generic [ref=f4e27]: التنبيهات
+              - generic [ref=f4e28]: Alerts
+            - link "التوصيات Recommendations" [ref=f4e29] [cursor=pointer]:
+              - /url: /thesfm-trader-own/recommendations
+              - generic [ref=f4e30]: التوصيات
+              - generic [ref=f4e31]: Recommendations
+            - link "أداء الصفقات Trade Performance" [ref=f4e32] [cursor=pointer]:
+              - /url: /thesfm-trader-own/trade-performance
+              - generic [ref=f4e33]: أداء الصفقات
+              - generic [ref=f4e34]: Trade Performance
+            - link "الأخبار News" [ref=f4e35] [cursor=pointer]:
+              - /url: /thesfm-trader-own/news
+              - generic [ref=f4e36]: الأخبار
+              - generic [ref=f4e37]: News
+            - link "التقويم Calendar" [ref=f4e38] [cursor=pointer]:
+              - /url: /thesfm-trader-own/calendar
+              - generic [ref=f4e39]: التقويم
+              - generic [ref=f4e40]: Calendar
+            - link "التعليم Education" [ref=f4e41] [cursor=pointer]:
+              - /url: /thesfm-trader-own/education
+              - generic [ref=f4e42]: التعليم
+              - generic [ref=f4e43]: Education
+            - link "الإعدادات Settings" [ref=f4e44] [cursor=pointer]:
+              - /url: /thesfm-trader-own/settings
+              - generic [ref=f4e45]: الإعدادات
+              - generic [ref=f4e46]: Settings
+            - link "تفاصيل الرمز Symbol Details" [ref=f4e47] [cursor=pointer]:
+              - /url: /thesfm-trader-own/symbol-details
+              - generic [ref=f4e48]: تفاصيل الرمز
+              - generic [ref=f4e49]: Symbol Details
+          - link "AI PRO محرك التحليل الذكي فعّل الماسح للحصول على أقوى الإشارات اللحظية." [ref=f4e50] [cursor=pointer]:
+            - /url: /thesfm-trader-own/ai-scanner
+            - generic [ref=f4e51]: AI PRO
+            - strong [ref=f4e52]: محرك التحليل الذكي
+            - text: فعّل الماسح للحصول على أقوى الإشارات اللحظية.
+          - generic [ref=f4e55]:
+            - strong [ref=f4e56]: المزود متصل
+            - text: "المزود النشط: Yahoo Finance"
+          - link "SFM Trader عضو · الإعدادات" [ref=f4e57] [cursor=pointer]:
+            - /url: /thesfm-trader-own/settings
+            - generic [ref=f4e58]: M
+            - generic [ref=f4e59]:
+              - strong [ref=f4e60]: SFM Trader
+              - text: عضو · الإعدادات
+        - generic [ref=f4e61]:
+          - banner [ref=f4e62]:
+            - generic [ref=f4e63]:
+              - generic [ref=f4e64]: AI TRADING TERMINAL
+              - heading "غرفة قيادة السوق" [level=1] [ref=f4e65]
+            - generic [ref=f4e66]:
+              - generic [ref=f4e67]: ابحث عن سهم أو رمز
+              - textbox "ابحث عن سهم أو رمز" [ref=f4e68]:
+                - /placeholder: AAPL, BTCUSD, XAUUSD...
+              - button "تحليل" [ref=f4e69] [cursor=pointer]
+            - generic [ref=f4e70]:
+              - generic [ref=f4e138]: "المزود النشط: Yahoo Finance"
+              - link "التنبيهات" [ref=f4e74] [cursor=pointer]:
+                - /url: /thesfm-trader-own/alerts
+              - link "الإعدادات" [ref=f4e75] [cursor=pointer]:
+                - /url: /thesfm-trader-own/settings
+              - generic [ref=f4e76]: الأسهم الأمريكية · USD
+          - region "Market ticker" [ref=f4e77]:
+            - button "NAS100 غير متاح" [ref=f4e139] [cursor=pointer]:
+              - generic [ref=f4e140]: NAS
+              - generic [ref=f4e141]:
+                - strong [ref=f4e142]: NAS100
+                - generic [ref=f4e143]: غير متاح
+            - button "US30 غير متاح" [ref=f4e144] [cursor=pointer]:
+              - generic [ref=f4e145]: US3
+              - generic [ref=f4e146]:
+                - strong [ref=f4e147]: US30
+                - generic [ref=f4e148]: غير متاح
+            - button "Gold غير متاح" [ref=f4e149] [cursor=pointer]:
+              - generic [ref=f4e150]: Au
+              - generic [ref=f4e151]:
+                - strong [ref=f4e152]: Gold
+                - generic [ref=f4e153]: غير متاح
+            - button "Oil غير متاح" [ref=f4e154] [cursor=pointer]:
+              - generic [ref=f4e155]: ⛽
+              - generic [ref=f4e156]:
+                - strong [ref=f4e157]: Oil
+                - generic [ref=f4e158]: غير متاح
+            - button "BTC/USD غير متاح" [ref=f4e159] [cursor=pointer]:
+              - generic [ref=f4e160]: ₿
+              - generic [ref=f4e161]:
+                - strong [ref=f4e162]: BTC/USD
+                - generic [ref=f4e163]: غير متاح
+            - button "KFH غير متاح" [ref=f4e164] [cursor=pointer]:
+              - generic [ref=f4e165]: 🇰🇼
+              - generic [ref=f4e166]:
+                - strong [ref=f4e167]: KFH
+                - generic [ref=f4e168]: غير متاح
+          - main [ref=f4e108]:
+            - generic [ref=f4e169]:
+              - region "Market summary" [ref=f4e170]:
+                - article [ref=f4e171]:
+                  - generic [ref=f4e172]: PROVIDER
+                  - strong [ref=f4e173]: متصل
+                  - generic [ref=f4e174]: available
+                - article [ref=f4e175]:
+                  - generic [ref=f4e176]: AI CONFIDENCE
+                  - strong [ref=f4e177]: 64%
+                  - generic [ref=f4e178]: محايد · وضع الدقة نشط
+                - article [ref=f4e179]:
+                  - generic [ref=f4e180]: BUY SIGNALS
+                  - strong [ref=f4e181]: "0"
+                  - generic [ref=f4e182]: فرص شراء
+                - article [ref=f4e183]:
+                  - generic [ref=f4e184]: SELL SIGNALS
+                  - strong [ref=f4e185]: "0"
+                  - generic [ref=f4e186]: فرص بيع
+                - article [ref=f4e187]:
+                  - generic [ref=f4e188]: ANALYZED ASSETS
+                  - strong [ref=f4e189]: "1"
+                  - generic [ref=f4e190]: أصول محللة
+                - article [ref=f4e191]:
+                  - generic [ref=f4e192]: ACTIVE MARKET
+                  - strong [ref=f4e193]: الأسهم الأمريكية
+                  - generic [ref=f4e194]: US Stocks · USD
+              - generic [ref=f4e195]:
+                - generic [ref=f4e196]:
+                  - generic [ref=f4e197]:
+                    - generic [ref=f4e198]: MARKET OVERVIEW
+                    - heading "نظرة عامة على الأسواق" [level=2] [ref=f4e199]
+                  - generic [ref=f4e200]:
+                    - button "1D" [ref=f4e201] [cursor=pointer]
+                    - button "1W" [ref=f4e202] [cursor=pointer]
+                    - button "1M" [ref=f4e203] [cursor=pointer]
+                    - button "1Y" [ref=f4e204] [cursor=pointer]
+                    - button "ALL" [ref=f4e205] [cursor=pointer]
+                - generic [ref=f4e206]:
+                  - img
+                  - generic [ref=f4e207]:
+                    - generic [ref=f4e209]: New York
+                    - generic [ref=f4e210]: مفتوح · يغلق 20:00 UTC
+                  - generic [ref=f4e211]:
+                    - generic [ref=f4e213]: London
+                    - generic [ref=f4e214]: مفتوح · يغلق 16:30 UTC
+                  - generic [ref=f4e215]:
+                    - generic [ref=f4e217]: Frankfurt
+                    - generic [ref=f4e218]: مغلق · يفتح 07:00 UTC
+                  - generic [ref=f4e219]:
+                    - generic [ref=f4e221]: Riyadh
+                    - generic [ref=f4e222]: مغلق · يفتح 07:00 UTC
+                  - generic [ref=f4e223]:
+                    - generic [ref=f4e225]: Kuwait
+                    - generic [ref=f4e226]: مغلق · يفتح 06:30 UTC
+                  - generic [ref=f4e227]:
+                    - generic [ref=f4e229]: Dubai
+                    - generic [ref=f4e230]: مغلق · يفتح 06:00 UTC
+                  - generic [ref=f4e231]:
+                    - generic [ref=f4e233]: Tokyo
+                    - generic [ref=f4e234]: مغلق · يفتح 00:00 UTC
+                  - generic [ref=f4e235]:
+                    - generic [ref=f4e237]: Hong Kong
+                    - generic [ref=f4e238]: مغلق · يفتح 01:30 UTC
+                  - generic [ref=f4e239]:
+                    - generic [ref=f4e241]: Sydney
+                    - generic [ref=f4e242]: مغلق · يفتح 00:00 UTC
+                  - img [ref=f4e243]
+              - generic [ref=f4e248]:
+                - generic [ref=f4e250]:
+                  - generic [ref=f4e251]: AI MARKET ANALYSIS
+                  - heading "تحليل السوق الذكي" [level=2] [ref=f4e252]
+                - generic [ref=f4e254]:
+                  - text: OVERALL MARKET BIAS
+                  - generic [ref=f4e255]: NEUTRAL
+                  - text: محايد · وضع الدقة نشط · لا توجد إشارات تتجاوز حد النشر حالياً (1 أصل قيد المراقبة) · إطار 1D · الثقة 64%
+                  - generic [ref=f4e256]:
+                    - generic [ref=f4e257]:
+                      - generic [ref=f4e258]: صاعد
+                      - generic [ref=f4e260]: 0%
+                    - generic [ref=f4e261]:
+                      - generic [ref=f4e262]: هابط
+                      - generic [ref=f4e264]: 0%
+                    - generic [ref=f4e265]:
+                      - generic [ref=f4e266]: محايد
+                      - generic [ref=f4e269]: 100%
+              - generic [ref=f4e271]:
+                - generic [ref=f4e272]:
+                  - generic [ref=f4e273]:
+                    - generic [ref=f4e274]: MARKET COMMAND
+                    - heading "غرفة قيادة السوق" [level=2] [ref=f4e275]
+                  - generic [ref=f4e276]: الأسهم الأمريكية
+                - generic [ref=f4e277]:
+                  - 'button "NAS100 غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e278] [cursor=pointer]':
+                    - generic [ref=f4e279]:
+                      - generic [ref=f4e280]: NAS
+                      - generic [ref=f4e281]:
+                        - strong [ref=f4e282]: NAS100
+                        - generic [ref=f4e283]: غير متاح
+                    - generic [ref=f4e284]:
+                      - strong [ref=f4e285]: السعر غير متاح
+                      - generic [ref=f4e286]: التغير غير متاح
+                    - generic [ref=f4e287]: الشارت غير متاح
+                    - generic [ref=f4e288]:
+                      - generic [ref=f4e289]: إشارة غير متاحة
+                      - generic [ref=f4e290]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e291]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e292]: "--"
+                  - 'button "US30 غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e293] [cursor=pointer]':
+                    - generic [ref=f4e294]:
+                      - generic [ref=f4e295]: US3
+                      - generic [ref=f4e296]:
+                        - strong [ref=f4e297]: US30
+                        - generic [ref=f4e298]: غير متاح
+                    - generic [ref=f4e299]:
+                      - strong [ref=f4e300]: السعر غير متاح
+                      - generic [ref=f4e301]: التغير غير متاح
+                    - generic [ref=f4e302]: الشارت غير متاح
+                    - generic [ref=f4e303]:
+                      - generic [ref=f4e304]: إشارة غير متاحة
+                      - generic [ref=f4e305]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e306]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e307]: "--"
+                  - 'button "XAUUSD غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e308] [cursor=pointer]':
+                    - generic [ref=f4e309]:
+                      - generic [ref=f4e310]: Au
+                      - generic [ref=f4e311]:
+                        - strong [ref=f4e312]: XAUUSD
+                        - generic [ref=f4e313]: غير متاح
+                    - generic [ref=f4e314]:
+                      - strong [ref=f4e315]: السعر غير متاح
+                      - generic [ref=f4e316]: التغير غير متاح
+                    - generic [ref=f4e317]: الشارت غير متاح
+                    - generic [ref=f4e318]:
+                      - generic [ref=f4e319]: إشارة غير متاحة
+                      - generic [ref=f4e320]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e321]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e322]: "--"
+                  - 'button "BTC/USD غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e323] [cursor=pointer]':
+                    - generic [ref=f4e324]:
+                      - generic [ref=f4e325]: BTC
+                      - generic [ref=f4e326]:
+                        - strong [ref=f4e327]: BTC/USD
+                        - generic [ref=f4e328]: غير متاح
+                    - generic [ref=f4e329]:
+                      - strong [ref=f4e330]: السعر غير متاح
+                      - generic [ref=f4e331]: التغير غير متاح
+                    - generic [ref=f4e332]: الشارت غير متاح
+                    - generic [ref=f4e333]:
+                      - generic [ref=f4e334]: إشارة غير متاحة
+                      - generic [ref=f4e335]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e336]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e337]: "--"
+                  - 'button "AAPL Apple Inc. 308.63 USD +45.28% مراقبة الثقة 64% · متأخرة Yahoo Finance AAPL fallback: yes FMP: off Finnhub: off Jul 02, 2026, 23:00" [ref=f4e338] [cursor=pointer]':
+                    - generic [ref=f4e339]:
+                      - generic [ref=f4e340]: A
+                      - generic [ref=f4e341]:
+                        - strong [ref=f4e342]: AAPL
+                        - generic [ref=f4e343]: Apple Inc.
+                    - generic [ref=f4e344]:
+                      - strong [ref=f4e345]: 308.63 USD
+                      - generic [ref=f4e346]: +45.28%
+                    - img [ref=f4e347]
+                    - generic [ref=f4e349]:
+                      - generic [ref=f4e350]: مراقبة
+                      - generic [ref=f4e351]: الثقة 64% · متأخرة
+                    - generic [ref=f4e352]:
+                      - text: "Yahoo Finance AAPL fallback: yes FMP: off Finnhub: off"
+                      - time [ref=f4e353]: Jul 02, 2026, 23:00
+                  - 'button "MSFT غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e354] [cursor=pointer]':
+                    - generic [ref=f4e355]:
+                      - generic [ref=f4e356]: ⊞
+                      - generic [ref=f4e357]:
+                        - strong [ref=f4e358]: MSFT
+                        - generic [ref=f4e359]: غير متاح
+                    - generic [ref=f4e360]:
+                      - strong [ref=f4e361]: السعر غير متاح
+                      - generic [ref=f4e362]: التغير غير متاح
+                    - generic [ref=f4e363]: الشارت غير متاح
+                    - generic [ref=f4e364]:
+                      - generic [ref=f4e365]: إشارة غير متاحة
+                      - generic [ref=f4e366]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e367]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e368]: "--"
+                  - 'button "NVDA غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e369] [cursor=pointer]':
+                    - generic [ref=f4e370]:
+                      - generic [ref=f4e371]: "N"
+                      - generic [ref=f4e372]:
+                        - strong [ref=f4e373]: NVDA
+                        - generic [ref=f4e374]: غير متاح
+                    - generic [ref=f4e375]:
+                      - strong [ref=f4e376]: السعر غير متاح
+                      - generic [ref=f4e377]: التغير غير متاح
+                    - generic [ref=f4e378]: الشارت غير متاح
+                    - generic [ref=f4e379]:
+                      - generic [ref=f4e380]: إشارة غير متاحة
+                      - generic [ref=f4e381]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e382]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e383]: "--"
+                  - 'button "AMZN غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e384] [cursor=pointer]':
+                    - generic [ref=f4e385]:
+                      - generic [ref=f4e386]: a
+                      - generic [ref=f4e387]:
+                        - strong [ref=f4e388]: AMZN
+                        - generic [ref=f4e389]: غير متاح
+                    - generic [ref=f4e390]:
+                      - strong [ref=f4e391]: السعر غير متاح
+                      - generic [ref=f4e392]: التغير غير متاح
+                    - generic [ref=f4e393]: الشارت غير متاح
+                    - generic [ref=f4e394]:
+                      - generic [ref=f4e395]: إشارة غير متاحة
+                      - generic [ref=f4e396]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e397]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e398]: "--"
+                  - 'button "META غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e399] [cursor=pointer]':
+                    - generic [ref=f4e400]:
+                      - generic [ref=f4e401]: M
+                      - generic [ref=f4e402]:
+                        - strong [ref=f4e403]: META
+                        - generic [ref=f4e404]: غير متاح
+                    - generic [ref=f4e405]:
+                      - strong [ref=f4e406]: السعر غير متاح
+                      - generic [ref=f4e407]: التغير غير متاح
+                    - generic [ref=f4e408]: الشارت غير متاح
+                    - generic [ref=f4e409]:
+                      - generic [ref=f4e410]: إشارة غير متاحة
+                      - generic [ref=f4e411]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e412]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e413]: "--"
+                  - 'button "TSLA غير متاح السعر غير متاح التغير غير متاح الشارت غير متاح إشارة غير متاحة الثقة غير متاحة · غير متاحة Yahoo Finance -- fallback: no FMP: off Finnhub: off --" [ref=f4e414] [cursor=pointer]':
+                    - generic [ref=f4e415]:
+                      - generic [ref=f4e416]: T
+                      - generic [ref=f4e417]:
+                        - strong [ref=f4e418]: TSLA
+                        - generic [ref=f4e419]: غير متاح
+                    - generic [ref=f4e420]:
+                      - strong [ref=f4e421]: السعر غير متاح
+                      - generic [ref=f4e422]: التغير غير متاح
+                    - generic [ref=f4e423]: الشارت غير متاح
+                    - generic [ref=f4e424]:
+                      - generic [ref=f4e425]: إشارة غير متاحة
+                      - generic [ref=f4e426]: الثقة غير متاحة · غير متاحة
+                    - generic [ref=f4e427]:
+                      - text: "Yahoo Finance -- fallback: no FMP: off Finnhub: off"
+                      - time [ref=f4e428]: "--"
+              - generic [ref=f4e429]:
+                - generic [ref=f4e430]:
+                  - generic [ref=f4e431]:
+                    - generic [ref=f4e432]: OPPORTUNITY HEATMAP
+                    - heading "خريطة حرارة الفرص" [level=2] [ref=f4e433]
+                  - generic [ref=f4e434]: 1 أصل
+                - generic [ref=f4e435]:
+                  - button "NAS100 غير متاح غير متاح" [ref=f4e436] [cursor=pointer]:
+                    - generic [ref=f4e437]: NAS
+                    - strong [ref=f4e438]: NAS100
+                    - generic [ref=f4e439]: غير متاح
+                    - emphasis [ref=f4e440]: غير متاح
+                  - button "US30 غير متاح غير متاح" [ref=f4e441] [cursor=pointer]:
+                    - generic [ref=f4e442]: US3
+                    - strong [ref=f4e443]: US30
+                    - generic [ref=f4e444]: غير متاح
+                    - emphasis [ref=f4e445]: غير متاح
+                  - button "XAUUSD غير متاح غير متاح" [ref=f4e446] [cursor=pointer]:
+                    - generic [ref=f4e447]: Au
+                    - strong [ref=f4e448]: XAUUSD
+                    - generic [ref=f4e449]: غير متاح
+                    - emphasis [ref=f4e450]: غير متاح
+                  - button "BTC/USD غير متاح غير متاح" [ref=f4e451] [cursor=pointer]:
+                    - generic [ref=f4e452]: ₿
+                    - strong [ref=f4e453]: BTC/USD
+                    - generic [ref=f4e454]: غير متاح
+                    - emphasis [ref=f4e455]: غير متاح
+                  - button "AAPL +45.28% مراقبة · 64%" [ref=f4e456] [cursor=pointer]:
+                    - generic [ref=f4e457]: A
+                    - strong [ref=f4e458]: AAPL
+                    - generic [ref=f4e459]: +45.28%
+                    - emphasis [ref=f4e460]: مراقبة · 64%
+                  - button "MSFT غير متاح غير متاح" [ref=f4e461] [cursor=pointer]:
+                    - generic [ref=f4e462]: ⊞
+                    - strong [ref=f4e463]: MSFT
+                    - generic [ref=f4e464]: غير متاح
+                    - emphasis [ref=f4e465]: غير متاح
+                  - button "NVDA غير متاح غير متاح" [ref=f4e466] [cursor=pointer]:
+                    - generic [ref=f4e467]: "N"
+                    - strong [ref=f4e468]: NVDA
+                    - generic [ref=f4e469]: غير متاح
+                    - emphasis [ref=f4e470]: غير متاح
+                  - button "AMZN غير متاح غير متاح" [ref=f4e471] [cursor=pointer]:
+                    - generic [ref=f4e472]: a
+                    - strong [ref=f4e473]: AMZN
+                    - generic [ref=f4e474]: غير متاح
+                    - emphasis [ref=f4e475]: غير متاح
+                  - button "META غير متاح غير متاح" [ref=f4e476] [cursor=pointer]:
+                    - generic [ref=f4e477]: M
+                    - strong [ref=f4e478]: META
+                    - generic [ref=f4e479]: غير متاح
+                    - emphasis [ref=f4e480]: غير متاح
+                  - button "TSLA غير متاح غير متاح" [ref=f4e481] [cursor=pointer]:
+                    - generic [ref=f4e482]: T
+                    - strong [ref=f4e483]: TSLA
+                    - generic [ref=f4e484]: غير متاح
+                    - emphasis [ref=f4e485]: غير متاح
+              - generic [ref=f4e486]:
+                - article [ref=f4e487]:
+                  - generic [ref=f4e489]:
+                    - generic [ref=f4e490]: TOP GAINERS
+                    - heading "الأكثر ارتفاعاً" [level=2] [ref=f4e491]
+                  - article [ref=f4e493]:
+                    - generic [ref=f4e494]:
+                      - generic [ref=f4e495]: A
+                      - generic [ref=f4e496]:
+                        - strong [ref=f4e497]: AAPL
+                        - generic [ref=f4e498]: Apple Inc.
+                    - generic [ref=f4e499]:
+                      - generic [ref=f4e500]: USD
+                      - generic [ref=f4e501]: مراقبة
+                      - generic [ref=f4e502]: مفتوحة
+                    - generic [ref=f4e503]:
+                      - generic [ref=f4e504]:
+                        - text: السعر
+                        - generic [ref=f4e505]: 308.63 USD
+                      - generic [ref=f4e506]:
+                        - text: التغيير
+                        - generic [ref=f4e507]: +45.28%
+                      - generic [ref=f4e508]:
+                        - text: ثقة AI
+                        - generic [ref=f4e509]: 64%
+                    - generic [ref=f4e510]:
+                      - button "فتح التحليل" [ref=f4e511] [cursor=pointer]
+                      - button "متابعة الصفقة" [ref=f4e512] [cursor=pointer]
+                      - button "قائمة المتابعة" [ref=f4e513] [cursor=pointer]
+                - article [ref=f4e514]:
+                  - generic [ref=f4e516]:
+                    - generic [ref=f4e517]: TOP LOSERS
+                    - heading "الأكثر انخفاضاً" [level=2] [ref=f4e518]
+                  - article [ref=f4e520]:
+                    - generic [ref=f4e521]:
+                      - generic [ref=f4e522]: A
+                      - generic [ref=f4e523]:
+                        - strong [ref=f4e524]: AAPL
+                        - generic [ref=f4e525]: Apple Inc.
+                    - generic [ref=f4e526]:
+                      - generic [ref=f4e527]: USD
+                      - generic [ref=f4e528]: مراقبة
+                      - generic [ref=f4e529]: مفتوحة
+                    - generic [ref=f4e530]:
+                      - generic [ref=f4e531]:
+                        - text: السعر
+                        - generic [ref=f4e532]: 308.63 USD
+                      - generic [ref=f4e533]:
+                        - text: التغيير
+                        - generic [ref=f4e534]: +45.28%
+                      - generic [ref=f4e535]:
+                        - text: ثقة AI
+                        - generic [ref=f4e536]: 64%
+                    - generic [ref=f4e537]:
+                      - button "فتح التحليل" [ref=f4e538] [cursor=pointer]
+                      - button "متابعة الصفقة" [ref=f4e539] [cursor=pointer]
+                      - button "قائمة المتابعة" [ref=f4e540] [cursor=pointer]
+              - generic [ref=f4e541]:
+                - generic [ref=f4e542]:
+                  - generic [ref=f4e543]:
+                    - generic [ref=f4e544]: SYMBOLS & RECOMMENDATIONS
+                    - heading "الرموز والتوصيات" [level=2] [ref=f4e545]
+                  - link "عرض الكل" [ref=f4e546] [cursor=pointer]:
+                    - /url: /thesfm-trader-own/recommendations
+                - table [ref=f4e548]:
+                  - rowgroup [ref=f4e549]:
+                    - row "الأصل السعر التغير التوصية الثقة الهدف المدة المخاطرة سكور AI إجراء" [ref=f4e550]:
+                      - columnheader "الأصل" [ref=f4e551]
+                      - columnheader "السعر" [ref=f4e552]
+                      - columnheader "التغير" [ref=f4e553]
+                      - columnheader "التوصية" [ref=f4e554]
+                      - columnheader "الثقة" [ref=f4e555]
+                      - columnheader "الهدف" [ref=f4e556]
+                      - columnheader "المدة" [ref=f4e557]
+                      - columnheader "المخاطرة" [ref=f4e558]
+                      - columnheader "سكور AI" [ref=f4e559]
+                      - columnheader "إجراء" [ref=f4e560]
+                  - rowgroup [ref=f4e561]:
+                    - row "AAPL Apple Inc. 308.63 USD +45.28% مراقبة 64% غير متاح غير متاح متوسطة غير متاح تحليل" [ref=f4e562]:
+                      - cell "AAPL Apple Inc." [ref=f4e563]:
+                        - button "AAPL Apple Inc." [ref=f4e564] [cursor=pointer]:
+                          - generic [ref=f4e565]: A
+                          - generic [ref=f4e566]:
+                            - strong [ref=f4e567]: AAPL
+                            - text: Apple Inc.
+                      - cell "308.63 USD" [ref=f4e568]
+                      - cell "+45.28%" [ref=f4e569]
+                      - cell "مراقبة" [ref=f4e570]:
+                        - generic [ref=f4e571]: مراقبة
+                      - cell "64%" [ref=f4e572]
+                      - cell "غير متاح" [ref=f4e573]
+                      - cell "غير متاح" [ref=f4e574]
+                      - cell "متوسطة" [ref=f4e575]
+                      - cell "غير متاح" [ref=f4e576]
+                      - cell "تحليل" [ref=f4e577]:
+                        - button "تحليل" [ref=f4e578] [cursor=pointer]
+              - generic [ref=f4e579]:
+                - article [ref=f4e580]:
+                  - generic [ref=f4e581]: MARKET NEWS
+                  - heading "آخر الأخبار" [level=2] [ref=f4e582]
+                  - generic [ref=f4e583]:
+                    - generic [ref=f4e584]: ◎
+                    - heading "تعذر تحميل هذه البيانات حالياً" [level=3] [ref=f4e585]
+                    - paragraph [ref=f4e586]: لم يتم تفعيل مزود البيانات لهذه الميزة
+                    - generic [ref=f4e587]:
+                      - link "صفحة الأخبار" [ref=f4e588] [cursor=pointer]:
+                        - /url: /thesfm-trader-own/news
+                      - button "إعادة المحاولة" [ref=f4e589] [cursor=pointer]
+                - article [ref=f4e590]:
+                  - generic [ref=f4e591]: AI ANALYSIS
+                  - heading "حالة التحليل الذكي" [level=2] [ref=f4e592]
+                  - generic [ref=f4e593]:
+                    - generic [ref=f4e594]: ◎
+                    - heading "تعذر تحميل هذه البيانات حالياً" [level=3] [ref=f4e595]
+                    - paragraph [ref=f4e596]: تعذر تحميل هذه البيانات حالياً
+                    - generic [ref=f4e597]:
+                      - link "افتح الماسح" [ref=f4e598] [cursor=pointer]:
+                        - /url: /thesfm-trader-own/ai-scanner
+                      - button "إعادة المحاولة" [ref=f4e599] [cursor=pointer]
+                - article [ref=f4e600]:
+                  - generic [ref=f4e601]: SYSTEM STATUS
+                  - heading "حالة النظام" [level=2] [ref=f4e602]
+                  - generic [ref=f4e603]:
+                    - generic [ref=f4e604]:
+                      - generic [ref=f4e605]:
+                        - generic [ref=f4e606]: PROVIDER
+                        - strong [ref=f4e607]: FMP
+                        - paragraph [ref=f4e608]: غير مهيأ
+                      - generic [ref=f4e609]: غير مهيأ
+                    - paragraph [ref=f4e610]: FMP غير مهيأ
+                    - generic [ref=f4e611]:
+                      - article [ref=f4e612]:
+                        - text: Status
+                        - strong [ref=f4e613]: غير مهيأ
+                        - text: حالة المزود
+                      - article [ref=f4e614]:
+                        - text: Provider
+                        - strong [ref=f4e615]: FMP
+                        - text: المزود النشط
+                      - article [ref=f4e616]:
+                        - text: Connection
+                        - strong [ref=f4e617]: غير مهيأ
+                        - text: حالة الاتصال
+                      - article [ref=f4e618]:
+                        - text: Discovered
+                        - strong [ref=f4e619]: 13,138 رمز
+                        - text: عدد الرموز المكتشفة
+                      - article [ref=f4e620]:
+                        - text: Loaded
+                        - strong [ref=f4e621]: 13,138 رمز
+                        - text: عدد الرموز المحملة
+                      - article [ref=f4e622]:
+                        - text: Cached
+                        - strong [ref=f4e623]: 0 رمز
+                        - text: عدد الرموز من الكاش
+                      - article [ref=f4e624]:
+                        - text: Failed
+                        - strong [ref=f4e625]: 0 رمز
+                        - text: عدد الرموز المتعثرة
+                      - article [ref=f4e626]:
+                        - text: Skipped
+                        - strong [ref=f4e627]: 0 رمز
+                        - text: عدد الرموز المتخطاة
+                      - article [ref=f4e628]:
+                        - text: Cache
+                        - strong [ref=f4e629]: غير مستخدم
+                        - text: حالة الكاش
+                      - article [ref=f4e630]:
+                        - text: Updated
+                        - strong [ref=f4e631]: Jul 03, 2026, 19:07
+                        - text: آخر تحديث
+                    - generic [ref=f4e632]: الميزات المدعومةأسعار · أرباح · توزيعات · اكتتابات · تقويم اقتصادي
+                    - group [ref=f4e633]:
+                      - generic "تفاصيل التشخيص" [ref=f4e634]
+              - generic [ref=f4e635]:
+                - strong [ref=f4e636]: "تنبيه:"
+                - text: جميع المحتويات لأغراض تعليمية ومعلوماتية فقط ولا تُعد نصيحة استثمارية. التداول ينطوي على مخاطرة قد تصل لكامل رأس المال.
+          - contentinfo [ref=f4e113]:
+            - generic [ref=f4e637]:
+              - generic [ref=f4e638]: البيانات اللحظية
+              - strong [ref=f4e639]: متصلة
+              - emphasis [ref=f4e640]: Real-time
+            - generic [ref=f4e641]:
+              - generic [ref=f4e642]: الأسواق
+              - strong [ref=f4e643]: "1"
+              - emphasis [ref=f4e644]: Markets
+            - generic [ref=f4e645]:
+              - generic [ref=f4e646]: الأصول المحللة
+              - strong [ref=f4e647]: "1"
+              - emphasis [ref=f4e648]: Analyzed
+            - generic [ref=f4e649]:
+              - generic [ref=f4e650]: قائمة المتابعة
+              - strong [ref=f4e651]: "0"
+              - emphasis [ref=f4e652]: Watchlist
+            - generic [ref=f4e653]:
+              - generic [ref=f4e654]: آخر تحديث
+              - strong [ref=f4e655]: ٠٧:٠٧:٥٢ م
+              - emphasis [ref=f4e656]: Updated
+            - strong [ref=f4e659]: النظام يعمل
+  - button "Open Next.js Dev Tools" [ref=f3e8] [cursor=pointer]:
+    - img [ref=f3e9]
+  - alert [ref=f3e12]

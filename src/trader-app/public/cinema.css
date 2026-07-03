@@ -1302,6 +1302,8 @@ body,
 .tile-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 9px; border: 1px solid var(--line); background: rgba(4,12,20,0.6); color: var(--text); font-size: 0.78rem; cursor: pointer; }
 .badge.sm { padding: 3px 8px; font-size: 0.72rem; }
+.badge.muted { color: var(--muted); background: rgba(148,163,184,0.08); border-color: rgba(148,163,184,0.24); cursor: default; }
+.market-more { font-weight: 700; }
 .badge:hover { border-color: var(--line-strong); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 

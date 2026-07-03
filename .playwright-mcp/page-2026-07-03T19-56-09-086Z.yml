@@ -1,0 +1,176 @@
+- generic [active] [ref=f9e1]:
+  - link "تخطّي إلى المحتوى":
+    - /url: "#main-content"
+  - region "Notifications alt+T"
+  - generic [ref=f9e2]:
+    - banner [ref=f9e3]:
+      - link "THE SFM" [ref=f9e4] [cursor=pointer]:
+        - /url: /dashboard
+        - img "THE SFM" [ref=f9e5]
+        - generic [ref=f9e6]:
+          - strong [ref=f9e7]: THE SFM
+          - text: THE SFM / محطة التداول الذكية
+      - generic [ref=f9e8]:
+        - button "بحث سريع" [ref=f9e9] [cursor=pointer]:
+          - img [ref=f9e10]
+        - button "تغيير وضع العرض" [ref=f9e13] [cursor=pointer]:
+          - img [ref=f9e14]
+        - button "اختيار اللغة" [ref=f9e21] [cursor=pointer]:
+          - img [ref=f9e22]
+          - text: العربيةAR
+          - img [ref=f9e27]
+        - button "فتح القائمة" [ref=f9e29] [cursor=pointer]:
+          - img [ref=f9e30]
+    - main [ref=f9e31]:
+      - iframe [ref=f9e32]:
+        - generic [ref=f10e2]:
+          - complementary "Trader navigation" [ref=f10e3]:
+            - generic [ref=f10e4]:
+              - link "the-sfm trader AI market command center" [ref=f10e5] [cursor=pointer]:
+                - /url: /thesfm-trader-own
+                - generic [ref=f10e6]: S
+                - generic [ref=f10e7]:
+                  - strong [ref=f10e8]: the-sfm trader
+                  - text: AI market command center
+              - button "طي القائمة" [ref=f10e9] [cursor=pointer]: «
+            - navigation [ref=f10e10]:
+              - link "القيادة Dashboard" [ref=f10e11] [cursor=pointer]:
+                - /url: /thesfm-trader-own/dashboard
+                - generic [ref=f10e12]: القيادة
+                - generic [ref=f10e13]: Dashboard
+              - link "الأسواق Markets" [ref=f10e14] [cursor=pointer]:
+                - /url: /thesfm-trader-own/markets
+                - generic [ref=f10e15]: الأسواق
+                - generic [ref=f10e16]: Markets
+              - link "ماسح الذكاء AI Scanner" [ref=f10e17] [cursor=pointer]:
+                - /url: /thesfm-trader-own/ai-scanner
+                - generic [ref=f10e18]: ماسح الذكاء
+                - generic [ref=f10e19]: AI Scanner
+              - link "قائمة المتابعة Watchlist" [ref=f10e20] [cursor=pointer]:
+                - /url: /thesfm-trader-own/watchlist
+                - generic [ref=f10e21]: قائمة المتابعة
+                - generic [ref=f10e22]: Watchlist
+              - link "المحفظة Portfolio" [ref=f10e23] [cursor=pointer]:
+                - /url: /thesfm-trader-own/portfolio
+                - generic [ref=f10e24]: المحفظة
+                - generic [ref=f10e25]: Portfolio
+              - link "التنبيهات Alerts" [ref=f10e26] [cursor=pointer]:
+                - /url: /thesfm-trader-own/alerts
+                - generic [ref=f10e27]: التنبيهات
+                - generic [ref=f10e28]: Alerts
+              - link "التوصيات Recommendations" [ref=f10e29] [cursor=pointer]:
+                - /url: /thesfm-trader-own/recommendations
+                - generic [ref=f10e30]: التوصيات
+                - generic [ref=f10e31]: Recommendations
+              - link "أداء الصفقات Trade Performance" [ref=f10e32] [cursor=pointer]:
+                - /url: /thesfm-trader-own/trade-performance
+                - generic [ref=f10e33]: أداء الصفقات
+                - generic [ref=f10e34]: Trade Performance
+              - link "الأخبار News" [ref=f10e35] [cursor=pointer]:
+                - /url: /thesfm-trader-own/news
+                - generic [ref=f10e36]: الأخبار
+                - generic [ref=f10e37]: News
+              - link "التقويم Calendar" [ref=f10e38] [cursor=pointer]:
+                - /url: /thesfm-trader-own/calendar
+                - generic [ref=f10e39]: التقويم
+                - generic [ref=f10e40]: Calendar
+              - link "التعليم Education" [ref=f10e41] [cursor=pointer]:
+                - /url: /thesfm-trader-own/education
+                - generic [ref=f10e42]: التعليم
+                - generic [ref=f10e43]: Education
+              - link "الإعدادات Settings" [ref=f10e44] [cursor=pointer]:
+                - /url: /thesfm-trader-own/settings
+                - generic [ref=f10e45]: الإعدادات
+                - generic [ref=f10e46]: Settings
+              - link "تفاصيل الرمز Symbol Details" [ref=f10e47] [cursor=pointer]:
+                - /url: /thesfm-trader-own/symbol-details
+                - generic [ref=f10e48]: تفاصيل الرمز
+                - generic [ref=f10e49]: Symbol Details
+            - link "AI PRO محرك التحليل الذكي فعّل الماسح للحصول على أقوى الإشارات اللحظية." [ref=f10e50] [cursor=pointer]:
+              - /url: /thesfm-trader-own/ai-scanner
+              - generic [ref=f10e51]: AI PRO
+              - strong [ref=f10e52]: محرك التحليل الذكي
+              - text: فعّل الماسح للحصول على أقوى الإشارات اللحظية.
+            - generic [ref=f10e55]:
+              - strong [ref=f10e56]: المزود غير مهيأ
+              - text: لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.
+            - link "SFM Trader عضو · الإعدادات" [ref=f10e57] [cursor=pointer]:
+              - /url: /thesfm-trader-own/settings
+              - generic [ref=f10e58]: M
+              - generic [ref=f10e59]:
+                - strong [ref=f10e60]: SFM Trader
+                - text: عضو · الإعدادات
+          - generic [ref=f10e61]:
+            - banner [ref=f10e62]:
+              - generic [ref=f10e63]:
+                - generic [ref=f10e64]: AI TRADING TERMINAL
+                - heading "التوصيات والتحليل" [level=1] [ref=f10e65]
+              - generic [ref=f10e66]:
+                - generic [ref=f10e67]: ابحث عن سهم أو رمز
+                - textbox "ابحث عن سهم أو رمز" [ref=f10e68]:
+                  - /placeholder: AAPL, BTCUSD, XAUUSD...
+                - button "تحليل" [ref=f10e69] [cursor=pointer]
+              - generic [ref=f10e70]:
+                - generic [ref=f10e73]: لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.
+                - link "التنبيهات" [ref=f10e74] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/alerts
+                - link "الإعدادات" [ref=f10e75] [cursor=pointer]:
+                  - /url: /thesfm-trader-own/settings
+                - generic [ref=f10e76]: بورصة الكويت · KWD
+            - region "Market ticker" [ref=f10e77]:
+              - button "NAS100 غير متاح" [ref=f10e78] [cursor=pointer]:
+                - generic [ref=f10e79]: NAS
+                - generic [ref=f10e80]:
+                  - strong [ref=f10e81]: NAS100
+                  - generic [ref=f10e82]: غير متاح
+              - button "US30 غير متاح" [ref=f10e83] [cursor=pointer]:
+                - generic [ref=f10e84]: US3
+                - generic [ref=f10e85]:
+                  - strong [ref=f10e86]: US30
+                  - generic [ref=f10e87]: غير متاح
+              - button "Gold غير متاح" [ref=f10e88] [cursor=pointer]:
+                - generic [ref=f10e89]: Au
+                - generic [ref=f10e90]:
+                  - strong [ref=f10e91]: Gold
+                  - generic [ref=f10e92]: غير متاح
+              - button "Oil غير متاح" [ref=f10e93] [cursor=pointer]:
+                - generic [ref=f10e94]: ⛽
+                - generic [ref=f10e95]:
+                  - strong [ref=f10e96]: Oil
+                  - generic [ref=f10e97]: غير متاح
+              - button "BTC/USD غير متاح" [ref=f10e98] [cursor=pointer]:
+                - generic [ref=f10e99]: ₿
+                - generic [ref=f10e100]:
+                  - strong [ref=f10e101]: BTC/USD
+                  - generic [ref=f10e102]: غير متاح
+              - button "KFH غير متاح" [ref=f10e103] [cursor=pointer]:
+                - generic [ref=f10e104]: 🇰🇼
+                - generic [ref=f10e105]:
+                  - strong [ref=f10e106]: KFH
+                  - generic [ref=f10e107]: غير متاح
+            - main [ref=f10e108]:
+              - generic [ref=f10e109]:
+                - heading "يتم تجهيز منصة التداول" [level=2] [ref=f10e111]
+                - paragraph [ref=f10e112]: نحمّل حالة المزود، الأخبار، التوصيات، وقوائم المتابعة بدون إنشاء بيانات وهمية.
+            - contentinfo [ref=f10e113]:
+              - generic [ref=f10e114]:
+                - generic [ref=f10e115]: البيانات اللحظية
+                - strong [ref=f10e116]: غير متصلة
+                - emphasis [ref=f10e117]: Real-time
+              - generic [ref=f10e118]:
+                - generic [ref=f10e119]: الأسواق
+                - strong [ref=f10e120]: "22"
+                - emphasis [ref=f10e121]: Markets
+              - generic [ref=f10e122]:
+                - generic [ref=f10e123]: الأصول المحللة
+                - strong [ref=f10e124]: "--"
+                - emphasis [ref=f10e125]: Analyzed
+              - generic [ref=f10e126]:
+                - generic [ref=f10e127]: قائمة المتابعة
+                - strong [ref=f10e128]: "0"
+                - emphasis [ref=f10e129]: Watchlist
+              - generic [ref=f10e130]:
+                - generic [ref=f10e131]: آخر تحديث
+                - strong [ref=f10e132]: ١٠:٥٦:٠٦ م
+                - emphasis [ref=f10e133]: Updated
+              - strong [ref=f10e136]: بانتظار المزود
