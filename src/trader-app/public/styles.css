@@ -25,6 +25,11 @@
   font-family: "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
 }
 
+html[dir="rtl"] body,
+html[dir="rtl"] body *:not(.ltr):not(code):not(pre):not(kbd):not(samp) {
+  letter-spacing: 0 !important;
+}
+
 /* Premium terminal rebuild: thesfm trader only. Keep this block last. */
 :root {
   --sfm-terminal-bg: #040b11;
@@ -22528,5 +22533,54 @@ body[data-app-view] .app-shell,
 
   .provider-diagnostic-group code {
     max-width: 100% !important;
+  }
+}
+.market-coverage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin: .75rem 0 1rem;
+  color: var(--muted, #9fb0c0);
+  font-size: .86rem;
+}
+
+.market-coverage-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: .38rem .65rem;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .44);
+  line-height: 1.35;
+}
+
+.market-coverage-strip .source-pill {
+  color: var(--accent, #d8ac50);
+  border-color: rgba(216, 172, 80, .32);
+}
+
+.market-load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.market-load-more[disabled] {
+  opacity: .62;
+  cursor: wait;
+}
+
+@media (max-width: 640px) {
+  .market-coverage-strip {
+    align-items: stretch;
+  }
+
+  .market-coverage-strip span,
+  .market-load-more-row .market-load-more {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 }

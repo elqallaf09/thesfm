@@ -154,8 +154,13 @@ function buildStockDetailPayload(result: StockAnalysisResult) {
         atr14: result.technicals.atr14,
       },
       timeframeConsensus: {
-        agreementPct: Math.round(result.confidence),
+        agreementPct: null,
         conflict: result.warnings.length > 0 && result.signal === 'hold',
+        coverage: 1,
+        total: 1,
+        strategyCount: 1,
+        label: 'Limited consensus',
+        labelAr: 'توافق محدود',
       },
       timeframes: [
         {
@@ -306,8 +311,13 @@ function buildAgentDetailPayload(
         vwap: null,
       },
       timeframeConsensus: {
-        agreementPct: analysis.confidence,
+        agreementPct: null,
         conflict: analysis.suggestedAction === 'wait',
+        coverage: 1,
+        total: 1,
+        strategyCount: 1,
+        label: 'Limited consensus',
+        labelAr: 'توافق محدود',
       },
       timeframes: [
         {
@@ -428,8 +438,13 @@ function buildStoredDetailPayload(row: StoredScanRow, candidate: TraderDetailCan
       relativeVolume: null,
       indicators: {},
       timeframeConsensus: {
-        agreementPct: confidence,
+        agreementPct: null,
         conflict: row.signal === 'hold',
+        coverage: 1,
+        total: 1,
+        strategyCount: 1,
+        label: 'Limited consensus',
+        labelAr: 'توافق محدود',
       },
       timeframes: [],
       upsideOutlook: targetPrice ? [{

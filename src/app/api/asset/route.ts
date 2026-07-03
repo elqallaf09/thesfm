@@ -155,6 +155,9 @@ function unavailablePayload(symbol: string, candidate: TraderDetailCandidate | n
         conflict: true,
         coverage: 0,
         total: 0,
+        strategyCount: 0,
+        label: 'Insufficient data',
+        labelAr: 'بيانات غير كافية',
       },
       timeframes: [],
       upsideOutlook: [],
@@ -261,10 +264,13 @@ function successPayload(
         vwap: null,
       },
       timeframeConsensus: {
-        agreementPct: analysis.confidence,
+        agreementPct: null,
         conflict: analysis.suggestedAction === 'wait',
         coverage: 1,
         total: 1,
+        strategyCount: 1,
+        label: 'Limited consensus',
+        labelAr: 'توافق محدود',
       },
       timeframes: [
         {

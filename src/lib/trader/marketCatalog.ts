@@ -51,6 +51,8 @@ export type TraderCatalogSymbol = {
   providerSymbols: Partial<Record<TraderQuoteProvider, string[]>>;
   name: string;
   assetType: TraderAssetType;
+  sector?: string;
+  industry?: string;
   exchange?: string;
   exchangeCode?: string;
   market?: string;
@@ -122,6 +124,104 @@ type RawSymbolRecord = Record<string, unknown>;
 const CATALOG_CACHE_MS = 12 * 60 * 60 * 1000;
 const CATALOG_STALE_MS = 24 * 60 * 60 * 1000;
 const FMP_DISCOVERY_TIMEOUT_MS = 12_000;
+
+const SEMICONDUCTOR_SYMBOLS = [
+  'NVDA', 'AMD', 'INTC', 'AVGO', 'TSM', 'ASML', 'QCOM', 'TXN', 'MU', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'MCHP',
+  'ON', 'NXPI', 'ADI', 'MPWR', 'ARM', 'SMCI', 'TER', 'SWKS', 'QRVO', 'LSCC', 'COHR', 'UMC', 'GFS', 'WOLF',
+] as const;
+
+const EXPANDED_MARKET_SYMBOLS: Record<string, readonly string[]> = {
+  'us-stocks': [
+    'AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'TSLA', 'GOOGL', 'GOOG', 'BRK.B', 'JPM', 'V', 'MA', 'UNH', 'LLY',
+    'WMT', 'HD', 'PG', 'COST', 'ORCL', 'NFLX', 'CRM', 'ADBE', 'CSCO', 'IBM', 'DIS', 'BAC', 'XOM', 'CVX',
+  ],
+  forex: [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD', 'EURJPY', 'GBPJPY', 'EURGBP',
+    'EURAUD', 'EURCHF', 'AUDJPY', 'CADJPY', 'CHFJPY', 'GBPCHF', 'GBPAUD', 'USDSAR', 'USDKWD', 'USDAED',
+  ],
+  crypto: [
+    'BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'ADAUSD', 'DOGEUSD', 'AVAXUSD', 'DOTUSD', 'LTCUSD',
+    'BCHUSD', 'LINKUSD', 'MATICUSD', 'TRXUSD', 'UNIUSD', 'ATOMUSD', 'ETCUSD', 'XLMUSD', 'APTUSD', 'ARBUSD',
+  ],
+  commodities: [
+    'XAUUSD', 'XAGUSD', 'WTI', 'BRENT', 'GC=F', 'SI=F', 'CL=F', 'BZ=F', 'HG=F', 'PL=F', 'PA=F', 'NG=F',
+  ],
+  indices: [
+    'US30', 'NAS100', 'SPX500', 'DAX', 'FTSE', 'CAC40', 'NIKKEI', 'HSI', 'DXY', 'STOXX50', 'RUSSELL2000',
+    'VIX', 'TASI', 'BKMAIN', 'DFMGI', 'ADXGI', 'QE', 'BAX',
+  ],
+  etfs: [
+    'SPY', 'QQQ', 'VOO', 'DIA', 'IWM', 'GLD', 'SLV', 'VTI', 'VEA', 'VWO', 'AGG', 'BND', 'TLT', 'HYG',
+    'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLI', 'XLP', 'XLU', 'VNQ', 'SOXX',
+  ],
+  gcc: [
+    '2222.SR', '1120.SR', '1180.SR', '7010.SR', 'KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'EMAAR.AE',
+    'FAB.AE', 'ETISALAT.AE', 'DIB.AE', 'QNBK.QA', 'QIBK.QA', 'IQCD.QA', 'AUB.BH', 'GFH.BH', 'BATELCO.BH',
+    'BKMB.OM', 'OMINV.OM',
+  ],
+  saudi: [
+    '2222.SR', '1120.SR', '1180.SR', '2010.SR', '7010.SR', '1211.SR', '1010.SR', '1020.SR', '1050.SR',
+    '1060.SR', '1080.SR', '2020.SR', '2380.SR', '2280.SR', '4002.SR', '4004.SR', '4013.SR', '4164.SR',
+    '4190.SR', '4300.SR', '8010.SR', '8210.SR', '7203.SR', '7020.SR',
+  ],
+  kuwait: [
+    'KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'GBK.KW', 'BURG.KW', 'CBK.KW', 'AGLTY.KW', 'KIB.KW',
+    'WARBA.KW', 'MABANEE.KW', 'HUMANSOFT.KW', 'STC.KW', 'ALIMTIAZ.KW', 'GULFBANK.KW', 'NIND.KW',
+    'KAMCO.KW', 'MEZZAN.KW', 'JAZEERA.KW', 'ALAFCO.KW',
+  ],
+  uae: [
+    'EMAAR.AE', 'FAB.AE', 'ETISALAT.AE', 'ADCB.AE', 'DIB.AE', 'ENBD.AE', 'ALDAR.AE', 'ADIB.AE', 'DEWA.AE',
+    'SALIK.AE', 'ADNOCDIST.AE', 'DFM.AE', 'AIRARABIA.AE', 'EMAAR.DU', 'DIB.DU', 'EMIRATESNBD.DU',
+    'EMAARDEV.DU', 'TECOM.DU', 'ADNOCGAS.AD', 'ADNOCDRILL.AD', 'ADNOCAD.AD', 'TAQA.AD', 'MULTIPLY.AD',
+  ],
+  qatar: [
+    'QNBK.QA', 'QIBK.QA', 'IQCD.QA', 'MARK.QA', 'CBQK.QA', 'DHBK.QA', 'ABQK.QA', 'QIIK.QA', 'QISI.QA',
+    'ORDS.QA', 'VFQS.QA', 'QEWS.QA', 'MPHC.QA', 'QGTS.QA', 'QAMC.QA', 'BRES.QA', 'ERES.QA', 'UDCD.QA',
+    'GWCS.QA', 'MERS.QA',
+  ],
+  bahrain: [
+    'AUB.BH', 'GFH.BH', 'BATELCO.BH', 'NBB.BH', 'BBK.BH', 'ABC.BH', 'BISB.BH', 'SALAM.BH', 'ZAINBH.BH',
+    'ALBH.BH', 'SEEF.BH', 'ESTERAD.BH', 'TRAFCO.BH', 'KHCB.BH',
+  ],
+  oman: [
+    'BKMB.OM', 'OMINV.OM', 'NBOB.OM', 'OMAB.OM', 'ORED.OM', 'MSMI.OM', 'RAYS.OM', 'SMNP.OM', 'ALMI.OM',
+    'DHOF.OM', 'OQGN.OM', 'NAPI.OM', 'DBIH.OM', 'HBMO.OM', 'MAZOON.OM',
+  ],
+  europe: [
+    'ASML.AS', 'SAP.DE', 'NESN.SW', 'MC.PA', 'SHEL.L', 'NOVO-B.CO', 'AZN.L', 'HSBA.L', 'ULVR.L', 'SIE.DE',
+    'OR.PA', 'TTE.PA', 'AIR.PA', 'SU.PA', 'AI.PA', 'IBE.MC', 'SAN.MC', 'ITX.MC', 'ENEL.MI', 'UCG.MI',
+    'ROG.SW', 'NOVN.SW',
+  ],
+  asia: [
+    '7203.T', '9988.HK', 'TSM', '005930.KS', '6758.T', '9984.T', '0700.HK', '1299.HK', '2330.TW', '2317.TW',
+    'BABA', 'SONY', 'TM', 'NIO', 'JD', 'BIDU',
+  ],
+  technology: [
+    'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'ORCL', 'CRM', 'ADBE', 'NOW', 'SNOW', 'PANW', 'CRWD', 'SHOP', 'INTU',
+    'ADP', 'IBM', 'CSCO', ...SEMICONDUCTOR_SYMBOLS,
+  ],
+  ai: [
+    'NVDA', 'MSFT', 'GOOGL', 'GOOG', 'AMD', 'PLTR', 'META', 'AMZN', 'AVGO', 'TSM', 'ASML', 'CRM', 'NOW',
+    'SNOW', 'AI', 'PATH', 'SOUN', 'ARM', 'SMCI', 'MU',
+  ],
+  semiconductors: SEMICONDUCTOR_SYMBOLS,
+  energy: [
+    'XOM', 'CVX', '2222.SR', 'OXY', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'HAL', 'BKR', 'SHEL.L',
+    'TTE.PA', 'ADNOCDIST.AE', 'ADNOCGAS.AD',
+  ],
+  banking: [
+    'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'USB', 'PNC', 'TD', 'RY', 'HSBA.L', 'SAN.MC', 'UCG.MI', 'NBK.KW',
+    'KFH.KW', 'QNBK.QA', 'QIBK.QA', '1120.SR', '1180.SR', 'AUB.BH', 'BKMB.OM',
+  ],
+  food: [
+    'KO', 'PEP', 'MCD', 'COST', 'WMT', 'PG', 'MDLZ', 'SBUX', 'YUM', 'KHC', 'GIS', 'K', 'HSY', 'TSN',
+    'ULVR.L', 'NESN.SW',
+  ],
+  healthcare: [
+    'LLY', 'PFE', 'JNJ', 'MRK', 'UNH', 'ABBV', 'ABT', 'TMO', 'DHR', 'BMY', 'AMGN', 'GILD', 'ISRG', 'VRTX',
+    'AZN.L', 'NOVN.SW', 'ROG.SW',
+  ],
+};
 
 export const TRADER_MARKET_SEEDS: SeedMarket[] = [
   { id: 'us-stocks', ar: 'الأسهم الأمريكية', en: 'US Stocks', family: 'Equities', currency: 'USD', symbols: ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'TSLA'], tone: 'featured', apiMarket: 'us-stocks' },
@@ -221,6 +321,68 @@ function uniq(values: unknown[]) {
   return result;
 }
 
+function seedSymbolsForMarket(market: Pick<SeedMarket | TraderMarketDef, 'id' | 'symbols'>) {
+  return uniq([...(market.symbols ?? []), ...(EXPANDED_MARKET_SYMBOLS[market.id] ?? [])]);
+}
+
+const SECTOR_MARKET_IDS = new Set(
+  TRADER_MARKET_SEEDS
+    .filter(market => market.family.toLowerCase() === 'sector')
+    .map(market => market.id),
+);
+
+const SECTOR_CLASSIFICATION_PATTERNS: Record<string, RegExp[]> = {
+  semiconductors: [
+    /\bSEMICONDUCTORS?\b/,
+    /\bSEMICONDUCTOR EQUIPMENT\b/,
+    /\bSEMICONDUCTOR MATERIALS?\b/,
+    /\bSEMICONDUCTOR DEVICES?\b/,
+    /\bELECTRONIC COMPONENTS?\b/,
+    /\bINTEGRATED CIRCUITS?\b/,
+    /\bCHIP(?:S|MAKER|MAKERS)?\b/,
+  ],
+  technology: [
+    /\bTECHNOLOGY\b/,
+    /\bINFORMATION TECHNOLOGY\b/,
+    /\bSOFTWARE\b/,
+    /\bCLOUD\b/,
+    /\bCYBERSECURITY\b/,
+    /\bSEMICONDUCTORS?\b/,
+    /\bELECTRONIC COMPONENTS?\b/,
+  ],
+  ai: [
+    /\bARTIFICIAL INTELLIGENCE\b/,
+    /\bMACHINE LEARNING\b/,
+    /\bDATA ANALYTICS?\b/,
+    /\bGENERATIVE AI\b/,
+  ],
+  energy: [
+    /\bENERGY\b/,
+    /\bOIL\b/,
+    /\bGAS\b/,
+    /\bPETROLEUM\b/,
+    /\bREFINING\b/,
+  ],
+  banking: [
+    /\bBANKS?\b/,
+    /\bBANKING\b/,
+    /\bFINANCIAL SERVICES?\b/,
+    /\bCAPITAL MARKETS?\b/,
+  ],
+  food: [
+    /\bFOOD\b/,
+    /\bBEVERAGES?\b/,
+    /\bCONSUMER STAPLES?\b/,
+    /\bRESTAURANTS?\b/,
+  ],
+  healthcare: [
+    /\bHEALTH\s?CARE\b/,
+    /\bPHARMA(?:CEUTICALS?)?\b/,
+    /\bBIOTECH(?:NOLOGY)?\b/,
+    /\bMEDICAL\b/,
+  ],
+};
+
 function withMarketMetadata<T extends SeedMarket | TraderMarketDef>(market: T): T {
   const metadata = TRADER_MARKET_METADATA[market.id];
   if (!metadata) return market;
@@ -240,7 +402,11 @@ function defaultCurrency(symbol: string): string | undefined {
   if (/\.OM$/.test(symbol)) return 'OMR';
   if (/\.BH$/.test(symbol)) return 'BHD';
   if (/\.L$/.test(symbol)) return 'GBP';
+  if (/\.CO$/.test(symbol)) return 'DKK';
+  if (/\.SW$/.test(symbol)) return 'CHF';
   if (/\.T$|^NIKKEI$/.test(symbol)) return 'JPY';
+  if (/\.TW$/.test(symbol)) return 'TWD';
+  if (/\.KS$/.test(symbol)) return 'KRW';
   if (/\.HK$|^HSI$/.test(symbol)) return 'HKD';
   if (/\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|^DAX$|^CAC40$/.test(symbol)) return 'EUR';
   if (/^[A-Z]{6}$/.test(symbol)) return symbol.slice(3);
@@ -269,6 +435,8 @@ function marketIdsForRecord(record: {
   market?: string;
   country?: string;
   name?: string;
+  sector?: string;
+  industry?: string;
 }) {
   const ids = new Set<string>();
   const symbol = record.symbol;
@@ -276,7 +444,8 @@ function marketIdsForRecord(record: {
   const exchange = upper(record.exchange);
   const country = upper(record.country);
   const market = upper(record.market);
-  const haystack = `${symbol} ${exchange} ${market} ${country} ${upper(record.name)}`;
+  const classification = `${upper(record.sector)} ${upper(record.industry)}`.trim();
+  const haystack = `${symbol} ${exchange} ${market} ${country} ${upper(record.name)} ${classification}`;
 
   if (record.assetType === 'fund') ids.add('etfs');
   if (record.assetType === 'crypto') ids.add('crypto');
@@ -292,11 +461,17 @@ function marketIdsForRecord(record: {
   if (suff === 'BH' || /BAHRAIN/.test(haystack)) { ids.add('bahrain'); ids.add('gcc'); }
   if (suff === 'OM' || /OMAN|MUSCAT/.test(haystack)) { ids.add('oman'); ids.add('gcc'); }
 
-  if (/\.L$|\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|\.SW$|EUROPE|LONDON|XETRA|EURONEXT|PARIS|MILAN|MADRID|AMSTERDAM|SWISS|GERMANY|FRANCE|UNITED KINGDOM|ITALY|SPAIN|NETHERLANDS/.test(haystack)) ids.add('europe');
-  if (/\.T$|\.HK$|\.KS$|ASIA|TOKYO|HONG KONG|KOREA|JAPAN|TAIWAN|SHANGHAI|SHENZHEN/.test(haystack)) ids.add('asia');
+  if (/\.L$|\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|\.SW$|\.CO$|EUROPE|LONDON|XETRA|EURONEXT|PARIS|MILAN|MADRID|AMSTERDAM|SWISS|GERMANY|FRANCE|UNITED KINGDOM|ITALY|SPAIN|NETHERLANDS|DENMARK/.test(haystack)) ids.add('europe');
+  if (/\.T$|\.HK$|\.KS$|\.TW$|ASIA|TOKYO|HONG KONG|KOREA|JAPAN|TAIWAN|SHANGHAI|SHENZHEN/.test(haystack)) ids.add('asia');
 
   for (const market of TRADER_MARKET_SEEDS) {
-    if (market.symbols.map(upper).includes(symbol)) ids.add(market.id);
+    if (seedSymbolsForMarket(market).map(upper).includes(symbol)) ids.add(market.id);
+  }
+
+  if (classification) {
+    for (const [marketId, patterns] of Object.entries(SECTOR_CLASSIFICATION_PATTERNS)) {
+      if (patterns.some(pattern => pattern.test(classification))) ids.add(marketId);
+    }
   }
 
   return Array.from(ids).filter(id => MARKET_ID_SET.has(id));
@@ -344,15 +519,17 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
   const market = text(metadata.market ?? record.market);
   const country = text(metadata.country ?? record.country);
   const currency = upper(metadata.currency ?? record.currency) || defaultCurrency(symbol);
-  const marketIds = uniq([...fallbackMarketIds, ...marketIdsForRecord({ symbol, assetType, exchange, market, country, name })]);
+  const sector = text(record.sector);
+  const industry = text(record.industry);
+  const marketIds = uniq([...fallbackMarketIds, ...marketIdsForRecord({ symbol, assetType, exchange, market, country, name, sector, industry })]);
   const shariah = classifyShariahCompliance({
     symbol,
     name,
     assetType,
     exchange,
     country,
-    sector: text(record.sector),
-    industry: text(record.industry),
+    sector,
+    industry,
     businessDescription: text(record.description ?? record.businessDescription),
     shariahStatus: nullableText(record.shariah_status ?? record.shariahStatus),
     shariahReason: nullableText(record.shariah_reason ?? record.shariahReason),
@@ -369,6 +546,8 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
     providerSymbols: providerSymbolsFor(symbol, assetType, providerSymbol),
     name,
     assetType,
+    sector: sector || undefined,
+    industry: industry || undefined,
     exchange: exchange || undefined,
     exchangeCode: exchangeCode || undefined,
     market: market || undefined,
@@ -397,6 +576,10 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   if (preferNextMetadata && next.currency) target.currency = next.currency;
   else target.currency ||= next.currency;
   if (preferNextMetadata && next.assetType) target.assetType = next.assetType;
+  if (preferNextMetadata && next.sector) target.sector = next.sector;
+  else target.sector ||= next.sector;
+  if (preferNextMetadata && next.industry) target.industry = next.industry;
+  else target.industry ||= next.industry;
   target.name = (preferNextMetadata || target.name === target.symbol) && next.name !== next.symbol ? next.name : target.name;
   target.providerSymbol = preferNextMetadata && next.providerSymbol ? next.providerSymbol : target.providerSymbol || next.providerSymbol;
   if (preferNextMetadata || !target.metadataDiagnostics.finalExchange) target.metadataDiagnostics = next.metadataDiagnostics;
@@ -429,7 +612,7 @@ function addRecord(map: Map<string, TraderCatalogSymbol>, record: TraderCatalogS
 function seedRecords() {
   const records: TraderCatalogSymbol[] = [];
   for (const market of TRADER_MARKET_SEEDS) {
-    for (const symbol of market.symbols) {
+    for (const symbol of seedSymbolsForMarket(market)) {
       records.push(normalizeRecord({
         symbol,
         providerSymbol: symbol,
@@ -698,7 +881,8 @@ function capabilityMatrix(cacheAvailable = false) {
 
 function buildMarkets(symbols: TraderCatalogSymbol[]): TraderMarketDef[] {
   return TRADER_MARKET_SEEDS.map(seed => {
-    const seedOrder = new Map(seed.symbols.map((symbol, index) => [upper(symbol), index]));
+    const expandedSeedSymbols = seedSymbolsForMarket(seed);
+    const seedOrder = new Map(expandedSeedSymbols.map((symbol, index) => [upper(symbol), index]));
     const marketSymbols = symbols
       .filter(symbol => symbol.marketIds.includes(seed.id))
       .sort((a, b) => {
@@ -824,6 +1008,181 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
   return value;
 }
 
+export type TraderUniverseCategory = TraderAssetType | 'all';
+
+export type TraderSymbolUniverseEntry = {
+  symbol: string;
+  name: string;
+  selectedMarket: string | null;
+  selectedSector: string | null;
+  exchange?: string;
+  country?: string;
+  currency?: string;
+  assetType: TraderAssetType;
+  providerSymbol: string;
+  source: TraderCatalogSource;
+  sector?: string;
+  industry?: string;
+  marketIds: string[];
+};
+
+export type TraderSymbolUniverseResult = {
+  selectedMarket: string | null;
+  selectedSector: string | null;
+  category: TraderUniverseCategory;
+  total: number;
+  symbols: string[];
+  entries: TraderSymbolUniverseEntry[];
+  symbolMeta: TraderCatalogSymbol[];
+  source: TraderMarketDef['source'] | 'catalog';
+};
+
+type TraderSymbolUniverseQuery = {
+  market?: string | null;
+  sector?: string | null;
+  category?: string | null;
+  catalog?: TraderMarketCatalog;
+  forceFresh?: boolean;
+  includeFmpDiscovery?: boolean;
+};
+
+const CATEGORY_ALIASES: Record<string, TraderUniverseCategory> = {
+  all: 'all',
+  'all-assets': 'all',
+  stock: 'stock',
+  stocks: 'stock',
+  equity: 'stock',
+  equities: 'stock',
+  crypto: 'crypto',
+  cryptocurrency: 'crypto',
+  forex: 'forex',
+  fx: 'forex',
+  commodity: 'commodity',
+  commodities: 'commodity',
+  metals: 'commodity',
+  index: 'index',
+  indices: 'index',
+  fund: 'fund',
+  funds: 'fund',
+  etf: 'fund',
+  etfs: 'fund',
+};
+
+function normalizeUniverseCategory(value: string | null | undefined): TraderUniverseCategory {
+  const raw = String(value ?? 'all').trim().toLowerCase().replace(/[_\s]+/g, '-');
+  return CATEGORY_ALIASES[raw] ?? 'all';
+}
+
+function normalizeUniverseMarketId(value: string | null | undefined) {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw || raw === 'all' || raw === 'global') return null;
+  if (['us', 'usa', 'stocks', 'equities', 'equity', 'us stocks', 'us-stocks'].includes(raw)) return 'us-stocks';
+  if (['etf', 'etfs', 'fund', 'funds'].includes(raw)) return 'etfs';
+  if (['fx', 'forex', 'currency', 'currencies'].includes(raw)) return 'forex';
+  if (['crypto', 'cryptocurrency', 'digital assets', 'digital-assets'].includes(raw)) return 'crypto';
+  if (/semiconductor|electronic component/.test(raw)) return 'semiconductors';
+  const normalized = raw.replace(/[_/]+/g, '-').replace(/\s+/g, '-');
+  const byId = TRADER_MARKET_SEEDS.find(market => market.id === normalized || market.apiMarket === normalized);
+  if (byId) return byId.id;
+  const byLabel = TRADER_MARKET_SEEDS.find(market => (
+    market.en.toLowerCase() === raw
+    || market.family.toLowerCase() === raw
+    || market.en.toLowerCase().replace(/[_/]+/g, '-').replace(/\s+/g, '-') === normalized
+  ));
+  return byLabel?.id ?? null;
+}
+
+function primaryMarketForSymbol(symbol: TraderCatalogSymbol, selectedMarket: string | null) {
+  if (selectedMarket && symbol.marketIds.includes(selectedMarket)) return selectedMarket;
+  return symbol.marketIds.find(id => !SECTOR_MARKET_IDS.has(id) && id !== 'gcc')
+    ?? symbol.marketIds.find(id => !SECTOR_MARKET_IDS.has(id))
+    ?? null;
+}
+
+function primarySectorForSymbol(symbol: TraderCatalogSymbol, selectedSector: string | null) {
+  if (selectedSector && symbol.marketIds.includes(selectedSector)) return selectedSector;
+  return symbol.marketIds.find(id => SECTOR_MARKET_IDS.has(id)) ?? null;
+}
+
+function universeEntry(symbol: TraderCatalogSymbol, selectedMarket: string | null, selectedSector: string | null): TraderSymbolUniverseEntry {
+  return {
+    symbol: symbol.symbol,
+    name: symbol.name,
+    selectedMarket: primaryMarketForSymbol(symbol, selectedMarket),
+    selectedSector: primarySectorForSymbol(symbol, selectedSector),
+    exchange: symbol.exchange,
+    country: symbol.country,
+    currency: symbol.currency,
+    assetType: symbol.assetType,
+    providerSymbol: symbol.providerSymbol,
+    source: symbol.source,
+    sector: symbol.sector,
+    industry: symbol.industry,
+    marketIds: symbol.marketIds,
+  };
+}
+
+function sortUniverseSymbols(symbols: TraderCatalogSymbol[], selectedMarket: string | null, selectedSector: string | null) {
+  const preferredIds = uniq([selectedMarket, selectedSector]);
+  const order = new Map<string, number>();
+  for (const marketId of preferredIds) {
+    const seed = TRADER_MARKET_SEEDS.find(market => market.id === marketId);
+    if (!seed) continue;
+    seedSymbolsForMarket(seed).forEach((symbol, index) => {
+      const key = upper(symbol);
+      if (!order.has(key)) order.set(key, order.size + index);
+    });
+  }
+  return [...symbols].sort((a, b) => {
+    const ai = order.get(a.symbol) ?? order.get(a.providerSymbol) ?? Number.MAX_SAFE_INTEGER;
+    const bi = order.get(b.symbol) ?? order.get(b.providerSymbol) ?? Number.MAX_SAFE_INTEGER;
+    return ai - bi || a.symbol.localeCompare(b.symbol);
+  });
+}
+
+export async function getSymbolsForMarketOrSector(query: TraderSymbolUniverseQuery = {}): Promise<TraderSymbolUniverseResult> {
+  const requestedMarket = normalizeUniverseMarketId(query.market);
+  const requestedSector = normalizeUniverseMarketId(query.sector);
+  const selectedSector = requestedSector ?? (requestedMarket && SECTOR_MARKET_IDS.has(requestedMarket) ? requestedMarket : null);
+  const selectedMarket = requestedMarket && !SECTOR_MARKET_IDS.has(requestedMarket) ? requestedMarket : null;
+  const category = normalizeUniverseCategory(query.category);
+  const catalog = query.catalog ?? await getTraderMarketCatalog({
+    forceFresh: query.forceFresh,
+    includeFmpDiscovery: query.includeFmpDiscovery,
+    marketId: selectedMarket ?? selectedSector ?? requestedMarket,
+  });
+
+  let rows = catalog.symbols;
+  if (selectedMarket) {
+    rows = rows.filter(symbol => symbol.marketIds.includes(selectedMarket));
+  } else if (requestedMarket && !selectedSector) {
+    rows = rows.filter(symbol => symbol.marketIds.includes(requestedMarket));
+  }
+
+  if (selectedSector) {
+    rows = rows.filter(symbol => symbol.marketIds.includes(selectedSector));
+  }
+
+  if (category !== 'all') {
+    rows = rows.filter(symbol => symbol.assetType === category);
+  }
+
+  const symbolMeta = sortUniverseSymbols(rows, selectedMarket, selectedSector);
+  const entries = symbolMeta.map(symbol => universeEntry(symbol, selectedMarket, selectedSector));
+  const sourceMarket = catalog.markets.find(market => market.id === selectedMarket || market.id === selectedSector || market.id === requestedMarket);
+
+  return {
+    selectedMarket,
+    selectedSector,
+    category,
+    total: symbolMeta.length,
+    symbols: symbolMeta.map(symbol => symbol.symbol),
+    entries,
+    symbolMeta,
+    source: sourceMarket?.source ?? 'catalog',
+  };
+}
+
 export function getStaticTraderMarket(marketId: string | null | undefined): TraderMarketDef {
   const raw = String(marketId ?? '').trim().toLowerCase();
   const alias = raw === 'us' || raw === 'stocks' || raw === '' ? 'us-stocks' : raw;
@@ -831,8 +1190,9 @@ export function getStaticTraderMarket(marketId: string | null | undefined): Trad
   const metadataSeed = withMarketMetadata(seed);
   return {
     ...metadataSeed,
+    symbols: seedSymbolsForMarket(metadataSeed),
     source: 'seed',
-    totalSymbols: metadataSeed.symbols.length,
+    totalSymbols: seedSymbolsForMarket(metadataSeed).length,
   };
 }
 

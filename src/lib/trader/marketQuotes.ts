@@ -32,10 +32,18 @@ import {
   isFmpRateLimited,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
+import {
+  buildMultiFactorRecommendation,
+  UNAVAILABLE_NEWS_SENTIMENT,
+  type MultiFactorRecommendation,
+  type RecommendationNewsSentiment,
+  type RecommendationPricePoint,
+} from '@/lib/trader/recommendationEngine';
 
 export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
 type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'Twelve Data' | 'EODHD' | 'Marketstack';
+type TraderHistoryPoint = RecommendationPricePoint;
 
 type MarketDef = TraderMarketDef;
 type QuoteIssue = {
@@ -90,6 +98,7 @@ type YahooChartResult = {
   market: string | null;
   assetType: string | null;
   closes: number[];
+  history: TraderHistoryPoint[];
   marketTime: string | null;
 };
 
@@ -101,6 +110,9 @@ const QUOTE_STALE_MS = 30 * 60 * 1000;
 const ENRICH_MAX_SYMBOLS = 24;
 const ENRICH_CONCURRENCY = 6;
 const ENRICH_TIME_BUDGET_MS = 4500;
+const NEWS_ENRICH_MAX_SYMBOLS = 12;
+const NEWS_CACHE_MS = 20 * 60 * 1000;
+const newsSentimentCache = new Map<string, { expiresAt: number; value: RecommendationNewsSentiment }>();
 
 function historyAssetType(assetType: TraderAssetType): 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index' {
   if (assetType === 'crypto') return 'crypto';
@@ -117,13 +129,15 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
   if (!quote.available || quote.price === null) return quote;
   const needsChart = !Array.isArray(quote.history) || quote.history.length < 2;
   const needsChange = quote.changePercent === null;
-  if (!needsChart && !needsChange) return quote;
+  const needsRecommendation = !quote.finalRecommendation || quote.technicalAvailable === false;
+  if (!needsChart && !needsChange && !needsRecommendation) return quote;
 
   try {
-    const cacheKey = `yhist:${upper(quote.symbol)}:1mo:1d`;
-    const cached = await getPersistentCache<number[]>(cacheKey);
-    if (Array.isArray(cached) && cached.length >= 2) {
-      return applyHistoryToQuote(quote, cached, needsChart, needsChange);
+    const cacheKey = `yhist:${upper(quote.symbol)}:1y:1d`;
+    const cached = await getPersistentCache<unknown[]>(cacheKey);
+    const cachedHistory = normalizeHistoryPoints(cached);
+    if (cachedHistory.length >= 2) {
+      return applyHistoryToQuote(quote, cachedHistory, needsChart, needsChange);
     }
 
     // جرّب ترجمات ياهو للرمز بالترتيب (GC=F للذهب، ^DJI لداو جونز...) بدل رمز المزود الاحتياطي فقط
@@ -134,30 +148,56 @@ async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> 
       quote.symbol,
     ]).slice(0, 2);
 
-    let closes: number[] = [];
+    let history: TraderHistoryPoint[] = [];
     for (const candidate of candidates) {
-      const historyResult = await fetchYahooHistory(candidate, historyAssetType(quote.assetType), '1mo', '1d');
+      const historyResult = await fetchYahooHistory(candidate, historyAssetType(quote.assetType), '1y', '1d');
       if (!historyResult.success) continue;
-      const extracted = (historyResult.history ?? [])
-        .map((point: { close?: number }) => (Number.isFinite(point?.close) ? Number(point.close) : null))
-        .filter((value: number | null): value is number => value !== null && value > 0);
-      if (extracted.length >= 2) { closes = extracted; break; }
+      const extracted = normalizeHistoryPoints(historyResult.history);
+      if (extracted.length >= 2) { history = extracted; break; }
     }
-    if (closes.length < 2) return quote;
+    if (history.length < 2) return quote;
 
-    void setPersistentCache(cacheKey, closes.slice(-32), 30 * 60 * 1000);
-    return applyHistoryToQuote(quote, closes, needsChart, needsChange);
+    void setPersistentCache(cacheKey, history.slice(-260), 30 * 60 * 1000);
+    return applyHistoryToQuote(quote, history, needsChart, needsChange);
   } catch {
     return quote;
   }
 }
 
-function applyHistoryToQuote(quote: TraderQuote, closes: number[], needsChart: boolean, needsChange: boolean): TraderQuote {
+function normalizeHistoryPoints(value: unknown): TraderHistoryPoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((point): TraderHistoryPoint | null => {
+      if (typeof point === 'number') return point > 0 ? { close: point } : null;
+      if (!point || typeof point !== 'object') return null;
+      const row = point as Record<string, unknown>;
+      const close = numberOrNull(row.close ?? row.c ?? row.price);
+      if (close === null || close <= 0) return null;
+      const open = numberOrNull(row.open ?? row.o);
+      const high = numberOrNull(row.high ?? row.h);
+      const low = numberOrNull(row.low ?? row.l);
+      const volume = numberOrNull(row.volume ?? row.v);
+      return {
+        date: textOrNull(row.date ?? row.timestamp ?? row.time),
+        open,
+        high,
+        low,
+        close,
+        volume,
+      };
+    })
+    .filter((point): point is TraderHistoryPoint => point !== null);
+}
+
+function applyHistoryToQuote(quote: TraderQuote, history: TraderHistoryPoint[], needsChart: boolean, needsChange: boolean): TraderQuote {
   const enriched: TraderQuote = { ...quote };
+  const closes = history.map(point => point.close).filter(value => value > 0);
   if (needsChart) {
     enriched.sparkline = closes.slice(-30);
-    enriched.history = closes.slice(-30).map((close: number) => ({ close }));
+    enriched.history = history.slice(-260).map(point => ({ ...point, close: round(point.close) ?? point.close }));
     enriched.chartAvailable = true;
+  } else {
+    enriched.history = history.slice(-260).map(point => ({ ...point, close: round(point.close) ?? point.close }));
   }
   if (needsChange) {
     // التغير يُحسب من نفس السلسلة فقط — خلط سعر المزود مع سلسلة رمز مختلف
@@ -173,7 +213,7 @@ function applyHistoryToQuote(quote: TraderQuote, closes: number[], needsChart: b
       }
     }
   }
-  return enriched;
+  return applyRecommendationToQuote(enriched);
 }
 
 async function enrichQuotesWithHistory(quotes: TraderQuote[]): Promise<TraderQuote[]> {
@@ -192,9 +232,124 @@ async function enrichQuotesWithHistory(quotes: TraderQuote[]): Promise<TraderQuo
     const settled = await Promise.allSettled(batch.map(({ quote }) => enrichQuoteWithHistory(quote)));
     settled.forEach((result, position) => {
       if (result.status === 'fulfilled') {
-        const { index } = batch[position];
+        const batchItem = batch[position];
+        if (!batchItem) return;
+        const { index } = batchItem;
         output[index] = result.value;
         storeQuoteCache(result.value.symbol, result.value);
+      }
+    });
+  }
+  return output;
+}
+
+function newsCacheKey(symbol: string) {
+  return upper(symbol);
+}
+
+function unavailableNewsSentiment(summaryEn = UNAVAILABLE_NEWS_SENTIMENT.summaryEn, summaryAr = UNAVAILABLE_NEWS_SENTIMENT.summaryAr): RecommendationNewsSentiment {
+  return { ...UNAVAILABLE_NEWS_SENTIMENT, summaryEn, summaryAr };
+}
+
+function scoreNewsText(text: string) {
+  const lower = text.toLowerCase();
+  const positiveWords = [
+    'beat', 'beats', 'upgrade', 'upgraded', 'raises', 'raised', 'growth', 'profit', 'profits',
+    'record', 'strong', 'surge', 'rally', 'bullish', 'outperform', 'approval', 'approved',
+  ];
+  const negativeWords = [
+    'miss', 'misses', 'downgrade', 'downgraded', 'cuts', 'cut', 'loss', 'losses', 'weak',
+    'probe', 'lawsuit', 'decline', 'falls', 'fell', 'bearish', 'underperform', 'warning',
+  ];
+  const positive = positiveWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
+  const negative = negativeWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
+  return { positive, negative };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<RecommendationNewsSentiment> {
+  if (quote.assetType !== 'stock' && quote.assetType !== 'fund') {
+    return unavailableNewsSentiment('News sentiment is not enabled for this asset type.', 'المعنويات الخبرية غير مفعلة لهذا النوع من الأصول.');
+  }
+  const apiKey = cleanEnv(process.env.FINNHUB_API_KEY);
+  if (!apiKey) return unavailableNewsSentiment();
+
+  const cacheKey = newsCacheKey(quote.providerSymbolUsed ?? quote.providerSymbol ?? quote.symbol);
+  const cached = newsSentimentCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const to = new Date();
+  const from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const date = (value: Date) => value.toISOString().slice(0, 10);
+  const candidates = unique([quote.providerSymbolUsed, quote.providerSymbol, quote.symbol]).slice(0, 2);
+
+  for (const candidate of candidates) {
+    const url = new URL('https://finnhub.io/api/v1/company-news');
+    url.searchParams.set('symbol', candidate);
+    url.searchParams.set('from', date(from));
+    url.searchParams.set('to', date(to));
+    url.searchParams.set('token', apiKey);
+    const response = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2500),
+      headers: { accept: 'application/json' },
+    }).catch(() => null);
+    if (!response?.ok) continue;
+
+    const payload = await response.json().catch(() => null) as unknown;
+    if (!Array.isArray(payload)) continue;
+    const articles = payload
+      .map(item => item && typeof item === 'object' ? item as Record<string, unknown> : null)
+      .filter((item): item is Record<string, unknown> => Boolean(item))
+      .slice(0, 12);
+    if (!articles.length) continue;
+
+    const totals = articles.reduce<{ positive: number; negative: number }>((sum, article) => {
+      const text = `${article.headline ?? ''} ${article.summary ?? ''}`;
+      const scored = scoreNewsText(text);
+      return { positive: sum.positive + scored.positive, negative: sum.negative + scored.negative };
+    }, { positive: 0, negative: 0 });
+    const score = clamp(Math.round(50 + (totals.positive - totals.negative) * 8), 0, 100);
+    const sentiment: RecommendationNewsSentiment['sentiment'] = score >= 58 ? 'positive' : score <= 42 ? 'negative' : 'neutral';
+    const value: RecommendationNewsSentiment = {
+      status: 'available',
+      sentiment,
+      score,
+      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed; sentiment is ${sentiment}.`,
+      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
+      articleCount: articles.length,
+      provider: 'Finnhub',
+      updatedAt: new Date().toISOString(),
+    };
+    newsSentimentCache.set(cacheKey, { value, expiresAt: Date.now() + NEWS_CACHE_MS });
+    return value;
+  }
+
+  return unavailableNewsSentiment('No recent provider articles were returned for sentiment scoring.', 'لم يرجع المزود أخباراً حديثة صالحة لتقييم المعنويات.');
+}
+
+async function enrichQuotesWithNews(quotes: TraderQuote[]): Promise<TraderQuote[]> {
+  if (!cleanEnv(process.env.FINNHUB_API_KEY)) return quotes;
+  const output = quotes.slice();
+  const targets = quotes
+    .map((quote, index) => ({ quote, index }))
+    .filter(({ quote }) => quote.available && quote.price !== null && (quote.assetType === 'stock' || quote.assetType === 'fund'))
+    .slice(0, NEWS_ENRICH_MAX_SYMBOLS);
+  for (let cursor = 0; cursor < targets.length; cursor += 4) {
+    const batch = targets.slice(cursor, cursor + 4);
+    const settled = await Promise.allSettled(batch.map(({ quote }) => fetchNewsSentimentForQuote(quote)));
+    settled.forEach((result, position) => {
+      const batchItem = batch[position];
+      if (!batchItem) return;
+      const { index } = batchItem;
+      if (result.status === 'fulfilled') {
+        const quote = output[index];
+        if (!quote) return;
+        output[index] = applyRecommendationToQuote(quote, result.value);
+        storeQuoteCache(output[index].symbol, output[index]);
       }
     });
   }
@@ -429,8 +584,40 @@ export type TraderQuote = {
   rsi: number | null;
   sma20: number | null;
   sma50: number | null;
+  ema20?: number | null;
+  ema50?: number | null;
+  ema200?: number | null;
+  macd?: number | null;
+  macdSignal?: number | null;
+  priceMomentum20?: number | null;
+  support?: number | null;
+  resistance?: number | null;
+  volumeRatio?: number | null;
+  atr?: number | null;
+  targetPrice?: number | null;
+  target1?: number | null;
+  stopLoss?: number | null;
+  expectedMovePct?: number | null;
+  finalRecommendation?: MultiFactorRecommendation['finalRecommendation'];
+  finalRecommendationAr?: string;
+  finalScore?: number | null;
+  aiConfidence?: number | null;
+  strategyCount?: number;
+  strategyAgreement?: MultiFactorRecommendation['strategyAgreement'];
+  strategyConsensus?: MultiFactorRecommendation['strategyAgreement'];
+  technicalAvailable?: boolean;
+  samples?: number;
+  technicalSummary?: MultiFactorRecommendation['technicalSummary'];
+  newsSentimentSummary?: RecommendationNewsSentiment;
+  dataQualityStatus?: MultiFactorRecommendation['dataQualityStatus'];
+  explanationEn?: string;
+  explanationAr?: string;
+  explanation?: { en: string; ar: string };
+  disclaimer?: { en: string; ar: string };
+  scoreBreakdown?: MultiFactorRecommendation['scoreBreakdown'];
+  strategies?: MultiFactorRecommendation['strategies'];
   sparkline: number[];
-  history: Array<{ close: number }>;
+  history: TraderHistoryPoint[];
   chartAvailable: boolean;
   dataQuality: TraderDataQuality;
   providerStatus: {
@@ -457,6 +644,59 @@ export type TraderQuote = {
   shariahScreeningData: ShariahScreeningData;
   shariahMethod: ShariahScreeningMethod;
 };
+
+function applyRecommendationToQuote(quote: TraderQuote, newsSentiment?: RecommendationNewsSentiment | null): TraderQuote {
+  const recommendation = buildMultiFactorRecommendation({
+    price: quote.price,
+    changePercent: quote.changePercent,
+    history: quote.history,
+    dataQuality: quote.dataQuality,
+    delayed: quote.delayed,
+    assetType: quote.assetType,
+    newsSentiment: newsSentiment ?? quote.newsSentimentSummary ?? UNAVAILABLE_NEWS_SENTIMENT,
+  });
+  const indicators = recommendation.technicalSummary.indicators;
+  return {
+    ...quote,
+    signal: recommendation.signal,
+    signalAvailable: recommendation.finalRecommendation !== 'Insufficient data',
+    confidence: recommendation.confidence,
+    riskLevel: recommendation.riskLevel,
+    rsi: indicators.rsi14,
+    ema20: indicators.ema20,
+    ema50: indicators.ema50,
+    ema200: indicators.ema200,
+    macd: indicators.macd,
+    macdSignal: indicators.macdSignal,
+    priceMomentum20: indicators.priceMomentum20,
+    support: indicators.support,
+    resistance: indicators.resistance,
+    volumeRatio: indicators.volumeRatio,
+    atr: indicators.atr,
+    targetPrice: recommendation.targetPrice,
+    target1: recommendation.targetPrice,
+    stopLoss: recommendation.stopLoss,
+    expectedMovePct: recommendation.expectedMovePct,
+    finalRecommendation: recommendation.finalRecommendation,
+    finalRecommendationAr: recommendation.finalRecommendationAr,
+    finalScore: recommendation.finalScore,
+    aiConfidence: recommendation.confidence,
+    strategyCount: recommendation.strategyCount,
+    strategyAgreement: recommendation.strategyAgreement,
+    strategyConsensus: recommendation.strategyAgreement,
+    technicalAvailable: recommendation.technicalAvailable,
+    samples: recommendation.samples,
+    technicalSummary: recommendation.technicalSummary,
+    newsSentimentSummary: recommendation.newsSentimentSummary,
+    dataQualityStatus: recommendation.dataQualityStatus,
+    explanationEn: recommendation.explanationEn,
+    explanationAr: recommendation.explanationAr,
+    explanation: { en: recommendation.explanationEn, ar: recommendation.explanationAr },
+    disclaimer: { en: recommendation.disclaimerEn, ar: recommendation.disclaimerAr },
+    scoreBreakdown: recommendation.scoreBreakdown,
+    strategies: recommendation.strategies,
+  };
+}
 
 function quoteStatus(args: {
   display: string;
@@ -670,12 +910,11 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
       ? ((price - previousClose) / previousClose) * 100
       : null
   ));
-  const { signal, confidence } = deriveSignal(normalized.price, null, null, null, changePercent);
   const updatedAt = quote.updatedAt;
   const dataQuality: TraderDataQuality = price !== null && price > 0 ? 'partial' : 'unavailable';
   const fallbackUsed = quote.provider !== 'fmp';
   const metadata = quoteMetadata(display, quote, meta);
-  return {
+  return applyRecommendationToQuote({
     ...quoteIdentity(display, meta),
     providerSymbol: quote.providerSymbol,
     providerSymbolUsed: quote.providerSymbol,
@@ -689,9 +928,9 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     previousClose,
     currency: metadata.currency ?? normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
     ...metadataQuoteFields(metadata),
-    signal,
+    signal: 'watch',
     signalAvailable: price !== null,
-    confidence,
+    confidence: null,
     riskLevel: riskFromVolatility(null, assetType),
     rsi: null,
     sma20: null,
@@ -707,7 +946,7 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     lastUpdated: updatedAt,
     updatedAt,
     ...quoteShariahFields(display, assetType, meta, quote.name),
-  };
+  });
 }
 
 function quoteCacheKey(symbol: string) {
@@ -736,12 +975,17 @@ function storeQuoteCache(symbol: string, quote: TraderQuote) {
 }
 
 function withCachedQuality(quote: TraderQuote): TraderQuote {
-  return {
+  const cached = applyRecommendationToQuote({
     ...quote,
     dataQuality: 'cached',
     delayed: true,
+  });
+  return {
+    ...cached,
+    dataQuality: 'cached',
+    delayed: true,
     providerStatus: {
-      ...quote.providerStatus,
+      ...cached.providerStatus,
       dataQuality: 'cached',
     },
   };
@@ -998,7 +1242,7 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
 }
 
 async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<YahooChartResult | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=3mo&interval=1d`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1y&interval=1d`;
   let response: Response;
   try {
     response = await fetch(url, {
@@ -1016,10 +1260,27 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   if (!result) return null;
 
   const meta = (result.meta ?? {}) as Record<string, any>;
-  const closesRaw = result.indicators?.quote?.[0]?.close;
+  const quote = result.indicators?.quote?.[0] ?? {};
+  const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
+  const closesRaw = quote.close;
   const closes = Array.isArray(closesRaw)
     ? closesRaw.map(numberOrNull).filter((value): value is number => value !== null && value > 0)
     : [];
+  const history = timestamps
+    .map((timestamp: unknown, index: number): TraderHistoryPoint | null => {
+      const close = numberOrNull(quote.close?.[index]);
+      if (close === null || close <= 0) return null;
+      const marketTime = numberOrNull(timestamp);
+      return {
+        date: marketTime ? new Date(marketTime * 1000).toISOString() : null,
+        open: numberOrNull(quote.open?.[index]),
+        high: numberOrNull(quote.high?.[index]),
+        low: numberOrNull(quote.low?.[index]),
+        close,
+        volume: numberOrNull(quote.volume?.[index]),
+      };
+    })
+    .filter((point): point is TraderHistoryPoint => point !== null);
   const price = numberOrNull(meta.regularMarketPrice) ?? (closes.length ? closes[closes.length - 1] : null);
   const previousClose = numberOrNull(meta.chartPreviousClose)
     ?? numberOrNull(meta.previousClose)
@@ -1035,6 +1296,7 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
     market: textOrNull(meta.market),
     assetType: textOrNull(meta.quoteType ?? meta.instrumentType),
     closes,
+    history,
     marketTime: marketTime ? new Date(marketTime * 1000).toISOString() : null,
   };
 }
@@ -1085,7 +1347,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       market: normalized.market,
       assetType: normalized.assetType,
     }, meta);
-    return {
+    return applyRecommendationToQuote({
       ...quoteIdentity(display, meta),
       providerSymbol: normalized.symbolUsed ?? yahoo,
       providerSymbolUsed: normalized.symbolUsed ?? yahoo,
@@ -1117,7 +1379,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       lastUpdated: updatedAt,
       updatedAt,
       ...quoteShariahFields(display, assetType, meta, normalized.name),
-    };
+    });
   }
 
   const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: display, market: display, assetType });
@@ -1141,14 +1403,19 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
   const rsiValue = rsi(closes, 14);
-  const { signal, confidence } = deriveSignal(price, sma20, sma50, rsiValue, changePercent);
   const sparkline = closes.slice(-40).map(value => round(value)).filter((value): value is number => value !== null);
-  const history = closes.slice(-120).map(close => ({ close: round(close) ?? close }));
+  const history = chart.history.slice(-260).map(point => ({
+    ...point,
+    close: round(point.close / divisor) ?? point.close / divisor,
+    open: point.open !== null && point.open !== undefined ? round(point.open / divisor) : point.open,
+    high: point.high !== null && point.high !== undefined ? round(point.high / divisor) : point.high,
+    low: point.low !== null && point.low !== undefined ? round(point.low / divisor) : point.low,
+  }));
   const chartAvailable = closes.length >= 2;
   const dataQuality: TraderDataQuality = chartAvailable ? 'delayed' : 'partial';
   const updatedAt = chart.marketTime;
 
-  return {
+  return applyRecommendationToQuote({
     ...quoteIdentity(display, meta),
     providerSymbol: yahoo,
     providerSymbolUsed: yahoo,
@@ -1162,9 +1429,9 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     previousClose: round(previousClose),
     currency,
     ...metadataQuoteFields(metadata),
-    signal,
+    signal: 'watch',
     signalAvailable: price !== null,
-    confidence,
+    confidence: null,
     riskLevel: riskFromVolatility(annualizedVolatility(closes), assetType),
     rsi: rsiValue !== null ? Number(rsiValue.toFixed(1)) : null,
     sma20: sma20 !== null ? Number(sma20.toFixed(4)) : null,
@@ -1180,7 +1447,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     lastUpdated: updatedAt,
     updatedAt,
     ...quoteShariahFields(display, assetType, meta),
-  };
+  });
 }
 
 async function fetchFinnhubQuote(display: string, meta?: TraderCatalogSymbol): Promise<TraderQuote> {
@@ -1334,7 +1601,7 @@ export async function fetchTraderQuotesDetailed(
   }
 
   const assembledQuotes = uniqueSymbols.map(symbol => quotes.get(symbol) ?? unavailableQuote(symbol, 'all_providers_returned_no_quote', byMeta.get(upper(symbol))));
-  const orderedQuotes = await enrichQuotesWithHistory(assembledQuotes);
+  const orderedQuotes = await enrichQuotesWithNews(await enrichQuotesWithHistory(assembledQuotes));
   const firstLoadedProvider = loaded[0]?.provider ?? null;
   return {
     quotes: orderedQuotes,
