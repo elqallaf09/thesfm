@@ -1752,7 +1752,7 @@
   function legacyRecsFrom(data) { return arr((data && (data.recommendations || data.items || data.data || data.results))).map(norm).filter(x => x.symbol); }
   function signalsFrom(data) { return arr(data && (data.signals || data.items || data.data || data.results)).map(signalToRec).filter(x => x.symbol); }
   function recsFrom(data) { return mergeRecLists(signalsFrom(data), legacyRecsFrom(data)); }
-  function recs() { return mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); }
+  function recs() { const all = mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); const ms = new Set(currentMarket().symbols.map(sym)); const f = all.filter(x => ms.has(sym(x.symbol || x.ticker))); return f.length ? f : all; }
   function mergeRecLists(primary, fallback) {
     const map = new Map();
     fallback.forEach(item => { if (item.symbol) map.set(sym(item.symbol), item); });
