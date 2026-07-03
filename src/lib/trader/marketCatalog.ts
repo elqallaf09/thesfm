@@ -3,8 +3,19 @@ import legacyMarketSymbols from '@/data/market-symbols.json';
 import boursaKuwaitSymbols from '@/data/market-symbols/boursa-kuwait.json';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
 import dfmListedSymbols from '@/data/market-symbols/dfm-listed.json';
+import { createClient } from '@supabase/supabase-js';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
+import {
+  classifyShariahCompliance,
+  pickPreferredShariahClassification,
+  shariahClassificationFields,
+  type ShariahClassification,
+  type ShariahScreeningData,
+  type ShariahScreeningMethod,
+  type ShariahStatus,
+} from '@/lib/market/shariah-screening';
+import { normalizeTraderSymbolMetadata, TRADER_MARKET_METADATA, type TraderSymbolMetadataDiagnostics } from '@/lib/trader/marketMetadata';
 import {
   providerSymbolsForProviderAlias,
   resolveProviderSymbolAlias,
@@ -15,9 +26,11 @@ import {
   getFmpRuntimeStatus,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
+import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub';
+export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
+export type TraderCatalogSource = 'seed' | 'bundled' | 'fmp' | 'supabase';
 
 export type TraderMarketDef = {
   id: string;
@@ -28,7 +41,7 @@ export type TraderMarketDef = {
   symbols: string[];
   tone?: string;
   apiMarket: string;
-  source: 'seed' | 'bundled' | 'fmp' | 'mixed';
+  source: TraderCatalogSource | 'mixed';
   totalSymbols: number;
 };
 
@@ -39,11 +52,22 @@ export type TraderCatalogSymbol = {
   name: string;
   assetType: TraderAssetType;
   exchange?: string;
+  exchangeCode?: string;
+  market?: string;
   country?: string;
   currency?: string;
   aliases: string[];
   marketIds: string[];
-  source: 'seed' | 'bundled' | 'fmp';
+  source: TraderCatalogSource;
+  metadataDiagnostics: TraderSymbolMetadataDiagnostics;
+  shariahStatus: ShariahStatus;
+  shariahReason: string | null;
+  shariahSource: string | null;
+  shariahLastReviewedAt: string | null;
+  shariahManualOverride: boolean;
+  shariahReviewedBy: string | null;
+  shariahScreeningData: ShariahScreeningData;
+  shariahMethod: ShariahScreeningMethod;
 };
 
 export type ProviderCapability = {
@@ -65,7 +89,7 @@ export type ProviderCapability = {
 };
 
 export type CatalogDiagnostics = {
-  provider: TraderQuoteProvider | 'bundled';
+  provider: TraderQuoteProvider | 'bundled' | 'supabase';
   reason: string | null;
   totalSymbolsDiscovered: number;
   totalSymbolsLoaded: number;
@@ -79,6 +103,7 @@ export type CatalogDiagnostics = {
     cachedSymbols: number;
     skippedDueToRateLimit: number;
     fmpStatus: string;
+    openbbStatus: string;
   };
   sources: Record<string, number>;
   generatedAt: string;
@@ -108,7 +133,7 @@ export const TRADER_MARKET_SEEDS: SeedMarket[] = [
   { id: 'gcc', ar: 'أسواق الخليج', en: 'Gulf Markets', family: 'Regional', currency: 'Mixed', symbols: ['2222.SR', 'EMAAR.AE', 'QNBK.QA', 'KFH.KW'], apiMarket: 'gcc' },
   { id: 'saudi', ar: 'السوق السعودي', en: 'Saudi Market', family: 'Tadawul', currency: 'SAR', symbols: ['2222.SR', '1120.SR', '7010.SR', '1180.SR', '2010.SR', '1211.SR', '1010.SR', '1150.SR', '5110.SR', '2280.SR', '7020.SR', '7030.SR', '4190.SR', '2050.SR', '2350.SR', '4013.SR', '8210.SR', '4030.SR'], apiMarket: 'saudi' },
   { id: 'kuwait', ar: 'بورصة الكويت', en: 'Kuwait Market', family: 'Boursa', currency: 'KWD', symbols: ['KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'GBK.KW', 'BURG.KW', 'CBK.KW', 'AGLTY.KW', 'KIB.KW', 'WARBA.KW', 'MABANEE.KW', 'HUMANSOFT.KW', 'STC.KW', 'ALIMTIAZ.KW'], apiMarket: 'kuwait' },
-  { id: 'uae', ar: 'سوق الإمارات', en: 'UAE Market', family: 'ADX/DFM', currency: 'AED', symbols: ['EMAAR.AE', 'FAB.AE', 'ETISALAT.AE', 'ADCB.AE', 'DIB.AE', 'ENBD.AE', 'ALDAR.AE', 'ADIB.AE', 'DEWA.AE', 'SALIK.AE', 'ADNOCDIST.AE', 'DFM.AE', 'AIRARABIA.AE', 'EMIRATESNBD.AE'], apiMarket: 'uae' },
+  { id: 'uae', ar: 'سوق الإمارات', en: 'UAE Market', family: 'ADX/DFM', currency: 'AED', symbols: ['EMAAR.AE', 'FAB.AE', 'ETISALAT.AE', 'ADCB.AE', 'DIB.AE', 'ENBD.AE', 'ALDAR.AE', 'ADIB.AE', 'DEWA.AE', 'SALIK.AE', 'ADNOCDIST.AE', 'DFM.AE', 'AIRARABIA.AE'], apiMarket: 'uae' },
   { id: 'qatar', ar: 'سوق قطر', en: 'Qatar Market', family: 'QSE', currency: 'QAR', symbols: ['QNBK.QA', 'IQCD.QA', 'QIBK.QA', 'CBQK.QA', 'MARK.QA', 'QEWS.QA', 'ORDS.QA', 'QGTS.QA', 'QFLS.QA', 'BRES.QA', 'GWCS.QA', 'DUKHAN.QA'], apiMarket: 'qatar' },
   { id: 'bahrain', ar: 'سوق البحرين', en: 'Bahrain Market', family: 'BHB', currency: 'BHD', symbols: ['AUB.BH', 'GFH.BH', 'BATELCO.BH'], apiMarket: 'bahrain' },
   { id: 'oman', ar: 'سوق عمان', en: 'Oman Market', family: 'MSX', currency: 'OMR', symbols: ['BKMB.OM', 'OMINV.OM'], apiMarket: 'oman' },
@@ -156,6 +181,33 @@ function text(value: unknown) {
   return String(value ?? '').trim();
 }
 
+function nullableText(value: unknown) {
+  return text(value) || null;
+}
+
+function booleanOrNull(value: unknown) {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function screeningDataOrNull(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as ShariahScreeningData
+    : null;
+}
+
+function catalogShariahClassification(symbol: TraderCatalogSymbol): ShariahClassification {
+  return {
+    shariahStatus: symbol.shariahStatus,
+    shariahReason: symbol.shariahReason,
+    shariahSource: symbol.shariahSource,
+    shariahLastReviewedAt: symbol.shariahLastReviewedAt,
+    shariahManualOverride: symbol.shariahManualOverride,
+    shariahReviewedBy: symbol.shariahReviewedBy,
+    shariahScreeningData: symbol.shariahScreeningData,
+    shariahMethod: symbol.shariahMethod,
+  };
+}
+
 function uniq(values: unknown[]) {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -167,6 +219,17 @@ function uniq(values: unknown[]) {
     result.push(item);
   }
   return result;
+}
+
+function withMarketMetadata<T extends SeedMarket | TraderMarketDef>(market: T): T {
+  const metadata = TRADER_MARKET_METADATA[market.id];
+  if (!metadata) return market;
+  return {
+    ...market,
+    ar: metadata.labelAr,
+    en: metadata.labelEn,
+    currency: metadata.currency,
+  };
 }
 
 function defaultCurrency(symbol: string): string | undefined {
@@ -203,6 +266,7 @@ function marketIdsForRecord(record: {
   symbol: string;
   assetType: TraderAssetType;
   exchange?: string;
+  market?: string;
   country?: string;
   name?: string;
 }) {
@@ -211,7 +275,8 @@ function marketIdsForRecord(record: {
   const suff = suffix(symbol);
   const exchange = upper(record.exchange);
   const country = upper(record.country);
-  const haystack = `${symbol} ${exchange} ${country} ${upper(record.name)}`;
+  const market = upper(record.market);
+  const haystack = `${symbol} ${exchange} ${market} ${country} ${upper(record.name)}`;
 
   if (record.assetType === 'fund') ids.add('etfs');
   if (record.assetType === 'crypto') ids.add('crypto');
@@ -249,7 +314,11 @@ function providerSymbolsFor(symbol: string, assetType: TraderAssetType, provider
   return {
     fmp: uniq([...(fmpAlias.length ? fmpAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}USD` : null]),
     yahoo: uniq([...(yahooAlias.length ? yahooAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}-USD` : null]),
+    openbb: uniq([providerSymbol, base]),
     finnhub: uniq([...(finnhubAlias.length ? finnhubAlias : []), providerSymbol, base]),
+    twelve_data: uniq([providerSymbol, base]),
+    eodhd: uniq([providerSymbol, base]),
+    marketstack: uniq([providerSymbol, base]),
   };
 }
 
@@ -257,16 +326,42 @@ function symbolFromRecord(record: RawSymbolRecord, fallback?: string) {
   return upper(record.display_symbol ?? record.displaySymbol ?? record.symbol ?? record.ticker ?? fallback);
 }
 
-function normalizeRecord(record: RawSymbolRecord, source: 'seed' | 'bundled' | 'fmp', fallbackMarketIds: string[] = []): TraderCatalogSymbol | null {
+function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, fallbackMarketIds: string[] = []): TraderCatalogSymbol | null {
   const symbol = symbolFromRecord(record);
   if (!symbol) return null;
   const providerSymbol = upper(record.provider_symbol ?? record.providerSymbol ?? record.symbol ?? symbol) || symbol;
   const assetType = traderAssetType(record.asset_type ?? record.assetType ?? record.type, symbol);
-  const name = text(record.company_name_en ?? record.name ?? record.companyName ?? record.company_name_ar ?? SEED_SYMBOL_NAMES[symbol] ?? symbol);
-  const exchange = text(record.exchange ?? record.exchangeShortName ?? record.market);
-  const country = text(record.country);
-  const currency = upper(record.currency) || defaultCurrency(symbol);
-  const marketIds = uniq([...fallbackMarketIds, ...marketIdsForRecord({ symbol, assetType, exchange, country, name })]);
+  const metadata = normalizeTraderSymbolMetadata({
+    symbol,
+    provider: source,
+    providerSymbol,
+    assetType,
+    catalog: record,
+  });
+  const name = text(metadata.companyName ?? record.company_name_en ?? record.name ?? record.companyName ?? record.company_name_ar ?? SEED_SYMBOL_NAMES[symbol] ?? symbol);
+  const exchange = text(metadata.exchange ?? record.exchange ?? record.exchangeShortName ?? record.market);
+  const exchangeCode = text(metadata.exchangeCode ?? record.exchange_code ?? record.exchangeCode);
+  const market = text(metadata.market ?? record.market);
+  const country = text(metadata.country ?? record.country);
+  const currency = upper(metadata.currency ?? record.currency) || defaultCurrency(symbol);
+  const marketIds = uniq([...fallbackMarketIds, ...marketIdsForRecord({ symbol, assetType, exchange, market, country, name })]);
+  const shariah = classifyShariahCompliance({
+    symbol,
+    name,
+    assetType,
+    exchange,
+    country,
+    sector: text(record.sector),
+    industry: text(record.industry),
+    businessDescription: text(record.description ?? record.businessDescription),
+    shariahStatus: nullableText(record.shariah_status ?? record.shariahStatus),
+    shariahReason: nullableText(record.shariah_reason ?? record.shariahReason),
+    shariahSource: nullableText(record.shariah_source ?? record.shariahSource),
+    shariahLastReviewedAt: nullableText(record.shariah_last_reviewed_at ?? record.shariahLastReviewedAt),
+    shariahManualOverride: booleanOrNull(record.shariah_manual_override ?? record.shariahManualOverride),
+    shariahReviewedBy: nullableText(record.shariah_reviewed_by ?? record.shariahReviewedBy),
+    shariahScreeningData: screeningDataOrNull(record.shariah_screening_data ?? record.shariahScreeningData),
+  });
 
   return {
     symbol,
@@ -275,26 +370,52 @@ function normalizeRecord(record: RawSymbolRecord, source: 'seed' | 'bundled' | '
     name,
     assetType,
     exchange: exchange || undefined,
+    exchangeCode: exchangeCode || undefined,
+    market: market || undefined,
     country: country || undefined,
     currency,
-    aliases: uniq([symbol, providerSymbol, name, ...(Array.isArray(record.aliases) ? record.aliases : [])]),
+    aliases: uniq([symbol, providerSymbol, name, exchange, exchangeCode, market, ...(Array.isArray(record.aliases) ? record.aliases : [])]),
     marketIds,
     source,
+    metadataDiagnostics: metadata.diagnostics,
+    ...shariahClassificationFields(shariah),
   };
 }
 
 function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   target.marketIds = uniq([...target.marketIds, ...next.marketIds]);
   target.aliases = uniq([...target.aliases, ...next.aliases]);
-  target.exchange ||= next.exchange;
-  target.country ||= next.country;
-  target.currency ||= next.currency;
-  target.name = target.name === target.symbol && next.name !== next.symbol ? next.name : target.name;
-  target.providerSymbol = target.providerSymbol || next.providerSymbol;
-  for (const provider of ['fmp', 'yahoo', 'finnhub'] as TraderQuoteProvider[]) {
+  const preferNextMetadata = next.source === 'supabase' || target.source === 'seed' || target.source === 'fmp';
+  if (preferNextMetadata && next.exchange) target.exchange = next.exchange;
+  else target.exchange ||= next.exchange;
+  if (preferNextMetadata && next.exchangeCode) target.exchangeCode = next.exchangeCode;
+  else target.exchangeCode ||= next.exchangeCode;
+  if (preferNextMetadata && next.market) target.market = next.market;
+  else target.market ||= next.market;
+  if (preferNextMetadata && next.country) target.country = next.country;
+  else target.country ||= next.country;
+  if (preferNextMetadata && next.currency) target.currency = next.currency;
+  else target.currency ||= next.currency;
+  if (preferNextMetadata && next.assetType) target.assetType = next.assetType;
+  target.name = (preferNextMetadata || target.name === target.symbol) && next.name !== next.symbol ? next.name : target.name;
+  target.providerSymbol = preferNextMetadata && next.providerSymbol ? next.providerSymbol : target.providerSymbol || next.providerSymbol;
+  if (preferNextMetadata || !target.metadataDiagnostics.finalExchange) target.metadataDiagnostics = next.metadataDiagnostics;
+  const shariah = pickPreferredShariahClassification(catalogShariahClassification(target), catalogShariahClassification(next));
+  Object.assign(target, shariahClassificationFields(shariah));
+  for (const provider of ['fmp', 'yahoo', 'openbb', 'finnhub', 'twelve_data', 'eodhd', 'marketstack'] as TraderQuoteProvider[]) {
     target.providerSymbols[provider] = uniq([...(target.providerSymbols[provider] ?? []), ...(next.providerSymbols[provider] ?? [])]);
   }
-  if (target.source !== next.source) target.source = target.source === 'fmp' || next.source === 'fmp' ? 'fmp' : 'bundled';
+  if (target.source !== next.source) {
+    target.source = next.source === 'supabase'
+      ? 'supabase'
+      : target.source === 'supabase'
+        ? 'supabase'
+        : target.source === 'bundled' || next.source === 'bundled'
+          ? 'bundled'
+          : target.source === 'fmp' || next.source === 'fmp'
+            ? 'fmp'
+            : 'seed';
+  }
 }
 
 function addRecord(map: Map<string, TraderCatalogSymbol>, record: TraderCatalogSymbol | null) {
@@ -347,6 +468,57 @@ function fmpDiscoveryEndpoints(marketId?: string | null) {
   if (normalized === 'commodities') return all.filter(item => item.endpoint === 'batch-commodity-quotes');
   if (normalized) return all.filter(item => item.endpoint === 'stock-list');
   return [];
+}
+
+function getSupabaseCatalogClient() {
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) || cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function fetchSupabaseCatalogSymbols() {
+  const supabase = getSupabaseCatalogClient();
+  if (!supabase) {
+    return {
+      records: [] as TraderCatalogSymbol[],
+      latencyMs: null as number | null,
+      failed: [] as CatalogDiagnostics['failedSymbols'],
+      reason: 'supabase_not_configured',
+    };
+  }
+
+  const startedAt = Date.now();
+  const selectors = [
+    'symbol,provider_symbol,name,asset_type,exchange,exchange_code,market,display_symbol,company_name_ar,company_name_en,country,currency,source,is_active,metadata,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data',
+    'symbol,provider_symbol,name,asset_type,exchange,market,display_symbol,company_name_ar,company_name_en,country,currency,source,is_active,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data',
+    'symbol,provider_symbol,name,asset_type,exchange,country,currency,source,is_active',
+  ];
+
+  for (const selector of selectors) {
+    const { data, error } = await supabase
+      .from('market_symbols')
+      .select(selector)
+      .eq('is_active', true)
+      .limit(5000);
+    if (error) continue;
+    const rows = Array.isArray(data) ? data as unknown as RawSymbolRecord[] : [];
+    return {
+      records: rows.map(row => normalizeRecord(row, 'supabase')).filter((row): row is TraderCatalogSymbol => Boolean(row)),
+      latencyMs: Date.now() - startedAt,
+      failed: [] as CatalogDiagnostics['failedSymbols'],
+      reason: null as string | null,
+    };
+  }
+
+  return {
+    records: [] as TraderCatalogSymbol[],
+    latencyMs: Date.now() - startedAt,
+    failed: [{ symbol: 'market_symbols', provider: 'supabase', reason: 'supabase_market_symbols_query_failed' }],
+    reason: 'supabase_market_symbols_query_failed',
+  };
 }
 
 async function fetchFmpEndpoint(endpoint: string, apiKey: string) {
@@ -430,8 +602,46 @@ async function discoverFmpSymbols(options: { marketId?: string | null } = {}) {
 function capabilityMatrix(cacheAvailable = false) {
   const fmpConfigured = Boolean(cleanEnv(process.env.FMP_API_KEY));
   const finnhubConfigured = Boolean(cleanEnv(process.env.FINNHUB_API_KEY));
+  const twelveDataConfigured = Boolean(cleanEnv(process.env.TWELVE_DATA_API_KEY));
+  const eodhdConfigured = Boolean(cleanEnv(process.env.EODHD_API_KEY));
+  const marketstackConfigured = Boolean(cleanEnv(process.env.MARKETSTACK_API_KEY));
   const fmpStatus = getFmpRuntimeStatus(fmpConfigured, cacheAvailable);
+  const openbbStatus = getOpenbbConfiguredStatus();
+  const configuredCapability = (provider: TraderQuoteProvider, configured: boolean, supports: Partial<ProviderCapability> = {}): ProviderCapability => ({
+    provider,
+    configured,
+    healthy: configured,
+    status: configured ? 'healthy' : 'not_configured',
+    rateLimited: false,
+    lastSuccessfulFetch: null,
+    lastError: configured ? null : `${provider}_not_configured`,
+    cacheAvailable: false,
+    supportsQuotes: true,
+    supportsTechnicalAnalysis: true,
+    supportsEarnings: false,
+    supportsDividends: false,
+    supportsIpos: false,
+    supportsEconomicCalendar: false,
+    reason: configured ? null : `${provider}_not_configured`,
+    ...supports,
+  });
   return {
+    twelve_data: configuredCapability('twelve_data', twelveDataConfigured, {
+      supportsTechnicalAnalysis: true,
+    }),
+    finnhub: configuredCapability('finnhub', finnhubConfigured, {
+      supportsTechnicalAnalysis: true,
+      supportsEarnings: true,
+      supportsDividends: true,
+      supportsEconomicCalendar: true,
+    }),
+    eodhd: configuredCapability('eodhd', eodhdConfigured, {
+      supportsTechnicalAnalysis: true,
+      supportsDividends: true,
+    }),
+    marketstack: configuredCapability('marketstack', marketstackConfigured, {
+      supportsTechnicalAnalysis: false,
+    }),
     fmp: {
       provider: 'fmp',
       configured: fmpConfigured,
@@ -466,22 +676,22 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsEconomicCalendar: false,
       reason: null,
     },
-    finnhub: {
-      provider: 'finnhub',
-      configured: finnhubConfigured,
-      healthy: finnhubConfigured,
-      status: finnhubConfigured ? 'healthy' : 'not_configured',
+    openbb: {
+      provider: 'openbb',
+      configured: openbbStatus.configured,
+      healthy: openbbStatus.healthy,
+      status: openbbStatus.status,
       rateLimited: false,
-      lastSuccessfulFetch: null,
-      lastError: finnhubConfigured ? null : 'finnhub_not_configured',
-      cacheAvailable: false,
+      lastSuccessfulFetch: openbbStatus.lastSuccessfulFetch,
+      lastError: openbbStatus.lastError,
+      cacheAvailable: openbbStatus.cacheAvailable,
       supportsQuotes: true,
-      supportsTechnicalAnalysis: false,
-      supportsEarnings: true,
-      supportsDividends: true,
+      supportsTechnicalAnalysis: true,
+      supportsEarnings: false,
+      supportsDividends: false,
       supportsIpos: false,
-      supportsEconomicCalendar: true,
-      reason: finnhubConfigured ? null : 'finnhub_not_configured',
+      supportsEconomicCalendar: false,
+      reason: openbbStatus.configured ? openbbStatus.lastError : 'openbb_not_configured',
     },
   } satisfies Record<TraderQuoteProvider, ProviderCapability>;
 }
@@ -498,8 +708,9 @@ function buildMarkets(symbols: TraderCatalogSymbol[]): TraderMarketDef[] {
       })
       .map(symbol => symbol.symbol);
     const sources = new Set(symbols.filter(symbol => symbol.marketIds.includes(seed.id)).map(symbol => symbol.source));
+    const metadataSeed = withMarketMetadata(seed);
     return {
-      ...seed,
+      ...metadataSeed,
       symbols: marketSymbols,
       source: sources.size > 1 ? 'mixed' : (Array.from(sources)[0] ?? 'seed') as TraderMarketDef['source'],
       totalSymbols: marketSymbols.length,
@@ -534,6 +745,9 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
     group.records.forEach(record => addRecord(bySymbol, normalizeRecord(record, group.source)));
   }
 
+  const supabase = await fetchSupabaseCatalogSymbols();
+  supabase.records.forEach(record => addRecord(bySymbol, record));
+
   const fmp = options.includeFmpDiscovery
     ? await discoverFmpSymbols({ marketId: options.marketId })
     : {
@@ -558,6 +772,7 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
           failedSymbols: fmp.failed.length,
           skippedDueToRateLimit: getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), true).skippedDueToRateLimit,
           fmpStatus: 'rate_limited',
+          openbbStatus: getOpenbbConfiguredStatus().status,
         },
       },
     };
@@ -575,24 +790,26 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
   }, {});
   const fmpRuntime = getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), Boolean(cached));
   const diagnostics: CatalogDiagnostics = {
-    provider: cleanEnv(process.env.FMP_API_KEY) ? 'fmp' : 'bundled',
-    reason: fmp.reason,
+    provider: supabase.records.length ? 'supabase' : cleanEnv(process.env.FMP_API_KEY) ? 'fmp' : 'bundled',
+    reason: fmp.reason ?? supabase.reason,
     totalSymbolsDiscovered: allSymbols.length,
     totalSymbolsLoaded: symbols.length,
-    failedSymbols: fmp.failed,
+    failedSymbols: [...supabase.failed, ...fmp.failed],
     unsupportedSymbols: allSymbols
       .filter(symbol => symbol.marketIds.length === 0)
       .map(symbol => ({ symbol: symbol.symbol, provider: symbol.source, reason: 'no_supported_market_mapping' })),
     providerLatencyMs: {
+      supabase: supabase.latencyMs,
       fmp: fmp.latencyMs,
     },
     cacheStatus: options.includeFmpDiscovery ? 'miss' : 'disabled',
     summary: {
       loadedSymbols: symbols.length,
-      failedSymbols: fmp.failed.length,
+      failedSymbols: supabase.failed.length + fmp.failed.length,
       cachedSymbols: cached?.value.symbols.length ?? 0,
       skippedDueToRateLimit: fmpRuntime.skippedDueToRateLimit,
       fmpStatus: fmpRuntime.status,
+      openbbStatus: getOpenbbConfiguredStatus().status,
     },
     sources,
     generatedAt: new Date().toISOString(),
@@ -611,10 +828,11 @@ export function getStaticTraderMarket(marketId: string | null | undefined): Trad
   const raw = String(marketId ?? '').trim().toLowerCase();
   const alias = raw === 'us' || raw === 'stocks' || raw === '' ? 'us-stocks' : raw;
   const seed = TRADER_MARKET_SEEDS.find(market => market.id === alias) ?? TRADER_MARKET_SEEDS[0]!;
+  const metadataSeed = withMarketMetadata(seed);
   return {
-    ...seed,
+    ...metadataSeed,
     source: 'seed',
-    totalSymbols: seed.symbols.length,
+    totalSymbols: metadataSeed.symbols.length,
   };
 }
 
