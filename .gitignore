@@ -11,6 +11,13 @@ node_modules
 tsconfig.tsbuildinfo
 artifacts/
 
+# Playwright MCP scratch/session output and ad-hoc test screenshots
+.playwright-mcp/
+*.trace.zip
+test-results/
+playwright-report/
+/*.png
+
 # iOS / Xcode
 DerivedData/
 *.xcuserstate
