@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterAssetsByMarket, marketFilterDecision } from '@/lib/trader/marketFilters';
+import { filterAssetsByMarket, marketFilterDecision, strictMarketContextForSelection } from '@/lib/trader/marketFilters';
 
 describe('trader recommendation market filters', () => {
   const bahrainStock = {
@@ -44,5 +44,13 @@ describe('trader recommendation market filters', () => {
 
     expect(filterAssetsByMarket(globalAssets, 'global')).toEqual(globalAssets);
     expect(filterAssetsByMarket(globalAssets, 'all markets')).toEqual(globalAssets);
+  });
+
+  it('returns canonical exchange and currency for strict market selections', () => {
+    expect(strictMarketContextForSelection('Bahrain Market / BHD')).toMatchObject({
+      marketId: 'bahrain',
+      exchange: 'Bahrain Bourse',
+      currency: 'BHD',
+    });
   });
 });

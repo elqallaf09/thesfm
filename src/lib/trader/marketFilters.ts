@@ -21,6 +21,7 @@ export type MarketFilterAsset = {
 type StrictMarketRule = {
   id: string;
   currency: string;
+  exchange: string;
   countries: string[];
   exchanges: RegExp[];
   markets: RegExp[];
@@ -50,6 +51,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   bahrain: {
     id: 'bahrain',
     currency: 'BHD',
+    exchange: 'Bahrain Bourse',
     countries: ['BH', 'BAHRAIN'],
     exchanges: [/\b(BHB|XBAH)\b/i, /BAHRAIN/i, /BAHRAIN BOURSE/i],
     markets: [/BAHRAIN/i, /\bBHB\b/i, /BAHRAIN BOURSE/i],
@@ -59,6 +61,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   kuwait: {
     id: 'kuwait',
     currency: 'KWD',
+    exchange: 'Boursa Kuwait',
     countries: ['KW', 'KUWAIT'],
     exchanges: [/\b(KSE|XKUW)\b/i, /KUWAIT/i, /BOURSA KUWAIT/i],
     markets: [/KUWAIT/i, /BOURSA KUWAIT/i],
@@ -68,6 +71,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   saudi: {
     id: 'saudi',
     currency: 'SAR',
+    exchange: 'Tadawul',
     countries: ['SA', 'SAUDI', 'SAUDI ARABIA'],
     exchanges: [/\b(TADAWUL|XSAU)\b/i, /SAUDI EXCHANGE/i],
     markets: [/TADAWUL/i, /SAUDI/i],
@@ -77,6 +81,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   uae: {
     id: 'uae',
     currency: 'AED',
+    exchange: 'ADX/DFM',
     countries: ['AE', 'UAE', 'UNITED ARAB EMIRATES'],
     exchanges: [/\b(ADX|DFM|XADS|XDFM)\b/i, /ABU DHABI/i, /DUBAI FINANCIAL MARKET/i],
     markets: [/\b(ADX|DFM)\b/i, /UAE/i, /ABU DHABI/i, /DUBAI/i, /UNITED ARAB/i],
@@ -86,6 +91,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   oman: {
     id: 'oman',
     currency: 'OMR',
+    exchange: 'Muscat Stock Exchange',
     countries: ['OM', 'OMAN'],
     exchanges: [/\b(MSX|XMUS)\b/i, /MUSCAT/i],
     markets: [/OMAN/i, /\bMSX\b/i, /MUSCAT/i],
@@ -95,6 +101,7 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
   qatar: {
     id: 'qatar',
     currency: 'QAR',
+    exchange: 'Qatar Exchange',
     countries: ['QA', 'QATAR'],
     exchanges: [/\b(QSE|DSMD|DSM)\b/i, /QATAR/i, /QATAR EXCHANGE/i],
     markets: [/QATAR/i, /\bQSE\b/i, /QATAR EXCHANGE/i],
@@ -102,6 +109,20 @@ const STRICT_MARKET_RULES: Record<string, StrictMarketRule> = {
     allowedAssetTypes: ['stock', 'equity'],
   },
 };
+
+export function strictMarketContextForSelection(selectedMarket: unknown) {
+  const marketId = normalizeSelectedMarketKey(selectedMarket);
+  if (!marketId) return null;
+  const rule = STRICT_MARKET_RULES[marketId];
+  if (!rule) return null;
+  return {
+    marketId,
+    exchange: rule.exchange,
+    currency: rule.currency,
+    countries: rule.countries,
+    allowedAssetTypes: rule.allowedAssetTypes,
+  };
+}
 
 function text(value: unknown) {
   return String(value ?? '').trim();

@@ -71,12 +71,12 @@
   const BAHRAIN_EMPTY_STATE_EN = "Not enough data available for Bahrain Market right now";
   const GLOBAL_MARKET_KEYS = new Set(["", "all", "all market", "all markets", "all-market", "all-markets", "global", "global market", "global markets"]);
   const STRICT_MARKET_RULES = {
-    bahrain: { currency: "BHD", countries: ["BH", "BAHRAIN"], exchanges: [/\b(BHB|XBAH)\b/i, /BAHRAIN/i, /BAHRAIN BOURSE/i], markets: [/BAHRAIN/i, /\bBHB\b/i, /BAHRAIN BOURSE/i], suffix: /\.BH$/i, assetTypes: ["stock", "equity"] },
-    kuwait: { currency: "KWD", countries: ["KW", "KUWAIT"], exchanges: [/\b(KSE|XKUW)\b/i, /KUWAIT/i, /BOURSA KUWAIT/i], markets: [/KUWAIT/i, /BOURSA KUWAIT/i], suffix: /\.KW$/i, assetTypes: ["stock", "equity"] },
-    saudi: { currency: "SAR", countries: ["SA", "SAUDI", "SAUDI ARABIA"], exchanges: [/\b(TADAWUL|XSAU)\b/i, /SAUDI EXCHANGE/i], markets: [/TADAWUL/i, /SAUDI/i], suffix: /\.(SR|SA)$/i, assetTypes: ["stock", "equity"] },
-    uae: { currency: "AED", countries: ["AE", "UAE", "UNITED ARAB EMIRATES"], exchanges: [/\b(ADX|DFM|XADS|XDFM)\b/i, /ABU DHABI/i, /DUBAI FINANCIAL MARKET/i], markets: [/\b(ADX|DFM)\b/i, /UAE/i, /ABU DHABI/i, /DUBAI/i, /UNITED ARAB/i], suffix: /\.(AE|DU|AD)$/i, assetTypes: ["stock", "equity"] },
-    oman: { currency: "OMR", countries: ["OM", "OMAN"], exchanges: [/\b(MSX|XMUS)\b/i, /MUSCAT/i], markets: [/OMAN/i, /\bMSX\b/i, /MUSCAT/i], suffix: /\.OM$/i, assetTypes: ["stock", "equity"] },
-    qatar: { currency: "QAR", countries: ["QA", "QATAR"], exchanges: [/\b(QSE|DSMD|DSM)\b/i, /QATAR/i, /QATAR EXCHANGE/i], markets: [/QATAR/i, /\bQSE\b/i, /QATAR EXCHANGE/i], suffix: /\.QA$/i, assetTypes: ["stock", "equity"] }
+    bahrain: { currency: "BHD", exchange: "Bahrain Bourse", countries: ["BH", "BAHRAIN"], exchanges: [/\b(BHB|XBAH)\b/i, /BAHRAIN/i, /BAHRAIN BOURSE/i], markets: [/BAHRAIN/i, /\bBHB\b/i, /BAHRAIN BOURSE/i], suffix: /\.BH$/i, assetTypes: ["stock", "equity"] },
+    kuwait: { currency: "KWD", exchange: "Boursa Kuwait", countries: ["KW", "KUWAIT"], exchanges: [/\b(KSE|XKUW)\b/i, /KUWAIT/i, /BOURSA KUWAIT/i], markets: [/KUWAIT/i, /BOURSA KUWAIT/i], suffix: /\.KW$/i, assetTypes: ["stock", "equity"] },
+    saudi: { currency: "SAR", exchange: "Tadawul", countries: ["SA", "SAUDI", "SAUDI ARABIA"], exchanges: [/\b(TADAWUL|XSAU)\b/i, /SAUDI EXCHANGE/i], markets: [/TADAWUL/i, /SAUDI/i], suffix: /\.(SR|SA)$/i, assetTypes: ["stock", "equity"] },
+    uae: { currency: "AED", exchange: "ADX/DFM", countries: ["AE", "UAE", "UNITED ARAB EMIRATES"], exchanges: [/\b(ADX|DFM|XADS|XDFM)\b/i, /ABU DHABI/i, /DUBAI FINANCIAL MARKET/i], markets: [/\b(ADX|DFM)\b/i, /UAE/i, /ABU DHABI/i, /DUBAI/i, /UNITED ARAB/i], suffix: /\.(AE|DU|AD)$/i, assetTypes: ["stock", "equity"] },
+    oman: { currency: "OMR", exchange: "Muscat Stock Exchange", countries: ["OM", "OMAN"], exchanges: [/\b(MSX|XMUS)\b/i, /MUSCAT/i], markets: [/OMAN/i, /\bMSX\b/i, /MUSCAT/i], suffix: /\.OM$/i, assetTypes: ["stock", "equity"] },
+    qatar: { currency: "QAR", exchange: "Qatar Exchange", countries: ["QA", "QATAR"], exchanges: [/\b(QSE|DSMD|DSM)\b/i, /QATAR/i, /QATAR EXCHANGE/i], markets: [/QATAR/i, /\bQSE\b/i, /QATAR EXCHANGE/i], suffix: /\.QA$/i, assetTypes: ["stock", "equity"] }
   };
 
   const EXPLORE = ["forex", "us-stocks", "kuwait", "saudi", "uae", "qatar", "bahrain", "europe", "asia", "crypto", "commodities", "indices", "etfs", "technology", "ai", "semiconductors", "energy", "banking", "healthcare", "food"];
@@ -2236,16 +2236,23 @@
       return decision.allowed;
     });
   }
+  function strictMarketContext(id) {
+    const marketId = normalizeSelectedMarketKey(id);
+    if (!marketId) return null;
+    const rule = STRICT_MARKET_RULES[marketId];
+    return rule ? { exchange: rule.exchange, currency: rule.currency } : null;
+  }
   function activeMarketContext(id = state.settings.defaultMarket) {
     const market = MARKETS.find(x => x.id === id || x.apiMarket === id) || currentMarket();
     const useServerContext = market.id === state.settings.defaultMarket;
     const serverContext = useServerContext && state.rec && state.rec.marketContext ? state.rec.marketContext : {};
+    const strictContext = strictMarketContext(market.id);
     return {
       id: market.id,
       marketName: serverContext.marketName || market.ar,
       marketNameEn: serverContext.marketNameEn || market.en,
-      exchange: (useServerContext && (state.rec.selectedExchange || serverContext.exchange)) || market.family,
-      currency: (useServerContext && (state.rec.selectedCurrency || serverContext.currency)) || market.currency
+      exchange: strictContext?.exchange || (useServerContext && (state.rec.selectedExchange || serverContext.exchange)) || market.family,
+      currency: strictContext?.currency || (useServerContext && (state.rec.selectedCurrency || serverContext.currency)) || market.currency
     };
   }
   function assetExchange(asset) {

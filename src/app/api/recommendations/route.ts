@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
-import { filterAssetsByMarket, marketFilterDecision } from '@/lib/trader/marketFilters';
+import { filterAssetsByMarket, marketFilterDecision, strictMarketContextForSelection } from '@/lib/trader/marketFilters';
 import { getSymbolsForMarketOrSector } from '@/lib/trader/marketCatalog';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
@@ -238,8 +238,15 @@ export async function GET(request: Request) {
   const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? marketFiltered[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
-  const selectedExchange = url.searchParams.get('exchange') ?? url.searchParams.get('selectedExchange') ?? market.family;
-  const selectedCurrency = url.searchParams.get('currency') ?? url.searchParams.get('selectedCurrency') ?? market.currency;
+  const strictMarketContext = strictMarketContextForSelection(marketFilterSelection);
+  const selectedExchange = strictMarketContext?.exchange
+    ?? url.searchParams.get('exchange')
+    ?? url.searchParams.get('selectedExchange')
+    ?? market.family;
+  const selectedCurrency = strictMarketContext?.currency
+    ?? url.searchParams.get('currency')
+    ?? url.searchParams.get('selectedCurrency')
+    ?? market.currency;
   const usedProvider = primaryQuote
     ? primaryQuote.providerStatus.provider ?? primaryQuote.provider ?? primaryQuote.providerStatus.source ?? primaryQuote.source
     : quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider;
