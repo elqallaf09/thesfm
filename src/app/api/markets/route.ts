@@ -8,6 +8,7 @@ import { getSymbolsForMarketOrSector, getTraderMarketCatalog } from '@/lib/trade
 export const dynamic = 'force-dynamic';
 
 function clampInteger(value: string | null, fallback: number, min: number, max: number) {
+  if (value === null || value === '') return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
