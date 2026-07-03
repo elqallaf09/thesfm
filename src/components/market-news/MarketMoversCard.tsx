@@ -461,8 +461,11 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
           display:grid;
           gap:14px;
           color:var(--movers-text);
+          position:relative;
+          isolation:isolate;
         }
         .market-movers-card.compact{position:relative}
+        .market-movers-card>*{position:relative;z-index:1}
         .market-movers-header,.market-movers-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
         .market-movers-title{display:flex;align-items:center;gap:12px;min-width:0}
         .market-movers-icon{width:48px;height:48px;flex:0 0 auto;border-radius:17px;display:grid;place-items:center;background:#CCFBF1;border:1px solid rgba(15,118,110,.25);color:#0F766E}
@@ -523,8 +526,8 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
         .market-movers-list.skeleton .market-movers-row span{width:70%;height:13px}
         .market-movers-list.skeleton .market-movers-row b{width:48px;height:13px}
         @keyframes marketMoversShimmer{to{background-position:-220% 0}}
-        .market-movers-modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(6,18,32,.58);backdrop-filter:blur(10px);display:grid;place-items:center;padding:22px}
-        .market-movers-modal{width:min(1040px,100%);max-height:min(86dvh,900px);overflow:auto;border:1px solid var(--movers-border-strong);border-radius:26px;background:linear-gradient(180deg,var(--movers-panel),var(--movers-panel-soft));box-shadow:0 30px 90px rgba(3,18,37,.34);padding:20px;display:grid;gap:16px;color:var(--movers-text)}
+        .market-movers-modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(6,18,32,.58);backdrop-filter:blur(10px);display:grid;place-items:center;padding:22px;isolation:isolate}
+        .market-movers-modal{position:relative;z-index:1;isolation:isolate;width:min(1040px,100%);max-height:min(86dvh,900px);overflow:auto;border:1px solid var(--movers-border-strong);border-radius:26px;background:linear-gradient(180deg,var(--movers-panel),var(--movers-panel-soft));box-shadow:0 30px 90px rgba(3,18,37,.34);padding:20px;display:grid;gap:16px;color:var(--movers-text)}
         @media(max-width:1180px){.market-movers-grid.full{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:720px){.market-movers-card{border-radius:20px;padding:15px}.market-movers-header{display:grid}.market-movers-refresh{width:100%}.market-movers-title h2{font-size:19px}.market-movers-modal-backdrop{align-items:end;padding:0}.market-movers-modal{width:100%;max-height:92dvh;border-radius:24px 24px 0 0;padding:16px}.market-movers-modal-header{align-items:flex-start}.market-movers-grid.full{grid-template-columns:1fr}.market-movers-values{grid-template-columns:1fr}.market-movers-row.compact .market-movers-values{grid-template-columns:repeat(2,minmax(0,1fr))}.market-movers-identity span{white-space:normal}}
       `}</style>

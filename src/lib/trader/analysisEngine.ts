@@ -608,6 +608,7 @@ export function analyzeStock(input: {
     signal,
     confidence,
     currentPrice: input.quote.price,
+    changePercent: input.quote.changePercent,
     targetPrice,
     target2,
     stopLoss,

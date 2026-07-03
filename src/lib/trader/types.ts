@@ -95,6 +95,7 @@ export type StockAnalysisResult = {
   signal: Signal;
   confidence: number;
   currentPrice: number;
+  changePercent: number | null;
   targetPrice: number | null;
   target2?: number | null;
   stopLoss: number | null;

@@ -65,4 +65,37 @@ describe('GCC market provider mappings', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('builds gainers and losers from signed finite changes without symbol overlap', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        quoteResponse: {
+          result: [
+            { symbol: '2222.SR', longName: 'Saudi Aramco', currency: 'SAR', regularMarketPrice: 32, regularMarketChangePercent: 2.4, regularMarketVolume: 1000 },
+            { symbol: '1120.SR', longName: 'Al Rajhi Bank', currency: 'SAR', regularMarketPrice: 82, regularMarketChangePercent: -1.2, regularMarketVolume: 900 },
+            { symbol: '2010.SR', longName: 'SABIC', currency: 'SAR', regularMarketPrice: 71, regularMarketChangePercent: -3.1, regularMarketVolume: 800 },
+            { symbol: '2222.SR', longName: 'Saudi Aramco duplicate', currency: 'SAR', regularMarketPrice: 31, regularMarketChangePercent: -4.8, regularMarketVolume: 700 },
+            { symbol: '7010.SR', longName: 'stc', currency: 'SAR', regularMarketPrice: 44, regularMarketChangePercent: 0, regularMarketVolume: 600 },
+            { symbol: '1211.SR', longName: 'Maaden', currency: 'SAR', regularMarketPrice: 48, regularMarketChangePercent: null, regularMarketVolume: 500 },
+          ],
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchMarketMovers('saudi', 5);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.topGainers.map(item => item.symbol)).toEqual(['2222']);
+      expect(result.data.topLosers.map(item => item.symbol)).toEqual(['2010', '1120']);
+      expect(result.data.topLosers.map(item => item.symbol)).not.toContain('2222');
+      expect(result.data.topGainers.every(item => item.changePercent !== null && item.changePercent > 0)).toBe(true);
+      expect(result.data.topLosers.every(item => item.changePercent !== null && item.changePercent < 0)).toBe(true);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
 });

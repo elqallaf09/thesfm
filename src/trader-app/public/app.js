@@ -1806,7 +1806,36 @@
   function trades() { return mergeTradeLists(arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed), state.localTrades || []); }
   function matchRec(s) { const k = sym(s); return recs().find(x => sym(x.symbol) === k) || null; }
   function topPicks(r, n) { return [...r].sort((a, b) => (num(b.confidence, b.score, b.aiConfidence) || 0) - (num(a.confidence, a.score, a.aiConfidence) || 0)).slice(0, n); }
-  function sortMovers(r) { const withChg = r.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
+  function moverSymbolKey(item) { return sym(item && (item.symbol || item.displaySymbol || item.providerSymbolUsed || item.providerSymbol || item.ticker || item.code)); }
+  function moverChangePercentValue(item) {
+    const a = item || {};
+    return num(a.changesPercentage, a.changePercentage, a.percentChange, a.changePercent, a.changes_percentage, a.change_percentage, a.percent_change, a.change_percent);
+  }
+  function isMockMoverAsset(item) {
+    const explicit = [item && item.mock, item && item.isMock, item && item.demo, item && item.isDemo, item && item.synthetic, item && item.placeholder, item && item.fallback, item && item.isFallback];
+    if (explicit.some(value => value === true)) return true;
+    const sourceText = [item && item.provider, item && item.source, item && item.dataSource, item && item.sourceType].map(value => String(value || "").toLowerCase()).join(" ");
+    return /\b(mock|demo|sample|placeholder|fallback)\b/.test(sourceText);
+  }
+  function rankedMoverSide(items, side, excludedSymbols = new Set()) {
+    const seen = new Set(excludedSymbols);
+    const output = [];
+    items.forEach(item => {
+      const key = moverSymbolKey(item), changeValue = moverChangePercentValue(item);
+      if (!key || seen.has(key) || changeValue === null || !Number.isFinite(changeValue) || isMockMoverAsset(item)) return;
+      if (side === "gainers" && changeValue <= 0) return;
+      if (side === "losers" && changeValue >= 0) return;
+      seen.add(key);
+      output.push({ ...item, changePercent: changeValue });
+    });
+    return output.sort((a, b) => side === "gainers" ? moverChangePercentValue(b) - moverChangePercentValue(a) : moverChangePercentValue(a) - moverChangePercentValue(b));
+  }
+  function sortMovers(r) {
+    const normalized = r.map(norm).filter(item => moverSymbolKey(item) && !isMockMoverAsset(item));
+    const gainers = rankedMoverSide(normalized, "gainers");
+    const losers = rankedMoverSide(normalized, "losers", new Set(gainers.map(moverSymbolKey)));
+    return { gainers, losers, active: topPicks(normalized, normalized.length) };
+  }
   function mergeTradeLists(server, local) {
     const seen = new Set(), output = [];
     [...server, ...local].forEach(item => {

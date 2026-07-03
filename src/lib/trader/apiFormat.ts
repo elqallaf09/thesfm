@@ -66,6 +66,7 @@ export function toTraderRecommendation(result: StockAnalysisResult) {
     shariaCheckedAt: sharia.reviewed_at,
     currentPrice: result.currentPrice,
     price: result.currentPrice,
+    changePercent: result.changePercent,
     expectedPrice: result.targetPrice,
     target1: result.targetPrice,
     targetPrice: result.targetPrice,

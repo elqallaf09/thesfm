@@ -361,6 +361,20 @@ function finiteNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function moverSymbolKey(row: Omit<MarketMoverItem, 'rank'>) {
+  return row.symbol.trim().toUpperCase();
+}
+
+function uniqueMoverRows(rows: Array<Omit<MarketMoverItem, 'rank'>>) {
+  const seen = new Set<string>();
+  return rows.filter(row => {
+    const key = moverSymbolKey(row);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function normalizeProviderPrice(value: number, currency: string | null, providerSymbol: string) {
   const currencyCode = currency?.toUpperCase();
   if (currencyCode === 'KWF' || providerSymbol.endsWith('.KW')) return value / 1000;
@@ -522,10 +536,33 @@ function rankedByNullable(
   limit: number,
 ) {
   return ranked(
-    rows.filter(row => selector(row) !== null),
+    rows.filter(row => finiteNumber(selector(row)) !== null),
     (a, b) => {
-      const left = selector(a) ?? 0;
-      const right = selector(b) ?? 0;
+      const left = finiteNumber(selector(a)) ?? 0;
+      const right = finiteNumber(selector(b)) ?? 0;
+      return direction === 'asc' ? left - right : right - left;
+    },
+    limit,
+  );
+}
+
+function rankedByChange(
+  rows: Array<Omit<MarketMoverItem, 'rank'>>,
+  direction: 'asc' | 'desc',
+  limit: number,
+  excludedSymbols = new Set<string>(),
+) {
+  const candidates = rows.filter(row => {
+    const key = moverSymbolKey(row);
+    const changePercent = finiteNumber(row.changePercent);
+    if (!key || excludedSymbols.has(key) || changePercent === null) return false;
+    return direction === 'desc' ? changePercent > 0 : changePercent < 0;
+  });
+  return ranked(
+    candidates,
+    (a, b) => {
+      const left = finiteNumber(a.changePercent) ?? 0;
+      const right = finiteNumber(b.changePercent) ?? 0;
       return direction === 'asc' ? left - right : right - left;
     },
     limit,
@@ -533,13 +570,18 @@ function rankedByNullable(
 }
 
 function buildMoversData(rows: Array<Omit<MarketMoverItem, 'rank'>>, limit: number): MarketMoversData {
+  const uniqueRows = uniqueMoverRows(rows);
+  const topGainers = rankedByChange(uniqueRows, 'desc', limit);
+  const gainerSymbols = new Set(topGainers.map(moverSymbolKey));
+  const topLosers = rankedByChange(uniqueRows, 'asc', limit, gainerSymbols);
+
   return {
-    topGainers: rankedByNullable(rows, row => row.changePercent, 'desc', limit).filter(row => (row.changePercent ?? 0) > 0),
-    topLosers: rankedByNullable(rows, row => row.changePercent, 'asc', limit).filter(row => (row.changePercent ?? 0) < 0),
-    highestPrice: ranked(rows, (a, b) => b.price - a.price, limit),
-    lowestPrice: ranked(rows, (a, b) => a.price - b.price, limit),
-    highestVolume: rankedByNullable(rows, row => row.volume, 'desc', limit),
-    lowestVolume: rankedByNullable(rows, row => row.volume, 'asc', limit),
+    topGainers,
+    topLosers,
+    highestPrice: ranked(uniqueRows, (a, b) => b.price - a.price, limit),
+    lowestPrice: ranked(uniqueRows, (a, b) => a.price - b.price, limit),
+    highestVolume: rankedByNullable(uniqueRows, row => row.volume, 'desc', limit),
+    lowestVolume: rankedByNullable(uniqueRows, row => row.volume, 'asc', limit),
   };
 }
 
