@@ -7,7 +7,7 @@ import {
   normalizeSelectedCategoryKey,
   strictMarketContextForSelection,
 } from '@/lib/trader/marketFilters';
-import { getSymbolsForMarketOrSector } from '@/lib/trader/marketCatalog';
+import { getFullSymbolUniverse, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
 
@@ -49,6 +49,96 @@ function normalizeSymbol(value: unknown) {
   return String(value ?? '').trim().toUpperCase();
 }
 
+type RecommendationSortKey = 'symbol' | 'name' | 'priceAvailability' | 'marketCap' | 'volume';
+
+function normalizeSortKey(value: string | null): RecommendationSortKey {
+  const normalized = String(value ?? '').trim();
+  if (['symbol', 'name', 'priceAvailability', 'marketCap', 'volume'].includes(normalized)) {
+    return normalized as RecommendationSortKey;
+  }
+  if (normalized === 'displaySymbol' || normalized === 'providerSymbol') return 'symbol';
+  return 'symbol';
+}
+
+function sortDirection(value: string | null) {
+  return String(value ?? '').trim().toLowerCase() === 'desc' ? 'desc' as const : 'asc' as const;
+}
+
+function symbolSortValue(symbol: TraderCatalogSymbol, key: RecommendationSortKey) {
+  if (key === 'name') return normalizeSymbol(symbol.name);
+  return normalizeSymbol(symbol.symbol);
+}
+
+function sortSymbolMeta(rows: TraderCatalogSymbol[], key: RecommendationSortKey, dir: 'asc' | 'desc') {
+  if (key === 'priceAvailability' || key === 'marketCap' || key === 'volume') return rows;
+  const multiplier = dir === 'desc' ? -1 : 1;
+  return [...rows].sort((a, b) => multiplier * (
+    symbolSortValue(a, key).localeCompare(symbolSortValue(b, key))
+    || normalizeSymbol(a.symbol).localeCompare(normalizeSymbol(b.symbol))
+  ));
+}
+
+function nullableNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function recommendationSortNumber(row: Record<string, unknown>, key: RecommendationSortKey) {
+  if (key === 'priceAvailability') return row.available === true && nullableNumber(row.price) !== null ? 1 : 0;
+  if (key === 'marketCap') return nullableNumber(row.marketCap);
+  if (key === 'volume') return nullableNumber(row.volume);
+  return null;
+}
+
+function sortRecommendations<T extends Record<string, unknown>>(rows: T[], key: RecommendationSortKey, dir: 'asc' | 'desc') {
+  const multiplier = dir === 'desc' ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    if (key === 'symbol') {
+      return multiplier * (normalizeSymbol(a.displaySymbol ?? a.symbol).localeCompare(normalizeSymbol(b.displaySymbol ?? b.symbol)));
+    }
+    if (key === 'name') {
+      return multiplier * (normalizeSymbol(a.name).localeCompare(normalizeSymbol(b.name)));
+    }
+    const av = recommendationSortNumber(a, key);
+    const bv = recommendationSortNumber(b, key);
+    if (av === null && bv === null) return normalizeSymbol(a.symbol).localeCompare(normalizeSymbol(b.symbol));
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return multiplier * (av - bv);
+  });
+}
+
+function availabilityFilter(value: string | null) {
+  const normalized = String(value ?? 'all').trim().toLowerCase();
+  if (['with-price', 'available', 'price-available'].includes(normalized)) return 'with-price';
+  if (['price-unavailable', 'unavailable', 'missing-price'].includes(normalized)) return 'price-unavailable';
+  if (normalized === 'failed') return 'failed';
+  return 'all';
+}
+
+function filterByAvailability<T extends Record<string, unknown>>(rows: T[], value: string) {
+  if (value === 'with-price') return rows.filter(row => row.available === true && nullableNumber(row.price) !== null);
+  if (value === 'price-unavailable') return rows.filter(row => row.available !== true || nullableNumber(row.price) === null);
+  if (value === 'failed') return rows.filter(row => row.unavailableReason || row.available !== true);
+  return rows;
+}
+
+function uniqueSorted(values: Array<unknown>) {
+  return Array.from(new Set(values.map(value => String(value ?? '').trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function universeFilterOptions(rows: TraderCatalogSymbol[]) {
+  return {
+    exchanges: uniqueSorted(rows.flatMap(row => [row.exchange, row.exchangeCode]).filter(Boolean)),
+    currencies: uniqueSorted(rows.map(row => row.currency)),
+    sectors: uniqueSorted(rows.map(row => row.sector)),
+    industries: uniqueSorted(rows.map(row => row.industry)),
+    assetTypes: uniqueSorted(rows.map(row => row.assetType)),
+    markets: uniqueSorted(rows.flatMap(row => row.marketIds)),
+  };
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const forceFresh = url.searchParams.has('refresh');
@@ -57,15 +147,28 @@ export async function GET(request: Request) {
   const selectedCategory = normalizeRecommendationCategory(
     url.searchParams.get('category') ?? url.searchParams.get('assetType') ?? url.searchParams.get('asset_type'),
   );
+  const selectedExchangeFilter = url.searchParams.get('exchange') ?? url.searchParams.get('selectedExchange');
+  const selectedCurrencyFilter = url.searchParams.get('currency') ?? url.searchParams.get('selectedCurrency');
+  const selectedSectorName = url.searchParams.get('sectorName') ?? url.searchParams.get('sectorFilter');
+  const selectedIndustry = url.searchParams.get('industry');
+  const selectedAssetType = url.searchParams.get('assetType') ?? url.searchParams.get('asset_type');
+  const selectedAvailability = availabilityFilter(url.searchParams.get('availability') ?? url.searchParams.get('dataAvailability'));
+  const sortKey = normalizeSortKey(url.searchParams.get('sort') ?? url.searchParams.get('sortKey'));
+  const sortDir = sortDirection(url.searchParams.get('dir') ?? url.searchParams.get('sortDir'));
   const { market, catalog } = await resolveTraderMarketDynamic(url.searchParams.get('market'), {
     forceFresh,
     includeFmpDiscovery: discover && Boolean(marketId),
   });
   const selectedSector = url.searchParams.get('sector') ?? url.searchParams.get('selectedSector') ?? url.searchParams.get('selected_sector');
-  const universe = await getSymbolsForMarketOrSector({
+  const universe = await getFullSymbolUniverse({
     market: marketId ?? market.id,
     sector: selectedSector,
     category: selectedCategory,
+    exchange: selectedExchangeFilter,
+    currency: selectedCurrencyFilter,
+    sectorName: selectedSectorName,
+    industry: selectedIndustry,
+    assetType: selectedAssetType,
     catalog,
   });
   const requestedSymbols = String(url.searchParams.get('symbols') ?? '')
@@ -102,8 +205,9 @@ export async function GET(request: Request) {
   const filteredMeta = shariahStatus
     ? searchedMeta.filter(symbol => symbol.shariahStatus === shariahStatus)
     : searchedMeta;
+  const sortedMeta = sortSymbolMeta(filteredMeta, sortKey, sortDir);
   const offset = requestedSymbols.length ? 0 : (page - 1) * pageSize;
-  const selectedMeta = filteredMeta.slice(offset, offset + pageSize);
+  const selectedMeta = sortedMeta.slice(offset, offset + pageSize);
   const symbols = selectedMeta.map(symbol => symbol.symbol);
   const pageKeySet = new Set(selectedMeta.flatMap(symbol => [
     normalizeSymbol(symbol.symbol),
@@ -154,7 +258,9 @@ export async function GET(request: Request) {
     .filter(q => !q.available || q.price === null)
     .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
 
-  const recommendations = available.map(q => ({
+  const mappedRecommendations = available.map(q => {
+    const quoteRecord = q as typeof q & Record<string, unknown>;
+    return ({
     symbol: q.symbol,
     requestedSymbol: q.requestedSymbol,
     canonicalSymbol: q.canonicalSymbol,
@@ -175,6 +281,11 @@ export async function GET(request: Request) {
     exchangeCode: q.exchangeCode,
     market: q.market,
     country: q.country,
+    sector: quoteRecord.sector ?? entryBySymbol.get(normalizeSymbol(q.symbol))?.sector,
+    industry: quoteRecord.industry ?? entryBySymbol.get(normalizeSymbol(q.symbol))?.industry,
+    companyName: q.name,
+    marketCap: nullableNumber(quoteRecord.marketCap),
+    volume: nullableNumber(quoteRecord.volume),
     metadataDiagnostics: q.metadataDiagnostics,
     signal: q.signal,
     signalAvailable: q.signalAvailable,
@@ -237,7 +348,13 @@ export async function GET(request: Request) {
     shariaStatus: q.shariahStatus,
     shariaSource: q.shariahSource,
     shariaCheckedAt: q.shariahLastReviewedAt,
-  }));
+    });
+  });
+  const recommendations = sortRecommendations(
+    filterByAvailability(mappedRecommendations, selectedAvailability),
+    sortKey,
+    sortDir,
+  );
   const connectedProvider = getConnectedProvider();
   const availablePriceCount = available.filter(q => q.available && q.price !== null).length;
   const unavailableCount = available.length - availablePriceCount;
@@ -331,6 +448,7 @@ export async function GET(request: Request) {
       unavailableCount,
       dataCoverage: `${availablePriceCount}/${recommendations.length}`,
       provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
+      filterOptions: universeFilterOptions(filteredMeta),
     },
     symbolDiscovery: {
       totalSymbolsDiscovered: catalog.diagnostics.totalSymbolsDiscovered,
@@ -345,6 +463,8 @@ export async function GET(request: Request) {
       selectedCategory: universe.category,
       availablePriceCount,
       unavailableCount,
+      unavailablePriceCount: unavailableCount,
+      failedCount: quoteLoad.failed.length,
       shariahStatus,
       source: universe.source,
       cacheStatus: catalog.diagnostics.cacheStatus,
@@ -358,6 +478,16 @@ export async function GET(request: Request) {
     providerLatencyMs: quoteLoad.providerLatencyMs,
     cacheStatus: quoteLoad.cacheStatus,
     summary: quoteLoad.summary,
+    coverage: {
+      totalDiscovered: catalog.diagnostics.totalSymbolsDiscovered,
+      totalMarketSymbols: universe.total,
+      totalFilteredSymbols: filteredMeta.length,
+      loaded: quoteLoad.summary.loadedSymbols,
+      availableWithPrice: availablePriceCount,
+      unavailablePrice: unavailableCount,
+      failed: quoteLoad.failed.length,
+    },
+    filterOptions: universeFilterOptions(filteredMeta),
     resultCount: recommendations.length,
     priceResultCount: availablePriceCount,
     message: diagnostic.message,

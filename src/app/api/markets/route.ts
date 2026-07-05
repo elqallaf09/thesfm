@@ -77,26 +77,30 @@ function isCompleteMarketSymbol(symbol: TraderCatalogSymbol) {
 
 function dedupeMarketSymbols(rows: TraderCatalogSymbol[]) {
   const sourceRank: Record<string, number> = { supabase: 5, bundled: 4, fmp: 3, seed: 2 };
-  const byDisplaySymbol = new Map<string, TraderCatalogSymbol>();
+  const byProviderExchangeCurrency = new Map<string, TraderCatalogSymbol>();
   let duplicateRows = 0;
 
   for (const row of rows) {
-    const key = normalizeDisplaySymbol(row.symbol) || normalizeSymbol(row.providerSymbol);
-    if (!key) continue;
-    const existing = byDisplaySymbol.get(key);
+    const key = [
+      normalizeSymbol(row.providerSymbol || row.symbol),
+      normalizeSymbol(row.exchange),
+      normalizeSymbol(row.currency),
+    ].join('|');
+    if (!key.replace(/\|/g, '')) continue;
+    const existing = byProviderExchangeCurrency.get(key);
     if (!existing) {
-      byDisplaySymbol.set(key, row);
+      byProviderExchangeCurrency.set(key, row);
       continue;
     }
 
     duplicateRows += 1;
     const existingScore = (isCompleteMarketSymbol(existing) ? 10 : 0) + (sourceRank[existing.source] ?? 1);
     const nextScore = (isCompleteMarketSymbol(row) ? 10 : 0) + (sourceRank[row.source] ?? 1);
-    if (nextScore > existingScore) byDisplaySymbol.set(key, row);
+    if (nextScore > existingScore) byProviderExchangeCurrency.set(key, row);
   }
 
   return {
-    rows: Array.from(byDisplaySymbol.values()),
+    rows: Array.from(byProviderExchangeCurrency.values()),
     duplicateRows,
   };
 }
@@ -133,6 +137,11 @@ function sortMarketSymbols(rows: TraderCatalogSymbol[], key: MarketSortKey, dire
   });
 }
 
+function uniqueSorted(values: Array<unknown>) {
+  return Array.from(new Set(values.map(value => String(value ?? '').trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b));
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const selectedMarket = url.searchParams.get('market');
@@ -152,7 +161,7 @@ export async function GET(request: Request) {
   const sortKey = normalizeSortKey(url.searchParams.get('sort') ?? url.searchParams.get('sortKey'));
   const sortDir = String(url.searchParams.get('dir') ?? url.searchParams.get('sortDir')).trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
   const page = clampInteger(url.searchParams.get('page'), 1, 1, 10_000);
-  const pageSize = clampInteger(url.searchParams.get('limit') ?? url.searchParams.get('pageSize'), selectedMarket || selectedSector || search ? 20 : 120, 1, 250);
+  const pageSize = clampInteger(url.searchParams.get('limit') ?? url.searchParams.get('pageSize'), 25, 1, 250);
   const catalog = await getTraderMarketCatalog({
     forceFresh: url.searchParams.has('refresh'),
     includeFmpDiscovery: url.searchParams.has('discover') && Boolean(selectedMarket),
@@ -189,6 +198,9 @@ export async function GET(request: Request) {
   const sourceRows = sourceFilter && sourceFilter !== 'all'
     ? deduped.rows.filter(symbol => symbol.source === sourceFilter || publicSourceLabel(symbol.source).toLowerCase() === sourceFilter)
     : deduped.rows;
+  const filterOptions = {
+    currencies: uniqueSorted(sourceRows.map(symbol => symbol.currency)),
+  };
   const currencyRows = currencyFilter && currencyFilter !== 'ALL'
     ? sourceRows.filter(symbol => normalizeSymbol(symbol.currency) === currencyFilter)
     : sourceRows;
@@ -341,6 +353,7 @@ export async function GET(request: Request) {
       defaultPageSize: 25,
       sources: catalog.diagnostics.sources,
     },
+    filterOptions,
     loaded: pagedRows.map(symbol => ({
       symbol: normalizeDisplaySymbol(symbol.symbol),
       provider: symbol.source,

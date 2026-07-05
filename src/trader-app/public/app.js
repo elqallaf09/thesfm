@@ -13,8 +13,13 @@
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
   const INITIAL_LOADING_MAX_MS = 4500;
   const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 30000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
+  const MARKET_UNIVERSE_PAGE_SIZE = 50;
   const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
+  const COVERAGE_NOTICE_AR = "قد لا تتوفر جميع الرموز من المزود الحالي";
+  const COVERAGE_NOTICE_EN = "Some symbols may not be available from the current provider";
+  const PRICE_UNAVAILABLE_AR = "السعر غير متاح";
+  const PRICE_UNAVAILABLE_EN = "Price unavailable";
   const DEV_DIAGNOSTICS = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.hostname.endsWith(".local");
   const PROVIDER_STATUS_LABELS = {
     provider_status_failed: {
@@ -190,6 +195,8 @@
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
     calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
+    marketUniverseView: { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", availability: "all", sort: "symbol", dir: "asc" },
+    marketUniverseActiveMarket: null,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced", quickTickerVisible: true }),
@@ -383,6 +390,25 @@
       if (runSignals) { event.preventDefault(); runSignalRefresh(); return; }
       const tickerToggle = event.target.closest("[data-toggle-ticker]");
       if (tickerToggle) { event.preventDefault(); state.settings.quickTickerVisible = !isQuickTickerVisible(); write(keys.settings, state.settings); render(); return; }
+      const universePage = event.target.closest("[data-market-universe-page]");
+      if (universePage) {
+        event.preventDefault();
+        state.marketUniverseView.page = Math.max(1, Number(universePage.dataset.marketUniversePage) || 1);
+        loadMarket(state.route.market, true);
+        render();
+        return;
+      }
+      const universeSort = event.target.closest("[data-market-universe-sort]");
+      if (universeSort) {
+        event.preventDefault();
+        const key = universeSort.dataset.marketUniverseSort || "symbol";
+        state.marketUniverseView.dir = state.marketUniverseView.sort === key && state.marketUniverseView.dir === "asc" ? "desc" : "asc";
+        state.marketUniverseView.sort = key;
+        state.marketUniverseView.page = 1;
+        loadMarket(state.route.market, true);
+        render();
+        return;
+      }
       const delAlert = event.target.closest("[data-del-alert]");
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
       const retry = event.target.closest("[data-retry]");
@@ -404,6 +430,15 @@
       state.earningsView.page = 1;
       render();
     });
+    document.addEventListener("submit", (event) => {
+      const form = event.target.closest("[data-market-universe-search]");
+      if (!form) return;
+      event.preventDefault();
+      state.marketUniverseView.q = String(new FormData(form).get("marketUniverseSearch") || "").trim();
+      state.marketUniverseView.page = 1;
+      loadMarket(state.route.market, true);
+      render();
+    });
     document.addEventListener("change", (event) => {
       const filter = event.target.closest("[data-earnings-filter]");
       if (!filter) return;
@@ -411,6 +446,25 @@
       if (key === "source" || key === "timing") {
         state.earningsView[key] = filter.value || "all";
         state.earningsView.page = 1;
+        render();
+      }
+    });
+    document.addEventListener("change", (event) => {
+      const filter = event.target.closest("[data-market-universe-filter]");
+      if (!filter) return;
+      const key = filter.dataset.marketUniverseFilter;
+      if (key === "market") {
+        const target = filter.value || state.route.market;
+        if (target && target !== state.route.market) {
+          state.marketUniverseView.page = 1;
+          navigate(`${ROOT}/markets/${encodeURIComponent(target)}`);
+        }
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(state.marketUniverseView, key)) {
+        state.marketUniverseView[key] = filter.value || "all";
+        state.marketUniverseView.page = 1;
+        loadMarket(state.route.market, true);
         render();
       }
     });
@@ -431,7 +485,7 @@
     render();
     try {
       if (state.route.id === "markets" && state.route.market) {
-        state.marketCache.delete(state.route.market);
+        state.marketCache.delete(marketUniverseCacheKey(state.route.market));
         await loadMarket(state.route.market, true);
       } else if (state.route.id === "symbol-details" && state.route.symbol) {
         state.cache.delete(sym(state.route.symbol));
@@ -494,7 +548,13 @@
   function afterRoute() {
     const id = state.route.id;
     if (id === "symbol-details" && state.route.symbol) loadSymbol(state.route.symbol);
-    if (id === "markets" && state.route.market) loadMarket(state.route.market);
+    if (id === "markets" && state.route.market) {
+      if (state.marketUniverseActiveMarket !== state.route.market) {
+        state.marketUniverseActiveMarket = state.route.market;
+        state.marketUniverseView = { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", availability: "all", sort: "symbol", dir: "asc" };
+      }
+      loadMarket(state.route.market);
+    }
     if (id === "ai-scanner" || id === "recommendations") ensureScanData();
     if (id === "calendar" && !state.calendarLoaded && !state.calendarLoading) {
       state.calendarLoading = true;
@@ -558,28 +618,163 @@
   function marketDetailPage(id) {
     const m = MARKETS.find(x => x.id === id);
     if (!m) return marketsPage();
-    const cached = state.marketCache.get(id);
-    const list = cached ? filterRecommendationsForSelection(recsFrom(cached), id, categoryFromSelection(id)) : [];
-    const movers = cached ? sortMovers(list) : { gainers: [], losers: [], active: [] };
-    const body = cached ? (list.length
-      ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", m.currency, "Currency")}</section>
-         <section class="panel"><span class="eyebrow">HEATMAP</span><h2>خريطة حرارة ${h(m.ar)}</h2>${heatmap(list)}</section>
-         <section class="dash-split">
-           <article class="panel"><span class="eyebrow">PRICE CARDS</span><h2>الرموز والتوصيات</h2>${watchlistTable(list.slice(0, 12))}</article>
-           <aside class="dash-rail">
-             <article class="panel"><span class="eyebrow">TOP GAINERS</span><h2>الأكثر ارتفاعاً</h2>${movers.gainers.length ? assetList(movers.gainers.slice(0, 3)) : miniEmpty()}</article>
-             <article class="panel"><span class="eyebrow">TOP LOSERS</span><h2>الأكثر انخفاضاً</h2>${movers.losers.length ? assetList(movers.losers.slice(0, 3)) : miniEmpty()}</article>
-             <article class="panel"><span class="eyebrow">MOST ACTIVE</span><h2>الأكثر نشاطاً</h2>${movers.active.length ? assetList(movers.active.slice(0, 3)) : miniEmpty()}</article>
-           </aside>
-         </section>`
-      : marketUnavailable(m, cached)) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري تحميل ${h(m.ar)}</h2></div></div>`;
+    const cached = state.marketCache.get(marketUniverseCacheKey(id));
+    const total = marketUniverseTotal(m, cached);
+    const body = cached
+      ? marketUniversePanel(m, cached)
+      : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري تحميل ${h(m.ar)}</h2><p>${h(COVERAGE_NOTICE_EN)}</p></div></div>`;
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ كل الأسواق</a>
-      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. نتابع ${latinNumber(m.symbols.length)} رمزاً حقيقياً، وتُعرض الأسعار والتحليلات فقط عند توفرها من المزود.`, "MARKET")}
-      <section class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</section>
+      ${hero(`${m.ar} <span class="ltr">· ${h(m.en)}</span>`, `${m.family} · العملة الأساسية: ${m.currency}. الصفحة تعرض الكون الكامل المتاح من المزود مع ترقيم صفحات بحجم ${latinNumber(MARKET_UNIVERSE_PAGE_SIZE)} رمزاً.`, "MARKET")}
+      ${marketPreviewStrip(m, total)}
       ${body}
       ${disclaimer()}
     </div>`;
+  }
+
+  function marketPreviewSymbols(m) {
+    return unique(arr(m.previewSymbols || m.symbols).slice(0, 10));
+  }
+  function marketUniverseTotal(m, payload) {
+    const fromPayload = num(payload && payload.marketUniverse && (payload.marketUniverse.total ?? payload.marketUniverse.universeTotal), payload && payload.symbolDiscovery && payload.symbolDiscovery.totalFilteredSymbols);
+    if (fromPayload !== null) return fromPayload;
+    const group = arr(state.markets.groups).find(x => x.id === m.id);
+    return num(group && (group.totalSymbols || group.symbols?.length), m.totalSymbols, m.symbols.length) || m.symbols.length;
+  }
+  function marketPreviewStrip(m, total) {
+    const preview = marketPreviewSymbols(m);
+    return `<section class="market-preview-strip" data-market-preview="${h(m.id)}">
+      <div class="market-preview-copy"><strong>رموز معاينة</strong><span>${h(`يعرض ${latinNumber(preview.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${preview.length} of ${total} symbols`)}</span></span></div>
+      <div class="chip-row compact">${preview.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</div>
+      <a class="ghost-btn compact-btn" href="${ROOT}/markets/${h(m.id)}" data-route-link>عرض كل الأسهم <span class="ltr">View all symbols</span></a>
+    </section>`;
+  }
+  function marketUniverseRows(payload) {
+    return arr(payload && (payload.recommendations || payload.data || payload.items || payload.results)).map(norm).filter(x => x.symbol);
+  }
+  function marketUniversePagination(payload) {
+    const mu = (payload && payload.marketUniverse) || {};
+    const discovery = (payload && payload.symbolDiscovery) || {};
+    return {
+      page: Number(mu.page || discovery.page || state.marketUniverseView.page || 1),
+      pageSize: Number(mu.pageSize || discovery.pageSize || state.marketUniverseView.pageSize || MARKET_UNIVERSE_PAGE_SIZE),
+      total: Number(mu.total || discovery.totalFilteredSymbols || marketUniverseRows(payload).length || 0),
+      returned: Number(mu.returned || marketUniverseRows(payload).length || 0),
+      hasMore: Boolean(mu.hasMore || discovery.hasMore),
+    };
+  }
+  function marketUniversePanel(m, payload) {
+    const rows = marketUniverseRows(payload);
+    const pagination = marketUniversePagination(payload);
+    const pageCount = Math.max(1, Math.ceil(pagination.total / pagination.pageSize));
+    return `<section class="panel market-universe-panel" data-selected-market="${h(m.id)}">
+      <div class="panel-head"><div><span class="eyebrow">FULL SYMBOL UNIVERSE</span><h2>كل الرموز المتاحة</h2></div><button class="ghost-btn compact-btn" data-retry type="button">تحديث</button></div>
+      ${coverageNotice(payload, rows)}
+      ${marketUniverseControls(m, payload)}
+      <div class="provider-market-result-meta market-universe-result-meta">
+        <span>${h(`يعرض ${latinNumber(rows.length)} من ${latinNumber(pagination.total)} رمز`)} · <span class="ltr">${h(`Showing ${rows.length} of ${pagination.total} symbols`)}</span></span>
+        <span>صفحة <b class="ltr">${latinNumber(pagination.page)}</b> / <b class="ltr">${latinNumber(pageCount)}</b></span>
+      </div>
+      ${rows.length ? marketUniverseTable(rows) : emptyState("لا توجد رموز مطابقة", "غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "", "")}
+      <div class="provider-market-pagination market-universe-pagination">
+        <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page - 1}" ${pagination.page <= 1 ? "disabled" : ""}>السابق <span class="ltr">Previous</span></button>
+        <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page + 1}" ${pagination.page >= pageCount ? "disabled" : ""}>التالي <span class="ltr">Next</span></button>
+      </div>
+    </section>`;
+  }
+  function marketUniverseControls(m, payload) {
+    const view = state.marketUniverseView, options = marketUniverseFilterOptions(payload);
+    return `<div class="market-universe-controls">
+      <form data-market-universe-search>
+        <input name="marketUniverseSearch" value="${h(view.q)}" placeholder="Search symbol or company name" />
+        <button class="ghost-btn compact-btn" type="submit">بحث <span class="ltr">Search</span></button>
+      </form>
+      <label>السوق<select data-market-universe-filter="market">${MARKETS.map(item => `<option value="${h(item.id)}" ${item.id === m.id ? "selected" : ""}>${h(item.en)}</option>`).join("")}</select></label>
+      <label>البورصة<select data-market-universe-filter="exchange">${filterOptions(options.exchanges, view.exchange, "All exchanges")}</select></label>
+      <label>العملة<select data-market-universe-filter="currency">${filterOptions(options.currencies, view.currency, "All currencies")}</select></label>
+      <label>القطاع<select data-market-universe-filter="sector">${filterOptions(options.sectors, view.sector, "All sectors")}</select></label>
+      <label>الصناعة<select data-market-universe-filter="industry">${filterOptions(options.industries, view.industry, "All industries")}</select></label>
+      <label>النوع<select data-market-universe-filter="assetType">${filterOptions(options.assetTypes, view.assetType, "All asset types")}</select></label>
+      <label>توفر السعر<select data-market-universe-filter="availability">${filterOptions([["all", "All data"], ["with-price", "With price"], ["price-unavailable", "Price unavailable"], ["failed", "Failed"]], view.availability, null)}</select></label>
+      <label>الترتيب<select data-market-universe-filter="sort">${filterOptions([["symbol", "Symbol"], ["name", "Name"], ["priceAvailability", "Price availability"], ["marketCap", "Market cap"], ["volume", "Volume"]], view.sort, null)}</select></label>
+      <label>الاتجاه<select data-market-universe-filter="dir">${filterOptions([["asc", "Ascending"], ["desc", "Descending"]], view.dir, null)}</select></label>
+    </div>`;
+  }
+  function marketUniverseFilterOptions(payload) {
+    const fromPayload = (payload && (payload.filterOptions || (payload.marketUniverse && payload.marketUniverse.filterOptions))) || {};
+    const rows = marketUniverseRows(payload);
+    return {
+      exchanges: arr(fromPayload.exchanges).length ? fromPayload.exchanges : unique(rows.map(x => x.exchange || x.exchangeCode).filter(Boolean)),
+      currencies: arr(fromPayload.currencies).length ? fromPayload.currencies : unique(rows.map(currency)),
+      sectors: arr(fromPayload.sectors).length ? fromPayload.sectors : unique(rows.map(x => x.sector).filter(Boolean)),
+      industries: arr(fromPayload.industries).length ? fromPayload.industries : unique(rows.map(x => x.industry).filter(Boolean)),
+      assetTypes: arr(fromPayload.assetTypes).length ? fromPayload.assetTypes : unique(rows.map(x => x.assetType || assetType(x.symbol)).filter(Boolean)),
+    };
+  }
+  function filterOptions(items, selected, allLabel) {
+    const normalized = arr(items).map(item => Array.isArray(item) ? item : [item, item]).filter(([value]) => String(value || "").trim());
+    const leading = allLabel ? [[ "all", allLabel ]] : [];
+    return leading.concat(normalized).map(([value, label]) => `<option value="${h(value)}" ${String(selected) === String(value) ? "selected" : ""}>${h(label)}</option>`).join("");
+  }
+  function coverageNotice(payload, rows) {
+    const coverage = (payload && payload.coverage) || {};
+    const discovery = (payload && payload.symbolDiscovery) || {};
+    const failed = num(coverage.failed, discovery.failedCount, arr(payload && payload.failed).length) || 0;
+    const unavailable = num(coverage.unavailablePrice, discovery.unavailablePriceCount, discovery.unavailableCount, arr(payload && payload.unavailable).length) || 0;
+    const available = num(coverage.availableWithPrice, discovery.availablePriceCount) || rows.filter(x => num(x.price, x.currentPrice) !== null).length;
+    const loaded = num(coverage.loaded, discovery.loadedPageSymbols, rows.length) || rows.length;
+    const total = num(coverage.totalFilteredSymbols, discovery.totalFilteredSymbols, payload && payload.marketUniverse && payload.marketUniverse.total, rows.length) || rows.length;
+    const showNotice = failed > 0 || unavailable > 0 || Boolean(payload && payload.reason);
+    return `<div class="coverage-stack">
+      ${showNotice ? `<div class="provider-market-state warn coverage-notice"><strong>${h(COVERAGE_NOTICE_AR)}</strong><p class="ltr">${h(COVERAGE_NOTICE_EN)}</p></div>` : ""}
+      <div class="detail-grid compact-detail-grid">
+        ${detailCard("إجمالي مكتشف", latinNumber(total), "Total discovered")}
+        ${detailCard("تم تحميله", latinNumber(loaded), "Loaded")}
+        ${detailCard("بسعر متاح", latinNumber(available), "Available with price")}
+        ${detailCard("السعر غير متاح", latinNumber(unavailable), "Unavailable price")}
+        ${detailCard("فشل", latinNumber(failed), "Failed")}
+      </div>
+    </div>`;
+  }
+  function marketUniverseTable(rows) {
+    const headers = [["symbol", "الرمز"], ["name", "الشركة"], ["priceAvailability", "السعر"], ["marketCap", "القيمة السوقية"], ["volume", "الحجم"]];
+    return `<div class="table-shell market-universe-table" data-market-universe-table><table>
+      <thead><tr>${headers.map(([key, label]) => `<th><button type="button" data-market-universe-sort="${h(key)}">${h(label)}${sortMark(key)}</button></th>`).join("")}<th>البورصة</th><th>العملة</th><th>القطاع</th><th>الصناعة</th><th>النوع</th><th>إجراء</th></tr></thead>
+      <tbody>${rows.map(marketUniverseRow).join("")}</tbody>
+    </table><div class="market-universe-card-list">${rows.map(marketUniverseCard).join("")}</div></div>`;
+  }
+  function sortMark(key) {
+    return state.marketUniverseView.sort === key ? `<span aria-hidden="true">${state.marketUniverseView.dir === "asc" ? " ↑" : " ↓"}</span>` : "";
+  }
+  function marketUniverseRow(row) {
+    const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? `${PRICE_UNAVAILABLE_AR} · ${PRICE_UNAVAILABLE_EN}` : price(p, currency(a));
+    return `<tr data-universe-symbol="${h(a.symbol)}" class="${p === null ? "is-muted" : ""}">
+      <td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><small class="ltr">${h(a.providerSymbol || a.providerSymbolUsed || "--")}</small></span></button></td>
+      <td data-label="الشركة">${h(a.companyName || a.name || "--")}</td>
+      <td class="ltr" data-label="السعر">${h(priceText)}</td>
+      <td class="ltr" data-label="القيمة السوقية">${h(bigNumber(a.marketCap))}</td>
+      <td class="ltr" data-label="الحجم">${h(bigNumber(a.volume))}</td>
+      <td class="ltr" data-label="البورصة">${h(a.exchange || a.exchangeCode || "--")}</td>
+      <td class="ltr" data-label="العملة">${h(currency(a))}</td>
+      <td data-label="القطاع">${h(a.sector || "--")}</td>
+      <td data-label="الصناعة">${h(a.industry || "--")}</td>
+      <td data-label="النوع">${h(a.assetType || assetType(a.symbol))}</td>
+      <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button></td>
+    </tr>`;
+  }
+  function marketUniverseCard(row) {
+    const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? PRICE_UNAVAILABLE_EN : price(p, currency(a));
+    return `<article class="provider-market-card market-universe-card ${p === null ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
+      <div class="provider-market-card-head"><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><span class="ltr">${h(currency(a))}</span></div>
+      <p>${h(a.companyName || a.name || "--")}</p>
+      <dl><div><dt>Price</dt><dd class="ltr">${h(priceText)}</dd></div><div><dt>Exchange</dt><dd class="ltr">${h(a.exchange || "--")}</dd></div><div><dt>Sector</dt><dd>${h(a.sector || "--")}</dd></div><div><dt>Type</dt><dd>${h(a.assetType || assetType(a.symbol))}</dd></div></dl>
+      <button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">Open</button>
+    </article>`;
+  }
+  function bigNumber(value) {
+    const n = num(value);
+    if (n === null) return "--";
+    return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
   }
 
   function scannerPage() {
@@ -1102,7 +1297,7 @@
     const marketOptions = ["US", "Kuwait", "Saudi", "UAE", "Qatar", "Bahrain", "Oman", "Forex", "Crypto", "Commodities"];
     return `<div class="page-stack">${hero("إعدادات النظام", "حالة المزود وتفضيلات العرض وسلوك البيانات. توضح لماذا قد تكون التوصيات أو الأخبار فارغة.", "SETTINGS")}
       <section class="settings-grid">
-        <article class="panel"><span class="eyebrow">PROVIDER</span><h2>مزود البيانات</h2>${diagnostics()}<div class="row-actions"><button class="ghost-btn" data-retry>إعادة الفحص</button></div></article>
+        <article class="panel"><span class="eyebrow">PROVIDER</span><h2>مزود البيانات</h2>${diagnostics()}<div class="row-actions"><button class="ghost-btn" data-retry>${h(getProviderRetryLabel())}</button></div></article>
         <article class="panel"><span class="eyebrow">SIGNAL PREFERENCES</span><h2>تفضيلات الإشارات</h2>
           <form id="settings-form" class="stack-form">
             <label>السوق الافتراضي<select name="defaultMarket">${MARKETS.map(m => `<option value="${m.id}" ${s.defaultMarket === m.id ? "selected" : ""}>${h(m.ar)}</option>`).join("")}</select></label>
@@ -1157,15 +1352,54 @@
     if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
     renderAfterData();
   }
+  function marketUniverseCacheKey(id) {
+    const view = state.marketUniverseView;
+    return ["universe", id, view.page, view.pageSize, view.q, view.exchange, view.currency, view.sector, view.industry, view.assetType, view.availability, view.sort, view.dir].join("|");
+  }
+  async function getFullSymbolUniverse({ market, sector, category, exchange, currency, industry, assetType, availability, page, pageSize, q, sort, dir, force } = {}) {
+    const params = new URLSearchParams({
+      market: marketApi(market),
+      page: String(page || 1),
+      limit: String(pageSize || MARKET_UNIVERSE_PAGE_SIZE),
+      sort: sort || "symbol",
+      dir: dir || "asc",
+      discover: "1",
+    });
+    if (sector && sector !== "all") params.set("sectorName", sector);
+    if (category && category !== "all") params.set("category", category);
+    if (exchange && exchange !== "all") params.set("exchange", exchange);
+    if (currency && currency !== "all") params.set("currency", currency);
+    if (industry && industry !== "all") params.set("industry", industry);
+    if (assetType && assetType !== "all") params.set("assetType", assetType);
+    if (availability && availability !== "all") params.set("availability", availability);
+    if (q) params.set("q", q);
+    if (force) params.set("refresh", "1");
+    return get(`/recommendations?${params.toString()}`, { label: "quotes" });
+  }
   async function loadMarket(id, force = false) {
-    if (!force && state.marketCache.has(id)) { render(); return; }
     const m = MARKETS.find(x => x.id === id); if (!m) return;
-    const settled = await Promise.allSettled([
-      get(`/recommendations?market=${marketApi(m.apiMarket)}`, { label: "quotes" }),
-      get(`/market/signals?symbols=${encodeURIComponent(m.symbols.join(","))}&limit=${m.symbols.length}`, { label: "signals" })
-    ]);
-    const [data, signals] = settled.map((result, index) => settledValue(result, index === 0 ? "quotes" : "signals"));
-    state.marketCache.set(id, { ...data, signals: signals.signals || signals.items || [] });
+    const cacheKey = marketUniverseCacheKey(id);
+    if (!force && state.marketCache.has(cacheKey)) { render(); return; }
+    state.marketUniverseLoading = true;
+    const view = state.marketUniverseView;
+    const data = await getFullSymbolUniverse({
+      market: m.apiMarket || m.id,
+      sector: view.sector,
+      exchange: view.exchange,
+      currency: view.currency,
+      industry: view.industry,
+      assetType: view.assetType,
+      availability: view.availability,
+      page: view.page,
+      pageSize: view.pageSize,
+      q: view.q,
+      sort: view.sort,
+      dir: view.dir,
+      force,
+    });
+    state.marketCache.set(cacheKey, data);
+    state.marketUniverseLoading = false;
+    if (data.dataProvider) state.provider = data.dataProvider;
     if (state.route.id === "markets" && state.route.market === id) render();
   }
   async function ensureScanData(force = false) {
@@ -1583,10 +1817,11 @@
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
-    const visible = m.symbols.slice(0, 8);
-    const hidden = Math.max(0, m.symbols.length - visible.length);
+    const visible = marketPreviewSymbols(m).slice(0, 8);
+    const total = marketUniverseTotal(m);
+    const hidden = Math.max(0, total - visible.length);
     const more = hidden ? `<span class="badge sm muted market-more"><span class="ltr">+${latinNumber(hidden)}</span></span>` : "";
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span> · <span class="ltr">${latinNumber(m.symbols.length)}</span> رمزاً للمتابعة</p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div></a>`;
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">عرض كل الأسهم <span class="ltr">View all symbols</span></span></a>`;
   }
   function heatmap(items) {
     return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
@@ -1682,9 +1917,10 @@
   }
   function diagnostics() {
     const normalized = normalizedProviderStatus();
+    const providerStatus = providerCopy();
     const tone = normalizedStatusTone(normalized.status);
     const cards = [
-      ["حالة المزود", featureStatusLabel(normalized.status), "Status", tone],
+      ["حالة المزود", providerStatus.label, "Status", tone],
       ["المزود النشط", normalized.provider, "Provider", ""],
       ["حالة الاتصال", normalized.configured ? "مهيأ" : "غير مهيأ", "Connection", normalized.configured ? "ok" : "warn"],
       ["عدد الرموز المكتشفة", countText(normalized.discoveredCount), "Discovered", ""],
@@ -1696,10 +1932,11 @@
       ["آخر تحديث", latinDateTime(normalized.lastUpdated), "Updated", ""]
     ];
     const featureList = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(featureLabel).join(" · ") : "--";
-    const errorSummary = normalized.errorSummary ? `<p class="provider-warning">${h(normalized.errorSummary)}</p>` : "";
+    const errorText = formatProviderError(normalized.errorSummary, { empty: "" }) || providerStatus.explanation;
+    const errorSummary = errorText ? `<p class="provider-warning">${h(errorText)}</p>` : "";
     return `<div class="provider-diagnostics-ui">
       <div class="provider-status-banner ${tone}">
-        <div><span class="eyebrow">PROVIDER</span><strong>${h(normalized.provider)}</strong><p>${h(featureStatusLabel(normalized.status))}</p></div>
+        <div><span class="eyebrow">PROVIDER</span><strong>${h(normalized.provider)}</strong><p>${h(providerStatus.title)}</p></div>
         <span class="state-badge ${tone}">${h(normalized.configured ? "مهيأ" : "غير مهيأ")}</span>
       </div>
       ${errorSummary}
@@ -1860,7 +2097,34 @@
   function isRateLimitText(value) { return /429|rate_limited|rate limit|too many|provider_rate_limited|http_429/i.test(String(value || "")); }
   function isLatinMetric(value) { return /^[\d\s.,:%A-Za-z/_-]+$/.test(String(value || "")); }
   function featureTitle(key) { return key === "earnings" ? "الأرباح" : key === "dividends" ? "التوزيعات" : key === "ipos" ? "الاكتتابات" : key === "economic" ? "الاقتصادي" : key; }
-  function providerMarkets() { const rows = arr(state.markets.markets || state.markets.data || state.markets.results); if (!rows.length) return emptyState("لا توجد قائمة أسواق من المزود", state.markets.message || providerCopy().copy, "الإعدادات", `${ROOT}/settings`); return `<div class="table-shell"><table><thead><tr><th>السوق</th><th>الرمز</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(m => `<tr><td>${h(m.name || m.label || "--")}</td><td class="ltr">${h(m.symbol || m.code || "--")}</td><td class="ltr">${h(m.currency || "--")}</td><td>${h(m.source || m.provider || "--")}</td></tr>`).join("")}</tbody></table></div>`; }
+  function providerMarkets() {
+    const rows = arr(state.markets.markets || state.markets.data || state.markets.results);
+    const diagnostics = state.markets.providerMarketsDiagnostics || {};
+    const pagination = state.markets.pagination || {};
+    const fmt = value => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed.toLocaleString("en-US") : "--";
+    };
+    const stats = [
+      ["Visible", fmt(pagination.total ?? diagnostics.visibleRows ?? rows.length), "After filters"],
+      ["Loaded", fmt(diagnostics.totalRows ?? rows.length), "Deduped catalog"],
+      ["Hidden", fmt(diagnostics.hiddenIncompleteRows), "Incomplete rows"],
+      ["Duplicates", fmt(diagnostics.duplicateRows), "Merged rows"],
+    ];
+    return `<div class="provider-market-diagnostics-compact">
+      <div class="panel-head">
+        <div><span class="eyebrow">ADMIN DIAGNOSTICS</span><h2>Provider markets summary</h2></div>
+        <a class="ghost-btn compact-btn" href="${ROOT}/settings" data-route-link>Settings</a>
+      </div>
+      <p class="provider-market-note">${h(state.markets.message || "Detailed provider market rows are available under Settings / Admin diagnostics.")}</p>
+      <div class="provider-market-summary-grid">${stats.map(([label, value, helper]) => `
+        <article class="provider-market-summary-card">
+          <span>${h(helper)}</span>
+          <strong class="ltr">${h(value)}</strong>
+          <small>${h(label)}</small>
+        </article>`).join("")}</div>
+    </div>`;
+  }
   function confBuckets(r) { const b = { high: 0, mid: 0, low: 0 }; r.forEach(x => { const c = num(x.confidence, x.score, x.aiConfidence); if (c === null) return; if (c >= 70) b.high++; else if (c >= 45) b.mid++; else b.low++; }); return b; }
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: ["منخفضة", "ok"], medium: ["متوسطة", "warn"], high: ["مرتفعة", "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${L[k][0]}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
@@ -2700,7 +2964,31 @@
     return g;
   }
   function tradeSummary(items) { const g = groupTrades(items), resolved = g.win.length + g.loss.length; return { ...g, successRate: resolved ? Math.round(g.win.length / resolved * 100) : null }; }
-  function norm(x) { x = x || {}; const s = sym(x.symbol || x.ticker || x.code || x.asset || x.name || ""); return { ...x, symbol: s, name: x.name || x.companyName || x.assetName || x.longName || s }; }
+  function norm(x) {
+    x = x || {};
+    const providerSymbol = sym(x.providerSymbol || x.provider_symbol || x.providerSymbolUsed || x.provider_symbol_used || x.ticker || x.code || "");
+    const displaySymbol = sym(x.displaySymbol || x.display_symbol || x.symbol || x.asset || providerSymbol || x.name || "");
+    const s = displaySymbol || providerSymbol;
+    const companyName = x.companyName || x.company_name_en || x.company_name_ar || x.assetName || x.longName || x.name || s;
+    const normalized = {
+      ...x,
+      providerSymbol,
+      providerSymbolUsed: x.providerSymbolUsed || x.provider_symbol_used || providerSymbol,
+      displaySymbol,
+      symbol: s,
+      exchange: x.exchange || x.exchangeName || x.exchange_name || x.exchangeCode || x.exchange_code || "",
+      exchangeCode: x.exchangeCode || x.exchange_code || "",
+      market: x.market || x.marketName || x.market_name || "",
+      country: x.country || x.countryCode || x.country_code || "",
+      currency: x.currency || x.currencyCode || x.quoteCurrency || "",
+      assetType: assetType(s, x.assetType || x.asset_type || x.quoteType || x.instrumentType || x.category),
+      sector: x.sector || "",
+      industry: x.industry || "",
+      companyName,
+      name: x.name || companyName,
+    };
+    return normalized;
+  }
   function signal(x) {
     const raw = String(x.finalRecommendation || x.finalRecommendationAr || x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase();
     if (raw.includes("insufficient") || raw.includes("بيانات غير كافية")) return "insufficient_data";

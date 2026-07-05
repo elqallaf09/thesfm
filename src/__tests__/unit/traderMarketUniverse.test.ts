@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSymbolsForMarketOrSector, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
+import { getFullSymbolUniverse, getSymbolsForMarketOrSector, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 
 describe('trader market and sector symbol universe', () => {
   it('expands the semiconductor universe with required real symbols and metadata', async () => {
@@ -46,5 +46,40 @@ describe('trader market and sector symbol universe', () => {
     expect(gccRequest.entries.some(entry => entry.selectedMarket === 'gcc')).toBe(false);
     expect(catalog.symbols.find(symbol => symbol.symbol === 'KFH.KW')?.marketIds).toContain('kuwait');
     expect(catalog.symbols.find(symbol => symbol.symbol === 'KFH.KW')?.marketIds).not.toContain('gcc');
+  });
+
+  it('loads the full Kuwait listed universe beyond preview symbols', async () => {
+    const universe = await getFullSymbolUniverse({ market: 'kuwait', category: 'stock' });
+    const dedupeKeys = universe.symbolMeta.map(symbol => [
+      symbol.providerSymbol,
+      symbol.exchange,
+      symbol.currency,
+    ].join('|'));
+
+    expect(universe.symbols.length).toBeGreaterThanOrEqual(100);
+    expect(universe.entries.every(entry => entry.selectedMarket === 'kuwait')).toBe(true);
+    expect(universe.entries.every(entry => entry.currency === 'KWD')).toBe(true);
+    expect(new Set(dedupeKeys).size).toBe(dedupeKeys.length);
+  });
+
+  it('loads the provider catalog for US stocks instead of the preview list', async () => {
+    const universe = await getFullSymbolUniverse({ market: 'us-stocks', assetType: 'stock' });
+
+    expect(universe.symbols.length).toBeGreaterThan(1000);
+    expect(universe.entries.every(entry => entry.assetType === 'stock')).toBe(true);
+    expect(universe.entries.some(entry => entry.symbol === 'AAPL')).toBe(true);
+  });
+
+  it('keeps asset classes isolated for technology, crypto, forex, and commodities', async () => {
+    const technology = await getFullSymbolUniverse({ market: 'technology' });
+    const crypto = await getFullSymbolUniverse({ market: 'crypto' });
+    const forex = await getFullSymbolUniverse({ market: 'forex' });
+    const commodities = await getFullSymbolUniverse({ market: 'commodities' });
+
+    expect(technology.entries.every(entry => entry.assetType === 'stock')).toBe(true);
+    expect(technology.symbols).not.toEqual(expect.arrayContaining(['BTC', 'BTCUSD', 'EURUSD', 'XAUUSD', 'WTI']));
+    expect(crypto.entries.every(entry => entry.assetType === 'crypto')).toBe(true);
+    expect(forex.entries.every(entry => entry.assetType === 'forex')).toBe(true);
+    expect(commodities.entries.every(entry => entry.assetType === 'commodity')).toBe(true);
   });
 });

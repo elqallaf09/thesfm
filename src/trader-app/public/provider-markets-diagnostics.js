@@ -44,6 +44,7 @@
     market: "all",
     category: "all",
     source: "all",
+    currency: "all",
     quality: "complete",
     sort: "displaySymbol",
     dir: "asc",
@@ -112,6 +113,21 @@
     return Array.from(labels.entries());
   }
 
+  function currencyOptions() {
+    const filterOptions = view.payload && view.payload.filterOptions;
+    const currencies = arr(filterOptions && filterOptions.currencies);
+    const labels = new Map([["all", "All currencies"]]);
+    currencies.forEach((currency) => {
+      const key = String(currency || "").trim().toUpperCase();
+      if (key) labels.set(key, key);
+    });
+    arr(view.payload && view.payload.markets).forEach((row) => {
+      const key = String(row.currency || "").trim().toUpperCase();
+      if (key) labels.set(key, key);
+    });
+    return Array.from(labels.entries());
+  }
+
   function requestPath() {
     const params = new URLSearchParams({
       limit: String(view.pageSize),
@@ -124,6 +140,7 @@
     if (view.market !== "all") params.set("market", view.market);
     if (view.category !== "all") params.set("category", view.category);
     if (view.source !== "all") params.set("source", view.source);
+    if (view.currency !== "all") params.set("currency", view.currency);
     return `${API}/markets?${params.toString()}`;
   }
 
@@ -213,6 +230,7 @@
       <label>Market<select data-provider-market-filter="market">${options(MARKET_FILTERS, view.market)}</select></label>
       <label>Asset<select data-provider-market-filter="category">${options(CATEGORY_FILTERS, view.category)}</select></label>
       <label>Source<select data-provider-market-filter="source">${options(sourceOptions(), view.source)}</select></label>
+      <label>Currency<select data-provider-market-filter="currency">${options(currencyOptions(), view.currency)}</select></label>
       <label>Rows<select data-provider-market-filter="quality">${options([["complete", "Complete only"], ["all", "All rows"], ["incomplete", "Incomplete only"]], view.quality)}</select></label>
       <label>Sort<select data-provider-market-filter="sort">${options(SORTS, view.sort)}</select></label>
       <label>Direction<select data-provider-market-filter="dir">${options([["asc", "Ascending"], ["desc", "Descending"]], view.dir)}</select></label>

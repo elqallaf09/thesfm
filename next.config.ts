@@ -45,9 +45,25 @@ function writeJsonDefaults(filePath: string, defaults: Record<string, unknown>) 
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }
 
+function mirrorDirectory(sourceDir: string, targetDir: string) {
+  if (!fs.existsSync(sourceDir)) return;
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      mirrorDirectory(sourcePath, targetPath);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(sourcePath, targetPath);
+    }
+  }
+}
+
 function ensureWindowsServerManifests() {
   const serverDir = path.join(PROJECT_ROOT, ".next", "server");
   const pagesDir = path.join(serverDir, "pages");
+  mirrorDirectory(path.join(serverDir, "vendor-chunks"), path.join(serverDir, "chunks", "vendor-chunks"));
 
   writeJsonDefaults(path.join(serverDir, "pages-manifest.json"), {
     "/_app": "pages/_app.js",
@@ -144,12 +160,12 @@ const nextConfig: NextConfig = {
       config.plugins.push({
         apply(compiler: {
           hooks: {
-            afterEmit: { tap: (name: string, callback: () => void) => void };
-            done: { tap: (name: string, callback: () => void) => void };
+            afterEmit: { tap: (options: string | { name: string; stage?: number }, callback: () => void) => void };
+            done: { tap: (options: string | { name: string; stage?: number }, callback: () => void) => void };
           };
         }) {
-          compiler.hooks.afterEmit.tap("EnsureWindowsServerManifests", ensureWindowsServerManifests);
-          compiler.hooks.done.tap("EnsureWindowsServerManifests", ensureWindowsServerManifests);
+          compiler.hooks.afterEmit.tap({ name: "EnsureWindowsServerManifests", stage: Number.MAX_SAFE_INTEGER }, ensureWindowsServerManifests);
+          compiler.hooks.done.tap({ name: "EnsureWindowsServerManifests", stage: Number.MAX_SAFE_INTEGER }, ensureWindowsServerManifests);
         },
       });
     }

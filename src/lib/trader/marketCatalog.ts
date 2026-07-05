@@ -319,6 +319,15 @@ function seedSymbolsForMarket(market: Pick<SeedMarket | TraderMarketDef, 'id' | 
   return uniq([...(market.symbols ?? []), ...(EXPANDED_MARKET_SYMBOLS[market.id] ?? [])]);
 }
 
+function seedAssetTypeForMarket(marketId: string): TraderAssetType | undefined {
+  if (marketId === 'crypto') return 'crypto';
+  if (marketId === 'forex') return 'forex';
+  if (marketId === 'commodities') return 'commodity';
+  if (marketId === 'indices') return 'index';
+  if (marketId === 'etfs') return 'fund';
+  return undefined;
+}
+
 const SECTOR_MARKET_IDS = new Set(
   TRADER_MARKET_SEEDS
     .filter(market => market.family.toLowerCase() === 'sector')
@@ -440,6 +449,7 @@ function marketIdsForRecord(record: {
   const market = upper(record.market);
   const classification = `${upper(record.sector)} ${upper(record.industry)}`.trim();
   const haystack = `${symbol} ${exchange} ${market} ${country} ${upper(record.name)} ${classification}`;
+  const venueHaystack = `${symbol} ${exchange} ${market} ${country}`;
 
   if (record.assetType === 'fund') ids.add('etfs');
   if (record.assetType === 'crypto') ids.add('crypto');
@@ -448,12 +458,12 @@ function marketIdsForRecord(record: {
   if (record.assetType === 'index') ids.add('indices');
   if (record.assetType === 'stock' && (country === 'US' || /NASDAQ|NYSE|AMEX|CBOE/.test(exchange) || !suff)) ids.add('us-stocks');
 
-  if (suff === 'KW' || /KUWAIT|BOURSA/.test(haystack)) ids.add('kuwait');
-  if (suff === 'SR' || suff === 'SA' || /SAUDI|TADAWUL/.test(haystack)) ids.add('saudi');
-  if (suff === 'AE' || suff === 'DU' || suff === 'AD' || /DUBAI|ABU DHABI|UAE|UNITED ARAB/.test(haystack)) ids.add('uae');
-  if (suff === 'QA' || /QATAR/.test(haystack)) ids.add('qatar');
-  if (suff === 'BH' || /BAHRAIN/.test(haystack)) ids.add('bahrain');
-  if (suff === 'OM' || /OMAN|MUSCAT/.test(haystack)) ids.add('oman');
+  if (suff === 'KW' || /KUWAIT|BOURSA/.test(venueHaystack)) ids.add('kuwait');
+  if (suff === 'SR' || suff === 'SA' || /SAUDI|TADAWUL/.test(venueHaystack)) ids.add('saudi');
+  if (suff === 'AE' || suff === 'DU' || suff === 'AD' || /DUBAI|ABU DHABI|UAE|UNITED ARAB/.test(venueHaystack)) ids.add('uae');
+  if (suff === 'QA' || /QATAR/.test(venueHaystack)) ids.add('qatar');
+  if (suff === 'BH' || /BAHRAIN/.test(venueHaystack)) ids.add('bahrain');
+  if (suff === 'OM' || /OMAN|MUSCAT/.test(venueHaystack)) ids.add('oman');
 
   if (/\.L$|\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|\.SW$|\.CO$|EUROPE|LONDON|XETRA|EURONEXT|PARIS|MILAN|MADRID|AMSTERDAM|SWISS|GERMANY|FRANCE|UNITED KINGDOM|ITALY|SPAIN|NETHERLANDS|DENMARK/.test(haystack)) ids.add('europe');
   if (/\.T$|\.HK$|\.KS$|\.TW$|ASIA|TOKYO|HONG KONG|KOREA|JAPAN|TAIWAN|SHANGHAI|SHENZHEN/.test(haystack)) ids.add('asia');
@@ -595,9 +605,17 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   }
 }
 
+function catalogRecordKey(record: TraderCatalogSymbol) {
+  return [
+    upper(record.providerSymbol || record.symbol),
+    upper(record.exchange),
+    upper(record.currency),
+  ].join('|');
+}
+
 function addRecord(map: Map<string, TraderCatalogSymbol>, record: TraderCatalogSymbol | null) {
   if (!record) return;
-  const key = record.symbol;
+  const key = catalogRecordKey(record);
   const existing = map.get(key);
   if (existing) mergeSymbol(existing, record);
   else map.set(key, record);
@@ -611,6 +629,7 @@ function seedRecords() {
         symbol,
         providerSymbol: symbol,
         name: SEED_SYMBOL_NAMES[upper(symbol)] ?? symbol,
+        assetType: seedAssetTypeForMarket(market.id),
         currency: market.currency === 'Mixed' || market.currency === 'Local' || market.currency === 'Pair' ? defaultCurrency(upper(symbol)) : market.currency,
       }, 'seed', [market.id])!);
     }
@@ -1031,13 +1050,21 @@ export type TraderSymbolUniverseResult = {
   source: TraderMarketDef['source'] | 'catalog';
 };
 
-type TraderSymbolUniverseQuery = {
+export type TraderSymbolUniverseQuery = {
   market?: string | null;
   sector?: string | null;
   category?: string | null;
   catalog?: TraderMarketCatalog;
   forceFresh?: boolean;
   includeFmpDiscovery?: boolean;
+};
+
+export type FullSymbolUniverseQuery = TraderSymbolUniverseQuery & {
+  exchange?: string | null;
+  currency?: string | null;
+  sectorName?: string | null;
+  industry?: string | null;
+  assetType?: string | null;
 };
 
 const CATEGORY_ALIASES: Record<string, TraderUniverseCategory> = {
@@ -1065,6 +1092,12 @@ const CATEGORY_ALIASES: Record<string, TraderUniverseCategory> = {
 function normalizeUniverseCategory(value: string | null | undefined): TraderUniverseCategory {
   const raw = String(value ?? 'all').trim().toLowerCase().replace(/[_\s]+/g, '-');
   return CATEGORY_ALIASES[raw] ?? 'all';
+}
+
+function normalizeUniverseFilter(value: string | null | undefined) {
+  const raw = text(value);
+  if (!raw || ['all', 'any', '*'].includes(raw.toLowerCase())) return '';
+  return raw.toUpperCase();
 }
 
 function normalizeUniverseMarketId(value: string | null | undefined) {
@@ -1134,6 +1167,57 @@ function sortUniverseSymbols(symbols: TraderCatalogSymbol[], selectedMarket: str
   });
 }
 
+const UNIVERSE_SOURCE_RANK: Record<TraderCatalogSource, number> = {
+  supabase: 4,
+  bundled: 3,
+  fmp: 2,
+  seed: 1,
+};
+
+function fullUniverseDedupeKey(symbol: TraderCatalogSymbol) {
+  return [
+    upper(symbol.providerSymbol || symbol.symbol),
+    upper(symbol.exchange),
+    upper(symbol.currency),
+  ].join('|');
+}
+
+function dedupeFullUniverseSymbols(symbols: TraderCatalogSymbol[]) {
+  const byProviderExchangeCurrency = new Map<string, TraderCatalogSymbol>();
+  const nonSeedByProviderCurrency = new Set(
+    symbols
+      .filter(symbol => symbol.source !== 'seed')
+      .map(symbol => [upper(symbol.providerSymbol || symbol.symbol), upper(symbol.currency)].join('|')),
+  );
+  for (const symbol of symbols) {
+    const providerCurrencyKey = [upper(symbol.providerSymbol || symbol.symbol), upper(symbol.currency)].join('|');
+    if (symbol.source === 'seed' && !symbol.exchange && nonSeedByProviderCurrency.has(providerCurrencyKey)) continue;
+    const key = fullUniverseDedupeKey(symbol);
+    const current = byProviderExchangeCurrency.get(key);
+    if (!current || (UNIVERSE_SOURCE_RANK[symbol.source] ?? 0) > (UNIVERSE_SOURCE_RANK[current.source] ?? 0)) {
+      byProviderExchangeCurrency.set(key, symbol);
+    }
+  }
+  return Array.from(byProviderExchangeCurrency.values());
+}
+
+function fullUniverseFilterRows(symbols: TraderCatalogSymbol[], query: FullSymbolUniverseQuery) {
+  const exchange = normalizeUniverseFilter(query.exchange);
+  const currency = normalizeUniverseFilter(query.currency);
+  const sectorName = normalizeUniverseFilter(query.sectorName);
+  const industry = normalizeUniverseFilter(query.industry);
+  const assetType = normalizeUniverseCategory(query.assetType);
+
+  return symbols.filter(symbol => {
+    if (exchange && ![symbol.exchange, symbol.exchangeCode, symbol.market].some(value => upper(value).includes(exchange))) return false;
+    if (currency && upper(symbol.currency) !== currency) return false;
+    if (sectorName && !upper(symbol.sector).includes(sectorName)) return false;
+    if (industry && !upper(symbol.industry).includes(industry)) return false;
+    if (assetType !== 'all' && symbol.assetType !== assetType) return false;
+    return true;
+  });
+}
+
 export async function getSymbolsForMarketOrSector(query: TraderSymbolUniverseQuery = {}): Promise<TraderSymbolUniverseResult> {
   const requestedMarket = normalizeUniverseMarketId(query.market);
   const requestedSector = normalizeUniverseMarketId(query.sector);
@@ -1174,6 +1258,29 @@ export async function getSymbolsForMarketOrSector(query: TraderSymbolUniverseQue
     entries,
     symbolMeta,
     source: sourceMarket?.source ?? 'catalog',
+  };
+}
+
+export async function getFullSymbolUniverse(query: FullSymbolUniverseQuery = {}): Promise<TraderSymbolUniverseResult> {
+  const category = query.assetType && normalizeUniverseCategory(query.assetType) !== 'all'
+    ? query.assetType
+    : query.category;
+  const base = await getSymbolsForMarketOrSector({
+    ...query,
+    category,
+  });
+  const rows = sortUniverseSymbols(
+    dedupeFullUniverseSymbols(fullUniverseFilterRows(base.symbolMeta, query)),
+    base.selectedMarket,
+    base.selectedSector,
+  );
+
+  return {
+    ...base,
+    total: rows.length,
+    symbols: rows.map(symbol => symbol.symbol),
+    entries: rows.map(symbol => universeEntry(symbol, base.selectedMarket, base.selectedSector)),
+    symbolMeta: rows,
   };
 }
 

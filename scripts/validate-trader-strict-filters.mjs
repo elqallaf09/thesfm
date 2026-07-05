@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');

@@ -85,6 +85,8 @@ type ProviderQuote = {
   market?: string | null;
   country?: string | null;
   assetType?: string | null;
+  marketCap?: number | null;
+  volume?: number | null;
   raw?: Record<string, unknown> | null;
   updatedAt: string | null;
 };
@@ -571,6 +573,8 @@ export type TraderQuote = {
   change: number | null;
   changePercent: number | null;
   previousClose: number | null;
+  marketCap?: number | null;
+  volume?: number | null;
   currency: string | null;
   exchange: string | null;
   exchangeCode: string | null;
@@ -914,6 +918,7 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
   const dataQuality: TraderDataQuality = price !== null && price > 0 ? 'partial' : 'unavailable';
   const fallbackUsed = quote.provider !== 'fmp';
   const metadata = quoteMetadata(display, quote, meta);
+  const raw = quote.raw ?? {};
   return applyRecommendationToQuote({
     ...quoteIdentity(display, meta),
     providerSymbol: quote.providerSymbol,
@@ -926,6 +931,8 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     change,
     changePercent,
     previousClose,
+    marketCap: quote.marketCap ?? numberOrNull(raw.marketCap ?? raw.marketCapitalization ?? raw.market_cap),
+    volume: quote.volume ?? numberOrNull(raw.volume ?? raw.regularMarketVolume ?? raw.averageVolume),
     currency: metadata.currency ?? normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
     ...metadataQuoteFields(metadata),
     signal: 'watch',
@@ -1034,6 +1041,8 @@ function fmpQuoteFromRecord(record: Record<string, unknown>): ProviderQuote | nu
       change,
     }),
     previousClose,
+    marketCap: numberOrNull(record.marketCap ?? record.marketCapitalization ?? record.market_cap),
+    volume: numberOrNull(record.volume ?? record.regularMarketVolume ?? record.averageVolume),
     currency: textOrNull(record.currency),
     exchange: textOrNull(record.exchange ?? record.exchangeName ?? record.stockExchange ?? record.exchangeShortName),
     exchangeCode: textOrNull(record.exchangeShortName ?? record.mic ?? record.exchangeCode ?? record.exchange_code),
