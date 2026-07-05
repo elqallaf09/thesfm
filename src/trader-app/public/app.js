@@ -7,7 +7,7 @@
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
-  const VER = "20260703-market-universe-1";
+  const VER = "20260705-funds-universe-1";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
@@ -87,7 +87,7 @@
     ["crypto", "الأصول الرقمية", "Crypto", "Digital", "USD", MARKET_SYMBOLS.crypto, "featured", "crypto"],
     ["commodities", "السلع", "Commodities", "Macro", "USD", MARKET_SYMBOLS.commodities, "", "commodities"],
     ["indices", "المؤشرات", "Indices", "Benchmarks", "Local", MARKET_SYMBOLS.indices, "", "indices"],
-    ["etfs", "الصناديق المتداولة", "ETFs", "Funds", "USD", MARKET_SYMBOLS.etfs, "", "etfs"],
+    ["etfs", "الصناديق الاستثمارية", "Funds & ETFs", "Funds", "Mixed", MARKET_SYMBOLS.etfs, "", "etfs"],
     ["saudi", "السوق السعودي", "Saudi Market", "Tadawul", "SAR", MARKET_SYMBOLS.saudi, "", "saudi"],
     ["kuwait", "بورصة الكويت", "Kuwait Market", "Boursa", "KWD", MARKET_SYMBOLS.kuwait, "", "kuwait"],
     ["uae", "سوق الإمارات", "UAE Market", "ADX/DFM", "AED", MARKET_SYMBOLS.uae, "", "uae"],
@@ -106,8 +106,50 @@
   ].map(([id, ar, en, family, currency, symbols, tone, apiMarket]) => ({ id, ar, en, family, currency, symbols, tone, apiMarket }));
 
   const EXPLORE = ["forex", "us-stocks", "kuwait", "saudi", "uae", "qatar", "bahrain", "europe", "asia", "crypto", "commodities", "indices", "etfs", "technology", "ai", "semiconductors", "energy", "banking", "healthcare", "food"];
+  const FUND_FILTERS = [
+    ["all", "الكل", "All"],
+    ["etf", "الصناديق المتداولة ETF", "ETFs"],
+    ["mutual_fund", "الصناديق الاستثمارية المشتركة", "Mutual Funds"],
+    ["index_fund", "صناديق المؤشرات", "Index Funds"],
+    ["money_market_fund", "صناديق سوق النقد", "Money Market Funds"],
+    ["bond_sukuk_fund", "صناديق السندات والصكوك", "Bond/Sukuk Funds"],
+    ["reit", "صناديق الاستثمار العقاري REITs", "REITs"],
+    ["commodity_fund", "صناديق السلع", "Commodity Funds"],
+    ["sector_fund", "الصناديق القطاعية", "Sector Funds"],
+    ["thematic_fund", "الصناديق الموضوعية", "Thematic Funds"],
+    ["shariah_fund", "الصناديق المتوافقة مع الشريعة", "Shariah Funds"],
+    ["leveraged_etf", "الصناديق ذات الرافعة", "Leveraged ETFs"],
+    ["inverse_etf", "الصناديق العكسية", "Inverse ETFs"],
+    ["income_fund", "صناديق الدخل", "Income Funds"],
+    ["growth_fund", "صناديق النمو", "Growth Funds"],
+    ["balanced_fund", "الصناديق المتوازنة", "Balanced Funds"]
+  ];
+  const FUND_TYPE_LABELS = {
+    fund: ["صندوق استثماري", "Fund"],
+    etf: ["الصناديق المتداولة", "Exchange Traded Funds"],
+    mutual_fund: ["الصناديق الاستثمارية المشتركة", "Mutual Funds"],
+    index_fund: ["صناديق المؤشرات", "Index Funds"],
+    money_market_fund: ["صناديق سوق النقد", "Money Market Funds"],
+    bond_fund: ["صناديق السندات والصكوك", "Bond Funds"],
+    sukuk_fund: ["صناديق الصكوك", "Sukuk Funds"],
+    reit: ["صناديق الاستثمار العقاري", "Real Estate Investment Trusts"],
+    commodity_fund: ["صناديق السلع", "Commodity Funds"],
+    sector_fund: ["الصناديق القطاعية", "Sector Funds"],
+    thematic_fund: ["الصناديق الموضوعية", "Thematic Funds"],
+    shariah_compliant_fund: ["الصناديق المتوافقة مع الشريعة", "Shariah-Compliant Funds"],
+    leveraged_etf: ["الصناديق المتداولة ذات الرافعة المالية", "Leveraged ETFs"],
+    inverse_etf: ["الصناديق العكسية المتداولة", "Inverse ETFs"],
+    income_fund: ["صناديق الدخل", "Income Funds"],
+    growth_fund: ["صناديق النمو", "Growth Funds"],
+    balanced_fund: ["الصناديق المتوازنة", "Balanced Funds"],
+    hedge_fund: ["صناديق التحوط", "Hedge Funds"]
+  };
   const SELECTION_EMPTY_STATE_AR = "\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u0635\u0648\u0644 \u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0633\u0648\u0642 \u0623\u0648 \u0627\u0644\u062a\u0635\u0646\u064a\u0641 \u062d\u0627\u0644\u064a\u0627\u064b";
   const SELECTION_EMPTY_STATE_EN = "No matching assets for this market or category right now";
+  const FUND_EMPTY_STATE_AR = "لا توجد صناديق مطابقة لهذا السوق أو التصنيف حالياً";
+  const FUND_EMPTY_STATE_EN = "No matching funds for this market or category right now";
+  const FUND_PROVIDER_NOTE_AR = "قد لا يدعم المزود الحالي جميع أنواع الصناديق";
+  const FUND_PROVIDER_NOTE_EN = "The current provider may not support all fund types";
   const STRICT_LOCAL_MARKETS = {
     qatar: { country: "Qatar", countries: ["QA", "QATAR"], currency: "QAR", exchange: /QATAR|QSE|DSMD|DSM/i, market: /QATAR|QSE/i, suffix: /\.QA$/i },
     kuwait: { country: "Kuwait", countries: ["KW", "KUWAIT"], currency: "KWD", exchange: /KUWAIT|BOURSA|KSE|XKUW/i, market: /KUWAIT|BOURSA/i, suffix: /\.KW$/i },
@@ -195,7 +237,7 @@
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
     calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
-    marketUniverseView: { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", availability: "all", sort: "symbol", dir: "asc" },
+    marketUniverseView: { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", fundType: "all", availability: "all", sort: "symbol", dir: "asc" },
     marketUniverseActiveMarket: null,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
@@ -444,6 +486,16 @@
         render();
         return;
       }
+      const fundFilter = event.target.closest("[data-fund-filter]");
+      if (fundFilter) {
+        event.preventDefault();
+        state.marketUniverseView.fundType = fundFilter.dataset.fundFilter || "all";
+        state.marketUniverseView.assetType = "fund";
+        state.marketUniverseView.page = 1;
+        loadMarket(state.route.market, true);
+        render();
+        return;
+      }
       const delAlert = event.target.closest("[data-del-alert]");
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
       const retry = event.target.closest("[data-retry]");
@@ -492,6 +544,10 @@
         const target = filter.value || state.route.market;
         if (target && target !== state.route.market) {
           state.marketUniverseView.page = 1;
+          if (target !== "etfs") {
+            state.marketUniverseView.fundType = "all";
+            state.marketUniverseView.assetType = "all";
+          }
           navigate(`${ROOT}/markets/${encodeURIComponent(target)}`);
         }
         return;
@@ -586,7 +642,7 @@
     if (id === "markets" && state.route.market) {
       if (state.marketUniverseActiveMarket !== state.route.market) {
         state.marketUniverseActiveMarket = state.route.market;
-        state.marketUniverseView = { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", availability: "all", sort: "symbol", dir: "asc" };
+        state.marketUniverseView = { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", fundType: "all", availability: "all", sort: "symbol", dir: "asc" };
       }
       loadMarket(state.route.market);
     }
@@ -671,6 +727,9 @@
   function marketPreviewSymbols(m) {
     return unique(arr(m.previewSymbols || m.symbols).slice(0, 10));
   }
+  function marketActionLabel() {
+    return `عرض كل الأسهم <span class="ltr">View all symbols</span>`;
+  }
   function marketUniverseTotal(m, payload) {
     const fromPayload = num(payload && payload.marketUniverse && (payload.marketUniverse.total ?? payload.marketUniverse.universeTotal), payload && payload.symbolDiscovery && payload.symbolDiscovery.totalFilteredSymbols);
     if (fromPayload !== null) return fromPayload;
@@ -682,7 +741,7 @@
     return `<section class="market-preview-strip" data-market-preview="${h(m.id)}">
       <div class="market-preview-copy"><strong>رموز معاينة</strong><span>${h(`يعرض ${latinNumber(preview.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${preview.length} of ${total} symbols`)}</span></span></div>
       <div class="chip-row compact">${preview.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</div>
-      <a class="ghost-btn compact-btn" href="${ROOT}/markets/${h(m.id)}" data-route-link>عرض كل الأسهم <span class="ltr">View all symbols</span></a>
+      <a class="ghost-btn compact-btn" href="${ROOT}/markets/${h(m.id)}" data-route-link>${marketActionLabel()}</a>
     </section>`;
   }
   function marketUniverseRows(payload) {
@@ -705,13 +764,13 @@
     const pageCount = Math.max(1, Math.ceil(pagination.total / pagination.pageSize));
     return `<section class="panel market-universe-panel" data-selected-market="${h(m.id)}">
       <div class="panel-head"><div><span class="eyebrow">FULL SYMBOL UNIVERSE</span><h2>كل الرموز المتاحة</h2></div><button class="ghost-btn compact-btn" data-retry type="button">تحديث</button></div>
-      ${coverageNotice(payload, rows)}
+      ${coverageNotice(payload, rows, m)}
       ${marketUniverseControls(m, payload)}
       <div class="provider-market-result-meta market-universe-result-meta">
         <span>${h(`يعرض ${latinNumber(rows.length)} من ${latinNumber(pagination.total)} رمز`)} · <span class="ltr">${h(`Showing ${rows.length} of ${pagination.total} symbols`)}</span></span>
         <span>صفحة <b class="ltr">${latinNumber(pagination.page)}</b> / <b class="ltr">${latinNumber(pageCount)}</b></span>
       </div>
-      ${rows.length ? marketUniverseTable(rows) : emptyState("لا توجد رموز مطابقة", "غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "", "")}
+      ${rows.length ? marketUniverseTable(rows) : emptyState(m.id === "etfs" ? FUND_EMPTY_STATE_AR : "لا توجد رموز مطابقة", m.id === "etfs" ? FUND_EMPTY_STATE_EN : "غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "", "")}
       <div class="provider-market-pagination market-universe-pagination">
         <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page - 1}" ${pagination.page <= 1 ? "disabled" : ""}>السابق <span class="ltr">Previous</span></button>
         <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page + 1}" ${pagination.page >= pageCount ? "disabled" : ""}>التالي <span class="ltr">Next</span></button>
@@ -721,6 +780,7 @@
   function marketUniverseControls(m, payload) {
     const view = state.marketUniverseView, options = marketUniverseFilterOptions(payload);
     return `<div class="market-universe-controls">
+      ${fundSubfilters(m)}
       <form data-market-universe-search>
         <input name="marketUniverseSearch" value="${h(view.q)}" placeholder="Search symbol or company name" />
         <button class="ghost-btn compact-btn" type="submit">بحث <span class="ltr">Search</span></button>
@@ -731,10 +791,16 @@
       <label>القطاع<select data-market-universe-filter="sector">${filterOptions(options.sectors, view.sector, "All sectors")}</select></label>
       <label>الصناعة<select data-market-universe-filter="industry">${filterOptions(options.industries, view.industry, "All industries")}</select></label>
       <label>النوع<select data-market-universe-filter="assetType">${filterOptions(options.assetTypes, view.assetType, "All asset types")}</select></label>
+      ${m.id === "etfs" ? `<label>نوع الصندوق<select data-market-universe-filter="fundType">${filterOptions(options.fundFilters || FUND_FILTERS, view.fundType, null)}</select></label>` : ""}
       <label>توفر السعر<select data-market-universe-filter="availability">${filterOptions([["all", "All data"], ["with-price", "With price"], ["price-unavailable", "Price unavailable"], ["failed", "Failed"]], view.availability, null)}</select></label>
       <label>الترتيب<select data-market-universe-filter="sort">${filterOptions([["symbol", "Symbol"], ["name", "Name"], ["priceAvailability", "Price availability"], ["marketCap", "Market cap"], ["volume", "Volume"]], view.sort, null)}</select></label>
       <label>الاتجاه<select data-market-universe-filter="dir">${filterOptions([["asc", "Ascending"], ["desc", "Descending"]], view.dir, null)}</select></label>
     </div>`;
+  }
+  function fundSubfilters(m) {
+    if (m.id !== "etfs") return "";
+    const active = state.marketUniverseView.fundType || "all";
+    return `<div class="chip-row compact fund-filter-row" role="list" aria-label="Funds filters">${FUND_FILTERS.map(([id, ar, en]) => `<button type="button" class="chip ${active === id ? "is-active" : ""}" data-fund-filter="${h(id)}" title="${h(en)}"><span>${h(ar)}</span></button>`).join("")}</div>`;
   }
   function marketUniverseFilterOptions(payload) {
     const fromPayload = (payload && (payload.filterOptions || (payload.marketUniverse && payload.marketUniverse.filterOptions))) || {};
@@ -745,6 +811,7 @@
       sectors: arr(fromPayload.sectors).length ? fromPayload.sectors : unique(rows.map(x => x.sector).filter(Boolean)),
       industries: arr(fromPayload.industries).length ? fromPayload.industries : unique(rows.map(x => x.industry).filter(Boolean)),
       assetTypes: arr(fromPayload.assetTypes).length ? fromPayload.assetTypes : unique(rows.map(x => x.assetType || assetType(x.symbol)).filter(Boolean)),
+      fundFilters: arr(fromPayload.fundFilters).length ? fromPayload.fundFilters.map(item => Array.isArray(item) ? item : [item.id || item.value || item, item.ar ? `${item.ar} · ${item.en || ""}` : item.label || item.en || item.id || item]) : FUND_FILTERS,
     };
   }
   function filterOptions(items, selected, allLabel) {
@@ -752,7 +819,7 @@
     const leading = allLabel ? [[ "all", allLabel ]] : [];
     return leading.concat(normalized).map(([value, label]) => `<option value="${h(value)}" ${String(selected) === String(value) ? "selected" : ""}>${h(label)}</option>`).join("");
   }
-  function coverageNotice(payload, rows) {
+  function coverageNotice(payload, rows, market) {
     const coverage = (payload && payload.coverage) || {};
     const discovery = (payload && payload.symbolDiscovery) || {};
     const failed = num(coverage.failed, discovery.failedCount, arr(payload && payload.failed).length) || 0;
@@ -760,6 +827,18 @@
     const available = num(coverage.availableWithPrice, discovery.availablePriceCount) || rows.filter(x => num(x.price, x.currentPrice) !== null).length;
     const loaded = num(coverage.loaded, discovery.loadedPageSymbols, rows.length) || rows.length;
     const total = num(coverage.totalFilteredSymbols, discovery.totalFilteredSymbols, payload && payload.marketUniverse && payload.marketUniverse.total, rows.length) || rows.length;
+    const lastUpdated = latinDateTime((payload && (payload.lastUpdated || payload.generatedAt || payload.updatedAt)) || discovery.lastUpdated || new Date().toISOString());
+    if (market && market.id === "etfs") {
+      return `<div class="coverage-stack">
+        <div class="provider-market-state warn coverage-notice"><strong>${h(FUND_PROVIDER_NOTE_AR)}</strong><p class="ltr">${h(FUND_PROVIDER_NOTE_EN)}</p></div>
+        <div class="detail-grid compact-detail-grid">
+          ${detailCard("إجمالي الصناديق", latinNumber(total), "Total funds")}
+          ${detailCard("الصناديق المتاحة", latinNumber(available), "Available funds")}
+          ${detailCard("الصناديق بدون سعر", latinNumber(unavailable), "Funds without price")}
+          ${detailCard("آخر تحديث", lastUpdated, "Last updated")}
+        </div>
+      </div>`;
+    }
     const showNotice = failed > 0 || unavailable > 0 || Boolean(payload && payload.reason);
     return `<div class="coverage-stack">
       ${showNotice ? `<div class="provider-market-state warn coverage-notice"><strong>${h(COVERAGE_NOTICE_AR)}</strong><p class="ltr">${h(COVERAGE_NOTICE_EN)}</p></div>` : ""}
@@ -784,6 +863,7 @@
   }
   function marketUniverseRow(row) {
     const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? `${PRICE_UNAVAILABLE_AR} · ${PRICE_UNAVAILABLE_EN}` : price(p, currency(a));
+    const typeText = assetType(a.symbol, a.assetType) === "fund" ? fundTypeText(a) : (a.assetType || assetType(a.symbol));
     return `<tr data-universe-symbol="${h(a.symbol)}" class="${p === null ? "is-muted" : ""}">
       <td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><small class="ltr">${h(a.providerSymbol || a.providerSymbolUsed || "--")}</small></span></button></td>
       <td data-label="الشركة">${h(a.companyName || a.name || "--")}</td>
@@ -794,18 +874,62 @@
       <td class="ltr" data-label="العملة">${h(currency(a))}</td>
       <td data-label="القطاع">${h(a.sector || "--")}</td>
       <td data-label="الصناعة">${h(a.industry || "--")}</td>
-      <td data-label="النوع">${h(a.assetType || assetType(a.symbol))}</td>
+      <td data-label="النوع">${h(typeText)}</td>
       <td class="row-actions" data-label="إجراء"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">تحليل</button></td>
     </tr>`;
   }
   function marketUniverseCard(row) {
     const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? PRICE_UNAVAILABLE_EN : price(p, currency(a));
+    if (assetType(a.symbol, a.assetType) === "fund") return fundUniverseCard(a, p, priceText);
     return `<article class="provider-market-card market-universe-card ${p === null ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
       <div class="provider-market-card-head"><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><span class="ltr">${h(currency(a))}</span></div>
       <p>${h(a.companyName || a.name || "--")}</p>
       <dl><div><dt>Price</dt><dd class="ltr">${h(priceText)}</dd></div><div><dt>Exchange</dt><dd class="ltr">${h(a.exchange || "--")}</dd></div><div><dt>Sector</dt><dd>${h(a.sector || "--")}</dd></div><div><dt>Type</dt><dd>${h(a.assetType || assetType(a.symbol))}</dd></div></dl>
       <button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">Open</button>
     </article>`;
+  }
+  function fundUniverseCard(a, p, priceText) {
+    const fundType = fundTypeText(a);
+    const market = [a.exchange || a.exchangeCode || a.market, currency(a)].filter(Boolean).join(" · ") || "--";
+    const nav = num(a.nav);
+    const displayPrice = p !== null ? priceText : nav !== null ? `NAV ${price(nav, currency(a))}` : PRICE_UNAVAILABLE_EN;
+    const quality = dataQualityLabel(a.dataAvailability || a.dataQuality || (p === null && nav === null ? "unavailable" : "available"));
+    const shariah = shariahStatusLabel(a.shariahStatus || a.shariaStatus);
+    return `<article class="provider-market-card market-universe-card fund-universe-card ${p === null && nav === null ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
+      <div class="provider-market-card-head"><strong>${h(a.fundName || a.companyName || a.name || a.symbol)}</strong><span class="ltr">${h(a.displaySymbol || a.symbol)}</span></div>
+      <p><span>${h(fundType)}</span></p>
+      <dl>
+        <div><dt>Symbol</dt><dd class="ltr">${h(a.displaySymbol || a.symbol)}</dd></div>
+        <div><dt>Currency</dt><dd class="ltr">${h(currency(a))}</dd></div>
+        <div><dt>Exchange / Market</dt><dd class="ltr">${h(market)}</dd></div>
+        <div><dt>Issuer</dt><dd>${h(a.issuer || "--")}</dd></div>
+        <div><dt>Price / NAV</dt><dd class="ltr">${h(displayPrice)}</dd></div>
+        <div><dt>Yield</dt><dd class="ltr">${h(percentMetric(a.distributionYield))}</dd></div>
+        <div><dt>Expense ratio</dt><dd class="ltr">${h(percentMetric(a.expenseRatio))}</dd></div>
+        <div><dt>Data quality</dt><dd>${h(quality)}</dd></div>
+        <div><dt>Shariah status</dt><dd>${h(shariah)}</dd></div>
+      </dl>
+      <button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">Open</button>
+    </article>`;
+  }
+  function fundTypeText(a) {
+    const key = String(a.fundType || "").toLowerCase();
+    const label = FUND_TYPE_LABELS[key];
+    if (a.fundTypeLabelAr || a.fundTypeLabelEn) return [a.fundTypeLabelAr, a.fundTypeLabelEn].filter(Boolean).join(" · ");
+    return label ? `${label[0]} · ${label[1]}` : "صندوق استثماري · Fund";
+  }
+  function percentMetric(value) {
+    const n = num(value);
+    if (n === null) return "--";
+    return `${n.toLocaleString("en-US", { maximumFractionDigits: 3 })}%`;
+  }
+  function shariahStatusLabel(value) {
+    const v = String(value || "").toLowerCase();
+    if (v === "compliant") return "متوافق مع الشريعة · Compliant";
+    if (v === "non_compliant") return "غير متوافق · Non-compliant";
+    if (v === "needs_review") return "بحاجة إلى مراجعة · Needs review";
+    if (v === "possible" || v === "partial") return "قد يكون متوافقاً · Possibly compliant";
+    return "--";
   }
   function bigNumber(value) {
     const n = num(value);
@@ -1390,9 +1514,9 @@
   }
   function marketUniverseCacheKey(id) {
     const view = state.marketUniverseView;
-    return ["universe", id, view.page, view.pageSize, view.q, view.exchange, view.currency, view.sector, view.industry, view.assetType, view.availability, view.sort, view.dir].join("|");
+    return ["universe", id, view.page, view.pageSize, view.q, view.exchange, view.currency, view.sector, view.industry, view.assetType, view.fundType, view.availability, view.sort, view.dir].join("|");
   }
-  async function getFullSymbolUniverse({ market, sector, category, exchange, currency, industry, assetType, availability, page, pageSize, q, sort, dir, force } = {}) {
+  async function getFullSymbolUniverse({ market, sector, category, exchange, currency, industry, assetType, fundType, availability, page, pageSize, q, sort, dir, force } = {}) {
     const params = new URLSearchParams({
       market: marketApi(market),
       page: String(page || 1),
@@ -1407,6 +1531,7 @@
     if (currency && currency !== "all") params.set("currency", currency);
     if (industry && industry !== "all") params.set("industry", industry);
     if (assetType && assetType !== "all") params.set("assetType", assetType);
+    if (fundType && fundType !== "all") params.set("fundType", fundType);
     if (availability && availability !== "all") params.set("availability", availability);
     if (q) params.set("q", q);
     if (force) params.set("refresh", "1");
@@ -1425,6 +1550,7 @@
       currency: view.currency,
       industry: view.industry,
       assetType: view.assetType,
+      fundType: view.fundType,
       availability: view.availability,
       page: view.page,
       pageSize: view.pageSize,
@@ -1859,7 +1985,7 @@
     const total = marketUniverseTotal(m);
     const hidden = Math.max(0, total - visible.length);
     const more = hidden ? `<span class="badge sm muted market-more"><span class="ltr">+${latinNumber(hidden)}</span></span>` : "";
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">عرض كل الأسهم <span class="ltr">View all symbols</span></span></a>`;
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">${marketActionLabel()}</span></a>`;
   }
   function heatmap(items) {
     return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
@@ -3026,6 +3152,18 @@
       country: x.country || x.countryCode || x.country_code || "",
       currency: x.currency || x.currencyCode || x.quoteCurrency || "",
       assetType: assetType(s, x.assetType || x.asset_type || x.quoteType || x.instrumentType || x.category),
+      fundType: x.fundType || x.fund_type || "",
+      fundTypeLabelAr: x.fundTypeLabelAr || x.fund_type_label_ar,
+      fundTypeLabelEn: x.fundTypeLabelEn || x.fund_type_label_en,
+      fundStructure: x.fundStructure || x.fund_structure,
+      fundName: x.fundName || x.fund_name || companyName,
+      issuer: x.issuer || x.fundIssuer || x.fund_issuer,
+      expenseRatio: x.expenseRatio ?? x.expense_ratio,
+      distributionYield: x.distributionYield ?? x.distribution_yield ?? x.yield,
+      nav: x.nav ?? x.netAssetValue ?? x.net_asset_value,
+      aum: x.aum ?? x.assetsUnderManagement ?? x.assets_under_management,
+      dataAvailability: x.dataAvailability || x.data_availability,
+      shariahStatus: x.shariahStatus || x.shariah_status || x.shariaStatus,
       sector: x.sector || "",
       industry: x.industry || "",
       companyName,
@@ -3075,7 +3213,7 @@
   function marketApi(id) { const m = MARKETS.find(x => x.id === id); return m ? m.apiMarket : (id || "us-stocks"); }
   function currentMarket() { return MARKETS.find(x => x.id === state.settings.defaultMarket) || MARKETS[0]; }
   function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$|\.MI$|\.MC$/i.test(s)) return "EUR"; if (/\.L$/i.test(s)) return "GBP"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || /^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
-  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s) || /XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|XLK|XLF|XLE|XLV|XLY|XLI|XLP|XLU|VNQ|SOXX)$/.test(s)) return "fund"; return "stock"; }
+  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund|reit|sukuk|mutual/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s) || /XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|XLK|XLF|XLE|XLV|XLY|XLI|XLP|XLU|VNQ|SOXX|AMCREIT|ENBDREIT|REIT)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
   function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? "غير متاح" : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
   function change(v) { return v === null || v === undefined ? "غير متاح" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }

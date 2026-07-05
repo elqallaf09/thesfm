@@ -244,7 +244,7 @@ export const TRADER_MARKET_SEEDS: SeedMarket[] = [
   { id: 'crypto', ar: 'الأصول الرقمية', en: 'Crypto', family: 'Digital', currency: 'USD', symbols: ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD'], tone: 'featured', apiMarket: 'crypto' },
   { id: 'commodities', ar: 'السلع', en: 'Commodities', family: 'Macro', currency: 'USD', symbols: ['XAUUSD', 'XAGUSD', 'WTI', 'BRENT'], apiMarket: 'commodities' },
   { id: 'indices', ar: 'المؤشرات', en: 'Indices', family: 'Benchmarks', currency: 'Local', symbols: ['US30', 'NAS100', 'SPX500', 'DAX', 'FTSE', 'CAC40', 'NIKKEI', 'HSI', 'DXY'], apiMarket: 'indices' },
-  { id: 'etfs', ar: 'الصناديق المتداولة', en: 'ETFs', family: 'Funds', currency: 'USD', symbols: ['SPY', 'QQQ', 'VOO', 'DIA', 'IWM', 'GLD'], apiMarket: 'etfs' },
+  { id: 'etfs', ar: 'الصناديق الاستثمارية', en: 'Funds & ETFs', family: 'Funds', currency: 'Mixed', symbols: ['SPY', 'QQQ', 'VOO', 'DIA', 'IWM', 'GLD'], apiMarket: 'etfs' },
   { id: 'saudi', ar: 'السوق السعودي', en: 'Saudi Market', family: 'Tadawul', currency: 'SAR', symbols: ['2222.SR', '1120.SR', '7010.SR', '1180.SR', '2010.SR', '1211.SR', '1010.SR', '1150.SR', '5110.SR', '2280.SR', '7020.SR', '7030.SR', '4190.SR', '2050.SR', '2350.SR', '4013.SR', '8210.SR', '4030.SR'], apiMarket: 'saudi' },
   { id: 'kuwait', ar: 'بورصة الكويت', en: 'Kuwait Market', family: 'Boursa', currency: 'KWD', symbols: ['KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'GBK.KW', 'BURG.KW', 'CBK.KW', 'AGLTY.KW', 'KIB.KW', 'WARBA.KW', 'MABANEE.KW', 'HUMANSOFT.KW', 'STC.KW', 'ALIMTIAZ.KW'], apiMarket: 'kuwait' },
   { id: 'uae', ar: 'سوق الإمارات', en: 'UAE Market', family: 'ADX/DFM', currency: 'AED', symbols: ['EMAAR.AE', 'FAB.AE', 'ETISALAT.AE', 'ADCB.AE', 'DIB.AE', 'ENBD.AE', 'ALDAR.AE', 'ADIB.AE', 'DEWA.AE', 'SALIK.AE', 'ADNOCDIST.AE', 'DFM.AE', 'AIRARABIA.AE'], apiMarket: 'uae' },
@@ -478,7 +478,7 @@ function marketIdsForRecord(record: {
   if (record.assetType === 'forex') ids.add('forex');
   if (record.assetType === 'commodity') ids.add('commodities');
   if (record.assetType === 'index') ids.add('indices');
-  if (record.assetType === 'stock' && (country === 'US' || /NASDAQ|NYSE|AMEX|CBOE/.test(exchange) || !suff)) ids.add('us-stocks');
+  if (record.assetType === 'stock' && (country === 'US' || /NASDAQ|NYSE|AMEX|CBOE/.test(exchange))) ids.add('us-stocks');
 
   if (suff === 'KW' || /KUWAIT|BOURSA/.test(venueHaystack)) ids.add('kuwait');
   if (suff === 'SR' || suff === 'SA' || /SAUDI|TADAWUL/.test(venueHaystack)) ids.add('saudi');
@@ -633,6 +633,8 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   target.marketIds = uniq([...target.marketIds, ...next.marketIds]);
   target.aliases = uniq([...target.aliases, ...next.aliases]);
   const preferNextMetadata = next.source === 'supabase' || target.source === 'seed' || target.source === 'fmp';
+  if (preferNextMetadata && next.displaySymbol) target.displaySymbol = next.displaySymbol;
+  else target.displaySymbol ||= next.displaySymbol;
   if (preferNextMetadata && next.exchange) target.exchange = next.exchange;
   else target.exchange ||= next.exchange;
   if (preferNextMetadata && next.exchangeCode) target.exchangeCode = next.exchangeCode;
@@ -644,6 +646,28 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   if (preferNextMetadata && next.currency) target.currency = next.currency;
   else target.currency ||= next.currency;
   if (preferNextMetadata && next.assetType) target.assetType = next.assetType;
+  if (preferNextMetadata && next.fundType) target.fundType = next.fundType;
+  else target.fundType ||= next.fundType;
+  if (preferNextMetadata && next.fundTypeLabelAr) target.fundTypeLabelAr = next.fundTypeLabelAr;
+  else target.fundTypeLabelAr ||= next.fundTypeLabelAr;
+  if (preferNextMetadata && next.fundTypeLabelEn) target.fundTypeLabelEn = next.fundTypeLabelEn;
+  else target.fundTypeLabelEn ||= next.fundTypeLabelEn;
+  if (preferNextMetadata && next.fundStructure) target.fundStructure = next.fundStructure;
+  else target.fundStructure ||= next.fundStructure;
+  if (preferNextMetadata && next.fundName) target.fundName = next.fundName;
+  else target.fundName ||= next.fundName;
+  if (preferNextMetadata && next.issuer) target.issuer = next.issuer;
+  else target.issuer ||= next.issuer;
+  if (preferNextMetadata && next.expenseRatio !== null && next.expenseRatio !== undefined) target.expenseRatio = next.expenseRatio;
+  else target.expenseRatio ??= next.expenseRatio;
+  if (preferNextMetadata && next.distributionYield !== null && next.distributionYield !== undefined) target.distributionYield = next.distributionYield;
+  else target.distributionYield ??= next.distributionYield;
+  if (preferNextMetadata && next.nav !== null && next.nav !== undefined) target.nav = next.nav;
+  else target.nav ??= next.nav;
+  if (preferNextMetadata && next.aum !== null && next.aum !== undefined) target.aum = next.aum;
+  else target.aum ??= next.aum;
+  if (preferNextMetadata && next.dataAvailability) target.dataAvailability = next.dataAvailability;
+  else target.dataAvailability ||= next.dataAvailability;
   if (preferNextMetadata && next.sector) target.sector = next.sector;
   else target.sector ||= next.sector;
   if (preferNextMetadata && next.industry) target.industry = next.industry;
@@ -752,7 +776,7 @@ async function fetchSupabaseCatalogSymbols() {
 
   const startedAt = Date.now();
   const selectors = [
-    'symbol,provider_symbol,name,asset_type,exchange,exchange_code,market,display_symbol,company_name_ar,company_name_en,country,currency,source,is_active,metadata,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data',
+    'symbol,provider_symbol,name,asset_type,fund_type,issuer,expense_ratio,distribution_yield,nav,aum,data_availability,exchange,exchange_code,market,display_symbol,company_name_ar,company_name_en,country,currency,source,is_active,metadata,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data',
     'symbol,provider_symbol,name,asset_type,exchange,market,display_symbol,company_name_ar,company_name_en,country,currency,source,is_active,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data',
     'symbol,provider_symbol,name,asset_type,exchange,country,currency,source,is_active',
   ];
@@ -1146,6 +1170,50 @@ export type FullSymbolUniverseQuery = TraderSymbolUniverseQuery & {
   fundType?: string | null;
 };
 
+const STRICT_LOCAL_UNIVERSE_RULES: Record<string, {
+  currency: string;
+  countries: string[];
+  suffix: RegExp;
+  venue: RegExp;
+}> = {
+  bahrain: {
+    currency: 'BHD',
+    countries: ['BH', 'BAHRAIN'],
+    suffix: /\.BH$/i,
+    venue: /\b(BHB|XBAH)\b|BAHRAIN/i,
+  },
+  kuwait: {
+    currency: 'KWD',
+    countries: ['KW', 'KUWAIT'],
+    suffix: /\.KW$/i,
+    venue: /\b(KSE|XKUW)\b|KUWAIT|BOURSA/i,
+  },
+  oman: {
+    currency: 'OMR',
+    countries: ['OM', 'OMAN'],
+    suffix: /\.OM$/i,
+    venue: /\b(MSX|XMUS)\b|OMAN|MUSCAT/i,
+  },
+  qatar: {
+    currency: 'QAR',
+    countries: ['QA', 'QATAR'],
+    suffix: /\.QA$/i,
+    venue: /\b(QSE|DSM|DSMD)\b|QATAR/i,
+  },
+  saudi: {
+    currency: 'SAR',
+    countries: ['SA', 'SAUDI', 'SAUDI ARABIA'],
+    suffix: /\.(SR|SA)$/i,
+    venue: /\b(TADAWUL|XSAU)\b|SAUDI/i,
+  },
+  uae: {
+    currency: 'AED',
+    countries: ['AE', 'UAE', 'UNITED ARAB EMIRATES'],
+    suffix: /\.(AE|DU|AD)$/i,
+    venue: /\b(ADX|DFM|XADS|XDFM)\b|DUBAI|ABU DHABI|UAE|UNITED ARAB/i,
+  },
+};
+
 const CATEGORY_ALIASES: Record<string, TraderUniverseCategory> = {
   all: 'all',
   'all-assets': 'all',
@@ -1210,10 +1278,45 @@ function primarySectorForSymbol(symbol: TraderCatalogSymbol, selectedSector: str
   return symbol.marketIds.find(id => SECTOR_MARKET_IDS.has(id)) ?? null;
 }
 
+function strictLocalUniverseAllows(symbol: TraderCatalogSymbol, selectedMarket: string | null) {
+  if (!selectedMarket) return true;
+  const rule = STRICT_LOCAL_UNIVERSE_RULES[selectedMarket];
+  if (!rule) return true;
+  const symbolText = upper(symbol.symbol);
+  const country = upper(symbol.country);
+  const venueText = [
+    symbol.symbol,
+    symbol.providerSymbol,
+    symbol.exchange,
+    symbol.exchangeCode,
+    symbol.market,
+    symbol.country,
+  ].map(upper).join(' ');
+  const venueMatches = rule.suffix.test(symbolText) || rule.venue.test(venueText);
+  const countryMatches = rule.countries.includes(country) || rule.suffix.test(symbolText);
+
+  return ['stock', 'fund'].includes(symbol.assetType)
+    && upper(symbol.currency) === rule.currency
+    && venueMatches
+    && countryMatches;
+}
+
+function usStockUniverseAllows(symbol: TraderCatalogSymbol) {
+  const venueText = [
+    symbol.exchange,
+    symbol.exchangeCode,
+    symbol.market,
+    symbol.country,
+  ].map(upper).join(' ');
+  return symbol.assetType === 'stock'
+    && upper(symbol.currency) === 'USD'
+    && (upper(symbol.country) === 'US' || /\b(NASDAQ|NYSE|AMEX|CBOE|ARCX|NYSE ARCA)\b/.test(venueText));
+}
+
 function universeEntry(symbol: TraderCatalogSymbol, selectedMarket: string | null, selectedSector: string | null): TraderSymbolUniverseEntry {
   return {
     symbol: symbol.symbol,
-    displaySymbol: symbol.symbol,
+    displaySymbol: symbol.displaySymbol || symbol.symbol,
     name: symbol.name,
     companyName: symbol.name,
     selectedMarket: primaryMarketForSymbol(symbol, selectedMarket),
@@ -1223,7 +1326,18 @@ function universeEntry(symbol: TraderCatalogSymbol, selectedMarket: string | nul
     country: symbol.country,
     currency: symbol.currency,
     assetType: symbol.assetType,
+    fundType: symbol.fundType,
+    fundTypeLabelAr: symbol.fundTypeLabelAr,
+    fundTypeLabelEn: symbol.fundTypeLabelEn,
+    fundStructure: symbol.fundStructure,
+    fundName: symbol.fundName,
     providerSymbol: symbol.providerSymbol,
+    issuer: symbol.issuer,
+    expenseRatio: symbol.expenseRatio,
+    distributionYield: symbol.distributionYield,
+    nav: symbol.nav,
+    aum: symbol.aum,
+    dataAvailability: symbol.dataAvailability,
     source: symbol.source,
     sector: symbol.sector,
     industry: symbol.industry,
@@ -1289,6 +1403,7 @@ function fullUniverseFilterRows(symbols: TraderCatalogSymbol[], query: FullSymbo
   const sectorName = normalizeUniverseFilter(query.sectorName);
   const industry = normalizeUniverseFilter(query.industry);
   const assetType = normalizeUniverseCategory(query.assetType);
+  const fundType = text(query.fundType);
 
   return symbols.filter(symbol => {
     if (exchange && ![symbol.exchange, symbol.exchangeCode, symbol.market].some(value => upper(value).includes(exchange))) return false;
@@ -1296,6 +1411,15 @@ function fullUniverseFilterRows(symbols: TraderCatalogSymbol[], query: FullSymbo
     if (sectorName && !upper(symbol.sector).includes(sectorName)) return false;
     if (industry && !upper(symbol.industry).includes(industry)) return false;
     if (assetType !== 'all' && symbol.assetType !== assetType) return false;
+    if (fundType && !fundMatchesFilter({
+      assetType: symbol.assetType,
+      fundType: symbol.fundType,
+      fundStructure: symbol.fundStructure,
+      fundFilter: fundType,
+      shariahStatus: symbol.shariahStatus,
+      name: symbol.name,
+      sector: symbol.sector,
+    })) return false;
     return true;
   });
 }
@@ -1314,7 +1438,8 @@ export async function getSymbolsForMarketOrSector(query: TraderSymbolUniverseQue
 
   let rows = catalog.symbols;
   if (selectedMarket) {
-    rows = rows.filter(symbol => symbol.marketIds.includes(selectedMarket));
+    rows = rows.filter(symbol => symbol.marketIds.includes(selectedMarket) && strictLocalUniverseAllows(symbol, selectedMarket));
+    if (selectedMarket === 'us-stocks') rows = rows.filter(usStockUniverseAllows);
   } else if (requestedMarket && !selectedSector) {
     rows = rows.filter(symbol => symbol.marketIds.includes(requestedMarket));
   }

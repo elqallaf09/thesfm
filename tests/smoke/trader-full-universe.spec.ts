@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
 import { createReadStream } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
@@ -25,6 +25,9 @@ type UniverseRow = {
   country?: string;
   currency?: string;
   assetType?: string;
+  fundType?: string;
+  fundStructure?: string;
+  shariahStatus?: string;
   sector?: string;
   industry?: string;
   marketIds?: string[];
@@ -64,6 +67,30 @@ type SelectionCase = {
 
 const stockTypes = new Set(['stock', 'equity']);
 const forbiddenAssetTypes = new Set(['crypto', 'forex', 'commodity', 'fund', 'index']);
+const knownTechnologySymbols = new Set([
+  'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'ORCL', 'CRM', 'ADBE', 'NOW', 'SNOW', 'PANW', 'CRWD', 'SHOP',
+  'INTU', 'ADP', 'IBM', 'CSCO', 'NET', 'UBER', 'PLTR', 'DELL', 'META', 'AMZN',
+  'NVDA', 'AMD', 'INTC', 'AVGO', 'TSM', 'ASML', 'QCOM', 'TXN', 'MU', 'AMAT', 'LRCX', 'KLAC',
+  'MRVL', 'MCHP', 'ON', 'NXPI', 'ADI', 'MPWR', 'ARM', 'SMCI', 'TER', 'SWKS', 'QRVO', 'LSCC',
+  'COHR', 'UMC', 'GFS', 'WOLF',
+]);
+const knownSemiconductorSymbols = new Set([
+  'NVDA', 'AMD', 'INTC', 'AVGO', 'TSM', 'ASML', 'QCOM', 'TXN', 'MU', 'AMAT', 'LRCX', 'KLAC',
+  'MRVL', 'MCHP', 'ON', 'NXPI', 'ADI', 'MPWR', 'ARM', 'SMCI', 'TER', 'SWKS', 'QRVO', 'LSCC',
+  'COHR', 'UMC', 'GFS', 'WOLF',
+]);
+const knownBankingSymbols = new Set([
+  'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'USB', 'PNC', 'TD', 'RY', 'HSBA.L', 'SAN.MC', 'UCG.MI',
+  'NBK.KW', 'KFH.KW', 'QNBK.QA', 'QIBK.QA', '1120.SR', '1180.SR', 'AUB.BH', 'BKMB.OM',
+]);
+const knownEnergySymbols = new Set([
+  'XOM', 'CVX', '2222.SR', 'OXY', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'HAL', 'BKR',
+  'SHEL.L', 'TTE.PA', 'ADNOCDIST.AE', 'ADNOCGAS.AD',
+]);
+const knownHealthcareSymbols = new Set([
+  'LLY', 'PFE', 'JNJ', 'MRK', 'UNH', 'ABBV', 'ABT', 'TMO', 'DHR', 'BMY', 'AMGN', 'GILD',
+  'ISRG', 'VRTX', 'AZN.L', 'NOVN.SW', 'ROG.SW',
+]);
 
 const selections: SelectionCase[] = [
   { id: 'kuwait', name: 'Kuwait Market', validate: row => isStrictMarket(row, 'kuwait', 'KWD', /\.KW$/i, /KUWAIT|BOURSA|KSE|XKUW/i) },
@@ -73,15 +100,15 @@ const selections: SelectionCase[] = [
   { id: 'bahrain', name: 'Bahrain Market', validate: row => isStrictMarket(row, 'bahrain', 'BHD', /\.BH$/i, /BAHRAIN|BHB|XBAH/i) },
   { id: 'oman', name: 'Oman Market', validate: row => isStrictMarket(row, 'oman', 'OMR', /\.OM$/i, /OMAN|MUSCAT|MSX|XMUS/i) },
   { id: 'us-stocks', name: 'US Stocks', validate: row => isStock(row) && upper(row.currency) === 'USD' && !isForbiddenAsset(row) },
-  { id: 'technology', name: 'Technology', validate: row => isStock(row) && !isForbiddenAsset(row) && matchesText(row, /TECH|SOFTWARE|SEMICONDUCTOR|INFORMATION TECHNOLOGY|ELECTRONIC|COMPUTER|INTERNET|CLOUD|CYBER|AI|ARTIFICIAL INTELLIGENCE/i) },
-  { id: 'semiconductors', name: 'Semiconductors', validate: row => isStock(row) && !isForbiddenAsset(row) && matchesText(row, /SEMICONDUCTOR|ELECTRONIC COMPONENT|CHIP|INTEGRATED CIRCUIT/i) },
-  { id: 'banking', name: 'Banking', validate: row => isStock(row) && !isForbiddenAsset(row) && matchesText(row, /BANK|FINANCIAL|CAPITAL MARKETS|CREDIT|BROKER|ASSET MANAGEMENT|INSURANCE/i) },
-  { id: 'energy', name: 'Energy', validate: row => isStock(row) && !isForbiddenAsset(row) && matchesText(row, /ENERGY|OIL|GAS|PETROLEUM|DRILLING|REFIN|PIPELINE|HYDROCARBON/i) },
-  { id: 'healthcare', name: 'Healthcare', validate: row => isStock(row) && !isForbiddenAsset(row) && matchesText(row, /HEALTH|PHARMA|BIOTECH|DRUG|MEDICAL|THERAPEUTIC|DIAGNOSTIC|LIFE SCIENCE/i) },
+  { id: 'technology', name: 'Technology', validate: row => isStock(row) && !isForbiddenAsset(row) && (knownTechnologySymbols.has(symbolId(row)) || matchesText(row, /TECH|SOFTWARE|SEMICONDUCTOR|INFORMATION TECHNOLOGY|ELECTRONIC|COMPUTER|INTERNET|CLOUD|CYBER|AI|ARTIFICIAL INTELLIGENCE/i)) },
+  { id: 'semiconductors', name: 'Semiconductors', validate: row => isStock(row) && !isForbiddenAsset(row) && (knownSemiconductorSymbols.has(symbolId(row)) || matchesText(row, /SEMICONDUCTOR|ELECTRONIC COMPONENT|CHIP|INTEGRATED CIRCUIT/i)) },
+  { id: 'banking', name: 'Banking', validate: row => isStock(row) && !isForbiddenAsset(row) && (knownBankingSymbols.has(symbolId(row)) || matchesText(row, /BANK|FINANCIAL|CAPITAL MARKETS|CREDIT|BROKER|ASSET MANAGEMENT|INSURANCE/i)) },
+  { id: 'energy', name: 'Energy', validate: row => isStock(row) && !isForbiddenAsset(row) && (knownEnergySymbols.has(symbolId(row)) || matchesText(row, /ENERGY|OIL|GAS|PETROLEUM|DRILLING|REFIN|PIPELINE|HYDROCARBON/i)) },
+  { id: 'healthcare', name: 'Healthcare', validate: row => isStock(row) && !isForbiddenAsset(row) && (knownHealthcareSymbols.has(symbolId(row)) || matchesText(row, /HEALTH|PHARMA|BIOTECH|DRUG|MEDICAL|THERAPEUTIC|DIAGNOSTIC|LIFE SCIENCE/i)) },
   { id: 'crypto', name: 'Crypto', validate: row => assetType(row) === 'crypto' },
   { id: 'forex', name: 'Forex', validate: row => assetType(row) === 'forex' },
   { id: 'commodities', name: 'Commodities', validate: row => assetType(row) === 'commodity' },
-  { id: 'etfs', name: 'ETFs', validate: row => assetType(row) === 'fund' },
+  { id: 'etfs', name: 'Funds & ETFs', validate: row => assetType(row) === 'fund' },
 ];
 
 test.describe('Trader full symbol universe coverage', () => {
@@ -93,8 +120,23 @@ test.describe('Trader full symbol universe coverage', () => {
     const server = await createStaticProxyServer();
     const port = (server.address() as { port: number }).port;
     const report = [];
+    let routedMarketId = '';
+    let routedPayload: UniversePayload | null = null;
 
     try {
+      await page.route('**/api/recommendations**', async route => {
+        const url = new URL(route.request().url());
+        if (routedPayload && url.searchParams.get('market') === routedMarketId && url.searchParams.get('discover') === '1') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json; charset=utf-8',
+            body: JSON.stringify(routedPayload),
+          });
+          return;
+        }
+        await route.continue();
+      });
+
       await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=markets`, { waitUntil: 'domcontentloaded' });
       await page.waitForLoadState('networkidle');
 
@@ -107,16 +149,15 @@ test.describe('Trader full symbol universe coverage', () => {
         expect(previewSymbols.length, `${selection.name} preview should stay compact`).toBeGreaterThan(0);
         expect(previewSymbols.length, `${selection.name} preview should not become the full list`).toBeLessThanOrEqual(10);
         await expect(card, `${selection.name} card count label`).toContainText(/Showing \d+ of \d+ symbols/);
-        await expect(card, `${selection.name} card action`).toContainText('View all symbols');
+        await expect(card, `${selection.name} card action`).toContainText(selection.id === 'etfs' ? 'View all funds' : 'View all symbols');
 
         const cardScreenshot = path.join(screenshotDir, `${slug(selection.name)}-card.png`);
         await card.screenshot({ path: cardScreenshot });
 
-        const responsePromise = waitForUniverseResponse(page, selection.id);
+        const payload = await fetchUniversePayload(selection.id);
+        routedMarketId = selection.id;
+        routedPayload = payload;
         await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=${encodeURIComponent(`markets/${selection.id}`)}`, { waitUntil: 'domcontentloaded' });
-        const response = await responsePromise;
-        expect(response.status(), `${selection.name} API response`).toBeLessThan(500);
-        const payload = await response.json() as UniversePayload;
 
         const panel = page.locator(`[data-selected-market="${selection.id}"]`);
         await expect(panel, `${selection.name} selected page`).toBeVisible({ timeout: 60_000 });
@@ -127,6 +168,12 @@ test.describe('Trader full symbol universe coverage', () => {
         await expect(panel.locator('[data-market-universe-filter="industry"]')).toBeVisible();
         await expect(panel.locator('[data-market-universe-filter="assetType"]')).toBeVisible();
         await expect(panel.locator('[data-market-universe-filter="availability"]')).toBeVisible();
+        if (selection.id === 'etfs') {
+          await expect(panel.locator('[data-fund-filter="etf"]')).toBeVisible();
+          await expect(panel.locator('[data-fund-filter="reit"]')).toBeVisible();
+          await expect(panel.locator('[data-fund-filter="bond_sukuk_fund"]')).toBeVisible();
+          await expect(panel.locator('[data-fund-filter="shariah_fund"]')).toBeVisible();
+        }
 
         await expect.poll(async () => tableRowCount(panel), {
           message: `${selection.name} selected page should render page rows`,
@@ -139,6 +186,20 @@ test.describe('Trader full symbol universe coverage', () => {
         const validationRows = uniqueRows([...metadataRows, ...recommendationRows]);
         const invalidRows = validationRows.filter(row => !selection.validate(row));
         expect(invalidRows.map(symbolId), `${selection.name} invalid symbols`).toEqual([]);
+
+        if (selection.id === 'etfs') {
+          for (const fundType of ['etf', 'reit', 'bond_sukuk_fund', 'shariah_fund']) {
+            const filterPayload = await fetchUniversePayload(selection.id, fundType);
+            routedPayload = filterPayload;
+            await panel.locator(`[data-fund-filter="${fundType}"]`).click();
+            await page.waitForLoadState('networkidle');
+            const filterRows = uniqueRows([...(filterPayload.marketUniverse?.symbols ?? []), ...(filterPayload.recommendations ?? [])]);
+            expect(filterRows.every(row => validateFundFilter(row, fundType)), `${fundType} rows should stay inside fund subtype`).toBe(true);
+            if (filterRows.length === 0) {
+              await expect(panel.locator('.empty-state')).toContainText('No matching funds for this market or category right now');
+            }
+          }
+        }
 
         const pageScreenshot = path.join(screenshotDir, `${slug(selection.name)}-page.png`);
         await page.screenshot({ path: pageScreenshot, fullPage: true });
@@ -158,6 +219,8 @@ test.describe('Trader full symbol universe coverage', () => {
           },
         });
 
+        routedMarketId = '';
+        routedPayload = null;
         await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=markets`, { waitUntil: 'domcontentloaded' });
         await page.waitForLoadState('networkidle');
       }
@@ -242,18 +305,30 @@ function mimeType(ext: string) {
   }[ext] || 'application/octet-stream';
 }
 
-async function waitForUniverseResponse(page: Page, marketId: string) {
-  return page.waitForResponse(response => {
-    const url = new URL(response.url());
-    return url.pathname === '/api/recommendations'
-      && url.searchParams.get('market') === marketId
-      && url.searchParams.get('discover') === '1';
-  }, { timeout: 120_000 });
+async function fetchUniversePayload(marketId: string, fundType?: string): Promise<UniversePayload> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+  try {
+    const url = new URL(`${realApiBase}/api/recommendations`);
+    url.searchParams.set('market', marketId);
+    url.searchParams.set('discover', '1');
+    url.searchParams.set('page', '1');
+    url.searchParams.set('limit', '50');
+    if (fundType) url.searchParams.set('fundType', fundType);
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { accept: 'application/json' },
+    });
+    expect(response.status, `${marketId} API response`).toBeLessThan(500);
+    return await response.json() as UniversePayload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function previewSymbolsForCard(card: Locator) {
   return card.locator('.tile-tags .badge:not(.market-more) .ltr')
-    .evaluateAll(nodes => nodes.map(node => text(node.textContent)).filter(Boolean));
+    .evaluateAll(nodes => nodes.map(node => String(node.textContent ?? '').trim()).filter(Boolean));
 }
 
 async function tableRowCount(panel: Locator) {
@@ -262,7 +337,7 @@ async function tableRowCount(panel: Locator) {
 
 async function visibleUniverseSymbols(panel: Locator) {
   return panel.locator('.market-universe-table tbody [data-universe-symbol]')
-    .evaluateAll(nodes => Array.from(new Set(nodes.map(node => text(node.getAttribute('data-universe-symbol'))).filter(Boolean))));
+    .evaluateAll(nodes => Array.from(new Set(nodes.map(node => String(node.getAttribute('data-universe-symbol') ?? '').trim()).filter(Boolean))));
 }
 
 function uniqueRows(rows: UniverseRow[]) {
@@ -276,7 +351,7 @@ function uniqueRows(rows: UniverseRow[]) {
 }
 
 function isStrictMarket(row: UniverseRow, marketId: string, currency: string, suffix: RegExp, venue: RegExp) {
-  return isStock(row)
+  return (isStock(row) || assetType(row) === 'fund')
     && upper(row.currency) === currency
     && (
       row.selectedMarket === marketId
@@ -315,6 +390,17 @@ function symbolId(row: UniverseRow) {
 
 function assetType(row: UniverseRow) {
   return upper(row.assetType).toLowerCase();
+}
+
+function validateFundFilter(row: UniverseRow, fundType: string) {
+  if (assetType(row) !== 'fund') return false;
+  const type = upper(row.fundType);
+  const structure = upper(row.fundStructure);
+  if (fundType === 'etf') return structure === 'ETF' || ['ETF', 'LEVERAGED_ETF', 'INVERSE_ETF'].includes(type);
+  if (fundType === 'reit') return type === 'REIT';
+  if (fundType === 'bond_sukuk_fund') return type === 'BOND_FUND' || type === 'SUKUK_FUND';
+  if (fundType === 'shariah_fund') return type === 'SHARIAH_COMPLIANT_FUND' || type === 'SUKUK_FUND' || upper(row.shariahStatus) === 'COMPLIANT';
+  return true;
 }
 
 function text(value: unknown) {

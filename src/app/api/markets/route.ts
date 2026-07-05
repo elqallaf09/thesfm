@@ -4,6 +4,7 @@ import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { getConnectedProvider } from '@/lib/trader/marketQuotes';
 import { getSymbolsForMarketOrSector, getTraderMarketCatalog, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
+import { TRADER_FUND_FILTERS, fundMatchesFilter, normalizeFundFilter } from '@/lib/trader/fundTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +156,12 @@ export async function GET(request: Request) {
     url.searchParams.get('shariahStatus') ?? url.searchParams.get('sharia_status') ?? url.searchParams.get('shariaStatus'),
     null,
   );
+  const selectedFundType = normalizeFundFilter(
+    url.searchParams.get('fundType')
+      ?? url.searchParams.get('fund_type')
+      ?? url.searchParams.get('fundCategory')
+      ?? url.searchParams.get('fund_category'),
+  );
   const sourceFilter = String(url.searchParams.get('source') ?? 'all').trim().toLowerCase();
   const currencyFilter = normalizeSymbol(url.searchParams.get('currency') ?? 'all');
   const qualityFilter = String(url.searchParams.get('quality') ?? 'complete').trim().toLowerCase();
@@ -186,20 +193,36 @@ export async function GET(request: Request) {
         symbol.country,
         symbol.sector,
         symbol.industry,
+        symbol.fundType,
+        symbol.fundName,
+        symbol.issuer,
       ].some(value => normalizeSymbol(value).includes(search) || normalizeSymbol(value).includes(searchInput)))
     : baseRows;
   const categoryRows = !universe && selectedCategory !== 'all'
     ? searchedRows.filter(symbol => symbol.assetType === selectedCategory)
     : searchedRows;
-  const marketRows = shariahStatus
-    ? categoryRows.filter(symbol => symbol.shariahStatus === shariahStatus)
+  const fundTypeRows = selectedFundType !== 'all'
+    ? categoryRows.filter(symbol => fundMatchesFilter({
+        assetType: symbol.assetType,
+        fundType: symbol.fundType,
+        fundStructure: symbol.fundStructure,
+        fundFilter: selectedFundType,
+        shariahStatus: symbol.shariahStatus,
+        name: symbol.name,
+        sector: symbol.sector,
+      }))
     : categoryRows;
+  const marketRows = shariahStatus
+    ? fundTypeRows.filter(symbol => symbol.shariahStatus === shariahStatus)
+    : fundTypeRows;
   const deduped = dedupeMarketSymbols(marketRows);
   const sourceRows = sourceFilter && sourceFilter !== 'all'
     ? deduped.rows.filter(symbol => symbol.source === sourceFilter || publicSourceLabel(symbol.source).toLowerCase() === sourceFilter)
     : deduped.rows;
   const filterOptions = {
     currencies: uniqueSorted(sourceRows.map(symbol => symbol.currency)),
+    fundTypes: uniqueSorted(sourceRows.map(symbol => symbol.fundType)),
+    fundFilters: TRADER_FUND_FILTERS,
   };
   const currencyRows = currencyFilter && currencyFilter !== 'ALL'
     ? sourceRows.filter(symbol => normalizeSymbol(symbol.currency) === currencyFilter)
@@ -258,6 +281,17 @@ export async function GET(request: Request) {
       providerSymbol,
       providerSymbols: symbol.providerSymbols,
       assetType: symbol.assetType,
+      fundType: symbol.fundType,
+      fundTypeLabelAr: symbol.fundTypeLabelAr,
+      fundTypeLabelEn: symbol.fundTypeLabelEn,
+      fundStructure: symbol.fundStructure,
+      fundName: symbol.fundName,
+      issuer: symbol.issuer,
+      expenseRatio: symbol.expenseRatio,
+      distributionYield: symbol.distributionYield,
+      nav: symbol.nav,
+      aum: symbol.aum,
+      dataAvailability: symbol.dataAvailability,
       sector: symbol.sector,
       industry: symbol.industry,
       exchange: symbol.exchange,
@@ -325,6 +359,7 @@ export async function GET(request: Request) {
       symbols: pagedRows.map(symbol => universeEntryBySymbol.get(normalizeSymbol(symbol.symbol))).filter(Boolean),
       source: universe.source,
       provider,
+      selectedFundType,
       dataCoverage: `${pagedRows.length}/${sortedRows.length}`,
     } : null,
     pagination: {
@@ -335,6 +370,7 @@ export async function GET(request: Request) {
       selectedMarket: selectedUniverseMarket,
       selectedSector: selectedUniverseSector,
       selectedCategory,
+      selectedFundType,
       search,
       shariahStatus,
       source: sourceFilter || 'all',

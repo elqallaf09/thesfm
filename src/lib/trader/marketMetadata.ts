@@ -75,7 +75,7 @@ export const TRADER_PROVIDER_LABELS: Record<string, string> = {
 
 export const TRADER_MARKET_METADATA: Record<string, TraderMarketMetadata> = {
   'us-stocks': { id: 'us-stocks', labelAr: 'الأسهم الأمريكية', labelEn: 'US Stocks', assetClassAr: 'أسهم', assetClassEn: 'Stocks', currency: 'USD', country: 'US', exchange: 'US' },
-  etfs: { id: 'etfs', labelAr: 'الصناديق المتداولة', labelEn: 'ETFs', assetClassAr: 'الصناديق المتداولة', assetClassEn: 'ETFs', currency: 'USD', country: 'US', exchange: 'US' },
+  etfs: { id: 'etfs', labelAr: 'الصناديق الاستثمارية', labelEn: 'Funds & ETFs', assetClassAr: 'الصناديق الاستثمارية', assetClassEn: 'Funds & ETFs', currency: 'USD', country: 'US', exchange: 'US' },
   crypto: { id: 'crypto', labelAr: 'العملات الرقمية', labelEn: 'Crypto', assetClassAr: 'العملات الرقمية', assetClassEn: 'Crypto', currency: 'USD' },
   forex: { id: 'forex', labelAr: 'العملات', labelEn: 'Forex', assetClassAr: 'عملات', assetClassEn: 'Forex', currency: 'USD' },
   commodities: { id: 'commodities', labelAr: 'السلع', labelEn: 'Commodities', assetClassAr: 'سلع', assetClassEn: 'Commodities', currency: 'USD' },
@@ -250,6 +250,8 @@ const EXCHANGE_ALIASES: Record<string, { exchange: string; code?: string }> = {
   NASDAQGS: { exchange: 'NASDAQ', code: 'NASDAQ' },
   'NASDAQ GLOBAL SELECT': { exchange: 'NASDAQ', code: 'NASDAQ' },
   'NASDAQ GLOBAL MARKET': { exchange: 'NASDAQ', code: 'NASDAQ' },
+  NASDAQDUBAI: { exchange: 'Nasdaq Dubai', code: 'NASDAQ_DUBAI' },
+  'NASDAQ DUBAI': { exchange: 'Nasdaq Dubai', code: 'NASDAQ_DUBAI' },
   NYQ: { exchange: 'NYSE', code: 'NYSE' },
   XNYS: { exchange: 'NYSE', code: 'NYSE' },
   NYSE: { exchange: 'NYSE', code: 'NYSE' },
@@ -319,7 +321,7 @@ function fallbackExchangeForSymbol(symbol: string, marketId: string) {
 }
 
 function fallbackMarketLabel(marketId: string) {
-  if (marketId === 'etfs') return 'US ETFs';
+  if (marketId === 'etfs') return 'Funds & ETFs';
   if (marketId === 'uae') return 'UAE Market';
   if (marketId === 'kuwait') return 'Kuwait Market';
   if (marketId === 'saudi') return 'Saudi Market';

@@ -113,4 +113,18 @@ describe('trader recommendation market filters', () => {
     expect(isAssetAllowedForSelection(etf, 'etfs', 'fund')).toBe(true);
     expect(isAssetAllowedForSelection(equity, 'etfs', 'fund')).toBe(false);
   });
+
+  it('keeps fund subtype filters strict', () => {
+    const reit = { symbol: 'ENBDREIT', exchange: 'Dubai Financial Market', market: 'UAE Market', country: 'AE', currency: 'AED', assetType: 'fund', fundType: 'reit', fundStructure: 'reit' };
+    const bondFund = { symbol: 'BND', exchange: 'NYSE Arca', market: 'Funds & ETFs', country: 'US', currency: 'USD', assetType: 'fund', fundType: 'bond_fund', fundStructure: 'etf' };
+    const shariahFund = { symbol: 'SPUS', exchange: 'NYSE Arca', market: 'Funds & ETFs', country: 'US', currency: 'USD', assetType: 'fund', fundType: 'shariah_compliant_fund', shariahStatus: 'needs_review', name: 'SP Funds S&P 500 Sharia Industry Exclusions ETF' };
+    const genericEtf = { symbol: 'SPY', exchange: 'NYSE Arca', market: 'Funds & ETFs', country: 'US', currency: 'USD', assetType: 'fund', fundType: 'etf', fundStructure: 'etf', shariahStatus: 'needs_review' };
+    const equity = { symbol: 'VNQ', exchange: 'NYSE Arca', market: 'Funds & ETFs', country: 'US', currency: 'USD', assetType: 'stock', fundType: 'reit' };
+
+    expect(isAssetAllowedForSelection(reit, 'etfs', 'reit')).toBe(true);
+    expect(isAssetAllowedForSelection(bondFund, 'etfs', 'bond_sukuk_fund')).toBe(true);
+    expect(isAssetAllowedForSelection(shariahFund, 'etfs', 'shariah_fund')).toBe(true);
+    expect(isAssetAllowedForSelection(genericEtf, 'etfs', 'shariah_fund')).toBe(false);
+    expect(isAssetAllowedForSelection(equity, 'etfs', 'reit')).toBe(false);
+  });
 });

@@ -72,12 +72,79 @@ describe('trader market and sector symbol universe', () => {
     expect(new Set(dedupeKeys).size).toBe(dedupeKeys.length);
   });
 
+  it.each([
+    ['kuwait', 'KWD'],
+    ['saudi', 'SAR'],
+    ['uae', 'AED'],
+    ['qatar', 'QAR'],
+    ['bahrain', 'BHD'],
+    ['oman', 'OMR'],
+  ])('keeps the %s local market universe to listed instruments in the local currency', async (market, currency) => {
+    const universe = await getFullSymbolUniverse({ market });
+
+    expect(universe.symbols.length).toBeGreaterThan(0);
+    expect(universe.entries.every(entry => entry.selectedMarket === market)).toBe(true);
+    expect(universe.entries.every(entry => ['stock', 'fund'].includes(entry.assetType))).toBe(true);
+    expect(universe.entries.every(entry => entry.currency === currency)).toBe(true);
+  });
+
   it('loads the provider catalog for US stocks instead of the preview list', async () => {
     const universe = await getFullSymbolUniverse({ market: 'us-stocks', assetType: 'stock' });
 
     expect(universe.symbols.length).toBeGreaterThan(1000);
     expect(universe.entries.every(entry => entry.assetType === 'stock')).toBe(true);
+    expect(universe.entries.every(entry => entry.currency === 'USD')).toBe(true);
     expect(universe.entries.some(entry => entry.symbol === 'AAPL')).toBe(true);
+    expect(universe.symbols).not.toEqual(expect.arrayContaining(['SPY', 'QQQ', 'AMCREIT', 'AAYAN', 'ABK', '2317.TW', '2330.TW']));
+  });
+
+  it('adds Funds & ETFs as a dedicated fund universe', async () => {
+    const catalog = await getTraderMarketCatalog();
+    const fundMarket = catalog.markets.find(market => market.id === 'etfs');
+    const universe = await getFullSymbolUniverse({ market: 'etfs', assetType: 'fund', catalog });
+
+    expect(fundMarket).toMatchObject({
+      ar: 'الصناديق الاستثمارية',
+      en: 'Funds & ETFs',
+      family: 'Funds',
+    });
+    expect(universe.symbols.length).toBeGreaterThan(20);
+    expect(universe.entries.every(entry => entry.assetType === 'fund')).toBe(true);
+    expect(universe.symbols).toEqual(expect.arrayContaining(['SPY', 'QQQ']));
+    expect(universe.symbols).not.toEqual(expect.arrayContaining(['AAPL', 'BTCUSD', 'EURUSD', 'XAUUSD']));
+    expect(universe.entries.find(entry => entry.symbol === 'SPY')).toEqual(expect.objectContaining({
+      assetType: 'fund',
+      fundType: expect.any(String),
+      providerSymbol: expect.any(String),
+      displaySymbol: expect.any(String),
+      fundName: expect.any(String),
+      currency: 'USD',
+      dataAvailability: expect.any(String),
+    }));
+  });
+
+  it('filters ETFs, REITs, bond/sukuk funds, and Shariah funds strictly', async () => {
+    const catalog = await getTraderMarketCatalog();
+    const etfs = await getFullSymbolUniverse({ market: 'etfs', assetType: 'fund', fundType: 'etf', catalog });
+    const reits = await getFullSymbolUniverse({ market: 'etfs', assetType: 'fund', fundType: 'reit', catalog });
+    const bondSukukFunds = await getFullSymbolUniverse({ market: 'etfs', assetType: 'fund', fundType: 'bond_sukuk_fund', catalog });
+    const shariahFunds = await getFullSymbolUniverse({ market: 'etfs', assetType: 'fund', fundType: 'shariah_fund', catalog });
+
+    expect(etfs.entries.length).toBeGreaterThan(10);
+    expect(etfs.entries.every(entry => entry.assetType === 'fund' && (entry.fundStructure === 'etf' || ['etf', 'leveraged_etf', 'inverse_etf'].includes(String(entry.fundType))))).toBe(true);
+
+    expect(reits.entries.length).toBeGreaterThan(0);
+    expect(reits.entries.every(entry => entry.assetType === 'fund' && entry.fundType === 'reit')).toBe(true);
+
+    expect(bondSukukFunds.entries.length).toBeGreaterThan(0);
+    expect(bondSukukFunds.entries.every(entry => entry.assetType === 'fund' && ['bond_fund', 'sukuk_fund'].includes(String(entry.fundType)))).toBe(true);
+
+    expect(shariahFunds.entries.length).toBeGreaterThan(0);
+    expect(shariahFunds.symbols).not.toContain('SPY');
+    expect(shariahFunds.symbolMeta.every(symbol => (
+      symbol.assetType === 'fund'
+      && (symbol.fundType === 'shariah_compliant_fund' || symbol.fundType === 'sukuk_fund' || symbol.shariahStatus === 'compliant')
+    ))).toBe(true);
   });
 
   it('keeps asset classes isolated for technology, crypto, forex, and commodities', async () => {
@@ -85,11 +152,13 @@ describe('trader market and sector symbol universe', () => {
     const crypto = await getFullSymbolUniverse({ market: 'crypto' });
     const forex = await getFullSymbolUniverse({ market: 'forex' });
     const commodities = await getFullSymbolUniverse({ market: 'commodities' });
+    const etfs = await getFullSymbolUniverse({ market: 'etfs' });
 
     expect(technology.entries.every(entry => entry.assetType === 'stock')).toBe(true);
     expect(technology.symbols).not.toEqual(expect.arrayContaining(['BTC', 'BTCUSD', 'EURUSD', 'XAUUSD', 'WTI']));
     expect(crypto.entries.every(entry => entry.assetType === 'crypto')).toBe(true);
     expect(forex.entries.every(entry => entry.assetType === 'forex')).toBe(true);
     expect(commodities.entries.every(entry => entry.assetType === 'commodity')).toBe(true);
+    expect(etfs.entries.every(entry => entry.assetType === 'fund')).toBe(true);
   });
 });

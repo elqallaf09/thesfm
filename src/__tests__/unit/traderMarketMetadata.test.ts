@@ -21,14 +21,14 @@ describe('trader market metadata', () => {
     expect(formatTraderMarketHeader(uae, 'en')).toBe('UAE Markets · AED');
   });
 
-  it('resolves asset-class headers for ETFs, crypto, forex, and metals', () => {
+  it('resolves asset-class headers for funds, crypto, forex, and metals', () => {
     const spy = resolveTraderMarketContext({ marketId: 'etfs', selectedSymbol: 'SPY' });
     const btcUsd = resolveTraderMarketContext({ marketId: 'crypto', selectedSymbol: 'BTCUSD' });
     const btcUsdt = resolveTraderMarketContext({ marketId: 'crypto', selectedSymbol: 'BTCUSDT' });
     const eurUsd = resolveTraderMarketContext({ marketId: 'forex', selectedSymbol: 'EURUSD' });
     const gold = resolveTraderMarketContext({ selectedSymbol: 'XAUUSD' });
 
-    expect(formatTraderMarketHeader(spy, 'en')).toBe('ETFs · USD');
+    expect(formatTraderMarketHeader(spy, 'en')).toBe('Funds & ETFs · USD');
     expect(formatTraderMarketHeader(btcUsd, 'en')).toBe('Crypto · USD');
     expect(formatTraderMarketHeader(btcUsdt, 'en')).toBe('Crypto · USDT');
     expect(formatTraderMarketHeader(eurUsd, 'en')).toBe('Forex · USD');
@@ -98,8 +98,8 @@ describe('trader market metadata', () => {
   it('infers safe fallback metadata for known symbols and asset classes', () => {
     const samples = [
       ['AAPL', 'NASDAQ', 'US Stocks', 'USD', 'stock'],
-      ['SPY', 'NYSE Arca', 'US ETFs', 'USD', 'fund'],
-      ['QQQ', 'NASDAQ', 'US ETFs', 'USD', 'fund'],
+      ['SPY', 'NYSE Arca', 'Funds & ETFs', 'USD', 'fund'],
+      ['QQQ', 'NASDAQ', 'Funds & ETFs', 'USD', 'fund'],
       ['EMAAR.AE', 'Dubai Financial Market', 'UAE Market', 'AED', 'stock'],
       ['KFH.KW', 'Boursa Kuwait', 'Kuwait Market', 'KWD', 'stock'],
       ['2222.SR', 'Tadawul', 'Saudi Market', 'SAR', 'stock'],

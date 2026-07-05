@@ -1,16 +1,29 @@
+import { fundMatchesFilter } from '@/lib/trader/fundTypes';
+
 export type MarketFilterAsset = {
   symbol?: unknown;
   displaySymbol?: unknown;
   canonicalSymbol?: unknown;
   providerSymbol?: unknown;
   providerSymbolUsed?: unknown;
+  name?: unknown;
+  companyName?: unknown;
+  fundName?: unknown;
+  fund_name?: unknown;
   assetType?: unknown;
   asset_type?: unknown;
+  fundType?: unknown;
+  fund_type?: unknown;
+  fundStructure?: unknown;
+  fund_structure?: unknown;
   quoteType?: unknown;
   instrumentType?: unknown;
   category?: unknown;
+  issuer?: unknown;
   sector?: unknown;
   industry?: unknown;
+  shariahStatus?: unknown;
+  shariah_status?: unknown;
   exchange?: unknown;
   exchangeName?: unknown;
   exchangeCode?: unknown;
@@ -160,6 +173,32 @@ const CATEGORY_ALIASES: Record<string, string> = {
   'etfs': 'fund',
   'fund': 'fund',
   'funds': 'fund',
+  'mutual fund': 'mutual_fund',
+  'mutual funds': 'mutual_fund',
+  'index fund': 'index_fund',
+  'index funds': 'index_fund',
+  'money market': 'money_market_fund',
+  'money market fund': 'money_market_fund',
+  'bond fund': 'bond_sukuk_fund',
+  'bond funds': 'bond_sukuk_fund',
+  'sukuk': 'bond_sukuk_fund',
+  'sukuk fund': 'bond_sukuk_fund',
+  'bond sukuk fund': 'bond_sukuk_fund',
+  'bond sukuk funds': 'bond_sukuk_fund',
+  'reit': 'reit',
+  'reits': 'reit',
+  'commodity fund': 'commodity_fund',
+  'sector fund': 'sector_fund',
+  'thematic fund': 'thematic_fund',
+  'shariah': 'shariah_fund',
+  'shariah fund': 'shariah_fund',
+  'shariah compliant fund': 'shariah_fund',
+  'leveraged etf': 'leveraged_etf',
+  'inverse etf': 'inverse_etf',
+  'income fund': 'income_fund',
+  'growth fund': 'growth_fund',
+  'balanced fund': 'balanced_fund',
+  'hedge fund': 'hedge_fund',
   'indices': 'index',
   'index': 'index',
 };
@@ -172,6 +211,25 @@ const CATEGORY_MARKET_IDS = new Set([
   'commodities',
   'etfs',
   'indices',
+]);
+
+const FUND_CATEGORY_FILTERS = new Set([
+  'etf',
+  'mutual_fund',
+  'index_fund',
+  'money_market_fund',
+  'bond_sukuk_fund',
+  'reit',
+  'commodity_fund',
+  'sector_fund',
+  'thematic_fund',
+  'shariah_fund',
+  'leveraged_etf',
+  'inverse_etf',
+  'income_fund',
+  'growth_fund',
+  'balanced_fund',
+  'hedge_fund',
 ]);
 
 const US_MARKET_KEYS = new Set(['us', 'usa', 'us stocks', 'us-stocks', 'u s stocks', 'american stocks']);
@@ -265,7 +323,7 @@ function normalizedAssetSymbol(asset: MarketFilterAsset) {
 function normalizedAssetType(value: string) {
   const normalized = value.toLowerCase().replace(/[-_]/g, ' ').trim();
   if (/\b(stock|equity|ordinary share|common stock|common share|share)\b/.test(normalized)) return 'stock';
-  if (/\b(etf|fund)\b/.test(normalized)) return 'fund';
+  if (/\b(etf|fund|reit|sukuk|mutual|money market|bond fund|index fund)\b/.test(normalized)) return 'fund';
   if (/\b(crypto|cryptocurrency|digital asset)\b/.test(normalized)) return 'crypto';
   if (/\b(forex|fx|currency|currency pair)\b/.test(normalized)) return 'forex';
   if (/\b(commodity|metal|gold|silver)\b/.test(normalized)) return 'commodity';
@@ -350,6 +408,19 @@ function categoryDecision(asset: MarketFilterAsset, selectedMarket: unknown, cat
     return assetType === category
       ? { allowed: true, marketId, category, reason: `matched_${category}_category` }
       : { allowed: false, marketId, category, reason: 'category_asset_type_mismatch' };
+  }
+  if (FUND_CATEGORY_FILTERS.has(category)) {
+    return fundMatchesFilter({
+      assetType,
+      fundType: firstText(asset, ['fundType', 'fund_type']),
+      fundStructure: firstText(asset, ['fundStructure', 'fund_structure']),
+      fundFilter: category,
+      shariahStatus: firstText(asset, ['shariahStatus', 'shariah_status']),
+      name: firstText(asset, ['fundName', 'fund_name', 'name', 'companyName']),
+      sector: firstText(asset, ['sector', 'category']),
+    })
+      ? { allowed: true, marketId, category, reason: `matched_${category}_category` }
+      : { allowed: false, marketId, category, reason: assetType === 'fund' ? 'fund_type_mismatch' : 'category_asset_type_mismatch' };
   }
   if (category === 'technology') {
     const matchesTechnology = TECHNOLOGY_SYMBOLS.has(symbol)

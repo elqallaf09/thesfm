@@ -8,6 +8,7 @@ import {
   strictMarketContextForSelection,
 } from '@/lib/trader/marketFilters';
 import { getFullSymbolUniverse, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
+import { TRADER_FUND_FILTERS, fundTypeLabel, normalizeFundFilter } from '@/lib/trader/fundTypes';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
 
@@ -39,6 +40,16 @@ function availableQuoteProviders(capabilityMatrix: Record<string, { configured?:
 const SELECTION_EMPTY_STATE = {
   ar: 'لا توجد أصول مطابقة لهذا السوق أو التصنيف حالياً',
   en: 'No matching assets for this market or category right now',
+};
+
+const FUND_EMPTY_STATE = {
+  ar: 'لا توجد صناديق مطابقة لهذا السوق أو التصنيف حالياً',
+  en: 'No matching funds for this market or category right now',
+};
+
+const FUND_PROVIDER_COVERAGE_NOTE = {
+  ar: 'قد لا يدعم المزود الحالي جميع أنواع الصناديق',
+  en: 'The current provider may not support all fund types',
 };
 
 function normalizeRecommendationCategory(value: string | null) {
@@ -135,6 +146,8 @@ function universeFilterOptions(rows: TraderCatalogSymbol[]) {
     sectors: uniqueSorted(rows.map(row => row.sector)),
     industries: uniqueSorted(rows.map(row => row.industry)),
     assetTypes: uniqueSorted(rows.map(row => row.assetType)),
+    fundTypes: uniqueSorted(rows.map(row => row.fundType)),
+    fundFilters: TRADER_FUND_FILTERS,
     markets: uniqueSorted(rows.flatMap(row => row.marketIds)),
   };
 }
@@ -152,6 +165,12 @@ export async function GET(request: Request) {
   const selectedSectorName = url.searchParams.get('sectorName') ?? url.searchParams.get('sectorFilter');
   const selectedIndustry = url.searchParams.get('industry');
   const selectedAssetType = url.searchParams.get('assetType') ?? url.searchParams.get('asset_type');
+  const selectedFundType = normalizeFundFilter(
+    url.searchParams.get('fundType')
+      ?? url.searchParams.get('fund_type')
+      ?? url.searchParams.get('fundCategory')
+      ?? url.searchParams.get('fund_category'),
+  );
   const selectedAvailability = availabilityFilter(url.searchParams.get('availability') ?? url.searchParams.get('dataAvailability'));
   const sortKey = normalizeSortKey(url.searchParams.get('sort') ?? url.searchParams.get('sortKey'));
   const sortDir = sortDirection(url.searchParams.get('dir') ?? url.searchParams.get('sortDir'));
@@ -169,6 +188,7 @@ export async function GET(request: Request) {
     sectorName: selectedSectorName,
     industry: selectedIndustry,
     assetType: selectedAssetType,
+    fundType: selectedFundType,
     catalog,
   });
   const requestedSymbols = String(url.searchParams.get('symbols') ?? '')
@@ -200,6 +220,9 @@ export async function GET(request: Request) {
         symbol.country,
         symbol.sector,
         symbol.industry,
+        symbol.fundType,
+        symbol.fundName,
+        symbol.issuer,
       ].some(value => normalizeSymbol(value).includes(search)))
     : sourceMeta;
   const filteredMeta = shariahStatus
@@ -215,6 +238,26 @@ export async function GET(request: Request) {
     ...symbol.aliases.map(normalizeSymbol),
   ]));
   const entryBySymbol = new Map(universe.entries.map(entry => [normalizeSymbol(entry.symbol), entry]));
+  const metaBySymbol = new Map<string, TraderCatalogSymbol>();
+  for (const symbol of universe.symbolMeta) {
+    [
+      symbol.symbol,
+      symbol.displaySymbol,
+      symbol.providerSymbol,
+      ...symbol.aliases,
+    ].forEach(value => {
+      const key = normalizeSymbol(value);
+      if (key) metaBySymbol.set(key, symbol);
+    });
+  }
+  const metaForQuote = (quote: Record<string, unknown>) => [
+    quote.symbol,
+    quote.requestedSymbol,
+    quote.canonicalSymbol,
+    quote.displaySymbol,
+    quote.providerSymbol,
+    quote.providerSymbolUsed,
+  ].map(normalizeSymbol).map(key => metaBySymbol.get(key)).find(Boolean);
 
   const quoteLoad = await fetchTraderQuotesDetailed(symbols, { forceFresh, symbolMeta: selectedMeta });
   const quotes = quoteLoad.quotes;
@@ -259,6 +302,8 @@ export async function GET(request: Request) {
 
   const mappedRecommendations = available.map(q => {
     const quoteRecord = q as typeof q & Record<string, unknown>;
+    const meta = metaForQuote(quoteRecord);
+    const label = meta?.fundType ? fundTypeLabel(meta.fundType) : null;
     return ({
     symbol: q.symbol,
     requestedSymbol: q.requestedSymbol,
@@ -270,6 +315,11 @@ export async function GET(request: Request) {
     fallbackUsed: q.fallbackUsed,
     name: q.name,
     assetType: q.assetType,
+    fundType: meta?.fundType ?? quoteRecord.fundType,
+    fundTypeLabelAr: meta?.fundTypeLabelAr ?? label?.ar,
+    fundTypeLabelEn: meta?.fundTypeLabelEn ?? label?.en,
+    fundStructure: meta?.fundStructure ?? quoteRecord.fundStructure,
+    fundName: meta?.fundName ?? quoteRecord.fundName ?? q.name,
     price: q.price,
     currentPrice: q.price,
     change: q.change,
@@ -283,6 +333,11 @@ export async function GET(request: Request) {
     sector: quoteRecord.sector ?? entryBySymbol.get(normalizeSymbol(q.symbol))?.sector,
     industry: quoteRecord.industry ?? entryBySymbol.get(normalizeSymbol(q.symbol))?.industry,
     companyName: q.name,
+    issuer: meta?.issuer ?? quoteRecord.issuer,
+    expenseRatio: nullableNumber(quoteRecord.expenseRatio ?? meta?.expenseRatio),
+    distributionYield: nullableNumber(quoteRecord.distributionYield ?? quoteRecord.yield ?? meta?.distributionYield),
+    nav: nullableNumber(quoteRecord.nav ?? meta?.nav),
+    aum: nullableNumber(quoteRecord.aum ?? meta?.aum),
     marketCap: nullableNumber(quoteRecord.marketCap),
     volume: nullableNumber(quoteRecord.volume),
     metadataDiagnostics: q.metadataDiagnostics,
@@ -333,6 +388,7 @@ export async function GET(request: Request) {
     delayed: q.delayed,
     available: q.available,
     unavailableReason: q.unavailableReason ?? null,
+    dataAvailability: meta?.dataAvailability ?? quoteRecord.dataAvailability,
     dataQuality: q.dataQuality,
     lastUpdated: q.lastUpdated,
     updatedAt: q.updatedAt,
@@ -374,6 +430,11 @@ export async function GET(request: Request) {
       fallbackUsed: false,
       name: symbol.name,
       assetType: symbol.assetType,
+      fundType: symbol.fundType,
+      fundTypeLabelAr: symbol.fundTypeLabelAr,
+      fundTypeLabelEn: symbol.fundTypeLabelEn,
+      fundStructure: symbol.fundStructure,
+      fundName: symbol.fundName,
       price: null,
       currentPrice: null,
       change: null,
@@ -387,6 +448,11 @@ export async function GET(request: Request) {
       sector: symbol.sector,
       industry: symbol.industry,
       companyName: symbol.name,
+      issuer: symbol.issuer,
+      expenseRatio: symbol.expenseRatio,
+      distributionYield: symbol.distributionYield,
+      nav: symbol.nav,
+      aum: symbol.aum,
       marketCap: null,
       volume: null,
       metadataDiagnostics: symbol.metadataDiagnostics,
@@ -407,6 +473,7 @@ export async function GET(request: Request) {
       delayed: false,
       available: false,
       unavailableReason: 'price_unavailable',
+      dataAvailability: symbol.dataAvailability,
       dataQuality: 'unavailable',
       lastUpdated: quoteLoad.generatedAt,
       updatedAt: quoteLoad.generatedAt,
@@ -436,6 +503,8 @@ export async function GET(request: Request) {
   const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
+  const fundUniverseSelected = market.id === 'etfs' || selectedCategory === 'fund' || selectedFundType !== 'all';
+  const emptyStateCopy = fundUniverseSelected ? FUND_EMPTY_STATE : SELECTION_EMPTY_STATE;
   const strictMarketContext = strictMarketContextForSelection(marketFilterSelection);
   const selectedExchange = strictMarketContext?.exchange
     ?? url.searchParams.get('exchange')
@@ -471,7 +540,7 @@ export async function GET(request: Request) {
     provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
     providerStatus: priceProviderStatus(quoteLoad, availablePriceCount),
     data: recommendations,
-    message: recommendations.length ? null : SELECTION_EMPTY_STATE.ar,
+    message: recommendations.length ? null : emptyStateCopy.ar,
     lastUpdated: quoteLoad.generatedAt,
   });
 
@@ -484,7 +553,9 @@ export async function GET(request: Request) {
     selectedExchange,
     selectedCurrency,
     selectedCategory,
-    emptyState: recommendations.length === 0 ? SELECTION_EMPTY_STATE : null,
+    selectedFundType,
+    emptyState: recommendations.length === 0 ? emptyStateCopy : null,
+    providerFundCoverageNote: fundUniverseSelected ? FUND_PROVIDER_COVERAGE_NOTE : null,
     providerUsage,
     availableProviders: marketContext.availableProviders,
     recommendations,
@@ -521,6 +592,7 @@ export async function GET(request: Request) {
       source: universe.source,
       availablePriceCount,
       unavailableCount,
+      fundCoverageNote: fundUniverseSelected ? FUND_PROVIDER_COVERAGE_NOTE : null,
       dataCoverage: `${availablePriceCount}/${recommendations.length}`,
       provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
       filterOptions: universeFilterOptions(filteredMeta),
@@ -536,6 +608,7 @@ export async function GET(request: Request) {
       selectedMarket: universe.selectedMarket ?? marketId ?? market.id,
       selectedSector: universe.selectedSector,
       selectedCategory: universe.category,
+      selectedFundType,
       availablePriceCount,
       unavailableCount,
       unavailablePriceCount: unavailableCount,
@@ -561,6 +634,8 @@ export async function GET(request: Request) {
       availableWithPrice: availablePriceCount,
       unavailablePrice: unavailableCount,
       failed: quoteLoad.failed.length,
+      lastUpdated: quoteLoad.generatedAt,
+      fundCoverageNote: fundUniverseSelected ? FUND_PROVIDER_COVERAGE_NOTE : null,
     },
     filterOptions: universeFilterOptions(filteredMeta),
     resultCount: recommendations.length,
