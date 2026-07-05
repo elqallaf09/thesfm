@@ -31,7 +31,6 @@
     commodities: ["XAUUSD", "XAGUSD", "WTI", "BRENT", "GC=F", "SI=F", "CL=F", "BZ=F"],
     indices: ["US30", "NAS100", "SPX500", "DAX", "FTSE", "CAC40", "NIKKEI", "HSI", "DXY"],
     etfs: ["SPY", "QQQ", "VOO", "DIA", "IWM", "GLD", "SLV", "VTI", "VEA", "VWO", "AGG", "BND", "TLT", "HYG"],
-    gcc: ["2222.SR", "1120.SR", "1180.SR", "7010.SR", "KFH.KW", "NBK.KW", "ZAIN.KW", "BOUBYAN.KW", "EMAAR.AE", "FAB.AE", "ETISALAT.AE", "DIB.AE", "QNBK.QA", "QIBK.QA", "IQCD.QA", "AUB.BH", "GFH.BH", "BATELCO.BH", "BKMB.OM", "OMINV.OM"],
     saudi: ["2222.SR", "1120.SR", "1180.SR", "2010.SR", "7010.SR", "1211.SR", "1010.SR", "1020.SR", "1050.SR", "1060.SR", "1080.SR", "2020.SR", "2380.SR", "2280.SR", "4002.SR", "4004.SR", "4013.SR", "4164.SR", "4190.SR", "4300.SR", "8010.SR", "8210.SR", "7203.SR", "7020.SR"],
     kuwait: ["KFH.KW", "NBK.KW", "ZAIN.KW", "BOUBYAN.KW", "GBK.KW", "BURG.KW", "CBK.KW", "AGLTY.KW", "KIB.KW", "WARBA.KW", "MABANEE.KW", "HUMANSOFT.KW", "STC.KW", "ALIMTIAZ.KW", "GULFBANK.KW", "NIND.KW", "KAMCO.KW", "MEZZAN.KW", "JAZEERA.KW", "ALAFCO.KW"],
     uae: ["EMAAR.AE", "DIB.AE", "DEWA.AE", "SALIK.AE", "DU.AE", "DFM.AE", "EMIRATESNBD.AE", "AIRARABIA.AE", "EMAARDEV.AE", "TALABAT.AE", "FAB.AE", "ETISALAT.AE"],
@@ -57,7 +56,6 @@
     ["commodities", "السلع", "Commodities", "Macro", "USD", MARKET_SYMBOLS.commodities, "", "commodities"],
     ["indices", "المؤشرات", "Indices", "Benchmarks", "Local", MARKET_SYMBOLS.indices, "", "indices"],
     ["etfs", "الصناديق المتداولة", "ETFs", "Funds", "USD", MARKET_SYMBOLS.etfs, "", "etfs"],
-    ["gcc", "أسواق الخليج", "Gulf Markets", "Regional", "Mixed", MARKET_SYMBOLS.gcc, "", "gcc"],
     ["saudi", "السوق السعودي", "Saudi Market", "Tadawul", "SAR", MARKET_SYMBOLS.saudi, "", "saudi"],
     ["kuwait", "بورصة الكويت", "Kuwait Market", "Boursa", "KWD", MARKET_SYMBOLS.kuwait, "", "kuwait"],
     ["uae", "سوق الإمارات", "UAE Market", "ADX/DFM", "AED", MARKET_SYMBOLS.uae, "", "uae"],
@@ -2203,7 +2201,7 @@
     const img = url ? `<img class="logo-img" src="${url}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.add('ok')" onerror="this.remove()" />` : "";
     return `<span class="${cls}" style="${style}" aria-hidden="true">${h(inner)}${img}</span>`;
   }
-  function marketGlyph(m) { const G = { forex: "💱", "us-stocks": "🇺🇸", kuwait: "🇰🇼", saudi: "🇸🇦", uae: "🇦🇪", qatar: "🇶🇦", bahrain: "🇧🇭", oman: "🇴🇲", gcc: "🕌", europe: "🇪🇺", asia: "🌏", crypto: "₿", commodities: "🛢", indices: "📊", etfs: "📦", technology: "💻", ai: "🤖", semiconductors: "🔌", energy: "⚡", banking: "🏦", healthcare: "💊", food: "🍔" }; return G[m.id] || "📈"; }
+  function marketGlyph(m) { const G = { forex: "💱", "us-stocks": "🇺🇸", kuwait: "🇰🇼", saudi: "🇸🇦", uae: "🇦🇪", qatar: "🇶🇦", bahrain: "🇧🇭", oman: "🇴🇲", europe: "🇪🇺", asia: "🌏", crypto: "₿", commodities: "🛢", indices: "📊", etfs: "📦", technology: "💻", ai: "🤖", semiconductors: "🔌", energy: "⚡", banking: "🏦", healthcare: "💊", food: "🍔" }; return G[m.id] || "📈"; }
 
   function status() {
     const s = providerCopy(), pill = document.getElementById("provider-status");

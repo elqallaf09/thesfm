@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSymbolsForMarketOrSector } from '@/lib/trader/marketCatalog';
+import { getSymbolsForMarketOrSector, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 
 describe('trader market and sector symbol universe', () => {
   it('expands the semiconductor universe with required real symbols and metadata', async () => {
@@ -35,5 +35,16 @@ describe('trader market and sector symbol universe', () => {
     expect(qatarStocks.symbols.length).toBeGreaterThan(5);
     expect(qatarStocks.entries.every(entry => entry.selectedMarket === 'qatar')).toBe(true);
     expect(qatarStocks.entries.every(entry => entry.country === 'QA' || entry.symbol.endsWith('.QA'))).toBe(true);
+  });
+
+  it('does not expose GCC as an aggregate recommendation market', async () => {
+    const catalog = await getTraderMarketCatalog();
+    const gccRequest = await getSymbolsForMarketOrSector({ market: 'gcc', catalog });
+
+    expect(catalog.markets.map(market => market.id)).not.toContain('gcc');
+    expect(gccRequest.selectedMarket).not.toBe('gcc');
+    expect(gccRequest.entries.some(entry => entry.selectedMarket === 'gcc')).toBe(false);
+    expect(catalog.symbols.find(symbol => symbol.symbol === 'KFH.KW')?.marketIds).toContain('kuwait');
+    expect(catalog.symbols.find(symbol => symbol.symbol === 'KFH.KW')?.marketIds).not.toContain('gcc');
   });
 });

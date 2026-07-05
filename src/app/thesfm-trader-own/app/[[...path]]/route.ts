@@ -57,6 +57,7 @@ function rewriteTraderTextAsset(content: string) {
     .replaceAll('href="/cinema.css', 'href="/thesfm-trader-own/app/cinema.css')
     .replaceAll('src="/app.js', 'src="/thesfm-trader-own/app/app.js')
     .replaceAll('src="/detail.js', 'src="/thesfm-trader-own/app/detail.js')
+    .replaceAll('src="/provider-markets-diagnostics.js', 'src="/thesfm-trader-own/app/provider-markets-diagnostics.js')
     .replaceAll('href="/the-sfm-trader-icon-', 'href="/thesfm-trader-own/app/the-sfm-trader-icon-')
     .replaceAll('"/the-sfm-trader-icon-', '"/thesfm-trader-own/app/the-sfm-trader-icon-')
     .replaceAll('href="/assets/', 'href="/thesfm-trader-own/app/assets/')

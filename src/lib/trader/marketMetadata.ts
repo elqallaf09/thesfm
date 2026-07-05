@@ -81,7 +81,6 @@ export const TRADER_MARKET_METADATA: Record<string, TraderMarketMetadata> = {
   commodities: { id: 'commodities', labelAr: 'السلع', labelEn: 'Commodities', assetClassAr: 'سلع', assetClassEn: 'Commodities', currency: 'USD' },
   metals: { id: 'metals', labelAr: 'المعادن', labelEn: 'Metals', assetClassAr: 'المعادن', assetClassEn: 'Metals', currency: 'USD', apiMarket: 'commodities' },
   indices: { id: 'indices', labelAr: 'المؤشرات', labelEn: 'Indices', assetClassAr: 'مؤشرات', assetClassEn: 'Indices', currency: 'USD' },
-  gcc: { id: 'gcc', labelAr: 'أسواق الخليج', labelEn: 'Gulf Markets', assetClassAr: 'أسهم', assetClassEn: 'Stocks', currency: 'USD' },
   kuwait: { id: 'kuwait', labelAr: 'بورصة الكويت', labelEn: 'Boursa Kuwait', assetClassAr: 'أسهم', assetClassEn: 'Stocks', currency: 'KWD', country: 'KW', exchange: 'Boursa Kuwait' },
   saudi: { id: 'saudi', labelAr: 'السوق السعودي', labelEn: 'Saudi Exchange', assetClassAr: 'أسهم', assetClassEn: 'Stocks', currency: 'SAR', country: 'SA', exchange: 'Tadawul' },
   uae: { id: 'uae', labelAr: 'سوق الإمارات', labelEn: 'UAE Markets', assetClassAr: 'أسهم', assetClassEn: 'Stocks', currency: 'AED', country: 'AE', exchange: 'ADX/DFM' },

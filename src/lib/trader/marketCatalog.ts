@@ -154,11 +154,6 @@ const EXPANDED_MARKET_SYMBOLS: Record<string, readonly string[]> = {
     'SPY', 'QQQ', 'VOO', 'DIA', 'IWM', 'GLD', 'SLV', 'VTI', 'VEA', 'VWO', 'AGG', 'BND', 'TLT', 'HYG',
     'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLI', 'XLP', 'XLU', 'VNQ', 'SOXX',
   ],
-  gcc: [
-    '2222.SR', '1120.SR', '1180.SR', '7010.SR', 'KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'EMAAR.AE',
-    'FAB.AE', 'ETISALAT.AE', 'DIB.AE', 'QNBK.QA', 'QIBK.QA', 'IQCD.QA', 'AUB.BH', 'GFH.BH', 'BATELCO.BH',
-    'BKMB.OM', 'OMINV.OM',
-  ],
   saudi: [
     '2222.SR', '1120.SR', '1180.SR', '2010.SR', '7010.SR', '1211.SR', '1010.SR', '1020.SR', '1050.SR',
     '1060.SR', '1080.SR', '2020.SR', '2380.SR', '2280.SR', '4002.SR', '4004.SR', '4013.SR', '4164.SR',
@@ -230,7 +225,6 @@ export const TRADER_MARKET_SEEDS: SeedMarket[] = [
   { id: 'commodities', ar: 'السلع', en: 'Commodities', family: 'Macro', currency: 'USD', symbols: ['XAUUSD', 'XAGUSD', 'WTI', 'BRENT'], apiMarket: 'commodities' },
   { id: 'indices', ar: 'المؤشرات', en: 'Indices', family: 'Benchmarks', currency: 'Local', symbols: ['US30', 'NAS100', 'SPX500', 'DAX', 'FTSE', 'CAC40', 'NIKKEI', 'HSI', 'DXY'], apiMarket: 'indices' },
   { id: 'etfs', ar: 'الصناديق المتداولة', en: 'ETFs', family: 'Funds', currency: 'USD', symbols: ['SPY', 'QQQ', 'VOO', 'DIA', 'IWM', 'GLD'], apiMarket: 'etfs' },
-  { id: 'gcc', ar: 'أسواق الخليج', en: 'Gulf Markets', family: 'Regional', currency: 'Mixed', symbols: ['2222.SR', 'EMAAR.AE', 'QNBK.QA', 'KFH.KW'], apiMarket: 'gcc' },
   { id: 'saudi', ar: 'السوق السعودي', en: 'Saudi Market', family: 'Tadawul', currency: 'SAR', symbols: ['2222.SR', '1120.SR', '7010.SR', '1180.SR', '2010.SR', '1211.SR', '1010.SR', '1150.SR', '5110.SR', '2280.SR', '7020.SR', '7030.SR', '4190.SR', '2050.SR', '2350.SR', '4013.SR', '8210.SR', '4030.SR'], apiMarket: 'saudi' },
   { id: 'kuwait', ar: 'بورصة الكويت', en: 'Kuwait Market', family: 'Boursa', currency: 'KWD', symbols: ['KFH.KW', 'NBK.KW', 'ZAIN.KW', 'BOUBYAN.KW', 'GBK.KW', 'BURG.KW', 'CBK.KW', 'AGLTY.KW', 'KIB.KW', 'WARBA.KW', 'MABANEE.KW', 'HUMANSOFT.KW', 'STC.KW', 'ALIMTIAZ.KW'], apiMarket: 'kuwait' },
   { id: 'uae', ar: 'سوق الإمارات', en: 'UAE Market', family: 'ADX/DFM', currency: 'AED', symbols: ['EMAAR.AE', 'FAB.AE', 'ETISALAT.AE', 'ADCB.AE', 'DIB.AE', 'ENBD.AE', 'ALDAR.AE', 'ADIB.AE', 'DEWA.AE', 'SALIK.AE', 'ADNOCDIST.AE', 'DFM.AE', 'AIRARABIA.AE'], apiMarket: 'uae' },
@@ -454,12 +448,12 @@ function marketIdsForRecord(record: {
   if (record.assetType === 'index') ids.add('indices');
   if (record.assetType === 'stock' && (country === 'US' || /NASDAQ|NYSE|AMEX|CBOE/.test(exchange) || !suff)) ids.add('us-stocks');
 
-  if (suff === 'KW' || /KUWAIT|BOURSA/.test(haystack)) { ids.add('kuwait'); ids.add('gcc'); }
-  if (suff === 'SR' || suff === 'SA' || /SAUDI|TADAWUL/.test(haystack)) { ids.add('saudi'); ids.add('gcc'); }
-  if (suff === 'AE' || suff === 'DU' || suff === 'AD' || /DUBAI|ABU DHABI|UAE|UNITED ARAB/.test(haystack)) { ids.add('uae'); ids.add('gcc'); }
-  if (suff === 'QA' || /QATAR/.test(haystack)) { ids.add('qatar'); ids.add('gcc'); }
-  if (suff === 'BH' || /BAHRAIN/.test(haystack)) { ids.add('bahrain'); ids.add('gcc'); }
-  if (suff === 'OM' || /OMAN|MUSCAT/.test(haystack)) { ids.add('oman'); ids.add('gcc'); }
+  if (suff === 'KW' || /KUWAIT|BOURSA/.test(haystack)) ids.add('kuwait');
+  if (suff === 'SR' || suff === 'SA' || /SAUDI|TADAWUL/.test(haystack)) ids.add('saudi');
+  if (suff === 'AE' || suff === 'DU' || suff === 'AD' || /DUBAI|ABU DHABI|UAE|UNITED ARAB/.test(haystack)) ids.add('uae');
+  if (suff === 'QA' || /QATAR/.test(haystack)) ids.add('qatar');
+  if (suff === 'BH' || /BAHRAIN/.test(haystack)) ids.add('bahrain');
+  if (suff === 'OM' || /OMAN|MUSCAT/.test(haystack)) ids.add('oman');
 
   if (/\.L$|\.DE$|\.PA$|\.AS$|\.MI$|\.MC$|\.SW$|\.CO$|EUROPE|LONDON|XETRA|EURONEXT|PARIS|MILAN|MADRID|AMSTERDAM|SWISS|GERMANY|FRANCE|UNITED KINGDOM|ITALY|SPAIN|NETHERLANDS|DENMARK/.test(haystack)) ids.add('europe');
   if (/\.T$|\.HK$|\.KS$|\.TW$|ASIA|TOKYO|HONG KONG|KOREA|JAPAN|TAIWAN|SHANGHAI|SHENZHEN/.test(haystack)) ids.add('asia');
@@ -1094,7 +1088,7 @@ function normalizeUniverseMarketId(value: string | null | undefined) {
 
 function primaryMarketForSymbol(symbol: TraderCatalogSymbol, selectedMarket: string | null) {
   if (selectedMarket && symbol.marketIds.includes(selectedMarket)) return selectedMarket;
-  return symbol.marketIds.find(id => !SECTOR_MARKET_IDS.has(id) && id !== 'gcc')
+  return symbol.marketIds.find(id => !SECTOR_MARKET_IDS.has(id))
     ?? symbol.marketIds.find(id => !SECTOR_MARKET_IDS.has(id))
     ?? null;
 }
