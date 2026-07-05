@@ -2439,6 +2439,7 @@
     const id = String(selectedMarket || "").trim().toLowerCase();
     if (id === "commodities") return "commodity";
     if (id === "etfs") return "fund";
+    if (id === "indices") return "index";
     return CATEGORY_MARKET_IDS.has(id) ? id : "all";
   }
   function normalizedCategory(value) {
@@ -2448,6 +2449,7 @@
     if (["tech", "tech stock", "tech stocks", "technology stocks"].includes(raw)) return "technology";
     if (["semiconductor", "semiconductor stocks"].includes(raw)) return "semiconductors";
     if (["commodities", "metals"].includes(raw)) return "commodity";
+    if (["indices", "indexes", "benchmarks"].includes(raw)) return "index";
     if (["etf", "etfs", "funds"].includes(raw)) return "fund";
     if (raw === "fx" || raw === "currency pairs") return "forex";
     return raw;
