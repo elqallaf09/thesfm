@@ -2811,11 +2811,11 @@
     const type = inferredAssetType(asset);
     const exchangeOk = rule.exchange.test(exchange) || rule.suffix.test(s);
     const marketOk = rule.market.test(market) || rule.suffix.test(s);
+    const venueOk = exchangeOk || marketOk || rule.suffix.test(s);
     const countryOk = rule.countries.includes(country) || rule.suffix.test(s);
     const currencyOk = currencyCode === rule.currency;
     const typeOk = type === "stock";
-    if (!exchangeOk) return { allowed: false, reason: "exchange_mismatch", rule, exchange, market, country, currency: currencyCode, type };
-    if (!marketOk) return { allowed: false, reason: "market_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    if (!venueOk) return { allowed: false, reason: "venue_mismatch", rule, exchange, market, country, currency: currencyCode, type };
     if (!countryOk) return { allowed: false, reason: "country_mismatch", rule, exchange, market, country, currency: currencyCode, type };
     if (!currencyOk) return { allowed: false, reason: "currency_mismatch", rule, exchange, market, country, currency: currencyCode, type };
     if (!typeOk) return { allowed: false, reason: "asset_type_mismatch", rule, exchange, market, country, currency: currencyCode, type };

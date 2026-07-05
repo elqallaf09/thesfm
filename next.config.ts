@@ -5,7 +5,7 @@ import path from "node:path";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
 const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
-const IS_WINDOWS_BUILD = process.platform === "win32";
+const IS_WINDOWS_BUILD = process.platform === "win32" && process.env.NEXT_DISABLE_WINDOWS_BUILD_SHIM !== "1";
 const WINDOWS_BUILD_EXPERIMENTS = IS_WINDOWS_BUILD
   ? {
       cpus: 1,
@@ -160,6 +160,16 @@ function safeEnsureWindowsServerManifests() {
   }
 }
 
+function scheduleWindowsServerManifests() {
+  safeEnsureWindowsServerManifests();
+  const startedAt = Date.now();
+  const interval = setInterval(() => {
+    safeEnsureWindowsServerManifests();
+    if (Date.now() - startedAt > 120_000) clearInterval(interval);
+  }, 25);
+  interval.unref?.();
+}
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
@@ -182,7 +192,7 @@ const nextConfig: NextConfig = {
             done: WebpackSyncHook;
           };
         }) {
-          const writeManifests = () => safeEnsureWindowsServerManifests();
+          const writeManifests = () => scheduleWindowsServerManifests();
           compiler.hooks.afterEmit.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
           compiler.hooks.done.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
         },

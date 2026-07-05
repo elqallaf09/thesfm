@@ -1,8 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { createServer, type IncomingMessage, type ServerResponse } from 'http';
+import { createReadStream } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 
+const qaEnabled = process.env.SFM_LOCAL_TRADER_QA === '1';
+const repoRoot = process.cwd();
+const publicRoot = path.join(repoRoot, 'src', 'trader-app', 'public');
 const screenshotDir = path.join(process.cwd(), '.playwright-mcp', 'trader-full-universe');
+const realApiBase = process.env.TRADER_REAL_API_BASE_URL || 'http://127.0.0.1:3015';
 
 type UniverseRow = {
   symbol?: string;
@@ -80,86 +86,161 @@ const selections: SelectionCase[] = [
 
 test.describe('Trader full symbol universe coverage', () => {
   test.setTimeout(600_000);
+  test.skip(!qaEnabled, 'Set SFM_LOCAL_TRADER_QA=1 and TRADER_REAL_API_BASE_URL for local full-universe validation.');
 
   test('market cards and selected pages expose the full provider universe', async ({ page }, testInfo) => {
     await mkdir(screenshotDir, { recursive: true });
+    const server = await createStaticProxyServer();
+    const port = (server.address() as { port: number }).port;
     const report = [];
 
-    await page.goto('/thesfm-trader-own/app/index.html?route=markets', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('[data-market-card]').first()).toBeVisible({ timeout: 40_000 });
-
-    for (const selection of selections) {
-      const card = page.locator(`[data-market-card="${selection.id}"]`).first();
-      await expect(card, `${selection.name} card should exist`).toBeVisible();
-
-      const previewSymbols = await previewSymbolsForCard(card);
-      expect(previewSymbols.length, `${selection.name} preview should stay compact`).toBeGreaterThan(0);
-      expect(previewSymbols.length, `${selection.name} preview should not become the full list`).toBeLessThanOrEqual(10);
-      await expect(card, `${selection.name} card count label`).toContainText(/Showing \d+ of \d+ symbols/);
-      await expect(card, `${selection.name} card action`).toContainText('View all symbols');
-
-      const cardScreenshot = path.join(screenshotDir, `${slug(selection.name)}-card.png`);
-      await card.screenshot({ path: cardScreenshot });
-
-      const responsePromise = waitForUniverseResponse(page, selection.id);
-      await page.goto(`/thesfm-trader-own/app/index.html?route=${encodeURIComponent(`markets/${selection.id}`)}`, { waitUntil: 'domcontentloaded' });
-      const response = await responsePromise;
-      expect(response.status(), `${selection.name} API response`).toBeLessThan(500);
-      const payload = await response.json() as UniversePayload;
-
-      const panel = page.locator(`[data-selected-market="${selection.id}"]`);
-      await expect(panel, `${selection.name} selected page`).toBeVisible({ timeout: 60_000 });
-      await expect(panel.locator('[data-market-universe-search] input')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="exchange"]')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="currency"]')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="sector"]')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="industry"]')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="assetType"]')).toBeVisible();
-      await expect(panel.locator('[data-market-universe-filter="availability"]')).toBeVisible();
-
-      await expect.poll(async () => tableRowCount(panel), {
-        message: `${selection.name} selected page should render page rows`,
-        timeout: 60_000,
-      }).toBeGreaterThan(0);
-
-      const pageSymbols = await visibleUniverseSymbols(panel);
-      const metadataRows = payload.marketUniverse?.symbols ?? [];
-      const recommendationRows = payload.recommendations ?? [];
-      const validationRows = uniqueRows([...metadataRows, ...recommendationRows]);
-      const invalidRows = validationRows.filter(row => !selection.validate(row));
-      expect(invalidRows.map(symbolId), `${selection.name} invalid symbols`).toEqual([]);
-
-      const pageScreenshot = path.join(screenshotDir, `${slug(selection.name)}-page.png`);
-      await page.screenshot({ path: pageScreenshot, fullPage: true });
-
-      report.push({
-        selectedMarketOrCategory: selection.name,
-        totalSymbolsAvailable: payload.marketUniverse?.total ?? payload.symbolDiscovery?.totalFilteredSymbols ?? 0,
-        previewSymbolsShown: previewSymbols,
-        fullPageSymbolsLoaded: pageSymbols.length,
-        apiPageSymbolsLoaded: metadataRows.length,
-        invalidSymbolsExcluded: payload.excludedByMarket?.length ?? 0,
-        invalidSymbolsFound: invalidRows.map(symbolId),
-        coverage: payload.coverage ?? null,
-        screenshots: {
-          card: cardScreenshot,
-          page: pageScreenshot,
-        },
-      });
-
-      await page.goto('/thesfm-trader-own/app/index.html?route=markets', { waitUntil: 'domcontentloaded' });
+    try {
+      await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=markets`, { waitUntil: 'domcontentloaded' });
       await page.waitForLoadState('networkidle');
-    }
 
-    const reportPath = path.join(screenshotDir, 'report.json');
-    await writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');
-    await testInfo.attach('trader-full-universe-report', {
-      body: JSON.stringify(report, null, 2),
-      contentType: 'application/json',
-    });
+      for (const selection of selections) {
+        await expect(page.locator('[data-market-card]').first()).toBeVisible({ timeout: 40_000 });
+        const card = page.locator(`[data-market-card="${selection.id}"]`).first();
+        await expect(card, `${selection.name} card should exist`).toBeVisible();
+
+        const previewSymbols = await previewSymbolsForCard(card);
+        expect(previewSymbols.length, `${selection.name} preview should stay compact`).toBeGreaterThan(0);
+        expect(previewSymbols.length, `${selection.name} preview should not become the full list`).toBeLessThanOrEqual(10);
+        await expect(card, `${selection.name} card count label`).toContainText(/Showing \d+ of \d+ symbols/);
+        await expect(card, `${selection.name} card action`).toContainText('View all symbols');
+
+        const cardScreenshot = path.join(screenshotDir, `${slug(selection.name)}-card.png`);
+        await card.screenshot({ path: cardScreenshot });
+
+        const responsePromise = waitForUniverseResponse(page, selection.id);
+        await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=${encodeURIComponent(`markets/${selection.id}`)}`, { waitUntil: 'domcontentloaded' });
+        const response = await responsePromise;
+        expect(response.status(), `${selection.name} API response`).toBeLessThan(500);
+        const payload = await response.json() as UniversePayload;
+
+        const panel = page.locator(`[data-selected-market="${selection.id}"]`);
+        await expect(panel, `${selection.name} selected page`).toBeVisible({ timeout: 60_000 });
+        await expect(panel.locator('[data-market-universe-search] input')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="exchange"]')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="currency"]')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="sector"]')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="industry"]')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="assetType"]')).toBeVisible();
+        await expect(panel.locator('[data-market-universe-filter="availability"]')).toBeVisible();
+
+        await expect.poll(async () => tableRowCount(panel), {
+          message: `${selection.name} selected page should render page rows`,
+          timeout: 60_000,
+        }).toBeGreaterThan(0);
+
+        const pageSymbols = await visibleUniverseSymbols(panel);
+        const metadataRows = payload.marketUniverse?.symbols ?? [];
+        const recommendationRows = payload.recommendations ?? [];
+        const validationRows = uniqueRows([...metadataRows, ...recommendationRows]);
+        const invalidRows = validationRows.filter(row => !selection.validate(row));
+        expect(invalidRows.map(symbolId), `${selection.name} invalid symbols`).toEqual([]);
+
+        const pageScreenshot = path.join(screenshotDir, `${slug(selection.name)}-page.png`);
+        await page.screenshot({ path: pageScreenshot, fullPage: true });
+
+        report.push({
+          selectedMarketOrCategory: selection.name,
+          totalSymbolsAvailable: payload.marketUniverse?.total ?? payload.symbolDiscovery?.totalFilteredSymbols ?? 0,
+          previewSymbolsShown: previewSymbols,
+          fullPageSymbolsLoaded: pageSymbols.length,
+          apiPageSymbolsLoaded: metadataRows.length,
+          invalidSymbolsExcluded: payload.excludedByMarket?.length ?? 0,
+          invalidSymbolsFound: invalidRows.map(symbolId),
+          coverage: payload.coverage ?? null,
+          screenshots: {
+            card: cardScreenshot,
+            page: pageScreenshot,
+          },
+        });
+
+        await page.goto(`http://127.0.0.1:${port}/thesfm-trader-own/app/index.html?route=markets`, { waitUntil: 'domcontentloaded' });
+        await page.waitForLoadState('networkidle');
+      }
+
+      const reportPath = path.join(screenshotDir, 'report.json');
+      await writeFile(reportPath, JSON.stringify(report, null, 2), 'utf8');
+      await testInfo.attach('trader-full-universe-report', {
+        body: JSON.stringify(report, null, 2),
+        contentType: 'application/json',
+      });
+    } finally {
+      server.close();
+    }
   });
 });
+
+function createStaticProxyServer() {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url || '/', 'http://127.0.0.1');
+    if (url.pathname.startsWith('/api/')) return proxyApi(req, res, url);
+    return serveStatic(url, res);
+  });
+  return new Promise<ReturnType<typeof createServer>>(resolve => {
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+}
+
+async function proxyApi(req: IncomingMessage, res: ServerResponse, url: URL) {
+  try {
+    const response = await fetch(`${realApiBase}${url.pathname}${url.search}`, {
+      method: req.method || 'GET',
+      headers: { accept: 'application/json' },
+    });
+    const body = Buffer.from(await response.arrayBuffer());
+    res.writeHead(response.status, {
+      'content-type': response.headers.get('content-type') || 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    });
+    res.end(body);
+  } catch (error) {
+    res.writeHead(502, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+  }
+}
+
+function serveStatic(url: URL, res: ServerResponse) {
+  const resolved = staticPathFor(url.pathname);
+  if (!resolved) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
+  const ext = path.extname(resolved).toLowerCase();
+  res.writeHead(200, { 'content-type': mimeType(ext) });
+  createReadStream(resolved).on('error', () => {
+    if (!res.headersSent) res.writeHead(404);
+    res.end('Not found');
+  }).pipe(res);
+}
+
+function staticPathFor(urlPath: string) {
+  let filePath = decodeURIComponent(urlPath);
+  if (filePath.startsWith('/thesfm-trader-own/app/')) filePath = filePath.slice('/thesfm-trader-own/app/'.length);
+  else if (filePath === '/' || filePath.startsWith('/thesfm-trader-own')) filePath = 'index.html';
+  else filePath = filePath.replace(/^\/+/, '');
+  if (!filePath || filePath.endsWith('/')) filePath = `${filePath}index.html`;
+  const resolved = path.resolve(publicRoot, filePath);
+  if (resolved !== publicRoot && !resolved.startsWith(`${publicRoot}${path.sep}`)) return null;
+  return resolved;
+}
+
+function mimeType(ext: string) {
+  return {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
+    '.svg': 'image/svg+xml; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+  }[ext] || 'application/octet-stream';
+}
 
 async function waitForUniverseResponse(page: Page, marketId: string) {
   return page.waitForResponse(response => {

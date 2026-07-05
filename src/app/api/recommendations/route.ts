@@ -254,9 +254,8 @@ export async function GET(request: Request) {
       console.warn('[recommendations] Excluded non-technology assets from technology selection.', excluded);
     }
   }
-  const unavailable = available
-    .filter(q => !q.available || q.price === null)
-    .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
+  const connectedProvider = getConnectedProvider();
+  const placeholderProvider = quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider;
 
   const mappedRecommendations = available.map(q => {
     const quoteRecord = q as typeof q & Record<string, unknown>;
@@ -350,14 +349,90 @@ export async function GET(request: Request) {
     shariaCheckedAt: q.shariahLastReviewedAt,
     });
   });
+  const mappedRecommendationKeys = new Set(mappedRecommendations.flatMap(row => [
+    normalizeSymbol(row.symbol),
+    normalizeSymbol(row.providerSymbol),
+    normalizeSymbol(row.providerSymbolUsed),
+    normalizeSymbol(row.displaySymbol),
+    normalizeSymbol(row.canonicalSymbol),
+    normalizeSymbol(row.requestedSymbol),
+  ]).filter(Boolean));
+  const unavailableMetadataRows = selectedMeta
+    .filter(symbol => ![
+      symbol.symbol,
+      symbol.providerSymbol,
+      ...symbol.aliases,
+    ].some(value => mappedRecommendationKeys.has(normalizeSymbol(value))))
+    .map(symbol => ({
+      symbol: symbol.symbol,
+      requestedSymbol: symbol.symbol,
+      canonicalSymbol: symbol.symbol,
+      displaySymbol: symbol.symbol,
+      providerSymbol: symbol.providerSymbol,
+      providerSymbolUsed: symbol.providerSymbol,
+      provider: placeholderProvider,
+      fallbackUsed: false,
+      name: symbol.name,
+      assetType: symbol.assetType,
+      price: null,
+      currentPrice: null,
+      change: null,
+      changePercent: null,
+      previousClose: null,
+      currency: symbol.currency,
+      exchange: symbol.exchange,
+      exchangeCode: symbol.exchangeCode,
+      market: symbol.market,
+      country: symbol.country,
+      sector: symbol.sector,
+      industry: symbol.industry,
+      companyName: symbol.name,
+      marketCap: null,
+      volume: null,
+      metadataDiagnostics: symbol.metadataDiagnostics,
+      signal: null,
+      signalAvailable: false,
+      confidence: null,
+      aiConfidence: null,
+      riskLevel: null,
+      technicalAvailable: false,
+      chartAvailable: false,
+      providerStatus: {
+        provider: placeholderProvider,
+        status: 'empty',
+        configured: connectedProvider.configured,
+        fallbackUsed: false,
+      },
+      source: symbol.source,
+      delayed: false,
+      available: false,
+      unavailableReason: 'price_unavailable',
+      dataQuality: 'unavailable',
+      lastUpdated: quoteLoad.generatedAt,
+      updatedAt: quoteLoad.generatedAt,
+      shariahStatus: symbol.shariahStatus,
+      shariahReason: symbol.shariahReason,
+      shariahSource: symbol.shariahSource,
+      shariahLastReviewedAt: symbol.shariahLastReviewedAt,
+      shariahManualOverride: symbol.shariahManualOverride,
+      shariahReviewedBy: symbol.shariahReviewedBy,
+      shariahScreeningData: symbol.shariahScreeningData,
+      shariahMethod: symbol.shariahMethod,
+      shariaStatus: symbol.shariahStatus,
+      shariaSource: symbol.shariahSource,
+      shariaCheckedAt: symbol.shariahLastReviewedAt,
+    }));
+  const pageRecommendations = [...mappedRecommendations, ...unavailableMetadataRows];
   const recommendations = sortRecommendations(
-    filterByAvailability(mappedRecommendations, selectedAvailability),
+    filterByAvailability(pageRecommendations, selectedAvailability),
     sortKey,
     sortDir,
   );
-  const connectedProvider = getConnectedProvider();
-  const availablePriceCount = available.filter(q => q.available && q.price !== null).length;
-  const unavailableCount = available.length - availablePriceCount;
+  const availablePriceCount = pageRecommendations.filter(row => row.available === true && nullableNumber(row.price) !== null).length;
+  const unavailableCount = pageRecommendations.length - availablePriceCount;
+  const unavailable = pageRecommendations
+    .filter(row => row.available !== true || nullableNumber(row.price) === null)
+    .map(row => ({ symbol: row.symbol, name: row.name, reason: row.unavailableReason ?? 'provider_returned_empty_quote' }));
   const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
@@ -482,7 +557,7 @@ export async function GET(request: Request) {
       totalDiscovered: catalog.diagnostics.totalSymbolsDiscovered,
       totalMarketSymbols: universe.total,
       totalFilteredSymbols: filteredMeta.length,
-      loaded: quoteLoad.summary.loadedSymbols,
+      loaded: selectedMeta.length,
       availableWithPrice: availablePriceCount,
       unavailablePrice: unavailableCount,
       failed: quoteLoad.failed.length,

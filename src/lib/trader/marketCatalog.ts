@@ -21,6 +21,14 @@ import {
   resolveProviderSymbolAlias,
 } from '@/lib/market/providerSymbolAliases';
 import {
+  classifyFundType,
+  fundMatchesFilter,
+  fundTypeLabel,
+  inferFundStructure,
+  type TraderFundStructure,
+  type TraderFundType,
+} from '@/lib/trader/fundTypes';
+import {
   FmpRateLimitError,
   fmpQueuedFetch,
   getFmpRuntimeStatus,
@@ -47,10 +55,16 @@ export type TraderMarketDef = {
 
 export type TraderCatalogSymbol = {
   symbol: string;
+  displaySymbol: string;
   providerSymbol: string;
   providerSymbols: Partial<Record<TraderQuoteProvider, string[]>>;
   name: string;
   assetType: TraderAssetType;
+  fundType?: TraderFundType;
+  fundTypeLabelAr?: string;
+  fundTypeLabelEn?: string;
+  fundStructure?: TraderFundStructure;
+  fundName?: string;
   sector?: string;
   industry?: string;
   exchange?: string;
@@ -58,6 +72,12 @@ export type TraderCatalogSymbol = {
   market?: string;
   country?: string;
   currency?: string;
+  issuer?: string;
+  expenseRatio?: number | null;
+  distributionYield?: number | null;
+  nav?: number | null;
+  aum?: number | null;
+  dataAvailability?: string;
   aliases: string[];
   marketIds: string[];
   source: TraderCatalogSource;
@@ -417,6 +437,8 @@ function defaultCurrency(symbol: string): string | undefined {
 }
 
 function traderAssetType(value: unknown, symbol: string): TraderAssetType {
+  const raw = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (/\b(etf|fund|mutual_fund|index_fund|money_market|bond_fund|sukuk|reit|real_estate_investment_trust)\b/.test(raw)) return 'fund';
   const normalized = normalizeAssetType(value);
   if (normalized === 'etf') return 'fund';
   if (normalized === 'gold' || normalized === 'commodity') return 'commodity';
@@ -505,13 +527,22 @@ function symbolFromRecord(record: RawSymbolRecord, fallback?: string) {
   return upper(record.display_symbol ?? record.displaySymbol ?? record.symbol ?? record.ticker ?? fallback);
 }
 
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, fallbackMarketIds: string[] = []): TraderCatalogSymbol | null {
-  const symbol = symbolFromRecord(record);
-  if (!symbol) return null;
+  const displaySymbol = symbolFromRecord(record);
+  if (!displaySymbol) return null;
+  const symbol = displaySymbol;
   const providerSymbol = upper(record.provider_symbol ?? record.providerSymbol ?? record.symbol ?? symbol) || symbol;
-  const assetType = traderAssetType(record.asset_type ?? record.assetType ?? record.type, symbol);
+  const rawAssetType = record.asset_type ?? record.assetType ?? record.type ?? record.quoteType ?? record.instrumentType;
+  const assetType = traderAssetType(rawAssetType, symbol);
   const metadata = normalizeTraderSymbolMetadata({
     symbol,
+    displaySymbol,
     provider: source,
     providerSymbol,
     assetType,
@@ -525,6 +556,27 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
   const currency = upper(metadata.currency ?? record.currency) || defaultCurrency(symbol);
   const sector = text(record.sector);
   const industry = text(record.industry);
+  const fundStructure = assetType === 'fund' ? inferFundStructure(rawAssetType, name, sector) : undefined;
+  const fundType = assetType === 'fund'
+    ? classifyFundType({
+        explicitType: record.fund_type ?? record.fundType ?? record.category,
+        rawAssetType,
+        symbol,
+        name,
+        sector,
+        industry,
+        fundStructure,
+      })
+    : undefined;
+  const fundLabel = fundType ? fundTypeLabel(fundType) : null;
+  const issuer = assetType === 'fund'
+    ? text(record.issuer ?? record.fund_issuer ?? record.fundIssuer ?? record.fundFamily ?? record.fund_family ?? record.asset_manager ?? record.assetManager)
+    : '';
+  const expenseRatio = nullableNumber(record.expense_ratio ?? record.expenseRatio ?? record.netExpenseRatio ?? record.annualReportExpenseRatio);
+  const distributionYield = nullableNumber(record.distribution_yield ?? record.distributionYield ?? record.dividendYield ?? record.yield);
+  const nav = nullableNumber(record.nav ?? record.net_asset_value ?? record.netAssetValue);
+  const aum = nullableNumber(record.aum ?? record.assets_under_management ?? record.assetsUnderManagement);
+  const dataAvailability = text(record.data_availability ?? record.dataAvailability) || (source === 'seed' ? 'catalog_seed' : 'provider_metadata');
   const marketIds = uniq([...fallbackMarketIds, ...marketIdsForRecord({ symbol, assetType, exchange, market, country, name, sector, industry })]);
   const shariah = classifyShariahCompliance({
     symbol,
@@ -546,10 +598,16 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
 
   return {
     symbol,
+    displaySymbol,
     providerSymbol,
     providerSymbols: providerSymbolsFor(symbol, assetType, providerSymbol),
     name,
     assetType,
+    fundType,
+    fundTypeLabelAr: fundLabel?.ar,
+    fundTypeLabelEn: fundLabel?.en,
+    fundStructure,
+    fundName: assetType === 'fund' ? name : undefined,
     sector: sector || undefined,
     industry: industry || undefined,
     exchange: exchange || undefined,
@@ -557,7 +615,13 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
     market: market || undefined,
     country: country || undefined,
     currency,
-    aliases: uniq([symbol, providerSymbol, name, exchange, exchangeCode, market, ...(Array.isArray(record.aliases) ? record.aliases : [])]),
+    issuer: issuer || undefined,
+    expenseRatio,
+    distributionYield,
+    nav,
+    aum,
+    dataAvailability,
+    aliases: uniq([symbol, displaySymbol, providerSymbol, name, exchange, exchangeCode, market, ...(Array.isArray(record.aliases) ? record.aliases : [])]),
     marketIds,
     source,
     metadataDiagnostics: metadata.diagnostics,
@@ -1035,7 +1099,18 @@ export type TraderSymbolUniverseEntry = {
   country?: string;
   currency?: string;
   assetType: TraderAssetType;
+  fundType?: TraderFundType;
+  fundTypeLabelAr?: string;
+  fundTypeLabelEn?: string;
+  fundStructure?: TraderFundStructure;
+  fundName?: string;
   providerSymbol: string;
+  issuer?: string;
+  expenseRatio?: number | null;
+  distributionYield?: number | null;
+  nav?: number | null;
+  aum?: number | null;
+  dataAvailability?: string;
   source: TraderCatalogSource;
   sector?: string;
   industry?: string;
@@ -1068,6 +1143,7 @@ export type FullSymbolUniverseQuery = TraderSymbolUniverseQuery & {
   sectorName?: string | null;
   industry?: string | null;
   assetType?: string | null;
+  fundType?: string | null;
 };
 
 const CATEGORY_ALIASES: Record<string, TraderUniverseCategory> = {

@@ -398,12 +398,12 @@ export function marketFilterDecision(asset: MarketFilterAsset, selectedMarket: u
 
   const exchangeMatches = matchesAny(exchange, rule.exchanges);
   const marketMatches = matchesAny(market, rule.markets);
+  const venueMatches = exchangeMatches || marketMatches || rule.symbolSuffix.test(symbol);
   const countryMatches = rule.countries.includes(country) || rule.symbolSuffix.test(symbol);
   const currencyMatches = currency === rule.currency;
   const assetTypeMatches = rule.allowedAssetTypes.includes(assetType);
 
-  if (!exchangeMatches) return { allowed: false, marketId, reason: 'exchange_mismatch' };
-  if (!marketMatches) return { allowed: false, marketId, reason: 'market_mismatch' };
+  if (!venueMatches) return { allowed: false, marketId, reason: 'venue_mismatch' };
   if (!countryMatches) return { allowed: false, marketId, reason: 'country_mismatch' };
   if (!currencyMatches) return { allowed: false, marketId, reason: 'currency_mismatch' };
   if (!assetTypeMatches) return { allowed: false, marketId, reason: 'asset_type_mismatch' };
