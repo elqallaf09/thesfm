@@ -19,20 +19,93 @@ function writeTextIfMissing(filePath: string, content: string) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
+function writeText(filePath: string, content: string) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, "utf8");
+}
+
 function writeJsonIfMissing(filePath: string, value: unknown) {
   writeTextIfMissing(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function writeJsonDefaults(filePath: string, defaults: Record<string, unknown>) {
+  let current: Record<string, unknown> = {};
+  if (fs.existsSync(filePath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        current = parsed as Record<string, unknown>;
+      }
+    } catch {
+      current = {};
+    }
+  }
+  const next = { ...defaults, ...current };
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+}
+
 function ensureWindowsServerManifests() {
   const serverDir = path.join(PROJECT_ROOT, ".next", "server");
+  const pagesDir = path.join(serverDir, "pages");
 
-  writeJsonIfMissing(path.join(serverDir, "pages-manifest.json"), {
+  writeJsonDefaults(path.join(serverDir, "pages-manifest.json"), {
     "/_app": "pages/_app.js",
     "/_document": "pages/_document.js",
     "/_error": "pages/_error.js",
     "/404": "pages/404.js",
     "/500": "pages/500.js",
   });
+  writeText(
+    path.join(pagesDir, "_app.js"),
+    [
+      'const React = require("react");',
+      'function App({ Component, pageProps }) { return React.createElement(Component, pageProps); }',
+      'module.exports = App;',
+      'module.exports.default = App;',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    path.join(pagesDir, "_document.js"),
+    [
+      'const Document = require("next/document").default;',
+      'module.exports = Document;',
+      'module.exports.default = Document;',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    path.join(pagesDir, "_error.js"),
+    [
+      'const ErrorComponent = require("next/error").default;',
+      'module.exports = ErrorComponent;',
+      'module.exports.default = ErrorComponent;',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    path.join(pagesDir, "404.js"),
+    [
+      'const React = require("react");',
+      'const ErrorComponent = require("next/error").default;',
+      'function NotFound() { return React.createElement(ErrorComponent, { statusCode: 404 }); }',
+      'module.exports = NotFound;',
+      'module.exports.default = NotFound;',
+      "",
+    ].join("\n"),
+  );
+  writeText(
+    path.join(pagesDir, "500.js"),
+    [
+      'const React = require("react");',
+      'const ErrorComponent = require("next/error").default;',
+      'function ServerError() { return React.createElement(ErrorComponent, { statusCode: 500 }); }',
+      'module.exports = ServerError;',
+      'module.exports.default = ServerError;',
+      "",
+    ].join("\n"),
+  );
   writeJsonIfMissing(path.join(serverDir, "middleware-manifest.json"), {
     version: 3,
     sortedMiddleware: [],
@@ -69,7 +142,13 @@ const nextConfig: NextConfig = {
       config.cache = false;
       config.plugins ??= [];
       config.plugins.push({
-        apply(compiler: { hooks: { done: { tap: (name: string, callback: () => void) => void } } }) {
+        apply(compiler: {
+          hooks: {
+            afterEmit: { tap: (name: string, callback: () => void) => void };
+            done: { tap: (name: string, callback: () => void) => void };
+          };
+        }) {
+          compiler.hooks.afterEmit.tap("EnsureWindowsServerManifests", ensureWindowsServerManifests);
           compiler.hooks.done.tap("EnsureWindowsServerManifests", ensureWindowsServerManifests);
         },
       });

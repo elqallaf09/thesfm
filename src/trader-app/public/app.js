@@ -12,10 +12,37 @@
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
   const INITIAL_LOADING_MAX_MS = 4500;
-  const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 8000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
+  const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 30000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
   const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
   const DEV_DIAGNOSTICS = ["localhost", "127.0.0.1", "::1"].includes(location.hostname) || location.hostname.endsWith(".local");
+  const PROVIDER_STATUS_LABELS = {
+    provider_status_failed: {
+      ar: "تعذر الاتصال بمزود البيانات حالياً",
+      en: "Unable to connect to the data provider right now"
+    },
+    provider_status_loading: {
+      ar: "جاري تحميل بيانات المزود",
+      en: "Loading provider data"
+    },
+    provider_status_available: {
+      ar: "مزود البيانات متصل",
+      en: "Data provider connected"
+    },
+    provider_status_partial: {
+      ar: "بيانات المزود متاحة جزئياً",
+      en: "Provider data is partially available"
+    },
+    provider_status_unknown: {
+      ar: "حالة مزود البيانات غير معروفة",
+      en: "Unknown provider status"
+    }
+  };
+  const PROVIDER_STATUS_EXPLANATION = {
+    ar: "سيتم عرض البيانات المتاحة فقط، وقد تكون بعض الأسعار أو التحليلات غير مكتملة.",
+    en: "Only available data will be shown. Some prices or analysis may be incomplete."
+  };
+  const PROVIDER_RETRY_LABEL = { ar: "إعادة المحاولة", en: "Retry" };
 
   const routes = {
     dashboard: "غرفة قيادة السوق", markets: "خريطة الأسواق", "ai-scanner": "ماسح الذكاء الاصطناعي",
@@ -165,7 +192,7 @@
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
-    settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
+    settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced", quickTickerVisible: true }),
     errors: {},
     cache: new Map(), marketCache: new Map()
   };
@@ -354,6 +381,8 @@
       if (refreshTrades) { event.preventDefault(); refreshFollowedTrades(true); return; }
       const runSignals = event.target.closest("[data-run-signals]");
       if (runSignals) { event.preventDefault(); runSignalRefresh(); return; }
+      const tickerToggle = event.target.closest("[data-toggle-ticker]");
+      if (tickerToggle) { event.preventDefault(); state.settings.quickTickerVisible = !isQuickTickerVisible(); write(keys.settings, state.settings); render(); return; }
       const delAlert = event.target.closest("[data-del-alert]");
       if (delAlert) { event.preventDefault(); deleteAlert(delAlert.dataset.delAlert); return; }
       const retry = event.target.closest("[data-retry]");
@@ -737,7 +766,7 @@
   function calendarEmptyState(response) {
     const status = String((response && response.status) || "not_configured");
     let title = UNAVAILABLE_MESSAGE;
-    let body = (response && response.message) || "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.";
+    let body = formatProviderError(response && response.message, { empty: "اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات." });
     let settings = true;
     if (response && response.routeUnavailable) {
       title = ROUTE_UNAVAILABLE_MESSAGE;
@@ -1028,7 +1057,10 @@
       provider_error: "فشل الاتصال",
       invalid_request: "طلب غير صالح"
     };
-    return labels[status] || status;
+    if (labels[status]) return labels[status];
+    const providerStatusKey = canonicalProviderStatusKey(status);
+    if (/^provider_status_/i.test(status) || providerStatusKey !== "provider_status_unknown" || status === "unknown") return getProviderStatusMessage(providerStatusKey);
+    return formatProviderError(status, { empty: getProviderStatusMessage("provider_status_unknown") });
   }
 
   function providerName(provider) {
@@ -1076,6 +1108,7 @@
             <label>السوق الافتراضي<select name="defaultMarket">${MARKETS.map(m => `<option value="${m.id}" ${s.defaultMarket === m.id ? "selected" : ""}>${h(m.ar)}</option>`).join("")}</select></label>
             <label>ملف المخاطر<select name="risk">${["conservative", "balanced", "aggressive"].map(r => `<option value="${r}" ${s.risk === r ? "selected" : ""}>${riskLabel(r)}</option>`).join("")}</select></label>
             <label>حد الثقة الأدنى<input name="signalMinConfidence" inputmode="numeric" value="${h(prefs.minConfidence)}" /></label>
+            <label><input type="checkbox" name="quickTickerVisible" ${isQuickTickerVisible() ? "checked" : ""} /> عرض شريط الأسعار السريع</label>
             <label>الأسواق المفعلة<select name="enabledMarkets" multiple>${marketOptions.map(m => `<option value="${h(m)}" ${prefs.enabledMarkets.includes(m) ? "selected" : ""}>${h(m)}</option>`).join("")}</select></label>
             <label><input type="checkbox" name="buyAlertsEnabled" ${prefs.buyAlertsEnabled ? "checked" : ""} /> تنبيهات الشراء</label>
             <label><input type="checkbox" name="sellAlertsEnabled" ${prefs.sellAlertsEnabled ? "checked" : ""} /> تنبيهات البيع</label>
@@ -1336,7 +1369,7 @@
     const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length;
     const configured = p.className === "online";
     return `<section class="terminal-command-center" aria-label="Market summary">
-      ${commandMetric("PROVIDER", configured ? "متصل" : "غير مهيأ", p.active || p.raw || p.title, configured ? "ok" : "warn")}
+      ${commandMetric("PROVIDER", configured ? "متصل" : "غير مهيأ", p.label || p.title, configured ? "ok" : "warn")}
       ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : "غير متاح", b.conf ? b.label : "بانتظار البيانات", b.tone || "neutral")}
       ${commandMetric("BUY SIGNALS", buy, "فرص شراء", "ok")}
       ${commandMetric("SELL SIGNALS", sell, "فرص بيع", "bad")}
@@ -1575,7 +1608,8 @@
       ["تم تحديث سعرها", latinNumber(status.updatedPrices ?? items.filter(x => x.priceUpdated || num(x.currentPrice, x.current) !== null).length)],
       ["بدون بيانات سعر", latinNumber(status.missingPrices ?? items.filter(x => x.priceMessage || num(x.currentPrice, x.current) === null).length)]
     ];
-    return `<section class="panel trade-data-status"><div class="panel-head"><div><span class="eyebrow">DATA SOURCE</span><h2>حالة بيانات الأداء</h2></div><button class="ghost-btn" data-refresh-trades>تحديث الأسعار</button></div><div class="trade-status-grid">${rows.map(([label, value]) => `<span><small>${h(label)}</small><b class="ltr">${h(String(value || "--"))}</b></span>`).join("")}</div>${status.message ? `<p class="muted-note">${h(status.message)}</p>` : ""}</section>`;
+    const message = formatProviderError(status.message, { empty: "" });
+    return `<section class="panel trade-data-status"><div class="panel-head"><div><span class="eyebrow">DATA SOURCE</span><h2>حالة بيانات الأداء</h2></div><button class="ghost-btn" data-refresh-trades>تحديث الأسعار</button></div><div class="trade-status-grid">${rows.map(([label, value]) => `<span><small>${h(label)}</small><b class="ltr">${h(String(value || "--"))}</b></span>`).join("")}</div>${message ? `<p class="muted-note">${h(message)}</p>` : ""}</section>`;
   }
   function performanceEmptyState() {
     return `<section class="empty-state trade-empty-state">
@@ -1638,10 +1672,14 @@
     const items = newsItems().filter(n => arr(n.symbols || n.relatedSymbols).map(sym).includes(sym(symbol))).slice(0, 3);
     return items.length ? newsList(items) : `<p class="muted-note">لا توجد أخبار مرتبطة من المزود لهذا الرمز.</p>`;
   }
-  function alertList(items) { return `<div class="trade-list">${items.map(i => `<article class="trade-item"><strong>${h(i.title || i.symbol || i.name || "تنبيه")}</strong><p>${h(i.message || i.reason || i.description || "تنبيه بدون تفاصيل إضافية.")}</p>${i.symbol ? `<button class="ghost-btn sm" data-symbol-details="${h(i.symbol)}">فتح الرمز</button>` : ""}</article>`).join("")}</div>`; }
+  function alertList(items) { return `<div class="trade-list">${items.map(i => `<article class="trade-item"><strong>${h(i.title || i.symbol || i.name || "تنبيه")}</strong><p>${h(formatProviderError(i.message || i.reason || i.description || "تنبيه بدون تفاصيل إضافية."))}</p>${i.symbol ? `<button class="ghost-btn sm" data-symbol-details="${h(i.symbol)}">فتح الرمز</button>` : ""}</article>`).join("")}</div>`; }
   function localAlertRow(a, i) { const T = { price: "سعر", percent: "نسبة %", signal: "إشارة AI", news: "خبر" }; return `<article class="trade-item alert-row"><div><strong class="ltr">${h(a.symbol)}</strong><p>${h(T[a.type] || a.type)}${a.value ? " · " + h(a.value) : ""} · ${h(date(a.createdAt))}</p></div><button class="icon-btn danger" data-del-alert="${i}">✕</button></article>`; }
 
-  function systemCard() { const s = providerCopy(); return `<article class="status-card"><span class="eyebrow">SYSTEM</span><strong>${h(s.title)}</strong><p>${h(s.copy)}</p><span class="state-badge ${s.className === "online" ? "ok" : "warn"}">${h(s.raw)}</span></article>`; }
+  function systemCard() {
+    const s = providerCopy();
+    const retry = s.showRetry ? `<button class="ghost-btn compact-btn" data-retry>${h(s.retryLabel)}</button>` : "";
+    return `<article class="status-card provider-status-card is-${s.className}"><span class="eyebrow">SYSTEM</span><strong>${h(s.title)}</strong><p>${h(s.copy)}</p><span class="state-badge ${s.tone}">${h(s.label)}</span>${retry}</article>`;
+  }
   function diagnostics() {
     const normalized = normalizedProviderStatus();
     const tone = normalizedStatusTone(normalized.status);
@@ -1677,7 +1715,7 @@
     const summary = ps.summary || diag.summary || state.rec.summary || {};
     const failedRows = arr(ps.failed).concat(arr(state.rec.failed), arr(state.markets.failed));
     const skippedRows = arr(ps.skipped).concat(arr(state.rec.skipped), arr(state.markets.skipped));
-    const status = normalizeStatusKey(raw.status || p.status || providerCopy().raw);
+    const status = normalizeStatusKey(raw.status || p.status || providerCopy().statusKey);
     const loadedCount = numberValue(raw.loadedCount, summary.loadedSymbols, diag.totalSymbolsLoaded, ps.resultCount, state.markets.resultCount);
     const failedCount = numberValue(raw.failedCount, summary.failedSymbols, failedRows.length);
     const cachedCount = numberValue(raw.cachedCount, summary.cachedSymbols);
@@ -1760,6 +1798,7 @@
     if (!value || value === "[object Object]") return empty;
     if (isRateLimitText(value)) return "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
     const lower = value.toLowerCase();
+    if (/^provider_status_/i.test(lower)) return getProviderStatusMessage(lower);
     if (lower.includes("fmp_not_configured")) return "FMP غير مهيأ";
     if (lower.includes("provider_not_configured") || lower.includes("missing_provider")) return "مزود البيانات غير مهيأ";
     if (/^[a-z0-9_-]+_not_configured$/i.test(value)) return "مزود البيانات غير مهيأ";
@@ -1774,6 +1813,11 @@
   }
   function normalizeStatusKey(status) {
     const value = String(status || "").toLowerCase();
+    if (value === "provider_status_available") return "available";
+    if (value === "provider_status_partial") return "partial";
+    if (value === "provider_status_failed") return "error";
+    if (value === "provider_status_loading") return "missing";
+    if (value === "provider_status_unknown") return "missing";
     if (value === "rate_limited" || isRateLimitText(value)) return "rate_limited";
     if (["healthy", "success", "available", "configured", "connected"].includes(value)) return "available";
     if (["partial", "degraded"].includes(value)) return "partial";
@@ -1968,6 +2012,7 @@
   function hasArabicText(value) { return /[\u0600-\u06FF]/.test(String(value ?? "")); }
   function valueTextClass(value) { return hasArabicText(value) ? "rtl-value" : "ltr"; }
   function displayValue(value) {
+    if (/^provider_status_/i.test(String(value || ""))) return getProviderStatusMessage(value);
     return value === null || value === undefined || value === "" || value === "--" ? "غير متاح" : String(value);
   }
   function hasDisplayValue(value) {
@@ -2158,14 +2203,18 @@
   function hero(title, body, kicker) { return `<section class="page-hero"><span class="eyebrow">${h(kicker)}</span><h2>${title}</h2><p>${h(body)}</p></section>`; }
   function unavailableSection(response, fallbackBody, label, href) {
     const unavailableTitle = response && response.routeUnavailable ? ROUTE_UNAVAILABLE_MESSAGE : UNAVAILABLE_MESSAGE;
-    const body = (response && response.message) || fallbackBody || UNAVAILABLE_MESSAGE;
+    const body = formatProviderError((response && response.message) || fallbackBody || UNAVAILABLE_MESSAGE, { empty: fallbackBody || UNAVAILABLE_MESSAGE });
     return emptyState(unavailableTitle, body, label, href);
   }
   function selectionEmptyState() { return emptyState(SELECTION_EMPTY_STATE_AR, SELECTION_EMPTY_STATE_EN, "", ""); }
-  function emptyState(title, body, label, href) { return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`; }
+  function emptyState(title, body, label, href) {
+    const cleanTitle = formatProviderError(title, { empty: UNAVAILABLE_MESSAGE });
+    const cleanBody = formatProviderError(body, { empty: UNAVAILABLE_MESSAGE });
+    return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(cleanTitle)}</h3><p>${h(cleanBody)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`;
+  }
   function miniEmpty() { return `<div class="empty-state compact"><p>لا توجد بيانات حالياً من المزود.</p></div>`; }
-  function marketUnavailable(m, data) { return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
-    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", m.currency, "Currency")}${detailCard("الحالة", providerCopy().raw, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
+  function marketUnavailable(m, data) { const provider = providerCopy(); const message = formatProviderError(data && data.message, { empty: provider.copy }); return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h(message)}</p>
+    <div class="detail-grid">${detailCard("الرموز المدعومة", String(m.symbols.length), "Symbols")}${detailCard("العملة", m.currency, "Currency")}${detailCard("الحالة", provider.label, "Status")}${detailCard("آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
     <div class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}"><span class="ltr">${h(s)}</span></button>`).join("")}</div>
     <div class="row-actions"><button class="ghost-btn" data-retry>إعادة المحاولة</button></div></section>`; }
   function disclaimer() { return `<section class="disclaimer-note"><strong>تنبيه:</strong> جميع المحتويات لأغراض تعليمية ومعلوماتية فقط ولا تُعد نصيحة استثمارية. التداول ينطوي على مخاطرة قد تصل لكامل رأس المال.</section>`; }
@@ -2205,7 +2254,7 @@
 
   function status() {
     const s = providerCopy(), pill = document.getElementById("provider-status");
-    if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span>${h(s.copy)}</span>`;
+    if (pill) pill.innerHTML = `<span class="status-dot ${s.className}"></span><span>${h(s.title)}</span>`;
     const dot = document.getElementById("sidebar-status-dot"), title = document.getElementById("sidebar-status-title"), copy = document.getElementById("sidebar-status-copy");
     if (dot) dot.className = `status-dot ${s.className}`;
     if (title) title.textContent = s.title;
@@ -2215,8 +2264,41 @@
   }
   function ticker() {
     const row = document.getElementById("ticker-row"); if (!row) return;
-    const idx = [["NAS100", "NAS100"], ["US30", "US30"], ["XAUUSD", "Gold"], ["WTI", "Oil"], ["BTCUSD", "BTC/USD"], ["KFH.KW", "KFH"]];
-    row.innerHTML = idx.map(([s, label]) => { const r = findAssetForSymbol(s, recs()) || {}; const p = num(r.price, r.currentPrice, r.lastPrice); const chg = num(r.changePercent, r.percentChange); return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...r, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${p === null ? "غير متاح" : price(p, currency({ ...r, symbol: s }))} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${change(chg)}</i>`}</small></span></button>`; }).join("");
+    const visible = isQuickTickerVisible();
+    const items = visible ? tickerAssets() : [];
+    const toggle = document.getElementById("ticker-toggle");
+    if (toggle) {
+      toggle.classList.toggle("is-off", !visible);
+      toggle.setAttribute("aria-pressed", visible ? "true" : "false");
+      toggle.textContent = visible ? "Hide ticker" : "Show ticker";
+    }
+    row.hidden = !visible || !items.length;
+    row.classList.toggle("is-empty", !items.length);
+    if (row.hidden) { row.innerHTML = ""; return; }
+    row.innerHTML = items.map((a) => {
+      const s = sym(a.symbol);
+      const p = num(a.price, a.currentPrice, a.lastPrice);
+      const chg = num(a.changePercent, a.percentChange);
+      const label = displaySymbolFor(a.displaySymbol || s);
+      const amount = p === null ? price(null) : price(p, currency({ ...a, symbol: s }));
+      return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...a, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${h(amount)} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${h(change(chg))}</i>`}</small></span></button>`;
+    }).join("");
+  }
+  function isQuickTickerVisible() {
+    return state.settings.quickTickerVisible !== false;
+  }
+  function tickerAssets() {
+    const market = currentMarket();
+    const selectedMarket = market.id;
+    const selectedCategory = currentSelectedCategory();
+    const source = allRecommendationSources();
+    return unique(market.symbols || [])
+      .map((symbol) => {
+        const matched = findAssetForSymbol(symbol, source) || {};
+        return norm({ ...matched, symbol });
+      })
+      .filter((asset) => isAssetAllowedForSelection(asset, selectedMarket, selectedCategory))
+      .slice(0, 8);
   }
   function statusBar() {
     const bar = document.getElementById("terminal-statusbar"); if (!bar) return;
@@ -2326,6 +2408,7 @@
       state.settings.defaultMarket = f.get("defaultMarket");
       state.settings.risk = f.get("risk");
       state.settings.signalMinConfidence = Math.max(0, Math.min(95, Number(f.get("signalMinConfidence")) || 70));
+      state.settings.quickTickerVisible = f.get("quickTickerVisible") === "on";
       state.settings.enabledMarkets = f.getAll("enabledMarkets").map(String).filter(Boolean);
       state.settings.buyAlertsEnabled = f.get("buyAlertsEnabled") === "on";
       state.settings.sellAlertsEnabled = f.get("sellAlertsEnabled") === "on";
@@ -2733,21 +2816,62 @@
     const method = status === "loaded" ? "info" : "warn";
     console[method](`[trader] ${area} ${status}`, details || {});
   }
+  function providerLocale(locale) {
+    const value = String(locale || document.documentElement.lang || navigator.language || "ar").toLowerCase();
+    return value.startsWith("en") ? "en" : "ar";
+  }
+  function canonicalProviderStatusKey(status) {
+    const value = String(status || "").trim().toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(PROVIDER_STATUS_LABELS, value)) return value;
+    if (["loading", "pending", "checking", "fetching"].includes(value)) return "provider_status_loading";
+    if (["success", "available", "configured", "connected", "healthy"].includes(value)) return "provider_status_available";
+    if (["partial", "degraded", "rate_limited"].includes(value) || /429|rate_limited|rate limit|too many/i.test(value)) return "provider_status_partial";
+    if (["failed", "failure", "unavailable", "missing", "not_configured", "missing_provider", "provider_error", "invalid_request", "unauthorized", "forbidden", "not_entitled", "timeout"].includes(value)) return "provider_status_failed";
+    if (/provider_status_/i.test(value)) return "provider_status_unknown";
+    if (/error|fail|denied|unauthorized|forbidden|not_configured|missing|unavailable|timeout/i.test(value)) return "provider_status_failed";
+    return "provider_status_unknown";
+  }
+  function getProviderStatusMessage(status, locale) {
+    const statusKey = canonicalProviderStatusKey(status);
+    const lang = providerLocale(locale);
+    return (PROVIDER_STATUS_LABELS[statusKey] || PROVIDER_STATUS_LABELS.provider_status_unknown)[lang];
+  }
+  function getProviderStatusExplanation(status, locale) {
+    const statusKey = canonicalProviderStatusKey(status);
+    if (statusKey !== "provider_status_failed" && statusKey !== "provider_status_partial") return "";
+    return PROVIDER_STATUS_EXPLANATION[providerLocale(locale)];
+  }
+  function getProviderRetryLabel(locale) {
+    return PROVIDER_RETRY_LABEL[providerLocale(locale)];
+  }
+  function providerStatusCopy(status, options = {}) {
+    const locale = providerLocale(options.locale);
+    const statusKey = canonicalProviderStatusKey(status);
+    const title = getProviderStatusMessage(statusKey, locale);
+    const explanation = getProviderStatusExplanation(statusKey, locale);
+    const provider = providerName(options.provider || "");
+    const activeProviderCopy = locale === "en" ? `Active provider: ${provider}` : `المزود النشط: ${provider}`;
+    return {
+      title,
+      copy: options.copy || (statusKey === "provider_status_available" ? activeProviderCopy : explanation || title),
+      explanation,
+      className: statusKey === "provider_status_available" ? "online" : "warning",
+      tone: statusKey === "provider_status_available" ? "ok" : "warn",
+      statusKey,
+      label: title,
+      retryLabel: getProviderRetryLabel(locale),
+      showRetry: ["provider_status_failed", "provider_status_partial", "provider_status_unknown"].includes(statusKey)
+    };
+  }
   function providerCopy() {
-    if (state.providerStatus && state.providerStatus.ok === false) {
-      return { title: "حالة المزود غير متاحة", copy: formatProviderError(state.providerStatus.message, { empty: UNAVAILABLE_MESSAGE }), className: "warning", raw: "provider_status_failed" };
-    }
     const normalized = state.providerStatus && state.providerStatus.normalizedStatus;
-    if (normalized && normalized.status === "rate_limited") {
-      return { title: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", copy: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", className: "warning", raw: "rate_limited" };
-    }
     const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
+    if (state.loading && !Object.keys(state.providerStatus || {}).length) return providerStatusCopy("provider_status_loading", { provider: p.active || p.provider });
+    if (state.providerStatus && state.providerStatus.ok === false) return providerStatusCopy("provider_status_failed", { provider: p.active || p.provider });
     const configured = p.configured === true || Boolean(p.active);
-    const raw = p.status || (configured ? "configured" : "not_configured");
+    const raw = (normalized && normalized.status) || p.status || (configured ? "configured" : "not_configured");
     const ok = configured && ["success", "available", "configured", "connected", "healthy"].includes(String(raw));
-    if (String(raw) === "rate_limited") return { title: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", copy: "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً. سنعرض بيانات مخزنة مؤقتاً عند توفرها.", className: "warning", raw };
-    if (ok) return { title: "المزود متصل", copy: `المزود النشط: ${providerName(p.active || p.provider)}`, className: "online", raw };
-    return { title: "المزود غير مهيأ", copy: "لا توجد بيانات سوق حية مفعّلة حالياً، لذلك لن نعرض أرقاماً أو توصيات وهمية.", className: "warning", raw };
+    return providerStatusCopy(ok ? "provider_status_available" : raw, { provider: p.active || p.provider });
   }
   function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 

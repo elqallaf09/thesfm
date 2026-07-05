@@ -1993,10 +1993,30 @@ body {
   white-space: nowrap;
 }
 
+button.topbar-chip {
+  cursor: pointer;
+  font-family: var(--font-ar);
+}
+
+.ticker-toggle {
+  min-width: 104px;
+}
+
+.ticker-toggle.is-off {
+  color: var(--terminal-text-secondary);
+  border-color: rgba(123, 218, 255, 0.14);
+  background: rgba(8, 20, 32, 0.46);
+}
+
 .session-pill {
   color: var(--terminal-warn);
   font-family: var(--font-mono);
   direction: rtl;
+}
+
+.ticker-strip[hidden],
+.ticker-strip.is-empty {
+  display: none !important;
 }
 
 .ticker-strip {

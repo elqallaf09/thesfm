@@ -7,23 +7,24 @@ const forbiddenGlobal = ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'];
 
 type SelectionCase = {
   name: string;
+  apiMarket: string;
   chipPattern: RegExp;
   forbidden: string[];
   validate: (symbol: string) => boolean;
 };
 
 const cases: SelectionCase[] = [
-  { name: 'Qatar Market QAR', chipPattern: /قطر|Qatar/i, forbidden: forbiddenGlobal, validate: symbol => /\.QA$/i.test(symbol) },
-  { name: 'Kuwait Market KWD', chipPattern: /الكويت|Kuwait/i, forbidden: forbiddenGlobal, validate: symbol => /\.KW$/i.test(symbol) },
-  { name: 'Bahrain Market BHD', chipPattern: /البحرين|Bahrain/i, forbidden: forbiddenGlobal, validate: symbol => /\.BH$/i.test(symbol) },
-  { name: 'Saudi Market SAR', chipPattern: /السعودي|Saudi/i, forbidden: forbiddenGlobal, validate: symbol => /\.(SR|SA)$/i.test(symbol) },
-  { name: 'UAE Market AED', chipPattern: /الإمارات|UAE/i, forbidden: forbiddenGlobal, validate: symbol => /\.(AE|DU|AD)$/i.test(symbol) },
-  { name: 'US Technology', chipPattern: /التقنية|Technology/i, forbidden: ['BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => !/BTC|ETH|EURUSD|XAU|XAG|GLD|SLV|SPY|QQQ/i.test(symbol) && !/[A-Z]{6}/.test(symbol) },
-  { name: 'Semiconductors', chipPattern: /الموصلات|Semiconductors/i, forbidden: ['BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => /^(NVDA|AMD|INTC|AVGO|TSM|ASML|QCOM|TXN|MU|AMAT|LRCX|KLAC|MRVL|MCHP|ON|NXPI|ADI|MPWR|ARM|SMCI|TER|SWKS|QRVO|LSCC|COHR|UMC|GFS|WOLF)$/i.test(symbol) },
-  { name: 'Crypto', chipPattern: /الرقمية|Crypto/i, forbidden: ['NVDA', 'TSLA', 'EURUSD', 'GLD'], validate: symbol => /^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|USDT|AVAX|DOT|LTC|BCH|LINK)(?:USD|-USD)?$/i.test(symbol) },
-  { name: 'Forex', chipPattern: /العملات|Forex/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'GLD'], validate: symbol => /^[A-Z]{6}$/i.test(symbol) },
-  { name: 'Commodities', chipPattern: /السلع|Commodities/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => /^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/i.test(symbol) },
-  { name: 'ETFs', chipPattern: /الصناديق|ETFs/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'EURUSD'], validate: symbol => /^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG)$/i.test(symbol) },
+  { name: 'Qatar Market QAR', apiMarket: 'qatar', chipPattern: /قطر|Qatar/i, forbidden: forbiddenGlobal, validate: symbol => /\.QA$/i.test(symbol) },
+  { name: 'Kuwait Market KWD', apiMarket: 'kuwait', chipPattern: /الكويت|Kuwait/i, forbidden: forbiddenGlobal, validate: symbol => /\.KW$/i.test(symbol) },
+  { name: 'Bahrain Market BHD', apiMarket: 'bahrain', chipPattern: /البحرين|Bahrain/i, forbidden: forbiddenGlobal, validate: symbol => /\.BH$/i.test(symbol) },
+  { name: 'Saudi Market SAR', apiMarket: 'saudi', chipPattern: /السعودي|Saudi/i, forbidden: forbiddenGlobal, validate: symbol => /\.(SR|SA)$/i.test(symbol) },
+  { name: 'UAE Market AED', apiMarket: 'uae', chipPattern: /الإمارات|UAE/i, forbidden: forbiddenGlobal, validate: symbol => /\.(AE|DU|AD)$/i.test(symbol) },
+  { name: 'US Technology', apiMarket: 'technology', chipPattern: /التقنية|Technology/i, forbidden: ['BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => !/BTC|ETH|EURUSD|XAU|XAG|GLD|SLV|SPY|QQQ/i.test(symbol) && !/[A-Z]{6}/.test(symbol) },
+  { name: 'Semiconductors', apiMarket: 'semiconductors', chipPattern: /الموصلات|Semiconductors/i, forbidden: ['BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => /^(NVDA|AMD|INTC|AVGO|TSM|ASML|QCOM|TXN|MU|AMAT|LRCX|KLAC|MRVL|MCHP|ON|NXPI|ADI|MPWR|ARM|SMCI|TER|SWKS|QRVO|LSCC|COHR|UMC|GFS|WOLF)$/i.test(symbol) },
+  { name: 'Crypto', apiMarket: 'crypto', chipPattern: /الرقمية|Crypto/i, forbidden: ['NVDA', 'TSLA', 'EURUSD', 'GLD'], validate: symbol => /^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|USDT|AVAX|DOT|LTC|BCH|LINK)(?:USD|-USD)?$/i.test(symbol) },
+  { name: 'Forex', apiMarket: 'forex', chipPattern: /العملات|Forex/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'GLD'], validate: symbol => /^[A-Z]{6}$/i.test(symbol) },
+  { name: 'Commodities', apiMarket: 'commodities', chipPattern: /السلع|Commodities/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'EURUSD', 'GLD'], validate: symbol => /^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/i.test(symbol) },
+  { name: 'ETFs', apiMarket: 'etfs', chipPattern: /الصناديق|ETFs/i, forbidden: ['NVDA', 'TSLA', 'BTC-USD', 'BTCUSD', 'EURUSD'], validate: symbol => /^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG)$/i.test(symbol) },
 ];
 
 async function visibleRecommendationSymbols(page: Page) {
@@ -44,13 +45,29 @@ test.describe('AI Trading Terminal strict market and category filters', () => {
     for (const selection of cases) {
       const chip = page.locator('[data-rec-market]').filter({ hasText: selection.chipPattern }).first();
       await expect(chip, `${selection.name} chip should exist`).toBeVisible();
+      const responsePromise = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.pathname === '/api/recommendations' && url.searchParams.get('market') === selection.apiMarket;
+      }, { timeout: 40_000 });
       await chip.click();
+      const response = await responsePromise;
+      expect(response.status(), `${selection.name} API response`).toBeLessThan(500);
+      const payload = await response.json();
       await page.waitForLoadState('networkidle');
       await expect(chip).toHaveClass(/is-active/);
 
       const emptyState = page.locator('.empty-state').filter({ hasText: 'No matching assets for this market or category right now' });
-      const symbols = await visibleRecommendationSymbols(page);
-      if (!symbols.length) await expect(emptyState).toBeVisible();
+      const expectedCount = Array.isArray(payload.recommendations) ? payload.recommendations.length : 0;
+      let symbols = await visibleRecommendationSymbols(page);
+      if (expectedCount > 0) {
+        await expect.poll(async () => visibleRecommendationSymbols(page), {
+          message: `${selection.name} should render recommendation cards after API data arrives`,
+          timeout: 10_000,
+        }).not.toHaveLength(0);
+        symbols = await visibleRecommendationSymbols(page);
+      } else if (!symbols.length) {
+        await expect(emptyState).toBeVisible();
+      }
 
       for (const forbidden of selection.forbidden) {
         expect(symbols, `${selection.name} must not show ${forbidden}`).not.toContain(forbidden);
