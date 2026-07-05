@@ -160,14 +160,6 @@ function safeEnsureWindowsServerManifests() {
   }
 }
 
-function scheduleWindowsServerManifests() {
-  safeEnsureWindowsServerManifests();
-  for (const delay of [0, 25, 100, 250, 1000]) {
-    const timer = setTimeout(safeEnsureWindowsServerManifests, delay);
-    timer.unref?.();
-  }
-}
-
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
@@ -186,15 +178,11 @@ const nextConfig: NextConfig = {
       config.plugins.push({
         apply(compiler: {
           hooks: {
-            beforeRun?: WebpackSyncHook;
-            beforeCompile?: WebpackSyncHook;
             afterEmit: WebpackSyncHook;
             done: WebpackSyncHook;
           };
         }) {
-          const writeManifests = () => scheduleWindowsServerManifests();
-          compiler.hooks.beforeRun?.tap(WINDOWS_MANIFEST_PLUGIN, writeManifests);
-          compiler.hooks.beforeCompile?.tap(WINDOWS_MANIFEST_PLUGIN, writeManifests);
+          const writeManifests = () => safeEnsureWindowsServerManifests();
           compiler.hooks.afterEmit.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
           compiler.hooks.done.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
         },

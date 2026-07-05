@@ -8,7 +8,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/cinema.css?v=20260705-cinematic-nav" />
+    <link rel="stylesheet" href="/cinema.css?v=20260705-sw-purge" />
+    <script>
+      // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
+      // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).
+      (function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(function (regs) { regs.forEach(function (reg) { reg.unregister(); }); })
+            .catch(function () {});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys()
+            .then(function (keys) {
+              keys.forEach(function (key) {
+                if (key.indexOf("the-sfm-trader") === 0) caches.delete(key);
+              });
+            })
+            .catch(function () {});
+        }
+      })();
+    </script>
   </head>
   <body>
     <div class="market-cinema" aria-hidden="true">
@@ -62,9 +82,8 @@
         <div class="sidebar-brand-row">
           <a class="brand-card" href="/thesfm-trader-own" data-route-link data-route="dashboard">
             <span class="brand-mark" aria-hidden="true">S</span>
-            <span>
+            <span class="brand-name">
               <strong>the-sfm trader</strong>
-              <small>AI market command center</small>
             </span>
           </a>
           <button id="sidebar-collapse" class="collapse-btn" type="button" aria-label="طي القائمة" title="طي القائمة">«</button>
@@ -90,28 +109,6 @@
           <a href="/thesfm-trader-own/education" data-route-link data-route="education"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4L2.5 8.5 12 13l9.5-4.5L12 4Z"/><path d="M6 10.8V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.2"/></svg><span class="nav-label">التعليم</span><small>Education</small></a>
           <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg><span class="nav-label">الإعدادات</span><small>Settings</small></a>
         </nav>
-
-        <a class="ai-pro-card" href="/thesfm-trader-own/ai-scanner" data-route-link>
-          <span class="ai-pro-badge">AI PRO</span>
-          <strong>محرك التحليل الذكي</strong>
-          <small>فعّل الماسح للحصول على أقوى الإشارات اللحظية.</small>
-        </a>
-
-        <section class="sidebar-status" aria-live="polite">
-          <span class="status-dot" id="sidebar-status-dot"></span>
-          <div>
-            <strong id="sidebar-status-title">فحص المزود</strong>
-            <small id="sidebar-status-copy">جاري تحميل حالة البيانات</small>
-          </div>
-        </section>
-
-        <a class="profile-card" href="/thesfm-trader-own/settings" data-route-link data-route="settings">
-          <span class="profile-avatar" aria-hidden="true">M</span>
-          <span>
-            <strong>SFM Trader</strong>
-            <small>عضو · الإعدادات</small>
-          </span>
-        </a>
       </aside>
 
       <div class="terminal-stage">
@@ -162,7 +159,7 @@
     </div>
 
     <div class="toast-root" id="toast-root" aria-live="polite"></div>
-    <script src="/app.js?v=20260705-cinematic-nav" defer></script>
+    <script src="/app.js?v=20260705-sw-purge" defer></script>
     <script src="/provider-markets-diagnostics.js?v=20260705-provider-markets" defer></script>
   </body>
 </html>

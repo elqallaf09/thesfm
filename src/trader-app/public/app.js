@@ -191,7 +191,7 @@
   /* ─────────────────────────── State ─────────────────────────── */
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, commandCards: {},
+    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, newsContextKey: "", followed: {}, provider: {}, providerStatus: {}, commandCards: {},
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
     calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
@@ -233,16 +233,18 @@
 
   async function hydrate() {
     const commandSymbols = dashboardSymbols();
+    const newsPath = marketNewsPath(12);
     const settled = await Promise.allSettled([
       get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
       get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`),
       get("/market/signals?limit=60"),
       get("/market/signal-alerts?limit=50"),
-      get("/markets"), get("/market-news?limit=12"), get("/followed-trades"),
+      get("/markets"), get(newsPath), get("/followed-trades"),
       get("/trader/provider-status", { label: "providerStatus" })
     ]);
     const [rec, commandCards, signals, signalAlerts, mk, news, followed, providerStatus] = settled.map((result, index) => settledValue(result, ["quotes", "quotes", "signals", "signals", "quotes", "news", "quotes", "providerStatus"][index]));
     state.rec = rec; state.commandCards = commandCards; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
+    state.newsContextKey = newsPath;
     state.providerStatus = providerStatus || {};
     state.provider = providerStatus.dataProvider || commandCards.dataProvider || rec.dataProvider || mk.dataProvider || news.dataProvider || commandCards.provider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
     renderAfterData();
@@ -250,6 +252,39 @@
 
   async function get(path, options = {}) {
     return requestJson(path, { method: "GET", ...options });
+  }
+  function marketForSymbol(symbol) {
+    const s = sym(symbol);
+    return MARKETS.find(m => arr(m.symbols).map(sym).includes(s)) || null;
+  }
+  function marketNewsContext(symbolOverride = "") {
+    const targetSymbol = sym(symbolOverride);
+    const inferredMarket = targetSymbol ? marketForSymbol(targetSymbol) : null;
+    const market = inferredMarket || currentMarket();
+    const symbolCategory = targetSymbol ? assetType(targetSymbol) : "";
+    const category = symbolCategory && symbolCategory !== "stock" ? symbolCategory : (state.settings.selectedCategory || categoryFromSelection(market.id));
+    const symbols = targetSymbol ? [targetSymbol] : unique(arr(market.symbols));
+    return { market, category, symbols, symbol: targetSymbol };
+  }
+  function marketNewsPath(limit = 12, options = {}) {
+    const context = marketNewsContext(options.symbol || "");
+    const params = new URLSearchParams({
+      limit: String(limit),
+      scope: context.symbol ? "asset" : "general",
+      market: context.market.id,
+      category: context.category,
+    });
+    if (context.symbol) params.set("symbol", context.symbol);
+    if (context.symbols.length) params.set("symbols", context.symbols.join(","));
+    if (options.refresh) params.set("refresh", "1");
+    return `/market-news?${params.toString()}`;
+  }
+  async function loadNews(force = false) {
+    const cacheKey = marketNewsPath(12);
+    if (!force && state.newsContextKey === cacheKey) return;
+    state.newsContextKey = cacheKey;
+    state.news = await get(marketNewsPath(12, { refresh: force }), { label: "news" });
+    if (state.route.id === "news" || state.route.id === "dashboard") render();
   }
   async function post(path, body, options = {}) {
     return requestJson(path, { method: "POST", body, ...options });
@@ -493,7 +528,7 @@
       } else if (state.route.id === "calendar") {
         await loadCalendars(true);
       } else if (state.route.id === "news") {
-        state.news = await get("/market-news?limit=12", { label: "news" });
+        await loadNews(true);
       } else if (state.route.id === "ai-scanner" || state.route.id === "recommendations") {
         state.rec = {};
         state.signals = {};
@@ -556,6 +591,7 @@
       loadMarket(state.route.market);
     }
     if (id === "ai-scanner" || id === "recommendations") ensureScanData();
+    if (id === "news") loadNews(false).catch((error) => devLog("news", "failed", { message: errorMessage(error) }));
     if (id === "calendar" && !state.calendarLoaded && !state.calendarLoading) {
       state.calendarLoading = true;
       render();
@@ -1423,9 +1459,10 @@
         get(`/market/search?q=${encodeURIComponent(key)}&limit=5`, { label: "quotes" }),
         get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`, { label: "signals" }),
         get(`/market/signals/${encodeURIComponent(key)}`, { label: "signals" }),
-        get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`, { label: "quotes" })
+        get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`, { label: "quotes" }),
+        get(marketNewsPath(6, { symbol: key }), { label: "news" })
       ]);
-      const [profile, search, tech, sig, hist] = settled.map((result, index) => settledValue(result, index === 2 || index === 3 ? "signals" : "quotes"));
+      const [profile, search, tech, sig, hist, news] = settled.map((result, index) => settledValue(result, index === 2 || index === 3 ? "signals" : index === 5 ? "news" : "quotes"));
       const found = (search.resolved || arr(search.results || search.data || search.items)[0] || {});
       const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
       const rawTech = tech.ok ? (tech.analysis || tech.data || tech) : (tech.available || null);
@@ -1445,7 +1482,8 @@
         available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
         source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
         message: profile.message || search.message || UNAVAILABLE_MESSAGE,
-        rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key)
+        rec: sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key),
+        news
       };
       state.cache.set(key, detail);
       const currentTarget = document.getElementById("symbol-details-body");
@@ -1480,7 +1518,7 @@
         <article class="panel consensus-panel"><span class="eyebrow">STRATEGY AGREEMENT</span><h2>اتفاق الاستراتيجيات</h2>${strategyConsensus(a, detail.tech, rec)}</article>
         <article class="panel"><span class="eyebrow">TECHNICAL</span><h2>التحليل الفني</h2>${technical({ ...a, ...(rec || {}) }, detail.tech, c, detail)}</article>
         <article class="panel"><span class="eyebrow">AI CONFIDENCE</span><h2>قراءة AI الخام</h2>${rec ? signalAnalysis(rec, c) : emptyState("لا توجد إشارة كافية", "لم يرجع المزود بيانات كافية لهذا الرمز.", "", "")}</article>
-        <article class="panel"><span class="eyebrow">RELATED NEWS</span><h2>أخبار مرتبطة</h2>${relatedNews(a.symbol)}</article>
+        <article class="panel"><span class="eyebrow">RELATED NEWS</span><h2>أخبار مرتبطة</h2>${relatedNews(a.symbol, detail)}</article>
       </aside></div>`;
   }
 
@@ -1903,8 +1941,13 @@
     const syms = arr(n.symbols || n.relatedSymbols).slice(0, 3);
     return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span>${impact ? `<span class="impact ${impact.includes("high") || impact.includes("bull") ? "ok" : impact.includes("low") ? "" : "warn"}">${h(impact)}</span>` : ""}</div><strong>${h(title)}</strong>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener">المصدر</a>` : ""}</article>`;
   }
-  function relatedNews(symbol) {
-    const items = newsItems().filter(n => arr(n.symbols || n.relatedSymbols).map(sym).includes(sym(symbol))).slice(0, 3);
+  function relatedNews(symbol, detail = {}) {
+    const detailNews = arr(detail.news && (detail.news.items || detail.news.articles || detail.news.news || detail.news.data || detail.news.results));
+    const sourceItems = detailNews.length ? detailNews : newsItems();
+    const items = sourceItems.filter(n => {
+      const symbols = arr(n.symbols || n.relatedSymbols).map(sym);
+      return symbols.includes(sym(symbol)) || (detailNews.length && n.relevanceScore);
+    }).slice(0, 3);
     return items.length ? newsList(items) : `<p class="muted-note">لا توجد أخبار مرتبطة من المزود لهذا الرمز.</p>`;
   }
   function alertList(items) { return `<div class="trade-list">${items.map(i => `<article class="trade-item"><strong>${h(i.title || i.symbol || i.name || "تنبيه")}</strong><p>${h(formatProviderError(i.message || i.reason || i.description || "تنبيه بدون تفاصيل إضافية."))}</p>${i.symbol ? `<button class="ghost-btn sm" data-symbol-details="${h(i.symbol)}">فتح الرمز</button>` : ""}</article>`).join("")}</div>`; }
@@ -1934,10 +1977,11 @@
     const featureList = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(featureLabel).join(" · ") : "--";
     const errorText = formatProviderError(normalized.errorSummary, { empty: "" }) || providerStatus.explanation;
     const errorSummary = errorText ? `<p class="provider-warning">${h(errorText)}</p>` : "";
+    const retryAction = providerStatus.showRetry ? `<button class="ghost-btn compact-btn provider-status-retry" data-retry>${h(providerStatus.retryLabel)}</button>` : "";
     return `<div class="provider-diagnostics-ui">
       <div class="provider-status-banner ${tone}">
         <div><span class="eyebrow">PROVIDER</span><strong>${h(normalized.provider)}</strong><p>${h(providerStatus.title)}</p></div>
-        <span class="state-badge ${tone}">${h(normalized.configured ? "مهيأ" : "غير مهيأ")}</span>
+        <div class="provider-status-actions"><span class="state-badge ${tone}">${h(normalized.configured ? "مهيأ" : "غير مهيأ")}</span>${retryAction}</div>
       </div>
       ${errorSummary}
       <div class="provider-status-cards">${cards.map(([label, value, helper, cardTone]) => providerMetricCard(label, value, helper, cardTone)).join("")}</div>

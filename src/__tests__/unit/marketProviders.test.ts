@@ -8,6 +8,8 @@ import { normalizeFinnhubEconomicEvent } from '@/lib/providers/economic-calendar
 import { normalizeTradingEconomicsEvent } from '@/lib/providers/economic-calendar/tradingEconomics';
 import { dedupeMarketNewsArticles, normalizeFinnhubNewsArticle } from '@/lib/providers/news/finnhub';
 import { getMarketNews } from '@/lib/providers/news';
+import { buildMarketNewsRelevanceContext, filterMarketNewsByRelevance } from '@/lib/providers/news/relevance';
+import type { MarketNewsArticle } from '@/lib/providers/news/types';
 import { TR_MARKET } from '@/lib/translations/market';
 
 afterEach(() => {
@@ -17,6 +19,25 @@ afterEach(() => {
 });
 
 describe('market news provider normalization', () => {
+  const article = (
+    headline: string,
+    summary = '',
+    relatedSymbols: string[] = [],
+  ): MarketNewsArticle => ({
+    id: headline.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    headline,
+    summary,
+    source: 'Provider',
+    sourceUrl: `https://example.com/${encodeURIComponent(headline)}`,
+    imageUrl: null,
+    publishedAt: '2026-06-25T12:00:00.000Z',
+    category: null,
+    relatedSymbols,
+    sentiment: null,
+    sentimentSource: null,
+    provider: 'finnhub',
+  });
+
   it('normalizes Finnhub news without exposing unsafe URLs or fabricating sentiment', () => {
     const article = normalizeFinnhubNewsArticle({
       id: 12345,
@@ -65,6 +86,100 @@ describe('market news provider normalization', () => {
     };
 
     expect(dedupeMarketNewsArticles([base, { ...base, id: 'two' }])).toHaveLength(1);
+  });
+
+  it('keeps US stock news focused on companies, earnings, Fed, inflation, and sectors', () => {
+    const context = buildMarketNewsRelevanceContext({
+      market: 'us-stocks',
+      category: 'stock',
+      symbols: 'AAPL,NVDA,MSFT',
+    });
+
+    const result = filterMarketNewsByRelevance([
+      article('Nvidia shares rise after earnings beat', 'Semiconductor stocks lead Nasdaq higher', ['NVDA']),
+      article('Fed inflation outlook lifts Wall Street stocks'),
+      article('Bitcoin jumps as crypto traders add risk'),
+      article('Oil prices climb after OPEC meeting'),
+    ], context);
+
+    expect(result.articles.map(item => item.headline)).toEqual([
+      'Nvidia shares rise after earnings beat',
+      'Fed inflation outlook lifts Wall Street stocks',
+    ]);
+    expect(result.diagnostics.hiddenUnrelated).toBe(2);
+  });
+
+  it('keeps Gulf market news local to the selected exchange', () => {
+    const context = buildMarketNewsRelevanceContext({
+      market: 'kuwait',
+      symbols: 'KFH.KW,NBK.KW',
+    });
+
+    const result = filterMarketNewsByRelevance([
+      article('Kuwait Finance House shares gain on Boursa Kuwait earnings', '', ['KFH.KW']),
+      article('Saudi Tadawul index rises after bank earnings', '', ['1120.SR']),
+      article('Fed inflation outlook lifts Wall Street stocks'),
+    ], context);
+
+    expect(result.articles.map(item => item.headline)).toEqual([
+      'Kuwait Finance House shares gain on Boursa Kuwait earnings',
+    ]);
+    expect(result.diagnostics.bucket).toBe('local-market');
+  });
+
+  it('keeps forex news to currency, central bank, and macro items', () => {
+    const context = buildMarketNewsRelevanceContext({
+      market: 'forex',
+      symbols: 'EURUSD,USDJPY',
+    });
+
+    const result = filterMarketNewsByRelevance([
+      article('ECB rate decision sends euro higher against the dollar'),
+      article('Tesla shares rise after deliveries beat expectations', '', ['TSLA']),
+    ], context);
+
+    expect(result.articles).toHaveLength(1);
+    expect(result.articles[0]?.headline).toContain('ECB rate decision');
+  });
+
+  it('keeps crypto news crypto-only', () => {
+    const context = buildMarketNewsRelevanceContext({
+      market: 'crypto',
+      symbols: 'BTCUSD,ETHUSD',
+    });
+
+    const result = filterMarketNewsByRelevance([
+      article('Bitcoin ETF inflows lift crypto market sentiment', '', ['BTC']),
+      article('Fed inflation outlook lifts Wall Street stocks'),
+    ], context);
+
+    expect(result.articles.map(item => item.headline)).toEqual([
+      'Bitcoin ETF inflows lift crypto market sentiment',
+    ]);
+  });
+
+  it('keeps commodities news to oil, gold, silver, and commodity items', () => {
+    const context = buildMarketNewsRelevanceContext({
+      market: 'commodities',
+      symbols: 'XAUUSD,WTI,BRENT',
+    });
+
+    const result = filterMarketNewsByRelevance([
+      article('Gold rises as oil traders watch OPEC supply cuts'),
+      article('Bitcoin jumps as crypto traders add risk'),
+    ], context);
+
+    expect(result.articles.map(item => item.headline)).toEqual([
+      'Gold rises as oil traders watch OPEC supply cuts',
+    ]);
+  });
+
+  it('infers the relevance bucket from a symbol when market is omitted', () => {
+    const crypto = buildMarketNewsRelevanceContext({ symbol: 'BTCUSD' });
+    const local = buildMarketNewsRelevanceContext({ symbol: 'KFH.KW' });
+
+    expect(filterMarketNewsByRelevance([article('Bitcoin rallies after crypto ETF inflows')], crypto).diagnostics.bucket).toBe('crypto');
+    expect(filterMarketNewsByRelevance([article('KFH shares gain on Boursa Kuwait earnings', '', ['KFH.KW'])], local).diagnostics.bucket).toBe('local-market');
   });
 
   it('returns not_configured when Finnhub news key is missing', async () => {

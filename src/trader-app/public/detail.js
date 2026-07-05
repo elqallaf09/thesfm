@@ -634,7 +634,7 @@ applyDetailLanguage();
 installLatinDigitNormalizer();
 initMarketBackground();
 initDetailBackButton();
-registerPwaServiceWorker();
+/* SW معطّل: التنظيف يتم من detail.html */
 loadDetail();
 
 function initDetailBackButton() {

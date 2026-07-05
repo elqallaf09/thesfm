@@ -1025,10 +1025,13 @@ export type TraderUniverseCategory = TraderAssetType | 'all';
 
 export type TraderSymbolUniverseEntry = {
   symbol: string;
+  displaySymbol: string;
   name: string;
+  companyName: string;
   selectedMarket: string | null;
   selectedSector: string | null;
   exchange?: string;
+  market?: string;
   country?: string;
   currency?: string;
   assetType: TraderAssetType;
@@ -1134,10 +1137,13 @@ function primarySectorForSymbol(symbol: TraderCatalogSymbol, selectedSector: str
 function universeEntry(symbol: TraderCatalogSymbol, selectedMarket: string | null, selectedSector: string | null): TraderSymbolUniverseEntry {
   return {
     symbol: symbol.symbol,
+    displaySymbol: symbol.symbol,
     name: symbol.name,
+    companyName: symbol.name,
     selectedMarket: primaryMarketForSymbol(symbol, selectedMarket),
     selectedSector: primarySectorForSymbol(symbol, selectedSector),
     exchange: symbol.exchange,
+    market: symbol.market,
     country: symbol.country,
     currency: symbol.currency,
     assetType: symbol.assetType,

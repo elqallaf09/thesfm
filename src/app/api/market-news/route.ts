@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { addUtcDays, clampNumber, formatIsoDate, normalizeTitle, validIsoDate, type ProviderApiResponse } from '@/lib/providers/shared';
 import { getMarketNews } from '@/lib/providers/news';
+import {
+  buildMarketNewsRelevanceContext,
+  filterMarketNewsByRelevance,
+  parseNewsSymbols,
+  type MarketNewsRelevanceContext,
+  type MarketNewsRelevanceFilterResult,
+} from '@/lib/providers/news/relevance';
 import type { MarketNewsArticle, MarketNewsQuery, MarketNewsScope } from '@/lib/providers/news/types';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +61,11 @@ function safeSymbol(value: string | null) {
   return /^[A-Z0-9._:\-=^]{1,32}$/.test(text) ? text : '';
 }
 
-function toUiArticle(article: MarketNewsArticle) {
+function toUiArticle(article: MarketNewsArticle & {
+  relevanceScore?: number;
+  relevanceReasons?: string[];
+  relevanceBucket?: string;
+}) {
   return {
     ...article,
     title: article.headline,
@@ -69,12 +80,36 @@ function toUiArticle(article: MarketNewsArticle) {
     published: article.publishedAt,
     symbols: article.relatedSymbols,
     providerArticleId: article.id,
+    relevanceScore: article.relevanceScore ?? null,
+    relevanceReasons: article.relevanceReasons ?? [],
+    relevanceBucket: article.relevanceBucket ?? null,
   };
 }
 
-function applyLocalFilters(articles: MarketNewsArticle[], searchParams: URLSearchParams) {
+function buildRelevanceContext(searchParams: URLSearchParams, symbol: string | null): MarketNewsRelevanceContext {
+  return buildMarketNewsRelevanceContext({
+    market: searchParams.get('market') ?? searchParams.get('selectedMarket') ?? searchParams.get('marketId'),
+    category: searchParams.get('category') ?? searchParams.get('assetType') ?? searchParams.get('selectedCategory'),
+    symbol,
+    symbols: [
+      ...parseNewsSymbols(searchParams.get('symbols')),
+      ...parseNewsSymbols(searchParams.get('selectedSymbols')),
+      ...parseNewsSymbols(searchParams.get('watchSymbols')),
+    ],
+  });
+}
+
+function articleCategoryFilter(searchParams: URLSearchParams) {
+  return String(searchParams.get('newsCategory') ?? searchParams.get('articleCategory') ?? searchParams.get('sourceCategory') ?? '').trim().toLowerCase();
+}
+
+function applyLocalFilters(
+  articles: MarketNewsArticle[],
+  searchParams: URLSearchParams,
+  relevanceContext: MarketNewsRelevanceContext,
+) {
   const source = String(searchParams.get('source') ?? '').trim().toLowerCase();
-  const category = String(searchParams.get('category') ?? '').trim().toLowerCase();
+  const category = articleCategoryFilter(searchParams);
   const search = normalizeTitle(String(searchParams.get('search') ?? searchParams.get('q') ?? ''));
   const sort = String(searchParams.get('sort') ?? 'latest').trim().toLowerCase();
 
@@ -90,16 +125,42 @@ function applyLocalFilters(articles: MarketNewsArticle[], searchParams: URLSearc
     ].join(' ')).includes(search);
   });
 
-  return filtered.sort((a, b) => {
+  const relevance = filterMarketNewsByRelevance(filtered, relevanceContext);
+  const sorted = relevance.articles.sort((a, b) => {
+    if (sort === 'relevance' && (b.relevanceScore ?? 0) !== (a.relevanceScore ?? 0)) {
+      return (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    }
     const aTime = new Date(a.publishedAt).getTime();
     const bTime = new Date(b.publishedAt).getTime();
+    if (sort === 'oldest') return aTime - bTime;
+    if ((b.relevanceScore ?? 0) !== (a.relevanceScore ?? 0)) return (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
     return sort === 'oldest' ? aTime - bTime : bTime - aTime;
   });
+
+  return {
+    articles: sorted,
+    relevance: relevance.diagnostics,
+  };
 }
 
-function jsonResponse(result: ProviderApiResponse<MarketNewsArticle[]>, searchParams: URLSearchParams, status = 200) {
-  const filtered = result.status === 'success' ? applyLocalFilters(result.data, searchParams) : result.data;
-  const items = filtered.map(toUiArticle);
+function jsonResponse(
+  result: ProviderApiResponse<MarketNewsArticle[]>,
+  searchParams: URLSearchParams,
+  relevanceContext: MarketNewsRelevanceContext,
+  responseLimit: number,
+  status = 200,
+) {
+  const filtered: {
+    articles: Array<MarketNewsArticle & { relevanceScore?: number; relevanceReasons?: string[]; relevanceBucket?: string }>;
+    relevance: MarketNewsRelevanceFilterResult['diagnostics'];
+  } = result.status === 'success'
+    ? applyLocalFilters(result.data, searchParams, relevanceContext)
+    : {
+      articles: result.data,
+      relevance: filterMarketNewsByRelevance([], relevanceContext).diagnostics,
+    };
+  const limitedArticles = filtered.articles.slice(0, responseLimit);
+  const items = limitedArticles.map(toUiArticle);
   const code = result.status === 'success'
     ? result.messageCode ? safeCode(result.messageCode, 'NEWS_NO_RESULTS') : null
     : safeCode(result.messageCode, result.status);
@@ -120,6 +181,10 @@ function jsonResponse(result: ProviderApiResponse<MarketNewsArticle[]>, searchPa
     messageCode: result.messageCode,
     code,
     items,
+    relevance: {
+      ...filtered.relevance,
+      returned: items.length,
+    },
     success: result.status === 'success',
     source: result.provider,
     total: diagnostic.count,
@@ -145,19 +210,21 @@ export async function GET(request: NextRequest) {
       stale: false,
       lastSuccessfulUpdate: null,
       messageCode: 'provider_invalid_request',
-    }, searchParams, 400);
+    }, searchParams, buildRelevanceContext(searchParams, symbol || null), 0, 400);
   }
 
   const limit = clampNumber(searchParams.get('limit'), 20, 1, 50);
+  const relevanceContext = buildRelevanceContext(searchParams, symbol || null);
+  const providerLimit = Math.min(50, Math.max(limit, limit * 4));
   const query: MarketNewsQuery = {
     scope,
     symbol: symbol || null,
     from: range.from,
     to: range.to,
-    limit,
+    limit: providerLimit,
     force: searchParams.has('refresh'),
   };
 
   const result = await getMarketNews(query);
-  return jsonResponse(result, searchParams);
+  return jsonResponse(result, searchParams, relevanceContext, limit);
 }

@@ -16,7 +16,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css?v=20260630-cinema" />
     <link rel="stylesheet" href="/desktop-balance.css?v=20260630-cinema" />
-    <link rel="stylesheet" href="/cinema.css?v=20260703-sessions" />
+    <link rel="stylesheet" href="/cinema.css?v=20260705-sw-purge" />
+    <script>
+      // إلغاء أي Service Worker قديم وتنظيف كاشه (نفس معالجة index.html)
+      (function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(function (regs) { regs.forEach(function (reg) { reg.unregister(); }); })
+            .catch(function () {});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys()
+            .then(function (keys) {
+              keys.forEach(function (key) {
+                if (key.indexOf("the-sfm-trader") === 0) caches.delete(key);
+              });
+            })
+            .catch(function () {});
+        }
+      })();
+    </script>
   </head>
   <body>
     <canvas id="market-bg" class="market-bg" aria-hidden="true"></canvas>

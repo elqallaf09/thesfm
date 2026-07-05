@@ -59,6 +59,16 @@ describe('trader market and sector symbol universe', () => {
     expect(universe.symbols.length).toBeGreaterThanOrEqual(100);
     expect(universe.entries.every(entry => entry.selectedMarket === 'kuwait')).toBe(true);
     expect(universe.entries.every(entry => entry.currency === 'KWD')).toBe(true);
+    expect(universe.entries[0]).toEqual(expect.objectContaining({
+      providerSymbol: expect.any(String),
+      displaySymbol: expect.any(String),
+      exchange: expect.any(String),
+      market: expect.any(String),
+      country: expect.any(String),
+      currency: 'KWD',
+      assetType: 'stock',
+      companyName: expect.any(String),
+    }));
     expect(new Set(dedupeKeys).size).toBe(dedupeKeys.length);
   });
 
