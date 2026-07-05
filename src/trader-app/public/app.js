@@ -727,7 +727,8 @@
   function marketPreviewSymbols(m) {
     return unique(arr(m.previewSymbols || m.symbols).slice(0, 10));
   }
-  function marketActionLabel() {
+  function marketActionLabel(m) {
+    if (m && m.id === "etfs") return `عرض كل الصناديق <span class="ltr">View all funds</span>`;
     return `عرض كل الأسهم <span class="ltr">View all symbols</span>`;
   }
   function marketUniverseTotal(m, payload) {
@@ -741,7 +742,7 @@
     return `<section class="market-preview-strip" data-market-preview="${h(m.id)}">
       <div class="market-preview-copy"><strong>رموز معاينة</strong><span>${h(`يعرض ${latinNumber(preview.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${preview.length} of ${total} symbols`)}</span></span></div>
       <div class="chip-row compact">${preview.map(s => `<button class="badge" data-symbol-details="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</div>
-      <a class="ghost-btn compact-btn" href="${ROOT}/markets/${h(m.id)}" data-route-link>${marketActionLabel()}</a>
+      <a class="ghost-btn compact-btn" href="${ROOT}/markets/${h(m.id)}" data-route-link>${marketActionLabel(m)}</a>
     </section>`;
   }
   function marketUniverseRows(payload) {
@@ -1985,7 +1986,7 @@
     const total = marketUniverseTotal(m);
     const hidden = Math.max(0, total - visible.length);
     const more = hidden ? `<span class="badge sm muted market-more"><span class="ltr">+${latinNumber(hidden)}</span></span>` : "";
-    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">${marketActionLabel()}</span></a>`;
+    return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">${marketActionLabel(m)}</span></a>`;
   }
   function heatmap(items) {
     return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;

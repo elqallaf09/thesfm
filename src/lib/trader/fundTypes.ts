@@ -220,8 +220,9 @@ export function classifyFundType(input: {
   industry?: unknown;
   fundStructure?: TraderFundStructure;
 }): TraderFundType {
-  const explicit = firstType([input.explicitType, input.rawAssetType]);
+  const explicit = firstType([input.explicitType]);
   if (explicit && explicit !== 'fund') return explicit;
+  const rawType = firstType([input.rawAssetType]);
 
   const haystack = upper([
     input.symbol,
@@ -248,7 +249,7 @@ export function classifyFundType(input: {
   if (/\b(HEDGE|LONG\/SHORT|LONG SHORT|MARKET NEUTRAL|ABSOLUTE RETURN|MANAGED FUTURES)\b/.test(haystack)) return 'hedge_fund';
   if (/\b(MUTUAL FUND|OPEN END|OPEN-END)\b/.test(haystack)) return 'mutual_fund';
   if (input.fundStructure === 'etf') return 'etf';
-  return explicit ?? 'fund';
+  return explicit ?? rawType ?? 'fund';
 }
 
 export function fundTypeLabel(fundType: TraderFundType | null | undefined) {
