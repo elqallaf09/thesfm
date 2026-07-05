@@ -1,0 +1,438 @@
+diff --git a/src/trader-app/public/cinema.css b/src/trader-app/public/cinema.css
+index 5c2208f..1c3f8af 100644
+--- a/src/trader-app/public/cinema.css
++++ b/src/trader-app/public/cinema.css
+@@ -177,46 +177,117 @@ button {
+ }
+ 
+ .sidebar-nav {
+-  display: grid;
+-  gap: 8px;
+-  margin-top: 18px;
++  display: flex;
++  flex-direction: column;
++  gap: 2px;
++  margin-top: 14px;
+   max-height: calc(100vh - 210px);
+   padding-left: 4px;
+   overflow: auto;
++  scrollbar-width: thin;
++}
++
++.nav-group-label {
++  margin: 14px 10px 5px;
++  color: var(--muted-2);
++  font-family: var(--font-mono);
++  font-size: 0.6rem;
++  font-weight: 700;
++  letter-spacing: 0.22em;
++  text-transform: uppercase;
++  opacity: 0.85;
++}
++
++.nav-group-label:first-child {
++  margin-top: 4px;
+ }
+ 
+ .sidebar-nav a {
++  position: relative;
+   display: grid;
+-  grid-template-columns: 1fr auto;
+-  gap: 8px;
++  grid-template-columns: 20px 1fr auto;
++  gap: 11px;
+   align-items: center;
+-  min-height: 48px;
+-  padding: 10px 12px;
+-  border: 1px solid transparent;
+-  border-radius: 16px;
+-  color: #dcefff;
+-  background: rgba(255, 255, 255, 0.025);
+-  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
++  min-height: 42px;
++  padding: 9px 12px;
++  border: none;
++  border-radius: 11px;
++  color: #c7dcef;
++  background: transparent;
++  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+ }
+ 
+-.sidebar-nav a span {
++.sidebar-nav a::before {
++  position: absolute;
++  top: 50%;
++  right: 0;
++  width: 3px;
++  height: 0;
++  content: "";
++  border-radius: 3px;
++  background: linear-gradient(180deg, var(--cyan), #45f0a2);
++  box-shadow: 0 0 10px rgba(34, 211, 238, 0.55), 0 0 22px rgba(69, 240, 162, 0.3);
++  opacity: 0;
++  transform: translateY(-50%);
++  transition: height 200ms ease, opacity 200ms ease;
++}
++
++.nav-ico {
++  width: 19px;
++  height: 19px;
++  color: var(--muted-2);
++  transition: color 160ms ease, filter 160ms ease;
++}
++
++.sidebar-nav a .nav-label {
+   overflow: visible;
+-  font-weight: 700;
++  font-size: 0.92rem;
++  font-weight: 600;
+   line-height: 1.25;
+   white-space: normal;
+ }
+ 
+-.sidebar-nav a:hover,
++.sidebar-nav a small {
++  font-size: 0.6rem;
++  opacity: 0.55;
++  transition: opacity 160ms ease;
++}
++
++.sidebar-nav a:hover {
++  color: #eaf6ff;
++  background: rgba(85, 215, 255, 0.05);
++  transform: translateX(-3px);
++}
++
++.sidebar-nav a:hover .nav-ico {
++  color: var(--cyan);
++}
++
+ .sidebar-nav a.is-active {
+-  border-color: rgba(85, 215, 255, 0.28);
+-  background: linear-gradient(135deg, rgba(85, 215, 255, 0.14), rgba(69, 240, 162, 0.06));
+-  transform: translateX(-2px);
++  color: #ffffff;
++  background: linear-gradient(270deg, rgba(34, 211, 238, 0.12), rgba(34, 211, 238, 0.02) 70%, transparent);
+ }
+ 
+-.sidebar-nav a.is-active span {
++.sidebar-nav a.is-active::before {
++  height: 62%;
++  opacity: 1;
++}
++
++.sidebar-nav a.is-active .nav-ico {
++  color: #45f0a2;
++  filter: drop-shadow(0 0 6px rgba(69, 240, 162, 0.55));
++}
++
++.sidebar-nav a.is-active .nav-label {
++  font-weight: 700;
+   color: #ffffff;
+ }
+ 
++.sidebar-nav a.is-active small {
++  color: var(--cyan);
++  opacity: 0.85;
++}
++
+ .sidebar-status {
+   position: absolute;
+   right: 16px;
+@@ -1273,12 +1344,14 @@ body,
+ .profile-card strong { display: block; font-size: 0.86rem; } .profile-card small { color: var(--muted); font-size: 0.72rem; }
+ 
+ #app-shell.is-collapsed .terminal-sidebar { width: 76px; }
+-#app-shell.is-collapsed .sidebar-nav a span:first-child,
++#app-shell.is-collapsed .sidebar-nav a .nav-label,
+ #app-shell.is-collapsed .sidebar-nav a small,
++#app-shell.is-collapsed .nav-group-label,
+ #app-shell.is-collapsed .brand-card small, #app-shell.is-collapsed .brand-card strong,
+ #app-shell.is-collapsed .ai-pro-card small, #app-shell.is-collapsed .ai-pro-card strong,
+ #app-shell.is-collapsed .profile-card span:last-child, #app-shell.is-collapsed .sidebar-status div { display: none; }
+-#app-shell.is-collapsed .sidebar-nav a { justify-content: center; }
++#app-shell.is-collapsed .sidebar-nav a { grid-template-columns: 20px; justify-content: center; justify-items: center; }
++#app-shell.is-collapsed .nav-ico { width: 21px; height: 21px; }
+ 
+ /* explore carousel */
+ .explore { margin: 2px 0; }
+@@ -4212,3 +4285,172 @@ a.badge:focus-visible,
+ .map-node.is-open i { background: #45f0a2; box-shadow: 0 0 10px rgba(69,240,162,.8); }
+ .map-node.is-closed i { background: #ff6b74; box-shadow: 0 0 10px rgba(255,107,116,.7); }
+ .map-node.is-open b { color: #bff5dd; }
++
++/* ═══════════════════════════════════════════════════════════════
++   MARKET CINEMA — الخلفية السينمائية (شموع شبحية + خط سعر + جزيئات)
++   كلها transform/opacity فقط، طبقة fixed واحدة خلف المحتوى.
++   ═══════════════════════════════════════════════════════════════ */
++
++.market-cinema {
++  position: fixed;
++  inset: 0;
++  z-index: 0;
++  overflow: hidden;
++  pointer-events: none;
++}
++
++.terminal-app,
++.toast-root {
++  position: relative;
++  z-index: 1;
++}
++
++/* الشموع الشبحية: عنقود صاعد يسار وهابط يمين — إيحاء الصعود والنزول */
++.mc-candles {
++  position: absolute;
++  width: min(34vw, 480px);
++  height: min(52vh, 620px);
++  opacity: 0.055;
++}
++
++.mc-candles .mc-wick { stroke: #9fd8ef; stroke-width: 2; }
++.mc-candles .mc-body-up { fill: #10B981; }
++.mc-candles .mc-body-down { fill: #EF4444; }
++
++.mc-candles-bull {
++  bottom: -4vh;
++  left: 2vw;
++  animation: mc-drift-up 26s ease-in-out infinite alternate;
++}
++
++.mc-candles-bear {
++  top: -4vh;
++  right: 2vw;
++  animation: mc-drift-down 30s ease-in-out infinite alternate;
++}
++
++@keyframes mc-drift-up {
++  from { transform: translateY(14px) scale(1); }
++  to { transform: translateY(-18px) scale(1.03); }
++}
++
++@keyframes mc-drift-down {
++  from { transform: translateY(-14px) scale(1); }
++  to { transform: translateY(18px) scale(1.03); }
++}
++
++/* خط السعر المتوهج: يرسم نفسه ببطء ويتكرر — نبض السوق */
++.mc-priceline {
++  position: absolute;
++  inset: 0;
++  width: 100%;
++  height: 100%;
++  opacity: 0.5;
++}
++
++.mc-priceline .mc-line {
++  stroke-dasharray: 2400;
++  stroke-dashoffset: 2400;
++  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.45));
++  animation: mc-draw 16s linear infinite;
++}
++
++.mc-priceline .mc-area {
++  opacity: 0;
++  animation: mc-area-fade 16s linear infinite;
++}
++
++.mc-priceline .mc-line-dot {
++  filter: drop-shadow(0 0 8px rgba(69, 240, 162, 0.9));
++  offset-path: path("M0 640 L120 600 L230 626 L340 540 L470 566 L600 470 L720 502 L840 420 L960 448 L1090 350 L1210 384 L1330 296 L1440 320");
++  animation: mc-dot-travel 16s linear infinite;
++}
++
++@keyframes mc-draw {
++  0% { stroke-dashoffset: 2400; opacity: 0; }
++  6% { opacity: 1; }
++  74% { stroke-dashoffset: 0; opacity: 1; }
++  92% { stroke-dashoffset: 0; opacity: 0.15; }
++  100% { stroke-dashoffset: 0; opacity: 0; }
++}
++
++@keyframes mc-area-fade {
++  0%, 8% { opacity: 0; }
++  60%, 78% { opacity: 1; }
++  95%, 100% { opacity: 0; }
++}
++
++@keyframes mc-dot-travel {
++  0% { offset-distance: 0%; opacity: 0; }
++  6% { opacity: 1; }
++  74% { offset-distance: 100%; opacity: 1; }
++  80%, 100% { offset-distance: 100%; opacity: 0; }
++}
++
++/* الجزيئات: خضراء تصعد وحمراء تهبط، كثافة قليلة جداً */
++.mc-p {
++  position: absolute;
++  width: 4px;
++  height: 4px;
++  border-radius: 50%;
++  opacity: 0;
++}
++
++.mc-p-up {
++  background: #10B981;
++  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
++  animation: mc-float-up 18s linear infinite;
++}
++
++.mc-p-down {
++  background: #EF4444;
++  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
++  animation: mc-float-down 20s linear infinite;
++}
++
++.mc-p-up:nth-of-type(1) { left: 12%; animation-delay: 0s; animation-duration: 17s; }
++.mc-p-up:nth-of-type(2) { left: 34%; animation-delay: 5s; animation-duration: 21s; }
++.mc-p-up:nth-of-type(3) { left: 58%; animation-delay: 10s; animation-duration: 19s; }
++.mc-p-up:nth-of-type(4) { left: 21%; animation-delay: 14s; animation-duration: 23s; }
++.mc-p-down:nth-of-type(5) { left: 72%; animation-delay: 3s; animation-duration: 22s; }
++.mc-p-down:nth-of-type(6) { left: 86%; animation-delay: 9s; animation-duration: 18s; }
++.mc-p-down:nth-of-type(7) { left: 64%; animation-delay: 15s; animation-duration: 24s; }
++
++@keyframes mc-float-up {
++  0% { bottom: -3%; opacity: 0; transform: translateX(0); }
++  12% { opacity: 0.55; }
++  88% { opacity: 0.4; }
++  100% { bottom: 104%; opacity: 0; transform: translateX(26px); }
++}
++
++@keyframes mc-float-down {
++  0% { top: -3%; opacity: 0; transform: translateX(0); }
++  12% { opacity: 0.5; }
++  88% { opacity: 0.35; }
++  100% { top: 104%; opacity: 0; transform: translateX(-26px); }
++}
++
++/* vignette: تركيز سينمائي على مركز الشاشة */
++.mc-vignette {
++  position: absolute;
++  inset: 0;
++  background: radial-gradient(ellipse 120% 90% at 50% 42%, transparent 52%, rgba(1, 4, 8, 0.55) 100%);
++}
++
++/* الجوال: طبقة أخف — شموع وجزيئات أقل حفاظاً على البطارية */
++@media (max-width: 720px) {
++  .mc-candles { width: 52vw; opacity: 0.04; }
++  .mc-p-up:nth-of-type(4), .mc-p-down:nth-of-type(7) { display: none; }
++  .mc-priceline { opacity: 0.35; }
++}
++
++/* احترام تفضيل تقليل الحركة */
++@media (prefers-reduced-motion: reduce) {
++  .mc-candles, .mc-p, .mc-priceline .mc-line, .mc-priceline .mc-area, .mc-priceline .mc-line-dot {
++    animation: none;
++  }
++  .mc-priceline .mc-line { stroke-dashoffset: 0; opacity: 0.6; }
++  .mc-priceline .mc-area { opacity: 0.7; }
++  .mc-priceline .mc-line-dot { display: none; }
++  .mc-p { display: none; }
++}
+diff --git a/src/trader-app/public/index.html b/src/trader-app/public/index.html
+index 093b895..c2659d4 100644
+--- a/src/trader-app/public/index.html
++++ b/src/trader-app/public/index.html
+@@ -8,9 +8,55 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+-    <link rel="stylesheet" href="/cinema.css?v=20260703-market-universe" />
++    <link rel="stylesheet" href="/cinema.css?v=20260705-cinematic-nav" />
+   </head>
+   <body>
++    <div class="market-cinema" aria-hidden="true">
++      <svg class="mc-candles mc-candles-bull" viewBox="0 0 320 420" preserveAspectRatio="xMidYMid slice">
++        <g stroke-linecap="round">
++          <line class="mc-wick" x1="30" y1="330" x2="30" y2="392"/><rect class="mc-body-up" x="22" y="342" width="16" height="34" rx="2"/>
++          <line class="mc-wick" x1="70" y1="300" x2="70" y2="368"/><rect class="mc-body-up" x="62" y="312" width="16" height="40" rx="2"/>
++          <line class="mc-wick" x1="110" y1="312" x2="110" y2="360"/><rect class="mc-body-down" x="102" y="320" width="16" height="26" rx="2"/>
++          <line class="mc-wick" x1="150" y1="256" x2="150" y2="330"/><rect class="mc-body-up" x="142" y="268" width="16" height="46" rx="2"/>
++          <line class="mc-wick" x1="190" y1="228" x2="190" y2="292"/><rect class="mc-body-up" x="182" y="238" width="16" height="40" rx="2"/>
++          <line class="mc-wick" x1="230" y1="238" x2="230" y2="286"/><rect class="mc-body-down" x="222" y="246" width="16" height="26" rx="2"/>
++          <line class="mc-wick" x1="270" y1="170" x2="270" y2="252"/><rect class="mc-body-up" x="262" y="182" width="16" height="52" rx="2"/>
++          <line class="mc-wick" x1="310" y1="128" x2="310" y2="200"/><rect class="mc-body-up" x="302" y="140" width="16" height="44" rx="2"/>
++        </g>
++      </svg>
++      <svg class="mc-candles mc-candles-bear" viewBox="0 0 320 420" preserveAspectRatio="xMidYMid slice">
++        <g stroke-linecap="round">
++          <line class="mc-wick" x1="20" y1="60" x2="20" y2="140"/><rect class="mc-body-down" x="12" y="72" width="16" height="52" rx="2"/>
++          <line class="mc-wick" x1="60" y1="98" x2="60" y2="168"/><rect class="mc-body-down" x="52" y="110" width="16" height="44" rx="2"/>
++          <line class="mc-wick" x1="100" y1="120" x2="100" y2="176"/><rect class="mc-body-up" x="92" y="130" width="16" height="30" rx="2"/>
++          <line class="mc-wick" x1="140" y1="150" x2="140" y2="226"/><rect class="mc-body-down" x="132" y="162" width="16" height="48" rx="2"/>
++          <line class="mc-wick" x1="180" y1="196" x2="180" y2="264"/><rect class="mc-body-down" x="172" y="208" width="16" height="42" rx="2"/>
++          <line class="mc-wick" x1="220" y1="228" x2="220" y2="282"/><rect class="mc-body-up" x="212" y="238" width="16" height="28" rx="2"/>
++          <line class="mc-wick" x1="260" y1="262" x2="260" y2="336"/><rect class="mc-body-down" x="252" y="274" width="16" height="46" rx="2"/>
++          <line class="mc-wick" x1="300" y1="306" x2="300" y2="378"/><rect class="mc-body-down" x="292" y="318" width="16" height="44" rx="2"/>
++        </g>
++      </svg>
++      <svg class="mc-priceline" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
++        <defs>
++          <linearGradient id="mc-line-grad" x1="0" y1="0" x2="1" y2="0">
++            <stop offset="0" stop-color="#22D3EE" stop-opacity="0"/>
++            <stop offset="0.18" stop-color="#22D3EE" stop-opacity="0.55"/>
++            <stop offset="0.62" stop-color="#45f0a2" stop-opacity="0.65"/>
++            <stop offset="1" stop-color="#F59E0B" stop-opacity="0.5"/>
++          </linearGradient>
++          <linearGradient id="mc-area-grad" x1="0" y1="0" x2="0" y2="1">
++            <stop offset="0" stop-color="#22D3EE" stop-opacity="0.10"/>
++            <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
++          </linearGradient>
++        </defs>
++        <path class="mc-area" d="M0 640 L120 600 L230 626 L340 540 L470 566 L600 470 L720 502 L840 420 L960 448 L1090 350 L1210 384 L1330 296 L1440 320 L1440 900 L0 900 Z" fill="url(#mc-area-grad)"/>
++        <path class="mc-line" d="M0 640 L120 600 L230 626 L340 540 L470 566 L600 470 L720 502 L840 420 L960 448 L1090 350 L1210 384 L1330 296 L1440 320" fill="none" stroke="url(#mc-line-grad)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
++        <circle class="mc-line-dot" r="4" fill="#45f0a2"/>
++      </svg>
++      <span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span>
++      <span class="mc-p mc-p-down"></span><span class="mc-p mc-p-down"></span><span class="mc-p mc-p-down"></span>
++      <span class="mc-vignette"></span>
++    </div>
+     <div class="terminal-app" id="app-shell">
+       <aside class="terminal-sidebar" aria-label="Trader navigation">
+         <div class="sidebar-brand-row">
+@@ -25,19 +71,24 @@
+         </div>
+ 
+         <nav class="sidebar-nav">
+-          <a href="/thesfm-trader-own/dashboard" data-route-link data-route="dashboard"><span>القيادة</span><small>Dashboard</small></a>
+-          <a href="/thesfm-trader-own/markets" data-route-link data-route="markets"><span>الأسواق</span><small>Markets</small></a>
+-          <a href="/thesfm-trader-own/ai-scanner" data-route-link data-route="ai-scanner"><span>ماسح الذكاء</span><small>AI Scanner</small></a>
+-          <a href="/thesfm-trader-own/watchlist" data-route-link data-route="watchlist"><span>قائمة المتابعة</span><small>Watchlist</small></a>
+-          <a href="/thesfm-trader-own/portfolio" data-route-link data-route="portfolio"><span>المحفظة</span><small>Portfolio</small></a>
+-          <a href="/thesfm-trader-own/alerts" data-route-link data-route="alerts"><span>التنبيهات</span><small>Alerts</small></a>
+-          <a href="/thesfm-trader-own/recommendations" data-route-link data-route="recommendations"><span>التوصيات</span><small>Recommendations</small></a>
+-          <a href="/thesfm-trader-own/trade-performance" data-route-link data-route="trade-performance"><span>أداء الصفقات</span><small>Trade Performance</small></a>
+-          <a href="/thesfm-trader-own/news" data-route-link data-route="news"><span>الأخبار</span><small>News</small></a>
+-          <a href="/thesfm-trader-own/calendar" data-route-link data-route="calendar"><span>التقويم</span><small>Calendar</small></a>
+-          <a href="/thesfm-trader-own/education" data-route-link data-route="education"><span>التعليم</span><small>Education</small></a>
+-          <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><span>الإعدادات</span><small>Settings</small></a>
+-          <a href="/thesfm-trader-own/symbol-details" data-route-link data-route="symbol-details"><span>تفاصيل الرمز</span><small>Symbol Details</small></a>
++          <span class="nav-group-label">التداول</span>
++          <a href="/thesfm-trader-own/dashboard" data-route-link data-route="dashboard"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="nav-label">القيادة</span><small>Dashboard</small></a>
++          <a href="/thesfm-trader-own/markets" data-route-link data-route="markets"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 4v3M7 13v3"/><rect x="5" y="7" width="4" height="6" rx="1"/><path d="M17 8v3M17 17v3"/><rect x="15" y="11" width="4" height="6" rx="1"/></svg><span class="nav-label">الأسواق</span><small>Markets</small></a>
++          <a href="/thesfm-trader-own/ai-scanner" data-route-link data-route="ai-scanner"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/><path d="M12 3v3M12 12l5.5-5.5"/></svg><span class="nav-label">ماسح الذكاء</span><small>AI Scanner</small></a>
++          <a href="/thesfm-trader-own/symbol-details" data-route-link data-route="symbol-details"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5M7.5 11.5l2-2 1.5 1.5 2.5-2.5"/></svg><span class="nav-label">تفاصيل الرمز</span><small>Symbol Details</small></a>
++
++          <span class="nav-group-label">المتابعة</span>
++          <a href="/thesfm-trader-own/watchlist" data-route-link data-route="watchlist"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg><span class="nav-label">قائمة المتابعة</span><small>Watchlist</small></a>
++          <a href="/thesfm-trader-own/portfolio" data-route-link data-route="portfolio"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7M3 12.5h18"/></svg><span class="nav-label">المحفظة</span><small>Portfolio</small></a>
++          <a href="/thesfm-trader-own/alerts" data-route-link data-route="alerts"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5Z"/><path d="M10 19.5a2.2 2.2 0 0 0 4 0"/></svg><span class="nav-label">التنبيهات</span><small>Alerts</small></a>
++          <a href="/thesfm-trader-own/recommendations" data-route-link data-route="recommendations"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span class="nav-label">التوصيات</span><small>Recommendations</small></a>
++          <a href="/thesfm-trader-own/trade-performance" data-route-link data-route="trade-performance"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.5-5.5 3.5 3.5L21 6"/><path d="M15.5 6H21v5.5"/></svg><span class="nav-label">أداء الصفقات</span><small>Trade Performance</small></a>
++
++          <span class="nav-group-label">أخرى</span>
++          <a href="/thesfm-trader-own/news" data-route-link data-route="news"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2M7 8.5h7M7 12h7M7 15.5h4.5"/></svg><span class="nav-label">الأخبار</span><small>News</small></a>
++          <a href="/thesfm-trader-own/calendar" data-route-link data-route="calendar"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span class="nav-label">التقويم</span><small>Calendar</small></a>
++          <a href="/thesfm-trader-own/education" data-route-link data-route="education"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4L2.5 8.5 12 13l9.5-4.5L12 4Z"/><path d="M6 10.8V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.2"/></svg><span class="nav-label">التعليم</span><small>Education</small></a>
++          <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg><span class="nav-label">الإعدادات</span><small>Settings</small></a>
+         </nav>
+ 
+         <a class="ai-pro-card" href="/thesfm-trader-own/ai-scanner" data-route-link>
+@@ -110,6 +161,6 @@
+     </div>
+ 
+     <div class="toast-root" id="toast-root" aria-live="polite"></div>
+-    <script src="/app.js?v=20260703-market-universe" defer></script>
++    <script src="/app.js?v=20260705-cinematic-nav" defer></script>
+   </body>
+ </html>

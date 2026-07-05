@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { filterAssetsByMarket, marketFilterDecision, strictMarketContextForSelection } from '@/lib/trader/marketFilters';
+import {
+  filterAssetsByMarket,
+  isAssetAllowedForSelection,
+  marketFilterDecision,
+  strictMarketContextForSelection,
+} from '@/lib/trader/marketFilters';
 
 describe('trader recommendation market filters', () => {
   const bahrainStock = {
@@ -52,5 +57,60 @@ describe('trader recommendation market filters', () => {
       exchange: 'Bahrain Bourse',
       currency: 'BHD',
     });
+  });
+
+  it.each([
+    ['qatar', 'QNBK.QA', 'Qatar Exchange', 'Qatar Market', 'Qatar', 'QAR'],
+    ['kuwait', 'KFH.KW', 'Boursa Kuwait', 'Kuwait Market', 'Kuwait', 'KWD'],
+    ['bahrain', 'AUB.BH', 'Bahrain Bourse', 'Bahrain Market', 'Bahrain', 'BHD'],
+    ['saudi', '2222.SR', 'Tadawul', 'Saudi Market', 'Saudi Arabia', 'SAR'],
+    ['uae', 'EMAAR.AE', 'Dubai Financial Market', 'UAE Market', 'UAE', 'AED'],
+  ])('allows only the selected local market and currency for %s', (market, symbol, exchange, marketName, country, currency) => {
+    const localAsset = { symbol, exchange, market: marketName, country, currency, assetType: 'stock' };
+    const forbiddenAssets = [
+      { symbol: 'NVDA', exchange: 'NASDAQ', market: 'US Stocks', country: 'US', currency: 'USD', assetType: 'stock' },
+      { symbol: 'TSLA', exchange: 'NASDAQ', market: 'US Stocks', country: 'US', currency: 'USD', assetType: 'stock' },
+      { symbol: 'BTC-USD', exchange: 'Crypto', market: 'Crypto', country: 'Global', currency: 'USD', assetType: 'crypto' },
+      { symbol: 'EURUSD', exchange: 'Forex', market: 'Forex', country: 'Global', currency: 'USD', assetType: 'forex' },
+      { symbol: 'GLD', exchange: 'NYSE Arca', market: 'US ETFs', country: 'US', currency: 'USD', assetType: 'fund' },
+    ];
+
+    expect(isAssetAllowedForSelection(localAsset, market, 'all')).toBe(true);
+    for (const asset of forbiddenAssets) {
+      expect(isAssetAllowedForSelection(asset, market, 'all')).toBe(false);
+    }
+  });
+
+  it('keeps technology and semiconductor categories to equities only', () => {
+    const nvda = { symbol: 'NVDA', exchange: 'NASDAQ', market: 'US Stocks', country: 'US', currency: 'USD', assetType: 'stock', sector: 'Technology', industry: 'Semiconductors' };
+    const msft = { symbol: 'MSFT', exchange: 'NASDAQ', market: 'US Stocks', country: 'US', currency: 'USD', assetType: 'stock', sector: 'Technology', industry: 'Software' };
+    const btc = { symbol: 'BTC-USD', exchange: 'Crypto', market: 'Crypto', country: 'Global', currency: 'USD', assetType: 'crypto' };
+    const eurusd = { symbol: 'EURUSD', exchange: 'Forex', market: 'Forex', country: 'Global', currency: 'USD', assetType: 'forex' };
+    const gold = { symbol: 'GLD', exchange: 'NYSE Arca', market: 'US ETFs', country: 'US', currency: 'USD', assetType: 'fund' };
+
+    expect(isAssetAllowedForSelection(nvda, 'technology', 'technology')).toBe(true);
+    expect(isAssetAllowedForSelection(msft, 'technology', 'technology')).toBe(true);
+    expect(isAssetAllowedForSelection(nvda, 'semiconductors', 'semiconductors')).toBe(true);
+    expect(isAssetAllowedForSelection(msft, 'semiconductors', 'semiconductors')).toBe(false);
+    expect(isAssetAllowedForSelection(btc, 'technology', 'technology')).toBe(false);
+    expect(isAssetAllowedForSelection(eurusd, 'technology', 'technology')).toBe(false);
+    expect(isAssetAllowedForSelection(gold, 'technology', 'technology')).toBe(false);
+  });
+
+  it('keeps asset-class categories isolated', () => {
+    const equity = { symbol: 'NVDA', exchange: 'NASDAQ', market: 'US Stocks', country: 'US', currency: 'USD', assetType: 'stock' };
+    const crypto = { symbol: 'BTC-USD', exchange: 'Crypto', market: 'Crypto', country: 'Global', currency: 'USD', assetType: 'crypto' };
+    const forex = { symbol: 'EURUSD', exchange: 'Forex', market: 'Forex', country: 'Global', currency: 'USD', assetType: 'forex' };
+    const commodity = { symbol: 'XAUUSD', exchange: 'Commodities', market: 'Commodities', country: 'Global', currency: 'USD', assetType: 'commodity' };
+    const etf = { symbol: 'GLD', exchange: 'NYSE Arca', market: 'US ETFs', country: 'US', currency: 'USD', assetType: 'fund' };
+
+    expect(isAssetAllowedForSelection(crypto, 'crypto', 'crypto')).toBe(true);
+    expect(isAssetAllowedForSelection(equity, 'crypto', 'crypto')).toBe(false);
+    expect(isAssetAllowedForSelection(forex, 'forex', 'forex')).toBe(true);
+    expect(isAssetAllowedForSelection(equity, 'forex', 'forex')).toBe(false);
+    expect(isAssetAllowedForSelection(commodity, 'commodities', 'commodity')).toBe(true);
+    expect(isAssetAllowedForSelection(crypto, 'commodities', 'commodity')).toBe(false);
+    expect(isAssetAllowedForSelection(etf, 'etfs', 'fund')).toBe(true);
+    expect(isAssetAllowedForSelection(equity, 'etfs', 'fund')).toBe(false);
   });
 });

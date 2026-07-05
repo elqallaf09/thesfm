@@ -337,6 +337,28 @@ function candidatesForFeature(feature: TraderCalendarFeature, query: TraderCalen
   return candidates;
 }
 
+function dedupeCalendarEvents<K extends TraderCalendarFeature>(
+  feature: K,
+  data: TraderCalendarDataMap[K][],
+): TraderCalendarDataMap[K][] {
+  if (feature !== 'earnings') return data;
+
+  const seen = new Set<string>();
+  return data.filter((event) => {
+    const earningsEvent = event as TraderCalendarDataMap['earnings'];
+    const key = [
+      earningsEvent.symbol.trim().toUpperCase(),
+      earningsEvent.reportDate ?? '',
+      earningsEvent.fiscalDateEnding ?? '',
+      (earningsEvent.source || earningsEvent.provider || '').trim().toLowerCase(),
+    ].join('|');
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function buildTraderCalendarQuery(searchParams: URLSearchParams): TraderCalendarQuery {
   const requestedRange = searchParams.get('range');
   const range: TraderCalendarRange = requestedRange === 'today' || requestedRange === '7' || requestedRange === '30' || requestedRange === '90' || requestedRange === 'all'
@@ -434,7 +456,7 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
         }
 
         try {
-          const data = await candidate.fetchEvents();
+          const data = dedupeCalendarEvents(feature, await candidate.fetchEvents() as TraderCalendarDataMap[K][]);
           const updatedAt = new Date().toISOString();
           cache.set(key, {
             provider: candidate.provider,

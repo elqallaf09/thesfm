@@ -102,6 +102,41 @@ describe('trader calendar providers', () => {
     });
   });
 
+  it('deduplicates earnings by symbol, report date, fiscal period, and source', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple Inc.',
+        date: '2026-07-15',
+        fiscalDateEnding: '2026-06-30',
+        epsEstimated: 1.48,
+      },
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple Inc.',
+        date: '2026-07-15',
+        fiscalDateEnding: '2026-06-30',
+        epsEstimated: 1.48,
+      },
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple Inc.',
+        date: '2026-07-16',
+        fiscalDateEnding: '2026-06-30',
+        epsEstimated: 1.49,
+      },
+    ]), { status: 200 })));
+
+    const result = await getTraderCalendar('earnings', query);
+
+    expect(result.status).toBe('success');
+    expect(result.resultCount).toBe(2);
+    expect(result.data.map(item => item.reportDate)).toEqual(['2026-07-15', '2026-07-16']);
+  });
+
   it('filters earnings rows that only contain a symbol and report date', async () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');

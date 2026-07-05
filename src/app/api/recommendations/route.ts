@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
-import { filterAssetsByMarket, marketFilterDecision, strictMarketContextForSelection } from '@/lib/trader/marketFilters';
+import {
+  assetSelectionDecision,
+  filterAssetsBySelection,
+  normalizeSelectedCategoryKey,
+  strictMarketContextForSelection,
+} from '@/lib/trader/marketFilters';
 import { getSymbolsForMarketOrSector } from '@/lib/trader/marketCatalog';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
@@ -31,24 +36,13 @@ function availableQuoteProviders(capabilityMatrix: Record<string, { configured?:
     .filter((provider): provider is string => Boolean(provider))));
 }
 
-const BAHRAIN_EMPTY_STATE = {
-  ar: 'لا توجد بيانات كافية لسوق البحرين حالياً',
-  en: 'Not enough data available for Bahrain Market right now',
+const SELECTION_EMPTY_STATE = {
+  ar: 'لا توجد أصول مطابقة لهذا السوق أو التصنيف حالياً',
+  en: 'No matching assets for this market or category right now',
 };
 
 function normalizeRecommendationCategory(value: string | null) {
-  const category = String(value ?? 'all').trim().toLowerCase();
-  if (!category || category === 'all' || category === 'all assets') return 'all';
-  if (category === 'stocks' || category === 'equities') return 'stock';
-  if (category === 'etfs') return 'fund';
-  if (category === 'fx') return 'forex';
-  if (category === 'metals') return 'commodity';
-  return category;
-}
-
-function filterAssetsByCategory<T extends { assetType?: string }>(assets: T[], category: string) {
-  if (category === 'all') return assets;
-  return assets.filter(asset => String(asset.assetType ?? '').trim().toLowerCase() === category);
+  return normalizeSelectedCategoryKey(value);
 }
 
 function normalizeSymbol(value: unknown) {
@@ -129,22 +123,33 @@ export async function GET(request: Request) {
     q.providerSymbolUsed,
   ].some(value => pageKeySet.has(normalizeSymbol(value))));
   const marketFilterSelection = universe.selectedMarket ?? market.id;
-  const marketFiltered = filterAssetsByMarket(inPageUniverse, marketFilterSelection);
-  const excludedByMarket = inPageUniverse
-    .map(q => ({ quote: q, decision: marketFilterDecision(q, marketFilterSelection) }))
+  const available = filterAssetsBySelection(inPageUniverse, marketFilterSelection, selectedCategory);
+  const excludedBySelection = inPageUniverse
+    .map(q => ({ quote: q, decision: assetSelectionDecision(q, marketFilterSelection, selectedCategory) }))
     .filter(item => !item.decision.allowed);
-  if (process.env.NODE_ENV === 'development' && market.id === 'bahrain' && excludedByMarket.length) {
-    console.warn('[recommendations] Excluded non-Bahrain assets from Bahrain Market response.', excludedByMarket.map(({ quote, decision }) => ({
-      symbol: quote.symbol,
-      exchange: quote.exchange,
-      market: quote.market,
-      country: quote.country,
-      currency: quote.currency,
-      assetType: quote.assetType,
-      reason: decision.reason,
-    })));
+  if (process.env.NODE_ENV === 'development' && excludedBySelection.length) {
+    const strictMarketContext = strictMarketContextForSelection(marketFilterSelection);
+    const excluded = excludedBySelection.map(({ quote, decision }) => {
+      const quoteRecord = quote as typeof quote & Record<string, unknown>;
+      return {
+        symbol: quote.symbol,
+        exchange: quote.exchange,
+        market: quote.market,
+        country: quote.country,
+        currency: quote.currency,
+        assetType: quote.assetType,
+        sector: quoteRecord.sector,
+        industry: quoteRecord.industry,
+        category: selectedCategory,
+        reason: decision.reason,
+      };
+    });
+    if (strictMarketContext) {
+      console.warn(`[recommendations] Excluded assets outside ${strictMarketContext.country} / ${strictMarketContext.currency} selection.`, excluded);
+    } else if (selectedCategory === 'technology') {
+      console.warn('[recommendations] Excluded non-technology assets from technology selection.', excluded);
+    }
   }
-  const available = filterAssetsByCategory(marketFiltered, selectedCategory);
   const unavailable = available
     .filter(q => !q.available || q.price === null)
     .map(q => ({ symbol: q.symbol, name: q.name, reason: q.unavailableReason ?? 'provider_returned_empty_quote' }));
@@ -236,7 +241,7 @@ export async function GET(request: Request) {
   const connectedProvider = getConnectedProvider();
   const availablePriceCount = available.filter(q => q.available && q.price !== null).length;
   const unavailableCount = available.length - availablePriceCount;
-  const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? marketFiltered[0] ?? null;
+  const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
   const strictMarketContext = strictMarketContextForSelection(marketFilterSelection);
@@ -274,7 +279,7 @@ export async function GET(request: Request) {
     provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
     providerStatus: priceProviderStatus(quoteLoad, availablePriceCount),
     data: recommendations,
-    message: recommendations.length ? null : market.id === 'bahrain' ? BAHRAIN_EMPTY_STATE.ar : null,
+    message: recommendations.length ? null : SELECTION_EMPTY_STATE.ar,
     lastUpdated: quoteLoad.generatedAt,
   });
 
@@ -287,20 +292,26 @@ export async function GET(request: Request) {
     selectedExchange,
     selectedCurrency,
     selectedCategory,
-    emptyState: market.id === 'bahrain' && recommendations.length === 0 ? BAHRAIN_EMPTY_STATE : null,
+    emptyState: recommendations.length === 0 ? SELECTION_EMPTY_STATE : null,
     providerUsage,
     availableProviders: marketContext.availableProviders,
     recommendations,
     unavailable,
-    excludedByMarket: excludedByMarket.map(({ quote, decision }) => ({
-      symbol: quote.symbol,
-      exchange: quote.exchange,
-      market: quote.market,
-      country: quote.country,
-      currency: quote.currency,
-      assetType: quote.assetType,
-      reason: decision.reason,
-    })),
+    excludedByMarket: excludedBySelection.map(({ quote, decision }) => {
+      const quoteRecord = quote as typeof quote & Record<string, unknown>;
+      return {
+        symbol: quote.symbol,
+        exchange: quote.exchange,
+        market: quote.market,
+        country: quote.country,
+        currency: quote.currency,
+        assetType: quote.assetType,
+        sector: quoteRecord.sector,
+        industry: quoteRecord.industry,
+        category: selectedCategory,
+        reason: decision.reason,
+      };
+    }),
     smartAlerts: [],
     dataProvider: connectedProvider,
     marketUniverse: {

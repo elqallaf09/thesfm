@@ -8,9 +8,55 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/cinema.css?v=20260703-market-universe" />
+    <link rel="stylesheet" href="/cinema.css?v=20260705-cinematic-nav" />
   </head>
   <body>
+    <div class="market-cinema" aria-hidden="true">
+      <svg class="mc-candles mc-candles-bull" viewBox="0 0 320 420" preserveAspectRatio="xMidYMid slice">
+        <g stroke-linecap="round">
+          <line class="mc-wick" x1="30" y1="330" x2="30" y2="392"/><rect class="mc-body-up" x="22" y="342" width="16" height="34" rx="2"/>
+          <line class="mc-wick" x1="70" y1="300" x2="70" y2="368"/><rect class="mc-body-up" x="62" y="312" width="16" height="40" rx="2"/>
+          <line class="mc-wick" x1="110" y1="312" x2="110" y2="360"/><rect class="mc-body-down" x="102" y="320" width="16" height="26" rx="2"/>
+          <line class="mc-wick" x1="150" y1="256" x2="150" y2="330"/><rect class="mc-body-up" x="142" y="268" width="16" height="46" rx="2"/>
+          <line class="mc-wick" x1="190" y1="228" x2="190" y2="292"/><rect class="mc-body-up" x="182" y="238" width="16" height="40" rx="2"/>
+          <line class="mc-wick" x1="230" y1="238" x2="230" y2="286"/><rect class="mc-body-down" x="222" y="246" width="16" height="26" rx="2"/>
+          <line class="mc-wick" x1="270" y1="170" x2="270" y2="252"/><rect class="mc-body-up" x="262" y="182" width="16" height="52" rx="2"/>
+          <line class="mc-wick" x1="310" y1="128" x2="310" y2="200"/><rect class="mc-body-up" x="302" y="140" width="16" height="44" rx="2"/>
+        </g>
+      </svg>
+      <svg class="mc-candles mc-candles-bear" viewBox="0 0 320 420" preserveAspectRatio="xMidYMid slice">
+        <g stroke-linecap="round">
+          <line class="mc-wick" x1="20" y1="60" x2="20" y2="140"/><rect class="mc-body-down" x="12" y="72" width="16" height="52" rx="2"/>
+          <line class="mc-wick" x1="60" y1="98" x2="60" y2="168"/><rect class="mc-body-down" x="52" y="110" width="16" height="44" rx="2"/>
+          <line class="mc-wick" x1="100" y1="120" x2="100" y2="176"/><rect class="mc-body-up" x="92" y="130" width="16" height="30" rx="2"/>
+          <line class="mc-wick" x1="140" y1="150" x2="140" y2="226"/><rect class="mc-body-down" x="132" y="162" width="16" height="48" rx="2"/>
+          <line class="mc-wick" x1="180" y1="196" x2="180" y2="264"/><rect class="mc-body-down" x="172" y="208" width="16" height="42" rx="2"/>
+          <line class="mc-wick" x1="220" y1="228" x2="220" y2="282"/><rect class="mc-body-up" x="212" y="238" width="16" height="28" rx="2"/>
+          <line class="mc-wick" x1="260" y1="262" x2="260" y2="336"/><rect class="mc-body-down" x="252" y="274" width="16" height="46" rx="2"/>
+          <line class="mc-wick" x1="300" y1="306" x2="300" y2="378"/><rect class="mc-body-down" x="292" y="318" width="16" height="44" rx="2"/>
+        </g>
+      </svg>
+      <svg class="mc-priceline" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="mc-line-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#22D3EE" stop-opacity="0"/>
+            <stop offset="0.18" stop-color="#22D3EE" stop-opacity="0.55"/>
+            <stop offset="0.62" stop-color="#45f0a2" stop-opacity="0.65"/>
+            <stop offset="1" stop-color="#F59E0B" stop-opacity="0.5"/>
+          </linearGradient>
+          <linearGradient id="mc-area-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#22D3EE" stop-opacity="0.10"/>
+            <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path class="mc-area" d="M0 640 L120 600 L230 626 L340 540 L470 566 L600 470 L720 502 L840 420 L960 448 L1090 350 L1210 384 L1330 296 L1440 320 L1440 900 L0 900 Z" fill="url(#mc-area-grad)"/>
+        <path class="mc-line" d="M0 640 L120 600 L230 626 L340 540 L470 566 L600 470 L720 502 L840 420 L960 448 L1090 350 L1210 384 L1330 296 L1440 320" fill="none" stroke="url(#mc-line-grad)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle class="mc-line-dot" r="4" fill="#45f0a2"/>
+      </svg>
+      <span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span><span class="mc-p mc-p-up"></span>
+      <span class="mc-p mc-p-down"></span><span class="mc-p mc-p-down"></span><span class="mc-p mc-p-down"></span>
+      <span class="mc-vignette"></span>
+    </div>
     <div class="terminal-app" id="app-shell">
       <aside class="terminal-sidebar" aria-label="Trader navigation">
         <div class="sidebar-brand-row">
@@ -25,19 +71,24 @@
         </div>
 
         <nav class="sidebar-nav">
-          <a href="/thesfm-trader-own/dashboard" data-route-link data-route="dashboard"><span>القيادة</span><small>Dashboard</small></a>
-          <a href="/thesfm-trader-own/markets" data-route-link data-route="markets"><span>الأسواق</span><small>Markets</small></a>
-          <a href="/thesfm-trader-own/ai-scanner" data-route-link data-route="ai-scanner"><span>ماسح الذكاء</span><small>AI Scanner</small></a>
-          <a href="/thesfm-trader-own/watchlist" data-route-link data-route="watchlist"><span>قائمة المتابعة</span><small>Watchlist</small></a>
-          <a href="/thesfm-trader-own/portfolio" data-route-link data-route="portfolio"><span>المحفظة</span><small>Portfolio</small></a>
-          <a href="/thesfm-trader-own/alerts" data-route-link data-route="alerts"><span>التنبيهات</span><small>Alerts</small></a>
-          <a href="/thesfm-trader-own/recommendations" data-route-link data-route="recommendations"><span>التوصيات</span><small>Recommendations</small></a>
-          <a href="/thesfm-trader-own/trade-performance" data-route-link data-route="trade-performance"><span>أداء الصفقات</span><small>Trade Performance</small></a>
-          <a href="/thesfm-trader-own/news" data-route-link data-route="news"><span>الأخبار</span><small>News</small></a>
-          <a href="/thesfm-trader-own/calendar" data-route-link data-route="calendar"><span>التقويم</span><small>Calendar</small></a>
-          <a href="/thesfm-trader-own/education" data-route-link data-route="education"><span>التعليم</span><small>Education</small></a>
-          <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><span>الإعدادات</span><small>Settings</small></a>
-          <a href="/thesfm-trader-own/symbol-details" data-route-link data-route="symbol-details"><span>تفاصيل الرمز</span><small>Symbol Details</small></a>
+          <span class="nav-group-label">التداول</span>
+          <a href="/thesfm-trader-own/dashboard" data-route-link data-route="dashboard"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="nav-label">القيادة</span><small>Dashboard</small></a>
+          <a href="/thesfm-trader-own/markets" data-route-link data-route="markets"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 4v3M7 13v3"/><rect x="5" y="7" width="4" height="6" rx="1"/><path d="M17 8v3M17 17v3"/><rect x="15" y="11" width="4" height="6" rx="1"/></svg><span class="nav-label">الأسواق</span><small>Markets</small></a>
+          <a href="/thesfm-trader-own/ai-scanner" data-route-link data-route="ai-scanner"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/><path d="M12 3v3M12 12l5.5-5.5"/></svg><span class="nav-label">ماسح الذكاء</span><small>AI Scanner</small></a>
+          <a href="/thesfm-trader-own/symbol-details" data-route-link data-route="symbol-details"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5M7.5 11.5l2-2 1.5 1.5 2.5-2.5"/></svg><span class="nav-label">تفاصيل الرمز</span><small>Symbol Details</small></a>
+
+          <span class="nav-group-label">المتابعة</span>
+          <a href="/thesfm-trader-own/watchlist" data-route-link data-route="watchlist"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg><span class="nav-label">قائمة المتابعة</span><small>Watchlist</small></a>
+          <a href="/thesfm-trader-own/portfolio" data-route-link data-route="portfolio"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7M3 12.5h18"/></svg><span class="nav-label">المحفظة</span><small>Portfolio</small></a>
+          <a href="/thesfm-trader-own/alerts" data-route-link data-route="alerts"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5Z"/><path d="M10 19.5a2.2 2.2 0 0 0 4 0"/></svg><span class="nav-label">التنبيهات</span><small>Alerts</small></a>
+          <a href="/thesfm-trader-own/recommendations" data-route-link data-route="recommendations"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span class="nav-label">التوصيات</span><small>Recommendations</small></a>
+          <a href="/thesfm-trader-own/trade-performance" data-route-link data-route="trade-performance"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.5-5.5 3.5 3.5L21 6"/><path d="M15.5 6H21v5.5"/></svg><span class="nav-label">أداء الصفقات</span><small>Trade Performance</small></a>
+
+          <span class="nav-group-label">أخرى</span>
+          <a href="/thesfm-trader-own/news" data-route-link data-route="news"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2M7 8.5h7M7 12h7M7 15.5h4.5"/></svg><span class="nav-label">الأخبار</span><small>News</small></a>
+          <a href="/thesfm-trader-own/calendar" data-route-link data-route="calendar"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span class="nav-label">التقويم</span><small>Calendar</small></a>
+          <a href="/thesfm-trader-own/education" data-route-link data-route="education"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4L2.5 8.5 12 13l9.5-4.5L12 4Z"/><path d="M6 10.8V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.2"/></svg><span class="nav-label">التعليم</span><small>Education</small></a>
+          <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg><span class="nav-label">الإعدادات</span><small>Settings</small></a>
         </nav>
 
         <a class="ai-pro-card" href="/thesfm-trader-own/ai-scanner" data-route-link>
@@ -110,6 +161,6 @@
     </div>
 
     <div class="toast-root" id="toast-root" aria-live="polite"></div>
-    <script src="/app.js?v=20260703-market-universe" defer></script>
+    <script src="/app.js?v=20260705-cinematic-nav" defer></script>
   </body>
 </html>

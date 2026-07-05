@@ -76,6 +76,19 @@
   ].map(([id, ar, en, family, currency, symbols, tone, apiMarket]) => ({ id, ar, en, family, currency, symbols, tone, apiMarket }));
 
   const EXPLORE = ["forex", "us-stocks", "kuwait", "saudi", "uae", "qatar", "bahrain", "europe", "asia", "crypto", "commodities", "indices", "etfs", "technology", "ai", "semiconductors", "energy", "banking", "healthcare", "food"];
+  const SELECTION_EMPTY_STATE_AR = "\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u0635\u0648\u0644 \u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0633\u0648\u0642 \u0623\u0648 \u0627\u0644\u062a\u0635\u0646\u064a\u0641 \u062d\u0627\u0644\u064a\u0627\u064b";
+  const SELECTION_EMPTY_STATE_EN = "No matching assets for this market or category right now";
+  const STRICT_LOCAL_MARKETS = {
+    qatar: { country: "Qatar", countries: ["QA", "QATAR"], currency: "QAR", exchange: /QATAR|QSE|DSMD|DSM/i, market: /QATAR|QSE/i, suffix: /\.QA$/i },
+    kuwait: { country: "Kuwait", countries: ["KW", "KUWAIT"], currency: "KWD", exchange: /KUWAIT|BOURSA|KSE|XKUW/i, market: /KUWAIT|BOURSA/i, suffix: /\.KW$/i },
+    bahrain: { country: "Bahrain", countries: ["BH", "BAHRAIN"], currency: "BHD", exchange: /BAHRAIN|BHB|XBAH/i, market: /BAHRAIN|BHB/i, suffix: /\.BH$/i },
+    saudi: { country: "Saudi Arabia", countries: ["SA", "SAUDI", "SAUDI ARABIA"], currency: "SAR", exchange: /SAUDI|TADAWUL|XSAU/i, market: /SAUDI|TADAWUL/i, suffix: /\.(SR|SA)$/i },
+    uae: { country: "UAE", countries: ["AE", "UAE", "UNITED ARAB EMIRATES"], currency: "AED", exchange: /ADX|DFM|ABU DHABI|DUBAI|XADS|XDFM/i, market: /UAE|ADX|DFM|ABU DHABI|DUBAI|UNITED ARAB/i, suffix: /\.(AE|DU|AD)$/i }
+  };
+  const CATEGORY_MARKET_IDS = new Set(["technology", "semiconductors", "crypto", "forex", "commodities", "etfs", "indices"]);
+  const US_EXCHANGE_RE = /\b(NASDAQ|NYSE|AMEX|CBOE|ARCX|NYSE ARCA)\b/i;
+  const TECHNOLOGY_SYMBOLS = new Set([...MARKET_SYMBOLS.technology, ...MARKET_SYMBOLS.ai, ...MARKET_SYMBOLS.semiconductors].map(s => String(s).toUpperCase()));
+  const SEMICONDUCTOR_SYMBOLS = new Set(MARKET_SYMBOLS.semiconductors.map(s => String(s).toUpperCase()));
 
   const SESSIONS = [
     ["New York", 11, 88, "west", 13.5, 20],
@@ -150,6 +163,8 @@
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
     rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, commandCards: {},
     calendarRange: "30", calendarLoading: false, calendarLoaded: false,
+    calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
+    earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
     settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced" }),
@@ -272,6 +287,7 @@
       if (cr) {
         event.preventDefault();
         state.calendarRange = cr.dataset.calendarRange || "30";
+        state.earningsView.page = 1;
         state.calendarLoading = true;
         render();
         loadCalendars(true).catch((error) => {
@@ -281,6 +297,49 @@
           render();
           afterRoute();
         });
+        return;
+      }
+      const calendarToggle = event.target.closest("[data-calendar-section-toggle]");
+      if (calendarToggle) {
+        event.preventDefault();
+        const kind = calendarToggle.dataset.calendarSectionToggle;
+        if (state.calendarOpen && Object.prototype.hasOwnProperty.call(state.calendarOpen, kind)) {
+          state.calendarOpen[kind] = !state.calendarOpen[kind];
+          render();
+        }
+        return;
+      }
+      const earningsTab = event.target.closest("[data-earnings-tab]");
+      if (earningsTab) {
+        event.preventDefault();
+        state.earningsView.tab = earningsTab.dataset.earningsTab || "complete";
+        state.earningsView.page = 1;
+        render();
+        return;
+      }
+      const earningsSort = event.target.closest("[data-earnings-sort]");
+      if (earningsSort) {
+        event.preventDefault();
+        const key = earningsSort.dataset.earningsSort || "reportDate";
+        state.earningsView.sortDir = state.earningsView.sortKey === key && state.earningsView.sortDir === "asc" ? "desc" : "asc";
+        state.earningsView.sortKey = key;
+        state.earningsView.page = 1;
+        render();
+        return;
+      }
+      const earningsPage = event.target.closest("[data-earnings-page]");
+      if (earningsPage) {
+        event.preventDefault();
+        state.earningsView.page = Math.max(1, Number(earningsPage.dataset.earningsPage) || 1);
+        render();
+        return;
+      }
+      const earningsPageSize = event.target.closest("[data-earnings-page-size]");
+      if (earningsPageSize) {
+        event.preventDefault();
+        state.earningsView.pageSize = Math.max(10, Number(earningsPageSize.dataset.earningsPageSize) || 10);
+        state.earningsView.page = 1;
+        render();
         return;
       }
       const detail = event.target.closest("[data-symbol-details]");
@@ -309,6 +368,24 @@
       const symbol = sym(document.getElementById("symbol-input")?.value || "");
       if (!symbol) return toast("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.");
       navigate(`${ROOT}/symbol/${encodeURIComponent(symbol)}`);
+    });
+    document.addEventListener("submit", (event) => {
+      const form = event.target.closest("[data-earnings-search-form]");
+      if (!form) return;
+      event.preventDefault();
+      state.earningsView.search = String(new FormData(form).get("earningsSearch") || "").trim();
+      state.earningsView.page = 1;
+      render();
+    });
+    document.addEventListener("change", (event) => {
+      const filter = event.target.closest("[data-earnings-filter]");
+      if (!filter) return;
+      const key = filter.dataset.earningsFilter;
+      if (key === "source" || key === "timing") {
+        state.earningsView[key] = filter.value || "all";
+        state.earningsView.page = 1;
+        render();
+      }
     });
     window.addEventListener("popstate", () => { state.route = readRoute(); render(); afterRoute(); });
   }
@@ -455,7 +532,7 @@
     const m = MARKETS.find(x => x.id === id);
     if (!m) return marketsPage();
     const cached = state.marketCache.get(id);
-    const list = cached ? recsFrom(cached) : [];
+    const list = cached ? filterRecommendationsForSelection(recsFrom(cached), id, categoryFromSelection(id)) : [];
     const movers = cached ? sortMovers(list) : { gainers: [], losers: [], active: [] };
     const body = cached ? (list.length
       ? `<section class="metric-grid">${stat("توصيات", list.length, "Signals")}${stat("شراء", list.filter(x => signal(x) === "buy").length, "Buy")}${stat("بيع", list.filter(x => signal(x) === "sell").length, "Sell")}${stat("العملة", m.currency, "Currency")}</section>
@@ -486,7 +563,7 @@
       <section class="dash-split">
         <article class="panel"><span class="eyebrow">SCANNER RESULTS</span><h2>نتائج الفحص</h2>
           <div class="seg-tabs" role="tablist"><button class="is-active" data-tab="scan" data-value="all">الكل</button><button data-tab="scan" data-value="buy">شراء</button><button data-tab="scan" data-value="sell">بيع</button><button data-tab="scan" data-value="wait">انتظار</button></div>
-          <div data-tabpanel="scan" data-render="scan">${r.length ? assetList(r) : emptyState("لا توجد نتائج فحص حية", "فعّل مزود البيانات أو اختر رمزاً لفتح صفحة التفاصيل.", "تفاصيل رمز", `${ROOT}/symbol-details`)}</div>
+          <div data-tabpanel="scan" data-render="scan">${r.length ? assetList(r) : selectionEmptyState()}</div>
         </article>
         <aside class="dash-rail">
           <article class="panel"><span class="eyebrow">CONFIDENCE</span><h2>توزيع الثقة</h2>${confBars(conf)}</article>
@@ -496,8 +573,8 @@
       </section>${disclaimer()}</div>`;
   }
   window.__tabRenderers = window.__tabRenderers || {};
-  window.__tabRenderers.scan = (v) => { const r = recs(); const f = v === "all" ? r : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : miniEmpty(); };
-  window.__tabRenderers.rec = (v) => { const r = recs(); const f = v === "all" ? r : v === "high" ? r.filter(x => (num(x.confidence, x.score, x.aiConfidence) || 0) >= 70) : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : miniEmpty(); };
+  window.__tabRenderers.scan = (v) => { const r = recs(); const f = v === "all" ? r : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : selectionEmptyState(); };
+  window.__tabRenderers.rec = (v) => { const r = recs(); const f = v === "all" ? r : v === "high" ? r.filter(x => (num(x.confidence, x.score, x.aiConfidence) || 0) >= 70) : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : selectionEmptyState(); };
 
   function watchPage() {
     const quick = unique(defaults.concat(["EURUSD", "SPY", "2222.SR", "ETHUSD"]));
@@ -544,7 +621,7 @@
       <section class="metric-grid">${stat("الكل", r.length, "All")}${stat("شراء", buy.length, "Buy")}${stat("بيع", sell.length, "Sell")}${stat("انتظار", wait.length, "Wait")}</section>
       <section class="panel"><span class="eyebrow">SIGNALS</span><h2>قائمة التوصيات</h2><div class="rec-market-chips">${MARKETS.map(m => `<button class="chip ${state.settings.defaultMarket === m.id ? "is-active" : ""}" data-rec-market="${m.id}">${h(m.ar)}</button>`).join("")}</div>
         <div class="seg-tabs"><button class="is-active" data-tab="rec" data-value="all">الكل</button><button data-tab="rec" data-value="buy">شراء</button><button data-tab="rec" data-value="sell">بيع</button><button data-tab="rec" data-value="wait">انتظار</button><button data-tab="rec" data-value="high">ثقة عالية</button></div>
-        <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : unavailableSection(state.rec, "محرك التوصيات لم يرجع نتائج من المزود.", "افتح الماسح", `${ROOT}/ai-scanner`)}</div>
+        <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : selectionEmptyState()}</div>
       </section>${disclaimer()}</div>`;
   }
 
@@ -626,17 +703,26 @@
   function calendarPanel(kind, eyebrow, title, response, rowRenderer) {
     response = response || {};
     const rows = arr(response.data);
-    return `<article class="panel trader-calendar-panel calendar-${h(kind)}">
+    const isOpen = state.calendarOpen && state.calendarOpen[kind] === true;
+    const count = response.resultCount ?? rows.length;
+    return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${isOpen ? "is-open" : "is-collapsed"}">
       <div class="panel-head calendar-panel-head">
         <div><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
-        <div class="calendar-head-actions">${providerBadge(response)}<button class="ghost-btn compact-btn" data-retry>إعادة المحاولة</button></div>
+        <div class="calendar-head-actions">
+          ${providerBadge(response)}
+          <span class="state-badge muted">${h(latinNumber(count))} rows</span>
+          <button class="ghost-btn compact-btn" data-calendar-section-toggle="${h(kind)}" aria-expanded="${isOpen ? "true" : "false"}">${isOpen ? "Collapse" : "Open"}</button>
+          <button class="ghost-btn compact-btn" data-retry>إعادة المحاولة</button>
+        </div>
       </div>
+      ${isOpen ? `<div class="calendar-section-body">
       <div class="calendar-meta">
         <span>آخر تحديث: <b>${h(latinDateTime(response.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
         <span>الفترة: <b class="ltr">${h(rangeText(response.range))}</b></span>
-        <span>النتائج: <b class="ltr">${h(latinNumber(response.resultCount ?? rows.length))}</b></span>
+        <span>النتائج: <b class="ltr">${h(latinNumber(count))}</b></span>
       </div>
       ${state.calendarLoading ? calendarLoadingState() : rows.length ? rowRenderer(rows) : calendarEmptyState(response)}
+      </div>` : ""}
     </article>`;
   }
 
@@ -685,20 +771,236 @@
     return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>الإعدادات</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`;
   }
 
+  const EARNINGS_COLUMNS = [
+    { key: "symbol", label: "Symbol", sort: "symbol", pinned: true, value: r => r.symbol || "--", raw: r => r.symbol, cls: "ltr" },
+    { key: "companyName", label: "Company", sort: "companyName", pinned: true, value: r => r.companyName || "--", raw: r => r.companyName },
+    { key: "reportDate", label: "Report date", sort: "reportDate", pinned: true, value: r => latinDateOnly(r.reportDate), raw: r => r.reportDate, cls: "ltr" },
+    { key: "status", label: "Status", sort: "status", pinned: true, value: r => earningsStatusLabel(r), raw: r => earningsStatusLabel(r) },
+    { key: "fiscalDateEnding", label: "Fiscal period", sort: "fiscalDateEnding", value: r => r.fiscalDateEnding || "--", raw: r => r.fiscalDateEnding, cls: "ltr" },
+    { key: "epsEstimate", label: "EPS est.", sort: "epsEstimate", value: r => latinNumber(r.epsEstimate), raw: r => r.epsEstimate, cls: "ltr" },
+    { key: "epsActual", label: "EPS actual", sort: "epsActual", value: r => latinNumber(r.epsActual), raw: r => r.epsActual, cls: "ltr" },
+    { key: "revenueEstimate", label: "Revenue est.", sort: "revenueEstimate", value: r => latinNumber(r.revenueEstimate), raw: r => r.revenueEstimate, cls: "ltr" },
+    { key: "revenueActual", label: "Revenue actual", sort: "revenueActual", value: r => latinNumber(r.revenueActual), raw: r => r.revenueActual, cls: "ltr" },
+    { key: "time", label: "Time", sort: "time", value: r => earningsTimeLabel(r.time), raw: r => r.time, cls: "ltr" },
+    { key: "completeness", label: "Completeness", sort: "completeness", pinned: true, value: r => `${earningsCompletenessScore(r)}%`, raw: r => earningsCompletenessScore(r), cls: "ltr" }
+  ];
+
   function earningsRows(rows) {
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>الرمز</th><th>الشركة</th><th>تاريخ الإعلان</th><th>الفترة المالية</th><th>EPS المتوقع</th><th>EPS الفعلي</th><th>الإيراد المتوقع</th><th>الوقت</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(r.symbol || "--")}</td><td>${h(r.companyName || "--")}</td><td class="ltr">${h(latinDateOnly(r.reportDate))}</td><td class="ltr">${h(r.fiscalDateEnding || "--")}</td><td class="ltr">${h(latinNumber(r.epsEstimate))}</td><td class="ltr">${h(latinNumber(r.epsActual))}</td><td class="ltr">${h(latinNumber(r.revenueEstimate))}</td><td class="ltr">${h(r.time || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+    const deduped = dedupeEarningsRows(rows).map(r => ({ ...r, completenessScore: earningsCompletenessScore(r) }));
+    const completeRows = deduped.filter(r => !isPartialEarningsRow(r));
+    const partialRows = deduped.filter(isPartialEarningsRow);
+    const view = state.earningsView || {};
+    const activeTab = view.tab === "partial" ? "partial" : "complete";
+    const tabRows = activeTab === "partial" ? partialRows : completeRows;
+    const searchedRows = filterEarningsRows(tabRows);
+    const sortedRows = sortEarningsRows(searchedRows);
+    const pageSize = Math.max(10, Number(view.pageSize) || 10);
+    const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+    const page = Math.max(1, Math.min(Number(view.page) || 1, pageCount));
+    state.earningsView.page = page;
+    const pageRows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+    const columns = visibleEarningsColumns(tabRows.length ? tabRows : deduped);
+    const sources = earningsSources(deduped);
+    const nextPageSize = pageSize > 10 ? 10 : 25;
+    return `<div class="earnings-calendar-view">
+      <div class="calendar-source-strip">${sources.length ? sources.map(source => `<span>${h(source)}</span>`).join("") : `<span>No source</span>`}</div>
+      <div class="earnings-controls">
+        <form class="earnings-search" data-earnings-search-form>
+          <input name="earningsSearch" value="${h(view.search || "")}" placeholder="Search symbol or company" />
+          <button class="ghost-btn compact-btn" type="submit">Search</button>
+        </form>
+        <label>Source<select data-earnings-filter="source">${earningsFilterOptions(["all", ...sources], view.source || "all")}</select></label>
+        <label>Timing<select data-earnings-filter="timing">${earningsFilterOptions(["all", "expected", "reported"], view.timing || "all")}</select></label>
+      </div>
+      <div class="seg-tabs calendar-data-tabs" role="tablist">
+        <button class="${activeTab === "complete" ? "is-active" : ""}" data-earnings-tab="complete">Complete data <span>${latinNumber(completeRows.length)}</span></button>
+        <button class="${activeTab === "partial" ? "is-active" : ""}" data-earnings-tab="partial">Partial data <span>${latinNumber(partialRows.length)}</span></button>
+      </div>
+      <div class="earnings-table-summary">
+        <span>Showing <b class="ltr">${h(latinNumber(pageRows.length))}</b> of <b class="ltr">${h(latinNumber(sortedRows.length))}</b></span>
+        <span>Deduped <b class="ltr">${h(latinNumber(Math.max(0, rows.length - deduped.length)))}</b> duplicate rows</span>
+      </div>
+      ${pageRows.length ? `${earningsTable(pageRows, columns)}${earningsCards(pageRows, columns)}` : earningsNoRows(activeTab)}
+      <div class="calendar-pagination">
+        <button class="ghost-btn compact-btn" data-earnings-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>Previous</button>
+        <span class="ltr">Page ${latinNumber(page)} / ${latinNumber(pageCount)}</span>
+        <button class="ghost-btn compact-btn" data-earnings-page="${page + 1}" ${page >= pageCount ? "disabled" : ""}>Next</button>
+        ${sortedRows.length > 10 ? `<button class="ghost-btn compact-btn" data-earnings-page-size="${nextPageSize}">${pageSize > 10 ? "Show less" : "Show more"}</button>` : ""}
+      </div>
+    </div>`;
+  }
+
+  function dedupeEarningsRows(rows) {
+    const seen = new Set();
+    return arr(rows).filter(row => {
+      const key = [sym(row.symbol), row.reportDate || "", row.fiscalDateEnding || "", String(row.source || row.provider || "").trim().toLowerCase()].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function earningsCompletenessScore(row) {
+    const fields = ["symbol", "companyName", "reportDate", "fiscalDateEnding", "epsEstimate", "revenueEstimate", "time"];
+    if (!isFutureEarnings(row)) fields.push("epsActual", "revenueActual");
+    const complete = fields.filter(key => hasCalendarValue(row[key])).length;
+    return Math.round((complete / fields.length) * 100);
+  }
+
+  function isPartialEarningsRow(row) {
+    return earningsCompletenessScore(row) < 50;
+  }
+
+  function isFutureEarnings(row) {
+    if (!row || !row.reportDate) return false;
+    const report = new Date(`${String(row.reportDate).slice(0, 10)}T00:00:00Z`);
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return Number.isFinite(report.getTime()) && report > today;
+  }
+
+  function earningsStatusLabel(row) {
+    return isFutureEarnings(row) ? "Expected" : "Reported";
+  }
+
+  function earningsTimeLabel(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "--";
+    const key = raw.toLowerCase();
+    if (key === "bmo") return "Before open";
+    if (key === "amc") return "After close";
+    if (key === "dmh") return "During market";
+    return raw;
+  }
+
+  function hasCalendarValue(value) {
+    return value !== null && value !== undefined && String(value).trim() !== "" && String(value).trim() !== "--";
+  }
+
+  function visibleEarningsColumns(rows) {
+    return EARNINGS_COLUMNS.filter(column => column.pinned || rows.some(row => hasCalendarValue(column.raw(row))));
+  }
+
+  function earningsSources(rows) {
+    return Array.from(new Set(rows.map(row => providerName(row.provider || row.source)).filter(Boolean))).sort();
+  }
+
+  function earningsFilterOptions(values, selected) {
+    return values.map(value => `<option value="${h(value)}" ${String(selected) === String(value) ? "selected" : ""}>${h(earningsFilterLabel(value))}</option>`).join("");
+  }
+
+  function earningsFilterLabel(value) {
+    if (value === "all") return "All";
+    if (value === "expected") return "Expected";
+    if (value === "reported") return "Reported";
+    return value;
+  }
+
+  function filterEarningsRows(rows) {
+    const view = state.earningsView || {};
+    const query = String(view.search || "").trim().toLowerCase();
+    const source = String(view.source || "all");
+    const timing = String(view.timing || "all");
+    return rows.filter(row => {
+      const sourceLabel = providerName(row.provider || row.source);
+      const haystack = [row.symbol, row.companyName, row.fiscalDateEnding, row.reportDate, sourceLabel].map(value => String(value || "").toLowerCase()).join(" ");
+      if (query && !haystack.includes(query)) return false;
+      if (source !== "all" && sourceLabel !== source) return false;
+      if (timing === "expected" && !isFutureEarnings(row)) return false;
+      if (timing === "reported" && isFutureEarnings(row)) return false;
+      return true;
+    });
+  }
+
+  function sortEarningsRows(rows) {
+    const view = state.earningsView || {};
+    const key = view.sortKey || "reportDate";
+    const dir = view.sortDir === "desc" ? -1 : 1;
+    return [...rows].sort((a, b) => compareEarningsValue(earningsSortValue(a, key), earningsSortValue(b, key)) * dir);
+  }
+
+  function earningsSortValue(row, key) {
+    if (key === "status") return earningsStatusLabel(row);
+    if (key === "completeness") return earningsCompletenessScore(row);
+    return row[key];
+  }
+
+  function compareEarningsValue(a, b) {
+    const an = Number(a), bn = Number(b);
+    if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+    return String(a || "").localeCompare(String(b || ""), "en", { numeric: true, sensitivity: "base" });
+  }
+
+  function earningsTable(rows, columns) {
+    return `<div class="table-shell calendar-table earnings-table-wrap"><table><thead><tr>${columns.map(column => `<th><button class="calendar-sort" data-earnings-sort="${h(column.sort)}">${h(column.label)}${sortMarker(column.sort)}</button></th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(column => `<td class="${h(column.cls || "")}" data-label="${h(column.label)}">${h(column.value(row))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function earningsCards(rows, columns) {
+    const detailColumns = columns.filter(column => !["symbol", "companyName", "status", "completeness"].includes(column.key));
+    return `<div class="calendar-card-list earnings-card-list">${rows.map(row => `<article class="calendar-mobile-card">
+      <div class="calendar-card-head"><div><strong class="ltr">${h(row.symbol || "--")}</strong><span>${h(row.companyName || "--")}</span></div><em>${h(earningsStatusLabel(row))}</em></div>
+      <dl>${detailColumns.map(column => `<div><dt>${h(column.label)}</dt><dd class="${h(column.cls || "")}">${h(column.value(row))}</dd></div>`).join("")}</dl>
+      <div class="calendar-card-score"><span>Completeness</span><b class="ltr">${h(earningsCompletenessScore(row))}%</b></div>
+    </article>`).join("")}</div>`;
+  }
+
+  function sortMarker(key) {
+    const view = state.earningsView || {};
+    if (view.sortKey !== key) return "";
+    return view.sortDir === "desc" ? " v" : " ^";
+  }
+
+  function earningsNoRows(activeTab) {
+    return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>No matching earnings rows</h3><p>${activeTab === "partial" ? "Partial rows appear here when the provider sends mostly incomplete records." : "Try search, source, timing, or the Partial data tab."}</p></div>`;
+  }
+
+  function calendarRows(rows, columns) {
+    const visible = columns.filter(column => column.pinned || rows.some(row => hasCalendarValue(column.raw ? column.raw(row) : column.value(row))));
+    return `<div class="table-shell calendar-table"><table><thead><tr>${visible.map(column => `<th>${h(column.label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${visible.map(column => `<td class="${h(column.cls || "")}" data-label="${h(column.label)}">${h(column.value(row))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="calendar-card-list">${rows.map(row => `<article class="calendar-mobile-card"><dl>${visible.map(column => `<div><dt>${h(column.label)}</dt><dd class="${h(column.cls || "")}">${h(column.value(row))}</dd></div>`).join("")}</dl></article>`).join("")}</div>`;
   }
 
   function dividendRows(rows) {
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>الرمز</th><th>الشركة</th><th>تاريخ الإعلان</th><th>تاريخ الاستحقاق</th><th>تاريخ التسجيل</th><th>تاريخ الدفع</th><th>التوزيع</th><th>العائد</th><th>العملة</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(r.symbol || "--")}</td><td>${h(r.companyName || "--")}</td><td class="ltr">${h(latinDateOnly(r.declarationDate))}</td><td class="ltr">${h(latinDateOnly(r.exDividendDate))}</td><td class="ltr">${h(latinDateOnly(r.recordDate))}</td><td class="ltr">${h(latinDateOnly(r.paymentDate))}</td><td class="ltr">${h(latinNumber(r.dividendAmount))}</td><td class="ltr">${h(percentText(r.dividendYield))}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+    return calendarRows(rows, [
+      { label: "Symbol", value: r => r.symbol || "--", raw: r => r.symbol, pinned: true, cls: "ltr" },
+      { label: "Company", value: r => r.companyName || "--", raw: r => r.companyName, pinned: true },
+      { label: "Declaration", value: r => latinDateOnly(r.declarationDate), raw: r => r.declarationDate, cls: "ltr" },
+      { label: "Ex-date", value: r => latinDateOnly(r.exDividendDate), raw: r => r.exDividendDate, cls: "ltr" },
+      { label: "Record", value: r => latinDateOnly(r.recordDate), raw: r => r.recordDate, cls: "ltr" },
+      { label: "Payment", value: r => latinDateOnly(r.paymentDate), raw: r => r.paymentDate, cls: "ltr" },
+      { label: "Dividend", value: r => latinNumber(r.dividendAmount), raw: r => r.dividendAmount, cls: "ltr" },
+      { label: "Yield", value: r => percentText(r.dividendYield), raw: r => r.dividendYield, cls: "ltr" },
+      { label: "Currency", value: r => r.currency || "--", raw: r => r.currency, cls: "ltr" },
+      { label: "Source", value: r => providerName(r.provider), raw: r => r.provider }
+    ]);
   }
 
   function ipoRows(rows) {
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>الشركة</th><th>الرمز</th><th>السوق</th><th>تاريخ الاكتتاب</th><th>نطاق السعر</th><th>الأسهم</th><th>القيمة السوقية</th><th>الحالة</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td>${h(r.companyName || "--")}</td><td class="ltr">${h(r.symbol || "--")}</td><td class="ltr">${h(r.exchange || "--")}</td><td class="ltr">${h(latinDateOnly(r.ipoDate))}</td><td class="ltr">${h(r.priceRange || "--")}</td><td class="ltr">${h(latinNumber(r.shares))}</td><td class="ltr">${h(latinNumber(r.marketCap))}</td><td>${h(r.status || "--")}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+    return calendarRows(rows, [
+      { label: "Company", value: r => r.companyName || "--", raw: r => r.companyName, pinned: true },
+      { label: "Symbol", value: r => r.symbol || "--", raw: r => r.symbol, pinned: true, cls: "ltr" },
+      { label: "Exchange", value: r => r.exchange || "--", raw: r => r.exchange, cls: "ltr" },
+      { label: "IPO date", value: r => latinDateOnly(r.ipoDate), raw: r => r.ipoDate, cls: "ltr" },
+      { label: "Price range", value: r => r.priceRange || "--", raw: r => r.priceRange, cls: "ltr" },
+      { label: "Shares", value: r => latinNumber(r.shares), raw: r => r.shares, cls: "ltr" },
+      { label: "Market cap", value: r => latinNumber(r.marketCap), raw: r => r.marketCap, cls: "ltr" },
+      { label: "Status", value: r => r.status || "--", raw: r => r.status },
+      { label: "Source", value: r => providerName(r.provider), raw: r => r.provider }
+    ]);
   }
 
   function economicRows(rows) {
-    return `<div class="table-shell calendar-table"><table><thead><tr><th>الوقت</th><th>الدولة</th><th>العملة</th><th>الحدث</th><th>الأهمية</th><th>السابق</th><th>المتوقع</th><th>الفعلي</th><th>المصدر</th></tr></thead><tbody>${rows.map(r => `<tr><td class="ltr">${h(latinDateTime(r.dateTimeUtc))}</td><td>${h(r.country || "--")}</td><td class="ltr">${h(r.currency || "--")}</td><td>${h(r.event || "--")}</td><td>${h(impactLabel(r.impact))}</td><td class="ltr">${h(valueText(r.previous))}</td><td class="ltr">${h(valueText(r.forecast))}</td><td class="ltr">${h(valueText(r.actual))}</td><td>${h(providerName(r.provider))}</td></tr>`).join("")}</tbody></table></div>`;
+    return calendarRows(rows, [
+      { label: "Time", value: r => latinDateTime(r.dateTimeUtc), raw: r => r.dateTimeUtc, pinned: true, cls: "ltr" },
+      { label: "Country", value: r => r.country || "--", raw: r => r.country },
+      { label: "Currency", value: r => r.currency || "--", raw: r => r.currency, cls: "ltr" },
+      { label: "Event", value: r => r.event || "--", raw: r => r.event, pinned: true },
+      { label: "Impact", value: r => impactLabel(r.impact), raw: r => r.impact },
+      { label: "Previous", value: r => valueText(r.previous), raw: r => r.previous, cls: "ltr" },
+      { label: "Forecast", value: r => valueText(r.forecast), raw: r => r.forecast, cls: "ltr" },
+      { label: "Actual", value: r => valueText(r.actual), raw: r => r.actual, cls: "ltr" },
+      { label: "Source", value: r => providerName(r.provider), raw: r => r.provider }
+    ]);
   }
 
   function featureStatusTone(status) {
@@ -1861,6 +2163,7 @@
     const body = (response && response.message) || fallbackBody || UNAVAILABLE_MESSAGE;
     return emptyState(unavailableTitle, body, label, href);
   }
+  function selectionEmptyState() { return emptyState(SELECTION_EMPTY_STATE_AR, SELECTION_EMPTY_STATE_EN, "", ""); }
   function emptyState(title, body, label, href) { return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(title)}</h3><p>${h(body)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(label)}</a>` : ""}<button class="ghost-btn" data-retry>إعادة المحاولة</button></div></div>`; }
   function miniEmpty() { return `<div class="empty-state compact"><p>لا توجد بيانات حالياً من المزود.</p></div>`; }
   function marketUnavailable(m, data) { return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>بيانات ${h(m.ar)} غير متاحة</h2><p>${h((data && data.message) || providerCopy().copy)}</p>
@@ -2045,7 +2348,153 @@
   function legacyRecsFrom(data) { return arr((data && (data.recommendations || data.items || data.data || data.results))).map(norm).filter(x => x.symbol); }
   function signalsFrom(data) { return arr(data && (data.signals || data.items || data.data || data.results)).map(signalToRec).filter(x => x.symbol); }
   function recsFrom(data) { return mergeRecLists(signalsFrom(data), legacyRecsFrom(data)); }
-  function recs() { const all = mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); const ms = new Set(currentMarket().symbols.map(sym)); const f = all.filter(x => ms.has(sym(x.symbol || x.ticker))); return f.length ? f : all; }
+  function allRecommendationSources() { return mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); }
+  function recs() { return filterRecommendationsForSelection(allRecommendationSources(), state.settings.defaultMarket, currentSelectedCategory()); }
+  function currentSelectedCategory() { return state.settings.selectedCategory || categoryFromSelection(state.settings.defaultMarket); }
+  function filterRecommendationsForSelection(items, selectedMarket, selectedCategory) {
+    return arr(items).map(norm).filter(asset => isAssetAllowedForSelection(asset, selectedMarket, selectedCategory));
+  }
+  function categoryFromSelection(selectedMarket) {
+    const id = String(selectedMarket || "").trim().toLowerCase();
+    if (id === "commodities") return "commodity";
+    if (id === "etfs") return "fund";
+    return CATEGORY_MARKET_IDS.has(id) ? id : "all";
+  }
+  function normalizedCategory(value) {
+    const raw = String(value || "all").trim().toLowerCase().replace(/[_-]+/g, " ");
+    if (!raw || raw === "all" || raw === "all assets") return "all";
+    if (["stocks", "equities", "equity"].includes(raw)) return "stock";
+    if (["tech", "tech stock", "tech stocks", "technology stocks"].includes(raw)) return "technology";
+    if (["semiconductor", "semiconductor stocks"].includes(raw)) return "semiconductors";
+    if (["commodities", "metals"].includes(raw)) return "commodity";
+    if (["etf", "etfs", "funds"].includes(raw)) return "fund";
+    if (raw === "fx" || raw === "currency pairs") return "forex";
+    return raw;
+  }
+  function fieldText(asset, keys) {
+    const providerStatus = asset && typeof asset.providerStatus === "object" ? asset.providerStatus : {};
+    const metadataDiagnostics = asset && typeof asset.metadataDiagnostics === "object" ? asset.metadataDiagnostics : {};
+    for (const source of [asset || {}, providerStatus || {}, metadataDiagnostics || {}]) {
+      for (const key of keys) {
+        const value = String(source[key] ?? "").trim();
+        if (value) return value;
+      }
+    }
+    return "";
+  }
+  function upperField(asset, keys) { return fieldText(asset, keys).toUpperCase(); }
+  function countryForAsset(asset) {
+    const explicit = upperField(asset, ["country", "countryCode", "country_code", "finalCountry"]);
+    if (explicit) return explicit;
+    const s = sym(asset.symbol || asset.displaySymbol || asset.canonicalSymbol || asset.providerSymbolUsed || asset.providerSymbol);
+    if (/\.KW$/i.test(s)) return "KUWAIT";
+    if (/\.(SR|SA)$/i.test(s)) return "SAUDI ARABIA";
+    if (/\.(AE|DU|AD)$/i.test(s)) return "UAE";
+    if (/\.QA$/i.test(s)) return "QATAR";
+    if (/\.BH$/i.test(s)) return "BAHRAIN";
+    if (/\.OM$/i.test(s)) return "OMAN";
+    if (!/\.[A-Z]{1,3}$/i.test(s) && inferredAssetType(asset) === "stock") return "US";
+    return "";
+  }
+  function inferredAssetType(asset) {
+    const explicit = assetType(asset.symbol || asset.displaySymbol || asset.canonicalSymbol || asset.providerSymbolUsed || asset.providerSymbol, asset.assetType || asset.asset_type || asset.quoteType || asset.instrumentType || asset.category);
+    return explicit || "stock";
+  }
+  function classificationForAsset(asset) {
+    return [
+      fieldText(asset, ["sector", "category"]),
+      fieldText(asset, ["industry"]),
+      fieldText(asset, ["market", "marketName", "market_name", "finalMarket"]),
+      fieldText(asset, ["exchange", "exchangeName", "exchange_name"])
+    ].filter(Boolean).join(" ").toUpperCase();
+  }
+  function localMarketDecision(asset, selectedMarket) {
+    const id = String(selectedMarket || "").toLowerCase();
+    const rule = STRICT_LOCAL_MARKETS[id];
+    if (!rule) return { allowed: true, reason: "not_strict_local_market" };
+    const s = sym(asset.symbol || asset.displaySymbol || asset.canonicalSymbol || asset.providerSymbolUsed || asset.providerSymbol);
+    const exchange = upperField(asset, ["exchange", "exchangeName", "exchange_name", "exchangeCode", "exchange_code", "finalExchange", "finalExchangeCode"]);
+    const market = upperField(asset, ["market", "marketName", "market_name", "finalMarket"]);
+    const country = countryForAsset(asset);
+    const currencyCode = currency(asset);
+    const type = inferredAssetType(asset);
+    const exchangeOk = rule.exchange.test(exchange) || rule.suffix.test(s);
+    const marketOk = rule.market.test(market) || rule.suffix.test(s);
+    const countryOk = rule.countries.includes(country) || rule.suffix.test(s);
+    const currencyOk = currencyCode === rule.currency;
+    const typeOk = type === "stock";
+    if (!exchangeOk) return { allowed: false, reason: "exchange_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    if (!marketOk) return { allowed: false, reason: "market_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    if (!countryOk) return { allowed: false, reason: "country_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    if (!currencyOk) return { allowed: false, reason: "currency_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    if (!typeOk) return { allowed: false, reason: "asset_type_mismatch", rule, exchange, market, country, currency: currencyCode, type };
+    return { allowed: true, reason: "matched_strict_local_market", rule, exchange, market, country, currency: currencyCode, type };
+  }
+  function usMarketDecision(asset, selectedMarket) {
+    if (!["us-stocks", "technology"].includes(String(selectedMarket || "").toLowerCase())) return { allowed: true, reason: "not_us_market" };
+    const s = sym(asset.symbol || asset.displaySymbol || asset.canonicalSymbol || asset.providerSymbolUsed || asset.providerSymbol);
+    const type = inferredAssetType(asset);
+    const exchange = upperField(asset, ["exchange", "exchangeName", "exchange_name", "exchangeCode", "exchange_code"]);
+    const country = countryForAsset(asset);
+    const currencyCode = currency(asset);
+    const hasNonUsSuffix = /\.[A-Z]{1,3}$/i.test(s) && !/\.US$/i.test(s);
+    const countryOk = !country || ["US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA"].includes(country);
+    const exchangeOk = !exchange || US_EXCHANGE_RE.test(exchange);
+    if (type !== "stock") return { allowed: false, reason: "us_market_asset_type_mismatch", type };
+    if (currencyCode !== "USD") return { allowed: false, reason: "us_market_currency_mismatch", currency: currencyCode, type };
+    if (!countryOk || !exchangeOk || hasNonUsSuffix) return { allowed: false, reason: "us_market_country_exchange_mismatch", exchange, country, currency: currencyCode, type };
+    return { allowed: true, reason: "matched_us_market", exchange, country, currency: currencyCode, type };
+  }
+  function categoryDecision(asset, selectedMarket, selectedCategory) {
+    const category = normalizedCategory(selectedCategory || categoryFromSelection(selectedMarket));
+    if (category === "all") return { allowed: true, reason: "category_all", category };
+    const type = inferredAssetType(asset);
+    const s = sym(asset.symbol || asset.displaySymbol || asset.canonicalSymbol || asset.providerSymbolUsed || asset.providerSymbol).replace(/[-=].*$/, "").replace(/\..*$/, "");
+    const classification = classificationForAsset(asset);
+    if (category === "stock") return { allowed: type === "stock", reason: type === "stock" ? "matched_stock_category" : "category_asset_type_mismatch", category, type };
+    if (["crypto", "forex", "commodity", "fund", "index"].includes(category)) return { allowed: type === category, reason: type === category ? `matched_${category}_category` : "category_asset_type_mismatch", category, type };
+    if (category === "technology") {
+      const technologyMatch = TECHNOLOGY_SYMBOLS.has(s) || /\b(TECHNOLOGY|INFORMATION TECHNOLOGY|SOFTWARE|CLOUD|CYBERSECURITY|SEMICONDUCTORS?|ELECTRONIC COMPONENTS?)\b/.test(classification);
+      const us = usMarketDecision(asset, "technology");
+      return { allowed: us.allowed && technologyMatch, reason: us.allowed && technologyMatch ? "matched_technology_category" : (["crypto", "forex", "commodity"].includes(type) ? "technology_category_asset_type_mismatch" : "technology_category_mismatch"), category, type };
+    }
+    if (category === "semiconductors") {
+      const semisMatch = SEMICONDUCTOR_SYMBOLS.has(s) || /\b(SEMICONDUCTORS?|SEMICONDUCTOR EQUIPMENT|SEMICONDUCTOR MATERIALS?|INTEGRATED CIRCUITS?|CHIP(?:S|MAKER|MAKERS)?)\b/.test(classification);
+      return { allowed: type === "stock" && semisMatch, reason: type === "stock" && semisMatch ? "matched_semiconductors_category" : (["crypto", "forex", "commodity"].includes(type) ? "semiconductors_category_asset_type_mismatch" : "semiconductors_category_mismatch"), category, type };
+    }
+    return { allowed: false, reason: "unknown_category", category, type };
+  }
+  function isAssetAllowedForSelection(asset, selectedMarket, selectedCategory) {
+    const local = localMarketDecision(asset, selectedMarket);
+    if (!local.allowed) { warnSelectionExclusion(asset, selectedMarket, selectedCategory, local); return false; }
+    const us = usMarketDecision(asset, selectedMarket);
+    if (!us.allowed) { warnSelectionExclusion(asset, selectedMarket, selectedCategory, us); return false; }
+    const category = categoryDecision(asset, selectedMarket, selectedCategory);
+    if (!category.allowed) { warnSelectionExclusion(asset, selectedMarket, selectedCategory, category); return false; }
+    return true;
+  }
+  function warnSelectionExclusion(asset, selectedMarket, selectedCategory, decision) {
+    if (!DEV_DIAGNOSTICS) return;
+    const marketId = String(selectedMarket || "").toLowerCase();
+    const category = normalizedCategory(selectedCategory || categoryFromSelection(selectedMarket));
+    const type = decision.type || inferredAssetType(asset);
+    const payload = {
+      symbol: asset.symbol,
+      exchange: asset.exchange || asset.exchangeName || asset.exchangeCode,
+      market: asset.market || asset.marketName,
+      country: asset.country || asset.countryCode || decision.country || countryForAsset(asset),
+      currency: asset.currency || decision.currency || currency(asset),
+      assetType: asset.assetType || asset.asset_type || type,
+      sector: asset.sector,
+      industry: asset.industry,
+      category,
+      reason: decision.reason
+    };
+    if (marketId === "qatar" && (payload.currency !== "QAR" || !["QA", "QATAR"].includes(String(payload.country || "").toUpperCase()))) console.warn("[trader] Excluding non-Qatar asset from Qatar selection", payload);
+    else if (marketId === "kuwait" && (payload.currency !== "KWD" || !["KW", "KUWAIT"].includes(String(payload.country || "").toUpperCase()))) console.warn("[trader] Excluding non-Kuwait asset from Kuwait selection", payload);
+    else if (category === "technology" && ["crypto", "forex", "commodity"].includes(type)) console.warn("[trader] Excluding non-technology asset from technology selection", payload);
+    else console.warn("[trader] Excluding asset outside selected market/category", payload);
+  }
   function mergeRecLists(primary, fallback) {
     const map = new Map();
     fallback.forEach(item => { if (item.symbol) map.set(sym(item.symbol), item); });

@@ -22584,3 +22584,322 @@ body[data-app-view] .app-shell,
     text-align: center;
   }
 }
+
+/* Market calendar UX cleanup: compact collapsed sections, earnings tools, mobile cards. */
+.trader-calendar-page .trader-calendar-toolbar,
+.trader-calendar-panel {
+  border-radius: 8px;
+}
+
+.trader-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.calendar-ranges,
+.calendar-head-actions,
+.calendar-source-strip,
+.calendar-pagination,
+.earnings-table-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-ranges button,
+.calendar-sort,
+.earnings-controls button,
+.calendar-pagination button {
+  min-height: 34px;
+}
+
+.calendar-ranges button {
+  padding: 7px 11px;
+  border: 1px solid var(--line, rgba(148, 163, 184, .22));
+  border-radius: 8px;
+  color: var(--text, #f8fbff);
+  background: rgba(8, 13, 18, .72);
+  cursor: pointer;
+}
+
+.calendar-ranges button.is-active,
+.calendar-data-tabs button.is-active {
+  border-color: rgba(101, 217, 141, .46);
+  background: rgba(53, 194, 164, .18);
+}
+
+.calendar-panel-head {
+  align-items: flex-start;
+}
+
+.calendar-head-actions {
+  justify-content: flex-end;
+}
+
+.trader-calendar-panel.is-collapsed {
+  padding-bottom: 16px;
+}
+
+.calendar-section-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.calendar-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-meta span,
+.calendar-source-strip span,
+.earnings-table-summary span {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 8px;
+  color: var(--muted, #9fb0c0);
+  background: rgba(8, 13, 18, .52);
+}
+
+.calendar-source-strip span {
+  color: var(--text, #f8fbff);
+}
+
+.earnings-calendar-view {
+  display: grid;
+  gap: 12px;
+}
+
+.earnings-controls {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(150px, .35fr) minmax(150px, .35fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.earnings-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.earnings-search input,
+.earnings-controls select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 8px;
+  color: var(--text, #f8fbff);
+  background: rgba(2, 7, 11, .72);
+}
+
+.earnings-controls label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted, #9fb0c0);
+  font-size: 12px;
+}
+
+.calendar-data-tabs {
+  justify-content: flex-start;
+}
+
+.calendar-data-tabs button span {
+  margin-inline-start: 6px;
+  color: var(--muted, #9fb0c0);
+}
+
+.earnings-table-summary {
+  justify-content: space-between;
+}
+
+.calendar-table {
+  overflow-x: auto;
+}
+
+.calendar-table table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.calendar-table th,
+.calendar-table td {
+  padding: 10px 11px;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+  vertical-align: top;
+}
+
+.calendar-table th {
+  color: var(--muted, #9fb0c0);
+  font-size: 12px;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.calendar-table td {
+  color: var(--text, #f8fbff);
+  font-size: 13px;
+}
+
+.calendar-sort {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-card-list {
+  display: none;
+}
+
+.calendar-pagination {
+  justify-content: flex-end;
+}
+
+.calendar-pagination button[disabled] {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .trader-calendar-toolbar,
+  .calendar-panel-head,
+  .calendar-head-actions,
+  .earnings-table-summary,
+  .calendar-pagination {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .trader-calendar-toolbar,
+  .calendar-panel-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendar-ranges,
+  .calendar-head-actions,
+  .calendar-pagination {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-head-actions .state-badge,
+  .calendar-head-actions button,
+  .calendar-pagination button,
+  .calendar-pagination span {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .calendar-meta,
+  .earnings-controls,
+  .earnings-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendar-table {
+    display: none;
+  }
+
+  .calendar-card-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .calendar-mobile-card {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, .18);
+    border-radius: 8px;
+    background: rgba(8, 13, 18, .66);
+  }
+
+  .calendar-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .calendar-card-head strong,
+  .calendar-card-head span {
+    display: block;
+    min-width: 0;
+  }
+
+  .calendar-card-head strong {
+    color: var(--text, #f8fbff);
+    font-size: 16px;
+  }
+
+  .calendar-card-head span {
+    color: var(--muted, #9fb0c0);
+    font-size: 12px;
+  }
+
+  .calendar-card-head em {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: var(--text, #f8fbff);
+    background: rgba(53, 194, 164, .16);
+    font-size: 11px;
+    font-style: normal;
+  }
+
+  .calendar-mobile-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .calendar-mobile-card dl div,
+  .calendar-card-score {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid rgba(148, 163, 184, .14);
+    border-radius: 8px;
+    background: rgba(2, 7, 11, .42);
+  }
+
+  .calendar-mobile-card dt,
+  .calendar-card-score span {
+    color: var(--muted, #9fb0c0);
+    font-size: 11px;
+  }
+
+  .calendar-mobile-card dd {
+    margin: 3px 0 0;
+    color: var(--text, #f8fbff);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+
+  .calendar-card-score {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .calendar-ranges,
+  .calendar-head-actions,
+  .calendar-pagination,
+  .calendar-mobile-card dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
