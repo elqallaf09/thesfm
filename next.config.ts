@@ -12,6 +12,11 @@ const WINDOWS_BUILD_EXPERIMENTS = IS_WINDOWS_BUILD
       webpackBuildWorker: false,
     }
   : {};
+const WINDOWS_MANIFEST_PLUGIN = "EnsureWindowsServerManifests";
+type WebpackTapOptions = string | { name: string; stage?: number };
+type WebpackSyncHook = {
+  tap: (options: WebpackTapOptions, callback: (...args: unknown[]) => void) => void;
+};
 
 function writeTextIfMissing(filePath: string, content: string) {
   if (fs.existsSync(filePath)) return;
@@ -40,7 +45,7 @@ function writeJsonDefaults(filePath: string, defaults: Record<string, unknown>) 
       current = {};
     }
   }
-  const next = { ...defaults, ...current };
+  const next = { ...current, ...defaults };
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }
@@ -55,7 +60,11 @@ function mirrorDirectory(sourceDir: string, targetDir: string) {
     if (entry.isDirectory()) {
       mirrorDirectory(sourcePath, targetPath);
     } else if (entry.isFile()) {
-      fs.copyFileSync(sourcePath, targetPath);
+      const sourceStat = fs.statSync(sourcePath);
+      const targetStat = fs.existsSync(targetPath) ? fs.statSync(targetPath) : null;
+      if (!targetStat || targetStat.size !== sourceStat.size || targetStat.mtimeMs < sourceStat.mtimeMs) {
+        fs.copyFileSync(sourcePath, targetPath);
+      }
     }
   }
 }
@@ -142,6 +151,23 @@ function ensureWindowsServerManifests() {
   );
 }
 
+function safeEnsureWindowsServerManifests() {
+  try {
+    ensureWindowsServerManifests();
+  } catch {
+    // Next can remove and recreate .next/server while the Windows build shim is keeping
+    // manifests alive. A transient race should not take down the build process.
+  }
+}
+
+function scheduleWindowsServerManifests() {
+  safeEnsureWindowsServerManifests();
+  for (const delay of [0, 25, 100, 250, 1000]) {
+    const timer = setTimeout(safeEnsureWindowsServerManifests, delay);
+    timer.unref?.();
+  }
+}
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
   generateBuildId: async () => (
@@ -160,12 +186,17 @@ const nextConfig: NextConfig = {
       config.plugins.push({
         apply(compiler: {
           hooks: {
-            afterEmit: { tap: (options: string | { name: string; stage?: number }, callback: () => void) => void };
-            done: { tap: (options: string | { name: string; stage?: number }, callback: () => void) => void };
+            beforeRun?: WebpackSyncHook;
+            beforeCompile?: WebpackSyncHook;
+            afterEmit: WebpackSyncHook;
+            done: WebpackSyncHook;
           };
         }) {
-          compiler.hooks.afterEmit.tap({ name: "EnsureWindowsServerManifests", stage: Number.MAX_SAFE_INTEGER }, ensureWindowsServerManifests);
-          compiler.hooks.done.tap({ name: "EnsureWindowsServerManifests", stage: Number.MAX_SAFE_INTEGER }, ensureWindowsServerManifests);
+          const writeManifests = () => scheduleWindowsServerManifests();
+          compiler.hooks.beforeRun?.tap(WINDOWS_MANIFEST_PLUGIN, writeManifests);
+          compiler.hooks.beforeCompile?.tap(WINDOWS_MANIFEST_PLUGIN, writeManifests);
+          compiler.hooks.afterEmit.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
+          compiler.hooks.done.tap({ name: WINDOWS_MANIFEST_PLUGIN, stage: Number.MAX_SAFE_INTEGER }, writeManifests);
         },
       });
     }
