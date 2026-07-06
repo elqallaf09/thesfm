@@ -308,7 +308,6 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
 
   const data = response?.ok ? response.data : null;
   const marketName = response?.ok ? response.marketName : response?.marketName ?? marketLabel;
-  const source = response?.source ?? 'Yahoo Finance';
   const updatedAt = response?.ok ? response.updated_at : response?.updated_at ?? null;
   const limited = response?.ok && response.warnings?.includes('provider_returned_limited_rows');
   const isIndexOnlyState = Boolean(
@@ -319,7 +318,6 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
 
   const meta = (
     <div className="market-movers-meta">
-      <span>{labels.source}: <strong>{source}</strong></span>
       <span>{labels.lastUpdated}: <strong dir="ltr">{formatDateTime(updatedAt, locale)}</strong></span>
       {limited && <em>{labels.limitedData}</em>}
     </div>

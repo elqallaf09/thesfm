@@ -31,7 +31,6 @@ export function PriceHistoryChart({
   trend,
   support,
   resistance,
-  source,
   updatedAt,
   onRetry,
   t,
@@ -50,7 +49,6 @@ export function PriceHistoryChart({
   trend?: MarketTrend | null;
   support?: number | null;
   resistance?: number | null;
-  source?: string | null;
   updatedAt?: string | null;
   onRetry?: () => void;
   t: (key: string) => string;
@@ -221,7 +219,6 @@ export function PriceHistoryChart({
   if (trend) partialSummaryItems.push({ key: 'trend', label: t('market_trend'), value: t(`market_trend_${trend}`) });
   if (summarySupport !== null) partialSummaryItems.push({ key: 'support', label: t('market_support_zone'), value: chartMoney(summarySupport), dir: 'ltr' });
   if (summaryResistance !== null) partialSummaryItems.push({ key: 'resistance', label: t('market_resistance_zone'), value: chartMoney(summaryResistance), dir: 'ltr' });
-  if (source) partialSummaryItems.push({ key: 'source', label: t('market_asset_profile_data_source'), value: source });
   if (formattedUpdatedAt) partialSummaryItems.push({ key: 'updated', label: t('market_last_updated'), value: formattedUpdatedAt, dir: 'ltr' });
   const hoveredPoint = hoveredIndex !== null ? activePoints[hoveredIndex] ?? null : null;
   const tooltipX = hoveredIndex !== null ? xFor(hoveredIndex) : 0;

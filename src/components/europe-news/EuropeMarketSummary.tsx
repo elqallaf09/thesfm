@@ -44,7 +44,6 @@ export function EuropeMarketSummary({ market, marketLabel, indexLabel, data, lab
         <strong>{labels.delayed}</strong>
       </div>
       <div className="europe-news-summary-market">
-        <span>{labels.source}: {data?.source ?? 'Yahoo Finance'}</span>
         <strong>{formatNumber(value)}</strong>
         {value === null ? (
           <p>{labels.unavailableHelper}</p>

@@ -8,6 +8,16 @@ import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 type TickerDirection = 'ltr' | 'rtl';
 type TickerAssetType = 'stock' | 'etf' | 'crypto' | 'unknown';
 
+const isMarketTickerDev = process.env.NODE_ENV === 'development';
+
+const TECH_PROVIDER_NOISE_PATTERNS = [
+  /fmp/i,
+  /finnhub/i,
+  /yahoo\s*finance/i,
+  /provider/i,
+  /fallback/i,
+];
+
 export type StockTickerStripItem = {
   symbol: string;
   name?: string | null;
@@ -38,6 +48,7 @@ type StockTickerStripProps = {
   status?: ReactNode;
   emptyState?: ReactNode;
   formatPrice?: (value: number, currency: string, item: StockTickerStripItem) => ReactNode;
+  showDebugMeta?: boolean;
 };
 
 function isFiniteNumber(value: unknown): value is number {
@@ -75,6 +86,18 @@ function inferTickerCurrency(symbol: string, explicitCurrency?: string | null) {
 function localeWithLatinDigits(locale: string) {
   if (!locale) return 'en-US-u-nu-latn';
   return locale.includes('-u-') ? locale : `${locale}-u-nu-latn`;
+}
+
+function isTechnicalProviderSource(value: string | null | undefined) {
+  const clean = String(value ?? '').trim();
+  if (!clean) return true;
+  return TECH_PROVIDER_NOISE_PATTERNS.some(pattern => pattern.test(clean));
+}
+
+function buildProviderMeta(source: string | null | undefined, sourceLabel?: string) {
+  const clean = String(source ?? '').trim();
+  if (!clean || isTechnicalProviderSource(clean)) return null;
+  return sourceLabel ? `${sourceLabel}: ${clean}` : clean;
 }
 
 function formatMoney(value: number, currency: string, locale: string) {
@@ -129,6 +152,7 @@ export function StockTickerStrip({
   status,
   emptyState,
   formatPrice,
+  showDebugMeta = false,
 }: StockTickerStripProps) {
   const tickerItems = items.map(normalizeItem).filter(item => item.symbol);
   const fallbackState = emptyState ?? (
@@ -155,11 +179,8 @@ export function StockTickerStrip({
         const changePercent = available && isFiniteNumber(item.changePercent) ? item.changePercent : null;
         const tone = changePercent !== null ? (changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral') : 'neutral';
         const TrendIcon = tone === 'up' ? TrendingUp : tone === 'down' ? TrendingDown : null;
-        const provider = item.source
-          ? sourceLabel
-            ? `${sourceLabel}: ${item.source}`
-            : item.source
-          : unavailableLabel;
+        const provider = isMarketTickerDev && showDebugMeta ? buildProviderMeta(item.source, sourceLabel) : null;
+        const showUnavailableTag = !available || (price === null && changePercent === null && !item.meta);
 
         return (
           <article className={`sfm-stock-ticker-card is-${tone}`} key={item.symbol} role="listitem" dir="ltr">
@@ -196,8 +217,9 @@ export function StockTickerStrip({
             </div>
 
             <div className="sfm-stock-ticker-foot">
-              <small dir="auto">{provider}</small>
+              {provider ? <small dir="auto">{provider}</small> : null}
               {item.meta ? <small dir="auto">{item.meta}</small> : null}
+              {showUnavailableTag ? <small dir="auto" className="sfm-stock-ticker-unavailable">{unavailableLabel}</small> : null}
             </div>
 
           </article>
@@ -209,11 +231,11 @@ export function StockTickerStrip({
                 inline-size: clamp(184px, 54vw, 232px);
                 min-inline-size: min(184px, calc(100vw - 44px));
                 max-inline-size: min(232px, calc(100vw - 44px));
-                min-height: 116px;
+                min-height: 128px;
                 display: grid;
-                align-content: space-between;
+                align-content: start;
                 gap: 9px;
-                padding: 10px 12px;
+                padding: 10px 12px 12px;
                 border: 1px solid rgba(203, 213, 225, 0.86);
                 border-radius: 16px;
                 background: #ffffff;
@@ -307,6 +329,13 @@ export function StockTickerStrip({
                 display: grid;
                 gap: 2px;
                 min-width: 0;
+                margin-top: auto;
+                padding-top: 4px;
+              }
+
+              .sfm-stock-ticker-unavailable {
+                align-self: start;
+                color: #0f766e;
               }
 
               .sfm-stock-ticker-empty {

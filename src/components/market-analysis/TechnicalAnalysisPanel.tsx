@@ -780,7 +780,7 @@ export function MarketStatusBanner({
       {connected ? <CheckCircle2 size={19} /> : <Activity size={19} />}
       <div>
         <strong>{connected ? t('market_service_connected_title') : t('market_preparing_analysis')}</strong>
-        <p>{connected ? `${t('market_data_source')}: Yahoo Finance` : serviceNotice || t('market_preparing_analysis_body')}</p>
+        <p>{connected ? t('market_service_connected') : serviceNotice || t('market_preparing_analysis_body')}</p>
       </div>
     </section>
   );
@@ -958,14 +958,12 @@ export function TechnicalPartialDataState({
   onRefresh: () => void;
 }) {
   const parsedPrice = Number(available.currentPrice ?? available.price);
-  const source = String(available.source ?? '').trim();
   const displaySymbol = String(available.symbol ?? available.providerSymbol ?? symbol ?? '').trim();
   const availableUpdatedAt = String(available.updatedAt ?? updatedAt ?? '').trim();
   const metricRows = [
     displaySymbol ? [t('market_symbol'), formatTechnicalSymbol(displaySymbol), 'ltr'] as const : null,
     Number.isFinite(parsedPrice) && parsedPrice > 0 ? [t('market_current_price'), formatTechnicalPrice(parsedPrice), 'ltr'] as const : null,
     availableUpdatedAt ? [t('market_last_updated'), formatTechnicalTimestamp(availableUpdatedAt, locale) || t('market_unavailable'), 'ltr'] as const : null,
-    source ? [t('market_data_source'), ['yahoo', 'yahoo finance'].includes(source.toLowerCase()) ? 'Yahoo Finance' : source, 'ltr'] as const : null,
   ].filter((row): row is readonly [string, string, 'ltr'] => Boolean(row));
 
   return (
@@ -1069,7 +1067,6 @@ export function formatSentimentMetricPair(
 }
 
 export function sentimentExtraMetrics(item: Record<string, any>, t: (key: string) => string, locale: string) {
-  const provider = textField(item, ['source', 'provider']);
   const updatedAt = textField(item, ['updatedAt', 'updated_at', 'lastUpdated', 'timestamp']);
   const totalPositions = plainNumberField(item, ['positions', 'totalPositions', 'positionCount', 'positionsCount']);
   const longPositions = plainNumberField(item, ['longPositions', 'buyPositions', 'longPositionCount', 'buyPositionCount']);
@@ -1092,7 +1089,6 @@ export function sentimentExtraMetrics(item: Record<string, any>, t: (key: string
     : formatSentimentMetricPair(averageLongPrice, averageShortPrice, locale, unavailable);
 
   return [
-    provider ? [t('market_sentiment_provider_metric'), provider] as const : null,
     updatedAt ? [t('market_sentiment_last_updated_metric'), formatMarketToolTimestamp(updatedAt, locale) || updatedAt] as const : null,
     positionValue ? [t('market_sentiment_positions'), positionValue] as const : null,
     lotValue ? [t('market_sentiment_lots'), lotValue] as const : null,

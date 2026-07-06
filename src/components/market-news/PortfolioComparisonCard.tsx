@@ -43,6 +43,8 @@ type PortfolioComparisonItem = {
   };
 };
 
+const marketNoDataLabelAr = 'البيانات غير متاحة حالياً';
+
 type PortfolioComparisonResponse =
   | {
     ok: true;
@@ -190,6 +192,11 @@ export function PortfolioComparisonCard({ market, marketLabel, locale, t }: Prop
         ? t('portfolio_comparison_no_investments_body')
         : t('portfolio_comparison_no_matching_body');
 
+  const primaryItemDataUnavailable = primaryItem
+    ? [primaryItem.currentPrice, primaryItem.purchasePrice, primaryItem.unrealizedProfitLoss, primaryItem.profitLossPercent, primaryItem.portfolioWeight, primaryItem.quantity]
+      .every(value => value === null)
+    : false;
+
   return (
     <section className="market-portfolio-card" aria-labelledby={`portfolio-comparison-${market}`}>
       <div className="market-portfolio-head">
@@ -232,11 +239,11 @@ export function PortfolioComparisonCard({ market, marketLabel, locale, t }: Prop
         <>
           <div className="market-portfolio-identity">
             <AssetIdentity symbol={primaryItem.symbol} name={primaryItem.name} assetType="stock" size="lg" decorative />
-            <div>
-              <span dir="ltr">{primaryItem.symbol}</span>
-              <h3>{primaryItem.name}</h3>
-              <p>{primaryItem.source ? `${t('market_data_source')}: ${primaryItem.source}` : t('portfolio_comparison_price_unavailable')}</p>
-            </div>
+          <div>
+            <span dir="ltr">{primaryItem.symbol}</span>
+            <h3>{primaryItem.name}</h3>
+            {primaryItemDataUnavailable ? <p>{marketNoDataLabelAr}</p> : null}
+          </div>
             <strong className={`market-portfolio-risk ${primaryItem.concentrationRisk ?? 'unavailable'}`}>
               <ShieldAlert size={15} />
               {riskLabel(primaryItem.concentrationRisk)}

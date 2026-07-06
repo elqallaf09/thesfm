@@ -177,8 +177,6 @@ export function AssetProfileCard({ response, loading, error, language, assetType
   const profileTitle = profile?.name ?? response?.symbol ?? '';
   const profileSummary = profile?.description ?? t('market_asset_profile_partial');
   const assetTypeLabel = t(`market_asset_type_${assetType}`);
-  const dataProviderLabel = language === 'ar' ? 'مزود البيانات' : t('market_asset_profile_data_source');
-  const dataProviderValue = fieldValue(response?.source, unavailable);
 
   return (
     <>
@@ -225,7 +223,6 @@ export function AssetProfileCard({ response, loading, error, language, assetType
               <div className="asset-profile-badges">
                 <span dir="ltr">{profile.ticker ?? response.symbol}</span>
                 <span dir={directionFor(assetTypeLabel, language)}>{assetTypeLabel}</span>
-                <span dir="ltr">{response.source}</span>
               </div>
             </div>
 
@@ -311,10 +308,6 @@ export function AssetProfileCard({ response, loading, error, language, assetType
             </section>
 
             <footer className="asset-profile-footer">
-              <span className="asset-profile-footer-item">
-                <em dir={labelDirection(dataProviderLabel, language)}>{dataProviderLabel}</em>
-                <b dir={directionFor(dataProviderValue, language)}>{dataProviderValue}</b>
-              </span>
               <span className="asset-profile-footer-item">
                 <em dir={labelDirection(t('market_asset_profile_last_updated'), language)}>{t('market_asset_profile_last_updated')}</em>
                 <b dir={directionFor(lastUpdated ?? unavailable, language)}>{lastUpdated ?? unavailable}</b>

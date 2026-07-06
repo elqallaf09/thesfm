@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Bell, Clock3, Database, Gauge, ShieldAlert, Target } from 'lucide-react';
+import { AlertTriangle, Bell, Clock3, Gauge, Info, ShieldAlert, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   MARKET_SIGNAL_DISCLAIMER_AR,
@@ -148,7 +148,7 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
         <div className="market-signal-loading" role="status">جاري تحليل البيانات المتاحة...</div>
       ) : !signal ? (
         <div className="market-signal-empty">
-          <Database size={17} />
+          <Info size={17} />
           البيانات غير كافية لإظهار إشارة موثوقة حالياً.
         </div>
       ) : (
@@ -174,7 +174,6 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
             <Metric icon={<Gauge size={16} />} label="نسبة العائد إلى المخاطرة" value={formatRiskReward(signal.riskRewardRatio)} />
             <Metric icon={<Clock3 size={16} />} label="الأفق الزمني" value={signal.timeframe || '1-3 أسابيع'} />
             <Metric icon={<Gauge size={16} />} label="المخاطر" value={risk} />
-            <Metric icon={<Database size={16} />} label="المزود" value={signal.provider || '--'} />
             <Metric icon={<AlertTriangle size={16} />} label="جودة البيانات" value={dataQuality} />
           </div>
 
