@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { __resetTraderQuoteCacheForTests, fetchTraderQuotesDetailed } from '@/lib/trader/marketQuotes';
 import { __resetFmpRuntimeForTests } from '@/lib/trader/providers/fmpRuntime';
-import { __resetOpenbbRuntimeForTests } from '@/lib/trader/providers/openbb';
 
 function clearProviderEnvs() {
   vi.stubEnv('FMP_API_KEY', '');
@@ -11,14 +10,10 @@ function clearProviderEnvs() {
   vi.stubEnv('MARKETSTACK_API_KEY', '');
   vi.stubEnv('FINNHUB_API_KEY', '');
   vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
-  vi.stubEnv('OPENBB_SERVICE_URL', '');
-  vi.stubEnv('OPENBB_API_URL', '');
-  vi.stubEnv('OPENBB_API_KEY', '');
 }
 
 afterEach(() => {
   __resetFmpRuntimeForTests();
-  __resetOpenbbRuntimeForTests();
   __resetTraderQuoteCacheForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -43,7 +38,9 @@ describe('trader provider rate-limit protection', () => {
   it('limits explicit FMP discovery to the selected market and marks 429 as rate-limited', async () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 }));
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const catalog = await getTraderMarketCatalog({
@@ -62,19 +59,29 @@ describe('trader provider rate-limit protection', () => {
   it('returns stale quote cache with cached data quality when FMP becomes rate-limited', async () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([
-        {
-          symbol: 'AAPL',
-          name: 'Apple Inc.',
-          price: 210.12,
-          change: 1.2,
-          changesPercentage: 0.57,
-          currency: 'USD',
-          timestamp: 1782864000,
-        },
-      ]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 }));
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              symbol: 'AAPL',
+              name: 'Apple Inc.',
+              price: 210.12,
+              change: 1.2,
+              changesPercentage: 0.57,
+              currency: 'USD',
+              timestamp: 1782864000,
+            },
+          ]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 }),
+      );
+
     vi.stubGlobal('fetch', fetchMock);
 
     const first = await fetchTraderQuotesDetailed(['AAPL'], { forceFresh: true });
@@ -90,16 +97,5 @@ describe('trader provider rate-limit protection', () => {
     expect(second.summary.cachedSymbols).toBe(1);
     expect(JSON.stringify(second)).toContain('provider_rate_limited');
     expect(JSON.stringify(second)).not.toContain('http_429');
-  });
-
-  it('ignores legacy OpenBB env names unless OPENBB_SERVICE_URL is set', async () => {
-    clearProviderEnvs();
-    vi.stubEnv('OPENBB_API_URL', 'https://legacy-openbb.invalid');
-    vi.stubEnv('OPENBB_API_KEY', 'legacy-token');
-
-    const catalog = await getTraderMarketCatalog({ forceFresh: true });
-
-    expect(catalog.capabilityMatrix.openbb.configured).toBe(false);
-    expect(catalog.capabilityMatrix.openbb.reason).toBe('openbb_not_configured');
   });
 });

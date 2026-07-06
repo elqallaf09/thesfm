@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      console.debug('[auth] auth state changed', { event, userId: nextSession?.user?.id ?? null, hasSession: Boolean(nextSession) });
       if (nextSession) clearStoredGuestMode();
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
@@ -166,7 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signIn: async (username: string, password: string) => {
       try {
-        console.debug('[auth] login started');
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
         const identifierIsEmail = identifier.includes('@');
@@ -261,8 +259,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(signedInUser);
         setIsGuest(false);
         void trackEvent('login', { module: 'auth', metadata: { method: identifierIsEmail ? 'email' : 'username' } });
-        console.debug('[auth] login success', { userId: signedInUser.id, hasSession: Boolean(signedInSession) });
-        console.debug('[auth] session returned', { hasAccessToken: Boolean(signedInSession?.access_token), expiresAt: signedInSession?.expires_at ?? null });
         return { error: null, session: signedInSession, user: signedInUser, email };
       } catch (err: any) {
         console.error('[auth] login error', err);
