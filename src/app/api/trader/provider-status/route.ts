@@ -116,8 +116,8 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
       provider: 'FMP',
       status: 'rate_limited',
       summary: routes.length > 0
-        ? `FMP: تم الوصول إلى حد الاستخدام في ${routes.length} مسارات`
-        : `FMP: ${RATE_LIMIT_MESSAGE_AR}`,
+        ? `تم الوصول إلى حد الاستخدام في ${routes.length} مسارات`
+        : `${RATE_LIMIT_MESSAGE_AR}`,
       details: routes.map(item => ({
         route: item.route,
         reason: RATE_LIMIT_MESSAGE_AR,
@@ -130,7 +130,7 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
     groups.push({
       provider: 'FMP',
       status: normalized.status === 'available' ? 'partial' : normalized.status,
-      summary: `FMP: تعثر ${otherFailures.length} مسارات`,
+      summary: `تعثر ${otherFailures.length} مسارات`,
       details: otherFailures.map(item => ({
         route: item.route,
         reason: item.reason ?? 'provider_temporarily_unavailable',
@@ -263,7 +263,7 @@ export async function GET(request: Request) {
       },
     },
     normalizedStatus,
-    diagnosticGroups: diagnosticSummary,
+    diagnosticGroups: [],
     availableProviders,
     // Keep compatibility with existing trader-app consumers.
     features: status.features,
