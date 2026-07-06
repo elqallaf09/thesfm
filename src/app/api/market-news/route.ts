@@ -25,6 +25,48 @@ function safeCode(messageCode: string | null, fallback: string) {
   return (messageCode || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
 }
 
+function clampPositiveInt(value: string | null, fallback: number, min: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+
+function normalizeText(value: string | null | undefined) {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function extractFiscalPeriod(article: MarketNewsArticle) {
+  const haystack = normalizeText(`${article.headline} ${article.summary || ''}`);
+  const match = haystack.match(
+    /\b(fy|fiscal\s+year)\s*(\d{2,4})\b|\b(q\d\s*-?\s*\d{2,4})\b|\b(q\d)\s+(\d{2,4})\b|\b(\d{4})\s+q\d\b/
+  );
+  if (!match) return 'no-fiscal-period';
+  const raw = [match[1], match[2], match[3], match[4], match[5], match[6]]
+    .filter(Boolean)
+    .join('')
+    .replace(/\s+/g, '');
+  return raw || 'no-fiscal-period';
+}
+
+function dedupeNewsArticles(articles: MarketNewsArticle[]) {
+  const seen = new Set<string>();
+  const result: MarketNewsArticle[] = [];
+  for (const article of articles) {
+    const date = String(article.publishedAt || '').slice(0, 10) || 'no-date';
+    const source = normalizeText(article.source) || 'unknown-source';
+    const symbols = [...new Set((article.relatedSymbols || []).map(s => s.toUpperCase()).filter(Boolean))]
+      .sort()
+      .slice(0, 8)
+      .join(',')
+      || 'no-symbols';
+    const key = `${source}|${date}|${symbols}|${extractFiscalPeriod(article)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(article);
+  }
+  return result;
+}
+
 function defaultNewsRange() {
   const to = new Date();
   const from = addUtcDays(to, -7);
@@ -86,6 +128,13 @@ function toUiArticle(article: MarketNewsArticle & {
   };
 }
 
+function paginateItems<T>(items: T[], page: number, limit: number) {
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.max(1, limit);
+  const start = (safePage - 1) * safeLimit;
+  return items.slice(start, start + safeLimit);
+}
+
 function buildRelevanceContext(searchParams: URLSearchParams, symbol: string | null): MarketNewsRelevanceContext {
   return buildMarketNewsRelevanceContext({
     market: searchParams.get('market') ?? searchParams.get('selectedMarket') ?? searchParams.get('marketId'),
@@ -112,8 +161,10 @@ function applyLocalFilters(
   const category = articleCategoryFilter(searchParams);
   const search = normalizeTitle(String(searchParams.get('search') ?? searchParams.get('q') ?? ''));
   const sort = String(searchParams.get('sort') ?? 'latest').trim().toLowerCase();
+  const page = clampPositiveInt(searchParams.get('page'), 1, 1, 50);
+  const pageLimit = clampNumber(searchParams.get('limit'), 12, 1, 50);
 
-  const filtered = articles.filter(article => {
+  const filtered = dedupeNewsArticles(articles).filter(article => {
     if (source && article.source.toLowerCase() !== source) return false;
     if (category && category !== 'general' && String(article.category ?? '').toLowerCase() !== category) return false;
     if (!search) return true;
@@ -138,7 +189,10 @@ function applyLocalFilters(
   });
 
   return {
-    articles: sorted,
+    articles: paginateItems(sorted, page, pageLimit),
+    total: sorted.length,
+    page,
+    pageSize: pageLimit,
     relevance: relevance.diagnostics,
   };
 }
@@ -153,10 +207,16 @@ function jsonResponse(
   const filtered: {
     articles: Array<MarketNewsArticle & { relevanceScore?: number; relevanceReasons?: string[]; relevanceBucket?: string }>;
     relevance: MarketNewsRelevanceFilterResult['diagnostics'];
+    total: number;
+    page: number;
+    pageSize: number;
   } = result.status === 'success'
     ? applyLocalFilters(result.data, searchParams, relevanceContext)
     : {
-      articles: result.data,
+      articles: dedupeNewsArticles(result.data),
+      total: 0,
+      page: 1,
+      pageSize: 12,
       relevance: filterMarketNewsByRelevance([], relevanceContext).diagnostics,
     };
   const limitedArticles = filtered.articles.slice(0, responseLimit);
@@ -184,6 +244,10 @@ function jsonResponse(
     relevance: {
       ...filtered.relevance,
       returned: items.length,
+      total: filtered.total,
+      page: filtered.page,
+      pageSize: filtered.pageSize,
+      totalPages: filtered.pageSize ? Math.max(1, Math.ceil(filtered.total / filtered.pageSize)) : 1,
     },
     success: result.status === 'success',
     source: result.provider,
@@ -213,9 +277,9 @@ export async function GET(request: NextRequest) {
     }, searchParams, buildRelevanceContext(searchParams, symbol || null), 0, 400);
   }
 
-  const limit = clampNumber(searchParams.get('limit'), 20, 1, 50);
+  const limit = clampNumber(searchParams.get('limit'), 12, 1, 50);
   const relevanceContext = buildRelevanceContext(searchParams, symbol || null);
-  const providerLimit = Math.min(50, Math.max(limit, limit * 4));
+  const providerLimit = clampNumber(searchParams.get('providerLimit'), Math.min(200, Math.max(limit * 4, 24)), 1, 200);
   const query: MarketNewsQuery = {
     scope,
     symbol: symbol || null,
