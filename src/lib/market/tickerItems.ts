@@ -8,7 +8,7 @@
  * instead of hiding the whole strip.
  */
 
-export const TICKER_FALLBACK_SOURCE = 'Finnhub/Yahoo Finance fallback';
+export const TICKER_FALLBACK_SOURCE = 'market_data';
 
 export type ResilientTickerPrice = {
   price: number | null;

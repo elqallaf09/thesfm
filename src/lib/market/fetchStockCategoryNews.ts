@@ -24,7 +24,7 @@ export type StockCategoryNewsItem = {
   sector: StockCategoryFilterKey;
   sectors: StockCategoryFilterKey[];
   source: string;
-  provider: 'Finnhub' | 'Yahoo Finance' | 'Google News';
+  provider: 'Finnhub' | 'market_rss' | 'Google News';
   datetime: number | null;
   publishedAt: string;
   url: string;
@@ -40,8 +40,8 @@ export type StockCategoryNewsItem = {
 export type StockCategoryNewsPayload = {
   success: true;
   category: StockCategoryId;
-  source: 'Finnhub + RSS fallback';
-  priceSource: 'Finnhub/Yahoo Finance fallback';
+  source: string;
+  priceSource: string;
   lastUpdated: string;
   language: AppNewsLanguage;
   translationEnabled: boolean;
@@ -169,7 +169,7 @@ function encodedGoogleNewsUrl(query: string) {
 function rssFeedsFor(config: StockCategoryConfig) {
   return [
     {
-      source: 'Yahoo Finance',
+      source: 'market_rss',
       url: `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${config.watchlist.map(stock => stock.symbol).join(',')}&region=US&lang=en-US`,
     },
     {
@@ -299,6 +299,9 @@ function parseRssItems(config: StockCategoryConfig, feed: { source: string; url:
     const published = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated');
     const publishedAt = safeDate(published);
     const price = matchedStock ? prices.get(matchedStock.symbol) : undefined;
+    // Use 'market_rss' or 'Google News' — never expose underlying RSS provider names
+    const provider: StockCategoryNewsItem['provider'] =
+      feed.source === 'Google News' ? 'Google News' : 'market_rss';
     const row: StockCategoryNewsItem = {
       id: `rss-${config.id}-${feed.source}-${url || headline}`.toLowerCase().replace(/\s+/g, '-'),
       headline,
@@ -311,8 +314,8 @@ function parseRssItems(config: StockCategoryConfig, feed: { source: string; url:
       ticker: matchedStock?.symbol ?? config.id.toUpperCase(),
       sector: matchedStock?.filter ?? fallbackFilter,
       sectors,
-      source: feed.source,
-      provider: feed.source === 'Yahoo Finance' ? 'Yahoo Finance' : 'Google News',
+      source: feed.source === 'Google News' ? 'Google News' : 'News',
+      provider,
       datetime: Math.floor(new Date(publishedAt).getTime() / 1000),
       publishedAt,
       url,
@@ -384,7 +387,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       if (selected.usableCount > 0) break;
     }
   } else if (process.env.NODE_ENV !== 'production') {
-    console.warn('[StockCategoryNews] FINNHUB_API_KEY is not configured; using RSS fallback for news and Yahoo Finance fallback for prices.', {
+    console.warn('[StockCategoryNews] FINNHUB_API_KEY is not configured; using RSS fallback.', {
       category: config.id,
     });
   }
@@ -410,8 +413,8 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   return {
     success: true,
     category: config.id,
-    source: 'Finnhub + RSS fallback',
-    priceSource: 'Finnhub/Yahoo Finance fallback',
+    source: 'market_news',
+    priceSource: 'market_data',
     lastUpdated: new Date().toISOString(),
     language,
     translationEnabled: isNewsTranslationEnabled(),

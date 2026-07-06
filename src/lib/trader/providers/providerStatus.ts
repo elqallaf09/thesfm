@@ -116,10 +116,7 @@ function createInitialFeatureState(): Record<TraderProviderFeature, TraderFeatur
   };
 }
 
-function baseFeatureStatus(
-  feature: TraderCalendarFeature,
-  providers: TraderCalendarProvider[],
-): TraderFeatureStatus {
+function baseFeatureStatus(feature: TraderCalendarFeature, providers: TraderCalendarProvider[]): TraderFeatureStatus {
   return {
     feature,
     configured: false,
@@ -152,17 +149,13 @@ function supportedFeaturesForProvider(provider: TraderCalendarProvider | null) {
 }
 
 function redactProviderMessage(value: unknown) {
-  return shortText(value, 300).replace(/([?&](apikey|token|c)=)[^&\s]+/gi, '$1[redacted]');
+  return shortText(value, 300)
+    .replace(/([?&](apikey|token|c)=)[^&\s]+/gi, '$1[redacted]');
 }
 
 function errorFromUnknown(error: unknown) {
   if (error instanceof ProviderError) return error;
-
-  const message =
-    error instanceof Error
-      ? redactProviderMessage(error.message || error.name)
-      : 'provider_error';
-
+  const message = error instanceof Error ? redactProviderMessage(error.message || error.name) : 'provider_error';
   return new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, message);
 }
 
@@ -185,10 +178,7 @@ function logProviderAttempt(args: {
     statusCode: args.statusCode ?? null,
     resultCount: args.resultCount,
     errorMessage: args.errorMessage ? redactProviderMessage(args.errorMessage) : null,
-    entitlementOrPlanError:
-      args.status === 'not_entitled' ||
-      args.status === 'forbidden' ||
-      args.status === 'unauthorized',
+    entitlementOrPlanError: args.status === 'not_entitled' || args.status === 'forbidden' || args.status === 'unauthorized',
   });
 }
 
@@ -202,11 +192,7 @@ function updateFeatureStatus(feature: TraderCalendarFeature, partial: Partial<Tr
   };
 }
 
-function cacheKey(
-  feature: TraderCalendarFeature,
-  provider: TraderCalendarProvider,
-  query: TraderCalendarQuery,
-) {
+function cacheKey(feature: TraderCalendarFeature, provider: TraderCalendarProvider, query: TraderCalendarQuery) {
   return [
     feature,
     provider,
@@ -216,13 +202,8 @@ function cacheKey(
     query.country ?? '',
     query.currency ?? '',
     query.impact ?? '',
-    (query.symbols ?? [])
-      .map((symbol) => symbol.trim().toUpperCase())
-      .sort()
-      .join(','),
-  ]
-    .join('|')
-    .toUpperCase();
+    (query.symbols ?? []).map(symbol => symbol.trim().toUpperCase()).sort().join(','),
+  ].join('|').toUpperCase();
 }
 
 function requestKey(feature: TraderCalendarFeature, query: TraderCalendarQuery) {
@@ -234,13 +215,8 @@ function requestKey(feature: TraderCalendarFeature, query: TraderCalendarQuery) 
     query.country ?? '',
     query.currency ?? '',
     query.impact ?? '',
-    (query.symbols ?? [])
-      .map((symbol) => symbol.trim().toUpperCase())
-      .sort()
-      .join(','),
-  ]
-    .join('|')
-    .toUpperCase();
+    (query.symbols ?? []).map(symbol => symbol.trim().toUpperCase()).sort().join(','),
+  ].join('|').toUpperCase();
 }
 
 function toResult<T extends AnyCalendarEvent>(
@@ -268,11 +244,7 @@ function toResult<T extends AnyCalendarEvent>(
     lastUpdated: options.updatedAt ?? null,
     lastSuccessfulUpdate: options.lastSuccessfulUpdate ?? options.updatedAt ?? null,
     resultCount: data.length,
-    messageCode:
-      options.messageCode ??
-      (data.length === 0 && status === 'success'
-        ? `${feature}_calendar_no_events`
-        : messageCodeForStatus(status)),
+    messageCode: options.messageCode ?? (data.length === 0 && status === 'success' ? `${feature}_calendar_no_events` : messageCodeForStatus(status)),
     failureReason: options.failureReason ?? null,
     providerStatusCode: options.providerStatusCode ?? null,
     supportedFeatures: supportedFeaturesForProvider(provider),
@@ -284,10 +256,7 @@ function toResult<T extends AnyCalendarEvent>(
   };
 }
 
-function candidatesForFeature(
-  feature: TraderCalendarFeature,
-  query: TraderCalendarQuery,
-): CalendarCandidate[] {
+function candidatesForFeature(feature: TraderCalendarFeature, query: TraderCalendarQuery): CalendarCandidate[] {
   const keys = configuredKeys();
   const candidates: CalendarCandidate[] = [];
 
@@ -300,14 +269,12 @@ function candidatesForFeature(
         fetchEvents: () => fetchFmpEarningsCalendar(keys.fmp, query) as Promise<AnyCalendarEvent[]>,
       });
     }
-
     if (keys.finnhub) {
       candidates.push({
         provider: 'finnhub',
         apiKey: keys.finnhub,
         endpoint: 'https://finnhub.io/api/v1/calendar/earnings',
-        fetchEvents: () =>
-          fetchFinnhubEarningsCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
+        fetchEvents: () => fetchFinnhubEarningsCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
       });
     }
   }
@@ -321,14 +288,12 @@ function candidatesForFeature(
         fetchEvents: () => fetchFmpDividendsCalendar(keys.fmp, query) as Promise<AnyCalendarEvent[]>,
       });
     }
-
     if (keys.finnhub) {
       candidates.push({
         provider: 'finnhub',
         apiKey: keys.finnhub,
         endpoint: 'https://finnhub.io/api/v1/stock/dividend',
-        fetchEvents: () =>
-          fetchFinnhubDividendsCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
+        fetchEvents: () => fetchFinnhubDividendsCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
       });
     }
   }
@@ -348,11 +313,9 @@ function candidatesForFeature(
         provider: 'tradingeconomics',
         apiKey: keys.tradingeconomics,
         endpoint: 'https://api.tradingeconomics.com/calendar',
-        fetchEvents: () =>
-          fetchTradingEconomicsCalendar(keys.tradingeconomics, query) as Promise<AnyCalendarEvent[]>,
+        fetchEvents: () => fetchTradingEconomicsCalendar(keys.tradingeconomics, query) as Promise<AnyCalendarEvent[]>,
       });
     }
-
     if (keys.fmp) {
       candidates.push({
         provider: 'fmp',
@@ -361,14 +324,12 @@ function candidatesForFeature(
         fetchEvents: () => fetchFmpEconomicCalendar(keys.fmp, query) as Promise<AnyCalendarEvent[]>,
       });
     }
-
     if (keys.finnhub) {
       candidates.push({
         provider: 'finnhub',
         apiKey: keys.finnhub,
         endpoint: 'https://finnhub.io/api/v1/calendar/economic',
-        fetchEvents: () =>
-          fetchFinnhubEconomicCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
+        fetchEvents: () => fetchFinnhubEconomicCalendar(keys.finnhub, query) as Promise<AnyCalendarEvent[]>,
       });
     }
   }
@@ -383,7 +344,6 @@ function dedupeCalendarEvents<K extends TraderCalendarFeature>(
   if (feature !== 'earnings') return data;
 
   const seen = new Set<string>();
-
   return data.filter((event) => {
     const earningsEvent = event as TraderCalendarDataMap['earnings'];
     const key = [
@@ -394,7 +354,6 @@ function dedupeCalendarEvents<K extends TraderCalendarFeature>(
     ].join('|');
 
     if (seen.has(key)) return false;
-
     seen.add(key);
     return true;
   });
@@ -402,27 +361,17 @@ function dedupeCalendarEvents<K extends TraderCalendarFeature>(
 
 export function buildTraderCalendarQuery(searchParams: URLSearchParams): TraderCalendarQuery {
   const requestedRange = searchParams.get('range');
-  const range: TraderCalendarRange =
-    requestedRange === 'today' ||
-    requestedRange === '7' ||
-    requestedRange === '30' ||
-    requestedRange === '90' ||
-    requestedRange === 'all'
-      ? requestedRange
-      : '30';
-
+  const range: TraderCalendarRange = requestedRange === 'today' || requestedRange === '7' || requestedRange === '30' || requestedRange === '90' || requestedRange === 'all'
+    ? requestedRange
+    : '30';
   const today = new Date();
-  const todayIso = formatIsoDate(
-    new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())),
-  );
-
+  const todayIso = formatIsoDate(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())));
   let from = todayIso;
   let to = formatIsoDate(addUtcDays(new Date(`${todayIso}T00:00:00.000Z`), 30));
 
   if (range === 'today') to = todayIso;
   if (range === '7') to = formatIsoDate(addUtcDays(new Date(`${todayIso}T00:00:00.000Z`), 7));
   if (range === '90') to = formatIsoDate(addUtcDays(new Date(`${todayIso}T00:00:00.000Z`), 90));
-
   if (range === 'all') {
     from = formatIsoDate(addUtcDays(new Date(`${todayIso}T00:00:00.000Z`), -90));
     to = formatIsoDate(addUtcDays(new Date(`${todayIso}T00:00:00.000Z`), 365));
@@ -430,15 +379,13 @@ export function buildTraderCalendarQuery(searchParams: URLSearchParams): TraderC
 
   const explicitFrom = searchParams.get('from');
   const explicitTo = searchParams.get('to');
-
   if (explicitFrom && validIsoDate(explicitFrom)) from = explicitFrom;
   if (explicitTo && validIsoDate(explicitTo)) to = explicitTo;
 
   const symbols = (searchParams.get('symbols') ?? '')
     .split(',')
-    .map((symbol) => symbol.trim().toUpperCase())
+    .map(symbol => symbol.trim().toUpperCase())
     .filter(Boolean);
-
   const impact = searchParams.get('impact');
 
   return {
@@ -480,7 +427,6 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
       resultCount: 0,
       errorMessage: 'provider_not_configured',
     });
-
     return toResult(feature, query, null, 'not_configured', [] as TraderCalendarDataMap[K][], {
       messageCode: 'provider_not_configured',
       failureReason: 'provider_not_configured',
@@ -489,22 +435,18 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
 
   const request = requestKey(feature, query);
   const existing = inFlight.get(request);
-
   if (existing && !query.force) {
     return existing as Promise<TraderProviderResult<TraderCalendarDataMap[K]>>;
   }
 
   const run = (async () => {
     let firstError: { candidate: CalendarCandidate; error: ProviderError } | null = null;
-    let staleFallback:
-      | { candidate: CalendarCandidate; error: ProviderError; cached: CacheEntry }
-      | null = null;
+    let staleFallback: { candidate: CalendarCandidate; error: ProviderError; cached: CacheEntry } | null = null;
 
     try {
       for (const candidate of candidates) {
         const key = cacheKey(feature, candidate.provider, query);
         const cached = cache.get(key);
-
         if (cached && cached.expiresAt > Date.now() && !query.force) {
           return toResult(feature, query, cached.provider, 'success', cached.data, {
             cached: true,
@@ -514,20 +456,14 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
         }
 
         try {
-          const data = dedupeCalendarEvents(
-            feature,
-            (await candidate.fetchEvents()) as TraderCalendarDataMap[K][],
-          );
-
+          const data = dedupeCalendarEvents(feature, await candidate.fetchEvents() as TraderCalendarDataMap[K][]);
           const updatedAt = new Date().toISOString();
-
           cache.set(key, {
             provider: candidate.provider,
             data,
             updatedAt,
             expiresAt: Date.now() + TTL_MS[feature],
           });
-
           logProviderAttempt({
             provider: candidate.provider,
             feature,
@@ -536,7 +472,6 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
             status: 'success',
             resultCount: data.length,
           });
-
           updateFeatureStatus(feature, {
             configured: true,
             provider: candidate.provider,
@@ -547,17 +482,14 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
             failureReason: null,
             supportedFeatures: supportedFeaturesForProvider(candidate.provider),
           });
-
           return toResult(feature, query, candidate.provider, 'success', data, {
             updatedAt,
             lastSuccessfulUpdate: updatedAt,
           });
         } catch (error) {
           const providerError = errorFromUnknown(error);
-
           if (!firstError) firstError = { candidate, error: providerError };
           if (cached && !staleFallback) staleFallback = { candidate, error: providerError, cached };
-
           logProviderAttempt({
             provider: candidate.provider,
             feature,
@@ -572,13 +504,10 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
       }
 
       const failedAt = new Date().toISOString();
-      const terminal =
-        firstError ??
-        ({
-          candidate: candidates[0],
-          error: new ProviderError('provider_error', 'provider_temporarily_unavailable'),
-        } as { candidate: CalendarCandidate; error: ProviderError });
-
+      const terminal = firstError ?? {
+        candidate: candidates[0],
+        error: new ProviderError('provider_error', 'provider_temporarily_unavailable'),
+      };
       updateFeatureStatus(feature, {
         configured: true,
         provider: terminal.candidate.provider,
@@ -590,22 +519,15 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
       });
 
       if (staleFallback) {
-        return toResult(
-          feature,
-          query,
-          staleFallback.cached.provider,
-          staleFallback.error.status,
-          staleFallback.cached.data,
-          {
-            cached: true,
-            stale: true,
-            updatedAt: failedAt,
-            lastSuccessfulUpdate: staleFallback.cached.updatedAt,
-            messageCode: staleFallback.error.messageCode,
-            failureReason: staleFallback.error.providerMessage ?? staleFallback.error.messageCode,
-            providerStatusCode: staleFallback.error.providerStatus ?? null,
-          },
-        );
+        return toResult(feature, query, staleFallback.cached.provider, staleFallback.error.status, staleFallback.cached.data, {
+          cached: true,
+          stale: true,
+          updatedAt: failedAt,
+          lastSuccessfulUpdate: staleFallback.cached.updatedAt,
+          messageCode: staleFallback.error.messageCode,
+          failureReason: staleFallback.error.providerMessage ?? staleFallback.error.messageCode,
+          providerStatusCode: staleFallback.error.providerStatus ?? null,
+        });
       }
 
       return toResult(feature, query, terminal.candidate.provider, terminal.error.status, [], {
@@ -626,19 +548,15 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
 
 function statusForCalendarFeature(feature: TraderCalendarFeature): TraderFeatureStatus {
   const supportedProviders = CALENDAR_SUPPORTED_PROVIDERS[feature];
-  const configuredProviders = supportedProviders.filter((provider) => providerConfigured(provider));
+  const configuredProviders = supportedProviders.filter(provider => providerConfigured(provider));
   const current = featureState[feature];
-
   return {
     ...current,
     configured: configuredProviders.length > 0,
     provider: current.provider ?? configuredProviders[0] ?? null,
-    status:
-      configuredProviders.length > 0
-        ? current.status === 'not_configured'
-          ? 'available'
-          : current.status
-        : 'not_configured',
+    status: configuredProviders.length > 0
+      ? current.status === 'not_configured' ? 'available' : current.status
+      : 'not_configured',
     failureReason: configuredProviders.length > 0 ? current.failureReason : 'provider_not_configured',
     supportedProviders,
   };
@@ -648,7 +566,6 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
   const keys = configuredKeys();
   const fmpRuntime = getFmpRuntimeStatus(Boolean(keys.fmp));
   const priceProvider: TraderProviderName = keys.fmp ? 'fmp' : 'yahoo';
-
   const features: Record<TraderProviderFeature, TraderFeatureStatus> = {
     earnings: statusForCalendarFeature('earnings'),
     dividends: statusForCalendarFeature('dividends'),
@@ -671,13 +588,11 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       failureReason: keys.finnhub ? null : 'provider_not_configured',
     },
   };
-
   featureState = features;
 
-  const activeFeature =
-    (['earnings', 'dividends', 'ipos', 'economic', 'news', 'prices'] as TraderProviderFeature[])
-      .map((feature) => features[feature])
-      .find((feature) => feature.configured && feature.status !== 'not_configured') ?? features.prices;
+  const activeFeature = (['earnings', 'dividends', 'ipos', 'economic', 'news', 'prices'] as TraderProviderFeature[])
+    .map(feature => features[feature])
+    .find(feature => feature.configured && feature.status !== 'not_configured') ?? features.prices;
 
   return {
     generatedAt: new Date().toISOString(),

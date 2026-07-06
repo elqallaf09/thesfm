@@ -3,10 +3,8 @@ import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getTraderProviderStatus } from '@/lib/trader/providers/providerStatus';
 import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
-import { getOpenbbConfiguredStatus, getOpenbbHealthStatus } from '@/lib/trader/providers/openbb';
 import type { CatalogDiagnostics } from '@/lib/trader/marketCatalog';
 import type { FmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
-import type { OpenbbRuntimeStatus } from '@/lib/trader/providers/openbb';
 import type { NormalizedTraderProviderStatus, TraderProviderFeature } from '@/lib/trader/providers/types';
 
 export const dynamic = 'force-dynamic';
@@ -104,7 +102,7 @@ function normalizeFmpStatus(args: {
   };
 }
 
-function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: NormalizedTraderProviderStatus, openbbRuntime: OpenbbRuntimeStatus) {
+function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: NormalizedTraderProviderStatus) {
   const failed = diagnostics.failedSymbols.map(item => ({
     route: routeLabel(item.symbol),
     reason: cleanProviderReason(item.reason),
@@ -140,14 +138,7 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
     });
   }
 
-  if (!openbbRuntime.configured) {
-    groups.push({
-      provider: 'OpenBB',
-      status: 'missing',
-      summary: 'OpenBB غير مهيأ',
-      details: [],
-    });
-  }
+  // OpenBB removed — no longer a configured provider
 
   return groups;
 }
@@ -166,11 +157,7 @@ export async function GET(request: Request) {
   const fmpConfigured = normalizeEnvValue(process.env.FMP_API_KEY);
   const finnhubConfigured = normalizeEnvValue(process.env.FINNHUB_API_KEY);
   const tradingEconomicsConfigured = normalizeEnvValue(process.env.TRADING_ECONOMICS_API_KEY);
-  const openbbConfigured = normalizeEnvValue(process.env.OPENBB_SERVICE_URL);
   const fmpRuntime = getFmpRuntimeStatus(fmpConfigured, catalog.diagnostics.cacheStatus === 'hit' || catalog.diagnostics.cacheStatus === 'stale');
-  const openbbRuntime = openbbConfigured
-    ? await getOpenbbHealthStatus({ force: forceFresh })
-    : getOpenbbConfiguredStatus();
   const now = new Date().toISOString();
   const normalizedStatus = normalizeFmpStatus({
     configured: fmpConfigured,
@@ -178,10 +165,9 @@ export async function GET(request: Request) {
     diagnostics: catalog.diagnostics,
     generatedAt: now,
   });
-  const diagnosticSummary = diagnosticGroups(catalog.diagnostics, normalizedStatus, openbbRuntime);
+  const diagnosticSummary = diagnosticGroups(catalog.diagnostics, normalizedStatus);
   const providerSummary = {
     fmp: publicProviderStatus(fmpRuntime.status),
-    openbb: publicProviderStatus(openbbRuntime.status),
     yahoo: 'healthy',
     finnhub: finnhubConfigured ? 'healthy' : 'not_configured',
     loadedSymbols: catalog.diagnostics.totalSymbolsLoaded,
@@ -241,22 +227,6 @@ export async function GET(request: Request) {
         lastError: null,
         cacheAvailable: true,
         error: null,
-      },
-      openbb: {
-        configured: openbbRuntime.configured,
-        healthy: openbbRuntime.healthy,
-        rate_limited: false,
-        status: publicProviderStatus(openbbRuntime.status),
-        legacyStatus: mapLegacyStatusToDisplay(openbbRuntime.configured ? 'configured' : 'missing'),
-        features: {
-          quotes: Boolean(openbbRuntime.configured),
-          technicalAnalysis: Boolean(openbbRuntime.configured),
-        },
-        lastChecked: openbbRuntime.configured ? now : null,
-        lastSuccessfulFetch: openbbRuntime.lastSuccessfulFetch,
-        lastError: openbbRuntime.lastError,
-        cacheAvailable: openbbRuntime.cacheAvailable,
-        error: openbbRuntime.configured ? openbbRuntime.lastError : 'OpenBB غير مهيأ',
       },
       finnhub: {
         configured: finnhubConfigured,
@@ -319,16 +289,6 @@ export async function GET(request: Request) {
         cacheAvailable: true,
         supportedFeatures: ['quotes', 'technicalAnalysis'],
       },
-      openbb: {
-        configured: openbbRuntime.configured,
-        healthy: openbbRuntime.healthy,
-        rate_limited: false,
-        status: publicProviderStatus(openbbRuntime.status),
-        lastSuccessfulFetch: openbbRuntime.lastSuccessfulFetch,
-        lastError: openbbRuntime.lastError,
-        cacheAvailable: openbbRuntime.cacheAvailable,
-        supportedFeatures: openbbRuntime.supportedFeatures,
-      },
       finnhub: {
         configured: finnhubConfigured,
         healthy: finnhubConfigured,
@@ -353,31 +313,14 @@ export async function GET(request: Request) {
     provider: catalog.diagnostics.provider,
     reason: catalog.diagnostics.reason,
     resultCount: catalog.diagnostics.totalSymbolsLoaded,
-    providerFlags: {
-      fmpConfigured,
-      finnhubConfigured,
-      tradingEconomicsConfigured,
-      openbbConfigured,
-    },
-    legacy: {
-      providers: {
-        fmpConfigured,
-        finnhubConfigured,
-        tradingEconomicsConfigured,
-        openbbConfigured,
-      },
-      features: status.features,
-      dataProvider,
-    },
     generatedAt: now,
   };
 
-  console.info('[trader-provider-status] providers', {
-    fmp: response.providers.fmp,
-    yahoo: response.providers.yahoo,
-    openbb: response.providers.openbb,
-    finnhub: response.providers.finnhub,
-    tradingEconomics: response.providers.tradingEconomics,
+  console.info('[trader-provider-status] provider health', {
+    fmp: { configured: fmpConfigured, status: fmpRuntime.status },
+    yahoo: { configured: true, status: 'healthy' },
+    finnhub: { configured: finnhubConfigured, status: finnhubConfigured ? 'healthy' : 'not_configured' },
+    tradingEconomics: { configured: tradingEconomicsConfigured },
   });
 
   return NextResponse.json(response, {
