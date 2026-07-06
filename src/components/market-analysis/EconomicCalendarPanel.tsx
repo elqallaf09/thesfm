@@ -154,15 +154,6 @@ function displayEconomicValue(value: unknown, unavailable: string) {
   return unavailable;
 }
 
-function calendarProviderLabel(value: unknown, fallback: string) {
-  const normalized = String(value ?? '').trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (normalized === 'finnhub') return 'Finnhub';
-  if (normalized === 'tradingeconomics' || normalized === 'trading economics') return 'Trading Economics';
-  if (normalized === 'fmp' || normalized === 'financial modeling prep') return 'Financial Modeling Prep';
-  return String(value).trim();
-}
-
 function economicImpactLabel(impact: EconomicImpact, t: (key: string) => string) {
   if (impact === 'high') return t('market_calendar_impact_high');
   if (impact === 'medium') return t('market_calendar_impact_medium');
@@ -384,7 +375,6 @@ export function EconomicCalendarPanel({
       : providerFailed
         ? t('market_calendar_error_body')
         : t('market_calendar_no_events_body');
-  const providerLabel = calendarProviderLabel(state.provider || state.source, unavailable);
   const providerStatusLabel = providerNotConfigured
     ? t('market_calendar_provider_not_configured_badge')
     : providerAccessDenied
@@ -427,7 +417,6 @@ export function EconomicCalendarPanel({
           <p>{t('market_calendar_dashboard_subtitle')}</p>
           <div className="economic-calendar-status-row" aria-label={t('market_calendar_status_summary')}>
             <span className={`calendar-provider-pill ${providerPillTone}`}>{providerStatusLabel}</span>
-            <span>{t('market_calendar_source')}: <b dir="auto">{providerLabel}</b></span>
             <span>{t('market_calendar_timezone')}: <b dir="ltr">{Intl.DateTimeFormat().resolvedOptions().timeZone}</b></span>
             {showLastUpdated ? <span>{t('market_last_updated')}: <b dir="auto">{lastUpdatedLabel}</b></span> : null}
           </div>
@@ -482,7 +471,6 @@ export function EconomicCalendarPanel({
               ) : null}
             </div>
             <div className="economic-calendar-empty-meta">
-              <span>{t('market_calendar_provider_label')}: <b dir="auto">{providerLabel}</b></span>
               <span>{t('market_calendar_status')}: <b>{providerStatusLabel}</b></span>
             </div>
           </div>

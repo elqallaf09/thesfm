@@ -8,16 +8,6 @@ import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 type TickerDirection = 'ltr' | 'rtl';
 type TickerAssetType = 'stock' | 'etf' | 'crypto' | 'unknown';
 
-const isMarketTickerDev = process.env.NODE_ENV === 'development';
-
-const TECH_PROVIDER_NOISE_PATTERNS = [
-  /fmp/i,
-  /finnhub/i,
-  /yahoo\s*finance/i,
-  /provider/i,
-  /fallback/i,
-];
-
 export type StockTickerStripItem = {
   symbol: string;
   name?: string | null;
@@ -88,18 +78,6 @@ function localeWithLatinDigits(locale: string) {
   return locale.includes('-u-') ? locale : `${locale}-u-nu-latn`;
 }
 
-function isTechnicalProviderSource(value: string | null | undefined) {
-  const clean = String(value ?? '').trim();
-  if (!clean) return true;
-  return TECH_PROVIDER_NOISE_PATTERNS.some(pattern => pattern.test(clean));
-}
-
-function buildProviderMeta(source: string | null | undefined, sourceLabel?: string) {
-  const clean = String(source ?? '').trim();
-  if (!clean || isTechnicalProviderSource(clean)) return null;
-  return sourceLabel ? `${sourceLabel}: ${clean}` : clean;
-}
-
 function formatMoney(value: number, currency: string, locale: string) {
   try {
     return new Intl.NumberFormat(localeWithLatinDigits(locale), {
@@ -141,7 +119,6 @@ export function StockTickerStrip({
   items,
   locale,
   unavailableLabel,
-  sourceLabel,
   className,
   viewportClassName,
   trackClassName,
@@ -152,7 +129,6 @@ export function StockTickerStrip({
   status,
   emptyState,
   formatPrice,
-  showDebugMeta = false,
 }: StockTickerStripProps) {
   const tickerItems = items.map(normalizeItem).filter(item => item.symbol);
   const fallbackState = emptyState ?? (
@@ -179,7 +155,6 @@ export function StockTickerStrip({
         const changePercent = available && isFiniteNumber(item.changePercent) ? item.changePercent : null;
         const tone = changePercent !== null ? (changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral') : 'neutral';
         const TrendIcon = tone === 'up' ? TrendingUp : tone === 'down' ? TrendingDown : null;
-        const provider = isMarketTickerDev && showDebugMeta ? buildProviderMeta(item.source, sourceLabel) : null;
         const showUnavailableTag = !available || (price === null && changePercent === null && !item.meta);
 
         return (
@@ -217,7 +192,6 @@ export function StockTickerStrip({
             </div>
 
             <div className="sfm-stock-ticker-foot">
-              {provider ? <small dir="auto">{provider}</small> : null}
               {item.meta ? <small dir="auto">{item.meta}</small> : null}
               {showUnavailableTag ? <small dir="auto" className="sfm-stock-ticker-unavailable">{unavailableLabel}</small> : null}
             </div>

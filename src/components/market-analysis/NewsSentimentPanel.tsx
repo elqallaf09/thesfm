@@ -418,7 +418,6 @@ export function NewsSentimentPanel({
     count: filteredArticles.filter(article => article.source === source).length,
   })).filter(item => item.count > 0).slice(0, 5);
   const relatedSymbols = [...new Set(filteredArticles.flatMap(article => article.relatedSymbols))].slice(0, 8);
-  const providerLabel = news.source || news.provider || (news.code ? unavailable : t('market_news_provider_connected'));
   const providerStatusTone = news.loading ? 'loading' : news.code ? 'warning' : 'connected';
   const providerStatusLabel = news.loading
     ? t('market_loading_short')
@@ -440,7 +439,6 @@ export function NewsSentimentPanel({
               <span className={`market-news-status ${providerStatusTone}`}>{providerStatusLabel}</span>
               <span>{t('market_last_updated')}: <b dir="auto">{lastUpdatedLabel}</b></span>
               <span><b dir="ltr">{normalizedArticles.length}</b> {t('market_news_available_articles')}</span>
-              {providerLabel ? <span>{t('market_news_source')}: <b dir="auto">{providerLabel}</b></span> : null}
             </div>
           </div>
           <button className="market-news-refresh" type="button" onClick={onRefreshNews} disabled={news.loading}>

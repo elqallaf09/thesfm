@@ -158,11 +158,11 @@ export function MarketStatusBanner({
 }) {
   const connected = state === 'connected';
   return (
-    <section className={`market-status-banner ${connected ? 'connected' : 'preparing'}`} role="status">
+  <section className={`market-status-banner ${connected ? 'connected' : 'preparing'}`} role="status">
       {connected ? <CheckCircle2 size={19} /> : <Activity size={19} />}
       <div>
         <strong>{connected ? t('market_service_connected_title') : t('market_preparing_analysis')}</strong>
-        <p>{connected ? `${t('market_data_source')}: Yahoo Finance` : serviceNotice || t('market_preparing_analysis_body')}</p>
+        <p>{connected ? t('market_status_service_connected_hint') : serviceNotice || t('market_preparing_analysis_body')}</p>
       </div>
     </section>
   );
