@@ -35,7 +35,7 @@ export type RecommendationStrategy = {
 };
 
 export type MultiFactorRecommendation = {
-  finalRecommendation: 'Strong Buy' | 'Buy' | 'Weak Buy' | 'Watch' | 'Sell' | 'Insufficient data';
+  finalRecommendation: 'Strong Buy' | 'Buy' | 'Weak Buy' | 'Watch' | 'Weak Sell' | 'Sell' | 'Insufficient data';
   finalRecommendationAr: string;
   signal: RecommendationSignal;
   confidence: number | null;
@@ -570,70 +570,97 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   const strategies = [trend, momentum, supportResistance, breakout, meanReversion, volume, newsStrategy, dataQualityStrategy, riskStrategy];
   const strategyAgreement = consensus(strategies);
   const strategyCount = strategyAgreement.strategyCount;
-  const categoryScores = {
-    trend: trend.score,
-    momentum: Math.round((momentum.score + meanReversion.score) / 2),
-    supportResistance: Math.round((supportResistance.score + breakout.score) / 2),
-    volume: volume.score,
-    newsSentiment: newsStrategy.score,
-    dataQuality: quality.score,
-    risk: riskStrategy.score,
+
+  // كل فئة تُبنى من عواملها المتاحة فقط؛ الفئة غير المتاحة تُعلَّم null بدل
+  // حقن 50 ثابتة تسطّح كل الرموز. الوزن يُعاد توزيعه لاحقاً على المتاح.
+  const availScore = (s: RecommendationStrategy): number | null => (s.available ? s.score : null);
+  const meanAvail = (...values: (number | null)[]): number | null => {
+    const present = values.filter((v): v is number => v !== null);
+    return present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : null;
   };
-  let finalScore = Math.round(
-    categoryScores.trend * WEIGHTS.trend / 100
-    + categoryScores.momentum * WEIGHTS.momentum / 100
-    + categoryScores.supportResistance * WEIGHTS.supportResistance / 100
-    + categoryScores.volume * WEIGHTS.volume / 100
-    + categoryScores.newsSentiment * WEIGHTS.newsSentiment / 100
-    + categoryScores.dataQuality * WEIGHTS.dataQuality / 100
-    + categoryScores.risk * WEIGHTS.risk / 100,
-  );
+  const categoryScores = {
+    trend: availScore(trend),
+    momentum: meanAvail(availScore(momentum), availScore(meanReversion)),
+    supportResistance: meanAvail(availScore(supportResistance), availScore(breakout)),
+    volume: availScore(volume),
+    newsSentiment: newsStrategy.available ? newsStrategy.score : null,
+    dataQuality: quality.score,
+    risk: riskScore(risk),
+  };
+
+  // إعادة توزيع الوزن: فقط الفئات ذات الدرجة المتاحة تدخل المتوسط المرجّح،
+  // فيصبح finalScore انعكاساً حقيقياً للعوامل الفنية بدل تخفيفه بأصفار محايدة.
+  const weightedInputs = ([
+    { score: categoryScores.trend, weight: WEIGHTS.trend },
+    { score: categoryScores.momentum, weight: WEIGHTS.momentum },
+    { score: categoryScores.supportResistance, weight: WEIGHTS.supportResistance },
+    { score: categoryScores.volume, weight: WEIGHTS.volume },
+    { score: categoryScores.newsSentiment, weight: WEIGHTS.newsSentiment },
+    { score: categoryScores.dataQuality, weight: WEIGHTS.dataQuality },
+    { score: categoryScores.risk, weight: WEIGHTS.risk },
+  ] as Array<{ score: number | null; weight: number }>)
+    .filter((item): item is { score: number; weight: number } => item.score !== null);
+  const activeWeight = weightedInputs.reduce((sum, item) => sum + item.weight, 0);
+  let finalScore = activeWeight > 0
+    ? Math.round(weightedInputs.reduce((sum, item) => sum + item.score * item.weight, 0) / activeWeight)
+    : 50;
 
   if (!technicalAvailable) finalScore = Math.min(finalScore, 54);
   if (quality.status === 'partial') finalScore = Math.min(finalScore, 56);
   if (quality.status === 'cached') finalScore = Math.min(finalScore, 62);
-  if (quality.status === 'delayed') finalScore = Math.min(finalScore, 74);
+  // البيانات المتأخرة موثوقة اتجاهياً — سقف مرتفع يسمح بالتمايز الحقيقي بدل حشر كل رمز.
+  if (quality.status === 'delayed') finalScore = Math.min(finalScore, 82);
   if (risk === 'high') finalScore = Math.min(finalScore, 68);
 
+  // الثقة تُبنى من قوة الإشارة (بعدها عن الحياد) وعدد الاستراتيجيات المتفقة.
   let confidence = Math.round(
     35
-    + Math.abs(finalScore - 50) * 0.7
+    + Math.abs(finalScore - 50) * 0.82
     + Math.min(strategyCount, 8) * 2.4
-    + Math.max(0, (strategyAgreement.agreementPct ?? 0) - 50) * 0.12,
+    + Math.max(0, (strategyAgreement.agreementPct ?? 0) - 50) * 0.16,
   );
+  // خصومات نسبية بدل حوائط صلبة: تخفّض الثقة تناسبياً مع إبقاء ترتيب الرموز
+  // بعضها فوق بعض، فلا تتجمّع كلها عند رقم واحد.
   if (strategyCount < 3) confidence = Math.min(confidence, 54);
-  if (!technicalAvailable) confidence = Math.min(confidence, 48);
-  if (quality.status === 'partial') confidence = Math.min(confidence, 52);
-  if (quality.status === 'cached') confidence = Math.min(confidence, 60);
-  if (quality.status === 'delayed') confidence = Math.min(confidence, 68);
-  if (risk === 'high') confidence = Math.min(confidence, 66);
+  if (!technicalAvailable) confidence = Math.round(confidence * 0.7);
+  if (quality.status === 'partial') confidence = Math.round(confidence * 0.72);
+  if (quality.status === 'cached') confidence = Math.round(confidence * 0.86);
+  if (quality.status === 'delayed') confidence = Math.round(confidence * 0.93);
+  if (risk === 'high') confidence = Math.round(confidence * 0.9);
   confidence = clamp(confidence, 0, 95);
+
+  // البيانات المكتملة أو المتأخرة تُعتبر قابلة للتداول (المتأخرة موثوقة اتجاهياً).
+  // الجزئية/المخزّنة/الناقصة تبقى للمراقبة فقط.
+  const tradeableQuality = quality.status === 'complete' || quality.status === 'delayed';
 
   let finalRecommendation: MultiFactorRecommendation['finalRecommendation'] = 'Watch';
   if (finalScore >= 80
-    && confidence >= 70
+    && confidence >= 68
     && strategyCount >= 3
     && technicalAvailable
     && quality.status === 'complete'
     && risk !== 'high') {
     finalRecommendation = 'Strong Buy';
-  } else if (finalScore >= 68 && confidence >= 56 && technicalAvailable && strategyCount >= 3 && risk !== 'high' && quality.status === 'complete') {
+  } else if (finalScore >= 68 && confidence >= 56 && technicalAvailable && strategyCount >= 3 && risk !== 'high' && tradeableQuality) {
     finalRecommendation = 'Buy';
-  } else if (finalScore >= 58 && confidence >= 50 && technicalAvailable && strategyCount >= 3 && risk !== 'high' && quality.status !== 'unavailable') {
+  } else if (finalScore >= 58 && confidence >= 50 && technicalAvailable && strategyCount >= 3 && risk !== 'high' && tradeableQuality) {
     finalRecommendation = 'Weak Buy';
-  } else if (finalScore <= 34 && confidence >= 56 && technicalAvailable && strategyCount >= 3 && quality.status === 'complete') {
+  } else if (finalScore <= 34 && confidence >= 56 && technicalAvailable && strategyCount >= 3 && tradeableQuality) {
     finalRecommendation = 'Sell';
+  } else if (finalScore <= 42 && confidence >= 50 && technicalAvailable && strategyCount >= 3 && tradeableQuality) {
+    finalRecommendation = 'Weak Sell';
   }
 
+  // فقط انعدام البيانات الفعلي يُلغي التوصية؛ التأخير لم يعد يُجبرها على "مراقبة".
   if (samples === 0 || !technicalAvailable || quality.status === 'unavailable') finalRecommendation = 'Insufficient data';
-  if ((quality.status === 'partial' || quality.status === 'delayed' || quality.status === 'cached' || strategyCount < 3)
+  if ((quality.status === 'partial' || quality.status === 'cached' || strategyCount < 3)
     && finalRecommendation !== 'Insufficient data') {
     finalRecommendation = 'Watch';
   }
 
   const signal: RecommendationSignal = finalRecommendation === 'Buy' || finalRecommendation === 'Strong Buy' || finalRecommendation === 'Weak Buy'
     ? 'buy'
-    : finalRecommendation === 'Sell'
+    : finalRecommendation === 'Sell' || finalRecommendation === 'Weak Sell'
       ? 'sell'
       : 'watch';
   const target = targetAndStop(signal, price, support, resistance, atrValue);
@@ -645,9 +672,11 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
         ? 'شراء ضعيف'
         : finalRecommendation === 'Sell'
           ? 'بيع'
-          : finalRecommendation === 'Insufficient data'
-            ? 'بيانات غير كافية'
-            : 'مراقبة';
+          : finalRecommendation === 'Weak Sell'
+            ? 'بيع ضعيف'
+            : finalRecommendation === 'Insufficient data'
+              ? 'بيانات غير كافية'
+              : 'مراقبة';
 
   const summaryEn = technicalAvailable
     ? `EMA trend, momentum, support/resistance, volume, and risk were scored with ${samples} real provider samples.`
@@ -694,7 +723,16 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
     explanationAr: `تم اختيار ${finalRecommendationAr} من الدرجة الموزونة (${finalScore}/100)، وثقة AI ${confidence}%، و${strategyCount} وحدات استراتيجية متاحة، و${strategyAgreement.labelAr}، ومخاطرة ${risk === 'high' ? 'مرتفعة' : risk === 'low' ? 'منخفضة' : 'متوسطة'}.${qualityPenaltyTextAr}${limitedTextAr}`,
     disclaimerEn: DISCLAIMER_EN,
     disclaimerAr: DISCLAIMER_AR,
-    scoreBreakdown: { ...categoryScores, finalScore },
+    scoreBreakdown: {
+      trend: categoryScores.trend ?? 50,
+      momentum: categoryScores.momentum ?? 50,
+      supportResistance: categoryScores.supportResistance ?? 50,
+      volume: categoryScores.volume ?? 50,
+      newsSentiment: categoryScores.newsSentiment ?? 50,
+      dataQuality: categoryScores.dataQuality,
+      risk: categoryScores.risk,
+      finalScore,
+    },
     strategies,
     targetPrice: target.targetPrice,
     stopLoss: target.stopLoss,
