@@ -5544,3 +5544,96 @@ a.badge:focus-visible,
   .world-map-3d .map-arcs path { animation: none; }
   .world-map-3d .is-open .map-pin::after { display: none; }
 }
+
+/* ─── Market selector pill: ضمان عدم القص ودفع الزر لطرف الشريط ─── */
+.terminal-statusbar { overflow: visible; }
+.terminal-statusbar .ms-wrap { margin-inline-start: auto; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MAP BEAUTY — تحسينات جمالية للخريطة ثلاثية الأبعاد
+   ═══════════════════════════════════════════════════════════════ */
+
+/* غلاف جوي متدرّج فوق الخريطة يعطي عمقاً سينمائياً */
+.world-map-3d {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 20%, rgba(34, 211, 238, 0.1), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 50% 30%, rgba(20, 46, 74, 0.55), rgba(2, 8, 15, 0.94) 78%);
+}
+
+/* توهج أطراف علوي يوحي بأفق الأرض */
+.world-map-3d::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32%;
+  z-index: 4;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.06), transparent);
+  pointer-events: none;
+}
+
+/* الأقواس: تدفق ضوئي متحرك بدل خطوط ساكنة */
+.world-map-3d .map-arcs path {
+  stroke: rgba(85, 215, 255, 0.4);
+  stroke-width: 1.3;
+  stroke-dasharray: 5 10;
+  filter: drop-shadow(0 0 4px rgba(85, 215, 255, 0.55));
+  animation: arc-flow 14s linear infinite;
+}
+
+.world-map-3d .map-arcs path:nth-child(2) { animation-duration: 18s; stroke: rgba(69, 240, 162, 0.32); }
+.world-map-3d .map-arcs path:nth-child(3) { animation-duration: 11s; }
+.world-map-3d .map-arcs path:nth-child(4) { animation-duration: 20s; stroke: rgba(139, 180, 248, 0.28); }
+
+@keyframes arc-flow {
+  to { stroke-dashoffset: -300; }
+}
+
+/* الدبوس المفتوح: توهج أقوى وحلقتان راداريتان متتاليتان */
+.world-map-3d .is-open .map-pin {
+  background: radial-gradient(circle, #7dffc4, #45f0a2 60%);
+  box-shadow: 0 0 14px rgba(69, 240, 162, 0.95), 0 0 26px rgba(69, 240, 162, 0.4);
+}
+
+.world-map-3d .is-open .map-pin::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(69, 240, 162, 0.55);
+  border-radius: 50%;
+  animation: node-ring 2.4s ease-out infinite 1.2s;
+}
+
+/* توهج نبضي للتسمية المفتوحة */
+.world-map-3d .is-open .map-label {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 16px rgba(69, 240, 162, 0.12);
+}
+
+/* حقل نجوم خافت في الخلفية العلوية يعزز العمق */
+.world-map-3d .map-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 55%;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 15% 30%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 45% 15%, rgba(139, 180, 248, 0.45), transparent),
+    radial-gradient(1px 1px at 72% 38%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 88% 22%, rgba(34, 211, 238, 0.5), transparent),
+    radial-gradient(1px 1px at 60% 8%, rgba(255, 255, 255, 0.35), transparent);
+  mask-image: linear-gradient(180deg, black, transparent);
+  animation: star-twinkle 6s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes star-twinkle {
+  from { opacity: 0.5; }
+  to { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-map-3d .map-arcs path,
+  .world-map-3d .is-open .map-pin::before,
+  .world-map-3d .map-stage::before {
+    animation: none;
+  }
+}

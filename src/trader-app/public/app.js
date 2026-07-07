@@ -661,7 +661,7 @@
     const title = document.getElementById("page-title");
     if (title) title.textContent = routes[state.route.id] || routes.dashboard;
     document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
-    status(); ticker(); statusBar(); renderMarketSelector();
+    status(); ticker(); statusBar();
     const content = document.getElementById("terminal-content");
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
@@ -2787,7 +2787,9 @@
     const bar = document.getElementById("terminal-statusbar"); if (!bar) return;
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
     const cells = [["البيانات اللحظية", p.className === "online" ? "متصلة" : "غير متصلة", "Real-time"], ["الأسواق", mk.length || MARKETS.length, "Markets"], ["الأصول المحللة", rec.length || "--", "Analyzed"], ["قائمة المتابعة", state.watch.length, "Watchlist"], ["آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), "Updated"]];
-    bar.innerHTML = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("") + `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${p.className === "online" ? "النظام يعمل" : "بانتظار المزود"}</strong></div>`;
+    const cellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("") + `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${p.className === "online" ? "النظام يعمل" : "بانتظار المزود"}</strong></div>`;
+    // الزر جزء من شريط الحالة نفسه: يُبنى في نفس innerHTML فلا يُدهس بعد ذلك.
+    bar.innerHTML = cellsHtml + marketSelectorHtml();
   }
 
   /* ───────────────────── Actions ───────────────────── */
@@ -3419,29 +3421,30 @@
     state.signalAlerts = {};
     if (state.marketCache && state.marketCache.clear) state.marketCache.clear();
     render();
-    renderMarketSelector();
     hydrate().catch(function() {});
   }
 
-  function renderMarketSelector() {
-    const el = document.getElementById("terminal-statusbar");
-    if (!el) return;
-    if (!document.getElementById("_ms_css")) {
-      const _s = document.createElement("style");
-      _s.id = "_ms_css";
-      _s.textContent =
-        ".ms-wrap{position:relative;display:inline-flex;align-items:center}" +
-        ".ms-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 9px;border-radius:20px;border:1px solid rgba(34,211,238,.28);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:12px;font-family:inherit;cursor:pointer;transition:border-color .18s,background .18s;white-space:nowrap}" +
-        ".ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.65);background:rgba(34,211,238,.11);color:#e2e8f0}" +
-        ".ms-pill-sep{color:rgba(148,163,184,.4);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:11px;color:#22D3EE;direction:ltr;unicode-bidi:embed}" +
-        ".ms-chevron{width:10px;height:10px;flex-shrink:0;transition:transform .18s;margin-inline-start:3px}.ms-chevron.ms-open{transform:rotate(180deg)}" +
-        ".ms-dropdown{position:absolute;bottom:calc(100% + 8px);right:0;min-width:235px;max-height:340px;overflow-y:auto;overflow-x:hidden;background:#0d1117;border:1px solid rgba(34,211,238,.22);border-radius:10px;padding:5px;z-index:9999;display:flex;flex-direction:column;gap:2px;box-shadow:0 -8px 32px rgba(0,0,0,.7),0 0 0 1px rgba(34,211,238,.07)}" +
-        ".ms-item{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;text-align:right;direction:rtl;width:100%;transition:background .12s}" +
-        ".ms-item:hover{background:rgba(34,211,238,.09);color:#e2e8f0}.ms-item:focus{outline:2px solid rgba(34,211,238,.5);outline-offset:-2px;background:rgba(34,211,238,.07)}" +
-        ".ms-item.is-active{color:#22D3EE;font-weight:500}.ms-chk{width:12px;height:12px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:12px;height:12px;flex-shrink:0}.ms-label{flex:1}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:#475569;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:6px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
-        "@media(max-width:640px){.ms-dropdown{right:auto;left:50%;transform:translateX(-50%);min-width:min(280px,90vw)}}";
-      document.head.appendChild(_s);
-    }
+  function ensureMarketSelectorCss() {
+    if (document.getElementById("_ms_css")) return;
+    const _s = document.createElement("style");
+    _s.id = "_ms_css";
+    _s.textContent =
+      ".ms-wrap{position:relative;display:inline-flex;align-items:center}" +
+      ".ms-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 9px;border-radius:20px;border:1px solid rgba(34,211,238,.28);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:12px;font-family:inherit;cursor:pointer;transition:border-color .18s,background .18s;white-space:nowrap}" +
+      ".ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.65);background:rgba(34,211,238,.11);color:#e2e8f0}" +
+      ".ms-pill-sep{color:rgba(148,163,184,.4);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:11px;color:#22D3EE;direction:ltr;unicode-bidi:embed}" +
+      ".ms-chevron{width:10px;height:10px;flex-shrink:0;transition:transform .18s;margin-inline-start:3px}.ms-chevron.ms-open{transform:rotate(180deg)}" +
+      ".ms-dropdown{position:absolute;bottom:calc(100% + 8px);right:0;min-width:235px;max-height:340px;overflow-y:auto;overflow-x:hidden;background:#0d1117;border:1px solid rgba(34,211,238,.22);border-radius:10px;padding:5px;z-index:9999;display:flex;flex-direction:column;gap:2px;box-shadow:0 -8px 32px rgba(0,0,0,.7),0 0 0 1px rgba(34,211,238,.07)}" +
+      ".ms-item{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;text-align:right;direction:rtl;width:100%;transition:background .12s}" +
+      ".ms-item:hover{background:rgba(34,211,238,.09);color:#e2e8f0}.ms-item:focus{outline:2px solid rgba(34,211,238,.5);outline-offset:-2px;background:rgba(34,211,238,.07)}" +
+      ".ms-item.is-active{color:#22D3EE;font-weight:500}.ms-chk{width:12px;height:12px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:12px;height:12px;flex-shrink:0}.ms-label{flex:1}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:#475569;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:6px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
+      "@media(max-width:640px){.ms-dropdown{right:auto;left:50%;transform:translateX(-50%);min-width:min(280px,90vw)}}";
+    document.head.appendChild(_s);
+  }
+
+  // باني HTML نقي — لا يكتب في DOM. يُستدعى من statusBar() ضمن نفس innerHTML.
+  function marketSelectorHtml() {
+    ensureMarketSelectorCss();
     const m = currentMarket();
     const isOpen = !!_marketSelectorOpen;
     const chkSvg = '<svg class="ms-chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6l3 3 5-5"/></svg>';
@@ -3454,14 +3457,31 @@
         '<span class="ms-cur-tag">' + h(mk.currency) + '</span>' +
         '</button>';
     }).join("");
-    const pillHtml = '<button class="ms-pill" data-market-selector-toggle type="button" aria-expanded="' + isOpen + '" aria-haspopup="listbox" title="اختر السوق">' +
+    const pillHtml = '<button class="ms-pill" data-market-selector-toggle type="button" aria-expanded="' + isOpen + '" aria-haspopup="listbox" title="اختر السوق" aria-label="اختر السوق">' +
       '<span class="ms-pill-name">' + h(m.ar) + '</span>' +
       '<span class="ms-pill-sep">·</span>' +
       '<span class="ms-pill-cur">' + h(m.currency) + '</span>' +
       chevSvg +
       '</button>';
     const dropHtml = isOpen ? '<div class="ms-dropdown" role="listbox" aria-label="اختر السوق">' + itemsHtml + '</div>' : "";
-    el.innerHTML = '<div class="ms-wrap">' + pillHtml + dropHtml + '</div>';
+    return '<div class="ms-wrap">' + pillHtml + dropHtml + '</div>';
+  }
+
+  // تحديث موضعي: يستبدل .ms-wrap فقط دون لمس خلايا شريط الحالة، لتجنّب
+  // إعادة بناء الشريط كاملاً عند مجرد فتح/إغلاق القائمة.
+  function renderMarketSelector() {
+    const bar = document.getElementById("terminal-statusbar");
+    if (!bar) return;
+    const existing = bar.querySelector(".ms-wrap");
+    if (existing) {
+      const temp = document.createElement("div");
+      temp.innerHTML = marketSelectorHtml();
+      const fresh = temp.firstElementChild;
+      if (fresh) existing.replaceWith(fresh);
+    } else {
+      // الشريط لم يُبنَ بعد — نبنيه كاملاً (الزر ضمنه).
+      statusBar();
+    }
   }
 
 })();
