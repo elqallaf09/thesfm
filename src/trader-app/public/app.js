@@ -164,15 +164,16 @@
   const SEMICONDUCTOR_SYMBOLS = new Set(MARKET_SYMBOLS.semiconductors.map(s => String(s).toUpperCase()));
 
   const SESSIONS = [
-    ["New York", 11, 88, "west", 13.5, 20],
-    ["London", 27, 31, "west", 8, 16.5],
-    ["Frankfurt", 34, 35, "west", 7, 15.5],
-    ["Riyadh", 47, 62, "gulf", 7, 12],
-    ["Kuwait", 51, 60, "gulf", 6.5, 9.5],
-    ["Dubai", 54, 63, "gulf", 6, 11],
-    ["Tokyo", 45, 87, "west", 0, 6],
-    ["Hong Kong", 55, 82, "west", 1.5, 8],
-    ["Sydney", 62, 89, "west", 0, 6],
+    // [الاسم, top%, left%, النوع, فتح, إغلاق, اتجاه إزاحة التسمية]
+    ["New York", 11, 88, "west", 13.5, 20, "left"],
+    ["London", 27, 31, "west", 8, 16.5, "left"],
+    ["Frankfurt", 34, 35, "west", 7, 15.5, "left"],
+    ["Riyadh", 46, 61.5, "gulf", 7, 12, "up"],
+    ["Kuwait", 42, 60, "gulf", 6.5, 9.5, "left"],
+    ["Dubai", 52, 64, "gulf", 6, 11, "down"],
+    ["Tokyo", 45, 87, "west", 0, 6, "right"],
+    ["Hong Kong", 55, 82, "west", 1.5, 8, "right"],
+    ["Sydney", 62, 89, "west", 0, 6, "right"],
   ];
   function sessionState(kind, openH, closeH) {
     const now = new Date();
@@ -1956,8 +1957,25 @@
     return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
   }
   function marketMap() {
-    return `<div class="world-map" aria-hidden="true"><img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />${SESSIONS.map(([c, top, left, kind, oH, cH], i) => { const st = sessionState(kind, oH, cH); return `<span class="map-node node-${i} ${st.open ? "is-open" : "is-closed"}" style="top:${top}%;left:${left}%"><i></i><b>${h(c)}</b><small>${st.open ? "مفتوح" : "مغلق"} · ${h(st.label)}</small></span>`; }).join("")}
-      <svg viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg></div>`;
+    const nodes = SESSIONS.map(([c, top, left, kind, oH, cH, dir], i) => {
+      const st = sessionState(kind, oH, cH);
+      const state = st.open ? "is-open" : "is-closed";
+      return `<span class="map-node node-${i} ${state} off-${dir || "left"}" style="top:${top}%;left:${left}%">
+          <i class="map-pin"></i>
+          <span class="map-label"><b>${h(c)}</b><small>${st.open ? "مفتوح" : "مغلق"} · ${h(st.label)}</small></span>
+        </span>`;
+    }).join("");
+    return `<div class="world-map world-map-3d" aria-hidden="true">
+      <div class="map-stage">
+        <div class="map-plane">
+          <span class="map-grid-3d"></span>
+          <img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />
+          <svg class="map-arcs" viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg>
+          ${nodes}
+        </div>
+      </div>
+      <span class="map-depth-glow"></span>
+    </div>`;
   }
   function biasPanel(rec) {
     const b = marketBias(rec);

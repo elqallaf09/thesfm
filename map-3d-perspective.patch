@@ -1,0 +1,332 @@
+From d5578e7b01b2690aa2030ac65a2e20ec902d100c Mon Sep 17 00:00:00 2001
+From: elqallaf09 <elqallaf09@gmail.com>
+Date: Tue, 7 Jul 2026 10:05:20 +0000
+Subject: [PATCH] feat: 3D perspective market map with resolved Gulf city label
+ overlap
+
+---
+ src/trader-app/public/app.js            |  40 +++--
+ src/trader-app/public/cinema.css        | 208 ++++++++++++++++++++++++
+ src/trader-app/public/index.html        |   4 +-
+ src/trader-app/public/service-worker.js |   6 +-
+ 4 files changed, 242 insertions(+), 16 deletions(-)
+
+diff --git a/src/trader-app/public/app.js b/src/trader-app/public/app.js
+index b6c07fd..1025a18 100644
+--- a/src/trader-app/public/app.js
++++ b/src/trader-app/public/app.js
+@@ -163,15 +163,16 @@
+   const SEMICONDUCTOR_SYMBOLS = new Set(MARKET_SYMBOLS.semiconductors.map(s => String(s).toUpperCase()));
+ 
+   const SESSIONS = [
+-    ["New York", 11, 88, "west", 13.5, 20],
+-    ["London", 27, 31, "west", 8, 16.5],
+-    ["Frankfurt", 34, 35, "west", 7, 15.5],
+-    ["Riyadh", 47, 62, "gulf", 7, 12],
+-    ["Kuwait", 51, 60, "gulf", 6.5, 9.5],
+-    ["Dubai", 54, 63, "gulf", 6, 11],
+-    ["Tokyo", 45, 87, "west", 0, 6],
+-    ["Hong Kong", 55, 82, "west", 1.5, 8],
+-    ["Sydney", 62, 89, "west", 0, 6],
++    // [الاسم, top%, left%, النوع, فتح, إغلاق, اتجاه إزاحة التسمية]
++    ["New York", 11, 88, "west", 13.5, 20, "left"],
++    ["London", 27, 31, "west", 8, 16.5, "left"],
++    ["Frankfurt", 34, 35, "west", 7, 15.5, "left"],
++    ["Riyadh", 46, 61.5, "gulf", 7, 12, "up"],
++    ["Kuwait", 42, 60, "gulf", 6.5, 9.5, "left"],
++    ["Dubai", 52, 64, "gulf", 6, 11, "down"],
++    ["Tokyo", 45, 87, "west", 0, 6, "right"],
++    ["Hong Kong", 55, 82, "west", 1.5, 8, "right"],
++    ["Sydney", 62, 89, "west", 0, 6, "right"],
+   ];
+   function sessionState(kind, openH, closeH) {
+     const now = new Date();
+@@ -1926,8 +1927,25 @@
+     return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
+   }
+   function marketMap() {
+-    return `<div class="world-map" aria-hidden="true"><img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />${SESSIONS.map(([c, top, left, kind, oH, cH], i) => { const st = sessionState(kind, oH, cH); return `<span class="map-node node-${i} ${st.open ? "is-open" : "is-closed"}" style="top:${top}%;left:${left}%"><i></i><b>${h(c)}</b><small>${st.open ? "مفتوح" : "مغلق"} · ${h(st.label)}</small></span>`; }).join("")}
+-      <svg viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg></div>`;
++    const nodes = SESSIONS.map(([c, top, left, kind, oH, cH, dir], i) => {
++      const st = sessionState(kind, oH, cH);
++      const state = st.open ? "is-open" : "is-closed";
++      return `<span class="map-node node-${i} ${state} off-${dir || "left"}" style="top:${top}%;left:${left}%">
++          <i class="map-pin"></i>
++          <span class="map-label"><b>${h(c)}</b><small>${st.open ? "مفتوح" : "مغلق"} · ${h(st.label)}</small></span>
++        </span>`;
++    }).join("");
++    return `<div class="world-map world-map-3d" aria-hidden="true">
++      <div class="map-stage">
++        <div class="map-plane">
++          <span class="map-grid-3d"></span>
++          <img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />
++          <svg class="map-arcs" viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg>
++          ${nodes}
++        </div>
++      </div>
++      <span class="map-depth-glow"></span>
++    </div>`;
+   }
+   function biasPanel(rec) {
+     const b = marketBias(rec);
+diff --git a/src/trader-app/public/cinema.css b/src/trader-app/public/cinema.css
+index 57292b8..b211502 100644
+--- a/src/trader-app/public/cinema.css
++++ b/src/trader-app/public/cinema.css
+@@ -5336,3 +5336,211 @@ a.badge:focus-visible,
+ @media (prefers-reduced-motion: reduce) {
+   .map-node.is-open i::after { display: none; animation: none; }
+ }
++
++/* ═══════════════════════════════════════════════════════════════
++   MARKET MAP 3D — منظور بانورامي احترافي (يتغلّب على الكتل السابقة)
++   الطبقة تُمال للخلف بزاوية بسيطة لإحساس غرفة تحكم سينمائية،
++   والتسميات تُزاح باتجاهات مختلفة لفك تداخل مدن الخليج.
++   ═══════════════════════════════════════════════════════════════ */
++
++.world-map-3d {
++  position: relative;
++  min-height: 460px;
++  border: 1px solid var(--line);
++  border-radius: var(--radius-md);
++  background: radial-gradient(ellipse 80% 70% at 50% 30%, rgba(20, 46, 74, 0.5), rgba(2, 8, 15, 0.9) 75%);
++  overflow: hidden;
++  /* عمق المشهد: كل ما زاد، زاد الإحساس ثلاثي الأبعاد */
++  perspective: 1400px;
++  perspective-origin: 50% 32%;
++}
++
++/* المسرح يحمل المستوى المائل */
++.world-map-3d .map-stage {
++  position: absolute;
++  inset: 0;
++  transform-style: preserve-3d;
++}
++
++/* المستوى المائل للخلف — قلب التأثير ثلاثي الأبعاد */
++.world-map-3d .map-plane {
++  position: absolute;
++  inset: -6% -2% 2%;
++  transform-style: preserve-3d;
++  transform: rotateX(38deg) scale(1.04);
++  transform-origin: 50% 42%;
++  animation: map-breathe 22s ease-in-out infinite alternate;
++}
++
++@keyframes map-breathe {
++  from { transform: rotateX(38deg) scale(1.04); }
++  to { transform: rotateX(33deg) scale(1.06); }
++}
++
++/* صورة الخريطة على المستوى */
++.world-map-3d .world-map-img {
++  position: absolute;
++  inset: 0;
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++  opacity: 1;
++  filter: brightness(1.4) contrast(1.2) saturate(1.3) drop-shadow(0 0 22px rgba(34, 211, 238, 0.14));
++  pointer-events: none;
++  z-index: 1;
++}
++
++/* شبكة عمق تحت الخريطة تتلاشى نحو الأفق */
++.world-map-3d .map-grid-3d {
++  position: absolute;
++  inset: -20% -20% 0;
++  z-index: 0;
++  background-image:
++    repeating-linear-gradient(90deg, rgba(85, 215, 255, 0.06) 0 1px, transparent 1px 70px),
++    repeating-linear-gradient(0deg, rgba(85, 215, 255, 0.05) 0 1px, transparent 1px 60px);
++  mask-image: linear-gradient(180deg, transparent, black 30%, black 70%, transparent);
++  transform: translateZ(-40px);
++}
++
++/* الأقواس المتدفقة بين المدن */
++.world-map-3d .map-arcs {
++  position: absolute;
++  inset: 0;
++  width: 100%;
++  height: 100%;
++  z-index: 2;
++  transform: translateZ(10px);
++}
++
++.world-map-3d .map-arcs path {
++  fill: none;
++  stroke: rgba(85, 215, 255, 0.34);
++  stroke-width: 1.1;
++  stroke-dasharray: 3 8;
++  filter: drop-shadow(0 0 3px rgba(85, 215, 255, 0.4));
++  animation: mapdash 20s linear infinite;
++}
++
++/* العقدة: الدبوس يبقى على المدينة، والتسمية ترتفع فوق المستوى لتبقى مقروءة */
++.world-map-3d .map-node {
++  position: absolute;
++  z-index: 5;
++  transform-style: preserve-3d;
++}
++
++.world-map-3d .map-pin {
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 9px;
++  height: 9px;
++  border-radius: 50%;
++  transform: translate(-50%, -50%) translateZ(2px);
++}
++
++/* التسمية تُرفع عن المستوى (translateZ) فتبدو طافية بإحساس مجسّم */
++.world-map-3d .map-label {
++  position: absolute;
++  display: flex;
++  gap: 7px;
++  align-items: center;
++  padding: 4px 9px 4px 8px;
++  border: 0.5px solid rgba(143, 180, 205, 0.24);
++  border-radius: 999px;
++  background: rgba(3, 11, 19, 0.9);
++  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
++  white-space: nowrap;
++  /* إلغاء ميل المستوى عن النص ليبقى مواجهاً للقارئ + رفعه للأمام */
++  transform: rotateX(-38deg) translateZ(46px);
++  transform-origin: center;
++}
++
++.world-map-3d .map-label b {
++  color: #dbeafe;
++  font: 700 0.66rem var(--font-ar);
++  letter-spacing: 0.02em;
++}
++
++.world-map-3d .map-label small {
++  color: var(--muted-2);
++  font-size: 0.56rem;
++}
++
++/* اتجاهات إزاحة التسمية — تفصل مدن الخليج المتزاحمة */
++.world-map-3d .off-left .map-label { top: -8px; right: 16px; }
++.world-map-3d .off-right .map-label { top: -8px; left: 16px; }
++.world-map-3d .off-up .map-label { bottom: 16px; left: 50%; transform: rotateX(-38deg) translateZ(46px) translateX(-50%); }
++.world-map-3d .off-down .map-label { top: 18px; left: 50%; transform: rotateX(-38deg) translateZ(46px) translateX(-50%); }
++
++/* خط رفيع يربط التسمية المزاحة بدبوسها */
++.world-map-3d .map-node::after {
++  content: "";
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 14px;
++  height: 0.5px;
++  background: linear-gradient(90deg, rgba(143, 180, 205, 0.5), transparent);
++  transform-origin: left center;
++  opacity: 0.6;
++}
++
++.world-map-3d .off-up::after { transform: translate(-1px, -1px) rotate(-90deg); }
++.world-map-3d .off-down::after { transform: translate(-1px, 1px) rotate(90deg); }
++.world-map-3d .off-right::after { transform: scaleX(-1); }
++
++/* الجلسة المفتوحة: دبوس أخضر نابض بحلقة رادار */
++.world-map-3d .is-open .map-pin {
++  background: #45f0a2;
++  box-shadow: 0 0 12px rgba(69, 240, 162, 0.9);
++}
++
++.world-map-3d .is-open .map-pin::after {
++  content: "";
++  position: absolute;
++  inset: -4px;
++  border: 1px solid rgba(69, 240, 162, 0.7);
++  border-radius: 50%;
++  animation: node-ring 2.4s ease-out infinite;
++}
++
++.world-map-3d .is-open .map-label {
++  border-color: rgba(69, 240, 162, 0.35);
++}
++
++.world-map-3d .is-open .map-label b { color: #cdf7e3; }
++.world-map-3d .is-open .map-label small { color: rgba(69, 240, 162, 0.85); }
++
++/* الجلسة المغلقة: دبوس أحمر خافت */
++.world-map-3d .is-closed { opacity: 0.82; }
++.world-map-3d .is-closed .map-pin {
++  background: #ff6b74;
++  box-shadow: 0 0 7px rgba(255, 107, 116, 0.5);
++}
++.world-map-3d .is-closed .map-label b { color: var(--muted); }
++
++/* توهج عمق أسفل المشهد يعزز الإحساس ثلاثي الأبعاد */
++.world-map-3d .map-depth-glow {
++  position: absolute;
++  inset: auto 0 0;
++  height: 40%;
++  z-index: 3;
++  background: linear-gradient(0deg, rgba(2, 8, 15, 0.85), transparent);
++  pointer-events: none;
++}
++
++/* الجوال: تخفيف الميل حفاظاً على القراءة */
++@media (max-width: 720px) {
++  .world-map-3d { min-height: 300px; perspective: 900px; }
++  .world-map-3d .map-plane { transform: rotateX(30deg) scale(1.05); animation: none; }
++  .world-map-3d .map-label { transform: rotateX(-30deg) translateZ(30px); }
++  .world-map-3d .off-up .map-label,
++  .world-map-3d .off-down .map-label { transform: rotateX(-30deg) translateZ(30px) translateX(-50%); }
++  .world-map-3d .map-label small { display: none; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .world-map-3d .map-plane { animation: none; }
++  .world-map-3d .map-arcs path { animation: none; }
++  .world-map-3d .is-open .map-pin::after { display: none; }
++}
+diff --git a/src/trader-app/public/index.html b/src/trader-app/public/index.html
+index 43588d0..1b3673e 100644
+--- a/src/trader-app/public/index.html
++++ b/src/trader-app/public/index.html
+@@ -8,7 +8,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+-    <link rel="stylesheet" href="/cinema.css?v=20260705-sw-purge" />
++    <link rel="stylesheet" href="/cinema.css?v=20260706-map3d" />
+     <script>
+       // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
+       // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).
+@@ -159,7 +159,7 @@
+     </div>
+ 
+     <div class="toast-root" id="toast-root" aria-live="polite"></div>
+-    <script src="/app.js?v=20260705-sw-purge" defer></script>
++    <script src="/app.js?v=20260706-map3d" defer></script>
+     <script src="/provider-markets-diagnostics.js?v=20260705-provider-markets" defer></script>
+   </body>
+ </html>
+diff --git a/src/trader-app/public/service-worker.js b/src/trader-app/public/service-worker.js
+index fd23549..6b597b7 100644
+--- a/src/trader-app/public/service-worker.js
++++ b/src/trader-app/public/service-worker.js
+@@ -1,12 +1,12 @@
+-const CACHE_NAME = "the-sfm-trader-v20260705-sw-purge";
++const CACHE_NAME = "the-sfm-trader-v20260706-map3d";
+ const STATIC_ASSETS = [
+   "/",
+   "/index.html",
+   "/detail.html",
+   "/styles.css?v=20260630-cinema",
+   "/desktop-balance.css?v=20260630-cinema",
+-  "/cinema.css?v=20260705-sw-purge",
+-  "/app.js?v=20260705-sw-purge",
++  "/cinema.css?v=20260706-map3d",
++  "/app.js?v=20260706-map3d",
+   "/detail.js?v=20260630-cinema",
+   "/manifest.webmanifest",
+   "/assets/sfm-trader-logo.svg",
+-- 
+2.43.0
+
