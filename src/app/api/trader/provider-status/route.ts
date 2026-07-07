@@ -12,6 +12,15 @@ export const dynamic = 'force-dynamic';
 const RATE_LIMIT_MESSAGE_AR = 'تم الوصول إلى حد استخدام مزود البيانات مؤقتاً';
 const FMP_SUPPORTED_FEATURES: TraderProviderFeature[] = ['prices', 'earnings', 'dividends', 'ipos', 'economic'];
 
+// الاستجابة العامة لا تكشف أسماء المزودات ولا أخطاءها ولا عدّ المسارات.
+// التشخيص المفصّل يُتاح فقط لطلب أدمن يحمل التوكن الصحيح.
+function isAdminDiagnosticsRequest(url: URL, request: Request): boolean {
+  const secret = (process.env.ADMIN_DIAGNOSTICS_TOKEN || '').trim();
+  if (!secret) return false;
+  const provided = url.searchParams.get('adminToken') || request.headers.get('x-admin-diagnostics-token');
+  return Boolean(provided) && provided === secret;
+}
+
 function normalizeEnvValue(value: string | undefined) {
   return Boolean(value && value.trim());
 }
@@ -145,6 +154,7 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const isAdmin = isAdminDiagnosticsRequest(url, request);
   const status = getTraderProviderStatus();
   const forceFresh = url.searchParams.has('refresh');
   const discover = url.searchParams.has('discover');
@@ -184,7 +194,7 @@ export async function GET(request: Request) {
         active: 'fmp',
         provider: 'fmp',
         status: 'rate_limited',
-        failureReason: RATE_LIMIT_MESSAGE_AR,
+        failureReason: isAdmin ? RATE_LIMIT_MESSAGE_AR : null,
       }
     : status.dataProvider;
 
@@ -207,10 +217,10 @@ export async function GET(request: Request) {
         },
         lastChecked: now,
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
-        lastError: fmpRuntime.lastError,
+        lastError: isAdmin ? fmpRuntime.lastError : null,
         rateLimitedUntil: fmpRuntime.rateLimitedUntil,
         cacheAvailable: fmpRuntime.cacheAvailable,
-        error: fmpRuntime.rateLimited ? RATE_LIMIT_MESSAGE_AR : fmpRuntime.lastError,
+        error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_MESSAGE_AR : fmpRuntime.lastError) : null,
       },
       yahoo: {
         configured: true,
@@ -263,7 +273,7 @@ export async function GET(request: Request) {
       },
     },
     normalizedStatus,
-    diagnosticGroups: [],
+    diagnosticGroups: isAdmin ? diagnosticSummary : [],
     availableProviders,
     // Keep compatibility with existing trader-app consumers.
     features: status.features,
@@ -301,17 +311,19 @@ export async function GET(request: Request) {
       },
     },
     capabilityMatrix: catalog.capabilityMatrix,
-    diagnostics: catalog.diagnostics,
-    summary: providerSummary,
-    loaded: catalog.symbols.slice(0, 50).map(symbol => ({
-      symbol: symbol.symbol,
-      provider: symbol.source,
-      reason: 'symbol_discovered',
-    })),
-    failed: catalog.diagnostics.failedSymbols,
-    skipped: catalog.diagnostics.unsupportedSymbols.slice(0, 50),
-    provider: catalog.diagnostics.provider,
-    reason: catalog.diagnostics.reason,
+    diagnostics: isAdmin ? catalog.diagnostics : undefined,
+    summary: isAdmin ? providerSummary : undefined,
+    loaded: isAdmin
+      ? catalog.symbols.slice(0, 50).map(symbol => ({
+          symbol: symbol.symbol,
+          provider: symbol.source,
+          reason: 'symbol_discovered',
+        }))
+      : undefined,
+    failed: isAdmin ? catalog.diagnostics.failedSymbols : undefined,
+    skipped: isAdmin ? catalog.diagnostics.unsupportedSymbols.slice(0, 50) : undefined,
+    provider: isAdmin ? catalog.diagnostics.provider : undefined,
+    reason: isAdmin ? catalog.diagnostics.reason : undefined,
     resultCount: catalog.diagnostics.totalSymbolsLoaded,
     generatedAt: now,
   };

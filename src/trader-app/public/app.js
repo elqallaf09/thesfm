@@ -725,7 +725,7 @@
       <section class="dashboard-lower-grid">
         <article class="panel"><span class="eyebrow">MARKET NEWS</span><h2>آخر الأخبار</h2>${news.length ? newsList(news.slice(0, 3)) : unavailableSection(state.news, "مزود الأخبار لم يرجع عناصر حالية.", "صفحة الأخبار", `${ROOT}/news`)}</article>
         <article class="panel"><span class="eyebrow">AI ANALYSIS</span><h2>حالة التحليل الذكي</h2>${alerts.length ? alertList(alerts) : unavailableSection(state.signals, "سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "افتح الماسح", `${ROOT}/ai-scanner`)}</article>
-        <article class="panel"><span class="eyebrow">SYSTEM STATUS</span><h2>حالة النظام</h2>${diagnostics()}</article>
+        <article class="panel"><span class="eyebrow">SYSTEM STATUS</span><h2>حالة النظام</h2>${publicSystemStatus()}</article>
       </section>
       ${disclaimer()}
     </div>`;
@@ -1174,8 +1174,8 @@
       title = "الميزة غير متاحة ضمن صلاحية المزود الحالي";
       body = "تحتاج هذه البيانات إلى خطة تدعم هذا النوع من التقويم.";
     } else if (status === "rate_limited") {
-      title = "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
-      body = response && (response.cached || response.stale) ? "بيانات مخزنة مؤقتاً معروضة إلى أن يسمح المزود بتحديث جديد." : "جرّب لاحقاً أو استخدم زر إعادة المحاولة بعد دقيقة.";
+      title = UNAVAILABLE_MESSAGE;
+      body = response && (response.cached || response.stale) ? "يتم عرض أحدث بيانات متاحة إلى أن يعود التحديث المباشر." : "البيانات غير متاحة حالياً. حاول مرة أخرى بعد قليل.";
       settings = false;
     } else if (status === "provider_error" || status === "invalid_request") {
       title = UNAVAILABLE_MESSAGE;
@@ -1451,9 +1451,15 @@
   }
 
   function providerName(provider) {
-    const names = { fmp: "FMP", finnhub: "Finnhub", tradingeconomics: "Trading Economics", yahoo: "", "yahoo finance": "", manual: "إدخال يدوي" };
-    const raw = String(provider || "").trim();
-    return names[raw.toLowerCase()] || raw || "غير متصل";
+    // أسماء المزودات التجارية لا تظهر للمستخدم العام. نُبقي فقط التسميات
+    // المحايدة (إدخال يدوي)، وأي مزود بيانات خارجي يظهر كـ"بيانات السوق".
+    const raw = String(provider || "").trim().toLowerCase();
+    if (!raw) return "";
+    if (raw === "manual") return "إدخال يدوي";
+    const brands = ["fmp", "finnhub", "yahoo", "yahoo finance", "twelve data", "twelvedata", "eodhd", "tradingeconomics", "trading economics", "openbb"];
+    if (brands.includes(raw)) return "بيانات السوق";
+    // رموز غير معروفة تُخفى بدل كشف اسم داخلي
+    return "بيانات السوق";
   }
 
   function resultCountText(value) { return value === null || value === undefined ? "--" : `${latinNumber(value)} نتيجة`; }
@@ -1835,7 +1841,6 @@
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
     const conf = num(a.confidence, a.score, a.aiConfidence);
-    const source = providerName(a.provider || a.source || (state.provider && (state.provider.active || state.provider.provider)) || "");
     const sig = (a.signalAvailable === false || (!a.signal && !a.recommendation && !a.action)) ? null : signal(a);
     const quality = a.dataQuality || (p === null ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
@@ -1848,21 +1853,7 @@
         <span class="quality-badge">${h(conf === null ? "الثقة غير متاحة" : `الثقة ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
         ${precisionBadge(a)}
       </div>
-      <div class="leadership-provider-row">
-        <b>${h(source)}</b>
-        <span class="ltr">${h(a.providerSymbolUsed || a.providerSymbol || "--")}</span>
-        <span>${a.fallbackUsed === true ? "" : ""}</span>
-        <span>${h(providerFlag("fmp"))}</span>
-        <span>${h(providerFlag("finnhub"))}</span>
-        <time class="ltr">${h(latinDateTime(a.lastUpdated || a.updatedAt))}</time>
-      </div>
     </button>`;
-  }
-  function providerFlag(key) {
-    const providers = state.providerStatus && state.providerStatus.providers;
-    const provider = providers && providers[key];
-    const label = key === "fmp" ? "FMP" : key === "finnhub" ? "Finnhub" : key;
-    return `${label}: ${provider && provider.configured ? "on" : "off"}`;
   }
   function opportunityHeatmap(rec) {
     const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
@@ -2133,6 +2124,27 @@
     const retry = s.showRetry ? `<button class="ghost-btn compact-btn" data-retry>${h(s.retryLabel)}</button>` : "";
     return `<article class="status-card provider-status-card is-${s.className}"><span class="eyebrow">SYSTEM</span><strong>${h(s.title)}</strong><p>${h(s.copy)}</p><span class="state-badge ${s.tone}">${h(s.label)}</span>${retry}</article>`;
   }
+  // حالة نظام عامة للمستخدم النهائي: متصل / غير متاح فقط.
+  // لا أسماء مزودات، لا أخطاء خام، لا عدّ مسارات، لا تفاصيل حد استخدام.
+  function publicSystemStatus() {
+    const normalized = normalizedProviderStatus();
+    const online = normalized.status === 'available' || normalized.status === 'healthy' || normalized.configured === true;
+    const loaded = Number(normalized.loadedCount) || 0;
+    const connected = online && loaded > 0;
+    const tone = connected ? 'ok' : 'warn';
+    const title = connected ? 'البيانات متصلة' : 'البيانات غير متاحة حالياً';
+    const copy = connected
+      ? 'يتم عرض بيانات السوق المباشرة بشكل طبيعي.'
+      : 'يتعذّر عرض بيانات السوق في الوقت الحالي. حاول مرة أخرى بعد قليل.';
+    const retry = `<button class="ghost-btn compact-btn provider-status-retry" data-retry>${h(getProviderRetryLabel())}</button>`;
+    return `<div class="public-system-status">
+      <div class="provider-status-banner ${tone}">
+        <div><span class="eyebrow">SYSTEM</span><strong>${h(title)}</strong><p>${h(copy)}</p></div>
+        <div class="provider-status-actions"><span class="state-badge ${tone}">${connected ? 'متصل' : 'غير متاح'}</span>${connected ? '' : retry}</div>
+      </div>
+    </div>`;
+  }
+
   function diagnostics() {
     const normalized = normalizedProviderStatus();
     const providerStatus = providerCopy();
@@ -2150,7 +2162,7 @@
       ["آخر تحديث", latinDateTime(normalized.lastUpdated), "Updated", ""]
     ];
     const featureList = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(featureLabel).join(" · ") : "--";
-    const errorText = formatProviderError(normalized.errorSummary, { empty: "" }) || providerStatus.explanation;
+    const errorText = formatProviderError(normalized.errorSummary, { empty: "", admin: true }) || providerStatus.explanation;
     const errorSummary = errorText ? `<p class="provider-warning">${h(errorText)}</p>` : "";
     const retryAction = providerStatus.showRetry ? `<button class="ghost-btn compact-btn provider-status-retry" data-retry>${h(providerStatus.retryLabel)}</button>` : "";
     return `<div class="provider-diagnostics-ui">
@@ -2211,8 +2223,8 @@
       <div class="provider-diagnostic-groups">${groups.map(group => {
         const details = arr(group.details).slice(0, 12);
         return `<section class="provider-diagnostic-group">
-          <strong>${h(formatProviderError(group.summary || group.reason || group.status))}</strong>
-          ${details.length ? `<ul>${details.map(detail => `<li><code class="ltr">${h(detail.route || detail.symbol || "route")}</code><span>${h(formatProviderError(detail.reason || group.status))}</span></li>`).join("")}</ul>` : ""}
+          <strong>${h(formatProviderError(group.summary || group.reason || group.status, { admin: true }))}</strong>
+          ${details.length ? `<ul>${details.map(detail => `<li><code class="ltr">${h(detail.route || detail.symbol || "route")}</code><span>${h(formatProviderError(detail.reason || group.status, { admin: true }))}</span></li>`).join("")}</ul>` : ""}
         </section>`;
       }).join("")}</div>
     </details>`;
@@ -2240,18 +2252,26 @@
     }
     return groups;
   }
+  // القيم التقنية للمزود تُخفى عن المستخدم العام. الإصدار المفصّل (أسماء المزودات،
+  // حد الاستخدام، أكواد الأخطاء) يظهر فقط في صفحة الإعدادات (لوحة الأدمن) عبر
+  // options.admin = true. أي مسار عام يحصل على رسالة موحّدة نظيفة.
   function formatProviderError(error, options = {}) {
     const empty = options.empty === undefined ? "--" : options.empty;
     if (error === null || error === undefined || error === "") return empty;
     let value = "";
     if (typeof error === "object") {
-      if (Array.isArray(error)) value = error.map(item => formatProviderError(item, { empty: "" })).filter(Boolean).join(" · ");
+      if (Array.isArray(error)) value = error.map(item => formatProviderError(item, { empty: "", admin: options.admin })).filter(Boolean).join(" · ");
       else value = error.message || error.errorSummary || error.reason || error.code || error.status || error.name || "";
     } else {
       value = String(error);
     }
     value = String(value).replace(/\s+/g, " ").trim();
     if (!value || value === "[object Object]") return empty;
+    // المسار العام: لا تفاصيل مزود إطلاقاً — رسالة موحّدة واحدة.
+    if (!options.admin) {
+      return empty || UNAVAILABLE_MESSAGE;
+    }
+    // ── ما بعد هذه النقطة يُعرض في لوحة الأدمن فقط ──
     if (isRateLimitText(value)) return "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
     const lower = value.toLowerCase();
     if (/^provider_status_/i.test(lower)) return getProviderStatusMessage(lower);

@@ -1648,15 +1648,16 @@ export async function resolveTraderMarketDynamic(marketId: string | null | undef
 
 export function getConnectedProvider() {
   const capabilities = providerCapabilityMatrix();
-  const active: TraderQuoteProvider = capabilities.fmp.configured
-    ? 'fmp'
-    : 'yahoo';
+  // ترتيب مزودات الأسعار الفعلي في مسار fetchTraderQuotesDetailed:
+  // FMP (إن كان مهيأً) ثم Yahoo الداخلي ثم Finnhub. Twelve Data/EODHD
+  // مهيأان للأساسيات؛ عند ربط مسار أسعارهما يُقدَّمان هنا.
+  const active: TraderQuoteProvider = capabilities.fmp.configured ? 'fmp' : 'yahoo';
   const label = active === 'fmp' ? 'FMP' : 'Yahoo Finance';
   return {
     active: label,
     requested: 'fmp',
     provider: label,
-    configured: active === 'yahoo' ? true : capabilities[active].configured,
+    configured: active === 'yahoo' ? true : Boolean(capabilities[active] && capabilities[active].configured),
     status: 'connected' as const,
     fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub'],
     capabilityMatrix: capabilities,
