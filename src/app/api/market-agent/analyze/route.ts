@@ -42,7 +42,7 @@ type AgentSymbolCandidate = {
   responseAssetType: MarketAgentAssetType;
   currency?: string | null;
 };
-const FORBIDDEN_ADVICE_WORDS = /Ù…Ø¶Ù…ÙˆÙ†|Ø£ÙƒÙŠØ¯|ÙØ±ØµØ© Ù„Ø§ ØªØ¹ÙˆØ¶|Ø§Ø±Ø¨Ø­ Ø§Ù„Ø¢Ù†|guaranteed|sure signal|100%\s*accurate|risk[-\s]?free/i;
+const FORBIDDEN_ADVICE_WORDS = /مضمون|أكيد|فرصة لا تعوض|اربح الآن|guaranteed|sure signal|100%\s*accurate|risk[-\s]?free/i;
 
 function json(body: Record<string, unknown>, init?: ResponseInit) {
   return NextResponse.json(body, {
@@ -175,7 +175,7 @@ async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse, userI
             'Do not change the suggested action, confidence, risk level, or levels.',
             'Write one concise professional Arabic paragraph only.',
             'Frame it as an automated analytical reading, not financial advice.',
-            'Avoid exaggerated wording such as Ù…Ø¶Ù…ÙˆÙ†ØŒ Ø£ÙƒÙŠØ¯ØŒ ÙØ±ØµØ© Ù„Ø§ ØªØ¹ÙˆØ¶ØŒ Ø§Ø±Ø¨Ø­ Ø§Ù„Ø¢Ù†, guaranteed, risk-free.',
+            'Avoid exaggerated wording such as مضمون، أكيد، فرصة لا تعوض، اربح الآن, guaranteed, risk-free.',
           ].join(' '),
         },
         {

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Activity, AlertCircle } from 'lucide-react';
 import type { StockCategoryId, StockCategoryStock } from '@/lib/market/stockCategoryConfigs';

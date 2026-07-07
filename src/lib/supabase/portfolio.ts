@@ -1,4 +1,4 @@
-﻿import type { FinancialProfile } from "@/lib/wakeel";
+import type { FinancialProfile } from "@/lib/wakeel";
 
 export async function getAuthedUserId(): Promise<string | null> {
   return "test-user";
