@@ -3,6 +3,7 @@
    pure render-component functions, defensive data layer, no synthetic market data. */
 (() => {
   "use strict";
+  let _marketSelectorOpen = false;
 
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
@@ -502,6 +503,35 @@
       if (retry) { event.preventDefault(); retryRoute(); return; }
       const collapse = event.target.closest("#sidebar-collapse");
       if (collapse) { event.preventDefault(); document.getElementById("app-shell").classList.toggle("is-collapsed"); return; }
+      const _mst = event.target.closest("[data-market-selector-toggle]");
+      if (_mst) { event.preventDefault(); _marketSelectorOpen = !_marketSelectorOpen; renderMarketSelector(); return; }
+      const _msm = event.target.closest("[data-select-market]");
+      if (_msm) { event.preventDefault(); const _mid = _msm.dataset.selectMarket; if (_mid) { selectMarket(_mid); } return; }
+      if (_marketSelectorOpen && !event.target.closest(".ms-wrap")) { _marketSelectorOpen = false; renderMarketSelector(); }
+    });
+    document.addEventListener("keydown", function(ev) {
+      if (!_marketSelectorOpen) return;
+      const _items = Array.prototype.slice.call(document.querySelectorAll("[data-select-market]") || []);
+      if (!_items.length) return;
+      const _idx = _items.indexOf(document.activeElement);
+      if (ev.key === "Escape") {
+        _marketSelectorOpen = false;
+        renderMarketSelector();
+        const _tb = document.querySelector("[data-market-selector-toggle]");
+        if (_tb) _tb.focus();
+        ev.preventDefault();
+      } else if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        const _ni = _idx < 0 ? 0 : Math.min(_idx + 1, _items.length - 1);
+        if (_items[_ni]) _items[_ni].focus();
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        const _pi = Math.max(_idx - 1, 0);
+        if (_items[_pi]) _items[_pi].focus();
+      } else if (ev.key === "Enter" && document.activeElement && document.activeElement.dataset && document.activeElement.dataset.selectMarket) {
+        ev.preventDefault();
+        selectMarket(document.activeElement.dataset.selectMarket);
+      }
     });
     document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -630,7 +660,7 @@
     const title = document.getElementById("page-title");
     if (title) title.textContent = routes[state.route.id] || routes.dashboard;
     document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
-    status(); ticker(); statusBar();
+    status(); ticker(); statusBar(); renderMarketSelector();
     const content = document.getElementById("terminal-content");
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
@@ -3357,5 +3387,63 @@
     state.rec = await get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`, { label: "quotes" });
     render();
   });
+
+
+  function selectMarket(mid) {
+    const mk = MARKETS.find(function(x) { return x.id === mid; });
+    if (!mk) return;
+    state.settings.defaultMarket = mid;
+    _marketSelectorOpen = false;
+    write(keys.settings, state.settings);
+    state.rec = {};
+    state.commandCards = {};
+    state.signals = {};
+    state.signalAlerts = {};
+    if (state.marketCache && state.marketCache.clear) state.marketCache.clear();
+    render();
+    renderMarketSelector();
+    hydrate().catch(function() {});
+  }
+
+  function renderMarketSelector() {
+    const el = document.getElementById("terminal-statusbar");
+    if (!el) return;
+    if (!document.getElementById("_ms_css")) {
+      const _s = document.createElement("style");
+      _s.id = "_ms_css";
+      _s.textContent =
+        ".ms-wrap{position:relative;display:inline-flex;align-items:center}" +
+        ".ms-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 9px;border-radius:20px;border:1px solid rgba(34,211,238,.28);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:12px;font-family:inherit;cursor:pointer;transition:border-color .18s,background .18s;white-space:nowrap}" +
+        ".ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.65);background:rgba(34,211,238,.11);color:#e2e8f0}" +
+        ".ms-pill-sep{color:rgba(148,163,184,.4);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:11px;color:#22D3EE;direction:ltr;unicode-bidi:embed}" +
+        ".ms-chevron{width:10px;height:10px;flex-shrink:0;transition:transform .18s;margin-inline-start:3px}.ms-chevron.ms-open{transform:rotate(180deg)}" +
+        ".ms-dropdown{position:absolute;bottom:calc(100% + 8px);right:0;min-width:235px;max-height:340px;overflow-y:auto;overflow-x:hidden;background:#0d1117;border:1px solid rgba(34,211,238,.22);border-radius:10px;padding:5px;z-index:9999;display:flex;flex-direction:column;gap:2px;box-shadow:0 -8px 32px rgba(0,0,0,.7),0 0 0 1px rgba(34,211,238,.07)}" +
+        ".ms-item{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;text-align:right;direction:rtl;width:100%;transition:background .12s}" +
+        ".ms-item:hover{background:rgba(34,211,238,.09);color:#e2e8f0}.ms-item:focus{outline:2px solid rgba(34,211,238,.5);outline-offset:-2px;background:rgba(34,211,238,.07)}" +
+        ".ms-item.is-active{color:#22D3EE;font-weight:500}.ms-chk{width:12px;height:12px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:12px;height:12px;flex-shrink:0}.ms-label{flex:1}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:#475569;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:6px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
+        "@media(max-width:640px){.ms-dropdown{right:auto;left:50%;transform:translateX(-50%);min-width:min(280px,90vw)}}";
+      document.head.appendChild(_s);
+    }
+    const m = currentMarket();
+    const isOpen = !!_marketSelectorOpen;
+    const chkSvg = '<svg class="ms-chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6l3 3 5-5"/></svg>';
+    const chevSvg = '<svg class="ms-chevron' + (isOpen ? " ms-open" : "") + '" viewBox="0 0 10 8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M1 1.5l4 4 4-4"/></svg>';
+    const itemsHtml = MARKETS.map(function(mk) {
+      const active = mk.id === m.id;
+      return '<button class="ms-item' + (active ? " is-active" : "") + '" data-select-market="' + mk.id + '" role="option" aria-selected="' + active + '" type="button">' +
+        (active ? chkSvg : '<span class="ms-chk-ph" aria-hidden="true"></span>') +
+        '<span class="ms-label">' + h(mk.ar) + '</span>' +
+        '<span class="ms-cur-tag">' + h(mk.currency) + '</span>' +
+        '</button>';
+    }).join("");
+    const pillHtml = '<button class="ms-pill" data-market-selector-toggle type="button" aria-expanded="' + isOpen + '" aria-haspopup="listbox" title="اختر السوق">' +
+      '<span class="ms-pill-name">' + h(m.ar) + '</span>' +
+      '<span class="ms-pill-sep">·</span>' +
+      '<span class="ms-pill-cur">' + h(m.currency) + '</span>' +
+      chevSvg +
+      '</button>';
+    const dropHtml = isOpen ? '<div class="ms-dropdown" role="listbox" aria-label="اختر السوق">' + itemsHtml + '</div>' : "";
+    el.innerHTML = '<div class="ms-wrap">' + pillHtml + dropHtml + '</div>';
+  }
 
 })();
