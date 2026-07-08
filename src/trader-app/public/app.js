@@ -900,7 +900,7 @@
       <td class="wt-asset" data-label="الرمز"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><small class="ltr">${h(a.providerSymbol || a.providerSymbolUsed || "--")}</small></span></button></td>
       <td data-label="الشركة">${h(a.companyName || a.name || "--")}</td>
       <td class="ltr" data-label="السعر">${h(priceText)}</td>
-      <td class="ltr" data-label="القيمة السوقية">${h(bigNumber(a.marketCap))}</td>
+      <td class="ltr" data-label="القيمة السوقية">${h(marketCapText(a.marketCap, a.currency))}</td>
       <td class="ltr" data-label="الحجم">${h(bigNumber(a.volume))}</td>
       <td class="ltr" data-label="البورصة">${h(a.exchange || a.exchangeCode || "--")}</td>
       <td class="ltr" data-label="العملة">${h(currency(a))}</td>
@@ -967,6 +967,17 @@
     const n = num(value);
     if (n === null) return "--";
     return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+  function marketCapText(value, currencyCode) {
+    let n = num(value);
+    if (n === null || n <= 0) return "--";
+    // Finnhub يرجّع القيمة السوقية بالملايين؛ لا توجد شركة مدرجة قيمتها أقل من 10 ملايين دولار خام،
+    // لذا أي رقم أقل من 1e7 نعتبره بالملايين ونحوّله لقيمة خام.
+    if (n < 1e7) n *= 1e6;
+    const c = currencyCode && currencyCode !== "--" ? ` ${currencyCode}` : "";
+    if (n >= 1e12) return `${(n / 1e12).toLocaleString("en-US", { maximumFractionDigits: 2 })} تريليون${c}`;
+    if (n >= 1e9) return `${(n / 1e9).toLocaleString("en-US", { maximumFractionDigits: 2 })} مليار${c}`;
+    return `${(n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 })} مليون${c}`;
   }
 
   function scannerPage() {
@@ -1679,7 +1690,7 @@
         ${assetAboutPanel(a)}
       </article>
       <aside class="detail-side">
-        ${finalRecommendationCard(a, detail, rec)}
+        ${isSpacAsset(a) ? spacNoticeCard(a) : finalRecommendationCard(a, detail, rec)}
         ${shariaCompliancePanel(a)}
         <article class="panel consensus-panel"><span class="eyebrow">STRATEGY AGREEMENT</span><h2>اتفاق الاستراتيجيات</h2>${strategyConsensus(a, detail.tech, rec)}</article>
         <article class="panel"><span class="eyebrow">TECHNICAL</span><h2>التحليل الفني</h2>${technical({ ...a, ...(rec || {}) }, detail.tech, c, detail)}</article>
@@ -2430,7 +2441,7 @@
       factRow("القطاع", sector),
       factRow("الصناعة", industry),
       factRow("الدولة", country),
-      cap != null && num(cap) !== null ? `<div class="fact-row"><dt>القيمة السوقية</dt><dd class="ltr">${h(bigNumber(cap))}</dd></div>` : "",
+      cap != null && num(cap) !== null ? `<div class="fact-row"><dt>القيمة السوقية</dt><dd class="ltr">${h(marketCapText(cap, currency(a)))}</dd></div>` : "",
       employees != null && num(employees) !== null ? `<div class="fact-row"><dt>عدد الموظفين</dt><dd class="ltr">${h(bigNumber(employees))}</dd></div>` : "",
     ].filter(Boolean).join("");
     if (!desc && !facts && !url) {
@@ -2443,9 +2454,22 @@
       ${url ? `<a class="about-web ltr" href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(a.website || a.weburl)}</a>` : ""}
     </article>`;
   }
+  function isSpacAsset(a) {
+    const industry = String(a.industry || a.industryName || "").toLowerCase();
+    const name = String(a.name || a.companyName || "").toLowerCase();
+    if (/blank check|shell compan|special purpose acquisition/.test(industry)) return true;
+    return /\bacquisition\s+(corp|corporation|inc|company|co)\b/.test(name) || /\bspac\b/.test(name);
+  }
+  function spacNoticeCard(a) {
+    return `<article class="panel sharia-panel warn">
+      <span class="eyebrow">FINAL RECOMMENDATION</span><h2>سهم شركة استحواذ (SPAC)</h2>
+      <div class="sharia-badge warn"><span class="sharia-mark">!</span><div class="sharia-badge-copy"><strong>لا ينطبق التحليل الفني</strong><small class="ltr">SPAC / Blank check</small></div></div>
+      <p class="sharia-note">هذا سهم شركة استحواذ ذات غرض خاص: سعره شبه مثبّت حول قيمة صندوق الاكتتاب حتى الإعلان عن صفقة اندماج، لذلك مؤشرات الاتجاه والزخم والاختراق عليه بلا دلالة، ولن يصدر النظام توصية شراء أو بيع له. القرار في هذا النوع يعتمد على أخبار صفقة الاندماج وشروطها، لا على الشارت.</p>
+    </article>`;
+  }
   function shariaCompliancePanel(a) {
     const meta = assetShariaStatusMeta(a.shariahStatus || a.shariaStatus);
-    const reason = a.shariahReason || a.shariaReason || a.shariahDescription || "";
+    const reason = a.shariahReasonAr || a.shariah_reason_ar || a.shariahReason || a.shariaReason || a.shariahDescription || "";
     const source = a.shariahSource || a.shariaSource || (meta.cls === "muted" ? "" : "الفحص الداخلي الآلي");
     const reviewed = latinDateTime(a.shariahLastReviewedAt || a.shariaCheckedAt) || "--";
     return `<article class="panel sharia-panel ${meta.cls}">

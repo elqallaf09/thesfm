@@ -408,10 +408,40 @@ export function pickPreferredShariahClassification(
   return current;
 }
 
+const SHARIAH_REASON_AR: Record<string, string> = {
+  'Classified as Shariah-compliant by a manual review or trusted provider.': 'مصنّف كمطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق.',
+  'Classified as not Shariah-compliant by a manual review, trusted provider, or available screening data.': 'مصنّف كغير مطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق أو بيانات فحص متاحة.',
+  'ETF/fund requires holdings-level screening before compliance can be determined.': 'الصندوق يتطلب فحصاً على مستوى مكوّناته قبل تحديد التوافق.',
+  'Available data is incomplete and requires Shariah review.': 'البيانات المتاحة غير مكتملة وتحتاج مراجعة شرعية.',
+  'No verified Shariah screening data is available.': 'لا توجد بيانات فحص شرعي موثقة.',
+  'No business activity or financial screening data is available.': 'لا تتوفر بيانات عن النشاط التجاري أو النسب المالية للفحص.',
+  'Business activity appears to be in a prohibited or conventional financial sector based on available data.': 'النشاط التجاري يبدو ضمن قطاع محظور أو مالي تقليدي وفق البيانات المتاحة.',
+  'Business activity data is available, but financial ratios are missing or incomplete.': 'بيانات النشاط التجاري متاحة، لكن النسب المالية ناقصة أو غير مكتملة.',
+  'Non-permissible revenue ratio exceeds the configured Shariah screening threshold.': 'نسبة الإيرادات غير المتوافقة تتجاوز حد الفحص الشرعي المعتمد.',
+  'Interest-bearing debt ratio exceeds the configured Shariah screening threshold.': 'نسبة الديون ذات الفائدة تتجاوز حد الفحص الشرعي المعتمد.',
+  'Cash and interest-bearing securities ratio exceeds the configured Shariah screening threshold.': 'نسبة النقد والأوراق المالية ذات الفائدة تتجاوز حد الفحص الشرعي المعتمد.',
+  'Interest income ratio exceeds the configured Shariah screening threshold.': 'نسبة الدخل من الفوائد تتجاوز حد الفحص الشرعي المعتمد.',
+  'Business activity and all configured financial ratios passed the internal screening thresholds.': 'اجتاز النشاط التجاري وجميع النسب المالية المعتمدة عتبات الفحص الداخلي.',
+  'ETF/fund holdings screening is incomplete or includes holdings needing review.': 'فحص مكوّنات الصندوق غير مكتمل أو يتضمن مكوّنات تحتاج مراجعة.',
+  'Weighted non-compliant holdings exceed the configured fund screening threshold.': 'المكوّنات غير المتوافقة (بأوزانها) تتجاوز حد فحص الصناديق المعتمد.',
+  'Holdings-level screening coverage passed the configured fund thresholds.': 'اجتاز فحص مكوّنات الصندوق العتبات المعتمدة.',
+  'Index constituent-level Shariah screening data is not available.': 'بيانات الفحص الشرعي لمكوّنات المؤشر غير متاحة.',
+  'Index constituent-level data is available and requires a dedicated weighted screening review.': 'بيانات مكوّنات المؤشر متاحة وتتطلب مراجعة فحص موزونة مخصصة.',
+  'Crypto assets require a specific configured Shariah rule or trusted source before classification.': 'الأصول الرقمية تتطلب قاعدة شرعية معتمدة أو مصدراً موثوقاً قبل التصنيف.',
+  'Forex asset pairs are not classified here because Shariah treatment depends on the trading method and contract structure.': 'أزواج العملات لا تُصنّف هنا لأن الحكم الشرعي يعتمد على طريقة التداول وهيكل العقد.',
+  'Commodity or metal compliance depends on the asset, contract, settlement, and trading method; no trusted classification is available.': 'توافق السلع والمعادن يعتمد على الأصل والعقد والتسوية وطريقة التداول؛ ولا يتوفر تصنيف موثوق.',
+};
+
+export function shariahReasonArabic(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  return SHARIAH_REASON_AR[reason] ?? null;
+}
+
 export function shariahClassificationFields(classification: ShariahClassification) {
   return {
     shariahStatus: classification.shariahStatus,
     shariahReason: classification.shariahReason,
+    shariahReasonAr: shariahReasonArabic(classification.shariahReason),
     shariahSource: classification.shariahSource,
     shariahLastReviewedAt: classification.shariahLastReviewedAt,
     shariahManualOverride: classification.shariahManualOverride,
