@@ -2388,13 +2388,16 @@
     const area = `${d} L ${W} ${H} L 0 ${H} Z`;
     const up = series[n - 1] >= series[0];
     const gid = `cg${Math.random().toString(36).slice(2, 8)}`;
-    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line class="cg-grid" x1="0" y1="${yy}" x2="${W}" y2="${yy}"></line>`; }).join("");
+    const stroke = up ? "#34e58b" : "#ff5c6c";
+    const glow = up ? "rgba(52,229,139,.55)" : "rgba(255,92,108,.55)";
+    // الألوان inline كـ attributes كي لا تعتمد على CSS داخل الإطار (iframe) وتتفادى التعبئة السوداء الافتراضية للتدرّج
+    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="rgba(122,153,186,.16)" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
     return `<div class="detail-chart-wrap ${up ? "up" : "down"}">
       <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="رسم حركة السعر">
-        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="cg-fill-top"></stop><stop offset="100%" class="cg-fill-bottom"></stop></linearGradient></defs>
-        <g class="cg-grid-g">${grid}</g>
-        <path class="cg-area" d="${area}" fill="url(#${gid})"></path>
-        <path class="cg-line ${up ? "up" : "down"}" d="${d}" vector-effect="non-scaling-stroke"></path>
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stroke}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="${stroke}" stop-opacity="0"></stop></linearGradient></defs>
+        <g>${grid}</g>
+        <path d="${area}" fill="url(#${gid})" stroke="none"></path>
+        <path d="${d}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px ${glow})"></path>
       </svg>
     </div>`;
   }
