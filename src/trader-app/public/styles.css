@@ -22903,3 +22903,43 @@ body[data-app-view] .app-shell,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ===== Cinematic symbol-detail: chart + about + shariah (added) ===== */
+.detail-chart-wrap{position:relative!important;width:100%!important;height:220px!important;margin-top:14px!important;border:1px solid var(--sfm-line)!important;border-radius:16px!important;overflow:hidden!important;background:radial-gradient(120% 140% at 50% -20%,rgba(35,140,255,.10),transparent 60%),linear-gradient(180deg,rgba(9,20,30,.6),rgba(4,10,16,.85))!important}
+.detail-chart-wrap::before{content:""!important;position:absolute!important;inset:0!important;background:repeating-linear-gradient(90deg,rgba(122,153,186,.05) 0 1px,transparent 1px 46px)!important;pointer-events:none!important}
+.detail-chart{position:relative!important;display:block!important;width:100%!important;height:100%!important}
+.detail-chart .cg-grid{stroke:rgba(122,153,186,.14)!important;stroke-width:.4!important;stroke-dasharray:1.4 2.4!important}
+.detail-chart .cg-line{fill:none!important;stroke-width:2.4px!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+.detail-chart-wrap.up .cg-line{stroke:var(--sfm-green)!important;filter:drop-shadow(0 0 6px rgba(52,229,139,.6))!important}
+.detail-chart-wrap.down .cg-line{stroke:var(--sfm-red)!important;filter:drop-shadow(0 0 6px rgba(255,92,108,.6))!important}
+.detail-chart-wrap.up .cg-fill-top{stop-color:var(--sfm-green)!important;stop-opacity:.34!important}
+.detail-chart-wrap.down .cg-fill-top{stop-color:var(--sfm-red)!important;stop-opacity:.30!important}
+.cg-fill-bottom{stop-color:rgba(4,10,16,0)!important;stop-opacity:0!important}
+.chart-empty{margin-top:14px!important;padding:22px!important;border:1px dashed var(--sfm-line)!important;border-radius:16px!important;color:var(--sfm-muted)!important;font-size:13px!important;font-weight:800!important;text-align:center!important;background:rgba(8,20,30,.5)!important}
+
+.about-panel .about-desc{margin:8px 0 0!important;color:var(--sfm-text)!important;font-size:14px!important;line-height:1.95!important;font-weight:650!important}
+.about-panel .about-facts{margin:14px 0 0!important;display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:10px!important}
+.about-panel .fact-row{border:1px solid var(--sfm-line)!important;border-radius:12px!important;padding:9px 11px!important;background:rgba(8,20,30,.6)!important;display:grid!important;gap:3px!important}
+.about-panel .fact-row dt{color:var(--sfm-muted)!important;font-size:11px!important;font-weight:800!important}
+.about-panel .fact-row dd{margin:0!important;color:var(--sfm-text)!important;font-size:13px!important;font-weight:900!important}
+.about-panel .about-web{display:inline-flex!important;margin-top:12px!important;color:var(--sfm-blue)!important;font-size:12px!important;font-weight:800!important;text-decoration:none!important;word-break:break-all!important}
+
+.sharia-panel{position:relative!important;overflow:hidden!important}
+.sharia-panel::before{content:""!important;position:absolute!important;top:0!important;bottom:0!important;inset-inline-start:0!important;width:3px!important}
+.sharia-panel.ok::before{background:var(--sfm-green)!important}
+.sharia-panel.bad::before{background:var(--sfm-red)!important}
+.sharia-panel.warn::before{background:var(--sfm-gold)!important}
+.sharia-panel.muted::before{background:var(--sfm-line-strong)!important}
+.sharia-badge{display:flex!important;align-items:center!important;gap:12px!important;margin:6px 0 0!important;padding:12px!important;border-radius:14px!important;border:1px solid var(--sfm-line)!important;background:rgba(8,20,30,.6)!important}
+.sharia-badge .sharia-mark{width:38px!important;height:38px!important;flex:0 0 auto!important;display:grid!important;place-items:center!important;border-radius:11px!important;font-size:18px!important;font-weight:900!important;color:#03110b!important}
+.sharia-badge.ok .sharia-mark{background:var(--sfm-green)!important}
+.sharia-badge.bad .sharia-mark{background:var(--sfm-red)!important;color:#fff!important}
+.sharia-badge.warn .sharia-mark{background:var(--sfm-gold)!important}
+.sharia-badge.muted .sharia-mark{background:rgba(157,174,189,.5)!important;color:#04101a!important}
+.sharia-badge-copy strong{display:block!important;color:var(--sfm-text)!important;font-size:15px!important;font-weight:950!important}
+.sharia-badge-copy small{color:var(--sfm-muted)!important;font-size:11px!important;font-weight:800!important}
+.sharia-facts{margin:12px 0 0!important;display:grid!important;gap:7px!important}
+.sharia-facts .fact-row{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:10px!important;border-bottom:1px dashed var(--sfm-line)!important;padding-bottom:6px!important}
+.sharia-facts .fact-row dt{color:var(--sfm-muted)!important;font-size:12px!important;font-weight:800!important}
+.sharia-facts .fact-row dd{margin:0!important;color:var(--sfm-text)!important;font-size:12px!important;font-weight:800!important;text-align:start!important;max-width:62%!important}
+.sharia-note{margin:12px 0 0!important;color:var(--sfm-muted)!important;font-size:11px!important;line-height:1.8!important;font-weight:700!important}

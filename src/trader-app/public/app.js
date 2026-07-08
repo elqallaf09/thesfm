@@ -1676,9 +1676,11 @@
         <div class="detail-grid">${detailCard("رمز المزود المستخدم", providerSymbolUsed, "Provider symbol")}${detailCard("استخدم fallback؟", fallbackUsed, "Fallback")}${detailCard("آخر تحديث", lastUpdated === "--" ? "غير متاح" : lastUpdated, "Last updated")}${detailCard("جودة البيانات", quality, "Data quality")}</div>
         <div class="card-actions"><button class="action-btn" data-quick-add="${h(a.symbol)}">أضف للمتابعة</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">أنشئ تنبيه</button></div>
         ${miniChart(a)}
+        ${assetAboutPanel(a)}
       </article>
       <aside class="detail-side">
         ${finalRecommendationCard(a, detail, rec)}
+        ${shariaCompliancePanel(a)}
         <article class="panel consensus-panel"><span class="eyebrow">STRATEGY AGREEMENT</span><h2>اتفاق الاستراتيجيات</h2>${strategyConsensus(a, detail.tech, rec)}</article>
         <article class="panel"><span class="eyebrow">TECHNICAL</span><h2>التحليل الفني</h2>${technical({ ...a, ...(rec || {}) }, detail.tech, c, detail)}</article>
         <article class="panel"><span class="eyebrow">AI CONFIDENCE</span><h2>قراءة AI الخام</h2>${rec ? signalAnalysis(rec, c) : emptyState("لا توجد إشارة كافية", "لم يرجع المزود بيانات كافية لهذا الرمز.", "", "")}</article>
@@ -2367,7 +2369,94 @@
   function confBuckets(r) { const b = { high: 0, mid: 0, low: 0 }; r.forEach(x => { const c = num(x.confidence, x.score, x.aiConfidence); if (c === null) return; if (c >= 70) b.high++; else if (c >= 45) b.mid++; else b.low++; }); return b; }
   function confBars(b) { const max = Math.max(1, b.high, b.mid, b.low); return `<div class="conf-bars"><div class="bias-row"><span>عالية</span><div class="mo-bar"><i style="width:${b.high / max * 100}%"></i></div><b>${b.high}</b></div><div class="bias-row"><span>متوسطة</span><div class="mo-bar"><i class="conf" style="width:${b.mid / max * 100}%"></i></div><b>${b.mid}</b></div><div class="bias-row"><span>منخفضة</span><div class="mo-bar"><i class="bear" style="width:${b.low / max * 100}%"></i></div><b>${b.low}</b></div></div>`; }
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: ["منخفضة", "ok"], medium: ["متوسطة", "warn"], high: ["مرتفعة", "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${L[k][0]}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
-  function miniChart(a) { const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null); if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني من المزود.</div>`; const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1; const pts = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(40 - (v - min) / rng * 38).toFixed(2)}`).join(" "); const up = series[series.length - 1] >= series[0]; return `<svg class="detail-chart" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="${pts}" class="${up ? "up" : "down"}"></polyline></svg>`; }
+  function miniChart(a) {
+    const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
+    if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني كافية من المزود بعد. حدّث الرمز أو اربط مزود بيانات تاريخية لعرض حركة السعر.</div>`;
+    const W = 100, H = 40, top = 3, bottom = 37, n = series.length;
+    const min = Math.min(...series), max = Math.max(...series), rng = (max - min) || 1;
+    const X = i => (i / (n - 1)) * W;
+    const Y = v => bottom - ((v - min) / rng) * (bottom - top);
+    const pts = series.map((v, i) => [X(i), Y(v)]);
+    // مسار انسيابي (Catmull-Rom → Bézier) بدل الخط المكسّر
+    let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+    }
+    const area = `${d} L ${W} ${H} L 0 ${H} Z`;
+    const up = series[n - 1] >= series[0];
+    const gid = `cg${Math.random().toString(36).slice(2, 8)}`;
+    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line class="cg-grid" x1="0" y1="${yy}" x2="${W}" y2="${yy}"></line>`; }).join("");
+    return `<div class="detail-chart-wrap ${up ? "up" : "down"}">
+      <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="رسم حركة السعر">
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" class="cg-fill-top"></stop><stop offset="100%" class="cg-fill-bottom"></stop></linearGradient></defs>
+        <g class="cg-grid-g">${grid}</g>
+        <path class="cg-area" d="${area}" fill="url(#${gid})"></path>
+        <path class="cg-line ${up ? "up" : "down"}" d="${d}" vector-effect="non-scaling-stroke"></path>
+      </svg>
+    </div>`;
+  }
+  function assetShariaStatusMeta(value) {
+    const v = String(value || "").toLowerCase();
+    if (v === "compliant") return { cls: "ok", ar: "مطابق للشريعة", en: "Shariah-compliant", icon: "✓" };
+    if (v === "non_compliant" || v === "not_compliant") return { cls: "bad", ar: "غير مطابق للشريعة", en: "Non-compliant", icon: "✕" };
+    if (v === "needs_review" || v === "possible" || v === "partial") return { cls: "warn", ar: "يحتاج مراجعة", en: "Needs review", icon: "!" };
+    return { cls: "muted", ar: "غير مصنّف", en: "Unclassified", icon: "?" };
+  }
+  function factRow(label, value) {
+    if (value === null || value === undefined || value === "" || value === "--") return "";
+    return `<div class="fact-row"><dt>${h(label)}</dt><dd>${h(value)}</dd></div>`;
+  }
+  function safeExternalUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+    return /^https?:\/\/[^\s"'<>]+$/i.test(url) ? url : "";
+  }
+  function assetAboutPanel(a) {
+    const desc = a.description || a.objective || a.summary || a.longBusinessSummary || "";
+    const sector = a.sector || a.sectorName || "";
+    const industry = a.industry || a.industryName || "";
+    const country = a.country || a.region || "";
+    const cap = a.marketCap ?? a.marketCapitalization;
+    const employees = a.employees ?? a.fullTimeEmployees;
+    const url = safeExternalUrl(a.website || a.weburl);
+    const facts = [
+      factRow("القطاع", sector),
+      factRow("الصناعة", industry),
+      factRow("الدولة", country),
+      cap != null && num(cap) !== null ? `<div class="fact-row"><dt>القيمة السوقية</dt><dd class="ltr">${h(bigNumber(cap))}</dd></div>` : "",
+      employees != null && num(employees) !== null ? `<div class="fact-row"><dt>عدد الموظفين</dt><dd class="ltr">${h(bigNumber(employees))}</dd></div>` : "",
+    ].filter(Boolean).join("");
+    if (!desc && !facts && !url) {
+      return `<article class="panel about-panel"><span class="eyebrow">ABOUT</span><h2>عن الأصل ونشاطه</h2>${emptyState("لا تتوفر بيانات تعريفية كافية", "لم يُرجِع المزود ملفاً تعريفياً لهذا الرمز. اربط مزود بيانات أساسية (Finnhub/FMP) لعرض النشاط والوصف والقيمة السوقية.", "الإعدادات", `${ROOT}/settings`)}</article>`;
+    }
+    return `<article class="panel about-panel">
+      <span class="eyebrow">ABOUT</span><h2>عن الأصل ونشاطه</h2>
+      ${desc ? `<p class="about-desc">${h(desc)}</p>` : ""}
+      ${facts ? `<dl class="about-facts">${facts}</dl>` : ""}
+      ${url ? `<a class="about-web ltr" href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(a.website || a.weburl)}</a>` : ""}
+    </article>`;
+  }
+  function shariaCompliancePanel(a) {
+    const meta = assetShariaStatusMeta(a.shariahStatus || a.shariaStatus);
+    const reason = a.shariahReason || a.shariaReason || a.shariahDescription || "";
+    const source = a.shariahSource || a.shariaSource || (meta.cls === "muted" ? "" : "الفحص الداخلي الآلي");
+    const reviewed = latinDateTime(a.shariahLastReviewedAt || a.shariaCheckedAt) || "--";
+    return `<article class="panel sharia-panel ${meta.cls}">
+      <span class="eyebrow">SHARIAH COMPLIANCE</span><h2>التوافق مع الشريعة</h2>
+      <div class="sharia-badge ${meta.cls}"><span class="sharia-mark">${meta.icon}</span><div class="sharia-badge-copy"><strong>${h(meta.ar)}</strong><small class="ltr">${h(meta.en)}</small></div></div>
+      <dl class="sharia-facts">
+        ${factRow("السبب", reason)}
+        ${factRow("المصدر", source)}
+        ${factRow("آخر مراجعة", reviewed)}
+        ${factRow("المعيار", "فحص النشاط + النسب المالية")}
+      </dl>
+      <p class="sharia-note">تصنيف مبدئي آلي وفق فحص النشاط التجاري والنسب المالية (الديون بفائدة ≤ 33٪، الدخل من الفوائد ≤ 5٪). هذه ليست فتوى؛ للاعتماد النهائي راجع خدمة فحص شرعي معتمدة أو أهل الاختصاص.</p>
+    </article>`;
+  }
   function firstNum(...values) {
     for (const value of values) {
       const n = Array.isArray(value) ? num(...value) : num(value);
