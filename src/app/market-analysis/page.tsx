@@ -1488,7 +1488,7 @@ export default function MarketAnalysisPage() {
       status: selectedProviderStatus,
       fallback: Boolean((selected as { fallback?: boolean }).fallback),
     });
-  }, [selectedProviderStatus, selected]);
+  }, [selectedProviderStatus, selected, marketUnavailableBadge]);
   const serviceStatusValue = serviceState === 'connected'
     ? t('market_connected_short')
     : serviceState === 'checking'
