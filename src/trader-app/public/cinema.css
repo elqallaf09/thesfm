@@ -8066,3 +8066,418 @@ html[data-theme="light"] .terminal-app::after {
   mix-blend-mode: normal !important;
   animation: none !important;
 }
+
+/* Market dashboard mobile/light UX repair: final cascade guard. */
+html[data-theme="light"] {
+  --terminal-light-background: #F4F8FB;
+  --terminal-light-background-soft: #EEF6FA;
+  --terminal-light-surface: #FFFFFF;
+  --terminal-light-card: #F8FBFD;
+  --terminal-light-card-elevated: #FFFFFF;
+  --terminal-light-border: #D8E4EE;
+  --terminal-light-border-strong: #BFD0DD;
+  --terminal-light-text-primary: #0B1F33;
+  --terminal-light-text-secondary: #52677A;
+  --terminal-light-text-muted: #7B8EA1;
+  --terminal-light-accent: #0F9F92;
+  --terminal-light-accent-strong: #0B8177;
+  --terminal-light-button-bg: #0F9F92;
+  --terminal-light-button-text: #FFFFFF;
+  --terminal-light-disabled-bg: #EDF2F6;
+  --terminal-light-disabled-text: #8A9BAA;
+  --terminal-light-success: #12805C;
+  --terminal-light-warning: #B7791F;
+  --terminal-light-error: #B42318;
+  --terminal-page-bg: #F4F8FB;
+  --terminal-card-shadow: 0 8px 24px rgba(11, 31, 51, 0.06);
+  --bg: #F4F8FB;
+  --panel: #FFFFFF;
+  --panel-soft: #F8FBFD;
+  --line: #D8E4EE;
+  --text: #0B1F33;
+  --muted: #52677A;
+  --muted-2: #7B8EA1;
+  --green: #12805C;
+  --red: #B42318;
+  --gold: #B7791F;
+  --teal: #0F9F92;
+}
+
+html,
+body,
+.terminal-app {
+  font-family: "IBM Plex Sans Arabic", "Tajawal", "Noto Sans Arabic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top right, rgba(15, 159, 146, 0.08), transparent 35%),
+    radial-gradient(circle at top left, rgba(41, 121, 255, 0.06), transparent 32%),
+    linear-gradient(180deg, #F4F8FB 0%, #EEF6FA 100%) !important;
+  color: #0B1F33 !important;
+}
+
+html[data-theme="light"] :is(.panel, .terminal-topbar, .ticker-strip, .page-hero, .command-hero, .market-leadership .leadership-card, .opportunity-cell, .rec-card, .asset-card, .market-tile, .status-card, .detail-card) {
+  border-color: #D8E4EE !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(11, 31, 51, 0.06) !important;
+  color: #0B1F33 !important;
+}
+
+html[data-theme="light"] :is(p, small, label, .card-kicker, .eyebrow, .muted-note, .asset-title small, .ticker-chip small) {
+  color: #52677A !important;
+}
+
+html[data-theme="light"] :is(.action-btn, button.action-btn, a.action-btn) {
+  min-height: 44px !important;
+  border-color: #0F9F92 !important;
+  background: #0F9F92 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="light"] :is(.action-btn:hover, .action-btn:focus-visible) {
+  border-color: #0B8177 !important;
+  background: #0B8177 !important;
+}
+
+html[data-theme="light"] :is(.ghost-btn, .danger-btn, .topbar-chip, .chip, .market-timeframe-button) {
+  min-height: 44px !important;
+  border-color: #D8E4EE !important;
+  background: #FFFFFF !important;
+  color: #0B1F33 !important;
+}
+
+html[data-theme="light"] :is(button:disabled, button[disabled], .action-btn[aria-disabled="true"], .ghost-btn[aria-disabled="true"]) {
+  border-color: #EDF2F6 !important;
+  background: #EDF2F6 !important;
+  color: #8A9BAA !important;
+  cursor: not-allowed !important;
+}
+
+:is([dir="rtl"], html[dir="rtl"]) :is(.eyebrow, .card-kicker, .state-badge, .status-tag, .risk-pill, .mobile-nav a, .ticker-chip small, .asset-title small, button, a) {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.asset-logo,
+.asset-head .asset-logo,
+.ticker-chip .asset-logo,
+.opportunity-cell .asset-logo,
+.heat-cell .asset-logo {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  border: 1px solid #D8E4EE !important;
+  border-radius: 14px !important;
+  background: #FFFFFF !important;
+  color: #0B1F33 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.asset-logo.sm,
+.opportunity-cell .asset-logo.sm,
+.heat-cell .asset-logo.sm {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  border-radius: 13px !important;
+}
+
+.asset-logo .logo-img,
+.ticker-chip .asset-logo .logo-img {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 7px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.market-card-empty {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #D8E4EE;
+  border-radius: 12px;
+  background: #F8FBFD;
+  color: #0B1F33;
+  text-align: start;
+}
+
+.market-card-empty strong {
+  color: #0B1F33;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.market-card-empty span {
+  color: #52677A;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.market-card-empty.compact {
+  padding: 10px;
+  gap: 4px;
+}
+
+.market-card-empty.compact strong {
+  font-size: 0.78rem;
+}
+
+.market-card-empty.compact span {
+  font-size: 0.72rem;
+}
+
+.leadership-card.is-empty,
+.opportunity-cell.is-empty,
+.rec-card.is-empty,
+.asset-card.is-empty {
+  background: #FFFFFF !important;
+}
+
+.leadership-card.is-empty .leadership-foot,
+.rec-card.is-empty .rec-foot {
+  border-top: 1px solid #D8E4EE;
+  padding-top: 10px;
+}
+
+.leadership-sparkline.empty,
+.chart-empty {
+  display: none !important;
+}
+
+html[data-theme="dark"] :is(.leadership-card.is-empty, .opportunity-cell.is-empty, .rec-card.is-empty, .asset-card.is-empty) {
+  border-color: rgba(123, 218, 255, 0.18) !important;
+  background: rgba(7, 18, 30, 0.88) !important;
+  color: #F3F7FB !important;
+}
+
+html[data-theme="dark"] .market-card-empty {
+  border-color: rgba(123, 218, 255, 0.18);
+  background: rgba(7, 18, 30, 0.70);
+  color: #F3F7FB;
+}
+
+html[data-theme="dark"] .market-card-empty strong {
+  color: #F3F7FB;
+}
+
+html[data-theme="dark"] .market-card-empty span {
+  color: #9FB2C7;
+}
+
+html[data-theme="light"] :is(.state-badge.ok, .status-tag.ok) {
+  border-color: rgba(18, 128, 92, 0.24) !important;
+  background: rgba(18, 128, 92, 0.10) !important;
+  color: #12805C !important;
+}
+
+html[data-theme="light"] :is(.state-badge.warn, .status-tag.warn) {
+  border-color: rgba(183, 121, 31, 0.26) !important;
+  background: rgba(183, 121, 31, 0.12) !important;
+  color: #B7791F !important;
+}
+
+html[data-theme="light"] :is(.state-badge.bad, .status-tag.bad) {
+  border-color: rgba(180, 35, 24, 0.22) !important;
+  background: rgba(180, 35, 24, 0.10) !important;
+  color: #B42318 !important;
+}
+
+html[data-theme="light"] :is(.state-badge.muted, .status-tag.muted, .signal-badge.unavailable) {
+  border-color: #D8E4EE !important;
+  background: #EDF2F6 !important;
+  color: #52677A !important;
+}
+
+@media (max-width: 900px) {
+  html,
+  body,
+  .terminal-app,
+  .terminal-stage,
+  .terminal-content,
+  .page-stack {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .terminal-app,
+  .terminal-stage,
+  .terminal-content {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .terminal-content,
+  .page-stack {
+    padding-inline: max(14px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  .ticker-strip {
+    overflow: hidden !important;
+  }
+
+  #ticker-row,
+  .ticker-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  .ticker-chip {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 64px !important;
+    padding: 10px !important;
+    gap: 8px !important;
+    border-color: #D8E4EE !important;
+    background: #FFFFFF !important;
+  }
+
+  .ticker-chip > span:not(.asset-logo) {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .ticker-chip strong,
+  .ticker-chip small,
+  .ticker-chip small i {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminal-command-center,
+  .dashboard-lower-grid,
+  .leadership-grid,
+  .rec-grid,
+  .watchlist-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .opportunity-heat-grid,
+  .heatmap {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .world-map,
+  .map-stage,
+  .map-plane {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .world-map .map-label {
+    display: none !important;
+  }
+
+  .map-grid-3d {
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+  }
+
+  .leadership-card,
+  .rec-card,
+  .asset-card,
+  .opportunity-cell {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .leadership-price,
+  .asset-metrics,
+  .rec-metrics {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .card-actions,
+  .compact-actions,
+  .row-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .card-actions > *,
+  .compact-actions > *,
+  .row-actions > * {
+    width: 100% !important;
+    min-height: 44px !important;
+  }
+
+  .ai-analysis-bull {
+    max-width: 118px !important;
+    min-height: 86px !important;
+    opacity: 0.86 !important;
+  }
+
+  .mobile-nav {
+    position: fixed !important;
+    inset-inline: max(10px, env(safe-area-inset-left, 0px)) max(10px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 1200 !important;
+    min-height: 66px !important;
+    padding: 8px !important;
+    border: 1px solid #D8E4EE !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 12px 30px rgba(11, 31, 51, 0.12) !important;
+  }
+
+  .mobile-nav a {
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 6px 4px !important;
+    border-radius: 13px !important;
+    color: #52677A !important;
+    background: transparent !important;
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
+  }
+
+  html[data-theme="light"] .mobile-nav a.is-active,
+  html[data-theme="light"] .mobile-nav a[aria-current="page"] {
+    border-color: #0F9F92 !important;
+    background: #0F9F92 !important;
+    color: #FFFFFF !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .terminal-content,
+  .page-stack {
+    padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  #ticker-row,
+  .ticker-row,
+  .opportunity-heat-grid,
+  .heatmap {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .asset-logo,
+  .asset-head .asset-logo,
+  .ticker-chip .asset-logo {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+}

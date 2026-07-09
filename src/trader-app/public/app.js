@@ -2831,6 +2831,44 @@
     const fallback = textPair(PRICE_UNAVAILABLE_AR, PRICE_UNAVAILABLE_EN);
     return reason ? `${fallback} · ${translateUiText(formatProviderError(reason, { empty: fallback }))}` : fallback;
   }
+  function noMarketDataTitle() {
+    return textPair("\u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u063a\u064a\u0631 \u0645\u062a\u0627\u062d\u0629 \u062d\u0627\u0644\u064a\u0627\u064b", "Data is currently unavailable");
+  }
+  function noMarketDataBody() {
+    return textPair("\u0623\u0639\u062f \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0644\u0627\u062d\u0642\u0627\u064b \u0623\u0648 \u0627\u062e\u062a\u0631 \u0633\u0648\u0642\u0627\u064b \u0622\u062e\u0631", "Try again later or choose another market");
+  }
+  function marketDataEmptyHtml(extraClass = "") {
+    return `<div class="market-card-empty ${h(extraClass)}"><strong>${h(noMarketDataTitle())}</strong><span>${h(noMarketDataBody())}</span></div>`;
+  }
+  function assetDataState(asset, recommendation) {
+    const a = normalizeQuote(norm(asset));
+    const rec = recommendation || sharedRecommendation(a);
+    const qualitySource = a.dataQuality || a.data_quality || (a.providerStatus && a.providerStatus.dataQuality);
+    const quality = qualitySource ? normalizedDataQuality(qualitySource) : "";
+    const providerStatus = String((a.providerStatus && (a.providerStatus.status || a.providerStatus.code)) || a.provider_status || "").toLowerCase();
+    const unavailable = a.available === false
+      || !isValidPrice(a.price)
+      || a.priceUnavailable === true
+      || a.dataUnavailable === true
+      || quality === "unavailable"
+      || providerStatus === "unavailable"
+      || providerStatus === "missing";
+    if (unavailable) return { key: "unavailable", tone: "muted", label: textPair("\u063a\u064a\u0631 \u0645\u062a\u0627\u062d", "Unavailable"), quality: quality || "unavailable" };
+    if ((rec && rec.status === "insufficient_data")
+      || a.technicalAvailable === false
+      || a.technical_available === false
+      || ["partial", "delayed", "late", "cached"].includes(quality)) {
+      return { key: "insufficient", tone: "warn", label: textPair("\u0628\u064a\u0627\u0646\u0627\u062a \u063a\u064a\u0631 \u0643\u0627\u0641\u064a\u0629", "Insufficient data"), quality: quality || "partial" };
+    }
+    return { key: "available", tone: "ok", label: textPair("\u0645\u062a\u0627\u062d", "Available"), quality: quality || "live" };
+  }
+  function hasValidDirectionalSignal(item) {
+    const a = normalizeQuote(norm(item));
+    const rec = sharedRecommendation(a);
+    const status = Recommendation.parseRecommendationStatus(rec && rec.status);
+    const dataState = assetDataState(a, rec);
+    return dataState.key === "available" && (isBuySignalName(status) || isSellSignalName(status));
+  }
   function hasTradeableQuote(asset, recommendation) {
     const a = normalizeQuote(norm(asset));
     const rec = recommendation || sharedRecommendation(a);
@@ -2939,6 +2977,22 @@
     const bull = Math.round((buy / actionable) * 100), bear = 100 - bull, neutral = Math.round(((total - actionable) / total) * 100);
     return { label: bull >= 55 ? textPair("صاعد", "Bullish") : bull <= 40 ? textPair("هابط", "Bearish") : textPair("محايد", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} شراء · ${latinNumber(sell)} بيع من أصل ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`) };
   }
+  function marketBias(rec) {
+    const valid = rec.filter(hasValidDirectionalSignal);
+    const buy = valid.filter(x => isBuySignalName(signal(x))).length;
+    const sell = valid.filter(x => isSellSignalName(signal(x))).length;
+    const total = valid.length;
+    if (!rec.length) return { label: textPair("\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a", "Awaiting data"), en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: "" };
+    if (!total) return { label: textPair("\u0644\u0627 \u062a\u0648\u062c\u062f \u0625\u0634\u0627\u0631\u0627\u062a \u0643\u0627\u0641\u064a\u0629 \u062d\u0627\u0644\u064a\u0627\u064b", "No sufficient signals right now"), en: "NO SUFFICIENT SIGNALS", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "neutral", note: noMarketDataBody() };
+    const cf = valid.map(x => num(x.confidence, x.score, x.aiConfidence)).filter(v => v !== null);
+    const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
+    const actionable = buy + sell;
+    if (!actionable) return { label: textPair("\u0644\u0627 \u062a\u0648\u062c\u062f \u0625\u0634\u0627\u0631\u0627\u062a \u0643\u0627\u0641\u064a\u0629 \u062d\u0627\u0644\u064a\u0627\u064b", "No sufficient signals right now"), en: "NO SUFFICIENT SIGNALS", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "neutral", note: noMarketDataBody() };
+    const bull = Math.round((buy / actionable) * 100);
+    const bear = 100 - bull;
+    const neutral = Math.round(((total - actionable) / total) * 100);
+    return { label: bull >= 55 ? textPair("\u0635\u0627\u0639\u062f", "Bullish") : bull <= 40 ? textPair("\u0647\u0627\u0628\u0637", "Bearish") : textPair("\u0645\u062d\u0627\u064a\u062f", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} \u0634\u0631\u0627\u0621 · ${latinNumber(sell)} \u0628\u064a\u0639 \u0645\u0646 \u0623\u0635\u0644 ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`) };
+  }
   function marketOverview(rec) {
     const b = marketBias(rec);
     const verdict = b.en === "AWAITING" ? "--" : isEnglishLanguage() ? b.en.replace("NEUTRAL — PRECISION GATE", "NEUTRAL") : b.label;
@@ -2965,7 +3019,8 @@
   }
   function commandCenter(rec) {
     const p = providerCopy(), b = marketBias(rec), market = currentMarket();
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length;
+    const validSignals = rec.filter(hasValidDirectionalSignal);
+    const buy = validSignals.filter(x => isBuySignalName(signal(x))).length, sell = validSignals.filter(x => isSellSignalName(signal(x))).length;
     const configured = p.className === "online";
     return `<section class="terminal-command-center" aria-label="${h(textPair("ملخص السوق", "Market summary"))}">
       ${commandMetric("PROVIDER", configured ? terminalText("connected") : textPair("غير مهيأ", "Not configured"), p.label || p.title, configured ? "ok" : "warn")}
@@ -3035,6 +3090,55 @@
     return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
       ${logo({ ...a, symbol }, "sm")}
       <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
+      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
+      <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
+    </button>`;
+  }
+  function leadershipCard(symbol, asset) {
+    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
+    const display = a.displaySymbol || displaySymbolFor(symbol);
+    const detailSymbol = a.canonicalSymbol || symbol;
+    const c = currency({ ...a, symbol: detailSymbol });
+    const p = a.price;
+    const chg = a.changePercent;
+    const recommendation = sharedRecommendation(a);
+    const conf = recommendation.confidence;
+    const sig = recommendation.status;
+    const dataState = assetDataState(a, recommendation);
+    if (dataState.key === "unavailable") {
+      return `<button class="leadership-card unavailable is-empty" data-symbol-details="${h(detailSymbol)}" type="button">
+        <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div><span class="state-badge muted">${h(dataState.label)}</span></div>
+        ${marketDataEmptyHtml()}
+        <div class="leadership-foot"><span class="signal-badge unavailable">${h(dataState.label)}</span><span class="quality-badge ${dataState.tone}">${h(dataQualityLabel(dataState.quality))}</span></div>
+      </button>`;
+    }
+    const quality = a.dataQuality || (a.chartAvailable === false ? "partial" : "live");
+    const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
+    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
+      <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
+      <div class="leadership-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
+      ${sparkline(a, chg)}
+      <div class="leadership-foot"><span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span><span class="quality-badge">${h(conf === null ? dataState.label : `${terminalText("confidence")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>${precisionBadge(a)}</div>
+    </button>`;
+  }
+  function heatmapCard(symbol, asset) {
+    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
+    const chg = a.changePercent;
+    const recommendation = sharedRecommendation(a);
+    const dataState = assetDataState(a, recommendation);
+    const display = symbol === "BTCUSD" ? "BTC/USD" : symbol;
+    if (dataState.key === "unavailable") {
+      return `<button class="opportunity-cell unavailable is-empty" data-symbol-details="${h(symbol)}" type="button">
+        ${logo({ ...a, symbol }, "sm")}
+        <strong class="ltr">${h(display)}</strong>
+        ${marketDataEmptyHtml("compact")}
+      </button>`;
+    }
+    const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
+    const conf = recommendation.confidence;
+    return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
+      ${logo({ ...a, symbol }, "sm")}
+      <strong class="ltr">${h(display)}</strong>
       <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
       <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
     </button>`;
@@ -3191,6 +3295,27 @@
       <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag">${h(recommendationStatusText(recommendation, a))}</span></div>
       <div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>
       ${!isValidPrice(p) || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : ""}
+      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
+  }
+  function recCard(x) {
+    const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
+    const p = a.price, tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
+    const dataState = assetDataState(a, recommendation);
+    const metricBlock = dataState.key === "unavailable" ? "" : `<div class="rec-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("confidence"))}<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>`;
+    return `<article class="rec-card ${sig} ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${dataState.tone || recommendationTone(recommendation)}">${h(dataState.label)}</span></div>
+      ${metricBlock}
+      ${dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : ""}
+      <div class="rec-foot"><span class="status-tag ${dataState.tone || recommendationTone(recommendation) || recStatusTone(a)}">${h(dataState.label)}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button></div></div></article>`;
+  }
+  function assetCard(asset, opts = {}) {
+    const a = normalizeQuote(norm(asset)), c = currency(a), recommendation = sharedRecommendation(a), conf = recommendation.confidence, p = a.price;
+    const chg = a.changePercent;
+    const dataState = assetDataState(a, recommendation);
+    const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">${h(textPair("\u0625\u0632\u0627\u0644\u0629", "Remove"))}</button>` : "";
+    const metricBlock = dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : `<div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("Ø§Ù„ØªØºÙŠÙŠØ±", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("Ø«Ù‚Ø© AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>`;
+    return `<article class="asset-card ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("Ø§Ø³Ù… Ø§Ù„Ø£ØµÙ„ ØºÙŠØ± Ù…ØªÙˆÙØ±", "Asset name unavailable"))}</small></div></div>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span></div>
+      ${metricBlock}
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
   }
   function marketCard(m) {
