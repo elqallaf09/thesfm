@@ -4,12 +4,12 @@ import { getTraderAccess } from '@/lib/server/traderAccess';
 
 const accessCopy = {
   not_approved: {
-    title: 'Private THE-SFM Trader',
+    title: 'Private SFM Smart Analyzer',
     body: 'This page is currently available to admins only. Later, approved subscribers can be granted access from the admin control panel.',
   },
   expired: {
-    title: 'Trader access expired',
-    body: 'Your trader subscription or approval has expired. Please contact the admin to renew access.',
+    title: 'Smart Analyzer access expired',
+    body: 'Your Smart Analyzer subscription or approval has expired. Please contact the admin to renew access.',
   },
   database_unavailable: {
     title: 'Access check unavailable',
@@ -33,7 +33,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
     return (
       <main className="trader-gate" dir="ltr">
         <section className="trader-gate-card">
-          <span className="trader-gate-eyebrow">PRIVATE TRADER ACCESS</span>
+          <span className="trader-gate-eyebrow">PRIVATE SMART ANALYZER ACCESS</span>
           <h1>{copy.title}</h1>
           <p>{copy.body}</p>
           <div className="trader-gate-actions">
@@ -51,7 +51,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
   return (
     <main className="trader-shell-page" dir="ltr">
       <iframe
-        title="THE-SFM Trader"
+        title="SFM Smart Analyzer"
         src={src}
         allow="microphone; clipboard-write"
         className="trader-shell-frame"

@@ -7,6 +7,9 @@ const APP_V2_SETTINGS_STORAGE_KEY = "sfmTraderSettings:v1";
 const GLOBAL_LANGUAGE_STORAGE_KEY = "sfm_lang";
 const LANGUAGE_CHANGE_EVENT = "sfm-language-change";
 const Recommendation = window.SFMRecommendation;
+const DETAIL_BRAND_AR = "اس اف ام المحلل الذكي";
+const DETAIL_BRAND_EN = "SFM Smart Analyzer";
+let detailTitleSymbol = symbol;
 
 function normalizeDigits(value) {
   return String(value ?? "")
@@ -107,7 +110,8 @@ function installLatinDigitNormalizer() {
 }
 
 const DETAIL_TEXT_TRANSLATIONS = {
-  "تفاصيل السهم - the-sfm trader": "Stock details - the-sfm trader",
+  [DETAIL_BRAND_AR]: DETAIL_BRAND_EN,
+  [`تفاصيل السهم - ${DETAIL_BRAND_AR}`]: `Stock details - ${DETAIL_BRAND_EN}`,
   "صفحة تحليل السهم": "Stock analysis page",
   "رجوع للأسواق": "Back to markets",
   "تحميل التحليل": "Loading analysis",
@@ -702,7 +706,8 @@ function renderDetail(data) {
   const finalScore = calculateFinalScore(item);
   const decision = item.decision || buildDecision(item, normalizedRecommendation);
 
-  document.title = `${item.symbol} - the-sfm trader`;
+  detailTitleSymbol = item.symbol;
+  updateDetailDocumentTitle();
   elements.symbol.textContent = item.symbol;
   elements.name.textContent = localizeInstrumentName(item.name);
   elements.market.textContent = `${localizeMarketLabel(profile, market)} · ${metadataDetailText(profile.exchangeName, profile.exchange, item.exchangeName, item.exchange, item.metadataDiagnostics?.finalExchange)}`;
@@ -1026,6 +1031,16 @@ function detailText(arabic, english) {
   return isDetailEnglishLanguage() ? english : arabic;
 }
 
+function detailBrandTitle() {
+  return detailText(DETAIL_BRAND_AR, DETAIL_BRAND_EN);
+}
+
+function updateDetailDocumentTitle(symbolValue = detailTitleSymbol) {
+  document.title = symbolValue
+    ? `${symbolValue} - ${detailBrandTitle()}`
+    : detailText(`تفاصيل السهم - ${DETAIL_BRAND_AR}`, `Stock details - ${DETAIL_BRAND_EN}`);
+}
+
 function unavailableText() {
   return detailText("غير متاح", "Unavailable");
 }
@@ -1190,6 +1205,7 @@ function applyDetailLanguage() {
   document.body?.classList.toggle("language-en", ltr);
   document.body?.classList.toggle("language-ar", !ltr);
   translateDetailInterface();
+  updateDetailDocumentTitle();
 }
 
 function translateDetailInterface(root = document.body) {

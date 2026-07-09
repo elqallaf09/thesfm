@@ -5889,6 +5889,16 @@ html[data-theme="light"] .trader-settings-page .provider-metric-card {
   font-weight: 700;
 }
 
+.brand-name {
+  min-width: 0;
+}
+
+.terminal-sidebar .brand-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* القائمة تاخذ كامل الارتفاع بعد إزالة البطاقات السفلية */
 .sidebar-nav {
   max-height: calc(100vh - 118px);

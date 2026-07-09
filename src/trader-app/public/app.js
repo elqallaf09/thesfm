@@ -1,4 +1,4 @@
-/* the-sfm trader — AI Trading Terminal (vanilla SPA controller)
+/* SFM Smart Analyzer — AI Trading Terminal (vanilla SPA controller)
    Architecture: single IIFE, client-side routing (instant page switches),
    pure render-component functions, defensive data layer, no synthetic market data. */
 (() => {
@@ -20,6 +20,8 @@
     "language.label": { ar: "اختيار اللغة", en: "Choose language" },
     "language.arabic": { ar: "العربية", en: "Arabic" },
     "language.english": { ar: "الإنجليزية", en: "English" },
+    "terminal.brandPrefix": { ar: "اس اف ام", en: "SFM" },
+    "terminal.brandTitle": { ar: "المحلل الذكي", en: "Smart Analyzer" },
     "terminal.kicker": { ar: "منصة التداول الذكية", en: "AI trading terminal" },
     "nav.trading": { ar: "التداول", en: "Trading" },
     "nav.monitoring": { ar: "المتابعة", en: "Monitoring" },
@@ -764,6 +766,14 @@
     return isEnglishLanguage() ? en : ar;
   }
 
+  function terminalBrandFullTitle() {
+    return `${terminalText("terminal.brandPrefix")} ${terminalText("terminal.brandTitle")}`.trim();
+  }
+
+  function updateTerminalDocumentTitle(routeId = state.route.id) {
+    document.title = `${terminalBrandFullTitle()} | ${routeTitle(routeId)}`;
+  }
+
   function normalizeTranslationKey(value) {
     return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
   }
@@ -901,6 +911,7 @@
     document.querySelectorAll(".mobile-nav [data-route]").forEach((node) => {
       node.textContent = routeNavText(node.dataset.route);
     });
+    setText(".brand-card .brand-name strong", terminalBrandFullTitle());
     setText(".topbar-title .eyebrow", terminalText("terminal.kicker"));
     setAttr(".terminal-sidebar", "aria-label", terminalText("nav.trading"));
     setAttr(".mobile-nav", "aria-label", terminalText("nav.trading"));
@@ -913,6 +924,7 @@
     setText(".topbar-actions [data-route='settings']", terminalText("nav.settings"));
     const tickerRow = document.getElementById("ticker-row");
     if (tickerRow) tickerRow.setAttribute("aria-label", terminalText("ticker.aria"));
+    updateTerminalDocumentTitle();
   }
 
   function routeNavText(route) {
@@ -1678,6 +1690,7 @@
     applyTerminalLanguage();
     const title = document.getElementById("page-title");
     if (title) title.textContent = routeTitle(state.route.id);
+    updateTerminalDocumentTitle();
     document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
     status(); ticker(); statusBar(); renderThemeSwitcher();
     const content = document.getElementById("terminal-content");
@@ -2614,7 +2627,7 @@
           <div class="settings-info-grid">
             <div class="status-card settings-info-card"><strong>${h(settingsT("languageDirectionTitle", lang))}</strong><p>${h(settingsT("languageDirectionBody", lang))}</p><span class="state-badge ok">${lang === "ar" ? "اتجاه مضبوط" : "Direction clean"}</span></div>
             <div class="status-card settings-info-card"><strong>${h(settingsT("noSyntheticTitle", lang))}</strong><p>${h(settingsT("noSyntheticBody", lang))}</p><span class="state-badge warn">${lang === "ar" ? "بيانات حقيقية فقط" : "Real data only"}</span></div>
-            <div class="status-card settings-info-card about-card"><strong>the-sfm trader</strong><p>${h(settingsT("aboutBody", lang))}</p><span class="state-badge">Powered by M.ALQ</span></div>
+            <div class="status-card settings-info-card about-card"><strong>${h(terminalBrandFullTitle())}</strong><p>${h(settingsT("aboutBody", lang))}</p><span class="state-badge">Powered by M.ALQ</span></div>
           </div>
         </article>
       </section>${disclaimer()}</div>`;

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'THE-SFM Trader',
+  title: 'SFM Smart Analyzer',
   robots: {
     index: false,
     follow: false,

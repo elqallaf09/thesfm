@@ -1,4 +1,4 @@
-/* the-sfm trader — shared recommendation normalizer.
+/* SFM Smart Analyzer — shared recommendation normalizer.
    All market cards, detail panels, and follow-trade actions must use this
    object instead of deriving Buy/Sell/Watch labels locally. */
 (function (global) {
