@@ -38,6 +38,19 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  function isValidPrice(value) {
+    const parsed = finiteNumber(value);
+    return parsed !== null && parsed > 0;
+  }
+
+  function firstValidPrice() {
+    for (let index = 0; index < arguments.length; index += 1) {
+      const value = finiteNumber(arguments[index]);
+      if (value !== null && value > 0) return value;
+    }
+    return null;
+  }
+
   function firstNumber() {
     for (let index = 0; index < arguments.length; index += 1) {
       const value = finiteNumber(arguments[index]);
@@ -136,17 +149,17 @@
   function currentPriceFrom(input, context) {
     const rec = input || {};
     const asset = (context && context.asset) || {};
-    return firstNumber(rec.currentPrice, rec.current_price, rec.price, rec.lastPrice, rec.regularMarketPrice, rec.close, asset.currentPrice, asset.current_price, asset.price, asset.lastPrice, asset.regularMarketPrice, asset.close);
+    return firstValidPrice(rec.currentPrice, rec.current_price, rec.price, rec.lastPrice, rec.regularMarketPrice, rec.close, asset.currentPrice, asset.current_price, asset.price, asset.lastPrice, asset.regularMarketPrice, asset.close);
   }
 
   function targetPriceFrom(input) {
     const rec = input || {};
-    return firstNumber(rec.targetPrice, rec.target_price, rec.target, rec.target1, rec.expectedPrice, rec.expected_price, Array.isArray(rec.takeProfit) ? rec.takeProfit[0] : null);
+    return firstValidPrice(rec.targetPrice, rec.target_price, rec.target, rec.target1, rec.expectedPrice, rec.expected_price, Array.isArray(rec.takeProfit) ? rec.takeProfit[0] : null);
   }
 
   function stopLossFrom(input) {
     const rec = input || {};
-    return firstNumber(rec.stopLoss, rec.stop_loss, rec.stop);
+    return firstValidPrice(rec.stopLoss, rec.stop_loss, rec.stop);
   }
 
   function riskRewardFrom(currentPrice, targetPrice, stopLoss, input) {
@@ -230,7 +243,7 @@
     const indicators = technicalIndicators(rec, context);
     const technicalUnavailable = rec.technicalAvailable === false || rec.technical_available === false || ((context && context.detail && context.detail.tech) || {}).available === false;
     const signalUnavailable = rec.signalAvailable === false || rec.signal_available === false;
-    const missingPrice = currentPrice === null || currentPrice <= 0;
+    const missingPrice = !isValidPrice(currentPrice);
     const missingIndicators = technicalUnavailable || !hasCoreIndicators(indicators);
     const missingLevels = indicators.support === null || indicators.resistance === null;
     const missingAtr = indicators.atr === null;
@@ -266,9 +279,10 @@
       : safetyReasons[0] || WATCH_REASONS.finalWatch;
     const reason = sourceReason(rec) || fallbackReason;
     const canFollowTrade = (status === STATUS.BUY || status === STATUS.SELL)
-      && currentPrice !== null
-      && targetPrice !== null
-      && stopLoss !== null
+      && isValidPrice(currentPrice)
+      && isValidPrice(targetPrice)
+      && isValidPrice(stopLoss)
+      && !missingIndicators
       && riskReward !== null
       && riskReward >= MIN_RISK_REWARD;
 

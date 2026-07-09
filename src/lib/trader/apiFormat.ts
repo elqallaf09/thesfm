@@ -1,4 +1,5 @@
 import type { ScannerFilters, StockAnalysisResult } from '@/lib/trader/types';
+import { isValidPrice } from '@/lib/market/quoteNormalization';
 import {
   buildReviewRequiredShariaClassification,
   getEffectiveShariaStatus,
@@ -31,7 +32,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
 }
 
 function expectedMovePct(result: StockAnalysisResult) {
-  if (!result.targetPrice || result.currentPrice === 0) return 0;
+  if (!isValidPrice(result.targetPrice) || !isValidPrice(result.currentPrice)) return null;
   return ((result.targetPrice - result.currentPrice) / result.currentPrice) * 100;
 }
 

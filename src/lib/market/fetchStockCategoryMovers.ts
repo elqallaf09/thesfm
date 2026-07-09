@@ -1,4 +1,5 @@
 import { getStockCategoryConfig, type StockCategoryId, type StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
+import { finiteQuoteNumber, isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
 
 export type StockCategoryMoverItem = {
   rank: number;
@@ -71,8 +72,7 @@ type YahooChartResponse = {
 };
 
 function finiteNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return finiteQuoteNumber(value);
 }
 
 function moverSymbolKey(row: Omit<StockCategoryMoverItem, 'rank'>) {
@@ -96,7 +96,7 @@ function configuredName(stocks: StockCategoryStock[], symbol: string) {
 function normalizeQuoteRow(stocks: StockCategoryStock[], row: YahooQuoteRow) {
   const symbol = String(row.symbol ?? '').toUpperCase();
   const price = finiteNumber(row.regularMarketPrice);
-  if (!symbol || price === null || price <= 0) return null;
+  if (!symbol || !isValidPrice(price)) return null;
   return {
     symbol,
     name: row.longName ?? row.shortName ?? configuredName(stocks, symbol),
@@ -109,7 +109,7 @@ function normalizeQuoteRow(stocks: StockCategoryStock[], row: YahooQuoteRow) {
 
 function normalizeChartRow(stocks: StockCategoryStock[], symbol: string, meta: NonNullable<NonNullable<YahooChartResponse['chart']>['result']>[number]['meta']) {
   const price = finiteNumber(meta?.regularMarketPrice);
-  if (price === null || price <= 0) return null;
+  if (!isValidPrice(price)) return null;
   const previousClose = finiteNumber(meta?.chartPreviousClose) ?? finiteNumber(meta?.previousClose);
   const changePercent = previousClose && previousClose > 0 ? ((price - previousClose) / previousClose) * 100 : null;
   return {
@@ -204,7 +204,7 @@ function rankedByChange(
   const candidates = rows.filter(row => {
     const key = moverSymbolKey(row);
     const changePercent = finiteNumber(row.changePercent);
-    if (!key || excludedSymbols.has(key) || changePercent === null) return false;
+    if (!key || excludedSymbols.has(key) || !isValidPrice(row.price) || !isValidChange(changePercent)) return false;
     return direction === 'desc' ? changePercent > 0 : changePercent < 0;
   });
   return ranked(

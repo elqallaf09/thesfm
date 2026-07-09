@@ -2,6 +2,7 @@ import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketHistoryPoint, type MarketSearchItem } from '@/lib/market/marketService';
+import { isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
@@ -163,6 +164,7 @@ function cacheSet(key: string, data: unknown, ttlMs: number) {
 }
 
 function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -296,22 +298,32 @@ function normalizeQuote(input: {
     market: String(input.market ?? input.context?.market ?? ''),
     assetType,
   });
-  const normalizeValue = (value: unknown) => normalizeMarketPrice({
-    price: numberOrNull(value),
-    currency: resolved.currency,
-    providerCurrency: input.currency,
-    symbol: input.symbol,
-    providerSymbol: input.providerSymbol,
-    exchange: String(input.exchange ?? input.context?.exchange ?? ''),
-    market: String(input.market ?? input.context?.market ?? ''),
-    assetType,
-    priceUnit,
-  }).price;
+  const normalizeValue = (value: unknown) => {
+    const parsed = numberOrNull(value);
+    if (parsed === null) return null;
+    return normalizeMarketPrice({
+      price: parsed,
+      currency: resolved.currency,
+      providerCurrency: input.currency,
+      symbol: input.symbol,
+      providerSymbol: input.providerSymbol,
+      exchange: String(input.exchange ?? input.context?.exchange ?? ''),
+      market: String(input.market ?? input.context?.market ?? ''),
+      assetType,
+      priceUnit,
+    }).price;
+  };
   const price = normalizeValue(rawPrice);
-  if (price === null || price <= 0) return null;
+  if (!isValidPrice(price)) return null;
   const previousClose = normalizeValue(input.previousClose);
-  const change = normalizeValue(input.change) ?? (previousClose !== null ? price - previousClose : null);
-  const changePercent = numberOrNull(input.changePercent) ?? (change !== null && previousClose && previousClose > 0 ? (change / previousClose) * 100 : null);
+  const validPreviousClose = isValidPrice(previousClose) ? previousClose : null;
+  const change = validPreviousClose !== null ? price - validPreviousClose : null;
+  const explicitChangePercent = numberOrNull(input.changePercent);
+  const changePercent = validPreviousClose !== null
+    ? ((price - validPreviousClose) / validPreviousClose) * 100
+    : isValidChange(explicitChangePercent)
+      ? explicitChangePercent
+      : null;
   return {
     symbol: upper(input.symbol),
     providerSymbol: input.providerSymbol,
@@ -323,7 +335,7 @@ function normalizeQuote(input: {
     open: round(normalizeValue(input.open)),
     high: round(normalizeValue(input.high)),
     low: round(normalizeValue(input.low)),
-    previousClose: round(previousClose),
+    previousClose: round(validPreviousClose),
     volume: numberOrNull(input.volume),
     market: textOrNull(input.market ?? input.context?.market),
     exchange: textOrNull(input.exchange ?? input.context?.exchange),

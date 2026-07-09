@@ -8,6 +8,8 @@
  * instead of hiding the whole strip.
  */
 
+import { finiteQuoteNumber, isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
+
 export const TICKER_FALLBACK_SOURCE = 'market_data';
 
 export type ResilientTickerPrice = {
@@ -25,9 +27,7 @@ export function isUsableMarketPrice(
 ): price is ResilientTickerPrice & { price: number } {
   return Boolean(
     price?.available &&
-      price.price !== null &&
-      Number.isFinite(price.price) &&
-      price.price > 0 &&
+      isValidPrice(price.price) &&
       price.source,
   );
 }
@@ -57,13 +57,15 @@ export function toResilientTickerItem(
 ): ResilientTickerItem {
   const { currency = 'USD', fallbackSource = TICKER_FALLBACK_SOURCE } = options;
   const available = isUsableMarketPrice(price);
+  const change = finiteQuoteNumber(price?.change);
+  const changePercent = isValidChange(price?.changePercent) ? Number(price?.changePercent) : null;
   return {
     symbol: stock.symbol,
     name: stock.name,
     price: available ? price.price : null,
     currency,
-    change: available ? price.change : null,
-    changePercent: available ? price.changePercent : null,
+    change: available ? change : null,
+    changePercent: available ? changePercent : null,
     source: price?.source ?? fallbackSource,
     delayed: price?.delayed ?? true,
     available,

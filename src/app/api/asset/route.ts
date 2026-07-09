@@ -6,6 +6,7 @@ import {
   runTraderDetailAnalysis,
   type TraderDetailCandidate,
 } from '@/lib/trader/detailAnalysisService';
+import { isValidPrice } from '@/lib/market/quoteNormalization';
 import type { MarketAgentUnavailableResponse, MarketAgentSuccessResponse } from '@/lib/market/marketAgent';
 
 export const dynamic = 'force-dynamic';
@@ -47,12 +48,12 @@ function marketLabelEn(candidate: TraderDetailCandidate | null) {
 }
 
 function riskRewardRatio(currentPrice: number, targetPrice: number | null, stopLoss: number | null) {
-  if (targetPrice === null || stopLoss === null || currentPrice === stopLoss) return null;
+  if (!isValidPrice(currentPrice) || !isValidPrice(targetPrice) || !isValidPrice(stopLoss) || currentPrice === stopLoss) return null;
   return Math.abs((targetPrice - currentPrice) / (currentPrice - stopLoss));
 }
 
 function percentMove(currentPrice: number, targetPrice: number | null) {
-  if (targetPrice === null || currentPrice <= 0) return null;
+  if (!isValidPrice(currentPrice) || !isValidPrice(targetPrice)) return null;
   return ((targetPrice - currentPrice) / currentPrice) * 100;
 }
 

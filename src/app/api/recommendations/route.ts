@@ -515,12 +515,12 @@ export async function GET(request: Request) {
     sortKey,
     sortDir,
   );
-  const availablePriceCount = pageRecommendations.filter(row => row.available === true && nullableNumber(row.price) !== null).length;
+  const availablePriceCount = pageRecommendations.filter(row => row.available === true && isValidPrice(row.price)).length;
   const unavailableCount = pageRecommendations.length - availablePriceCount;
   const unavailable = pageRecommendations
-    .filter(row => row.available !== true || nullableNumber(row.price) === null)
+    .filter(row => row.available !== true || !isValidPrice(row.price))
     .map(row => ({ symbol: row.symbol, name: row.name, reason: row.unavailableReason ?? 'provider_returned_empty_quote' }));
-  const primaryQuote = available.find(q => q.available && q.price !== null) ?? available[0] ?? null;
+  const primaryQuote = available.find(q => q.available && isValidPrice(q.price)) ?? available[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
   const fundUniverseSelected = market.id === 'etfs' || selectedCategory === 'fund' || selectedFundType !== 'all';

@@ -72,6 +72,7 @@ function devLog(message: string, meta: Record<string, unknown>) {
 }
 
 function numberOrNull(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }

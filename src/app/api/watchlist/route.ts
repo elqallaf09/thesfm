@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { fetchTraderQuotesDetailed, getConnectedProvider } from '@/lib/trader/marketQuotes';
 
 function parseSymbols(request: Request) {
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     : null;
   const quotes = quoteLoad?.quotes ?? [];
   const recommendations = quotes
-    .filter(quote => quote.available && quote.price !== null)
+    .filter(quote => quote.available && isValidPrice(quote.price))
     .map(quote => ({
       symbol: quote.symbol,
       requestedSymbol: quote.requestedSymbol,
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
       updatedAt: quote.updatedAt,
     }));
   const unavailable = quotes
-    .filter(quote => !quote.available)
+    .filter(quote => !quote.available || !isValidPrice(quote.price))
     .map(quote => ({
       symbol: quote.symbol,
       name: quote.name,

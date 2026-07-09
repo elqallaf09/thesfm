@@ -3,6 +3,7 @@ import { getTraderAccess } from '@/lib/server/traderAccess';
 import { parseScannerFilters, scannerSummary, toTraderRecommendation } from '@/lib/trader/apiFormat';
 import { buildTraderHealthPayload, normalizeTraderCompatPath, TRADER_MARKET_CATEGORIES } from '@/lib/trader/compatApi';
 import { filterResults, getScannerResults, getTraderStatus, runScanner } from '@/lib/trader/scannerService';
+import { normalizedQuoteKey, rankQuotesByChange } from '@/lib/market/quoteNormalization';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +49,22 @@ async function scannerResultsPayload(request: NextRequest) {
 async function usStocksPayload(request: NextRequest) {
   const payload = await scannerResultsPayload(request);
   const recommendations = payload.recommendations;
+  const topGainers = rankQuotesByChange(recommendations, 'desc', 5);
   return {
     ...payload,
     stocks: recommendations,
-    topGainers: [...recommendations].sort((a, b) => Number(b.expectedMovePct || 0) - Number(a.expectedMovePct || 0)).slice(0, 5),
-    topLosers: [...recommendations].sort((a, b) => Number(a.expectedMovePct || 0) - Number(b.expectedMovePct || 0)).slice(0, 5),
+    topGainers,
+    topLosers: rankQuotesByChange(
+      recommendations,
+      'asc',
+      5,
+      new Set(topGainers.map(item => normalizedQuoteKey({
+        canonicalSymbol: item.canonicalSymbol,
+        displaySymbol: item.displaySymbol,
+        requestedSymbol: item.requestedSymbol,
+        inputSymbol: item.inputSymbol,
+      }))),
+    ),
     mostActive: [...recommendations].sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0)).slice(0, 8),
   };
 }

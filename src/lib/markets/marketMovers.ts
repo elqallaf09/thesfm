@@ -1,3 +1,5 @@
+import { finiteQuoteNumber, isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
+
 export type MarketMoverRegion = 'gulf' | 'europe';
 
 export type MarketMoverId =
@@ -357,8 +359,7 @@ const EUROPE_AGGREGATE: MarketMoverConfig = {
 const MARKET_CONFIGS = [...MARKET_MOVER_CONFIGS, EUROPE_AGGREGATE];
 
 function finiteNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return finiteQuoteNumber(value);
 }
 
 function moverSymbolKey(row: Omit<MarketMoverItem, 'rank'>) {
@@ -415,7 +416,7 @@ function debugMarketMovers(message: string, meta: Record<string, unknown>) {
 function rowFromYahooQuote(row: YahooQuoteRow, configured: MarketMoverSymbol, config: MarketMoverConfig) {
   const providerSymbol = String(row.symbol ?? '').toUpperCase();
   const price = finiteNumber(row.regularMarketPrice);
-  if (price === null || price <= 0) return null;
+  if (!isValidPrice(price)) return null;
   const currency = normalizeProviderCurrency(row.currency ?? null, config.currency);
   return {
     symbol: normalizeSymbolForDisplay(configured.symbol),
@@ -451,7 +452,7 @@ async function fetchYahooChartRow(providerSymbol: string, configured: MarketMove
   const payload = await response.json().catch(() => null) as YahooChartResponse | null;
   const meta = payload?.chart?.result?.[0]?.meta;
   const price = finiteNumber(meta?.regularMarketPrice);
-  if (price === null || price <= 0) return null;
+  if (!isValidPrice(price)) return null;
   const previousClose = finiteNumber(meta?.chartPreviousClose) ?? finiteNumber(meta?.previousClose);
   const symbol = String(meta?.symbol ?? providerSymbol).toUpperCase();
   const currency = normalizeProviderCurrency(meta?.currency ?? null, config.currency);
@@ -555,7 +556,7 @@ function rankedByChange(
   const candidates = rows.filter(row => {
     const key = moverSymbolKey(row);
     const changePercent = finiteNumber(row.changePercent);
-    if (!key || excludedSymbols.has(key) || changePercent === null) return false;
+    if (!key || excludedSymbols.has(key) || !isValidPrice(row.price) || !isValidChange(changePercent)) return false;
     return direction === 'desc' ? changePercent > 0 : changePercent < 0;
   });
   return ranked(

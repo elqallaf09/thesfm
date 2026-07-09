@@ -718,7 +718,7 @@ function renderDetail(data) {
   elements.expectedPrice.textContent = formatMoney(item.expectedPrice, item.currency);
   elements.targetOne.textContent = formatMoney(item.target1 || item.expectedPrice, item.currency);
   elements.targetTwo.textContent = formatMoney(item.target2, item.currency);
-  elements.stopLoss.textContent = item.stopLoss ? formatMoney(item.stopLoss, item.currency) : unavailableText();
+  elements.stopLoss.textContent = isValidPrice(item.stopLoss) ? formatMoney(item.stopLoss, item.currency) : priceUnavailableText();
   elements.support.textContent = formatMoney(item.support, item.currency);
   elements.resistance.textContent = formatMoney(item.resistance, item.currency);
   elements.riskReward.textContent = item.riskReward ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : unavailableText();
@@ -936,7 +936,8 @@ function calculateFinalScore(item) {
   }[item.risk?.level] ?? 8;
   const winRate = Number(item.backtest?.winRate);
   const backtestPoints = Number.isFinite(winRate) ? clamp(winRate * 0.1, 0, 10) : 4;
-  const movePoints = clamp(Math.abs(Number(item.expectedMovePct || 0)) * 1.2, 0, 5);
+  const expectedMoveValue = isValidChange(item.expectedMovePct) ? Number(item.expectedMovePct) : null;
+  const movePoints = expectedMoveValue === null ? 0 : clamp(Math.abs(expectedMoveValue) * 1.2, 0, 5);
   const qualityPoints = clamp(Number(item.analysisQuality?.score || 0), 0, 100) * 0.08;
   const riskRewardPoints = clamp(Number(item.riskReward || 0), 0, 3) * 2;
   const conflictPenalty = item.timeframeConsensus?.conflict ? 6 : 0;
@@ -1027,6 +1028,30 @@ function detailText(arabic, english) {
 
 function unavailableText() {
   return detailText("غير متاح", "Unavailable");
+}
+
+function priceUnavailableText() {
+  return detailText("\u0627\u0644\u0633\u0639\u0631 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d", "Price unavailable");
+}
+
+function changeUnavailableText() {
+  return detailText("\u0627\u0644\u062a\u063a\u064a\u0631 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d", "Change unavailable");
+}
+
+function finiteQuoteNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function isValidPrice(value) {
+  const number = finiteQuoteNumber(value);
+  return number !== null && number > 0;
+}
+
+function isValidChange(value) {
+  const number = finiteQuoteNumber(value);
+  return number !== null && number > -100 && Math.abs(number) < 100000;
 }
 
 function unspecifiedMetadataText() {
@@ -1384,9 +1409,8 @@ function initMarketBackground() {
 }
 
 function formatMoney(value, currency) {
-  if (value === null || value === undefined || value === "") return unavailableText();
+  if (!isValidPrice(value)) return priceUnavailableText();
   const number = Number(value);
-  if (!Number.isFinite(number)) return unavailableText();
   const normalizedCurrency = normalizeCurrencyCode(currency);
   const digits = Math.abs(number) < 1 ? 4 : 2;
   return `${formatNumber(number, {
@@ -1419,9 +1443,8 @@ function normalizeCurrencyCode(currency) {
 }
 
 function formatPercent(value) {
-  if (value === null || value === undefined || value === "") return unavailableText();
+  if (!isValidChange(value)) return changeUnavailableText();
   const number = Number(value);
-  if (!Number.isFinite(number)) return unavailableText();
   const prefix = number > 0 ? "+" : "";
   return `${prefix}${formatNumber(number, {
     minimumFractionDigits: 2,

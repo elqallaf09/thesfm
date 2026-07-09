@@ -6,19 +6,20 @@ import {
   toTraderRecommendation,
   traderRecommendationSummary,
 } from '@/lib/trader/apiFormat';
+import { normalizedQuoteKey, rankQuotesByChange } from '@/lib/market/quoteNormalization';
 import { getScannerResults, getTraderStatus } from '@/lib/trader/scannerService';
 
 export const dynamic = 'force-dynamic';
 
 type TraderRecommendation = ReturnType<typeof toTraderRecommendation>;
 
-function finiteNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function moverSymbolKey(item: TraderRecommendation) {
-  return item.symbol.trim().toUpperCase();
+function moverSymbolKey(item: TraderRecommendation & Record<string, unknown>) {
+  return normalizedQuoteKey({
+    canonicalSymbol: String(item.canonicalSymbol ?? ''),
+    displaySymbol: String(item.displaySymbol ?? ''),
+    requestedSymbol: String(item.requestedSymbol ?? ''),
+    inputSymbol: item.symbol,
+  });
 }
 
 function isMockOrDemoRecommendation(item: TraderRecommendation) {
@@ -42,24 +43,12 @@ function rankByChangePercent(
   limit: number,
   excludedSymbols = new Set<string>(),
 ) {
-  const seen = new Set(excludedSymbols);
-  const candidates = recommendations.filter(item => {
-    const key = moverSymbolKey(item);
-    const changePercent = finiteNumber(item.changePercent);
-    if (!key || seen.has(key) || changePercent === null || isMockOrDemoRecommendation(item)) return false;
-    if (direction === 'desc' && changePercent <= 0) return false;
-    if (direction === 'asc' && changePercent >= 0) return false;
-    seen.add(key);
-    return true;
-  });
-
-  return candidates
-    .sort((a, b) => {
-      const left = finiteNumber(a.changePercent) ?? 0;
-      const right = finiteNumber(b.changePercent) ?? 0;
-      return direction === 'asc' ? left - right : right - left;
-    })
-    .slice(0, limit);
+  return rankQuotesByChange(
+    recommendations.filter(item => !isMockOrDemoRecommendation(item)),
+    direction,
+    limit,
+    excludedSymbols,
+  );
 }
 
 export async function GET(request: NextRequest) {

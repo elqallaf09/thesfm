@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTraderAccess } from '@/lib/server/traderAccess';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { classifyShariahCompliance, shariahClassificationFields } from '@/lib/market/shariah-screening';
 import { toTraderRecommendation } from '@/lib/trader/apiFormat';
 import { getCachedScannerResults } from '@/lib/trader/scannerService';
@@ -51,17 +52,18 @@ function noStoreJson(payload: Record<string, unknown>, init?: ResponseInit) {
 }
 
 function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function percentMove(currentPrice: number, targetPrice: number | null) {
-  if (targetPrice === null || currentPrice <= 0) return null;
+  if (!isValidPrice(currentPrice) || !isValidPrice(targetPrice)) return null;
   return ((targetPrice - currentPrice) / currentPrice) * 100;
 }
 
 function riskRewardRatio(currentPrice: number, targetPrice: number | null, stopLoss: number | null) {
-  if (targetPrice === null || stopLoss === null || currentPrice === stopLoss) return null;
+  if (!isValidPrice(currentPrice) || !isValidPrice(targetPrice) || !isValidPrice(stopLoss) || currentPrice === stopLoss) return null;
   return Math.abs((targetPrice - currentPrice) / (currentPrice - stopLoss));
 }
 
@@ -363,7 +365,7 @@ function buildAgentDetailPayload(
 
 function buildStoredDetailPayload(row: StoredScanRow, candidate: TraderDetailCandidate | null) {
   const currentPrice = finiteNumber(row.current_price);
-  if (currentPrice === null) return null;
+  if (!isValidPrice(currentPrice)) return null;
   const targetPrice = finiteNumber(row.target_price);
   const stopLoss = finiteNumber(row.stop_loss);
   const confidence = Math.round(finiteNumber(row.confidence) ?? 0);
