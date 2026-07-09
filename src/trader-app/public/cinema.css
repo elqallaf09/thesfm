@@ -7022,3 +7022,1047 @@ html[data-theme="light"] .mobile-nav a.is-active {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Light theme readability pass: solid surfaces, dark navy text, subtle shadows. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --terminal-light-background: #f3f8fc;
+  --terminal-light-background-soft: #eaf3f9;
+  --terminal-light-surface: #ffffff;
+  --terminal-light-card: #f9fcff;
+  --terminal-light-card-elevated: #ffffff;
+  --terminal-light-border: #c7d8e7;
+  --terminal-light-border-strong: #91adc4;
+  --terminal-light-text-primary: #0b1f33;
+  --terminal-light-text-secondary: #314c63;
+  --terminal-light-text-muted: #5b7288;
+  --terminal-light-accent: #0f8b8d;
+  --terminal-light-accent-strong: #0f766e;
+  --terminal-light-button-bg: #0f8b8d;
+  --terminal-light-button-text: #ffffff;
+  --terminal-light-hover: #e3f4f7;
+  --terminal-light-disabled-bg: #e6edf3;
+  --terminal-light-disabled-text: #7f94a6;
+  --terminal-light-success: #047857;
+  --terminal-light-success-bg: #dcfce7;
+  --terminal-light-warning: #a16207;
+  --terminal-light-warning-bg: #fef3c7;
+  --terminal-light-error: #b91c1c;
+  --terminal-light-error-bg: #fee2e2;
+  --terminal-light-info: #0e7490;
+  --terminal-light-info-bg: #e0f2fe;
+  --terminal-page-bg: var(--terminal-light-background);
+  --terminal-bg-secondary: var(--terminal-light-background-soft);
+  --terminal-card: var(--terminal-light-surface);
+  --terminal-card-elevated: var(--terminal-light-card-elevated);
+  --terminal-accent: var(--terminal-light-accent);
+  --terminal-button: var(--terminal-light-button-bg);
+  --terminal-teal: var(--terminal-light-accent-strong);
+  --terminal-text: var(--terminal-light-text-primary);
+  --terminal-text-secondary: var(--terminal-light-text-secondary);
+  --terminal-text-muted: var(--terminal-light-text-muted);
+  --terminal-border: var(--terminal-light-border);
+  --terminal-border-strong: var(--terminal-light-border-strong);
+  --terminal-success: var(--terminal-light-success);
+  --terminal-warning: var(--terminal-light-warning);
+  --terminal-danger: var(--terminal-light-error);
+  --terminal-soft-shadow: 0 18px 44px rgba(20, 55, 87, 0.10);
+  --terminal-card-shadow: 0 12px 28px rgba(20, 55, 87, 0.09);
+  --terminal-focus: 0 0 0 3px rgba(15, 139, 141, 0.20);
+  --terminal-glass: rgba(255, 255, 255, 0.97);
+  --terminal-glass-strong: #ffffff;
+  --terminal-edge: rgba(111, 139, 164, 0.36);
+  --terminal-edge-strong: rgba(15, 139, 141, 0.42);
+  --terminal-good: var(--terminal-light-success);
+  --terminal-bad: var(--terminal-light-error);
+  --terminal-warn: var(--terminal-light-warning);
+  --terminal-info: var(--terminal-light-info);
+  --bg: var(--terminal-light-background);
+  --bg-2: var(--terminal-light-background-soft);
+  --panel: var(--terminal-light-surface);
+  --panel-strong: var(--terminal-light-card-elevated);
+  --panel-soft: #f7fbff;
+  --line: var(--terminal-light-border);
+  --line-strong: var(--terminal-light-border-strong);
+  --text: var(--terminal-light-text-primary);
+  --muted: var(--terminal-light-text-secondary);
+  --muted-2: var(--terminal-light-text-muted);
+  --gold: var(--terminal-light-warning);
+  --cyan: var(--terminal-light-info);
+  --green: var(--terminal-light-success);
+  --red: var(--terminal-light-error);
+  --blue: #2563eb;
+  --teal: var(--terminal-light-accent-strong);
+  --shadow: var(--terminal-soft-shadow);
+  --sfm-terminal-bg: var(--terminal-light-background);
+  --sfm-panel: var(--terminal-light-surface);
+  --sfm-panel-soft: var(--terminal-light-card);
+  --sfm-card: var(--terminal-light-surface);
+  --sfm-card-strong: var(--terminal-light-card-elevated);
+  --sfm-line: var(--terminal-light-border);
+  --sfm-line-strong: var(--terminal-light-border-strong);
+  --sfm-gold: var(--terminal-light-warning);
+  --sfm-gold-soft: rgba(161, 98, 7, 0.12);
+  --sfm-green: var(--terminal-light-success);
+  --sfm-red: var(--terminal-light-error);
+  --sfm-blue: #2563eb;
+  --sfm-text: var(--terminal-light-text-primary);
+  --sfm-muted: var(--terminal-light-text-secondary);
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background:
+    linear-gradient(90deg, rgba(127, 148, 166, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(127, 148, 166, 0.07) 1px, transparent 1px),
+    radial-gradient(circle at 16% 10%, rgba(14, 116, 144, 0.10), transparent 28rem),
+    radial-gradient(circle at 84% 8%, rgba(15, 118, 110, 0.08), transparent 26rem),
+    linear-gradient(180deg, #f7fbff 0%, #eef6fb 56%, #e7f0f7 100%) !important;
+  color: var(--terminal-light-text-primary) !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] body::before {
+  opacity: 0.05 !important;
+  background:
+    linear-gradient(rgba(14, 116, 144, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.10) 1px, transparent 1px) !important;
+}
+
+html[data-theme="light"] body::after {
+  opacity: 0.025 !important;
+  mix-blend-mode: multiply !important;
+}
+
+html[data-theme="light"] .market-cinema {
+  opacity: 0.055 !important;
+  filter: saturate(0.72) brightness(1.18) !important;
+  mix-blend-mode: multiply !important;
+}
+
+html[data-theme="light"] :is(.terminal-app, .terminal-stage, .terminal-content, .page-stack) {
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] :is(
+  .terminal-topbar,
+  .ticker-strip,
+  .terminal-statusbar,
+  .loading-panel,
+  .empty-state,
+  .page-hero,
+  .command-hero,
+  .panel,
+  .stat-card,
+  .market-tile,
+  .asset-card,
+  .news-card,
+  .trade-column,
+  .lesson-card,
+  .status-card,
+  .detail-card,
+  .recommendations-panel,
+  .market-overview,
+  .market-overview-panel,
+  .sfm-market-data-status-panel,
+  .market-hours-band,
+  .market-data-state,
+  .market-symbol-card,
+  .market-leadership .leadership-card,
+  .provider-status-card,
+  .provider-status-banner,
+  .provider-metric-card,
+  .provider-feature-strip,
+  .provider-diagnostics-panel,
+  .provider-diagnostic-group,
+  .provider-market-card,
+  .provider-market-state,
+  .market-preview-strip,
+  .market-universe-panel,
+  .trade-data-status,
+  .settings-panel,
+  .settings-card,
+  .settings-info-card,
+  .theme-settings-panel,
+  .notification-panel,
+  .notification-item,
+  .modal,
+  .dialog,
+  [role="dialog"]
+) {
+  border-color: var(--terminal-light-border) !important;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(14, 116, 144, 0.045), transparent 18rem),
+    linear-gradient(145deg, var(--terminal-light-card-elevated), var(--terminal-light-card)) !important;
+  box-shadow: var(--terminal-card-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+  color: var(--terminal-light-text-primary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(
+  .terminal-topbar,
+  .terminal-statusbar,
+  .settings-panel,
+  .notification-panel,
+  .theme-menu,
+  .ms-dropdown
+) {
+  background: var(--terminal-light-card-elevated) !important;
+}
+
+html[data-theme="light"] :is(
+  h1,
+  h2,
+  h3,
+  h4,
+  th,
+  td,
+  strong,
+  .topbar-title h1,
+  .brand-card strong,
+  .nav-label,
+  .symbol-code,
+  .mono,
+  .asset-title strong,
+  .ticker-chip strong,
+  .market-tile strong,
+  .asset-card strong,
+  .news-card strong,
+  .lesson-card strong,
+  .status-card strong,
+  .detail-card strong,
+  .provider-status-banner strong,
+  .provider-metric-card strong,
+  .provider-feature-strip b,
+  .provider-diagnostic-group strong,
+  .settings-card-head strong,
+  .settings-panel-head h2,
+  .settings-check-copy strong,
+  .settings-info-row strong,
+  .settings-preview strong,
+  .market-button-copy strong,
+  .theme-choice-copy strong,
+  .sharia-badge-copy strong,
+  .about-panel .fact-row dd,
+  .sharia-facts .fact-row dd
+) {
+  color: var(--terminal-light-text-primary) !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] :is(
+  p,
+  small,
+  label,
+  .eyebrow,
+  .card-kicker,
+  .brand-card small,
+  .sidebar-nav small,
+  .sidebar-status small,
+  .asset-meta,
+  .news-meta,
+  .trade-meta,
+  .hero-copy p,
+  .page-hero p,
+  .panel p,
+  .empty-state p,
+  .market-tile small,
+  .market-tile p,
+  .asset-card p,
+  .news-card p,
+  .lesson-card p,
+  .status-card p,
+  .detail-card p,
+  .market-button-copy span,
+  .settings-card p,
+  .settings-field,
+  .settings-panel-subtitle,
+  .settings-check-copy small,
+  .settings-info-card p,
+  .provider-status-banner p,
+  .provider-warning,
+  .provider-clean-note,
+  .provider-metric-card span,
+  .provider-metric-card small,
+  .provider-feature-strip span,
+  .provider-diagnostic-group li,
+  .sharia-note,
+  .sharia-badge-copy small,
+  .sharia-facts .fact-row dt,
+  .about-panel .fact-row dt,
+  .muted-note
+) {
+  color: var(--terminal-light-text-secondary) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] :is(.eyebrow, .card-kicker, .settings-section-label, .nav-group-label) {
+  color: var(--terminal-light-accent-strong) !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .terminal-sidebar {
+  border-color: var(--terminal-light-border) !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f3f9fd 100%),
+    radial-gradient(circle at 40% 0%, rgba(14, 116, 144, 0.08), transparent 18rem) !important;
+  box-shadow: 12px 0 30px rgba(20, 55, 87, 0.08) !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] .brand-card {
+  border-color: rgba(15, 139, 141, 0.24) !important;
+  background: linear-gradient(145deg, #ffffff, #eef8fb) !important;
+  box-shadow: 0 12px 26px rgba(20, 55, 87, 0.08), inset 0 1px 0 #ffffff !important;
+}
+
+html[data-theme="light"] .brand-card strong {
+  color: #0b2f4a !important;
+}
+
+html[data-theme="light"] .brand-mark {
+  background: #f5fbff !important;
+  border: 1px solid rgba(15, 139, 141, 0.24) !important;
+}
+
+html[data-theme="light"] .sidebar-nav a {
+  color: var(--terminal-light-text-secondary) !important;
+  background: transparent !important;
+}
+
+html[data-theme="light"] .sidebar-nav a small {
+  color: var(--terminal-light-text-muted) !important;
+  opacity: 0.92 !important;
+}
+
+html[data-theme="light"] .sidebar-nav a:hover,
+html[data-theme="light"] .sidebar-nav a:focus-visible {
+  color: var(--terminal-light-text-primary) !important;
+  background: var(--terminal-light-hover) !important;
+  outline: none !important;
+  transform: translateX(-2px) !important;
+}
+
+html[data-theme="light"] .sidebar-nav a.is-active {
+  color: var(--terminal-light-text-primary) !important;
+  border: 1px solid rgba(15, 139, 141, 0.22) !important;
+  background: linear-gradient(270deg, rgba(15, 139, 141, 0.16), rgba(255, 255, 255, 0.84)) !important;
+  box-shadow: inset 3px 0 0 var(--terminal-light-accent) !important;
+}
+
+html[data-theme="light"] .nav-ico {
+  color: #557189 !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(.sidebar-nav a:hover .nav-ico, .sidebar-nav a.is-active .nav-ico) {
+  color: var(--terminal-light-accent-strong) !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(
+  .symbol-search,
+  .ticker-chip,
+  .topbar-chip,
+  .provider-pill,
+  .terminal-language-option,
+  .theme-switcher-button,
+  .market-timeframe-button,
+  .calendar-ranges button,
+  .calendar-pagination button,
+  .market-overview .mo-timeframes button,
+  .market-universe-controls input,
+  .market-universe-controls select,
+  .earnings-search input,
+  .earnings-controls select,
+  .settings-field input,
+  .settings-field select,
+  .inline-form input,
+  .portfolio-form input,
+  .voice-text-form input,
+  input,
+  select,
+  textarea
+) {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: 0 8px 18px rgba(20, 55, 87, 0.06) !important;
+}
+
+html[data-theme="light"] :is(input::placeholder, textarea::placeholder) {
+  color: var(--terminal-light-text-muted) !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] :is(input, select, textarea, button, a):focus-visible {
+  outline: none !important;
+  box-shadow: var(--terminal-focus) !important;
+}
+
+html[data-theme="light"] :is(.action-btn, .primary-button, .settings-save-btn, .symbol-search button) {
+  border-color: rgba(15, 118, 110, 0.46) !important;
+  background: linear-gradient(135deg, var(--terminal-light-button-bg), var(--terminal-light-accent-strong)) !important;
+  color: var(--terminal-light-button-text) !important;
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.16) !important;
+}
+
+html[data-theme="light"] :is(.ghost-btn, .text-button, .icon-button, .danger-btn, .settings-segment-btn, .theme-choice, .badge, .currency-badge, .state-badge, .status-tag, .risk-pill, .chip) {
+  border-color: var(--terminal-light-border) !important;
+  background: #f7fbff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] :is(
+  .topbar-chip:hover,
+  .topbar-chip:focus-visible,
+  .terminal-language-option:hover,
+  .action-btn:hover,
+  .ghost-btn:hover,
+  .settings-segment-btn:hover,
+  .theme-choice:hover,
+  .theme-choice:focus-visible,
+  .badge:hover,
+  .market-overview .mo-timeframes button:hover
+) {
+  border-color: rgba(15, 139, 141, 0.40) !important;
+  background: var(--terminal-light-hover) !important;
+  color: #07354a !important;
+}
+
+html[data-theme="light"] :is(
+  button:disabled,
+  .action-btn:disabled,
+  .ghost-btn:disabled,
+  .action-btn[aria-disabled="true"],
+  .ghost-btn[aria-disabled="true"],
+  .market-load-more[disabled],
+  .calendar-pagination button[disabled]
+) {
+  border-color: #d5e0e9 !important;
+  background: var(--terminal-light-disabled-bg) !important;
+  color: var(--terminal-light-disabled-text) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+html[data-theme="light"] :is(.market-band, .market-tabs, .market-button) {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: var(--terminal-card-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme="light"] .market-button {
+  background: #f8fcff !important;
+}
+
+html[data-theme="light"] :is(.market-button:hover, .market-button:focus-visible) {
+  border-color: rgba(15, 139, 141, 0.40) !important;
+  background: var(--terminal-light-hover) !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] .market-button.active {
+  border-color: rgba(15, 118, 110, 0.48) !important;
+  background: linear-gradient(145deg, #dff7f2, #ffffff) !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.10) !important;
+}
+
+html[data-theme="light"] .market-button-icon {
+  border-color: rgba(15, 139, 141, 0.24) !important;
+  background: linear-gradient(145deg, #ffffff, #e9f7fa) !important;
+  color: var(--terminal-light-accent-strong) !important;
+  box-shadow: 0 6px 14px rgba(20, 55, 87, 0.08) !important;
+}
+
+html[data-theme="light"] :is(.market-tile, .asset-card, .rec-card, .provider-market-card) {
+  background: #ffffff !important;
+  border-color: var(--terminal-light-border) !important;
+}
+
+html[data-theme="light"] .market-tile.featured {
+  border-color: rgba(15, 118, 110, 0.34) !important;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(15, 118, 110, 0.10), transparent 9rem),
+    #ffffff !important;
+}
+
+html[data-theme="light"] :is(.tile-tags .badge, .chip-row .badge, .market-coverage-strip span, .asset-metrics span, .trade-item, .calendar-meta span, .calendar-source-strip span, .earnings-table-summary span, .settings-preview, .settings-info-row, .settings-switch, .calendar-mobile-card) {
+  border-color: var(--terminal-light-border) !important;
+  background: #f7fbff !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] :is(.currency-badge, .market-card-action, .market-preview-count, .ms-pill-cur, .ms-item.is-active, .ms-item.is-active .ms-cur-tag) {
+  color: var(--terminal-light-accent-strong) !important;
+}
+
+html[data-theme="light"] .table-shell {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  box-shadow: var(--terminal-card-shadow) !important;
+}
+
+html[data-theme="light"] :is(th, .calendar-table th) {
+  color: var(--terminal-light-text-secondary) !important;
+  background: #f2f8fc !important;
+}
+
+html[data-theme="light"] :is(td, .calendar-table td) {
+  color: var(--terminal-light-text-primary) !important;
+  border-color: #dbe7f0 !important;
+}
+
+html[data-theme="light"] :is(.watchlist-table tbody tr:hover, .calendar-table tbody tr:hover) {
+  background: #f0f8fb !important;
+}
+
+html[data-theme="light"] :is(.settings-theme-grid .theme-choice, .settings-check-row, .market-chip-shell) {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] :is(.settings-check-row:hover, .settings-check-row:focus-within, .market-toggle-chip:hover .market-chip-shell, .market-toggle-chip input:focus-visible + .market-chip-shell) {
+  border-color: rgba(15, 139, 141, 0.38) !important;
+  background: var(--terminal-light-hover) !important;
+}
+
+html[data-theme="light"] :is(.settings-check-mark, .market-chip-check, .theme-choice-check) {
+  border-color: var(--terminal-light-border-strong) !important;
+  background: #ffffff !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] :is(.settings-check-row input:checked + .settings-check-mark, .market-toggle-chip input:checked + .market-chip-shell .market-chip-check, .theme-choice.is-selected .theme-choice-check) {
+  border-color: var(--terminal-light-accent-strong) !important;
+  background: var(--terminal-light-accent-strong) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] :is(.market-toggle-chip input:checked + .market-chip-shell, .theme-choice.is-selected, .settings-segment-btn.is-active) {
+  border-color: rgba(15, 118, 110, 0.42) !important;
+  background: #dff7f2 !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08) !important;
+}
+
+html[data-theme="light"] .theme-menu {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 42px rgba(20, 55, 87, 0.16) !important;
+}
+
+html[data-theme="light"] .theme-choice-copy small {
+  color: var(--terminal-light-text-secondary) !important;
+}
+
+html[data-theme="light"] :is(.ms-pill, .ms-dropdown, .ms-item) {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: 0 10px 24px rgba(20, 55, 87, 0.08) !important;
+}
+
+html[data-theme="light"] :is(.ms-pill:hover, .ms-pill[aria-expanded="true"], .ms-item:hover, .ms-item:focus-visible, .ms-item.is-active) {
+  border-color: rgba(15, 139, 141, 0.38) !important;
+  background: var(--terminal-light-hover) !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] :is(.ms-chevron-box, .ms-chk-ph) {
+  border-color: rgba(15, 139, 141, 0.22) !important;
+  background: #eef8fb !important;
+  color: var(--terminal-light-accent-strong) !important;
+}
+
+html[data-theme="light"] :is(.ms-cur-tag, .ms-pill-sep) {
+  color: var(--terminal-light-text-muted) !important;
+}
+
+html[data-theme="light"] :is(.state-badge.ok, .status-tag.buy, .provider-status-banner.ok, .provider-status-card.is-online, .provider-metric-card.ok, .provider-market-state.ok) {
+  border-color: rgba(4, 120, 87, 0.28) !important;
+  background: var(--terminal-light-success-bg) !important;
+  color: var(--terminal-light-success) !important;
+}
+
+html[data-theme="light"] :is(.state-badge.warn, .status-tag.wait, .provider-status-banner.warn, .provider-warning, .provider-metric-card.warn, .provider-market-state.warn) {
+  border-color: rgba(161, 98, 7, 0.30) !important;
+  background: var(--terminal-light-warning-bg) !important;
+  color: var(--terminal-light-warning) !important;
+}
+
+html[data-theme="light"] :is(.state-badge.bad, .state-badge.sell, .status-tag.sell, .danger-lite, .danger-btn, .provider-market-state.bad) {
+  border-color: rgba(185, 28, 28, 0.28) !important;
+  background: var(--terminal-light-error-bg) !important;
+  color: var(--terminal-light-error) !important;
+}
+
+html[data-theme="light"] :is(.state-badge.muted, .final-recommendation-card.muted, .badge.muted, .market-more) {
+  border-color: #d5e0e9 !important;
+  background: #eef3f7 !important;
+  color: var(--terminal-light-text-muted) !important;
+}
+
+html[data-theme="light"] :is(.up, .success, .state-buy, .watchlist-table td.up, .rec-card.buy .status-tag) {
+  color: var(--terminal-light-success) !important;
+}
+
+html[data-theme="light"] :is(.down, .danger, .state-sell, .watchlist-table td.down, .rec-card.sell .status-tag) {
+  color: var(--terminal-light-error) !important;
+}
+
+html[data-theme="light"] :is(.warn, .state-watch, .state-wait) {
+  color: var(--terminal-light-warning) !important;
+}
+
+html[data-theme="light"] .provider-status-card {
+  border-color: rgba(161, 98, 7, 0.30) !important;
+  background: var(--terminal-light-warning-bg) !important;
+}
+
+html[data-theme="light"] .provider-status-card strong,
+html[data-theme="light"] .provider-status-card p {
+  color: var(--terminal-light-warning) !important;
+}
+
+html[data-theme="light"] :is(.provider-diagnostics-panel summary, .provider-diagnostic-group code) {
+  color: var(--terminal-light-text-primary) !important;
+  background: #f7fbff !important;
+  border-color: var(--terminal-light-border) !important;
+}
+
+html[data-theme="light"] :is(.about-panel .fact-row, .sharia-badge, .sharia-facts .fact-row, .detail-chart-wrap, .chart-empty) {
+  border-color: var(--terminal-light-border) !important;
+  background: #f7fbff !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] .sharia-panel.ok::before,
+html[data-theme="light"] .sharia-badge.ok .sharia-mark {
+  background: var(--terminal-light-success) !important;
+}
+
+html[data-theme="light"] .sharia-panel.bad::before,
+html[data-theme="light"] .sharia-badge.bad .sharia-mark {
+  background: var(--terminal-light-error) !important;
+}
+
+html[data-theme="light"] .sharia-panel.warn::before,
+html[data-theme="light"] .sharia-badge.warn .sharia-mark {
+  background: var(--terminal-light-warning) !important;
+}
+
+html[data-theme="light"] .toast {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: 0 18px 42px rgba(20, 55, 87, 0.16) !important;
+}
+
+html[data-theme="light"] :is(.mobile-nav, .ios-tabbar) {
+  border-color: var(--terminal-light-border) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 -14px 30px rgba(20, 55, 87, 0.10) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme="light"] :is(.mobile-nav a, .ios-tab-link, .mobile-settings-button, .mobile-notification-visual) {
+  border-color: var(--terminal-light-border) !important;
+  background: #f7fbff !important;
+  color: var(--terminal-light-text-secondary) !important;
+}
+
+html[data-theme="light"] :is(.mobile-nav a.is-active, .ios-tab-link.active, .ios-tab-link.active span) {
+  border-color: rgba(15, 139, 141, 0.34) !important;
+  background: #dff7f2 !important;
+  color: var(--terminal-light-text-primary) !important;
+}
+
+html[data-theme="light"] :is(.mobile-settings-button::before, .mobile-notification-icon) {
+  color: var(--terminal-light-text-primary) !important;
+  stroke: var(--terminal-light-text-primary) !important;
+}
+
+@media (max-width: 760px) {
+  html[data-theme="light"] .terminal-topbar {
+    background: #ffffff !important;
+    box-shadow: 0 12px 26px rgba(20, 55, 87, 0.10) !important;
+  }
+
+  html[data-theme="light"] body {
+    background:
+      linear-gradient(180deg, #f7fbff 0%, #eef6fb 100%) !important;
+  }
+}
+
+html[data-theme="light"] :is(
+  .topbar-stats .sb-cell,
+  .command-metric,
+  .leadership-card,
+  .opportunity-cell,
+  .heat-cell,
+  .explore-card,
+  .rec-card,
+  .mo-gauge,
+  .strat-row,
+  .trade-item,
+  .trade-status-grid span,
+  .market-leadership,
+  .opportunity-heatmap,
+  .market-movers-panel,
+  .market-movers-grid > *,
+  .dashboard-lower-grid > *
+) {
+  border-color: var(--terminal-light-border) !important;
+  background: #ffffff !important;
+  color: var(--terminal-light-text-primary) !important;
+  box-shadow: var(--terminal-card-shadow) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(
+  .command-metric.ok,
+  .leadership-card.positive,
+  .opportunity-cell.positive,
+  .heat-cell.buy,
+  .rec-card.buy
+) {
+  border-color: rgba(4, 120, 87, 0.28) !important;
+  background: linear-gradient(145deg, #f0fdf4, #ffffff) !important;
+}
+
+html[data-theme="light"] :is(
+  .command-metric.bad,
+  .leadership-card.negative,
+  .opportunity-cell.negative,
+  .heat-cell.sell,
+  .rec-card.sell
+) {
+  border-color: rgba(185, 28, 28, 0.24) !important;
+  background: linear-gradient(145deg, #fff1f2, #ffffff) !important;
+}
+
+html[data-theme="light"] :is(
+  .command-metric.warn,
+  .opportunity-cell.unavailable,
+  .heat-cell.unavailable,
+  .heat-cell.watch
+) {
+  border-color: rgba(161, 98, 7, 0.24) !important;
+  background: linear-gradient(145deg, #fffbeb, #ffffff) !important;
+}
+
+html[data-theme="light"] :is(
+  .command-metric strong,
+  .command-metric small,
+  .leadership-card strong,
+  .leadership-card span,
+  .leadership-foot,
+  .opportunity-cell strong,
+  .opportunity-cell span,
+  .opportunity-cell em,
+  .heat-cell strong,
+  .heat-cell small,
+  .heat-cell em,
+  .explore-card strong,
+  .explore-card small,
+  .rec-card strong,
+  .rec-card small,
+  .rec-metrics span,
+  .rec-metrics b,
+  .mo-gauge strong,
+  .mo-gauge small,
+  .topbar-stats .sb-cell > span,
+  .topbar-stats .sb-cell > strong,
+  .topbar-stats .sb-cell > em
+) {
+  color: var(--terminal-light-text-primary) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+html[data-theme="light"] :is(
+  .command-metric small,
+  .leadership-foot,
+  .opportunity-cell span,
+  .opportunity-cell em,
+  .heat-cell small,
+  .heat-cell em,
+  .explore-card small,
+  .rec-card small,
+  .rec-metrics span,
+  .mo-gauge small,
+  .topbar-stats .sb-cell > span,
+  .topbar-stats .sb-cell > em
+) {
+  color: var(--terminal-light-text-secondary) !important;
+}
+
+html[data-theme="light"] .mo-bar {
+  background: #dbe7f0 !important;
+}
+
+html[data-theme="light"] :is(
+  .sidebar-nav a,
+  .mobile-nav a,
+  .ios-tab-link,
+  .ghost-btn,
+  .danger-btn,
+  .collapse-btn,
+  .icon-btn,
+  .icon-button,
+  .ticker-chip,
+  .topbar-chip,
+  .market-tile,
+  .asset-card,
+  .explore-card,
+  .heat-cell,
+  .rec-card,
+  button.badge,
+  a.badge,
+  .badge,
+  .chip,
+  .state-badge,
+  .status-tag,
+  .risk-pill,
+  .market-timeframe-button
+) {
+  box-shadow: 0 8px 18px rgba(20, 55, 87, 0.06) !important;
+  filter: none !important;
+  transform-style: flat !important;
+}
+
+html[data-theme="light"] :is(
+  .sidebar-nav a,
+  .mobile-nav a,
+  .ios-tab-link,
+  .ghost-btn,
+  .danger-btn,
+  .collapse-btn,
+  .icon-btn,
+  .icon-button,
+  .ticker-chip,
+  .topbar-chip,
+  .market-tile,
+  .asset-card,
+  .explore-card,
+  .heat-cell,
+  .rec-card,
+  button.badge,
+  a.badge,
+  .badge,
+  .chip,
+  .state-badge,
+  .status-tag,
+  .risk-pill,
+  .market-timeframe-button
+)::before,
+html[data-theme="light"] :is(
+  .sidebar-nav a,
+  .mobile-nav a,
+  .ios-tab-link,
+  .ghost-btn,
+  .danger-btn,
+  .collapse-btn,
+  .icon-btn,
+  .icon-button,
+  .ticker-chip,
+  .topbar-chip,
+  .market-tile,
+  .asset-card,
+  .explore-card,
+  .heat-cell,
+  .rec-card,
+  button.badge,
+  a.badge,
+  .badge,
+  .chip,
+  .state-badge,
+  .status-tag,
+  .risk-pill,
+  .market-timeframe-button
+)::after {
+  opacity: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(
+  .terminal-topbar,
+  .ticker-strip,
+  .panel,
+  .page-hero,
+  .command-hero,
+  .settings-panel,
+  .settings-card,
+  .market-tile,
+  .asset-card,
+  .rec-card,
+  .provider-status-card,
+  .provider-market-card
+)::before,
+html[data-theme="light"] :is(
+  .terminal-topbar,
+  .ticker-strip,
+  .panel,
+  .page-hero,
+  .command-hero,
+  .settings-panel,
+  .settings-card,
+  .market-tile,
+  .asset-card,
+  .rec-card,
+  .provider-status-card,
+  .provider-market-card
+)::after {
+  opacity: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] :is(
+  .sidebar-nav a:hover,
+  .sidebar-nav a:focus-visible,
+  .mobile-nav a:hover,
+  .mobile-nav a:focus-visible,
+  .ios-tab-link:hover,
+  .ios-tab-link:focus-visible,
+  .ghost-btn:hover,
+  .ghost-btn:focus-visible,
+  .icon-btn:hover,
+  .icon-btn:focus-visible,
+  .icon-button:hover,
+  .icon-button:focus-visible,
+  .ticker-chip:hover,
+  .ticker-chip:focus-visible,
+  .topbar-chip:hover,
+  .topbar-chip:focus-visible,
+  .market-tile:hover,
+  .market-tile:focus-visible,
+  .asset-card:hover,
+  .asset-card:focus-visible,
+  .explore-card:hover,
+  .explore-card:focus-visible,
+  .rec-card:hover,
+  .rec-card:focus-visible,
+  button.badge:hover,
+  button.badge:focus-visible,
+  a.badge:hover,
+  a.badge:focus-visible,
+  .market-timeframe-button:hover,
+  .market-timeframe-button:focus-visible
+) {
+  box-shadow: 0 10px 22px rgba(20, 55, 87, 0.08) !important;
+  filter: none !important;
+}
+
+html[data-theme="light"] .sidebar-nav a:is(:hover, :focus-visible) {
+  transform: translateX(-2px) !important;
+}
+
+html[data-theme="light"] :is(
+  .mobile-nav a:hover,
+  .mobile-nav a:focus-visible,
+  .ios-tab-link:hover,
+  .ios-tab-link:focus-visible,
+  .ghost-btn:hover,
+  .ghost-btn:focus-visible,
+  .icon-btn:hover,
+  .icon-btn:focus-visible,
+  .icon-button:hover,
+  .icon-button:focus-visible,
+  .ticker-chip:hover,
+  .ticker-chip:focus-visible,
+  .topbar-chip:hover,
+  .topbar-chip:focus-visible,
+  .market-tile:hover,
+  .market-tile:focus-visible,
+  .asset-card:hover,
+  .asset-card:focus-visible,
+  .explore-card:hover,
+  .explore-card:focus-visible,
+  .rec-card:hover,
+  .rec-card:focus-visible,
+  button.badge:hover,
+  button.badge:focus-visible,
+  a.badge:hover,
+  a.badge:focus-visible,
+  .market-timeframe-button:hover,
+  .market-timeframe-button:focus-visible
+) {
+  transform: translateY(-1px) !important;
+}
+
+html[data-theme="light"] :is(
+  .sidebar-nav a:active,
+  .mobile-nav a:active,
+  .ios-tab-link:active,
+  .ghost-btn:active,
+  .danger-btn:active,
+  .collapse-btn:active,
+  .icon-btn:active,
+  .icon-button:active,
+  .ticker-chip:active,
+  .topbar-chip:active,
+  .market-tile:active,
+  .asset-card:active,
+  .explore-card:active,
+  .rec-card:active,
+  button.badge:active,
+  a.badge:active,
+  .market-timeframe-button:active
+) {
+  box-shadow: inset 0 0 0 1px rgba(15, 139, 141, 0.12) !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+html[data-theme="light"] .sidebar-nav a.is-active {
+  box-shadow: inset 3px 0 0 var(--terminal-light-accent), 0 8px 18px rgba(20, 55, 87, 0.06) !important;
+}
+
+[dir="rtl"] html[data-theme="light"] .sidebar-nav a.is-active,
+html[data-theme="light"][dir="rtl"] .sidebar-nav a.is-active,
+html[dir="rtl"][data-theme="light"] .sidebar-nav a.is-active {
+  box-shadow: inset -3px 0 0 var(--terminal-light-accent), 0 8px 18px rgba(20, 55, 87, 0.06) !important;
+}
+
+html[data-theme="light"] :is(
+  button:disabled,
+  button[disabled],
+  .action-btn:disabled,
+  .ghost-btn:disabled,
+  .icon-btn:disabled,
+  .icon-button:disabled,
+  .action-btn[aria-disabled="true"],
+  .ghost-btn[aria-disabled="true"],
+  .market-load-more[disabled],
+  .calendar-pagination button[disabled]
+) {
+  text-shadow: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+html[data-theme="light"] body::after,
+html[data-theme="light"] .terminal-app::before,
+html[data-theme="light"] .terminal-app::after {
+  opacity: 0 !important;
+  background: none !important;
+  mix-blend-mode: normal !important;
+  animation: none !important;
+}
