@@ -2657,7 +2657,8 @@
     const shown = displayValue(value);
     const longValueKeys = ["source", "last updated", "updated", "company", "company name", "provider", "provider symbol"];
     const keyText = `${helper || ""} ${label || ""}`.toLowerCase();
-    const longValueClass = longValueKeys.some(key => keyText.includes(key)) ? " detail-card--long" : "";
+    const isLongValue = shown.length > 28 || /[\/._-]/.test(shown);
+    const longValueClass = longValueKeys.some(key => keyText.includes(key)) || isLongValue ? " detail-card--long" : "";
     return `<article class="detail-card${longValueClass}"><span class="card-kicker">${h(helper)}</span><strong class="${valueTextClass(shown)}">${h(shown)}</strong><p>${h(label)}</p></article>`;
   }
 
