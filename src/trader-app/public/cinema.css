@@ -6804,35 +6804,6 @@ html[data-theme="light"] {
   background: rgba(255, 255, 255, 0.035);
 }
 
-html[data-theme="light"],
-html[data-theme="light"] body {
-  background:
-    linear-gradient(90deg, rgba(17, 70, 105, 0.045) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(17, 70, 105, 0.04) 1px, transparent 1px),
-    radial-gradient(circle at 14% 8%, rgba(29, 100, 200, 0.10), transparent 28%),
-    radial-gradient(circle at 84% 10%, rgba(8, 127, 91, 0.08), transparent 26%),
-    linear-gradient(180deg, #f6fbff 0%, #eef5fb 58%, #e7eef5 100%) !important;
-  color: #0b1724 !important;
-}
-
-html[data-theme="light"] body::before {
-  opacity: 0.08 !important;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 64px, rgba(8, 127, 91, 0.14) 65px 67px, transparent 68px 132px),
-    repeating-linear-gradient(90deg, transparent 0 82px, rgba(200, 50, 74, 0.12) 83px 85px, transparent 86px 174px) !important;
-}
-
-html[data-theme="light"] body::after {
-  opacity: 0.08 !important;
-  mix-blend-mode: multiply !important;
-}
-
-html[data-theme="light"] .market-cinema {
-  opacity: 0.14 !important;
-  filter: saturate(0.8) brightness(1.25);
-  mix-blend-mode: multiply;
-}
-
 html[data-theme="light"] .terminal-app {
   background: transparent !important;
 }
@@ -7145,9 +7116,21 @@ html[data-theme="light"] body::after {
 }
 
 html[data-theme="light"] .market-cinema {
-  opacity: 0.055 !important;
-  filter: saturate(0.72) brightness(1.18) !important;
+  opacity: 1 !important;
+  filter: saturate(0.9) brightness(1) !important;
   mix-blend-mode: multiply !important;
+}
+
+html[data-theme="light"] .mc-candles {
+  opacity: 0.16 !important;
+}
+
+html[data-theme="light"] .mc-priceline {
+  opacity: 0.6 !important;
+}
+
+html[data-theme="light"] .mc-vignette {
+  background: radial-gradient(ellipse 120% 90% at 50% 42%, transparent 58%, rgba(180, 206, 224, 0.5) 100%) !important;
 }
 
 html[data-theme="light"] :is(.terminal-app, .terminal-stage, .terminal-content, .page-stack) {
@@ -8490,4 +8473,80 @@ html[data-theme="light"] :is(.state-badge.muted, .status-tag.muted, .signal-badg
     height: 44px !important;
     min-width: 44px !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LANGUAGE SWITCHER — مفتاح تبديل اللغة (تصميم كبسولة مقسّمة)
+   ═══════════════════════════════════════════════════════════════ */
+
+.terminal-language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  min-height: 40px;
+  border: 1px solid var(--terminal-edge, var(--line));
+  border-radius: 999px;
+  background: rgba(8, 20, 32, 0.55);
+}
+
+.terminal-language-option.topbar-chip {
+  min-height: 32px;
+  min-width: 46px;
+  padding: 0 14px;
+  border: none !important;
+  border-radius: 999px;
+  background: transparent !important;
+  color: var(--muted-2, var(--muted));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  transition: color 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.terminal-language-option.topbar-chip:hover {
+  color: var(--text);
+  background: rgba(123, 218, 255, 0.1) !important;
+}
+
+.terminal-language-option.topbar-chip.is-active {
+  background: linear-gradient(135deg, var(--cyan), var(--blue)) !important;
+  color: #021018;
+  box-shadow: 0 4px 14px rgba(34, 211, 238, 0.3);
+}
+
+.terminal-language-option.topbar-chip.is-active:hover {
+  background: linear-gradient(135deg, var(--cyan), var(--blue)) !important;
+  color: #021018;
+}
+
+html[data-theme="light"] .terminal-language-switcher {
+  border-color: var(--terminal-light-border, rgba(15, 47, 78, 0.16)) !important;
+  background: rgba(15, 118, 110, 0.06) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .terminal-language-option.topbar-chip {
+  border: none !important;
+  background: transparent !important;
+  color: var(--terminal-light-text-secondary, #526579) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .terminal-language-option.topbar-chip:hover {
+  background: var(--terminal-light-hover, #e3f4f7) !important;
+  color: var(--terminal-light-text-primary, #0b1724) !important;
+}
+
+html[data-theme="light"] .terminal-language-option.topbar-chip.is-active {
+  background: linear-gradient(135deg, var(--terminal-light-button-bg, #0f8b8d), var(--terminal-light-accent-strong, #0f766e)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.24) !important;
+}
+
+html[data-theme="light"] .terminal-language-option.topbar-chip.is-active:hover {
+  background: linear-gradient(135deg, var(--terminal-light-button-bg, #0f8b8d), var(--terminal-light-accent-strong, #0f766e)) !important;
+  color: #ffffff !important;
 }

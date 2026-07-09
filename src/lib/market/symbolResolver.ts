@@ -178,7 +178,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'COMEX',
     country: 'Global',
     currency: 'USD',
-    aliases: ['xau', 'xauusd', 'xau/usd', 'gold', 'gold usd', 'Ø°Ù‡Ø¨', 'Ø§Ù„Ø°Ù‡Ø¨'],
+    aliases: ['xau', 'xauusd', 'xau/usd', 'gold', 'gold usd', 'ذهب', 'الذهب'],
   },
   {
     symbol: 'XAGUSD',
@@ -228,7 +228,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'Crypto',
     country: 'Global',
     currency: 'USD',
-    aliases: ['btc', 'btcusd', 'btc/usd', 'bitcoin', 'bitcoin usd', 'Ø¨ÙŠØªÙƒÙˆÙŠÙ†'],
+    aliases: ['btc', 'btcusd', 'btc/usd', 'bitcoin', 'bitcoin usd', 'بيتكوين'],
   },
   {
     symbol: 'ETHUSD',

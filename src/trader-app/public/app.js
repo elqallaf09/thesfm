@@ -971,8 +971,14 @@
       const active = normalizeLanguage(button.dataset.language) === lang;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
-      if (button.dataset.language === "ar") button.textContent = terminalText("language.arabic");
-      if (button.dataset.language === "en") button.textContent = terminalText("language.english");
+      if (button.dataset.language === "ar") {
+        button.textContent = "AR";
+        button.title = terminalText("language.arabic");
+      }
+      if (button.dataset.language === "en") {
+        button.textContent = "EN";
+        button.title = terminalText("language.english");
+      }
     });
   }
 
@@ -3325,8 +3331,8 @@
     const chg = a.changePercent;
     const dataState = assetDataState(a, recommendation);
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">${h(textPair("\u0625\u0632\u0627\u0644\u0629", "Remove"))}</button>` : "";
-    const metricBlock = dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : `<div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("Ø§Ù„ØªØºÙŠÙŠØ±", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("Ø«Ù‚Ø© AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>`;
-    return `<article class="asset-card ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("Ø§Ø³Ù… Ø§Ù„Ø£ØµÙ„ ØºÙŠØ± Ù…ØªÙˆÙØ±", "Asset name unavailable"))}</small></div></div>
+    const metricBlock = dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : `<div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>`;
+    return `<article class="asset-card ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable"))}</small></div></div>
       <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span></div>
       ${metricBlock}
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
@@ -4863,7 +4869,17 @@
   function sigLabelEn(s) { return Recommendation.labelEn(Recommendation.parseRecommendationStatus(s) || s || "watch"); }
   function recStatus(x) { const s = String(x.status || x.state || "open").toLowerCase(); if (s.includes("complet") || s.includes("مكتمل")) return "مكتملة"; if (s.includes("fail") || s.includes("فاشل")) return "فاشلة"; if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "منتهية"; if (s.includes("watch") || s.includes("متابعة")) return "تحت المتابعة"; return "مفتوحة"; }
   function recStatusTone(x) { const s = recStatus(x); return s === "مكتملة" ? "ok" : s === "فاشلة" ? "bad" : s === "منتهية" ? "muted" : ""; }
-  function confText(x) { const c = num(x.aiConfidence, x.ai_confidence, x.confidence, x.score); return c === null ? "--" : Math.round(c) + "%"; }
+  function confComputed(x) {
+    const flag = x.confidenceComputed ?? x.confidence_computed;
+    return flag === undefined || flag === null ? true : Boolean(flag);
+  }
+  function confText(x) {
+    // When confidence isn't computed (no data to derive it from), show "not computed"
+    // instead of a default number that would falsely imply precision and repeat across symbols.
+    if (!confComputed(x)) return textPair("غير محسوبة", "Not computed");
+    const c = num(x.aiConfidence, x.ai_confidence, x.confidence, x.score);
+    return c === null ? "--" : Math.round(c) + "%";
+  }
   function riskKey(v) { const s = String(v || "").toLowerCase(); if (s.includes("high") || s.includes("مرتفع") || s.includes("عالي")) return "high"; if (s.includes("low") || s.includes("منخفض")) return "low"; return "medium"; }
   function riskShort(v) { const k = riskKey(v); return k === "high" ? textPair("عالية", "High") : k === "low" ? textPair("منخفضة", "Low") : textPair("متوسطة", "Medium"); }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
