@@ -66,9 +66,12 @@ describe('market symbol resolver exact ticker support', () => {
     ['EURUSD', 'forex', 'EURUSD', 'EURUSD=X'],
     ['GBPUSD', 'forex', 'GBPUSD', 'GBPUSD=X'],
     ['USDJPY', 'forex', 'USDJPY', 'USDJPY=X'],
-    ['BTCUSD', 'crypto', 'BTCUSD', 'BTC-USD'],
-    ['BTC-USD', 'crypto', 'BTCUSD', 'BTC-USD'],
-    ['ETHUSD', 'crypto', 'ETHUSD', 'ETH-USD'],
+    ['BTCUSD', 'crypto', 'BTC/USD', 'BTC-USD'],
+    ['BTC-USD', 'crypto', 'BTC/USD', 'BTC-USD'],
+    ['ETHUSD', 'crypto', 'ETH/USD', 'ETH-USD'],
+    ['APTUSD', 'crypto', 'APT/USD', 'APT-USD'],
+    ['BCH/USD', 'crypto', 'BCH/USD', 'BCH-USD'],
+    ['ADAUSD', 'crypto', 'ADA/USD', 'ADA-USD'],
   ])('maps provider alias %s to %s', async (input, assetType, expectedSymbol, expectedProviderSymbol) => {
     const result = await resolveMarketSymbol(input, assetType);
 
@@ -86,5 +89,10 @@ describe('market symbol resolver exact ticker support', () => {
     });
     expect(providerSymbolsForAlias('XAUUSD', 'gold')).toEqual(['GC=F', 'XAUUSD=X']);
     expect(providerSymbolsForAlias('USDJPY', 'forex')).toEqual(['USDJPY=X', 'JPY=X']);
+    expect(normalizeMarketSymbol('ADAUSD', 'crypto')).toMatchObject({
+      displaySymbol: 'ADA/USD',
+      providerSymbol: 'ADA-USD',
+      assetType: 'crypto',
+    });
   });
 });

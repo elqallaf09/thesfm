@@ -20,6 +20,7 @@ import {
   providerSymbolsForProviderAlias,
   resolveProviderSymbolAlias,
 } from '@/lib/market/providerSymbolAliases';
+import { resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import {
   classifyFundType,
   fundMatchesFilter,
@@ -443,7 +444,8 @@ function traderAssetType(value: unknown, symbol: string): TraderAssetType {
   if (normalized === 'etf') return 'fund';
   if (normalized === 'gold' || normalized === 'commodity') return 'commodity';
   if (normalized === 'crypto' || normalized === 'forex' || normalized === 'index') return normalized;
-  if (/^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|USDT|AVAX|DOT|LTC|BCH|LINK)(?:USD|-USD)?$/.test(symbol)) return 'crypto';
+  if (raw && /\b(stock|stocks|equity|equities|ordinary_share|common_stock|common_share|share)\b/.test(raw)) return 'stock';
+  if (resolveCanonicalCryptoSymbol(symbol)) return 'crypto';
   if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(symbol)) return 'commodity';
   if (/^(US30|NAS100|SPX500|DAX|FTSE|CAC40|NIKKEI|HSI|DXY|\^)/.test(symbol)) return 'index';
   return 'stock';
@@ -491,7 +493,13 @@ function marketIdsForRecord(record: {
   if (/\.T$|\.HK$|\.KS$|\.TW$|ASIA|TOKYO|HONG KONG|KOREA|JAPAN|TAIWAN|SHANGHAI|SHENZHEN/.test(haystack)) ids.add('asia');
 
   for (const market of TRADER_MARKET_SEEDS) {
-    if (seedSymbolsForMarket(market).map(upper).includes(symbol)) ids.add(market.id);
+    const seedAssetType = seedAssetTypeForMarket(market.id);
+    if (
+      seedSymbolsForMarket(market).map(upper).includes(symbol)
+      && (!seedAssetType || seedAssetType === record.assetType)
+    ) {
+      ids.add(market.id);
+    }
   }
 
   if (classification) {
@@ -504,6 +512,21 @@ function marketIdsForRecord(record: {
 }
 
 function providerSymbolsFor(symbol: string, assetType: TraderAssetType, providerSymbol?: string) {
+  if (assetType === 'crypto') {
+    const canonical = resolveCanonicalCryptoSymbol(symbol, { assetClass: 'crypto', allowInferred: true })
+      ?? resolveCanonicalCryptoSymbol(providerSymbol, { assetClass: 'crypto', allowInferred: true });
+    if (canonical) {
+      return {
+        fmp: uniq([canonical.providerSymbols.fmp]),
+        yahoo: uniq([canonical.providerSymbols.yahoo]),
+        openbb: uniq([canonical.providerSymbols.fmp, canonical.displaySymbol]),
+        finnhub: uniq([canonical.providerSymbols.finnhub, canonical.providerSymbols.binance]),
+        twelve_data: uniq([canonical.providerSymbols.twelveData]),
+        eodhd: uniq([canonical.providerSymbols.eodhd]),
+        marketstack: [],
+      };
+    }
+  }
   const normalizedAssetType: MarketAssetType = assetType === 'fund' ? 'etf' : assetType === 'commodity' ? 'commodity' : assetType;
   const alias = resolveProviderSymbolAlias(symbol, normalizedAssetType);
   const fmpAlias = providerSymbolsForProviderAlias(symbol, 'fmp', normalizedAssetType);
@@ -534,12 +557,19 @@ function nullableNumber(value: unknown): number | null {
 }
 
 function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, fallbackMarketIds: string[] = []): TraderCatalogSymbol | null {
-  const displaySymbol = symbolFromRecord(record);
-  if (!displaySymbol) return null;
-  const symbol = displaySymbol;
-  const providerSymbol = upper(record.provider_symbol ?? record.providerSymbol ?? record.symbol ?? symbol) || symbol;
+  const rawDisplaySymbol = symbolFromRecord(record);
+  if (!rawDisplaySymbol) return null;
+  const rawProviderSymbol = upper(record.provider_symbol ?? record.providerSymbol ?? record.symbol ?? rawDisplaySymbol) || rawDisplaySymbol;
   const rawAssetType = record.asset_type ?? record.assetType ?? record.type ?? record.quoteType ?? record.instrumentType;
-  const assetType = traderAssetType(rawAssetType, symbol);
+  const inferredAssetType = traderAssetType(rawAssetType, rawDisplaySymbol);
+  const canonicalCrypto = inferredAssetType === 'crypto'
+    ? resolveCanonicalCryptoSymbol(rawDisplaySymbol, { assetClass: 'crypto', allowInferred: true })
+      ?? resolveCanonicalCryptoSymbol(rawProviderSymbol, { assetClass: 'crypto', allowInferred: true })
+    : null;
+  const displaySymbol = canonicalCrypto?.displaySymbol ?? rawDisplaySymbol;
+  const symbol = canonicalCrypto?.canonicalSymbol ?? displaySymbol;
+  const providerSymbol = canonicalCrypto?.providerSymbols.yahoo ?? rawProviderSymbol;
+  const assetType = canonicalCrypto ? 'crypto' : inferredAssetType;
   const metadata = normalizeTraderSymbolMetadata({
     symbol,
     displaySymbol,
@@ -548,7 +578,7 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
     assetType,
     catalog: record,
   });
-  const name = text(metadata.companyName ?? record.company_name_en ?? record.name ?? record.companyName ?? record.company_name_ar ?? SEED_SYMBOL_NAMES[symbol] ?? symbol);
+  const name = text(canonicalCrypto?.name ?? metadata.companyName ?? record.company_name_en ?? record.name ?? record.companyName ?? record.company_name_ar ?? SEED_SYMBOL_NAMES[symbol] ?? symbol);
   const exchange = text(metadata.exchange ?? record.exchange ?? record.exchangeShortName ?? record.market);
   const exchangeCode = text(metadata.exchangeCode ?? record.exchange_code ?? record.exchangeCode);
   const market = text(metadata.market ?? record.market);
@@ -621,7 +651,23 @@ function normalizeRecord(record: RawSymbolRecord, source: TraderCatalogSource, f
     nav,
     aum,
     dataAvailability,
-    aliases: uniq([symbol, displaySymbol, providerSymbol, name, exchange, exchangeCode, market, ...(Array.isArray(record.aliases) ? record.aliases : [])]),
+    aliases: uniq([
+      symbol,
+      displaySymbol,
+      providerSymbol,
+      rawDisplaySymbol,
+      rawProviderSymbol,
+      canonicalCrypto?.baseSymbol,
+      canonicalCrypto?.providerSymbols.fmp,
+      canonicalCrypto?.providerSymbols.finnhub,
+      canonicalCrypto?.providerSymbols.twelveData,
+      name,
+      exchange,
+      exchangeCode,
+      market,
+      ...(canonicalCrypto?.aliases ?? []),
+      ...(Array.isArray(record.aliases) ? record.aliases : []),
+    ]),
     marketIds,
     source,
     metadataDiagnostics: metadata.diagnostics,
@@ -694,6 +740,11 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
 }
 
 function catalogRecordKey(record: TraderCatalogSymbol) {
+  if (record.assetType === 'crypto') {
+    const canonical = resolveCanonicalCryptoSymbol(record.symbol, { assetClass: 'crypto', allowInferred: true })
+      ?? resolveCanonicalCryptoSymbol(record.providerSymbol, { assetClass: 'crypto', allowInferred: true });
+    if (canonical) return `CRYPTO|${canonical.canonicalSymbol}|USD`;
+  }
   return [
     upper(record.providerSymbol || record.symbol),
     upper(record.exchange),

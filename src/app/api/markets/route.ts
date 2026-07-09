@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
@@ -37,8 +38,12 @@ function normalizeSymbol(value: unknown) {
   return String(value ?? '').trim().toUpperCase();
 }
 
-function normalizeDisplaySymbol(value: unknown) {
+function normalizeDisplaySymbol(value: unknown, assetType?: unknown) {
   const symbol = normalizeSymbol(value);
+  const canonical = normalizeSymbol(assetType) === 'CRYPTO'
+    ? resolveCanonicalCryptoSymbol(symbol, { assetClass: 'crypto', allowInferred: true })
+    : null;
+  if (canonical) return canonical.displaySymbol;
   const prefixed = symbol.match(/^(KW|SR|SA|AE|DU|AD|QA|BH|OM)[.: -]([A-Z0-9]{1,16})$/);
   if (prefixed) {
     const suffix = prefixed[1] === 'SA' ? 'SR' : prefixed[1];
@@ -61,7 +66,7 @@ function publicSourceLabel(source: unknown) {
 }
 
 function marketSymbolWarnings(symbol: TraderCatalogSymbol) {
-  const displaySymbol = normalizeDisplaySymbol(symbol.symbol);
+  const displaySymbol = normalizeDisplaySymbol(symbol.symbol, symbol.assetType);
   const providerSymbol = normalizeSymbol(symbol.providerSymbol);
   const warnings: string[] = [];
   if (!displaySymbol) warnings.push('missing_display_symbol');
@@ -82,8 +87,12 @@ function dedupeMarketSymbols(rows: TraderCatalogSymbol[]) {
   let duplicateRows = 0;
 
   for (const row of rows) {
+    const canonical = row.assetType === 'crypto'
+      ? resolveCanonicalCryptoSymbol(row.symbol, { assetClass: 'crypto', allowInferred: true })
+        ?? resolveCanonicalCryptoSymbol(row.providerSymbol, { assetClass: 'crypto', allowInferred: true })
+      : null;
     const key = [
-      normalizeSymbol(row.providerSymbol || row.symbol),
+      canonical?.canonicalSymbol ?? normalizeSymbol(row.providerSymbol || row.symbol),
       normalizeSymbol(row.exchange),
       normalizeSymbol(row.currency),
     ].join('|');
@@ -117,7 +126,7 @@ function normalizeSortKey(value: string | null): MarketSortKey {
 }
 
 function sortValue(symbol: TraderCatalogSymbol, key: MarketSortKey) {
-  if (key === 'displaySymbol') return normalizeDisplaySymbol(symbol.symbol);
+  if (key === 'displaySymbol') return normalizeDisplaySymbol(symbol.symbol, symbol.assetType);
   if (key === 'providerSymbol') return normalizeSymbol(symbol.providerSymbol);
   if (key === 'market') return symbol.marketIds[0] ?? '';
   if (key === 'source') return publicSourceLabel(symbol.source);
@@ -126,7 +135,7 @@ function sortValue(symbol: TraderCatalogSymbol, key: MarketSortKey) {
   if (key === 'assetType') return normalizeSymbol(symbol.assetType);
   if (key === 'exchange') return normalizeSymbol(symbol.exchange);
   if (key === 'country') return normalizeSymbol(symbol.country);
-  return normalizeDisplaySymbol(symbol.symbol);
+  return normalizeDisplaySymbol(symbol.symbol, symbol.assetType);
 }
 
 function sortMarketSymbols(rows: TraderCatalogSymbol[], key: MarketSortKey, direction: 'asc' | 'desc') {
@@ -134,7 +143,7 @@ function sortMarketSymbols(rows: TraderCatalogSymbol[], key: MarketSortKey, dire
   return [...rows].sort((a, b) => {
     const av = sortValue(a, key);
     const bv = sortValue(b, key);
-    return multiplier * (av.localeCompare(bv) || normalizeDisplaySymbol(a.symbol).localeCompare(normalizeDisplaySymbol(b.symbol)));
+    return multiplier * (av.localeCompare(bv) || normalizeDisplaySymbol(a.symbol, a.assetType).localeCompare(normalizeDisplaySymbol(b.symbol, b.assetType)));
   });
 }
 
@@ -186,7 +195,7 @@ export async function GET(request: Request) {
   const baseRows = universe?.symbolMeta ?? catalog.symbols;
   const searchedRows = search
     ? baseRows.filter(symbol => [
-        normalizeDisplaySymbol(symbol.symbol),
+        normalizeDisplaySymbol(symbol.symbol, symbol.assetType),
         symbol.providerSymbol,
         symbol.name,
         symbol.exchange,
@@ -264,7 +273,7 @@ export async function GET(request: Request) {
       selectedSymbol: symbol.symbol,
       availableProviders: configuredQuoteProviders,
     });
-    const displaySymbol = normalizeDisplaySymbol(symbol.symbol);
+    const displaySymbol = normalizeDisplaySymbol(symbol.symbol, symbol.assetType);
     const providerSymbol = normalizeSymbol(symbol.providerSymbol);
     const qualityWarnings = marketSymbolWarnings(symbol);
     const displayName = qualityWarnings.includes('missing_name') ? null : symbol.name;
@@ -391,7 +400,7 @@ export async function GET(request: Request) {
     },
     filterOptions,
     loaded: pagedRows.map(symbol => ({
-      symbol: normalizeDisplaySymbol(symbol.symbol),
+      symbol: normalizeDisplaySymbol(symbol.symbol, symbol.assetType),
       provider: symbol.source,
       reason: 'symbol_discovered',
     })),

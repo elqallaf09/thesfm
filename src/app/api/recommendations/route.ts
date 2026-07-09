@@ -304,6 +304,13 @@ export async function GET(request: Request) {
     const quoteRecord = q as typeof q & Record<string, unknown>;
     const meta = metaForQuote(quoteRecord);
     const label = meta?.fundType ? fundTypeLabel(meta.fundType) : null;
+    const tradeable = q.available === true
+      && nullableNumber(q.price) !== null
+      && nullableNumber(q.targetPrice ?? q.target1) !== null
+      && nullableNumber(q.stopLoss) !== null
+      && q.signalAvailable !== false
+      && q.technicalAvailable !== false
+      && q.dataQuality !== 'unavailable';
     return ({
     symbol: q.symbol,
     requestedSymbol: q.requestedSymbol,
@@ -387,6 +394,8 @@ export async function GET(request: Request) {
     source: q.source,
     delayed: q.delayed,
     available: q.available,
+    tradeable,
+    canFollowTrade: tradeable,
     unavailableReason: q.unavailableReason ?? null,
     dataAvailability: meta?.dataAvailability ?? quoteRecord.dataAvailability,
     dataQuality: q.dataQuality,
@@ -423,7 +432,7 @@ export async function GET(request: Request) {
       symbol: symbol.symbol,
       requestedSymbol: symbol.symbol,
       canonicalSymbol: symbol.symbol,
-      displaySymbol: symbol.symbol,
+      displaySymbol: symbol.displaySymbol,
       providerSymbol: symbol.providerSymbol,
       providerSymbolUsed: symbol.providerSymbol,
       provider: placeholderProvider,
@@ -458,6 +467,9 @@ export async function GET(request: Request) {
       metadataDiagnostics: symbol.metadataDiagnostics,
       signal: null,
       signalAvailable: false,
+      targetPrice: null,
+      target1: null,
+      stopLoss: null,
       confidence: null,
       aiConfidence: null,
       riskLevel: null,
@@ -472,7 +484,9 @@ export async function GET(request: Request) {
       source: symbol.source,
       delayed: false,
       available: false,
-      unavailableReason: 'price_unavailable',
+      tradeable: false,
+      canFollowTrade: false,
+      unavailableReason: 'all_providers_returned_no_quote',
       dataAvailability: symbol.dataAvailability,
       dataQuality: 'unavailable',
       lastUpdated: quoteLoad.generatedAt,

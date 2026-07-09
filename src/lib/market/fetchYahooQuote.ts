@@ -1,4 +1,5 @@
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { cryptoQuoteRejectionReason, type CanonicalAssetClass } from '@/lib/market/canonicalSymbols';
 
 type YahooQuoteResponse = {
   quoteResponse?: {
@@ -112,6 +113,37 @@ function unavailableYahooPrice(symbol: string, unavailableReason: string): TechS
     available: false,
     unavailableReason,
   };
+}
+
+function logYahooQuoteDebug(message: string, meta: Record<string, unknown>, rejected = false) {
+  if (rejected) {
+    console.warn(message, meta);
+    return;
+  }
+  devLog(message, meta);
+}
+
+function yahooCryptoRejection(input: {
+  requestedSymbol: string;
+  canonicalSymbol?: string;
+  assetClass?: CanonicalAssetClass | string | null;
+  providerSymbol: string;
+  responseSymbol?: string | null;
+  responseName?: string | null;
+  responseAssetType?: string | null;
+  responsePrice?: number | null;
+}) {
+  return cryptoQuoteRejectionReason({
+    requestedSymbol: input.requestedSymbol,
+    canonicalSymbol: input.canonicalSymbol,
+    assetClass: input.assetClass,
+    provider: 'yahoo',
+    providerSymbol: input.providerSymbol,
+    responseSymbol: input.responseSymbol,
+    responseName: input.responseName,
+    responseAssetType: input.responseAssetType,
+    responsePrice: input.responsePrice,
+  });
 }
 
 export async function fetchYahooQuote(symbol: string): Promise<TechStockPrice> {
@@ -241,6 +273,11 @@ async function fetchYahooQuoteEndpoint(
   name: string,
   debugContext?: Record<string, unknown>,
   forceFresh?: boolean,
+  canonicalContext?: {
+    canonicalSymbol?: string;
+    assetClass?: CanonicalAssetClass | string | null;
+    expectedName?: string;
+  },
 ): Promise<YahooNormalizedQuote> {
   const params = new URLSearchParams({ symbols: symbol });
   const url = `https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`;
@@ -262,10 +299,15 @@ async function fetchYahooQuoteEndpoint(
 
   devLog('[MarketData] Yahoo quote endpoint response', {
     ...debugContext,
+    canonicalSymbol: canonicalContext?.canonicalSymbol,
+    assetClass: canonicalContext?.assetClass,
     requestedSymbol,
-    symbol,
+    providerSymbolSent: symbol,
+    provider: 'yahoo',
     url,
     status: response.status,
+    responseName: quote?.longName ?? quote?.shortName ?? null,
+    responsePrice: price,
     rawQuoteKeys: quote ? Object.keys(quote) : [],
     parsedPrice: price,
     parsedChangePercent: changePercent,
@@ -273,6 +315,29 @@ async function fetchYahooQuoteEndpoint(
   });
 
   if (!available) return unavailableNormalizedQuote(requestedSymbol, name, unavailableReason);
+  const rejectionReason = yahooCryptoRejection({
+    requestedSymbol,
+    canonicalSymbol: canonicalContext?.canonicalSymbol,
+    assetClass: canonicalContext?.assetClass,
+    providerSymbol: symbol,
+    responseSymbol: quote?.symbol ?? symbol,
+    responseName: quote?.longName ?? quote?.shortName ?? canonicalContext?.expectedName ?? name,
+    responseAssetType: quote?.quoteType,
+    responsePrice: price,
+  });
+  if (rejectionReason) {
+    logYahooQuoteDebug('[MarketData] Yahoo quote rejected', {
+      ...debugContext,
+      canonicalSymbol: canonicalContext?.canonicalSymbol,
+      assetClass: canonicalContext?.assetClass,
+      providerSymbolSent: symbol,
+      provider: 'yahoo',
+      responseName: quote?.longName ?? quote?.shortName ?? null,
+      responsePrice: price,
+      rejectionReason,
+    }, true);
+    return unavailableNormalizedQuote(requestedSymbol, name, rejectionReason);
+  }
 
   return {
     requestedSymbol,
@@ -299,6 +364,11 @@ async function fetchYahooChartEndpoint(
   name: string,
   debugContext?: Record<string, unknown>,
   forceFresh?: boolean,
+  canonicalContext?: {
+    canonicalSymbol?: string;
+    assetClass?: CanonicalAssetClass | string | null;
+    expectedName?: string;
+  },
 ): Promise<YahooNormalizedQuote> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2d&interval=1d`;
   const response = await fetch(url, yahooRequestOptions(forceFresh));
@@ -322,10 +392,15 @@ async function fetchYahooChartEndpoint(
 
   devLog('[MarketData] Yahoo chart endpoint response', {
     ...debugContext,
+    canonicalSymbol: canonicalContext?.canonicalSymbol,
+    assetClass: canonicalContext?.assetClass,
     requestedSymbol,
-    symbol,
+    providerSymbolSent: symbol,
+    provider: 'yahoo',
     url,
     status: response.status,
+    responseName: meta?.longName ?? meta?.shortName ?? null,
+    responsePrice: price,
     rawQuoteKeys: meta ? Object.keys(meta) : [],
     parsedPrice: price,
     parsedChangePercent: changePercent,
@@ -333,6 +408,29 @@ async function fetchYahooChartEndpoint(
   });
 
   if (!available) return unavailableNormalizedQuote(requestedSymbol, name, unavailableReason);
+  const rejectionReason = yahooCryptoRejection({
+    requestedSymbol,
+    canonicalSymbol: canonicalContext?.canonicalSymbol,
+    assetClass: canonicalContext?.assetClass,
+    providerSymbol: symbol,
+    responseSymbol: meta?.symbol ?? symbol,
+    responseName: meta?.longName ?? meta?.shortName ?? canonicalContext?.expectedName ?? name,
+    responseAssetType: meta?.quoteType ?? meta?.instrumentType,
+    responsePrice: price,
+  });
+  if (rejectionReason) {
+    logYahooQuoteDebug('[MarketData] Yahoo chart rejected', {
+      ...debugContext,
+      canonicalSymbol: canonicalContext?.canonicalSymbol,
+      assetClass: canonicalContext?.assetClass,
+      providerSymbolSent: symbol,
+      provider: 'yahoo',
+      responseName: meta?.longName ?? meta?.shortName ?? null,
+      responsePrice: price,
+      rejectionReason,
+    }, true);
+    return unavailableNormalizedQuote(requestedSymbol, name, rejectionReason);
+  }
 
   return {
     requestedSymbol,
@@ -358,6 +456,9 @@ export async function fetchYahooNormalizedQuote(options: {
   symbols: string[];
   name: string;
   forceFresh?: boolean;
+  canonicalSymbol?: string;
+  assetClass?: CanonicalAssetClass | string | null;
+  expectedName?: string;
   debugContext?: Record<string, unknown>;
 }): Promise<YahooNormalizedQuote> {
   const symbols = options.symbols.filter(Boolean);
@@ -382,6 +483,11 @@ export async function fetchYahooNormalizedQuote(options: {
         symbolsTried: symbols,
       },
       options.forceFresh,
+      {
+        canonicalSymbol: options.canonicalSymbol,
+        assetClass: options.assetClass,
+        expectedName: options.expectedName,
+      },
     );
     if (quoteResult.available) return quoteResult;
     lastUnavailableReason = quoteResult.unavailableReason ?? lastUnavailableReason;
@@ -395,6 +501,11 @@ export async function fetchYahooNormalizedQuote(options: {
         symbolsTried: symbols,
       },
       options.forceFresh,
+      {
+        canonicalSymbol: options.canonicalSymbol,
+        assetClass: options.assetClass,
+        expectedName: options.expectedName,
+      },
     );
     if (chartResult.available) return chartResult;
     lastUnavailableReason = chartResult.unavailableReason ?? lastUnavailableReason;

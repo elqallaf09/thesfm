@@ -1,5 +1,6 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
+import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
 import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
@@ -92,6 +93,8 @@ type ProviderQuote = {
 };
 
 type YahooChartResult = {
+  symbol: string | null;
+  name: string | null;
   price: number | null;
   previousClose: number | null;
   currency: string | null;
@@ -414,8 +417,6 @@ const YAHOO_FALLBACK_SYMBOLS: Record<string, string[]> = {
   HSI: ['^HSI'],
 };
 
-const CRYPTO_BASES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'USDT', 'AVAX', 'DOT', 'LTC', 'BCH', 'LINK']);
-
 function numberOrNull(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -464,11 +465,32 @@ function unique(values: Array<string | null | undefined>) {
   return result;
 }
 
+function canonicalCryptoForQuote(symbol: string, meta?: TraderCatalogSymbol) {
+  const assetClass = meta?.assetType;
+  return resolveCanonicalCryptoSymbol(meta?.symbol ?? symbol, {
+    assetClass,
+    allowInferred: assetClass === 'crypto',
+  }) ?? resolveCanonicalCryptoSymbol(meta?.providerSymbol, {
+    assetClass,
+    allowInferred: assetClass === 'crypto',
+  }) ?? resolveCanonicalCryptoSymbol(symbol);
+}
+
+function normalizedRequestedSymbol(symbol: string, metaBySymbol?: Map<string, TraderCatalogSymbol>) {
+  const raw = upper(symbol);
+  if (!raw) return '';
+  const meta = metaBySymbol?.get(raw);
+  const canonical = meta?.assetType === 'crypto'
+    ? canonicalCryptoForQuote(raw, meta)
+    : resolveCanonicalCryptoSymbol(raw);
+  return canonical?.displaySymbol ?? raw;
+}
+
 function classifyAssetType(symbol: string, meta?: TraderCatalogSymbol): TraderAssetType {
   if (meta?.assetType) return meta.assetType;
   const s = symbol.toUpperCase();
   const base = s.replace(/[.\-=].*$/, '');
-  if (CRYPTO_BASES.has(base.replace(/USDT?$/, '').replace(/USD$/, '')) && /USD/.test(s)) return 'crypto';
+  if (resolveCanonicalCryptoSymbol(symbol)) return 'crypto';
   if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s)) return 'commodity';
   if (/^(US30|NAS100|SPX500|DAX|FTSE|CAC40|NIKKEI|HSI|SPX|NDX|DJI|DXY|\^)/.test(s)) return 'index';
   if (/^(SPY|QQQ|GLD|IWM|VOO|DIA)$/.test(s) || meta?.assetType === 'fund') return 'fund';
@@ -728,11 +750,15 @@ function quoteStatus(args: {
 }
 
 function quoteIdentity(display: string, meta?: TraderCatalogSymbol) {
+  const canonical = classifyAssetType(display, meta) === 'crypto'
+    ? canonicalCryptoForQuote(display, meta)
+    : null;
+  const symbol = canonical?.canonicalSymbol ?? display;
   return {
-    symbol: display,
+    symbol,
     requestedSymbol: display,
-    canonicalSymbol: meta?.symbol ?? display,
-    displaySymbol: display,
+    canonicalSymbol: meta?.symbol ?? symbol,
+    displaySymbol: canonical?.displaySymbol ?? display,
   };
 }
 
@@ -840,6 +866,19 @@ function unavailableQuote(display: string, reason: string, meta?: TraderCatalogS
 }
 
 function candidateSymbols(display: string, provider: TraderQuoteProvider, meta?: TraderCatalogSymbol) {
+  const assetType = classifyAssetType(display, meta);
+  if (assetType === 'crypto') {
+    const canonical = canonicalCryptoForQuote(display, meta);
+    if (canonical) {
+      if (provider === 'yahoo') return unique([canonical.providerSymbols.yahoo]);
+      if (provider === 'fmp') return unique([canonical.providerSymbols.fmp]);
+      if (provider === 'finnhub') return unique([canonical.providerSymbols.finnhub, canonical.providerSymbols.binance]);
+      if (provider === 'twelve_data') return unique([canonical.providerSymbols.twelveData]);
+      if (provider === 'eodhd') return unique([canonical.providerSymbols.eodhd]);
+      if (provider === 'openbb') return unique([canonical.providerSymbols.fmp, canonical.displaySymbol]);
+      return [];
+    }
+  }
   const aliasAssetType = (meta?.assetType === 'fund'
     ? 'etf'
     : meta?.assetType === 'commodity'
@@ -870,7 +909,9 @@ function metaMap(symbolMeta?: TraderCatalogSymbol[]) {
   const map = new Map<string, TraderCatalogSymbol>();
   for (const item of symbolMeta ?? []) {
     map.set(upper(item.symbol), item);
+    map.set(upper(item.displaySymbol), item);
     map.set(upper(item.providerSymbol), item);
+    for (const alias of item.aliases ?? []) map.set(upper(alias), item);
     for (const provider of Object.keys(item.providerSymbols) as TraderQuoteProvider[]) {
       for (const symbol of item.providerSymbols[provider] ?? []) map.set(upper(symbol), item);
     }
@@ -880,6 +921,30 @@ function metaMap(symbolMeta?: TraderCatalogSymbol[]) {
 
 function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: TraderCatalogSymbol): TraderQuote {
   const assetType = classifyAssetType(display, meta);
+  const canonical = assetType === 'crypto' ? canonicalCryptoForQuote(display, meta) : null;
+  const collisionReason = canonical ? cryptoQuoteRejectionReason({
+    requestedSymbol: display,
+    canonicalSymbol: canonical.canonicalSymbol,
+    assetClass: 'crypto',
+    provider: quote.provider,
+    providerSymbol: quote.providerSymbol,
+    responseSymbol: quote.providerSymbol,
+    responseName: quote.name ?? meta?.name,
+    responseAssetType: quote.assetType,
+    responsePrice: quote.price,
+  }) : null;
+  if (collisionReason) {
+    console.warn('[trader-quotes] rejected quote collision', {
+      canonicalSymbol: canonical?.canonicalSymbol,
+      assetClass: assetType,
+      provider: quote.provider,
+      providerSymbol: quote.providerSymbol,
+      responseName: quote.name ?? meta?.name ?? null,
+      responsePrice: quote.price,
+      rejectionReason: collisionReason,
+    });
+    return unavailableQuote(display, collisionReason, meta);
+  }
   const normalized = normalizeMarketPrice({
     price: quote.price,
     currency: quote.currency ?? meta?.currency,
@@ -930,7 +995,7 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     providerSymbolUsed: quote.providerSymbol,
     provider: quote.provider,
     fallbackUsed,
-    name: quote.name || meta?.name || display,
+    name: (canonical?.name ?? quote.name) || meta?.name || display,
     assetType,
     price,
     change,
@@ -1302,6 +1367,8 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   const marketTime = numberOrNull(meta.regularMarketTime);
 
   return {
+    symbol: textOrNull(meta.symbol),
+    name: textOrNull(meta.longName ?? meta.shortName),
     price,
     previousClose,
     currency: typeof meta.currency === 'string' ? meta.currency : null,
@@ -1317,6 +1384,7 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
 
 async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forceFresh?: boolean): Promise<TraderQuote> {
   const assetType = classifyAssetType(display, meta);
+  const canonical = assetType === 'crypto' ? canonicalCryptoForQuote(display, meta) : null;
   const symbols = candidateSymbols(display, 'yahoo', meta);
   const primaryYahoo = symbols[0] ?? display;
 
@@ -1325,6 +1393,29 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
   for (const candidate of symbols) {
     const attempt = await fetchChart(candidate, forceFresh);
     if (attempt && attempt.price !== null) {
+      const rejectionReason = canonical ? cryptoQuoteRejectionReason({
+        requestedSymbol: display,
+        canonicalSymbol: canonical.canonicalSymbol,
+        assetClass: 'crypto',
+        provider: 'yahoo',
+        providerSymbol: candidate,
+        responseSymbol: attempt.symbol ?? candidate,
+        responseName: attempt.name ?? canonical.name,
+        responseAssetType: attempt.assetType,
+        responsePrice: attempt.price,
+      }) : null;
+      if (rejectionReason) {
+        console.warn('[trader-quotes] rejected Yahoo chart collision', {
+          canonicalSymbol: canonical?.canonicalSymbol,
+          assetClass: assetType,
+          provider: 'yahoo',
+          providerSymbol: candidate,
+          responseName: attempt.name,
+          responsePrice: attempt.price,
+          rejectionReason,
+        });
+        continue;
+      }
       chart = attempt;
       yahoo = candidate;
       break;
@@ -1336,8 +1427,11 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     const normalized = await fetchYahooNormalizedQuote({
       requestedSymbol: display,
       symbols,
-      name: meta?.name ?? display,
+      name: canonical?.name ?? meta?.name ?? display,
       forceFresh,
+      canonicalSymbol: canonical?.canonicalSymbol,
+      assetClass: canonical ? 'crypto' : assetType,
+      expectedName: canonical?.name ?? meta?.name,
       debugContext: { route: 'trader/marketQuotes', mode: 'quote_fallback' },
     }).catch(() => null);
 
@@ -1367,7 +1461,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       providerSymbolUsed: normalized.symbolUsed ?? yahoo,
       provider: 'yahoo',
       fallbackUsed: true,
-      name: normalized.name || meta?.name || display,
+      name: (canonical?.name ?? normalized.name) || meta?.name || display,
       assetType,
       price,
       change,
@@ -1392,7 +1486,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       available: true,
       lastUpdated: updatedAt,
       updatedAt,
-      ...quoteShariahFields(display, assetType, meta, normalized.name),
+      ...quoteShariahFields(display, assetType, meta, canonical?.name ?? normalized.name),
     });
   }
 
@@ -1435,7 +1529,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     providerSymbolUsed: yahoo,
     provider: 'yahoo',
     fallbackUsed: true,
-    name: meta?.name ?? display,
+    name: canonical?.name ?? meta?.name ?? display,
     assetType,
     price: round(price),
     change: round(change),
@@ -1460,7 +1554,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     available: price !== null,
     lastUpdated: updatedAt,
     updatedAt,
-    ...quoteShariahFields(display, assetType, meta),
+    ...quoteShariahFields(display, assetType, meta, canonical?.name),
   });
 }
 
@@ -1549,8 +1643,8 @@ export async function fetchTraderQuotesDetailed(
   symbols: string[],
   options?: { forceFresh?: boolean; concurrency?: number; symbolMeta?: TraderCatalogSymbol[] },
 ): Promise<TraderQuoteLoadResult> {
-  const uniqueSymbols = Array.from(new Set(symbols.map(s => s.trim().toUpperCase()).filter(Boolean)));
   const byMeta = metaMap(options?.symbolMeta);
+  const uniqueSymbols = Array.from(new Set(symbols.map(s => normalizedRequestedSymbol(s, byMeta)).filter(Boolean)));
   const quotes = new Map<string, TraderQuote>();
   const loaded: TraderQuoteLoadResult['loaded'] = [];
   const failed: QuoteIssue[] = [];

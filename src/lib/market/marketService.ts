@@ -1,6 +1,7 @@
 import type { MarketCurrencySource, MarketPriceUnit } from '@/lib/market/marketCurrency';
 import type { ShariahScreeningData, ShariahStatus } from '@/lib/market/shariah-screening';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
+import { listCanonicalCryptoAssets, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 
 export type MarketAssetType = 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index';
 export type MarketTrend = 'bullish' | 'neutral' | 'bearish';
@@ -146,7 +147,7 @@ const CRYPTO_RECORDS = (cryptoSymbols as Array<{
   .filter(record => record.symbol && record.providerSymbol);
 
 const COMMON_CRYPTO_PAIRS: Record<string, string> = Object.fromEntries(
-  CRYPTO_RECORDS.map(record => [`${record.symbol}USD`, record.providerSymbol]),
+  listCanonicalCryptoAssets().map(asset => [`${asset.baseSymbol}USD`, asset.providerSymbols.yahoo]),
 );
 const COMMON_METAL_PAIRS: Record<string, string> = {
   XAUUSD: 'GC=F',
@@ -181,6 +182,15 @@ function compactCryptoSymbol(symbol: unknown) {
 }
 
 function cryptoRecordForInput(symbol: unknown) {
+  const canonical = resolveCanonicalCryptoSymbol(symbol);
+  if (canonical) {
+    return {
+      symbol: canonical.baseSymbol,
+      providerSymbol: canonical.providerSymbols.yahoo,
+      name: canonical.name,
+      aliases: canonical.aliases,
+    };
+  }
   const compact = compactCryptoSymbol(symbol);
   if (!compact) return null;
   return CRYPTO_RECORDS.find(record => {
@@ -194,6 +204,15 @@ function cryptoRecordForInput(symbol: unknown) {
 function inferredCryptoRecord(symbol: unknown) {
   const direct = cryptoRecordForInput(symbol);
   if (direct) return direct;
+  const canonical = resolveCanonicalCryptoSymbol(symbol, { assetClass: 'crypto', allowInferred: true });
+  if (canonical) {
+    return {
+      symbol: canonical.baseSymbol,
+      providerSymbol: canonical.providerSymbols.yahoo,
+      name: canonical.name,
+      aliases: canonical.aliases,
+    };
+  }
   const compact = compactCryptoSymbol(symbol);
   const withoutQuote = compact.endsWith('USD') && compact.length > 5 ? compact.slice(0, -3) : compact;
   if (!/^[A-Z0-9]{2,12}$/.test(withoutQuote)) return null;
@@ -297,15 +316,15 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
     };
   }
 
-  if (COMMON_CRYPTO_PAIRS[compact]) {
-    const record = cryptoRecordForInput(compact);
+  const canonicalCrypto = resolveCanonicalCryptoSymbol(raw, { assetClass: requestedAssetType, allowInferred: requestedAssetType === 'crypto' });
+  if (canonicalCrypto) {
     return {
       valid: true as const,
-      symbol: record ? `${record.symbol}USD` : compact,
-      displaySymbol: record ? record.symbol : compact,
-      providerSymbol: COMMON_CRYPTO_PAIRS[compact],
+      symbol: canonicalCrypto.canonicalSymbol,
+      displaySymbol: canonicalCrypto.displaySymbol,
+      providerSymbol: canonicalCrypto.providerSymbols.yahoo,
       assetType: 'crypto' as MarketAssetType,
-      suggestions: marketSymbolSuggestions(compact),
+      suggestions: marketSymbolSuggestions(canonicalCrypto.baseSymbol),
     };
   }
 

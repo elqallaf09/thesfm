@@ -1,3 +1,4 @@
+import { resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { fundMatchesFilter } from '@/lib/trader/fundTypes';
 
 export type MarketFilterAsset = {
@@ -317,7 +318,9 @@ function symbolText(asset: MarketFilterAsset) {
 }
 
 function normalizedAssetSymbol(asset: MarketFilterAsset) {
-  return symbolText(asset).replace(/[-=].*$/, '').replace(/\..*$/, '');
+  const canonical = resolveCanonicalCryptoSymbol(symbolText(asset));
+  if (canonical) return canonical.baseSymbol;
+  return symbolText(asset).replace(/[/-].*$/, '').replace(/[-=].*$/, '').replace(/\..*$/, '');
 }
 
 function normalizedAssetType(value: string) {
@@ -343,7 +346,7 @@ function inferredAssetType(asset: MarketFilterAsset) {
   if (explicit) return explicit;
 
   const symbol = symbolText(asset);
-  if (/^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|USDT|AVAX|DOT|LTC|BCH|LINK)(?:USD|-USD)?$/i.test(symbol)) return 'crypto';
+  if (resolveCanonicalCryptoSymbol(symbol)) return 'crypto';
   if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/i.test(symbol) || /XAU|XAG|GOLD|SILVER|OIL/i.test(symbol)) return 'commodity';
   if (/^[A-Z]{6}$/i.test(symbol.replace(/[.\-=].*/, ''))) return 'forex';
   if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|SOXX)$/i.test(symbol)) return 'fund';

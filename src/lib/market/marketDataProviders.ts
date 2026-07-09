@@ -4,6 +4,7 @@ import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/
 import { normalizeAssetType, type MarketAssetType, type MarketHistoryPoint, type MarketSearchItem } from '@/lib/market/marketService';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
+import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
@@ -198,6 +199,16 @@ function compactPair(symbol: string) {
   return upper(symbol).replace(/=X$/i, '').replace(/[-_/]/g, '').replace(/[^A-Z0-9]/g, '');
 }
 
+function canonicalCryptoFor(symbol: string, context?: MarketDataProviderContext) {
+  return resolveCanonicalCryptoSymbol(context?.symbol ?? symbol, {
+    assetClass: context?.assetType,
+    allowInferred: normalizeAssetType(context?.assetType) === 'crypto',
+  }) ?? resolveCanonicalCryptoSymbol(symbol, {
+    assetClass: context?.assetType,
+    allowInferred: normalizeAssetType(context?.assetType) === 'crypto',
+  });
+}
+
 function exchangeCurrency(symbol: string, context?: MarketDataProviderContext) {
   const s = upper(symbol || context?.symbol);
   const market = upper(context?.market);
@@ -242,7 +253,30 @@ function normalizeQuote(input: {
 }): NormalizedMarketQuote | null {
   const rawPrice = numberOrNull(input.price);
   if (rawPrice === null || rawPrice <= 0) return null;
-  const assetType = normalizeAssetType(input.context?.assetType);
+  const assetType = normalizeAssetType(input.context?.assetType ?? input.assetType);
+  const collisionReason = cryptoQuoteRejectionReason({
+    requestedSymbol: input.context?.symbol ?? input.symbol,
+    canonicalSymbol: canonicalCryptoFor(input.symbol, input.context)?.canonicalSymbol,
+    assetClass: assetType,
+    provider: input.provider,
+    providerSymbol: input.providerSymbol,
+    responseSymbol: input.providerSymbol,
+    responseName: input.name,
+    responseAssetType: input.assetType,
+    responsePrice: rawPrice,
+  });
+  if (collisionReason) {
+    console.warn('[market-data-provider] rejected quote collision', {
+      canonicalSymbol: canonicalCryptoFor(input.symbol, input.context)?.canonicalSymbol,
+      assetClass: assetType,
+      provider: input.provider,
+      providerSymbol: input.providerSymbol,
+      responseName: textOrNull(input.name),
+      responsePrice: rawPrice,
+      rejectionReason: collisionReason,
+    });
+    return null;
+  }
   const resolved = resolveMarketCurrency({
     providerCurrency: input.currency ?? input.context?.currency ?? exchangeCurrency(input.symbol, input.context),
     symbol: input.symbol,
@@ -362,6 +396,8 @@ function twelveExchangeCandidates(symbol: string, market?: string | null, contex
     return [{ symbol: `${pair.slice(0, 3)}/${pair.slice(3, 6)}`, exchange: null }];
   }
   if (assetType === 'crypto') {
+    const canonical = canonicalCryptoFor(s, context);
+    if (canonical) return [{ symbol: canonical.providerSymbols.twelveData, exchange: null }];
     const pair = compactPair(s).replace(/USDT$/, 'USD');
     return [{ symbol: `${pair.replace(/USD$/, '')}/USD`, exchange: null }];
   }
@@ -388,8 +424,10 @@ function finnhubCandidates(symbol: string, context?: MarketDataProviderContext) 
     return [...alias, `OANDA:${pair.slice(0, 3)}_${pair.slice(3, 6)}`, pair];
   }
   if (assetType === 'crypto') {
+    const canonical = canonicalCryptoFor(s, context);
+    if (canonical) return [...alias, canonical.providerSymbols.finnhub, canonical.providerSymbols.binance];
     const pair = compactPair(s).replace(/USD$/, 'USDT');
-    return [...alias, `BINANCE:${pair}`, `COINBASE:${compactPair(s).replace(/USD$/, '-USD')}`];
+    return [...alias, `BINANCE:${pair}`];
   }
   return [...alias, s, base];
 }
@@ -399,7 +437,11 @@ function eodhdCandidates(symbol: string, context?: MarketDataProviderContext) {
   const assetType = normalizeAssetType(context?.assetType);
   const base = stripSuffix(s);
   if (assetType === 'forex') return [`${compactPair(s)}.FOREX`, compactPair(s)];
-  if (assetType === 'crypto') return [`${compactPair(s).replace(/USD$/, '-USD')}.CC`, `${compactPair(s).replace(/USD$/, '')}-USD.CC`];
+  if (assetType === 'crypto') {
+    const canonical = canonicalCryptoFor(s, context);
+    if (canonical) return [canonical.providerSymbols.eodhd];
+    return [`${compactPair(s).replace(/USD$/, '-USD')}.CC`, `${compactPair(s).replace(/USD$/, '')}-USD.CC`];
+  }
   if (assetType === 'gold' || assetType === 'commodity') {
     const pair = compactPair(s);
     if (pair === 'XAUUSD' || pair === 'GOLD') return ['XAUUSD.FOREX', 'GC.COMM'];
@@ -421,7 +463,11 @@ function yahooCandidates(symbol: string, context?: MarketDataProviderContext) {
   const s = upper(symbol);
   const assetType = normalizeAssetType(context?.assetType);
   if (assetType === 'forex') return [...alias, `${compactPair(s)}=X`, compactPair(s)];
-  if (assetType === 'crypto') return [...alias, `${compactPair(s).replace(/USD$/, '')}-USD`, compactPair(s)];
+  if (assetType === 'crypto') {
+    const canonical = canonicalCryptoFor(s, context);
+    if (canonical) return [...alias, canonical.providerSymbols.yahoo];
+    return [...alias, `${compactPair(s).replace(/USD$/, '')}-USD`];
+  }
   if (assetType === 'gold' || assetType === 'commodity') {
     const pair = compactPair(s);
     if (pair === 'XAUUSD' || pair === 'GOLD') return [...alias, 'GC=F', 'XAUUSD=X'];
@@ -942,14 +988,25 @@ class YahooProvider extends BaseProvider {
   configured() { return true; }
 
   async getQuote(symbol: string, market?: string | null, context?: MarketDataProviderContext) {
+    const canonicalCrypto = canonicalCryptoFor(symbol, context);
+    const assetType = canonicalCrypto?.assetClass ?? normalizeAssetType(context?.assetType);
     const symbols = uniqueStrings(yahooCandidates(symbol, context));
     const started = Date.now();
     const quote = await fetchYahooNormalizedQuote({
       requestedSymbol: upper(context?.symbol ?? symbol),
       symbols,
-      name: context?.name ?? symbol,
+      name: canonicalCrypto?.name ?? context?.name ?? symbol,
       forceFresh: context?.forceFresh,
-      debugContext: { route: 'market-data-provider', provider: this.name, market },
+      canonicalSymbol: canonicalCrypto?.canonicalSymbol,
+      assetClass: assetType,
+      expectedName: canonicalCrypto?.name ?? context?.name ?? undefined,
+      debugContext: {
+        route: 'market-data-provider',
+        provider: this.name,
+        market,
+        canonicalSymbol: canonicalCrypto?.canonicalSymbol,
+        assetClass: assetType,
+      },
     }).catch(() => null);
     if (!quote?.available || quote.price === null) return null;
     const normalized = normalizeQuote({

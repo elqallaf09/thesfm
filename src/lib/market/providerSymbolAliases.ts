@@ -1,4 +1,5 @@
 import { validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import { listCanonicalCryptoAssets } from '@/lib/market/canonicalSymbols';
 
 export type ProviderSymbolAlias = {
   displaySymbol: string;
@@ -13,6 +14,20 @@ export type ProviderSymbolAlias = {
   currency?: string;
   aliases: string[];
 };
+
+const CRYPTO_PROVIDER_ALIASES: ProviderSymbolAlias[] = listCanonicalCryptoAssets().map(asset => ({
+  displaySymbol: asset.displaySymbol,
+  providerSymbols: [asset.providerSymbols.yahoo],
+  fmpSymbols: [asset.providerSymbols.fmp],
+  yahooSymbols: [asset.providerSymbols.yahoo],
+  finnhubSymbols: [asset.providerSymbols.finnhub, asset.providerSymbols.binance],
+  assetType: 'crypto',
+  name: asset.name,
+  exchange: 'Crypto',
+  country: 'Global',
+  currency: 'USD',
+  aliases: asset.aliases,
+}));
 
 const ALIASES: ProviderSymbolAlias[] = [
   {
@@ -78,6 +93,7 @@ const ALIASES: ProviderSymbolAlias[] = [
     currency: 'JPY',
     aliases: ['USDJPY', 'USD/JPY', 'JPY=X'],
   },
+  ...CRYPTO_PROVIDER_ALIASES,
   {
     displaySymbol: 'BTCUSD',
     providerSymbols: ['BTC-USD'],
@@ -245,7 +261,7 @@ function aliasMatches(alias: ProviderSymbolAlias, value: unknown) {
 }
 
 export function resolveProviderSymbolAlias(value: unknown, assetType?: MarketAssetType | null) {
-  const normalizedAssetType = assetType && assetType !== 'stock' ? assetType : null;
+  const normalizedAssetType = assetType ?? null;
   return ALIASES.find(alias => (
     (!normalizedAssetType || alias.assetType === normalizedAssetType || (normalizedAssetType === 'commodity' && alias.assetType === 'gold'))
     && aliasMatches(alias, value)

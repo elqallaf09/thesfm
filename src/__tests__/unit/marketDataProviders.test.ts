@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const yahooQuoteMock = vi.fn(async (options: { requestedSymbol: string }) => ({
+const yahooQuoteMock = vi.fn(async (options: { requestedSymbol: string; symbols?: string[] }) => ({
   requestedSymbol: options.requestedSymbol,
-  symbolUsed: options.requestedSymbol,
+  symbolUsed: options.symbols?.[0] ?? options.requestedSymbol,
   name: options.requestedSymbol,
   price: 182.5,
   change: 1.2,
@@ -137,5 +137,29 @@ describe('market data provider fallback', () => {
       'marketstack',
     ]);
     expect(yahooQuoteMock).toHaveBeenCalledOnce();
+  });
+
+  it('uses canonical Yahoo crypto pairs for collision-prone symbols', async () => {
+    clearProviderKeys();
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const { getQuoteWithFallback } = await import('@/lib/market/marketDataProviders');
+    const result = await getQuoteWithFallback('APT/USD', 'crypto', {
+      symbol: 'APT/USD',
+      assetType: 'crypto',
+      currency: 'USD',
+      forceFresh: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(yahooQuoteMock).toHaveBeenCalledWith(expect.objectContaining({
+      requestedSymbol: 'APT/USD',
+      symbols: ['APT-USD'],
+      canonicalSymbol: 'APT/USD',
+      assetClass: 'crypto',
+      expectedName: 'Aptos',
+    }));
+    expect((yahooQuoteMock.mock.calls[0]?.[0] as { symbols?: string[] } | undefined)?.symbols).not.toContain('APT');
   });
 });

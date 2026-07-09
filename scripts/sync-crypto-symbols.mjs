@@ -15,15 +15,6 @@ function cleanSymbol(value) {
 }
 
 function providerSymbolFor(symbol) {
-  if (symbol === 'TON') return 'TON11419-USD';
-  if (symbol === 'PEPE') return 'PEPE24478-USD';
-  if (symbol === 'APT') return 'APT21794-USD';
-  if (symbol === 'ARB') return 'ARB11841-USD';
-  if (symbol === 'SUI') return 'SUI20947-USD';
-  if (symbol === 'STX') return 'STX4847-USD';
-  if (symbol === 'GRT') return 'GRT6719-USD';
-  if (symbol === 'APE') return 'APE18876-USD';
-  if (symbol === 'COMP') return 'COMP5692-USD';
   return `${symbol}-USD`;
 }
 

@@ -1,21 +1,18 @@
 import { validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
-import cryptoSymbols from '@/data/market-symbols/crypto.json';
 import { resolveProviderSymbolAlias } from '@/lib/market/providerSymbolAliases';
+import { listCanonicalCryptoAssets, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 
 const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
 const CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
 const COMMON_FOREX_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD', 'EURJPY', 'GBPJPY'] as const;
 const ETF_SYMBOLS = new Set(['QQQ', 'SPY', 'VOO', 'DIA', 'IWM']);
 const CRYPTO_PAIRS: Record<string, { display: string; provider: string; alternatives: string[] }> = (
-  cryptoSymbols as Array<{ symbol?: string; provider_symbol?: string | null; aliases?: string[] | null }>
-).reduce<Record<string, { display: string; provider: string; alternatives: string[] }>>((pairs, record) => {
-  const symbol = String(record.symbol ?? '').trim().toUpperCase();
-  const provider = String(record.provider_symbol ?? '').trim().toUpperCase();
-  if (!symbol || !provider) return pairs;
-  pairs[`${symbol}USD`] = {
-    display: `${symbol}/USD`,
-    provider,
-    alternatives: [provider, `${symbol}/USD`, `${symbol}USD`, symbol, ...(record.aliases ?? [])],
+  listCanonicalCryptoAssets()
+).reduce<Record<string, { display: string; provider: string; alternatives: string[] }>>((pairs, asset) => {
+  pairs[`${asset.baseSymbol}USD`] = {
+    display: asset.displaySymbol,
+    provider: asset.providerSymbols.yahoo,
+    alternatives: [asset.providerSymbols.yahoo, asset.displaySymbol, `${asset.baseSymbol}USD`, asset.baseSymbol, ...asset.aliases],
   };
   return pairs;
 }, {});
@@ -105,8 +102,15 @@ export function normalizeMarketSymbol(input: unknown, assetTypeInput?: unknown):
     };
   }
 
+  const canonicalCrypto = resolveCanonicalCryptoSymbol(raw, { assetClass: requestedAssetType, allowInferred: requestedAssetType === 'crypto' });
   const cryptoKey = compact.length <= 5 ? `${compact}USD` : compact;
-  const crypto = CRYPTO_PAIRS[cryptoKey];
+  const crypto = canonicalCrypto
+    ? {
+        display: canonicalCrypto.displaySymbol,
+        provider: canonicalCrypto.providerSymbols.yahoo,
+        alternatives: canonicalCrypto.aliases,
+      }
+    : CRYPTO_PAIRS[cryptoKey];
   if (crypto) {
     return {
       inputSymbol: raw,

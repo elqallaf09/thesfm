@@ -157,6 +157,15 @@ describe('trader market and sector symbol universe', () => {
     expect(technology.entries.every(entry => entry.assetType === 'stock')).toBe(true);
     expect(technology.symbols).not.toEqual(expect.arrayContaining(['BTC', 'BTCUSD', 'EURUSD', 'XAUUSD', 'WTI']));
     expect(crypto.entries.every(entry => entry.assetType === 'crypto')).toBe(true);
+    expect(crypto.symbols).toContain('BTC/USD');
+    expect(crypto.symbols).not.toEqual(expect.arrayContaining(['BTC', 'BTCUSD', 'BTC-USD']));
+    expect(crypto.symbols.filter(symbol => symbol === 'BTC/USD')).toHaveLength(1);
+    expect(crypto.symbolMeta.find(symbol => symbol.symbol === 'BTC/USD')).toMatchObject({
+      displaySymbol: 'BTC/USD',
+      providerSymbol: 'BTC-USD',
+      name: 'Bitcoin',
+      assetType: 'crypto',
+    });
     expect(forex.entries.every(entry => entry.assetType === 'forex')).toBe(true);
     expect(commodities.entries.every(entry => entry.assetType === 'commodity')).toBe(true);
     expect(etfs.entries.every(entry => entry.assetType === 'fund')).toBe(true);
