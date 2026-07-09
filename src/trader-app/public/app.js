@@ -3,6 +3,7 @@
    pure render-component functions, defensive data layer, no synthetic market data. */
 (() => {
   "use strict";
+  const Recommendation = window.SFMRecommendation;
   let _marketSelectorOpen = false;
 
   /* ─────────────────────────── Config ─────────────────────────── */
@@ -1700,6 +1701,48 @@
   }
 
   /* ───────────────────── Components ───────────────────── */
+  function sharedRecommendation(asset, context = {}) {
+    return Recommendation.normalizeRecommendation(asset, context);
+  }
+  function recommendationTone(recommendation) {
+    return Recommendation.statusTone(recommendation && recommendation.status);
+  }
+  function recommendationLabel(recommendation) {
+    return recommendation ? recommendation.actionLabelAr : Recommendation.labelAr("watch");
+  }
+  function recommendationStatusText(recommendation, fallbackAsset) {
+    if (!recommendation) return recStatus(fallbackAsset || {});
+    if (recommendation.status === "insufficient_data") return recommendation.actionLabelAr;
+    if (recommendation.status === "watch") return recommendation.actionLabelAr;
+    return recStatus(fallbackAsset || {});
+  }
+  function unavailablePriceText(asset) {
+    const reason = asset && (asset.unavailableReason || asset.reason || asset.providerStatus && asset.providerStatus.reason);
+    return reason ? `${PRICE_UNAVAILABLE_AR} · ${formatProviderError(reason, { empty: PRICE_UNAVAILABLE_EN })}` : `${PRICE_UNAVAILABLE_AR} · ${PRICE_UNAVAILABLE_EN}`;
+  }
+  function hasTradeableQuote(asset, recommendation) {
+    const a = norm(asset);
+    const rec = recommendation || sharedRecommendation(a);
+    const priceValue = num(a.price, a.lastPrice, a.currentPrice, a.regularMarketPrice, a.close);
+    const targetValue = num(a.target, a.targetPrice, a.target1, rec && rec.targetPrice);
+    const stopValue = num(a.stopLoss, a.stop, rec && rec.stopLoss);
+    const quality = normalizedDataQuality(a.dataQuality || a.data_quality || (a.providerStatus && a.providerStatus.dataQuality));
+    return a.available !== false
+      && a.tradeable !== false
+      && a.canFollowTrade !== false
+      && priceValue !== null
+      && targetValue !== null
+      && stopValue !== null
+      && quality !== "unavailable"
+      && rec
+      && rec.canFollowTrade === true;
+  }
+  function followTradeButton(recommendation, symbol, className = "ghost-btn", small = false, asset = null) {
+    const disabled = !hasTradeableQuote(asset || { symbol }, recommendation);
+    const label = disabled ? recommendationLabel(recommendation) : "متابعة الصفقة";
+    const title = disabled ? h((asset && asset.unavailableReason ? unavailablePriceText(asset) : null) || (recommendation && recommendation.reason) || "السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.") : "";
+    return `<button class="${className}${small ? " sm" : ""}" data-follow-trade="${h(symbol)}" type="button"${disabled ? ` disabled aria-disabled="true" title="${title}"` : ""}>${h(label)}</button>`;
+  }
   function isBuySignalName(value) { return value === "buy" || value === "cautious_buy" || value === "weak_buy"; }
   function isSellSignalName(value) { return value === "sell" || value === "sell_or_avoid"; }
   function signalCardClass(value) {
@@ -1710,15 +1753,7 @@
     return "";
   }
   function finalRecommendationAction(value) {
-    const raw = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
-    if (!raw) return "";
-    if (raw.includes("insufficient") || raw.includes("unavailable") || raw.includes("غير كاف") || raw.includes("غير متاح")) return "insufficient_data";
-    if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell";
-    if (raw.includes("weak buy") || raw.includes("cautious buy") || raw.includes("شراء ضعيف") || raw.includes("شراء حذر")) return "weak_buy";
-    if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy";
-    if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait";
-    if (raw.includes("watch") || raw.includes("مراقبة")) return "watch";
-    return "";
+    return Recommendation.parseRecommendationStatus(value);
   }
   function agreementObject(...records) {
     for (const record of records) {
@@ -1853,8 +1888,9 @@
     const c = currency({ ...a, symbol: detailSymbol });
     const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
-    const conf = num(a.confidence, a.score, a.aiConfidence);
-    const sig = (a.signalAvailable === false || (!a.signal && !a.recommendation && !a.action)) ? null : signal(a);
+    const recommendation = sharedRecommendation(a);
+    const conf = recommendation.confidence;
+    const sig = recommendation.status;
     const quality = a.dataQuality || (p === null ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
     return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
@@ -1862,7 +1898,7 @@
       <div class="leadership-price"><strong class="ltr">${h(p === null ? "السعر غير متاح" : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "التغير غير متاح" : change(chg))}</span></div>
       ${sparkline(a, chg)}
       <div class="leadership-foot">
-        <span class="signal-badge ${sig || "unavailable"}">${h(sig ? sigLabel(sig) : "إشارة غير متاحة")}</span>
+        <span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span>
         <span class="quality-badge">${h(conf === null ? "الثقة غير متاحة" : `الثقة ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
         ${precisionBadge(a)}
       </div>
@@ -1878,14 +1914,14 @@
   function heatmapCard(symbol, asset) {
     const a = asset ? norm(asset) : { symbol, name: "غير متاح" };
     const chg = num(a.changePercent, a.percentChange);
-    const hasSignal = Boolean(asset && (a.signal || a.recommendation || a.action || a.side || a.type));
+    const recommendation = sharedRecommendation(a);
     const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
-    const conf = num(a.confidence, a.score, a.aiConfidence);
+    const conf = recommendation.confidence;
     return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
       ${logo({ ...a, symbol }, "sm")}
       <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
       <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</span>
-      <em>${hasSignal ? h(sigLabel(signal(a))) : "غير متاح"}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
+      <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
     </button>`;
   }
   function moverPanel(kicker, title, items, tone) {
@@ -1995,8 +2031,8 @@
   }
   function watchlistTable(items, opts = {}) {
     const rows = items.map(x => {
-      const a = norm(x), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "";
-      const conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+      const a = norm(x), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status;
+      const conf = recommendation.confidence, p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
       const chg = num(a.changePercent, a.percentChange), tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
       const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="إزالة">✕</button>` : "";
@@ -2004,7 +2040,7 @@
         <td class="wt-asset" data-label="الأصل"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "غير متاح")}</small></span></button></td>
         <td class="ltr" data-label="السعر">${h(p === null ? "غير متاح" : price(p, c))}</td>
         <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="التغير">${h(chg === null ? "غير متاح" : change(chg))}</td>
-        <td data-label="التوصية"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span></td>
+        <td data-label="التوصية"><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></td>
         <td class="ltr" data-label="الثقة">${conf === null ? "غير متاح" : Math.round(conf) + "%"}</td>
         <td class="ltr" data-label="الهدف">${tgt === null ? "غير متاح" : price(tgt, c)}</td>
         <td data-label="المدة">${h(a.timeframe || a.horizon || a.duration || "غير متاح")}</td>
@@ -2017,21 +2053,24 @@
   }
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
   function recCard(x) {
-    const a = norm(x), c = currency(a), sig = signal(a), conf = num(a.confidence, a.score, a.aiConfidence);
+    const a = norm(x), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
     const p = num(a.price, a.lastPrice, a.currentPrice), tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
-    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span></div>
-      <div class="rec-metrics"><span>السعر<b class="ltr">${h(price(p, c))}</b></span><span>الهدف<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>وقف<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>ثقة<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
-      <div class="rec-foot"><span class="status-tag ${recStatusTone(a)}">${h(recStatus(a))}</span><div class="row-actions compact-actions"><button class="action-btn sm" data-follow-trade="${h(a.symbol)}" type="button">متابعة الصفقة</button><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
+    const unavailableNote = p === null || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : "";
+    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></div>
+      <div class="rec-metrics"><span>السعر<b class="ltr">${h(p === null ? PRICE_UNAVAILABLE_AR : price(p, c))}</b></span><span>الهدف<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>وقف<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>ثقة<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
+      ${unavailableNote}
+      <div class="rec-foot"><span class="status-tag ${recommendationTone(recommendation) || recStatusTone(a)}">${h(recommendationStatusText(recommendation, a))}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">فتح التحليل</button></div></div></article>`;
   }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
-    const a = norm(asset), c = currency(a), hasSignal = Boolean(a.signal || a.recommendation || a.action || a.side || a.type), sig = hasSignal ? signal(a) : "", conf = num(a.confidence, a.score, a.aiConfidence), p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
+    const a = norm(asset), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence, p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
     const chg = num(a.changePercent, a.percentChange);
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">إزالة</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || "اسم الأصل غير متوفر")}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(hasSignal ? sigLabel(sig) : "غير متاح")}</span><span class="status-tag">${h(recStatus(a))}</span></div>
-      <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? "غير متاح" : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
-      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button><button class="ghost-btn" data-follow-trade="${h(a.symbol)}">متابعة الصفقة</button><button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag">${h(recommendationStatusText(recommendation, a))}</span></div>
+      <div class="asset-metrics"><span>السعر<b class="ltr">${h(p === null ? PRICE_UNAVAILABLE_AR : price(p, c))}</b></span><span>التغيير<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</b></span><span>ثقة AI<b>${conf === null ? "غير متاح" : `${Math.round(conf)}%`}</b></span></div>
+      ${p === null || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : ""}
+      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">فتح التحليل</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">قائمة المتابعة</button>${remove}</div></article>`;
   }
   function marketCard(m) {
     const visible = marketPreviewSymbols(m).slice(0, 8);
@@ -2041,7 +2080,7 @@
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(m.en)}</span></div><strong>${h(m.ar)}</strong><p>${h(m.family)} · العملة <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(`يعرض ${latinNumber(visible.length)} من ${latinNumber(total)} رمز`)} · <span class="ltr">${h(`Showing ${visible.length} of ${total} symbols`)}</span></span><span class="market-card-action">${marketActionLabel(m)}</span></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), sig = signal(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : sig}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(sigLabel(sig))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), recommendation = sharedRecommendation(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? "غير متاح" : change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
@@ -2749,44 +2788,29 @@
   function finalRecommendationModel(asset, detail, rec, c) {
     const a = asset || {};
     const tech = detail && detail.tech || {};
-    const sigs = strategySignals(a, tech, rec);
-    const consensusResult = consensus(sigs);
+    const source = rec || a;
+    const recommendation = sharedRecommendation(source, { asset: a, detail });
+    const backendRows = strategyRowsFromBackend(rec, a);
+    const sigs = backendRows.length ? backendRows : strategySignals(a, tech, rec);
+    const consensusResult = backendRows.length ? backendConsensusFromRecords(rec, a) : consensus(sigs);
     const backendMetric = strategyAgreementMetric(rec, a);
     if (backendMetric.count > 0) {
       consensusResult.count = backendMetric.count;
       consensusResult.limited = backendMetric.limited;
       if (backendMetric.agreementPct !== null) consensusResult.agreement = backendMetric.agreementPct;
     }
-    const confidence = num(rec && rec.aiConfidence, rec && rec.confidence, rec && rec.score);
+    const confidence = recommendation.confidence;
     const samples = sampleCountFromRec(rec);
-    const dataQuality = normalizedDataQuality((rec && rec.dataQualityStatus && rec.dataQualityStatus.status) || (rec && rec.dataQuality) || (detail && detail.providerStatus && detail.providerStatus.dataQuality) || a.dataQuality);
+    const dataQuality = recommendation.dataQuality.status;
     const technicalState = technicalSnapshot({ ...a, ...(rec || {}) }, tech);
-    const riskLevel = riskKey(rec && (rec.riskLevel || rec.risk));
+    const riskLevel = recommendation.riskLevel;
     const consensusStrong = consensusResult.agreement >= 70 && consensusResult.count >= 3;
     const aiStrong = confidence !== null && confidence >= 70;
     const dataStrong = dataQuality === "complete" && samples !== null && samples > 0;
     const technicalStrong = technicalState.available && (!rec || rec.technicalAvailable !== false);
     const riskStrong = riskLevel !== "high";
-    const finalStrongBuy = isBuySignalName(consensusResult.signal) && consensusStrong && aiStrong && dataStrong && technicalStrong && riskStrong;
-    const finalStrongSell = isSellSignalName(consensusResult.signal) && consensusStrong && aiStrong && dataStrong && technicalStrong;
-    let action = "watch";
-    if (!rec && consensusResult.count === 0) action = "insufficient_data";
-    else if (samples === 0 || !technicalStrong || dataQuality === "unavailable") action = "insufficient_data";
-    else if (finalStrongBuy) action = "buy";
-    else if (finalStrongSell) action = "sell";
-    else if (isBuySignalName(consensusResult.signal) && confidence !== null && confidence >= 50 && technicalStrong && riskLevel !== "high" && dataQuality !== "unavailable") action = "weak_buy";
-
-    const parts = [];
-    if (consensusResult.count < 3) parts.push("اتفاق الاستراتيجيات مبني على تغطية محدودة");
-    else parts.push(`اتفاق الاستراتيجيات ${latinNumber(consensusResult.agreement)}% عبر ${latinNumber(consensusResult.count)} استراتيجيات`);
-    parts.push(confidence === null ? "ثقة AI غير متاحة" : `ثقة AI ${latinNumber(Math.round(confidence))}%`);
-    parts.push(`المخاطر ${riskShort(riskLevel)}`);
-    if (!technicalStrong) parts.push("البيانات الفنية غير مكتملة");
-    if (dataQuality !== "complete") parts.push(`جودة البيانات ${dataQualityLabel(dataQuality)}`);
-    parts.push(samples === null ? "عدد العينات غير متاح" : `${latinNumber(samples)} عينة`);
-    const strongText = action === "buy" || action === "sell" ? "لذلك تتوفر شروط الإشارة القوية." : "لذلك هذه ليست إشارة شراء أو بيع قوية.";
     return {
-      action,
+      action: recommendation.status,
       consensusResult,
       confidence,
       samples,
@@ -2796,8 +2820,10 @@
       consensusStrong,
       aiStrong,
       dataStrong,
-      finalStrongBuy,
-      explanation: `${parts.join("، ")}، ${strongText}`
+      finalStrongBuy: recommendation.status === "buy" && consensusStrong && aiStrong && dataStrong && technicalStrong && riskStrong,
+      canFollowTrade: recommendation.canFollowTrade,
+      normalizedRecommendation: recommendation,
+      explanation: recommendation.reason
     };
   }
   function finalRecommendationCard(asset, detail, rec, c) {
@@ -2941,7 +2967,8 @@
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: `متابعة ${s}`, message: "تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(`تم إنشاء تنبيه لـ ${s}.`); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {
-    const a = norm(asset), action = signal(a), now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
+    const a = norm(asset), recommendation = sharedRecommendation(a), action = recommendation.status, now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
+    if (!hasTradeableQuote(a, recommendation)) return null;
     return {
       id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       symbol: a.symbol,
@@ -2951,9 +2978,9 @@
       action,
       entryPrice: entry,
       currentPrice: num(a.currentPrice, a.price, a.lastPrice, entry),
-      targetPrice: num(a.targetPrice, a.target, a.target1),
-      stopLoss: num(a.stopLoss, a.stop),
-      confidence: num(a.confidence, a.score),
+      targetPrice: recommendation.targetPrice,
+      stopLoss: recommendation.stopLoss,
+      confidence: recommendation.confidence,
       riskLevel: riskKey(a.riskLevel || a.risk),
       timeframe: a.timeframe || a.duration || (action === "watch" ? "تحت المتابعة" : "1-3 أسابيع"),
       status: action === "wait" ? "waiting" : action === "watch" ? "watching" : "open",
@@ -2962,9 +2989,9 @@
       provider: a.provider || a.source || "",
       sourceSignalId: a.sourceSignalId || a.source_signal_id || null,
       sourceType,
-      notes: a.notes || a.reason || "",
+      notes: a.notes || recommendation.reason || a.reason || "",
       currency: a.currency || currency(a),
-      payload: a
+      payload: { ...a, normalizedRecommendation: recommendation }
     };
   }
   async function persistFollowedTrade(draft) {
@@ -2981,6 +3008,8 @@
   function followRecommendationTrade(raw) {
     const s = sym(raw), rec = matchRec(s);
     if (!rec) return toast("لم أجد توصية محفوظة لهذا الرمز حالياً.");
+    const recommendation = sharedRecommendation(rec);
+    if (!hasTradeableQuote(rec, recommendation)) return toast(rec.unavailableReason ? unavailablePriceText(rec) : recommendation.reason || "السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.");
     persistFollowedTrade(tradeDraftFromAsset(rec, "recommendation_card"));
   }
   async function refreshFollowedTrades(force) {
@@ -3366,18 +3395,10 @@
     return normalized;
   }
   function signal(x) {
-    const raw = String(x.finalRecommendation || x.finalRecommendationAr || x.signal || x.recommendation || x.action || x.side || x.type || "watch").toLowerCase();
-    if (raw.includes("insufficient") || raw.includes("بيانات غير كافية")) return "insufficient_data";
-    if (raw.includes("weak_buy") || raw.includes("weak buy") || raw.includes("شراء ضعيف")) return "weak_buy";
-    if (raw.includes("cautious") || raw.includes("بحذر")) return "cautious_buy";
-    if (raw.includes("avoid") || raw.includes("sell_or_avoid") || raw.includes("تجنب")) return "sell_or_avoid";
-    if (raw.includes("sell") || raw.includes("بيع") || raw.includes("short")) return "sell";
-    if (raw.includes("buy") || raw.includes("شراء") || raw.includes("long")) return "buy";
-    if (raw.includes("wait") || raw.includes("hold") || raw.includes("انتظار")) return "wait";
-    return "watch";
+    return sharedRecommendation(x).status;
   }
-  function sigLabel(s) { return s === "buy" ? "شراء" : s === "weak_buy" ? "شراء ضعيف" : s === "cautious_buy" ? "شراء بحذر" : isSellSignalName(s) ? "تجنب / بيع" : s === "insufficient_data" ? "بيانات غير كافية" : s === "wait" ? "انتظار" : "مراقبة"; }
-  function sigLabelEn(s) { return s === "buy" ? "Buy" : s === "weak_buy" ? "Weak Buy" : s === "cautious_buy" ? "Cautious Buy" : isSellSignalName(s) ? "Avoid / Sell" : s === "insufficient_data" ? "Insufficient data" : s === "wait" ? "Wait" : "Watch"; }
+  function sigLabel(s) { return Recommendation.labelAr(Recommendation.parseRecommendationStatus(s) || s || "watch"); }
+  function sigLabelEn(s) { return Recommendation.labelEn(Recommendation.parseRecommendationStatus(s) || s || "watch"); }
   function recStatus(x) { const s = String(x.status || x.state || "open").toLowerCase(); if (s.includes("complet") || s.includes("مكتمل")) return "مكتملة"; if (s.includes("fail") || s.includes("فاشل")) return "فاشلة"; if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "منتهية"; if (s.includes("watch") || s.includes("متابعة")) return "تحت المتابعة"; return "مفتوحة"; }
   function recStatusTone(x) { const s = recStatus(x); return s === "مكتملة" ? "ok" : s === "فاشلة" ? "bad" : s === "منتهية" ? "muted" : ""; }
   function confText(x) { const c = num(x.aiConfidence, x.ai_confidence, x.confidence, x.score); return c === null ? "--" : Math.round(c) + "%"; }
@@ -3385,7 +3406,7 @@
   function riskShort(v) { const k = riskKey(v); return k === "high" ? "عالية" : k === "low" ? "منخفضة" : "متوسطة"; }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
   function riskLabel(r) { return r === "conservative" ? "محافظ" : r === "aggressive" ? "هجومي" : "متوازن"; }
-  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "complete") return "مكتملة"; if (v === "live") return "مباشرة"; if (v === "cached") return "بيانات مخزنة مؤقتاً"; if (v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "غير متاح"; }
+  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "complete") return "مكتملة"; if (v === "live") return "مباشرة"; if (v === "cached") return "بيانات مخزنة مؤقتاً"; if (v === "late" || v === "delayed") return "متأخرة"; if (v === "partial") return "جزئية"; if (v === "unavailable") return "غير متاحة"; return value || "غير متاح"; }
   function signalPrefs() {
     const s = state.settings || {};
     const enabledMarkets = Array.isArray(s.enabledMarkets) && s.enabledMarkets.length

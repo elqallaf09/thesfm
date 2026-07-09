@@ -5456,7 +5456,9 @@ a.text-button {
 }
 
 .signal-card .action-badge.action-hold,
-.action-hold {
+.action-hold,
+.action-watch,
+.action-insufficient_data {
   color: #101734;
   background: var(--hold);
 }

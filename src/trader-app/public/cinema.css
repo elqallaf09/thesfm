@@ -440,6 +440,17 @@ button {
   background: rgba(255, 255, 255, 0.035);
 }
 
+.action-btn:disabled,
+.ghost-btn:disabled,
+.action-btn[aria-disabled="true"],
+.ghost-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  filter: saturate(0.45);
+  opacity: 0.62;
+  transform: none;
+  box-shadow: none;
+}
+
 .danger-btn {
   border-color: rgba(255, 94, 122, 0.28);
   background: rgba(255, 94, 122, 0.12);
@@ -3873,6 +3884,22 @@ button.badge:hover::before,
 a.badge:hover::before {
   opacity: 0.65;
   transform: translateX(-54%);
+}
+
+.action-btn:disabled:hover,
+.ghost-btn:disabled:hover,
+.action-btn[aria-disabled="true"]:hover,
+.ghost-btn[aria-disabled="true"]:hover {
+  transform: none;
+  border-color: rgba(85, 215, 255, 0.2);
+  filter: saturate(0.45);
+}
+
+.action-btn:disabled:hover::before,
+.ghost-btn:disabled:hover::before,
+.action-btn[aria-disabled="true"]:hover::before,
+.ghost-btn[aria-disabled="true"]:hover::before {
+  opacity: 0;
 }
 
 .symbol-search button:active,

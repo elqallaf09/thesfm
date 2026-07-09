@@ -144,6 +144,7 @@ export function normalizeTradeSymbol(value: unknown) {
 
 export function normalizeTradeAction(value: unknown): TradeAction {
   const raw = String(value ?? '').trim().toLowerCase();
+  if (raw.includes('insufficient') || raw.includes('بيانات غير كافية')) return 'watch';
   if (raw.includes('buy') || raw.includes('long') || raw.includes('شراء')) return 'buy';
   if (raw.includes('sell') || raw.includes('short') || raw.includes('بيع')) return 'sell';
   if (raw.includes('wait') || raw.includes('hold') || raw.includes('انتظار')) return 'wait';
@@ -724,7 +725,20 @@ export function manualInputToRecord(input: Record<string, unknown>): TradePerfor
   const source = { ...nested, ...input };
   const symbol = normalizeTradeSymbol(source.symbol || source.ticker || source.asset);
   if (!symbol) return null;
-  const action = normalizeTradeAction(source.action || source.signal || source.recommendation);
+  const normalizedRecommendation = (
+    source.normalizedRecommendation
+    || source.finalRecommendationNormalized
+    || source.sharedRecommendation
+    || (source.payload && typeof source.payload === 'object' ? (source.payload as Record<string, unknown>).normalizedRecommendation : null)
+  ) as Record<string, unknown> | null;
+  const normalizedStatus = normalizedRecommendation && typeof normalizedRecommendation === 'object'
+    ? normalizeTradeAction(normalizedRecommendation.status)
+    : null;
+  const action = normalizedStatus === 'buy' || normalizedStatus === 'sell'
+    ? normalizedStatus
+    : normalizedStatus === 'watch' || normalizedStatus === 'wait'
+      ? 'watch'
+      : normalizeTradeAction(source.action || source.signal || source.recommendation);
   const entryPrice = toNumber(source.entryPrice ?? source.entry_price ?? source.entry ?? source.currentPrice ?? source.price);
   const currentPrice = toNumber(source.currentPrice ?? source.current_price ?? source.price ?? entryPrice);
   const openedAt = new Date().toISOString();

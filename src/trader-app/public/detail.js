@@ -3,6 +3,7 @@ const symbol = params.get("symbol") || "";
 const NUMBER_LOCALE = "ar-KW-u-nu-latn";
 const NUMBER_OPTIONS = { numberingSystem: "latn" };
 const APP_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
+const Recommendation = window.SFMRecommendation;
 
 function normalizeDigits(value) {
   return String(value ?? "")
@@ -485,7 +486,9 @@ const DETAIL_ENGLISH_TERM_TO_ARABIC = [
 const DETAIL_ACTION_LABELS = {
   buy: { ar: "شراء", en: "Buy" },
   sell: { ar: "بيع", en: "Sell" },
-  hold: { ar: "انتظار", en: "Wait" }
+  hold: { ar: "انتظار", en: "Wait" },
+  watch: { ar: "تحت المراقبة", en: "Watch" },
+  insufficient_data: { ar: "بيانات غير كافية", en: "Insufficient data" }
 };
 const DETAIL_SHARIA_LABELS = {
   compliant: { ar: "مطابق للشريعة", en: "Shariah-compliant" },
@@ -692,8 +695,9 @@ function renderDetail(data) {
   const item = data.recommendation;
   const profile = data.profile || {};
   const market = data.market || {};
+  const normalizedRecommendation = Recommendation.normalizeRecommendation(item, { asset: item, detail: data });
   const finalScore = calculateFinalScore(item);
-  const decision = item.decision || buildDecision(item);
+  const decision = item.decision || buildDecision(item, normalizedRecommendation);
 
   document.title = `${item.symbol} - the-sfm trader`;
   elements.symbol.textContent = item.symbol;
@@ -702,9 +706,9 @@ function renderDetail(data) {
   elements.heading.textContent = `${localizeInstrumentName(item.name)} (${item.symbol})`;
   elements.summary.textContent = localizeDetailText(profile.summary || detailText("لا تتوفر معلومات وصفية كافية لهذا الرمز.", "Not enough descriptive information is available for this symbol."));
 
-  elements.action.textContent = localizeActionLabel(item.action, item.actionLabel);
-  elements.action.className = `action-badge action-${item.action}`;
-  elements.confidence.textContent = localizeConfidenceText(item.confidence);
+  elements.action.textContent = localizeActionLabel(normalizedRecommendation.status, normalizedRecommendation.actionLabelAr);
+  elements.action.className = `action-badge action-${normalizedRecommendation.status}`;
+  elements.confidence.textContent = localizeConfidenceText(normalizedRecommendation.confidence);
   elements.agreement.textContent = localizeAgreementText(item.timeframeConsensus);
 
   elements.currentPrice.textContent = formatMoney(item.currentPrice, item.currency);
@@ -734,7 +738,7 @@ function renderDetail(data) {
   renderOutlook(item);
   renderReasons(item.reasons || []);
   renderBacktest(item);
-  drawSparkline(elements.sparkline, item.sparkline || [], item.action);
+  drawSparkline(elements.sparkline, item.sparkline || [], normalizedRecommendation.status);
   applyDetailLanguage();
 }
 
@@ -855,41 +859,45 @@ function renderBacktest(item) {
   `;
 }
 
-function buildDecision(item) {
-  const agreement = item.timeframeConsensus?.agreementPct || 0;
+function buildDecision(item, recommendation) {
+  const confidence = recommendation.confidence;
+  const confidenceText = Number.isFinite(Number(confidence)) ? `${confidence}%` : "--";
+  const messageReason = recommendation.reason || detailText(
+    "التوصية النهائية المشتركة لا تسمح بإشارة شراء أو بيع الآن.",
+    "The shared final recommendation does not allow a buy or sell signal now."
+  );
 
-  if (item.action === "buy" && item.confidence >= 70 && agreement >= 60 && item.risk?.level !== "high") {
+  if (recommendation.status === "buy") {
     return {
       kind: "buy",
-      badge: detailText("اشتر الآن", "Buy now"),
-      title: detailText("إشارة شراء قوية", "Strong buy signal"),
+      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+      title: detailText("إشارة شراء نهائية", "Final buy signal"),
       message: detailText(
-        `الفريمات متوافقة بنسبة ${agreement}% والثقة ${item.confidence}%. راقب السعر والهدف قبل التنفيذ.`,
-        `Timeframes agree by ${agreement}% and confidence is ${item.confidence}%. Watch price and target before execution.`
+        `الحالة المشتركة النهائية شراء، والثقة ${confidenceText}. راقب السعر والهدف قبل التنفيذ.`,
+        `The shared final status is Buy with ${confidenceText} confidence. Watch price and target before execution.`
       )
     };
   }
 
-  if (item.action === "sell" && item.confidence >= 65) {
+  if (recommendation.status === "sell") {
     return {
       kind: "sell",
-      badge: detailText("بيع الآن", "Sell now"),
-      title: detailText("إشارة بيع واضحة", "Clear sell signal"),
+      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+      title: detailText("إشارة بيع نهائية", "Final sell signal"),
       message: detailText(
-        `الاتجاه يميل للبيع بثقة ${item.confidence}%. تجنب الدخول الشرائي حتى تتغير الفريمات.`,
-        `The trend leans sell with ${item.confidence}% confidence. Avoid long entry until the timeframes change.`
+        `الحالة المشتركة النهائية بيع، والثقة ${confidenceText}. لا تُعرض كشراء حتى تتغير التوصية النهائية.`,
+        `The shared final status is Sell with ${confidenceText} confidence. It is not displayed as Buy unless the final recommendation changes.`
       )
     };
   }
 
   return {
     kind: "hold",
-    badge: detailText("انتظر", "Wait"),
-    title: detailText("لا تتداول هذا السهم الآن", "Do not trade this instrument now"),
-    message: detailText(
-      "الإشارات غير كافية أو متضاربة. الأفضل الانتظار حتى تتوافق فريمات الدخول مع اليومي.",
-      "Signals are insufficient or conflicting. It is better to wait until entry timeframes align with the daily."
-    )
+    badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+    title: recommendation.status === "insufficient_data"
+      ? detailText("بيانات غير كافية", "Insufficient data")
+      : detailText("تحت المراقبة", "Under watch"),
+    message: localizeDetailText(messageReason)
   };
 }
 
@@ -1054,7 +1062,8 @@ function formatDateTime(value) {
 
 function localizeActionLabel(actionOrLabel, fallbackLabel = "") {
   const key = String(actionOrLabel || "").trim().toLowerCase();
-  const normalized = key === "شراء" || key === "buy" ? "buy" : key === "بيع" || key === "sell" ? "sell" : key === "انتظار" || key === "hold" || key === "wait" ? "hold" : "";
+  const sharedStatus = Recommendation.parseRecommendationStatus(actionOrLabel);
+  const normalized = sharedStatus || (key === "شراء" || key === "buy" ? "buy" : key === "بيع" || key === "sell" ? "sell" : key === "انتظار" || key === "hold" || key === "wait" ? "hold" : "");
   const labels = normalized ? DETAIL_ACTION_LABELS[normalized] : null;
   if (labels) return detailText(labels.ar, labels.en);
   return localizeDetailText(fallbackLabel || actionOrLabel || DETAIL_ACTION_LABELS.hold.ar);
