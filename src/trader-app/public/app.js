@@ -6,12 +6,18 @@
   const Recommendation = window.SFMRecommendation;
   let _marketSelectorOpen = false;
   let _themeMenuOpen = false;
+  let _themeMenuOpen = false;
 
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
   const ROOT = "/thesfm-trader-own";
   const VER = "20260705-funds-universe-1";
   const keys = { watch: "sfmTraderWatchlist:v3", alerts: "sfmTraderAlerts:v3", holdings: "sfmTraderHoldings:v1", settings: "sfmTraderSettings:v1", followed: "sfmTraderFollowedTrades:v1" };
+  const LANG_STORAGE_KEY = "sfm_lang";
+  const LEGACY_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
+  const THEME_VALUES = ["dark", "light", "system"];
+  const DEFAULT_THEME = "dark";
+  let systemThemeQuery = null;
   const LANG_STORAGE_KEY = "sfm_lang";
   const LEGACY_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
   const LANG_EVENT = "sfm-language-change";
@@ -692,6 +698,8 @@
     errors: {},
     cache: new Map(), marketCache: new Map()
   };
+  state.settings.theme = readStoredThemePreference();
+  applyThemePreference(state.settings.theme);
   state.settings.lang = currentLanguage();
   state.settings.language = state.settings.lang;
   state.settings.theme = readStoredThemePreference();
@@ -1137,6 +1145,161 @@
     const result = await post("/market/signal-preferences", prefs, { label: "signals", timeoutMs: REQUEST_TIMEOUTS.signals });
     return result.ok === true;
   }
+  function normalizeThemePreference(value) {
+    const theme = String(value || "").trim().toLowerCase();
+    return THEME_VALUES.includes(theme) ? theme : null;
+  }
+
+  function readJsonStorage(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function normalizeLanguage(value) {
+    const lang = String(value || "").trim().toLowerCase().slice(0, 2);
+    return lang === "en" ? "en" : "ar";
+  }
+
+  function currentLanguage() {
+    let stored = "";
+    try { stored = localStorage.getItem(LANG_STORAGE_KEY) || ""; } catch (_error) {}
+    const saved = readJsonStorage(keys.settings) || {};
+    const legacy = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY) || {};
+    return normalizeLanguage(stored || saved.language || saved.lang || state.settings.language || state.settings.lang || legacy.language || legacy.lang || document.documentElement.lang || navigator.language);
+  }
+
+  function readStoredThemePreference() {
+    const settingsTheme = normalizeThemePreference(state?.settings?.theme);
+    const storedSettings = readJsonStorage(keys.settings);
+    const legacySettings = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY);
+    const siteSettings = readJsonStorage("sfm_settings");
+    try {
+      return settingsTheme
+        || normalizeThemePreference(storedSettings?.theme)
+        || normalizeThemePreference(legacySettings?.theme)
+        || normalizeThemePreference(localStorage.getItem("the-sfm-theme"))
+        || normalizeThemePreference(localStorage.getItem("sfmTraderTheme"))
+        || normalizeThemePreference(localStorage.getItem("theme"))
+        || normalizeThemePreference(siteSettings?.theme)
+        || DEFAULT_THEME;
+    } catch (_error) {
+      return settingsTheme || DEFAULT_THEME;
+    }
+  }
+
+  function resolvedThemePreference(theme) {
+    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
+    if (preference !== "system") return preference;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+
+  function syncSystemThemeListener(theme) {
+    if (!window.matchMedia) return;
+    if (!systemThemeQuery) systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    if (systemThemeQuery.removeEventListener) systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
+    else if (systemThemeQuery.removeListener) systemThemeQuery.removeListener(handleSystemThemeChange);
+    if (theme === "system") {
+      if (systemThemeQuery.addEventListener) systemThemeQuery.addEventListener("change", handleSystemThemeChange);
+      else if (systemThemeQuery.addListener) systemThemeQuery.addListener(handleSystemThemeChange);
+    }
+  }
+
+  function handleSystemThemeChange() {
+    if (normalizeThemePreference(state.settings.theme) !== "system") return;
+    applyThemePreference("system");
+  }
+
+  function persistThemePreference(theme) {
+    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
+    state.settings.theme = preference;
+    write(keys.settings, state.settings);
+    try {
+      localStorage.setItem("the-sfm-theme", preference);
+      localStorage.setItem("sfmTraderTheme", preference);
+      localStorage.setItem("theme", preference);
+      const legacySettings = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY) || {};
+      localStorage.setItem(LEGACY_SETTINGS_STORAGE_KEY, JSON.stringify({ ...legacySettings, theme: preference }));
+      const siteSettings = readJsonStorage("sfm_settings") || {};
+      localStorage.setItem("sfm_settings", JSON.stringify({ ...siteSettings, theme: preference }));
+    } catch (_error) {}
+  }
+
+  function applyThemePreference(theme) {
+    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
+    const resolved = resolvedThemePreference(preference);
+    const root = document.documentElement;
+    root.dataset.themePreference = preference;
+    root.dataset.theme = resolved;
+    root.classList.toggle("dark", resolved === "dark");
+    root.classList.toggle("light", resolved === "light");
+    root.style.colorScheme = resolved;
+    if (document.body) {
+      document.body.dataset.themePreference = preference;
+      document.body.dataset.theme = resolved;
+    }
+    const meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute("content", resolved === "dark" ? "dark light" : "light dark");
+    syncSystemThemeListener(preference);
+    renderThemeSwitcher();
+  }
+
+  function selectThemePreference(theme) {
+    const preference = normalizeThemePreference(theme);
+    if (!preference) return;
+    _themeMenuOpen = false;
+    persistThemePreference(preference);
+    applyThemePreference(preference);
+    render();
+  }
+
+  function themeCopy() {
+    const en = currentLanguage() === "en";
+    return {
+      title: en ? "Theme" : "\u0627\u0644\u0645\u0638\u0647\u0631",
+      choose: en ? "Choose theme" : "\u0627\u062e\u062a\u064a\u0627\u0631 \u0627\u0644\u0645\u0638\u0647\u0631",
+      options: {
+        dark: en ? "Dark" : "\u062f\u0627\u0643\u0646",
+        light: en ? "Light" : "\u0641\u0627\u062a\u062d",
+        system: en ? "System" : "\u062d\u0633\u0628 \u0627\u0644\u0646\u0638\u0627\u0645"
+      },
+      descriptions: {
+        dark: en ? "Premium dark terminal" : "\u0627\u0644\u0648\u0627\u062c\u0647\u0629 \u0627\u0644\u062f\u0627\u0643\u0646\u0629 \u0627\u0644\u0641\u0627\u062e\u0631\u0629",
+        light: en ? "Clean light terminal" : "\u0648\u0627\u062c\u0647\u0629 \u0641\u0627\u062a\u062d\u0629 \u0646\u0638\u064a\u0641\u0629",
+        system: en ? "Follow device appearance" : "\u064a\u062a\u0628\u0639 \u0645\u0638\u0647\u0631 \u0627\u0644\u062c\u0647\u0627\u0632"
+      }
+    };
+  }
+
+  function themeOptionsHtml(mode = "menu") {
+    const copy = themeCopy();
+    const selected = normalizeThemePreference(state.settings.theme) || DEFAULT_THEME;
+    return THEME_VALUES.map(theme => {
+      const active = theme === selected;
+      return `<button class="theme-choice${active ? " is-selected" : ""}" data-theme-option="${theme}" type="button" role="option" aria-selected="${active}"><span class="theme-choice-check" aria-hidden="true">${active ? "\u2713" : ""}</span><span class="theme-choice-copy"><strong>${h(copy.options[theme])}</strong>${mode === "settings" ? `<small>${h(copy.descriptions[theme])}</small>` : ""}</span></button>`;
+    }).join("");
+  }
+
+  function themeSwitcherHtml() {
+    const copy = themeCopy();
+    const selected = normalizeThemePreference(state.settings.theme) || DEFAULT_THEME;
+    const resolved = resolvedThemePreference(selected);
+    return `<div class="theme-switcher" data-theme-switcher data-open="${_themeMenuOpen ? "true" : "false"}"><button class="topbar-chip theme-switcher-button" data-theme-menu-toggle type="button" aria-haspopup="listbox" aria-expanded="${_themeMenuOpen}" aria-label="${h(copy.choose)}" title="${h(copy.choose)}"><span class="theme-switcher-glyph theme-switcher-glyph-${resolved}" aria-hidden="true"></span><span class="theme-switcher-label">${h(copy.options[selected])}</span><span class="theme-switcher-chevron" aria-hidden="true">&#8964;</span></button>${_themeMenuOpen ? `<div class="theme-menu" role="listbox" aria-label="${h(copy.choose)}">${themeOptionsHtml("menu")}</div>` : ""}</div>`;
+  }
+
+  function renderThemeSwitcher() {
+    const host = document.getElementById("theme-switcher");
+    if (!host) return;
+    host.innerHTML = themeSwitcherHtml();
+  }
+
+  function themeSettingsPanel() {
+    const copy = themeCopy();
+    return `<article class="panel theme-settings-panel"><span class="eyebrow">${h(copy.title)}</span><h2>${h(copy.choose)}</h2><div class="settings-theme-grid" role="listbox" aria-label="${h(copy.choose)}">${themeOptionsHtml("settings")}</div></article>`;
+  }
 
   function normalizeThemePreference(value) {
     const theme = String(value || "").toLowerCase();
@@ -1310,6 +1473,10 @@
     document.addEventListener("click", (event) => {
       const link = event.target.closest("[data-route-link]");
       if (link) { event.preventDefault(); navigate(link.getAttribute("href")); return; }
+      const themeToggle = event.target.closest("[data-theme-menu-toggle]");
+      if (themeToggle) { event.preventDefault(); _themeMenuOpen = !_themeMenuOpen; renderThemeSwitcher(); return; }
+      const themeOption = event.target.closest("[data-theme-option]");
+      if (themeOption) { event.preventDefault(); selectThemePreference(themeOption.dataset.themeOption); return; }
       const languageOption = event.target.closest("[data-language]");
       if (languageOption) { event.preventDefault(); setTerminalLanguage(languageOption.dataset.language); return; }
       const themeToggle = event.target.closest("[data-theme-menu-toggle]");
@@ -1461,6 +1628,7 @@
       if (_msm) { event.preventDefault(); const _mid = _msm.dataset.selectMarket; if (_mid) { selectMarket(_mid); } return; }
       if (_marketSelectorOpen && !event.target.closest(".ms-wrap")) { _marketSelectorOpen = false; renderMarketSelector(); }
       if (_themeMenuOpen && !event.target.closest("[data-theme-switcher]")) { _themeMenuOpen = false; renderThemeSwitcher(); }
+      if (_themeMenuOpen && !event.target.closest("[data-theme-switcher]")) { _themeMenuOpen = false; renderThemeSwitcher(); }
     });
     document.addEventListener("keydown", function(ev) {
       if (_themeMenuOpen) {
@@ -1515,7 +1683,30 @@
         selectMarket(document.activeElement.dataset.selectMarket);
       }
     });
-    document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
+    document.addEventListener("keydown", (event) => {
+      if (!_themeMenuOpen) return;
+      const items = Array.prototype.slice.call(document.querySelectorAll("[data-theme-switcher] [data-theme-option]") || []);
+      if (!items.length) return;
+      const idx = items.indexOf(document.activeElement);
+      if (event.key === "Escape") {
+        _themeMenuOpen = false;
+        renderThemeSwitcher();
+        const button = document.querySelector("[data-theme-menu-toggle]");
+        if (button) button.focus();
+        event.preventDefault();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const next = idx < 0 ? 0 : Math.min(idx + 1, items.length - 1);
+        if (items[next]) items[next].focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const previous = Math.max(idx - 1, 0);
+        if (items[previous]) items[previous].focus();
+      } else if (event.key === "Enter" && document.activeElement && document.activeElement.dataset && document.activeElement.dataset.themeOption) {
+        event.preventDefault();
+        selectThemePreference(document.activeElement.dataset.themeOption);
+      }
+    });    document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
       event.preventDefault();
       const symbol = sym(document.getElementById("symbol-input")?.value || "");
       if (!symbol) return toast("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.");
@@ -1572,6 +1763,13 @@
       }
     });
     window.addEventListener("popstate", () => { state.route = readRoute(); render(); afterRoute(); });
+    window.addEventListener("storage", (event) => {
+      if (["the-sfm-theme", "sfmTraderTheme", "theme", "sfm_settings", LANG_STORAGE_KEY, LEGACY_SETTINGS_STORAGE_KEY, keys.settings].includes(event.key || "")) {
+        state.settings.theme = readStoredThemePreference();
+        applyThemePreference(state.settings.theme);
+        render();
+      }
+    });
     window.addEventListener("storage", (event) => {
       if ([LANG_STORAGE_KEY, keys.settings].includes(event.key || "")) {
         state.settings.lang = currentLanguage();
@@ -1663,7 +1861,7 @@
     const title = document.getElementById("page-title");
     if (title) title.textContent = routeTitle(state.route.id);
     document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
-    status(); ticker(); statusBar(); renderThemeSwitcher();
+    status(); ticker(); statusBar(); renderThemeSwitcher(); renderThemeSwitcher();
     const content = document.getElementById("terminal-content");
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
