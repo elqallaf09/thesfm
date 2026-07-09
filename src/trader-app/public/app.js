@@ -3015,25 +3015,39 @@
   function marketOverview(rec) {
     const b = marketBias(rec);
     const verdict = b.en === "AWAITING" ? "--" : isEnglishLanguage() ? b.en.replace("NEUTRAL — PRECISION GATE", "NEUTRAL") : b.label;
+    const analysisUnavailable = b.en === "AWAITING" || b.en === "NO SUFFICIENT SIGNALS";
+    const analysisBody = analysisUnavailable
+      ? `<div class="market-analysis-empty" role="status">
+          <span class="market-analysis-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M8.5 12h7M12 8.5V12l2.5 2.5"/></svg>
+          </span>
+          <div class="market-analysis-empty-copy">
+            <span class="card-kicker">${h(textPair("حالة التحليل", "Analysis status"))}</span>
+            <h3>${h(b.en === "AWAITING" ? textPair("بانتظار بيانات السوق", "Waiting for market data") : b.label)}</h3>
+            <p>${h(b.note || textPair("لم تتوفر بعد بيانات مكتملة تكفي لبناء توصية موثوقة.", "Complete data is not yet available for a reliable recommendation."))}</p>
+            <button class="action-btn" data-retry type="button">${h(terminalText("retry"))}</button>
+          </div>
+        </div>`
+      : `<div class="ai-analysis-body">
+          <div>
+            <span class="card-kicker">${h(textPair("التحيز العام للسوق", "Overall market bias"))}</span>
+            <div class="ai-analysis-verdict ${b.tone}">${h(verdict)}</div>
+            <small class="muted-note">${h(b.label)}${b.note ? " · " + h(b.note) : ""} · ${h(textPair("الإطار", "Frame"))} ${h(state.timeframe)} · ${h(terminalText("confidence"))} ${b.conf ? b.conf + "%" : "--"}</small>
+            <div class="ai-bias-rows" style="margin-top:14px">
+              <div class="ai-bias-row bull"><span>${h(textPair("صاعد", "Bullish"))}</span><span class="bar"><i style="width:${b.bull}%"></i></span><b class="ltr">${b.bull}%</b></div>
+              <div class="ai-bias-row bear"><span>${h(textPair("هابط", "Bearish"))}</span><span class="bar"><i style="width:${b.bear}%"></i></span><b class="ltr">${b.bear}%</b></div>
+              <div class="ai-bias-row neut"><span>${h(textPair("محايد", "Neutral"))}</span><span class="bar"><i style="width:${b.neutral}%"></i></span><b class="ltr">${b.neutral}%</b></div>
+            </div>
+          </div>
+          <div class="ai-analysis-bull ${b.tone === "warn" ? "bearish" : ""}" aria-hidden="true"></div>
+        </div>`;
     return `<section class="panel market-overview">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("نظرة السوق", "Market overview"))}</span><h2>${h(textPair("نظرة عامة على الأسواق", "Market overview"))}</h2></div><div class="mo-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${t}</button>`).join("")}</div></div>
       ${marketMap()}
     </section>
     <section class="panel ai-market-analysis">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("تحليل السوق بالذكاء الاصطناعي", "AI market analysis"))}</span><h2>${h(textPair("تحليل السوق الذكي", "AI market analysis"))}</h2></div></div>
-      <div class="ai-analysis-body">
-        <div>
-          <span class="card-kicker">${h(textPair("التحيز العام للسوق", "Overall market bias"))}</span>
-          <div class="ai-analysis-verdict ${b.tone}">${h(verdict)}</div>
-          <small class="muted-note">${h(b.label)}${b.note ? " · " + h(b.note) : ""} · ${h(textPair("الإطار", "Frame"))} ${h(state.timeframe)} · ${h(terminalText("confidence"))} ${b.conf ? b.conf + "%" : "--"}</small>
-          <div class="ai-bias-rows" style="margin-top:14px">
-            <div class="ai-bias-row bull"><span>${h(textPair("صاعد", "Bullish"))}</span><span class="bar"><i style="width:${b.bull}%"></i></span><b class="ltr">${b.bull}%</b></div>
-            <div class="ai-bias-row bear"><span>${h(textPair("هابط", "Bearish"))}</span><span class="bar"><i style="width:${b.bear}%"></i></span><b class="ltr">${b.bear}%</b></div>
-            <div class="ai-bias-row neut"><span>${h(textPair("محايد", "Neutral"))}</span><span class="bar"><i style="width:${b.neutral}%"></i></span><b class="ltr">${b.neutral}%</b></div>
-          </div>
-        </div>
-        <div class="ai-analysis-bull ${b.tone === "warn" ? "bearish" : ""}" aria-hidden="true"></div>
-      </div>
+      ${analysisBody}
     </section>`;
   }
   function commandCenter(rec) {
@@ -3044,8 +3058,8 @@
     return `<section class="terminal-command-center" aria-label="${h(textPair("ملخص السوق", "Market summary"))}">
       ${commandMetric("PROVIDER", configured ? terminalText("connected") : textPair("غير مهيأ", "Not configured"), p.label || p.title, configured ? "ok" : "warn")}
       ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : terminalText("unavailable"), b.conf ? b.label : textPair("بانتظار البيانات", "Awaiting data"), b.tone || "neutral")}
-      ${commandMetric(textPair("إشارات الشراء", "Buy signals"), buy, textPair("فرص شراء", "Buy opportunities"), "ok")}
-      ${commandMetric(textPair("إشارات البيع", "Sell signals"), sell, textPair("فرص بيع", "Sell opportunities"), "bad")}
+      ${commandMetric(textPair("إشارات الشراء", "Buy signals"), buy, textPair("فرص شراء", "Buy opportunities"), buy ? "ok" : "neutral")}
+      ${commandMetric(textPair("إشارات البيع", "Sell signals"), sell, textPair("فرص بيع", "Sell opportunities"), sell ? "bad" : "neutral")}
       ${commandMetric("ANALYZED ASSETS", rec.length || terminalText("unavailable"), textPair("أصول محللة", "Analyzed assets"), rec.length ? "ok" : "neutral")}
       ${commandMetric("ACTIVE MARKET", marketName(market), `${marketName(market)} · ${market.currency}`, "blue")}
     </section>`;
