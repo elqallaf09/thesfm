@@ -81,7 +81,18 @@
       <aside class="terminal-sidebar" aria-label="Trader navigation">
         <div class="sidebar-brand-row">
           <a class="brand-card" href="/thesfm-trader-own" data-route-link data-route="dashboard">
-            <span class="brand-mark" aria-hidden="true">S</span>
+            <span class="brand-mark" aria-hidden="true">
+              <img
+                class="brand-logo"
+                src="/sfm-logo.png"
+                alt=""
+                width="72"
+                height="72"
+                decoding="async"
+                onerror="this.hidden = true; this.parentElement.classList.add('brand-mark--fallback');"
+              />
+              <span class="brand-fallback">SFM</span>
+            </span>
             <span class="brand-name">
               <strong>the-sfm trader</strong>
             </span>

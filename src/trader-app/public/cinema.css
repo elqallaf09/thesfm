@@ -146,7 +146,9 @@ button {
   display: inline-grid;
   place-items: center;
   color: #061016;
-  background: linear-gradient(135deg, var(--gold), #45f0a2 52%, #55d7ff);
+  padding: 2px;
+  overflow: hidden;
+  background: rgba(7, 24, 44, 0.92);
   box-shadow: none;
 }
 
@@ -156,6 +158,33 @@ button {
   border-radius: 15px;
   font-family: var(--font-mono);
   font-weight: 800;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+}
+
+.brand-fallback {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.brand-mark--fallback {
+  padding: 0;
+  color: #061016;
+  background: linear-gradient(135deg, var(--gold), #45f0a2 52%, #55d7ff);
+}
+
+.brand-mark--fallback .brand-fallback {
+  display: inline-grid;
+  place-items: center;
 }
 
 .brand-card strong {
@@ -2710,11 +2739,20 @@ body::after {
   border-radius: 18px;
 }
 
-.brand-mark,
+.brand-mark {
+  color: #06111F;
+  background: rgba(7, 24, 44, 0.92);
+  box-shadow: none;
+}
+
 .ai-pro-badge {
   color: #06111F;
   background: linear-gradient(135deg, var(--terminal-accent), var(--terminal-teal));
   box-shadow: none;
+}
+
+.brand-mark--fallback {
+  background: linear-gradient(135deg, var(--terminal-accent), var(--terminal-teal));
 }
 
 .brand-card strong {
@@ -5234,7 +5272,15 @@ a.badge:focus-visible,
   width: 36px;
   height: 36px;
   border-radius: 11px;
+  padding: 2px;
+  overflow: hidden;
+  background: rgba(7, 24, 44, 0.92);
   box-shadow: 0 0 14px rgba(69, 240, 162, 0.25);
+}
+
+.brand-mark--fallback {
+  padding: 0;
+  background: linear-gradient(135deg, var(--gold), #45f0a2 52%, #55d7ff);
 }
 
 .brand-card strong {
