@@ -22312,6 +22312,14 @@ body[data-app-view] .app-shell,
   min-width: 0 !important;
 }
 
+.provider-panel-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
 .provider-status-banner strong {
   display: block !important;
   color: #f6fbff !important;
@@ -22474,6 +22482,66 @@ body[data-app-view] .app-shell,
   overflow-wrap: anywhere !important;
 }
 
+.provider-diagnostic-meta {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+.provider-diagnostic-meta span {
+  min-width: 0 !important;
+  padding: 8px !important;
+  border: 1px solid rgba(122, 153, 186, 0.18) !important;
+  border-radius: 8px !important;
+  background: rgba(6, 16, 24, 0.58) !important;
+}
+
+.provider-diagnostic-meta small,
+.provider-symbol-list small {
+  display: block !important;
+  color: #9fb0bf !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+}
+
+.provider-diagnostic-meta b {
+  display: block !important;
+  margin-top: 4px !important;
+  color: #f2f8fc !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.provider-symbol-list {
+  margin-top: 10px !important;
+  padding: 9px !important;
+  border: 1px solid rgba(34, 211, 238, 0.16) !important;
+  border-radius: 8px !important;
+  background: rgba(2, 10, 20, 0.38) !important;
+}
+
+.provider-symbol-list div {
+  max-height: 160px !important;
+  margin-top: 7px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  overflow: auto !important;
+}
+
+.provider-symbol-list code {
+  padding: 4px 7px !important;
+  border: 1px solid rgba(123, 218, 255, 0.18) !important;
+  border-radius: 999px !important;
+  color: #dff6ff !important;
+  background: rgba(34, 211, 238, 0.08) !important;
+  font-size: 12px !important;
+}
+
 .provider-diagnostic-group ul {
   margin: 9px 0 0 !important;
   padding: 0 !important;
@@ -22504,6 +22572,16 @@ body[data-app-view] .app-shell,
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
+}
+
+.provider-diagnostic-group .provider-symbol-list code {
+  max-width: none !important;
+  padding: 4px 7px !important;
+  border-color: rgba(123, 218, 255, 0.18) !important;
+  border-radius: 999px !important;
+  color: #dff6ff !important;
+  background: rgba(34, 211, 238, 0.08) !important;
+  font-size: 12px !important;
 }
 
 .provider-diagnostic-group li span {

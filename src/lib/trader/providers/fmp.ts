@@ -6,7 +6,7 @@ import {
   stableId,
 } from '@/lib/providers/shared';
 import { createFmpCalendarProvider } from '@/lib/providers/economic-calendar/fmp';
-import { fmpQueuedFetch } from './fmpRuntime';
+import { fmpQueuedFetch, markFmpRateLimited } from './fmpRuntime';
 import type {
   TraderCalendarQuery,
   TraderDividendEvent,
@@ -125,6 +125,7 @@ function parseJsonPayload(text: string): unknown {
 function providerErrorFor(statusCode: number, message: string) {
   const text = message.toLowerCase();
   if (statusCode === 429 || /rate\s*limit|too many requests|quota|limit/.test(text)) {
+    if (statusCode !== 429) markFmpRateLimited(null, message || 'provider_rate_limited');
     return new ProviderError('rate_limited', 'provider_rate_limited', statusCode, message);
   }
   if (statusCode === 401 || /invalid\s+(api\s+)?key|apikey|api\s+key|unauthori[sz]ed/.test(text)) {

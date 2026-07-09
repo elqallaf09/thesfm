@@ -4,6 +4,12 @@ import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
 import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
+import {
+  isValidChange,
+  isValidPrice,
+  normalizeQuote as normalizeSharedQuote,
+  normalizeSymbol as normalizeQuoteSymbol,
+} from '@/lib/market/quoteNormalization';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import type { MarketAssetType } from '@/lib/market/marketService';
 import { providerSymbolsForAlias, providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
@@ -32,6 +38,7 @@ import {
   getFmpRuntimeStatus,
   isFmpRateLimited,
   markFmpCacheAvailable,
+  markFmpRateLimited,
 } from '@/lib/trader/providers/fmpRuntime';
 import {
   buildMultiFactorRecommendation,
@@ -45,6 +52,7 @@ export type TraderSignal = 'buy' | 'sell' | 'watch';
 export type TraderDataQuality = 'delayed' | 'partial' | 'unavailable' | 'cached';
 type TraderQuoteSource = 'Financial Modeling Prep' | 'Yahoo Finance' | 'Finnhub' | 'Twelve Data' | 'EODHD' | 'Marketstack';
 type TraderHistoryPoint = RecommendationPricePoint;
+type ActiveQuoteProvider = 'fmp' | 'yahoo' | 'finnhub';
 
 type MarketDef = TraderMarketDef;
 type QuoteIssue = {
@@ -117,6 +125,7 @@ const ENRICH_CONCURRENCY = 6;
 const ENRICH_TIME_BUDGET_MS = 4500;
 const NEWS_ENRICH_MAX_SYMBOLS = 12;
 const NEWS_CACHE_MS = 20 * 60 * 1000;
+const DEFAULT_QUOTE_PROVIDER_PRIORITY: ActiveQuoteProvider[] = ['fmp', 'yahoo', 'finnhub'];
 const newsSentimentCache = new Map<string, { expiresAt: number; value: RecommendationNewsSentiment }>();
 
 function historyAssetType(assetType: TraderAssetType): 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index' {
@@ -131,7 +140,7 @@ function historyAssetType(assetType: TraderAssetType): 'stock' | 'etf' | 'crypto
 // إغناء الاقتباس بسلسلة أسعار من كاش يـاهو: يوفّر الشارت المصغر ويحسب
 // التغير اليومي عندما لا يرسله المزود الاحتياطي.
 async function enrichQuoteWithHistory(quote: TraderQuote): Promise<TraderQuote> {
-  if (!quote.available || quote.price === null) return quote;
+  if (!quote.available || !isValidPrice(quote.price)) return quote;
   const needsChart = !Array.isArray(quote.history) || quote.history.length < 2;
   const needsChange = quote.changePercent === null;
   const needsRecommendation = !quote.finalRecommendation || quote.technicalAvailable === false;
@@ -210,9 +219,9 @@ function applyHistoryToQuote(quote: TraderQuote, history: TraderHistoryPoint[], 
     const latest = closes[closes.length - 1];
     const previous = closes[closes.length - 2];
     const pct = previous > 0 ? ((latest - previous) / previous) * 100 : null;
-    if (pct !== null && Math.abs(pct) <= 20) {
+    if (isValidChange(pct) && Math.abs(pct) <= 20) {
       enriched.changePercent = round(pct);
-      if (quote.price !== null) {
+      if (isValidPrice(quote.price)) {
         enriched.previousClose = round(quote.price / (1 + pct / 100));
         enriched.change = round(quote.price - (quote.price / (1 + pct / 100)));
       }
@@ -224,7 +233,7 @@ function applyHistoryToQuote(quote: TraderQuote, history: TraderHistoryPoint[], 
 async function enrichQuotesWithHistory(quotes: TraderQuote[]): Promise<TraderQuote[]> {
   const targets = quotes
     .map((quote, index) => ({ quote, index }))
-    .filter(({ quote }) => quote.available && quote.price !== null
+    .filter(({ quote }) => quote.available && isValidPrice(quote.price)
       && ((!Array.isArray(quote.history) || quote.history.length < 2) || quote.changePercent === null))
     .slice(0, ENRICH_MAX_SYMBOLS);
   if (!targets.length) return quotes;
@@ -346,7 +355,7 @@ async function enrichQuotesWithNews(quotes: TraderQuote[]): Promise<TraderQuote[
   const output = quotes.slice();
   const targets = quotes
     .map((quote, index) => ({ quote, index }))
-    .filter(({ quote }) => quote.available && quote.price !== null && (quote.assetType === 'stock' || quote.assetType === 'fund'))
+    .filter(({ quote }) => quote.available && isValidPrice(quote.price) && (quote.assetType === 'stock' || quote.assetType === 'fund'))
     .slice(0, NEWS_ENRICH_MAX_SYMBOLS);
   for (let cursor = 0; cursor < targets.length; cursor += 4) {
     const batch = targets.slice(cursor, cursor + 4);
@@ -418,6 +427,7 @@ const YAHOO_FALLBACK_SYMBOLS: Record<string, string[]> = {
 };
 
 function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -437,14 +447,10 @@ function deriveChangePercentFromProvider(args: {
   previousClose: number | null;
   change: number | null;
 }) {
-  if (args.explicitPercent !== null) return args.explicitPercent;
-  if (args.price !== null && args.previousClose !== null && args.previousClose !== 0) {
+  if (isValidPrice(args.price) && isValidPrice(args.previousClose)) {
     return ((args.price - args.previousClose) / args.previousClose) * 100;
   }
-  if (args.price !== null && args.change !== null) {
-    const inferredPreviousClose = args.price - args.change;
-    if (inferredPreviousClose !== 0) return (args.change / inferredPreviousClose) * 100;
-  }
+  if (isValidPrice(args.price) && isValidChange(args.explicitPercent)) return args.explicitPercent;
   return null;
 }
 
@@ -463,6 +469,32 @@ function unique(values: Array<string | null | undefined>) {
     result.push(item);
   }
   return result;
+}
+
+function configuredQuoteProviderPriority(): ActiveQuoteProvider[] {
+  const configured = cleanEnv(process.env.TRADER_QUOTE_PROVIDER_PRIORITY)
+    || cleanEnv(process.env.MARKET_QUOTE_PROVIDER_PRIORITY);
+  const aliases: Record<string, ActiveQuoteProvider> = {
+    fmp: 'fmp',
+    financialmodelingprep: 'fmp',
+    financial_modeling_prep: 'fmp',
+    yahoo: 'yahoo',
+    yahoofinance: 'yahoo',
+    yahoo_finance: 'yahoo',
+    finnhub: 'finnhub',
+  };
+  const parsed = configured
+    .split(',')
+    .map(item => item.trim().toLowerCase().replace(/[\s-]+/g, '_'))
+    .map(item => aliases[item])
+    .filter((item): item is ActiveQuoteProvider => Boolean(item));
+  return unique([...(parsed.length ? parsed : DEFAULT_QUOTE_PROVIDER_PRIORITY), ...DEFAULT_QUOTE_PROVIDER_PRIORITY]) as ActiveQuoteProvider[];
+}
+
+function quoteProviderLabel(provider: ActiveQuoteProvider) {
+  if (provider === 'fmp') return 'FMP';
+  if (provider === 'finnhub') return 'Finnhub';
+  return 'Yahoo Finance';
 }
 
 function canonicalCryptoForQuote(symbol: string, meta?: TraderCatalogSymbol) {
@@ -750,15 +782,17 @@ function quoteStatus(args: {
 }
 
 function quoteIdentity(display: string, meta?: TraderCatalogSymbol) {
-  const canonical = classifyAssetType(display, meta) === 'crypto'
+  const assetType = classifyAssetType(display, meta);
+  const canonical = assetType === 'crypto'
     ? canonicalCryptoForQuote(display, meta)
     : null;
-  const symbol = canonical?.canonicalSymbol ?? display;
+  const normalized = normalizeQuoteSymbol(meta?.symbol ?? display, assetType);
+  const symbol = canonical?.canonicalSymbol ?? normalized.canonicalSymbol ?? display;
   return {
     symbol,
     requestedSymbol: display,
-    canonicalSymbol: meta?.symbol ?? symbol,
-    displaySymbol: canonical?.displaySymbol ?? display,
+    canonicalSymbol: canonical?.canonicalSymbol ?? normalized.canonicalSymbol ?? symbol,
+    displaySymbol: canonical?.displaySymbol ?? normalized.displaySymbol ?? display,
   };
 }
 
@@ -953,17 +987,7 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     providerSymbol: quote.providerSymbol,
     assetType,
   });
-  const changeNorm = normalizeMarketPrice({
-    price: quote.change,
-    currency: quote.currency ?? meta?.currency,
-    providerCurrency: quote.currency,
-    symbol: display,
-    providerSymbol: quote.providerSymbol,
-    assetType,
-    priceUnit: normalized.priceUnit,
-  });
-  const price = round(normalized.price);
-  const change = round(changeNorm.price);
+  const price = isValidPrice(normalized.price) ? round(normalized.price) : null;
   const previousClose = round(
     quote.previousClose !== null
       ? normalizeMarketPrice({
@@ -975,17 +999,22 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
           assetType,
           priceUnit: normalized.priceUnit,
         }).price
-      : price !== null && change !== null
-        ? price - change
-        : null,
+      : null,
   );
-  const changePercent = round(quote.changePercent ?? (
-    price !== null && previousClose !== null && previousClose !== 0
-      ? ((price - previousClose) / previousClose) * 100
-      : null
-  ));
+  const normalizedQuote = normalizeSharedQuote({
+    symbol: display,
+    assetType,
+    provider: quote.providerName,
+    providerSymbol: quote.providerSymbol,
+    providerSymbolUsed: quote.providerSymbol,
+    price,
+    previousClose,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    available: isValidPrice(price),
+  });
   const updatedAt = quote.updatedAt;
-  const dataQuality: TraderDataQuality = price !== null && price > 0 ? 'partial' : 'unavailable';
+  const dataQuality: TraderDataQuality = isValidPrice(normalizedQuote.price) ? 'partial' : 'unavailable';
   const fallbackUsed = quote.provider !== 'fmp';
   const metadata = quoteMetadata(display, quote, meta);
   const raw = quote.raw ?? {};
@@ -997,16 +1026,16 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     fallbackUsed,
     name: (canonical?.name ?? quote.name) || meta?.name || display,
     assetType,
-    price,
-    change,
-    changePercent,
-    previousClose,
+    price: normalizedQuote.price,
+    change: normalizedQuote.change,
+    changePercent: normalizedQuote.changePercent,
+    previousClose: normalizedQuote.previousClose,
     marketCap: quote.marketCap ?? numberOrNull(raw.marketCap ?? raw.marketCapitalization ?? raw.market_cap),
     volume: quote.volume ?? numberOrNull(raw.volume ?? raw.regularMarketVolume ?? raw.averageVolume),
     currency: metadata.currency ?? normalized.currency ?? normalizeMarketCurrencyCode(quote.currency) ?? meta?.currency ?? defaultCurrency(display),
     ...metadataQuoteFields(metadata),
     signal: 'watch',
-    signalAvailable: price !== null,
+    signalAvailable: isValidPrice(normalizedQuote.price),
     confidence: null,
     riskLevel: riskFromVolatility(null, assetType),
     rsi: null,
@@ -1019,7 +1048,8 @@ function normalizeProviderQuote(display: string, quote: ProviderQuote, meta?: Tr
     providerStatus: quoteStatus({ display, providerSymbol: quote.providerSymbol, fallbackUsed, updatedAt, dataQuality, provider: quote.provider, source: quote.providerName }),
     source: quote.providerName,
     delayed: fallbackUsed,
-    available: price !== null && price > 0,
+    available: isValidPrice(normalizedQuote.price),
+    unavailableReason: isValidPrice(normalizedQuote.price) ? undefined : 'invalid_provider_quote',
     lastUpdated: updatedAt,
     updatedAt,
     ...quoteShariahFields(display, assetType, meta, quote.name),
@@ -1041,7 +1071,7 @@ function cachedQuote(symbol: string, options: { allowStale?: boolean; forceFresh
 }
 
 function storeQuoteCache(symbol: string, quote: TraderQuote) {
-  if (!quote.available || quote.price === null) return;
+  if (!quote.available || !isValidPrice(quote.price)) return;
   const now = Date.now();
   quoteCache.set(quoteCacheKey(symbol), {
     quote,
@@ -1079,6 +1109,30 @@ function providerErrorReason(error: unknown, fallback: string) {
 
 function isRateLimitReason(reason: string) {
   return reason === 'provider_rate_limited' || /rate_limited|429/.test(reason);
+}
+
+function providerMessageFromFmpPayload(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const record = payload as Record<string, unknown>;
+  return String(
+    record.error
+      ?? record.message
+      ?? record.Message
+      ?? record['Error Message']
+      ?? record.status
+      ?? '',
+  ).replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+function isFmpRateLimitMessage(message: string) {
+  return /rate\s*limit|too many requests|quota|usage limit|limit reached|provider_rate_limited/i.test(message);
+}
+
+function throwIfFmpPayloadRateLimited(payload: unknown, responseStatus: number) {
+  const message = providerMessageFromFmpPayload(payload);
+  if (!message || !isFmpRateLimitMessage(message)) return;
+  if (responseStatus !== 429) markFmpRateLimited(null, message);
+  throw new FmpRateLimitError(message);
 }
 
 function fmpQuoteFromRecord(record: Record<string, unknown>): ProviderQuote | null {
@@ -1135,6 +1189,7 @@ async function fetchFmpBatch(symbols: string[], apiKey: string, forceFresh?: boo
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
+  throwIfFmpPayloadRateLimited(payload, response.status);
   if (!response.ok) {
     if (response.status === 429) throw new FmpRateLimitError();
     throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
@@ -1154,6 +1209,7 @@ async function fetchFmpQuoteCollection(endpoint: string, apiKey: string, forceFr
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
+  throwIfFmpPayloadRateLimited(payload, response.status);
   if (!response.ok) {
     if (response.status === 429) throw new FmpRateLimitError();
     throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
@@ -1174,6 +1230,7 @@ async function fetchFmpSingle(symbol: string, apiKey: string, forceFresh?: boole
     headers: { accept: 'application/json' },
   });
   const payload = await response.json().catch(() => null) as unknown;
+  throwIfFmpPayloadRateLimited(payload, response.status);
   if (!response.ok) {
     if (response.status === 429) throw new FmpRateLimitError();
     throw new ProviderError('provider_error', 'provider_temporarily_unavailable', response.status, `provider_http_${response.status}`);
@@ -1197,6 +1254,10 @@ async function fetchFmpQuotes(symbols: string[], metaBySymbol: Map<string, Trade
   if (!apiKey) {
     symbols.forEach(symbol => skipped.push({ symbol, provider: 'fmp', reason: 'fmp_not_configured' }));
     return { quotes, loaded, failed, skipped, latencyMs: 0, rateLimited: false };
+  }
+  if (isFmpRateLimited()) {
+    symbols.forEach(symbol => skipped.push({ symbol, provider: 'fmp', reason: 'provider_rate_limited' }));
+    return { quotes, loaded, failed, skipped, latencyMs: 0, rateLimited: true };
   }
 
   const candidateBySymbol = new Map<string, string[]>();
@@ -1392,7 +1453,7 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
   let yahoo = primaryYahoo;
   for (const candidate of symbols) {
     const attempt = await fetchChart(candidate, forceFresh);
-    if (attempt && attempt.price !== null) {
+    if (attempt && isValidPrice(attempt.price)) {
       const rejectionReason = canonical ? cryptoQuoteRejectionReason({
         requestedSymbol: display,
         canonicalSymbol: canonical.canonicalSymbol,
@@ -1440,14 +1501,28 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     }
     const norm = normalizeMarketPrice({ price: normalized.price, currency: normalized.currency, providerCurrency: normalized.currency, symbol: display, market: display, assetType });
     const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
-    const price = round(norm.price);
-    const change = round(normalized.change !== null ? normalized.change / divisor : null);
+    const price = isValidPrice(norm.price) ? round(norm.price) : null;
+    const rawChange = numberOrNull(normalized.change);
+    const change = round(rawChange !== null ? rawChange / divisor : null);
+    const previousClose = price !== null && change !== null ? round(price - change) : null;
+    const normalizedQuote = normalizeSharedQuote({
+      symbol: display,
+      assetType,
+      provider: 'Yahoo Finance',
+      providerSymbol: normalized.symbolUsed ?? yahoo,
+      providerSymbolUsed: normalized.symbolUsed ?? yahoo,
+      price,
+      previousClose,
+      change,
+      changePercent: normalized.changePercent,
+      available: isValidPrice(price),
+    });
     const updatedAt = normalized.marketTime;
-    const dataQuality: TraderDataQuality = 'partial';
+    const dataQuality: TraderDataQuality = isValidPrice(normalizedQuote.price) ? 'partial' : 'unavailable';
     const metadata = quoteMetadata(display, {
       provider: 'yahoo',
       providerName: 'Yahoo Finance',
-      providerSymbol: normalized.symbolUsed ?? yahoo,
+      providerSymbol: normalizedQuote.providerSymbolUsed ?? normalized.symbolUsed ?? yahoo,
       name: normalized.name,
       currency: normalized.currency,
       exchange: normalized.exchange,
@@ -1457,20 +1532,20 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     }, meta);
     return applyRecommendationToQuote({
       ...quoteIdentity(display, meta),
-      providerSymbol: normalized.symbolUsed ?? yahoo,
-      providerSymbolUsed: normalized.symbolUsed ?? yahoo,
+      providerSymbol: normalizedQuote.providerSymbol,
+      providerSymbolUsed: normalizedQuote.providerSymbolUsed,
       provider: 'yahoo',
       fallbackUsed: true,
       name: (canonical?.name ?? normalized.name) || meta?.name || display,
       assetType,
-      price,
-      change,
-      changePercent: round(normalized.changePercent),
-      previousClose: price !== null && change !== null ? round(price - change) : null,
+      price: normalizedQuote.price,
+      change: normalizedQuote.change,
+      changePercent: normalizedQuote.changePercent,
+      previousClose: normalizedQuote.previousClose,
       currency: metadata.currency ?? norm.currency ?? normalizeMarketCurrencyCode(normalized.currency) ?? meta?.currency ?? defaultCurrency(display),
       ...metadataQuoteFields(metadata),
       signal: 'watch',
-      signalAvailable: true,
+      signalAvailable: isValidPrice(normalizedQuote.price),
       confidence: null,
       riskLevel: riskFromVolatility(null, assetType),
       rsi: null,
@@ -1483,7 +1558,8 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
       providerStatus: quoteStatus({ display, providerSymbol: normalized.symbolUsed ?? yahoo, fallbackUsed: true, updatedAt, dataQuality, provider: 'yahoo', source: 'Yahoo Finance' }),
       source: 'Yahoo Finance',
       delayed: true,
-      available: true,
+      available: isValidPrice(normalizedQuote.price),
+      unavailableReason: isValidPrice(normalizedQuote.price) ? undefined : 'invalid_provider_quote',
       lastUpdated: updatedAt,
       updatedAt,
       ...quoteShariahFields(display, assetType, meta, canonical?.name ?? normalized.name),
@@ -1492,15 +1568,23 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
 
   const norm = normalizeMarketPrice({ price: chart.price, currency: chart.currency, providerCurrency: chart.currency, symbol: display, market: display, assetType });
   const divisor = norm.priceUnit === 'fils' ? 1000 : norm.priceUnit === 'pence' ? 100 : 1;
-  const price = norm.price;
+  const price = isValidPrice(norm.price) ? norm.price : null;
   const closes = chart.closes.map(value => value / divisor);
-  const previousClose = chart.previousClose !== null ? chart.previousClose / divisor : null;
-  const change = price !== null && previousClose !== null ? price - previousClose : null;
-  const changePercent = change !== null && previousClose ? (change / previousClose) * 100 : null;
+  const previousClose = chart.previousClose !== null && isValidPrice(chart.previousClose / divisor) ? chart.previousClose / divisor : null;
+  const normalizedQuote = normalizeSharedQuote({
+    symbol: display,
+    assetType,
+    provider: 'Yahoo Finance',
+    providerSymbol: yahoo,
+    providerSymbolUsed: yahoo,
+    price: round(price),
+    previousClose: round(previousClose),
+    available: isValidPrice(price),
+  });
   const metadata = quoteMetadata(display, {
     provider: 'yahoo',
     providerName: 'Yahoo Finance',
-    providerSymbol: yahoo,
+    providerSymbol: normalizedQuote.providerSymbolUsed ?? yahoo,
     currency: chart.currency,
     exchange: chart.exchange,
     exchangeCode: chart.exchangeCode,
@@ -1525,20 +1609,20 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
 
   return applyRecommendationToQuote({
     ...quoteIdentity(display, meta),
-    providerSymbol: yahoo,
-    providerSymbolUsed: yahoo,
+    providerSymbol: normalizedQuote.providerSymbol,
+    providerSymbolUsed: normalizedQuote.providerSymbolUsed,
     provider: 'yahoo',
     fallbackUsed: true,
     name: canonical?.name ?? meta?.name ?? display,
     assetType,
-    price: round(price),
-    change: round(change),
-    changePercent: round(changePercent),
-    previousClose: round(previousClose),
+    price: normalizedQuote.price,
+    change: normalizedQuote.change,
+    changePercent: normalizedQuote.changePercent,
+    previousClose: normalizedQuote.previousClose,
     currency,
     ...metadataQuoteFields(metadata),
     signal: 'watch',
-    signalAvailable: price !== null,
+    signalAvailable: isValidPrice(normalizedQuote.price),
     confidence: null,
     riskLevel: riskFromVolatility(annualizedVolatility(closes), assetType),
     rsi: rsiValue !== null ? Number(rsiValue.toFixed(1)) : null,
@@ -1551,7 +1635,8 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     providerStatus: quoteStatus({ display, providerSymbol: yahoo, fallbackUsed: true, updatedAt, dataQuality, provider: 'yahoo', source: 'Yahoo Finance' }),
     source: 'Yahoo Finance',
     delayed: true,
-    available: price !== null,
+    available: isValidPrice(normalizedQuote.price),
+    unavailableReason: isValidPrice(normalizedQuote.price) ? undefined : 'invalid_provider_quote',
     lastUpdated: updatedAt,
     updatedAt,
     ...quoteShariahFields(display, assetType, meta, canonical?.name),
@@ -1660,45 +1745,35 @@ export async function fetchTraderQuotesDetailed(
     loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
   }
 
-  const fmpSymbols = uniqueSymbols.filter(symbol => !quotes.has(symbol));
-  const fmp = await fetchFmpQuotes(fmpSymbols, byMeta, options?.forceFresh);
-  providerLatencyMs.fmp = fmp.latencyMs;
-  fmp.quotes.forEach((quote, symbol) => {
-    quotes.set(symbol, quote);
-    storeQuoteCache(symbol, quote);
-  });
-  loaded.push(...fmp.loaded);
-  failed.push(...fmp.failed);
-  skipped.push(...fmp.skipped);
-
-  if (fmp.rateLimited) {
-    for (const symbol of uniqueSymbols.filter(symbol => !quotes.has(symbol))) {
-      const cached = cachedQuote(symbol, { allowStale: true });
-      if (!cached) continue;
-      quotes.set(symbol, cached);
-      cachedSymbols += 1;
-      loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
-    }
-  }
-
-  for (const provider of ['yahoo'] as const) {
+  for (const provider of configuredQuoteProviderPriority()) {
     const remaining = uniqueSymbols.filter(symbol => !quotes.has(symbol));
     if (remaining.length === 0) break;
+
+    if (provider === 'fmp') {
+      const fmp = await fetchFmpQuotes(remaining, byMeta, options?.forceFresh);
+      providerLatencyMs.fmp = fmp.latencyMs;
+      fmp.quotes.forEach((quote, symbol) => {
+        quotes.set(symbol, quote);
+        storeQuoteCache(symbol, quote);
+      });
+      loaded.push(...fmp.loaded);
+      failed.push(...fmp.failed);
+      skipped.push(...fmp.skipped);
+
+      if (fmp.rateLimited) {
+        for (const symbol of uniqueSymbols.filter(symbol => !quotes.has(symbol))) {
+          const cached = cachedQuote(symbol, { allowStale: true });
+          if (!cached) continue;
+          quotes.set(symbol, cached);
+          cachedSymbols += 1;
+          loaded.push({ symbol, provider: cached.provider ?? 'yahoo', providerSymbol: cached.providerSymbol });
+        }
+      }
+      continue;
+    }
+
     const result = await fetchFallbackProvider(provider, remaining, byMeta, options?.forceFresh);
     providerLatencyMs[provider] = result.latencyMs;
-    result.quotes.forEach((quote, symbol) => {
-      quotes.set(symbol, quote);
-      storeQuoteCache(symbol, quote);
-    });
-    loaded.push(...result.loaded);
-    failed.push(...result.failed);
-    skipped.push(...result.skipped);
-  }
-
-  const remainingAfterYahoo = uniqueSymbols.filter(symbol => !quotes.has(symbol));
-  if (remainingAfterYahoo.length > 0 && cleanEnv(process.env.FINNHUB_API_KEY)) {
-    const result = await fetchFallbackProvider('finnhub', remainingAfterYahoo, byMeta, options?.forceFresh);
-    providerLatencyMs.finnhub = result.latencyMs;
     result.quotes.forEach((quote, symbol) => {
       quotes.set(symbol, quote);
       storeQuoteCache(symbol, quote);
@@ -1750,21 +1825,30 @@ export function getConnectedProvider() {
   // ترتيب مزودات الأسعار الفعلي في مسار fetchTraderQuotesDetailed:
   // FMP (إن كان مهيأً) ثم Yahoo الداخلي ثم Finnhub. Twelve Data/EODHD
   // مهيأان للأساسيات؛ عند ربط مسار أسعارهما يُقدَّمان هنا.
-  const active: TraderQuoteProvider = capabilities.fmp.configured ? 'fmp' : 'yahoo';
-  const label = active === 'fmp' ? 'FMP' : 'Yahoo Finance';
+  const fallbackOrder = configuredQuoteProviderPriority();
+  const active = fallbackOrder.find((provider) => {
+    if (provider === 'yahoo') return true;
+    const capability = capabilities[provider];
+    return Boolean(capability?.configured && capability.status !== 'rate_limited');
+  }) ?? 'yahoo';
+  const label = quoteProviderLabel(active);
   return {
     active: label,
-    requested: 'fmp',
+    requested: quoteProviderLabel(fallbackOrder[0] ?? 'fmp'),
     provider: label,
     configured: active === 'yahoo' ? true : Boolean(capabilities[active] && capabilities[active].configured),
     status: 'connected' as const,
-    fallbackOrder: ['FMP', 'Yahoo Finance', 'Finnhub'],
+    fallbackOrder: fallbackOrder.map(quoteProviderLabel),
     capabilityMatrix: capabilities,
   };
 }
 
 export const CONNECTED_PROVIDER = getConnectedProvider();
 
-export function __resetTraderQuoteCacheForTests() {
+export function clearTraderQuoteCache() {
   quoteCache.clear();
+}
+
+export function __resetTraderQuoteCacheForTests() {
+  clearTraderQuoteCache();
 }

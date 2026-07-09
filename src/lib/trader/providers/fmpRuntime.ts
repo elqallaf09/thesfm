@@ -21,15 +21,17 @@ export type FmpRuntimeStatus = {
   lastError: string | null;
   lastErrorAt: string | null;
   rateLimitedUntil: string | null;
+  nextRetryAt: string | null;
   cacheAvailable: boolean;
   supportedFeatures: string[];
   skippedDueToRateLimit: number;
+  consecutiveRateLimitCount: number;
 };
 
 const FMP_MAX_CONCURRENT = 2;
 const FMP_MIN_START_GAP_MS = process.env.NODE_ENV === 'test' ? 0 : 450;
 const FMP_DEFAULT_BACKOFF_MS = 90_000;
-const FMP_MAX_BACKOFF_MS = 5 * 60 * 1000;
+const FMP_MAX_BACKOFF_MS = 15 * 60 * 1000;
 
 const queue: QueueEntry<unknown>[] = [];
 const cacheKeys = new Set<string>();
@@ -41,6 +43,7 @@ let lastSuccessfulFetch: string | null = null;
 let lastError: string | null = null;
 let lastErrorAt: string | null = null;
 let skippedDueToRateLimit = 0;
+let consecutiveRateLimitCount = 0;
 
 export class FmpRateLimitError extends ProviderError {
   constructor(message = 'provider_rate_limited') {
@@ -76,9 +79,14 @@ function drainQueue() {
   }
 }
 
-function retryAfterMs(response: Response | null) {
+function retryAfterMs(response: Response | null, attempt: number) {
   const header = response?.headers.get('retry-after');
-  if (!header) return FMP_DEFAULT_BACKOFF_MS;
+  if (!header) {
+    return Math.min(
+      FMP_MAX_BACKOFF_MS,
+      FMP_DEFAULT_BACKOFF_MS * (2 ** Math.max(0, attempt - 1)),
+    );
+  }
 
   const seconds = Number(header);
   if (Number.isFinite(seconds) && seconds > 0) {
@@ -109,6 +117,7 @@ export function markFmpSuccess() {
   lastSuccessfulFetch = new Date().toISOString();
   lastError = null;
   lastErrorAt = null;
+  consecutiveRateLimitCount = 0;
   if (!isFmpRateLimited()) rateLimitedUntilMs = 0;
 }
 
@@ -122,10 +131,19 @@ export function markFmpFailure(statusCode: number | null | undefined, message: u
 }
 
 export function markFmpRateLimited(response: Response | null, message: unknown = 'provider_rate_limited') {
-  const backoffMs = retryAfterMs(response);
+  consecutiveRateLimitCount += 1;
+  const backoffMs = retryAfterMs(response, consecutiveRateLimitCount);
   rateLimitedUntilMs = Math.max(rateLimitedUntilMs, Date.now() + backoffMs);
   lastError = shortText(message, 180) || 'provider_rate_limited';
   lastErrorAt = new Date().toISOString();
+}
+
+export function resetFmpRateLimitCooldown() {
+  rateLimitedUntilMs = 0;
+}
+
+export function clearFmpRuntimeCacheMarkers() {
+  cacheKeys.clear();
 }
 
 export async function fmpQueuedFetch(input: RequestInfo | URL, init?: NextFetchInit) {
@@ -167,9 +185,11 @@ export function getFmpRuntimeStatus(configured: boolean, cacheAvailable = false)
     lastError: rateLimited ? 'provider_rate_limited' : lastError,
     lastErrorAt,
     rateLimitedUntil: rateLimited ? new Date(rateLimitedUntilMs).toISOString() : null,
+    nextRetryAt: rateLimited ? new Date(rateLimitedUntilMs).toISOString() : null,
     cacheAvailable: hasCache,
     supportedFeatures: ['quotes', 'technicalAnalysis', 'symbols', 'earnings', 'dividends', 'ipos', 'economicCalendar'],
     skippedDueToRateLimit,
+    consecutiveRateLimitCount,
   };
 }
 
@@ -183,4 +203,5 @@ export function __resetFmpRuntimeForTests() {
   lastError = null;
   lastErrorAt = null;
   skippedDueToRateLimit = 0;
+  consecutiveRateLimitCount = 0;
 }

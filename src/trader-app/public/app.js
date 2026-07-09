@@ -333,8 +333,10 @@
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
   const COVERAGE_NOTICE_AR = "قد لا تتوفر جميع الرموز من المزود الحالي";
   const COVERAGE_NOTICE_EN = "Some symbols may not be available from the current provider";
-  const PRICE_UNAVAILABLE_AR = "السعر غير متاح حالياً";
-  const PRICE_UNAVAILABLE_EN = "Price currently unavailable";
+  const PRICE_UNAVAILABLE_AR = "\u0627\u0644\u0633\u0639\u0631 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d";
+  const PRICE_UNAVAILABLE_EN = "Price unavailable";
+  const CHANGE_UNAVAILABLE_AR = "\u0627\u0644\u062a\u063a\u064a\u0631 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d";
+  const CHANGE_UNAVAILABLE_EN = "Change unavailable";
   const TECHNICAL_UNAVAILABLE_COPY = {
     ar: {
       title: "التحليل الفني غير متاح حالياً",
@@ -447,8 +449,9 @@
     light: { ar: "فاتح", en: "Light" },
     system: { ar: "النظام", en: "System" },
     refreshMarketData: { ar: "تحديث بيانات السوق", en: "Refresh market data" },
-    clearProviderCache: { ar: "مسح كاش المزود", en: "Clear provider cache" },
-    testProviderConnection: { ar: "اختبار الاتصال بالمزود", en: "Test provider connection" },
+    retryNow: { ar: "إعادة المحاولة الآن", en: "Retry now" },
+    clearProviderCache: { ar: "مسح الكاش", en: "Clear cache" },
+    testProviderConnection: { ar: "اختبار الاتصال", en: "Test provider connection" },
     providerStatus: { ar: "الحالة", en: "Status" },
     providerName: { ar: "المزود", en: "Provider" },
     providerConnection: { ar: "الاتصال", en: "Connection" },
@@ -456,6 +459,18 @@
     discoveredSymbols: { ar: "الرموز المكتشفة", en: "Discovered symbols" },
     cachedSymbols: { ar: "الرموز المخزنة", en: "Cached symbols" },
     failedSymbols: { ar: "الرموز المتعثرة", en: "Failed symbols" },
+    affectedSymbols: { ar: "الرموز المتأثرة", en: "Affected symbols" },
+    affectedSymbolsCount: { ar: "عدد الرموز المتأثرة", en: "Affected symbols count" },
+    lastAttempt: { ar: "آخر محاولة", en: "Last attempt" },
+    nextRetry: { ar: "إعادة المحاولة التالية", en: "Next retry" },
+    fallbackAttempted: { ar: "تمت محاولة مزود بديل", en: "Fallback attempted" },
+    rejectionReason: { ar: "سبب الرفض", en: "Rejection reason" },
+    advancedDiagnostics: { ar: "تشخيصات متقدمة", en: "Advanced Diagnostics" },
+    noAdvancedDiagnostics: { ar: "لا توجد تفاصيل تشخيص نشطة للعرض.", en: "No active diagnostic details to show." },
+    rateLimitNotice: {
+      ar: "تم الوصول مؤقتاً إلى حد استخدام مزود البيانات. سنحاول استخدام مزود بديل أو إعادة المحاولة لاحقاً.",
+      en: "The data provider usage limit was reached temporarily. We will try a fallback provider or retry later."
+    },
     lastUpdated: { ar: "آخر تحديث", en: "Last updated" },
     configured: { ar: "مهيأ", en: "Configured" },
     notConfigured: { ar: "غير مهيأ", en: "Not configured" },
@@ -1900,9 +1915,9 @@
     return state.marketUniverseView.sort === key ? `<span aria-hidden="true">${state.marketUniverseView.dir === "asc" ? " ↑" : " ↓"}</span>` : "";
   }
   function marketUniverseRow(row) {
-    const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? terminalText("unavailable") : price(p, currency(a));
+    const a = normalizeQuote(norm(row)), p = a.price, priceText = price(p, currency(a));
     const typeText = assetType(a.symbol, a.assetType) === "fund" ? fundTypeText(a) : (a.assetType || assetType(a.symbol));
-    return `<tr data-universe-symbol="${h(a.symbol)}" class="${p === null ? "is-muted" : ""}">
+    return `<tr data-universe-symbol="${h(a.symbol)}" class="${!isValidPrice(p) ? "is-muted" : ""}">
       <td class="wt-asset" data-label="${h(terminalText("symbol"))}"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><small class="ltr">${h(a.providerSymbol || a.providerSymbolUsed || "--")}</small></span></button></td>
       <td data-label="${h(textPair("الشركة", "Company"))}">${h(a.companyName || a.name || "--")}</td>
       <td class="ltr" data-label="${h(terminalText("price"))}">${h(priceText)}</td>
@@ -1917,9 +1932,9 @@
     </tr>`;
   }
   function marketUniverseCard(row) {
-    const a = norm(row), p = num(a.price, a.currentPrice, a.lastPrice), priceText = p === null ? terminalText("unavailable") : price(p, currency(a));
+    const a = normalizeQuote(norm(row)), p = a.price, priceText = price(p, currency(a));
     if (assetType(a.symbol, a.assetType) === "fund") return fundUniverseCard(a, p, priceText);
-    return `<article class="provider-market-card market-universe-card ${p === null ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
+    return `<article class="provider-market-card market-universe-card ${!isValidPrice(p) ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
       <div class="provider-market-card-head"><strong class="ltr">${h(a.displaySymbol || a.symbol)}</strong><span class="ltr">${h(currency(a))}</span></div>
       <p>${h(a.companyName || a.name || "--")}</p>
       <dl><div><dt>${h(terminalText("price"))}</dt><dd class="ltr">${h(priceText)}</dd></div><div><dt>${h(terminalText("exchange"))}</dt><dd class="ltr">${h(a.exchange || "--")}</dd></div><div><dt>${h(terminalText("sector"))}</dt><dd>${h(a.sector || "--")}</dd></div><div><dt>${h(terminalText("type"))}</dt><dd>${h(a.assetType || assetType(a.symbol))}</dd></div></dl>
@@ -1930,10 +1945,10 @@
     const fundType = fundTypeText(a);
     const market = [a.exchange || a.exchangeCode || a.market, currency(a)].filter(Boolean).join(" · ") || "--";
     const nav = num(a.nav);
-    const displayPrice = p !== null ? priceText : nav !== null ? `NAV ${price(nav, currency(a))}` : terminalText("unavailable");
-    const quality = dataQualityLabel(a.dataAvailability || a.dataQuality || (p === null && nav === null ? "unavailable" : "available"));
+    const displayPrice = isValidPrice(p) ? priceText : isValidPrice(nav) ? `NAV ${price(nav, currency(a))}` : priceUnavailableText();
+    const quality = dataQualityLabel(a.dataAvailability || a.dataQuality || (!isValidPrice(p) && !isValidPrice(nav) ? "unavailable" : "available"));
     const shariah = shariahStatusLabel(a.shariahStatus || a.shariaStatus);
-    return `<article class="provider-market-card market-universe-card fund-universe-card ${p === null && nav === null ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
+    return `<article class="provider-market-card market-universe-card fund-universe-card ${!isValidPrice(p) && !isValidPrice(nav) ? "is-muted" : ""}" data-universe-symbol="${h(a.symbol)}">
       <div class="provider-market-card-head"><strong>${h(a.fundName || a.companyName || a.name || a.symbol)}</strong><span class="ltr">${h(a.displaySymbol || a.symbol)}</span></div>
       <p><span>${h(fundType)}</span></p>
       <dl>
@@ -2546,7 +2561,7 @@
     return `<div class="page-stack trader-settings-page" dir="${dir}">${hero(settingsT("heroTitle", lang), settingsT("heroBody", lang), settingsT("settings", lang))}
       <section class="settings-grid settings-grid-polished">
         <article class="panel settings-panel provider-settings-panel">
-          <div class="panel-head"><div><span class="eyebrow">${h(settingsT("provider", lang))}</span><h2>${h(settingsT("provider", lang))}</h2></div><button class="ghost-btn compact-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button></div>
+          <div class="panel-head"><div><span class="eyebrow">${h(settingsT("provider", lang))}</span><h2>${h(settingsT("provider", lang))}</h2></div><div class="provider-panel-actions"><button class="ghost-btn compact-btn" data-settings-action="retry-provider-now" type="button">${h(settingsT("retryNow", lang))}</button><button class="ghost-btn compact-btn danger-lite" data-settings-action="clear-provider-cache" type="button">${h(settingsT("clearProviderCache", lang))}</button><button class="ghost-btn compact-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button></div></div>
           ${diagnostics()}
         </article>
         <article class="panel settings-panel signal-settings-panel">
@@ -2588,7 +2603,7 @@
           <div class="settings-action-group">
             <span class="settings-section-label">${h(settingsT("dataActions", lang))}</span>
             <div class="settings-data-actions">
-              <button class="ghost-btn" data-settings-action="refresh-market-data" type="button">${h(settingsT("refreshMarketData", lang))}</button>
+              <button class="ghost-btn" data-settings-action="retry-provider-now" type="button">${h(settingsT("retryNow", lang))}</button>
               <button class="ghost-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button>
               <button class="ghost-btn danger-lite" data-settings-action="clear-provider-cache" type="button">${h(settingsT("clearProviderCache", lang))}</button>
             </div>
@@ -2731,9 +2746,10 @@
         history: historyPoints
       } : historyPoints.length ? { history: historyPoints } : {};
       const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
-      const asset = norm({ symbol: key, ...found, ...rawProfile, ...techAsset });
-      if (technicalUnavailable) asset.technicalAvailable = false;
       const rec = sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key);
+      const asset = normalizeQuote(norm({ symbol: key, ...found, ...rawProfile, ...techAsset, ...(rec || {}) }));
+      if (rec) Object.assign(rec, normalizeQuote(norm({ ...asset, ...rec })));
+      if (technicalUnavailable) asset.technicalAvailable = false;
       if (technicalUnavailable && rec) {
         rec.technicalAvailable = false;
         rec.canFollowTrade = false;
@@ -2763,13 +2779,13 @@
   }
 
   function symbolContent(detail) {
-    const a = detail.asset, c = currency(a), rec = detail.rec || null;
+    const a = normalizeQuote(detail.asset), c = currency(a), rec = detail.rec ? normalizeQuote(norm(detail.rec)) : null;
     const finalModel = finalRecommendationModel(a, detail, rec);
     const technicalUnavailable = isTechnicalUnavailableDetail(detail, { ...a, ...(rec || {}) });
-    const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, detail.rec && detail.rec.currentPrice);
-    const chg = num(a.changePercent, a.percentChange);
+    const p = a.price;
+    const chg = a.changePercent;
     const ps = detail.providerStatus || {};
-    const providerSymbolUsed = ps.providerSymbolUsed || a.providerSymbol || (detail.rec && detail.rec.providerSymbol) || terminalText("unavailable");
+    const providerSymbolUsed = a.providerSymbolUsed || ps.providerSymbolUsed || a.providerSymbol || (rec && rec.providerSymbol) || terminalText("unavailable");
     const fallbackUsed = ps.fallbackUsed === true ? textPair("نعم", "Yes") : ps.fallbackUsed === false ? textPair("لا", "No") : terminalText("unavailable");
     const lastUpdated = latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
     const quality = ps.dataQuality ? dataQualityLabel(ps.dataQuality) : terminalText("unavailable");
@@ -2816,9 +2832,9 @@
     return reason ? `${fallback} · ${translateUiText(formatProviderError(reason, { empty: fallback }))}` : fallback;
   }
   function hasTradeableQuote(asset, recommendation) {
-    const a = norm(asset);
+    const a = normalizeQuote(norm(asset));
     const rec = recommendation || sharedRecommendation(a);
-    const priceValue = num(a.price, a.lastPrice, a.currentPrice, a.regularMarketPrice, a.close);
+    const priceValue = a.price;
     const targetValue = num(a.target, a.targetPrice, a.target1, rec && rec.targetPrice);
     const stopValue = num(a.stopLoss, a.stop, rec && rec.stopLoss);
     const quality = normalizedDataQuality(a.dataQuality || a.data_quality || (a.providerStatus && a.providerStatus.dataQuality));
@@ -2827,12 +2843,13 @@
       && a.canFollowTrade !== false
       && a.technicalAvailable !== false
       && a.technical_available !== false
-      && priceValue !== null
-      && targetValue !== null
-      && stopValue !== null
+      && isValidPrice(priceValue)
+      && isValidPrice(targetValue)
+      && isValidPrice(stopValue)
       && quality !== "unavailable"
       && rec
       && (rec.status === "buy" || rec.status === "sell")
+      && rec.status !== "insufficient_data"
       && rec.canFollowTrade === true;
   }
   function followTradeButton(recommendation, symbol, className = "ghost-btn", small = false, asset = null) {
@@ -2980,20 +2997,20 @@
     return `<span class="precision-badge ${passed ? "pass" : "info"}" title="${h(textPair("نسبة إصابة الهدف الأول في الاختبار الخلفي على نفس الرمز", "First-target hit rate in the backtest for this symbol"))}">${h(text)}</span>`;
   }
   function leadershipCard(symbol, asset) {
-    const a = asset ? norm(asset) : { symbol, name: terminalText("unavailable") };
+    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
     const display = a.displaySymbol || displaySymbolFor(symbol);
     const detailSymbol = a.canonicalSymbol || symbol;
     const c = currency({ ...a, symbol: detailSymbol });
-    const p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
-    const chg = num(a.changePercent, a.percentChange);
+    const p = a.price;
+    const chg = a.changePercent;
     const recommendation = sharedRecommendation(a);
     const conf = recommendation.confidence;
     const sig = recommendation.status;
-    const quality = a.dataQuality || (p === null ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
+    const quality = a.dataQuality || (!isValidPrice(p) ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
     return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
       <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
-      <div class="leadership-price"><strong class="ltr">${h(p === null ? terminalText("unavailable") : price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? terminalText("unavailable") : change(chg))}</span></div>
+      <div class="leadership-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
       ${sparkline(a, chg)}
       <div class="leadership-foot">
         <span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span>
@@ -3010,15 +3027,15 @@
     </section>`;
   }
   function heatmapCard(symbol, asset) {
-    const a = asset ? norm(asset) : { symbol, name: terminalText("unavailable") };
-    const chg = num(a.changePercent, a.percentChange);
+    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
+    const chg = a.changePercent;
     const recommendation = sharedRecommendation(a);
     const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
     const conf = recommendation.confidence;
     return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
       ${logo({ ...a, symbol }, "sm")}
       <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
-      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? terminalText("unavailable") : change(chg))}</span>
+      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
       <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
     </button>`;
   }
@@ -3135,18 +3152,18 @@
   }
   function watchlistTable(items, opts = {}) {
     const rows = items.map(x => {
-      const a = norm(x), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status;
-      const conf = recommendation.confidence, p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
-      const chg = num(a.changePercent, a.percentChange), tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
+      const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status;
+      const conf = recommendation.confidence, p = a.price;
+      const chg = a.changePercent, tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
       const risk = a.risk || a.riskLevel;
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="${h(textPair("إزالة", "Remove"))}">✕</button>` : "";
       return `<tr>
         <td class="wt-asset" data-label="${h(terminalText("asset"))}"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || terminalText("unavailable"))}</small></span></button></td>
-        <td class="ltr" data-label="${h(terminalText("price"))}">${h(p === null ? terminalText("unavailable") : price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="${h(textPair("التغير", "Change"))}">${h(chg === null ? terminalText("unavailable") : change(chg))}</td>
+        <td class="ltr" data-label="${h(terminalText("price"))}">${h(price(p, c))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="${h(textPair("التغير", "Change"))}">${h(change(chg))}</td>
         <td data-label="${h(textPair("التوصية", "Recommendation"))}"><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></td>
         <td class="ltr" data-label="${h(terminalText("confidence"))}">${conf === null ? terminalText("unavailable") : Math.round(conf) + "%"}</td>
-        <td class="ltr" data-label="${h(terminalText("target"))}">${tgt === null ? terminalText("unavailable") : price(tgt, c)}</td>
+        <td class="ltr" data-label="${h(terminalText("target"))}">${isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable")}</td>
         <td data-label="${h(textPair("المدة", "Horizon"))}">${h(a.timeframe || a.horizon || a.duration || terminalText("unavailable"))}</td>
         <td data-label="${h(textPair("المخاطرة", "Risk"))}">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : terminalText("unavailable")}</td>
         <td class="ltr" data-label="${h(textPair("سكور AI", "AI score"))}">${score === null ? terminalText("unavailable") : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
@@ -3157,23 +3174,23 @@
   }
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
   function recCard(x) {
-    const a = norm(x), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
-    const p = num(a.price, a.lastPrice, a.currentPrice), tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
-    const unavailableNote = p === null || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : "";
+    const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
+    const p = a.price, tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
+    const unavailableNote = !isValidPrice(p) || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : "";
     return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></div>
-      <div class="rec-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(p === null ? terminalText("unavailable") : price(p, c))}</b></span><span>${h(terminalText("target"))}<b class="ltr">${h(tgt === null ? "--" : price(tgt, c))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(sl === null ? "--" : price(sl, c))}</b></span><span>${h(terminalText("confidence"))}<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
+      <div class="rec-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("confidence"))}<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
       ${unavailableNote}
       <div class="rec-foot"><span class="status-tag ${recommendationTone(recommendation) || recStatusTone(a)}">${h(recommendationStatusText(recommendation, a))}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button></div></div></article>`;
   }
-  function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(norm(x))).join("")}</div>`; }
+  function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(normalizeQuote(norm(x)))).join("")}</div>`; }
   function assetCard(asset, opts = {}) {
-    const a = norm(asset), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence, p = num(a.price, a.lastPrice, a.regularMarketPrice, a.close, a.currentPrice);
-    const chg = num(a.changePercent, a.percentChange);
+    const a = normalizeQuote(norm(asset)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence, p = a.price;
+    const chg = a.changePercent;
     const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">${h(textPair("إزالة", "Remove"))}</button>` : "";
     return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable"))}</small></div></div>
       <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag">${h(recommendationStatusText(recommendation, a))}</span></div>
-      <div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(p === null ? terminalText("unavailable") : price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? terminalText("unavailable") : change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>
-      ${p === null || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : ""}
+      <div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>
+      ${!isValidPrice(p) || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : ""}
       <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
   }
   function marketCard(m) {
@@ -3185,7 +3202,7 @@
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(marketFamilyName(m.family))}</span></div><strong>${h(marketName(m))}</strong><p>${h(terminalText("currency"))} <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(terminalText(countKey, { shown: latinNumber(visible.length), total: latinNumber(total) }))}</span><span class="market-card-action">${h(marketActionLabel(m))}</span></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = norm(x), recommendation = sharedRecommendation(a), chg = num(a.changePercent, a.percentChange); return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(chg === null ? terminalText("unavailable") : change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = normalizeQuote(norm(x)), recommendation = sharedRecommendation(a), chg = a.changePercent; return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
@@ -3321,11 +3338,12 @@
       [settingsT("loadedSymbols", lang), countTextLocalized(normalized.loadedCount, lang), normalized.loadedCount > 0 ? "ok" : "warn"],
       [settingsT("discoveredSymbols", lang), countTextLocalized(normalized.discoveredCount, lang), ""],
       [settingsT("cachedSymbols", lang), countTextLocalized(normalized.cachedCount, lang), normalized.cachedCount > 0 ? "ok" : ""],
-      [settingsT("failedSymbols", lang), countTextLocalized(normalized.failedCount, lang), normalized.failedCount > 0 ? "warn" : "ok"],
+      [settingsT("nextRetry", lang), latinDateTime(normalized.nextRetryAt), normalized.nextRetryAt ? "warn" : ""],
+      [settingsT("fallbackAttempted", lang), yesNoLocalized(normalized.fallbackAttempted, lang), normalized.fallbackAttempted ? "ok" : ""],
       [settingsT("lastUpdated", lang), latinDateTime(normalized.lastUpdated), ""]
     ];
     const featureList = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(feature => featureLabelLocalized(feature, lang)).join(" · ") : settingsT("noFeatures", lang);
-    const errorText = formatProviderError(normalized.errorSummary, { empty: "", admin: true }) || providerStatus.explanation;
+    const errorText = providerUserMessage(normalized, providerStatus, lang);
     const errorSummary = errorText ? `<p class="provider-warning">${h(errorText)}</p>` : "";
     const retryAction = providerStatus.showRetry ? `<button class="ghost-btn compact-btn provider-status-retry" data-retry>${h(providerStatus.retryLabel)}</button>` : "";
     return `<div class="provider-diagnostics-ui">
@@ -3339,18 +3357,29 @@
       ${diagnosticDetails(normalized)}
     </div>`;
   }
+  function providerUserMessage(normalized, providerStatus, lang) {
+    const ps = state.providerStatus || {};
+    const rateLimitCopy = ps.userMessages && ps.userMessages.rateLimit && (ps.userMessages.rateLimit[normalizeLanguage(lang)] || ps.userMessages.rateLimit.en || ps.userMessages.rateLimit.ar);
+    if (normalized.status === "rate_limited" || isRateLimitText(normalized.errorSummary)) {
+      return rateLimitCopy || settingsT("rateLimitNotice", lang);
+    }
+    return formatProviderError(normalized.errorSummary, { empty: "" }) || providerStatus.explanation;
+  }
   function normalizedProviderStatus() {
     const ps = state.providerStatus || {}, raw = ps.normalizedStatus || {};
     const p = ps.dataProvider || state.provider || {};
     const diag = ps.diagnostics || state.markets.diagnostics || (state.rec && state.rec.symbolDiscovery) || {};
     const summary = ps.summary || diag.summary || state.rec.summary || {};
+    const fmpProvider = (ps.providers && ps.providers.fmp) || (ps.providerMatrix && ps.providerMatrix.fmp) || {};
     const failedRows = arr(ps.failed).concat(arr(state.rec.failed), arr(state.markets.failed));
     const skippedRows = arr(ps.skipped).concat(arr(state.rec.skipped), arr(state.markets.skipped));
+    const advanced = arr(ps.advancedDiagnostics);
     const status = normalizeStatusKey(raw.status || p.status || providerCopy().statusKey);
     const loadedCount = numberValue(raw.loadedCount, summary.loadedSymbols, diag.totalSymbolsLoaded, ps.resultCount, state.markets.resultCount);
     const failedCount = numberValue(raw.failedCount, summary.failedSymbols, failedRows.length);
     const cachedCount = numberValue(raw.cachedCount, summary.cachedSymbols);
     const skippedCount = numberValue(raw.skippedCount, summary.skippedDueToRateLimit, skippedRows.length);
+    const affectedSymbolsCount = numberValue(raw.affectedSymbolsCount, summary.affectedSymbolsCount, failedCount + skippedCount);
     const discoveredCount = numberValue(diag.totalSymbolsDiscovered, loadedCount);
     const errorSummary = raw.errorSummary || formatProviderError(p.failureReason || ps.providers?.fmp?.error || state.rec.message || state.markets.message || null, { empty: "" });
     return {
@@ -3362,11 +3391,16 @@
       failedCount,
       cachedCount,
       skippedCount,
+      affectedSymbolsCount,
       discoveredCount,
       lastUpdated: raw.lastUpdated || p.lastUpdated || ps.generatedAt || diag.generatedAt || null,
+      lastAttemptAt: raw.lastAttemptAt || fmpProvider.lastErrorAt || fmpProvider.lastChecked || ps.generatedAt || diag.generatedAt || null,
+      nextRetryAt: raw.nextRetryAt || fmpProvider.nextRetryAt || fmpProvider.rateLimitedUntil || null,
+      fallbackAttempted: Boolean(raw.fallbackAttempted || ps.fallbackAttempted || (ps.dataProvider && ps.dataProvider.active && ps.dataProvider.active !== "fmp")),
       cacheStatus: diag.cacheStatus || state.rec.cacheStatus || state.markets.cacheStatus || (cachedCount > 0 ? "hit" : "disabled"),
       errorSummary,
-      diagnosticGroups: arr(ps.diagnosticGroups)
+      diagnosticGroups: arr(ps.diagnosticGroups),
+      advancedDiagnostics: advanced
     };
   }
   function providerMetricCard(label, value, tone) {
@@ -3377,19 +3411,33 @@
   }
   function diagnosticDetails(normalized) {
     const lang = currentLanguage();
-    const title = lang === "en" ? "Diagnostics details" : "تفاصيل التشخيص";
-    const empty = lang === "en" ? "No active provider errors to show." : "لا توجد أخطاء مزود نشطة للعرض.";
-    const groups = normalized.diagnosticGroups.length ? normalized.diagnosticGroups : groupedProviderDiagnostics();
+    const title = settingsT("advancedDiagnostics", lang);
+    const empty = settingsT("noAdvancedDiagnostics", lang);
+    const groups = normalized.advancedDiagnostics.length ? normalized.advancedDiagnostics : (normalized.diagnosticGroups.length ? normalized.diagnosticGroups : groupedProviderDiagnostics());
     if (!groups.length) {
       return `<details class="provider-diagnostics-panel"><summary>${h(title)}</summary><p class="provider-clean-note">${h(empty)}</p></details>`;
     }
     return `<details class="provider-diagnostics-panel">
       <summary>${h(title)}</summary>
       <div class="provider-diagnostic-groups">${groups.map(group => {
-        const details = arr(group.details).slice(0, 12);
+        const details = arr(group.details);
+        const symbols = arr(group.affectedSymbols).concat(details.map(detail => detail.symbol || detail.route)).filter(Boolean);
+        const uniqueSymbols = Array.from(new Set(symbols.map(item => String(item).trim()).filter(Boolean)));
+        const visibleSymbols = uniqueSymbols.slice(0, 80);
+        const hiddenCount = Math.max(0, uniqueSymbols.length - visibleSymbols.length);
+        const affectedCount = numberValue(group.affectedSymbolsCount, uniqueSymbols.length, details.length);
+        const reason = formatProviderError(group.reason || group.summary || group.status, { admin: true });
         return `<section class="provider-diagnostic-group">
-          <strong>${h(formatProviderError(group.summary || group.reason || group.status, { admin: true }))}</strong>
-          ${details.length ? `<ul>${details.map(detail => `<li><code class="ltr">${h(detail.route || detail.symbol || "route")}</code><span>${h(formatProviderError(detail.reason || group.status, { admin: true }))}</span></li>`).join("")}</ul>` : ""}
+          <strong>${h(providerDisplayName(group.provider || normalized.provider))}</strong>
+          <div class="provider-diagnostic-meta">
+            <span><small>${h(settingsT("affectedSymbolsCount", lang))}</small><b>${h(latinNumber(affectedCount))}</b></span>
+            <span><small>${h(settingsT("lastAttempt", lang))}</small><b class="ltr">${h(latinDateTime(group.lastAttemptAt || normalized.lastAttemptAt))}</b></span>
+            <span><small>${h(settingsT("nextRetry", lang))}</small><b class="ltr">${h(latinDateTime(group.nextRetryAt || normalized.nextRetryAt))}</b></span>
+            <span><small>${h(settingsT("fallbackAttempted", lang))}</small><b>${h(yesNoLocalized(Boolean(group.fallbackAttempted || normalized.fallbackAttempted), lang))}</b></span>
+            <span><small>${h(settingsT("rejectionReason", lang))}</small><b>${h(reason || "--")}</b></span>
+          </div>
+          ${visibleSymbols.length ? `<div class="provider-symbol-list"><small>${h(settingsT("affectedSymbols", lang))}</small><div>${visibleSymbols.map(symbol => `<code class="ltr">${h(symbol)}</code>`).join("")}${hiddenCount ? `<code class="ltr">+${h(latinNumber(hiddenCount))}</code>` : ""}</div></div>` : ""}
+          ${details.length ? `<ul>${details.slice(0, 40).map(detail => `<li><code class="ltr">${h(detail.route || detail.symbol || "route")}</code><span>${h(formatProviderError(detail.reason || group.status, { admin: true }))}</span></li>`).join("")}</ul>` : ""}
         </section>`;
       }).join("")}</div>
     </details>`;
@@ -3411,7 +3459,13 @@
       groups.push({
         provider: "FMP",
         status: "rate_limited",
-        summary: textPair(`FMP: تم الوصول إلى حد الاستخدام في ${details.length || rateLimited.length} مسارات`, `FMP: Rate limit reached across ${details.length || rateLimited.length} routes`),
+        summary: "provider_rate_limited",
+        affectedSymbolsCount: details.length || rateLimited.length,
+        affectedSymbols: details.map(detail => detail.route),
+        lastAttemptAt: ps.generatedAt || null,
+        nextRetryAt: (ps.providers && ps.providers.fmp && (ps.providers.fmp.nextRetryAt || ps.providers.fmp.rateLimitedUntil)) || null,
+        fallbackAttempted: Boolean(ps.dataProvider && ps.dataProvider.active && ps.dataProvider.active !== "fmp"),
+        reason: "provider_rate_limited",
         details
       });
     }
@@ -3955,11 +4009,12 @@
   function strategySignals(asset, tech, rec) {
     const t = tech || {}, sigs = [];
     if (isTechnicalUnavailableDetail({ tech, rec }, asset)) return sigs;
-    const price = num(asset.price, asset.lastPrice, asset.regularMarketPrice, asset.close, rec && rec.currentPrice, t.price);
+    const quote = normalizeQuote(asset);
+    const price = quote.price;
     const ma50 = num(t.ma50, t.sma50, t.ema50), ma200 = num(t.ma200, t.sma200, t.ema200);
     const rsi = num(t.rsi, t.rsi14, t.RSI), macd = num(t.macd, t.macdValue), macdSig = num(t.macdSignal, t.signalLine);
     const s1 = num(t.support, t.s1, t.support1), r1 = num(t.resistance, t.r1, t.resistance1);
-    const chg = num(asset.changePercent, asset.percentChange, rec && rec.expectedMovePct);
+    const chg = quote.changePercent;
     const push = (name, signal, weight, note) => sigs.push({ name, signal, weight, note });
     if (ma50 !== null && ma200 !== null) push(textPair("اتجاه — تقاطع المتوسطات", "Trend — moving average cross"), ma50 >= ma200 ? "buy" : "sell", 1.3, ma50 >= ma200 ? textPair("المتوسط 50 فوق 200 (تقاطع ذهبي)", "50 MA is above 200 MA (golden cross)") : textPair("المتوسط 50 تحت 200 (تقاطع موت)", "50 MA is below 200 MA (death cross)"));
     if (rsi !== null) push(textPair("RSI — تشبع/ارتداد", "RSI — extremes/reversal"), rsi <= 30 ? "buy" : rsi >= 70 ? "sell" : "neutral", 1.0, rsi <= 30 ? textPair(`تشبع بيعي (${Math.round(rsi)})`, `Oversold (${Math.round(rsi)})`) : rsi >= 70 ? textPair(`تشبع شرائي (${Math.round(rsi)})`, `Overbought (${Math.round(rsi)})`) : textPair(`محايد (${Math.round(rsi)})`, `Neutral (${Math.round(rsi)})`));
@@ -4185,12 +4240,13 @@
     row.classList.toggle("is-empty", !items.length);
     if (row.hidden) { row.innerHTML = ""; return; }
     row.innerHTML = items.map((a) => {
-      const s = sym(a.symbol);
-      const p = num(a.price, a.currentPrice, a.lastPrice);
-      const chg = num(a.changePercent, a.percentChange);
-      const label = displaySymbolFor(a.displaySymbol || s);
-      const amount = p === null ? price(null) : price(p, currency({ ...a, symbol: s }));
-      return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...a, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${h(amount)} ${chg === null ? "" : `<i class="${chg >= 0 ? "up" : "down"}">${h(change(chg))}</i>`}</small></span></button>`;
+      const q = normalizeQuote(a);
+      const s = q.canonicalSymbol || q.symbol;
+      const p = q.price;
+      const chg = q.changePercent;
+      const label = q.displaySymbol || displaySymbolFor(s);
+      const amount = price(p, currency({ ...q, symbol: s }));
+      return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...q, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${h(amount)} <i class="${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</i></small></span></button>`;
     }).join("");
   }
   function isQuickTickerVisible() {
@@ -4204,7 +4260,7 @@
     return unique(market.symbols || [])
       .map((symbol) => {
         const matched = findAssetForSymbol(symbol, source) || {};
-        return norm({ ...matched, symbol });
+        return normalizeQuote(norm({ ...matched, symbol }));
       })
       .filter((asset) => isAssetAllowedForSelection(asset, selectedMarket, selectedCategory))
       .slice(0, 8);
@@ -4227,7 +4283,7 @@
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: textPair(`متابعة ${s}`, `Watch ${s}`), message: textPair("تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", "Local alert saved. A price provider is required to trigger it automatically."), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`)); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {
-    const a = norm(asset), recommendation = sharedRecommendation(a), action = recommendation.status, now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
+    const a = normalizeQuote(norm(asset)), recommendation = sharedRecommendation(a), action = recommendation.status, now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
     if (!hasTradeableQuote(a, recommendation)) return null;
     return {
       id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -4581,7 +4637,13 @@
   function trades() { return mergeTradeLists(arr(state.followed.followedTrades || state.followed.trades || state.followed.items || state.followed.data || state.followed.followed), state.localTrades || []); }
   function matchRec(s) { const k = sym(s); return recs().find(x => sym(x.symbol) === k) || null; }
   function topPicks(r, n) { return [...r].sort((a, b) => (num(b.aiConfidence, b.ai_confidence, b.confidence, b.score) || 0) - (num(a.aiConfidence, a.ai_confidence, a.confidence, a.score) || 0)).slice(0, n); }
-  function sortMovers(r) { const withChg = r.filter(x => num(x.changePercent, x.percentChange) !== null); const byChg = [...withChg].sort((a, b) => num(b.changePercent, b.percentChange) - num(a.changePercent, a.percentChange)); return { gainers: byChg, losers: [...byChg].reverse(), active: topPicks(r, r.length) }; }
+  function sortMovers(r) {
+    const normalized = r.map(x => normalizeQuote(norm(x)));
+    const withChg = normalized.filter(x => isValidPrice(x.price) && isValidChange(x.changePercent));
+    const gainers = withChg.filter(x => x.changePercent > 0).sort((a, b) => b.changePercent - a.changePercent);
+    const losers = withChg.filter(x => x.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+    return { gainers, losers, active: topPicks(normalized, normalized.length) };
+  }
   function mergeTradeLists(server, local) {
     const seen = new Set(), output = [];
     [...server, ...local].forEach(item => {
@@ -4690,10 +4752,37 @@
   function marketApi(id) { const m = MARKETS.find(x => x.id === id); return m ? m.apiMarket : (id || "us-stocks"); }
   function currentMarket() { return MARKETS.find(x => x.id === state.settings.defaultMarket) || MARKETS[0]; }
   function currency(a) { const s = sym(a.symbol || a.ticker || ""), explicit = a.currency || a.currencyCode || a.quoteCurrency; if (explicit && String(explicit).toUpperCase() !== "KWF") return String(explicit).toUpperCase(); if (/\.KW$/i.test(s)) return "KWD"; if (/\.SR$|\.SA$/i.test(s)) return "SAR"; if (/\.AE$|\.DU$|\.AD$/i.test(s)) return "AED"; if (/\.QA$/i.test(s)) return "QAR"; if (/\.OM$/i.test(s)) return "OMR"; if (/\.BH$/i.test(s)) return "BHD"; if (/\.T$/i.test(s)) return "JPY"; if (/\.HK$/i.test(s)) return "HKD"; if (/\.DE$|\.AS$|\.PA$|\.MI$|\.MC$/i.test(s)) return "EUR"; if (/\.L$/i.test(s)) return "GBP"; if (/\.SW$/i.test(s)) return "CHF"; if (/\.KS$/i.test(s)) return "KRW"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "USD"; if (/^[A-Z]{6}$/.test(s)) return s.slice(3); if (/USD$/.test(s) || /^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s)) return "USD"; if (/^[A-Z]{1,5}$/.test(s)) return "USD"; return "--"; }
-  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund|reit|sukuk|mutual/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s) || /XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|XLK|XLF|XLE|XLV|XLY|XLI|XLP|XLU|VNQ|SOXX|AMCREIT|ENBDREIT|REIT)$/.test(s)) return "fund"; return "stock"; }
+  function assetType(s, explicit) { s = sym(s); if (explicit) { const e = String(explicit).toLowerCase(); if (/crypto/.test(e)) return "crypto"; if (/forex|fx|currency/.test(e)) return "forex"; if (/commodit|metal/.test(e)) return "commodity"; if (/etf|fund|reit|sukuk|mutual/.test(e)) return "fund"; if (/index/.test(e)) return "index"; if (/stock|equity/.test(e)) return "stock"; } const compactCrypto = s.replace(/^BINANCE:/, "").replace(/[/-]/g, ""), cryptoBase = compactCrypto.replace(/USDT$/, "").replace(/USD$/, ""); if (CRYPTO_DISPLAY_BASES.has(cryptoBase) && [cryptoBase, `${cryptoBase}USD`, `${cryptoBase}USDT`].includes(compactCrypto)) return "crypto"; if (/BTC|ETH|SOL|USDT|XRP|ADA|BNB|DOGE/i.test(s) && /USD|USDT/i.test(s)) return "crypto"; if (/^(XAUUSD|XAGUSD|WTI|BRENT|GC=F|SI=F|CL=F|BZ=F)$/.test(s) || /XAU|XAG|WTI|BRENT|OIL|GOLD|SILVER/i.test(s)) return "commodity"; if (/^(NAS100|US30|SPX|SPX500|NDX|DJI|DXY|IXIC|DAX|FTSE|CAC40|NIKKEI|HSI)$/.test(s)) return "index"; if (/^[A-Z]{6}$/.test(s.replace(/[.\-=].*/, ""))) return "forex"; if (/^(SPY|QQQ|VOO|DIA|IWM|GLD|SLV|VTI|VEA|VWO|AGG|BND|TLT|HYG|XLK|XLF|XLE|XLV|XLY|XLI|XLP|XLU|VNQ|SOXX|AMCREIT|ENBDREIT|REIT)$/.test(s)) return "fund"; return "stock"; }
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, "").replace(/[\\/:]/g, ""); }
-  function price(v, c) { return v === null || v === undefined || Number.isNaN(Number(v)) ? terminalText("unavailable") : `${Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
-  function change(v) { return v === null || v === undefined ? terminalText("unavailable") : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`; }
+  function priceUnavailableText() { return textPair(PRICE_UNAVAILABLE_AR, PRICE_UNAVAILABLE_EN); }
+  function changeUnavailableText() { return textPair(CHANGE_UNAVAILABLE_AR, CHANGE_UNAVAILABLE_EN); }
+  function isValidPrice(value) { const n = num(value); return n !== null && n > 0; }
+  function isValidChange(value) { const n = num(value); return n !== null && n > -100 && Math.abs(n) < 100000; }
+  function normalizeSymbol(symbol, assetClass) {
+    const raw = String(symbol || "").trim(), compact = sym(raw), compactCrypto = compact.replace(/^BINANCE:/, "").replace(/[/-]/g, ""), cryptoBase = compactCrypto.replace(/USDT$/, "").replace(/USD$/, "");
+    const type = assetType(compact, assetClass);
+    if ((type === "crypto" || CRYPTO_DISPLAY_BASES.has(cryptoBase)) && cryptoBase && [cryptoBase, `${cryptoBase}USD`, `${cryptoBase}USDT`].includes(compactCrypto)) {
+      return { inputSymbol: raw, requestedSymbol: raw || compact, canonicalSymbol: `${cryptoBase}/USD`, displaySymbol: `${cryptoBase}/USD`, providerSymbol: `${cryptoBase}-USD`, assetType: "crypto", symbolKey: `${cryptoBase}USD` };
+    }
+    return { inputSymbol: raw, requestedSymbol: raw || compact, canonicalSymbol: compact, displaySymbol: displaySymbolFor(raw || compact), providerSymbol: compact || null, assetType: type, symbolKey: compact };
+  }
+  function normalizeQuote(rawQuote) {
+    const raw = rawQuote || {};
+    const symbolInfo = normalizeSymbol(raw.canonicalSymbol || raw.displaySymbol || raw.symbol || raw.providerSymbol || raw.providerSymbolUsed || raw.ticker || raw.code, raw.assetType || raw.asset_type || raw.type);
+    const providerText = String(raw.provider || raw.source || "").toLowerCase();
+    const normalizedProviderSymbol = symbolInfo.assetType === "crypto" && providerText.includes("yahoo") ? symbolInfo.providerSymbol : (raw.providerSymbol || raw.provider_symbol || symbolInfo.providerSymbol);
+    const priceValue = [raw.price, raw.currentPrice, raw.current_price, raw.lastPrice, raw.regularMarketPrice, raw.close].map(value => num(value)).find(value => isValidPrice(value)) ?? null;
+    const previousClose = [raw.previousClose, raw.previous_close, raw.prevClose, raw.regularMarketPreviousClose].map(value => num(value)).find(value => isValidPrice(value)) ?? null;
+    const explicitChange = num(raw.changePercent, raw.percentChange, raw.regularMarketChangePercent);
+    const changeValue = priceValue !== null && previousClose !== null ? Number((priceValue - previousClose).toFixed(6)) : null;
+    const changePercent = priceValue !== null && previousClose !== null
+      ? Number((((priceValue - previousClose) / previousClose) * 100).toFixed(6))
+      : isValidChange(explicitChange) && priceValue !== null ? explicitChange : null;
+    const available = raw.available !== false && priceValue !== null;
+    return { ...raw, symbol: symbolInfo.canonicalSymbol || symbolInfo.symbolKey, requestedSymbol: raw.requestedSymbol || raw.requested_symbol || symbolInfo.requestedSymbol, canonicalSymbol: symbolInfo.canonicalSymbol, displaySymbol: symbolInfo.displaySymbol, providerSymbol: normalizedProviderSymbol, providerSymbolUsed: raw.providerSymbolUsed || raw.provider_symbol_used || normalizedProviderSymbol, assetType: raw.assetType || raw.asset_type || symbolInfo.assetType, price: priceValue, currentPrice: priceValue, previousClose, change: changeValue, changePercent, available, unavailableReason: available ? raw.unavailableReason : (raw.unavailableReason || raw.reason || "price_unavailable") };
+  }
+  function price(v, c) { const n = num(v); return !isValidPrice(n) ? priceUnavailableText() : `${n.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
+  function change(v) { const n = num(v); return !isValidChange(n) ? changeUnavailableText() : `${n > 0 ? "+" : ""}${n.toFixed(2)}%`; }
   function date(v) { if (!v) return "--"; const d = new Date(Number(v) ? Number(v) * (String(v).length <= 10 ? 1000 : 1) : v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString(isEnglishLanguage() ? "en-US" : "ar-KW", { dateStyle: "medium", timeStyle: "short" }); }
   function num(...values) { for (const v of values) { if (v === null || v === undefined || v === "") continue; const n = Number(v); if (Number.isFinite(n)) return n; } return null; }
   function arr(v) { if (Array.isArray(v)) return v; if (v && typeof v === "object") return Object.values(v).filter(x => x && typeof x === "object"); return []; }
@@ -4708,6 +4797,9 @@
   function countTextLocalized(value, lang = currentLanguage()) {
     const n = latinNumber(numberValue(value));
     return `${n} ${settingsT("symbolCount", lang)}`;
+  }
+  function yesNoLocalized(value, lang = currentLanguage()) {
+    return value ? (normalizeLanguage(lang) === "en" ? "Yes" : "نعم") : (normalizeLanguage(lang) === "en" ? "No" : "لا");
   }
   function riskLabelLocalized(r, lang = currentLanguage()) {
     if (r === "conservative") return settingsT("conservative", lang);
@@ -4724,8 +4816,12 @@
       <span class="settings-check-copy"><strong>${h(label)}</strong>${hint ? `<small>${h(hint)}</small>` : ""}</span>
     </label>`;
   }
-  async function refreshProviderStatus(force = false) {
-    const query = force ? "?refresh=1" : "";
+  async function refreshProviderStatus(options = false) {
+    const params = new URLSearchParams();
+    if (options === true || (options && options.refresh)) params.set("refresh", "1");
+    if (options && options.retry) params.set("retry", "1");
+    if (options && options.clearCache) params.set("clearCache", "1");
+    const query = params.toString() ? `?${params.toString()}` : "";
     const providerStatus = await get(`/trader/provider-status${query}`, { label: "providerStatus" });
     state.providerStatus = providerStatus || {};
     if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
@@ -4734,22 +4830,22 @@
   async function handleSettingsAction(action) {
     const lang = currentLanguage();
     try {
-      if (action === "refresh-market-data") {
+      if (action === "retry-provider-now" || action === "refresh-market-data") {
         state.cache.clear();
         state.marketCache.clear();
-        await hydrate();
+        await refreshProviderStatus({ retry: true });
         toast(settingsT("refreshed", lang));
         return;
       }
       if (action === "clear-provider-cache") {
         state.cache.clear();
         state.marketCache.clear();
-        await refreshProviderStatus(true);
+        await refreshProviderStatus({ clearCache: true });
         toast(settingsT("cacheCleared", lang));
         return;
       }
       if (action === "test-provider-connection") {
-        await refreshProviderStatus(true);
+        await refreshProviderStatus({ refresh: true });
         toast(settingsT("tested", lang));
       }
     } catch (error) {

@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
-import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
+import { clearTraderMarketCatalogCache, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
+import { clearTraderQuoteCache } from '@/lib/trader/marketQuotes';
 import { getTraderProviderStatus } from '@/lib/trader/providers/providerStatus';
-import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
+import {
+  clearFmpRuntimeCacheMarkers,
+  getFmpRuntimeStatus,
+  resetFmpRateLimitCooldown,
+} from '@/lib/trader/providers/fmpRuntime';
 import type { CatalogDiagnostics } from '@/lib/trader/marketCatalog';
 import type { FmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
 import type { NormalizedTraderProviderStatus, TraderProviderFeature } from '@/lib/trader/providers/types';
 
 export const dynamic = 'force-dynamic';
 
-const RATE_LIMIT_MESSAGE_AR = 'تم الوصول إلى حد استخدام مزود البيانات مؤقتاً';
+const RATE_LIMIT_REASON = 'provider_rate_limited';
+const RATE_LIMIT_MESSAGE_AR = 'تم الوصول مؤقتاً إلى حد استخدام مزود البيانات. سنحاول استخدام مزود بديل أو إعادة المحاولة لاحقاً.';
+const RATE_LIMIT_MESSAGE_EN = 'The data provider usage limit was reached temporarily. We will try a fallback provider or retry later.';
 const FMP_SUPPORTED_FEATURES: TraderProviderFeature[] = ['prices', 'earnings', 'dividends', 'ipos', 'economic'];
 
 // الاستجابة العامة لا تكشف أسماء المزودات ولا أخطاءها ولا عدّ المسارات.
@@ -60,9 +67,11 @@ function routeLabel(value: string | null | undefined) {
   return labels[key] ?? (key || 'provider route');
 }
 
-function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
+function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string; rateLimited?: boolean }>) {
   return Array.from(new Set(Object.entries(capabilityMatrix)
     .filter(([, capability]) => capability.supportsQuotes !== false
+      && capability.status !== 'rate_limited'
+      && capability.rateLimited !== true
       && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
     .map(([provider]) => traderProviderDisplayName(provider))
     .filter((provider): provider is string => Boolean(provider))));
@@ -88,13 +97,13 @@ function normalizeFmpStatus(args: {
           ? 'error'
           : 'available';
   const errorSummary = status === 'rate_limited'
-    ? RATE_LIMIT_MESSAGE_AR
+    ? RATE_LIMIT_REASON
     : status === 'missing'
-      ? 'FMP غير مهيأ'
+      ? 'provider_not_configured'
       : status === 'partial'
-        ? 'FMP متاح جزئياً مع تعثر بعض المسارات'
+        ? 'provider_partially_available'
         : status === 'error'
-          ? 'تعذر تحديث بيانات FMP حالياً'
+          ? 'provider_temporarily_unavailable'
           : null;
 
   return {
@@ -107,6 +116,10 @@ function normalizeFmpStatus(args: {
     cachedCount,
     skippedCount,
     lastUpdated: args.runtime.lastSuccessfulFetch ?? args.generatedAt,
+    lastAttemptAt: args.runtime.lastErrorAt ?? args.runtime.lastSuccessfulFetch ?? args.generatedAt,
+    nextRetryAt: args.runtime.nextRetryAt ?? args.runtime.rateLimitedUntil,
+    fallbackAttempted: args.runtime.rateLimited || cachedCount > 0 || args.diagnostics.summary.skippedDueToRateLimit > 0,
+    affectedSymbolsCount: failedCount + skippedCount,
     errorSummary,
   };
 }
@@ -124,12 +137,13 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
     groups.push({
       provider: 'FMP',
       status: 'rate_limited',
-      summary: routes.length > 0
-        ? `تم الوصول إلى حد الاستخدام في ${routes.length} مسارات`
-        : `${RATE_LIMIT_MESSAGE_AR}`,
+      summary: RATE_LIMIT_REASON,
+      affectedSymbolsCount: routes.length,
+      affectedSymbols: routes.map(item => item.route),
+      reason: RATE_LIMIT_REASON,
       details: routes.map(item => ({
         route: item.route,
-        reason: RATE_LIMIT_MESSAGE_AR,
+        reason: RATE_LIMIT_REASON,
       })),
     });
   }
@@ -139,7 +153,10 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
     groups.push({
       provider: 'FMP',
       status: normalized.status === 'available' ? 'partial' : normalized.status,
-      summary: `تعثر ${otherFailures.length} مسارات`,
+      summary: 'provider_temporarily_unavailable',
+      affectedSymbolsCount: otherFailures.length,
+      affectedSymbols: otherFailures.map(item => item.route),
+      reason: 'provider_temporarily_unavailable',
       details: otherFailures.map(item => ({
         route: item.route,
         reason: item.reason ?? 'provider_temporarily_unavailable',
@@ -152,11 +169,50 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
   return groups;
 }
 
+function advancedDiagnostics(args: {
+  diagnostics: CatalogDiagnostics;
+  normalized: NormalizedTraderProviderStatus;
+  runtime: FmpRuntimeStatus;
+  generatedAt: string;
+  fallbackAttempted: boolean;
+}) {
+  const affected = args.diagnostics.failedSymbols
+    .filter(item => args.normalized.status === 'rate_limited' || cleanProviderReason(item.reason) === RATE_LIMIT_REASON)
+    .map(item => ({
+      symbol: routeLabel(item.symbol),
+      reason: cleanProviderReason(item.reason) ?? RATE_LIMIT_REASON,
+    }));
+
+  if (args.runtime.rateLimited && affected.length === 0) {
+    affected.push({ symbol: 'FMP', reason: RATE_LIMIT_REASON });
+  }
+
+  if (!args.runtime.rateLimited && affected.length === 0 && args.normalized.status === 'available') return [];
+
+  return [{
+    provider: 'FMP',
+    status: args.normalized.status,
+    affectedSymbolsCount: args.normalized.affectedSymbolsCount || affected.length,
+    affectedSymbols: affected.map(item => item.symbol),
+    lastAttemptAt: args.runtime.lastErrorAt ?? args.runtime.lastSuccessfulFetch ?? args.generatedAt,
+    nextRetryAt: args.runtime.nextRetryAt ?? args.runtime.rateLimitedUntil,
+    fallbackAttempted: args.fallbackAttempted,
+    reason: args.runtime.rateLimited ? RATE_LIMIT_REASON : cleanProviderReason(args.runtime.lastError) ?? args.normalized.errorSummary,
+    details: affected,
+  }];
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const isAdmin = isAdminDiagnosticsRequest(url, request);
+  if (url.searchParams.has('retry')) resetFmpRateLimitCooldown();
+  if (url.searchParams.has('clearCache')) {
+    clearTraderQuoteCache();
+    clearTraderMarketCatalogCache();
+    clearFmpRuntimeCacheMarkers();
+  }
   const status = getTraderProviderStatus();
-  const forceFresh = url.searchParams.has('refresh');
+  const forceFresh = url.searchParams.has('refresh') || url.searchParams.has('retry') || url.searchParams.has('clearCache');
   const discover = url.searchParams.has('discover');
   const marketId = url.searchParams.get('market');
   const catalog = await getTraderMarketCatalog({
@@ -184,17 +240,39 @@ export async function GET(request: Request) {
     failedSymbols: catalog.diagnostics.failedSymbols.length,
     cachedSymbols: catalog.diagnostics.summary.cachedSymbols,
     skippedDueToRateLimit: catalog.diagnostics.summary.skippedDueToRateLimit,
+    nextRetryAt: fmpRuntime.nextRetryAt,
   };
   const availableProviders = availableQuoteProviders(catalog.capabilityMatrix);
+  const fallbackAttempted = fmpRuntime.rateLimited && availableProviders.some(provider => provider !== 'FMP');
+  const advancedDiagnosticsSummary = advancedDiagnostics({
+    diagnostics: catalog.diagnostics,
+    normalized: {
+      ...normalizedStatus,
+      fallbackAttempted,
+    },
+    runtime: fmpRuntime,
+    generatedAt: now,
+    fallbackAttempted,
+  });
 
   const dataProvider = fmpRuntime.rateLimited
-    ? {
+    ? fallbackAttempted
+      ? {
+          ...status.dataProvider,
+          configured: true,
+          active: 'yahoo',
+          provider: 'yahoo',
+          status: 'available',
+          failureReason: null,
+          supportedFeatures: ['prices'],
+        }
+      : {
         ...status.dataProvider,
         configured: fmpConfigured,
         active: 'fmp',
         provider: 'fmp',
         status: 'rate_limited',
-        failureReason: isAdmin ? RATE_LIMIT_MESSAGE_AR : null,
+        failureReason: isAdmin ? RATE_LIMIT_REASON : null,
       }
     : status.dataProvider;
 
@@ -219,8 +297,9 @@ export async function GET(request: Request) {
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
         lastError: isAdmin ? fmpRuntime.lastError : null,
         rateLimitedUntil: fmpRuntime.rateLimitedUntil,
+        nextRetryAt: fmpRuntime.nextRetryAt,
         cacheAvailable: fmpRuntime.cacheAvailable,
-        error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_MESSAGE_AR : fmpRuntime.lastError) : null,
+        error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_REASON : fmpRuntime.lastError) : null,
       },
       yahoo: {
         configured: true,
@@ -272,9 +351,19 @@ export async function GET(request: Request) {
         error: null,
       },
     },
-    normalizedStatus,
+    normalizedStatus: {
+      ...normalizedStatus,
+      fallbackAttempted,
+    },
     diagnosticGroups: isAdmin ? diagnosticSummary : [],
+    advancedDiagnostics: advancedDiagnosticsSummary,
     availableProviders,
+    userMessages: {
+      rateLimit: {
+        ar: RATE_LIMIT_MESSAGE_AR,
+        en: RATE_LIMIT_MESSAGE_EN,
+      },
+    },
     // Keep compatibility with existing trader-app consumers.
     features: status.features,
     dataProvider,
@@ -286,6 +375,7 @@ export async function GET(request: Request) {
         status: publicProviderStatus(fmpRuntime.status),
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
         lastError: fmpRuntime.lastError,
+        nextRetryAt: fmpRuntime.nextRetryAt,
         cacheAvailable: fmpRuntime.cacheAvailable,
         supportedFeatures: fmpRuntime.supportedFeatures,
       },

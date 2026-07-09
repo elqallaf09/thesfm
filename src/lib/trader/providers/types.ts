@@ -126,6 +126,10 @@ export type NormalizedTraderProviderStatus = {
   cachedCount: number;
   skippedCount: number;
   lastUpdated: string | null;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  fallbackAttempted: boolean;
+  affectedSymbolsCount: number;
   errorSummary: string | null;
 };
 

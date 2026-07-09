@@ -8,7 +8,7 @@ import {
 } from '../shared';
 import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
-import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch, markFmpRateLimited } from '@/lib/trader/providers/fmpRuntime';
 
 const FMP_TIMEOUT_MS = 9000;
 
@@ -226,6 +226,7 @@ export function createFmpCalendarProvider(apiKey: string): EconomicCalendarProvi
 
       if (!response.ok || isEntitlementError(response.status, providerMessage) || isAuthorizationError(response.status, providerMessage) || isRateLimitError(response.status, providerMessage)) {
         if (isRateLimitError(response.status, providerMessage)) {
+          if (response.status !== 429) markFmpRateLimited(null, providerMessage || 'provider_rate_limited');
           throw new ProviderError('rate_limited', 'provider_rate_limited', response.status, providerMessage);
         }
         if (isEntitlementError(response.status, providerMessage)) {

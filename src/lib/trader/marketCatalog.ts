@@ -101,6 +101,7 @@ export type ProviderCapability = {
   rateLimited: boolean;
   lastSuccessfulFetch: string | null;
   lastError: string | null;
+  nextRetryAt: string | null;
   cacheAvailable: boolean;
   supportsQuotes: boolean;
   supportsTechnicalAnalysis: boolean;
@@ -287,6 +288,10 @@ const STATIC_SOURCE_RECORDS: Array<{ records: RawSymbolRecord[]; source: 'bundle
 
 const MARKET_ID_SET = new Set(TRADER_MARKET_SEEDS.map(market => market.id));
 const catalogCache = new Map<string, { expiresAt: number; staleUntil: number; value: TraderMarketCatalog }>();
+
+export function clearTraderMarketCatalogCache() {
+  catalogCache.clear();
+}
 
 function upper(value: unknown) {
   return String(value ?? '').trim().toUpperCase();
@@ -950,6 +955,7 @@ function capabilityMatrix(cacheAvailable = false) {
     rateLimited: false,
     lastSuccessfulFetch: null,
     lastError: configured ? null : `${provider}_not_configured`,
+    nextRetryAt: null,
     cacheAvailable: false,
     supportsQuotes: true,
     supportsTechnicalAnalysis: true,
@@ -985,6 +991,7 @@ function capabilityMatrix(cacheAvailable = false) {
       rateLimited: fmpStatus.rateLimited,
       lastSuccessfulFetch: fmpStatus.lastSuccessfulFetch,
       lastError: fmpStatus.lastError,
+      nextRetryAt: fmpStatus.nextRetryAt,
       cacheAvailable: fmpStatus.cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,
@@ -1002,6 +1009,7 @@ function capabilityMatrix(cacheAvailable = false) {
       rateLimited: false,
       lastSuccessfulFetch: null,
       lastError: null,
+      nextRetryAt: null,
       cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,
@@ -1019,6 +1027,7 @@ function capabilityMatrix(cacheAvailable = false) {
       rateLimited: false,
       lastSuccessfulFetch: openbbStatus.lastSuccessfulFetch,
       lastError: openbbStatus.lastError,
+      nextRetryAt: null,
       cacheAvailable: openbbStatus.cacheAvailable,
       supportsQuotes: true,
       supportsTechnicalAnalysis: true,

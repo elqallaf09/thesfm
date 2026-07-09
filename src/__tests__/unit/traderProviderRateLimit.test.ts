@@ -60,27 +60,31 @@ describe('trader provider rate-limit protection', () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            {
-              symbol: 'AAPL',
-              name: 'Apple Inc.',
-              price: 210.12,
-              change: 1.2,
-              changesPercentage: 0.57,
-              currency: 'USD',
-              timestamp: 1782864000,
-            },
-          ]),
-          { status: 200 },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 }),
-      );
+    let fmpCalls = 0;
+    const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      if (url.includes('financialmodelingprep.com')) {
+        fmpCalls += 1;
+        if (fmpCalls === 1) {
+          return new Response(
+            JSON.stringify([
+              {
+                symbol: 'AAPL',
+                name: 'Apple Inc.',
+                price: 210.12,
+                change: 1.2,
+                changesPercentage: 0.57,
+                currency: 'USD',
+                timestamp: 1782864000,
+              },
+            ]),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 });
+      }
+      return new Response(JSON.stringify({ chart: { result: [], error: null } }), { status: 200 });
+    });
 
     vi.stubGlobal('fetch', fetchMock);
 

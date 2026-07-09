@@ -9,6 +9,7 @@ import {
 } from '@/lib/trader/marketFilters';
 import { getFullSymbolUniverse, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
 import { TRADER_FUND_FILTERS, fundTypeLabel, normalizeFundFilter } from '@/lib/trader/fundTypes';
+import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
 
@@ -32,6 +33,7 @@ function priceProviderStatus(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuo
 function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
   return Array.from(new Set(Object.entries(capabilityMatrix)
     .filter(([, capability]) => capability.supportsQuotes !== false
+      && capability.status !== 'rate_limited'
       && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
     .map(([provider]) => traderProviderDisplayName(provider))
     .filter((provider): provider is string => Boolean(provider))));
@@ -90,12 +92,13 @@ function sortSymbolMeta(rows: TraderCatalogSymbol[], key: RecommendationSortKey,
 }
 
 function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function recommendationSortNumber(row: Record<string, unknown>, key: RecommendationSortKey) {
-  if (key === 'priceAvailability') return row.available === true && nullableNumber(row.price) !== null ? 1 : 0;
+  if (key === 'priceAvailability') return row.available === true && isValidPrice(row.price) ? 1 : 0;
   if (key === 'marketCap') return nullableNumber(row.marketCap);
   if (key === 'volume') return nullableNumber(row.volume);
   return null;
@@ -128,8 +131,8 @@ function availabilityFilter(value: string | null) {
 }
 
 function filterByAvailability<T extends Record<string, unknown>>(rows: T[], value: string) {
-  if (value === 'with-price') return rows.filter(row => row.available === true && nullableNumber(row.price) !== null);
-  if (value === 'price-unavailable') return rows.filter(row => row.available !== true || nullableNumber(row.price) === null);
+  if (value === 'with-price') return rows.filter(row => row.available === true && isValidPrice(row.price));
+  if (value === 'price-unavailable') return rows.filter(row => row.available !== true || !isValidPrice(row.price));
   if (value === 'failed') return rows.filter(row => row.unavailableReason || row.available !== true);
   return rows;
 }
@@ -304,13 +307,16 @@ export async function GET(request: Request) {
     const quoteRecord = q as typeof q & Record<string, unknown>;
     const meta = metaForQuote(quoteRecord);
     const label = meta?.fundType ? fundTypeLabel(meta.fundType) : null;
+    const recommendationStatus = String(q.finalRecommendation ?? q.dataQualityStatus ?? '').trim().toLowerCase();
     const tradeable = q.available === true
-      && nullableNumber(q.price) !== null
-      && nullableNumber(q.targetPrice ?? q.target1) !== null
-      && nullableNumber(q.stopLoss) !== null
+      && isValidPrice(q.price)
+      && isValidPrice(q.targetPrice ?? q.target1)
+      && isValidPrice(q.stopLoss)
       && q.signalAvailable !== false
-      && q.technicalAvailable !== false
-      && q.dataQuality !== 'unavailable';
+      && q.technicalAvailable === true
+      && q.dataQuality !== 'unavailable'
+      && recommendationStatus !== 'insufficient data'
+      && recommendationStatus !== 'insufficient_data';
     return ({
     symbol: q.symbol,
     requestedSymbol: q.requestedSymbol,
