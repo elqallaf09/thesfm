@@ -1,0 +1,171 @@
+From cd1174f3cd03f42d16adea6595787d4a28188921 Mon Sep 17 00:00:00 2001
+From: elqallaf09 <dev@the-sfm.com>
+Date: Thu, 9 Jul 2026 11:37:10 +0000
+Subject: [PATCH] feat: risk-reward gate, news recency decay, live stylesheet
+ fix for detail panels
+
+---
+ src/lib/market/marketAgent.ts           | 23 ++++++++++++++++++
+ src/lib/trader/marketQuotes.ts          | 11 ++++++---
+ src/trader-app/public/cinema.css        | 31 +++++++++++++++++++++++++
+ src/trader-app/public/index.html        |  4 ++--
+ src/trader-app/public/service-worker.js |  6 ++---
+ 5 files changed, 67 insertions(+), 8 deletions(-)
+
+diff --git a/src/lib/market/marketAgent.ts b/src/lib/market/marketAgent.ts
+index 2d895b5..ff745d3 100644
+--- a/src/lib/market/marketAgent.ts
++++ b/src/lib/market/marketAgent.ts
+@@ -402,6 +402,11 @@ export const AGENT_PRECISION_MIN_WINRATE = Math.min(Math.max(Number(process.env.
+ export const AGENT_PRECISION_MIN_SAMPLES = Math.min(Math.max(Number(process.env.PRECISION_MIN_SAMPLES) || 8, 3), 60);
+ export const AGENT_TP1_ATR_MULTIPLE = 0.9;
+ export const AGENT_SL_ATR_MULTIPLE = 1.8;
++export const AGENT_TP2_ATR_MULTIPLE = 2.2;
++// الحد الأدنى للعائد/المخاطرة مقاساً على الهدف الثاني (الهدف الربحي الفعلي).
++// الأساس الهندسي 2.2/1.8 ≈ 1.22، فالنسبة تنخفض تحت الحد فقط عندما يدفع
++// الهيكل السعري الوقف أبعد من 1.8×ATR — وهي الإعدادات التي نرفض نشرها.
++export const AGENT_MIN_RR_TP2 = Math.min(Math.max(Number(process.env.AGENT_MIN_RR_TP2) || 1.2, 1), 3);
+ const AGENT_BACKTEST_HORIZON = 15;
+ 
+ export type MarketAgentBacktest = {
+@@ -729,6 +734,24 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history:
+     }
+   }
+ 
++  // ── بوابة العائد/المخاطرة (تُقاس على الهدف الثاني) ─────────────────
++  // الهدف الأول قريب عمداً (0.9×ATR) لرفع احتمال الإصابة، لذا القياس عليه غير عادل؛
++  // نقيس على الهدف الثاني بنفس معادلات الوقف/الأهداف المنشورة أدناه.
++  if (suggestedAction === 'buy' || suggestedAction === 'sell') {
++    const rrRange = atr && atr > 0 ? atr : price * 0.012;
++    const structuralStop = suggestedAction === 'buy'
++      ? Math.min(nearestSupport ? nearestSupport - rrRange * 0.15 : Number.POSITIVE_INFINITY, price - rrRange * AGENT_SL_ATR_MULTIPLE)
++      : Math.max(nearestResistance ? nearestResistance + rrRange * 0.15 : Number.NEGATIVE_INFINITY, price + rrRange * AGENT_SL_ATR_MULTIPLE);
++    const riskDistance = Math.abs(price - structuralStop);
++    const rewardDistance = rrRange * AGENT_TP2_ATR_MULTIPLE;
++    const riskReward = riskDistance > 0 ? rewardDistance / riskDistance : 0;
++    if (riskReward < AGENT_MIN_RR_TP2) {
++      suggestedAction = 'wait';
++      confidence = Math.min(confidence, 60);
++      gateNoteArabic += ` بوابة العائد/المخاطرة: النسبة على الهدف الثاني ${riskReward.toFixed(2)} أقل من الحد الأدنى ${AGENT_MIN_RR_TP2} لأن الوقف الهيكلي بعيد عن السعر، لذلك تحوّلت الإشارة إلى انتظار.`;
++    }
++  }
++
+   const direction: MarketAgentDirection = suggestedAction === 'buy' ? 'bullish' : suggestedAction === 'sell' ? 'bearish' : 'neutral';
+ 
+   const alignedSignals = suggestedAction === 'buy' ? bullishScore : suggestedAction === 'sell' ? bearishScore : waitScore;
+diff --git a/src/lib/trader/marketQuotes.ts b/src/lib/trader/marketQuotes.ts
+index 96ec3ce..978ec22 100644
+--- a/src/lib/trader/marketQuotes.ts
++++ b/src/lib/trader/marketQuotes.ts
+@@ -309,10 +309,15 @@ async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<Recommend
+       .slice(0, 12);
+     if (!articles.length) continue;
+ 
++    const nowMs = to.getTime();
+     const totals = articles.reduce<{ positive: number; negative: number }>((sum, article) => {
+       const text = `${article.headline ?? ''} ${article.summary ?? ''}`;
+       const scored = scoreNewsText(text);
+-      return { positive: sum.positive + scored.positive, negative: sum.negative + scored.negative };
++      // تعتيق زمني بنصف عمر يومين: خبر اليوم بوزن كامل، وخبر عمره أسبوع بوزن ≈ 0.09
++      const publishedMs = Number(article.datetime) > 0 ? Number(article.datetime) * 1000 : nowMs;
++      const ageDays = Math.max(0, (nowMs - publishedMs) / 86400000);
++      const weight = Math.pow(0.5, ageDays / 2);
++      return { positive: sum.positive + scored.positive * weight, negative: sum.negative + scored.negative * weight };
+     }, { positive: 0, negative: 0 });
+     const score = clamp(Math.round(50 + (totals.positive - totals.negative) * 8), 0, 100);
+     const sentiment: RecommendationNewsSentiment['sentiment'] = score >= 58 ? 'positive' : score <= 42 ? 'negative' : 'neutral';
+@@ -320,8 +325,8 @@ async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<Recommend
+       status: 'available',
+       sentiment,
+       score,
+-      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed; sentiment is ${sentiment}.`,
+-      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
++      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed (recency-weighted); sentiment is ${sentiment}.`,
++      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub (مرجّحة بحداثة الخبر)؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
+       articleCount: articles.length,
+       provider: 'Finnhub',
+       updatedAt: new Date().toISOString(),
+diff --git a/src/trader-app/public/cinema.css b/src/trader-app/public/cinema.css
+index 0572ce2..5a89121 100644
+--- a/src/trader-app/public/cinema.css
++++ b/src/trader-app/public/cinema.css
+@@ -5637,3 +5637,34 @@ a.badge:focus-visible,
+     animation: none;
+   }
+ }
++
++/* ===== Symbol-detail additions: chart wrap + about + shariah panels (v20260709) ===== */
++.detail-chart-wrap{position:relative;width:100%;height:220px;margin-top:14px;border:1px solid rgba(122,153,186,.22);border-radius:16px;overflow:hidden;background:radial-gradient(120% 140% at 50% -20%,rgba(35,140,255,.10),transparent 60%),linear-gradient(180deg,rgba(9,20,30,.6),rgba(4,10,16,.85))}
++.detail-chart-wrap::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(122,153,186,.05) 0 1px,transparent 1px 46px);pointer-events:none}
++.detail-chart-wrap .detail-chart{position:relative;display:block;width:100%;height:100%!important;margin:0}
++.chart-empty{margin-top:14px;padding:22px;border:1px dashed rgba(122,153,186,.28);border-radius:16px;color:#9daebd;font-size:13px;font-weight:800;text-align:center;background:rgba(8,20,30,.5)}
++
++.about-panel .about-desc{margin:8px 0 0;color:#f3f7fb;font-size:14px;line-height:1.95;font-weight:650}
++.about-panel .about-facts{margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
++.about-panel .fact-row{border:1px solid rgba(122,153,186,.22);border-radius:12px;padding:9px 11px;background:rgba(8,20,30,.6);display:grid;gap:3px}
++.about-panel .fact-row dt{color:#9daebd;font-size:11px;font-weight:800}
++.about-panel .fact-row dd{margin:0;color:#f3f7fb;font-size:13px;font-weight:900}
++.about-panel .about-web{display:inline-flex;margin-top:12px;color:#238cff;font-size:12px;font-weight:800;text-decoration:none;word-break:break-all}
++
++.sharia-panel{position:relative;overflow:hidden}
++.sharia-panel::before{content:"";position:absolute;top:0;bottom:0;inset-inline-start:0;width:3px;background:rgba(122,153,186,.35)}
++.sharia-panel.ok::before{background:#34e58b}
++.sharia-panel.bad::before{background:#ff5c6c}
++.sharia-panel.warn::before{background:#d8ad55}
++.sharia-badge{display:flex;align-items:center;gap:12px;margin:6px 0 0;padding:12px;border-radius:14px;border:1px solid rgba(122,153,186,.22);background:rgba(8,20,30,.6)}
++.sharia-badge .sharia-mark{width:38px;height:38px;flex:0 0 auto;display:grid;place-items:center;border-radius:11px;font-size:18px;font-weight:900;color:#03110b;background:rgba(157,174,189,.5)}
++.sharia-badge.ok .sharia-mark{background:#34e58b}
++.sharia-badge.bad .sharia-mark{background:#ff5c6c;color:#fff}
++.sharia-badge.warn .sharia-mark{background:#d8ad55}
++.sharia-badge-copy strong{display:block;color:#f3f7fb;font-size:15px;font-weight:950}
++.sharia-badge-copy small{color:#9daebd;font-size:11px;font-weight:800;direction:ltr;unicode-bidi:isolate}
++.sharia-facts{margin:12px 0 0;display:grid;gap:7px}
++.sharia-facts .fact-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px dashed rgba(122,153,186,.22);padding-bottom:6px}
++.sharia-facts .fact-row dt{color:#9daebd;font-size:12px;font-weight:800}
++.sharia-facts .fact-row dd{margin:0;color:#f3f7fb;font-size:12px;font-weight:800;text-align:start;max-width:62%}
++.sharia-note{margin:12px 0 0;color:#9daebd;font-size:11px;line-height:1.8;font-weight:700}
+diff --git a/src/trader-app/public/index.html b/src/trader-app/public/index.html
+index 459d8d8..5e3662e 100644
+--- a/src/trader-app/public/index.html
++++ b/src/trader-app/public/index.html
+@@ -8,7 +8,7 @@
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+-    <link rel="stylesheet" href="/cinema.css?v=20260706-ms-map" />
++    <link rel="stylesheet" href="/cinema.css?v=20260709-detail-panels" />
+     <script>
+       // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
+       // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).
+@@ -159,7 +159,7 @@
+     </div>
+ 
+     <div class="toast-root" id="toast-root" aria-live="polite"></div>
+-    <script src="/app.js?v=20260706-ms-map" defer></script>
++    <script src="/app.js?v=20260709-detail-panels" defer></script>
+     <script src="/provider-markets-diagnostics.js?v=20260705-provider-markets" defer></script>
+   </body>
+ </html>
+diff --git a/src/trader-app/public/service-worker.js b/src/trader-app/public/service-worker.js
+index 5ee951e..10ddb3b 100644
+--- a/src/trader-app/public/service-worker.js
++++ b/src/trader-app/public/service-worker.js
+@@ -1,12 +1,12 @@
+-const CACHE_NAME = "the-sfm-trader-v20260706-ms-map";
++const CACHE_NAME = "the-sfm-trader-v20260709-detail-panels";
+ const STATIC_ASSETS = [
+   "/",
+   "/index.html",
+   "/detail.html",
+   "/styles.css?v=20260630-cinema",
+   "/desktop-balance.css?v=20260630-cinema",
+-  "/cinema.css?v=20260706-ms-map",
+-  "/app.js?v=20260706-ms-map",
++  "/cinema.css?v=20260709-detail-panels",
++  "/app.js?v=20260709-detail-panels",
+   "/detail.js?v=20260630-cinema",
+   "/manifest.webmanifest",
+   "/assets/sfm-trader-logo.svg",
+-- 
+2.43.0
+

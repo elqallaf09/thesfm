@@ -309,10 +309,15 @@ async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<Recommend
       .slice(0, 12);
     if (!articles.length) continue;
 
+    const nowMs = to.getTime();
     const totals = articles.reduce<{ positive: number; negative: number }>((sum, article) => {
       const text = `${article.headline ?? ''} ${article.summary ?? ''}`;
       const scored = scoreNewsText(text);
-      return { positive: sum.positive + scored.positive, negative: sum.negative + scored.negative };
+      // تعتيق زمني بنصف عمر يومين: خبر اليوم بوزن كامل، وخبر عمره أسبوع بوزن ≈ 0.09
+      const publishedMs = Number(article.datetime) > 0 ? Number(article.datetime) * 1000 : nowMs;
+      const ageDays = Math.max(0, (nowMs - publishedMs) / 86400000);
+      const weight = Math.pow(0.5, ageDays / 2);
+      return { positive: sum.positive + scored.positive * weight, negative: sum.negative + scored.negative * weight };
     }, { positive: 0, negative: 0 });
     const score = clamp(Math.round(50 + (totals.positive - totals.negative) * 8), 0, 100);
     const sentiment: RecommendationNewsSentiment['sentiment'] = score >= 58 ? 'positive' : score <= 42 ? 'negative' : 'neutral';
@@ -320,8 +325,8 @@ async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<Recommend
       status: 'available',
       sentiment,
       score,
-      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed; sentiment is ${sentiment}.`,
-      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
+      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed (recency-weighted); sentiment is ${sentiment}.`,
+      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub (مرجّحة بحداثة الخبر)؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
       articleCount: articles.length,
       provider: 'Finnhub',
       updatedAt: new Date().toISOString(),

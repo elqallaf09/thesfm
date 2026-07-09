@@ -1,12 +1,12 @@
-const CACHE_NAME = "the-sfm-trader-v20260706-ms-map";
+const CACHE_NAME = "the-sfm-trader-v20260709-detail-panels";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/styles.css?v=20260630-cinema",
   "/desktop-balance.css?v=20260630-cinema",
-  "/cinema.css?v=20260706-ms-map",
-  "/app.js?v=20260706-ms-map",
+  "/cinema.css?v=20260709-detail-panels",
+  "/app.js?v=20260709-detail-panels",
   "/detail.js?v=20260630-cinema",
   "/manifest.webmanifest",
   "/assets/sfm-trader-logo.svg",

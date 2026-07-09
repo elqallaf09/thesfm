@@ -5637,3 +5637,34 @@ a.badge:focus-visible,
     animation: none;
   }
 }
+
+/* ===== Symbol-detail additions: chart wrap + about + shariah panels (v20260709) ===== */
+.detail-chart-wrap{position:relative;width:100%;height:220px;margin-top:14px;border:1px solid rgba(122,153,186,.22);border-radius:16px;overflow:hidden;background:radial-gradient(120% 140% at 50% -20%,rgba(35,140,255,.10),transparent 60%),linear-gradient(180deg,rgba(9,20,30,.6),rgba(4,10,16,.85))}
+.detail-chart-wrap::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(122,153,186,.05) 0 1px,transparent 1px 46px);pointer-events:none}
+.detail-chart-wrap .detail-chart{position:relative;display:block;width:100%;height:100%!important;margin:0}
+.chart-empty{margin-top:14px;padding:22px;border:1px dashed rgba(122,153,186,.28);border-radius:16px;color:#9daebd;font-size:13px;font-weight:800;text-align:center;background:rgba(8,20,30,.5)}
+
+.about-panel .about-desc{margin:8px 0 0;color:#f3f7fb;font-size:14px;line-height:1.95;font-weight:650}
+.about-panel .about-facts{margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.about-panel .fact-row{border:1px solid rgba(122,153,186,.22);border-radius:12px;padding:9px 11px;background:rgba(8,20,30,.6);display:grid;gap:3px}
+.about-panel .fact-row dt{color:#9daebd;font-size:11px;font-weight:800}
+.about-panel .fact-row dd{margin:0;color:#f3f7fb;font-size:13px;font-weight:900}
+.about-panel .about-web{display:inline-flex;margin-top:12px;color:#238cff;font-size:12px;font-weight:800;text-decoration:none;word-break:break-all}
+
+.sharia-panel{position:relative;overflow:hidden}
+.sharia-panel::before{content:"";position:absolute;top:0;bottom:0;inset-inline-start:0;width:3px;background:rgba(122,153,186,.35)}
+.sharia-panel.ok::before{background:#34e58b}
+.sharia-panel.bad::before{background:#ff5c6c}
+.sharia-panel.warn::before{background:#d8ad55}
+.sharia-badge{display:flex;align-items:center;gap:12px;margin:6px 0 0;padding:12px;border-radius:14px;border:1px solid rgba(122,153,186,.22);background:rgba(8,20,30,.6)}
+.sharia-badge .sharia-mark{width:38px;height:38px;flex:0 0 auto;display:grid;place-items:center;border-radius:11px;font-size:18px;font-weight:900;color:#03110b;background:rgba(157,174,189,.5)}
+.sharia-badge.ok .sharia-mark{background:#34e58b}
+.sharia-badge.bad .sharia-mark{background:#ff5c6c;color:#fff}
+.sharia-badge.warn .sharia-mark{background:#d8ad55}
+.sharia-badge-copy strong{display:block;color:#f3f7fb;font-size:15px;font-weight:950}
+.sharia-badge-copy small{color:#9daebd;font-size:11px;font-weight:800;direction:ltr;unicode-bidi:isolate}
+.sharia-facts{margin:12px 0 0;display:grid;gap:7px}
+.sharia-facts .fact-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px dashed rgba(122,153,186,.22);padding-bottom:6px}
+.sharia-facts .fact-row dt{color:#9daebd;font-size:12px;font-weight:800}
+.sharia-facts .fact-row dd{margin:0;color:#f3f7fb;font-size:12px;font-weight:800;text-align:start;max-width:62%}
+.sharia-note{margin:12px 0 0;color:#9daebd;font-size:11px;line-height:1.8;font-weight:700}

@@ -402,6 +402,11 @@ export const AGENT_PRECISION_MIN_WINRATE = Math.min(Math.max(Number(process.env.
 export const AGENT_PRECISION_MIN_SAMPLES = Math.min(Math.max(Number(process.env.PRECISION_MIN_SAMPLES) || 8, 3), 60);
 export const AGENT_TP1_ATR_MULTIPLE = 0.9;
 export const AGENT_SL_ATR_MULTIPLE = 1.8;
+export const AGENT_TP2_ATR_MULTIPLE = 2.2;
+// الحد الأدنى للعائد/المخاطرة مقاساً على الهدف الثاني (الهدف الربحي الفعلي).
+// الأساس الهندسي 2.2/1.8 ≈ 1.22، فالنسبة تنخفض تحت الحد فقط عندما يدفع
+// الهيكل السعري الوقف أبعد من 1.8×ATR — وهي الإعدادات التي نرفض نشرها.
+export const AGENT_MIN_RR_TP2 = Math.min(Math.max(Number(process.env.AGENT_MIN_RR_TP2) || 1.2, 1), 3);
 const AGENT_BACKTEST_HORIZON = 15;
 
 export type MarketAgentBacktest = {
@@ -726,6 +731,24 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
       precisionMode.passed = true;
       confidence = Math.min(96, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
       gateNoteArabic = ` اجتازت الإشارة فلتر الدقة العالية: إصابة الهدف الأول ${backtest.winRate}% عبر ${backtest.samples} صفقة تاريخية على نفس الرمز والإطار.`;
+    }
+  }
+
+  // ── بوابة العائد/المخاطرة (تُقاس على الهدف الثاني) ─────────────────
+  // الهدف الأول قريب عمداً (0.9×ATR) لرفع احتمال الإصابة، لذا القياس عليه غير عادل؛
+  // نقيس على الهدف الثاني بنفس معادلات الوقف/الأهداف المنشورة أدناه.
+  if (suggestedAction === 'buy' || suggestedAction === 'sell') {
+    const rrRange = atr && atr > 0 ? atr : price * 0.012;
+    const structuralStop = suggestedAction === 'buy'
+      ? Math.min(nearestSupport ? nearestSupport - rrRange * 0.15 : Number.POSITIVE_INFINITY, price - rrRange * AGENT_SL_ATR_MULTIPLE)
+      : Math.max(nearestResistance ? nearestResistance + rrRange * 0.15 : Number.NEGATIVE_INFINITY, price + rrRange * AGENT_SL_ATR_MULTIPLE);
+    const riskDistance = Math.abs(price - structuralStop);
+    const rewardDistance = rrRange * AGENT_TP2_ATR_MULTIPLE;
+    const riskReward = riskDistance > 0 ? rewardDistance / riskDistance : 0;
+    if (riskReward < AGENT_MIN_RR_TP2) {
+      suggestedAction = 'wait';
+      confidence = Math.min(confidence, 60);
+      gateNoteArabic += ` بوابة العائد/المخاطرة: النسبة على الهدف الثاني ${riskReward.toFixed(2)} أقل من الحد الأدنى ${AGENT_MIN_RR_TP2} لأن الوقف الهيكلي بعيد عن السعر، لذلك تحوّلت الإشارة إلى انتظار.`;
     }
   }
 
