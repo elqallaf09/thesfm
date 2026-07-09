@@ -60,10 +60,12 @@ describe('trader provider rate-limit protection', () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
 
+    // mock واعٍ بالرابط بدل التسلسل: السلسلة الحالية تجري نداءات إثراء إضافية
+    // (Yahoo chart/news) كانت تستهلك ردود التسلسل القديم وتكسر سيناريو الاختبار.
     let fmpCalls = 0;
-    const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('financialmodelingprep.com')) {
+      if (url.includes('financialmodelingprep')) {
         fmpCalls += 1;
         if (fmpCalls === 1) {
           return new Response(
@@ -83,7 +85,8 @@ describe('trader provider rate-limit protection', () => {
         }
         return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 });
       }
-      return new Response(JSON.stringify({ chart: { result: [], error: null } }), { status: 200 });
+      // أي مزود آخر (Yahoo chart/quote/news...) يفشل بنظافة
+      return new Response('not found', { status: 404 });
     });
 
     vi.stubGlobal('fetch', fetchMock);

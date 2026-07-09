@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AGENT_MAX_CONFIDENCE,
   analyzeMarketAgentFromHistory,
   isMarketAgentResponse,
-  MARKET_AGENT_MAX_CONFIDENCE,
   MARKET_AGENT_INSUFFICIENT_DATA_AR,
   type MarketAgentInput,
   type MarketAgentPricePoint,
@@ -48,7 +48,7 @@ describe('market agent analysis rules', () => {
     if (!response.ok) throw new Error(response.message);
     expect(response.suggestedAction).toBe('buy');
     expect(response.direction).toBe('bullish');
-    expect(response.confidence).toBeLessThanOrEqual(MARKET_AGENT_MAX_CONFIDENCE);
+    expect(response.confidence).toBeLessThanOrEqual(AGENT_MAX_CONFIDENCE);
     expect(response.indicators.ema20).not.toBeNull();
     expect(response.indicators.ema50).not.toBeNull();
   });
@@ -60,7 +60,7 @@ describe('market agent analysis rules', () => {
     if (!response.ok) throw new Error(response.message);
     expect(response.suggestedAction).toBe('sell');
     expect(response.direction).toBe('bearish');
-    expect(response.confidence).toBeLessThanOrEqual(MARKET_AGENT_MAX_CONFIDENCE);
+    expect(response.confidence).toBeLessThanOrEqual(AGENT_MAX_CONFIDENCE);
     expect(response.stopLoss).not.toBeNull();
   });
 
@@ -92,7 +92,7 @@ describe('market agent analysis rules', () => {
 
     expect(response.ok).toBe(true);
     if (!response.ok) throw new Error(response.message);
-    expect(response.confidence).toBeLessThanOrEqual(MARKET_AGENT_MAX_CONFIDENCE);
+    expect(response.confidence).toBeLessThanOrEqual(AGENT_MAX_CONFIDENCE);
     expect(response.confidence).toBeLessThan(100);
   });
 

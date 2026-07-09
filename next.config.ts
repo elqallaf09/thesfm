@@ -13,6 +13,7 @@ const WINDOWS_BUILD_EXPERIMENTS = IS_WINDOWS_BUILD
     }
   : {};
 const WINDOWS_MANIFEST_PLUGIN = "EnsureWindowsServerManifests";
+let lastAppPathsManifestSync = 0;
 type WebpackTapOptions = string | { name: string; stage?: number };
 type WebpackSyncHook = {
   tap: (options: WebpackTapOptions, callback: (...args: unknown[]) => void) => void;
@@ -20,11 +21,6 @@ type WebpackSyncHook = {
 
 function writeTextIfMissing(filePath: string, content: string) {
   if (fs.existsSync(filePath)) return;
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, content, "utf8");
-}
-
-function writeText(filePath: string, content: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
@@ -50,6 +46,38 @@ function writeJsonDefaults(filePath: string, defaults: Record<string, unknown>) 
   fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 }
 
+function collectAppPathsManifest(serverDir: string) {
+  const appDir = path.join(serverDir, "app");
+  const entries: Record<string, string> = {};
+  if (!fs.existsSync(appDir)) return entries;
+
+  const visit = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const filePath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(filePath);
+      } else if (entry.isFile() && (entry.name === "page.js" || entry.name === "route.js")) {
+        const relativePath = path.relative(appDir, filePath).split(path.sep).join("/");
+        entries[`/${relativePath.replace(/\.js$/, "")}`] = `app/${relativePath}`;
+      }
+    }
+  };
+
+  visit(appDir);
+  return entries;
+}
+
+function syncAppPathsManifest(serverDir: string) {
+  const now = Date.now();
+  if (now - lastAppPathsManifestSync < 250) return;
+  lastAppPathsManifestSync = now;
+
+  const appPaths = collectAppPathsManifest(serverDir);
+  if (Object.keys(appPaths).length > 0) {
+    writeJsonDefaults(path.join(serverDir, "app-paths-manifest.json"), appPaths);
+  }
+}
+
 function mirrorDirectory(sourceDir: string, targetDir: string) {
   if (!fs.existsSync(sourceDir)) return;
   fs.mkdirSync(targetDir, { recursive: true });
@@ -72,7 +100,9 @@ function mirrorDirectory(sourceDir: string, targetDir: string) {
 function ensureWindowsServerManifests() {
   const serverDir = path.join(PROJECT_ROOT, ".next", "server");
   const pagesDir = path.join(serverDir, "pages");
+  mirrorDirectory(path.join(serverDir, "chunks"), serverDir);
   mirrorDirectory(path.join(serverDir, "vendor-chunks"), path.join(serverDir, "chunks", "vendor-chunks"));
+  syncAppPathsManifest(serverDir);
 
   writeJsonDefaults(path.join(serverDir, "pages-manifest.json"), {
     "/_app": "pages/_app.js",
@@ -81,7 +111,7 @@ function ensureWindowsServerManifests() {
     "/404": "pages/404.js",
     "/500": "pages/500.js",
   });
-  writeText(
+  writeTextIfMissing(
     path.join(pagesDir, "_app.js"),
     [
       'const React = require("react");',
@@ -91,7 +121,7 @@ function ensureWindowsServerManifests() {
       "",
     ].join("\n"),
   );
-  writeText(
+  writeTextIfMissing(
     path.join(pagesDir, "_document.js"),
     [
       'const Document = require("next/document").default;',
@@ -100,7 +130,7 @@ function ensureWindowsServerManifests() {
       "",
     ].join("\n"),
   );
-  writeText(
+  writeTextIfMissing(
     path.join(pagesDir, "_error.js"),
     [
       'const ErrorComponent = require("next/error").default;',
@@ -109,7 +139,7 @@ function ensureWindowsServerManifests() {
       "",
     ].join("\n"),
   );
-  writeText(
+  writeTextIfMissing(
     path.join(pagesDir, "404.js"),
     [
       'const React = require("react");',
@@ -120,7 +150,7 @@ function ensureWindowsServerManifests() {
       "",
     ].join("\n"),
   );
-  writeText(
+  writeTextIfMissing(
     path.join(pagesDir, "500.js"),
     [
       'const React = require("react");',

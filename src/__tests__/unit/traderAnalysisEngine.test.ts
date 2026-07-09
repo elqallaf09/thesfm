@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { analyzeStock } from '@/lib/trader/analysisEngine';
 import type { MarketCandle, MarketQuote, TradableAsset } from '@/lib/trader/types';
 
@@ -64,7 +64,9 @@ describe('trader analysis engine', () => {
     expect(result.warnings).toContain('Insufficient historical candles for a high-confidence scan.');
   });
 
-  it('keeps aligned bullish technical data on hold when the precision filter does not pass', () => {
+  it('withholds a bullish signal when the precision gate is not proven (default 90% threshold)', () => {
+    // هذا الإعداد الصاعد نسبة إصابة هدفه الأول تاريخياً ≈51% — أقل من حد بوابة
+    // الدقة الافتراضي 90%، لذلك يمتنع المحرك عن نشر إشارة الشراء عمداً.
     const candles = makeCandles(240, 100, 0.08, 2, 13);
     const result = analyzeStock({
       asset,
@@ -79,6 +81,32 @@ describe('trader analysis engine', () => {
     expect(result.scoreBreakdown.totalScore).toBeGreaterThan(0);
     expect(result.precisionMode).toMatchObject({ enabled: true, passed: false });
     expect(result.reasons.some(reason => reason.includes('Precision mode'))).toBe(true);
+  });
+
+  it('derives a buy signal from aligned bullish technical data once the precision gate passes', async () => {
+    // نخفض عتبة البوابة عبر البيئة (حدها الأدنى 50) ونعيد تحميل الموديول،
+    // فيثبت أن منطق اشتقاق الشراء نفسه سليم عندما تجتاز الإشارة البوابة.
+    vi.stubEnv('PRECISION_MIN_WINRATE', '50');
+    vi.resetModules();
+    try {
+      const { analyzeStock: analyzeRelaxed } = await import('@/lib/trader/analysisEngine');
+      const candles = makeCandles(240, 100, 0.08, 2, 13);
+      const result = analyzeRelaxed({
+        asset,
+        quote: makeQuote(candles.at(-1)?.close ?? 207),
+        candles,
+        generatedAt: '2026-06-24T10:00:00.000Z',
+      });
+
+      expect(result.signal).toBe('buy');
+      expect(result.confidence).toBeGreaterThanOrEqual(55);
+      expect(result.targetPrice).toBeGreaterThan(result.currentPrice);
+      expect(result.stopLoss).toBeLessThan(result.currentPrice);
+      expect(result.scoreBreakdown.totalScore).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it('derives a sell signal from aligned bearish technical data', () => {

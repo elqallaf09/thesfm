@@ -110,7 +110,10 @@ export type MarketAgentResponse = MarketAgentSuccessResponse | MarketAgentUnavai
 
 const MIN_RELIABLE_POINTS = 50;
 const EPSILON = 0.0000001;
-export const MARKET_AGENT_MAX_CONFIDENCE = 96;
+// السقف الأعلى للثقة: الإشارات المجتازة لبوابة الدقة يمكن أن تصل إليه،
+// ويستخدمه مدقّق الشكل أيضاً حتى لا يرفض استجابات سليمة.
+export const AGENT_MAX_CONFIDENCE = 96;
+export const MARKET_AGENT_MAX_CONFIDENCE = AGENT_MAX_CONFIDENCE;
 
 export const MARKET_AGENT_TIMEFRAME_CONFIG: Record<MarketAgentTimeframe, { period: string; interval: string; aggregateHours?: number }> = {
   '15m': { period: '1mo', interval: '15m' },

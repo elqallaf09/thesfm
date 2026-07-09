@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/__tests__/**/*.test.ts', 'src/__tests__/**/*.test.tsx'],
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

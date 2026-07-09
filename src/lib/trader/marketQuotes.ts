@@ -1393,7 +1393,8 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   } catch {
     return null;
   }
-  if (!response.ok) return null;
+  // تحصين: بيئات الاختبار أو أغلفة fetch قد تعيد قيمة غير معرفة بدل رمي استثناء
+  if (!response?.ok) return null;
 
   const body = await response.json().catch(() => null) as { chart?: { result?: Array<Record<string, any>> } } | null;
   const result = body?.chart?.result?.[0];
