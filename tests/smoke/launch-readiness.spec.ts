@@ -34,6 +34,13 @@ async function signIn(page: Page, email: string, password: string) {
   await page.waitForLoadState('domcontentloaded');
 }
 
+async function setLanguage(page: Page, lang: 'ar' | 'en') {
+  await page.evaluate(nextLang => {
+    window.localStorage.setItem('sfm_lang', nextLang);
+    window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLang } }));
+  }, lang);
+}
+
 test.describe('launch smoke coverage', () => {
   test('login/auth page renders and supports credential smoke when configured', async ({ page }) => {
     if (userEmail && userPassword) {
@@ -111,12 +118,15 @@ test.describe('launch smoke coverage', () => {
   });
 
   test('Arabic RTL and English LTR basics are applied', async ({ page }) => {
-    await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'ar'));
-    await expectUsablePage(page, '/market-analysis');
+    await expectUsablePage(page, '/login');
+    await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.sfmLang)).toBeTruthy();
+
+    await setLanguage(page, 'ar');
+    await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.sfmLang)).toBe('ar');
     await expect.poll(async () => page.evaluate(() => document.documentElement.dir)).toBe('rtl');
 
-    await page.evaluate(() => window.localStorage.setItem('sfm_lang', 'en'));
-    await expectUsablePage(page, '/market-analysis');
+    await setLanguage(page, 'en');
+    await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.sfmLang)).toBe('en');
     await expect.poll(async () => page.evaluate(() => document.documentElement.dir)).toBe('ltr');
   });
 

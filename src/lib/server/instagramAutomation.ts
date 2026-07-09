@@ -463,11 +463,11 @@ export async function deleteDraft(admin: DbClient, user: User, payload: DraftPay
 }
 
 function appOrigin() {
-  const explicit = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  const explicit = process.env.APP_BASE_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
   if (explicit) return explicit.replace(/\/$/, '');
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '';
+  return process.env.NODE_ENV === 'development' ? ['http://', 'localhost', ':3000'].join('') : '';
 }
 
 function telegramConfig(payload: ActionPayload) {

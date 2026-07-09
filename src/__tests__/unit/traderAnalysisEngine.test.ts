@@ -64,7 +64,7 @@ describe('trader analysis engine', () => {
     expect(result.warnings).toContain('Insufficient historical candles for a high-confidence scan.');
   });
 
-  it('derives a buy signal from aligned bullish technical data', () => {
+  it('keeps aligned bullish technical data on hold when the precision filter does not pass', () => {
     const candles = makeCandles(240, 100, 0.08, 2, 13);
     const result = analyzeStock({
       asset,
@@ -73,11 +73,12 @@ describe('trader analysis engine', () => {
       generatedAt: '2026-06-24T10:00:00.000Z',
     });
 
-    expect(result.signal).toBe('buy');
-    expect(result.confidence).toBeGreaterThanOrEqual(55);
-    expect(result.targetPrice).toBeGreaterThan(result.currentPrice);
-    expect(result.stopLoss).toBeLessThan(result.currentPrice);
+    expect(result.signal).toBe('hold');
+    expect(result.targetPrice).toBeNull();
+    expect(result.stopLoss).toBeNull();
     expect(result.scoreBreakdown.totalScore).toBeGreaterThan(0);
+    expect(result.precisionMode).toMatchObject({ enabled: true, passed: false });
+    expect(result.reasons.some(reason => reason.includes('Precision mode'))).toBe(true);
   });
 
   it('derives a sell signal from aligned bearish technical data', () => {

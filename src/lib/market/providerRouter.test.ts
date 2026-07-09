@@ -7,6 +7,8 @@
  * Run: pnpm test src/__tests__/unit/providerRouter.test.ts
  */
 
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+
 import {
   detectAssetClass,
   validateQuote,
@@ -16,24 +18,24 @@ import {
   __resetRouterCacheForTests,
   type RouterQuote,
   type AssetClass,
-} from '../src/lib/market/providerRouter';
+} from './providerRouter';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 // Silence console output in tests
 beforeAll(() => {
-  jest.spyOn(console, 'info').mockImplementation(() => undefined);
-  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 afterAll(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 beforeEach(() => {
   __resetRouterCacheForTests();
-  jest.resetModules();
+  vi.resetModules();
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -210,7 +212,7 @@ describe('routeQuote — provider priority', () => {
 
   test('Twelve Data success → returns TD result without provider name in output', async () => {
     // Mock fetchTwelveDataQuote to return a valid quote
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured:  () => true,
       mapSymbolForTd:          (s: string) => s,
       fetchTwelveDataQuote:    async () => ({
@@ -221,13 +223,13 @@ describe('routeQuote — provider priority', () => {
       }),
       fetchTwelveDataBatch: async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured:   () => false,
       fetchEodhdQuote:     async () => null,
       fetchEodhdBatch:     async () => new Map(),
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('AAPL');
 
     expect(q.status).not.toBe('unavailable');
@@ -236,13 +238,13 @@ describe('routeQuote — provider priority', () => {
   });
 
   test('Twelve Data fails → EODHD fallback used', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured:  () => true,
       mapSymbolForTd:          (s: string) => s,
       fetchTwelveDataQuote:    async () => null,   // TD fails
       fetchTwelveDataBatch:    async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured:   () => true,
       fetchEodhdQuote:     async () => ({
         symbol: 'AAPL', name: null, exchange: 'US', currency: 'USD',
@@ -253,7 +255,7 @@ describe('routeQuote — provider priority', () => {
       fetchEodhdBatch: async () => new Map(),
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('AAPL');
 
     expect(q.price).toBe(184.9);
@@ -261,19 +263,19 @@ describe('routeQuote — provider priority', () => {
   });
 
   test('TD + EODHD both fail → Yahoo fallback used', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured:  () => true,
       mapSymbolForTd:          (s: string) => s,
       fetchTwelveDataQuote:    async () => null,
       fetchTwelveDataBatch:    async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured:   () => true,
       fetchEodhdQuote:     async () => null,
       fetchEodhdBatch:     async () => new Map(),
     }));
     // Yahoo is imported dynamically inside the router via `import('yahoo-finance2')`
-    jest.doMock('yahoo-finance2', () => ({
+    vi.doMock('yahoo-finance2', () => ({
       default: {
         quote: async () => ({
           regularMarketPrice: 183.1, regularMarketChange: -0.5,
@@ -283,7 +285,7 @@ describe('routeQuote — provider priority', () => {
       },
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('AAPL');
 
     expect(q.price).toBe(183.1);
@@ -291,22 +293,22 @@ describe('routeQuote — provider priority', () => {
   });
 
   test('All providers fail → unavailable placeholder returned (no throw)', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured: () => false,
       mapSymbolForTd:         (s: string) => s,
       fetchTwelveDataQuote:   async () => null,
       fetchTwelveDataBatch:   async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured: () => false,
       fetchEodhdQuote:   async () => null,
       fetchEodhdBatch:   async () => new Map(),
     }));
-    jest.doMock('yahoo-finance2', () => ({
+    vi.doMock('yahoo-finance2', () => ({
       default: { quote: async () => { throw new Error('network'); } },
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('ZZZZ');
 
     expect(q.status).toBe('unavailable');
@@ -322,7 +324,7 @@ describe('routeQuote — data validation', () => {
   const freshUpdated = new Date().toISOString();
 
   test('price = 0 from provider → falls through to next provider', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured: () => true,
       mapSymbolForTd:         (s: string) => s,
       fetchTwelveDataQuote:   async () => ({
@@ -333,7 +335,7 @@ describe('routeQuote — data validation', () => {
       }),
       fetchTwelveDataBatch: async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured: () => true,
       fetchEodhdQuote:   async () => ({
         symbol: 'TEST', name: null, exchange: null, currency: 'USD',
@@ -343,7 +345,7 @@ describe('routeQuote — data validation', () => {
       fetchEodhdBatch: async () => new Map(),
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('TEST');
 
     // EODHD result with valid price should be used
@@ -352,7 +354,7 @@ describe('routeQuote — data validation', () => {
   });
 
   test('|changePercent| ≥ 200 from provider → falls through', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured: () => true,
       mapSymbolForTd:         (s: string) => s,
       fetchTwelveDataQuote:   async () => ({
@@ -363,12 +365,12 @@ describe('routeQuote — data validation', () => {
       }),
       fetchTwelveDataBatch: async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured: () => false,
       fetchEodhdQuote:   async () => null,
       fetchEodhdBatch:   async () => new Map(),
     }));
-    jest.doMock('yahoo-finance2', () => ({
+    vi.doMock('yahoo-finance2', () => ({
       default: {
         quote: async () => ({
           regularMarketPrice: 55, regularMarketChange: 1,
@@ -379,7 +381,7 @@ describe('routeQuote — data validation', () => {
       },
     }));
 
-    const { routeQuote: rq } = await import('../src/lib/market/providerRouter');
+    const { routeQuote: rq } = await import('./providerRouter');
     const q = await rq('TEST');
 
     // Yahoo result (valid changePercent) should be used
@@ -414,22 +416,22 @@ describe('routeBatchQuotes', () => {
   });
 
   test('deduplicates symbols', async () => {
-    jest.doMock('../src/lib/market/providers/twelveData', () => ({
+    vi.doMock('./providers/twelveData', () => ({
       isTwelveDataConfigured: () => false,
       mapSymbolForTd:         (s: string) => s,
       fetchTwelveDataQuote:   async () => null,
       fetchTwelveDataBatch:   async () => new Map(),
     }));
-    jest.doMock('../src/lib/market/providers/eodhd', () => ({
+    vi.doMock('./providers/eodhd', () => ({
       isEodhdConfigured: () => false,
       fetchEodhdQuote:   async () => null,
       fetchEodhdBatch:   async () => new Map(),
     }));
-    jest.doMock('yahoo-finance2', () => ({
+    vi.doMock('yahoo-finance2', () => ({
       default: { quote: async () => null },
     }));
 
-    const { routeBatchQuotes: rbq } = await import('../src/lib/market/providerRouter');
+    const { routeBatchQuotes: rbq } = await import('./providerRouter');
     const result = await rbq(['AAPL', 'AAPL', 'aapl']);
     expect(result.size).toBe(1); // deduplicated
   });

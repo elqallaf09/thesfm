@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
-const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'corepack pnpm run dev';
+const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'pnpm run build && pnpm run start';
 
 export default defineConfig({
   testDir: './tests/smoke',
@@ -23,7 +23,7 @@ export default defineConfig({
         command: webServerCommand,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: 600_000,
       },
   projects: [
     {

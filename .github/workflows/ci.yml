@@ -138,7 +138,7 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
       - run: pnpm test:smoke
         env:
-          PLAYWRIGHT_WEB_SERVER_COMMAND: corepack pnpm run start
+          PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm run start
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com

@@ -437,6 +437,7 @@ function LoginContent() {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [socialLoading, setSocialLoading] = useState<'google' | null>(null);
   const [guestSubmitting, setGuestSubmitting] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const nextPath = useMemo(() => {
     const requested = searchParams?.get('next') || '/dashboard';
@@ -452,6 +453,10 @@ function LoginContent() {
     // Hard redirect ensures middleware reads fresh session cookie
     window.location.href = targetPath;
   }
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password') {
@@ -1168,7 +1173,7 @@ function LoginContent() {
               type="button"
               className="link-btn guest-btn"
               onClick={enterGuestMode}
-              disabled={guestSubmitting}
+              disabled={!hydrated || guestSubmitting}
               aria-busy={guestSubmitting}
             >
               {guestSubmitting ? text.signingIn : text.guest}

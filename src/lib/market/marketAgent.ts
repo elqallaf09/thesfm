@@ -110,6 +110,7 @@ export type MarketAgentResponse = MarketAgentSuccessResponse | MarketAgentUnavai
 
 const MIN_RELIABLE_POINTS = 50;
 const EPSILON = 0.0000001;
+export const MARKET_AGENT_MAX_CONFIDENCE = 96;
 
 export const MARKET_AGENT_TIMEFRAME_CONFIG: Record<MarketAgentTimeframe, { period: string; interval: string; aggregateHours?: number }> = {
   '15m': { period: '1mo', interval: '15m' },
@@ -729,7 +730,7 @@ export function analyzeMarketAgentFromHistory(input: MarketAgentInput, history: 
     } else {
       const smoothedWinRate = ((backtest.wins + 2) / (backtest.samples + 4)) * 100;
       precisionMode.passed = true;
-      confidence = Math.min(96, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
+      confidence = Math.min(MARKET_AGENT_MAX_CONFIDENCE, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
       gateNoteArabic = ` اجتازت الإشارة فلتر الدقة العالية: إصابة الهدف الأول ${backtest.winRate}% عبر ${backtest.samples} صفقة تاريخية على نفس الرمز والإطار.`;
     }
   }
@@ -871,7 +872,7 @@ export function isMarketAgentResponse(value: unknown): value is MarketAgentRespo
     && Number.isFinite((data as Partial<MarketAgentSuccessResponse>).currentPrice)
     && ['buy', 'sell', 'wait'].includes(String((data as Partial<MarketAgentSuccessResponse>).suggestedAction))
     && Number.isFinite((data as Partial<MarketAgentSuccessResponse>).confidence)
-    && Number((data as Partial<MarketAgentSuccessResponse>).confidence) <= 85
+    && Number((data as Partial<MarketAgentSuccessResponse>).confidence) <= MARKET_AGENT_MAX_CONFIDENCE
     && typeof data.disclaimerArabic === 'string'
     && typeof data.disclaimerEnglish === 'string';
 }
