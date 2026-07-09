@@ -152,6 +152,8 @@ export function dbRowToMarketSignal(row: SignalRow): MarketSignal {
     actionLabelAr: classification.actionLabelAr,
     actionLabelEn: classification.actionLabelEn,
     confidence,
+    // A stored row only carries a meaningful confidence when it's positive and the symbol's data was available.
+    confidenceComputed: confidence > 0 && dataQuality !== 'unavailable' && action !== 'insufficient_data',
     riskLevel: row.risk_level === 'low' || row.risk_level === 'medium' || row.risk_level === 'high' ? row.risk_level : 'medium',
     currentPrice,
     targetPrice,

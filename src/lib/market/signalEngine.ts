@@ -110,6 +110,8 @@ export type MarketSignal = {
   actionLabelAr: MarketSignalActionLabelAr;
   actionLabelEn: MarketSignalActionLabelEn;
   confidence: number;
+  /** false when there isn't enough data to derive a meaningful confidence; don't display the number then. */
+  confidenceComputed: boolean;
   riskLevel: MarketSignalRiskLevel;
   currentPrice: number | null;
   targetPrice: number | null;
@@ -504,15 +506,21 @@ export function actionLabelEn(action: MarketSignalAction): MarketSignalActionLab
   return 'Watch';
 }
 
-function confidenceForAction(action: MarketSignalAction, score: number, dataQuality: MarketSignalDataQuality) {
+export function confidenceForAction(action: MarketSignalAction, score: number, dataQuality: MarketSignalDataQuality) {
   let confidence: number;
-  if (action === 'buy') confidence = score;
+  let computed = true;
+  if (action === 'insufficient_data' || dataQuality === 'unavailable') {
+    // Checked first: never invent a confidence when there's no data to derive it from, regardless of action.
+    confidence = 0;
+    computed = false;
+  } else if (action === 'buy') confidence = score;
   else if (action === 'sell') confidence = 100 - score;
-  else if (action === 'watch') confidence = dataQuality === 'unavailable' ? 35 : 52;
-  else confidence = 50 + Math.min(16, Math.abs(score - 52));
-  if (dataQuality === 'partial') confidence = Math.min(confidence, 65);
-  if (dataQuality === 'unavailable') confidence = Math.min(confidence, 45);
-  return clamp(Math.round(confidence), 0, 95);
+  else if (action === 'watch') {
+    // Watch means neutral: confidence measures how far the score sits from the neutral midpoint (50).
+    confidence = 50 + Math.min(20, Math.abs(score - 50));
+  } else confidence = 50 + Math.min(16, Math.abs(score - 52));
+  if (computed && dataQuality === 'partial') confidence = Math.min(confidence, 65);
+  return { confidence: clamp(Math.round(confidence), 0, 95), computed };
 }
 
 export function classifyTradingSignal(input: {
@@ -745,10 +753,14 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
       : Math.max(structural !== null ? structural + range * 0.15 : Number.NEGATIVE_INFINITY, price + range * AGENT_SL_ATR_MULTIPLE), price);
   }
 
-  let confidence = confidenceForAction(action, totalScore, dataQuality);
+  const confidenceResult = confidenceForAction(action, totalScore, dataQuality);
+  let confidence = confidenceResult.confidence;
+  let confidenceComputed = confidenceResult.computed;
   if (precisionMode.passed && backtest.winRate !== null) {
     const smoothedWinRate = ((backtest.wins + 2) / (backtest.samples + 4)) * 100;
     confidence = Math.min(96, Math.max(62, Math.round(smoothedWinRate * 0.7 + confidence * 0.3)));
+    // Passing the precision gate means there's a real historical win rate to derive confidence from.
+    confidenceComputed = true;
   } else if (gateBlocked) {
     confidence = Math.min(confidence, 62);
   }
@@ -763,6 +775,12 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
     technicalSummary,
   });
   action = classification.action;
+  // The final action is resolved here (may become insufficient_data/watch after confidence is computed),
+  // so re-check the flag: no meaningful confidence when the verdict is insufficient data.
+  if (action === 'insufficient_data') {
+    confidence = 0;
+    confidenceComputed = false;
+  }
 
   return {
     symbol: input.symbol.trim().toUpperCase(),
@@ -774,6 +792,7 @@ export function generateMarketSignal(input: MarketSignalInput): MarketSignal {
     actionLabelAr: classification.actionLabelAr,
     actionLabelEn: classification.actionLabelEn,
     confidence,
+    confidenceComputed,
     riskLevel: risk,
     currentPrice: roundPrice(price, price),
     targetPrice,
