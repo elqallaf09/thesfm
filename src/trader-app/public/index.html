@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/cinema.css?v=20260709-detail-panels" />
+    <link rel="stylesheet" href="/cinema.css?v=20260709-market-top" />
     <script>
       // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
       // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).
@@ -118,6 +118,8 @@
             <h1 id="page-title">غرفة قيادة السوق</h1>
           </div>
 
+          <div class="topbar-stats" id="topbar-stats" aria-live="polite"></div>
+
           <form class="symbol-search" id="symbol-search" autocomplete="off">
             <label class="sr-only" for="symbol-input">ابحث عن سهم أو رمز</label>
             <input id="symbol-input" name="symbol" dir="ltr" placeholder="AAPL, BTCUSD, XAUUSD..." />
@@ -132,7 +134,7 @@
             <a class="topbar-chip" href="/thesfm-trader-own/alerts" data-route-link data-route="alerts">التنبيهات</a>
             <button class="topbar-chip ticker-toggle" id="ticker-toggle" data-toggle-ticker type="button" aria-controls="ticker-row" aria-pressed="true">Hide ticker</button>
             <a class="topbar-chip" href="/thesfm-trader-own/settings" data-route-link data-route="settings">الإعدادات</a>
-            <span class="session-pill" id="session-status">السوق</span>
+            <div class="topbar-market-selector" id="topbar-market-selector"></div>
           </div>
         </header>
 
@@ -159,7 +161,7 @@
     </div>
 
     <div class="toast-root" id="toast-root" aria-live="polite"></div>
-    <script src="/app.js?v=20260709-detail-panels" defer></script>
+    <script src="/app.js?v=20260709-market-top" defer></script>
     <script src="/provider-markets-diagnostics.js?v=20260705-provider-markets" defer></script>
   </body>
 </html>

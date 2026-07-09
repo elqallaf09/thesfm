@@ -5668,3 +5668,264 @@ a.badge:focus-visible,
 .sharia-facts .fact-row dt{color:#9daebd;font-size:12px;font-weight:800}
 .sharia-facts .fact-row dd{margin:0;color:#f3f7fb;font-size:12px;font-weight:800;text-align:start;max-width:62%}
 .sharia-note{margin:12px 0 0;color:#9daebd;font-size:11px;line-height:1.8;font-weight:700}
+
+/* ===== Market detail cards: responsive sizing + overflow safety (v20260709) ===== */
+.detail-grid,
+.final-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.detail-main > .detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+}
+
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 116px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.detail-card--long {
+  min-height: 132px;
+}
+
+.detail-card .card-kicker,
+.detail-card strong,
+.detail-card p {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.detail-card .card-kicker {
+  font-size: clamp(0.62rem, 0.58rem + 0.18vw, 0.72rem);
+  line-height: 1.35;
+}
+
+.detail-card strong {
+  margin: 0;
+  font-size: clamp(0.92rem, 0.84rem + 0.42vw, 1.12rem);
+  line-height: 1.35;
+}
+
+.detail-card p {
+  font-size: clamp(0.72rem, 0.68rem + 0.18vw, 0.8rem);
+  line-height: 1.55;
+}
+
+.detail-card strong.rtl-value,
+.detail-card .rtl-value {
+  text-align: start;
+}
+
+@media (max-width: 720px) {
+  .detail-grid,
+  .detail-main > .detail-grid,
+  .final-signal-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  }
+
+  .detail-card {
+    min-height: 108px;
+    padding: 14px;
+  }
+
+  .detail-card--long {
+    min-height: 124px;
+  }
+}
+
+@media (max-width: 380px) {
+  .detail-grid,
+  .detail-main > .detail-grid,
+  .final-signal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Market selector relocation: top header owns market control and metrics. */
+.terminal-topbar {
+  grid-template-columns:
+    minmax(190px, 0.68fr)
+    minmax(330px, 0.95fr)
+    minmax(300px, 1fr)
+    minmax(420px, auto) !important;
+  align-items: center !important;
+  overflow: visible !important;
+}
+
+.terminal-topbar::before,
+.terminal-topbar::after {
+  pointer-events: none !important;
+}
+
+.topbar-title,
+.topbar-stats,
+.symbol-search,
+.topbar-actions {
+  min-width: 0 !important;
+}
+
+.topbar-stats {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(52px, 1fr)) !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+.topbar-stats .sb-cell {
+  min-width: 0 !important;
+  gap: 2px !important;
+  padding-inline-start: 9px !important;
+  border-inline-start: 1px solid rgba(123, 218, 255, 0.11) !important;
+}
+
+.topbar-stats .sb-cell > span,
+.topbar-stats .sb-cell > em {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.topbar-stats .sb-cell > span {
+  color: rgba(185, 208, 226, 0.72) !important;
+  font-size: 0.61rem !important;
+}
+
+.topbar-stats .sb-cell > strong {
+  color: #f7fbff !important;
+  font-size: 0.88rem !important;
+  line-height: 1.15 !important;
+}
+
+.topbar-stats .sb-cell > em {
+  color: rgba(162, 183, 201, 0.78) !important;
+  font-size: 0.59rem !important;
+}
+
+.topbar-actions {
+  overflow: visible !important;
+  flex-wrap: nowrap !important;
+}
+
+.topbar-actions .provider-pill {
+  flex: 0 1 210px !important;
+  min-width: 178px !important;
+}
+
+.topbar-actions .topbar-chip,
+.topbar-actions .ticker-toggle {
+  flex: 0 0 auto !important;
+}
+
+.topbar-market-selector {
+  flex: 0 0 auto !important;
+  z-index: 8 !important;
+}
+
+.terminal-statusbar:empty {
+  display: none !important;
+}
+
+@media (max-width: 1380px) {
+  .terminal-topbar {
+    grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1fr) !important;
+  }
+
+  .topbar-stats {
+    grid-column: 1 / -1 !important;
+    grid-template-columns: repeat(5, minmax(76px, 1fr)) !important;
+  }
+
+  .topbar-actions {
+    grid-column: 1 / -1 !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  .terminal-topbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .topbar-title {
+    order: 0 !important;
+  }
+
+  .topbar-actions {
+    order: 1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .topbar-market-selector {
+    grid-column: 1 / -1 !important;
+    order: -1 !important;
+    width: 100% !important;
+  }
+
+  .topbar-actions .provider-pill {
+    grid-column: span 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .topbar-actions .topbar-chip,
+  .topbar-actions .ticker-toggle {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .topbar-stats {
+    order: 2 !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .symbol-search {
+    order: 3 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .terminal-topbar {
+    padding: 10px !important;
+  }
+
+  .topbar-title h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .topbar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .topbar-actions .provider-pill {
+    grid-column: 1 / -1 !important;
+    min-height: 40px !important;
+  }
+
+  .topbar-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .topbar-stats .sb-cell {
+    padding: 7px 9px !important;
+    border: 1px solid rgba(123, 218, 255, 0.1) !important;
+    border-radius: 12px !important;
+    background: rgba(8, 20, 32, 0.48) !important;
+  }
+}

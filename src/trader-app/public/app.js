@@ -2655,7 +2655,10 @@
   }
   function detailCard(label, value, helper) {
     const shown = displayValue(value);
-    return `<article class="detail-card"><span class="card-kicker">${h(helper)}</span><strong class="${valueTextClass(shown)}">${h(shown)}</strong><p>${h(label)}</p></article>`;
+    const longValueKeys = ["source", "last updated", "updated", "company", "company name", "provider", "provider symbol"];
+    const keyText = `${helper || ""} ${label || ""}`.toLowerCase();
+    const longValueClass = longValueKeys.some(key => keyText.includes(key)) ? " detail-card--long" : "";
+    return `<article class="detail-card${longValueClass}"><span class="card-kicker">${h(helper)}</span><strong class="${valueTextClass(shown)}">${h(shown)}</strong><p>${h(label)}</p></article>`;
   }
 
   /* ── Strategy agreement is informational; the final recommendation is weighted separately. ── */
@@ -2920,12 +2923,15 @@
       .slice(0, 8);
   }
   function statusBar() {
-    const bar = document.getElementById("terminal-statusbar"); if (!bar) return;
+    const statsHost = document.getElementById("topbar-stats");
+    const bar = document.getElementById("terminal-statusbar");
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
     const cells = [["البيانات اللحظية", p.className === "online" ? "متصلة" : "غير متصلة", "Real-time"], ["الأسواق", mk.length || MARKETS.length, "Markets"], ["الأصول المحللة", rec.length || "--", "Analyzed"], ["قائمة المتابعة", state.watch.length, "Watchlist"], ["آخر تحديث", new Date().toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), "Updated"]];
-    const cellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("") + `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${p.className === "online" ? "النظام يعمل" : "بانتظار المزود"}</strong></div>`;
-    // الزر جزء من شريط الحالة نفسه: يُبنى في نفس innerHTML فلا يُدهس بعد ذلك.
-    bar.innerHTML = cellsHtml + marketSelectorHtml();
+    const metricCellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("");
+    const statusCellHtml = `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${p.className === "online" ? "النظام يعمل" : "بانتظار المزود"}</strong></div>`;
+    if (statsHost) statsHost.innerHTML = metricCellsHtml;
+    if (bar) bar.innerHTML = statsHost ? "" : metricCellsHtml + statusCellHtml;
+    renderMarketSelector();
   }
 
   /* ───────────────────── Actions ───────────────────── */
@@ -3556,6 +3562,11 @@
     state.signals = {};
     state.signalAlerts = {};
     if (state.marketCache && state.marketCache.clear) state.marketCache.clear();
+    if (state.route.id === "markets" && state.route.market) {
+      navigate(`${ROOT}/markets/${encodeURIComponent(mid)}`);
+      hydrate().catch(function() {});
+      return;
+    }
     render();
     hydrate().catch(function() {});
   }
@@ -3565,16 +3576,18 @@
     const _s = document.createElement("style");
     _s.id = "_ms_css";
     _s.textContent =
-      ".ms-wrap{position:relative;display:inline-flex;align-items:center}" +
-      ".ms-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 9px;border-radius:20px;border:1px solid rgba(34,211,238,.28);background:rgba(34,211,238,.05);color:#cbd5e1;font-size:12px;font-family:inherit;cursor:pointer;transition:border-color .18s,background .18s;white-space:nowrap}" +
-      ".ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.65);background:rgba(34,211,238,.11);color:#e2e8f0}" +
-      ".ms-pill-sep{color:rgba(148,163,184,.4);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:11px;color:#22D3EE;direction:ltr;unicode-bidi:embed}" +
-      ".ms-chevron{width:10px;height:10px;flex-shrink:0;transition:transform .18s;margin-inline-start:3px}.ms-chevron.ms-open{transform:rotate(180deg)}" +
-      ".ms-dropdown{position:absolute;bottom:calc(100% + 8px);right:0;min-width:235px;max-height:340px;overflow-y:auto;overflow-x:hidden;background:#0d1117;border:1px solid rgba(34,211,238,.22);border-radius:10px;padding:5px;z-index:9999;display:flex;flex-direction:column;gap:2px;box-shadow:0 -8px 32px rgba(0,0,0,.7),0 0 0 1px rgba(34,211,238,.07)}" +
-      ".ms-item{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;text-align:right;direction:rtl;width:100%;transition:background .12s}" +
-      ".ms-item:hover{background:rgba(34,211,238,.09);color:#e2e8f0}.ms-item:focus{outline:2px solid rgba(34,211,238,.5);outline-offset:-2px;background:rgba(34,211,238,.07)}" +
-      ".ms-item.is-active{color:#22D3EE;font-weight:500}.ms-chk{width:12px;height:12px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:12px;height:12px;flex-shrink:0}.ms-label{flex:1}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:10px;color:#475569;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:6px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
-      "@media(max-width:640px){.ms-dropdown{right:auto;left:50%;transform:translateX(-50%);min-width:min(280px,90vw)}}";
+      ".topbar-market-selector{position:relative;display:inline-flex;align-items:center;min-width:0;overflow:visible}" +
+      ".ms-wrap{position:relative;display:inline-flex;align-items:center;min-width:0;overflow:visible}" +
+      ".ms-pill{min-height:42px;display:inline-flex;align-items:center;gap:7px;padding:0 15px 0 13px;border-radius:999px;border:1px solid rgba(34,211,238,.62);background:linear-gradient(180deg,rgba(9,29,48,.96),rgba(3,15,28,.94));color:#e8f8ff;font-size:14px;font-weight:850;font-family:inherit;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s,transform .18s;white-space:nowrap;box-shadow:0 0 0 1px rgba(34,211,238,.12),0 0 24px rgba(34,211,238,.14),inset 0 1px 0 rgba(255,255,255,.08);touch-action:manipulation}" +
+      ".ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.92);background:linear-gradient(180deg,rgba(12,42,66,.98),rgba(5,22,39,.96));color:#fff;box-shadow:0 0 0 1px rgba(34,211,238,.22),0 0 30px rgba(34,211,238,.22),inset 0 1px 0 rgba(255,255,255,.1)}" +
+      ".ms-pill:focus-visible{outline:2px solid rgba(94,234,212,.9);outline-offset:3px}.ms-pill:active{transform:translateY(1px)}" +
+      ".ms-pill-name{overflow:hidden;text-overflow:ellipsis}.ms-pill-sep{color:rgba(148,211,224,.62);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:900;color:#22D3EE;direction:ltr;unicode-bidi:embed;letter-spacing:.03em}" +
+      ".ms-chevron{width:13px;height:13px;flex-shrink:0;color:#dffaff;transition:transform .18s;margin-inline-start:2px}.ms-chevron.ms-open{transform:rotate(180deg)}" +
+      ".ms-dropdown{position:absolute;top:calc(100% + 9px);inset-inline-start:0;min-width:255px;max-height:min(390px,70vh);overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,#071a2c,#04101d);border:1px solid rgba(34,211,238,.42);border-radius:16px;padding:7px;z-index:10050;display:flex;flex-direction:column;gap:3px;box-shadow:0 22px 56px rgba(0,0,0,.64),0 0 0 1px rgba(34,211,238,.09),0 0 36px rgba(34,211,238,.12)}" +
+      ".ms-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;border-radius:11px;border:1px solid transparent;background:transparent;color:#a9c1d3;font-size:13px;font-weight:760;cursor:pointer;text-align:right;direction:rtl;width:100%;transition:background .12s,border-color .12s,color .12s}" +
+      ".ms-item:hover{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.16);color:#eefbff}.ms-item:focus-visible{outline:2px solid rgba(34,211,238,.7);outline-offset:2px;background:rgba(34,211,238,.12);color:#fff}" +
+      ".ms-item.is-active{color:#22D3EE;font-weight:900;background:rgba(34,211,238,.11);border-color:rgba(34,211,238,.24)}.ms-chk{width:14px;height:14px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:14px;height:14px;flex-shrink:0}.ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e8ca1;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:8px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
+      "@media(max-width:640px){.topbar-market-selector,.topbar-market-selector .ms-wrap,.topbar-market-selector .ms-pill{width:100%}.topbar-market-selector .ms-pill{justify-content:center;min-height:40px;padding-inline:12px;font-size:13px}.ms-dropdown{inset-inline-start:auto;left:50%;right:auto;transform:translateX(-50%);min-width:min(312px,calc(100vw - 28px));max-width:calc(100vw - 28px)}}";
     document.head.appendChild(_s);
   }
 
@@ -3606,18 +3619,9 @@
   // تحديث موضعي: يستبدل .ms-wrap فقط دون لمس خلايا شريط الحالة، لتجنّب
   // إعادة بناء الشريط كاملاً عند مجرد فتح/إغلاق القائمة.
   function renderMarketSelector() {
-    const bar = document.getElementById("terminal-statusbar");
-    if (!bar) return;
-    const existing = bar.querySelector(".ms-wrap");
-    if (existing) {
-      const temp = document.createElement("div");
-      temp.innerHTML = marketSelectorHtml();
-      const fresh = temp.firstElementChild;
-      if (fresh) existing.replaceWith(fresh);
-    } else {
-      // الشريط لم يُبنَ بعد — نبنيه كاملاً (الزر ضمنه).
-      statusBar();
-    }
+    const host = document.getElementById("topbar-market-selector");
+    if (!host) return;
+    host.innerHTML = marketSelectorHtml();
   }
 
 })();

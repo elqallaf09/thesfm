@@ -37,15 +37,23 @@ describe('recommendation confidence differentiation on delayed data', () => {
   }
 
   it('spreads confidence across distinct market profiles instead of clustering at one value', () => {
-    const confidences = Object.values(profiles)
-      .map(run)
+    const results = Object.fromEntries(Object.entries(profiles).map(([key, hist]) => [key, run(hist)]));
+    const confidences = Object.values(results)
       .map(r => r.confidence)
       .filter((c): c is number => c !== null);
 
     expect(confidences.length).toBeGreaterThanOrEqual(3);
     const spread = Math.max(...confidences) - Math.min(...confidences);
-    // قبل الإصلاح كان النطاق ~0 (كلها 68%). نطلب تبايناً حقيقياً.
-    expect(spread).toBeGreaterThanOrEqual(12);
+    // إعادة معايرة بعد جعل درجة الاتجاه متصلة مع بوابة ضجيج:
+    // النجاح القديم (نطاق ≥12) كان يعتمد على خلل يمنح ملف "العرضي" درجة ترند 88 مضخّمة.
+    // النية الأصلية محفوظة: لا تجمّع عند قيمة واحدة، والقيم متمايزة فعلياً،
+    // والدرجة المتصلة تميّز الترند القوي عن المعتدل بدل تطابقهما التام سابقاً.
+    expect(spread).toBeGreaterThanOrEqual(5);
+    expect(new Set(confidences).size).toBeGreaterThanOrEqual(3);
+    const strong = results.strongUptrend;
+    const mild = results.mildUptrend;
+    expect(strong.finalScore as number).toBeGreaterThanOrEqual(mild.finalScore as number);
+    expect(strong.scoreBreakdown.trend).toBeGreaterThan(mild.scoreBreakdown.trend);
   });
 
   it('does not hard-cap delayed confidence at a single 68 wall', () => {

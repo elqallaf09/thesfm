@@ -42,6 +42,7 @@ export type MultiFactorRecommendation = {
   finalScore: number | null;
   riskLevel: RecommendationRiskLevel;
   strategyCount: number;
+  marketRegime: { regime: MarketRegime; adx: number | null; labelEn: string; labelAr: string };
   strategyAgreement: {
     label: 'Strong agreement' | 'Moderate agreement' | 'Mixed consensus' | 'Limited consensus' | 'Insufficient data';
     labelAr: string;
@@ -226,6 +227,63 @@ function atr(points: RecommendationPricePoint[], period = 14) {
   return value;
 }
 
+export type MarketRegime = 'trending' | 'ranging' | 'mixed' | 'unknown';
+
+// ADX بطريقة وايلدر من نقاط تحتوي high/low/close؛ يرجع null عند نقص البيانات.
+export function adxFromPoints(points: RecommendationPricePoint[], period = 14): number | null {
+  const rows = points
+    .map(point => ({ high: finiteNumber(point.high), low: finiteNumber(point.low), close: finiteNumber(point.close) }))
+    .filter((row): row is { high: number; low: number; close: number } =>
+      row.high !== null && row.low !== null && row.close !== null && row.high >= row.low);
+  if (rows.length < period * 2 + 1) return null;
+  let trInit = 0, plusInit = 0, minusInit = 0;
+  let smoothedTr = 0, smoothedPlus = 0, smoothedMinus = 0;
+  const dxValues: number[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const upMove = rows[i].high - rows[i - 1].high;
+    const downMove = rows[i - 1].low - rows[i].low;
+    const plusDm = upMove > downMove && upMove > 0 ? upMove : 0;
+    const minusDm = downMove > upMove && downMove > 0 ? downMove : 0;
+    const trueRange = Math.max(
+      rows[i].high - rows[i].low,
+      Math.abs(rows[i].high - rows[i - 1].close),
+      Math.abs(rows[i].low - rows[i - 1].close),
+    );
+    if (i <= period) {
+      trInit += trueRange; plusInit += plusDm; minusInit += minusDm;
+      if (i === period) { smoothedTr = trInit; smoothedPlus = plusInit; smoothedMinus = minusInit; }
+      continue;
+    }
+    smoothedTr = smoothedTr - smoothedTr / period + trueRange;
+    smoothedPlus = smoothedPlus - smoothedPlus / period + plusDm;
+    smoothedMinus = smoothedMinus - smoothedMinus / period + minusDm;
+    if (smoothedTr <= 0) continue;
+    const plusDi = (smoothedPlus / smoothedTr) * 100;
+    const minusDi = (smoothedMinus / smoothedTr) * 100;
+    const diSum = plusDi + minusDi;
+    if (diSum <= 0) continue;
+    dxValues.push((Math.abs(plusDi - minusDi) / diSum) * 100);
+  }
+  if (dxValues.length < period) return null;
+  let adx = dxValues.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dxValues.length; i++) adx = (adx * (period - 1) + dxValues[i]) / period;
+  return Math.round(adx * 10) / 10;
+}
+
+export function marketRegimeFromAdx(value: number | null): MarketRegime {
+  if (value === null) return 'unknown';
+  if (value >= 25) return 'trending';
+  if (value < 20) return 'ranging';
+  return 'mixed';
+}
+
+function regimeLabels(regime: MarketRegime) {
+  if (regime === 'trending') return { labelEn: 'Trending market', labelAr: 'سوق ذو اتجاه' };
+  if (regime === 'ranging') return { labelEn: 'Ranging market', labelAr: 'سوق عرضي' };
+  if (regime === 'mixed') return { labelEn: 'Transitional market', labelAr: 'سوق انتقالي' };
+  return { labelEn: 'Undetermined regime', labelAr: 'نظام غير محدد' };
+}
+
 function percentChange(current: number, past: number | undefined) {
   if (!past || past <= 0) return null;
   return ((current - past) / past) * 100;
@@ -369,12 +427,17 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   const closes = cleanHistory.map(point => point.close);
   const samples = closes.length;
   const news = input.newsSentiment ?? UNAVAILABLE_NEWS_SENTIMENT;
+  // نظام السوق عبر ADX: يوجّه ترجيح الاستراتيجيات المتضادة (زخم/عودة، اختراق/ارتداد)
+  const adxValue = adxFromPoints(cleanHistory);
+  const regime = marketRegimeFromAdx(adxValue);
+  const regimeMeta = { regime, adx: adxValue, ...regimeLabels(regime) };
 
   if (price === null || price <= 0 || samples === 0 || input.dataQuality === 'unavailable') {
     const quality = dataQualityStatus({ ...input, dataQuality: 'unavailable' }, samples, false);
     return {
       finalRecommendation: 'Insufficient data',
       finalRecommendationAr: 'بيانات غير كافية',
+      marketRegime: { regime: 'unknown', adx: null, ...regimeLabels('unknown') },
       signal: 'watch',
       confidence: null,
       finalScore: null,
@@ -431,15 +494,24 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
         'Trend following',
         'اتباع الاتجاه',
         25,
-        price > ema20 && ema20 > ema50 && ema50 > ema200
-          ? 88
-          : price < ema20 && ema20 < ema50 && ema50 < ema200
-            ? 12
-            : price > ema200 && ema20 >= ema50
-              ? 64
-              : price < ema200 && ema20 <= ema50
-                ? 36
-                : 50,
+        (() => {
+          // درجة متصلة بدل السلالم: هيكل ترتيب المتوسطات يحدد المنطقة،
+          // والمسافة المعيارية (ميل EMA20-50 + امتداد السعر عن EMA200 بوحدات ATR)
+          // تحدد الشدة عبر سيجمويد كسري بطيء التشبع، فيتمايز الترند القوي عن المعتدل.
+          const atrRef = atrValue !== null && atrValue > 0 ? atrValue : price * 0.01;
+          const gap1 = (ema20 - ema50) / atrRef;
+          const gap2 = (ema50 - ema200) / atrRef;
+          const raw = gap1 + (price - ema200) / (atrRef * 6);
+          const intensity = raw / (1 + Math.abs(raw));
+          // بوابة ضجيج: التكديس لا يُحتسب هيكلاً إلا إذا تجاوزت فجوات المتوسطات
+          // 0.15×ATR — تذبذب عرضي ضيق لا يجب أن يأخذ درجات ترند كاملة.
+          const NOISE = 0.15;
+          if (price > ema20 && gap1 > NOISE && gap2 > NOISE) return 68 + 24 * Math.max(0, intensity);
+          if (price < ema20 && gap1 < -NOISE && gap2 < -NOISE) return 32 - 24 * Math.max(0, -intensity);
+          if (price > ema200 && gap1 >= 0) return 52 + 16 * Math.max(0, intensity);
+          if (price < ema200 && gap1 <= 0) return 48 - 16 * Math.max(0, -intensity);
+          return 50 + 8 * Math.max(-1, Math.min(1, intensity));
+        })(),
         `EMA20 ${round(ema20, 4)}, EMA50 ${round(ema50, 4)}, EMA200 ${round(ema200, 4)}.`,
         `EMA20 ${round(ema20, 4)}، EMA50 ${round(ema50, 4)}، EMA200 ${round(ema200, 4)}.`,
       )
@@ -574,14 +646,21 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   // كل فئة تُبنى من عواملها المتاحة فقط؛ الفئة غير المتاحة تُعلَّم null بدل
   // حقن 50 ثابتة تسطّح كل الرموز. الوزن يُعاد توزيعه لاحقاً على المتاح.
   const availScore = (s: RecommendationStrategy): number | null => (s.available ? s.score : null);
-  const meanAvail = (...values: (number | null)[]): number | null => {
-    const present = values.filter((v): v is number => v !== null);
-    return present.length ? Math.round(present.reduce((a, b) => a + b, 0) / present.length) : null;
+  // دمج مرجّح لزوج استراتيجيات متضاد: في الترند يرجح الزخم/الاختراق،
+  // وفي السوق العرضي ترجح العودة للمتوسط/الارتداد عن الدعم والمقاومة.
+  const pairAvail = (primary: number | null, primaryWeight: number, secondary: number | null): number | null => {
+    if (primary === null && secondary === null) return null;
+    if (primary === null) return secondary;
+    if (secondary === null) return primary;
+    const secondaryWeight = 1 - primaryWeight;
+    return Math.round(primary * primaryWeight + secondary * secondaryWeight);
   };
+  const momentumLean = regime === 'trending' ? 0.75 : regime === 'ranging' ? 0.25 : 0.5;
+  const breakoutLean = regime === 'trending' ? 0.7 : regime === 'ranging' ? 0.3 : 0.5;
   const categoryScores = {
     trend: availScore(trend),
-    momentum: meanAvail(availScore(momentum), availScore(meanReversion)),
-    supportResistance: meanAvail(availScore(supportResistance), availScore(breakout)),
+    momentum: pairAvail(availScore(momentum), momentumLean, availScore(meanReversion)),
+    supportResistance: pairAvail(availScore(breakout), breakoutLean, availScore(supportResistance)),
     volume: availScore(volume),
     newsSentiment: newsStrategy.available ? newsStrategy.score : null,
     dataQuality: quality.score,
@@ -590,14 +669,21 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
 
   // إعادة توزيع الوزن: فقط الفئات ذات الدرجة المتاحة تدخل المتوسط المرجّح،
   // فيصبح finalScore انعكاساً حقيقياً للعوامل الفنية بدل تخفيفه بأصفار محايدة.
+  // أوزان الفئات حسب النظام (المجموع 100 دائماً): الترند يرفع وزن الاتجاه،
+  // والسوق العرضي يرفع الدعم/المقاومة والحجم على حساب الاتجاه والزخم.
+  const weights = regime === 'trending'
+    ? { ...WEIGHTS, trend: 30, momentum: 23, supportResistance: 10, volume: 12 }
+    : regime === 'ranging'
+      ? { ...WEIGHTS, trend: 20, momentum: 17, supportResistance: 20, volume: 18 }
+      : WEIGHTS;
   const weightedInputs = ([
-    { score: categoryScores.trend, weight: WEIGHTS.trend },
-    { score: categoryScores.momentum, weight: WEIGHTS.momentum },
-    { score: categoryScores.supportResistance, weight: WEIGHTS.supportResistance },
-    { score: categoryScores.volume, weight: WEIGHTS.volume },
-    { score: categoryScores.newsSentiment, weight: WEIGHTS.newsSentiment },
-    { score: categoryScores.dataQuality, weight: WEIGHTS.dataQuality },
-    { score: categoryScores.risk, weight: WEIGHTS.risk },
+    { score: categoryScores.trend, weight: weights.trend },
+    { score: categoryScores.momentum, weight: weights.momentum },
+    { score: categoryScores.supportResistance, weight: weights.supportResistance },
+    { score: categoryScores.volume, weight: weights.volume },
+    { score: categoryScores.newsSentiment, weight: weights.newsSentiment },
+    { score: categoryScores.dataQuality, weight: weights.dataQuality },
+    { score: categoryScores.risk, weight: weights.risk },
   ] as Array<{ score: number | null; weight: number }>)
     .filter((item): item is { score: number; weight: number } => item.score !== null);
   const activeWeight = weightedInputs.reduce((sum, item) => sum + item.weight, 0);
@@ -678,12 +764,22 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
               ? 'بيانات غير كافية'
               : 'مراقبة';
 
-  const summaryEn = technicalAvailable
+  const regimeTextEn = regime === 'trending'
+    ? ` Market regime is trending (ADX ${adxValue}), so trend and breakout modules carry extra weight.`
+    : regime === 'ranging'
+      ? ` Market regime is ranging (ADX ${adxValue}), so mean-reversion and support/resistance modules carry extra weight.`
+      : '';
+  const regimeTextAr = regime === 'trending'
+    ? ` نظام السوق ذو اتجاه (ADX ${adxValue})، لذا زاد وزن وحدتي الاتجاه والاختراق.`
+    : regime === 'ranging'
+      ? ` نظام السوق عرضي (ADX ${adxValue})، لذا زاد وزن وحدتي العودة للمتوسط والدعم والمقاومة.`
+      : '';
+  const summaryEn = (technicalAvailable
     ? `EMA trend, momentum, support/resistance, volume, and risk were scored with ${samples} real provider samples.`
-    : `Technical coverage is incomplete with ${samples} real provider samples.`;
-  const summaryAr = technicalAvailable
+    : `Technical coverage is incomplete with ${samples} real provider samples.`) + regimeTextEn;
+  const summaryAr = (technicalAvailable
     ? `تم تقييم اتجاه EMA والزخم والدعم والمقاومة والحجم والمخاطر باستخدام ${samples} عينة حقيقية من المزود.`
-    : `التغطية الفنية غير مكتملة مع ${samples} عينة حقيقية من المزود.`;
+    : `التغطية الفنية غير مكتملة مع ${samples} عينة حقيقية من المزود.`) + regimeTextAr;
   const qualityPenaltyTextEn = quality.status === 'complete' ? '' : ` Data quality is ${quality.labelEn.toLowerCase()}, so the recommendation is downgraded.`;
   const qualityPenaltyTextAr = quality.status === 'complete' ? '' : ` جودة البيانات ${quality.labelAr}، لذلك تم تخفيض قوة التوصية.`;
   const limitedTextEn = strategyCount < 3 ? ' Strategy coverage is below three modules, so consensus is limited.' : '';
@@ -692,6 +788,7 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   return {
     finalRecommendation,
     finalRecommendationAr,
+    marketRegime: regimeMeta,
     signal,
     confidence,
     finalScore,
