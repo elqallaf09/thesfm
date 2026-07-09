@@ -128,6 +128,52 @@ function latestOhlcPoint(analysis: Extract<TechnicalAnalyzeResult, { success: tr
   return Array.isArray(analysis.history) ? [...analysis.history].reverse().map(normalizeOhlcPoint).find(Boolean) ?? undefined : undefined;
 }
 
+function finiteTechnicalNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function missingTechnicalFields(analysis?: Extract<TechnicalAnalyzeResult, { success: true }> | null, extra: string[] = []) {
+  const missing = new Set(extra);
+  if (!analysis) {
+    ['price', 'historical_ohlc', 'rsi', 'sma20', 'sma50', 'support', 'resistance'].forEach(field => missing.add(field));
+    return Array.from(missing);
+  }
+
+  if (finiteTechnicalNumber(analysis.latestPrice) === null) missing.add('price');
+  if (!latestOhlcPoint(analysis)) missing.add('historical_ohlc');
+  if (finiteTechnicalNumber(analysis.indicators?.rsi) === null) missing.add('rsi');
+  if (finiteTechnicalNumber(analysis.indicators?.sma20) === null) missing.add('sma20');
+  if (finiteTechnicalNumber(analysis.indicators?.sma50) === null) missing.add('sma50');
+  if (finiteTechnicalNumber(analysis.levels?.support) === null) missing.add('support');
+  if (finiteTechnicalNumber(analysis.levels?.resistance) === null) missing.add('resistance');
+  return Array.from(missing);
+}
+
+function technicalUnavailableDebug(input: {
+  normalized: NormalizedMarketSymbol;
+  provider: string;
+  providerSymbol: string;
+  attemptedSymbols: TechnicalSymbolCandidate[];
+  reason: string;
+  missingFields: string[];
+}) {
+  return {
+    symbol: input.normalized.displaySymbol,
+    assetClass: input.normalized.assetType,
+    provider: input.provider,
+    providerSymbol: input.providerSymbol,
+    missingFields: input.missingFields,
+    fallbackAttempted: input.attemptedSymbols.some(candidate => candidate.fallbackUsed),
+    attemptedSymbols: input.attemptedSymbols.map(candidate => candidate.symbol),
+    reason: input.reason,
+  };
+}
+
+function logTechnicalUnavailable(debug: ReturnType<typeof technicalUnavailableDebug>) {
+  console.warn('[technical-analysis] unavailable', debug);
+}
+
 function partialOhlcResponse(
   analysis: Extract<TechnicalAnalyzeResult, { success: true }>,
   normalized: NormalizedMarketSymbol,
@@ -170,16 +216,27 @@ function partialOhlcResponse(
     data: [],
     lastUpdated: updatedAt,
   });
+  const missingFields = missingTechnicalFields(analysis, ['historical_ohlc']);
+  const unavailableDiagnostics = technicalUnavailableDebug({
+    normalized,
+    provider: analysis.source ?? 'Yahoo Finance',
+    providerSymbol: providerSymbolUsed,
+    attemptedSymbols,
+    reason: 'OHLC_DATA_NOT_AVAILABLE',
+    missingFields,
+  });
+  logTechnicalUnavailable(unavailableDiagnostics);
   return NextResponse.json({
     ...diagnostic,
     success: false,
+    technicalAvailable: false,
     code: 'OHLC_DATA_NOT_AVAILABLE',
     symbol: normalized.displaySymbol,
     providerSymbol: analysis.providerSymbol ?? normalized.providerSymbol,
     providerStatus: {
       provider: analysis.source ?? 'Yahoo Finance',
       providerSymbolUsed,
-      fallbackUsed: Boolean(usedCandidate?.fallbackUsed),
+      fallbackUsed: Boolean(usedCandidate?.fallbackUsed) || unavailableDiagnostics.fallbackAttempted,
       lastUpdated: updatedAt,
       dataQuality: 'partial',
     },
@@ -193,6 +250,10 @@ function partialOhlcResponse(
     providerMessage: 'Price data is available, but daily candle OHLC data is not sufficient to calculate pivot points.',
     updated_at: updatedAt,
     attemptedSymbols: attemptedSymbols.map(item => item.symbol),
+    missingFields,
+    fallbackAttempted: unavailableDiagnostics.fallbackAttempted,
+    unavailableReason: 'ohlc_data_not_available',
+    unavailableDiagnostics,
     available,
     legacyOk: false,
   }, { status: 200, headers: cacheHeaders });
@@ -215,9 +276,21 @@ function providerFailureResponse(firstError: Record<string, unknown> | null, can
     data: [],
     lastUpdated: updatedAt,
   });
+  const missingFields = missingTechnicalFields(null);
+  const unavailableDiagnostics = technicalUnavailableDebug({
+    normalized,
+    provider: 'Yahoo Finance',
+    providerSymbol: candidate?.symbol ?? normalized.providerSymbol,
+    attemptedSymbols: candidates,
+    reason: code ?? 'PROVIDER_UNAVAILABLE',
+    missingFields,
+  });
+  logTechnicalUnavailable(unavailableDiagnostics);
   return NextResponse.json({
     ...diagnostic,
     success: false,
+    available: false,
+    technicalAvailable: false,
     code: 'PROVIDER_UNAVAILABLE',
     symbol: normalized.displaySymbol,
     providerSymbol: normalized.providerSymbol,
@@ -230,13 +303,17 @@ function providerFailureResponse(firstError: Record<string, unknown> | null, can
     providerStatus: {
       provider: 'Yahoo Finance',
       providerSymbolUsed: candidate?.symbol ?? normalized.providerSymbol,
-      fallbackUsed: Boolean(candidate?.fallbackUsed),
+      fallbackUsed: Boolean(candidate?.fallbackUsed) || unavailableDiagnostics.fallbackAttempted,
       lastUpdated: updatedAt,
       dataQuality: 'unavailable',
     },
     providerCode: code,
     updated_at: updatedAt,
     attemptedSymbols: candidates.map(item => item.symbol),
+    missingFields,
+    fallbackAttempted: unavailableDiagnostics.fallbackAttempted,
+    unavailableReason: 'provider_unavailable',
+    unavailableDiagnostics,
     legacyOk: false,
   }, { status: 200, headers: cacheHeaders });
 }
