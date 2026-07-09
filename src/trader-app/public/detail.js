@@ -3,6 +3,9 @@ const symbol = params.get("symbol") || "";
 const NUMBER_LOCALE = "ar-KW-u-nu-latn";
 const NUMBER_OPTIONS = { numberingSystem: "latn" };
 const APP_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
+const APP_V2_SETTINGS_STORAGE_KEY = "sfmTraderSettings:v1";
+const GLOBAL_LANGUAGE_STORAGE_KEY = "sfm_lang";
+const LANGUAGE_CHANGE_EVENT = "sfm-language-change";
 const Recommendation = window.SFMRecommendation;
 
 function normalizeDigits(value) {
@@ -987,6 +990,15 @@ function drawSparkline(canvas, values = [], action) {
 
 function getDetailSettings() {
   try {
+    const globalLanguage = localStorage.getItem(GLOBAL_LANGUAGE_STORAGE_KEY);
+    if (globalLanguage) return { language: normalizeDetailLocale(globalLanguage) };
+  } catch {}
+  try {
+    const saved = JSON.parse(localStorage.getItem(APP_V2_SETTINGS_STORAGE_KEY) || "{}");
+    const language = saved?.lang || saved?.language;
+    if (language) return { language: normalizeDetailLocale(language) };
+  } catch {}
+  try {
     const saved = JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || "{}");
     return {
       language: normalizeDetailLocale(saved?.language)
@@ -1149,7 +1161,9 @@ function applyDetailLanguage() {
   const ltr = ["en", "fr"].includes(language);
   document.documentElement.lang = language;
   document.documentElement.dir = ltr ? "ltr" : "rtl";
+  if (document.body) document.body.dir = ltr ? "ltr" : "rtl";
   document.body?.classList.toggle("language-en", ltr);
+  document.body?.classList.toggle("language-ar", !ltr);
   translateDetailInterface();
 }
 
@@ -1315,8 +1329,9 @@ function toDetailDatasetSuffix(attr) {
 }
 
 window.addEventListener("storage", (event) => {
-  if (event.key === APP_SETTINGS_STORAGE_KEY) applyDetailLanguage();
+  if ([APP_SETTINGS_STORAGE_KEY, APP_V2_SETTINGS_STORAGE_KEY, GLOBAL_LANGUAGE_STORAGE_KEY].includes(event.key)) applyDetailLanguage();
 });
+window.addEventListener(LANGUAGE_CHANGE_EVENT, applyDetailLanguage);
 
 function initMarketBackground() {
   const canvas = document.querySelector("#market-bg");
