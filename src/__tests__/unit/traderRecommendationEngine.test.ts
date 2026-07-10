@@ -43,10 +43,25 @@ describe('trader multi-factor recommendation engine', () => {
     });
 
     expect(result.finalRecommendation).toBe('Insufficient data');
-    expect(result.confidence).toBeNull();
+    expect(result.confidence).toBe(0);
     expect(result.strategyCount).toBe(0);
     expect(result.strategyAgreement.label).toBe('Insufficient data');
     expect(result.technicalAvailable).toBe(false);
+
+    expect(result.dataSufficiency.sufficient).toBe(false);
+    expect(result.dataSufficiency.samples).toBe(0);
+    expect(result.dataSufficiency.technicalAnalysisAvailable).toBe(false);
+    expect(result.dataSufficiency.strategyCoverage.available).toBe(0);
+    expect(result.dataSufficiency.strategyCoverage.total).toBeGreaterThan(0);
+    expect(result.dataSufficiency.unavailableStrategies.length).toBe(result.dataSufficiency.strategyCoverage.total);
+    expect(result.dataSufficiency.unavailableStrategies.some(s => s.id === 'breakout')).toBe(true);
+    expect(result.dataSufficiency.unavailableStrategies.some(s => s.id === 'volume_confirmation')).toBe(true);
+    for (const item of result.dataSufficiency.items) {
+      expect(item.labelEn).toBeTruthy();
+      expect(item.labelAr).toBeTruthy();
+      expect(item.labelFr).toBeTruthy();
+    }
+    expect(result.finalRecommendationFr).toBeTruthy();
   });
 
   it('labels strategy coverage as limited and caps agreement when fewer than three modules are available', () => {
@@ -97,5 +112,23 @@ describe('trader multi-factor recommendation engine', () => {
     expect(result.dataQualityStatus.status).toBe('cached');
     expect(result.finalRecommendation).toBe('Watch');
     expect(result.confidence ?? 100).toBeLessThanOrEqual(60);
+  });
+
+  it('keeps news sentiment as context without changing the directional recommendation', () => {
+    const fullHistory = history(240);
+    const base = {
+      price: fullHistory.at(-1)?.close ?? null,
+      history: fullHistory,
+      dataQuality: 'complete' as const,
+      delayed: false,
+      assetType: 'stock',
+    };
+    const positive = buildMultiFactorRecommendation({ ...base, newsSentiment: { ...positiveNews, score: 100, sentiment: 'positive' } });
+    const negative = buildMultiFactorRecommendation({ ...base, newsSentiment: { ...positiveNews, score: 0, sentiment: 'negative' } });
+
+    expect(positive.finalScore).toBe(negative.finalScore);
+    expect(positive.finalRecommendation).toBe(negative.finalRecommendation);
+    expect(positive.confidence).toBe(negative.confidence);
+    expect(positive.strategyAgreement).toEqual(negative.strategyAgreement);
   });
 });

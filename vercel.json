@@ -2,6 +2,10 @@
   "installCommand": "pnpm install --no-frozen-lockfile",
   "crons": [
     {
+      "path": "/api/market-news/ingest",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/debts/generate-monthly-expenses",
       "schedule": "0 3 * * *"
     },

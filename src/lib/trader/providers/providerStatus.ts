@@ -69,6 +69,7 @@ const PROVIDER_FEATURES: Record<TraderProviderName, TraderProviderFeature[]> = {
   finnhub: ['earnings', 'dividends', 'economic', 'news'],
   tradingeconomics: ['economic'],
   yahoo: ['prices'],
+  'multi-source': ['news'],
   openbb: [], // OpenBB service removed
 };
 
@@ -103,15 +104,15 @@ function createInitialFeatureState(): Record<TraderProviderFeature, TraderFeatur
     },
     news: {
       feature: 'news',
-      configured: false,
-      provider: 'finnhub',
-      status: 'not_configured',
+      configured: true,
+      provider: 'multi-source',
+      status: 'available',
       resultCount: null,
       lastUpdated: null,
       lastSuccessfulUpdate: null,
       failureReason: null,
-      supportedProviders: ['finnhub'],
-      supportedFeatures: PROVIDER_FEATURES.finnhub,
+      supportedProviders: ['multi-source', 'finnhub'],
+      supportedFeatures: PROVIDER_FEATURES['multi-source'],
     },
   };
 }
@@ -582,10 +583,12 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
     },
     news: {
       ...featureState.news,
-      configured: Boolean(keys.finnhub),
-      provider: 'finnhub',
-      status: keys.finnhub ? 'available' : 'not_configured',
-      failureReason: keys.finnhub ? null : 'provider_not_configured',
+      configured: true,
+      provider: 'multi-source',
+      status: 'available',
+      failureReason: null,
+      supportedProviders: ['multi-source', ...(keys.finnhub ? ['finnhub' as const] : [])],
+      supportedFeatures: PROVIDER_FEATURES['multi-source'],
     },
   };
   featureState = features;

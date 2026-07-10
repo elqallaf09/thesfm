@@ -12,10 +12,10 @@
   };
 
   const LABELS = {
-    buy: { ar: "شراء", en: "Buy" },
-    sell: { ar: "بيع", en: "Sell" },
-    watch: { ar: "تحت المراقبة", en: "Watch" },
-    insufficient_data: { ar: "بيانات غير كافية", en: "Insufficient data" }
+    buy: { ar: "شراء", en: "Buy", fr: "Achat" },
+    sell: { ar: "بيع", en: "Sell", fr: "Vente" },
+    watch: { ar: "تحت المراقبة", en: "Watch", fr: "Surveillance" },
+    insufficient_data: { ar: "بيانات غير كافية", en: "Insufficient data", fr: "Données insuffisantes" }
   };
 
   const WATCH_REASONS = {
@@ -290,6 +290,7 @@
       status,
       actionLabelAr: label.ar,
       actionLabelEn: label.en,
+      actionLabelFr: label.fr,
       confidence: firstNumber(rec.aiConfidence, rec.ai_confidence, rec.confidence, rec.score),
       reason: status === STATUS.WATCH && safetyReasons.length ? safetyReasons.join(" ") : reason,
       dataQuality,
@@ -322,7 +323,8 @@
     isBuyStatus(status) { return status === STATUS.BUY; },
     isSellStatus(status) { return status === STATUS.SELL; },
     labelAr(status) { return (LABELS[status] || LABELS.watch).ar; },
-    labelEn(status) { return (LABELS[status] || LABELS.watch).en; }
+    labelEn(status) { return (LABELS[status] || LABELS.watch).en; },
+    labelFr(status) { return (LABELS[status] || LABELS.watch).fr; }
   };
 
   global.SFMRecommendation = api;

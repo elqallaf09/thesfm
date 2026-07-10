@@ -6,14 +6,8 @@ export type GulfRssFeed = {
   url: string;
 };
 
-// Free public RSS endpoints. Feeds are fetched server-side and skipped gracefully
-// when a publisher blocks or temporarily fails the request.
-export const GULF_RSS_FEEDS: GulfRssFeed[] = [
-  { market: 'kuwait', source: 'Mubasher Kuwait', url: 'http://feeds.mubasher.info/ar/KSE/news' },
-  { market: 'saudi', source: 'Mubasher Saudi Arabia', url: 'http://feeds.mubasher.info/ar/TDWL/news' },
-  { market: 'oman', source: 'Mubasher Oman', url: 'http://feeds.mubasher.info/ar/MSM/news' },
-  { market: 'bahrain', source: 'Mubasher Bahrain', url: 'http://feeds.mubasher.info/ar/BB/news' },
-  { market: 'uae-dfm', source: 'Mubasher Dubai Financial Market', url: 'http://feeds.mubasher.info/ar/DFM/news' },
-  { market: 'uae-adx', source: 'Mubasher Abu Dhabi Securities Exchange', url: 'http://feeds.mubasher.info/ar/ADX/news' },
-  { market: 'qatar', source: 'Mubasher Qatar', url: 'http://feeds.mubasher.info/ar/QE/news' },
-];
+// The former Mubasher feeds were HTTP-only and represented one publisher
+// network for every Gulf market. They are intentionally disabled. The shared
+// market-news registry now supplies HTTPS search, market-data, licensed, and
+// administrator-configured official exchange feeds.
+export const GULF_RSS_FEEDS: GulfRssFeed[] = [];

@@ -32,6 +32,18 @@ import { TechTickerStrip } from '@/components/tech-news/TechTickerStrip';
 
 type ApiResponse = TechNewsPayload | { success: false; error?: string; reason?: string };
 type TechNewsViewMode = 'grid' | 'list';
+type NewsDeliveryStatus = Pick<TechNewsPayload, 'partialFailure' | 'liveUpdatesAvailable' | 'storedFallbackUsed'>;
+type EvidenceLabels = {
+  official: string;
+  confirmed: string;
+  singleSource: string;
+  conflicting: string;
+  unverified: string;
+  sourceCount: string;
+  confirmations: string;
+  singleSourceDetail: string;
+  conflictDetail: string;
+};
 type MentionedTicker = {
   ticker: string;
   companyName: string;
@@ -41,7 +53,11 @@ type MentionedTicker = {
 const NEWS_PAGE_SIZE = 9;
 const FEATURED_NEWS_COUNT = 3;
 const TRACKED_SYMBOLS = ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA', 'AMD', 'INTC', 'ORCL', 'CRM', 'AVGO', 'NFLX'] as const;
-const REQUIRED_SOURCE_OPTIONS = ['Yahoo', 'Finnhub', 'Benzinga', 'CNBC', 'SeekingAlpha'] as const;
+const INITIAL_NEWS_DELIVERY_STATUS: NewsDeliveryStatus = {
+  partialFailure: false,
+  liveUpdatesAvailable: true,
+  storedFallbackUsed: false,
+};
 
 const COPY = {
   ar: {
@@ -420,6 +436,38 @@ function sourceMatches(item: TechNewsItem, source: string) {
   return canonicalSourceLabel(item.source) === source;
 }
 
+function TechNewsEvidence({ item, labels }: { item: TechNewsItem; labels: EvidenceLabels }) {
+  const independentCount = Math.max(1, item.independentSourceCount || 0);
+  const isConflicting = item.verificationStatus === 'conflicting';
+  const isOfficial = item.isOfficial || item.verificationStatus === 'official';
+  const status = isConflicting
+    ? labels.conflicting
+    : isOfficial
+      ? labels.official
+      : item.verificationStatus === 'confirmed'
+      ? labels.confirmed
+        : item.verificationStatus === 'single_source'
+          ? labels.singleSource
+          : labels.unverified;
+  const detail = isConflicting
+    ? labels.conflictDetail
+    : independentCount > 1
+      ? labels.confirmations.replace('{count}', String(independentCount))
+      : isOfficial
+        ? labels.sourceCount.replace('{count}', String(independentCount))
+        : labels.singleSourceDetail;
+
+  return (
+    <div className={`tech-news-evidence ${isConflicting ? 'conflicting' : isOfficial ? 'official' : ''}`}>
+      {isConflicting ? <AlertTriangle size={14} /> : <ShieldCheck size={14} />}
+      <div>
+        <strong>{status}</strong>
+        <span>{detail}</span>
+      </div>
+    </div>
+  );
+}
+
 function categoryMatches(item: TechNewsItem, category: TechNewsDashboardCategory) {
   if (category === 'all') return true;
   const sectors = new Set([item.sector, ...(item.sectors ?? [])]);
@@ -488,11 +536,12 @@ function replaceMany(template: string, values: Record<string, string | number>) 
 }
 
 export function TechNewsPage() {
-  const { dir, lang } = useLanguage();
+  const { dir, lang, t } = useLanguage();
   const ui = copyFor(lang);
   const [items, setItems] = useState<TechNewsItem[]>([]);
   const [prices, setPrices] = useState<TechStockPrice[]>([]);
   const [lastUpdated, setLastUpdated] = useState('');
+  const [newsDeliveryStatus, setNewsDeliveryStatus] = useState<NewsDeliveryStatus>(INITIAL_NEWS_DELIVERY_STATUS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -520,10 +569,16 @@ export function TechNewsPage() {
       setItems(json.items);
       setPrices(json.prices ?? []);
       setLastUpdated(json.lastUpdated);
+      setNewsDeliveryStatus({
+        partialFailure: json.partialFailure,
+        liveUpdatesAvailable: json.liveUpdatesAvailable,
+        storedFallbackUsed: json.storedFallbackUsed,
+      });
     } catch (loadError) {
       setItems([]);
       setPrices([]);
       setLastUpdated('');
+      setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
       setError(loadError instanceof Error ? loadError.message : ui.noNews);
     } finally {
       if (showLoader) setLoading(false);
@@ -542,12 +597,8 @@ export function TechNewsPage() {
   const dedupedItems = useMemo(() => dedupeNewsItems(items), [items]);
 
   const sourceOptions = useMemo(() => (
-    [
-      ...REQUIRED_SOURCE_OPTIONS,
-      ...Array.from(new Set(dedupedItems.map(item => canonicalSourceLabel(item.source)).filter(Boolean)))
-        .filter(source => !(REQUIRED_SOURCE_OPTIONS as readonly string[]).includes(source))
-        .sort((a, b) => a.localeCompare(b)),
-    ]
+    Array.from(new Set(dedupedItems.map(item => canonicalSourceLabel(item.source)).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b))
   ), [dedupedItems]);
 
   const symbolOptions = useMemo(() => [...TRACKED_SYMBOLS], []);
@@ -680,6 +731,22 @@ export function TechNewsPage() {
     stockMove: ui.stockMove,
     delayedQuote: ui.delayedQuote,
   };
+  const evidenceLabels: EvidenceLabels = {
+    official: t('news_verification_official'),
+    confirmed: t('news_verification_confirmed'),
+    singleSource: t('news_verification_single_source'),
+    conflicting: t('news_verification_conflicting'),
+    unverified: t('news_verification_unverified'),
+    sourceCount: t('news_independent_source_count'),
+    confirmations: t('news_independent_confirmations'),
+    singleSourceDetail: t('news_single_source_detail'),
+    conflictDetail: t('news_conflict_detail'),
+  };
+  const coverageNotice = newsDeliveryStatus.storedFallbackUsed || !newsDeliveryStatus.liveUpdatesAvailable
+    ? t('news_stored_fallback')
+    : newsDeliveryStatus.partialFailure
+      ? t('news_partial_coverage')
+      : '';
 
   const filterControls = (
     <TechNewsFilters
@@ -738,6 +805,12 @@ export function TechNewsPage() {
           refreshing={refreshing}
           onRefresh={() => void load(false)}
         />
+        {coverageNotice ? (
+          <div className="tech-news-coverage-notice" role="status">
+            <AlertTriangle size={17} />
+            <span>{coverageNotice}</span>
+          </div>
+        ) : null}
         <TechTickerStrip
           prices={prices}
           formatPrice={formatPrice}
@@ -790,6 +863,7 @@ export function TechNewsPage() {
                 linkUnavailable: ui.linkUnavailable,
               }}
               cardLabels={cardLabels}
+              evidenceLabels={evidenceLabels}
               formatDateTime={formatDateTime}
               formatPrice={formatPrice}
             />
@@ -828,14 +902,16 @@ export function TechNewsPage() {
                 {visibleNewsItems.length > 0 ? (
                   <section className={`tech-news-feed ${viewMode}`} aria-label={ui.resultsTitle}>
                     {visibleNewsItems.map(item => (
-                      <TechNewsCard
-                        key={item.id}
-                        item={item}
-                        variant={viewMode === 'list' ? 'list' : 'standard'}
-                        labels={cardLabels}
-                        formatDateTime={formatDateTime}
-                        formatPrice={formatPrice}
-                      />
+                      <div className="tech-news-evidence-card" key={item.id}>
+                        <TechNewsCard
+                          item={item}
+                          variant={viewMode === 'list' ? 'list' : 'standard'}
+                          labels={cardLabels}
+                          formatDateTime={formatDateTime}
+                          formatPrice={formatPrice}
+                        />
+                        <TechNewsEvidence item={item} labels={evidenceLabels} />
+                      </div>
                     ))}
                   </section>
                 ) : null}
@@ -1326,6 +1402,19 @@ export function TechNewsPage() {
         .tech-news-featured-head span{display:inline-flex;align-items:center;gap:7px;color:var(--tech-accent);font-size:12px;font-weight:950}
         .tech-news-featured-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.85fr);gap:16px;align-items:stretch}
         .tech-news-featured-side{display:grid;gap:12px;min-width:0}
+        .tech-news-evidence-card{display:grid;gap:8px;min-width:0;align-content:start}
+        .tech-news-featured-grid>.tech-news-evidence-card:first-child,.tech-news-evidence-card>.tech-news-card.featured{height:100%}
+        .tech-news-evidence{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid var(--tech-border);border-radius:14px;background:var(--tech-panel-soft);color:var(--tech-muted);font-size:12px;line-height:1.45}
+        .tech-news-evidence>svg{margin-top:2px;flex:none;color:#167D91}
+        .tech-news-evidence>div{display:grid;gap:2px;min-width:0}
+        .tech-news-evidence strong{color:var(--tech-text);font-weight:900}
+        .tech-news-evidence span{font-weight:700}
+        .tech-news-evidence.official{border-color:rgba(21,149,242,.28);background:rgba(21,149,242,.07)}
+        .tech-news-evidence.conflicting{border-color:rgba(217,119,6,.32);background:rgba(245,158,11,.09);color:#92400E}
+        .dark .tech-news-evidence.conflicting{color:#FDE68A}
+        .tech-news-coverage-notice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid rgba(217,119,6,.3);border-radius:16px;background:rgba(245,158,11,.09);color:#92400E;font-size:13px;font-weight:800;line-height:1.55}
+        .tech-news-coverage-notice svg{margin-top:2px;flex:none}
+        .dark .tech-news-coverage-notice{color:#FDE68A}
         .tech-news-card.featured{min-height:100%;grid-template-rows:minmax(170px,240px) auto auto}
         .tech-news-card.compact{padding:0}
         .tech-news-card-media{
@@ -1787,12 +1876,14 @@ function FeaturedNewsSection({
   items,
   labels,
   cardLabels,
+  evidenceLabels,
   formatDateTime,
   formatPrice,
 }: {
   items: TechNewsItem[];
   labels: { title: string; lead: string; openArticle: string; readMore: string; linkUnavailable: string };
   cardLabels: Parameters<typeof TechNewsCard>[0]['labels'];
+  evidenceLabels: EvidenceLabels;
   formatDateTime: (value: string) => string;
   formatPrice: (value: number | null) => string;
 }) {
@@ -1809,23 +1900,28 @@ function FeaturedNewsSection({
         </span>
       </div>
       <div className="tech-news-featured-grid">
-        <TechNewsCard
-          item={lead}
-          variant="featured"
-          labels={cardLabels}
-          formatDateTime={formatDateTime}
-          formatPrice={formatPrice}
-        />
+        <div className="tech-news-evidence-card">
+          <TechNewsCard
+            item={lead}
+            variant="featured"
+            labels={cardLabels}
+            formatDateTime={formatDateTime}
+            formatPrice={formatPrice}
+          />
+          <TechNewsEvidence item={lead} labels={evidenceLabels} />
+        </div>
         <div className="tech-news-featured-side">
           {secondaryItems.map(item => (
-            <TechNewsCard
-              key={item.id}
-              item={item}
-              variant="standard"
-              labels={cardLabels}
-              formatDateTime={formatDateTime}
-              formatPrice={formatPrice}
-            />
+            <div className="tech-news-evidence-card" key={item.id}>
+              <TechNewsCard
+                item={item}
+                variant="standard"
+                labels={cardLabels}
+                formatDateTime={formatDateTime}
+                formatPrice={formatPrice}
+              />
+              <TechNewsEvidence item={item} labels={evidenceLabels} />
+            </div>
           ))}
         </div>
       </div>

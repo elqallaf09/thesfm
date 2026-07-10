@@ -1,294 +1,324 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
-import { addUtcDays, clampNumber, formatIsoDate, normalizeTitle, validIsoDate, type ProviderApiResponse } from '@/lib/providers/shared';
-import { getMarketNews } from '@/lib/providers/news';
-import {
-  buildMarketNewsRelevanceContext,
-  filterMarketNewsByRelevance,
-  parseNewsSymbols,
-  type MarketNewsRelevanceContext,
-  type MarketNewsRelevanceFilterResult,
-} from '@/lib/providers/news/relevance';
-import type { MarketNewsArticle, MarketNewsQuery, MarketNewsScope } from '@/lib/providers/news/types';
+import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import type {
+  ConsolidatedNewsStory,
+  FinancialEventType,
+  FinancialAssetType,
+  ExpectedImpact,
+  NewsFetchParams,
+  NewsSentiment,
+  NewsSourceType,
+  VerificationStatus,
+} from '@/lib/market-news/types';
+import { EXPECTED_IMPACTS, FINANCIAL_ASSET_TYPES, NEWS_SENTIMENTS, VERIFICATION_STATUSES } from '@/lib/market-news/types';
+import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
+import { checkRateLimit, getClientIp, rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 
-const MAX_RANGE_DAYS = 31;
 const SUCCESS_HEADERS = {
-  'Cache-Control': 'public, s-maxage=90, stale-while-revalidate=240',
+  'Cache-Control': 'public, s-maxage=90, stale-while-revalidate=600',
 };
-const ERROR_HEADERS = {
-  'Cache-Control': 'private, no-store',
+const UNAVAILABLE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=300',
 };
+const MAX_QUERY_LENGTH = 180;
+const MAX_FILTER_VALUES = 24;
+const MAX_RANGE_DAYS = 90;
 
-function safeCode(messageCode: string | null, fallback: string) {
-  return (messageCode || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
-}
+const EVENT_TYPES = new Set<FinancialEventType>([
+  'unknown', 'earnings_results', 'earnings_guidance', 'dividend_announcement', 'dividend_cancellation',
+  'merger_acquisition', 'acquisition_offer', 'ipo_listing', 'delisting', 'trading_suspension',
+  'regulatory_action', 'lawsuit_legal_decision', 'credit_rating_change', 'debt_issuance', 'capital_increase',
+  'share_buyback', 'insider_transaction', 'management_change', 'major_contract', 'product_launch',
+  'cybersecurity_incident', 'operational_disruption', 'bankruptcy_restructuring', 'analyst_rating_change',
+  'macroeconomic_release', 'interest_rate_decision', 'inflation_report', 'employment_report',
+  'commodity_price_event', 'currency_event', 'geopolitical_event', 'exchange_announcement',
+  'shariah_classification_update', 'other_material_event',
+]);
 
-function clampPositiveInt(value: string | null, fallback: number, min: number, max: number) {
+const SOURCE_TYPES = new Set<NewsSourceType>([
+  'official_exchange', 'regulator', 'central_bank', 'government_agency', 'regulatory_filing', 'company_ir',
+  'corporate_press_release', 'financial_news_agency', 'financial_publication', 'market_data_provider',
+  'regional_market_publication', 'industry_publication', 'public_rss', 'social_signal', 'other',
+]);
+
+function integer(value: string | null, fallback: number, min: number, max: number) {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(parsed)));
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.trunc(parsed))) : fallback;
 }
 
-function normalizeText(value: string | null | undefined) {
-  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+function cleanText(value: string | null, max = 80) {
+  return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-function extractFiscalPeriod(article: MarketNewsArticle) {
-  const haystack = normalizeText(`${article.headline} ${article.summary || ''}`);
-  const match = haystack.match(
-    /\b(fy|fiscal\s+year)\s*(\d{2,4})\b|\b(q\d\s*-?\s*\d{2,4})\b|\b(q\d)\s+(\d{2,4})\b|\b(\d{4})\s+q\d\b/
-  );
-  if (!match) return 'no-fiscal-period';
-  const raw = [match[1], match[2], match[3], match[4], match[5], match[6]]
-    .filter(Boolean)
-    .join('')
-    .replace(/\s+/g, '');
-  return raw || 'no-fiscal-period';
+function list(searchParams: URLSearchParams, keys: string[], maxLength = 80) {
+  const values = keys.flatMap(key => searchParams.getAll(key).flatMap(value => value.split(',')));
+  return [...new Set(values.map(value => cleanText(value, maxLength)).filter(Boolean))].slice(0, MAX_FILTER_VALUES);
 }
 
-function dedupeNewsArticles(articles: MarketNewsArticle[]) {
-  const seen = new Set<string>();
-  const result: MarketNewsArticle[] = [];
-  for (const article of articles) {
-    const date = String(article.publishedAt || '').slice(0, 10) || 'no-date';
-    const source = normalizeText(article.source) || 'unknown-source';
-    const symbols = [...new Set((article.relatedSymbols || []).map(s => s.toUpperCase()).filter(Boolean))]
-      .sort()
-      .slice(0, 8)
-      .join(',')
-      || 'no-symbols';
-    const key = `${source}|${date}|${symbols}|${extractFiscalPeriod(article)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(article);
-  }
-  return result;
+function symbolList(searchParams: URLSearchParams) {
+  return list(searchParams, ['symbol', 'symbols', 'selectedSymbols', 'watchSymbols'], 32)
+    .map(value => value.toUpperCase())
+    .filter(value => /^[A-Z0-9._:\-=^]{1,32}$/.test(value));
 }
 
-function defaultNewsRange() {
+function dateOnly(value: string | null) {
+  const clean = cleanText(value, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) return null;
+  const parsed = new Date(`${clean}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : clean;
+}
+
+function defaultRange() {
   const to = new Date();
-  const from = addUtcDays(to, -7);
-  return { from: formatIsoDate(from), to: formatIsoDate(to) };
+  const from = new Date(to.getTime() - 30 * 86400000);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
 
-function parseDateRange(searchParams: URLSearchParams) {
-  const defaults = defaultNewsRange();
-  const from = searchParams.get('from')?.trim() || defaults.from;
-  const to = searchParams.get('to')?.trim() || defaults.to;
-
-  if (!validIsoDate(from) || !validIsoDate(to)) {
-    return { error: 'provider_invalid_request' as const };
-  }
-
-  const fromDate = new Date(`${from}T00:00:00.000Z`);
-  const toDate = new Date(`${to}T00:00:00.000Z`);
-  if (toDate.getTime() < fromDate.getTime()) return { error: 'provider_invalid_request' as const };
-
-  const rangeDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
-  if (rangeDays > MAX_RANGE_DAYS) return { error: 'provider_invalid_request' as const };
-
+function parseRange(searchParams: URLSearchParams) {
+  const defaults = defaultRange();
+  const from = searchParams.has('from') ? dateOnly(searchParams.get('from')) : defaults.from;
+  const to = searchParams.has('to') ? dateOnly(searchParams.get('to')) : defaults.to;
+  if (!from || !to) return null;
+  const start = new Date(`${from}T00:00:00.000Z`).getTime();
+  const end = new Date(`${to}T00:00:00.000Z`).getTime();
+  if (end < start || (end - start) / 86400000 > MAX_RANGE_DAYS) return null;
   return { from, to };
 }
 
-function safeScope(value: string | null): MarketNewsScope | 'invalid' {
-  const text = String(value ?? 'general').trim().toLowerCase();
-  if (text === 'general' || text === 'asset') return text;
-  return 'invalid';
+function parseSort(value: string | null): 'latest' | 'importance' | 'official' | 'relevance' {
+  return value === 'importance' || value === 'official' || value === 'relevance' ? value : 'latest';
 }
 
-function safeSymbol(value: string | null) {
-  const text = String(value ?? '').trim().toUpperCase();
-  return /^[A-Z0-9._:\-=^]{1,32}$/.test(text) ? text : '';
+function parseBoolean(value: string | null) {
+  return value === '1' || value === 'true' || value === 'yes';
 }
 
-function toUiArticle(article: MarketNewsArticle & {
-  relevanceScore?: number;
-  relevanceReasons?: string[];
-  relevanceBucket?: string;
-}) {
+function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>) {
+  const supportingSources = Array.isArray(story.supportingSources)
+    ? story.supportingSources.map(source => {
+      const row = source as Record<string, unknown>;
+      return {
+        sourceName: String(row.sourceName ?? ''),
+        sourceDomain: row.sourceDomain ? String(row.sourceDomain) : null,
+        originalUrl: String(row.originalUrl ?? ''),
+        publishedAt: String(row.publishedAt ?? ''),
+        isOfficial: row.isOfficial === true,
+        reliabilityScore: typeof row.reliabilityScore === 'number' ? row.reliabilityScore : null,
+      };
+    })
+    : [];
   return {
-    ...article,
-    title: article.headline,
-    headline: article.headline,
-    description: article.summary,
-    excerpt: article.summary,
-    url: article.sourceUrl,
-    link: article.sourceUrl,
-    source_url: article.sourceUrl,
-    image: article.imageUrl,
-    published_at: article.publishedAt,
-    published: article.publishedAt,
-    symbols: article.relatedSymbols,
-    providerArticleId: article.id,
-    relevanceScore: article.relevanceScore ?? null,
-    relevanceReasons: article.relevanceReasons ?? [],
-    relevanceBucket: article.relevanceBucket ?? null,
+    id: story.id,
+    title: story.title,
+    headline: story.title,
+    summary: story.summary,
+    description: story.summary,
+    originalLanguage: story.originalLanguage,
+    sourceId: story.sourceId,
+    sourceName: story.sourceName,
+    source: story.sourceName,
+    sourceType: story.sourceType,
+    sourceDomain: story.sourceDomain,
+    sourceReliability: story.sourceReliability,
+    isOfficial: story.isOfficial,
+    publishedAt: story.publishedAt,
+    published_at: story.publishedAt,
+    updatedAt: story.updatedAt,
+    earliestPublishedAt: story.earliestPublishedAt,
+    latestUpdatedAt: story.latestUpdatedAt,
+    originalUrl: story.originalUrl,
+    url: story.originalUrl,
+    canonicalUrl: story.canonicalUrl,
+    marketCodes: story.marketCodes,
+    exchangeCodes: story.exchangeCodes,
+    countries: story.countries,
+    sectors: story.sectors,
+    industries: story.industries,
+    symbols: story.symbols,
+    relatedSymbols: story.symbols,
+    companyNames: story.companyNames,
+    assetTypes: story.assetTypes,
+    currencies: story.currencies,
+    eventType: story.eventType,
+    category: story.eventType,
+    relevanceScore: story.relevanceScore,
+    importanceScore: story.importanceScore,
+    entityConfidenceScore: story.entityConfidenceScore,
+    confidenceScore: story.confidenceScore,
+    sentiment: story.sentiment,
+    expectedImpact: story.expectedImpact,
+    impact: story.expectedImpact,
+    impactDirection: story.impactDirection,
+    impactHorizon: story.impactHorizon,
+    impactReason: story.impactReason,
+    verificationStatus: story.verificationStatus,
+    corroboratingSourceCount: story.corroboratingSourceCount,
+    independentSourceCount: story.independentSourceCount,
+    supportingSources,
+    conflictSummary: story.conflictSummary ?? null,
+    whyItMatters: story.whyItMatters ?? null,
   };
 }
 
-function paginateItems<T>(items: T[], page: number, limit: number) {
-  const safePage = Math.max(1, page);
-  const safeLimit = Math.max(1, limit);
-  const start = (safePage - 1) * safeLimit;
-  return items.slice(start, start + safeLimit);
+async function translatedStories(items: Array<ConsolidatedNewsStory & Record<string, unknown>>, language: 'ar' | 'en' | 'fr') {
+  if (!isNewsTranslationEnabled()) return items;
+  const translated = await translateNewsItems(items.map(item => ({
+    ...item,
+    source: item.sourceName,
+    url: item.originalUrl,
+    headline: item.title,
+    summary: item.summary ?? '',
+    titleOriginal: item.title,
+    summaryOriginal: item.summary ?? item.title,
+    languageOriginal: item.originalLanguage,
+  })), language);
+  return translated as unknown as Array<ConsolidatedNewsStory & Record<string, unknown>>;
 }
 
-function buildRelevanceContext(searchParams: URLSearchParams, symbol: string | null): MarketNewsRelevanceContext {
-  return buildMarketNewsRelevanceContext({
-    market: searchParams.get('market') ?? searchParams.get('selectedMarket') ?? searchParams.get('marketId'),
-    category: searchParams.get('category') ?? searchParams.get('assetType') ?? searchParams.get('selectedCategory'),
-    symbol,
-    symbols: [
-      ...parseNewsSymbols(searchParams.get('symbols')),
-      ...parseNewsSymbols(searchParams.get('selectedSymbols')),
-      ...parseNewsSymbols(searchParams.get('watchSymbols')),
-    ],
-  });
-}
-
-function articleCategoryFilter(searchParams: URLSearchParams) {
-  return String(searchParams.get('newsCategory') ?? searchParams.get('articleCategory') ?? searchParams.get('sourceCategory') ?? '').trim().toLowerCase();
-}
-
-function applyLocalFilters(
-  articles: MarketNewsArticle[],
-  searchParams: URLSearchParams,
-  relevanceContext: MarketNewsRelevanceContext,
-) {
-  const source = String(searchParams.get('source') ?? '').trim().toLowerCase();
-  const category = articleCategoryFilter(searchParams);
-  const search = normalizeTitle(String(searchParams.get('search') ?? searchParams.get('q') ?? ''));
-  const sort = String(searchParams.get('sort') ?? 'latest').trim().toLowerCase();
-  const page = clampPositiveInt(searchParams.get('page'), 1, 1, 50);
-  const pageLimit = clampNumber(searchParams.get('limit'), 12, 1, 50);
-
-  const filtered = dedupeNewsArticles(articles).filter(article => {
-    if (source && article.source.toLowerCase() !== source) return false;
-    if (category && category !== 'general' && String(article.category ?? '').toLowerCase() !== category) return false;
-    if (!search) return true;
-    return normalizeTitle([
-      article.headline,
-      article.summary ?? '',
-      article.source,
-      article.relatedSymbols.join(' '),
-    ].join(' ')).includes(search);
-  });
-
-  const relevance = filterMarketNewsByRelevance(filtered, relevanceContext);
-  const sorted = relevance.articles.sort((a, b) => {
-    if (sort === 'relevance' && (b.relevanceScore ?? 0) !== (a.relevanceScore ?? 0)) {
-      return (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    }
-    const aTime = new Date(a.publishedAt).getTime();
-    const bTime = new Date(b.publishedAt).getTime();
-    if (sort === 'oldest') return aTime - bTime;
-    if ((b.relevanceScore ?? 0) !== (a.relevanceScore ?? 0)) return (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    return sort === 'oldest' ? aTime - bTime : bTime - aTime;
-  });
-
-  return {
-    articles: paginateItems(sorted, page, pageLimit),
-    total: sorted.length,
-    page,
-    pageSize: pageLimit,
-    relevance: relevance.diagnostics,
-  };
-}
-
-function jsonResponse(
-  result: ProviderApiResponse<MarketNewsArticle[]>,
-  searchParams: URLSearchParams,
-  relevanceContext: MarketNewsRelevanceContext,
-  responseLimit: number,
-  status = 200,
-) {
-  const filtered: {
-    articles: Array<MarketNewsArticle & { relevanceScore?: number; relevanceReasons?: string[]; relevanceBucket?: string }>;
-    relevance: MarketNewsRelevanceFilterResult['diagnostics'];
-    total: number;
-    page: number;
-    pageSize: number;
-  } = result.status === 'success'
-    ? applyLocalFilters(result.data, searchParams, relevanceContext)
-    : {
-      articles: dedupeNewsArticles(result.data),
-      total: 0,
-      page: 1,
-      pageSize: 12,
-      relevance: filterMarketNewsByRelevance([], relevanceContext).diagnostics,
-    };
-  const limitedArticles = filtered.articles.slice(0, responseLimit);
-  const items = limitedArticles.map(toUiArticle);
-  const code = result.status === 'success'
-    ? result.messageCode ? safeCode(result.messageCode, 'NEWS_NO_RESULTS') : null
-    : safeCode(result.messageCode, result.status);
-  const diagnostic = createMarketFeatureDiagnostic({
-    feature: 'market_news',
-    provider: result.provider === 'finnhub' ? 'Finnhub' : result.provider,
-    providerStatus: result.status,
-    data: items,
-    lastUpdated: result.lastSuccessfulUpdate,
-  });
-
+function invalidRequest() {
   return NextResponse.json({
-    ...diagnostic,
-    cached: result.cached,
-    stale: result.stale,
-    lastSuccessfulUpdate: result.lastSuccessfulUpdate,
-    updated_at: result.lastSuccessfulUpdate,
-    messageCode: result.messageCode,
-    code,
-    items,
-    relevance: {
-      ...filtered.relevance,
-      returned: items.length,
-      total: filtered.total,
-      page: filtered.page,
-      pageSize: filtered.pageSize,
-      totalPages: filtered.pageSize ? Math.max(1, Math.ceil(filtered.total / filtered.pageSize)) : 1,
-    },
-    success: result.status === 'success',
-    source: result.provider,
-    total: diagnostic.count,
-    legacyStatus: result.status,
-  }, {
-    status,
-    headers: result.status === 'success' ? SUCCESS_HEADERS : ERROR_HEADERS,
-  });
+    ok: false,
+    success: false,
+    code: 'NEWS_INVALID_REQUEST',
+    items: [],
+    stories: [],
+    total: 0,
+  }, { status: 400, headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const scope = safeScope(searchParams.get('scope'));
-  const symbol = safeSymbol(searchParams.get('symbol'));
-  const range = parseDateRange(searchParams);
+  const limited = rateLimitRequest(request, { max: 60, windowMs: 60_000, prefix: 'market-news' });
+  if (limited) return limited;
 
-  if (scope === 'invalid' || 'error' in range || (scope === 'asset' && !symbol)) {
-    return jsonResponse({
-      status: 'invalid_request',
-      provider: 'finnhub',
-      data: [],
-      cached: false,
-      stale: false,
-      lastSuccessfulUpdate: null,
-      messageCode: 'provider_invalid_request',
-    }, searchParams, buildRelevanceContext(searchParams, symbol || null), 0, 400);
+  const searchParams = request.nextUrl.searchParams;
+  const query = cleanText(searchParams.get('q') ?? searchParams.get('search'), MAX_QUERY_LENGTH);
+  const scope = cleanText(searchParams.get('scope') || 'general', 16);
+  const range = parseRange(searchParams);
+  const symbols = symbolList(searchParams);
+  if (!range || !['general', 'market', 'asset'].includes(scope) || (scope === 'asset' && symbols.length === 0)) return invalidRequest();
+
+  const refreshRequested = searchParams.has('refresh');
+  if (refreshRequested && !checkRateLimit(getClientIp(request), { max: 8, windowMs: 60_000, prefix: 'market-news-refresh' })) {
+    return NextResponse.json({ ok: false, success: false, code: 'NEWS_REFRESH_RATE_LIMITED', items: [], stories: [] }, {
+      status: 429,
+      headers: { 'Cache-Control': 'private, no-store', 'Retry-After': '60' },
+    });
   }
 
-  const limit = clampNumber(searchParams.get('limit'), 12, 1, 50);
-  const relevanceContext = buildRelevanceContext(searchParams, symbol || null);
-  const providerLimit = clampNumber(searchParams.get('providerLimit'), Math.min(200, Math.max(limit * 4, 24)), 1, 200);
-  const query: MarketNewsQuery = {
-    scope,
-    symbol: symbol || null,
+  const page = integer(searchParams.get('page'), 1, 1, 10_000);
+  const pageSize = integer(searchParams.get('limit') ?? searchParams.get('pageSize'), 24, 1, 60);
+  const language = normalizeNewsLanguage(searchParams.get('lang') ?? searchParams.get('language'));
+  const eventTypes = list(searchParams, ['eventType', 'eventTypes'], 48).filter((value): value is FinancialEventType => EVENT_TYPES.has(value as FinancialEventType));
+  const sourceTypes = list(searchParams, ['sourceType', 'sourceTypes'], 48).filter((value): value is NewsSourceType => SOURCE_TYPES.has(value as NewsSourceType));
+  const verificationStatuses = list(searchParams, ['verification', 'verificationStatus', 'verificationStatuses'], 32)
+    .filter((value): value is VerificationStatus => (VERIFICATION_STATUSES as readonly string[]).includes(value));
+  const impactLevels = list(searchParams, ['impact', 'impactLevel', 'impactLevels'], 24)
+    .filter((value): value is ExpectedImpact => (EXPECTED_IMPACTS as readonly string[]).includes(value));
+  const sentiments = list(searchParams, ['sentiment', 'sentiments'], 24)
+    .filter((value): value is NewsSentiment => (NEWS_SENTIMENTS as readonly string[]).includes(value));
+  const sourceLanguages = list(searchParams, ['sourceLanguage', 'sourceLanguages'], 12)
+    .map(value => value.toLowerCase()).filter(value => /^[a-z]{2,8}$/.test(value));
+  const isins = list(searchParams, ['isin', 'isins'], 20).map(value => value.toUpperCase())
+    .filter(value => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(value));
+  const indexCodes = list(searchParams, ['index', 'indexCode', 'indexCodes'], 32);
+  const commodities = list(searchParams, ['commodity', 'commodities'], 60);
+  const companyNames = list(searchParams, ['company', 'companyName'], 100);
+  const effectiveQuery = [query, ...companyNames, ...isins, ...indexCodes, ...commodities].filter(Boolean).join(' ').slice(0, MAX_QUERY_LENGTH);
+
+  const params: NewsFetchParams = {
+    query: effectiveQuery || undefined,
+    symbols,
+    companyNames,
+    marketCodes: list(searchParams, ['market', 'markets', 'marketCode', 'selectedMarket'], 40),
+    exchangeCodes: list(searchParams, ['exchange', 'exchanges', 'exchangeCode'], 40),
+    countries: list(searchParams, ['country', 'countries'], 40),
+    sectors: list(searchParams, ['sector', 'sectors'], 60),
+    industries: list(searchParams, ['industry', 'industries'], 60),
+    assetTypes: list(searchParams, ['assetType', 'assetTypes'], 40)
+      .filter((value): value is FinancialAssetType => (FINANCIAL_ASSET_TYPES as readonly string[]).includes(value)),
+    currencies: list(searchParams, ['currency', 'currencies'], 16).map(value => value.toUpperCase()),
+    isins,
+    indexCodes,
+    commodities,
+    eventTypes,
+    sourceTypes,
+    sourceIds: list(searchParams, ['sourceId', 'sourceIds'], 100),
+    sourceNames: list(searchParams, ['source', 'sourceName', 'sourceNames'], 160),
+    verificationStatuses,
+    impactLevels,
+    sentiments,
+    languages: sourceLanguages,
+    language,
     from: range.from,
     to: range.to,
-    limit: providerLimit,
-    force: searchParams.has('refresh'),
+    officialOnly: parseBoolean(searchParams.get('officialOnly')),
+    strictEntityFilter: symbols.length > 0,
+    limit: Math.min(200, Math.max(pageSize * 4, 60)),
+    forceRefresh: refreshRequested,
   };
 
-  const result = await getMarketNews(query);
-  return jsonResponse(result, searchParams, relevanceContext, limit);
+  const result = await aggregateFinancialNews(params, {
+    page,
+    pageSize,
+    sort: parseSort(searchParams.get('sort')),
+    forceExternal: refreshRequested,
+  });
+  const stories = await translatedStories(result.stories as Array<ConsolidatedNewsStory & Record<string, unknown>>, language);
+  const items = stories.map(toUiStory);
+  const unavailable = !result.liveUpdatesAvailable && !result.storedFallbackUsed && items.length === 0;
+  const code = unavailable
+    ? 'MARKET_NEWS_LIVE_UNAVAILABLE'
+    : result.partialFailure
+      ? 'MARKET_NEWS_PARTIAL_COVERAGE'
+      : items.length === 0
+        ? 'NEWS_NO_RESULTS'
+        : null;
+
+  return NextResponse.json({
+    ok: !unavailable,
+    success: !unavailable,
+    status: unavailable ? 'unavailable' : result.partialFailure ? 'degraded' : 'success',
+    code,
+    source: 'multi-source',
+    provider: 'multi-source',
+    items,
+    stories: items,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+    filters: result.appliedFilters,
+    appliedFilters: result.appliedFilters,
+    providerCoverage: result.providerCoverage,
+    partialFailure: result.partialFailure,
+    liveUpdatesAvailable: result.liveUpdatesAvailable,
+    storedFallbackUsed: result.storedFallbackUsed,
+    warnings: result.warnings,
+    updated_at: result.lastUpdated,
+    lastUpdated: result.lastUpdated,
+    lastSuccessfulUpdate: result.lastSuccessfulUpdate,
+    cached: result.cacheStatus === 'hit' || result.cacheStatus === 'stale' || result.cacheStatus === 'stored',
+    stale: result.cacheStatus === 'stale' || result.cacheStatus === 'stored',
+    cacheStatus: result.cacheStatus,
+    searchDurationMs: result.searchDurationMs,
+    diagnostics: {
+      providerCoverage: result.providerCoverage,
+      partialFailure: result.partialFailure,
+      liveUpdatesAvailable: result.liveUpdatesAvailable,
+      storedFallbackUsed: result.storedFallbackUsed,
+      searchDurationMs: result.searchDurationMs,
+    },
+    relevance: {
+      returned: items.length,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages: result.totalPages,
+    },
+  }, {
+    status: 200,
+    headers: unavailable ? UNAVAILABLE_HEADERS : SUCCESS_HEADERS,
+  });
 }

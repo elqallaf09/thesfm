@@ -187,6 +187,8 @@
     ["STRATEGY AGREEMENT", "اتفاق الاستراتيجيات"],
     ["TECHNICAL", "التحليل الفني"],
     ["AI CONFIDENCE", "ثقة الذكاء الاصطناعي"],
+    ["ANALYZED ASSETS", "الأصول المحللة"],
+    ["ACTIVE MARKET", "السوق النشط"],
     ["RELATED NEWS", "أخبار مرتبطة"],
     ["Price", "السعر"],
     ["Target", "الهدف"],
@@ -494,6 +496,8 @@
     "MARKET NEWS": "ACTUALITÉS DES MARCHÉS",
     "AI ANALYSIS": "ANALYSE IA",
     "AI CONFIDENCE": "CONFIANCE DE L’IA",
+    "ANALYZED ASSETS": "ACTIFS ANALYSÉS",
+    "ACTIVE MARKET": "MARCHÉ ACTIF",
     "AI SCANNER": "SCANNER IA",
     "SIGNALS": "SIGNAUX",
     "RISK RADAR": "RADAR DES RISQUES",
@@ -1700,6 +1704,7 @@
       scope: context.symbol ? "asset" : "general",
       market: context.market.id,
       category: context.category,
+      lang: currentLanguage(),
     });
     if (context.symbol) params.set("symbol", context.symbol);
     if (context.symbols.length) params.set("symbols", context.symbols.join(","));
@@ -2728,7 +2733,7 @@
 
   function newsPage() {
     const n = newsItems();
-    return `<div class="page-stack">${hero(textPair("أخبار السوق", "Market news"), textPair("تُقرأ الأخبار من مزود حقيقي. عند غيابه نعرض رسالة واضحة بدل عناوين مصطنعة.", "News is read from a real provider. When it is unavailable, a clear message is shown instead of synthetic headlines."), "NEWS")}
+    return `<div class="page-stack">${hero(textPair("أخبار السوق", "Market news", "Actualités des marchés"), textPair("تُجمع الأخبار من مصادر مستقلة وتُعرض مع حالة التحقق بوضوح، دون عناوين مصطنعة.", "News is consolidated from independent sources and shown with clear verification status, without synthetic headlines.", "Les actualités sont consolidées à partir de sources indépendantes et accompagnées d’un statut de vérification clair, sans titres artificiels."), "NEWS")}
       <section class="news-grid">${n.length ? n.map(newsCard).join("") : unavailableSection(state.news, textPair("مزود الأخبار لم يرجع عناصر قابلة للعرض.", "The news provider did not return displayable items."), terminalText("settings"), `${ROOT}/settings`)}</section></div>`;
   }
 
@@ -4073,10 +4078,38 @@
     return `<div class="table-shell trade-journal-table"><table><thead><tr><th>${h(terminalText("symbol"))}</th><th>${h(terminalText("action"))}</th><th>${h(textPair("الدخول", "Entry"))}</th><th>${h(textPair("الحالي", "Current"))}</th><th>${h(terminalText("target"))}</th><th>${h(textPair("وقف الخسارة", "Stop loss"))}</th><th>P/L</th><th>${h(textPair("الحالة", "Status"))}</th><th>${h(terminalText("source"))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function newsList(items) { return `<div class="news-list">${items.map(newsCard).join("")}</div>`; }
+  function newsEvidence(n) {
+    const verification = String(n.verificationStatus || "unverified").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const independentCountValue = Number(n.independentSourceCount);
+    const independentCount = Number.isFinite(independentCountValue) && independentCountValue > 0 ? Math.round(independentCountValue) : 0;
+    const official = n.isOfficial === true || verification === "official";
+    const conflicting = verification === "conflicting";
+    let label = textPair("غير مؤكد", "Unverified", "Non vérifié"), tone = "";
+    if (conflicting) {
+      label = textPair("معلومات متضاربة", "Conflicting reports", "Informations contradictoires");
+      tone = "warn";
+    } else if (official) {
+      label = textPair("إفصاح رسمي", "Official disclosure", "Publication officielle");
+      tone = "ok";
+    } else if (verification === "confirmed" && independentCount >= 2) {
+      label = textPair(`مؤكد من ${independentCount} مصادر مستقلة`, `Confirmed by ${independentCount} independent sources`, `Confirmé par ${independentCount} sources indépendantes`);
+      tone = "ok";
+    } else if (verification === "confirmed") {
+      label = textPair("خبر مؤكد", "Confirmed", "Confirmé");
+      tone = "ok";
+    } else if (verification === "single_source" || independentCount === 1) {
+      label = textPair("مصدر واحد · غير مؤكد مستقلاً", "Single source · not independently confirmed", "Source unique · non confirmé indépendamment");
+    }
+    const countLabel = independentCount >= 2
+      ? textPair(`${independentCount} مصادر مستقلة`, `${independentCount} independent sources`, `${independentCount} sources indépendantes`)
+      : "";
+    return { label, tone, countLabel };
+  }
   function newsCard(n) {
-    const title = n.title || n.headline || n.name || textPair("خبر بدون عنوان", "Untitled news"), src = n.source || n.publisher || n.provider || textPair("أخبار السوق", "Market news"), when = date(n.publishedAt || n.datetime || n.date || n.createdAt), url = n.url || n.link || "", text = n.summary || n.description || n.text || "", impact = (n.impact || n.sentiment || "").toString().toLowerCase();
+    const title = n.title || n.headline || n.name || textPair("خبر بدون عنوان", "Untitled news", "Actualité sans titre"), src = n.sourceName || n.source || n.publisher || textPair("المصدر غير متاح", "Source unavailable", "Source indisponible"), when = date(n.publishedAt || n.datetime || n.date || n.createdAt), url = safeExternalUrl(n.originalUrl || n.canonicalUrl || n.url || n.link || ""), text = n.summary || n.description || n.text || "", impact = (n.expectedImpact || n.impact || "").toString().toLowerCase();
     const syms = arr(n.symbols || n.relatedSymbols).slice(0, 3);
-    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span>${impact ? `<span class="impact ${impact.includes("high") || impact.includes("bull") ? "ok" : impact.includes("low") ? "" : "warn"}">${h(translateUiText(impact))}</span>` : ""}</div><strong>${h(title)}</strong>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener">${h(terminalText("source"))}</a>` : ""}</article>`;
+    const evidence = newsEvidence(n);
+    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span><span class="impact ${evidence.tone}">${h(evidence.label)}</span></div>${evidence.countLabel && !evidence.label.includes(evidence.countLabel) ? `<div class="news-meta"><span>${h(evidence.countLabel)}</span>${impact ? `<span>${h(translateUiText(impact))}</span>` : ""}</div>` : impact ? `<div class="news-meta"><span>${h(translateUiText(impact))}</span></div>` : ""}<strong>${h(title)}</strong>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener noreferrer nofollow">${h(terminalText("source"))}</a>` : ""}</article>`;
   }
   function relatedNews(symbol, detail = {}) {
     const detailNews = arr(detail.news && (detail.news.items || detail.news.articles || detail.news.news || detail.news.data || detail.news.results));

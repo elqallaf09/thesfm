@@ -1,5 +1,6 @@
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
+import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { normalizeMarketCurrencyCode, normalizeMarketPrice } from '@/lib/market/marketCurrency';
@@ -265,100 +266,87 @@ function unavailableNewsSentiment(summaryEn = UNAVAILABLE_NEWS_SENTIMENT.summary
   return { ...UNAVAILABLE_NEWS_SENTIMENT, summaryEn, summaryAr };
 }
 
-function scoreNewsText(text: string) {
-  const lower = text.toLowerCase();
-  const positiveWords = [
-    'beat', 'beats', 'upgrade', 'upgraded', 'raises', 'raised', 'growth', 'profit', 'profits',
-    'record', 'strong', 'surge', 'rally', 'bullish', 'outperform', 'approval', 'approved',
-  ];
-  const negativeWords = [
-    'miss', 'misses', 'downgrade', 'downgraded', 'cuts', 'cut', 'loss', 'losses', 'weak',
-    'probe', 'lawsuit', 'decline', 'falls', 'fell', 'bearish', 'underperform', 'warning',
-  ];
-  const positive = positiveWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
-  const negative = negativeWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
-  return { positive, negative };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 async function fetchNewsSentimentForQuote(quote: TraderQuote): Promise<RecommendationNewsSentiment> {
   if (quote.assetType !== 'stock' && quote.assetType !== 'fund') {
     return unavailableNewsSentiment('News sentiment is not enabled for this asset type.', 'المعنويات الخبرية غير مفعلة لهذا النوع من الأصول.');
   }
-  const apiKey = cleanEnv(process.env.FINNHUB_API_KEY);
-  if (!apiKey) return unavailableNewsSentiment();
-
   const cacheKey = newsCacheKey(quote.providerSymbolUsed ?? quote.providerSymbol ?? quote.symbol);
   const cached = newsSentimentCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
   const to = new Date();
   const from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const date = (value: Date) => value.toISOString().slice(0, 10);
   const candidates = unique([quote.providerSymbolUsed, quote.providerSymbol, quote.symbol]).slice(0, 2);
+  if (!candidates.length) return unavailableNewsSentiment();
 
-  for (const candidate of candidates) {
-    const url = new URL('https://finnhub.io/api/v1/company-news');
-    url.searchParams.set('symbol', candidate);
-    url.searchParams.set('from', date(from));
-    url.searchParams.set('to', date(to));
-    url.searchParams.set('token', apiKey);
-    const response = await fetch(url, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(2500),
-      headers: { accept: 'application/json' },
-    }).catch(() => null);
-    if (!response?.ok) continue;
+  try {
+    const result = await aggregateFinancialNews({
+      symbols: candidates,
+      companyNames: quote.name ? [quote.name] : [],
+      strictEntityFilter: true,
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+      limit: 48,
+    }, { page: 1, pageSize: 12, sort: 'importance' });
+    const articles = result.stories;
+    if (!articles.length) {
+      return unavailableNewsSentiment('No recent consolidated stories were found for this security.', 'لم يتم العثور على قصص إخبارية موحدة حديثة لهذه الورقة المالية.');
+    }
 
-    const payload = await response.json().catch(() => null) as unknown;
-    if (!Array.isArray(payload)) continue;
-    const articles = payload
-      .map(item => item && typeof item === 'object' ? item as Record<string, unknown> : null)
-      .filter((item): item is Record<string, unknown> => Boolean(item))
-      .slice(0, 12);
-    if (!articles.length) continue;
-
-    const nowMs = to.getTime();
-    const totals = articles.reduce<{ positive: number; negative: number }>((sum, article) => {
-      const text = `${article.headline ?? ''} ${article.summary ?? ''}`;
-      const scored = scoreNewsText(text);
-      // تعتيق زمني بنصف عمر يومين: خبر اليوم بوزن كامل، وخبر عمره أسبوع بوزن ≈ 0.09
-      const publishedMs = Number(article.datetime) > 0 ? Number(article.datetime) * 1000 : nowMs;
-      const ageDays = Math.max(0, (nowMs - publishedMs) / 86400000);
-      const weight = Math.pow(0.5, ageDays / 2);
-      return { positive: sum.positive + scored.positive * weight, negative: sum.negative + scored.negative * weight };
-    }, { positive: 0, negative: 0 });
-    const score = clamp(Math.round(50 + (totals.positive - totals.negative) * 8), 0, 100);
-    const sentiment: RecommendationNewsSentiment['sentiment'] = score >= 58 ? 'positive' : score <= 42 ? 'negative' : 'neutral';
+    const credible = articles.filter(article => (
+      article.verificationStatus === 'official' || article.verificationStatus === 'confirmed'
+    ));
+    const positive = credible.filter(article => article.sentiment === 'positive').length;
+    const negative = credible.filter(article => article.sentiment === 'negative').length;
+    const measured = positive + negative;
+    const score = measured > 0 ? Math.round(50 + ((positive - negative) / measured) * 40) : 50;
+    const sentiment: RecommendationNewsSentiment['sentiment'] = measured === 0
+      ? 'unknown'
+      : score >= 58
+        ? 'positive'
+        : score <= 42
+          ? 'negative'
+          : 'neutral';
+    const conflicting = articles.some(article => article.verificationStatus === 'conflicting');
+    const official = articles.some(article => article.verificationStatus === 'official');
+    const confirmed = articles.some(article => article.verificationStatus === 'confirmed');
+    const verificationStatus: NonNullable<RecommendationNewsSentiment['verificationStatus']> = conflicting
+      ? 'conflicting'
+      : official
+        ? 'official'
+        : confirmed
+          ? 'confirmed'
+          : articles.some(article => article.verificationStatus === 'single_source')
+            ? 'single_source'
+            : 'unverified';
+    const independentSourceCount = Math.max(...articles.map(article => article.independentSourceCount), 0);
     const value: RecommendationNewsSentiment = {
       status: 'available',
       sentiment,
       score,
-      summaryEn: `${articles.length} real Finnhub article${articles.length === 1 ? '' : 's'} reviewed (recency-weighted); sentiment is ${sentiment}.`,
-      summaryAr: `تمت مراجعة ${articles.length} خبر حقيقي من Finnhub (مرجّحة بحداثة الخبر)؛ المعنويات ${sentiment === 'positive' ? 'إيجابية' : sentiment === 'negative' ? 'سلبية' : 'محايدة'}.`,
+      summaryEn: `${articles.length} consolidated stor${articles.length === 1 ? 'y' : 'ies'} reviewed; ${credible.length} had official or independent confirmation. News is context only and does not change the directional recommendation.`,
+      summaryAr: `تمت مراجعة ${articles.length} قصة إخبارية موحدة؛ منها ${credible.length} بإفصاح رسمي أو تأكيد مستقل. الأخبار سياق فقط ولا تغيّر اتجاه التوصية.`,
       articleCount: articles.length,
-      provider: 'Finnhub',
-      updatedAt: new Date().toISOString(),
+      provider: 'Multi-source market news',
+      updatedAt: result.lastUpdated ?? new Date().toISOString(),
+      verificationStatus,
+      independentSourceCount,
     };
     newsSentimentCache.set(cacheKey, { value, expiresAt: Date.now() + NEWS_CACHE_MS });
     return value;
+  } catch {
+    return unavailableNewsSentiment('Consolidated news context is temporarily unavailable.', 'سياق الأخبار الموحدة غير متاح مؤقتاً.');
   }
-
-  return unavailableNewsSentiment('No recent provider articles were returned for sentiment scoring.', 'لم يرجع المزود أخباراً حديثة صالحة لتقييم المعنويات.');
 }
 
 async function enrichQuotesWithNews(quotes: TraderQuote[]): Promise<TraderQuote[]> {
-  if (!cleanEnv(process.env.FINNHUB_API_KEY)) return quotes;
   const output = quotes.slice();
   const targets = quotes
     .map((quote, index) => ({ quote, index }))
     .filter(({ quote }) => quote.available && isValidPrice(quote.price) && (quote.assetType === 'stock' || quote.assetType === 'fund'))
     .slice(0, NEWS_ENRICH_MAX_SYMBOLS);
-  for (let cursor = 0; cursor < targets.length; cursor += 4) {
-    const batch = targets.slice(cursor, cursor + 4);
+  for (let cursor = 0; cursor < targets.length; cursor += 2) {
+    const batch = targets.slice(cursor, cursor + 2);
     const settled = await Promise.allSettled(batch.map(({ quote }) => fetchNewsSentimentForQuote(quote)));
     settled.forEach((result, position) => {
       const batchItem = batch[position];
@@ -663,6 +651,8 @@ export type TraderQuote = {
   expectedMovePct?: number | null;
   finalRecommendation?: MultiFactorRecommendation['finalRecommendation'];
   finalRecommendationAr?: string;
+  finalRecommendationFr?: string;
+  dataSufficiency?: MultiFactorRecommendation['dataSufficiency'];
   finalScore?: number | null;
   aiConfidence?: number | null;
   strategyCount?: number;
@@ -742,6 +732,8 @@ function applyRecommendationToQuote(quote: TraderQuote, newsSentiment?: Recommen
     expectedMovePct: recommendation.expectedMovePct,
     finalRecommendation: recommendation.finalRecommendation,
     finalRecommendationAr: recommendation.finalRecommendationAr,
+    finalRecommendationFr: recommendation.finalRecommendationFr,
+    dataSufficiency: recommendation.dataSufficiency,
     finalScore: recommendation.finalScore,
     aiConfidence: recommendation.confidence,
     strategyCount: recommendation.strategyCount,

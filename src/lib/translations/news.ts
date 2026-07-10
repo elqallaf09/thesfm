@@ -3,6 +3,17 @@ import type { Lang } from '../translations';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR_NEWS: Record<string, TranslationEntry> = {
+  news_verification_official: { ar:'إفصاح رسمي', en:'Official disclosure', fr:'Publication officielle' },
+  news_verification_confirmed: { ar:'خبر مؤكد', en:'Confirmed story', fr:'Information confirmée' },
+  news_verification_single_source: { ar:'مصدر واحد', en:'Single source', fr:'Source unique' },
+  news_verification_conflicting: { ar:'معلومات متضاربة', en:'Conflicting reports', fr:'Informations contradictoires' },
+  news_verification_unverified: { ar:'غير مؤكد', en:'Unverified', fr:'Non vérifié' },
+  news_independent_source_count: { ar:'عدد المصادر المستقلة: {count}', en:'Independent sources: {count}', fr:'Sources indépendantes : {count}' },
+  news_independent_confirmations: { ar:'تم تأكيد الخبر من {count} مصادر مستقلة.', en:'Confirmed by {count} independent sources.', fr:'Information confirmée par {count} sources indépendantes.' },
+  news_single_source_detail: { ar:'ورد الخبر من مصدر واحد ولم يتم تأكيده بشكل مستقل.', en:'This story comes from one source and has not been independently confirmed.', fr:'Cette information provient d’une seule source et n’a pas été confirmée indépendamment.' },
+  news_conflict_detail: { ar:'توجد معلومات متضاربة بين المصادر، ويجب الرجوع إلى الإفصاح الرسمي.', en:'Sources contain conflicting information; review the official disclosure.', fr:'Les sources présentent des informations contradictoires ; consultez la publication officielle.' },
+  news_partial_coverage: { ar:'بعض مصادر الأخبار غير متاحة مؤقتًا. النتائج المعروضة جزئية ومن المصادر المتاحة.', en:'Some news sources are temporarily unavailable. Results are partial and use the sources still available.', fr:'Certaines sources sont temporairement indisponibles. Les résultats sont partiels et proviennent des sources disponibles.' },
+  news_stored_fallback: { ar:'التحديثات المباشرة غير متاحة مؤقتًا. نعرض آخر أخبار محفوظة ناجحة.', en:'Live updates are temporarily unavailable. The latest successfully stored news is shown.', fr:'Les mises à jour en direct sont temporairement indisponibles. Les dernières actualités enregistrées sont affichées.' },
   news_translated_badge: { ar:'مترجم', en:'Translated', fr:'Traduit' },
   news_original_language_badge: { ar:'باللغة الأصلية', en:'Original language', fr:'Langue originale' },
   news_show_original: { ar:'عرض النص الأصلي', en:'Show original', fr:'Voir l’original' },

@@ -378,6 +378,8 @@ export async function GET(request: Request) {
     expectedMovePct: q.expectedMovePct,
     finalRecommendation: q.finalRecommendation,
     finalRecommendationAr: q.finalRecommendationAr,
+    finalRecommendationFr: q.finalRecommendationFr,
+    dataSufficiency: q.dataSufficiency,
     finalScore: q.finalScore,
     strategyCount: q.strategyCount,
     strategyAgreement: q.strategyAgreement,

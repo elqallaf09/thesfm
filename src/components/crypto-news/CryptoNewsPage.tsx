@@ -34,6 +34,18 @@ import type { CryptoMarketCoin, CryptoMarketPayload } from '@/lib/market/fetchCr
 
 type LangCode = 'ar' | 'en' | 'fr';
 type ApiResponse = CryptoNewsPayload | { success: false; error?: string; code?: string };
+type NewsDeliveryStatus = Pick<CryptoNewsPayload, 'partialFailure' | 'liveUpdatesAvailable' | 'storedFallbackUsed'>;
+type EvidenceLabels = {
+  official: string;
+  confirmed: string;
+  singleSource: string;
+  conflicting: string;
+  unverified: string;
+  sourceCount: string;
+  confirmations: string;
+  singleSourceDetail: string;
+  conflictDetail: string;
+};
 type CryptoMarketApiResponse = CryptoMarketPayload | { ok: false; code?: string; message?: string };
 type CryptoTickerResponse = {
   ok: boolean;
@@ -60,6 +72,11 @@ const CATEGORY_ORDER: CategoryFilter[] = ['all', 'bitcoin', 'ethereum', 'altcoin
 const ASSET_ORDER: AssetFilter[] = ['all', 'BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'DOGE'];
 const TIME_FILTERS: TimeFilter[] = ['all', 'hour', 'day', 'week', 'month'];
 const SORT_FILTERS: SortFilter[] = ['latest', 'oldest', 'relevance'];
+const INITIAL_NEWS_DELIVERY_STATUS: NewsDeliveryStatus = {
+  partialFailure: false,
+  liveUpdatesAvailable: true,
+  storedFallbackUsed: false,
+};
 const CRYPTO_TICKER_FALLBACK_ITEMS: CryptoTickerItem[] = [
   { symbol: 'BTC-USD', name: 'Bitcoin', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
   { symbol: 'ETH-USD', name: 'Ethereum', assetType: 'crypto', price: null, currency: 'USD', changePercent: null, source: 'CoinGecko', available: false },
@@ -531,6 +548,7 @@ export function CryptoNewsPage() {
   const locale = localeFor(activeLang);
   const [items, setItems] = useState<CryptoNewsItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState('');
+  const [newsDeliveryStatus, setNewsDeliveryStatus] = useState<NewsDeliveryStatus>(INITIAL_NEWS_DELIVERY_STATUS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newStoryCount, setNewStoryCount] = useState(0);
@@ -571,9 +589,15 @@ export function CryptoNewsPage() {
       itemIdsRef.current = new Set(nextItems.map(item => item.id));
       setItems(nextItems);
       setLastUpdated(json.lastUpdated);
+      setNewsDeliveryStatus({
+        partialFailure: json.partialFailure,
+        liveUpdatesAvailable: json.liveUpdatesAvailable,
+        storedFallbackUsed: json.storedFallbackUsed,
+      });
     } catch {
       if (showLoader) setItems([]);
       setLastUpdated(current => showLoader ? '' : current);
+      if (showLoader) setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
       setError(text.newsError);
     } finally {
       if (showLoader) setLoading(false);
@@ -760,9 +784,25 @@ export function CryptoNewsPage() {
     void loadCryptoTicker(false);
   };
 
-  const serviceConnected = !error && !marketError;
+  const serviceConnected = !error && !marketError && newsDeliveryStatus.liveUpdatesAvailable;
   const lastUpdateText = relativeUpdate(lastUpdated || marketData?.updatedAt || cryptoTicker?.updatedAt || '', activeLang, locale, text.notUpdated);
   const shownCount = featuredItems.length + visibleFeedItems.length;
+  const evidenceLabels: EvidenceLabels = {
+    official: t('news_verification_official'),
+    confirmed: t('news_verification_confirmed'),
+    singleSource: t('news_verification_single_source'),
+    conflicting: t('news_verification_conflicting'),
+    unverified: t('news_verification_unverified'),
+    sourceCount: t('news_independent_source_count'),
+    confirmations: t('news_independent_confirmations'),
+    singleSourceDetail: t('news_single_source_detail'),
+    conflictDetail: t('news_conflict_detail'),
+  };
+  const coverageNotice = newsDeliveryStatus.storedFallbackUsed || !newsDeliveryStatus.liveUpdatesAvailable
+    ? t('news_stored_fallback')
+    : newsDeliveryStatus.partialFailure
+      ? t('news_partial_coverage')
+      : '';
 
   return (
     <NewsPageShell category="crypto" className="crypto-news-shell" dir={dir}>
@@ -783,6 +823,13 @@ export function CryptoNewsPage() {
             {refreshing ? text.refreshing : text.refresh}
           </button>
         </header>
+
+        {coverageNotice ? (
+          <div className="crypto-coverage-notice" role="status">
+            <AlertTriangle size={17} />
+            <span>{coverageNotice}</span>
+          </div>
+        ) : null}
 
         <CryptoTickerPanel
           response={cryptoTicker}
@@ -806,6 +853,7 @@ export function CryptoNewsPage() {
           loading={loading}
           text={text}
           locale={locale}
+          evidenceLabels={evidenceLabels}
         />
 
         <CryptoMarketMovers
@@ -863,14 +911,14 @@ export function CryptoNewsPage() {
               {enhancedFeedItems.length > 0 ? (
                 <section className="crypto-card-grid" aria-label={text.mainFeed}>
                   {enhancedFeedItems.map(item => (
-                    <NewsCard key={item.id} item={item} text={text} locale={locale} variant="card" />
+                    <NewsCard key={item.id} item={item} text={text} locale={locale} variant="card" evidenceLabels={evidenceLabels} />
                   ))}
                 </section>
               ) : null}
               {compactFeedItems.length > 0 ? (
                 <section className="crypto-compact-list" aria-label={text.compactFeed}>
                   {compactFeedItems.map(item => (
-                    <CompactNewsRow key={item.id} item={item} text={text} locale={locale} />
+                    <CompactNewsRow key={item.id} item={item} text={text} locale={locale} evidenceLabels={evidenceLabels} />
                   ))}
                 </section>
               ) : null}
@@ -982,6 +1030,9 @@ export function CryptoNewsPage() {
         .crypto-hero-meta span{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#E6FBFF}
         .crypto-hero-meta span.ok{color:#BDFBE8}
         .crypto-hero-meta span.warn{color:#FFE8A3}
+        .crypto-coverage-notice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid rgba(217,119,6,.3);border-radius:16px;background:rgba(245,158,11,.09);color:#92400E;font-size:13px;font-weight:850;line-height:1.55}
+        .crypto-coverage-notice svg{margin-top:2px;flex:none}
+        .dark .crypto-coverage-notice{color:#FDE68A}
         .crypto-refresh-btn,.crypto-load-more,.crypto-state button{
           min-height:44px;
           border:0;
@@ -1032,6 +1083,14 @@ export function CryptoNewsPage() {
         .crypto-lead-art{min-height:210px;border-radius:18px;background:radial-gradient(circle at 25% 20%,rgba(36,213,197,.3),transparent 34%),linear-gradient(135deg,#061A2E,#0B3955);display:grid;place-items:center;color:#A7FFF4}
         .crypto-lead-body,.crypto-mini-list,.crypto-news-card,.crypto-compact-row{min-width:0}
         .crypto-meta-row,.crypto-symbol-row,.crypto-category-row,.crypto-card-actions,.crypto-active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .crypto-evidence{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);color:var(--crypto-muted);font-size:12px;line-height:1.45}
+        .crypto-evidence>svg{margin-top:2px;flex:none;color:#167D91}
+        .crypto-evidence>div{display:grid;gap:2px;min-width:0}
+        .crypto-evidence strong{color:var(--crypto-text);font-weight:950}
+        .crypto-evidence span{font-weight:780}
+        .crypto-evidence.official{border-color:rgba(21,149,242,.28);background:rgba(21,149,242,.07)}
+        .crypto-evidence.conflicting{border-color:rgba(217,119,6,.32);background:rgba(245,158,11,.09);color:#92400E}
+        .dark .crypto-evidence.conflicting{color:#FDE68A}
         .crypto-source-pill,.crypto-badge{border:1px solid var(--crypto-border);background:#EFF8FF;color:#075985;text-decoration:none}
         .crypto-source-pill.ai{background:#FFF7ED;color:#9A3412;border-color:#FED7AA}
         .crypto-symbol-badge{direction:ltr;unicode-bidi:isolate}
@@ -1301,11 +1360,12 @@ function CryptoMarketSnapshot({ data, loading, error, text, locale }: {
   );
 }
 
-function FeaturedNewsSection({ items, loading, text, locale }: {
+function FeaturedNewsSection({ items, loading, text, locale, evidenceLabels }: {
   items: CryptoNewsItem[];
   loading: boolean;
   text: typeof COPY[LangCode];
   locale: string;
+  evidenceLabels: EvidenceLabels;
 }) {
   if (loading || items.length === 0) return null;
   const [lead, ...secondary] = items;
@@ -1341,6 +1401,7 @@ function FeaturedNewsSection({ items, loading, text, locale }: {
               </a>
             ) : <h3 dir="auto">{leadTitle}</h3>}
             <p dir="auto">{leadSummary}</p>
+            <NewsEvidence item={lead} labels={evidenceLabels} />
             <div className="crypto-card-actions">
               {leadUrl ? (
                 <a className="crypto-news-link" href={leadUrl} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.originalSource}: ${leadTitle}`}>
@@ -1363,6 +1424,7 @@ function FeaturedNewsSection({ items, loading, text, locale }: {
                 </div>
                 <strong dir="auto">{title}</strong>
                 <SymbolChips symbols={item.symbols} />
+                <NewsEvidence item={item} labels={evidenceLabels} />
               </a>
             ) : null;
           })}
@@ -1564,6 +1626,38 @@ function AiBadge({ label }: { label: string }) {
   return <span className="crypto-source-pill ai" title={label}><Sparkles size={12} />{label}</span>;
 }
 
+function NewsEvidence({ item, labels }: { item: CryptoNewsItem; labels: EvidenceLabels }) {
+  const independentCount = Math.max(1, item.independentSourceCount || 0);
+  const isConflicting = item.verificationStatus === 'conflicting';
+  const isOfficial = item.isOfficial || item.verificationStatus === 'official';
+  const status = isConflicting
+    ? labels.conflicting
+    : isOfficial
+      ? labels.official
+      : item.verificationStatus === 'confirmed'
+      ? labels.confirmed
+        : item.verificationStatus === 'single_source'
+          ? labels.singleSource
+          : labels.unverified;
+  const detail = isConflicting
+    ? labels.conflictDetail
+    : independentCount > 1
+      ? labels.confirmations.replace('{count}', String(independentCount))
+      : isOfficial
+        ? labels.sourceCount.replace('{count}', String(independentCount))
+        : labels.singleSourceDetail;
+
+  return (
+    <div className={`crypto-evidence ${isConflicting ? 'conflicting' : isOfficial ? 'official' : ''}`}>
+      {isConflicting ? <AlertTriangle size={14} /> : <ShieldCheck size={14} />}
+      <div>
+        <strong>{status}</strong>
+        <span>{detail}</span>
+      </div>
+    </div>
+  );
+}
+
 function CategoryBadges({ item, text }: { item: CryptoNewsItem; text: typeof COPY[LangCode] }) {
   if (item.categories.length === 0) return null;
   return (
@@ -1597,11 +1691,12 @@ function SymbolChips({ symbols }: { symbols: CryptoNewsSymbol[] }) {
   );
 }
 
-function NewsCard({ item, text, locale, variant }: {
+function NewsCard({ item, text, locale, variant, evidenceLabels }: {
   item: CryptoNewsItem;
   text: typeof COPY[LangCode];
   locale: string;
   variant: 'card';
+  evidenceLabels: EvidenceLabels;
 }) {
   const title = item.title || item.headline;
   const summary = item.summary || title;
@@ -1621,6 +1716,7 @@ function NewsCard({ item, text, locale, variant }: {
         </a>
       ) : <h3 dir="auto">{title}</h3>}
       <p dir="auto">{summary}</p>
+      <NewsEvidence item={item} labels={evidenceLabels} />
       <div className="crypto-card-actions">
         {url ? (
           <a className="crypto-news-link" href={url} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.originalSource}: ${title}`}>
@@ -1633,10 +1729,11 @@ function NewsCard({ item, text, locale, variant }: {
   );
 }
 
-function CompactNewsRow({ item, text, locale }: {
+function CompactNewsRow({ item, text, locale, evidenceLabels }: {
   item: CryptoNewsItem;
   text: typeof COPY[LangCode];
   locale: string;
+  evidenceLabels: EvidenceLabels;
 }) {
   const title = item.title || item.headline;
   const url = safeExternalUrl(item.url);
@@ -1649,6 +1746,7 @@ function CompactNewsRow({ item, text, locale }: {
         </div>
         <h3 dir="auto">{title}</h3>
         <p dir="auto">{item.summary || title}</p>
+        <NewsEvidence item={item} labels={evidenceLabels} />
       </div>
       <span className="crypto-compact-action">
         {text.read}

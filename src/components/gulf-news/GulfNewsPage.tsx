@@ -35,6 +35,7 @@ type GulfNewsApiResponse =
     language: string;
     translationEnabled: boolean;
     lastUpdated: string;
+    lastSuccessfulUpdate?: string | null;
     markets?: Array<{
       code: string;
       name: string;
@@ -54,6 +55,10 @@ type GulfNewsApiResponse =
     }>;
     items: GulfNewsItem[];
     marketData: Partial<Record<GulfMarketId, GulfMarketData>>;
+    providerCoverage?: Array<{ providerId: string; status: string }>;
+    partialFailure?: boolean;
+    liveUpdatesAvailable?: boolean;
+    storedFallbackUsed?: boolean;
   }
   | { success: false; error?: string; reason?: string };
 
@@ -130,6 +135,12 @@ export function GulfNewsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [deliveryStatus, setDeliveryStatus] = useState({
+    partialFailure: false,
+    liveUpdatesAvailable: true,
+    storedFallbackUsed: false,
+    providerCount: 0,
+  });
   const locale = localeFor(lang);
   const ui = useMemo(() => {
     if (lang === 'en') {
@@ -232,6 +243,12 @@ export function GulfNewsPage() {
       setItems(json.items);
       setMarketData(json.marketData ?? {});
       setLastUpdated(json.lastUpdated);
+      setDeliveryStatus({
+        partialFailure: json.partialFailure ?? false,
+        liveUpdatesAvailable: json.liveUpdatesAvailable ?? true,
+        storedFallbackUsed: json.storedFallbackUsed ?? false,
+        providerCount: json.providerCoverage?.length ?? 0,
+      });
       setLastLoadedAt(Date.now());
       setCountdown(300);
     } catch (loadError) {
@@ -374,6 +391,31 @@ export function GulfNewsPage() {
   };
 
   const searchPlaceholder = t('gulf_news_search_market_placeholder').replace('{market}', marketLabels[selectedMarket]);
+  const coverageNotice = deliveryStatus.storedFallbackUsed || !deliveryStatus.liveUpdatesAvailable
+    ? t('news_stored_fallback')
+    : deliveryStatus.partialFailure
+      ? t('news_partial_coverage')
+      : '';
+  const cardEvidenceLabels = {
+    official: t('news_verification_official'),
+    confirmed: t('news_verification_confirmed'),
+    singleSource: t('news_verification_single_source'),
+    conflicting: t('news_verification_conflicting'),
+    unverified: t('news_verification_unverified'),
+    confirmations: t('news_independent_confirmations'),
+    singleSourceDetail: t('news_single_source_detail'),
+    conflictDetail: t('news_conflict_detail'),
+    sourceReliability: t('market_news_source_reliability_value'),
+    whyItMatters: t('market_news_why_it_matters'),
+    importance: t('market_news_importance_label'),
+    impactTitle: t('market_news_impact_estimate_title'),
+    impactDisclaimer: t('market_news_impact_disclaimer'),
+    supportingSources: t('market_news_view_supporting_sources'),
+    updated: t('market_news_updated_label'),
+    eventLabel: (eventType: GulfNewsItem['eventType']) => t(`market_news_event_${eventType ?? 'unknown'}`),
+    impactLabel: (impact: GulfNewsItem['expectedImpact']) => t(`market_news_impact_${impact ?? 'unknown'}`),
+    sentimentLabel: (sentiment: GulfNewsItem['sentiment']) => t(`market_news_sentiment_${sentiment ?? 'unknown'}`),
+  };
 
   return (
     <NewsPageShell category="gulf" className="gulf-news-shell" dir={dir}>
@@ -404,6 +446,12 @@ export function GulfNewsPage() {
           nextUpdate={formatCountdown(countdown)}
           formatDateTime={formatDateTime}
         />
+
+        <div className={`gulf-news-provider-state ${coverageNotice ? 'warning' : ''}`} role="status">
+          {coverageNotice ? <AlertTriangle size={16} /> : <span className="gulf-news-status-health" />}
+          <span>{coverageNotice || t('market_news_provider_connected')}</span>
+          {deliveryStatus.providerCount > 0 ? <strong>{t('market_news_provider_coverage_count').replace('{count}', String(deliveryStatus.providerCount))}</strong> : null}
+        </div>
 
         <GulfExchangeSelector
           markets={GULF_MARKETS}
@@ -584,6 +632,7 @@ export function GulfNewsPage() {
                             openArticle: t('gulf_news_open_article'),
                             translated: t('news_translated_badge'),
                             originalLanguage: t('news_original_language_badge'),
+                            evidence: cardEvidenceLabels,
                           }}
                           formatDateTime={formatDateTime}
                         />
@@ -627,6 +676,7 @@ export function GulfNewsPage() {
                           openArticle: t('gulf_news_open_article'),
                           translated: t('news_translated_badge'),
                           originalLanguage: t('news_original_language_badge'),
+                          evidence: cardEvidenceLabels,
                         }}
                         formatDateTime={formatDateTime}
                       />
@@ -743,6 +793,7 @@ export function GulfNewsPage() {
         .gulf-news-title-row,.gulf-news-header-actions{position:relative;z-index:1}
         .gulf-news-icon-btn{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.18);color:#fff}
         .gulf-news-status-bar{border-radius:16px;padding:12px 16px;justify-content:space-between}
+        .gulf-news-provider-state{min-height:44px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid rgba(47,214,192,.24);border-radius:16px;background:rgba(47,214,192,.08);color:var(--gulf-text);padding:10px 14px;font-size:13px;font-weight:850}.gulf-news-provider-state.warning{border-color:rgba(245,185,66,.34);background:rgba(245,185,66,.10)}.gulf-news-provider-state.warning>svg{color:var(--gulf-amber);flex:0 0 auto}.gulf-news-provider-state strong{margin-inline-start:auto;color:var(--gulf-muted);font-size:12px}
         .gulf-news-exchange-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
         .gulf-news-exchange-grid button{min-width:180px;min-height:104px;padding:14px;border-radius:18px;box-shadow:0 14px 34px rgba(3,18,37,.08)}
         .gulf-news-exchange-code{width:48px;height:48px;border-radius:15px;font-size:17px}
@@ -794,12 +845,18 @@ export function GulfNewsPage() {
         .gulf-news-card.compact{box-shadow:0 12px 30px rgba(3,18,37,.07)}
         .gulf-news-card-body{display:grid;gap:9px;min-width:0}
         .gulf-news-card-kicker{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;color:var(--gulf-muted);font-size:12px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .gulf-news-card-kicker small{font-size:11px;font-weight:800}.gulf-news-card.is-official{border-inline-start:3px solid var(--gulf-accent)}.gulf-news-card.has-conflict{border-inline-start:3px solid var(--gulf-amber)}
+        .gulf-news-evidence{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--gulf-border);border-radius:14px;background:rgba(142,166,195,.07);padding:10px;color:var(--gulf-muted)}.gulf-news-evidence>svg{flex:0 0 auto;margin-top:2px;color:var(--gulf-accent)}.gulf-news-evidence>div{display:grid;gap:2px;min-width:0}.gulf-news-evidence strong{color:var(--gulf-text);font-size:12px;font-weight:950}.gulf-news-evidence span{font-size:12px;font-weight:760;line-height:1.55}.gulf-news-evidence.official{border-color:rgba(47,214,192,.28);background:rgba(47,214,192,.08)}.gulf-news-evidence.conflicting{border-color:rgba(245,185,66,.34);background:rgba(245,185,66,.10)}.gulf-news-evidence.conflicting>svg{color:var(--gulf-amber)}
+        .gulf-news-facts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.gulf-news-facts span,.gulf-news-facts bdi{border:1px solid var(--gulf-border);border-radius:999px;background:rgba(142,166,195,.07);color:var(--gulf-muted);padding:5px 8px;font-size:11px;font-weight:900}.gulf-news-facts bdi{direction:ltr;color:var(--gulf-accent)}
+        .gulf-news-why{display:grid;gap:3px;border-inline-start:2px solid rgba(47,214,192,.45);padding-inline-start:10px}.gulf-news-why strong{color:var(--gulf-text);font-size:12px}.gulf-news-why span,.gulf-news-why small,.gulf-news-impact-disclaimer{color:var(--gulf-muted);font-size:11px;font-weight:760;line-height:1.55}.gulf-news-impact-disclaimer{display:block}
+        .gulf-news-supporting{border-top:1px solid var(--gulf-border);padding-top:10px;color:var(--gulf-muted);font-size:12px}.gulf-news-supporting summary{min-height:36px;display:flex;align-items:center;cursor:pointer;font-weight:900;color:var(--gulf-text)}.gulf-news-supporting ul{display:grid;gap:7px;margin:5px 0 0;padding:0;list-style:none}.gulf-news-supporting a{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--gulf-muted);text-decoration:none;min-height:32px}.gulf-news-supporting a:hover,.gulf-news-supporting a:focus-visible{color:var(--gulf-accent);outline:none}
         .gulf-news-card.featured h2{font-size:24px;line-height:1.35;-webkit-line-clamp:3}
         .gulf-news-card.featured p{-webkit-line-clamp:4;font-size:14px}
         .gulf-news-grid.list .gulf-news-card{grid-template-columns:minmax(0,1fr) auto;align-items:center}
         .gulf-news-grid.list .gulf-news-card-top{grid-column:1 / -1}
         .gulf-news-grid.list .gulf-news-meta{border-top:0;padding-top:0;min-width:220px;justify-content:end}
         .gulf-news-meta{gap:12px}
+        .gulf-news-meta>div{display:grid;gap:4px}.gulf-news-meta>div>span{display:inline-flex;align-items:center;gap:6px}.gulf-news-meta>div b{font-weight:900}
         .gulf-news-read-link{min-height:38px;border-radius:999px;border:1px solid rgba(47,214,192,.28);background:rgba(47,214,192,.12);color:var(--gulf-accent)!important;padding:0 12px;font-weight:950;white-space:nowrap}
         .gulf-news-read-link:hover,.gulf-news-read-link:focus-visible{background:var(--gulf-accent);color:#061A2E!important}
         .gulf-news-load-more{justify-self:center;min-height:46px;border:1px solid rgba(47,214,192,.34);border-radius:999px;background:linear-gradient(135deg,#1D8CFF,var(--gulf-accent));color:#061A2E;display:inline-flex;align-items:center;gap:8px;padding:0 18px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer;box-shadow:0 14px 34px rgba(29,140,255,.18)}

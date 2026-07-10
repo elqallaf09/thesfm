@@ -1,98 +1,13 @@
 import { NextResponse } from 'next/server';
-import { cleanEnv } from '@/lib/market/providerConfig';
+import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
-export const revalidate = 600;
+export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
-const cacheHeaders = {
-  'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
-};
-const unavailableHeaders = {
-  'Cache-Control': 'no-store',
-};
-const REQUEST_TIMEOUT_MS = 8000;
-const MAX_ITEMS = 18;
-
-type ProviderName = 'newsapi' | 'finnhub';
 type CentralBankCode = 'Fed' | 'ECB' | 'BoE' | 'BoJ' | 'SNB' | 'BoC' | 'RBA';
 type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CHF' | 'CAD' | 'AUD';
-
-type ProviderCandidate = {
-  provider: ProviderName;
-  envName: 'CENTRAL_BANK_NEWS_API_KEY' | 'NEWS_API_KEY' | 'FINNHUB_API_KEY';
-  apiKey: string;
-  source: 'NewsAPI' | 'Finnhub';
-};
-
-type NewsApiArticle = {
-  title?: string | null;
-  description?: string | null;
-  url?: string | null;
-  publishedAt?: string | null;
-  source?: { name?: string | null } | null;
-};
-
-type FinnhubNewsArticle = {
-  headline?: string | null;
-  summary?: string | null;
-  url?: string | null;
-  datetime?: number | null;
-  source?: string | null;
-};
-
-type NormalizedCentralBankNewsItem = {
-  id: string;
-  headline: string;
-  source: string;
-  published_at: string;
-  url: string;
-  related_bank: CentralBankCode | null;
-  related_currency: CurrencyCode | null;
-  summary: string | null;
-};
-
-const CENTRAL_BANK_QUERY = [
-  '"Federal Reserve"',
-  'Fed',
-  'FOMC',
-  '"Jerome Powell"',
-  '"European Central Bank"',
-  'ECB',
-  '"Bank of England"',
-  'BoE',
-  '"Bank of Japan"',
-  'BoJ',
-  '"Swiss National Bank"',
-  'SNB',
-  '"Bank of Canada"',
-  'BoC',
-  '"Reserve Bank of Australia"',
-  'RBA',
-  '"interest rates"',
-  'inflation',
-  'CPI',
-  'NFP',
-].join(' OR ');
-
-const CENTRAL_BANK_KEYWORDS = [
-  'federal reserve',
-  'fomc',
-  'jerome powell',
-  'european central bank',
-  'bank of england',
-  'bank of japan',
-  'swiss national bank',
-  'bank of canada',
-  'reserve bank of australia',
-  'central bank',
-  'interest rate',
-  'interest rates',
-  'rate decision',
-  'monetary policy',
-  'inflation',
-  'cpi',
-  'nfp',
-];
 
 const BANK_PATTERNS: Array<{ bank: CentralBankCode; currency: CurrencyCode; patterns: RegExp[] }> = [
   { bank: 'Fed', currency: 'USD', patterns: [/\bfed\b/i, /federal reserve/i, /fomc/i, /jerome powell/i] },
@@ -104,249 +19,83 @@ const BANK_PATTERNS: Array<{ bank: CentralBankCode; currency: CurrencyCode; patt
   { bank: 'RBA', currency: 'AUD', patterns: [/\brba\b/i, /reserve bank of australia/i] },
 ];
 
-function shouldDebug() {
-  return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
+function dateDaysAgo(days: number) {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
 
-function shortText(value: unknown, maxLength = 280) {
-  const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
-  if (!text) return '';
-  return text.length > maxLength ? `${text.slice(0, maxLength - 3).trim()}...` : text;
-}
-
-function stableId(value: string, fallback: string) {
-  return (value || fallback)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 120) || fallback;
-}
-
-function providerCandidates(): ProviderCandidate[] {
-  const candidates: ProviderCandidate[] = [
-    {
-      provider: 'newsapi',
-      envName: 'CENTRAL_BANK_NEWS_API_KEY',
-      apiKey: cleanEnv(process.env.CENTRAL_BANK_NEWS_API_KEY),
-      source: 'NewsAPI',
-    },
-    {
-      provider: 'newsapi',
-      envName: 'NEWS_API_KEY',
-      apiKey: cleanEnv(process.env.NEWS_API_KEY),
-      source: 'NewsAPI',
-    },
-    {
-      provider: 'finnhub',
-      envName: 'FINNHUB_API_KEY',
-      apiKey: cleanEnv(process.env.FINNHUB_API_KEY),
-      source: 'Finnhub',
-    },
-  ];
-  const seen = new Set<string>();
-  return candidates.filter(candidate => {
-    if (!candidate.apiKey) return false;
-    const key = `${candidate.provider}:${candidate.apiKey}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function providerFetchOptions(forceRefresh: boolean): RequestInit & { next?: { revalidate: number } } {
-  const options: RequestInit & { next?: { revalidate: number } } = {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  };
-  if (forceRefresh) {
-    options.cache = 'no-store';
-  } else {
-    options.next = { revalidate };
-  }
-  return options;
-}
-
-function inferBankAndCurrency(headline: string, summary: string): { bank: CentralBankCode | null; currency: CurrencyCode | null } {
-  const text = `${headline} ${summary}`;
-  const match = BANK_PATTERNS.find(item => item.patterns.some(pattern => pattern.test(text)));
-  return {
-    bank: match?.bank ?? null,
-    currency: match?.currency ?? null,
-  };
-}
-
-function isRelevantCentralBankNews(headline: string, summary: string) {
-  const text = `${headline} ${summary}`.toLowerCase();
-  const hasBank = BANK_PATTERNS.some(item => item.patterns.some(pattern => pattern.test(text)));
-  return hasBank || CENTRAL_BANK_KEYWORDS.some(keyword => text.includes(keyword));
-}
-
-function normalizeNewsApiArticle(article: NewsApiArticle, index: number): NormalizedCentralBankNewsItem | null {
-  const headline = shortText(article.title, 180);
-  if (!headline) return null;
-  const summary = shortText(article.description) || null;
-  if (!isRelevantCentralBankNews(headline, summary ?? '')) return null;
-  const related = inferBankAndCurrency(headline, summary ?? '');
-  const url = shortText(article.url, 500);
-
-  return {
-    id: stableId(url || headline, `newsapi-central-bank-${index}`),
-    headline,
-    source: shortText(article.source?.name, 90) || 'NewsAPI',
-    published_at: article.publishedAt || '',
-    url,
-    related_bank: related.bank,
-    related_currency: related.currency,
-    summary,
-  };
-}
-
-function normalizeFinnhubArticle(article: FinnhubNewsArticle, index: number): NormalizedCentralBankNewsItem | null {
-  const headline = shortText(article.headline, 180);
-  if (!headline) return null;
-  const summary = shortText(article.summary) || null;
-  if (!isRelevantCentralBankNews(headline, summary ?? '')) return null;
-  const related = inferBankAndCurrency(headline, summary ?? '');
-  const url = shortText(article.url, 500);
-  const publishedAt = typeof article.datetime === 'number' && article.datetime > 0
-    ? new Date(article.datetime * 1000).toISOString()
-    : '';
-
-  return {
-    id: stableId(url || headline, `finnhub-central-bank-${index}`),
-    headline,
-    source: shortText(article.source, 90) || 'Finnhub',
-    published_at: publishedAt,
-    url,
-    related_bank: related.bank,
-    related_currency: related.currency,
-    summary,
-  };
-}
-
-async function fetchNewsApiItems(candidate: ProviderCandidate, forceRefresh: boolean) {
-  const url = new URL('https://newsapi.org/v2/everything');
-  url.searchParams.set('q', CENTRAL_BANK_QUERY);
-  url.searchParams.set('language', 'en');
-  url.searchParams.set('sortBy', 'publishedAt');
-  url.searchParams.set('pageSize', String(MAX_ITEMS * 2));
-  url.searchParams.set('apiKey', candidate.apiKey);
-
-  const response = await fetch(url, providerFetchOptions(forceRefresh));
-
-  if (!response.ok) {
-    if (shouldDebug()) {
-      console.warn('[central-bank-news] provider failed', { provider: candidate.provider, envName: candidate.envName, status: response.status });
-    }
-    return null;
-  }
-
-  const payload = await response.json().catch(() => ({})) as { articles?: NewsApiArticle[]; status?: string };
-  if (payload.status === 'error') return null;
-  return (Array.isArray(payload.articles) ? payload.articles : [])
-    .map(normalizeNewsApiArticle)
-    .filter((item): item is NormalizedCentralBankNewsItem => Boolean(item))
-    .slice(0, MAX_ITEMS);
-}
-
-async function fetchFinnhubItems(candidate: ProviderCandidate, forceRefresh: boolean) {
-  const url = new URL('https://finnhub.io/api/v1/news');
-  url.searchParams.set('category', 'general');
-  url.searchParams.set('token', candidate.apiKey);
-
-  const response = await fetch(url, providerFetchOptions(forceRefresh));
-
-  if (!response.ok) {
-    if (shouldDebug()) {
-      console.warn('[central-bank-news] provider failed', { provider: candidate.provider, envName: candidate.envName, status: response.status });
-    }
-    return null;
-  }
-
-  const payload = await response.json().catch(() => []) as FinnhubNewsArticle[];
-  return (Array.isArray(payload) ? payload : [])
-    .map(normalizeFinnhubArticle)
-    .filter((item): item is NormalizedCentralBankNewsItem => Boolean(item))
-    .slice(0, MAX_ITEMS);
-}
-
-async function fetchProviderItems(candidate: ProviderCandidate, forceRefresh: boolean) {
-  return candidate.provider === 'finnhub'
-    ? fetchFinnhubItems(candidate, forceRefresh)
-    : fetchNewsApiItems(candidate, forceRefresh);
-}
-
-function unavailableResponse(code: 'CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED' | 'CENTRAL_BANK_NEWS_PROVIDER_FAILED') {
-  return NextResponse.json({
-    ok: false,
-    success: false,
-    code,
-    source: null,
-    items: [],
-    updated_at: null,
-  }, { status: 200, headers: unavailableHeaders });
+function bankFor(story: ConsolidatedNewsStory) {
+  const text = `${story.title} ${story.summary ?? ''}`;
+  return BANK_PATTERNS.find(candidate => candidate.patterns.some(pattern => pattern.test(text))) ?? null;
 }
 
 export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 45, prefix: 'central-bank-news' });
+  if (limited) return limited;
+
   const requestUrl = new URL(request.url);
-  const forceRefresh = requestUrl.searchParams.has('refresh');
-  const candidates = providerCandidates();
+  const refresh = requestUrl.searchParams.has('refresh');
+  const result = await aggregateFinancialNews({
+    query: 'central bank monetary policy interest rates inflation employment Federal Reserve ECB Bank of England Bank of Japan',
+    marketCodes: ['global', 'US', 'europe'],
+    currencies: ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'],
+    eventTypes: ['interest_rate_decision', 'inflation_report', 'employment_report', 'macroeconomic_release', 'regulatory_action'],
+    from: dateDaysAgo(30),
+    to: new Date().toISOString().slice(0, 10),
+    language: 'en',
+    limit: 120,
+    forceRefresh: refresh,
+  }, { page: 1, pageSize: 24, sort: 'official', forceExternal: refresh });
 
-  if (candidates.length === 0) {
-    return unavailableResponse('CENTRAL_BANK_NEWS_SOURCE_NOT_CONFIGURED');
-  }
+  const items = result.stories.map(story => {
+    const related = bankFor(story);
+    return {
+      id: story.id,
+      headline: story.title,
+      title: story.title,
+      summary: story.summary,
+      source: story.sourceName,
+      sourceName: story.sourceName,
+      sourceType: story.sourceType,
+      sourceReliability: story.sourceReliability,
+      isOfficial: story.isOfficial,
+      published_at: story.publishedAt,
+      publishedAt: story.publishedAt,
+      updatedAt: story.latestUpdatedAt,
+      url: story.originalUrl,
+      related_bank: related?.bank ?? null,
+      related_currency: related?.currency ?? story.currencies[0] ?? null,
+      eventType: story.eventType,
+      verificationStatus: story.verificationStatus,
+      independentSourceCount: story.independentSourceCount,
+      corroboratingSourceCount: story.corroboratingSourceCount,
+      supportingSources: story.supportingSources,
+      importanceScore: story.importanceScore,
+      sentiment: story.sentiment,
+      expectedImpact: story.expectedImpact,
+      impactDirection: story.impactDirection,
+      impactHorizon: story.impactHorizon,
+      impactReason: story.impactReason,
+      conflictSummary: story.conflictSummary,
+      whyItMatters: story.whyItMatters,
+    };
+  });
+  const unavailable = !result.liveUpdatesAvailable && !result.storedFallbackUsed && items.length === 0;
 
-  let hadSuccessfulProvider = false;
-  const emptyProviders: string[] = [];
-
-  for (const candidate of candidates) {
-    try {
-      const items = await fetchProviderItems(candidate, forceRefresh);
-      if (!items) continue;
-      hadSuccessfulProvider = true;
-
-      if (items.length > 0) {
-        if (shouldDebug()) {
-          console.info('[central-bank-news] normalized provider response', {
-            count: items.length,
-            provider: candidate.provider,
-            envName: candidate.envName,
-          });
-        }
-        return NextResponse.json({
-          ok: true,
-          success: true,
-          code: undefined,
-          source: candidate.source,
-          items,
-          updated_at: new Date().toISOString(),
-        }, { status: 200, headers: cacheHeaders });
-      }
-
-      emptyProviders.push(candidate.provider);
-    } catch (error) {
-      if (shouldDebug()) {
-        console.warn('[central-bank-news] provider attempt failed', {
-          provider: candidate.provider,
-          envName: candidate.envName,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-  }
-
-  if (hadSuccessfulProvider) {
-    if (shouldDebug()) {
-      console.info('[central-bank-news] no relevant central bank news returned', { emptyProviders });
-    }
-    return NextResponse.json({
-      ok: false,
-      success: false,
-      code: 'NO_CENTRAL_BANK_NEWS',
-      source: emptyProviders.join(', ') || null,
-      items: [],
-      updated_at: new Date().toISOString(),
-    }, { status: 200, headers: cacheHeaders });
-  }
-
-  return unavailableResponse('CENTRAL_BANK_NEWS_PROVIDER_FAILED');
+  return NextResponse.json({
+    ok: !unavailable,
+    success: !unavailable,
+    code: unavailable ? 'CENTRAL_BANK_NEWS_LIVE_UNAVAILABLE' : result.partialFailure ? 'CENTRAL_BANK_NEWS_PARTIAL_COVERAGE' : items.length === 0 ? 'NO_CENTRAL_BANK_NEWS' : null,
+    source: 'Multi-source market news',
+    items,
+    updated_at: result.lastUpdated,
+    lastSuccessfulUpdate: result.lastSuccessfulUpdate,
+    providerCoverage: result.providerCoverage,
+    partialFailure: result.partialFailure,
+    liveUpdatesAvailable: result.liveUpdatesAvailable,
+    storedFallbackUsed: result.storedFallbackUsed,
+    cacheStatus: result.cacheStatus,
+  }, {
+    status: 200,
+    headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
+  });
 }

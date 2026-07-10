@@ -81,6 +81,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_feasibility_firms: { ar:'شركات دراسة الجدوى', en:'Feasibility Study Firms', fr:'Études de faisabilité' },
   nav_advisory_firms: { ar:'شركات الاستشارات المالية', en:'Financial Advisory Firms', fr:'Conseil financier' },
   nav_admin_companies: { ar: 'مراجعة الشركات', en: 'Review Companies', fr: 'Réviser les sociétés' },
+  nav_admin_news_providers: { ar: 'حالة مصادر الأخبار', en: 'News Provider Status', fr: 'État des sources d’actualités' },
   nav_instagram_automation: { ar: 'أتمتة إنستغرام', en: 'Instagram Automation', fr: 'Automatisation Instagram' },
   nav_smart_trading_terminal: { ar: 'اس اف ام المحلل الذكي', en: 'SFM Smart Analyzer', fr: 'SFM Smart Analyzer' },
   nav_group_admin: { ar: 'إدارة المنصة', en: 'Platform Admin', fr: 'Administration' },

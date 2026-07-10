@@ -1,3 +1,4 @@
+import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export type AppNewsLanguage = 'ar' | 'en' | 'fr';
@@ -58,8 +59,7 @@ function providerUrl() {
 }
 
 function hasTranslationProvider() {
-  // MyMemory is always available as a free fallback (no API key required)
-  return true;
+  return hasPremiumTranslationProvider() || process.env.NEWS_ENABLE_PUBLIC_TRANSLATION_FALLBACK === 'true';
 }
 
 function hasPremiumTranslationProvider() {
@@ -120,10 +120,14 @@ function extractJsonObject(text: string) {
 }
 
 function translationSystemPrompt(targetLanguage: AppNewsLanguage) {
-  const targetName = targetLanguage === 'ar' ? 'Modern Standard Arabic' : 'French';
+  const targetName: Record<AppNewsLanguage, string> = {
+    ar: 'Modern Standard Arabic',
+    en: 'English',
+    fr: 'French',
+  };
   return [
     'You are a professional financial and technology news translator.',
-    `Translate the supplied news title and summary into ${targetName}.`,
+    `Translate the supplied news title and summary into ${targetName[targetLanguage]}.`,
     'Keep company names, stock tickers, source names, URLs, currency symbols, numbers, percentages, and dates unchanged.',
     'Do not add facts, advice, commentary, labels, markdown, or placeholders.',
     'Use natural market/technology terminology, not literal broken translation.',
@@ -236,8 +240,9 @@ async function translateWithLibre(title: string, summary: string, originalLangua
   };
 }
 
-async function translateWithMyMemory(title: string, summary: string, targetLanguage: AppNewsLanguage) {
-  const langpair = `en|${targetLanguage}`;
+async function translateWithMyMemory(title: string, summary: string, originalLanguage: string, targetLanguage: AppNewsLanguage) {
+  const sourceLanguage = ['ar', 'en', 'fr'].includes(originalLanguage) ? originalLanguage : 'en';
+  const langpair = `${sourceLanguage}|${targetLanguage}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
@@ -362,7 +367,7 @@ export async function translateNewsText(options: {
     translationSource: 'original',
   };
 
-  if (options.targetLanguage === 'en' || originalLanguage === options.targetLanguage) {
+  if (originalLanguage === options.targetLanguage) {
     translationCache.set(cacheKey, { value: originalState, timestamp: Date.now() });
     return originalState;
   }
@@ -392,7 +397,9 @@ export async function translateNewsText(options: {
     const translated = await translateWithAnthropic(titleOriginal, summaryOriginal, options.targetLanguage)
       ?? await translateWithOpenAI(titleOriginal, summaryOriginal, options.targetLanguage)
       ?? await translateWithLibre(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage)
-      ?? await translateWithMyMemory(titleOriginal, summaryOriginal, options.targetLanguage);
+      ?? (process.env.NEWS_ENABLE_PUBLIC_TRANSLATION_FALLBACK === 'true'
+        ? await translateWithMyMemory(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage)
+        : null);
     if (!isUsableTranslation(translated, titleOriginal, summaryOriginal)) {
       translationCache.set(cacheKey, { value: originalState, timestamp: Date.now() });
       return originalState;

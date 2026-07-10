@@ -34,11 +34,9 @@ describe('GCC market provider mappings', () => {
     });
   });
 
-  it('keeps Dubai and Abu Dhabi RSS feeds scoped to their own market cards', () => {
-    expect(GULF_RSS_FEEDS).toEqual(expect.arrayContaining([
-      expect.objectContaining({ market: 'uae-dfm', source: 'Mubasher Dubai Financial Market' }),
-      expect.objectContaining({ market: 'uae-adx', source: 'Mubasher Abu Dhabi Securities Exchange' }),
-    ]));
+  it('does not register insecure HTTP-only Gulf RSS feeds', () => {
+    expect(GULF_RSS_FEEDS.every(feed => feed.url.startsWith('https://'))).toBe(true);
+    expect(GULF_RSS_FEEDS.some(feed => feed.source.toLowerCase().includes('mubasher'))).toBe(false);
   });
 
   it('uses Yahoo-supported DFM equity symbols for Dubai movers', () => {

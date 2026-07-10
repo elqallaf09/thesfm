@@ -87,6 +87,7 @@ import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatu
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
 import { getMarketToolRequirements } from '@/components/market-analysis/toolRequirements';
+import type { MarketNewsServerQuery } from '@/components/market-analysis/NewsSentimentPanel';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
   return (
@@ -303,6 +304,9 @@ export default function MarketAnalysisPage() {
   const newsSentimentLoadingRef = useRef<Record<'news' | 'sentiment', boolean>>({ news: false, sentiment: false });
   const newsSentimentSymbolRef = useRef('');
   const newsSentimentNewsKeyRef = useRef('');
+  const marketNewsQueryRef = useRef<MarketNewsServerQuery | null>(null);
+  const marketNewsAbortRef = useRef<AbortController | null>(null);
+  const marketNewsRequestIdRef = useRef(0);
   const [technicalSymbol, setTechnicalSymbol] = useState('EURUSD');
   const [technicalState, setTechnicalState] = useState<TechnicalState>({ loading: false, data: null, message: '' });
   const [technicalRefreshKey, setTechnicalRefreshKey] = useState(0);
@@ -340,6 +344,99 @@ export default function MarketAnalysisPage() {
       exchange: selectedAsset?.exchange,
     };
   }, [selectedAsset?.exchange, selectedAsset?.name, selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentSymbol]);
+
+  const loadMarketNews = useCallback((query: MarketNewsServerQuery, options: { force?: boolean } = {}) => {
+    marketNewsQueryRef.current = query;
+    marketNewsAbortRef.current?.abort();
+    const controller = new AbortController();
+    marketNewsAbortRef.current = controller;
+    const requestId = ++marketNewsRequestIdRef.current;
+    newsSentimentLoadingRef.current.news = true;
+    setCentralBankNews(previous => ({ ...previous, loading: true, message: '', code: undefined }));
+
+    const params = new URLSearchParams({
+      scope: query.scope === 'asset' && query.symbol ? 'asset' : 'market',
+      page: String(query.page),
+      limit: String(query.pageSize),
+      lang,
+      sort: query.sort,
+    });
+    if (query.q) params.set('q', query.q);
+    if (query.symbol) params.set('symbol', query.symbol);
+    if (query.market) params.set('market', query.market);
+    if (query.exchange) params.set('exchange', query.exchange);
+    if (query.sector) params.set('sector', query.sector);
+    if (query.eventType) params.set('eventType', query.eventType);
+    if (query.source) params.set('source', query.source);
+    if (query.sourceType) params.set('sourceType', query.sourceType);
+    if (query.from && query.to) {
+      params.set('from', query.from);
+      params.set('to', query.to);
+    }
+    if (query.impact !== 'all') params.set('impact', query.impact);
+    if (query.sentiment !== 'all') params.set('sentiment', query.sentiment);
+    if (query.verification !== 'all') params.set('verification', query.verification);
+    if (query.officialOnly) params.set('officialOnly', '1');
+    if (options.force) params.set('refresh', String(Date.now()));
+
+    void (async () => {
+      const timeoutId = window.setTimeout(() => controller.abort(), MARKET_TOOL_REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch(`/api/market-news?${params.toString()}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+        if (requestId !== marketNewsRequestIdRef.current) return;
+        const items = Array.isArray(payload.items)
+          ? payload.items.filter((item): item is Record<string, any> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+          : [];
+        const code = String(payload.code ?? '').trim().toUpperCase();
+        const available = response.ok && payload.ok !== false && payload.success !== false;
+        const rawDiagnostics = payload.diagnostics && typeof payload.diagnostics === 'object' && !Array.isArray(payload.diagnostics)
+          ? payload.diagnostics as Record<string, unknown>
+          : {};
+        const total = Number(payload.total);
+        const page = Number(payload.page);
+        const pageSize = Number(payload.pageSize);
+        const totalPages = Number(payload.totalPages);
+        setCentralBankNews({
+          loading: false,
+          items,
+          message: available ? '' : sanitizeMarketToolMessage(code, String(payload.message ?? '')),
+          updatedAt: String(payload.lastUpdated ?? payload.updated_at ?? payload.lastSuccessfulUpdate ?? '') || undefined,
+          code,
+          source: String(payload.source ?? 'multi-source'),
+          provider: String(payload.provider ?? 'multi-source'),
+          cacheStatus: typeof payload.cacheStatus === 'string' ? payload.cacheStatus : undefined,
+          cached: payload.cached === true,
+          stale: payload.stale === true,
+          diagnostics: {
+            ...rawDiagnostics,
+            providerCoverage: payload.providerCoverage ?? rawDiagnostics.providerCoverage,
+            partialFailure: payload.partialFailure ?? rawDiagnostics.partialFailure,
+            liveUpdatesAvailable: payload.liveUpdatesAvailable ?? rawDiagnostics.liveUpdatesAvailable,
+            lastSuccessfulUpdate: payload.lastSuccessfulUpdate ?? rawDiagnostics.lastSuccessfulUpdate,
+            total: Number.isFinite(total) ? total : items.length,
+            page: Number.isFinite(page) && page > 0 ? page : query.page,
+            pageSize: Number.isFinite(pageSize) && pageSize > 0 ? pageSize : query.pageSize,
+            totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : null,
+          },
+        });
+        newsSentimentLoadedRef.current.news = true;
+        newsSentimentNewsKeyRef.current = JSON.stringify(query);
+      } catch (error) {
+        if (requestId !== marketNewsRequestIdRef.current) return;
+        setCentralBankNews(marketToolFailureState<Record<string, any>>(error));
+      } finally {
+        window.clearTimeout(timeoutId);
+        if (requestId === marketNewsRequestIdRef.current) {
+          newsSentimentLoadingRef.current.news = false;
+          marketNewsAbortRef.current = null;
+        }
+      }
+    })();
+  }, [lang]);
 
   const loadNewsSentiment = useCallback((targets: Array<'news' | 'sentiment'> = ['news', 'sentiment'], options: { force?: boolean } = {}) => {
     const requestedTargets = [...new Set(targets)];
@@ -384,6 +481,7 @@ export default function MarketAnalysisPage() {
     const refreshKey = options.force ? Date.now() : null;
     const requests = uniqueTargets.map(target => {
       const newsParams = new URLSearchParams({ scope: 'general', limit: '24' });
+      newsParams.set('lang', lang);
       if (refreshKey) newsParams.set('refresh', String(refreshKey));
       const newsSymbol = selectedSentimentProviderSymbol || selectedSentimentSymbol;
       if (newsSymbol) newsParams.set('symbol', newsSymbol);
@@ -432,7 +530,7 @@ export default function MarketAnalysisPage() {
         }
       });
     });
-  }, [selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentRequestKey, selectedSentimentSymbol, t]);
+  }, [lang, selectedSentimentAssetType, selectedSentimentProviderSymbol, selectedSentimentRequestKey, selectedSentimentSymbol, t]);
 
   const checkMyfxbookHealth = useCallback(() => {
     setSentimentHealthLoading(true);
@@ -529,7 +627,7 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     if (activeTab !== 'newsSentiment') return;
-    loadNewsSentiment();
+    loadNewsSentiment(['sentiment']);
   }, [activeTab, loadNewsSentiment]);
 
   useEffect(() => {
@@ -2406,7 +2504,11 @@ export default function MarketAnalysisPage() {
             sentiment={marketSentiment}
             selectedAsset={selectedSentimentAsset}
             onSelectAsset={focusMarketSearch}
-            onRefreshNews={() => loadNewsSentiment(['news'], { force: true })}
+            onNewsQueryChange={loadMarketNews}
+            onRefreshNews={() => {
+              const currentQuery = marketNewsQueryRef.current;
+              if (currentQuery) loadMarketNews(currentQuery, { force: true });
+            }}
             onRefreshSentiment={() => selectedSentimentAsset ? loadNewsSentiment(['sentiment'], { force: true }) : focusMarketSearch()}
             onCheckSentimentHealth={checkMyfxbookHealth}
             checkingSentimentHealth={sentimentHealthLoading}

@@ -20,6 +20,8 @@ export type RecommendationNewsSentiment = {
   articleCount: number;
   provider: string | null;
   updatedAt: string | null;
+  verificationStatus?: 'official' | 'confirmed' | 'single_source' | 'conflicting' | 'unverified';
+  independentSourceCount?: number;
 };
 
 export type RecommendationStrategy = {
@@ -34,11 +36,46 @@ export type RecommendationStrategy = {
   noteAr: string;
 };
 
+export type DataSufficiencyCheckId = 'historical_samples' | 'strategy_coverage' | 'technical_analysis' | 'data_quality';
+
+export type DataSufficiencyCheckItem = {
+  id: DataSufficiencyCheckId;
+  satisfied: boolean;
+  labelEn: string;
+  labelAr: string;
+  labelFr: string;
+  detailEn: string;
+  detailAr: string;
+  detailFr: string;
+};
+
+export type DataSufficiencyUnavailableStrategy = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  nameFr: string;
+  reasonEn: string;
+  reasonAr: string;
+  reasonFr: string;
+};
+
+export type DataSufficiencyChecklist = {
+  sufficient: boolean;
+  samples: number;
+  strategyCoverage: { available: number; total: number };
+  technicalAnalysisAvailable: boolean;
+  dataQuality: RecommendationDataQuality;
+  items: DataSufficiencyCheckItem[];
+  unavailableStrategies: DataSufficiencyUnavailableStrategy[];
+};
+
 export type MultiFactorRecommendation = {
   finalRecommendation: 'Strong Buy' | 'Buy' | 'Weak Buy' | 'Watch' | 'Weak Sell' | 'Sell' | 'Insufficient data';
   finalRecommendationAr: string;
+  finalRecommendationFr: string;
   signal: RecommendationSignal;
-  confidence: number | null;
+  confidence: number;
+  dataSufficiency: DataSufficiencyChecklist;
   finalScore: number | null;
   riskLevel: RecommendationRiskLevel;
   strategyCount: number;
@@ -46,6 +83,7 @@ export type MultiFactorRecommendation = {
   strategyAgreement: {
     label: 'Strong agreement' | 'Moderate agreement' | 'Mixed consensus' | 'Limited consensus' | 'Insufficient data';
     labelAr: string;
+    labelFr: string;
     agreementPct: number | null;
     buyPct: number;
     sellPct: number;
@@ -113,7 +151,8 @@ const WEIGHTS = {
   momentum: 20,
   supportResistance: 15,
   volume: 15,
-  newsSentiment: 10,
+  // News is evidence context only; it must never change a Buy/Sell direction.
+  newsSentiment: 0,
   dataQuality: 10,
   risk: 5,
 } as const;
@@ -127,6 +166,8 @@ export const UNAVAILABLE_NEWS_SENTIMENT: RecommendationNewsSentiment = {
   articleCount: 0,
   provider: null,
   updatedAt: null,
+  verificationStatus: 'unverified',
+  independentSourceCount: 0,
 };
 
 const DISCLAIMER_EN = 'This automated market reading is for information only and is not financial advice.';
@@ -334,6 +375,147 @@ function dataQualityStatus(input: BuildRecommendationInput, samples: number, tec
   return { status, labelEn: labels[status].en, labelAr: labels[status].ar, score: scores[status] };
 }
 
+const DATA_QUALITY_LABEL_FR: Record<RecommendationDataQuality, string> = {
+  complete: 'Complètes',
+  delayed: 'Données du fournisseur retardées',
+  cached: 'Données du fournisseur en cache',
+  partial: 'Partielles',
+  unavailable: 'Indisponibles',
+};
+
+const STRATEGY_NAME_META: Record<string, { en: string; ar: string; fr: string }> = {
+  trend: { en: 'Trend following', ar: 'اتباع الاتجاه', fr: 'Suivi de tendance' },
+  momentum: { en: 'Momentum', ar: 'الزخم', fr: 'Élan (momentum)' },
+  support_resistance: { en: 'Support and resistance', ar: 'الدعم والمقاومة', fr: 'Support et résistance' },
+  breakout: { en: 'Breakout with volume', ar: 'الاختراق مع الحجم', fr: 'Cassure avec volume' },
+  mean_reversion: { en: 'Mean reversion', ar: 'العودة للمتوسط', fr: 'Retour à la moyenne' },
+  volume_confirmation: { en: 'Volume confirmation', ar: 'تأكيد الحجم', fr: 'Confirmation du volume' },
+  news_sentiment: { en: 'News and sentiment', ar: 'الأخبار والمعنويات', fr: 'Actualités et sentiment' },
+  data_quality: { en: 'Data quality', ar: 'جودة البيانات', fr: 'Qualité des données' },
+  risk: { en: 'Risk scoring', ar: 'تقييم المخاطر', fr: 'Évaluation du risque' },
+};
+
+const STRATEGY_UNAVAILABLE_REASON_FR: Record<string, string> = {
+  trend: 'L’historique EMA20/50/200 est incomplet.',
+  momentum: 'Le RSI, le MACD ou l’élan de prix n’est pas disponible.',
+  support_resistance: 'Le support et la résistance nécessitent au moins 20 bougies valides.',
+  breakout: 'La détection de cassure nécessite un historique des plus hauts/bas et du volume.',
+  mean_reversion: 'Le retour à la moyenne nécessite le RSI et la dispersion sur 20 périodes.',
+  volume_confirmation: 'L’historique du volume du fournisseur n’est pas disponible.',
+  news_sentiment: 'Aucune actualité ou donnée de sentiment récente du fournisseur n’est disponible.',
+  data_quality: 'Aucun échantillon du fournisseur n’était disponible pour évaluer la qualité des données.',
+  risk: 'Le risque n’a pas pu être évalué sans historique de prix.',
+};
+
+function allUnavailableStrategies(news: RecommendationNewsSentiment): RecommendationStrategy[] {
+  return [
+    unavailableStrategy('trend', 'Trend following', 'اتباع الاتجاه', 25, 'EMA20/50/200 history is incomplete.', 'تاريخ EMA20/50/200 غير مكتمل.'),
+    unavailableStrategy('momentum', 'Momentum', 'الزخم', 20, 'RSI, MACD, or price momentum is unavailable.', 'RSI أو MACD أو زخم السعر غير متاح.'),
+    unavailableStrategy('support_resistance', 'Support and resistance', 'الدعم والمقاومة', 15, 'Support and resistance need at least 20 valid candles.', 'الدعم والمقاومة يحتاجان إلى 20 شمعة صالحة على الأقل.'),
+    unavailableStrategy('breakout', 'Breakout with volume', 'الاختراق مع الحجم', 15, 'Breakout detection needs high/low and volume history.', 'كشف الاختراق يحتاج إلى بيانات القمم والقيعان والحجم.'),
+    unavailableStrategy('mean_reversion', 'Mean reversion', 'العودة للمتوسط', 20, 'Mean reversion needs RSI and 20-period dispersion.', 'العودة للمتوسط تحتاج RSI وتشتت 20 فترة.'),
+    unavailableStrategy('volume_confirmation', 'Volume confirmation', 'تأكيد الحجم', 15, 'Provider volume history is unavailable.', 'تاريخ الحجم من المزود غير متاح.'),
+    unavailableStrategy('news_sentiment', 'News and sentiment', 'الأخبار والمعنويات', 0, news.summaryEn, news.summaryAr),
+    unavailableStrategy('data_quality', 'Data quality', 'جودة البيانات', 10, 'No provider samples were available to score data quality.', 'لا تتوفر عينات من المزود لتقييم جودة البيانات.'),
+    unavailableStrategy('risk', 'Risk scoring', 'تقييم المخاطر', 5, 'Risk could not be scored without price history.', 'تعذر تقييم المخاطر دون تاريخ أسعار.'),
+  ];
+}
+
+// قائمة تحقق ثلاثية اللغة تشرح سبب تعذر التوصية بدل عبارة "بيانات غير كافية" المبهمة:
+// عدد العينات، تغطية الاستراتيجيات، توفر التحليل الفني، جودة البيانات، والاستراتيجيات غير المتاحة تحديداً.
+function buildDataSufficiencyChecklist(
+  samples: number,
+  strategies: RecommendationStrategy[],
+  technicalAvailable: boolean,
+  quality: MultiFactorRecommendation['dataQualityStatus'],
+): DataSufficiencyChecklist {
+  const availableStrategies = strategies.filter(item => item.available && item.id !== 'news_sentiment');
+  const unavailableStrategies: DataSufficiencyUnavailableStrategy[] = strategies
+    .filter(item => !item.available)
+    .map(item => {
+      const meta = STRATEGY_NAME_META[item.id];
+      return {
+        id: item.id,
+        nameEn: meta?.en ?? item.nameEn,
+        nameAr: meta?.ar ?? item.nameAr,
+        nameFr: meta?.fr ?? item.nameEn,
+        reasonEn: item.noteEn,
+        reasonAr: item.noteAr,
+        reasonFr: STRATEGY_UNAVAILABLE_REASON_FR[item.id] ?? item.noteEn,
+      };
+    });
+
+  const samplesOk = samples >= 200;
+  const coverageOk = availableStrategies.length >= 3;
+  const qualityOk = quality.status !== 'unavailable' && quality.status !== 'partial';
+  const qualityLabelFr = DATA_QUALITY_LABEL_FR[quality.status] ?? quality.labelEn;
+
+  const items: DataSufficiencyCheckItem[] = [
+    {
+      id: 'historical_samples',
+      satisfied: samplesOk,
+      labelEn: 'Historical sample count',
+      labelAr: 'عدد العينات التاريخية',
+      labelFr: 'Nombre d’échantillons historiques',
+      detailEn: samplesOk
+        ? `${samples} real provider samples were returned, meeting the 200-sample requirement.`
+        : `Only ${samples} real provider samples were returned; at least 200 are needed for full technical scoring.`,
+      detailAr: samplesOk
+        ? `تم إرجاع ${samples} عينة حقيقية من المزود، وهو ما يفي بمتطلب 200 عينة.`
+        : `تم إرجاع ${samples} عينة حقيقية فقط من المزود؛ يلزم 200 عينة على الأقل للتقييم الفني الكامل.`,
+      detailFr: samplesOk
+        ? `${samples} échantillons réels ont été renvoyés par le fournisseur, ce qui respecte l’exigence de 200 échantillons.`
+        : `Seulement ${samples} échantillons réels ont été renvoyés par le fournisseur ; au moins 200 sont nécessaires pour une notation technique complète.`,
+    },
+    {
+      id: 'strategy_coverage',
+      satisfied: coverageOk,
+      labelEn: 'Strategy coverage',
+      labelAr: 'تغطية الاستراتيجيات',
+      labelFr: 'Couverture des stratégies',
+      detailEn: `${availableStrategies.length} of ${strategies.length} strategy modules produced a usable reading.`,
+      detailAr: `أنتجت ${availableStrategies.length} من أصل ${strategies.length} وحدة استراتيجية قراءة صالحة.`,
+      detailFr: `${availableStrategies.length} des ${strategies.length} modules de stratégie ont produit une lecture utilisable.`,
+    },
+    {
+      id: 'technical_analysis',
+      satisfied: technicalAvailable,
+      labelEn: 'Technical analysis availability',
+      labelAr: 'توفر التحليل الفني',
+      labelFr: 'Disponibilité de l’analyse technique',
+      detailEn: technicalAvailable
+        ? 'Core technical indicators (EMA, RSI, MACD, support/resistance) were computed from real price history.'
+        : 'Core technical indicators could not be computed from the available price history.',
+      detailAr: technicalAvailable
+        ? 'تم احتساب المؤشرات الفنية الأساسية (EMA وRSI وMACD والدعم والمقاومة) من تاريخ أسعار حقيقي.'
+        : 'تعذر احتساب المؤشرات الفنية الأساسية من تاريخ الأسعار المتاح.',
+      detailFr: technicalAvailable
+        ? 'Les indicateurs techniques principaux (EMA, RSI, MACD, support/résistance) ont été calculés à partir d’un historique de prix réel.'
+        : 'Les indicateurs techniques principaux n’ont pas pu être calculés à partir de l’historique de prix disponible.',
+    },
+    {
+      id: 'data_quality',
+      satisfied: qualityOk,
+      labelEn: 'Data quality',
+      labelAr: 'جودة البيانات',
+      labelFr: 'Qualité des données',
+      detailEn: `Provider data quality is ${quality.labelEn.toLowerCase()}.`,
+      detailAr: `جودة بيانات المزود ${quality.labelAr}.`,
+      detailFr: `La qualité des données du fournisseur est ${qualityLabelFr.toLowerCase()}.`,
+    },
+  ];
+
+  return {
+    sufficient: samples > 0 && technicalAvailable && quality.status !== 'unavailable',
+    samples,
+    strategyCoverage: { available: availableStrategies.length, total: strategies.length },
+    technicalAnalysisAvailable: technicalAvailable,
+    dataQuality: quality.status,
+    items,
+    unavailableStrategies,
+  };
+}
+
 function riskLevel(assetType: string, atrPercent: number | null, annualizedVolatility: number | null): RecommendationRiskLevel {
   if (/crypto/i.test(assetType) && (annualizedVolatility === null || annualizedVolatility >= 55)) return 'high';
   const riskValue = annualizedVolatility ?? (atrPercent === null ? null : atrPercent * 12);
@@ -352,7 +534,7 @@ function riskScore(level: RecommendationRiskLevel) {
 function consensus(strategies: RecommendationStrategy[]): MultiFactorRecommendation['strategyAgreement'] {
   const available = strategies.filter(item => item.available);
   if (!available.length) {
-    return { label: 'Insufficient data', labelAr: 'بيانات غير كافية', agreementPct: null, buyPct: 0, sellPct: 0, watchPct: 0, strategyCount: 0 };
+    return { label: 'Insufficient data', labelAr: 'بيانات غير كافية', labelFr: 'Données insuffisantes', agreementPct: null, buyPct: 0, sellPct: 0, watchPct: 0, strategyCount: 0 };
   }
 
   const totalWeight = available.reduce((sum, item) => sum + item.weight, 0);
@@ -380,10 +562,18 @@ function consensus(strategies: RecommendationStrategy[]): MultiFactorRecommendat
       : label === 'Moderate agreement'
         ? 'توافق متوسط'
         : 'توافق مختلط';
+  const labelFr = label === 'Limited consensus'
+    ? 'Consensus limité'
+    : label === 'Strong agreement'
+      ? 'Fort consensus'
+      : label === 'Moderate agreement'
+        ? 'Consensus modéré'
+        : 'Consensus mitigé';
 
   return {
     label,
     labelAr,
+    labelFr,
     agreementPct,
     buyPct: totalWeight > 0 ? Math.round((buy / totalWeight) * 100) : 0,
     sellPct: totalWeight > 0 ? Math.round((sell / totalWeight) * 100) : 0,
@@ -434,16 +624,20 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
 
   if (price === null || price <= 0 || samples === 0 || input.dataQuality === 'unavailable') {
     const quality = dataQualityStatus({ ...input, dataQuality: 'unavailable' }, samples, false);
+    const strategies = allUnavailableStrategies(news);
+    const strategyAgreement = consensus(strategies);
     return {
       finalRecommendation: 'Insufficient data',
       finalRecommendationAr: 'بيانات غير كافية',
+      finalRecommendationFr: 'Données insuffisantes',
       marketRegime: { regime: 'unknown', adx: null, ...regimeLabels('unknown') },
       signal: 'watch',
-      confidence: null,
+      confidence: 0,
+      dataSufficiency: buildDataSufficiencyChecklist(samples, strategies, false, quality),
       finalScore: null,
       riskLevel: 'medium',
-      strategyCount: 0,
-      strategyAgreement: consensus([]),
+      strategyCount: strategyAgreement.strategyCount,
+      strategyAgreement,
       technicalAvailable: false,
       samples,
       dataQualityStatus: quality,
@@ -453,12 +647,12 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
         indicators: { ema20: null, ema50: null, ema200: null, rsi14: null, macd: null, macdSignal: null, priceMomentum20: null, support: null, resistance: null, volumeRatio: null, atr: null },
       },
       newsSentimentSummary: news,
-      explanationEn: 'The provider did not return enough real market data, so the system shows Insufficient data instead of a Buy or Sell signal.',
-      explanationAr: 'لم يرجع المزود بيانات سوق حقيقية كافية، لذلك يعرض النظام بيانات غير كافية بدلاً من إشارة شراء أو بيع.',
+      explanationEn: 'The provider did not return enough real market data, so the system shows a data sufficiency checklist instead of a Buy or Sell signal.',
+      explanationAr: 'لم يرجع المزود بيانات سوق حقيقية كافية، لذلك يعرض النظام قائمة تحقق من كفاية البيانات بدلاً من إشارة شراء أو بيع.',
       disclaimerEn: DISCLAIMER_EN,
       disclaimerAr: DISCLAIMER_AR,
       scoreBreakdown: { trend: 0, momentum: 0, supportResistance: 0, volume: 0, newsSentiment: 0, dataQuality: quality.score, risk: 0, finalScore: null },
-      strategies: [],
+      strategies,
       targetPrice: null,
       stopLoss: null,
       expectedMovePct: null,
@@ -617,8 +811,8 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
     : unavailableStrategy('volume_confirmation', 'Volume confirmation', 'تأكيد الحجم', 15, 'Provider volume history is unavailable.', 'تاريخ الحجم من المزود غير متاح.');
 
   const newsStrategy = news.status === 'available'
-    ? strategy('news_sentiment', 'News and sentiment', 'الأخبار والمعنويات', 10, news.score, news.summaryEn, news.summaryAr)
-    : unavailableStrategy('news_sentiment', 'News and sentiment', 'الأخبار والمعنويات', 10, news.summaryEn, news.summaryAr);
+    ? strategy('news_sentiment', 'News and sentiment', 'الأخبار والمعنويات', 0, news.score, news.summaryEn, news.summaryAr)
+    : unavailableStrategy('news_sentiment', 'News and sentiment', 'الأخبار والمعنويات', 0, news.summaryEn, news.summaryAr);
 
   const dataQualityStrategy = strategy(
     'data_quality',
@@ -640,7 +834,8 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   );
 
   const strategies = [trend, momentum, supportResistance, breakout, meanReversion, volume, newsStrategy, dataQualityStrategy, riskStrategy];
-  const strategyAgreement = consensus(strategies);
+  const directionalStrategies = strategies.filter(item => item.id !== 'news_sentiment');
+  const strategyAgreement = consensus(directionalStrategies);
   const strategyCount = strategyAgreement.strategyCount;
 
   // كل فئة تُبنى من عواملها المتاحة فقط؛ الفئة غير المتاحة تُعلَّم null بدل
@@ -681,7 +876,6 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
     { score: categoryScores.momentum, weight: weights.momentum },
     { score: categoryScores.supportResistance, weight: weights.supportResistance },
     { score: categoryScores.volume, weight: weights.volume },
-    { score: categoryScores.newsSentiment, weight: weights.newsSentiment },
     { score: categoryScores.dataQuality, weight: weights.dataQuality },
     { score: categoryScores.risk, weight: weights.risk },
   ] as Array<{ score: number | null; weight: number }>)
@@ -743,6 +937,8 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
     && finalRecommendation !== 'Insufficient data') {
     finalRecommendation = 'Watch';
   }
+  // لا ثقة حقيقية بدون توصية فعلية: لا نعرض رقماً محسوباً إن كانت النتيجة "بيانات غير كافية".
+  if (finalRecommendation === 'Insufficient data') confidence = 0;
 
   const signal: RecommendationSignal = finalRecommendation === 'Buy' || finalRecommendation === 'Strong Buy' || finalRecommendation === 'Weak Buy'
     ? 'buy'
@@ -763,6 +959,19 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
             : finalRecommendation === 'Insufficient data'
               ? 'بيانات غير كافية'
               : 'مراقبة';
+  const finalRecommendationFr = finalRecommendation === 'Strong Buy'
+    ? 'Achat fort'
+    : finalRecommendation === 'Buy'
+      ? 'Achat'
+      : finalRecommendation === 'Weak Buy'
+        ? 'Achat faible'
+        : finalRecommendation === 'Sell'
+          ? 'Vente'
+          : finalRecommendation === 'Weak Sell'
+            ? 'Vente faible'
+            : finalRecommendation === 'Insufficient data'
+              ? 'Données insuffisantes'
+              : 'Surveillance';
 
   const regimeTextEn = regime === 'trending'
     ? ` Market regime is trending (ADX ${adxValue}), so trend and breakout modules carry extra weight.`
@@ -788,9 +997,11 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   return {
     finalRecommendation,
     finalRecommendationAr,
+    finalRecommendationFr,
     marketRegime: regimeMeta,
     signal,
     confidence,
+    dataSufficiency: buildDataSufficiencyChecklist(samples, strategies, technicalAvailable, quality),
     finalScore,
     riskLevel: risk,
     strategyCount,

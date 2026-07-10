@@ -30,6 +30,7 @@ import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { TR } from '@/lib/translations';
 
 type NewsApiResponse = StockCategoryNewsPayload | { success: false; error?: string; reason?: string };
+type NewsDeliveryStatus = Pick<StockCategoryNewsPayload, 'partialFailure' | 'liveUpdatesAvailable' | 'storedFallbackUsed'>;
 type MentionedTicker = { ticker: string; companyName: string; count: number };
 type MoverSectionKey = 'topGainers' | 'topLosers' | 'highestPrice' | 'lowestPrice' | 'highestVolume' | 'lowestVolume';
 type LocalizedText = Record<'ar' | 'en' | 'fr', string>;
@@ -50,6 +51,11 @@ type PageGuide = {
 const NEWS_PAGE_SIZE = 12;
 const PRIMARY_MOVER_SECTIONS: MoverSectionKey[] = ['topGainers', 'topLosers'];
 const ALL_MOVER_SECTIONS: MoverSectionKey[] = ['topGainers', 'topLosers', 'highestPrice', 'lowestPrice', 'highestVolume', 'lowestVolume'];
+const INITIAL_NEWS_DELIVERY_STATUS: NewsDeliveryStatus = {
+  partialFailure: false,
+  liveUpdatesAvailable: true,
+  storedFallbackUsed: false,
+};
 
 const PAGE_GUIDES: Partial<Record<StockCategoryId, PageGuide>> = {
   defensive: {
@@ -293,6 +299,48 @@ function itemMatchesSearch(item: StockCategoryNewsItem, query: string) {
   return itemSearchText(item).includes(needle);
 }
 
+function evidenceLabelKey(item: StockCategoryNewsItem): keyof typeof TR {
+  if (item.verificationStatus === 'conflicting') return 'news_verification_conflicting';
+  if (item.isOfficial || item.verificationStatus === 'official') return 'news_verification_official';
+  if (item.verificationStatus === 'confirmed') return 'news_verification_confirmed';
+  if (item.verificationStatus === 'single_source') return 'news_verification_single_source';
+  return 'news_verification_unverified';
+}
+
+function NewsEvidenceLine({ item, tr }: {
+  item: StockCategoryNewsItem;
+  tr: (key: keyof typeof TR) => string;
+}) {
+  const independentCount = Math.max(1, item.independentSourceCount || 0);
+  const isConflicting = item.verificationStatus === 'conflicting';
+  const isOfficial = item.isOfficial || item.verificationStatus === 'official';
+  const detail = isConflicting
+    ? tr('news_conflict_detail')
+    : independentCount > 1
+      ? tr('news_independent_confirmations').replace('{count}', String(independentCount))
+      : isOfficial
+        ? tr('news_independent_source_count').replace('{count}', String(independentCount))
+        : tr('news_single_source_detail');
+
+  return (
+    <div className={`mt-3 rounded-2xl border px-3 py-2.5 text-xs leading-5 ${
+      isConflicting
+        ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100'
+        : isOfficial
+          ? 'border-cyan-200 bg-cyan-50/70 text-cyan-950 dark:border-cyan-500/25 dark:bg-cyan-950/25 dark:text-cyan-100'
+          : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-950/55 dark:text-slate-200'
+    }`}>
+      <div className="flex items-start gap-2">
+        {isConflicting ? <AlertTriangle className="mt-0.5 shrink-0" size={14} /> : <ShieldCheck className="mt-0.5 shrink-0" size={14} />}
+        <div className="min-w-0">
+          <span className="font-black">{tr(evidenceLabelKey(item))}</span>
+          <p className="mt-0.5 font-semibold">{detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function normalizeText(value: string) {
   if (!/[ÃÂØÙâ]/.test(value)) return value;
   try {
@@ -314,6 +362,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   const [items, setItems] = useState<StockCategoryNewsItem[]>([]);
   const [prices, setPrices] = useState<TechStockPrice[]>([]);
   const [lastUpdated, setLastUpdated] = useState('');
+  const [newsDeliveryStatus, setNewsDeliveryStatus] = useState<NewsDeliveryStatus>(INITIAL_NEWS_DELIVERY_STATUS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -342,10 +391,16 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
       setItems(json.items);
       setPrices(json.prices ?? []);
       setLastUpdated(json.lastUpdated);
+      setNewsDeliveryStatus({
+        partialFailure: json.partialFailure,
+        liveUpdatesAvailable: json.liveUpdatesAvailable,
+        storedFallbackUsed: json.storedFallbackUsed,
+      });
     } catch (loadError) {
       setItems([]);
       setPrices([]);
       setLastUpdated('');
+      setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
       setError(loadError instanceof Error ? loadError.message : tr('stock_category_error'));
     } finally {
       window.clearTimeout(timeoutId);
@@ -527,6 +582,11 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
   const priceMap = useMemo(() => new Map(prices.map(price => [price.symbol, price])), [prices]);
   const updatedLabel = lastUpdated ? `${tr('tech_news_last_updated')}: ${formatDateTime(lastUpdated)}` : tr('tech_news_updated_daily');
+  const coverageNotice = newsDeliveryStatus.storedFallbackUsed || !newsDeliveryStatus.liveUpdatesAvailable
+    ? tr('news_stored_fallback')
+    : newsDeliveryStatus.partialFailure
+      ? tr('news_partial_coverage')
+      : '';
 
   if (!config) {
     return (
@@ -579,6 +639,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               </button>
             </div>
           </section>
+
+          {coverageNotice ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+              <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+              <p>{coverageNotice}</p>
+            </div>
+          ) : null}
 
           <CategoryStockTicker
             categoryType={config.id}
@@ -787,6 +854,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
                             {item.summary || item.title}
                           </p>
+                          <NewsEvidenceLine item={item} tr={tr} />
                           <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60 sm:grid-cols-2">
                             <div>
                               <p className="text-xs text-slate-500 dark:text-slate-400">{item.companyName}</p>

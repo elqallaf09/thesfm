@@ -1,5 +1,14 @@
 import { EUROPE_RSS_FEEDS, type EuropeRssFeed } from '@/lib/europe/europeRssFeeds';
 import type { EuropeMarketId } from '@/lib/europe/europeMarkets';
+import type {
+  ExpectedImpact,
+  FinancialEventType,
+  ImpactDirection,
+  ImpactHorizon,
+  NewsSentiment,
+  NewsSupportingSource,
+  VerificationStatus,
+} from '@/lib/market-news/types';
 
 export type EuropeNewsItem = {
   id: string;
@@ -15,7 +24,26 @@ export type EuropeNewsItem = {
   translationSource?: string;
   source: string;
   publishedAt: string;
+  updatedAt?: string | null;
   url: string;
+  isOfficial?: boolean;
+  sourceReliability?: number;
+  verificationStatus?: VerificationStatus;
+  independentSourceCount?: number;
+  corroboratingSourceCount?: number;
+  supportingSources?: NewsSupportingSource[];
+  symbols?: string[];
+  exchangeCodes?: string[];
+  sectors?: string[];
+  eventType?: FinancialEventType;
+  importanceScore?: number;
+  sentiment?: NewsSentiment;
+  expectedImpact?: ExpectedImpact;
+  impactDirection?: ImpactDirection;
+  impactHorizon?: ImpactHorizon;
+  impactReason?: string | null;
+  conflictSummary?: string | null;
+  whyItMatters?: string | null;
 };
 
 type ParsedFeedResult = {
