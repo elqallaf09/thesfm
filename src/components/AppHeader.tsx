@@ -39,7 +39,7 @@ export function AppHeader() {
   );
 
   const title = activeItem ? t(activeItem.labelKey) : 'THE SFM';
-  const crumb = effectivePathname === '/dashboard' ? 'THE SFM' : `THE SFM / ${title}`;
+  const crumb = effectivePathname === '/dashboard' ? 'THE SFM' : title;
 
   return (
     <>
@@ -102,7 +102,6 @@ export function AppHeader() {
           .sfm-global-brand {
             flex: 1 1 auto;
             min-width: 0;
-            max-width: min(42vw, 220px);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -112,6 +111,7 @@ export function AppHeader() {
           }
 
           .sfm-global-brand > div {
+            flex: 1 1 auto;
             min-width: 0;
             max-width: 100%;
           }
@@ -205,7 +205,6 @@ export function AppHeader() {
           }
 
           .sfm-global-brand {
-            max-width: min(120px, 31vw);
             gap: 7px;
           }
 
@@ -219,7 +218,7 @@ export function AppHeader() {
           }
 
           .sfm-global-brand span {
-            max-width: 74px;
+            max-width: 100%;
             font-size: 10px;
           }
 

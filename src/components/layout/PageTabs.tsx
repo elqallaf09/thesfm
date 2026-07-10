@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
+
 export type PageTabItem = {
   id: string;
   label: string;
@@ -16,27 +18,135 @@ type PageTabsProps = {
 };
 
 export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: PageTabsProps) {
+  const scrollerRef = useRef<HTMLElement | null>(null);
+  const leadSentinelRef = useRef<HTMLSpanElement | null>(null);
+  const trailSentinelRef = useRef<HTMLSpanElement | null>(null);
+  const [hasHiddenLead, setHasHiddenLead] = useState(false);
+  const [hasHiddenTrail, setHasHiddenTrail] = useState(false);
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    const leadEl = leadSentinelRef.current;
+    const trailEl = trailSentinelRef.current;
+    if (!root || !leadEl || !trailEl) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.target === leadEl) setHasHiddenLead(!entry.isIntersecting);
+          if (entry.target === trailEl) setHasHiddenTrail(!entry.isIntersecting);
+        });
+      },
+      { root, threshold: 0 },
+    );
+    observer.observe(leadEl);
+    observer.observe(trailEl);
+    return () => observer.disconnect();
+  }, [tabs.length]);
+
   return (
-    <nav className={`page-section-tabs ${className}`} aria-label={ariaLabel} role="tablist">
-      {tabs.map(tab => {
-        const isActive = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            className={isActive ? 'active' : ''}
-            aria-selected={isActive}
-            aria-disabled={tab.disabled || undefined}
-            disabled={tab.disabled}
-            onClick={() => onChange(tab.id)}
-          >
-            <span>{tab.label}</span>
-            {typeof tab.count === 'number' && <b>{tab.count}</b>}
-          </button>
-        );
-      })}
+    <div className="page-section-tabs-shell">
+      <nav
+        ref={scrollerRef}
+        className={`page-section-tabs ${className}`}
+        aria-label={ariaLabel}
+        role="tablist"
+      >
+        <span ref={leadSentinelRef} className="page-section-tabs-sentinel" aria-hidden="true" />
+        {tabs.map(tab => {
+          const isActive = active === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              className={isActive ? 'active' : ''}
+              aria-selected={isActive}
+              aria-disabled={tab.disabled || undefined}
+              disabled={tab.disabled}
+              onClick={() => onChange(tab.id)}
+            >
+              <span>{tab.label}</span>
+              {typeof tab.count === 'number' && <b>{tab.count}</b>}
+            </button>
+          );
+        })}
+        <span ref={trailSentinelRef} className="page-section-tabs-sentinel" aria-hidden="true" />
+      </nav>
+      <span className={`page-section-tabs-fade lead ${hasHiddenLead ? 'visible' : ''}`} aria-hidden="true" />
+      <span className={`page-section-tabs-fade trail ${hasHiddenTrail ? 'visible' : ''}`} aria-hidden="true" />
       <style jsx>{`
+        .page-section-tabs-shell {
+          position: relative;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .page-section-tabs-sentinel {
+          flex: 0 0 1px;
+          align-self: stretch;
+        }
+
+        .page-section-tabs.charity-tabs .page-section-tabs-sentinel {
+          display: none;
+        }
+
+        @media (max-width: 720px) {
+          .page-section-tabs.charity-tabs .page-section-tabs-sentinel {
+            display: block;
+          }
+        }
+
+        .page-section-tabs-fade {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 28px;
+          pointer-events: none;
+          z-index: 2;
+          opacity: 0;
+          transition: opacity 0.18s ease;
+        }
+
+        .page-section-tabs-fade.visible {
+          opacity: 1;
+        }
+
+        :global(html[dir='rtl']) .page-section-tabs-fade.lead {
+          right: 0;
+          border-radius: 0 24px 24px 0;
+          background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
+        }
+
+        :global(html[dir='rtl']) .page-section-tabs-fade.trail {
+          left: 0;
+          border-radius: 24px 0 0 24px;
+          background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
+        }
+
+        :global(html[dir='ltr']) .page-section-tabs-fade.lead {
+          left: 0;
+          border-radius: 24px 0 0 24px;
+          background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
+        }
+
+        :global(html[dir='ltr']) .page-section-tabs-fade.trail {
+          right: 0;
+          border-radius: 0 24px 24px 0;
+          background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
+        }
+
+        .page-section-tabs-shell:has(.page-section-tabs.charity-tabs) .page-section-tabs-fade {
+          display: none;
+        }
+
+        @media (max-width: 720px) {
+          .page-section-tabs-shell:has(.page-section-tabs.charity-tabs) .page-section-tabs-fade {
+            display: block;
+          }
+        }
+
         .page-section-tabs {
           display: flex;
           flex-wrap: nowrap;
@@ -172,6 +282,6 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           }
         }
       `}</style>
-    </nav>
+    </div>
   );
 }
