@@ -351,10 +351,17 @@ export function ComplianceSummaryCard({
           </div>
         </div>
       </div>
-      <div className={styles.confidencePanel}>
-        <div><span>{tr('sharia_research_confidence')}</span><strong>{formatPercent(result.confidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
-        <div className={styles.confidenceTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={result.confidence} aria-label={tr('sharia_research_confidence')}><span style={{ width: `${result.confidence}%` }} /></div>
-        <small>{tr('sharia_research_confidence_note')}</small>
+      <div className={styles.scorePanels}>
+        <div className={styles.confidencePanel}>
+          <div><span>{tr('sharia_research_confidence')}</span><strong>{formatPercent(result.confidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
+          <div className={styles.confidenceTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={result.confidence} aria-label={tr('sharia_research_confidence')}><span style={{ width: `${result.confidence}%` }} /></div>
+          <small>{tr('sharia_research_confidence_note')}</small>
+        </div>
+        <div className={styles.confidencePanel}>
+          <div><span>{tr('sharia_research_classification_confidence')}</span><strong>{formatPercent(result.classificationConfidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
+          <div className={styles.confidenceTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={result.classificationConfidence} aria-label={tr('sharia_research_classification_confidence')}><span style={{ width: `${result.classificationConfidence}%` }} /></div>
+          <small>{tr('sharia_research_classification_confidence_note')}</small>
+        </div>
       </div>
       <p className={styles.resultExplanation}>{tr(classificationExplanationKey(result.classification))}</p>
       <dl className={styles.verificationGrid}>
@@ -730,6 +737,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         <div className={styles.finalVerdictHeader}><div><span>{tr('sharia_research_final_title')}</span><h2><StatusIcon status={classificationTone(result.classification)} size={23} />{tr(classificationTranslationKey(result.classification))}</h2></div><strong>{formatPercent(result.confidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
         <div className={styles.finalVerdictGrid}>
           <div><span>{tr('sharia_research_conclusion')}</span><p>{conclusion}</p></div>
+          <div><span>{tr('sharia_research_classification_confidence')}</span><p>{formatPercent(result.classificationConfidence / 100, locale, { maximumFractionDigits: 0 })}</p></div>
           <div><span>{tr('sharia_research_reasons')}</span><ul>{mainReasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
           <div><span>{tr('sharia_research_limitations')}</span><p>{limitations}</p></div>
           <div><span>{tr('sharia_research_next_step')}</span><p>{nextStep(result, tr)}</p></div>

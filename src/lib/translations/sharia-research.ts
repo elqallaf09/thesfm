@@ -82,6 +82,8 @@ export const TR_SHARIA_RESEARCH = {
   sharia_research_country: { ar: 'الدولة', en: 'Country', fr: 'Pays' },
   sharia_research_confidence: { ar: 'اكتمال الأدلة وموثوقيتها', en: 'Evidence completeness and reliability', fr: 'Complétude et fiabilité des preuves' },
   sharia_research_confidence_note: { ar: 'تقيس هذه النسبة جودة الأدلة، ولا تمثل يقيناً دينياً.', en: 'This score measures evidence quality, not religious certainty.', fr: 'Ce score mesure la qualité des preuves, pas une certitude religieuse.' },
+  sharia_research_classification_confidence: { ar: 'الثقة في التصنيف', en: 'Classification confidence', fr: 'Confiance de classification' },
+  sharia_research_classification_confidence_note: { ar: 'تقيس هذه النسبة مدى وضوح الإشارة الحاسمة وراء هذا التصنيف تحديداً، وهي منفصلة عن اكتمال الأدلة ولا تمثل يقيناً دينياً.', en: 'This score measures how clear-cut the decisive signal behind this specific classification is—separate from evidence completeness, and not religious certainty.', fr: 'Ce score mesure la clarté du signal décisif derrière cette classification précise, indépendamment de la complétude des preuves, et sans constituer une certitude religieuse.' },
   sharia_research_verified: { ar: 'آخر تحقق', en: 'Last verified', fr: 'Dernière vérification' },
   sharia_research_last_report: { ar: 'آخر فترة مالية', en: 'Latest financial period', fr: 'Dernière période financière' },
   sharia_research_live_analysis: { ar: 'تحليل مباشر', en: 'Live analysis', fr: 'Analyse en direct' },

@@ -225,6 +225,9 @@ export type ShariaScreeningResult = {
   confidence: number;
   confidenceLabel: 'high' | 'medium' | 'low';
   confidenceExplanation: string;
+  classificationConfidence: number;
+  classificationConfidenceLabel: 'high' | 'medium' | 'low';
+  classificationConfidenceExplanation: string;
   methodology: ShariaMethodology;
   lastFinancialReportDate: string | null;
   reasons: string[];

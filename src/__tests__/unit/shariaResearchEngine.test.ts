@@ -149,4 +149,71 @@ describe('evidence-based Shariah analysis', () => {
     expect(MSCI_ISLAMIC_INDEX_JULY_2025.sourceDocument.url).toMatch(/^https:\/\/www\.msci\.com\//);
     expect(MSCI_ISLAMIC_INDEX_JULY_2025.financialRatioRules.map(rule => rule.threshold)).toEqual([0.30, 0.30, 0.46]);
   });
+
+  describe('classification confidence (distinct from evidence completeness)', () => {
+    it('scores a comfortably-passing compliant result higher than a borderline one', () => {
+      const document = officialAnnualReport();
+      const comfortable = analyzeShariaEvidence({
+        security,
+        documents: [document],
+        financialValues: completeValues(document),
+        methodology: MSCI_ISLAMIC_INDEX_JULY_2025,
+        retrievedAt: '2026-07-10T00:00:00.000Z',
+      });
+      expect(comfortable.classification).toBe('compliant');
+
+      const borderlineValues = [
+        financial(document, 'total_assets', 1_000),
+        financial(document, 'interest_bearing_debt', 299),
+        financial(document, 'cash_and_equivalents', 200),
+        financial(document, 'interest_bearing_securities', 99),
+        financial(document, 'accounts_receivable', 259),
+        financial(document, 'total_income', 1_000),
+        financial(document, 'prohibited_revenue', 0),
+        financial(document, 'interest_income', 0),
+      ];
+      const borderline = analyzeShariaEvidence({
+        security,
+        documents: [document],
+        financialValues: borderlineValues,
+        methodology: MSCI_ISLAMIC_INDEX_JULY_2025,
+        retrievedAt: '2026-07-10T00:00:00.000Z',
+      });
+      expect(borderline.classification).toBe('compliant');
+
+      expect(borderline.classificationConfidence).toBeLessThan(comfortable.classificationConfidence);
+      expect(comfortable.classificationConfidenceLabel).toBe('high');
+      expect(borderline.classificationConfidenceLabel).not.toBe('high');
+      // Evidence completeness is identical for both — only the classification confidence differs.
+      expect(borderline.confidence).toBe(comfortable.confidence);
+    });
+
+    it('scores classification confidence for a genuine data gap, independent of evidence completeness', () => {
+      const document = officialAnnualReport();
+      const result = analyzeShariaEvidence({
+        security,
+        documents: [document],
+        financialValues: [financial(document, 'total_assets', 1_000)],
+        methodology: MSCI_ISLAMIC_INDEX_JULY_2025,
+        retrievedAt: '2026-07-10T00:00:00.000Z',
+      });
+      expect(result.classification).toBe('insufficient_current_data');
+      expect(result.classificationConfidence).toBe(71);
+      expect(result.classificationConfidenceLabel).toBe('medium');
+    });
+
+    it('scores classification confidence for conflicting evidence using the conflicting sources’ tiers', () => {
+      const document = officialAnnualReport();
+      const other = { ...document, id: crypto.randomUUID(), sourceTitle: 'Second official filing', sourceUrl: 'https://www.sec.gov/Archives/edgar/data/1/other.htm', canonicalUrl: 'https://www.sec.gov/Archives/edgar/data/1/other.htm', contentHash: 'different' };
+      const evidence: Parameters<typeof resolveFinancialConflicts>[2] = [];
+      const conflicts = resolveFinancialConflicts([
+        financial(document, 'total_assets', 1_000),
+        { ...financial(other, 'total_assets', 1_300), documentId: other.id, sourceUrl: other.sourceUrl, sourceTitle: other.sourceTitle },
+      ], [document, other], evidence);
+      const result = analyzeShariaEvidence({ security, documents: [document, other], financialValues: completeValues(document), methodology: MSCI_ISLAMIC_INDEX_JULY_2025, conflicts, evidence, retrievedAt: '2026-07-10T00:00:00.000Z' });
+      expect(result.classification).toBe('conflicting_evidence');
+      expect(result.classificationConfidence).toBe(71);
+      expect(result.classificationConfidenceLabel).toBe('medium');
+    });
+  });
 });

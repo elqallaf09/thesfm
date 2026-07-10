@@ -156,6 +156,58 @@ function confidenceScore(input: {
   return Math.max(0, Math.min(95, business + ratios + reliability + freshness - conflictPenalty));
 }
 
+/**
+ * Evidence completeness (confidenceScore) measures how much verifiable evidence was gathered.
+ * Classification confidence measures something different: given that evidence, how sure the
+ * decisive signal is — i.e. how close ratios sit to their pass/fail threshold, how directly the
+ * business screen evidence supports its verdict, and how well-corroborated the decisive documents
+ * are. For the "we can't decide" classifications, it instead scores how clearly that gap/conflict
+ * is established, not directional certainty.
+ */
+function classificationConfidenceScore(input: {
+  classification: ShariaScreeningResult['classification'];
+  business: BusinessScreenResult;
+  ratios: RatioResultForConfidence[];
+  documents: SourceDocument[];
+  conflictCount: number;
+  stale: boolean;
+}) {
+  const { classification, business, ratios, documents, conflictCount, stale } = input;
+
+  if (classification === 'conflicting_evidence') {
+    const highTierSources = documents.filter(document => document.tier <= 2).length;
+    return Math.max(0, Math.min(100, 50 + Math.min(highTierSources * 8, 30) + Math.min(conflictCount * 5, 20)));
+  }
+
+  if (classification === 'insufficient_current_data') {
+    const evaluated = ratios.length + 1;
+    const unavailable = ratios.filter(ratio => ratio.status === 'unavailable').length + (business.status === 'unavailable' ? 1 : 0);
+    const gapClarity = evaluated > 0 ? unavailable / evaluated : 0;
+    const staleBonus = stale ? 20 : 0;
+    return Math.max(0, Math.min(100, 45 + Math.round(gapClarity * 35) + staleBonus));
+  }
+
+  const evaluatedRatios = ratios.filter(ratio => ratio.status === 'pass' || ratio.status === 'fail');
+  const ratioMargins = evaluatedRatios.map(ratio => {
+    if (ratio.value === null || ratio.threshold <= 0) return 0;
+    return Math.min(1, Math.abs(ratio.threshold - ratio.value) / ratio.threshold);
+  });
+  const avgRatioMargin = ratioMargins.length > 0 ? ratioMargins.reduce((sum, margin) => sum + margin, 0) / ratioMargins.length : 0;
+  const marginScore = Math.round(avgRatioMargin * 40);
+
+  const businessHasClearSignal = business.status === 'pass'
+    || (business.status === 'fail' && business.detectedActivities.some(activity => activity.materialityKnown));
+  const businessClarity = businessHasClearSignal ? 20 : business.status === 'review' ? 5 : 0;
+
+  const corroboratingSources = documents.filter(document => document.tier === 1 && document.extractionStatus === 'success').length;
+  const corroboration = Math.min(20, corroboratingSources * 5);
+
+  const base = classification === 'requires_review' ? 30 : 40;
+  return Math.max(0, Math.min(100, base + marginScore + businessClarity + corroboration));
+}
+
+type RatioResultForConfidence = Pick<ShariaScreeningResult['financialRatios'][number], 'status' | 'value' | 'threshold'>;
+
 export function analyzeShariaEvidence(input: {
   security: SecurityIdentity;
   documents: SourceDocument[];
@@ -198,6 +250,15 @@ export function analyzeShariaEvidence(input: {
     conflicts: conflicts.length,
   });
   const confidenceLabel = score >= 80 ? 'high' : score >= 55 ? 'medium' : 'low';
+  const classificationConfidence = classificationConfidenceScore({
+    classification,
+    business,
+    ratios,
+    documents: decisionDocuments,
+    conflictCount: conflicts.length,
+    stale,
+  });
+  const classificationConfidenceLabel = classificationConfidence >= 80 ? 'high' : classificationConfidence >= 55 ? 'medium' : 'low';
   const reasons = [
     ...business.reasons,
     ...ratios.map(ratio => ratio.status === 'unavailable'
@@ -220,6 +281,9 @@ export function analyzeShariaEvidence(input: {
     confidence: score,
     confidenceLabel,
     confidenceExplanation: `Evidence completeness score: ${score}/100. It reflects source tier, extraction success, current-period ratio coverage, and conflicts.`,
+    classificationConfidence,
+    classificationConfidenceLabel,
+    classificationConfidenceExplanation: `Classification confidence: ${classificationConfidence}/100. It reflects how far ratios sit from their threshold, how directly the business-screen evidence supports the verdict, and corroboration across Tier-1 sources — separate from evidence completeness.`,
     methodology: input.methodology,
     lastFinancialReportDate,
     reasons,

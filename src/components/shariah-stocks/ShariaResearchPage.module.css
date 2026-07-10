@@ -248,7 +248,8 @@
 .companyMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 5px; color: var(--muted); }
 .companyMeta b, .companyMeta span { padding-inline-end: 8px; border-inline-end: 1px solid var(--line); font-size: 14px; }
 .companyMeta span:last-child { border-inline-end: 0; }
-.confidencePanel { align-self: center; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--canvas); }
+.scorePanels { align-self: center; display: flex; flex-direction: column; gap: 10px; }
+.confidencePanel { align-self: stretch; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--canvas); }
 .confidencePanel > div:first-child { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .confidencePanel span { color: var(--muted); font-weight: 800; }
 .confidencePanel strong { color: var(--teal-deep); font-size: 24px; }
