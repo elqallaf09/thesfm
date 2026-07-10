@@ -1214,6 +1214,44 @@ tr:last-child td {
   animation: mapdash 24s linear infinite;
 }
 @keyframes mapdash { to { stroke-dashoffset: -200; } }
+
+/* Market session timeline (replaces legacy world map) */
+.session-timeline { border: 1px solid var(--line); border-radius: var(--radius-md); background: rgba(3, 10, 18, 0.45); padding: 14px 16px; }
+.session-timeline .st-legend { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 0.72rem; color: var(--muted-2); flex-wrap: wrap; }
+.session-timeline .st-legend-items { display: flex; align-items: center; gap: 12px; }
+.session-timeline .st-legend-items span { display: inline-flex; align-items: center; gap: 5px; }
+.session-timeline .st-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+.session-timeline .st-dot.open { background: var(--green); }
+.session-timeline .st-dot.closed { background: var(--line-strong); }
+.session-timeline .st-now-swatch { width: 2px; height: 9px; background: var(--red); display: inline-block; }
+.session-timeline .st-axis { direction: ltr; display: grid; grid-template-columns: 148px 1fr 84px; font: 700 0.62rem var(--font-mono); color: var(--muted-2); margin-bottom: 4px; }
+.session-timeline .st-axis-track { position: relative; height: 12px; }
+.session-timeline .st-axis-track span { position: absolute; }
+.session-timeline .st-group-label { font-size: 0.68rem; color: var(--muted-2); margin: 12px 0 4px; }
+.session-timeline .st-row { display: grid; grid-template-columns: 148px 1fr 84px; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.session-timeline .st-row:first-child { border-top: 0; }
+.session-timeline .st-name { font: 700 0.74rem var(--font-ar); color: var(--text); }
+.session-timeline .st-ex { font-size: 0.62rem; margin-top: 1px; }
+.session-timeline .st-track { direction: ltr; position: relative; height: 16px; background: rgba(255, 255, 255, 0.04); border-radius: 5px; }
+.session-timeline .st-seg { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--line-strong); }
+.session-timeline .st-seg.open { background: var(--green); box-shadow: 0 0 8px rgba(16, 185, 129, 0.45); }
+.session-timeline .st-seg.active { background: var(--cyan); box-shadow: 0 0 8px rgba(34, 211, 238, 0.45); }
+.session-timeline .st-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--red); }
+.session-timeline .st-quote { direction: ltr; text-align: left; }
+.session-timeline .st-quote b { display: block; font: 700 0.74rem var(--font-mono); color: var(--text); }
+.session-timeline .st-quote small { font: 700 0.66rem var(--font-mono); }
+.session-timeline .st-quote small.up { color: var(--green); }
+.session-timeline .st-quote small.down { color: var(--red); }
+.session-timeline .st-quote small.flat { color: var(--muted-2); }
+.session-timeline .st-status.open { color: var(--green); }
+.session-timeline .st-status.active { color: var(--cyan); }
+.session-timeline .st-status.closed { color: var(--muted-2); }
+.session-timeline .st-note { margin-top: 10px; font-size: 0.62rem; color: var(--muted-2); }
+@media (max-width: 720px) {
+  .session-timeline .st-axis, .session-timeline .st-row { grid-template-columns: 92px 1fr 0; }
+  .session-timeline .st-quote { display: none; }
+}
+
 .map-node {
   position: absolute;
   display: flex;

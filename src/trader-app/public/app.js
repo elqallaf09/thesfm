@@ -1159,29 +1159,65 @@
   const SEMICONDUCTOR_SYMBOLS = new Set(MARKET_SYMBOLS.semiconductors.map(s => String(s).toUpperCase()));
 
   const SESSIONS = [
-    // [الاسم, top%, left%, النوع, فتح, إغلاق, اتجاه إزاحة التسمية]
-    ["New York", 11, 88, "west", 13.5, 20, "left"],
-    ["London", 27, 31, "west", 8, 16.5, "left"],
-    ["Frankfurt", 34, 35, "west", 7, 15.5, "left"],
-    ["Riyadh", 46, 61.5, "gulf", 7, 12, "up"],
-    ["Kuwait", 42, 60, "gulf", 6.5, 9.5, "left"],
-    ["Dubai", 52, 64, "gulf", 6, 11, "down"],
-    ["Tokyo", 45, 87, "west", 0, 6, "right"],
-    ["Hong Kong", 55, 82, "west", 1.5, 8, "right"],
-    ["Sydney", 62, 89, "west", 0, 6, "right"],
+    // [الاسم, name, المنطقة الزمنية IANA, نوع عطلة نهاية الأسبوع, فتح محلي, إغلاق محلي, رمز المؤشر للسعر الحي]
+    ["نيويورك", "New York", "America/New_York", "west", 9.5, 16, "SPX500"],
+    ["لندن", "London", "Europe/London", "west", 8, 16.5, "FTSE"],
+    ["فرانكفورت", "Frankfurt", "Europe/Berlin", "west", 9, 17.5, "DAX"],
+    ["الكويت", "Kuwait", "Asia/Kuwait", "gulf", 9, 12.5, null],
+    ["المنامة", "Manama", "Asia/Bahrain", "gulf", 9, 13, null],
+    ["مسقط", "Muscat", "Asia/Muscat", "gulf", 10, 13.5, null],
+    ["دبي", "Dubai", "Asia/Dubai", "west", 10, 14, null],
+    ["الدوحة", "Doha", "Asia/Qatar", "gulf", 9.5, 13, null],
+    ["الرياض", "Riyadh", "Asia/Riyadh", "gulf", 10, 15, null],
+    ["طوكيو", "Tokyo", "Asia/Tokyo", "west", 9, 15, "NIKKEI"],
+    ["هونغ كونغ", "Hong Kong", "Asia/Hong_Kong", "west", 9.5, 16, "HSI"],
+    ["سيدني", "Sydney", "Australia/Sydney", "west", 10, 16, null],
   ];
-  function sessionState(kind, openH, closeH) {
+  // جلسات الفوركس الأربع التقليدية (نطاقات ثابتة بتوقيت UTC حسب العرف السائد في السوق)
+  const FX_SESSIONS = [
+    ["سيدني", "Sydney", [[22, 24], [0, 7]]],
+    ["طوكيو", "Tokyo", [[0, 9]]],
+    ["لندن", "London", [[8, 17]]],
+    ["نيويورك", "New York", [[13, 22]]],
+  ];
+  function tzNow(tz) {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short" }).formatToParts(new Date());
+    const get = (t) => parts.find(p => p.type === t).value;
+    const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return { t: (Number(get("hour")) % 24) + Number(get("minute")) / 60, day: WD[get("weekday")] };
+  }
+  function tzOffsetHours(tz) {
+    // إزاحة المنطقة الزمنية الحالية عن UTC بالساعات، محسوبة لحظياً فتراعي التوقيت الصيفي تلقائياً
     const now = new Date();
-    const day = now.getUTCDay(); // 0=Sun..6=Sat
+    const utc = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+    const local = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+    return Math.round(((local - utc) / 3600000) * 4) / 4;
+  }
+  function fmtHM(v) {
+    let hh = Math.floor(((v % 24) + 24) % 24);
+    let mm = Math.round((v - Math.floor(v)) * 60);
+    if (mm === 60) { mm = 0; hh = (hh + 1) % 24; }
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  function utcNowFraction() {
+    const now = new Date();
+    return now.getUTCHours() + now.getUTCMinutes() / 60;
+  }
+  function sessionState(tz, kind, openLocal, closeLocal) {
+    const { t, day } = tzNow(tz);
+    // عطلة الأسواق الخليجية جمعة-سبت، وباقي الأسواق سبت-أحد؛ اليوم محسوب بالتوقيت المحلي للسوق نفسه
     const weekend = kind === "gulf" ? (day === 5 || day === 6) : (day === 0 || day === 6);
-    const t = now.getUTCHours() + now.getUTCMinutes() / 60;
-    const open = !weekend && t >= openH && t < closeH;
-    const fmt = (v) => { const hh = Math.floor(v), mm = Math.round((v - hh) * 60); return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`; };
+    const open = !weekend && t >= openLocal && t < closeLocal;
+    const offset = tzOffsetHours(tz);
+    const toUTC = (v) => (((v - offset) % 24) + 24) % 24;
+    const openUTC = toUTC(openLocal), closeUTC = toUTC(closeLocal);
     return {
       open,
+      openUTC,
+      closeUTC,
       label: open
-        ? textPair(`يغلق ${fmt(closeH)} UTC`, `Closes ${fmt(closeH)} UTC`, `Ferme à ${fmt(closeH)} UTC`)
-        : textPair(`يفتح ${fmt(openH)} UTC`, `Opens ${fmt(openH)} UTC`, `Ouvre à ${fmt(openH)} UTC`)
+        ? textPair(`يغلق ${fmtHM(closeUTC)} UTC`, `Closes ${fmtHM(closeUTC)} UTC`, `Ferme à ${fmtHM(closeUTC)} UTC`)
+        : textPair(`يفتح ${fmtHM(openUTC)} UTC`, `Opens ${fmtHM(openUTC)} UTC`, `Ouvre à ${fmtHM(openUTC)} UTC`)
     };
   }
 
@@ -3680,7 +3716,7 @@
         </div>`;
     return `<section class="panel market-overview">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("نظرة السوق", "Market overview"))}</span><h2>${h(textPair("نظرة عامة على الأسواق", "Market overview"))}</h2></div><div class="mo-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${t}</button>`).join("")}</div></div>
-      ${marketMap()}
+      ${marketSessionTimeline(rec)}
     </section>
     <section class="panel ai-market-analysis">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("تحليل السوق بالذكاء الاصطناعي", "AI market analysis"))}</span><h2>${h(textPair("تحليل السوق الذكي", "AI market analysis"))}</h2></div></div>
@@ -3891,25 +3927,64 @@
     const tone = chg === null ? (series[series.length - 1] >= series[0] ? "up" : "down") : chg >= 0 ? "up" : "down";
     return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
   }
-  function marketMap() {
-    const nodes = SESSIONS.map(([c, top, left, kind, oH, cH, dir], i) => {
-      const st = sessionState(kind, oH, cH);
-      const state = st.open ? "is-open" : "is-closed";
-      return `<span class="map-node node-${i} ${state} off-${dir || "left"}" style="top:${top}%;left:${left}%">
-          <i class="map-pin"></i>
-          <span class="map-label"><b>${h(c)}</b><small>${h(st.open ? textPair("مفتوح", "Open") : textPair("مغلق", "Closed"))} · ${h(translateUiText(st.label))}</small></span>
-        </span>`;
+  function sessionQuote(symbol, rec) {
+    if (!symbol) return null;
+    const asset = findAssetForSymbol(symbol, rec || []);
+    if (!asset) return null;
+    const a = normalizeQuote(norm(asset));
+    if (!isValidPrice(a.price)) return null;
+    return { price: a.price, chg: a.changePercent, currency: currency({ ...a, symbol }) };
+  }
+  function segBars(nowFrac, segs, toneClass) {
+    return segs.map(([s, e]) => `<span class="st-seg ${toneClass}" style="left:${(s / 24 * 100).toFixed(2)}%;width:${((e - s) / 24 * 100).toFixed(2)}%"></span>`).join("")
+      + `<span class="st-now" style="left:${(nowFrac / 24 * 100).toFixed(2)}%"></span>`;
+  }
+  function marketSessionTimeline(rec) {
+    const nowFrac = utcNowFraction();
+    const exRows = SESSIONS.map(([ar, en, tz, kind, oL, cL, symbol]) => {
+      const st = sessionState(tz, kind, oL, cL);
+      const segs = st.closeUTC > st.openUTC ? [[st.openUTC, st.closeUTC]] : [[st.openUTC, 24], [0, st.closeUTC]];
+      const q = sessionQuote(symbol, rec);
+      const chgTone = q === null ? "" : q.chg > 0 ? "up" : q.chg < 0 ? "down" : "flat";
+      const quoteHtml = q === null ? "<div></div>" : `<div class="st-quote"><b>${h(price(q.price, q.currency))}</b><small class="${chgTone}">${h(change(q.chg))}</small></div>`;
+      return `<div class="st-row">
+        <div><div class="st-name">${h(textPair(ar, en))}</div><div class="st-ex st-status ${st.open ? "open" : "closed"}">${h(st.open ? textPair("مفتوح", "Open") : textPair("مغلق", "Closed"))} · ${h(translateUiText(st.label))}</div></div>
+        <div class="st-track">${segBars(nowFrac, segs, "open")}</div>
+        ${quoteHtml}
+      </div>`;
     }).join("");
-    return `<div class="world-map world-map-3d" aria-hidden="true">
-      <div class="map-stage">
-        <div class="map-plane">
-          <span class="map-grid-3d"></span>
-          <img class="world-map-img" src="/thesfm-trader-own/app/assets/world-dotted-map.png" alt="" aria-hidden="true" loading="lazy" />
-          <svg class="map-arcs" viewBox="0 0 900 360" preserveAspectRatio="none"><path d="M95 170 C220 80 325 210 458 132 S690 45 810 155"></path><path d="M120 235 C250 250 345 188 468 220 S650 300 800 230"></path><path d="M432 160 C470 195 520 215 590 202 S690 185 762 244"></path><path d="M150 120 C300 150 500 120 720 150"></path></svg>
-          ${nodes}
-        </div>
+    const fxRows = FX_SESSIONS.map(([ar, en, segs]) => {
+      const active = segs.some(([s, e]) => nowFrac >= s && nowFrac < e);
+      return `<div class="st-row">
+        <div><div class="st-name">${h(textPair(ar, en))}</div><div class="st-ex st-status ${active ? "active" : "closed"}">${h(active ? textPair("نشطة الآن", "Active now") : textPair("غير نشطة", "Inactive"))}</div></div>
+        <div class="st-track">${segBars(nowFrac, segs, "active")}</div>
+        <div></div>
+      </div>`;
+    }).join("");
+    const cq = sessionQuote("BTCUSD", rec);
+    const cqTone = cq === null ? "" : cq.chg > 0 ? "up" : cq.chg < 0 ? "down" : "flat";
+    const cqHtml = cq === null ? "<div></div>" : `<div class="st-quote"><b>${h(price(cq.price, cq.currency))}</b><small class="${cqTone}">${h(change(cq.chg))}</small></div>`;
+    const cryptoRow = `<div class="st-row">
+      <div><div class="st-name">BTC/USD</div><div class="st-ex st-status open">${h(textPair("مفتوحة دائماً", "Always open"))}</div></div>
+      <div class="st-track">${segBars(nowFrac, [[0, 24]], "open")}</div>
+      ${cqHtml}
+    </div>`;
+    return `<div class="session-timeline">
+      <div class="st-legend">
+        <span>${h(textPair("جلسات التداول · توقيت غرينتش UTC", "Trading sessions · UTC"))}</span>
+        <span class="st-legend-items">
+          <span><i class="st-dot open"></i>${h(textPair("مفتوح", "Open"))}</span>
+          <span><i class="st-dot closed"></i>${h(textPair("مغلق", "Closed"))}</span>
+          <span><i class="st-now-swatch"></i>${h(textPair("الآن", "Now"))}</span>
+        </span>
       </div>
-      <span class="map-depth-glow"></span>
+      <div class="st-axis"><div></div><div class="st-axis-track"><span style="left:0%">00</span><span style="left:25%">06</span><span style="left:50%">12</span><span style="left:75%">18</span><span style="left:100%;transform:translateX(-100%)">24</span></div><div></div></div>
+      ${exRows}
+      <div class="st-group-label">${h(textPair("جلسات الفوركس", "Forex sessions"))}</div>
+      ${fxRows}
+      <div class="st-group-label">${h(textPair("العملات الرقمية", "Crypto"))}</div>
+      ${cryptoRow}
+      <div class="st-note">${h(textPair("الأسعار قد تكون متأخرة بضع دقائق حسب المزود.", "Prices may be delayed a few minutes depending on the provider."))}</div>
     </div>`;
   }
   function biasPanel(rec) {

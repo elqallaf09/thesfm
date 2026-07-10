@@ -1,0 +1,241 @@
+From 94d56b8a92ad19f484df9e1530adb0026cbf37df Mon Sep 17 00:00:00 2001
+From: elqallaf09 <dev@the-sfm.com>
+Date: Fri, 10 Jul 2026 14:15:15 +0000
+Subject: [PATCH 1/2] fix: bring providerRouter tests into vitest scope
+
+---
+ .../unit}/providerRouter.test.ts              | 44 +++++++++----------
+ 1 file changed, 22 insertions(+), 22 deletions(-)
+ rename src/{lib/market => __tests__/unit}/providerRouter.test.ts (91%)
+
+diff --git a/src/lib/market/providerRouter.test.ts b/src/__tests__/unit/providerRouter.test.ts
+similarity index 91%
+rename from src/lib/market/providerRouter.test.ts
+rename to src/__tests__/unit/providerRouter.test.ts
+index bea777b..b6f31a6 100644
+--- a/src/lib/market/providerRouter.test.ts
++++ b/src/__tests__/unit/providerRouter.test.ts
+@@ -18,7 +18,7 @@ import {
+   __resetRouterCacheForTests,
+   type RouterQuote,
+   type AssetClass,
+-} from './providerRouter';
++} from '@/lib/market/providerRouter';
+ 
+ // ─── Mocks ───────────────────────────────────────────────────────────────────
+ 
+@@ -212,7 +212,7 @@ describe('routeQuote — provider priority', () => {
+ 
+   test('Twelve Data success → returns TD result without provider name in output', async () => {
+     // Mock fetchTwelveDataQuote to return a valid quote
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured:  () => true,
+       mapSymbolForTd:          (s: string) => s,
+       fetchTwelveDataQuote:    async () => ({
+@@ -223,13 +223,13 @@ describe('routeQuote — provider priority', () => {
+       }),
+       fetchTwelveDataBatch: async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured:   () => false,
+       fetchEodhdQuote:     async () => null,
+       fetchEodhdBatch:     async () => new Map(),
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('AAPL');
+ 
+     expect(q.status).not.toBe('unavailable');
+@@ -238,13 +238,13 @@ describe('routeQuote — provider priority', () => {
+   });
+ 
+   test('Twelve Data fails → EODHD fallback used', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured:  () => true,
+       mapSymbolForTd:          (s: string) => s,
+       fetchTwelveDataQuote:    async () => null,   // TD fails
+       fetchTwelveDataBatch:    async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured:   () => true,
+       fetchEodhdQuote:     async () => ({
+         symbol: 'AAPL', name: null, exchange: 'US', currency: 'USD',
+@@ -255,7 +255,7 @@ describe('routeQuote — provider priority', () => {
+       fetchEodhdBatch: async () => new Map(),
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('AAPL');
+ 
+     expect(q.price).toBe(184.9);
+@@ -263,13 +263,13 @@ describe('routeQuote — provider priority', () => {
+   });
+ 
+   test('TD + EODHD both fail → Yahoo fallback used', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured:  () => true,
+       mapSymbolForTd:          (s: string) => s,
+       fetchTwelveDataQuote:    async () => null,
+       fetchTwelveDataBatch:    async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured:   () => true,
+       fetchEodhdQuote:     async () => null,
+       fetchEodhdBatch:     async () => new Map(),
+@@ -285,7 +285,7 @@ describe('routeQuote — provider priority', () => {
+       },
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('AAPL');
+ 
+     expect(q.price).toBe(183.1);
+@@ -293,13 +293,13 @@ describe('routeQuote — provider priority', () => {
+   });
+ 
+   test('All providers fail → unavailable placeholder returned (no throw)', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured: () => false,
+       mapSymbolForTd:         (s: string) => s,
+       fetchTwelveDataQuote:   async () => null,
+       fetchTwelveDataBatch:   async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured: () => false,
+       fetchEodhdQuote:   async () => null,
+       fetchEodhdBatch:   async () => new Map(),
+@@ -308,7 +308,7 @@ describe('routeQuote — provider priority', () => {
+       default: { quote: async () => { throw new Error('network'); } },
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('ZZZZ');
+ 
+     expect(q.status).toBe('unavailable');
+@@ -324,7 +324,7 @@ describe('routeQuote — data validation', () => {
+   const freshUpdated = new Date().toISOString();
+ 
+   test('price = 0 from provider → falls through to next provider', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured: () => true,
+       mapSymbolForTd:         (s: string) => s,
+       fetchTwelveDataQuote:   async () => ({
+@@ -335,7 +335,7 @@ describe('routeQuote — data validation', () => {
+       }),
+       fetchTwelveDataBatch: async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured: () => true,
+       fetchEodhdQuote:   async () => ({
+         symbol: 'TEST', name: null, exchange: null, currency: 'USD',
+@@ -345,7 +345,7 @@ describe('routeQuote — data validation', () => {
+       fetchEodhdBatch: async () => new Map(),
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('TEST');
+ 
+     // EODHD result with valid price should be used
+@@ -354,7 +354,7 @@ describe('routeQuote — data validation', () => {
+   });
+ 
+   test('|changePercent| ≥ 200 from provider → falls through', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured: () => true,
+       mapSymbolForTd:         (s: string) => s,
+       fetchTwelveDataQuote:   async () => ({
+@@ -365,7 +365,7 @@ describe('routeQuote — data validation', () => {
+       }),
+       fetchTwelveDataBatch: async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured: () => false,
+       fetchEodhdQuote:   async () => null,
+       fetchEodhdBatch:   async () => new Map(),
+@@ -381,7 +381,7 @@ describe('routeQuote — data validation', () => {
+       },
+     }));
+ 
+-    const { routeQuote: rq } = await import('./providerRouter');
++    const { routeQuote: rq } = await import('@/lib/market/providerRouter');
+     const q = await rq('TEST');
+ 
+     // Yahoo result (valid changePercent) should be used
+@@ -416,13 +416,13 @@ describe('routeBatchQuotes', () => {
+   });
+ 
+   test('deduplicates symbols', async () => {
+-    vi.doMock('./providers/twelveData', () => ({
++    vi.doMock('@/lib/market/providers/twelveData', () => ({
+       isTwelveDataConfigured: () => false,
+       mapSymbolForTd:         (s: string) => s,
+       fetchTwelveDataQuote:   async () => null,
+       fetchTwelveDataBatch:   async () => new Map(),
+     }));
+-    vi.doMock('./providers/eodhd', () => ({
++    vi.doMock('@/lib/market/providers/eodhd', () => ({
+       isEodhdConfigured: () => false,
+       fetchEodhdQuote:   async () => null,
+       fetchEodhdBatch:   async () => new Map(),
+@@ -431,7 +431,7 @@ describe('routeBatchQuotes', () => {
+       default: { quote: async () => null },
+     }));
+ 
+-    const { routeBatchQuotes: rbq } = await import('./providerRouter');
++    const { routeBatchQuotes: rbq } = await import('@/lib/market/providerRouter');
+     const result = await rbq(['AAPL', 'AAPL', 'aapl']);
+     expect(result.size).toBe(1); // deduplicated
+   });
+-- 
+2.43.0
+
+
+From 037c9625a931abaa04f60b6ce290c8894aaa9630 Mon Sep 17 00:00:00 2001
+From: elqallaf09 <dev@the-sfm.com>
+Date: Fri, 10 Jul 2026 14:18:28 +0000
+Subject: [PATCH 2/2] fix: sync service worker cache with live asset versions
+
+---
+ src/trader-app/public/service-worker.js | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/trader-app/public/service-worker.js b/src/trader-app/public/service-worker.js
+index 4272096..a6834c9 100644
+--- a/src/trader-app/public/service-worker.js
++++ b/src/trader-app/public/service-worker.js
+@@ -1,12 +1,12 @@
+-const CACHE_NAME = "the-sfm-trader-v20260709-market-top";
++const CACHE_NAME = "the-sfm-trader-v20260710-fr-i18n";
+ const STATIC_ASSETS = [
+   "/",
+   "/index.html",
+   "/detail.html",
+   "/styles.css?v=20260630-cinema",
+   "/desktop-balance.css?v=20260630-cinema",
+-  "/cinema.css?v=20260709-market-top",
+-  "/app.js?v=20260709-market-top",
++  "/cinema.css?v=20260710-fr-i18n",
++  "/app.js?v=20260710-fr-i18n",
+   "/detail.js?v=20260630-cinema",
+   "/manifest.webmanifest",
+   "/assets/sfm-trader-logo.svg",
+-- 
+2.43.0
+
