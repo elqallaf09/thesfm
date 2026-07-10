@@ -513,33 +513,33 @@
         }
 
         .market-status-badge.success {
-          color: #047857;
-          background: #ccfbf1;
-          border-color: rgba(15, 118, 110, .22);
+          color: var(--market-positive);
+          background: color-mix(in srgb, var(--market-positive) 14%, transparent);
+          border-color: color-mix(in srgb, var(--market-positive) 22%, transparent);
         }
 
         .market-status-badge.info {
-          color: #0369a1;
-          background: #e0f2fe;
-          border-color: rgba(14, 165, 233, .22);
+          color: var(--market-stale);
+          background: color-mix(in srgb, var(--market-stale) 14%, transparent);
+          border-color: color-mix(in srgb, var(--market-stale) 22%, transparent);
         }
 
         .market-status-badge.warning {
-          color: #92400e;
-          background: #fef3c7;
-          border-color: rgba(245, 158, 11, .24);
+          color: var(--market-delayed);
+          background: color-mix(in srgb, var(--market-delayed) 14%, transparent);
+          border-color: color-mix(in srgb, var(--market-delayed) 22%, transparent);
         }
 
         .market-status-badge.danger {
-          color: #b91c1c;
-          background: #fee2e2;
-          border-color: rgba(239, 68, 68, .24);
+          color: var(--market-negative);
+          background: color-mix(in srgb, var(--market-negative) 14%, transparent);
+          border-color: color-mix(in srgb, var(--market-negative) 22%, transparent);
         }
 
         .market-status-badge.muted {
-          color: #475569;
-          background: #f1f5f9;
-          border-color: rgba(100, 116, 139, .18);
+          color: var(--market-neutral);
+          background: color-mix(in srgb, var(--market-neutral) 14%, transparent);
+          border-color: color-mix(in srgb, var(--market-neutral) 22%, transparent);
         }
 
         .market-status-body p {
@@ -576,36 +576,6 @@
 
         .dark .market-status-body p {
           color: #b8c7d9;
-        }
-
-        .dark .market-status-badge.success {
-          color: #2fd6c0;
-          background: rgba(47, 214, 192, .12);
-          border-color: rgba(47, 214, 192, .25);
-        }
-
-        .dark .market-status-badge.info {
-          color: #7dd3fc;
-          background: rgba(29, 140, 255, .14);
-          border-color: rgba(125, 211, 252, .24);
-        }
-
-        .dark .market-status-badge.warning {
-          color: #f5b942;
-          background: rgba(245, 185, 66, .13);
-          border-color: rgba(245, 185, 66, .26);
-        }
-
-        .dark .market-status-badge.danger {
-          color: #ff5b6e;
-          background: rgba(255, 91, 110, .12);
-          border-color: rgba(255, 91, 110, .25);
-        }
-
-        .dark .market-status-badge.muted {
-          color: #b8c7d9;
-          background: rgba(142, 166, 195, .12);
-          border-color: rgba(142, 166, 195, .20);
         }
 
         .dark .market-active-dashboard,

@@ -1,0 +1,156 @@
+/*
+ * Design tokens — semantic layer, mapped separately for Light Mode and Dark Mode.
+ *
+ * These are the 9 semantic token groups: background, surface, text, border, brand, status,
+ * market, provider, shariah. Every token is defined in BOTH :root{} (light) and .dark{} (dark)
+ * with a distinct, purpose-picked value per theme — never a value copied from one theme into
+ * the other.
+ *
+ * This file is purely additive: it does not replace, move, or rename anything in
+ * src/app/globals.css's existing :root{}/.dark{} blocks (the --sfm-*, shadcn --color-*, and
+ * legacy --green/--red/--amber/--gold alias tiers stay exactly as they are — several are live
+ * consumers, e.g. src/app/sfm-admin-control/shariah/ShariahAdminClient.tsx reads var(--green)
+ * directly). Wherever an existing color already carries the right meaning, these new tokens
+ * simply repoint to it via var() instead of duplicating the hex value.
+ */
+
+:root {
+  /* Background */
+  --background-page: var(--sfm-light-background);
+  --background-subtle: var(--sfm-light-card-secondary);
+  --background-muted: var(--sfm-light-card-primary);
+  --background-overlay: var(--new-background-overlay-light);
+
+  /* Surface */
+  --surface: var(--sfm-light-surface);
+  --surface-raised: var(--sfm-light-surface-elevated);
+  --surface-hover: var(--sfm-surface-hover);
+  --surface-active: color-mix(in srgb, var(--sfm-light-primary) 10%, var(--sfm-light-surface));
+  --surface-disabled: var(--muted);
+
+  /* Text */
+  --text-primary: var(--sfm-light-text-primary);
+  --text-secondary: var(--sfm-light-text-secondary);
+  --text-muted: var(--sfm-light-text-muted);
+  --text-disabled: color-mix(in srgb, var(--sfm-light-text-muted) 60%, transparent);
+  --text-inverse: var(--text-white);
+
+  /* Border */
+  --border-default: var(--sfm-light-border-primary);
+  --border-subtle: var(--sfm-light-border-secondary);
+  --border-strong: var(--sfm-border-strong);
+  --divider: var(--sfm-light-divider);
+  --focus-ring: var(--sfm-light-focus-ring);
+
+  /* Brand */
+  --brand-primary: var(--sfm-light-primary);
+  --brand-primary-hover: var(--sfm-light-primary-hover);
+  --brand-primary-active: var(--sfm-light-primary-active);
+  --brand-secondary: var(--sfm-light-secondary);
+  --brand-accent: var(--sfm-light-accent);
+
+  /* Status — repoints to the already-correct --sfm-light-success/warning/danger/info(+soft) tier */
+  --success: var(--sfm-light-success);
+  --success-muted: var(--sfm-light-success-soft);
+  --warning: var(--sfm-light-warning);
+  --warning-muted: var(--sfm-light-warning-soft);
+  --danger: var(--sfm-light-danger);
+  --danger-muted: var(--sfm-light-danger-soft);
+  --info: var(--sfm-light-info);
+  --info-muted: var(--sfm-light-info-soft);
+  --neutral: #475569; /* market-page.css:540 .market-status-badge.muted light color */
+  --neutral-muted: #F1F5F9; /* market-page.css:541 */
+
+  /* Market — consolidates market-page.css's .market-status-badge.* light colors */
+  --market-positive: #047857; /* market-page.css:516 .success */
+  --market-negative: #B91C1C; /* market-page.css:534 .danger */
+  --market-neutral: var(--neutral);
+  --market-delayed: #92400E; /* market-page.css:528 .warning */
+  --market-stale: var(--new-market-stale-light);
+  --market-unavailable: var(--new-market-unavailable-light);
+
+  /* Provider — resolved through the Market family per statusPresentation.ts's existing tone map
+     (connected:success, degraded/rate_limited:warning, disconnected:danger, disabled:muted) */
+  --provider-connected: var(--market-positive);
+  --provider-degraded: var(--market-delayed);
+  --provider-disconnected: var(--market-negative);
+  --provider-rate-limited: var(--market-delayed);
+  --provider-disabled: var(--market-neutral);
+
+  /* Shariah — seeded from ShariaResearchPage.module.css's local .page{} light palette */
+  --shariah-compliant: #16755E; /* ShariaResearchPage.module.css:12 */
+  --shariah-non-compliant: #B63D49; /* :13 */
+  --shariah-review: #A66C16; /* :14 */
+  --shariah-insufficient: #65737F; /* :15 */
+  --shariah-conflict: var(--new-shariah-conflict-light);
+}
+
+.dark {
+  /* Background */
+  --background-page: var(--background);
+  --background-subtle: var(--bg-2);
+  --background-muted: var(--bg-muted);
+  --background-overlay: var(--new-background-overlay-dark);
+
+  /* Surface */
+  --surface: var(--card);
+  --surface-raised: var(--sfm-card-elevated);
+  --surface-hover: var(--sfm-surface-hover);
+  --surface-active: color-mix(in srgb, var(--sfm-primary) 16%, var(--card));
+  --surface-disabled: var(--muted);
+
+  /* Text */
+  --text-primary: var(--foreground);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --text-disabled: color-mix(in srgb, var(--text-3) 55%, transparent);
+  --text-inverse: var(--sfm-light-text-primary, #10243B);
+
+  /* Border */
+  --border-default: var(--border);
+  --border-subtle: var(--new-divider-dark);
+  --border-strong: var(--sfm-border-strong);
+  --divider: var(--new-divider-dark);
+  --focus-ring: 0 0 0 3px rgba(24, 212, 212, 0.36), 0 0 0 1px var(--sfm-accent);
+
+  /* Brand */
+  --brand-primary: var(--sfm-primary);
+  --brand-primary-hover: var(--sfm-primary-hover);
+  --brand-primary-active: var(--sfm-primary-active);
+  --brand-secondary: var(--sfm-accent);
+  --brand-accent: var(--accent);
+
+  /* Status — repoints to the existing dark --green/--red/--amber/--blue(+ -bg) tier */
+  --success: var(--green);
+  --success-muted: var(--green-bg);
+  --warning: var(--amber);
+  --warning-muted: var(--amber-bg);
+  --danger: var(--red);
+  --danger-muted: var(--red-bg);
+  --info: var(--blue);
+  --info-muted: var(--blue-bg);
+  --neutral: #B8C7D9; /* market-page.css:606 .dark .market-status-badge.muted */
+  --neutral-muted: rgba(142, 166, 195, 0.12); /* market-page.css:607 */
+
+  /* Market — consolidates market-page.css's .dark .market-status-badge.* colors */
+  --market-positive: #2FD6C0; /* market-page.css:582 */
+  --market-negative: #FF5B6E; /* market-page.css:600 */
+  --market-neutral: var(--neutral);
+  --market-delayed: #F5B942; /* market-page.css:594 */
+  --market-stale: var(--new-market-stale-dark);
+  --market-unavailable: var(--new-market-unavailable-dark);
+
+  /* Provider */
+  --provider-connected: var(--market-positive);
+  --provider-degraded: var(--market-delayed);
+  --provider-disconnected: var(--market-negative);
+  --provider-rate-limited: var(--market-delayed);
+  --provider-disabled: var(--market-neutral);
+
+  /* Shariah — seeded from ShariaResearchPage.module.css's local :global(.dark) .page{} palette */
+  --shariah-compliant: #55C99E; /* ShariaResearchPage.module.css:497 */
+  --shariah-non-compliant: #FF8790; /* :498 */
+  --shariah-review: #E5B45F; /* :499 */
+  --shariah-insufficient: #A8B4BC; /* :500 */
+  --shariah-conflict: var(--new-shariah-conflict-dark);
+}

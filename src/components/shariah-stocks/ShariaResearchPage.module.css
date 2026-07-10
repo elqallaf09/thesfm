@@ -266,10 +266,10 @@
 .heroDisclaimer p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
 .statusBadge { min-height: 28px; width: fit-content; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid currentColor; border-radius: 999px; background: transparent; font-size: 14px; font-weight: 900; line-height: 1.25; white-space: nowrap; }
-.status_pass { color: var(--green); }
-.status_fail { color: var(--red); }
-.status_review { color: var(--amber); }
-.status_unavailable { color: var(--gray); }
+.status_pass { color: var(--shariah-compliant); }
+.status_fail { color: var(--shariah-non-compliant); }
+.status_review { color: var(--shariah-review); }
+.status_unavailable { color: var(--shariah-insufficient); }
 
 .reportActions { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding: 10px; }
 .primaryActions, .secondaryActions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
