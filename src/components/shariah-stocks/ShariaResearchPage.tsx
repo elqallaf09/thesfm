@@ -27,6 +27,12 @@ import {
 } from 'lucide-react';
 import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { useLanguage } from '@/hooks/useLanguage';
+import {
+  fetchResearchJson,
+  ResearchApiError,
+  researchApiErrorFromCode,
+  type ResearchFailureCategory,
+} from '@/lib/sharia-research/clientApi';
 import type {
   ResearchProgressStep,
   SecurityCandidate,
@@ -41,6 +47,7 @@ import styles from './ShariaResearchPage.module.css';
 type Locale = 'ar' | 'en' | 'fr';
 type ViewState = 'idle' | 'identifying' | 'selection' | 'researching' | 'result' | 'error';
 type HistoryItem = { id: string; result_id: string | null; original_query: string; outcome: string; created_at: string };
+type ResearchErrorView = { code: string; status: number; category: ResearchFailureCategory; message: string };
 
 type PublicJob = {
   id: string;
@@ -52,6 +59,22 @@ type PublicJob = {
   resultId: string | null;
   error: { code: string; message: string } | null;
   expiresAt: string;
+};
+
+type ResearchApiPayload = {
+  ok?: boolean;
+  success?: boolean;
+  error?: { code?: string; message?: string };
+  methodologies?: ShariaMethodology[];
+  sources?: SourceConfigurationStatus[];
+  items?: HistoryItem[];
+  result?: ShariaScreeningResult;
+  job?: PublicJob;
+  jobId?: string;
+  status?: string;
+  progress?: number;
+  currentStep?: ResearchProgressStep;
+  candidates?: SecurityCandidate[];
 };
 
 const COPY = {
@@ -124,6 +147,14 @@ const COPY = {
     authRequired: 'سجّل الدخول لحفظ البحث والنتيجة بصورة خاصة.',
     errorTitle: 'لم يكتمل البحث',
     tryAgain: 'حاول مرة أخرى أو استخدم رمزاً مؤهلاً باسم البورصة.',
+    retryAction: 'إعادة المحاولة',
+    errorCategory: 'فئة التعذر',
+    connectionError: 'تعذر الاتصال بخدمة البحث. يرجى المحاولة مرة أخرى.',
+    routeUnavailable: 'مسار خدمة البحث غير متاح في هذا البناء. تحقق من نشر /api/sharia-research/search.',
+    sourceError: 'تعذر الوصول إلى واحد أو أكثر من مصادر البحث المدعومة.',
+    extractionError: 'تعذر استخراج محتوى أحد التقارير المطلوبة.',
+    analysisError: 'تعذر إكمال التحليل بالبيانات المسترجعة.',
+    failureCategories: { routing: 'الاتصال والمسار', authentication: 'المصادقة', source_retrieval: 'استرجاع المصادر', extraction: 'استخراج المحتوى', analysis: 'التحليل' },
     noValue: 'لم تُفترض قيمة صفرية',
     quality: 'جودة المصادر',
     history: 'عمليات البحث الأخيرة',
@@ -161,7 +192,7 @@ const COPY = {
     sourcesTitle: 'Sources and evidence', sourceCount: 'Sources', official: 'Official', secondary: 'Secondary', contextOnly: 'Context only', publicationDate: 'Published or filed', retrievalDate: 'Retrieved', supports: 'Supports', relevantExcerpt: 'Relevant excerpt', openSource: 'Open source', groupedCopies: 'Grouped copies',
     newsTitle: 'Related current news', newsNotice: 'News is supporting context only and was excluded from the Shariah decision.', conflicts: 'Conflicting evidence', unavailableChecks: 'Unavailable checks', warnings: 'Analysis warnings', manualReview: 'Qualified human Shariah review remains necessary',
     disclaimer: 'The result is an automated investment screening based on the selected methodology and publicly available information. It is not a fatwa and does not replace review by a qualified Shariah adviser.',
-    authRequired: 'Sign in to keep the research and result private.', errorTitle: 'Research did not complete', tryAgain: 'Try again or use an exchange-qualified symbol.', noValue: 'No zero value was assumed', quality: 'Source quality', high: 'High', medium: 'Medium', low: 'Low',
+    authRequired: 'Sign in to keep the research and result private.', errorTitle: 'Research did not complete', tryAgain: 'Try again or use an exchange-qualified symbol.', retryAction: 'Retry research', errorCategory: 'Failure category', connectionError: 'The research service could not be reached. Please try again.', routeUnavailable: 'The research API route is unavailable in this build. Verify /api/sharia-research/search.', sourceError: 'One or more supported research sources could not be reached.', extractionError: 'A required report could not be extracted.', analysisError: 'The analysis could not be completed with the retrieved data.', failureCategories: { routing: 'Routing and connectivity', authentication: 'Authentication', source_retrieval: 'Source retrieval', extraction: 'Content extraction', analysis: 'Analysis' }, noValue: 'No zero value was assumed', quality: 'Source quality', high: 'High', medium: 'Medium', low: 'Low',
     history: 'Recent research', searchAgain: 'Research again',
     status: { compliant: 'Shariah compliant', non_compliant: 'Not Shariah compliant', requires_review: 'Requires Shariah review', insufficient_current_data: 'Insufficient current data', conflicting_evidence: 'Conflicting evidence' },
     steps: { identifying_security: 'Identifying security', awaiting_security_selection: 'Awaiting security selection', searching_official_sources: 'Searching official sources', retrieving_filings: 'Retrieving filings', extracting_financial_data: 'Extracting financial data', checking_business_activities: 'Checking business activities', calculating_ratios: 'Calculating ratios', resolving_conflicts: 'Resolving conflicts', preparing_result: 'Preparing final result' },
@@ -174,7 +205,7 @@ const COPY = {
     resultTitle: 'Résultat du filtrage charia automatisé', confidence: 'Complétude et fiabilité des preuves', notCertainty: 'Ce score mesure la qualité des preuves, pas une certitude religieuse.', lastReport: 'Dernier rapport financier utilisé', lastUpdate: 'Récupéré', cacheLive: 'Recherche en direct', cacheRecent: 'Résultat récent en cache', cacheOutdated: 'Résultat ancien à actualiser',
     securityIdentity: 'Identité du titre', ticker: 'Symbole', exchange: 'Bourse', isin: 'ISIN', country: 'Pays', sector: 'Secteur', reasons: 'Résumé des raisons', business: 'Activité commerciale', financial: 'Ratios financiers', unresolved: 'Points non résolus', passed: 'Réussi', failed: 'Échoué', review: 'À examiner', unavailable: 'Indisponible', formula: 'Formule et calcul', value: 'Valeur', threshold: 'Seuil', reportingPeriod: 'Période',
     sourcesTitle: 'Sources et preuves', sourceCount: 'Sources', official: 'Officielle', secondary: 'Secondaire', contextOnly: 'Contexte', publicationDate: 'Publié ou déposé', retrievalDate: 'Récupéré', supports: 'Appuie', relevantExcerpt: 'Extrait pertinent', openSource: 'Ouvrir la source', groupedCopies: 'Copies regroupées', newsTitle: 'Actualités associées', newsNotice: 'Les actualités servent uniquement de contexte et sont exclues de la décision charia.', conflicts: 'Preuves contradictoires', unavailableChecks: 'Contrôles indisponibles', warnings: 'Avertissements', manualReview: 'Une revue humaine qualifiée reste nécessaire',
-    disclaimer: 'Le résultat est un filtrage d’investissement automatisé fondé sur la méthodologie choisie et les informations publiques. Il ne constitue pas une fatwa et ne remplace pas l’examen d’un conseiller qualifié en charia.', authRequired: 'Connectez-vous pour garder la recherche privée.', errorTitle: 'La recherche n’a pas abouti', tryAgain: 'Réessayez avec un symbole qualifié par la bourse.', noValue: 'Aucune valeur zéro supposée', quality: 'Qualité des sources', high: 'Élevée', medium: 'Moyenne', low: 'Faible',
+    disclaimer: 'Le résultat est un filtrage d’investissement automatisé fondé sur la méthodologie choisie et les informations publiques. Il ne constitue pas une fatwa et ne remplace pas l’examen d’un conseiller qualifié en charia.', authRequired: 'Connectez-vous pour garder la recherche privée.', errorTitle: 'La recherche n’a pas abouti', tryAgain: 'Réessayez avec un symbole qualifié par la bourse.', retryAction: 'Réessayer', errorCategory: 'Catégorie d’échec', connectionError: 'Le service de recherche est inaccessible. Veuillez réessayer.', routeUnavailable: 'La route API de recherche est absente de cette version. Vérifiez /api/sharia-research/search.', sourceError: 'Une ou plusieurs sources prises en charge sont inaccessibles.', extractionError: 'Un rapport requis n’a pas pu être extrait.', analysisError: 'L’analyse n’a pas pu être terminée avec les données récupérées.', failureCategories: { routing: 'Routage et connexion', authentication: 'Authentification', source_retrieval: 'Récupération des sources', extraction: 'Extraction du contenu', analysis: 'Analyse' }, noValue: 'Aucune valeur zéro supposée', quality: 'Qualité des sources', high: 'Élevée', medium: 'Moyenne', low: 'Faible',
     history: 'Recherches récentes', searchAgain: 'Relancer',
     status: { compliant: 'Conforme à la charia', non_compliant: 'Non conforme à la charia', requires_review: 'Examen charia requis', insufficient_current_data: 'Données actuelles insuffisantes', conflicting_evidence: 'Preuves contradictoires' },
     steps: { identifying_security: 'Identification du titre', awaiting_security_selection: 'Sélection du titre', searching_official_sources: 'Recherche des sources officielles', retrieving_filings: 'Récupération des documents', extracting_financial_data: 'Extraction des données financières', checking_business_activities: 'Vérification des activités', calculating_ratios: 'Calcul des ratios', resolving_conflicts: 'Résolution des contradictions', preparing_result: 'Préparation du résultat final' },
@@ -188,6 +219,21 @@ const STEP_ORDER: ResearchProgressStep[] = [
 
 function localeCode(value: string | undefined): Locale {
   return value === 'en' || value === 'fr' ? value : 'ar';
+}
+
+function localizedResearchError(error: unknown, c: typeof COPY[Locale]): ResearchErrorView {
+  const apiError = error instanceof ResearchApiError
+    ? error
+    : researchApiErrorFromCode('RESEARCH_CLIENT_ERROR');
+  let message: string = c.analysisError;
+  if (apiError.category === 'authentication') message = c.authRequired;
+  else if (apiError.category === 'routing') {
+    message = apiError.code === 'API_ROUTE_NOT_FOUND' && process.env.NODE_ENV !== 'production'
+      ? c.routeUnavailable
+      : c.connectionError;
+  } else if (apiError.category === 'source_retrieval') message = c.sourceError;
+  else if (apiError.category === 'extraction') message = c.extractionError;
+  return { code: apiError.code, status: apiError.status, category: apiError.category, message };
 }
 
 function formatDate(value: string | null | undefined, locale: Locale, withTime = false) {
@@ -254,18 +300,18 @@ function localizedSupport(document: SourceDocument, locale: Locale) {
   return ar ? 'دليل عام داعم يحتاج تقييم سلطة الناشر' : 'Preuve publique complémentaire dont l’autorité doit être évaluée';
 }
 
-export function ShariaResearchPage() {
+export function ShariaResearchPage({ embedded = false, initialQuery = '' }: { embedded?: boolean; initialQuery?: string }) {
   const { lang } = useLanguage();
   const locale = localeCode(lang);
   const c = COPY[locale];
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [view, setView] = useState<ViewState>('idle');
   const [job, setJob] = useState<PublicJob | null>(null);
   const [candidates, setCandidates] = useState<SecurityCandidate[]>([]);
   const [result, setResult] = useState<ShariaScreeningResult | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ResearchErrorView | null>(null);
   const [methodologies, setMethodologies] = useState<ShariaMethodology[]>([]);
   const [methodologyId, setMethodologyId] = useState('msci-islamic-index-series-assets');
   const [sourceStatus, setSourceStatus] = useState<SourceConfigurationStatus[]>([]);
@@ -275,26 +321,28 @@ export function ShariaResearchPage() {
   const pollingJobStatus = job?.status ?? null;
 
   useEffect(() => {
+    if (view === 'idle' && initialQuery.trim()) setQuery(initialQuery.trim());
+  }, [initialQuery, view]);
+
+  useEffect(() => {
     let cancelled = false;
-    fetch('/api/sharia-research/methodologies', { cache: 'no-store' })
-      .then(async response => response.ok ? response.json() : null)
+    fetchResearchJson<ResearchApiPayload>('/api/sharia-research/methodologies')
       .then(payload => {
-        if (cancelled || !payload?.ok) return;
+        if (cancelled) return;
         setMethodologies(payload.methodologies ?? []);
         setSourceStatus(payload.sources ?? []);
       })
       .catch(() => undefined);
-    fetch('/api/sharia-research/history', { cache: 'no-store' })
-      .then(async response => response.ok ? response.json() : null)
-      .then(payload => { if (!cancelled && payload?.ok) setHistory(payload.items ?? []); })
+    fetchResearchJson<ResearchApiPayload>('/api/sharia-research/history')
+      .then(payload => { if (!cancelled) setHistory(payload.items ?? []); })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
 
   const loadResult = useCallback(async (resultId: string) => {
-    const response = await fetch(`/api/sharia-research/results/${encodeURIComponent(resultId)}`, { cache: 'no-store' });
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) throw new Error(payload?.error?.message || 'RESULT_LOAD_FAILED');
+    const path = `/api/sharia-research/results/${encodeURIComponent(resultId)}`;
+    const payload = await fetchResearchJson<ResearchApiPayload>(path);
+    if (!payload.result) throw researchApiErrorFromCode('RESULT_PAYLOAD_MISSING');
     setResult(payload.result);
     setView('result');
     setJob(null);
@@ -306,9 +354,9 @@ export function ShariaResearchPage() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const poll = async () => {
       try {
-        const response = await fetch(`/api/sharia-research/jobs/${encodeURIComponent(pollingJobId)}`, { cache: 'no-store' });
-        const payload = await response.json();
-        if (!response.ok || !payload.ok) throw new Error(payload?.error?.message || 'JOB_STATUS_FAILED');
+        const path = `/api/sharia-research/jobs/${encodeURIComponent(pollingJobId)}`;
+        const payload = await fetchResearchJson<ResearchApiPayload>(path);
+        if (!payload.job) throw researchApiErrorFromCode('JOB_STATUS_PAYLOAD_MISSING');
         if (cancelled) return;
         setJob(payload.job);
         if (payload.job.status === 'completed' && payload.job.resultId) {
@@ -316,36 +364,33 @@ export function ShariaResearchPage() {
           return;
         }
         if (['failed', 'cancelled', 'expired'].includes(payload.job.status)) {
-          setError(payload.job.error?.message || `${payload.job.status}`);
+          setError(localizedResearchError(
+            researchApiErrorFromCode(payload.job.error?.code || `JOB_${payload.job.status.toUpperCase()}`, 0, payload.job.error?.message),
+            c,
+          ));
           setView('error');
           return;
         }
         timer = setTimeout(poll, 1_800);
       } catch (pollError) {
         if (cancelled) return;
-        setError(pollError instanceof Error ? pollError.message : String(pollError));
+        setError(localizedResearchError(pollError, c));
         timer = setTimeout(poll, 3_500);
       }
     };
     void poll();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [loadResult, pollingJobId, pollingJobStatus]);
+  }, [c, loadResult, pollingJobId, pollingJobStatus]);
 
   const startSearch = useCallback(async (searchQuery: string, selectedCanonicalId?: string, forceRefresh = false) => {
-    setError('');
+    setError(null);
     setResult(null);
     setView(selectedCanonicalId ? 'identifying' : 'identifying');
-    const response = await fetch('/api/sharia-research/search', {
+    const payload = await fetchResearchJson<ResearchApiPayload>('/api/sharia-research/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: searchQuery, methodologyId, selectedCanonicalId, forceRefresh }),
     });
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) {
-      throw new Error(payload?.error?.code === 'AUTH_REQUIRED'
-        ? c.authRequired
-        : locale === 'en' ? payload?.error?.message || 'Search failed.' : c.tryAgain);
-    }
     if (payload.status === 'awaiting_selection') {
       setCandidates(payload.candidates ?? []);
       setView('selection');
@@ -356,6 +401,7 @@ export function ShariaResearchPage() {
       setView('result');
       return;
     }
+    if (!payload.jobId || !payload.status) throw researchApiErrorFromCode('RESEARCH_JOB_PAYLOAD_MISSING');
     setJob({
       id: payload.jobId,
       status: payload.status,
@@ -364,7 +410,7 @@ export function ShariaResearchPage() {
       candidates: [], partialErrors: [], resultId: null, error: null, expiresAt: '',
     });
     setView('researching');
-  }, [c.authRequired, c.tryAgain, locale, methodologyId]);
+  }, [methodologyId]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -372,12 +418,12 @@ export function ShariaResearchPage() {
     if (!value) return;
     setSubmittedQuery(value);
     try { await startSearch(value); }
-    catch (searchError) { setError(searchError instanceof Error ? searchError.message : String(searchError)); setView('error'); }
+    catch (searchError) { setError(localizedResearchError(searchError, c)); setView('error'); }
   };
 
   const selectSecurity = async (candidate: SecurityCandidate) => {
     try { await startSearch(submittedQuery, candidate.canonicalId); }
-    catch (selectionError) { setError(selectionError instanceof Error ? selectionError.message : String(selectionError)); setView('error'); }
+    catch (selectionError) { setError(localizedResearchError(selectionError, c)); setView('error'); }
   };
 
   const cancelJob = async () => {
@@ -390,25 +436,40 @@ export function ShariaResearchPage() {
   const refreshResult = async () => {
     if (!result) return;
     setView('researching');
-    setError('');
-    const response = await fetch(`/api/sharia-research/results/${encodeURIComponent(result.id)}/refresh`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }),
-    });
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) { setError(payload?.error?.message || 'REFRESH_FAILED'); setView('error'); return; }
-    setJob({ id: payload.jobId, status: payload.status, progress: 5, currentStep: 'identifying_security', candidates: [], partialErrors: [], resultId: null, error: null, expiresAt: '' });
+    setError(null);
+    try {
+      const path = `/api/sharia-research/results/${encodeURIComponent(result.id)}/refresh`;
+      const payload = await fetchResearchJson<ResearchApiPayload>(path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }),
+      });
+      if (!payload.jobId || !payload.status) throw researchApiErrorFromCode('REFRESH_PAYLOAD_MISSING');
+      setJob({ id: payload.jobId, status: payload.status, progress: 5, currentStep: 'identifying_security', candidates: [], partialErrors: [], resultId: null, error: null, expiresAt: '' });
+    } catch (refreshError) {
+      setError(localizedResearchError(refreshError, c));
+      setView('error');
+    }
   };
 
-  const reset = () => { setView('idle'); setJob(null); setResult(null); setCandidates([]); setError(''); setQuery(''); };
+  const reset = () => { setView('idle'); setJob(null); setResult(null); setCandidates([]); setError(null); setQuery(''); };
+  const retry = async () => {
+    if (!submittedQuery) { reset(); return; }
+    try { await startSearch(submittedQuery); }
+    catch (retryError) { setError(localizedResearchError(retryError, c)); setView('error'); }
+  };
   const selectedMethodology = methodologies.find(item => item.id === methodologyId);
 
   return (
-    <main id="main-content" className={styles.page} dir={direction}>
-      <section className={styles.hero}>
+    <section
+      id={embedded ? undefined : 'main-content'}
+      className={`${styles.page} ${embedded ? styles.embedded : ''}`}
+      dir={direction}
+      data-testid="sharia-deep-research-tool"
+    >
+      <section className={`${styles.hero} ${embedded ? styles.embeddedHero : ''}`}>
         <div className={styles.heroSeal} aria-hidden="true"><FileSearch size={24} /></div>
         <div className={styles.heroCopy}>
           <span className={styles.eyebrow}>{c.eyebrow}</span>
-          <h1>{c.title}</h1>
+          {embedded ? <h2>{c.title}</h2> : <h1>{c.title}</h1>}
           <p>{c.subtitle}</p>
           <div className={styles.scopeNote}><Info size={16} /><span>{c.scope}</span></div>
         </div>
@@ -455,7 +516,7 @@ export function ShariaResearchPage() {
         {view === 'identifying' && <IdentifyingState label={c.steps.identifying_security} />}
         {view === 'selection' && <SelectionState candidates={candidates} c={c} locale={locale} onSelect={selectSecurity} />}
         {view === 'researching' && job && <ProgressState job={job} c={c} locale={locale} onCancel={cancelJob} />}
-        {view === 'error' && <ErrorState message={error} c={c} onReset={reset} />}
+        {view === 'error' && error && <ErrorState error={error} c={c} onRetry={retry} onReset={reset} />}
         {view === 'result' && result && <ResultView result={result} c={c} locale={locale} onRefresh={refreshResult} onReset={reset} />}
       </div>
 
@@ -468,7 +529,7 @@ export function ShariaResearchPage() {
       )}
 
       <section className={styles.disclaimer}><ShieldAlert size={20} /><div><strong>{c.manualReview}</strong><p>{c.disclaimer}</p></div></section>
-    </main>
+    </section>
   );
 }
 
@@ -514,8 +575,17 @@ function ProgressState({ job, c, locale, onCancel }: { job: PublicJob; c: typeof
   </section>;
 }
 
-function ErrorState({ message, c, onReset }: { message: string; c: typeof COPY[Locale]; onReset: () => void }) {
-  return <section className={styles.errorPanel}><AlertCircle size={30} /><h2>{c.errorTitle}</h2><p>{message || c.tryAgain}</p><button type="button" onClick={onReset}>{c.newSearch}</button></section>;
+function ErrorState({ error, c, onRetry, onReset }: { error: ResearchErrorView; c: typeof COPY[Locale]; onRetry: () => void; onReset: () => void }) {
+  return <section className={styles.errorPanel} data-error-category={error.category}>
+    <AlertCircle size={30} />
+    <h2>{c.errorTitle}</h2>
+    <span className={styles.errorCategory}>{c.errorCategory}: {c.failureCategories[error.category]}</span>
+    <p>{error.message}</p>
+    <div className={styles.errorActions}>
+      <button type="button" onClick={onRetry}><RefreshCcw size={15} />{c.retryAction}</button>
+      <button type="button" onClick={onReset}>{c.newSearch}</button>
+    </div>
+  </section>;
 }
 
 function ResultView({ result, c, locale, onRefresh, onReset }: { result: ShariaScreeningResult; c: typeof COPY[Locale]; locale: Locale; onRefresh: () => void; onReset: () => void }) {

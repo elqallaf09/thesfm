@@ -14,16 +14,23 @@ async function parseBody(request: Request) {
 }
 
 export async function POST(request: NextRequest) {
-  const limited = rateLimitRequest(request, { max: 8, windowMs: 60_000, prefix: 'sharia-research-search' });
-  if (limited) return limited;
-  const user = await getCurrentUserFromRequest(request);
-  if (!user) return structuredError('AUTH_REQUIRED', 'Authentication is required to keep research private.', 401);
-  const parsed = SearchRequestSchema.safeParse(await parseBody(request));
-  if (!parsed.success) return structuredError('VALIDATION_ERROR', 'The search request is invalid.', 400, zodErrorDetails(parsed.error));
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return structuredError('RESEARCH_STORAGE_NOT_CONFIGURED', 'The research database service is not configured.', 503);
-
+  let userId: string | null = null;
   try {
+    const limited = rateLimitRequest(request, { max: 8, windowMs: 60_000, prefix: 'sharia-research-search' });
+    if (limited) {
+      return privateJson(
+        { ok: false, success: false, error: { code: 'RATE_LIMITED', message: 'Too many research requests.' } },
+        { status: 429, headers: { 'Retry-After': limited.headers.get('retry-after') || '60' } },
+      );
+    }
+    const user = await getCurrentUserFromRequest(request);
+    if (!user) return structuredError('AUTH_REQUIRED', 'Authentication is required to keep research private.', 401);
+    userId = user.id;
+    const parsed = SearchRequestSchema.safeParse(await parseBody(request));
+    if (!parsed.success) return structuredError('VALIDATION_ERROR', 'The search request is invalid.', 400, zodErrorDetails(parsed.error));
+    const admin = createServerSupabaseAdmin();
+    if (!admin) return structuredError('RESEARCH_STORAGE_NOT_CONFIGURED', 'The research database service is not configured.', 503);
+
     const created = await resolveAndCreateJob(admin, {
       userId: user.id,
       query: parsed.data.query,
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
       security: created.security,
     }, { status: 202 });
   } catch (error) {
-    console.error('[sharia-research] search creation failed', { userId: user.id, message: error instanceof Error ? error.message : String(error) });
-    return structuredError('RESEARCH_JOB_CREATE_FAILED', 'The research job could not be created.', 500);
+    console.error('[sharia-research] search creation failed', { userId, message: error instanceof Error ? error.message : String(error) });
+    return structuredError('RESEARCH_START_FAILED', 'The research job could not be started.', 500);
   }
 }

@@ -492,6 +492,32 @@
   align-self: start;
 }
 
+.researchEntryPanel {
+  position: relative;
+  overflow: hidden;
+  color: #ffffff;
+  border-color: rgba(32, 199, 191, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(145deg, #0b3150, #08695f);
+}
+
+.researchEntryPanel::after {
+  content: '';
+  position: absolute;
+  inset-block: 14px;
+  inset-inline-start: 0;
+  width: 4px;
+  border-radius: 999px;
+  background: #5eead4;
+}
+
+.researchEntryPanel h2 { margin: 8px 0 0; color: #ffffff; font-size: 19px; line-height: 1.4; }
+.researchEntryPanel p { margin-top: 7px; color: #d6f5ef; font-size: 13px; line-height: 1.7; }
+.researchEntryPanel .sectionKicker { color: #8ff4e4; }
+.researchEntryPanel .secondaryButton { width: 100%; margin-top: 14px; color: #083b42; background: #ecfffb; box-shadow: none; }
+.researchEntryIcon { width: 42px; height: 42px; display: grid; place-items: center; color: #083b42; border-radius: 12px; background: #8ff4e4; }
+
 .stockResultsPanel,
 .newsPreviewPanel,
 .transparencyPanel,
@@ -1459,6 +1485,7 @@
 
   .page[dir] .main {
     padding-inline: 16px;
+    padding-block-end: max(120px, calc(env(safe-area-inset-bottom) + 96px)) !important;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;

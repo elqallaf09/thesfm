@@ -1,5 +1,5 @@
-import { ShariaResearchPage } from '@/components/shariah-stocks/ShariaResearchPage';
+import { ShariahStocksNewsPage } from '@/components/shariah-stocks/ShariahStocksNewsPage';
 
 export default function ShariaStocksPage() {
-  return <ShariaResearchPage />;
+  return <ShariahStocksNewsPage />;
 }

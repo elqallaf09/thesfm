@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export function privateJson(data: unknown, init?: ResponseInit) {
-  return NextResponse.json(data, {
+  const body = data && typeof data === 'object' && !Array.isArray(data)
+    ? {
+        ...data,
+        ...('success' in data ? {} : 'ok' in data && typeof data.ok === 'boolean' ? { success: data.ok } : {}),
+      }
+    : data;
+  return NextResponse.json(body, {
     ...init,
     headers: {
       'Cache-Control': 'private, no-store',
@@ -12,5 +18,5 @@ export function privateJson(data: unknown, init?: ResponseInit) {
 }
 
 export function structuredError(code: string, message: string, status: number, details?: unknown) {
-  return privateJson({ ok: false, error: { code, message, ...(details === undefined ? {} : { details }) } }, { status });
+  return privateJson({ ok: false, success: false, error: { code, message, ...(details === undefined ? {} : { details }) } }, { status });
 }

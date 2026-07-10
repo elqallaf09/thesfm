@@ -21,6 +21,7 @@
 .page *, .page *::before, .page *::after { box-sizing: border-box; min-width: 0; }
 .page button, .page input, .page select { font: inherit; }
 .page button { cursor: pointer; }
+.embedded { max-width: none; padding: 0; overflow: visible; }
 
 .hero {
   position: relative;
@@ -70,8 +71,12 @@
   letter-spacing: 0.04em;
 }
 
-.heroCopy h1 { margin: 0; font-size: clamp(28px, 4vw, 49px); line-height: 1.12; letter-spacing: -0.035em; font-weight: 900; }
+.heroCopy h1, .heroCopy h2 { margin: 0; font-size: clamp(28px, 4vw, 49px); line-height: 1.12; letter-spacing: -0.035em; font-weight: 900; }
 .heroCopy > p { max-width: 820px; margin: 12px 0 0; color: var(--muted); font-size: clamp(14px, 1.6vw, 17px); line-height: 1.8; font-weight: 600; }
+.embeddedHero { padding: clamp(16px, 2vw, 24px); border-radius: 20px; box-shadow: 0 12px 34px rgba(11, 31, 51, 0.06); }
+.embeddedHero .heroSeal { width: 46px; height: 46px; border-radius: 14px; }
+.embeddedHero .heroCopy h2 { font-size: clamp(22px, 3vw, 34px); }
+.embeddedHero .heroCopy > p { margin-top: 8px; font-size: 14px; }
 
 .scopeNote { display: inline-flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 7px 10px; color: #44566a; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.62); font-size: 12px; line-height: 1.6; }
 .scopeNote svg { flex: 0 0 auto; margin-top: 2px; color: var(--teal); }
@@ -156,6 +161,10 @@
 .errorPanel h2 { margin: 8px 0 0; }
 .errorPanel p { max-width: 680px; margin: 8px auto 0; color: var(--muted); overflow-wrap: anywhere; }
 .errorPanel button { min-height: 40px; margin-top: 14px; padding: 0 15px; color: #fff; border: 0; border-radius: 11px; background: var(--ink); font-weight: 900; }
+.errorCategory { display: inline-flex; margin-top: 8px; padding: 5px 9px; color: #8e2d39; border-radius: 999px; background: #fdecef; font-size: 11px; font-weight: 900; }
+.errorActions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.errorActions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.errorActions button:last-child { color: var(--ink); border: 1px solid var(--line); background: #fff; }
 
 .resultStack { min-width: 0; }
 .resultHero { position: relative; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr); gap: 17px 24px; margin-top: 16px; padding: clamp(17px, 2.6vw, 27px); border: 1px solid var(--line); border-radius: 23px; background: #fff; box-shadow: 0 15px 40px rgba(11,31,51,.07); overflow: hidden; }

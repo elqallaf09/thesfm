@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { createHash, randomUUID } from 'node:crypto';
-import { PDFParse } from 'pdf-parse';
 import type { ReliabilityLevel, SourceDocument, SourceTier, SourceType } from './types';
 
 const MAX_TEXT_CHARS = 450_000;
@@ -90,7 +89,13 @@ export function extractHtmlContent(html: string) {
 
 export async function extractPdfText(body: Uint8Array, maxPages = MAX_PDF_PAGES) {
   if (body.byteLength > 15 * 1024 * 1024) throw new Error('PDF_SIZE_LIMIT_EXCEEDED');
-  const parser = new PDFParse({ data: body });
+  // Keep PDF.js out of the route-module startup path. On serverless runtimes it
+  // needs its Node canvas factory before pdf-parse is evaluated; loading both
+  // here also means an unavailable PDF dependency can only fail this source,
+  // never the JSON API route itself.
+  const { CanvasFactory } = await import('pdf-parse/worker');
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: body, CanvasFactory });
   try {
     const info = await parser.getInfo({ parsePageInfo: false });
     const totalPages = Number(info.total ?? 0);

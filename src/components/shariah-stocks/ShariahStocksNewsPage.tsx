@@ -38,12 +38,13 @@ import {
 import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
+import { ShariaResearchPage } from '@/components/shariah-stocks/ShariaResearchPage';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import styles from './ShariahStocksNewsPage.module.css';
 
 type LangCode = 'ar' | 'en' | 'fr';
-type ShariahTab = 'overview' | 'screener' | 'funds' | 'news' | 'methodology';
+type ShariahTab = 'overview' | 'screener' | 'research' | 'funds' | 'news' | 'methodology';
 type DataCompleteness = 'complete' | 'partial' | 'insufficient' | 'not_screened';
 type SortKey = 'latest_screening' | 'data_quality' | 'performance' | 'name';
 type NewsSortKey = 'latest' | 'source' | 'symbol';
@@ -55,6 +56,7 @@ type ShariahQuote = {
   sector: string;
   industry: string;
   assetType: ShariahAssetType;
+  exchange: string | null;
   price: number | null;
   currency: string;
   change: number | null;
@@ -203,7 +205,7 @@ const PAGE_SIZE = 12;
 const NEWS_PAGE_SIZE = 9;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 const STATUS_ORDER: ShariahScreeningStatus[] = ['compliant', 'needs_review', 'non_compliant', 'unclassified'];
-const TABS: ShariahTab[] = ['overview', 'screener', 'funds', 'news', 'methodology'];
+const TABS: ShariahTab[] = ['overview', 'screener', 'research', 'funds', 'news', 'methodology'];
 const QUICK_TIMEFRAMES: QuickTimeframe[] = ['15m', '1h', '4h', '1D', '1W'];
 
 const COPY = {
@@ -237,6 +239,7 @@ const COPY = {
     tabs: {
       overview: 'نظرة عامة',
       screener: 'نتائج الفحص',
+      research: 'البحث الموثق',
       funds: 'الصناديق الشرعية',
       news: 'الأخبار',
       methodology: 'المنهجية والمصادر',
@@ -256,9 +259,12 @@ const COPY = {
     searchPlaceholder: 'ابحث باسم الشركة أو الرمز أو القطاع',
     statusFilter: 'حالة الفحص',
     sectorFilter: 'القطاع',
+    marketFilter: 'السوق',
+    assetTypeFilter: 'نوع الأصل',
     sortBy: 'الترتيب',
     allStatuses: 'كل الحالات',
     allSectors: 'كل القطاعات',
+    allMarkets: 'كل الأسواق',
     allSources: 'كل المصادر',
     all: 'الكل',
     clearFilters: 'مسح عوامل التصفية',
@@ -278,6 +284,10 @@ const COPY = {
     details: 'تفاصيل الفحص',
     quickAnalyze: 'تحليل سريع',
     fullAnalyze: 'التحليل الكامل',
+    deepResearchTitle: 'البحث الشرعي الموثق متعدد المصادر',
+    deepResearchBody: 'ابدأ بحثاً مستقلاً يجمع الإفصاحات الرسمية ويحسب النسب وفق منهجية معلنة، دون استبدال قائمة الأسهم أو أخبارها.',
+    deepResearchAction: 'فتح البحث الموثق',
+    companyNews: 'أخبار هذه الشركة',
     loadMore: 'عرض المزيد',
     noStocks: 'لا توجد شركات مطابقة لعوامل التصفية الحالية.',
     noFunds: 'لا توجد صناديق مطابقة لعوامل التصفية الحالية.',
@@ -286,7 +296,9 @@ const COPY = {
     fundWarning: 'قد تختلف منهجية الصندوق عن منهجية الفحص المستخدمة في هذه الصفحة.',
     newsTitle: 'أخبار الأسهم المفحوصة',
     newsBody: 'أخبار موجزة من المصادر الحالية مع إظهار حالة الفحص الشرعي للشركة المرتبطة عند توفرها.',
+    newsContextOnly: 'الأخبار سياق داعم فقط، ولا تحدد نتيجة التوافق الشرعي.',
     noNews: 'لا توجد أخبار مطابقة لعوامل التصفية الحالية.',
+    newsUnavailable: 'تعذر تحميل الأخبار حالياً',
     readArticle: 'قراءة الخبر',
     originalText: 'عرض النص الأصلي',
     translated: 'ترجمة آلية',
@@ -364,6 +376,7 @@ const COPY = {
     tabs: {
       overview: 'Overview',
       screener: 'Screening results',
+      research: 'Documented research',
       funds: 'Sharia funds',
       news: 'News',
       methodology: 'Methodology',
@@ -383,9 +396,12 @@ const COPY = {
     searchPlaceholder: 'Search company, symbol, or sector',
     statusFilter: 'Screening status',
     sectorFilter: 'Sector',
+    marketFilter: 'Market',
+    assetTypeFilter: 'Asset type',
     sortBy: 'Sort by',
     allStatuses: 'All statuses',
     allSectors: 'All sectors',
+    allMarkets: 'All markets',
     allSources: 'All sources',
     all: 'All',
     clearFilters: 'Clear filters',
@@ -405,6 +421,10 @@ const COPY = {
     details: 'Methodology screen',
     quickAnalyze: 'Quick analysis',
     fullAnalyze: 'Full analysis',
+    deepResearchTitle: 'Multi-source documented Shariah research',
+    deepResearchBody: 'Run a separate evidence review using official filings and disclosed calculations without replacing the stock list or news.',
+    deepResearchAction: 'Open documented research',
+    companyNews: 'Company news',
     loadMore: 'Load more',
     noStocks: 'No companies match the current filters.',
     noFunds: 'No funds match the current filters.',
@@ -413,7 +433,9 @@ const COPY = {
     fundWarning: 'A fund methodology may differ from the screening methodology used on this page.',
     newsTitle: 'Screened-equity News',
     newsBody: 'Current-source news with related screening status when available.',
+    newsContextOnly: 'News is supporting context only and never determines the Shariah result.',
     noNews: 'No news matches the current filters.',
+    newsUnavailable: 'News could not be loaded right now.',
     readArticle: 'Read source',
     originalText: 'Show original text',
     translated: 'Machine translation',
@@ -491,6 +513,7 @@ const COPY = {
     tabs: {
       overview: 'Vue générale',
       screener: 'Résultats',
+      research: 'Recherche documentée',
       funds: 'Fonds charia',
       news: 'Actualités',
       methodology: 'Méthodologie',
@@ -510,9 +533,12 @@ const COPY = {
     searchPlaceholder: 'Société, symbole ou secteur',
     statusFilter: 'Statut',
     sectorFilter: 'Secteur',
+    marketFilter: 'Marché',
+    assetTypeFilter: 'Type d’actif',
     sortBy: 'Tri',
     allStatuses: 'Tous les statuts',
     allSectors: 'Tous les secteurs',
+    allMarkets: 'Tous les marchés',
     allSources: 'Toutes les sources',
     all: 'Tout',
     clearFilters: 'Effacer les filtres',
@@ -532,6 +558,10 @@ const COPY = {
     details: 'Détails',
     quickAnalyze: 'Analyse rapide',
     fullAnalyze: 'Analyse complète',
+    deepResearchTitle: 'Recherche charia documentée multi-source',
+    deepResearchBody: 'Lancez une analyse séparée des documents officiels et des calculs publiés sans remplacer la liste ni les actualités.',
+    deepResearchAction: 'Ouvrir la recherche documentée',
+    companyNews: 'Actualités de la société',
     loadMore: 'Afficher plus',
     noStocks: 'Aucune société ne correspond aux filtres.',
     noFunds: 'Aucun fonds ne correspond aux filtres.',
@@ -540,7 +570,9 @@ const COPY = {
     fundWarning: 'La méthodologie du fonds peut différer de celle de cette page.',
     newsTitle: 'Actualités',
     newsBody: 'Actualités associées aux valeurs filtrées.',
+    newsContextOnly: 'Les actualités servent uniquement de contexte et ne déterminent jamais le résultat charia.',
     noNews: 'Aucune actualité ne correspond aux filtres.',
+    newsUnavailable: 'Impossible de charger les actualités actuellement.',
     readArticle: 'Lire la source',
     originalText: 'Voir le texte original',
     translated: 'Traduction automatique',
@@ -755,6 +787,8 @@ function readInitialState() {
       search: '',
       status: 'all',
       sector: 'all',
+      market: 'all',
+      asset: 'stock',
       sort: 'latest_screening' as SortKey,
       newsSearch: '',
       newsStatus: 'all',
@@ -771,6 +805,8 @@ function readInitialState() {
     search: params.get('q') ?? '',
     status: params.get('status') ?? 'all',
     sector: params.get('sector') ?? 'all',
+    market: params.get('market') ?? 'all',
+    asset: ['all', 'stock', 'etf'].includes(params.get('asset') ?? '') ? params.get('asset')! : 'stock',
     sort: sortParam && ['latest_screening', 'data_quality', 'performance', 'name'].includes(sortParam) ? sortParam : 'latest_screening',
     newsSearch: params.get('newsQ') ?? '',
     newsStatus: params.get('newsStatus') ?? 'all',
@@ -790,6 +826,8 @@ export function ShariahStocksNewsPage() {
   const [stockSearch, setStockSearch] = useState(initialRef.current.search);
   const [statusFilter, setStatusFilter] = useState(initialRef.current.status);
   const [sectorFilter, setSectorFilter] = useState(initialRef.current.sector);
+  const [marketFilter, setMarketFilter] = useState(initialRef.current.market);
+  const [assetTypeFilter, setAssetTypeFilter] = useState(initialRef.current.asset);
   const [sortKey, setSortKey] = useState<SortKey>(initialRef.current.sort);
   const [newsSearch, setNewsSearch] = useState(initialRef.current.newsSearch);
   const [newsStatusFilter, setNewsStatusFilter] = useState(initialRef.current.newsStatus);
@@ -805,6 +843,7 @@ export function ShariahStocksNewsPage() {
   const [newsVisible, setNewsVisible] = useState(NEWS_PAGE_SIZE);
   const [stockVisible, setStockVisible] = useState(PAGE_SIZE);
   const [selectedSecurity, setSelectedSecurity] = useState<SecurityRow | null>(null);
+  const [researchQuery, setResearchQuery] = useState('');
   const [quickAnalysis, setQuickAnalysis] = useState<QuickAnalysisState | null>(null);
   const [quickResult, setQuickResult] = useState<QuickAnalysisResult | null>(null);
   const [quickLoading, setQuickLoading] = useState(false);
@@ -813,6 +852,19 @@ export function ShariahStocksNewsPage() {
   const quickCacheRef = useRef(new Map<string, QuickAnalysisResult>());
   const quickAbortRef = useRef<AbortController | null>(null);
   const quickCloseRef = useRef<HTMLButtonElement | null>(null);
+
+  const openDocumentedResearch = useCallback((row?: Pick<SecurityRow, 'symbol'>) => {
+    if (row?.symbol) setResearchQuery(row.symbol);
+    setSelectedSecurity(null);
+    setActiveTab('research');
+  }, []);
+
+  const openCompanyNews = useCallback((row: Pick<SecurityRow, 'symbol'>) => {
+    setNewsSearch(row.symbol);
+    setNewsVisible(NEWS_PAGE_SIZE);
+    setSelectedSecurity(null);
+    setActiveTab('news');
+  }, []);
 
   const loadCoreData = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
     if (background) setRefreshing(true);
@@ -869,6 +921,8 @@ export function ShariahStocksNewsPage() {
       setStockSearch(next.search);
       setStatusFilter(next.status);
       setSectorFilter(next.sector);
+      setMarketFilter(next.market);
+      setAssetTypeFilter(next.asset);
       setSortKey(next.sort);
       setNewsSearch(next.newsSearch);
       setNewsStatusFilter(next.newsStatus);
@@ -885,6 +939,8 @@ export function ShariahStocksNewsPage() {
     if (stockSearch.trim()) params.set('q', stockSearch.trim());
     if (statusFilter !== 'all') params.set('status', statusFilter);
     if (sectorFilter !== 'all') params.set('sector', sectorFilter);
+    if (marketFilter !== 'all') params.set('market', marketFilter);
+    if (assetTypeFilter !== 'stock') params.set('asset', assetTypeFilter);
     if (sortKey !== 'latest_screening') params.set('sort', sortKey);
     if (newsSearch.trim()) params.set('newsQ', newsSearch.trim());
     if (newsStatusFilter !== 'all') params.set('newsStatus', newsStatusFilter);
@@ -893,7 +949,7 @@ export function ShariahStocksNewsPage() {
     const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     const current = `${window.location.pathname}${window.location.search}`;
     if (next !== current) window.history.replaceState(null, '', next);
-  }, [activeTab, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter, sectorFilter, sortKey, statusFilter, stockSearch]);
+  }, [activeTab, assetTypeFilter, marketFilter, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter, sectorFilter, sortKey, statusFilter, stockSearch]);
 
   const quoteBySymbol = useMemo(() => {
     const map = new Map<string, ShariahQuote>();
@@ -943,17 +999,22 @@ export function ShariahStocksNewsPage() {
   const sectors = useMemo(() => {
     return Array.from(new Set(securities.map(item => item.sector).filter(Boolean))).sort();
   }, [securities]);
+  const markets = useMemo(() => {
+    return Array.from(new Set(securities.map(item => item.quote?.exchange).filter((value): value is string => Boolean(value)))).sort();
+  }, [securities]);
 
   const stockRows = useMemo(() => securities.filter(item => item.assetType === 'stock'), [securities]);
   const fundRows = useMemo(() => securities.filter(item => item.assetType === 'etf'), [securities]);
 
   const filteredStocks = useMemo(() => {
     const query = normalizedText(stockSearch);
-    const filtered = stockRows.filter(item => {
-      const haystack = normalizedText(`${item.name} ${item.symbol} ${item.sector} ${item.industry}`);
+    const filtered = securities.filter(item => {
+      const haystack = normalizedText(`${item.name} ${item.symbol} ${item.sector} ${item.industry} ${item.quote?.exchange ?? ''}`);
       const statusOk = statusFilter === 'all' || item.shariahStatus === statusFilter;
       const sectorOk = sectorFilter === 'all' || item.sector === sectorFilter;
-      return (!query || haystack.includes(query)) && statusOk && sectorOk;
+      const marketOk = marketFilter === 'all' || item.quote?.exchange === marketFilter;
+      const assetOk = assetTypeFilter === 'all' || item.assetType === assetTypeFilter;
+      return (!query || haystack.includes(query)) && statusOk && sectorOk && marketOk && assetOk;
     });
     return filtered.sort((a, b) => {
       if (sortKey === 'name') return a.name.localeCompare(b.name);
@@ -961,7 +1022,7 @@ export function ShariahStocksNewsPage() {
       if (sortKey === 'data_quality') return completenessRank(b.dataCompleteness) - completenessRank(a.dataCompleteness);
       return new Date(b.lastScreenedAt ?? 0).getTime() - new Date(a.lastScreenedAt ?? 0).getTime();
     });
-  }, [sectorFilter, sortKey, statusFilter, stockRows, stockSearch]);
+  }, [assetTypeFilter, marketFilter, sectorFilter, securities, sortKey, statusFilter, stockSearch]);
 
   const filteredFunds = useMemo(() => {
     const query = normalizedText(stockSearch);
@@ -1015,12 +1076,16 @@ export function ShariahStocksNewsPage() {
     stockSearch.trim() ? `${c.search}: ${stockSearch.trim()}` : '',
     statusFilter !== 'all' ? statusLabel(statusFilter as ShariahScreeningStatus, locale) : '',
     sectorFilter !== 'all' ? sectorFilter : '',
+    marketFilter !== 'all' ? marketFilter : '',
+    assetTypeFilter !== 'stock' ? (assetTypeFilter === 'etf' ? c.etf : c.all) : '',
   ].filter(Boolean);
 
   const clearFilters = () => {
     setStockSearch('');
     setStatusFilter('all');
     setSectorFilter('all');
+    setMarketFilter('all');
+    setAssetTypeFilter('stock');
     setSortKey('latest_screening');
     setStockVisible(PAGE_SIZE);
   };
@@ -1193,7 +1258,9 @@ export function ShariahStocksNewsPage() {
               leadingStocks={leadingStocks}
               newsItems={filteredNews.slice(0, 5)}
               newsLoading={newsLoading}
+              newsUnavailable={newsResponse?.success === false}
               onTab={setActiveTab}
+              onResearch={() => openDocumentedResearch()}
               onDetails={setSelectedSecurity}
               onQuick={openQuickAnalysis}
               marketAnalysisHref={marketAnalysisHref}
@@ -1213,9 +1280,14 @@ export function ShariahStocksNewsPage() {
               setStatusFilter={setStatusFilter}
               sectorFilter={sectorFilter}
               setSectorFilter={setSectorFilter}
+              marketFilter={marketFilter}
+              setMarketFilter={setMarketFilter}
+              assetTypeFilter={assetTypeFilter}
+              setAssetTypeFilter={setAssetTypeFilter}
               sortKey={sortKey}
               setSortKey={setSortKey}
               sectors={sectors}
+              markets={markets}
               activeFilters={activeFilters}
               clearFilters={clearFilters}
               onLoadMore={() => setStockVisible(value => value + PAGE_SIZE)}
@@ -1237,6 +1309,10 @@ export function ShariahStocksNewsPage() {
             />
           ) : null}
 
+          {activeTab === 'research' ? (
+            <ShariaResearchPage embedded initialQuery={researchQuery} />
+          ) : null}
+
           {activeTab === 'news' ? (
             <NewsTab
               c={c}
@@ -1244,6 +1320,7 @@ export function ShariahStocksNewsPage() {
               items={filteredNews}
               visible={newsVisible}
               loading={newsLoading}
+              unavailable={newsResponse?.success === false}
               search={newsSearch}
               setSearch={setNewsSearch}
               statusFilter={newsStatusFilter}
@@ -1287,6 +1364,8 @@ export function ShariahStocksNewsPage() {
         row={selectedSecurity}
         onClose={() => setSelectedSecurity(null)}
         onQuick={openQuickAnalysis}
+        onResearch={openDocumentedResearch}
+        onCompanyNews={openCompanyNews}
         marketAnalysisHref={marketAnalysisHref}
       />
 
@@ -1454,6 +1533,7 @@ function ShariaTabs({
 function tabIcon(tab: ShariahTab) {
   if (tab === 'overview') return <Gauge size={16} />;
   if (tab === 'screener') return <FileSearch size={16} />;
+  if (tab === 'research') return <ListChecks size={16} />;
   if (tab === 'funds') return <WalletCards size={16} />;
   if (tab === 'news') return <Newspaper size={16} />;
   return <BookOpen size={16} />;
@@ -1468,7 +1548,9 @@ function OverviewTab({
   leadingStocks,
   newsItems,
   newsLoading,
+  newsUnavailable,
   onTab,
+  onResearch,
   onDetails,
   onQuick,
   marketAnalysisHref,
@@ -1481,7 +1563,9 @@ function OverviewTab({
   leadingStocks: SecurityRow[];
   newsItems: ShariahNewsItem[];
   newsLoading: boolean;
+  newsUnavailable: boolean;
   onTab: (tab: ShariahTab) => void;
+  onResearch: () => void;
   onDetails: (row: SecurityRow) => void;
   onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
   marketAnalysisHref: (symbol: string) => string;
@@ -1489,7 +1573,7 @@ function OverviewTab({
   return (
     <div className={styles.overviewGrid}>
       <div className={styles.overviewMain}>
-        <section className={`${styles.panel} ${styles.stockResultsPanel}`}>
+        <section className={`${styles.panel} ${styles.stockResultsPanel}`} data-testid="sharia-stock-results">
           <div className={styles.sectionHead}>
             <div>
               <span className={styles.sectionKicker}><TrendingUp size={15} /> {c.screenerTitle}</span>
@@ -1505,7 +1589,7 @@ function OverviewTab({
           </div>
         </section>
 
-        <section className={`${styles.panel} ${styles.newsPreviewPanel}`}>
+        <section className={`${styles.panel} ${styles.newsPreviewPanel}`} data-testid="sharia-news-section">
           <div className={styles.sectionHead}>
             <div>
               <span className={styles.sectionKicker}><Newspaper size={15} /> {c.newsTitle}</span>
@@ -1515,12 +1599,25 @@ function OverviewTab({
             <button type="button" className={styles.linkButton} onClick={() => onTab('news')}>{c.tabs.news}</button>
           </div>
           <div className={styles.newsPreviewList} aria-busy={newsLoading}>
-            {newsItems.length ? newsItems.map(item => <NewsRow key={item.id || item.url} item={item} c={c} locale={locale} compact />) : <EmptyState text={newsLoading ? `${c.refreshing}...` : c.noNews} />}
+            {newsItems.length ? newsItems.map(item => <NewsRow key={item.id || item.url} item={item} c={c} locale={locale} compact />) : <EmptyState text={newsLoading ? `${c.refreshing}...` : newsUnavailable ? c.newsUnavailable : c.noNews} />}
           </div>
         </section>
       </div>
 
       <aside className={styles.overviewAside}>
+        <section className={`${styles.panel} ${styles.researchEntryPanel}`} data-testid="sharia-deep-research-entry">
+          <div className={styles.researchEntryIcon}><FileSearch size={22} /></div>
+          <div>
+            <span className={styles.sectionKicker}>{c.tabs.research}</span>
+            <h2>{c.deepResearchTitle}</h2>
+            <p>{c.deepResearchBody}</p>
+          </div>
+          <button type="button" className={styles.secondaryButton} onClick={onResearch}>
+            <FileSearch size={16} />
+            {c.deepResearchAction}
+          </button>
+        </section>
+
         <section className={`${styles.methodologyPanel} ${styles.methodologyCardCompact}`}>
           <div className={styles.sectionHead}>
             <div>
@@ -1607,9 +1704,14 @@ function ScreenerTab(props: {
   setStatusFilter: (value: string) => void;
   sectorFilter: string;
   setSectorFilter: (value: string) => void;
+  marketFilter: string;
+  setMarketFilter: (value: string) => void;
+  assetTypeFilter: string;
+  setAssetTypeFilter: (value: string) => void;
   sortKey: SortKey;
   setSortKey: (value: SortKey) => void;
   sectors: string[];
+  markets: string[];
   activeFilters: string[];
   clearFilters: () => void;
   onLoadMore: () => void;
@@ -1620,7 +1722,7 @@ function ScreenerTab(props: {
   const { c, locale, rows, visible, loading } = props;
   const pageRows = rows.slice(0, visible);
   return (
-    <section className={styles.panel}>
+    <section className={styles.panel} data-testid="sharia-stock-results">
       <div className={styles.sectionHead}>
         <div>
           <span className={styles.sectionKicker}><SlidersHorizontal size={15} /> {c.resultCount}: {rows.length}</span>
@@ -1648,9 +1750,14 @@ function ScreeningFilters({
   setStatusFilter,
   sectorFilter,
   setSectorFilter,
+  marketFilter,
+  setMarketFilter,
+  assetTypeFilter,
+  setAssetTypeFilter,
   sortKey,
   setSortKey,
   sectors,
+  markets,
   activeFilters,
   clearFilters,
 }: {
@@ -1662,9 +1769,14 @@ function ScreeningFilters({
   setStatusFilter: (value: string) => void;
   sectorFilter: string;
   setSectorFilter: (value: string) => void;
+  marketFilter: string;
+  setMarketFilter: (value: string) => void;
+  assetTypeFilter: string;
+  setAssetTypeFilter: (value: string) => void;
   sortKey: SortKey;
   setSortKey: (value: SortKey) => void;
   sectors: string[];
+  markets: string[];
   activeFilters: string[];
   clearFilters: () => void;
 }) {
@@ -1684,6 +1796,15 @@ function ScreeningFilters({
       <SelectField label={c.sectorFilter} value={sectorFilter} onChange={setSectorFilter}>
         <option value="all">{c.allSectors}</option>
         {sectors.map(sector => <option key={sector} value={sector}>{sector}</option>)}
+      </SelectField>
+      <SelectField label={c.marketFilter} value={marketFilter} onChange={setMarketFilter}>
+        <option value="all">{c.allMarkets}</option>
+        {markets.map(market => <option key={market} value={market}>{market}</option>)}
+      </SelectField>
+      <SelectField label={c.assetTypeFilter} value={assetTypeFilter} onChange={setAssetTypeFilter}>
+        <option value="stock">{c.stock}</option>
+        <option value="etf">{c.etf}</option>
+        <option value="all">{c.all}</option>
       </SelectField>
       <SelectField label={c.sortBy} value={sortKey} onChange={(value) => setSortKey(value as SortKey)}>
         {Object.entries(c.sortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -1726,6 +1847,8 @@ function SecurityTable({
               <th>{c.company}</th>
               <th>{c.statusFilter}</th>
               <th>{c.sector}</th>
+              <th>{c.market}</th>
+              <th>{c.assetType}</th>
               <th>{c.screeningDate}</th>
               <th>{c.dataQuality}</th>
               <th>{c.price}</th>
@@ -1747,6 +1870,8 @@ function SecurityTable({
                 </td>
                 <td><StatusBadge status={row.shariahStatus} label={statusLabel(row.shariahStatus, locale)} /></td>
                 <td>{row.sector}<small>{row.industry}</small></td>
+                <td dir="ltr">{row.quote?.exchange || c.notAvailable}</td>
+                <td>{row.assetType === 'etf' ? c.etf : c.stock}</td>
                 <td>{formatDate(row.lastScreenedAt, locale)}</td>
                 <td><DataQualityBadge value={row.dataCompleteness} stale={row.stale} c={c} locale={locale} /></td>
                 <td dir="ltr">{formatPrice(row.quote?.price, row.quote?.currency, locale)}</td>
@@ -1817,6 +1942,7 @@ function NewsTab({
   items,
   visible,
   loading,
+  unavailable,
   search,
   setSearch,
   statusFilter,
@@ -1837,6 +1963,7 @@ function NewsTab({
   items: ShariahNewsItem[];
   visible: number;
   loading: boolean;
+  unavailable: boolean;
   search: string;
   setSearch: (value: string) => void;
   statusFilter: string;
@@ -1855,7 +1982,7 @@ function NewsTab({
   const visibleItems = items.slice(0, visible);
   const bySymbol = useMemo(() => new Map(securities.map(row => [row.symbol.toUpperCase(), row])), [securities]);
   return (
-    <section className={styles.panel}>
+    <section className={styles.panel} data-testid="sharia-news-section">
       <div className={styles.sectionHead}>
         <div>
           <span className={styles.sectionKicker}><Newspaper size={15} /> {c.resultCount}: {items.length}</span>
@@ -1863,6 +1990,7 @@ function NewsTab({
           <p>{c.newsBody}</p>
         </div>
       </div>
+      <div className={styles.inlineWarning}><Info size={16} /><span>{c.newsContextOnly}</span></div>
       <div className={styles.filterPanel}>
         <label className={styles.searchField}>
           <span>{c.search}</span>
@@ -1898,7 +2026,7 @@ function NewsTab({
             />
           ))}
         </div>
-      ) : <EmptyState text={c.noNews} />}
+      ) : <EmptyState text={unavailable ? c.newsUnavailable : c.noNews} />}
       {visible < items.length ? (
         <div className={styles.loadMoreWrap}>
           <button type="button" onClick={onLoadMore}>{c.loadMore}</button>
@@ -2077,6 +2205,8 @@ function SecurityMiniCard({
         <MetricTile label={c.price} value={formatPrice(row.quote?.price, row.quote?.currency, locale)} ltr />
         <MetricTile label={c.change} value={formatPercent(row.quote?.changePercent, locale)} ltr />
         <MetricTile label={c.screeningDate} value={formatDate(row.lastScreenedAt, locale)} />
+        <MetricTile label={c.market} value={row.quote?.exchange || c.notAvailable} ltr />
+        <MetricTile label={c.assetType} value={row.assetType === 'etf' ? c.etf : c.stock} />
       </div>
       <p className={styles.securityReason}>{explainReason(row, locale)}</p>
       <div className={styles.cardActions}>
@@ -2131,6 +2261,7 @@ function NewsCard({
       {summary ? <p dir="auto">{summary}</p> : null}
       <div className={styles.newsMeta}>
         {item.isTranslated ? <span>{c.translated}</span> : null}
+        {item.languageOriginal ? <span dir="ltr">{item.languageOriginal.toUpperCase()}</span> : null}
         {item.ticker ? <span dir="ltr">{item.ticker}</span> : null}
         {item.companyName ? <span>{item.companyName}</span> : null}
       </div>
@@ -2196,6 +2327,8 @@ function ScreeningDetailsDrawer({
   row,
   onClose,
   onQuick,
+  onResearch,
+  onCompanyNews,
   marketAnalysisHref,
 }: {
   c: typeof COPY[LangCode];
@@ -2203,6 +2336,8 @@ function ScreeningDetailsDrawer({
   row: SecurityRow | null;
   onClose: () => void;
   onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
+  onResearch: (row: Pick<SecurityRow, 'symbol'>) => void;
+  onCompanyNews: (row: Pick<SecurityRow, 'symbol'>) => void;
   marketAnalysisHref: (symbol: string) => string;
 }) {
   if (!row) return null;
@@ -2254,6 +2389,8 @@ function ScreeningDetailsDrawer({
           </section>
         </div>
         <footer className={styles.drawerFooter}>
+          <button type="button" onClick={() => onResearch(row)}>{c.deepResearchAction}</button>
+          <button type="button" onClick={() => onCompanyNews(row)}>{c.companyNews}</button>
           <button type="button" onClick={() => onQuick(row)}>{c.quickAnalyze}</button>
           <a href={marketAnalysisHref(row.symbol)}>{c.fullAnalyze}</a>
         </footer>

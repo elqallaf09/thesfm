@@ -6,12 +6,16 @@ import {
   shariahStatusLabelAr,
 } from '@/lib/market/shariahUniverse';
 import { TICKER_FALLBACK_SOURCE, toResilientTickerItem } from '@/lib/market/tickerItems';
+import { loadSecCompanyDirectory } from '@/lib/sharia-research/secData';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const buildItems = (prices?: Awaited<ReturnType<typeof fetchStockPrices>>) =>
+  const buildItems = (
+    prices?: Awaited<ReturnType<typeof fetchStockPrices>>,
+    exchanges = new Map<string, string>(),
+  ) =>
     SHARIAH_UNIVERSE.map(asset => {
       const screening = buildUnknownShariahScreening(asset);
       return {
@@ -19,6 +23,7 @@ export async function GET() {
         sector: asset.sector,
         industry: asset.industry,
         assetType: asset.assetType,
+        exchange: exchanges.get(asset.symbol.toUpperCase()) ?? null,
         shariahStatus: screening.shariahStatus,
         statusLabelAr: shariahStatusLabelAr(screening.shariahStatus),
         screeningSource: screening.screeningSource,
@@ -28,9 +33,13 @@ export async function GET() {
     });
 
   try {
-    const prices = await fetchStockPrices(SHARIAH_UNIVERSE, process.env.FINNHUB_API_KEY);
+    const [prices, directory] = await Promise.all([
+      fetchStockPrices(SHARIAH_UNIVERSE, process.env.FINNHUB_API_KEY),
+      loadSecCompanyDirectory().catch(() => []),
+    ]);
+    const exchanges = new Map(directory.map(item => [item.ticker.toUpperCase(), item.exchange]));
     // Always return every screened asset; missing quotes are flagged unavailable.
-    const items = buildItems(prices);
+    const items = buildItems(prices, exchanges);
 
     return NextResponse.json(
       {
