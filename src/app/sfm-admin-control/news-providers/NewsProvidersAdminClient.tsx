@@ -78,15 +78,7 @@ function dateText(value: string | null | undefined, locale: string, fallback: st
   return date.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function fallbackSummary(providers: ProviderStatus[]) {
-  return providers.reduce((summary, provider) => {
-    summary.total += 1;
-    if (provider.enabled) summary.enabled += 1;
-    if (provider.healthStatus === 'healthy') summary.healthy += 1;
-    if (['unhealthy', 'rate_limited'].includes(provider.healthStatus)) summary.attention += 1;
-    return summary;
-  }, { total: 0, enabled: 0, healthy: 0, degraded: 0, attention: 0 });
-}
+const EMPTY_SUMMARY = { total: 0, enabled: 0, healthy: 0, degraded: 0, attention: 0 };
 
 export default function NewsProvidersAdminClient() {
   const { lang, dir } = useLanguage();
@@ -154,7 +146,9 @@ export default function NewsProvidersAdminClient() {
   }, [load]);
 
   const providers = data?.providers ?? [];
-  const summary = data?.summary ?? fallbackSummary(providers);
+  // The server (/api/admin/market-news/providers) always computes `summary` itself — this is
+  // just a safe zero-state default for the loading/failed-fetch window, never a recomputation.
+  const summary = data?.summary ?? EMPTY_SUMMARY;
   const summaryCards = useMemo(() => [
     { label: text.total, value: summary.total, icon: DatabaseZap },
     { label: text.enabled, value: summary.enabled, icon: ShieldCheck },

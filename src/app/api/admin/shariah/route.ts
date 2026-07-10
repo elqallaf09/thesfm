@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeAssetType } from '@/lib/market/marketService';
 import { normalizeShariahStatus, SHARIAH_STATUSES, type ShariahStatus } from '@/lib/market/shariah-screening';
+import { computeShariahCounts } from '@/lib/market/shariahAdminCatalog';
 import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 
 export const runtime = 'nodejs';
@@ -53,12 +54,15 @@ export async function GET(request: Request) {
     query = query.or(`symbol.ilike.${like},display_symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},company_name_ar.ilike.${like},company_name_en.ilike.${like}`);
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, counts] = await Promise.all([
+    query,
+    computeShariahCounts(auth.admin),
+  ]);
   if (error) {
     return adminJson({ ok: false, code: 'LOAD_FAILED', message: error.message }, { status: 500 });
   }
 
-  return adminJson({ ok: true, items: data ?? [] });
+  return adminJson({ ok: true, items: data ?? [], counts });
 }
 
 async function saveOverride(request: Request) {

@@ -36,6 +36,7 @@ import type {
   AccountCurrencyCode, SelectedMarketAsset, TechnicalState, TechnicalSymbolCategory,
   TechnicalSymbolOption, TraderToolsSubTab, WatchlistItem,
 } from '@/components/market-analysis/types';
+import { marketServiceStatusPresentation } from '@/components/market-analysis/serviceStatusPresentation';
 
 // â”€â”€ Local utils (extracted to components/market-analysis/utils.ts) â”€â”€â”€â”€â”€â”€â”€â”€
 import {
@@ -1587,27 +1588,7 @@ export default function MarketAnalysisPage() {
       fallback: Boolean((selected as { fallback?: boolean }).fallback),
     });
   }, [selectedProviderStatus, selected, marketUnavailableBadge]);
-  const serviceStatusValue = serviceState === 'connected'
-    ? t('market_connected_short')
-    : serviceState === 'checking'
-      ? t('market_service_checking_short')
-      : serviceState === 'degraded' || serviceState === 'slow'
-        ? t('market_data_status_delayed')
-        : t('market_service_not_connected_short');
-  const serviceStatusTone = serviceState === 'connected'
-    ? 'success'
-    : serviceState === 'checking'
-      ? 'info'
-      : 'warning';
-  const serviceNotice = serviceState === 'connected'
-    ? t('market_service_connected')
-    : serviceState === 'slow' || serviceState === 'degraded'
-      ? t('market_service_degraded')
-      : serviceState === 'not_configured'
-        ? t('market_service_not_configured')
-        : serviceState === 'unavailable'
-          ? t('market_service_unavailable')
-          : t('loading');
+  const { value: serviceStatusValue, tone: serviceStatusTone, notice: serviceNotice } = marketServiceStatusPresentation(serviceState, t);
   const heroBadge = t('market_badge_live');
   const chartBadge = t('market_chart_live');
   const selectedDisplayName = selectedAsset && selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;

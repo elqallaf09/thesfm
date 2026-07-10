@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
+import { computeCompleteness } from '@/lib/market-state/completeness';
+import { buildFeatureEnvelope } from '@/lib/market-state/envelope';
+import { computeFreshness } from '@/lib/market-state/freshness';
+import { normalizeFeatureDataStatus, normalizeProviderConnectionStatus } from '@/lib/market-state/normalizeStatus';
+import { normalizeMarketDataProviderName } from '@/lib/market-state/providerResolver';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
 import {
   assetSelectionDecision,
@@ -566,8 +571,38 @@ export async function GET(request: Request) {
     lastUpdated: quoteLoad.generatedAt,
   });
 
+  // Additive-only field wrapping the diagnostic above in the shared unified envelope shape.
+  const recommendationsProviderStatus = normalizeProviderConnectionStatus({
+    status: priceProviderStatus(quoteLoad, availablePriceCount),
+    rateLimited: quoteLoad.summary.skippedDueToRateLimit > 0,
+  });
+  const envelope = buildFeatureEnvelope({
+    feature: 'recommendations',
+    status: normalizeFeatureDataStatus({
+      isLoading: false,
+      hasError: false,
+      providerStatus: recommendationsProviderStatus,
+      requested: filteredMeta.length,
+      returned: recommendations.length,
+    }),
+    provider: {
+      selected: quoteLoad.provider ? normalizeMarketDataProviderName(quoteLoad.provider) : null,
+      attempted: [],
+      fallbackUsed: Boolean(marketContext.fallbackUsed),
+      reason: quoteLoad.reason ?? null,
+      context: 'trader_terminal',
+      timestamp: quoteLoad.generatedAt,
+      cached: quoteLoad.cacheStatus === 'provider-cache',
+      delayed: false,
+    },
+    freshness: computeFreshness(quoteLoad.generatedAt, 'recommendations'),
+    completeness: computeCompleteness(filteredMeta.length, recommendations.length),
+    data: null,
+  });
+
   return NextResponse.json({
     ...diagnostic,
+    envelope,
     market: market.id,
     marketContext,
     selectedMarket: market.id,

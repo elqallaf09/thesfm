@@ -32,7 +32,10 @@ type ApiResponse = {
   item?: ShariahRow;
   message?: string;
   code?: string;
+  counts?: Record<ShariahStatus, number>;
 };
+
+const EMPTY_SHARIAH_COUNTS: Record<ShariahStatus, number> = { compliant: 0, non_compliant: 0, needs_review: 0, unclassified: 0 };
 
 function rowName(row: ShariahRow, lang: string) {
   return lang === 'ar'
@@ -59,6 +62,10 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
   const statusLabel = (value: string | null | undefined) => statuses.find(item => item.value === value)?.label ?? t('admin_shariah_unclassified');
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<ShariahRow[]>([]);
+  // Server-computed across the FULL catalog (see /api/admin/shariah's computeShariahCounts) — not
+  // a client-side reduce over just the loaded/paginated rows, which previously under-counted any
+  // status once the catalog exceeded the page limit.
+  const [counts, setCounts] = useState<Record<ShariahStatus, number>>(EMPTY_SHARIAH_COUNTS);
   const [selected, setSelected] = useState<ShariahRow | null>(null);
   const [status, setStatus] = useState<ShariahStatus>('needs_review');
   const [reason, setReason] = useState('');
@@ -77,8 +84,10 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       const data = await response.json().catch(() => ({})) as ApiResponse;
       if (!response.ok || data.ok === false) throw new Error(data.message || data.code || 'LOAD_FAILED');
       setItems(Array.isArray(data.items) ? data.items : []);
+      setCounts(data.counts ?? EMPTY_SHARIAH_COUNTS);
     } catch (error) {
       setItems([]);
+      setCounts(EMPTY_SHARIAH_COUNTS);
       setMessage(t('admin_shariah_load_error'));
     } finally {
       setLoading(false);
@@ -88,16 +97,6 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
   useEffect(() => {
     void load('');
   }, [load]);
-
-  const counts = useMemo(() => {
-    return items.reduce<Record<ShariahStatus, number>>((acc, item) => {
-      const key = statuses.some(statusItem => statusItem.value === item.shariah_status)
-        ? item.shariah_status as ShariahStatus
-        : 'unclassified';
-      acc[key] += 1;
-      return acc;
-    }, { compliant: 0, non_compliant: 0, needs_review: 0, unclassified: 0 });
-  }, [items, statuses]);
 
   function choose(row: ShariahRow) {
     setSelected(row);

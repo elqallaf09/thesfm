@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { clearTraderMarketCatalogCache, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { clearTraderQuoteCache } from '@/lib/trader/marketQuotes';
@@ -276,8 +277,15 @@ export async function GET(request: Request) {
       }
     : status.dataProvider;
 
+  // Additive-only field — every key below this line already existed and is byte-compatible with
+  // the vanilla-JS trader terminal, which calls this exact route (see
+  // traderProviderStatusEnvelope.test.ts for the regression guard). `state` is the new unified
+  // market-state view; existing consumers can ignore it.
+  const state = await getMarketSystemState({ forceFresh });
+
   const response = {
     ok: true,
+    state,
     providers: {
       fmp: {
         configured: fmpConfigured,

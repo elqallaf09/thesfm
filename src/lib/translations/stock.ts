@@ -35,6 +35,7 @@ export const TR_STOCK: Record<string, TranslationEntry> = {
   stock_category_error: { ar:'تعذر جلب البيانات حاليًا. يرجى المحاولة لاحقًا.', en:'Could not load data right now. Please try again later.', fr:'Impossible de charger les données pour le moment. Veuillez réessayer plus tard.' },
   stock_category_news_error_title: { ar:'تعذر تحميل الأخبار', en:'Unable to load news', fr:'Impossible de charger les actualités' },
   stock_category_news_error_body: { ar:'تعذر تحميل الأخبار حاليًا. حاول مرة أخرى.', en:'Unable to load news right now. Please try again.', fr:'Impossible de charger les actualités pour le moment. Veuillez réessayer.' },
+  stock_category_news_stale_notice: { ar:'تعذر تحديث الأخبار الآن؛ المعروض هو آخر نتيجة محمّلة بنجاح.', en:'Could not refresh news right now; showing the last successfully loaded results.', fr:'Impossible d’actualiser les actualités ; affichage des derniers résultats chargés avec succès.' },
   stock_category_movers_subtitle: { ar:'أبرز الأسهم في قائمة المتابعة لهذا التصنيف.', en:'Key movers across this category watchlist.', fr:'Principaux mouvements dans cette liste de suivi.' },
   stock_category_movers_loading: { ar:'جارٍ تحميل ملخص حركة السوق...', en:'Loading market movers summary...', fr:'Chargement du résumé des mouvements...' },
   stock_category_movers_empty: { ar:'لا توجد بيانات حركة متاحة حاليًا.', en:'No movement data is available right now.', fr:'Aucune donnée de mouvement n’est disponible actuellement.' },

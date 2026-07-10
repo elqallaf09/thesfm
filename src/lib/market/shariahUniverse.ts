@@ -1,3 +1,5 @@
+import { getProviderCapabilityStatus } from '@/lib/market-state/providerResolver';
+
 export type ShariahScreeningStatus = 'compliant' | 'needs_review' | 'non_compliant' | 'unclassified';
 export type ShariahAssetType = 'stock' | 'etf';
 
@@ -21,7 +23,22 @@ export type ShariahScreeningItem = ShariahUniverseItem & {
   notes: { ar: string; en: string; fr: string };
 };
 
-export const SHARIAH_SCREENING_SOURCE_CONNECTED = false;
+/**
+ * Previously a hardcoded `false` regardless of real provider status — a literal instance of the
+ * platform-wide "contradictory state" bug (this screen would show "not connected" even while FMP
+ * was healthy elsewhere). Now computed from the same provider-resolution layer every other market
+ * surface reads, via the `shariah_financials` capability (FMP is the sole declared provider — see
+ * providerResolver.ts PROVIDER_PRIORITY).
+ */
+export function getShariahScreeningSourceStatus(): { connected: boolean; source: 'fmp' | null; sourceName: string | null } {
+  const status = getProviderCapabilityStatus('fmp');
+  const connected = status === 'connected' || status === 'degraded';
+  return {
+    connected,
+    source: connected ? 'fmp' : null,
+    sourceName: connected ? 'Financial Modeling Prep' : null,
+  };
+}
 
 export const SHARIAH_SCREENING_METHOD = {
   ar: 'يعتمد التصنيف على معايير الفحص الشرعي المعيارية: نشاط الأعمال، نسبة الديون، الإيرادات غير المتوافقة، والأصول النقدية. يُعدّ هذا التصنيف للأغراض المعلوماتية فقط وليس فتوى شرعية.',

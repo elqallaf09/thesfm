@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
+import { computeCompleteness } from '@/lib/market-state/completeness';
+import { buildFeatureEnvelope } from '@/lib/market-state/envelope';
+import { computeFreshness } from '@/lib/market-state/freshness';
+import { normalizeFeatureDataStatus, normalizeProviderConnectionStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { getConnectedProvider } from '@/lib/trader/marketQuotes';
@@ -345,8 +349,35 @@ export async function GET(request: Request) {
     lastUpdated: catalog.diagnostics.generatedAt,
   });
 
+  // Additive-only field wrapping the diagnostic above in the shared unified envelope shape.
+  const providerConnectionStatus = normalizeProviderConnectionStatus({ status: catalog.diagnostics.summary.fmpStatus });
+  const envelope = buildFeatureEnvelope({
+    feature: 'symbols',
+    status: normalizeFeatureDataStatus({
+      isLoading: false,
+      hasError: false,
+      providerStatus: providerConnectionStatus,
+      requested: sortedRows.length,
+      returned: pagedRows.length,
+    }),
+    provider: {
+      selected: catalog.diagnostics.provider === 'fmp' ? 'fmp' : catalog.diagnostics.provider === 'supabase' ? null : null,
+      attempted: [],
+      fallbackUsed: false,
+      reason: catalog.diagnostics.reason,
+      context: 'general',
+      timestamp: catalog.diagnostics.generatedAt,
+      cached: catalog.diagnostics.cacheStatus === 'hit' || catalog.diagnostics.cacheStatus === 'stale',
+      delayed: false,
+    },
+    freshness: computeFreshness(catalog.diagnostics.generatedAt, 'symbols'),
+    completeness: computeCompleteness(sortedRows.length, pagedRows.length),
+    data: null,
+  });
+
   return NextResponse.json({
     ...diagnostic,
+    envelope,
     markets,
     groups,
     marketContext,

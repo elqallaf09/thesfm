@@ -397,10 +397,10 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
         storedFallbackUsed: json.storedFallbackUsed,
       });
     } catch (loadError) {
-      setItems([]);
-      setPrices([]);
-      setLastUpdated('');
-      setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
+      // Preserve the last successfully loaded items/prices/newsDeliveryStatus instead of
+      // clearing them — a failed refresh should read as "stale, showing previous results", not
+      // "empty", per the platform-wide rule that loading/empty/error/stale states must not be
+      // conflated.
       setError(loadError instanceof Error ? loadError.message : tr('stock_category_error'));
     } finally {
       window.clearTimeout(timeoutId);
@@ -647,6 +647,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             </div>
           ) : null}
 
+          {error && items.length > 0 ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+              <AlertTriangle className="mt-0.5 shrink-0" size={18} />
+              <p>{tr('stock_category_news_stale_notice')}</p>
+            </div>
+          ) : null}
+
           <CategoryStockTicker
             categoryType={config.id}
             symbols={config.watchlist}
@@ -794,7 +801,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       ))}
                     </div>
                   </div>
-                ) : error ? (
+                ) : error && visibleItems.length === 0 ? (
                   <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-950/25" role="alert">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-start gap-3">

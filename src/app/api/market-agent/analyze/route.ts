@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { proxyHistory } from '@/lib/market/marketDataProvider';
+import { normalizeResearchStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
@@ -52,6 +53,15 @@ function json(body: Record<string, unknown>, init?: ResponseInit) {
       ...init?.headers,
     },
   });
+}
+
+// Additive-only field: maps the route's already-clean ok/dataStatus/code discriminated union onto
+// the shared ResearchOrAnalysisStatus enum, without changing any existing field.
+function withResearchStatus<T extends { ok: boolean; dataStatus?: 'available' | 'unavailable'; code?: string }>(payload: T) {
+  return {
+    ...payload,
+    researchStatus: normalizeResearchStatus({ ok: payload.ok, dataStatus: payload.dataStatus ?? null, code: payload.code ?? null }),
+  };
 }
 
 function bearerToken(request: NextRequest) {
@@ -267,24 +277,24 @@ export async function POST(request: NextRequest) {
   const displayInput = rawSymbol.toUpperCase();
 
   if (!rawSymbol) {
-    return json(insufficientMarketAgentData({
+    return json(withResearchStatus(insufficientMarketAgentData({
       symbol: '',
       assetType,
       timeframe,
       source: 'yahoo',
       updatedAt: new Date().toISOString(),
-    }, 'INVALID_SYMBOL'), { status: 400 });
+    }, 'INVALID_SYMBOL')), { status: 400 });
   }
 
   const candidates = await resolveAgentSymbolCandidates(rawSymbol, assetType);
   if (candidates.length === 0) {
-    return json(insufficientMarketAgentData({
+    return json(withResearchStatus(insufficientMarketAgentData({
       symbol: displayInput || rawSymbol,
       assetType,
       timeframe,
       source: 'yahoo',
       updatedAt: new Date().toISOString(),
-    }, 'INVALID_SYMBOL'), { status: 422 });
+    }, 'INVALID_SYMBOL')), { status: 422 });
   }
 
   const config = MARKET_AGENT_TIMEFRAME_CONFIG[timeframe];
@@ -322,16 +332,16 @@ export async function POST(request: NextRequest) {
     const response = summaryArabic === analysis.summaryArabic ? analysis : { ...analysis, summaryArabic };
 
     await saveHistory(token, response);
-    return json(response);
+    return json(withResearchStatus(response));
   }
 
-  return json(insufficientMarketAgentData({
+  return json(withResearchStatus(insufficientMarketAgentData({
     symbol: lastCandidate?.displaySymbol ?? displayInput,
     assetType: lastCandidate?.responseAssetType ?? assetType,
     timeframe,
     source: lastSource,
     updatedAt: new Date().toISOString(),
-  }, 'INSUFFICIENT_MARKET_DATA'));
+  }, 'INSUFFICIENT_MARKET_DATA')));
 }
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MarketAssetType } from '@/lib/market/marketService';
+import type { ResearchOrAnalysisStatus } from '@/lib/market-state/types';
 
 export const MARKET_AGENT_DISCLAIMER_AR = 'هذا التحليل مجرد قراءة آلية للسوق وليس توصية مالية أو دعوة للشراء أو البيع. قرارات الاستثمار والتداول تقع على مسؤوليتك الشخصية.';
 export const MARKET_AGENT_DISCLAIMER_EN = 'This analysis is an automated market reading only and is not financial advice or a recommendation to buy or sell. Trading and investment decisions are your own responsibility.';
@@ -78,6 +79,8 @@ export type MarketAgentSuccessResponse = {
   disclaimerArabic: string;
   disclaimerEnglish: string;
   dataStatus: 'available';
+  /** Additive — set by the API route via normalizeResearchStatus(), part of the unified market-state layer. */
+  researchStatus?: ResearchOrAnalysisStatus;
   source: string;
   updatedAt: string;
   debugSignals?: {
@@ -102,6 +105,8 @@ export type MarketAgentUnavailableResponse = {
   disclaimerArabic: string;
   disclaimerEnglish: string;
   dataStatus: 'unavailable';
+  /** Additive — set by the API route via normalizeResearchStatus(), part of the unified market-state layer. */
+  researchStatus?: ResearchOrAnalysisStatus;
   source?: string;
   updatedAt: string;
 };

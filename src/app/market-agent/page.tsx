@@ -585,6 +585,11 @@ export default function MarketAgentPage() {
   const currentSource = result?.source || text.sourceReady;
   const isAnalyzeDisabled = loading || !symbol.trim();
   const successResult = result?.ok ? result : null;
+  // Derived from the real researchStatus field (set server-side via normalizeResearchStatus) —
+  // previously this badge was a static "Connected" string, unwired to the actual result.
+  const researchStatusIsHealthy = successResult
+    ? successResult.researchStatus !== 'insufficient_data' && successResult.researchStatus !== 'failed'
+    : false;
   const confidenceFactors = useMemo(
     () => successResult ? buildConfidenceFactors(successResult, text) : [],
     [successResult, text],
@@ -822,7 +827,7 @@ export default function MarketAgentPage() {
                   <h3><Radio size={16} aria-hidden="true" /> {text.dataStatusTitle}</h3>
                   <dl className="agent-data-list">
                     <div><dt>{text.provider}</dt><dd>{successResult.source}</dd></div>
-                    <div><dt>{text.dataStatusTitle}</dt><dd><CheckCircle2 size={15} aria-hidden="true" /> {text.connected}</dd></div>
+                    <div><dt>{text.dataStatusTitle}</dt><dd>{researchStatusIsHealthy ? <CheckCircle2 size={15} aria-hidden="true" /> : <AlertTriangle size={15} aria-hidden="true" />} {researchStatusIsHealthy ? text.connected : text.unavailable}</dd></div>
                     <div><dt>{text.lastUpdate}</dt><dd>{formatDate(successResult.updatedAt, lang) || text.noValue}</dd></div>
                   </dl>
                 </section>
