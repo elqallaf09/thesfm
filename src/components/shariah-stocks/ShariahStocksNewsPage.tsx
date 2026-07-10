@@ -794,6 +794,7 @@ function readInitialState() {
       newsStatus: 'all',
       newsSource: 'all',
       newsSort: 'latest' as NewsSortKey,
+      resultId: '',
     };
   }
   const params = new URLSearchParams(window.location.search);
@@ -812,6 +813,7 @@ function readInitialState() {
     newsStatus: params.get('newsStatus') ?? 'all',
     newsSource: params.get('newsSource') ?? 'all',
     newsSort: newsSortParam && ['latest', 'source', 'symbol'].includes(newsSortParam) ? newsSortParam : 'latest',
+    resultId: params.get('result') ?? '',
   };
 }
 
@@ -819,20 +821,18 @@ export function ShariahStocksNewsPage() {
   const { dir, lang } = useLanguage();
   const locale = normalizeLang(lang);
   const c = COPY[locale];
-  const initialRef = useRef<ReturnType<typeof readInitialState> | null>(null);
-  if (initialRef.current === null) initialRef.current = readInitialState();
-
-  const [activeTab, setActiveTab] = useState<ShariahTab>(initialRef.current.tab);
-  const [stockSearch, setStockSearch] = useState(initialRef.current.search);
-  const [statusFilter, setStatusFilter] = useState(initialRef.current.status);
-  const [sectorFilter, setSectorFilter] = useState(initialRef.current.sector);
-  const [marketFilter, setMarketFilter] = useState(initialRef.current.market);
-  const [assetTypeFilter, setAssetTypeFilter] = useState(initialRef.current.asset);
-  const [sortKey, setSortKey] = useState<SortKey>(initialRef.current.sort);
-  const [newsSearch, setNewsSearch] = useState(initialRef.current.newsSearch);
-  const [newsStatusFilter, setNewsStatusFilter] = useState(initialRef.current.newsStatus);
-  const [newsSourceFilter, setNewsSourceFilter] = useState(initialRef.current.newsSource);
-  const [newsSortKey, setNewsSortKey] = useState<NewsSortKey>(initialRef.current.newsSort);
+  const [hydrated, setHydrated] = useState(false);
+  const [activeTab, setActiveTab] = useState<ShariahTab>('overview');
+  const [stockSearch, setStockSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sectorFilter, setSectorFilter] = useState('all');
+  const [marketFilter, setMarketFilter] = useState('all');
+  const [assetTypeFilter, setAssetTypeFilter] = useState('stock');
+  const [sortKey, setSortKey] = useState<SortKey>('latest_screening');
+  const [newsSearch, setNewsSearch] = useState('');
+  const [newsStatusFilter, setNewsStatusFilter] = useState('all');
+  const [newsSourceFilter, setNewsSourceFilter] = useState('all');
+  const [newsSortKey, setNewsSortKey] = useState<NewsSortKey>('latest');
   const [tickerResponse, setTickerResponse] = useState<ShariahTickerResponse | null>(null);
   const [screening, setScreening] = useState<ScreeningResponse | null>(null);
   const [newsResponse, setNewsResponse] = useState<ShariahNewsResponse | null>(null);
@@ -844,6 +844,7 @@ export function ShariahStocksNewsPage() {
   const [stockVisible, setStockVisible] = useState(PAGE_SIZE);
   const [selectedSecurity, setSelectedSecurity] = useState<SecurityRow | null>(null);
   const [researchQuery, setResearchQuery] = useState('');
+  const [researchResultId, setResearchResultId] = useState('');
   const [quickAnalysis, setQuickAnalysis] = useState<QuickAnalysisState | null>(null);
   const [quickResult, setQuickResult] = useState<QuickAnalysisResult | null>(null);
   const [quickLoading, setQuickLoading] = useState(false);
@@ -853,8 +854,28 @@ export function ShariahStocksNewsPage() {
   const quickAbortRef = useRef<AbortController | null>(null);
   const quickCloseRef = useRef<HTMLButtonElement | null>(null);
 
+  useEffect(() => {
+    const initial = readInitialState();
+    setActiveTab(initial.tab);
+    setStockSearch(initial.search);
+    setStatusFilter(initial.status);
+    setSectorFilter(initial.sector);
+    setMarketFilter(initial.market);
+    setAssetTypeFilter(initial.asset);
+    setSortKey(initial.sort);
+    setNewsSearch(initial.newsSearch);
+    setNewsStatusFilter(initial.newsStatus);
+    setNewsSourceFilter(initial.newsSource);
+    setNewsSortKey(initial.newsSort);
+    setResearchResultId(initial.resultId);
+    setHydrated(true);
+  }, []);
+
   const openDocumentedResearch = useCallback((row?: Pick<SecurityRow, 'symbol'>) => {
-    if (row?.symbol) setResearchQuery(row.symbol);
+    if (row?.symbol) {
+      setResearchQuery(row.symbol);
+      setResearchResultId('');
+    }
     setSelectedSecurity(null);
     setActiveTab('research');
   }, []);
@@ -905,14 +926,18 @@ export function ShariahStocksNewsPage() {
   }, [locale]);
 
   useEffect(() => {
-    void loadCoreData();
-    void loadNews();
-  }, [loadCoreData, loadNews]);
+    if (!hydrated) return;
+    if (activeTab === 'research') return;
+    if (!tickerResponse && !screening) void loadCoreData();
+    if ((activeTab === 'overview' || activeTab === 'news') && !newsResponse) void loadNews();
+  }, [activeTab, hydrated, loadCoreData, loadNews, newsResponse, screening, tickerResponse]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    if (activeTab === 'research') return;
     const id = window.setInterval(() => void loadCoreData({ background: true }), AUTO_REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [loadCoreData]);
+  }, [activeTab, hydrated, loadCoreData]);
 
   useEffect(() => {
     const onPop = () => {
@@ -928,12 +953,14 @@ export function ShariahStocksNewsPage() {
       setNewsStatusFilter(next.newsStatus);
       setNewsSourceFilter(next.newsSource);
       setNewsSortKey(next.newsSort);
+      setResearchResultId(next.resultId);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     const params = new URLSearchParams();
     if (activeTab !== 'overview') params.set('tab', activeTab);
     if (stockSearch.trim()) params.set('q', stockSearch.trim());
@@ -946,10 +973,11 @@ export function ShariahStocksNewsPage() {
     if (newsStatusFilter !== 'all') params.set('newsStatus', newsStatusFilter);
     if (newsSourceFilter !== 'all') params.set('newsSource', newsSourceFilter);
     if (newsSortKey !== 'latest') params.set('newsSort', newsSortKey);
+    if (activeTab === 'research' && researchResultId) params.set('result', researchResultId);
     const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     const current = `${window.location.pathname}${window.location.search}`;
     if (next !== current) window.history.replaceState(null, '', next);
-  }, [activeTab, assetTypeFilter, marketFilter, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter, sectorFilter, sortKey, statusFilter, stockSearch]);
+  }, [activeTab, assetTypeFilter, hydrated, marketFilter, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter, researchResultId, sectorFilter, sortKey, statusFilter, stockSearch]);
 
   const quoteBySymbol = useMemo(() => {
     const map = new Map<string, ShariahQuote>();
@@ -1180,11 +1208,22 @@ export function ShariahStocksNewsPage() {
   const sourceLabel = locale === 'ar' ? 'المصدر' : locale === 'fr' ? 'Source' : 'Source';
   const unavailableLabel = locale === 'ar' ? 'غير متاح' : locale === 'fr' ? 'Indisponible' : 'Unavailable';
 
+  if (!hydrated) {
+    return (
+      <NewsPageShell category="sharia" className={styles.page} dir={dir} wide>
+        <main id="main-content" className={styles.main}>
+          <div className={styles.container}><div className={styles.hydrationSkeleton} aria-hidden="true"><span /><span /><span /></div></div>
+        </main>
+      </NewsPageShell>
+    );
+  }
+
   return (
     <NewsPageShell category="sharia" className={styles.page} dir={dir} wide>
       <main id="main-content" className={styles.main}>
         <div className={styles.container}>
-          <ShariaStocksHeader
+          {activeTab !== 'research' ? <>
+            <ShariaStocksHeader
             c={c}
             locale={locale}
             screening={screening}
@@ -1196,16 +1235,16 @@ export function ShariahStocksNewsPage() {
               void loadCoreData({ background: true });
               void loadNews();
             }}
-          />
+            />
 
-          {coreError ? (
-            <div className={styles.alertPanel} role="status">
-              <AlertTriangle size={18} />
-              <span>{coreError}</span>
-            </div>
-          ) : null}
+            {coreError ? (
+              <div className={styles.alertPanel} role="status">
+                <AlertTriangle size={18} />
+                <span>{coreError}</span>
+              </div>
+            ) : null}
 
-          <section className={styles.tickerPanel} aria-label={shariaTickerLabel}>
+            <section className={styles.tickerPanel} aria-label={shariaTickerLabel}>
             {coreLoading && shariaTickerItems.length === 0 ? (
               <div className={styles.tickerLoadingRow} aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, index) => <span key={index} />)}
@@ -1242,9 +1281,10 @@ export function ShariahStocksNewsPage() {
                 )}
               />
             )}
-          </section>
+            </section>
 
-          <ScreeningSummary c={c} locale={locale} summary={summary} updatedAt={screening?.updated_at ?? tickerResponse?.updated_at ?? null} loading={coreLoading} />
+            <ScreeningSummary c={c} locale={locale} summary={summary} updatedAt={screening?.updated_at ?? tickerResponse?.updated_at ?? null} loading={coreLoading} />
+          </> : null}
 
           <ShariaTabs activeTab={activeTab} setActiveTab={setActiveTab} c={c} />
 
@@ -1310,7 +1350,7 @@ export function ShariahStocksNewsPage() {
           ) : null}
 
           {activeTab === 'research' ? (
-            <ShariaResearchPage embedded initialQuery={researchQuery} />
+            <ShariaResearchPage embedded initialQuery={researchQuery} initialResultId={researchResultId} onResultIdChange={setResearchResultId} />
           ) : null}
 
           {activeTab === 'news' ? (
@@ -1348,13 +1388,13 @@ export function ShariahStocksNewsPage() {
             />
           ) : null}
 
-          <footer className={styles.disclaimerPanel}>
+          {activeTab !== 'research' ? <footer className={styles.disclaimerPanel}>
             <ShieldAlert size={18} />
             <div>
               <strong>{c.disclaimer}</strong>
               <p>{c.sourceDisclosure}</p>
             </div>
-          </footer>
+          </footer> : null}
         </div>
       </main>
 
@@ -1513,7 +1553,7 @@ function ShariaTabs({
   c: typeof COPY[LangCode];
 }) {
   return (
-    <nav className={styles.tabs} aria-label={c.pageTitle}>
+    <nav className={`${styles.tabs} no-print`} aria-label={c.pageTitle}>
       {TABS.map(tab => (
         <button
           type="button"

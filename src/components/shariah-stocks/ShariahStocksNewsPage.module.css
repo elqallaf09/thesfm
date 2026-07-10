@@ -37,6 +37,22 @@
   gap: 18px;
 }
 
+.hydrationSkeleton {
+  min-height: 320px;
+  display: grid;
+  grid-template-rows: 112px 54px 120px;
+  gap: 14px;
+}
+
+.hydrationSkeleton span {
+  display: block;
+  border: 1px solid rgba(38, 120, 144, 0.12);
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(255,255,255,.72), rgba(32,199,191,.09), rgba(255,255,255,.72));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
 .hero,
 .tickerPanel,
 .summaryPanel,

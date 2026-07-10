@@ -1352,7 +1352,7 @@ tbody tr:hover td{background:var(--bg-muted)}
    PRINT
    ════════════════════════════════════ */
 @media print{
-  .sfm-sidebar,.sfm-bottom-nav,.no-print{display:none !important}
+  .sfm-sidebar,.sfm-bottom-nav,.sfm-global-header,.no-print{display:none !important}
   .sfm-main{margin-inline-start:0 !important;margin-inline-end:0 !important;padding-bottom:0 !important}
   body{background:white !important}
   *{box-shadow:none !important}

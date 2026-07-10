@@ -36,4 +36,23 @@ describe('Sharia page regression contracts', () => {
     expect(nextConfig).toContain("'@napi-rs/canvas'");
     expect(nextConfig).toContain("'pdf-parse'");
   });
+
+  it('keeps the redesigned report compact, accessible, localized, and printable', () => {
+    const page = source('src/components/shariah-stocks/ShariaResearchPage.tsx');
+    const report = source('src/components/shariah-stocks/ComplianceAnalysisReport.tsx');
+    const styles = source('src/components/shariah-stocks/ShariaResearchPage.module.css');
+    expect(page).toContain('className={styles.stickySearch}');
+    expect(page).toContain('MARKET_EXCHANGE_OPTIONS');
+    expect(report).toContain('aria-expanded={open}');
+    expect(report).toContain("new Set(['quick', 'ratios'])");
+    expect(report).toContain('openCompliancePdfReport');
+    expect(report).toContain('navigator.share');
+    expect(report).toContain('WATCHLIST_STORAGE_KEY');
+    expect(styles).toContain('@media print');
+    expect(styles).toContain('.accordionContent[hidden]');
+    expect(styles).toContain('padding-inline: 16px');
+    expect(report).not.toContain('document.sourceUrl}</span>');
+    expect(report).not.toContain('conflict.field');
+    expect(report).not.toContain('ratio.formula');
+  });
 });

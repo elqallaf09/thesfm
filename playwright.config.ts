@@ -39,5 +39,12 @@ export default defineConfig({
         ...devices['Pixel 5'],
       },
     },
+    {
+      name: 'mobile-webkit',
+      use: {
+        ...devices['iPhone 13'],
+        viewport: { width: 390, height: 844 },
+      },
+    },
   ],
 });

@@ -14,6 +14,7 @@ import { TR_INVESTMENT_OFFERS } from '@/lib/translations/investment-offers';
 import { TR_MARKET } from '@/lib/translations/market';
 import { TR_SAVINGS } from '@/lib/translations/savings';
 import { TR_COMMON } from '@/lib/translations/common';
+import { TR_SHARIA_RESEARCH } from '@/lib/translations/sharia-research';
 
 function checkDomain(name: string, domain: Record<string, { ar: string; en: string; fr?: string }>) {
   describe(`domain: ${name}`, () => {
@@ -50,6 +51,7 @@ describe('i18n completeness', () => {
   checkDomain('market', TR_MARKET);
   checkDomain('savings', TR_SAVINGS);
   checkDomain('common', TR_COMMON);
+  checkDomain('sharia_research', TR_SHARIA_RESEARCH);
 
   it('invest_ domain has ≥ 232 keys', () => {
     expect(Object.keys(TR_INVEST).length).toBeGreaterThanOrEqual(232);

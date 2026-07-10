@@ -8,6 +8,8 @@ describe('Sharia research API and database contracts', () => {
     expect(SearchRequestSchema.safeParse({ query: 'إنفيديا' }).success).toBe(true);
     expect(SearchRequestSchema.safeParse({ query: 'NVDA' }).success).toBe(true);
     expect(SearchRequestSchema.safeParse({ query: 'US67066G1040' }).success).toBe(true);
+    expect(SearchRequestSchema.safeParse({ query: 'Emirates NBD', market: 'DFM' }).success).toBe(true);
+    expect(SearchRequestSchema.safeParse({ query: 'NVDA', market: 'UNKNOWN' }).success).toBe(false);
     expect(SearchRequestSchema.safeParse({ query: 'NVDA', classification: 'compliant' }).success).toBe(false);
   });
 

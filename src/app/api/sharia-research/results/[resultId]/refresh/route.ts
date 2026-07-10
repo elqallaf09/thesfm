@@ -5,6 +5,7 @@ import { createServerSupabaseAdmin, getCurrentUserFromRequest } from '@/lib/serv
 import { RefreshRequestSchema, zodErrorDetails } from '@/lib/sharia-research/apiSchemas';
 import { privateJson, structuredError } from '@/lib/sharia-research/apiResponse';
 import { processResearchJob, resolveAndCreateJob } from '@/lib/sharia-research/jobService';
+import { normalizeMarketExchange } from '@/lib/market/marketExchangeOptions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,24 +34,39 @@ export async function POST(request: NextRequest, context: { params: Promise<{ re
   if (!result.data) return structuredError('RESULT_NOT_FOUND', 'The screening result was not found.', 404);
   const previousJob = await admin
     .from('sharia_research_jobs')
-    .select('original_query')
+    .select('original_query,normalized_query,request_payload')
     .eq('id', result.data.job_id)
     .eq('user_id', user.id)
     .single();
   if (previousJob.error || !previousJob.data) return structuredError('SOURCE_JOB_NOT_FOUND', 'The original research query could not be recovered.', 409);
+  const normalizedQuery = previousJob.data.normalized_query && typeof previousJob.data.normalized_query === 'object'
+    ? previousJob.data.normalized_query as Record<string, unknown>
+    : {};
+  const requestPayload = previousJob.data.request_payload && typeof previousJob.data.request_payload === 'object'
+    ? previousJob.data.request_payload as Record<string, unknown>
+    : {};
+  const market = normalizeMarketExchange(requestPayload.market ?? normalizedQuery.exchangeHint);
   try {
     const created = await resolveAndCreateJob(admin, {
       userId: user.id,
       query: previousJob.data.original_query,
+      market,
       methodologyId: result.data.methodology_id,
       forceRefresh: true,
     });
     if (created.kind !== 'job') return structuredError('REFRESH_IDENTITY_UNRESOLVED', 'The security identity must be selected again before refresh.', 409, created.kind === 'ambiguous' ? { candidates: created.resolution.candidates } : undefined);
-    after(async () => {
-      try { await processResearchJob(admin, created.job.id, user.id); }
-      catch (error) { console.error('[sharia-research] refresh failed', { jobId: created.job.id, message: error instanceof Error ? error.message : String(error) }); }
-    });
-    return privateJson({ ok: true, status: created.job.status, jobId: created.job.id }, { status: 202 });
+    if (created.job.status === 'queued') {
+      after(async () => {
+        try { await processResearchJob(admin, created.job.id, user.id); }
+        catch (error) { console.error('[sharia-research] refresh failed', { jobId: created.job.id, message: error instanceof Error ? error.message : String(error) }); }
+      });
+    }
+    return privateJson({
+      ok: true,
+      status: created.job.status,
+      jobId: created.job.id,
+      ...(created.job.status === 'completed' ? { resultId: created.job.result_id ?? null } : {}),
+    }, { status: 202 });
   } catch (error) {
     console.error('[sharia-research] refresh creation failed', { resultId, message: error instanceof Error ? error.message : String(error) });
     return structuredError('REFRESH_CREATE_FAILED', 'A fresh research job could not be created.', 500);

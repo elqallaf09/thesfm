@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     const created = await resolveAndCreateJob(admin, {
       userId: user.id,
       query: parsed.data.query,
+      market: parsed.data.market,
       methodologyId: parsed.data.methodologyId,
       selectedCanonicalId: parsed.data.selectedCanonicalId,
       forceRefresh: parsed.data.forceRefresh,

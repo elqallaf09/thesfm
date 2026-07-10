@@ -48,12 +48,13 @@ function resolveArabicAlias(original: string, normalized: string) {
 }
 
 function parseExchangeQualifiedSymbol(value: string) {
-  const compact = value.trim().toUpperCase().replace(/\s+/g, '');
+  const trimmed = value.trim().toUpperCase();
+  const compact = trimmed.replace(/\s+/g, '');
   const colon = compact.match(/^([A-Z0-9._-]{1,15}):([A-Z0-9.-]{1,20})$/);
   if (colon) return { exchangeHint: colon[1], symbol: colon[2] };
   const suffix = compact.match(/^([A-Z0-9-]{1,15})\.([A-Z]{1,4})$/);
   if (suffix) return { exchangeHint: suffix[2], symbol: compact };
-  return { exchangeHint: null, symbol: compact };
+  return { exchangeHint: null, symbol: trimmed };
 }
 
 export function normalizeQuery(value: unknown): NormalizedQuery {

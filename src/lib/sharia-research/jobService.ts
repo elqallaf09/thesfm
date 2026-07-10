@@ -39,7 +39,7 @@ export function researchIdempotencyKey(input: {
 }) {
   const now = input.now ?? new Date();
   const window = input.forceRefresh
-    ? now.toISOString().slice(0, 16)
+    ? now.toISOString().slice(0, 19)
     : now.toISOString().slice(0, 13);
   return compactHash([input.userId, input.normalizedQuery, input.canonicalId ?? '', input.methodologyId, input.methodologyVersion, window].join('|'));
 }
@@ -63,6 +63,7 @@ export function securityRowToIdentity(row: Record<string, any>): SecurityIdentit
     currency: row.currency,
     logoUrl: row.logo_url,
     website: row.website,
+    lastVerifiedAt: row.last_verified_at,
     aliases: Array.isArray(row.aliases) ? row.aliases.map(String) : [],
     previousNames: Array.isArray(row.previous_names) ? row.previous_names.map(String) : [],
     identitySources: Array.isArray(row.identity_sources) ? row.identity_sources : [],
@@ -162,7 +163,10 @@ export async function createResearchJob(admin: DbClient, input: {
     progress: status === 'awaiting_selection' ? 10 : 5,
     candidates: input.candidates ?? [],
     idempotency_key: idempotencyKey,
-    request_payload: { forceRefresh: Boolean(input.forceRefresh) },
+    request_payload: {
+      forceRefresh: Boolean(input.forceRefresh),
+      market: input.query.exchangeHint ?? null,
+    },
   }).select('*').single();
   if (inserted.error || !inserted.data) throw new Error(`RESEARCH_JOB_CREATE_FAILED:${inserted.error?.message ?? 'unknown'}`);
   return inserted.data;
@@ -415,11 +419,12 @@ export async function processResearchJob(admin: DbClient, jobId: string, userId:
 export async function resolveAndCreateJob(admin: DbClient, input: {
   userId: string;
   query: string;
+  market?: string | null;
   methodologyId?: string | null;
   selectedCanonicalId?: string | null;
   forceRefresh?: boolean;
 }) {
-  const resolution = await identifySecurity(input.query);
+  const resolution = await identifySecurity(input.query, undefined, input.market);
   const methodology = getMethodology(input.methodologyId);
   if (resolution.status === 'not_found') {
     await admin.from('sharia_search_history').insert({

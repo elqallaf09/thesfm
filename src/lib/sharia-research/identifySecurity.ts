@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { marketExchangeAliases, normalizeMarketExchange } from '@/lib/market/marketExchangeOptions';
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import { normalizeQuery, normalizeResearchText, isValidIsin } from './normalizeQuery';
@@ -37,7 +38,7 @@ async function databaseCandidates(query: ReturnType<typeof normalizeQuery>) {
   const needle = query.possibleIsin || query.possibleTicker || query.original.replace(/[%,]/g, '').slice(0, 80);
   const identities = await admin
     .from('sharia_security_identities')
-    .select('id,canonical_id,company_name,company_name_ar,ticker,provider_symbol,exchange,exchange_mic,isin,cik,lei,country,sector,industry,currency,logo_url,website,aliases,previous_names,identity_sources,updated_at')
+    .select('id,canonical_id,company_name,company_name_ar,ticker,provider_symbol,exchange,exchange_mic,isin,cik,lei,country,sector,industry,currency,logo_url,website,last_verified_at,aliases,previous_names,identity_sources,updated_at')
     .or(`isin.eq.${needle},ticker.ilike.${needle},provider_symbol.ilike.${needle},company_name.ilike.%${needle}%,company_name_ar.ilike.%${needle}%`)
     .limit(12);
   if (identities.error || !identities.data) return [];
@@ -66,6 +67,7 @@ async function databaseCandidates(query: ReturnType<typeof normalizeQuery>) {
       currency: row.currency,
       logoUrl: row.logo_url,
       website: row.website,
+      lastVerifiedAt: row.last_verified_at,
       aliases: Array.isArray(row.aliases) ? row.aliases.map(String) : [],
       previousNames: Array.isArray(row.previous_names) ? row.previous_names.map(String) : [],
       identitySources: Array.isArray(row.identity_sources) ? row.identity_sources as SecurityIdentity['identitySources'] : [],
@@ -90,8 +92,17 @@ function localCandidate(item: ReturnType<typeof searchBundledMarketSymbols>[numb
     previousNames: [],
     identitySources: [],
     score,
-    matchedOn: ['project_market_directory'],
+    matchedOn: ['project_market_directory', ...(item.exchangeId ? [`market:${item.exchangeId}`] : [])],
   };
+}
+
+function candidateMatchesMarket(candidate: SecurityCandidate, market: NonNullable<ReturnType<typeof normalizeMarketExchange>>) {
+  if (candidate.matchedOn.includes(`market:${market}`) || normalizeMarketExchange(candidate.exchange) === market) return true;
+  const exchange = normalizeResearchText(candidate.exchange);
+  return marketExchangeAliases(market).some(alias => {
+    const normalizedAlias = normalizeResearchText(alias);
+    return exchange === normalizedAlias || exchange.startsWith(`${normalizedAlias} `);
+  });
 }
 
 function dedupeCandidates(candidates: SecurityCandidate[]) {
@@ -113,39 +124,52 @@ function dedupeCandidates(candidates: SecurityCandidate[]) {
   return Array.from(map.values()).sort((a, b) => b.score - a.score || a.ticker.localeCompare(b.ticker));
 }
 
-export async function identifySecurity(input: unknown, signal?: AbortSignal): Promise<IdentityResolution> {
-  const query = normalizeQuery(input);
+export async function identifySecurity(input: unknown, signal?: AbortSignal, marketHint?: string | null): Promise<IdentityResolution> {
+  const normalizedQuery = normalizeQuery(input);
+  const requestedExchange = normalizeMarketExchange(marketHint) ?? normalizeMarketExchange(normalizedQuery.exchangeHint);
+  const query = requestedExchange ? { ...normalizedQuery, exchangeHint: requestedExchange } : normalizedQuery;
   if (!query.original) return { status: 'not_found', query, candidates: [], reason: 'EMPTY_QUERY' };
   if (query.possibleIsin && !isValidIsin(query.possibleIsin)) {
     return { status: 'not_found', query, candidates: [], reason: 'INVALID_ISIN_CHECK_DIGIT' };
   }
 
-  const searchValue = query.latinAlias || query.original;
+  const hasExplicitExchange = Boolean(marketHint || query.exchangeHint);
+  const searchValue = hasExplicitExchange && query.possibleTicker
+    ? query.possibleTicker
+    : query.latinAlias || query.original;
   const collected: SecurityCandidate[] = await databaseCandidates(query);
 
-  const bundled = searchBundledMarketSymbols({ query: searchValue, limit: 12 });
+  const bundled = searchBundledMarketSymbols({ query: searchValue, exchange: requestedExchange, limit: 12 });
   collected.push(...bundled.map(item => localCandidate(item, (
     query.possibleTicker === item.symbol.toUpperCase() ? 125
       : normalizeResearchText(item.name) === normalizeResearchText(searchValue) ? 110
         : 72
   ))));
 
-  try {
-    const companies = await loadSecCompanyDirectory(signal);
-    const matches = searchSecCompanies(companies, searchValue).slice(0, 12);
-    collected.push(...matches.map(match => secCandidate(match, new Date().toISOString())));
-  } catch {
+  if (!hasExplicitExchange || requestedExchange === 'US') {
     try {
-      const us = await searchUSSymbols(searchValue, 'stock');
-      if (us.source === 'nasdaqtrader') {
-        collected.push(...us.results.map(item => localCandidate(item as ReturnType<typeof searchBundledMarketSymbols>[number], 82)));
-      }
+      const companies = await loadSecCompanyDirectory(signal);
+      const matches = searchSecCompanies(companies, searchValue).slice(0, 12);
+      collected.push(...matches.map(match => secCandidate(match, new Date().toISOString())));
     } catch {
-      // Identity providers are independent; remaining candidates may still be enough.
+      try {
+        const us = await searchUSSymbols(searchValue, 'stock');
+        if (us.source === 'nasdaqtrader') {
+          collected.push(...us.results.map(item => localCandidate(item as ReturnType<typeof searchBundledMarketSymbols>[number], 82)));
+        }
+      } catch {
+        // Identity providers are independent; remaining candidates may still be enough.
+      }
     }
   }
 
-  const candidates = dedupeCandidates(collected).filter(candidate => candidate.score >= 60).slice(0, 10);
+  const candidates = dedupeCandidates(collected)
+    .filter(candidate => !hasExplicitExchange || (
+      requestedExchange !== null
+      && candidateMatchesMarket(candidate, requestedExchange)
+    ))
+    .filter(candidate => candidate.score >= 60)
+    .slice(0, 10);
   if (candidates.length === 0) return { status: 'not_found', query, candidates, reason: query.possibleIsin ? 'ISIN_NOT_FOUND' : 'SECURITY_NOT_FOUND' };
   const [first, second] = candidates;
   const exactIdentifier = first.score >= 125;

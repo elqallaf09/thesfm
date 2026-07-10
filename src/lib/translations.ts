@@ -30,6 +30,7 @@ import { TR_PROFILE } from './translations/profile';
 import { TR_PROJECTS } from './translations/projects';
 import { TR_SAVINGS } from './translations/savings';
 import { TR_SETTINGS } from './translations/settings';
+import { TR_SHARIA_RESEARCH } from './translations/sharia-research';
 import { TR_STOCK } from './translations/stock';
 import { TR_TECH } from './translations/tech';
 
@@ -53,6 +54,7 @@ export const TR: Record<string, TranslationEntry> = {
   ...TR_PROJECTS,
   ...TR_SAVINGS,
   ...TR_SETTINGS,
+  ...TR_SHARIA_RESEARCH,
   ...TR_STOCK,
   ...TR_TECH,
 };

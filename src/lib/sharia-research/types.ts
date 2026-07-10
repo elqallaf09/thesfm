@@ -53,6 +53,7 @@ export type SecurityIdentity = {
   currency?: string | null;
   logoUrl?: string | null;
   website?: string | null;
+  lastVerifiedAt?: string | null;
   aliases: string[];
   previousNames: string[];
   identitySources: Array<{
