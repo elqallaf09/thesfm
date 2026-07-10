@@ -202,6 +202,9 @@ function scheduleWindowsServerManifests() {
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
+  // The Sharia research browser renderer is an opt-in Node-only fallback. Keep
+  // Playwright outside the application bundle so normal HTTP research remains lean.
+  serverExternalPackages: ['@playwright/test', 'playwright', 'playwright-core', 'chromium-bidi'],
   generateBuildId: async () => (
     process.env.NEXT_BUILD_ID ||
     process.env.VERCEL_GIT_COMMIT_SHA ||
