@@ -13,6 +13,7 @@
     "check:public-env": "node scripts/check-public-env.mjs",
     "check:launch": "pnpm exec tsc --noEmit --pretty false && pnpm lint && pnpm check:i18n && pnpm check:prod-endpoints && pnpm check:public-env && pnpm test:run && pnpm build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit --pretty false",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
     "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
     "symbols:sync:crypto": "node scripts/sync-crypto-symbols.mjs",

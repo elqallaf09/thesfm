@@ -510,6 +510,13 @@
     "Status": "État",
     "Updated": "Mis à jour",
     "Real-time": "Temps réel",
+    "Active now": "Active maintenant",
+    "Inactive": "Inactive",
+    "Always open": "Toujours ouverte",
+    "Trading sessions · UTC": "Séances de trading · UTC",
+    "Now": "Maintenant",
+    "Forex sessions": "Séances Forex",
+    "Prices may be delayed a few minutes depending on the provider.": "Les cours peuvent être retardés de quelques minutes selon le fournisseur.",
     "Analyzed": "Actifs analysés",
     "Available": "Disponible",
     "Loaded": "Chargé",
@@ -1829,13 +1836,13 @@
     const legacySettings = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY);
     const siteSettings = readJsonStorage("sfm_settings");
     try {
-      return settingsTheme
-        || normalizeThemePreference(storedSettings?.theme)
+      return normalizeThemePreference(storedSettings?.theme)
         || normalizeThemePreference(legacySettings?.theme)
         || normalizeThemePreference(localStorage.getItem("the-sfm-theme"))
         || normalizeThemePreference(localStorage.getItem("sfmTraderTheme"))
         || normalizeThemePreference(localStorage.getItem("theme"))
         || normalizeThemePreference(siteSettings?.theme)
+        || settingsTheme
         || DEFAULT_THEME;
     } catch (_error) {
       return settingsTheme || DEFAULT_THEME;
@@ -4530,12 +4537,27 @@
     const area = `${d} L ${W} ${H} L 0 ${H} Z`;
     const up = series[n - 1] >= series[0];
     const gid = `cg${Math.random().toString(36).slice(2, 8)}`;
-    const stroke = up ? "#34e58b" : "#ff5c6c";
-    const glow = up ? "rgba(52,229,139,.55)" : "rgba(255,92,108,.55)";
-    // الألوان inline كـ attributes كي لا تعتمد على CSS داخل الإطار (iframe) وتتفادى التعبئة السوداء الافتراضية للتدرّج
-    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="rgba(122,153,186,.16)" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
+    const stroke = up ? "var(--terminal-chart-success, #34e58b)" : "var(--terminal-chart-danger, #ff5c6c)";
+    const glow = up ? "var(--terminal-chart-success-glow, rgba(52,229,139,.55))" : "var(--terminal-chart-danger-glow, rgba(255,92,108,.55))";
+    const chartSymbol = a.displaySymbol || a.symbol || a.ticker || textPair("\u0627\u0644\u0623\u0635\u0644", "asset", "actif");
+    const rawPeriod = a.period || a.timeframe || a.range;
+    const chartPeriod = typeof rawPeriod === "string"
+      ? rawPeriod
+      : rawPeriod && rawPeriod.from && rawPeriod.to
+        ? `${rawPeriod.from} - ${rawPeriod.to}`
+        : textPair("\u0627\u0644\u0641\u062a\u0631\u0629 \u0627\u0644\u0645\u062a\u0627\u062d\u0629", "available period", "p\u00e9riode disponible");
+    const chartDirection = up
+      ? textPair("\u0635\u0627\u0639\u062f", "upward", "haussi\u00e8re")
+      : textPair("\u0647\u0627\u0628\u0637", "downward", "baissi\u00e8re");
+    const chartLabel = textPair(
+      `\u062d\u0631\u0643\u0629 \u0633\u0639\u0631 ${chartSymbol}. \u0627\u0644\u0641\u062a\u0631\u0629: ${chartPeriod}. \u0627\u0644\u0627\u062a\u062c\u0627\u0647 ${chartDirection} \u0645\u0646 ${latinNumber(series[0])} \u0625\u0644\u0649 ${latinNumber(series[n - 1])} \u0639\u0628\u0631 ${latinNumber(n)} \u0646\u0642\u0637\u0629.`,
+      `Price movement for ${chartSymbol}. Period: ${chartPeriod}. ${chartDirection} from ${latinNumber(series[0])} to ${latinNumber(series[n - 1])} across ${latinNumber(n)} observations.`,
+      `Mouvement du cours de ${chartSymbol}. P\u00e9riode : ${chartPeriod}. Tendance ${chartDirection}, de ${latinNumber(series[0])} \u00e0 ${latinNumber(series[n - 1])}, sur ${latinNumber(n)} observations.`
+    );
+    // CSS-variable attributes keep Light Mode canonical while preserving the established dark fallbacks.
+    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.34))" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
     return `<div class="detail-chart-wrap ${up ? "up" : "down"}">
-      <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${h(textPair("رسم حركة السعر", "Price movement chart", "Graphique d’évolution du cours"))}">
+      <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${h(chartLabel)}">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stroke}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="${stroke}" stop-opacity="0"></stop></linearGradient></defs>
         <g>${grid}</g>
         <path d="${area}" fill="url(#${gid})" stroke="none"></path>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, X } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { UserChip } from '@/components/UserChip';
 import { ViewModeSelector } from '@/components/ViewModeSelector';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -26,16 +27,56 @@ import {
 
 export const NAV_ITEMS = flattenNavigationItems();
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'area[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'iframe',
+  'audio[controls]',
+  'video[controls]',
+  'summary',
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+type ProtectedBackgroundElement = {
+  element: HTMLElement;
+  ariaHidden: string | null;
+  hadInert: boolean;
+};
+
+function getFocusableElements(root: ParentNode) {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(element => {
+    if (!element.isConnected || element.closest('[inert]') || element.closest('[aria-hidden="true"]')) return false;
+    const style = window.getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+  });
+}
+
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname() || '/';
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { signOut, user } = useAuth();
   const { viewMode, setViewMode } = useViewMode();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
   const [activeSource, setActiveSource] = useState(pathname);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [openItemIds, setOpenItemIds] = useState<string[]>([]);
   const previousLang = useRef(lang);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
   const activeSupport = useMemo(
@@ -103,12 +144,150 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   }, [lang, onClose, open]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+    if (!open) return;
+
+    const layer = layerRef.current;
+    const dialog = dialogRef.current;
+    if (!layer || !dialog) return;
+
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
+    const protectedElements = new Map<HTMLElement, ProtectedBackgroundElement>();
+
+    const getOwnedPortalRoots = () => {
+      const portalRoots: HTMLElement[] = [];
+
+      dialog.querySelectorAll<HTMLElement>('[aria-controls]').forEach(control => {
+        if (control.getAttribute('aria-expanded') === 'false') return;
+        const controlledId = control.getAttribute('aria-controls');
+        const controlledElement = controlledId ? document.getElementById(controlledId) : null;
+        if (controlledElement && !layer.contains(controlledElement)) portalRoots.push(controlledElement);
+      });
+
+      if (dialog.querySelector('.sfm-user-chip[aria-expanded="true"]')) {
+        const userMenus = document.querySelectorAll<HTMLElement>('body > .sfm-user-menu');
+        const ownedUserMenu = userMenus[userMenus.length - 1];
+        if (ownedUserMenu) portalRoots.push(ownedUserMenu);
+      }
+
+      return portalRoots;
     };
-    if (open) window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, open]);
+
+    const protectElement = (element: HTMLElement) => {
+      if (protectedElements.has(element)) return;
+      protectedElements.set(element, {
+        element,
+        ariaHidden: element.getAttribute('aria-hidden'),
+        hadInert: element.hasAttribute('inert'),
+      });
+      element.setAttribute('aria-hidden', 'true');
+      element.setAttribute('inert', '');
+    };
+
+    const protectBackground = () => {
+      const ownedPortalRoots = getOwnedPortalRoots();
+      let modalBranch: HTMLElement | null = layer;
+
+      while (modalBranch && modalBranch !== document.body) {
+        const parentElement: HTMLElement | null = modalBranch.parentElement;
+        if (!parentElement) break;
+
+        Array.from(parentElement.children).forEach(sibling => {
+          if (!(sibling instanceof HTMLElement) || sibling === modalBranch) return;
+          const containsOwnedPortal = ownedPortalRoots.some(root => sibling === root || sibling.contains(root));
+          if (!containsOwnedPortal) protectElement(sibling);
+        });
+
+        modalBranch = parentElement;
+      }
+    };
+
+    const moveFocusIntoDialog = () => {
+      const target = closeButtonRef.current ?? dialog;
+      target.focus({ preventScroll: true });
+    };
+
+    moveFocusIntoDialog();
+    protectBackground();
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      const ownedPortalRoots = getOwnedPortalRoots();
+      const activeElement = document.activeElement;
+      const focusIsInsideModal = activeElement instanceof Node
+        && (dialog.contains(activeElement) || ownedPortalRoots.some(root => root.contains(activeElement)));
+      if (!focusIsInsideModal) moveFocusIntoDialog();
+    });
+
+    const observer = new MutationObserver(protectBackground);
+    let observedBranch: HTMLElement | null = layer;
+    while (observedBranch && observedBranch !== document.body) {
+      const parentElement: HTMLElement | null = observedBranch.parentElement;
+      if (!parentElement) break;
+      observer.observe(parentElement, { childList: true });
+      observedBranch = parentElement;
+    }
+    observer.observe(dialog, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-expanded'],
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusRoots: ParentNode[] = [dialog, ...getOwnedPortalRoots()];
+      const focusableElements = Array.from(new Set(focusRoots.flatMap(getFocusableElements)));
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus({ preventScroll: true });
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+      const activeIndex = activeElement instanceof HTMLElement
+        ? focusableElements.indexOf(activeElement)
+        : -1;
+
+      if (event.shiftKey && (activeElement === firstElement || activeIndex === -1)) {
+        event.preventDefault();
+        lastElement.focus({ preventScroll: true });
+      } else if (!event.shiftKey && (activeElement === lastElement || activeIndex === -1)) {
+        event.preventDefault();
+        firstElement.focus({ preventScroll: true });
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      observer.disconnect();
+      document.removeEventListener('keydown', onKeyDown, true);
+
+      protectedElements.forEach(({ element, ariaHidden, hadInert }) => {
+        if (!element.isConnected) return;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+        if (!hadInert) element.removeAttribute('inert');
+      });
+
+      const previouslyFocused = previouslyFocusedRef.current;
+      previouslyFocusedRef.current = null;
+      if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
+    };
+  }, [open]);
 
   const go = async (item: NavigationItem) => {
     if (item.action === 'logout') {
@@ -131,20 +310,28 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const closeLabel = t('nav_close_menu');
 
   return (
-    <div className={`sfm-mobile-layer${open ? ' open' : ''}`} aria-hidden={!open} dir={dir}>
-      <button type="button" className="sfm-mobile-overlay" aria-label={closeLabel} onClick={onClose} tabIndex={open ? 0 : -1} />
-      <aside id="sfm-mobile-menu" className="sfm-mobile-panel" aria-label={menuLabel}>
+    <div ref={layerRef} className={`sfm-mobile-layer${open ? ' open' : ''}`} aria-hidden={!open} dir={dir}>
+      <button type="button" className="sfm-mobile-overlay" aria-label={closeLabel} aria-hidden="true" onClick={onClose} tabIndex={-1} />
+      <aside
+        ref={dialogRef}
+        id="sfm-mobile-menu"
+        className="sfm-mobile-panel"
+        role="dialog"
+        aria-modal={open ? 'true' : undefined}
+        aria-labelledby="sfm-mobile-menu-label"
+        tabIndex={-1}
+      >
         <div className="sfm-mobile-panel-head">
           <div className="sfm-mobile-logo">
             <Image src="/sfm-logo.png" alt="THE SFM" width={42} height={42} priority className="sfm-brand-mark sfm-brand-mark--mobile" />
             <div>
               <strong>THE SFM</strong>
-              <span>{menuLabel}</span>
+              <span id="sfm-mobile-menu-label">{menuLabel}</span>
             </div>
           </div>
           <div className="sfm-mobile-head-actions">
             <ThemeToggle />
-            <button type="button" className="sfm-mobile-close" aria-label={closeLabel} onClick={onClose}>
+            <button ref={closeButtonRef} type="button" className="sfm-mobile-close" aria-label={closeLabel} onClick={onClose}>
               <X size={22} />
             </button>
           </div>
@@ -155,11 +342,11 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         <div className="sfm-mobile-lang">
-          <LanguageSwitcher variant="dark" compact />
+          <LanguageSwitcher variant={isDark ? 'dark' : 'light'} compact />
         </div>
 
         <div className="sfm-mobile-view-mode">
-          <ViewModeSelector value={viewMode} onChange={setViewMode} variant="dark" compact />
+          <ViewModeSelector value={viewMode} onChange={setViewMode} variant={isDark ? 'dark' : 'light'} compact />
         </div>
 
         <nav className="sfm-mobile-nav" aria-label={menuLabel}>
@@ -308,10 +495,10 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-layer.open{pointer-events:auto;visibility:visible}
         .sfm-mobile-overlay{position:fixed;inset:0;z-index:9998;border:0;background:rgba(3,18,37,.68);opacity:0;cursor:pointer;transition:opacity .24s ease;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
         .sfm-mobile-layer.open .sfm-mobile-overlay{opacity:1}
-        .sfm-mobile-layer{--mobile-menu-bg:#061A2E;--mobile-menu-bg-2:#071B2F;--mobile-menu-card:#102F52;--mobile-menu-card-hover:#143B63;--mobile-menu-border:rgba(167,243,240,.16);--mobile-menu-text:#F8FAFC;--mobile-menu-secondary:#D8E8F8;--mobile-menu-muted:#9FB4CC;--mobile-menu-accent:#2FD6C0}
+        .sfm-mobile-layer{--mobile-menu-bg:#F8FAFB;--mobile-menu-bg-2:#E8EEF4;--mobile-menu-card:#FAFBFC;--mobile-menu-card-hover:#E0E8F0;--mobile-menu-border:#C5D0DA;--mobile-menu-text:#10243B;--mobile-menu-secondary:#3F5369;--mobile-menu-muted:#566C80;--mobile-menu-accent:#1B5EC8}
         .dark .sfm-mobile-layer,html.dark .sfm-mobile-layer,[data-theme="dark"] .sfm-mobile-layer{--mobile-menu-bg:#061A2E;--mobile-menu-bg-2:#071B2F;--mobile-menu-card:#102F52;--mobile-menu-card-hover:#163C62;--mobile-menu-border:rgba(167,243,240,.18);--mobile-menu-text:#F8FAFC;--mobile-menu-secondary:#D8E8F8;--mobile-menu-muted:#9FB4CC;--mobile-menu-accent:#2FD6C0}
-        .sfm-mobile-panel{position:fixed;top:0;right:0;height:100vh;height:100dvh;width:85%;max-width:min(420px,100%);z-index:9999;display:flex;flex-direction:column;min-height:0;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));overflow:hidden;background:radial-gradient(circle at 16% 10%,rgba(47,214,192,.18),transparent 30%),linear-gradient(180deg,var(--mobile-menu-bg),var(--mobile-menu-bg-2))!important;border-inline-start:1px solid var(--mobile-menu-border)!important;border-radius:24px 0 0 24px;box-shadow:-24px 0 70px rgba(0,0,0,.42);color:var(--mobile-menu-text)!important;transform:translateX(104%);transition:transform .28s cubic-bezier(.2,.9,.2,1);will-change:transform;color-scheme:dark}
-        .dark .sfm-mobile-panel,html.dark .sfm-mobile-panel,[data-theme="dark"] .sfm-mobile-panel{background:radial-gradient(circle at 16% 10%,rgba(47,214,192,.20),transparent 30%),linear-gradient(180deg,#061A2E,#071B2F)!important;border-color:rgba(167,243,240,.20)!important;color:#F8FAFC!important;box-shadow:-24px 0 70px rgba(0,0,0,.50)!important}
+        .sfm-mobile-panel{position:fixed;top:0;right:0;height:100vh;height:100dvh;width:85%;max-width:min(420px,100%);z-index:9999;display:flex;flex-direction:column;min-height:0;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));overflow:hidden;background:radial-gradient(circle at 16% 10%,rgba(27,94,200,.09),transparent 30%),linear-gradient(180deg,var(--mobile-menu-bg),var(--mobile-menu-bg-2))!important;border-inline-start:1px solid var(--mobile-menu-border)!important;border-radius:24px 0 0 24px;box-shadow:-24px 0 70px rgba(16,36,59,.18);color:var(--mobile-menu-text)!important;transform:translateX(104%);transition:transform .28s cubic-bezier(.2,.9,.2,1);will-change:transform;color-scheme:light}
+        .dark .sfm-mobile-panel,html.dark .sfm-mobile-panel,[data-theme="dark"] .sfm-mobile-panel{background:radial-gradient(circle at 16% 10%,rgba(47,214,192,.20),transparent 30%),linear-gradient(180deg,#061A2E,#071B2F)!important;border-color:rgba(167,243,240,.20)!important;color:#F8FAFC!important;box-shadow:-24px 0 70px rgba(0,0,0,.50)!important;color-scheme:dark}
         [dir="ltr"] .sfm-mobile-panel{right:auto;left:0;border-inline-start:0;border-inline-end:1px solid var(--mobile-menu-border);border-radius:0 24px 24px 0;box-shadow:24px 0 70px rgba(0,0,0,.42);transform:translateX(-104%)}
         html.dark[dir="ltr"] .sfm-mobile-panel,.dark[dir="ltr"] .sfm-mobile-panel,html.dark [dir="ltr"] .sfm-mobile-panel,.dark [dir="ltr"] .sfm-mobile-panel{box-shadow:24px 0 70px rgba(0,0,0,.50)!important}
         .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}

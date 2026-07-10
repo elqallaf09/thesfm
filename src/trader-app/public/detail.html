@@ -4,7 +4,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>تفاصيل السهم - اس اف ام المحلل الذكي</title>
-    <meta name="theme-color" content="#05090d" />
+    <meta name="theme-color" content="#EEF2F5" />
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      (function () {
+        try {
+          var parse = function (key) {
+            var value = localStorage.getItem(key);
+            if (!value) return null;
+            try { return JSON.parse(value); } catch (_) { return null; }
+          };
+          var trader = parse("sfmTraderSettings:v1");
+          var legacy = parse("the-sfm-trader-settings");
+          var site = parse("sfm_settings");
+          var preference = (trader && trader.theme)
+            || (legacy && legacy.theme)
+            || localStorage.getItem("the-sfm-theme")
+            || localStorage.getItem("sfmTraderTheme")
+            || localStorage.getItem("theme")
+            || (site && site.theme)
+            || "dark";
+          var resolved = preference === "system"
+            ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+            : preference;
+          if (resolved !== "light" && resolved !== "dark") resolved = "dark";
+          document.documentElement.dataset.themePreference = preference;
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.classList.add(resolved);
+          document.documentElement.style.colorScheme = resolved;
+          document.querySelector('meta[name="theme-color"]').content = resolved === "light" ? "#EEF2F5" : "#05090D";
+        } catch (_) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="اس اف ام المحلل الذكي" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

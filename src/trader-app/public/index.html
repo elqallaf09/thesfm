@@ -4,6 +4,37 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <script>
+      // Apply the stored appearance before CSS paints to avoid a dark flash for
+      // users who selected the daylight terminal in the parent application.
+      (function () {
+        try {
+          var parse = function (key) {
+            var value = localStorage.getItem(key);
+            if (!value) return null;
+            try { return JSON.parse(value); } catch (_) { return null; }
+          };
+          var trader = parse("sfmTraderSettings:v1");
+          var legacy = parse("the-sfm-trader-settings");
+          var site = parse("sfm_settings");
+          var preference = (trader && trader.theme)
+            || (legacy && legacy.theme)
+            || localStorage.getItem("the-sfm-theme")
+            || localStorage.getItem("sfmTraderTheme")
+            || localStorage.getItem("theme")
+            || (site && site.theme)
+            || "dark";
+          var resolved = preference === "system"
+            ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+            : preference;
+          if (resolved !== "light" && resolved !== "dark") resolved = "dark";
+          document.documentElement.dataset.themePreference = preference;
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.classList.add(resolved);
+          document.documentElement.style.colorScheme = resolved;
+        } catch (_) {}
+      })();
+    </script>
     <title>اس اف ام المحلل الذكي | منصة التداول الذكية</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

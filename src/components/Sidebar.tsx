@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -32,6 +33,8 @@ export function Sidebar() {
   const { t, dir } = useLanguage();
   const { signOut, user } = useAuth();
   const { viewMode, setViewMode } = useViewMode();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [hash, setHash] = useState('');
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -129,6 +132,7 @@ export function Sidebar() {
         .sfm-shared-brand strong{display:block;font-size:17px;font-weight:900;color:var(--sfm-soft-cyan);letter-spacing:.02em}
         .sfm-shared-brand span{display:block;font-size:11px;color:#B8C7D9;margin-top:3px}
         .sfm-shared-lang{padding:12px 16px;border-bottom:1px solid rgba(167,243,240,.08);display:flex;justify-content:center}
+        .sfm-shared-tools{padding:10px 12px;border-bottom:1px solid var(--sidebar-border);}
         .sfm-shared-nav{flex:0 0 auto;min-height:0;padding:10px 8px;display:flex;flex-direction:column;gap:6px}
         .sfm-shared-group{border-bottom:1px solid rgba(167,243,240,.07);padding-bottom:5px}
         .sfm-shared-group:last-child{border-bottom:0}
@@ -184,17 +188,17 @@ export function Sidebar() {
         </div>
       </Link>
       <div className="sfm-shared-lang">
-        <LanguageSwitcher variant="dark" compact />
+        <LanguageSwitcher variant={isDark ? 'dark' : 'light'} compact />
       </div>
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(167,243,240,.08)' }}>
+      <div className="sfm-shared-tools">
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
-          <CommandMenuButton dark />
+          <CommandMenuButton dark={isDark} />
           <ThemeToggle />
         </div>
         <div style={{ height: 10 }} />
         <UserChip />
         <div style={{ marginTop: 10 }}>
-          <ViewModeSelector value={viewMode} onChange={setViewMode} variant="dark" compact />
+          <ViewModeSelector value={viewMode} onChange={setViewMode} variant={isDark ? 'dark' : 'light'} compact />
         </div>
       </div>
       <nav className="sfm-shared-nav" aria-label={t('nav_mobile_menu')}>

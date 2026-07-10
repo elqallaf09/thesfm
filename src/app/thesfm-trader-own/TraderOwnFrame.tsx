@@ -21,7 +21,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
   const src = `/thesfm-trader-own/app/index.html?route=${encodeURIComponent(appRoute)}`;
 
   return (
-    <main className="trader-shell-page" dir="ltr">
+    <main className="trader-shell-page">
       <iframe
         title="SFM Smart Analyzer"
         src={src}
@@ -32,7 +32,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
         html,
         body {
           margin: 0;
-          background: #06111F;
+          background: var(--sfm-background, #F1F4F7);
           overflow: hidden;
         }
         .trader-shell-page {
@@ -41,8 +41,9 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
           z-index: 2147483000;
           min-height: 100vh;
           width: 100%;
-          background: #06111F;
+          background: var(--sfm-background, #F1F4F7);
           overflow: hidden;
+          color-scheme: light dark;
         }
         .trader-shell-frame {
           display: block;
@@ -50,7 +51,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
           min-height: 100vh;
           height: 100dvh;
           border: 0;
-          background: #06111F;
+          background: var(--sfm-background, #F1F4F7);
         }
       `}</style>
     </main>

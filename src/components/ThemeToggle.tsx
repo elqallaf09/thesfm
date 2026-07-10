@@ -62,13 +62,13 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
           width: 44px;
           height: 44px;
           min-width: 44px;
-          border: 1px solid rgba(29, 48, 80, 0.12);
+          border: 1px solid var(--sfm-light-border-primary, #788e9e);
           border-radius: 14px;
           display: inline-grid;
           place-items: center;
-          background: linear-gradient(180deg, #ffffff, #f8fbff);
-          color: #0f1d31;
-          box-shadow: 0 8px 20px rgba(3, 18, 37, 0.10);
+          background: var(--sfm-light-surface-elevated, #fcfdfd);
+          color: var(--sfm-light-text-primary, #10243b);
+          box-shadow: var(--sfm-light-shadow-xs, 0 1px 2px rgba(16, 36, 59, 0.06));
           cursor: pointer;
           transition:
             transform 0.18s ease,
@@ -82,9 +82,9 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
         .sfm-theme-toggle:focus-visible {
           outline: none;
           transform: translateY(-1px);
-          border-color: rgba(47, 214, 192, 0.52);
-          color: var(--sfm-accent, #18d4d4);
-          box-shadow: 0 0 0 4px rgba(47, 214, 192, 0.12), 0 10px 24px rgba(3, 18, 37, 0.12);
+          border-color: var(--sfm-light-primary, #1b5ec8);
+          color: var(--sfm-light-primary, #1b5ec8);
+          box-shadow: var(--sfm-light-focus-ring, 0 0 0 3px rgba(27, 94, 200, 0.22));
         }
 
         .sfm-theme-toggle:active {
@@ -92,8 +92,8 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
         }
 
         .dark .sfm-theme-toggle,
-        .sfm-shared-sidebar .sfm-theme-toggle,
-        .sfm-mobile-panel .sfm-theme-toggle {
+        .dark .sfm-shared-sidebar .sfm-theme-toggle,
+        .dark .sfm-mobile-panel .sfm-theme-toggle {
           background: #0f1d31;
           border-color: #1d3050;
           color: #e8eef6;
@@ -102,10 +102,10 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
 
         .dark .sfm-theme-toggle:hover,
         .dark .sfm-theme-toggle:focus-visible,
-        .sfm-shared-sidebar .sfm-theme-toggle:hover,
-        .sfm-shared-sidebar .sfm-theme-toggle:focus-visible,
-        .sfm-mobile-panel .sfm-theme-toggle:hover,
-        .sfm-mobile-panel .sfm-theme-toggle:focus-visible {
+        .dark .sfm-shared-sidebar .sfm-theme-toggle:hover,
+        .dark .sfm-shared-sidebar .sfm-theme-toggle:focus-visible,
+        .dark .sfm-mobile-panel .sfm-theme-toggle:hover,
+        .dark .sfm-mobile-panel .sfm-theme-toggle:focus-visible {
           border-color: #2fd6c0;
           color: #2fd6c0;
           box-shadow: 0 0 0 4px rgba(47, 214, 192, 0.14), 0 10px 24px rgba(0, 0, 0, 0.22);
