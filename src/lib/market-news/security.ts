@@ -7,6 +7,7 @@ import {
   FinancialNewsProviderError,
   FinancialNewsProviderErrorCode,
 } from './types';
+import { publisherNetworkKey } from './providers/shared';
 
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
@@ -329,6 +330,7 @@ export async function safeFetchText(
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let currentUrl = assertSafePublicHttpUrl(input, providerId);
+  const allowedRedirectNetwork = publisherNetworkKey(currentUrl.hostname);
   let headers = { ...(options.headers ?? {}) };
   let redirectCount = 0;
 
@@ -371,6 +373,9 @@ export async function safeFetchText(
         }
         const nextUrl = assertSafePublicHttpUrl(new URL(location, currentUrl), providerId);
         if (currentUrl.protocol === 'https:' && nextUrl.protocol !== 'https:') {
+          throw new FinancialNewsProviderError(providerId, FinancialNewsProviderErrorCode.UNSAFE_URL);
+        }
+        if (publisherNetworkKey(nextUrl.hostname) !== allowedRedirectNetwork) {
           throw new FinancialNewsProviderError(providerId, FinancialNewsProviderErrorCode.UNSAFE_URL);
         }
         headers = redirectHeaders(headers, currentUrl, nextUrl);

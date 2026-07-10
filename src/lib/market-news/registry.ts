@@ -319,10 +319,15 @@ function numberInRange(value: unknown, fallback: number, min: number, max: numbe
   return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }
 
-function customRssProviders(raw: string | undefined) {
+function customRssProviders(raw: string | undefined, allowedHostsRaw: string | undefined) {
   const configs: RssNewsProviderConfig[] = [];
   const issues: ProviderRegistryIssue[] = [];
   if (!raw?.trim()) return { configs, issues };
+  const allowedHosts = new Set(String(allowedHostsRaw ?? '')
+    .split(',')
+    .map(value => value.trim().toLowerCase().replace(/\.$/, ''))
+    .filter(value => /^[a-z0-9.-]+$/.test(value) && value.includes('.'))
+    .slice(0, 100));
   if (Buffer.byteLength(raw, 'utf8') > MAX_CUSTOM_CONFIG_BYTES) {
     return {
       configs,
@@ -366,6 +371,9 @@ function customRssProviders(raw: string | undefined) {
       url = assertSafePublicHttpUrl(urlValue, id);
       if (url.protocol !== 'https:' || (url.port && url.port !== '443')) {
         throw new Error('custom-feeds-require-https-default-port');
+      }
+      if (!allowedHosts.has(url.hostname.toLowerCase().replace(/\.$/, ''))) {
+        throw new Error('custom-feed-host-not-allowlisted');
       }
     } catch {
       issues.push({ providerId: id, code: FinancialNewsProviderErrorCode.UNSAFE_URL });
@@ -416,6 +424,20 @@ function matchesParams(provider: FinancialNewsProvider, params: Partial<NewsFetc
   if (!provider.enabled) return false;
   if (params.officialOnly && !provider.officialSource) return false;
   if (params.sourceTypes?.length && !params.sourceTypes.includes(provider.sourceType)) return false;
+  const hasMarketScope = Boolean(
+    params.marketCodes?.length
+    || params.exchangeCodes?.length
+    || params.countries?.length
+    || params.symbols?.length
+    || params.assetTypes?.length,
+  );
+  if (!hasMarketScope) {
+    const defaults = new Set(provider.supportedMarkets.map(value => value.toUpperCase()));
+    // A general search uses the global/U.S. baseline plus official sources.
+    // Regional and crypto feed families are selected only by scoped searches,
+    // avoiding a fan-out to every configured source on each generic request.
+    if (!provider.officialSource && !defaults.has('GLOBAL') && !defaults.has('US')) return false;
+  }
   return intersects(params.marketCodes, provider.supportedMarkets);
 }
 
@@ -441,7 +463,10 @@ export function buildFinancialNewsProviderRegistry(
   environment: RegistryEnvironment = process.env,
 ): FinancialNewsProviderRegistry {
   const configurationIssues: ProviderRegistryIssue[] = [];
-  const custom = customRssProviders(environment.FINANCIAL_NEWS_RSS_FEEDS_JSON);
+  const custom = customRssProviders(
+    environment.FINANCIAL_NEWS_RSS_FEEDS_JSON,
+    environment.FINANCIAL_NEWS_RSS_ALLOWED_HOSTS,
+  );
   configurationIssues.push(...custom.issues);
 
   const rssConfigs = [

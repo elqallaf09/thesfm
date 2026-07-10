@@ -31,6 +31,7 @@ const MAX_PAGE_SIZE = 60;
 const DEFAULT_CONCURRENCY = 4;
 const CACHE_TTL_MS = 90_000;
 const CACHE_STALE_MS = 15 * 60_000;
+const INDEXED_FRESHNESS_MS = 30 * 60_000;
 const CIRCUIT_FAILURE_THRESHOLD = 3;
 const CIRCUIT_OPEN_MS = 5 * 60_000;
 
@@ -485,9 +486,13 @@ function resultFromStories(options: {
   const start = (page - 1) * pageSize;
   const successCount = options.coverage.filter(item => item.status === 'success').length;
   const failedCount = options.coverage.filter(item => item.status === 'failed').length;
-  const attemptedCount = successCount + failedCount;
-  const partialFailure = successCount > 0 && failedCount > 0;
-  const liveUpdatesAvailable = successCount > 0 || (attemptedCount === 0 && options.stories.length > 0 && !options.storedFallbackUsed);
+  const skippedCount = options.coverage.filter(item => item.status === 'skipped').length;
+  const attemptedCount = options.coverage.length;
+  const partialFailure = successCount > 0 && (failedCount > 0 || skippedCount > 0);
+  const lastSuccessAt = Date.parse(options.lastSuccessfulUpdate ?? '');
+  const indexedStoreFresh = Number.isFinite(lastSuccessAt) && Date.now() - lastSuccessAt <= INDEXED_FRESHNESS_MS;
+  const liveUpdatesAvailable = successCount > 0
+    || (attemptedCount === 0 && options.stories.length > 0 && indexedStoreFresh && !options.storedFallbackUsed);
   const warnings = [
     ...(partialFailure ? ['PARTIAL_PROVIDER_COVERAGE'] : []),
     ...(!liveUpdatesAvailable && options.storedFallbackUsed ? ['LIVE_UPDATES_UNAVAILABLE_STORED_RESULTS'] : []),
@@ -555,7 +560,7 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   const coverage = outcomes.map(coverageFor);
   const successfulOutcomes = outcomes.filter(outcome => outcome.status === 'success');
   const liveSucceeded = successfulOutcomes.length > 0;
-  const liveFetchAttempted = outcomes.some(outcome => outcome.status === 'success' || outcome.status === 'failed');
+  const liveFetchAttempted = outcomes.length > 0;
   let stories = mergeConsolidatedStories(stored.stories, externalStories);
   const novelExternalStoryCount = Math.max(0, stories.length - stored.stories.length);
   let storedFallbackUsed = stored.stories.length > 0 && liveFetchAttempted && !liveSucceeded;
@@ -611,12 +616,14 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   if (!liveSucceeded && stored.stories.length === 0) {
     const stale = responseCache.get(cacheKey);
     if (stale && stale.staleUntil > Date.now()) {
+      const failedOrSkipped = coverage.filter(item => item.status !== 'success').length;
       return {
         ...stale.value,
+        providerCoverage: coverage.length > 0 ? coverage : stale.value.providerCoverage,
         cacheStatus: 'stale',
         liveUpdatesAvailable: false,
         storedFallbackUsed: false,
-        partialFailure: false,
+        partialFailure: coverage.some(item => item.status === 'success') && failedOrSkipped > 0,
         searchDurationMs: Date.now() - startedAt,
         warnings: [...new Set([...stale.value.warnings, 'LIVE_UPDATES_UNAVAILABLE_CACHED_RESULTS'])],
       };

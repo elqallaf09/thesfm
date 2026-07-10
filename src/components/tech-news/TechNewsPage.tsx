@@ -1364,7 +1364,7 @@ export function TechNewsPage() {
         .tech-news-chip-row{display:flex;flex-wrap:wrap;gap:9px;overflow:visible;padding-bottom:2px;scrollbar-width:thin}
         .tech-news-chip-row button{
           flex:0 0 auto;
-          min-height:42px;
+          min-height:44px;
           display:inline-flex;
           align-items:center;
           gap:8px;

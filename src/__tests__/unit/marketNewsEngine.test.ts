@@ -19,12 +19,14 @@ import {
   areDuplicateStories,
   calculateImportanceScore,
   clusterRelatedStories,
+  detectConflicts,
   normalizeNewsItem,
   processNewsItems,
   resolveCanonicalUrl,
 } from '@/lib/market-news/processing';
 import { parseFinancialNewsFeed } from '@/lib/market-news/rssParser';
-import { itemMatchesQuery, publisherEvidenceProfile, publisherSourceId } from '@/lib/market-news/providers/shared';
+import { itemMatchesQuery, publisherEvidenceProfile, publisherNetworkKey, publisherSourceId } from '@/lib/market-news/providers/shared';
+import { buildFinancialNewsProviderRegistry } from '@/lib/market-news/registry';
 import { assertSafePublicHttpUrl, normalizeCanonicalUrl, sanitizeExternalText } from '@/lib/market-news/security';
 import {
   FinancialNewsProviderError,
@@ -180,6 +182,26 @@ describe('market-news normalization and security', () => {
     expect(parsed.rejectedByReason.missing_or_unsafe_url).toBe(1);
     expect(sanitizeExternalText('<img src=x onerror=alert(1)>Clean')).toBe('Clean');
   });
+
+  it('requires every custom RSS hostname to be explicitly allowlisted', () => {
+    const custom = JSON.stringify([{ id: 'issuer', name: 'Issuer IR', url: 'https://ir.example.com/feed.xml' }]);
+    const rejected = buildFinancialNewsProviderRegistry({}, { FINANCIAL_NEWS_RSS_FEEDS_JSON: custom });
+    const accepted = buildFinancialNewsProviderRegistry({}, {
+      FINANCIAL_NEWS_RSS_FEEDS_JSON: custom,
+      FINANCIAL_NEWS_RSS_ALLOWED_HOSTS: 'ir.example.com',
+    });
+    expect(rejected.providers.some(provider => provider.id === 'custom-rss-issuer')).toBe(false);
+    expect(accepted.providers.some(provider => provider.id === 'custom-rss-issuer')).toBe(true);
+  });
+
+  it('does not fan a generic search out to every regional feed family', () => {
+    const generalIds = buildFinancialNewsProviderRegistry().providers.map(provider => provider.id);
+    const cryptoIds = buildFinancialNewsProviderRegistry({ marketCodes: ['CRYPTO'], assetTypes: ['crypto'] }).providers.map(provider => provider.id);
+    expect(generalIds.some(id => id.includes('-europe-'))).toBe(false);
+    expect(generalIds.some(id => id.includes('crypto'))).toBe(false);
+    expect(generalIds.some(id => id.includes('arab-news') || id.includes('gulf-today'))).toBe(false);
+    expect(cryptoIds).toEqual(expect.arrayContaining(['rss-coindesk-crypto', 'rss-cointelegraph-crypto']));
+  });
 });
 
 describe('market-news entity resolution and classification', () => {
@@ -245,6 +267,12 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
     expect(areDuplicateStories(first, similar)).toBe(true);
   });
 
+  it('does not collapse recurring identical headlines published weeks apart', () => {
+    const first = normalizeNewsItem(item({ id: 'period-one', originalUrl: 'https://example.com/period-one', publishedAt: '2026-06-01T10:00:00.000Z' }));
+    const later = normalizeNewsItem(item({ id: 'period-two', originalUrl: 'https://other.example/period-two', publishedAt: '2026-07-01T10:00:00.000Z' }));
+    expect(areDuplicateStories(first, later)).toBe(false);
+  });
+
   it('does not count syndicated copies from one publisher network as independent confirmation', () => {
     const stories = clusterRelatedStories([
       normalizeNewsItem(item({ id: 'a', providerId: 'wire-a', sourceId: 'wire-a', sourceNetworkId: 'network-one' })),
@@ -273,6 +301,20 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
     expect(publisherSourceId('Reuters.com')).toBe(publisherSourceId('reuters.com'));
     expect(publisherEvidenceProfile('www.reuters.com').reliability).toBeGreaterThan(0.9);
     expect(publisherEvidenceProfile('unknown-outlet.example').reliability).toBeLessThan(0.6);
+    expect(publisherNetworkKey('https://finance.yahoo.com/story')).toBe('yahoo.com');
+    expect(publisherNetworkKey('news.yahoo.com')).toBe('yahoo.com');
+  });
+
+  it('does not mark different compatible financial metrics as conflicting', () => {
+    const revenue = normalizeNewsItem(item({
+      id: 'revenue', title: 'Apple reports revenue of $10 billion', eventType: 'earnings_results',
+    }));
+    const profit = normalizeNewsItem(item({
+      id: 'profit', providerId: 'wire-b', sourceId: 'wire-b', sourceNetworkId: 'wire-b.example',
+      sourceDomain: 'wire-b.example', originalUrl: 'https://wire-b.example/profit',
+      title: 'Apple reports net profit of $2 billion', eventType: 'earnings_results',
+    }));
+    expect(detectConflicts([revenue, profit]).conflicting).toBe(false);
   });
 
   it('selects an official disclosure as primary and confirms with independent sources', () => {
@@ -379,7 +421,7 @@ describe('resilient provider orchestration and stored fallback', () => {
 
   it('returns a complete indexed page without mislabeling it as a live outage', async () => {
     const stored = clusterRelatedStories([normalizeNewsItem(item({ id: 'stored-page-two' }))])[0] as ConsolidatedNewsStory;
-    persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 25, lastSuccessfulUpdate: stored.publishedAt, available: true });
+    persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 25, lastSuccessfulUpdate: NOW, available: true });
     const fetchNews = vi.fn(async () => []);
     const result = await aggregateFinancialNews(params, {
       providers: [provider('unused-live', fetchNews)], page: 2, pageSize: 1,
@@ -391,15 +433,25 @@ describe('resilient provider orchestration and stored fallback', () => {
     expect(result.storedFallbackUsed).toBe(false);
     expect(result.liveUpdatesAvailable).toBe(true);
     expect(result.warnings).not.toContain('LIVE_UPDATES_UNAVAILABLE_STORED_RESULTS');
+    expect(persistence.searchStoredNews).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 1, sort: 'latest' }));
+  });
+
+  it('enforces a requested company name on the consolidated result', async () => {
+    const stored = clusterRelatedStories([normalizeNewsItem(item({ id: 'apple-company' }))])[0] as ConsolidatedNewsStory;
+    persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 1, lastSuccessfulUpdate: stored.publishedAt, available: true });
+    const result = await aggregateFinancialNews({ ...params, companyNames: ['Microsoft Corporation'] }, {
+      providers: [], pageSize: 10,
+    });
+    expect(result.stories).toEqual([]);
   });
 
   it('opens a temporary circuit after a rate-limit response', async () => {
     const limited = provider('limited', async () => {
-      throw new FinancialNewsProviderError('limited', FinancialNewsProviderErrorCode.RATE_LIMITED, { httpStatus: 429 });
+      throw new FinancialNewsProviderError('limited', FinancialNewsProviderErrorCode.RATE_LIMITED, { httpStatus: 429, retryAfterSeconds: 900 });
     });
     const first = await fetchFromAllProviders([limited], params);
     const second = await fetchFromAllProviders([limited], params);
-    expect(first[0]).toMatchObject({ status: 'failed', rateLimited: true });
+    expect(first[0]).toMatchObject({ status: 'failed', rateLimited: true, retryAfterMs: 900_000 });
     expect(second[0]).toMatchObject({ status: 'skipped', errorCode: 'circuit_open' });
   });
 });
