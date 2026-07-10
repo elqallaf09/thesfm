@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLang } from "@/components/LanguageProvider";
 import {
   Tooltip,
   TooltipContent,
@@ -265,6 +266,7 @@ const SidebarTrigger = React.forwardRef<
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
+  const { t } = useLang();
 
   return (
     <Button
@@ -280,7 +282,7 @@ const SidebarTrigger = React.forwardRef<
       {...props}
     >
       <PanelLeft />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t("accessibility_toggle_sidebar")}</span>
     </Button>
   );
 });
@@ -291,15 +293,16 @@ const SidebarRail = React.forwardRef<
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
+  const { t } = useLang();
 
   return (
     <button
       ref={ref}
       data-sidebar="rail"
-      aria-label="Toggle Sidebar"
+      aria-label={t("accessibility_toggle_sidebar")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={t("accessibility_toggle_sidebar")}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",

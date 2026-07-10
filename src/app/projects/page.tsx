@@ -31,10 +31,21 @@ interface Project extends ProjectForm { id: string; analysis?: AIAnalysis; expan
 interface Message { role: 'user' | 'assistant'; content: string; }
 
 /* ─── Constants ─── */
-const PROJECT_TYPES = ['مطعم / كافيه','متجر إلكتروني','عقار واستثمار','تقنية وبرمجة','تعليم وتدريب','خدمات منزلية','صحة وجمال','تجارة وتوزيع','إعلام وتسويق','مشروع زراعي','صناعة وتصنيع','أخرى'];
-const PROJECT_GOALS = ['دخل إضافي','تفرغ كامل','استثمار طويل الأمد','نمو سريع','بناء علامة تجارية','استقلالية مالية'];
-const START_TIMELINES = ['خلال شهر','خلال 3 أشهر','خلال 6 أشهر','خلال سنة','أكثر من سنة'];
-const PROGRESS_STEPS = [{id:'idea',label:'الفكرة',icon:'💡'},{id:'feasibility',label:'الجدوى',icon:'📊'},{id:'funding',label:'التمويل',icon:'💰'},{id:'license',label:'الرخصة',icon:'📋'},{id:'launch',label:'الإطلاق',icon:'🚀'}];
+const PROJECT_TYPES = [
+  ['مطعم / كافيه', 'projects_type_restaurant'], ['متجر إلكتروني', 'projects_type_ecommerce'], ['عقار واستثمار', 'projects_type_real_estate'],
+  ['تقنية وبرمجة', 'projects_type_technology'], ['تعليم وتدريب', 'projects_type_education'], ['خدمات منزلية', 'projects_type_home_services'],
+  ['صحة وجمال', 'projects_type_health'], ['تجارة وتوزيع', 'projects_type_trade'], ['إعلام وتسويق', 'projects_type_media'],
+  ['مشروع زراعي', 'projects_type_agriculture'], ['صناعة وتصنيع', 'projects_type_manufacturing'], ['أخرى', 'projects_type_other'],
+] as const;
+const PROJECT_GOALS = [
+  ['دخل إضافي', 'projects_goal_additional_income'], ['تفرغ كامل', 'projects_goal_full_time'], ['استثمار طويل الأمد', 'projects_goal_long_term'],
+  ['نمو سريع', 'projects_goal_fast_growth'], ['بناء علامة تجارية', 'projects_goal_brand'], ['استقلالية مالية', 'projects_goal_independence'],
+] as const;
+const START_TIMELINES = [
+  ['خلال شهر', 'projects_timeline_month'], ['خلال 3 أشهر', 'projects_timeline_three_months'], ['خلال 6 أشهر', 'projects_timeline_six_months'],
+  ['خلال سنة', 'projects_timeline_year'], ['أكثر من سنة', 'projects_timeline_over_year'],
+] as const;
+const PROGRESS_STEPS = [{id:'idea',labelKey:'projects_progress_idea',icon:'💡'},{id:'feasibility',labelKey:'projects_progress_feasibility',icon:'📊'},{id:'funding',labelKey:'projects_progress_funding',icon:'💰'},{id:'license',labelKey:'projects_progress_license',icon:'📋'},{id:'launch',labelKey:'projects_progress_launch',icon:'🚀'}];
 const EMOJIS = ['🚀','💡','🏪','🛒','🏠','📱','🎓','💼','🍽','📈','🎨','🏭','🌐','⚙️','💎','🏗','🚗','✈️','🎯','💊'];
 const STATUS_CONFIG: Record<ProjectStatus, { color: string; bg: string; icon: string }> = {
   'فكرة':        { color: '#3B82F6', bg: 'rgba(59,130,246,.10)',  icon: '💡' },
@@ -51,93 +62,21 @@ const emptyForm: ProjectForm = {
   feasibilityTypes:[],
 };
 const FEASIBILITY_TYPES = [
-  { id: 'economic', icon: '💰', color: 'var(--sfm-soft-cyan)', title: 'الجدوى الاقتصادية', desc: 'دراسة الربحية المتوقعة وقياس العوائد مقابل التكاليف.' },
-  { id: 'market', icon: '📈', color: '#22C55E', title: 'الجدوى السوقية', desc: 'تحليل السوق المستهدف وحجم الطلب والمنافسة.' },
-  { id: 'technical', icon: '⚙️', color: '#3B82F6', title: 'الجدوى الفنية / التشغيلية', desc: 'قياس إمكانية تنفيذ المشروع فنياً ولوجستياً.' },
-  { id: 'legal', icon: '⚖️', color: '#8B5CF6', title: 'الجدوى القانونية', desc: 'التأكد من توافق المشروع مع القوانين والأنظمة.' },
-  { id: 'financial', icon: '💵', color: '#F59E0B', title: 'الجدوى المالية', desc: 'تحليل مالي متعمق ومصادر التمويل.' },
-  { id: 'esg', icon: '🌱', color: '#16A34A', title: 'الجدوى البيئية والاجتماعية', desc: 'تقييم الأثر البيئي والاجتماعي للمشروع.' },
-  { id: 'marketing', icon: '🎯', color: '#EC4899', title: 'الجدوى التسويقية والرقمية', desc: 'استراتيجية التسويق والحضور الرقمي.' },
+  { id: 'economic', icon: '💰', color: 'var(--sfm-soft-cyan)', titleKey: 'projects_feasibility_economic', descKey: 'projects_feasibility_economic_desc' },
+  { id: 'market', icon: '📈', color: '#22C55E', titleKey: 'projects_feasibility_market', descKey: 'projects_feasibility_market_desc' },
+  { id: 'technical', icon: '⚙️', color: '#3B82F6', titleKey: 'projects_feasibility_technical', descKey: 'projects_feasibility_technical_desc' },
+  { id: 'legal', icon: '⚖️', color: '#8B5CF6', titleKey: 'projects_feasibility_legal', descKey: 'projects_feasibility_legal_desc' },
+  { id: 'financial', icon: '💵', color: '#F59E0B', titleKey: 'projects_feasibility_financial', descKey: 'projects_feasibility_financial_desc' },
+  { id: 'esg', icon: '🌱', color: '#16A34A', titleKey: 'projects_feasibility_esg', descKey: 'projects_feasibility_esg_desc' },
+  { id: 'marketing', icon: '🎯', color: '#EC4899', titleKey: 'projects_feasibility_marketing', descKey: 'projects_feasibility_marketing_desc' },
 ];
 
-const PROJECT_TEXT = {
-  ar: {
-    title: '🚀 مشاريعي',
-    subtitle: 'تابع مشاريعك وخططك المالية والاستثمارية',
-    adCalculator: '🎯 حاسبة ميزانية حملة إعلانية',
-    close: 'إغلاق',
-    newProject: 'مشروع جديد',
-    editProject: 'تعديل المشروع',
-    totalProjects: 'إجمالي المشاريع',
-    activeProjects: 'المشاريع النشطة',
-    totalCapital: 'إجمالي رأس المال',
-    totalProfit: 'إجمالي الأرباح',
-    currency: 'د.ك',
-    noProjects: 'لا توجد مشاريع بعد',
-    noProjectsDesc: 'أضف مشروعك الأول واحصل على تحليل AI شامل',
-    addFirst: 'إضافة أول مشروع',
-    viewDetails: 'عرض التفاصيل',
-    expandProject: 'توسيع المشروع',
-    collapseProject: 'طي المشروع',
-    advisorTitle: 'SFM Project Advisor',
-    advisorSub: 'مستشار مشاريع متخصص',
-    connected: 'متصل',
-    send: 'إرسال',
-  },
-  en: {
-    title: '🚀 My Projects',
-    subtitle: 'Track your projects, financial plans, and investment ideas',
-    adCalculator: '🎯 Ad campaign budget calculator',
-    close: 'Close',
-    newProject: 'New project',
-    editProject: 'Edit project',
-    totalProjects: 'Total projects',
-    activeProjects: 'Active projects',
-    totalCapital: 'Total capital',
-    totalProfit: 'Total profit',
-    currency: 'KWD',
-    noProjects: 'No projects yet',
-    noProjectsDesc: 'Add your first project and get a full AI analysis',
-    addFirst: 'Add first project',
-    viewDetails: 'View Details',
-    expandProject: 'Expand project',
-    collapseProject: 'Collapse project',
-    advisorTitle: 'SFM Project Advisor',
-    advisorSub: 'Specialized project advisor',
-    connected: 'Connected',
-    send: 'Send message',
-  },
-  fr: {
-    title: '🚀 Mes projets',
-    subtitle: 'Suivez vos projets, plans financiers et idées d’investissement',
-    adCalculator: '🎯 Calculateur de budget publicitaire',
-    close: 'Fermer',
-    newProject: 'Nouveau projet',
-    editProject: 'Modifier le projet',
-    totalProjects: 'Total des projets',
-    activeProjects: 'Projets actifs',
-    totalCapital: 'Capital total',
-    totalProfit: 'Bénéfice total',
-    currency: 'KWD',
-    noProjects: 'Aucun projet pour le moment',
-    noProjectsDesc: 'Ajoutez votre premier projet et obtenez une analyse IA complète',
-    addFirst: 'Ajouter le premier projet',
-    viewDetails: 'Voir les détails',
-    expandProject: 'Développer le projet',
-    collapseProject: 'Réduire le projet',
-    advisorTitle: 'SFM Project Advisor',
-    advisorSub: 'Conseiller spécialisé en projets',
-    connected: 'Connecté',
-    send: 'Envoyer le message',
-  },
-} as const;
-
 /* ─── Helpers ─── */
-const riskInfo = (v: number) => v < 34
-  ? {label:'منخفض',  color:'#22C55E', bg:'rgba(34,197,94,.10)',  bar:'#22C55E'}
+const riskInfo = (v: number, labels: { low: string; medium: string; high: string }) => v < 34
+  ? {label:labels.low,  color:'#22C55E', bg:'rgba(34,197,94,.10)',  bar:'#22C55E'}
   : v < 67
-  ? {label:'متوسط',  color:'#F59E0B', bg:'rgba(245,158,11,.10)', bar:'#F59E0B'}
-  : {label:'عالٍ',   color:'#EF4444', bg:'rgba(239,68,68,.10)',  bar:'#EF4444'};
+  ? {label:labels.medium,  color:'#F59E0B', bg:'rgba(245,158,11,.10)', bar:'#F59E0B'}
+  : {label:labels.high,   color:'#EF4444', bg:'rgba(239,68,68,.10)',  bar:'#EF4444'};
 
 const scoreColor = (s: number) => s >= 70 ? '#22C55E' : s >= 50 ? 'var(--sfm-soft-cyan)' : '#EF4444';
 const fmt = (v: string | number) => parseFloat(normalizeDigits(v).replace(/[^\d.]/g, '')) || 0;
@@ -163,7 +102,8 @@ function StepDots({ step, total }: { step: number; total: number }) {
 
 /* ─── Gauge ─── */
 function RiskGauge({ value }: { value: number }) {
-  const ri = riskInfo(value);
+  const { t } = useLanguage();
+  const ri = riskInfo(value, { low: t('proj_risk_low'), medium: t('proj_risk_med'), high: t('proj_risk_high') });
   const dash = (value / 100) * 157;
   return (
     <div style={{ position: 'relative', width: '110px', height: '66px', margin: '0 auto' }}>
@@ -186,8 +126,45 @@ function RiskGauge({ value }: { value: number }) {
 export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { lang, dir } = useLanguage();
-  const pt = PROJECT_TEXT[lang];
+  const { lang, dir, t } = useLanguage();
+  const pt = {
+    title: `🚀 ${t('proj_title')}`,
+    subtitle: t('proj_subtitle'),
+    adCalculator: `🎯 ${t('projects_ad_calculator')}`,
+    close: t('projects_close'),
+    newProject: t('proj_new').replace(/^\+\s*/, ''),
+    editProject: t('projects_edit'),
+    totalProjects: t('proj_total'),
+    activeProjects: t('proj_active'),
+    totalCapital: t('proj_capital'),
+    totalProfit: t('proj_profit'),
+    currency: t('projects_currency'),
+    noProjects: t('projects_empty_title'),
+    noProjectsDesc: t('projects_empty_description'),
+    addFirst: t('projects_add_first'),
+    viewDetails: t('projects_view_details'),
+    expandProject: t('projects_expand'),
+    collapseProject: t('projects_collapse'),
+    advisorTitle: t('projects_advisor_title'),
+    advisorSub: t('projects_advisor_subtitle'),
+    connected: t('projects_connected'),
+    send: t('projects_send'),
+  };
+  const statusLabels: Record<ProjectStatus, string> = {
+    'فكرة': t('proj_idea'),
+    'قيد التنفيذ': t('proj_inprogress'),
+    'نشط': t('proj_active_s'),
+    'متوقف': t('proj_paused'),
+    'مكتمل': t('proj_done'),
+  };
+  const riskLabels = { low: t('proj_risk_low'), medium: t('proj_risk_med'), high: t('proj_risk_high') };
+  const needsOptions = [
+    ['تمويل 💰', 'projects_need_funding', '💰'], ['شريك 🤝', 'projects_need_partner', '🤝'], ['موظفين 👥', 'projects_need_employees', '👥'],
+    ['متجر إلكتروني 🛒', 'projects_need_store', '🛒'], ['تطبيق 📱', 'projects_need_app', '📱'], ['تسويق 📣', 'projects_need_marketing', '📣'],
+    ['موردين 🏭', 'projects_need_suppliers', '🏭'], ['موقع 🌐', 'projects_need_website', '🌐'], ['معدات ⚙️', 'projects_need_equipment', '⚙️'],
+    ['محل 🏪', 'projects_need_premises', '🏪'], ['رخصة 📋', 'projects_need_license', '📋'], ['خطة عمل 📊', 'projects_need_plan', '📊'],
+    ['دراسة جدوى 🔍', 'projects_need_feasibility', '🔍'], ['مستشار قانوني ⚖️', 'projects_need_legal', '⚖️'],
+  ] as const;
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formStep, setFormStep] = useState(0);
@@ -195,7 +172,7 @@ export default function ProjectsPage() {
   const [form, setForm] = useState<ProjectForm>(emptyForm);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: 'مرحباً! 👋 أنا مستشارك الذكي للمشاريع. أملأ تفاصيل مشروعك واضغط "حفظ وتحليل" للحصول على تقييم شامل، أو اسألني مباشرة! 🚀' }]);
+  const [messages, setMessages] = useState<Message[]>(() => [{ role: 'assistant', content: t('projects_chat_welcome') }]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -227,12 +204,20 @@ export default function ProjectsPage() {
   }, []);
   useEffect(() => { if (user) void loadProjects(); }, [user, loadProjects]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    setMessages([{ role: 'assistant', content: t('projects_chat_welcome') }]);
+    setChatInput('');
+  }, [lang, t]);
 
   const analyzeProject = async (): Promise<AIAnalysis | null> => {
     if (!form.name) return null;
     setAnalyzing(true);
     try {
-      const prompt = `حلل هذا المشروع:\nاسم: ${form.name}\nنوع: ${form.type}\nفكرة: ${form.idea}\nرأس المال: ${form.capital} د.ك\nالربح المتوقع: ${form.expectedProfit} د.ك\nالربح الحالي: ${form.currentProfit} د.ك\nمصروف شهري: ${form.monthlyExpenses} د.ك\nإيراد شهري: ${form.monthlyRevenue} د.ك\nالحالة: ${form.status}\nمستوى المخاطرة: ${riskInfo(form.riskLevel).label}\n\nأجب فقط بـ JSON:\n{"score":75,"successRate":"70%","strengths":["قوة 1"],"weaknesses":["ضعف 1"],"suggestions":["اقتراح 1"],"marketStatus":"وصف السوق"}`;
+      const prompt = lang === 'ar'
+        ? `حلل هذا المشروع باللغة العربية الفصحى:\nالاسم: ${form.name}\nالنوع: ${form.type}\nالفكرة: ${form.idea}\nرأس المال: ${form.capital} ${pt.currency}\nالربح المتوقع: ${form.expectedProfit} ${pt.currency}\nالربح الحالي: ${form.currentProfit} ${pt.currency}\nالمصروف الشهري: ${form.monthlyExpenses} ${pt.currency}\nالإيراد الشهري: ${form.monthlyRevenue} ${pt.currency}\nالحالة: ${statusLabels[form.status]}\nمستوى المخاطرة: ${riskInfo(form.riskLevel, riskLabels).label}\n\nأجب بصيغة JSON فقط مع محتوى عربي فصيح للمصفوفات والوصف:\n{"score":75,"successRate":"70%","strengths":["نقطة قوة"],"weaknesses":["نقطة ضعف"],"suggestions":["توصية"],"marketStatus":"وصف السوق"}`
+        : lang === 'fr'
+          ? `Analysez ce projet en français :\nNom : ${form.name}\nType : ${form.type}\nIdée : ${form.idea}\nCapital : ${form.capital} ${pt.currency}\nBénéfice attendu : ${form.expectedProfit} ${pt.currency}\nBénéfice actuel : ${form.currentProfit} ${pt.currency}\nDépenses mensuelles : ${form.monthlyExpenses} ${pt.currency}\nRevenu mensuel : ${form.monthlyRevenue} ${pt.currency}\nStatut : ${statusLabels[form.status]}\nRisque : ${riskInfo(form.riskLevel, riskLabels).label}\n\nRépondez uniquement en JSON, avec les tableaux et la description en français :\n{"score":75,"successRate":"70%","strengths":["Point fort"],"weaknesses":["Point faible"],"suggestions":["Recommandation"],"marketStatus":"Description du marché"}`
+          : `Analyze this project in English:\nName: ${form.name}\nType: ${form.type}\nIdea: ${form.idea}\nCapital: ${form.capital} ${pt.currency}\nExpected profit: ${form.expectedProfit} ${pt.currency}\nCurrent profit: ${form.currentProfit} ${pt.currency}\nMonthly expenses: ${form.monthlyExpenses} ${pt.currency}\nMonthly revenue: ${form.monthlyRevenue} ${pt.currency}\nStatus: ${statusLabels[form.status]}\nRisk: ${riskInfo(form.riskLevel, riskLabels).label}\n\nReply only in JSON, with all array items and the description in English:\n{"score":75,"successRate":"70%","strengths":["Strength"],"weaknesses":["Weakness"],"suggestions":["Recommendation"],"marketStatus":"Market description"}`;
       const res = await fetch('/api/projects-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: prompt }] }) });
       const data = await res.json();
       const clean = (data.text || '').replace(/```json|```/g, '').trim();
@@ -263,7 +248,7 @@ export default function ProjectsPage() {
       }
       setForm(emptyForm); setShowForm(false); setFormStep(0);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر حفظ المشروع');
+      alert(err instanceof Error && err.message ? t('projects_save_error') : t('projects_save_error'));
     } finally {
       setSaving(false);
     }
@@ -296,8 +281,8 @@ export default function ProjectsPage() {
     try {
       const res = await fetch('/api/projects-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: newMsgs.map(m => ({ role: m.role, content: m.content })) }) });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.text || 'عذراً، حدث خطأ.' }]);
-    } catch { setMessages(prev => [...prev, { role: 'assistant', content: 'عذراً، حدث خطأ.' }]); }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.text || t('projects_chat_error') }]);
+    } catch { setMessages(prev => [...prev, { role: 'assistant', content: t('projects_chat_error') }]); }
     setChatLoading(false);
   };
 
@@ -315,17 +300,17 @@ export default function ProjectsPage() {
     return false;
   });
   const projectTabs = [
-    { id: 'all', label: 'كل المشاريع', count: projects.length },
-    { id: 'active', label: 'النشطة', count: projects.filter(project => project.status === activeStatus || project.status === inProgressStatus).length },
-    { id: 'late', label: 'المتأخرة', count: projects.filter(project => project.status === stoppedStatus).length },
-    { id: 'completed', label: 'المكتملة', count: projects.filter(project => project.status === completedStatus).length },
-    { id: 'templates', label: 'القوالب' },
+    { id: 'all', label: t('projects_tab_all'), count: projects.length },
+    { id: 'active', label: t('projects_tab_active'), count: projects.filter(project => project.status === activeStatus || project.status === inProgressStatus).length },
+    { id: 'late', label: t('projects_tab_late'), count: projects.filter(project => project.status === stoppedStatus).length },
+    { id: 'completed', label: t('projects_tab_completed'), count: projects.filter(project => project.status === completedStatus).length },
+    { id: 'templates', label: t('projects_tab_templates') },
   ];
   const totalCapital = projects.reduce((s, p) => s + fmt(p.capital), 0);
   const totalCurrentProfit = projects.reduce((s, p) => s + fmt(p.currentProfit), 0);
   const activeProjects = projects.filter(p => p.status === 'نشط').length;
   const S = (d: number) => ({ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(18px)', transition: `opacity .5s ease ${d}ms, transform .5s ease ${d}ms` });
-  const STEP_LABELS = ['الأساسيات', 'المالية', 'التفاصيل', 'التقدم', 'نوع دراسة الجدوى'];
+  const STEP_LABELS = [t('projects_step_basics'), t('projects_step_financials'), t('projects_step_details'), t('projects_step_progress'), t('projects_step_feasibility')];
 
   return (<>
     <style>{`
@@ -430,7 +415,7 @@ export default function ProjectsPage() {
               <div style={{ marginBottom: '4px', fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>
                 {editingId ? pt.editProject : pt.newProject} — {STEP_LABELS[formStep]}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '20px' }}>الخطوة {formStep + 1} من {STEP_LABELS.length}</div>
+              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '20px' }}>{t('projects_step')} {formStep + 1} {t('projects_of')} {STEP_LABELS.length}</div>
               <StepDots step={formStep} total={STEP_LABELS.length} />
 
               {/* Step 0: Basics */}
@@ -447,37 +432,37 @@ export default function ProjectsPage() {
                       </div>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>اسم المشروع *</label>
-                      <input className="pi" placeholder="مثال: كافيه الرياض" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={{ height: '48px' }} />
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{t('projects_name')} *</label>
+                      <input className="pi" placeholder={t('projects_name_placeholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
                   <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     {[
-                      { key: 'type', label: 'نوع المشروع', opts: PROJECT_TYPES },
-                      { key: 'goal', label: 'الهدف من المشروع', opts: PROJECT_GOALS },
-                      { key: 'startTimeline', label: 'وقت البدء المتوقع', opts: START_TIMELINES },
+                      { key: 'type', label: t('projects_type'), opts: PROJECT_TYPES },
+                      { key: 'goal', label: t('projects_goal'), opts: PROJECT_GOALS },
+                      { key: 'startTimeline', label: t('projects_start_timeline'), opts: START_TIMELINES },
                     ].map(f => (
                       <div key={f.key}>
                         <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{f.label}</label>
                         <select className="pi psel" style={{ height: '48px' }} value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}>
-                          <option value="">اختر...</option>
-                          {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
+                          <option value="">{t('projects_select')}</option>
+                          {f.opts.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
                         </select>
                       </div>
                     ))}
                     <div>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>حالة المشروع</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{t('projects_status')}</label>
                       <select className="pi psel" style={{ height: '48px' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ProjectStatus }))}>
-                        {(Object.keys(STATUS_CONFIG) as ProjectStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].icon} {s}</option>)}
+                        {(Object.keys(STATUS_CONFIG) as ProjectStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].icon} {statusLabels[s]}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>تاريخ البداية</label>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{t('projects_start_date')}</label>
                       <input className="pi" type="date" style={{ height: '48px' }} value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
                     </div>
                     <div style={{ gridColumn: '1/-1' }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>فكرة المشروع</label>
-                      <input className="pi" placeholder="وصف مختصر..." value={form.idea} onChange={e => setForm(f => ({ ...f, idea: e.target.value }))} style={{ height: '48px' }} />
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{t('projects_idea')}</label>
+                      <input className="pi" placeholder={t('projects_idea_placeholder')} value={form.idea} onChange={e => setForm(f => ({ ...f, idea: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
                 </div>
@@ -488,16 +473,16 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     {[
-                      { key: 'capital', label: 'رأس المال المطلوب', icon: '💰', color: 'var(--sfm-soft-cyan)' },
-                      { key: 'expectedProfit', label: 'الربح المتوقع الشهري', icon: '📈', color: '#22C55E' },
-                      { key: 'currentProfit', label: 'الربح الحالي الفعلي', icon: '💵', color: '#3B82F6' },
-                      { key: 'monthlyExpenses', label: 'المصروفات الشهرية', icon: '🔥', color: '#EF4444' },
-                      { key: 'monthlyRevenue', label: 'الإيراد الشهري المتوقع', icon: '📊', color: '#22C55E' },
+                      { key: 'capital', label: t('projects_required_capital'), icon: '💰', color: 'var(--sfm-soft-cyan)' },
+                      { key: 'expectedProfit', label: t('projects_expected_monthly_profit'), icon: '📈', color: '#22C55E' },
+                      { key: 'currentProfit', label: t('projects_actual_profit'), icon: '💵', color: '#3B82F6' },
+                      { key: 'monthlyExpenses', label: t('projects_monthly_expenses'), icon: '🔥', color: '#EF4444' },
+                      { key: 'monthlyRevenue', label: t('projects_expected_monthly_revenue'), icon: '📊', color: '#22C55E' },
                     ].map(f => (
                       <div key={f.key}>
                         <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>{f.icon} {f.label}</label>
                         <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)' }}>
-                          <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: f.color, borderLeft: '1px solid rgba(167,243,240,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>د.ك</span>
+                          <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: f.color, borderLeft: '1px solid rgba(167,243,240,.15)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{pt.currency}</span>
                           <input type="text" placeholder="0.000" dir="ltr" value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                             style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '16px', fontWeight: '700', color: 'var(--sfm-foreground)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }} />
                         </div>
@@ -510,7 +495,7 @@ export default function ProjectsPage() {
                       if (cap > 0 && profit > 0) {
                         return (
                           <div style={{ background: 'rgba(34,197,94,.06)', border: '1.5px solid rgba(34,197,94,.2)', borderRadius: '14px', padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', textAlign: 'center' }}>
-                            {[{ label: 'الربح الشهري', val: `${profit.toFixed(3)} د.ك`, color: '#22C55E' }, { label: 'استرجاع رأس المال', val: `${Math.ceil(cap / profit)} شهر`, color: 'var(--sfm-soft-cyan)' }, { label: 'العائد السنوي', val: `${((profit * 12 / cap) * 100).toFixed(1)}%`, color: '#3B82F6' }].map((r, i) => (
+                            {[{ label: t('projects_monthly_profit'), val: `${profit.toFixed(3)} ${pt.currency}`, color: '#22C55E' }, { label: t('projects_payback'), val: `${Math.ceil(cap / profit)} ${t('projects_month')}`, color: 'var(--sfm-soft-cyan)' }, { label: t('projects_annual_return'), val: `${((profit * 12 / cap) * 100).toFixed(1)}%`, color: '#3B82F6' }].map((r, i) => (
                               <div key={i}><div style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginBottom: '4px' }}>{r.label}</div><div style={{ fontSize: '15px', fontWeight: '800', color: r.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{r.val}</div></div>
                             ))}
                           </div>
@@ -522,10 +507,10 @@ export default function ProjectsPage() {
                   {/* Risk slider */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)' }}>⚖️ مستوى المخاطرة</label>
-                      <span style={{ fontSize: '12.5px', fontWeight: '700', padding: '3px 12px', borderRadius: '20px', background: riskInfo(form.riskLevel).bg, color: riskInfo(form.riskLevel).color }}>{riskInfo(form.riskLevel).label} ({form.riskLevel})</span>
+                      <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)' }}>⚖️ {t('projects_risk_level')}</label>
+                      <span style={{ fontSize: '12.5px', fontWeight: '700', padding: '3px 12px', borderRadius: '20px', background: riskInfo(form.riskLevel, riskLabels).bg, color: riskInfo(form.riskLevel, riskLabels).color }}>{riskInfo(form.riskLevel, riskLabels).label} ({form.riskLevel})</span>
                     </div>
-                    <input type="range" min={0} max={100} value={form.riskLevel} onChange={e => setForm(f => ({ ...f, riskLevel: +e.target.value }))} style={{ width: '100%', height: '6px', borderRadius: '10px', accentColor: riskInfo(form.riskLevel).color, cursor: 'pointer' }} />
+                    <input type="range" min={0} max={100} value={form.riskLevel} onChange={e => setForm(f => ({ ...f, riskLevel: +e.target.value }))} style={{ width: '100%', height: '6px', borderRadius: '10px', accentColor: riskInfo(form.riskLevel, riskLabels).color, cursor: 'pointer' }} />
                   </div>
                 </div>
               )}
@@ -534,15 +519,15 @@ export default function ProjectsPage() {
               {formStep === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '8px' }}>📝 ملاحظات</label>
-                    <textarea className="pi" rows={4} placeholder="أضف أي ملاحظات أو تفاصيل إضافية عن المشروع..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical', minHeight: '100px' }} />
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '8px' }}>📝 {t('projects_notes')}</label>
+                    <textarea className="pi" rows={4} placeholder={t('projects_notes_placeholder')} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical', minHeight: '100px' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '10px' }}>⚡ ما يحتاجه المشروع</label>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '10px' }}>⚡ {t('projects_needs')}</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {['تمويل 💰', 'شريك 🤝', 'موظفين 👥', 'متجر إلكتروني 🛒', 'تطبيق 📱', 'تسويق 📣', 'موردين 🏭', 'موقع 🌐', 'معدات ⚙️', 'محل 🏪', 'رخصة 📋', 'خطة عمل 📊', 'دراسة جدوى 🔍', 'مستشار قانوني ⚖️'].map(n => {
-                        const active = form.needs.includes(n);
-                        return <button key={n} className={'need-chip' + (active ? ' active' : '')} onClick={() => setForm(f => ({ ...f, needs: active ? f.needs.filter(x => x !== n) : [...f.needs, n] }))}>{n}{active && ' ✓'}</button>;
+                      {needsOptions.map(([value, key, icon]) => {
+                        const active = form.needs.includes(value);
+                        return <button key={value} className={'need-chip' + (active ? ' active' : '')} onClick={() => setForm(f => ({ ...f, needs: active ? f.needs.filter(x => x !== value) : [...f.needs, value] }))}>{t(key)} {icon}{active && ' ✓'}</button>;
                       })}
                     </div>
                   </div>
@@ -552,7 +537,7 @@ export default function ProjectsPage() {
               {/* Step 3: Progress */}
               {formStep === 3 && (
                 <div>
-                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginBottom: '14px' }}>حدّد المراحل التي أتممتها</div>
+                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginBottom: '14px' }}>{t('projects_progress_help')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {PROGRESS_STEPS.map((s, i) => {
                       const done = form.progress[s.id];
@@ -561,8 +546,8 @@ export default function ProjectsPage() {
                           style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', borderRadius: '16px', border: `1.5px solid ${done ? 'rgba(34,197,94,.3)' : 'rgba(167,243,240,.18)'}`, background: done ? 'rgba(34,197,94,.05)' : 'var(--sfm-light-card)', cursor: 'pointer', transition: 'all .2s' }}>
                           <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', background: done ? 'rgba(34,197,94,.12)' : 'rgba(167,243,240,.10)', border: `2px solid ${done ? '#22C55E' : 'rgba(167,243,240,.3)'}`, flexShrink: 0 }}>{done ? '✅' : s.icon}</div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: done ? '#22C55E' : 'var(--sfm-foreground)' }}>{s.label}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>المرحلة {i + 1} من 5</div>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: done ? '#22C55E' : 'var(--sfm-foreground)' }}>{t(s.labelKey)}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{t('projects_stage')} {i + 1} {t('projects_of')} 5</div>
                           </div>
                           <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${done ? '#22C55E' : 'rgba(167,243,240,.3)'}`, background: done ? '#22C55E' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', flexShrink: 0 }}>{done && '✓'}</div>
                         </div>
@@ -573,16 +558,16 @@ export default function ProjectsPage() {
               )}
               {formStep === 4 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)' }}>اختر نوع دراسة الجدوى المطلوبة. يمكن اختيار أكثر من نوع.</div>
+                  <div style={{ fontSize: '13px', color: 'var(--sfm-muted)' }}>{t('projects_feasibility_help')}</div>
                   <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '12px' }}>
                     {FEASIBILITY_TYPES.map(type => {
                       const active = form.feasibilityTypes.includes(type.id);
                       return (
-                        <button key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: 'right', border: `1.8px solid ${active ? 'var(--sfm-soft-cyan)' : 'rgba(167,243,240,.18)'}`, background: active ? 'rgba(167,243,240,.10)' : 'var(--sfm-card)', borderRadius: '16px', padding: '14px', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>
+                        <button key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: dir === 'rtl' ? 'right' : 'left', border: `1.8px solid ${active ? 'var(--sfm-soft-cyan)' : 'rgba(167,243,240,.18)'}`, background: active ? 'rgba(167,243,240,.10)' : 'var(--sfm-card)', borderRadius: '16px', padding: '14px', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>
                           <div style={{ fontSize: '26px', color: type.color }}>{type.icon}</div>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--sfm-foreground)', marginTop: '8px' }}>{type.title}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', lineHeight: 1.6, marginTop: '5px' }}>{type.desc}</div>
-                          <div style={{ marginTop: '9px', fontSize: '11px', color: type.color, fontWeight: 800 }}>{active ? 'تم الاختيار' : 'اختر'}</div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--sfm-foreground)', marginTop: '8px' }}>{t(type.titleKey)}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', lineHeight: 1.6, marginTop: '5px' }}>{t(type.descKey)}</div>
+                          <div style={{ marginTop: '9px', fontSize: '11px', color: type.color, fontWeight: 800 }}>{active ? t('projects_selected') : t('projects_choose')}</div>
                         </button>
                       );
                     })}
@@ -593,15 +578,15 @@ export default function ProjectsPage() {
               {/* Nav buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '26px', paddingTop: '18px', borderTop: '1px solid rgba(167,243,240,.10)' }}>
                 <button className="pbtn pbtn-o" style={{ padding: '10px 20px', fontSize: '14px' }} onClick={() => formStep > 0 ? setFormStep(s => s - 1) : (setShowForm(false), setEditingId(null))}>
-                  {formStep > 0 ? '← السابق' : 'إلغاء'}
+                  {formStep > 0 ? `${dir === 'rtl' ? '←' : '→'} ${t('projects_previous')}` : t('projects_cancel')}
                 </button>
                 {formStep < STEP_LABELS.length - 1 ? (
                   <button className="pbtn pbtn-d" style={{ padding: '10px 22px', fontSize: '14px' }} disabled={formStep === 0 && !form.name.trim()} onClick={() => setFormStep(s => s + 1)}>
-                    التالي →
+                    {t('projects_next')} {dir === 'rtl' ? '→' : '←'}
                   </button>
                 ) : (
                   <button className="pbtn pbtn-g" style={{ padding: '10px 22px', fontSize: '14px' }} onClick={saveProject} disabled={saving || analyzing}>
-                    {saving || analyzing ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: 'var(--sfm-foreground)', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> {analyzing ? 'تحليل AI...' : 'حفظ...'}</> : '💾 حفظ وتحليل'}
+                    {saving || analyzing ? <><span style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: 'var(--sfm-foreground)', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> {analyzing ? t('projects_analyzing') : t('projects_saving')}</> : `💾 ${t('projects_save_analyze')}`}
                   </button>
                 )}
               </div>
@@ -623,8 +608,8 @@ export default function ProjectsPage() {
 
           {projects.length > 0 && filteredProjects.length === 0 && activeTab !== 'all' && (
             <div className="pc" style={{ ...S(90), padding: '34px', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '8px' }}>لا توجد بيانات حتى الآن.</h3>
-              <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.7 }}>استخدم تبويب كل المشاريع أو أضف مشروعاً جديداً عند الحاجة.</p>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '8px' }}>{t('projects_filtered_empty')}</h3>
+              <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.7 }}>{t('projects_filtered_empty_body')}</p>
             </div>
           )}
 
@@ -646,16 +631,16 @@ export default function ProjectsPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
                           <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{project.name}</h3>
-                          <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, flexShrink: 0 }}>{sc.icon} {project.status}</span>
-                          {project.type && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(167,243,240,.10)', color: 'var(--sfm-muted)' }}>{project.type}</span>}
+                          <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, flexShrink: 0 }}>{sc.icon} {statusLabels[project.status]}</span>
+                          {project.type && <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: 'rgba(167,243,240,.10)', color: 'var(--sfm-muted)' }}>{PROJECT_TYPES.find(([value]) => value === project.type)?.[1] ? t(PROJECT_TYPES.find(([value]) => value === project.type)![1]) : project.type}</span>}
                         </div>
                         <div className="prog-bar" style={{ marginBottom: '6px' }}>
                           <div className="prog-fill" style={{ width: `${progressPct}%`, background: progressPct === 100 ? '#22C55E' : 'linear-gradient(90deg,var(--sfm-primary),var(--sfm-accent))' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                          {cap > 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>رأس المال: <b style={{ color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{cap.toFixed(3)} د.ك</b></span>}
-                          {curP !== 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>الربح الحالي: <b style={{ color: curP >= 0 ? '#22C55E' : '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} د.ك</b></span>}
-                          {roi && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>استرجاع: <b style={{ color: '#3B82F6' }}>{roi.months} شهر</b></span>}
+                          {cap > 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>{t('projects_capital')}: <b style={{ color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{cap.toFixed(3)} {pt.currency}</b></span>}
+                          {curP !== 0 && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>{t('projects_current_profit')}: <b style={{ color: curP >= 0 ? '#22C55E' : '#EF4444', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} {pt.currency}</b></span>}
+                          {roi && <span style={{ fontSize: '12px', color: 'var(--sfm-muted)' }}>{t('projects_payback_short')}: <b style={{ color: '#3B82F6' }}>{roi.months} {t('projects_month')}</b></span>}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
@@ -679,23 +664,23 @@ export default function ProjectsPage() {
                         <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', paddingTop: '18px' }}>
                           {/* Financials */}
                           <div>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>💰 البيانات المالية</div>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>💰 {t('projects_financial_data')}</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                               {[
-                                { label: 'رأس المال', val: project.capital, icon: '💰', color: 'var(--sfm-soft-cyan)' },
-                                { label: 'الربح المتوقع', val: project.expectedProfit, icon: '📈', color: '#22C55E' },
-                                { label: 'الربح الحالي', val: project.currentProfit, icon: '💵', color: curP >= 0 ? '#22C55E' : '#EF4444' },
-                                { label: 'مصروف/شهر', val: project.monthlyExpenses, icon: '🔥', color: '#EF4444' },
+                                { label: t('projects_capital'), val: project.capital, icon: '💰', color: 'var(--sfm-soft-cyan)' },
+                                { label: t('projects_expected_profit'), val: project.expectedProfit, icon: '📈', color: '#22C55E' },
+                                { label: t('projects_current_profit'), val: project.currentProfit, icon: '💵', color: curP >= 0 ? '#22C55E' : '#EF4444' },
+                                { label: t('projects_expense_month'), val: project.monthlyExpenses, icon: '🔥', color: '#EF4444' },
                               ].map((f, i) => f.val ? (
                                 <div key={i} style={{ background: 'var(--sfm-card)', borderRadius: '12px', padding: '12px', textAlign: 'center', border: '1px solid rgba(167,243,240,.10)' }}>
                                   <div style={{ fontSize: '16px', marginBottom: '4px' }}>{f.icon}</div>
                                   <div style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginBottom: '4px' }}>{f.label}</div>
-                                  <div style={{ fontSize: '14px', fontWeight: '800', color: f.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginRight: '3px' }}> د.ك</span></div>
+                                  <div style={{ fontSize: '14px', fontWeight: '800', color: f.color, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: '10px', color: 'var(--sfm-muted)', marginInlineStart: '3px' }}> {pt.currency}</span></div>
                                 </div>
                               ) : null)}
                             </div>
                             <div style={{ marginTop: '12px', background: 'var(--sfm-card)', borderRadius: '12px', padding: '14px', textAlign: 'center', border: '1px solid rgba(167,243,240,.10)' }}>
-                              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '10px' }}>مستوى المخاطرة</div>
+                              <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginBottom: '10px' }}>{t('projects_risk_level')}</div>
                               <RiskGauge value={project.riskLevel} />
                             </div>
                           </div>
@@ -703,16 +688,16 @@ export default function ProjectsPage() {
                           {/* AI Analysis */}
                           {project.analysis && (
                             <div>
-                              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>🤖 تحليل الذكاء الاصطناعي</div>
+                              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '12px' }}>🤖 {t('projects_ai_analysis')}</div>
                               <div style={{ background: 'linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark))', borderRadius: '16px', padding: '16px', marginBottom: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.6)' }}>نسبة النجاح المتوقعة</span>
+                                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.6)' }}>{t('projects_expected_success')}</span>
                                   <span style={{ fontSize: '18px', fontWeight: '900', color: scoreColor(project.analysis.score) }}>{project.analysis.successRate}</span>
                                 </div>
                                 {[
-                                  { label: 'نقاط القوة', items: project.analysis.strengths, color: '#22C55E', icon: '✅' },
-                                  { label: 'نقاط الضعف', items: project.analysis.weaknesses, color: '#EF4444', icon: '⚠️' },
-                                  { label: 'التوصيات', items: project.analysis.suggestions, color: 'var(--sfm-soft-cyan)', icon: '💡' },
+                                  { label: t('projects_strengths'), items: project.analysis.strengths, color: '#22C55E', icon: '✅' },
+                                  { label: t('projects_weaknesses'), items: project.analysis.weaknesses, color: '#EF4444', icon: '⚠️' },
+                                  { label: t('projects_recommendations'), items: project.analysis.suggestions, color: 'var(--sfm-soft-cyan)', icon: '💡' },
                                 ].map((sec, i) => (
                                   <div key={i} style={{ marginBottom: '8px' }}>
                                     <div style={{ fontSize: '10.5px', fontWeight: '700', color: 'rgba(255,255,255,.45)', marginBottom: '4px' }}>{sec.icon} {sec.label}</div>
@@ -722,7 +707,7 @@ export default function ProjectsPage() {
                               </div>
                               {project.analysis.marketStatus && (
                                 <div style={{ background: 'rgba(167,243,240,.07)', border: '1px solid rgba(167,243,240,.18)', borderRadius: '12px', padding: '11px 14px' }}>
-                                  <div style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📊 حالة السوق</div>
+                                  <div style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📊 {t('projects_market_status')}</div>
                                   <div style={{ fontSize: '12px', color: 'var(--sfm-muted)', lineHeight: 1.6 }}>{project.analysis.marketStatus}</div>
                                 </div>
                               )}
@@ -732,11 +717,11 @@ export default function ProjectsPage() {
 
                         {/* Progress steps */}
                         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(167,243,240,.08)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '10px' }}>📋 مراحل المشروع</div>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '10px' }}>📋 {t('projects_stages')}</div>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {PROGRESS_STEPS.map(s => {
                               const done = project.progress?.[s.id];
-                              return <button key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: `1.5px solid ${done ? '#22C55E' : 'rgba(167,243,240,.22)'}`, background: done ? 'rgba(34,197,94,.08)' : 'var(--sfm-card)', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600', color: done ? '#22C55E' : 'var(--sfm-muted)', fontFamily: 'Tajawal,sans-serif', transition: 'all .2s' }}><span>{done ? '✅' : s.icon}</span>{s.label}</button>;
+                              return <button key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '20px', border: `1.5px solid ${done ? '#22C55E' : 'rgba(167,243,240,.22)'}`, background: done ? 'rgba(34,197,94,.08)' : 'var(--sfm-card)', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600', color: done ? '#22C55E' : 'var(--sfm-muted)', fontFamily: 'Tajawal,sans-serif', transition: 'all .2s' }}><span>{done ? '✅' : s.icon}</span>{t(s.labelKey)}</button>;
                             })}
                           </div>
                         </div>
@@ -744,7 +729,7 @@ export default function ProjectsPage() {
                         {/* Notes */}
                         {project.notes && (
                           <div style={{ marginTop: '14px', background: 'rgba(167,243,240,.06)', border: '1px solid rgba(167,243,240,.15)', borderRadius: '12px', padding: '12px 14px' }}>
-                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📝 ملاحظات</div>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--sfm-muted)', marginBottom: '4px' }}>📝 {t('projects_notes')}</div>
                             <div style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.6 }}>{project.notes}</div>
                           </div>
                         )}
@@ -771,7 +756,7 @@ export default function ProjectsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '12px 22px 0', flexWrap: 'wrap', borderBottom: '1px solid rgba(167,243,240,.08)', paddingBottom: '12px' }}>
-              {['كيف أبدأ مشروعي؟', 'أفضل مشروع بـ 5000 د.ك؟', 'كيف أحسب الجدوى؟'].map((q, i) => (
+              {[t('projects_chat_question_start'), t('projects_chat_question_budget'), t('projects_chat_question_feasibility')].map((q, i) => (
                 <button key={i} onClick={() => setChatInput(q)} style={{ background: 'var(--sfm-card)', border: '1px solid rgba(167,243,240,.2)', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '600', color: 'var(--sfm-muted)', cursor: 'pointer', fontFamily: 'Tajawal,sans-serif' }}>{q}</button>
               ))}
             </div>
@@ -786,7 +771,7 @@ export default function ProjectsPage() {
               <div ref={chatEndRef} />
             </div>
             <div style={{ padding: '12px 22px 20px', borderTop: '1px solid rgba(167,243,240,.08)', display: 'flex', gap: '10px' }}>
-              <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="اسألني عن مشروعك..."
+              <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder={t('projects_chat_placeholder')}
                 style={{ flex: 1, background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.2)', borderRadius: '14px', padding: '11px 16px', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', color: 'var(--sfm-foreground)', outline: 'none', transition: 'border-color .2s' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--sfm-soft-cyan)'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(167,243,240,.2)'} />
               <button

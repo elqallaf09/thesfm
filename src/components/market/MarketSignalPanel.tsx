@@ -2,6 +2,8 @@
 
 import { AlertTriangle, Bell, Clock3, Gauge, Info, ShieldAlert, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
+import type { Lang } from '@/lib/translations';
 import {
   MARKET_SIGNAL_DISCLAIMER_AR,
   MARKET_SIGNAL_DISCLAIMER_EN,
@@ -17,28 +19,64 @@ type MarketSignalPanelProps = {
   compact?: boolean;
 };
 
-const ACTION_BADGE: Record<MarketSignalAction, { label: string; className: string }> = {
-  buy: { label: 'شراء', className: 'buy' },
-  cautious_buy: { label: 'شراء بحذر', className: 'cautious-buy' },
-  sell: { label: 'تجنب / بيع', className: 'sell' },
-  sell_or_avoid: { label: 'تجنب / بيع', className: 'sell' },
-  wait: { label: 'انتظار', className: 'wait' },
-  watch: { label: 'مراقبة', className: 'watch' },
-  insufficient_data: { label: 'بيانات غير كافية', className: 'insufficient' },
+type Localized = Record<Lang, string>;
+
+const ACTION_BADGE: Record<MarketSignalAction, { label: Localized; className: string }> = {
+  buy: { label: { ar: 'شراء', en: 'Buy', fr: 'Acheter' }, className: 'buy' },
+  cautious_buy: { label: { ar: 'شراء بحذر', en: 'Cautious buy', fr: 'Achat prudent' }, className: 'cautious-buy' },
+  sell: { label: { ar: 'تجنب / بيع', en: 'Avoid / Sell', fr: 'Éviter / Vendre' }, className: 'sell' },
+  sell_or_avoid: { label: { ar: 'تجنب / بيع', en: 'Avoid / Sell', fr: 'Éviter / Vendre' }, className: 'sell' },
+  wait: { label: { ar: 'انتظار', en: 'Wait', fr: 'Attendre' }, className: 'wait' },
+  watch: { label: { ar: 'مراقبة', en: 'Watch', fr: 'Surveiller' }, className: 'watch' },
+  insufficient_data: { label: { ar: 'بيانات غير كافية', en: 'Insufficient data', fr: 'Données insuffisantes' }, className: 'insufficient' },
 };
 
-const RISK_LABELS: Record<MarketSignalRiskLevel, string> = {
-  low: 'منخفض',
-  medium: 'متوسط',
-  high: 'مرتفع',
+const RISK_LABELS: Record<MarketSignalRiskLevel, Localized> = {
+  low: { ar: 'منخفض', en: 'Low', fr: 'Faible' },
+  medium: { ar: 'متوسط', en: 'Medium', fr: 'Moyen' },
+  high: { ar: 'مرتفع', en: 'High', fr: 'Élevé' },
 };
 
-const DATA_QUALITY_LABELS: Record<MarketSignalDataQuality, string> = {
-  live: 'مباشرة',
-  delayed: 'متأخرة',
-  partial: 'جزئية',
-  unavailable: 'غير متاحة',
+const DATA_QUALITY_LABELS: Record<MarketSignalDataQuality, Localized> = {
+  live: { ar: 'مباشرة', en: 'Live', fr: 'En direct' },
+  delayed: { ar: 'متأخرة', en: 'Delayed', fr: 'Différées' },
+  partial: { ar: 'جزئية', en: 'Partial', fr: 'Partielles' },
+  unavailable: { ar: 'غير متاحة', en: 'Unavailable', fr: 'Indisponibles' },
 };
+
+const UI: Record<Lang, Record<string, string>> = {
+  ar: { signal:'إشارة التداول', analysis:'تحليل الإشارة', loading:'جارٍ تحليل البيانات المتاحة...', empty:'البيانات غير كافية لإظهار إشارة موثوقة حالياً.', confidence:'الثقة', currentPrice:'السعر الحالي', target:'الهدف', stop:'وقف الخسارة', upside:'الصعود المتوقع', downside:'الهبوط إلى وقف الخسارة', ratio:'نسبة العائد إلى المخاطرة', timeframe:'الأفق الزمني', risk:'المخاطر', dataQuality:'جودة البيانات', reasons:'أسباب الإشارة', warnings:'المخاطر والتنبيهات', score:'نقاط التقييم', scoreBreakdown:'تفاصيل نقاط التقييم', technical:'فني', momentum:'زخم', news:'أخبار', fundamentals:'أساسيات', defaultTimeframe:'1-3 أسابيع' },
+  en: { signal:'Trading signal', analysis:'Signal analysis', loading:'Analyzing available data...', empty:'There is not enough data to show a reliable signal right now.', confidence:'Confidence', currentPrice:'Current price', target:'Target', stop:'Stop loss', upside:'Expected upside', downside:'Downside to stop loss', ratio:'Risk/reward ratio', timeframe:'Time horizon', risk:'Risk', dataQuality:'Data quality', reasons:'Signal reasons', warnings:'Risks and warnings', score:'Score breakdown', scoreBreakdown:'Score breakdown', technical:'Technical', momentum:'Momentum', news:'News', fundamentals:'Fundamentals', defaultTimeframe:'1–3 weeks' },
+  fr: { signal:'Signal de trading', analysis:'Analyse du signal', loading:'Analyse des données disponibles...', empty:'Les données sont insuffisantes pour afficher un signal fiable pour le moment.', confidence:'Confiance', currentPrice:'Cours actuel', target:'Objectif', stop:'Stop de protection', upside:'Hausse attendue', downside:'Baisse jusqu’au stop', ratio:'Rapport risque/rendement', timeframe:'Horizon temporel', risk:'Risque', dataQuality:'Qualité des données', reasons:'Raisons du signal', warnings:'Risques et avertissements', score:'Détail du score', scoreBreakdown:'Détail du score', technical:'Technique', momentum:'Momentum', news:'Actualités', fundamentals:'Fondamentaux', defaultTimeframe:'1 à 3 semaines' },
+};
+
+const REASON_COPY: Record<string, { en: string; fr: string }> = {
+  'البيانات غير كافية لإصدار إشارة شراء أو بيع موثوقة.': { en: 'There is not enough data for a reliable buy or sell signal.', fr: 'Les données sont insuffisantes pour produire un signal fiable d’achat ou de vente.' },
+  'البيانات غير كافية.': { en: 'Data is insufficient.', fr: 'Les données sont insuffisantes.' },
+  'البيانات الفنية غير مكتملة.': { en: 'Technical data is incomplete.', fr: 'Les données techniques sont incomplètes.' },
+  'الاتجاه الفني إيجابي والسعر أعلى من متوسطات رئيسية.': { en: 'The technical trend is positive and price is above key averages.', fr: 'La tendance technique est positive et le cours est au-dessus des moyennes principales.' },
+  'الاتجاه الفني سلبي والسعر أدنى من متوسطات رئيسية.': { en: 'The technical trend is negative and price is below key averages.', fr: 'La tendance technique est négative et le cours est sous les moyennes principales.' },
+  'الاتجاه الفني مختلط ويحتاج إلى تأكيد إضافي.': { en: 'The technical trend is mixed and needs more confirmation.', fr: 'La tendance technique est mitigée et nécessite une confirmation supplémentaire.' },
+  'MACD يميل إلى الزخم الإيجابي.': { en: 'MACD indicates positive momentum.', fr: 'Le MACD indique un momentum positif.' },
+  'MACD يميل إلى الزخم السلبي.': { en: 'MACD indicates negative momentum.', fr: 'Le MACD indique un momentum négatif.' },
+  'الأخبار أو المعنويات المتاحة داعمة.': { en: 'Available news or sentiment is supportive.', fr: 'Les actualités ou le sentiment disponibles sont favorables.' },
+  'الأخبار أو المعنويات المتاحة تضغط على الإشارة.': { en: 'Available news or sentiment weighs on the signal.', fr: 'Les actualités ou le sentiment disponibles pèsent sur le signal.' },
+  'جودة البيانات جزئية وتم تقييد الثقة.': { en: 'Data quality is partial, so confidence was limited.', fr: 'La qualité des données est partielle ; la confiance a donc été limitée.' },
+  'الأسعار قد تكون متأخرة حسب المزود.': { en: 'Prices may be delayed depending on the provider.', fr: 'Les cours peuvent être différés selon le fournisseur.' },
+  'مستوى المخاطر مرتفع؛ لا تستخدم الإشارة دون إدارة وقف خسارة.': { en: 'Risk is high; do not use the signal without stop-loss management.', fr: 'Le risque est élevé ; n’utilisez pas le signal sans gérer un stop de protection.' },
+  'السوق متقلب.': { en: 'The market is volatile.', fr: 'Le marché est volatil.' },
+  'خبر عالي التأثير قد يغير الاتجاه بسرعة.': { en: 'High-impact news may change the trend quickly.', fr: 'Une actualité à fort impact peut modifier rapidement la tendance.' },
+  'لا توجد إشارة تداول كافية حالياً.': { en: 'There is not enough confirmation for a trading signal right now.', fr: 'Il n’y a pas assez de confirmation pour un signal de trading pour le moment.' },
+  'الهدف أدنى من السعر الحالي والثقة تدعم تجنب الصفقة أو البيع.': { en: 'The target is below the current price, and confidence supports avoiding or selling.', fr: 'L’objectif est inférieur au cours actuel, et la confiance appuie le fait d’éviter la position ou de vendre.' },
+  'الهدف أعلى من السعر الحالي ونسبة العائد إلى المخاطرة كافية للشراء.': { en: 'The target is above the current price and the risk/reward ratio supports a buy.', fr: 'L’objectif est supérieur au cours actuel et le rapport risque/rendement soutient un achat.' },
+  'الهدف أعلى من السعر الحالي، لكن الثقة متوسطة ونسبة العائد إلى المخاطرة غير كافية للشراء القوي.': { en: 'The target is above the current price, but confidence is moderate and risk/reward is not enough for a strong buy.', fr: 'L’objectif est supérieur au cours actuel, mais la confiance est modérée et le rapport risque/rendement est insuffisant pour un achat fort.' },
+  'الهدف أعلى من السعر الحالي، لكن البيانات الفنية غير مكتملة.': { en: 'The target is above the current price, but technical data is incomplete.', fr: 'L’objectif est supérieur au cours actuel, mais les données techniques sont incomplètes.' },
+  'الهدف أعلى من السعر الحالي، لكن الثقة متوسطة.': { en: 'The target is above the current price, but confidence is moderate.', fr: 'L’objectif est supérieur au cours actuel, mais la confiance est modérée.' },
+  'الهدف لا يتجاوز السعر الحالي، لذلك تبقى الإشارة للمراقبة.': { en: 'The target does not exceed the current price, so the signal remains a watch.', fr: 'L’objectif ne dépasse pas le cours actuel, le signal reste donc en surveillance.' },
+  'الهدف أعلى من السعر الحالي، لكن الثقة دون الحد الأدنى.': { en: 'The target is above the current price, but confidence is below the minimum threshold.', fr: 'L’objectif est supérieur au cours actuel, mais la confiance est inférieure au seuil minimal.' },
+};
+
+const DISCLAIMER_FR = 'Ces signaux sont fournis à titre pédagogique à partir des données disponibles et ne constituent pas un conseil financier. Les marchés comportent des risques et les données peuvent être retardées ou incomplètes.';
 
 function formatNumber(value: number | null | undefined, digits = 2) {
   if (!Number.isFinite(Number(value))) return '--';
@@ -70,10 +108,28 @@ function actionLabel(action: MarketSignalAction) {
   return ACTION_BADGE[action] ?? ACTION_BADGE.watch;
 }
 
-function Meter({ value }: { value: number }) {
+function localizedReason(value: string, lang: Lang) {
+  if (lang === 'ar') return value;
+  const exact = REASON_COPY[value];
+  if (exact) return exact[lang];
+  const rsi = value.match(/^قراءة RSI عند ([\d.]+) وتستخدم كمرشح زخم لا كتنبؤ مؤكد\.$/);
+  if (rsi) return lang === 'fr' ? `Le RSI est à ${rsi[1]} et sert de filtre de momentum, non de prévision certaine.` : `RSI is at ${rsi[1]} and is used as a momentum filter, not a certain forecast.`;
+  const score = value.match(/^النتيجة المركبة الحالية ([\d.]+)\/100/);
+  if (score) return lang === 'fr' ? `Le score composite actuel est de ${score[1]}/100 selon le cours, les indicateurs, le risque et la qualité des données.` : `The current composite score is ${score[1]}/100 based on price, indicators, risk, and data quality.`;
+  return lang === 'fr' ? 'Informations supplémentaires indisponibles dans cette langue.' : 'Additional details are unavailable in this language.';
+}
+
+function localizedTimeframe(value: string | null | undefined, lang: Lang) {
+  if (!value || value === '1-3 أسابيع') return UI[lang].defaultTimeframe;
+  if (value === 'بيانات غير كافية') return ACTION_BADGE.insufficient_data.label[lang];
+  if (value === 'مراقبة') return ACTION_BADGE.watch.label[lang];
+  return value;
+}
+
+function Meter({ value, label }: { value: number; label: string }) {
   const safeValue = Math.max(0, Math.min(95, Math.round(value)));
   return (
-    <div className="market-signal-meter" aria-label={`confidence ${safeValue}%`}>
+    <div className="market-signal-meter" aria-label={`${label} ${safeValue}%`}>
       <span style={{ width: `${safeValue}%` }} />
     </div>
   );
@@ -92,11 +148,12 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
 }
 
 export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, 'action' | 'confidence'> | null | undefined }) {
+  const { lang } = useLanguage();
   if (!signal) return null;
   const badge = actionLabel(signal.action);
   return (
-    <span className={`market-signal-mini ${badge.className}`} title={`الثقة ${Math.round(signal.confidence)}%`}>
-      {badge.label}
+    <span className={`market-signal-mini ${badge.className}`} title={`${UI[lang].confidence} ${Math.round(signal.confidence)}%`}>
+      {badge.label[lang]}
       <b>{Math.round(signal.confidence)}%</b>
       <style jsx>{`
         .market-signal-mini{
@@ -126,86 +183,87 @@ export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, '
 }
 
 export function MarketSignalPanel({ signal, loading = false, compact = false }: MarketSignalPanelProps) {
+  const { lang, dir } = useLanguage();
+  const text = UI[lang];
   const badge = actionLabel(signal?.action ?? 'watch');
   const confidence = Math.max(0, Math.min(95, Math.round(signal?.confidence ?? 0)));
-  const risk = signal?.riskLevel ? RISK_LABELS[signal.riskLevel] : '--';
-  const dataQuality = signal?.dataQuality ? DATA_QUALITY_LABELS[signal.dataQuality] : '--';
+  const risk = signal?.riskLevel ? RISK_LABELS[signal.riskLevel][lang] : '--';
+  const dataQuality = signal?.dataQuality ? DATA_QUALITY_LABELS[signal.dataQuality][lang] : '--';
 
   return (
-    <article className={`market-signal-panel ${compact ? 'compact' : ''}`} dir="rtl" aria-busy={loading}>
+    <article className={`market-signal-panel ${compact ? 'compact' : ''}`} dir={dir} aria-busy={loading}>
       <header className="market-signal-header">
         <div>
           <span className="market-signal-eyebrow">
             <Bell size={14} />
-            إشارة التداول
+            {text.signal}
           </span>
-          <h2>{signal?.symbol ? `تحليل الإشارة: ${signal.symbol}` : 'تحليل الإشارة'}</h2>
+          <h2>{signal?.symbol ? `${text.analysis}: ${signal.symbol}` : text.analysis}</h2>
         </div>
-        <span className={`market-signal-badge ${badge.className}`}>{badge.label}</span>
+        <span className={`market-signal-badge ${badge.className}`}>{badge.label[lang]}</span>
       </header>
 
       {loading ? (
-        <div className="market-signal-loading" role="status">جاري تحليل البيانات المتاحة...</div>
+        <div className="market-signal-loading" role="status">{text.loading}</div>
       ) : !signal ? (
         <div className="market-signal-empty">
           <Info size={17} />
-          البيانات غير كافية لإظهار إشارة موثوقة حالياً.
+          {text.empty}
         </div>
       ) : (
         <>
           <div className="market-signal-main">
             <div className="market-signal-confidence">
-              <span>الثقة</span>
+              <span>{text.confidence}</span>
               <strong dir="ltr">{confidence}%</strong>
-              <Meter value={confidence} />
-              <p className="market-signal-explanation">{signal.signalExplanationAr || signal.reasons[0] || badge.label}</p>
+              <Meter value={confidence} label={text.confidence} />
+              <p className="market-signal-explanation">{lang === 'ar' ? signal.signalExplanationAr : lang === 'en' ? signal.signalExplanationEn : (REASON_COPY[signal.signalExplanationAr]?.fr ?? signal.signalExplanationEn)}</p>
             </div>
             <div className="market-signal-price">
-              <small>السعر الحالي</small>
+              <small>{text.currentPrice}</small>
               <strong dir="ltr">{formatPrice(signal.currentPrice, signal.currency)}</strong>
             </div>
           </div>
 
           <div className="market-signal-grid">
-            <Metric icon={<Target size={16} />} label="الهدف" value={formatPrice(signal.targetPrice, signal.currency)} />
-            <Metric icon={<ShieldAlert size={16} />} label="وقف الخسارة" value={formatPrice(signal.stopLoss, signal.currency)} />
-            <Metric icon={<Target size={16} />} label="الصعود المتوقع" value={formatPercent(signal.upsidePercent)} />
-            <Metric icon={<ShieldAlert size={16} />} label="الهبوط إلى وقف الخسارة" value={formatPercent(signal.downsidePercent)} />
-            <Metric icon={<Gauge size={16} />} label="نسبة العائد إلى المخاطرة" value={formatRiskReward(signal.riskRewardRatio)} />
-            <Metric icon={<Clock3 size={16} />} label="الأفق الزمني" value={signal.timeframe || '1-3 أسابيع'} />
-            <Metric icon={<Gauge size={16} />} label="المخاطر" value={risk} />
-            <Metric icon={<AlertTriangle size={16} />} label="جودة البيانات" value={dataQuality} />
+            <Metric icon={<Target size={16} />} label={text.target} value={formatPrice(signal.targetPrice, signal.currency)} />
+            <Metric icon={<ShieldAlert size={16} />} label={text.stop} value={formatPrice(signal.stopLoss, signal.currency)} />
+            <Metric icon={<Target size={16} />} label={text.upside} value={formatPercent(signal.upsidePercent)} />
+            <Metric icon={<ShieldAlert size={16} />} label={text.downside} value={formatPercent(signal.downsidePercent)} />
+            <Metric icon={<Gauge size={16} />} label={text.ratio} value={formatRiskReward(signal.riskRewardRatio)} />
+            <Metric icon={<Clock3 size={16} />} label={text.timeframe} value={localizedTimeframe(signal.timeframe, lang)} />
+            <Metric icon={<Gauge size={16} />} label={text.risk} value={risk} />
+            <Metric icon={<AlertTriangle size={16} />} label={text.dataQuality} value={dataQuality} />
           </div>
 
           {!compact && (
             <div className="market-signal-details">
               <section>
-                <h3>أسباب الإشارة</h3>
+                <h3>{text.reasons}</h3>
                 <ul>
-                  {signal.reasons.slice(0, 5).map(reason => <li key={reason}>{reason}</li>)}
+                  {signal.reasons.slice(0, 5).map(reason => <li key={reason}>{localizedReason(reason, lang)}</li>)}
                 </ul>
               </section>
               <section>
-                <h3>المخاطر والتنبيهات</h3>
+                <h3>{text.warnings}</h3>
                 <ul>
-                  {signal.warnings.slice(0, 5).map(warning => <li key={warning}>{warning}</li>)}
+                  {signal.warnings.slice(0, 5).map(warning => <li key={warning}>{localizedReason(warning, lang)}</li>)}
                 </ul>
               </section>
-              <section className="market-signal-score" aria-label="score breakdown">
-                <h3>نقاط التقييم</h3>
+              <section className="market-signal-score" aria-label={text.scoreBreakdown}>
+                <h3>{text.score}</h3>
                 <dl>
-                  <div><dt>فني</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.technicalScore, 0)} / 40</dd></div>
-                  <div><dt>زخم</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.momentumScore, 0)} / 20</dd></div>
-                  <div><dt>أخبار</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.newsScore, 0)} / 15</dd></div>
-                  <div><dt>أساسيات</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.fundamentalsScore, 0)} / 15</dd></div>
+                  <div><dt>{text.technical}</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.technicalScore, 0)} / 40</dd></div>
+                  <div><dt>{text.momentum}</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.momentumScore, 0)} / 20</dd></div>
+                  <div><dt>{text.news}</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.newsScore, 0)} / 15</dd></div>
+                  <div><dt>{text.fundamentals}</dt><dd dir="ltr">{formatNumber(signal.scoreBreakdown.fundamentalsScore, 0)} / 15</dd></div>
                 </dl>
               </section>
             </div>
           )}
 
           <p className="market-signal-disclaimer">
-            {signal.disclaimerAr || MARKET_SIGNAL_DISCLAIMER_AR}
-            <span>{signal.disclaimerEn || MARKET_SIGNAL_DISCLAIMER_EN}</span>
+            {lang === 'ar' ? (signal.disclaimerAr || MARKET_SIGNAL_DISCLAIMER_AR) : lang === 'fr' ? DISCLAIMER_FR : (signal.disclaimerEn || MARKET_SIGNAL_DISCLAIMER_EN)}
           </p>
         </>
       )}

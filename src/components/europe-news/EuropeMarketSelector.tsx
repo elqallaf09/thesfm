@@ -3,6 +3,7 @@
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import type { EuropeMarket, EuropeMarketId } from '@/lib/europe/europeMarkets';
 import type { EuropeMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type EuropeMarketSelectorProps = {
   markets: EuropeMarket[];
@@ -30,8 +31,9 @@ export function EuropeMarketSelector({
   formatPercent,
   onSelect,
 }: EuropeMarketSelectorProps) {
+  const { t } = useLanguage();
   return (
-    <section className="europe-news-market-grid" aria-label="European markets">
+    <section className="europe-news-market-grid" aria-label={t('europe_news_title')}>
       {markets.map(market => {
         const active = selectedMarket === market.id;
         const change = marketData[market.id]?.changePercent ?? null;

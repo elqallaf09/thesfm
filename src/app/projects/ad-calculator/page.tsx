@@ -20,10 +20,10 @@ const PLATFORMS = [
 ];
 
 const INDUSTRIES = [
-  { id: 'ecommerce', ar: 'تجارة إلكترونية', en: 'E-commerce' },
-  { id: 'services', ar: 'خدمات', en: 'Services' },
-  { id: 'saas', ar: 'SaaS', en: 'SaaS' },
-  { id: 'restaurant', ar: 'مطعم', en: 'Restaurant' },
+  { id: 'ecommerce', labelKey: 'ad_industry_ecommerce' },
+  { id: 'services', labelKey: 'ad_industry_services' },
+  { id: 'saas', labelKey: 'ad_industry_saas' },
+  { id: 'restaurant', labelKey: 'ad_industry_restaurant' },
 ];
 
 function amountOf(value: string) {
@@ -33,7 +33,8 @@ function amountOf(value: string) {
 export default function AdCampaignCalculatorPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { dir, isAr } = useLanguage();
+  const { dir, lang, t } = useLanguage();
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const [budget, setBudget] = useState('');
   const [duration, setDuration] = useState('30');
   const [industry, setIndustry] = useState('ecommerce');
@@ -42,6 +43,7 @@ export default function AdCampaignCalculatorPage() {
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'ok' | 'error'>('ok');
 
   const totalPct = useMemo(() => Object.values(allocations).reduce((sum, pct) => sum + pct, 0), [allocations]);
   const totalBudget = amountOf(budget);
@@ -78,7 +80,7 @@ export default function AdCampaignCalculatorPage() {
       };
       const { data: project, error: projectError } = await supabase.from('projects').insert({
         user_id: user.id,
-        name: isAr ? 'حملة إعلانية' : 'Ad campaign',
+        name: t('ad_campaign_name'),
         emoji: '🎯',
         budget: String(totalBudget),
         timeline: `${days} days`,
@@ -91,7 +93,7 @@ export default function AdCampaignCalculatorPage() {
       const { error } = await supabase.from('ad_campaigns').insert({
         user_id: user.id,
         project_id: project.id,
-        name: isAr ? 'حملة إعلانية' : 'Ad campaign',
+        name: t('ad_campaign_name'),
         total_budget: totalBudget,
         duration_days: days,
         platforms: allocations,
@@ -102,9 +104,11 @@ export default function AdCampaignCalculatorPage() {
       if (error) throw error;
       void trackEvent('use_calculator', { module: 'projects', metadata: { calculator_type: 'ad_campaign', industry } });
       void trackEvent('create_project', { module: 'projects', metadata: { source: 'ad_campaign_calculator' } });
-      setMessage(isAr ? 'تم حفظ الحملة بنجاح' : 'Campaign saved');
-    } catch (err: any) {
-      setMessage(err.message || (isAr ? 'تعذر حفظ الحملة' : 'Could not save campaign'));
+      setMessageTone('ok');
+      setMessage(t('ad_saved'));
+    } catch {
+      setMessageTone('error');
+      setMessage(t('ad_save_error'));
     } finally {
       setSaving(false);
     }
@@ -135,32 +139,32 @@ export default function AdCampaignCalculatorPage() {
       `}</style>
       <div className="wrap">
         <div className="top">
-          <button className="home" onClick={() => router.push('/dashboard')}>← الرئيسية</button>
+          <button className="home" onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '←' : '→'} {t('ad_home')}</button>
           <LanguageSwitcher variant="gold" compact />
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>🎯 {isAr ? 'حاسبة ميزانية حملة إعلانية' : 'Ad Campaign Budget Calculator'}</h1>
-          <p style={{ color: 'var(--sfm-muted)', lineHeight: 1.8 }}>{isAr ? 'وزع الميزانية على المنصات واحفظ الخطة في قاعدة البيانات.' : 'Allocate budget by platform and save the plan to the database.'}</p>
+          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>🎯 {t('ad_title')}</h1>
+          <p style={{ color: 'var(--sfm-muted)', lineHeight: 1.8 }}>{t('ad_description')}</p>
         </div>
         <div className="grid">
           <div className="panel">
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
-                <label>{isAr ? 'الميزانية الإجمالية' : 'Total budget'}</label>
+                <label>{t('ad_total_budget')}</label>
                 <input inputMode="decimal" value={budget} onChange={e => setBudget(normalizeDigits(e.target.value).replace(/[^\d.]/g, ''))} placeholder="0.000" />
               </div>
               <div>
-                <label>{isAr ? 'مدة الحملة بالأيام' : 'Campaign duration in days'}</label>
+                <label>{t('ad_duration_days')}</label>
                 <input inputMode="numeric" value={duration} onChange={e => setDuration(normalizeDigits(e.target.value).replace(/\D/g, ''))} />
               </div>
               <div>
-                <label>{isAr ? 'نوع النشاط' : 'Industry'}</label>
+                <label>{t('ad_industry')}</label>
                 <select value={industry} onChange={e => setIndustry(e.target.value)}>
-                  {INDUSTRIES.map(item => <option key={item.id} value={item.id}>{isAr ? item.ar : item.en}</option>)}
+                  {INDUSTRIES.map(item => <option key={item.id} value={item.id}>{t(item.labelKey)}</option>)}
                 </select>
               </div>
               <div style={{ color: totalPct === 100 ? '#22C55E' : '#EF4444', fontWeight: 900 }}>
-                {isAr ? 'إجمالي التوزيع' : 'Total allocation'}: {totalPct}%
+                {t('ad_total_allocation')}: {totalPct}%
               </div>
               {PLATFORMS.map(platform => (
                 <div className="platform" key={platform.id}>
@@ -172,35 +176,35 @@ export default function AdCampaignCalculatorPage() {
             </div>
           </div>
           <div className="panel">
-            <h2 style={{ fontSize: 18, fontWeight: 900 }}>{isAr ? 'المخرجات' : 'Outputs'}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 900 }}>{t('ad_outputs')}</h2>
             <div className="bar">
               {rows.map(row => <div key={row.id} title={row.name} style={{ width: `${row.pct}%`, background: row.color }} />)}
             </div>
             <div className="kpis">
-              <div className="kpi"><strong>{totals.reach.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'الوصول' : 'Reach'}</span></div>
-              <div className="kpi"><strong>{totals.clicks.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'النقرات' : 'Clicks'}</span></div>
-              <div className="kpi"><strong>{totals.conversions.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</strong><span>{isAr ? 'التحويلات' : 'Conversions'}</span></div>
+              <div className="kpi"><strong>{totals.reach.toLocaleString(locale)}</strong><span>{t('ad_reach')}</span></div>
+              <div className="kpi"><strong>{totals.clicks.toLocaleString(locale)}</strong><span>{t('ad_clicks')}</span></div>
+              <div className="kpi"><strong>{totals.conversions.toLocaleString(locale)}</strong><span>{t('ad_conversions')}</span></div>
             </div>
             <table>
-              <thead><tr><th>{isAr ? 'المنصة' : 'Platform'}</th><th>{isAr ? 'يومي' : 'Daily'}</th><th>{isAr ? 'وصول' : 'Reach'}</th><th>{isAr ? 'نقرات' : 'Clicks'}</th></tr></thead>
+              <thead><tr><th>{t('ad_platform')}</th><th>{t('ad_daily')}</th><th>{t('ad_reach')}</th><th>{t('ad_clicks')}</th></tr></thead>
               <tbody>
                 {rows.map(row => (
                   <tr key={row.id}>
                     <td>{row.name}</td>
-                    <td>{row.daily.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US', { maximumFractionDigits: 3 })}</td>
-                    <td>{row.reach.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</td>
-                    <td>{row.clicks.toLocaleString(isAr ? 'ar-KW-u-nu-latn' : 'en-US')}</td>
+                    <td>{row.daily.toLocaleString(locale, { maximumFractionDigits: 3 })}</td>
+                    <td>{row.reach.toLocaleString(locale)}</td>
+                    <td>{row.clicks.toLocaleString(locale)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'rgba(167,243,240,.08)', color: 'var(--sfm-muted)', lineHeight: 1.8, fontWeight: 700 }}>
-              {isAr ? 'نوصي بتخصيص أكبر لـ TikTok وInstagram عند استهداف جمهور 18-30، مع إبقاء Google Ads للنية الشرائية العالية.' : 'For ages 18-30, allocate more to TikTok and Instagram while keeping Google Ads for high-purchase intent.'}
+              {t('ad_recommendation')}
             </div>
             <button className="save" disabled={!user || !totalBudget || totalPct !== 100 || saving} onClick={saveCampaign}>
-              {saving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (isAr ? 'حفظ الحملة' : 'Save campaign')}
+              {saving ? t('ad_saving') : t('ad_save')}
             </button>
-            {message && <div style={{ marginTop: 12, color: message.includes('تم') || message.includes('saved') ? '#22C55E' : '#EF4444', fontWeight: 800 }}>{message}</div>}
+            {message && <div style={{ marginTop: 12, color: messageTone === 'ok' ? '#22C55E' : '#EF4444', fontWeight: 800 }}>{message}</div>}
           </div>
         </div>
       </div>

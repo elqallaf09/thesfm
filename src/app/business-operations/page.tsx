@@ -118,7 +118,7 @@ function logBusinessLoadIssue(issue: BusinessLoadIssue) {
 
 export default function BusinessOperationsPage() {
   const { user, loading: authLoading } = useAuth();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const locale = normalizeBusinessLang(lang);
   const text = BUSINESS_TEXT[locale];
   const { role, loading: roleLoading, permissions } = useBusinessRole(user?.id);
@@ -636,8 +636,8 @@ export default function BusinessOperationsPage() {
         ) : null}
 
         {process.env.NODE_ENV === 'development' && failedBusinessSections.length > 0 ? (
-          <section className="business-debug-panel" dir="ltr" aria-label="Business data debug">
-            <strong>Business data debug</strong>
+          <section className="business-debug-panel" dir="ltr" aria-label={t('debug_business_data')}>
+            <strong>{t('debug_business_data')}</strong>
             {failedBusinessSections.map((issue) => (
               <pre key={issue.section}>{JSON.stringify({
                 section: issue.section,

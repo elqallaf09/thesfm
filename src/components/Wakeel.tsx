@@ -2,6 +2,7 @@
 // @ts-nocheck
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 // ============================================================
 //  وكيل (WAKEEL) — a smart voice assistant powered by Claude
 //  • Wake by: clap · click the core · button · say the name
@@ -14,7 +15,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 const STYLES = `
 .wk-root{position:relative;width:100%;min-height:100vh;background:#05080F;color:#E8F6FF;
   font-family:ui-monospace,'SF Mono','JetBrains Mono','Cascadia Code',monospace;overflow:hidden;
-  display:flex;flex-direction:column;direction:ltr}
+  display:flex;flex-direction:column;direction:inherit}
 .wk-root::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 50% 40%,rgba(34,211,238,.10),transparent 55%),
              radial-gradient(circle at 50% 112%,rgba(255,157,66,.10),transparent 50%)}
@@ -119,9 +120,9 @@ const STYLES = `
 .wk-zak{background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);border-radius:8px;
   padding:10px 12px;font-family:system-ui,sans-serif;font-size:12px;color:#9fb6c2;direction:rtl}
 .wk-zak b{color:#22D3EE}
-.wk-toggle{display:flex;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:12px;color:#9fb6c2;direction:rtl}
-.wk-err{color:#ff9a9a;font-size:12px;font-family:system-ui,sans-serif;direction:rtl;text-align:center}
-.wk-note{color:#6f8a96;font-size:10px;font-family:system-ui,sans-serif;direction:rtl}
+.wk-toggle{display:flex;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:12px;color:#9fb6c2;direction:inherit}
+.wk-err{color:#ff9a9a;font-size:12px;font-family:system-ui,sans-serif;direction:inherit;text-align:center}
+.wk-note{color:#6f8a96;font-size:10px;font-family:system-ui,sans-serif;direction:inherit}
 @media (max-width:560px){.wk-top{font-size:10px;letter-spacing:.08em}}
 `;
 
@@ -129,7 +130,8 @@ const hasArabic = (s) => /[\u0600-\u06FF]/.test(s || "");
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
 
 export default function Wakeel() {
-  const [name, setName] = useState("وكيل");
+  const { t, lang: uiLang, dir } = useLanguage();
+  const [name, setName] = useState(() => t('wakeel_default_name'));
   const [lang, setLang] = useState("ar");
   const [status, setStatus] = useState("offline");
   const [said, setSaid] = useState("");
@@ -151,7 +153,7 @@ export default function Wakeel() {
 
   // financial profile (THE SFM demo data — edit to match yours)
   const [fin, setFin] = useState({
-    currency: "د.إ", cash: 50000, investments: 220000, gold: 30000,
+    currency: "AED", cash: 50000, investments: 220000, gold: 30000,
     receivables: 10000, liabilities: 20000, nisab: 24000,
   });
   const zBase = Math.max(0, fin.cash + fin.investments + fin.gold + fin.receivables - fin.liabilities);
@@ -174,6 +176,12 @@ export default function Wakeel() {
 
   const setStat = (s) => { statusRef.current = s; setStatus(s); };
 
+  useEffect(() => {
+    setLang(uiLang);
+    setName(t('wakeel_default_name'));
+    setError("");
+  }, [uiLang, t]);
+
   useEffect(() => { statusRef.current = status; }, [status]);
 
   useEffect(() => {
@@ -189,13 +197,14 @@ export default function Wakeel() {
       const v = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
       if (v.length) {
         setVoices(v);
-        setVoiceURI((cur) => cur || (v.find((x) => x.lang && x.lang.toLowerCase().startsWith("ar")) || v[0]).voiceURI);
+        const prefix = lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en';
+        setVoiceURI((cur) => cur || (v.find((x) => x.lang && x.lang.toLowerCase().startsWith(prefix)) || v[0]).voiceURI);
       }
     };
     load();
     if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = load;
     return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
-  }, []);
+  }, [lang]);
 
   // ---------- mic + analyser + clap loop ----------
   const initialize = useCallback(async () => {
@@ -211,11 +220,11 @@ export default function Wakeel() {
       timeDataRef.current = new Uint8Array(analyser.fftSize);
       setStat("sleeping");
       
-      setTimeout(() => browserSpeak("هلا يا سيدي. أنا وكيل، جاهز لخدمتك."), 300);
+      setTimeout(() => browserSpeak(t('wakeel_greeting')), 300);
 loop();
       if (wakeWordOn) startWake();
     } catch (e) {
-      setError("ما قدرت أوصل للمايك. غالباً المعاينة داخل الشات تمنع المايك — جرّب الكتابة تحت، أو شغّل الكود بمشروعك (Chrome) للصوت الكامل.");
+      setError(t('wakeel_mic_error'));
       setStat("offline");
     }
   }, [wakeWordOn]); // eslint-disable-line
@@ -251,7 +260,7 @@ loop();
     if (!SR) return;
     try { if (wakeRef.current) wakeRef.current.stop(); } catch (e) {}
     const w = new SR(); wakeRef.current = w;
-    w.lang = lang === "ar" ? "ar-SA" : "en-US";
+    w.lang = lang === "ar" ? "ar-SA" : lang === "fr" ? "fr-FR" : "en-US";
     w.continuous = true; w.interimResults = true;
     w.onresult = (ev) => {
       const txt = Array.from(ev.results).map((r) => r[0].transcript).join(" ");
@@ -276,10 +285,10 @@ loop();
     if (statusRef.current === "offline") return;
     stopWake();
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setStat("sleeping"); setError("متصفحك ما يدعم التعرف الصوتي. استخدم الكتابة، أو افتحه بـ Chrome."); return; }
+    if (!SR) { setStat("sleeping"); setError(t('wakeel_speech_unsupported')); return; }
     setError(""); setSaid(""); setReply(""); setStat("listening"); finalRef.current = "";
     const rec = new SR(); recRef.current = rec;
-    rec.lang = lang === "ar" ? "ar-SA" : "en-US";
+    rec.lang = lang === "ar" ? "ar-SA" : lang === "fr" ? "fr-FR" : "en-US";
     rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
     rec.onresult = (ev) => {
       let interim = "";
@@ -306,7 +315,7 @@ loop();
     return (
 `You are ${name} (وكيل), an elite personal AI assistant inspired by JARVIS, working for the owner of THE SFM (smart financial management platform). ` +
 `You speak OUT LOUD, so answers are short, natural and conversational — usually 1 to 4 sentences, no markdown, no bullet symbols. ` +
-`Reply in the SAME language and dialect the user uses. If they use Gulf Arabic, reply in clear Gulf Arabic. ` +
+`Reply in the SAME language the user uses. When replying in Arabic, use Modern Standard Arabic only. ` +
 `You have a LIVE web_search tool — use it for anything current (prices, gold/silver price, market news, rates) and state figures naturally. ` +
 `You have the user's financial profile below. Use ONLY these numbers for portfolio summaries and zakat; do not invent holdings. ` +
 `Zakat = 2.5% of zakatable base when base >= nisab. When asked about zakat, give the amount clearly with the currency. ` +
@@ -348,7 +357,7 @@ loop();
       out = await callModel(historyRef.current, system, true);   // try with live web search
     } catch (e1) {
       try { out = await callModel(historyRef.current, system, false); } // fallback without tools
-      catch (e2) { setError("صار خطأ بالاتصال بـ Claude. حاول مرة ثانية."); goSleep(); return; }
+      catch (e2) { setError(t('wakeel_connection_error')); goSleep(); return; }
     }
     if (!out) out = "…";
     historyRef.current = [...historyRef.current, { role: "assistant", content: out }].slice(-12);
@@ -409,15 +418,14 @@ const splitForSpeech = (text) => {
   return chunks;
 };
 
-const pickArabicVoice = () => {
+const pickVoice = () => {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
 
   const voices = window.speechSynthesis.getVoices?.() || [];
 
   return (
-    voices.find((v) => v.lang === "ar-SA") ||
-    voices.find((v) => v.lang?.toLowerCase().startsWith("ar")) ||
-    voices.find((v) => /arabic|saudi|maged|tarik|hoda|naayf/i.test(`${v.name} ${v.lang}`)) ||
+    voices.find((v) => v.voiceURI === voiceURI) ||
+    voices.find((v) => v.lang?.toLowerCase().startsWith(lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en')) ||
     voices[0] ||
     null
   );
@@ -433,7 +441,7 @@ const browserSpeak = (text) => {
     window.speechSynthesis.cancel();
 
     const chunks = splitForSpeech(text);
-    const voice = pickArabicVoice();
+    const voice = pickVoice();
 
     if (!chunks.length) {
       goSleep();
@@ -455,10 +463,10 @@ const browserSpeak = (text) => {
       const utterance = new SpeechSynthesisUtterance(chunks[index]);
       index += 1;
 
-      utterance.lang = voice?.lang || "ar-SA";
+      utterance.lang = voice?.lang || (lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US');
       if (voice) utterance.voice = voice;
 
-      utterance.rate = 0.72;
+      utterance.rate = rate;
       utterance.pitch = 0.92;
       utterance.volume = 1;
 
@@ -515,24 +523,24 @@ const browserSpeak = (text) => {
   const sendText = () => { const t = textInput.trim(); if (!t || statusRef.current === "offline") return; setTextInput(""); ask(t); };
   const quick = (t) => { if (statusRef.current === "offline" || statusRef.current === "thinking") return; ask(t); };
 
-  const statusLabel = { offline: "OFFLINE", sleeping: "STANDBY", listening: "LISTENING", thinking: "PROCESSING", speaking: "SPEAKING" }[status];
+  const statusLabel = { offline: t('wakeel_status_offline'), sleeping: t('wakeel_status_standby'), listening: t('wakeel_status_listening'), thinking: t('wakeel_status_processing'), speaking: t('wakeel_status_speaking') }[status];
   const hint = {
-    offline: "اضغط تشغيل وكيل عشان يبدأ",
-    sleeping: `صفّق · اضغط الدائرة · أو قول "${name}"`,
-    listening: "تكلّم الحين…",
-    thinking: "وكيل يفكّر ويبحث…",
-    speaking: "وكيل يرد عليك…",
+    offline: t('wakeel_hint_offline'),
+    sleeping: t('wakeel_hint_standby'),
+    listening: t('wakeel_hint_listening'),
+    thinking: t('wakeel_hint_processing'),
+    speaking: t('wakeel_hint_speaking'),
   }[status];
   const busy = status === "offline" || status === "thinking";
 
   return (
-    <div className="wk-root" data-status={status}>
+    <div className="wk-root" data-status={status} dir={dir} lang={uiLang}>
       <style>{STYLES}</style>
       <span className="wk-corner tl" /><span className="wk-corner tr" />
       <span className="wk-corner bl" /><span className="wk-corner br" />
 
       <div className="wk-top">
-        <div><span className="wk-name">{name}</span> <span style={{ opacity: .5 }}>{'// AI CORE'}</span></div>
+        <div><span className="wk-name">{name}</span> <span style={{ opacity: .5 }}>{'// AI'}</span></div>
         <div className="wk-stat">
           <span className="wk-dot" /><span>{statusLabel}</span>
           <div className="wk-meter"><i ref={meterRef} /></div>
@@ -555,7 +563,7 @@ const browserSpeak = (text) => {
 
         {status !== "offline" && (
           <div className="wk-chips">
-            {["لخّص لي محفظتي", "كم زكاتي؟", "أخبار الأسواق اليوم", "كم سعر الذهب الحين؟"].map((c) => (
+            {[t('wakeel_quick_portfolio'), t('wakeel_quick_zakat'), t('wakeel_quick_markets'), t('wakeel_quick_gold')].map((c) => (
               <button key={c} className="wk-chip" disabled={busy} onClick={() => quick(c)}>{c}</button>
             ))}
           </div>
@@ -580,16 +588,16 @@ const browserSpeak = (text) => {
 
         <div className="wk-controls">
           {status === "offline"
-            ? <button className="wk-btn" onClick={initialize}>⏻ تشغيل وكيل</button>
-            : <button className="wk-btn" onClick={() => status === "sleeping" && wake()} disabled={status !== "sleeping"}>🎙 WAKE</button>}
-          <button className="wk-btn ghost" onClick={() => setSettingsOpen(true)}>⚙ الإعدادات</button>
+            ? <button className="wk-btn" onClick={initialize}>⏻ {t('wakeel_start')}</button>
+            : <button className="wk-btn" onClick={() => status === "sleeping" && wake()} disabled={status !== "sleeping"}>🎙 {t('wakeel_wake')}</button>}
+          <button className="wk-btn ghost" onClick={() => setSettingsOpen(true)}>⚙ {t('wakeel_settings')}</button>
         </div>
 
         {status !== "offline" && (
           <div className="wk-row">
-            <input className="wk-input" placeholder="أو اكتب أمرك هنا…" value={textInput}
+            <input className="wk-input" placeholder={t('wakeel_input_placeholder')} value={textInput}
               onChange={(e) => setTextInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} />
-            <button className="wk-btn amber" onClick={sendText}>إرسال</button>
+            <button className="wk-btn amber" onClick={sendText}>{t('wakeel_send')}</button>
           </div>
         )}
       </div>
@@ -597,42 +605,42 @@ const browserSpeak = (text) => {
       {settingsOpen && (
         <div className="wk-modal" onClick={(e) => { if (e.target.className === "wk-modal") setSettingsOpen(false); }}>
           <div className="wk-card">
-            <h3>SETTINGS · الإعدادات</h3>
+            <h3>{t('wakeel_settings')}</h3>
 
             <div className="wk-field">
-              <label>اسم الوكيل</label>
+              <label>{t('wakeel_agent_name')}</label>
               <input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
 
             <div className="wk-grid2">
               <div className="wk-field">
-                <label>لغة الكلام (الإدخال)</label>
+                <label>{t('wakeel_speech_language')}</label>
                 <select value={lang} onChange={(e) => setLang(e.target.value)}>
-                  <option value="ar">العربية</option><option value="en">English</option>
+                  <option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option>
                 </select>
               </div>
               <div className="wk-field">
-                <label>سرعة الصوت</label>
+                <label>{t('wakeel_voice_speed')}</label>
                 <input type="range" min="0.8" max="1.2" step="0.05" value={rate} onChange={(e) => setRate(Number(e.target.value))} />
               </div>
             </div>
 
             <div className="wk-toggle">
               <input type="checkbox" checked={wakeWordOn} onChange={(e) => setWakeWordOn(e.target.checked)} />
-              <span>الاستماع المستمر للاسم (قول "{name}" لإيقاظه) — تجريبي</span>
+              <span>{t('wakeel_continuous_listening')} ({name})</span>
             </div>
 
-            <h4>الصوت — VOICE ENGINE</h4>
+            <h4>{t('wakeel_voice_section')}</h4>
             <div className="wk-field">
-              <label>محرك النطق</label>
+              <label>{t('wakeel_voice_engine')}</label>
               <select value={engine} onChange={(e) => setEngine(e.target.value)}>
-                <option value="browser">المتصفح (مجاني)</option>
-                <option value="eleven">ElevenLabs (صوت عربي أنضف)</option>
+                <option value="browser">{t('wakeel_browser_engine')}</option>
+                <option value="eleven">{t('wakeel_eleven_engine')}</option>
               </select>
             </div>
             {engine === "browser" ? (
               <div className="wk-field">
-                <label>صوت الرد</label>
+                <label>{t('wakeel_response_voice')}</label>
                 <select value={voiceURI} onChange={(e) => setVoiceURI(e.target.value)}>
                   {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>)}
                 </select>
@@ -640,20 +648,20 @@ const browserSpeak = (text) => {
             ) : (
               <>
                 <div className="wk-field">
-                  <label>ElevenLabs API Key (مفتاحك أنت)</label>
+                  <label>{t('wakeel_api_key')}</label>
                   <input type="password" value={elevenKey} onChange={(e) => setElevenKey(e.target.value)} placeholder="sk_..." />
                 </div>
                 <div className="wk-field">
-                  <label>Voice ID</label>
-                  <input value={elevenVoice} onChange={(e) => setElevenVoice(e.target.value)} placeholder="مثال: pNInz6obpgDQGcFmaJgB" />
+                  <label>{t('wakeel_voice_id')}</label>
+                  <input value={elevenVoice} onChange={(e) => setElevenVoice(e.target.value)} placeholder={t('wakeel_voice_id_example')} />
                 </div>
-                <div className="wk-note">⚠ المفتاح يظهر داخل كود الواجهة — استخدم مفتاح تجريبي فقط هنا، وبالإنتاج لازم يمر عبر سيرفر/بروكسي.</div>
+                <div className="wk-note">⚠ {t('wakeel_key_warning')}</div>
               </>
             )}
 
-            <h4>المحفظة والزكاة — THE SFM</h4>
+            <h4>{t('wakeel_portfolio_zakat')} — THE SFM</h4>
             <div className="wk-grid2">
-              {[["cash","نقد / حسابات"],["investments","استثمارات / أسهم"],["gold","ذهب"],["receivables","ديون لك"],["liabilities","التزامات عليك"],["nisab","النصاب"]].map(([k,labl]) => (
+              {[["cash",t('wakeel_cash_accounts')],["investments",t('wakeel_investments_stocks')],["gold",t('wakeel_gold')],["receivables",t('wakeel_receivables')],["liabilities",t('wakeel_liabilities')],["nisab",t('wakeel_nisab')]].map(([k,labl]) => (
                 <div className="wk-field" key={k}>
                   <label>{labl}</label>
                   <input type="number" value={fin[k]} onChange={(e) => setFin({ ...fin, [k]: Number(e.target.value) })} />
@@ -661,12 +669,12 @@ const browserSpeak = (text) => {
               ))}
             </div>
             <div className="wk-zak">
-              إجمالي الأصول: <b>{fmt(zTotal)} {fin.currency}</b> · الوعاء الزكوي: <b>{fmt(zBase)}</b> ·
-              الزكاة المستحقة (2.5%): <b>{fmt(zDue)} {fin.currency}</b>
-              <div className="wk-note">{zBase >= fin.nisab ? "الوعاء فوق النصاب → الزكاة واجبة." : "الوعاء تحت النصاب → لا زكاة."} عدّل الأرقام لتطابق وضعك، ووكيل يقدر يجيب سعر الذهب الحالي للنصاب.</div>
+              {t('wakeel_total_assets')}: <b>{fmt(zTotal)} {fin.currency}</b> · {t('wakeel_zakat_base')}: <b>{fmt(zBase)}</b> ·
+              {t('wakeel_zakat_due')}: <b>{fmt(zDue)} {fin.currency}</b>
+              <div className="wk-note">{zBase >= fin.nisab ? t('wakeel_above_nisab') : t('wakeel_below_nisab')} {t('wakeel_finance_note')}</div>
             </div>
 
-            <button className="wk-btn" onClick={() => setSettingsOpen(false)}>تم</button>
+            <button className="wk-btn" onClick={() => setSettingsOpen(false)}>{t('wakeel_done')}</button>
           </div>
         </div>
       )}

@@ -87,48 +87,29 @@ type KhumsReminder = {
 };
 
 const INCOME_FIELDS = [
-  { key: 'salary', label: 'الراتب السنوي' },
-  { key: 'business', label: 'الأرباح التجارية' },
-  { key: 'investment', label: 'أرباح الاستثمار' },
-  { key: 'dividends', label: 'أرباح الأسهم' },
-  { key: 'realEstate', label: 'الأرباح العقارية' },
-  { key: 'gifts', label: 'الهدايا أو المكافآت' },
-  { key: 'other', label: 'أموال أخرى' },
+  { key: 'salary', labelKey: 'khums_income_salary' },
+  { key: 'business', labelKey: 'khums_income_business' },
+  { key: 'investment', labelKey: 'khums_income_investment' },
+  { key: 'dividends', labelKey: 'khums_income_dividends' },
+  { key: 'realEstate', labelKey: 'khums_income_real_estate' },
+  { key: 'gifts', labelKey: 'khums_income_gifts' },
+  { key: 'other', labelKey: 'khums_income_other' },
 ] as const;
 
 const EXPENSE_FIELDS = [
-  { key: 'living', label: 'مصاريف المعيشة' },
-  { key: 'housing', label: 'الإيجار / السكن' },
-  { key: 'food', label: 'الطعام' },
-  { key: 'education', label: 'التعليم' },
-  { key: 'medical', label: 'العلاج' },
-  { key: 'debts', label: 'الديون المدفوعة خلال السنة' },
-  { key: 'family', label: 'مصاريف العائلة' },
-  { key: 'work', label: 'مصاريف العمل' },
-  { key: 'other', label: 'مصاريف أخرى' },
+  { key: 'living', labelKey: 'khums_expense_living' },
+  { key: 'housing', labelKey: 'khums_expense_housing' },
+  { key: 'food', labelKey: 'khums_expense_food' },
+  { key: 'education', labelKey: 'khums_expense_education' },
+  { key: 'medical', labelKey: 'khums_expense_medical' },
+  { key: 'debts', labelKey: 'khums_expense_debts' },
+  { key: 'family', labelKey: 'khums_expense_family' },
+  { key: 'work', labelKey: 'khums_expense_work' },
+  { key: 'other', labelKey: 'khums_expense_other' },
 ] as const;
 
 type IncomeKey = typeof INCOME_FIELDS[number]['key'];
 type ExpenseKey = typeof EXPENSE_FIELDS[number]['key'];
-
-const statusLabel: Record<KhumsStatus, string> = {
-  not_due: 'لا يوجد خمس مستحق',
-  incomplete: 'غير مكتمل',
-  complete: 'مكتمل',
-  overpaid: 'فائض مدفوع',
-};
-
-const shareLabel: Record<ShareType, string> = {
-  imam: 'سهم الإمام',
-  sayyid: 'سهم السادة',
-  unspecified: 'غير محدد',
-};
-
-const reminderLabel: Record<ReminderType, string> = {
-  before_year_end_30: 'قبل نهاية سنة الخمس بـ 30 يوم',
-  year_end: 'يوم نهاية سنة الخمس',
-  custom: 'تذكير مخصص',
-};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -171,9 +152,25 @@ function downloadTextFile(filename: string, text: string, mime = 'text/csv;chars
 
 export default function KhumsPage() {
   const { user, loading } = useAuth();
-  const { dir, lang } = useLanguage();
+  const { dir, lang, t } = useLanguage();
   const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const db = supabase as any;
+  const statusLabel: Record<KhumsStatus, string> = {
+    not_due: t('khums_status_not_due'),
+    incomplete: t('khums_status_incomplete'),
+    complete: t('khums_status_complete'),
+    overpaid: t('khums_status_overpaid'),
+  };
+  const shareLabel: Record<ShareType, string> = {
+    imam: t('khums_imam_share'),
+    sayyid: t('khums_sayyid_share'),
+    unspecified: t('khums_share_unspecified'),
+  };
+  const reminderLabel: Record<ReminderType, string> = {
+    before_year_end_30: t('khums_reminder_before_30'),
+    year_end: t('khums_reminder_year_end'),
+    custom: t('khums_reminder_custom'),
+  };
 
   const [activePane, setActivePane] = useState<KhumsPane>('calculator');
   const [years, setYears] = useState<KhumsYear[]>([]);
@@ -255,7 +252,7 @@ export default function KhumsPage() {
 
     if (entryRes.error || paymentRes.error || reminderRes.error) {
       setStorageReady(false);
-      setMessage({ type: 'warn', text: 'تعذر تحميل سجلات الخمس من قاعدة البيانات. تأكد من تطبيق ترحيل قاعدة البيانات ثم أعد المحاولة.' });
+      setMessage({ type: 'warn', text: t('khums_load_records_error') });
       return;
     }
 
@@ -276,7 +273,7 @@ export default function KhumsPage() {
     });
     setIncomeValues(nextIncome);
     setExpenseValues(nextExpenses);
-  }, [db, user]);
+  }, [db, t, user]);
 
   const loadYears = useCallback(async (preferredYearId?: string) => {
     if (!user) return;
@@ -288,7 +285,7 @@ export default function KhumsPage() {
 
     if (error) {
       setStorageReady(false);
-      setMessage({ type: 'warn', text: 'لم يتم العثور على جداول الخمس بعد. يمكنك استخدام الحاسبة الآن، وسيعمل الحفظ بعد تطبيق ترحيل قاعدة البيانات.' });
+      setMessage({ type: 'warn', text: t('khums_tables_missing') });
       return;
     }
 
@@ -300,7 +297,7 @@ export default function KhumsPage() {
       setActiveYearId(selected.id);
       hydrateYearForm(selected);
     }
-  }, [db, hydrateYearForm, user]);
+  }, [db, hydrateYearForm, t, user]);
 
   useEffect(() => {
     if (user) void loadYears();
@@ -348,7 +345,7 @@ export default function KhumsPage() {
         reminder_date: addDays(yearForm.end_date, -30),
         reminder_type: 'before_year_end_30',
         status: 'active',
-        notes: 'مراجعة بيانات سنة الخمس قبل نهاية السنة.',
+        notes: t('khums_default_reminder_review'),
       },
       {
         user_id: user.id,
@@ -356,7 +353,7 @@ export default function KhumsPage() {
         reminder_date: yearForm.end_date,
         reminder_type: 'year_end',
         status: 'active',
-        notes: 'موعد نهاية سنة الخمس.',
+        notes: t('khums_default_reminder_end'),
       },
     ];
     await db
@@ -367,11 +364,11 @@ export default function KhumsPage() {
   async function saveKhumsYear() {
     if (!user || saving) return;
     if (!yearForm.start_date || !yearForm.end_date) {
-      setMessage({ type: 'error', text: 'أدخل تاريخ بداية ونهاية سنة الخمس.' });
+      setMessage({ type: 'error', text: t('khums_dates_required') });
       return;
     }
     if (new Date(yearForm.end_date) < new Date(yearForm.start_date)) {
-      setMessage({ type: 'error', text: 'تاريخ نهاية سنة الخمس يجب أن يكون بعد تاريخ البداية.' });
+      setMessage({ type: 'error', text: t('khums_end_after_start') });
       return;
     }
 
@@ -412,7 +409,7 @@ export default function KhumsPage() {
           category: field.key,
           amount: Math.max(0, toNumber(incomeValues[field.key])),
           currency: savedYear.currency,
-          description: field.label,
+          description: t(field.labelKey),
           date: savedYear.end_date,
         })),
         ...EXPENSE_FIELDS.map(field => ({
@@ -422,7 +419,7 @@ export default function KhumsPage() {
           category: field.key,
           amount: Math.max(0, toNumber(expenseValues[field.key])),
           currency: savedYear.currency,
-          description: field.label,
+          description: t(field.labelKey),
           date: savedYear.end_date,
         })),
       ].filter(row => row.amount > 0);
@@ -435,10 +432,10 @@ export default function KhumsPage() {
 
       await ensureDefaultReminders(savedYear.id);
       await loadYears(savedYear.id);
-      setMessage({ type: 'ok', text: 'تم حفظ سنة الخمس والبيانات المرتبطة بها.' });
+      setMessage({ type: 'ok', text: t('khums_save_success') });
     } catch {
       setStorageReady(false);
-      setMessage({ type: 'error', text: 'تعذر حفظ بيانات الخمس. تأكد من تطبيق جداول الخمس في Supabase.' });
+      setMessage({ type: 'error', text: t('khums_save_error') });
     } finally {
       setSaving(false);
     }
@@ -446,12 +443,12 @@ export default function KhumsPage() {
 
   async function addPayment() {
     if (!user || !activeYearId) {
-      setMessage({ type: 'warn', text: 'احفظ سنة الخمس أولاً قبل إضافة الدفعات.' });
+      setMessage({ type: 'warn', text: t('khums_save_before_payment') });
       return;
     }
     const amount = toNumber(paymentForm.amount);
     if (amount <= 0) {
-      setMessage({ type: 'error', text: 'أدخل مبلغ دفعة صحيحاً.' });
+      setMessage({ type: 'error', text: t('khums_payment_invalid') });
       return;
     }
 
@@ -468,7 +465,7 @@ export default function KhumsPage() {
     });
 
     if (error) {
-      setMessage({ type: 'error', text: 'تعذر حفظ دفعة الخمس.' });
+      setMessage({ type: 'error', text: t('khums_payment_save_error') });
       return;
     }
 
@@ -483,23 +480,23 @@ export default function KhumsPage() {
     setPaymentForm({ payment_date: today(), amount: '', recipient: '', share_type: 'unspecified', receipt_url: '', notes: '' });
     await loadYearDetails(activeYearId);
     await loadYears(activeYearId);
-    setMessage({ type: 'ok', text: 'تمت إضافة دفعة الخمس.' });
+    setMessage({ type: 'ok', text: t('khums_payment_added') });
   }
 
   async function deletePayment(payment: KhumsPayment) {
     if (!user || !activeYearId) return;
     const { error } = await db.from('khums_payments').delete().eq('id', payment.id).eq('user_id', user.id);
     if (error) {
-      setMessage({ type: 'error', text: 'تعذر حذف الدفعة.' });
+      setMessage({ type: 'error', text: t('khums_payment_delete_error') });
       return;
     }
     await loadYearDetails(activeYearId);
-    setMessage({ type: 'ok', text: 'تم حذف الدفعة.' });
+    setMessage({ type: 'ok', text: t('khums_payment_deleted') });
   }
 
   async function addReminder() {
     if (!user || !activeYearId) {
-      setMessage({ type: 'warn', text: 'احفظ سنة الخمس أولاً قبل إضافة تذكير.' });
+      setMessage({ type: 'warn', text: t('khums_save_before_reminder') });
       return;
     }
     const { error } = await db.from('khums_reminders').insert({
@@ -511,19 +508,19 @@ export default function KhumsPage() {
       notes: reminderForm.notes.trim() || null,
     });
     if (error) {
-      setMessage({ type: 'error', text: 'تعذر حفظ التذكير.' });
+      setMessage({ type: 'error', text: t('khums_reminder_save_error') });
       return;
     }
     setReminderForm({ reminder_date: addDays(yearForm.end_date, -30), reminder_type: 'custom', notes: '' });
     await loadYearDetails(activeYearId);
-    setMessage({ type: 'ok', text: 'تمت إضافة تذكير الخمس.' });
+    setMessage({ type: 'ok', text: t('khums_reminder_added') });
   }
 
   async function updateReminderStatus(reminder: KhumsReminder, status: ReminderStatus) {
     if (!user || !activeYearId) return;
     const { error } = await db.from('khums_reminders').update({ status }).eq('id', reminder.id).eq('user_id', user.id);
     if (error) {
-      setMessage({ type: 'error', text: 'تعذر تحديث التذكير.' });
+      setMessage({ type: 'error', text: t('khums_reminder_update_error') });
       return;
     }
     await loadYearDetails(activeYearId);
@@ -531,20 +528,20 @@ export default function KhumsPage() {
 
   function reportRows() {
     return [
-      ['البند', 'القيمة'],
-      ['تاريخ بداية سنة الخمس', dateLabel(yearForm.start_date)],
-      ['تاريخ نهاية سنة الخمس', dateLabel(yearForm.end_date)],
-      ['العملة', yearForm.currency],
-      ['المرجع الديني / المرجع الفقهي', yearForm.marja_name || '-'],
-      ['إجمالي الدخل والأرباح', money(khums.totalIncome)],
-      ['المصاريف السنوية', money(khums.totalExpenses)],
-      ['الفائض السنوي', money(khums.surplus)],
-      ['الخمس المستحق', money(khums.khumsDue)],
-      ['سهم الإمام', money(khums.imamShare)],
-      ['سهم السادة', money(khums.sayyidShare)],
-      ['المدفوع', money(khums.paidAmount)],
-      ['المتبقي', money(khums.remainingBalance)],
-      ['حالة السداد', statusLabel[khums.status]],
+      [t('khums_report_item'), t('khums_report_value')],
+      [t('khums_year_start'), dateLabel(yearForm.start_date)],
+      [t('khums_year_end'), dateLabel(yearForm.end_date)],
+      [t('khums_currency'), yearForm.currency],
+      [t('khums_religious_authority'), yearForm.marja_name || '-'],
+      [t('khums_income_title'), money(khums.totalIncome)],
+      [t('khums_expenses_title'), money(khums.totalExpenses)],
+      [t('khums_annual_surplus'), money(khums.surplus)],
+      [t('khums_due'), money(khums.khumsDue)],
+      [t('khums_imam_share'), money(khums.imamShare)],
+      [t('khums_sayyid_share'), money(khums.sayyidShare)],
+      [t('khums_paid'), money(khums.paidAmount)],
+      [t('khums_remaining'), money(khums.remainingBalance)],
+      [t('khums_payment_status'), statusLabel[khums.status]],
     ];
   }
 
@@ -569,31 +566,31 @@ export default function KhumsPage() {
       <DashboardPageShell contentClassName="khums-content">
         <section className="khums-hero">
           <div className="hero-copy">
-            <span className="eyebrow">THE SFM / الزكاة والأعمال الخيرية</span>
-            <h1>الخمس</h1>
-            <p>حاسبة تقديرية لمتابعة الخمس السنوي حسب المذهب الجعفري، مع إمكانية ضبط سنة الخمس والمصاريف والأرباح المتبقية.</p>
+            <span className="eyebrow">THE SFM / {t('khums_breadcrumb')}</span>
+            <h1>{t('khums_title')}</h1>
+            <p>{t('khums_description')}</p>
             <div className="disclaimer-badge">
               <ShieldCheck size={16} />
-              <span>هذه الحاسبة تقديرية ولا تُعد فتوى شرعية.</span>
+              <span>{t('khums_disclaimer_short')}</span>
             </div>
           </div>
           <div className="hero-actions">
             <button className="gold-btn" type="button" onClick={saveKhumsYear} disabled={saving || !user}>
-              <Save size={16} /> {saving ? 'جار الحفظ...' : 'حفظ سنة الخمس'}
+              <Save size={16} /> {saving ? t('khums_saving') : t('khums_save_year')}
             </button>
             <button className="dark-btn" type="button" onClick={resetDraft}>
-              <Plus size={16} /> سنة خمس جديدة
+              <Plus size={16} /> {t('khums_new_year')}
             </button>
             <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
 
-        <ActionTabs label="تبويبات الزكاة والأعمال الخيرية">
-          <Link href="/zakat">الزكاة</Link>
-          <button type="button" className={activePane === 'calculator' || activePane === 'payments' ? 'active' : ''} onClick={() => setActivePane('calculator')}>الخمس</button>
-          <Link href="/charity-projects">المشاريع الخيرية</Link>
-          <button type="button" className={activePane === 'reminders' ? 'active' : ''} onClick={() => setActivePane('reminders')}>التذكيرات</button>
-          <button type="button" className={activePane === 'reports' ? 'active' : ''} onClick={() => setActivePane('reports')}>التقارير</button>
+        <ActionTabs label={t('khums_tabs_aria')}>
+          <Link href="/zakat">{t('khums_zakat')}</Link>
+          <button type="button" className={activePane === 'calculator' || activePane === 'payments' ? 'active' : ''} onClick={() => setActivePane('calculator')}>{t('khums_title')}</button>
+          <Link href="/charity-projects">{t('khums_charity_projects')}</Link>
+          <button type="button" className={activePane === 'reminders' ? 'active' : ''} onClick={() => setActivePane('reminders')}>{t('khums_reminders')}</button>
+          <button type="button" className={activePane === 'reports' ? 'active' : ''} onClick={() => setActivePane('reports')}>{t('khums_reports')}</button>
         </ActionTabs>
 
         {message && (
@@ -606,18 +603,18 @@ export default function KhumsPage() {
         {!storageReady && (
           <div className="notice warn">
             <AlertTriangle size={17} />
-            <span>وضع الحفظ يحتاج إلى تطبيق ترحيل قاعدة البيانات الخاص بالخمس. الحسابات المعروضة هنا لا تعتمد على الزكاة ولا تستخدم نسبة 2.5%.</span>
+            <span>{t('khums_storage_notice')}</span>
           </div>
         )}
 
-        <section className="khums-stat-grid" aria-label="ملخص الخمس">
+        <section className="khums-stat-grid" aria-label={t('khums_summary')}>
           {[
-            ['إجمالي الدخل', money(khums.totalIncome), Coins],
-            ['إجمالي المصاريف', money(khums.totalExpenses), ReceiptText],
-            ['الفائض السنوي', money(khums.surplus), Scale],
-            ['الخمس المستحق', money(khums.khumsDue), Landmark],
-            ['المدفوع', money(khums.paidAmount), CheckCircle2],
-            ['المتبقي', money(khums.remainingBalance), AlertTriangle],
+            [t('khums_total_income'), money(khums.totalIncome), Coins],
+            [t('khums_total_expenses'), money(khums.totalExpenses), ReceiptText],
+            [t('khums_annual_surplus'), money(khums.surplus), Scale],
+            [t('khums_due'), money(khums.khumsDue), Landmark],
+            [t('khums_paid'), money(khums.paidAmount), CheckCircle2],
+            [t('khums_remaining'), money(khums.remainingBalance), AlertTriangle],
           ].map(([label, value, Icon]) => {
             return (
               <StatCard key={String(label)} icon={Icon as LucideIcon} label={String(label)} value={String(value)} />
@@ -626,8 +623,8 @@ export default function KhumsPage() {
         </section>
 
         {years.length > 0 && (
-          <section className="year-strip" aria-label="سنوات الخمس المحفوظة">
-            <strong>سنوات الخمس المحفوظة</strong>
+          <section className="year-strip" aria-label={t('khums_saved_years')}>
+            <strong>{t('khums_saved_years')}</strong>
             <div>
               {years.map(year => (
                 <button
@@ -651,61 +648,61 @@ export default function KhumsPage() {
             <section className="khums-layout">
               <article className="panel-card setup-card">
                 <SectionHeader
-                  eyebrow="سنة الخمس"
-                  title="إعداد سنة الخمس"
-                  description="اضبط بداية ونهاية السنة والعملة والمرجع الفقهي، ثم احفظ السنة لتفعيل الدفعات والتذكيرات."
+                  eyebrow={t('khums_year_eyebrow')}
+                  title={t('khums_year_setup')}
+                  description={t('khums_year_setup_desc')}
                   icon={<CalendarDays size={22} />}
                 />
                 <div className="form-grid">
-                  <label><span>تاريخ بداية سنة الخمس</span><input type="date" value={yearForm.start_date} onChange={event => setYearForm(prev => ({ ...prev, start_date: event.target.value, end_date: addYear(event.target.value) }))} /></label>
-                  <label><span>تاريخ نهاية سنة الخمس</span><input type="date" value={yearForm.end_date} onChange={event => setYearForm(prev => ({ ...prev, end_date: event.target.value }))} /></label>
-                  <div className="currency-field"><CurrencySelect value={yearForm.currency} onChange={currency => setYearForm(prev => ({ ...prev, currency }))} lang={lang} label="العملة" ariaLabel="العملة" /></div>
-                  <label><span>المرجع الديني / المرجع الفقهي (اختياري)</span><input value={yearForm.marja_name} onChange={event => setYearForm(prev => ({ ...prev, marja_name: event.target.value }))} /></label>
-                  <label><span>نسبة سهم الإمام</span><input inputMode="decimal" value={yearForm.imam_share_percent} onChange={event => setYearForm(prev => ({ ...prev, imam_share_percent: event.target.value }))} /></label>
-                  <label><span>نسبة سهم السادة</span><input inputMode="decimal" value={yearForm.sayyid_share_percent} onChange={event => setYearForm(prev => ({ ...prev, sayyid_share_percent: event.target.value }))} /></label>
-                  <label className="wide"><span>ملاحظات</span><textarea value={yearForm.notes} onChange={event => setYearForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
+                  <label><span>{t('khums_year_start')}</span><input type="date" value={yearForm.start_date} onChange={event => setYearForm(prev => ({ ...prev, start_date: event.target.value, end_date: addYear(event.target.value) }))} /></label>
+                  <label><span>{t('khums_year_end')}</span><input type="date" value={yearForm.end_date} onChange={event => setYearForm(prev => ({ ...prev, end_date: event.target.value }))} /></label>
+                  <div className="currency-field"><CurrencySelect value={yearForm.currency} onChange={currency => setYearForm(prev => ({ ...prev, currency }))} lang={lang} label={t('khums_currency')} ariaLabel={t('khums_currency')} /></div>
+                  <label><span>{t('khums_religious_authority')}</span><input value={yearForm.marja_name} onChange={event => setYearForm(prev => ({ ...prev, marja_name: event.target.value }))} /></label>
+                  <label><span>{t('khums_imam_percent')}</span><input inputMode="decimal" value={yearForm.imam_share_percent} onChange={event => setYearForm(prev => ({ ...prev, imam_share_percent: event.target.value }))} /></label>
+                  <label><span>{t('khums_sayyid_percent')}</span><input inputMode="decimal" value={yearForm.sayyid_share_percent} onChange={event => setYearForm(prev => ({ ...prev, sayyid_share_percent: event.target.value }))} /></label>
+                  <label className="wide"><span>{t('khums_notes')}</span><textarea value={yearForm.notes} onChange={event => setYearForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
                 </div>
-                {Math.abs(splitTotal - 100) > 0.01 && <p className="warning-line">تنبيه: مجموع نسب التقسيم الحالي {splitTotal.toFixed(1)}%. يفضّل أن يساوي 100% ما لم تكن تتبع توجيهاً خاصاً.</p>}
-                <p className="muted-note">يستخدم هذا الإصدار عملة واحدة لكل سنة خمس. إذا كانت لديك مبالغ بعملات أخرى، حوّلها إلى عملة سنة الخمس قبل الإدخال.</p>
+                {Math.abs(splitTotal - 100) > 0.01 && <p className="warning-line">{t('khums_split_warning')} {splitTotal.toFixed(1)}%. {t('khums_split_warning_suffix')}</p>}
+                <p className="muted-note">{t('khums_currency_note')}</p>
               </article>
 
               <article className="panel-card formula-card">
                 <SectionHeader
-                  eyebrow="حساب مستقل عن الزكاة"
-                  title="ملخص الفائض والخمس"
-                  description="لا يوجد نصاب هنا، ولا تُستخدم نسبة الزكاة 2.5%. الحساب الأساسي هو الفائض السنوي × 20%."
+                  eyebrow={t('khums_separate_from_zakat')}
+                  title={t('khums_surplus_summary')}
+                  description={t('khums_formula_desc')}
                   icon={<Scale size={22} />}
                 />
                 <div className="formula-box">
-                  <small>الفائض السنوي</small>
+                  <small>{t('khums_annual_surplus')}</small>
                   <strong>{money(khums.surplus)}</strong>
-                  <span>إجمالي الدخل والأرباح - المصاريف السنوية المسموحة</span>
+                  <span>{t('khums_surplus_formula')}</span>
                 </div>
                 <div className={`status-card ${khums.status}`}>
-                  <small>حالة الخمس</small>
+                  <small>{t('khums_status')}</small>
                   <strong>{statusLabel[khums.status]}</strong>
-                  <p>{khums.surplus <= 0 ? 'لا يوجد خمس مستحق حالياً حسب البيانات المدخلة.' : `الخمس المستحق يساوي ${money(khums.khumsDue)}.`}</p>
+                  <p>{khums.surplus <= 0 ? t('khums_none_due_body') : `${t('khums_due_equals')} ${money(khums.khumsDue)}.`}</p>
                 </div>
                 <div className="split-grid">
-                  <div><small>إجمالي الخمس المستحق</small><strong>{money(khums.khumsDue)}</strong></div>
-                  <div><small>سهم الإمام</small><strong>{money(khums.imamShare)}</strong></div>
-                  <div><small>سهم السادة</small><strong>{money(khums.sayyidShare)}</strong></div>
-                  <div><small>المتبقي بعد الخمس</small><strong>{money(khums.remainingAfterKhums)}</strong></div>
+                  <div><small>{t('khums_total_due')}</small><strong>{money(khums.khumsDue)}</strong></div>
+                  <div><small>{t('khums_imam_share')}</small><strong>{money(khums.imamShare)}</strong></div>
+                  <div><small>{t('khums_sayyid_share')}</small><strong>{money(khums.sayyidShare)}</strong></div>
+                  <div><small>{t('khums_after_payment')}</small><strong>{money(khums.remainingAfterKhums)}</strong></div>
                 </div>
               </article>
             </section>
 
             <section className="two-column">
               <FormSectionCard
-                eyebrow="الدخل والأرباح"
-                title="إجمالي الدخل والأرباح"
-                description="أدخل ما تبقى من دخل وأرباح خلال سنة الخمس قبل احتساب المصاريف السنوية."
+                eyebrow={t('khums_income_eyebrow')}
+                title={t('khums_income_title')}
+                description={t('khums_income_desc')}
                 icon={<Coins size={22} />}
               >
                 <div className="form-grid">
                   {INCOME_FIELDS.map(field => (
                     <label key={field.key}>
-                      <span>{field.label}</span>
+                      <span>{t(field.labelKey)}</span>
                       <input inputMode="decimal" value={incomeValues[field.key]} onChange={event => setIncomeValues(prev => ({ ...prev, [field.key]: event.target.value }))} placeholder="0.000" />
                     </label>
                   ))}
@@ -713,15 +710,15 @@ export default function KhumsPage() {
               </FormSectionCard>
 
               <FormSectionCard
-                eyebrow="المصاريف المسموحة"
-                title="المصاريف السنوية"
-                description="سجّل المصاريف السنوية المسموحة المرتبطة بالمعيشة والعمل والأسرة قبل حساب الفائض."
+                eyebrow={t('khums_expenses_eyebrow')}
+                title={t('khums_expenses_title')}
+                description={t('khums_expenses_desc')}
                 icon={<ReceiptText size={22} />}
               >
                 <div className="form-grid">
                   {EXPENSE_FIELDS.map(field => (
                     <label key={field.key}>
-                      <span>{field.label}</span>
+                      <span>{t(field.labelKey)}</span>
                       <input inputMode="decimal" value={expenseValues[field.key]} onChange={event => setExpenseValues(prev => ({ ...prev, [field.key]: event.target.value }))} placeholder="0.000" />
                     </label>
                   ))}
@@ -731,37 +728,37 @@ export default function KhumsPage() {
 
             <section className="panel-card" id="payments">
               <SectionHeader
-                eyebrow="متابعة السداد"
-                title="دفعات الخمس"
-                description="أضف دفعات سهم الإمام أو سهم السادة أو دفعات غير محددة، وتابع المتبقي للسداد."
+                eyebrow={t('khums_payments_eyebrow')}
+                title={t('khums_payments_title')}
+                description={t('khums_payments_desc')}
                 icon={<Landmark size={22} />}
-                action={<button className="gold-btn compact" type="button" onClick={() => setActivePane('payments')}>إضافة دفعة</button>}
+                action={<button className="gold-btn compact" type="button" onClick={() => setActivePane('payments')}>{t('khums_add_payment')}</button>}
               />
               <div className="payment-layout">
                 <div className="payment-form form-grid">
-                  <label><span>التاريخ</span><input type="date" value={paymentForm.payment_date} onChange={event => setPaymentForm(prev => ({ ...prev, payment_date: event.target.value }))} /></label>
-                  <label><span>المبلغ</span><input inputMode="decimal" value={paymentForm.amount} onChange={event => setPaymentForm(prev => ({ ...prev, amount: event.target.value }))} placeholder="0.000" /></label>
-                  <label><span>الجهة المستلمة</span><input value={paymentForm.recipient} onChange={event => setPaymentForm(prev => ({ ...prev, recipient: event.target.value }))} /></label>
-                  <label><span>نوع السهم</span><select value={paymentForm.share_type} onChange={event => setPaymentForm(prev => ({ ...prev, share_type: event.target.value as ShareType }))}><option value="imam">سهم الإمام</option><option value="sayyid">سهم السادة</option><option value="unspecified">غير محدد</option></select></label>
-                  <label><span>رابط الإيصال / المستند (اختياري)</span><input value={paymentForm.receipt_url} onChange={event => setPaymentForm(prev => ({ ...prev, receipt_url: event.target.value }))} placeholder="https://" /></label>
-                  <label><span>ملاحظات</span><input value={paymentForm.notes} onChange={event => setPaymentForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
-                  <button className="primary-wide wide" type="button" onClick={addPayment} disabled={!activeYearId}>إضافة دفعة</button>
+                  <label><span>{t('khums_date')}</span><input type="date" value={paymentForm.payment_date} onChange={event => setPaymentForm(prev => ({ ...prev, payment_date: event.target.value }))} /></label>
+                  <label><span>{t('khums_amount')}</span><input inputMode="decimal" value={paymentForm.amount} onChange={event => setPaymentForm(prev => ({ ...prev, amount: event.target.value }))} placeholder="0.000" /></label>
+                  <label><span>{t('khums_recipient')}</span><input value={paymentForm.recipient} onChange={event => setPaymentForm(prev => ({ ...prev, recipient: event.target.value }))} /></label>
+                  <label><span>{t('khums_share_type')}</span><select value={paymentForm.share_type} onChange={event => setPaymentForm(prev => ({ ...prev, share_type: event.target.value as ShareType }))}><option value="imam">{t('khums_imam_share')}</option><option value="sayyid">{t('khums_sayyid_share')}</option><option value="unspecified">{t('khums_share_unspecified')}</option></select></label>
+                  <label><span>{t('khums_receipt_link')}</span><input value={paymentForm.receipt_url} onChange={event => setPaymentForm(prev => ({ ...prev, receipt_url: event.target.value }))} placeholder="https://" /></label>
+                  <label><span>{t('khums_notes')}</span><input value={paymentForm.notes} onChange={event => setPaymentForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
+                  <button className="primary-wide wide" type="button" onClick={addPayment} disabled={!activeYearId}>{t('khums_add_payment')}</button>
                 </div>
 
                 <div className="payment-summary">
-                  <div><small>إجمالي الخمس المستحق</small><strong>{money(khums.khumsDue)}</strong></div>
-                  <div><small>المدفوع</small><strong>{money(khums.paidAmount)}</strong></div>
-                  <div><small>المتبقي</small><strong>{money(khums.remainingBalance)}</strong></div>
-                  <div className={`payment-state ${khums.status}`}><small>حالة السداد</small><strong>{statusLabel[khums.status]}</strong></div>
+                  <div><small>{t('khums_total_due')}</small><strong>{money(khums.khumsDue)}</strong></div>
+                  <div><small>{t('khums_paid')}</small><strong>{money(khums.paidAmount)}</strong></div>
+                  <div><small>{t('khums_remaining')}</small><strong>{money(khums.remainingBalance)}</strong></div>
+                  <div className={`payment-state ${khums.status}`}><small>{t('khums_payment_status')}</small><strong>{statusLabel[khums.status]}</strong></div>
                 </div>
               </div>
 
               {payments.length === 0 ? (
                 <EmptyState
                   icon={<ReceiptText size={26} />}
-                  title="لا توجد دفعات خمس محفوظة بعد."
-                  description="احفظ سنة الخمس ثم أضف الدفعات لإظهار المدفوع والمتبقي."
-                  action={<button className="mini-btn" type="button" onClick={() => setActivePane('payments')}>إضافة دفعة</button>}
+                  title={t('khums_payments_empty')}
+                  description={t('khums_payments_empty_body')}
+                  action={<button className="mini-btn" type="button" onClick={() => setActivePane('payments')}>{t('khums_add_payment')}</button>}
                 />
               ) : (
                 <div className="payment-list">
@@ -769,10 +766,10 @@ export default function KhumsPage() {
                     <article key={payment.id}>
                       <div>
                         <strong>{money(toNumber(payment.amount), payment.currency)}</strong>
-                        <span>{shareLabel[payment.share_type]} - {payment.recipient || 'جهة غير محددة'}</span>
+                        <span>{shareLabel[payment.share_type]} - {payment.recipient || t('khums_recipient_unspecified')}</span>
                         <small>{dateLabel(payment.payment_date)}{payment.receipt_url ? ` - ${payment.receipt_url}` : ''}</small>
                       </div>
-                      <button type="button" onClick={() => void deletePayment(payment)} aria-label="حذف الدفعة"><Trash2 size={15} /></button>
+                      <button type="button" onClick={() => void deletePayment(payment)} aria-label={t('khums_delete_payment')}><Trash2 size={15} /></button>
                     </article>
                   ))}
                 </div>
@@ -784,24 +781,24 @@ export default function KhumsPage() {
         {activePane === 'reminders' && (
           <section className="panel-card" id="reminders">
             <SectionHeader
-              eyebrow="تذكيرات سنة الخمس"
-              title="التذكيرات"
-              description="أضف تذكيراً قبل نهاية سنة الخمس أو في يوم النهاية أو في موعد مخصص."
+              eyebrow={t('khums_reminders_eyebrow')}
+              title={t('khums_reminders')}
+              description={t('khums_reminders_desc')}
               icon={<CalendarDays size={22} />}
             />
             <div className="reminder-form form-grid">
-              <label><span>تاريخ التذكير</span><input type="date" value={reminderForm.reminder_date} onChange={event => setReminderForm(prev => ({ ...prev, reminder_date: event.target.value }))} /></label>
-              <label><span>نوع التذكير</span><select value={reminderForm.reminder_type} onChange={event => setReminderForm(prev => ({ ...prev, reminder_type: event.target.value as ReminderType }))}><option value="before_year_end_30">قبل نهاية سنة الخمس بـ 30 يوم</option><option value="year_end">يوم نهاية سنة الخمس</option><option value="custom">تذكير مخصص</option></select></label>
-              <label className="wide"><span>ملاحظات</span><input value={reminderForm.notes} onChange={event => setReminderForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
-              <button className="primary-wide wide" type="button" onClick={addReminder} disabled={!activeYearId}>إضافة تذكير</button>
+              <label><span>{t('khums_reminder_date')}</span><input type="date" value={reminderForm.reminder_date} onChange={event => setReminderForm(prev => ({ ...prev, reminder_date: event.target.value }))} /></label>
+              <label><span>{t('khums_reminder_type')}</span><select value={reminderForm.reminder_type} onChange={event => setReminderForm(prev => ({ ...prev, reminder_type: event.target.value as ReminderType }))}><option value="before_year_end_30">{t('khums_reminder_before_30')}</option><option value="year_end">{t('khums_reminder_year_end')}</option><option value="custom">{t('khums_reminder_custom')}</option></select></label>
+              <label className="wide"><span>{t('khums_notes')}</span><input value={reminderForm.notes} onChange={event => setReminderForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
+              <button className="primary-wide wide" type="button" onClick={addReminder} disabled={!activeYearId}>{t('khums_add_reminder')}</button>
             </div>
 
             {reminders.length === 0 ? (
               <EmptyState
                 icon={<CalendarDays size={26} />}
-                title="لا توجد تذكيرات محفوظة بعد."
-                description="عند حفظ سنة الخمس، سيتم إنشاء تذكير قبل النهاية وتذكير يوم النهاية."
-                action={<button className="mini-btn" type="button" onClick={() => void saveKhumsYear()}>حفظ السنة وإنشاء التذكيرات</button>}
+                title={t('khums_reminders_empty')}
+                description={t('khums_reminders_empty_body')}
+                action={<button className="mini-btn" type="button" onClick={() => void saveKhumsYear()}>{t('khums_save_create_reminders')}</button>}
               />
             ) : (
               <div className="reminder-grid">
@@ -813,8 +810,8 @@ export default function KhumsPage() {
                       {reminder.notes && <small>{reminder.notes}</small>}
                     </div>
                     <div>
-                      <button type="button" onClick={() => void updateReminderStatus(reminder, 'completed')}>تم</button>
-                      <button type="button" onClick={() => void updateReminderStatus(reminder, 'dismissed')}>تجاهل</button>
+                      <button type="button" onClick={() => void updateReminderStatus(reminder, 'completed')}>{t('khums_complete')}</button>
+                      <button type="button" onClick={() => void updateReminderStatus(reminder, 'dismissed')}>{t('khums_dismiss')}</button>
                     </div>
                   </article>
                 ))}
@@ -827,13 +824,13 @@ export default function KhumsPage() {
           <section className="reports-layout" id="reports">
             <article className="panel-card">
               <SectionHeader
-                eyebrow="تقرير الخمس"
-                title="تقرير الخمس السنوي"
-                description="ملخص الدخل والمصاريف والخمس المستحق والمدفوع والمتبقي."
+                eyebrow={t('khums_report_eyebrow')}
+                title={t('khums_report_title')}
+                description={t('khums_report_desc')}
                 icon={<FileText size={22} />}
                 action={(
                   <div className="report-actions">
-                    <button className="mini-btn" type="button" onClick={() => window.print()}><Printer size={15} /> طباعة / PDF</button>
+                    <button className="mini-btn" type="button" onClick={() => window.print()}><Printer size={15} /> {t('khums_print_pdf')}</button>
                     <button className="mini-btn" type="button" onClick={exportCsvReport}><Download size={15} /> CSV</button>
                   </div>
                 )}
@@ -849,13 +846,13 @@ export default function KhumsPage() {
             </article>
             <article className="panel-card info-card">
               <SectionHeader
-                eyebrow="تنبيه شرعي"
-                title="إخلاء مسؤولية"
-                description="هذه الحاسبة أداة تنظيمية وتقديرية فقط، ولا تُعد فتوى شرعية."
+                eyebrow={t('khums_religious_notice')}
+                title={t('khums_disclaimer_title')}
+                description={t('khums_disclaimer_short')}
                 icon={<AlertTriangle size={22} />}
               />
               <p>
-                هذه الحاسبة أداة تنظيمية وتقديرية فقط، ولا تُعد فتوى شرعية. تختلف تفاصيل الخمس حسب مرجع التقليد والظروف الشخصية. يُنصح بمراجعة المرجع الديني أو الجهة الشرعية المختصة قبل الاعتماد النهائي على النتائج.
+                {t('khums_disclaimer_full')}
               </p>
             </article>
           </section>

@@ -59,14 +59,6 @@ type AnalyticsPayload = CompanyAnalyticsSummary & {
   ok?: boolean;
 };
 
-const STATUS_LABELS: Record<CompanyStatus, string> = {
-  approved: 'معتمدة',
-  pending_review: 'قيد المراجعة',
-  rejected: 'مرفوضة',
-  needs_changes: 'تحتاج تعديل',
-  inactive: 'غير نشطة',
-};
-
 const STATUS_ICONS: Record<CompanyStatus, typeof ShieldCheck> = {
   approved: ShieldCheck,
   pending_review: Clock3,
@@ -80,14 +72,14 @@ function isMissing(value?: string | number | null) {
   return !text || ['null', 'undefined', 'no', 'n/a', 'na', '-', 'for review'].includes(text.toLowerCase());
 }
 
-function displayValue(value?: string | number | null, fallback = 'غير محدد') {
+function displayValue(value?: string | number | null, fallback = '') {
   return isMissing(value) ? fallback : String(value).trim();
 }
 
-function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn') {
-  if (!value) return 'غير محدد';
+function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn', fallback = '') {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'غير محدد';
+  if (Number.isNaN(date.getTime())) return fallback;
   return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 }
 
@@ -95,13 +87,13 @@ function safeTel(value: string) {
   return normalizeDigits(value).replace(/[^\d+]/g, '');
 }
 
-function cleanWebsiteLabel(value?: string | null) {
+function cleanWebsiteLabel(value?: string | null, fallback = '') {
   if (isMissing(value)) return '';
   try {
     const url = new URL(value!.startsWith('http') ? value! : `https://${value}`);
     return url.hostname.replace(/^www\./, '');
   } catch {
-    return 'زيارة الموقع';
+    return fallback;
   }
 }
 
@@ -139,26 +131,17 @@ async function trackCompanyEvent(companyId: string, eventType: CompanyAnalyticsE
   }
 }
 
-function statusMessage(status: CompanyStatus, adminNotes?: string | null) {
-  if (status === 'approved') return 'تم اعتماد الشركة ونشرها في دليل THE SFM.';
-  if (status === 'pending_review') return 'بانتظار مراجعة الإدارة.';
-  if (status === 'needs_changes') return adminNotes?.trim() || 'تحتاج بيانات الشركة إلى تعديل قبل الاعتماد.';
-  if (status === 'rejected') return adminNotes?.trim() || 'تم رفض طلب الشركة.';
-  if (status === 'inactive') return 'الشركة غير نشطة حالياً.';
-  return '';
-}
-
 function shouldShowReviewNote(status: CompanyStatus) {
   return status === 'rejected' || status === 'needs_changes';
 }
 
-function ProfileCover({ item }: { item: CompanyListing }) {
+function ProfileCover({ item, alt }: { item: CompanyListing; alt: string }) {
   const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(item.cover_image_url);
   if (!item.cover_image_url || failed || loading || !imageUrl) return null;
   return (
     <Image
       src={imageUrl}
-      alt={`صورة غلاف ${item.company_name}`}
+      alt={`${alt}: ${item.company_name}`}
       fill
       sizes="(max-width: 768px) 100vw, 1400px"
       className="hero-cover-image"
@@ -257,7 +240,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
       .then(({ response, payload }) => {
         if (cancelled) return;
         if (!response.ok || !payload.ok || !payload.item) {
-          setError(payload.code === 'ACCESS_DENIED' ? 'هذه الشركة غير منشورة حالياً.' : t('company_listing_error_body'));
+          setError(payload.code === 'ACCESS_DENIED' ? t('company_access_denied') : t('company_listing_error_body'));
           return;
         }
         setItem(payload.item);
@@ -304,6 +287,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
   const categoryLabel = item ? t(COMPANY_CATEGORY_CONFIGS[item.category]?.labelKey ?? 'company_category_investment') : '';
   const status = item?.status ?? 'pending_review';
+  const statusLabels: Record<CompanyStatus, string> = {
+    approved: t('company_status_approved'),
+    pending_review: t('company_status_pending'),
+    rejected: t('company_status_rejected'),
+    needs_changes: t('company_status_changes'),
+    inactive: t('company_status_inactive'),
+  };
   const StatusIcon = STATUS_ICONS[status] ?? Clock3;
   const location = [item?.country, item?.city].filter(Boolean).join(' / ');
   const services = useMemo(() => item?.services?.map(service => service.trim()).filter(Boolean) ?? [], [item?.services]);
@@ -359,7 +349,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
         approved_at: nextStatus === 'approved' ? new Date().toISOString() : previous.approved_at,
       } : previous);
     } catch {
-      setError('تعذر تحديث حالة الشركة حالياً.');
+      setError(t('company_update_status_error'));
     } finally {
       setBusyStatus(null);
     }
@@ -378,8 +368,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             <ActionButtonLink
               href={backHref}
               icon={<ChevronRight size={18} />}
-              label="العودة إلى الخدمات"
-              ariaLabel="العودة إلى صفحة الخدمات"
+              label={t('company_back_services')}
+              ariaLabel={t('company_back_services_aria')}
               variant="secondary"
             />
           </section>
@@ -391,14 +381,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               <ActionButtonLink
                 href={backHref}
                 icon={<ChevronRight size={17} />}
-                label="العودة إلى الخدمات"
-                ariaLabel="العودة إلى صفحة الخدمات"
+                label={t('company_back_services')}
+                ariaLabel={t('company_back_services_aria')}
                 variant="secondary"
               />
             </div>
 
         <section className="company-hero-card">
-          <ProfileCover item={item} />
+          <ProfileCover item={item} alt={t('company_cover_alt')} />
           <div className="hero-shade" aria-hidden="true" />
           <div className="hero-main">
             <AssetIdentity
@@ -413,14 +403,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             <div className="hero-copy">
                   <span className={`status-pill ${status}`}>
                     <StatusIcon size={15} />
-                    {STATUS_LABELS[status] ?? status}
+                    {statusLabels[status] ?? status}
                   </span>
                   <h1>{item.company_name}</h1>
                   <div className="hero-meta">
                     <span><Building2 size={15} />{categoryLabel}</span>
                     {location ? <span><MapPin size={15} />{location}</span> : null}
                   </div>
-                  <p>{displayValue(item.short_description, 'لم تتم إضافة نبذة مختصرة بعد.')}</p>
+                  <p>{displayValue(item.short_description, t('company_short_description_missing'))}</p>
                 </div>
               </div>
               <div className="hero-actions">
@@ -428,8 +418,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <ActionButtonLink
                     href={websiteHref}
                     icon={<Globe2 size={17} />}
-                    label="زيارة الموقع"
-                    ariaLabel={`زيارة موقع ${item.company_name}`}
+                    label={t('company_visit_website')}
+                    ariaLabel={`${t('company_visit_website')}: ${item.company_name}`}
                     variant="primary"
                     external
                     onClick={() => trackInteraction('company_website_click')}
@@ -439,8 +429,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <ActionButtonLink
                     href={`mailto:${item.email}`}
                     icon={<Mail size={17} />}
-                    label="تواصل"
-                    ariaLabel={`تواصل مع ${item.company_name}`}
+                    label={t('company_contact')}
+                    ariaLabel={`${t('company_contact')}: ${item.company_name}`}
                     variant="ghost"
                     external
                     onClick={() => trackInteraction('company_contact_click')}
@@ -449,8 +439,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <ActionButtonLink
                     href={`tel:${safeTel(item.phone)}`}
                     icon={<Phone size={17} />}
-                    label="تواصل"
-                    ariaLabel={`تواصل مع ${item.company_name}`}
+                    label={t('company_contact')}
+                    ariaLabel={`${t('company_contact')}: ${item.company_name}`}
                     variant="ghost"
                     external
                     onClick={() => trackInteraction('company_contact_click')}
@@ -459,8 +449,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   <ActionButtonLink
                     href={`https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}`}
                     icon={<MessageCircle size={17} />}
-                    label="واتساب"
-                    ariaLabel={`التواصل مع ${item.company_name} عبر واتساب`}
+                    label={t('company_whatsapp')}
+                    ariaLabel={`${t('company_contact')}: ${item.company_name} — ${t('company_whatsapp')}`}
                     variant="ghost"
                     external
                     onClick={() => trackInteraction('company_contact_click')}
@@ -469,47 +459,47 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                 <ActionButtonLink
                   href={backHref}
                   icon={<ArrowRight size={17} />}
-                  label="العودة إلى الخدمات"
-                  ariaLabel="العودة إلى صفحة الخدمات"
+                  label={t('company_back_services')}
+                  ariaLabel={t('company_back_services_aria')}
                   variant="ghost"
                 />
               </div>
             </section>
 
-            <section className="highlight-row" aria-label="ملخص الشركة">
-              <HighlightCard icon={<StatusIcon size={18} />} label="حالة الاعتماد" value={STATUS_LABELS[status] ?? status} />
-              <HighlightCard icon={<CalendarDays size={18} />} label="سنة التأسيس" value={displayValue(item.founded_year, 'غير مضاف')} />
-              <HighlightCard icon={<MapPin size={18} />} label="الموقع" value={displayValue(location, 'غير محدد')} />
-              <HighlightCard icon={<Building2 size={18} />} label="نوع الشركة" value={categoryLabel} />
-              <HighlightCard icon={<Eye size={18} />} label="زيارات الصفحة" value={numberFormat.format(analytics?.profileViews ?? 0)} />
+            <section className="highlight-row" aria-label={t('company_summary')}>
+              <HighlightCard icon={<StatusIcon size={18} />} label={t('company_approval_status')} value={statusLabels[status] ?? status} />
+              <HighlightCard icon={<CalendarDays size={18} />} label={t('company_founded_year')} value={displayValue(item.founded_year, t('company_not_added'))} />
+              <HighlightCard icon={<MapPin size={18} />} label={t('company_location')} value={displayValue(location, t('company_unspecified'))} />
+              <HighlightCard icon={<Building2 size={18} />} label={t('company_type')} value={categoryLabel} />
+              <HighlightCard icon={<Eye size={18} />} label={t('company_page_visits')} value={numberFormat.format(analytics?.profileViews ?? 0)} />
             </section>
 
             <div className="company-layout">
               <main className="company-main-column">
-                <SectionCard eyebrow="Overview" title="نبذة عن الشركة" icon={<FileText size={19} />}>
+                <SectionCard eyebrow={t('company_overview_eyebrow')} title={t('company_overview')} icon={<FileText size={19} />}>
                   <div className="overview-block">
                     <div>
-                      <span>وصف مختصر</span>
-                      <p>{displayValue(item.short_description, 'لم تتم إضافة نبذة مختصرة بعد.')}</p>
+                      <span>{t('company_short_description')}</span>
+                      <p>{displayValue(item.short_description, t('company_short_description_missing'))}</p>
                     </div>
                     <div>
-                      <span>وصف تفصيلي</span>
-                      <p>{displayValue(item.long_description, 'لم تتم إضافة وصف تفصيلي بعد.')}</p>
+                      <span>{t('company_detailed_description')}</span>
+                      <p>{displayValue(item.long_description, t('company_detailed_description_missing'))}</p>
                     </div>
                   </div>
                   <div className="details-grid">
-                    <DetailTile icon={<Building2 size={17} />} label="نوع الشركة" value={categoryLabel} />
-                    <DetailTile icon={<MapPin size={17} />} label="الدولة" value={item.country} />
-                    <DetailTile icon={<MapPin size={17} />} label="المدينة" value={item.city} />
-                    <DetailTile icon={<MapPin size={17} />} label="عنوان الشركة بالكامل" value={item.full_address} fallback="لم يتم إضافة عنوان كامل بعد." />
-                    <DetailTile icon={<MapPin size={17} />} label="إحداثيات الموقع" value={coordinates} fallback="لم يتم تحديد الإحداثيات بعد." />
-                    <DetailTile icon={<CalendarDays size={17} />} label="سنة التأسيس" value={item.founded_year} fallback="لم يتم تحديد سنة التأسيس" />
-                    <DetailTile icon={<BadgeCheck size={17} />} label="رقم الترخيص" value={item.license_number} fallback="لم يتم إضافة رقم ترخيص" />
-                    <DetailTile icon={<ShieldCheck size={17} />} label="الجهة المنظمة" value={item.regulator_name} fallback="لم يتم تحديد جهة منظمة" />
+                    <DetailTile icon={<Building2 size={17} />} label={t('company_type')} value={categoryLabel} />
+                    <DetailTile icon={<MapPin size={17} />} label={t('company_country')} value={item.country} fallback={t('company_unspecified')} />
+                    <DetailTile icon={<MapPin size={17} />} label={t('company_city')} value={item.city} fallback={t('company_unspecified')} />
+                    <DetailTile icon={<MapPin size={17} />} label={t('company_full_address')} value={item.full_address} fallback={t('company_full_address_missing')} />
+                    <DetailTile icon={<MapPin size={17} />} label={t('company_coordinates')} value={coordinates} fallback={t('company_coordinates_missing')} />
+                    <DetailTile icon={<CalendarDays size={17} />} label={t('company_founded_year')} value={item.founded_year} fallback={t('company_founded_year_missing')} />
+                    <DetailTile icon={<BadgeCheck size={17} />} label={t('company_license_number')} value={item.license_number} fallback={t('company_license_missing')} />
+                    <DetailTile icon={<ShieldCheck size={17} />} label={t('company_regulator')} value={item.regulator_name} fallback={t('company_regulator_missing')} />
                   </div>
                 </SectionCard>
 
-                <SectionCard eyebrow="Services" title="الخدمات المقدمة" icon={<Sparkles size={19} />}>
+                <SectionCard eyebrow={t('company_services_eyebrow')} title={t('company_services')} icon={<Sparkles size={19} />}>
                   {services.length ? (
                     <div className="services-grid">
                       {services.map((service, index) => (
@@ -522,34 +512,34 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                   ) : (
                     <div className="empty-card">
                       <Sparkles size={22} />
-                      <strong>لا توجد خدمات منشورة حالياً</strong>
-                      <p>لم يتم إضافة خدمات لهذه الشركة بعد.</p>
+                      <strong>{t('company_services_empty')}</strong>
+                      <p>{t('company_services_empty_body')}</p>
                     </div>
                   )}
                 </SectionCard>
 
-                <SectionCard eyebrow="Regulatory" title="المعلومات النظامية" icon={<BadgeCheck size={19} />}>
+                <SectionCard eyebrow={t('company_regulatory_eyebrow')} title={t('company_regulatory')} icon={<BadgeCheck size={19} />}>
                   <div className="details-grid">
-                    <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الإضافة" value={formatDate(item.created_at, locale)} />
-                    <DetailTile icon={<CalendarDays size={17} />} label="تاريخ الاعتماد" value={formatDate(item.approved_at, locale)} />
-                    <DetailTile icon={<ShieldCheck size={17} />} label="حالة الاعتماد" value={STATUS_LABELS[status] ?? status} />
-                    <DetailTile icon={<Sparkles size={17} />} label="شركة مميزة" value={item.is_featured ? 'نعم' : 'لا'} />
+                    <DetailTile icon={<CalendarDays size={17} />} label={t('company_added_date')} value={formatDate(item.created_at, locale, t('company_unspecified'))} />
+                    <DetailTile icon={<CalendarDays size={17} />} label={t('company_approval_date')} value={formatDate(item.approved_at, locale, t('company_unspecified'))} />
+                    <DetailTile icon={<ShieldCheck size={17} />} label={t('company_approval_status')} value={statusLabels[status] ?? status} />
+                    <DetailTile icon={<Sparkles size={17} />} label={t('company_featured')} value={item.is_featured ? t('company_yes') : t('company_no')} />
                   </div>
                 </SectionCard>
 
                 {(mapsHref || item.full_address || location) ? (
-                  <SectionCard eyebrow="Location" title="الموقع والعنوان" icon={<Navigation size={19} />}>
+                  <SectionCard eyebrow={t('company_location_eyebrow')} title={t('company_location_address')} icon={<Navigation size={19} />}>
                     <div className="location-card">
                       <div>
-                        <span>عنوان الشركة</span>
-                        <strong>{displayValue(item.full_address || location, 'لم يتم إضافة عنوان كامل بعد.')}</strong>
+                        <span>{t('company_address')}</span>
+                        <strong>{displayValue(item.full_address || location, t('company_full_address_missing'))}</strong>
                       </div>
                       {mapsHref ? (
                         <ActionButtonLink
                           href={mapsHref}
                           icon={<MapPin size={17} />}
-                          label="فتح الموقع على الخريطة"
-                          ariaLabel={`فتح موقع ${item.company_name} على الخريطة`}
+                          label={t('company_open_map')}
+                          ariaLabel={`${t('company_open_map')}: ${item.company_name}`}
                           variant="secondary"
                           external
                         />
@@ -560,7 +550,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               </main>
 
               <aside className="company-side-column">
-                <SectionCard eyebrow="Contact" title="بيانات التواصل" icon={<Phone size={19} />} className="side-card">
+                <SectionCard eyebrow={t('company_contact_eyebrow')} title={t('company_contact_details')} icon={<Phone size={19} />} className="side-card">
                   {hasContact ? (
                     <div
                       className="contact-list"
@@ -571,90 +561,96 @@ export function CompanyDetailsPage({ id }: { id: string }) {
                         trackInteraction(href.startsWith('http') && !href.includes('wa.me') ? 'company_website_click' : 'company_contact_click');
                       }}
                     >
-                      <ContactAction href={websiteHref} icon={<Globe2 size={16} />} label="الموقع الإلكتروني" value={item.website_url} display={cleanWebsiteLabel(item.website_url)} />
-                      <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label="البريد الإلكتروني" value={item.email} />
-                      <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label="رقم الهاتف" value={item.phone} />
-                      <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<MessageCircle size={16} />} label="واتساب" value={item.whatsapp} />
+                      <ContactAction href={websiteHref} icon={<Globe2 size={16} />} label={t('company_website')} value={item.website_url} display={cleanWebsiteLabel(item.website_url, t('company_visit_website'))} />
+                      <ContactAction href={item.email ? `mailto:${item.email}` : null} icon={<Mail size={16} />} label={t('company_email')} value={item.email} />
+                      <ContactAction href={item.phone ? `tel:${safeTel(item.phone)}` : null} icon={<Phone size={16} />} label={t('company_phone')} value={item.phone} />
+                      <ContactAction href={item.whatsapp ? `https://wa.me/${safeTel(item.whatsapp).replace(/^\+/, '')}` : null} icon={<MessageCircle size={16} />} label={t('company_whatsapp')} value={item.whatsapp} />
                       <ContactAction href={instagramHref} icon={<Instagram size={16} />} label="Instagram" value={instagramHref} display={formatCompanySocialHandle(item.instagram_url, 'instagram')} />
                       <ContactAction href={linkedinHref} icon={<Linkedin size={16} />} label="LinkedIn" value={linkedinHref} display={formatCompanySocialHandle(item.linkedin_url, 'linkedin')} />
                       <ContactAction href={twitterHref} icon={<Twitter size={16} />} label="X / Twitter" value={twitterHref} display={formatCompanySocialHandle(item.twitter_url, 'twitter')} />
-                      <ContactAction href={mapsHref} icon={<MapPin size={16} />} label="الموقع على الخريطة" value={item.full_address || location || item.google_maps_url} display="فتح الموقع على الخريطة" />
+                      <ContactAction href={mapsHref} icon={<MapPin size={16} />} label={t('company_map_location')} value={item.full_address || location || item.google_maps_url} display={t('company_open_map')} />
                     </div>
                   ) : (
                     <div className="empty-card compact">
                       <Phone size={20} />
-                      <p>لم يتم إضافة بيانات تواصل كافية.</p>
+                      <p>{t('company_contact_missing')}</p>
                     </div>
                   )}
                 </SectionCard>
 
-                <SectionCard eyebrow="Analytics" title="إحصائيات الشركة" icon={<BarChart3 size={19} />} className="side-card">
+                <SectionCard eyebrow={t('company_analytics_eyebrow')} title={t('company_analytics')} icon={<BarChart3 size={19} />} className="side-card">
                   <div className="analytics-grid metric-grid">
-                    <DetailTile icon={<Eye size={16} />} label="زيارات الصفحة" value={numberFormat.format(analytics?.profileViews ?? 0)} />
+                    <DetailTile icon={<Eye size={16} />} label={t('company_page_visits')} value={numberFormat.format(analytics?.profileViews ?? 0)} />
                     {canSeeDetailedAnalytics ? (
                       <>
-                        <DetailTile icon={<Eye size={16} />} label="مشاهدات البطاقة" value={numberFormat.format(analytics?.cardViews ?? 0)} />
-                        <DetailTile icon={<Globe2 size={16} />} label="نقرات زيارة الموقع" value={numberFormat.format(analytics?.websiteClicks ?? 0)} />
-                        <DetailTile icon={<Mail size={16} />} label="نقرات التواصل" value={numberFormat.format(analytics?.contactClicks ?? 0)} />
-                        <DetailTile icon={<CalendarDays size={16} />} label="آخر مشاهدة" value={formatDate(analytics?.lastViewedAt, locale)} />
+                        <DetailTile icon={<Eye size={16} />} label={t('company_card_views')} value={numberFormat.format(analytics?.cardViews ?? 0)} />
+                        <DetailTile icon={<Globe2 size={16} />} label={t('company_website_clicks')} value={numberFormat.format(analytics?.websiteClicks ?? 0)} />
+                        <DetailTile icon={<Mail size={16} />} label={t('company_contact_clicks')} value={numberFormat.format(analytics?.contactClicks ?? 0)} />
+                        <DetailTile icon={<CalendarDays size={16} />} label={t('company_last_viewed')} value={formatDate(analytics?.lastViewedAt, locale, t('company_unspecified'))} />
                       </>
                     ) : null}
                   </div>
                 </SectionCard>
 
-                <SectionCard eyebrow="Status" title="حالة الشركة" icon={<StatusIcon size={19} />} className="side-card">
+                <SectionCard eyebrow={t('company_status_eyebrow')} title={t('company_status_title')} icon={<StatusIcon size={19} />} className="side-card">
                   <div className={`status-card ${status}`}>
                     <StatusIcon size={24} />
                     <div>
-                      <span>الحالة الحالية</span>
-                      <strong>{STATUS_LABELS[status] ?? status}</strong>
+                      <span>{t('company_current_status')}</span>
+                      <strong>{statusLabels[status] ?? status}</strong>
                     </div>
                   </div>
                   <div className="status-list">
-                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الإرسال" value={formatDate(item.created_at, locale)} />
-                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ المراجعة" value={formatDate(item.reviewed_at, locale)} />
-                    <DetailTile icon={<CalendarDays size={16} />} label="تاريخ الاعتماد" value={formatDate(item.approved_at, locale)} />
+                    <DetailTile icon={<CalendarDays size={16} />} label={t('company_submitted_date')} value={formatDate(item.created_at, locale, t('company_unspecified'))} />
+                    <DetailTile icon={<CalendarDays size={16} />} label={t('company_review_date')} value={formatDate(item.reviewed_at, locale, t('company_unspecified'))} />
+                    <DetailTile icon={<CalendarDays size={16} />} label={t('company_approval_date')} value={formatDate(item.approved_at, locale, t('company_unspecified'))} />
                   </div>
-                  <p className={`status-message ${status}`}>{statusMessage(status, item.admin_notes)}</p>
+                  <p className={`status-message ${status}`}>{
+                    status === 'approved' ? t('company_status_message_approved')
+                      : status === 'pending_review' ? t('company_status_message_pending')
+                      : status === 'needs_changes' ? item.admin_notes?.trim() || t('company_status_message_changes')
+                      : status === 'rejected' ? item.admin_notes?.trim() || t('company_status_message_rejected')
+                      : t('company_status_message_inactive')
+                  }</p>
                   {viewer?.canReview && shouldShowReviewNote(status) && item.admin_notes ? (
-                    <p className="admin-note"><strong>ملاحظة المراجعة:</strong> {item.admin_notes}</p>
+                    <p className="admin-note"><strong>{t('company_review_note')}</strong> {item.admin_notes}</p>
                   ) : null}
                 </SectionCard>
 
                 {viewer?.isOwner ? (
-                  <SectionCard eyebrow="Owner" title="إدارة شركتي" icon={<Building2 size={19} />} className="side-card admin-card">
+                  <SectionCard eyebrow={t('company_owner_eyebrow')} title={t('company_manage_mine')} icon={<Building2 size={19} />} className="side-card admin-card">
                     <ActionButtonLink
                       href="/profile/companies"
                       icon={<Edit3 size={16} />}
-                      label="تعديل البيانات"
-                      ariaLabel="فتح صفحة شركاتي لتعديل بيانات الشركة"
+                      label={t('company_edit_details')}
+                      ariaLabel={t('company_edit_details_aria')}
                       variant="secondary"
                     />
                     <ActionButtonLink
                       href={`/companies/${item.id}`}
                       icon={<Eye size={16} />}
-                      label="عرض الصفحة العامة"
-                      ariaLabel="عرض الصفحة العامة للشركة"
+                      label={t('company_public_page')}
+                      ariaLabel={t('company_public_page_aria')}
                       variant="secondary"
                     />
                   </SectionCard>
                 ) : null}
 
                 {viewer?.canReview ? (
-                  <SectionCard eyebrow="Admin" title="إجراءات المراجعة" icon={<ShieldCheck size={19} />} className="side-card admin-card">
+                  <SectionCard eyebrow={t('company_admin_eyebrow')} title={t('company_review_actions')} icon={<ShieldCheck size={19} />} className="side-card admin-card">
                     <button type="button" className="approve" onClick={() => void reviewCompany('approved')} disabled={Boolean(busyStatus)}>
-                      <CheckCircle2 size={16} /> قبول ونشر
+                      <CheckCircle2 size={16} /> {t('company_approve_publish')}
                     </button>
                     <button type="button" className="needs" onClick={() => void reviewCompany('needs_changes')} disabled={Boolean(busyStatus)}>
-                      <Edit3 size={16} /> طلب تعديل
+                      <Edit3 size={16} /> {t('company_request_changes')}
                     </button>
                     <button type="button" className="reject" onClick={() => void reviewCompany('rejected')} disabled={Boolean(busyStatus)}>
-                      <XCircle size={16} /> رفض
+                      <XCircle size={16} /> {t('company_reject')}
                     </button>
                     <button type="button" className="archive" onClick={() => void reviewCompany('inactive')} disabled={Boolean(busyStatus)}>
-                      <Trash2 size={16} /> أرشفة
+                      <Trash2 size={16} /> {t('company_archive')}
                     </button>
-                    <Link href="/sfm-admin-control/companies"><Edit3 size={16} /> تعديل البيانات</Link>
+                    <Link href="/sfm-admin-control/companies"><Edit3 size={16} /> {t('company_edit_details')}</Link>
                   </SectionCard>
                 ) : null}
               </aside>

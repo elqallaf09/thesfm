@@ -16,12 +16,12 @@ import {
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import {
   ADMIN_PERMISSION_KEYS,
-  ADMIN_PERMISSION_LABELS_AR,
   countEnabledAdminPermissions,
   EMPTY_ADMIN_PERMISSIONS,
   type AdminPermission,
   type AdminPermissions,
 } from '@/lib/adminPermissions';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type RoleRecord = {
   id: string;
@@ -54,20 +54,14 @@ type AuditLog = {
   created_at: string;
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  grant_admin: 'منح صلاحية أدمن',
-  revoke_admin: 'سحب صلاحية الأدمن',
-  update_permissions: 'تحديث الصلاحيات',
-};
-
 function emptyPermissions() {
   return { ...EMPTY_ADMIN_PERMISSIONS, admin_dashboard: true };
 }
 
-function dateLabel(value: string) {
+function dateLabel(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
-  return new Intl.DateTimeFormat('ar-KW-u-nu-latn', {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -82,6 +76,23 @@ function normalizePermissions(value: RoleRecord | null) {
 }
 
 export default function AdminPermissionsClient({ actorEmail }: { actorEmail: string }) {
+  const { t, lang, dir } = useLanguage();
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const actionLabels: Record<string, string> = {
+    grant_admin: t('admin_action_grant'),
+    revoke_admin: t('admin_action_revoke'),
+    update_permissions: t('admin_action_update'),
+  };
+  const permissionLabels: Record<AdminPermission, string> = {
+    admin_dashboard: t('admin_permission_dashboard'),
+    company_reviews: t('admin_permission_company_reviews'),
+    instagram_automation: t('admin_permission_instagram'),
+    business_management: t('admin_permission_business'),
+    users_management: t('admin_permission_users'),
+    payments: t('admin_permission_payments'),
+    reports: t('admin_permission_reports'),
+    settings: t('admin_permission_settings'),
+  };
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchUser[]>([]);
@@ -105,7 +116,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
       ]);
 
       if (!rolesResponse.ok || !logsResponse.ok) {
-        setMessage({ tone: 'error', text: 'تعذر تحميل بيانات صلاحيات الأدمن.' });
+        setMessage({ tone: 'error', text: t('admin_permissions_load_error') });
         return;
       }
 
@@ -114,11 +125,11 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
       setRoles(rolesPayload.roles ?? []);
       setLogs(logsPayload.logs ?? []);
     } catch {
-      setMessage({ tone: 'error', text: 'تعذر الاتصال بالخادم.' });
+      setMessage({ tone: 'error', text: t('admin_server_error') });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadAdminData();
@@ -129,7 +140,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
     const cleaned = query.trim();
     if (cleaned.length < 2) {
       setResults([]);
-      setMessage({ tone: 'error', text: 'اكتب حرفين على الأقل للبحث.' });
+      setMessage({ tone: 'error', text: t('admin_search_min') });
       return;
     }
 
@@ -138,18 +149,18 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
     try {
       const response = await fetch(`/api/admin/users/search?query=${encodeURIComponent(cleaned)}`, { cache: 'no-store' });
       if (!response.ok) {
-        setMessage({ tone: 'error', text: response.status === 403 ? 'ليس لديك صلاحية للبحث عن المستخدمين.' : 'تعذر تنفيذ البحث.' });
+        setMessage({ tone: 'error', text: response.status === 403 ? t('admin_search_denied') : t('admin_search_error') });
         return;
       }
       const payload = await response.json() as { users?: SearchUser[] };
       setResults(payload.users ?? []);
-      if (!payload.users?.length) setMessage({ tone: 'error', text: 'لا توجد نتائج مطابقة.' });
+      if (!payload.users?.length) setMessage({ tone: 'error', text: t('admin_no_results') });
     } catch {
-      setMessage({ tone: 'error', text: 'تعذر الاتصال بالخادم.' });
+      setMessage({ tone: 'error', text: t('admin_server_error') });
     } finally {
       setSearching(false);
     }
-  }, [query]);
+  }, [query, t]);
 
   function selectUser(user: SearchUser) {
     const role = user.role ?? roles.find(item => item.user_id === user.id) ?? null;
@@ -164,7 +175,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
   async function sendRoleAction(action: 'grant' | 'revoke' | 'update') {
     if (!selectedUser) {
-      setMessage({ tone: 'error', text: 'اختر مستخدماً أولاً.' });
+      setMessage({ tone: 'error', text: t('admin_select_user_first') });
       return;
     }
     setBusyAction(action);
@@ -180,7 +191,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
     if (!endpoint) {
       setBusyAction('');
-      setMessage({ tone: 'error', text: 'لا يوجد دور أدمن نشط لهذا المستخدم.' });
+      setMessage({ tone: 'error', text: t('admin_no_active_role') });
       return;
     }
 
@@ -197,19 +208,19 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
       const payload = await response.json().catch(() => ({})) as { code?: string; role?: RoleRecord };
       if (!response.ok) {
         const text = payload.code === 'SELF_ADMIN_CHANGE_NOT_ALLOWED'
-          ? 'لا يمكن تعديل صلاحيات حسابك الحالي.'
+          ? t('admin_self_change_error')
           : payload.code === 'SUPER_ADMIN_ENV_LOCKED'
-            ? 'لا يمكن سحب أو تعديل Super Admin المحدد في متغيرات السيرفر.'
-            : 'تعذر تنفيذ العملية.';
+            ? t('admin_super_locked_error')
+            : t('admin_action_error');
         setMessage({ tone: 'error', text });
         return;
       }
 
       const success = action === 'grant'
-        ? 'تم منح صلاحية الأدمن.'
+        ? t('admin_grant_success')
         : action === 'revoke'
-          ? 'تم سحب صلاحية الأدمن.'
-          : 'تم تحديث الصلاحيات.';
+          ? t('admin_revoke_success')
+          : t('admin_update_success');
       setMessage({ tone: 'ok', text: success });
       if (payload.role) {
         setSelectedUser(current => current ? { ...current, role: payload.role ?? current.role } : current);
@@ -218,7 +229,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
       await loadAdminData();
       if (query.trim()) void runSearch();
     } catch {
-      setMessage({ tone: 'error', text: 'تعذر الاتصال بالخادم.' });
+      setMessage({ tone: 'error', text: t('admin_server_error') });
     } finally {
       setBusyAction('');
     }
@@ -226,12 +237,12 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
   return (
     <AdminDashboardShell contentClassName="admin-permissions-content" contentStyle={{ width: '100%', maxWidth: '100%' }}>
-      <main className="admin-permissions" dir="rtl">
+      <main className="admin-permissions" dir={dir}>
         <section className="ap-hero">
           <div>
             <span><ShieldCheck size={16} /> Super Admin</span>
-            <h1>إدارة صلاحيات الأدمن</h1>
-            <p>منح وسحب صلاحيات الأدمن يتم من السيرفر فقط، مع سجل تدقيق لكل تغيير.</p>
+            <h1>{t('admin_permissions_title')}</h1>
+            <p>{t('admin_permissions_desc')}</p>
           </div>
           <strong dir="ltr">{actorEmail}</strong>
         </section>
@@ -245,16 +256,16 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
         <section className="ap-grid">
           <section className="ap-panel">
-            <h2><Search size={18} /> البحث عن مستخدم</h2>
+            <h2><Search size={18} /> {t('admin_user_search')}</h2>
             <form className="ap-search" onSubmit={runSearch}>
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="ابحث بالبريد، الاسم، أو اسم المستخدم"
+                placeholder={t('admin_search_placeholder')}
               />
               <button type="submit" disabled={searching}>
                 {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                بحث
+                {t('admin_search')}
               </button>
             </form>
             <div className="ap-results">
@@ -264,7 +275,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
                   <button key={user.id} type="button" className={active ? 'active' : ''} onClick={() => selectUser(user)}>
                     <strong>{user.displayName || user.username || user.email}</strong>
                     <small dir="ltr">{user.email}</small>
-                    <em>{user.role?.is_active ? user.role.role : 'مستخدم عادي'}</em>
+                    <em>{user.role?.is_active ? user.role.role : t('admin_regular_user')}</em>
                   </button>
                 );
               })}
@@ -272,34 +283,34 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
           </section>
 
           <section className="ap-panel">
-            <h2><UsersRound size={18} /> المستخدم المحدد</h2>
+            <h2><UsersRound size={18} /> {t('admin_selected_user')}</h2>
             {selectedUser ? (
               <div className="ap-selected">
                 <div>
-                  <span>الاسم</span>
+                  <span>{t('admin_name')}</span>
                   <strong>{selectedUser.displayName || selectedUser.username || '-'}</strong>
                 </div>
                 <div>
-                  <span>البريد</span>
+                  <span>{t('admin_email')}</span>
                   <strong dir="ltr">{selectedUser.email}</strong>
                 </div>
                 <div>
-                  <span>الدور الحالي</span>
-                  <strong>{selectedRole?.is_active ? selectedRole.role : 'لا يوجد دور أدمن نشط'}</strong>
+                  <span>{t('admin_current_role')}</span>
+                  <strong>{selectedRole?.is_active ? selectedRole.role : t('admin_no_active_role')}</strong>
                 </div>
                 <div>
-                  <span>الصلاحيات الحالية</span>
+                  <span>{t('admin_current_permissions')}</span>
                   <strong>{selectedRole ? permissionCountLabel(selectedRole.permissions) : '0 / 8'}</strong>
                 </div>
               </div>
             ) : (
-              <div className="ap-empty">اختر مستخدماً من نتائج البحث.</div>
+              <div className="ap-empty">{t('admin_select_from_results')}</div>
             )}
           </section>
         </section>
 
         <section className="ap-panel">
-          <h2><SlidersHorizontal size={18} /> الصلاحيات</h2>
+          <h2><SlidersHorizontal size={18} /> {t('admin_permissions')}</h2>
           <div className="ap-permissions">
             {ADMIN_PERMISSION_KEYS.map(key => (
               <label key={key} className={permissions[key] ? 'checked' : ''}>
@@ -308,39 +319,39 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
                   checked={permissions[key]}
                   onChange={() => togglePermission(key)}
                 />
-                <span>{ADMIN_PERMISSION_LABELS_AR[key]}</span>
+                <span>{permissionLabels[key]}</span>
               </label>
             ))}
           </div>
           <div className="ap-actions">
             <button type="button" onClick={() => void sendRoleAction('grant')} disabled={!selectedUser || Boolean(busyAction)}>
               {busyAction === 'grant' ? <Loader2 size={16} className="animate-spin" /> : <ShieldPlus size={16} />}
-              منح صلاحية أدمن
+              {t('admin_action_grant')}
             </button>
             <button type="button" onClick={() => void sendRoleAction('update')} disabled={!selectedRole || Boolean(busyAction)}>
               {busyAction === 'update' ? <Loader2 size={16} className="animate-spin" /> : <SlidersHorizontal size={16} />}
-              تحديث الصلاحيات
+              {t('admin_action_update')}
             </button>
             <button type="button" className="danger" onClick={() => void sendRoleAction('revoke')} disabled={!selectedRole || Boolean(busyAction)}>
               {busyAction === 'revoke' ? <Loader2 size={16} className="animate-spin" /> : <ShieldMinus size={16} />}
-              سحب صلاحية الأدمن
+              {t('admin_action_revoke')}
             </button>
           </div>
         </section>
 
         <section className="ap-panel">
-          <h2><ShieldCheck size={18} /> الأدمن الحاليون</h2>
+          <h2><ShieldCheck size={18} /> {t('admin_current_admins')}</h2>
           <div className="ap-table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>الاسم</th>
-                  <th>البريد</th>
-                  <th>الدور</th>
-                  <th>عدد الصلاحيات</th>
-                  <th>الحالة</th>
-                  <th>آخر تحديث</th>
-                  <th>إجراءات</th>
+                  <th>{t('admin_name')}</th>
+                  <th>{t('admin_email')}</th>
+                  <th>{t('admin_role')}</th>
+                  <th>{t('admin_permission_count')}</th>
+                  <th>{t('admin_status')}</th>
+                  <th>{t('admin_last_update')}</th>
+                  <th>{t('admin_actions_label')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,8 +361,8 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
                     <td dir="ltr">{role.email}</td>
                     <td>{role.role}</td>
                     <td>{permissionCountLabel(role.permissions)}</td>
-                    <td>{role.is_active ? 'نشط' : 'مسحوب'}</td>
-                    <td>{dateLabel(role.updated_at)}</td>
+                    <td>{role.is_active ? t('admin_active') : t('admin_revoked')}</td>
+                    <td>{dateLabel(role.updated_at, locale)}</td>
                     <td>
                       <button
                         type="button"
@@ -366,29 +377,29 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
                           status: role.is_active ? 'active_admin' : 'regular_user',
                         })}
                       >
-                        تحديد
+                        {t('admin_select')}
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {!loading && roles.length === 0 ? <div className="ap-empty">لا توجد أدوار أدمن محفوظة بعد.</div> : null}
-            {loading ? <div className="ap-empty"><Loader2 size={18} className="animate-spin" /> جار التحميل...</div> : null}
+            {!loading && roles.length === 0 ? <div className="ap-empty">{t('admin_no_roles')}</div> : null}
+            {loading ? <div className="ap-empty"><Loader2 size={18} className="animate-spin" /> {t('admin_loading_generic')}</div> : null}
           </div>
-          <p className="ap-muted">الأدمن النشطون حالياً: {activeRoles.length}</p>
+          <p className="ap-muted">{t('admin_active_count')} {activeRoles.length}</p>
         </section>
 
         <section className="ap-panel">
-          <h2><Clock3 size={18} /> سجل التدقيق</h2>
+          <h2><Clock3 size={18} /> {t('admin_audit_log')}</h2>
           <div className="ap-table-wrap audit">
             <table>
               <thead>
                 <tr>
-                  <th>من قام بالتغيير</th>
-                  <th>المستخدم المستهدف</th>
-                  <th>الإجراء</th>
-                  <th>التاريخ والوقت</th>
+                  <th>{t('admin_changed_by')}</th>
+                  <th>{t('admin_target_user')}</th>
+                  <th>{t('admin_action')}</th>
+                  <th>{t('admin_date_time')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -396,13 +407,13 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
                   <tr key={log.id}>
                     <td dir="ltr">{log.actor_email || '-'}</td>
                     <td dir="ltr">{log.target_email || '-'}</td>
-                    <td>{ACTION_LABELS[log.action] ?? log.action}</td>
-                    <td>{dateLabel(log.created_at)}</td>
+                    <td>{actionLabels[log.action] ?? log.action}</td>
+                    <td>{dateLabel(log.created_at, locale)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {!loading && logs.length === 0 ? <div className="ap-empty">لا توجد تغييرات مسجلة بعد.</div> : null}
+            {!loading && logs.length === 0 ? <div className="ap-empty">{t('admin_no_audit')}</div> : null}
           </div>
         </section>
       </main>

@@ -15,11 +15,12 @@
   const LANG_STORAGE_KEY = "sfm_lang";
   const LEGACY_SETTINGS_STORAGE_KEY = "the-sfm-trader-settings";
   const LANG_EVENT = "sfm-language-change";
-  const SUPPORTED_LANGUAGES = ["ar", "en"];
+  const SUPPORTED_LANGUAGES = ["ar", "en", "fr"];
   const TERMINAL_I18N = {
     "language.label": { ar: "اختيار اللغة", en: "Choose language" },
     "language.arabic": { ar: "العربية", en: "Arabic" },
     "language.english": { ar: "الإنجليزية", en: "English" },
+    "language.french": { ar: "الفرنسية", en: "French", fr: "Français" },
     "terminal.brandPrefix": { ar: "اس اف ام", en: "SFM" },
     "terminal.brandTitle": { ar: "المحلل الذكي", en: "Smart Analyzer" },
     "terminal.kicker": { ar: "منصة التداول الذكية", en: "AI trading terminal" },
@@ -316,22 +317,520 @@
     ["Actual", "الفعلي"],
     ["Forecast", "المتوقع"],
     ["Previous", "السابق"],
-    ["Importance", "الأهمية"]
+    ["Importance", "الأهمية"],
+    ["Unable to load data", "تعذر تحميل البيانات حالياً", "Impossible de charger les données"],
+    ["We could not load this data. Try again or open the related page.", "لم نتمكن من تحميل هذه البيانات. حاول مرة أخرى أو افتح الصفحة ذات الصلة.", "Nous n’avons pas pu charger ces données. Réessayez ou ouvrez la page associée."],
+    ["This route is currently unavailable", "المسار غير متاح حالياً", "Cette page est actuellement indisponible"],
+    ["No matching assets for this market or category right now", "لا توجد أصول مطابقة لهذا السوق أو التصنيف حالياً", "Aucun actif ne correspond actuellement à ce marché ou à cette catégorie"],
+    ["The combined final recommendation is neither buy nor sell.", "التوصية النهائية المشتركة ليست شراء أو بيع.", "La recommandation finale combinée n’est ni un achat ni une vente."],
+    ["Data quality is delayed or partial, so the signal was reduced to watch.", "جودة البيانات متأخرة أو جزئية، لذلك تم خفض الإشارة إلى المراقبة.", "Les données sont différées ou partielles ; le signal a donc été ramené à la surveillance."],
+    ["Core technical indicators are incomplete.", "المؤشرات الفنية الأساسية غير مكتملة.", "Les principaux indicateurs techniques sont incomplets."],
+    ["Support and resistance levels are incomplete.", "مستويات الدعم والمقاومة غير مكتملة.", "Les niveaux de support et de résistance sont incomplets."],
+    ["ATR is unavailable, so risk cannot be set confidently.", "ATR غير متاح، لذلك لا يمكن ضبط المخاطرة بثقة.", "L’ATR est indisponible ; le risque ne peut donc pas être défini avec fiabilité."],
+    ["News or sentiment context is unavailable.", "سياق الأخبار أو المعنويات غير متاح.", "Le contexte d’actualité ou de sentiment est indisponible."],
+    ["The risk/reward ratio does not pass the safety gate.", "نسبة العائد إلى المخاطرة لا تجتاز بوابة الأمان.", "Le rapport risque/rendement ne franchit pas le seuil de sécurité."],
+    ["Risk is high, so no buy or sell signal is shown.", "المخاطرة مرتفعة، لذلك لا تُعرض إشارة شراء أو بيع.", "Le risque est élevé ; aucun signal d’achat ou de vente n’est affiché."],
+    ["There is not enough data to issue a safe buy or sell signal.", "البيانات غير كافية لإصدار إشارة شراء أو بيع آمنة.", "Les données sont insuffisantes pour émettre un signal d’achat ou de vente sûr."]
   ];
+  const TERMINAL_FRENCH_TEXT = Object.freeze({
+    "Choose language": "Choisir la langue",
+    "Arabic": "Arabe",
+    "English": "Anglais",
+    "French": "Français",
+    "DASHBOARD": "TABLEAU DE BORD",
+    "MARKETS": "MARCHÉS",
+    "MARKET": "MARCHÉ",
+    "WATCHLIST": "LISTE DE SUIVI",
+    "SETTINGS": "PARAMÈTRES",
+    "ANALYSIS": "ANALYSE",
+    "PROVIDER MARKETS": "MARCHÉS DU FOURNISSEUR",
+    "FULL SYMBOL UNIVERSE": "UNIVERS COMPLET DES SYMBOLES",
+    "CONFIDENCE": "CONFIANCE",
+    "STRONGEST": "PLUS FORT",
+    "PORTFOLIO": "PORTEFEUILLE",
+    "ALERTS": "ALERTES",
+    "RECOMMENDATIONS": "RECOMMANDATIONS",
+    "TRADE PERFORMANCE": "PERFORMANCE DES TRANSACTIONS",
+    "NEWS": "ACTUALITÉS",
+    "CALENDAR": "CALENDRIER",
+    "EDUCATION": "FORMATION",
+    "EPS est.": "BPA estimé",
+    "EPS actual": "BPA publié",
+    "Revenue est.": "Chiffre d’affaires estimé",
+    "Revenue actual": "Chiffre d’affaires publié",
+    "Declaration": "Déclaration",
+    "Ex-date": "Date ex-dividende",
+    "Record": "Date d’enregistrement",
+    "Payment": "Paiement",
+    "Dividend": "Dividende",
+    "IPO date": "Date d’introduction",
+    "Price range": "Fourchette de prix",
+    "Shares": "Actions",
+    "Event": "Événement",
+    "SFM": "SFM",
+    "Smart Analyzer": "Analyseur intelligent",
+    "AI trading terminal": "Terminal de trading intelligent",
+    "Trading": "Trading",
+    "Monitoring": "Suivi",
+    "More": "Plus",
+    "Dashboard": "Tableau de bord",
+    "Markets": "Marchés",
+    "AI Scanner": "Scanner IA",
+    "Scanner": "Scanner",
+    "Symbol Details": "Détails du symbole",
+    "Symbol Analysis": "Analyse du symbole",
+    "Watchlist": "Liste de suivi",
+    "Portfolio": "Portefeuille",
+    "Alerts": "Alertes",
+    "Recommendations": "Recommandations",
+    "Analysis": "Analyse",
+    "Trade Performance": "Performance des transactions",
+    "Performance": "Performance",
+    "News": "Actualités",
+    "Calendar": "Calendrier",
+    "Education": "Formation",
+    "Settings": "Paramètres",
+    "Market command room": "Salle de commande des marchés",
+    "Markets map": "Carte des marchés",
+    "AI scanner": "Scanner IA",
+    "Smart watchlist": "Liste de suivi intelligente",
+    "Alerts center": "Centre des alertes",
+    "Recommendations and analysis": "Recommandations et analyse",
+    "Trade performance": "Performance des transactions",
+    "Market news": "Actualités des marchés",
+    "Market calendar": "Calendrier des marchés",
+    "Education center": "Centre de formation",
+    "System settings": "Paramètres du système",
+    "Symbol details": "Détails du symbole",
+    "Search for a stock or symbol": "Rechercher une action ou un symbole",
+    "Analyze": "Analyser",
+    "Checking data provider": "Vérification du fournisseur de données",
+    "Hide ticker": "Masquer le bandeau",
+    "Show ticker": "Afficher le bandeau",
+    "Market ticker": "Bandeau des cours du marché",
+    "Collapse sidebar": "Réduire la barre latérale",
+    "Preparing the trading terminal": "Préparation du terminal de trading",
+    "Loading provider status, news, recommendations, and watchlists without creating synthetic data.": "Chargement de l’état du fournisseur, des actualités, des recommandations et des listes de suivi sans créer de données synthétiques.",
+    "View all symbols": "Voir tous les symboles",
+    "View all funds": "Voir tous les fonds",
+    "Preview symbols": "Aperçu des symboles",
+    "Full symbol universe": "Univers complet des symboles",
+    "All exchanges": "Toutes les bourses",
+    "All currencies": "Toutes les devises",
+    "All sectors": "Tous les secteurs",
+    "All industries": "Toutes les industries",
+    "All asset types": "Tous les types d’actifs",
+    "All data": "Toutes les données",
+    "With price": "Avec un cours disponible",
+    "Price availability": "Disponibilité du cours",
+    "Market cap": "Capitalisation boursière",
+    "Volume": "Volume",
+    "Sort": "Tri",
+    "Direction": "Sens",
+    "Ascending": "Croissant",
+    "Descending": "Décroissant",
+    "Issuer": "Émetteur",
+    "Yield": "Rendement",
+    "Expense ratio": "Ratio de frais",
+    "Data quality": "Qualité des données",
+    "Shariah status": "Statut de conformité à la charia",
+    "Fund type": "Type de fonds",
+    "Fund": "Fonds",
+    "Market details": "Détails du marché",
+    "Provider markets summary": "Résumé des marchés du fournisseur",
+    "Admin diagnostics": "Diagnostics d’administration",
+    "Refresh": "Actualiser",
+    "Search": "Rechercher",
+    "No source": "Aucune source",
+    "Timing": "Calendrier",
+    "All": "Tous",
+    "Expected": "Prévu",
+    "Reported": "Publié",
+    "Complete data": "Données complètes",
+    "Partial data": "Données partielles",
+    "Show more": "Afficher plus",
+    "Show less": "Afficher moins",
+    "Collapse": "Réduire",
+    "rows": "lignes",
+    "Date range": "Période",
+    "Period": "Période",
+    "Results": "Résultats",
+    "Completeness": "Exhaustivité",
+    "Symbol": "Symbole",
+    "Name": "Nom",
+    "Market": "Marché",
+    "Currency": "Devise",
+    "Type": "Type",
+    "Source": "Source",
+    "Price": "Cours",
+    "Target": "Objectif",
+    "Stop": "Stop",
+    "Confidence": "Confiance",
+    "Last updated": "Dernière mise à jour",
+    "Open": "Ouvrir",
+    "Open analysis": "Ouvrir l’analyse",
+    "Under watch": "Sous surveillance",
+    "Insufficient data": "Données insuffisantes",
+    "Unavailable": "Indisponible",
+    "Failed": "Échec",
+    "Connected": "Connecté",
+    "Data provider connected": "Fournisseur de données connecté",
+    "Previous": "Précédent",
+    "Next": "Suivant",
+    "Page": "Page",
+    "Asset": "Actif",
+    "Action": "Action",
+    "Exchange": "Bourse",
+    "Sector": "Secteur",
+    "Industry": "Industrie",
+    "All markets": "Tous les marchés",
+    "Retry": "Réessayer",
+    "SYSTEM STATUS": "ÉTAT DU SYSTÈME",
+    "SYSTEM": "SYSTÈME",
+    "PROVIDER": "FOURNISSEUR DE DONNÉES",
+    "PROVIDER STATUS": "ÉTAT DU FOURNISSEUR",
+    "DATA SOURCE": "SOURCE DES DONNÉES",
+    "SYMBOLS & RECOMMENDATIONS": "SYMBOLES ET RECOMMANDATIONS",
+    "MARKET NEWS": "ACTUALITÉS DES MARCHÉS",
+    "AI ANALYSIS": "ANALYSE IA",
+    "AI CONFIDENCE": "CONFIANCE DE L’IA",
+    "AI SCANNER": "SCANNER IA",
+    "SIGNALS": "SIGNAUX",
+    "RISK RADAR": "RADAR DES RISQUES",
+    "QUICK ADD": "AJOUT RAPIDE",
+    "MY WATCHLIST": "MA LISTE DE SUIVI",
+    "FINAL RECOMMENDATION": "RECOMMANDATION FINALE",
+    "STRATEGY AGREEMENT": "CONCORDANCE DES STRATÉGIES",
+    "TECHNICAL": "ANALYSE TECHNIQUE",
+    "RELATED NEWS": "ACTUALITÉS ASSOCIÉES",
+    "Status": "État",
+    "Updated": "Mis à jour",
+    "Real-time": "Temps réel",
+    "Analyzed": "Actifs analysés",
+    "Available": "Disponible",
+    "Loaded": "Chargé",
+    "Funds": "Fonds",
+    "Funds filters": "Filtres des fonds",
+    "After filters": "Après filtrage",
+    "Deduped catalog": "Catalogue dédoublonné",
+    "Incomplete rows": "Lignes incomplètes",
+    "Merged rows": "Lignes fusionnées",
+    "Visible": "Visibles",
+    "Hidden": "Masqués",
+    "Duplicates": "Doublons",
+    "Some symbols may not be available from the current provider": "Certains symboles peuvent ne pas être disponibles auprès du fournisseur actuel",
+    "Price currently unavailable": "Cours actuellement indisponible",
+    "Price unavailable": "Cours indisponible",
+    "Change unavailable": "Variation indisponible",
+    "No provider data is available right now.": "Aucune donnée du fournisseur n’est disponible pour le moment.",
+    "These are educational analytical signals based on available data and are not financial advice.": "Ces signaux analytiques sont fournis à titre pédagogique à partir des données disponibles et ne constituent pas un conseil financier.",
+    "Search symbol or company name": "Rechercher un symbole ou une entreprise",
+    "Add to watchlist": "Ajouter à la liste de suivi",
+    "Create alert": "Créer une alerte",
+    "Remove": "Supprimer",
+    "Watching": "Sous surveillance",
+    "Wait": "Attendre",
+    "Buy": "Acheter",
+    "Sell": "Vendre",
+    "Neutral": "Neutre",
+    "Change": "Variation",
+    "Recommendation": "Recommandation",
+    "Risk": "Risque",
+    "Horizon": "Horizon",
+    "Quality": "Qualité",
+    "Provider symbol": "Symbole du fournisseur",
+    "Fallback": "Solution de repli",
+    "Data": "Données",
+    "Final": "Final",
+    "Consensus": "Consensus",
+    "Backtest": "Test rétrospectif",
+    "Samples": "Échantillons",
+    "Report date": "Date du rapport",
+    "Fiscal period": "Période fiscale",
+    "Time": "Heure",
+    "Country": "Pays",
+    "Actual": "Réel",
+    "Forecast": "Prévision",
+    "Importance": "Importance",
+    "Latest news": "Dernières actualités",
+    "AI analysis": "Analyse IA",
+    "AI analysis status": "État de l’analyse IA",
+    "System status": "État du système",
+    "News page": "Page d’actualités",
+    "Open scanner": "Ouvrir le scanner",
+    "View all": "Tout voir",
+    "Symbols and recommendations": "Symboles et recommandations",
+    "Market news": "Actualités des marchés",
+    "Analysis will appear when market data and recommendations are available.": "L’analyse apparaîtra lorsque les données du marché et les recommandations seront disponibles.",
+    "The news provider did not return current items.": "Le fournisseur d’actualités n’a renvoyé aucun élément récent.",
+    "The price or recommendation provider did not return displayable data.": "Le fournisseur de cours ou de recommandations n’a renvoyé aucune donnée affichable.",
+    "Live market data is displaying normally.": "Les données de marché en direct s’affichent normalement.",
+    "Market data cannot be displayed right now. Try again shortly.": "Les données de marché ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.",
+    "Data is currently unavailable": "Les données sont actuellement indisponibles",
+    "Data is currently unavailable. Try again shortly.": "Les données sont actuellement indisponibles. Réessayez dans quelques instants.",
+    "Unable to load data": "Impossible de charger les données",
+    "We could not load this data. Try again or open the related page.": "Nous n’avons pas pu charger ces données. Réessayez ou ouvrez la page associée.",
+    "No events in the current range": "Aucun événement sur la période actuelle",
+    "Try changing the range, market, or event type.": "Essayez de modifier la période, le marché ou le type d’événement.",
+    "No connected provider": "Aucun fournisseur connecté",
+    "Connect a data provider to show events, dividends, and IPOs.": "Connectez un fournisseur de données pour afficher les événements, les dividendes et les introductions en bourse.",
+    "The requested data route could not be reached.": "La source de données demandée est inaccessible.",
+    "The request timed out. You can retry without reloading the page.": "La requête a expiré. Vous pouvez réessayer sans recharger la page.",
+    "Market calendar": "Calendrier des marchés",
+    "Company earnings": "Résultats des entreprises",
+    "Dividends": "Dividendes",
+    "Economic calendar": "Calendrier économique",
+    "Today": "Aujourd’hui",
+    "7 days": "7 jours",
+    "30 days": "30 jours",
+    "90 days": "90 jours",
+    "Provider status": "État du fournisseur",
+    "Data provider": "Fournisseur de données",
+    "Updating calendar": "Actualisation du calendrier",
+    "Checking the connected provider and refreshing the selected range.": "Vérification du fournisseur connecté et actualisation de la période sélectionnée.",
+    "Education center": "Centre de formation",
+    "Lesson": "Leçon",
+    "Short lessons explaining terminal limits: no recommendations without data, no synthetic prices, and every symbol keeps its own currency.": "De courtes leçons expliquent les limites du terminal : aucune recommandation sans données, aucun cours synthétique et chaque symbole conserve sa propre devise.",
+    "Settings": "Paramètres",
+    "Language": "Langue",
+    "Theme": "Thème",
+    "Dark": "Sombre",
+    "Light": "Clair",
+    "System": "Système",
+    "Save preferences": "Enregistrer les préférences",
+    "Signal preferences": "Préférences des signaux",
+    "Data policy": "Politique des données",
+    "About": "À propos",
+    "Platform actions": "Actions de la plateforme",
+    "Default market": "Marché par défaut",
+    "Risk profile": "Profil de risque",
+    "Minimum confidence": "Confiance minimale",
+    "Enabled markets": "Marchés activés",
+    "Signal alert channels": "Canaux d’alerte des signaux",
+    "Refresh market data": "Actualiser les données du marché",
+    "Retry now": "Réessayer maintenant",
+    "Clear cache": "Vider le cache",
+    "Test provider connection": "Tester la connexion au fournisseur",
+    "Connection": "Connexion",
+    "Loaded symbols": "Symboles chargés",
+    "Discovered symbols": "Symboles détectés",
+    "Cached symbols": "Symboles en cache",
+    "Next retry": "Prochaine tentative",
+    "Fallback attempted": "Solution de repli tentée",
+    "Supported features": "Fonctionnalités prises en charge",
+    "Configured": "Configuré",
+    "Not configured": "Non configuré",
+    "Conservative": "Prudent",
+    "Balanced": "Équilibré",
+    "Aggressive": "Dynamique",
+    "symbols": "symboles",
+    "Yes": "Oui",
+    "No": "Non",
+    "US market": "Marché américain",
+    "Kuwait": "Koweït",
+    "Saudi Arabia": "Arabie saoudite",
+    "UAE": "Émirats arabes unis",
+    "Qatar": "Qatar",
+    "Bahrain": "Bahreïn",
+    "Oman": "Oman",
+    "Forex": "Devises",
+    "Crypto": "Cryptoactifs",
+    "Commodities": "Matières premières",
+    "US Stocks": "Actions américaines",
+    "Funds & ETFs": "Fonds et ETF",
+    "Saudi Market": "Marché saoudien",
+    "Kuwait Market": "Marché koweïtien",
+    "UAE Market": "Marché des Émirats",
+    "Qatar Market": "Marché qatari",
+    "Bahrain Market": "Marché bahreïni",
+    "Oman Market": "Marché omanais",
+    "European Stocks": "Actions européennes",
+    "Asian Stocks": "Actions asiatiques",
+    "Technology": "Technologie",
+    "AI Stocks": "Actions liées à l’IA",
+    "Semiconductors": "Semi-conducteurs",
+    "Energy Stocks": "Actions du secteur énergétique",
+    "Banking Stocks": "Actions bancaires",
+    "Food / Consumer": "Alimentation et consommation",
+    "Pharma / Healthcare": "Pharmacie et santé"
+  });
+  const TERMINAL_FRENCH_EXTRA = Object.freeze({
+    "Showing {shown} of {total} symbols": "Affichage de {shown} symboles sur {total}",
+    "Showing {shown} of {total} funds": "Affichage de {shown} fonds sur {total}",
+    "Showing {shown} of {total} rows": "Affichage de {shown} lignes sur {total}",
+    "Deduped {count} duplicate rows": "{count} lignes en double fusionnées",
+    "Tune language, theme, signal preferences, and data-provider status in one clean workspace.": "Réglez la langue, le thème, les préférences de signaux et l’état du fournisseur de données dans un espace unifié.",
+    "Data actions": "Actions sur les données", "Show quick price ticker": "Afficher le bandeau rapide des cours",
+    "Buy alerts": "Alertes d’achat", "Sell alerts": "Alertes de vente", "Wait and watch alerts": "Alertes d’attente et de surveillance",
+    "In-app alerts": "Alertes dans la plateforme", "Email when available": "E-mail lorsque disponible",
+    "Shows the compact price ticker at the top of the terminal.": "Affiche le bandeau compact des cours en haut du terminal.",
+    "Show buy signals when enough provider data is available.": "Affiche les signaux d’achat lorsque les données du fournisseur sont suffisantes.",
+    "Show sell and risk-exit signals.": "Affiche les signaux de vente et de sortie du risque.",
+    "Show wait and watch states instead of hiding them.": "Affiche les états d’attente et de surveillance au lieu de les masquer.",
+    "Keep alerts visible inside the terminal.": "Conserve les alertes visibles dans le terminal.",
+    "Activates when an email provider is configured.": "S’active lorsqu’un fournisseur de messagerie est configuré.",
+    "Provider": "Fournisseur", "Failed symbols": "Symboles en échec", "Affected symbols": "Symboles concernés",
+    "Affected symbols count": "Nombre de symboles concernés", "Last attempt": "Dernière tentative", "Rejection reason": "Raison du rejet",
+    "Advanced Diagnostics": "Diagnostics avancés", "No active diagnostic details to show.": "Aucun détail de diagnostic actif à afficher.",
+    "The data provider usage limit was reached temporarily. We will try a fallback provider or retry later.": "La limite d’utilisation du fournisseur de données a été temporairement atteinte. Une solution de repli sera tentée ou une nouvelle tentative sera effectuée plus tard.",
+    "Language and direction": "Langue et sens d’écriture", "Arabic uses RTL layout, while symbols and numbers stay isolated in their official direction.": "L’arabe utilise une mise en page de droite à gauche, tandis que les symboles et les nombres conservent leur sens officiel.",
+    "No synthetic data": "Aucune donnée synthétique", "The terminal does not invent prices or recommendations when provider data is unavailable.": "Le terminal n’invente ni cours ni recommandations lorsque les données du fournisseur sont indisponibles.",
+    "Signal preferences saved.": "Préférences de signaux enregistrées.", "Saved locally; sign in to save them to the account.": "Enregistré localement ; connectez-vous pour l’enregistrer dans le compte.",
+    "Market data refreshed.": "Données de marché actualisées.", "Provider connection tested.": "Connexion au fournisseur testée.",
+    "Local provider cache cleared and status refreshed.": "Cache local du fournisseur vidé et état actualisé.",
+    "Could not complete the action right now.": "Impossible d’effectuer cette action pour le moment.",
+    "Equities": "Actions", "Digital": "Actifs numériques", "Macro": "Macroéconomie", "Benchmarks": "Indices de référence",
+    "Global": "Mondial", "Sector": "Secteur", "Pair": "Paire", "Local": "Locale", "Mixed": "Mixte",
+    "ETFs": "ETF", "Mutual Funds": "Fonds communs de placement", "Index Funds": "Fonds indiciels",
+    "Money Market Funds": "Fonds monétaires", "Bond/Sukuk Funds": "Fonds d’obligations et de sukuk",
+    "REITs": "Fonds immobiliers cotés", "Commodity Funds": "Fonds de matières premières", "Sector Funds": "Fonds sectoriels",
+    "Thematic Funds": "Fonds thématiques", "Shariah Funds": "Fonds conformes à la charia", "Leveraged ETFs": "ETF à effet de levier",
+    "Inverse ETFs": "ETF inversés", "Income Funds": "Fonds de revenu", "Growth Funds": "Fonds de croissance",
+    "Balanced Funds": "Fonds équilibrés", "Exchange Traded Funds": "Fonds négociés en bourse", "Bond Funds": "Fonds obligataires",
+    "Sukuk Funds": "Fonds de sukuk", "Real Estate Investment Trusts": "Fonds de placement immobilier",
+    "Shariah-Compliant Funds": "Fonds conformes à la charia", "Hedge Funds": "Fonds spéculatifs",
+    "Price data is currently unavailable.": "Les données de cours sont actuellement indisponibles.",
+    "Price, target, or stop is currently unavailable; the trade cannot be followed.": "Le cours, l’objectif ou le stop est actuellement indisponible ; la transaction ne peut pas être suivie.",
+    "Retried.": "Nouvelle tentative effectuée.", "Complete markets map": "Carte complète des marchés",
+    "Stocks, Gulf markets, currencies, crypto, commodities, indices, funds, and sectors. Each card shows the asset currency instead of inheriting the selected market currency.": "Actions, marchés du Golfe, devises, cryptoactifs, matières premières, indices, fonds et secteurs. Chaque carte affiche la devise de l’actif au lieu d’hériter de celle du marché sélectionné.",
+    "Provider market data": "Données de marché du fournisseur", "Company": "Entreprise", "Exchange / Market": "Bourse / Marché",
+    "Price / NAV": "Cours / Valeur liquidative", "Compliant": "Conforme", "Non-compliant": "Non conforme",
+    "Needs review": "À examiner", "Possibly compliant": "Potentiellement conforme", "trillion": "mille milliards",
+    "billion": "milliard", "million": "million", "AI scanner without synthetic results": "Scanner IA sans résultats synthétiques",
+    "The scanner sorts only recommendations and signals returned by the API. When the provider is unavailable, the reason is shown clearly.": "Le scanner classe uniquement les recommandations et signaux renvoyés par l’API. Lorsque le fournisseur est indisponible, la raison est clairement indiquée.",
+    "Buy opportunities": "Opportunités d’achat", "Buy signals": "Signaux d’achat", "Sell opportunities": "Opportunités de vente",
+    "Sell signals": "Signaux de vente", "Scanner results": "Résultats du scanner", "Confidence distribution": "Répartition de la confiance",
+    "Risk radar": "Radar des risques", "Strongest": "Les plus forts", "Strongest signals": "Signaux les plus forts",
+    "Clean smart watchlist": "Liste de suivi intelligente", "Add the symbols you want to watch. Prices and analysis appear only when available from the provider, and currency follows each symbol.": "Ajoutez les symboles à surveiller. Les cours et analyses n’apparaissent que lorsqu’ils sont disponibles auprès du fournisseur, et la devise suit chaque symbole.",
+    "Quick add": "Ajout rapide", "My watchlist": "Ma liste de suivi", "Watchlist is empty": "La liste de suivi est vide",
+    "Add symbols above. We will not fill it with synthetic data.": "Ajoutez des symboles ci-dessus. Aucune donnée synthétique ne sera utilisée.",
+    "Open markets": "Ouvrir les marchés", "Portfolio and tracking": "Portefeuille et suivi",
+    "Track local positions and followed trades. Live market value appears when provider prices are available.": "Suivez les positions locales et les transactions suivies. La valeur de marché en direct apparaît lorsque les cours du fournisseur sont disponibles.",
+    "Positions": "Positions", "Holdings": "Avoirs", "Cost basis": "Prix de revient", "Followed trades": "Transactions suivies",
+    "Followed": "Suivies", "Current positions": "Positions actuelles", "No positions": "Aucune position",
+    "Add a position from symbol details or follow a real recommendation.": "Ajoutez une position depuis les détails du symbole ou suivez une recommandation réelle.",
+    "Allocation": "Allocation", "Asset allocation": "Allocation d’actifs",
+    "Create price, percent, and signal alerts. Smart alerts come from the provider, and local alerts are saved on your device.": "Créez des alertes de cours, de variation et de signal. Les alertes intelligentes proviennent du fournisseur et les alertes locales sont enregistrées sur votre appareil.",
+    "Symbol e.g. AAPL": "Symbole, par ex. AAPL", "Price reaches": "Cours atteint", "Percent change %": "Variation en %",
+    "AI signal": "Signal IA", "Market-moving news": "Actualité influençant le marché", "Value": "Valeur", "Add": "Ajouter",
+    "Smart alerts": "Alertes intelligentes", "Provider alerts": "Alertes du fournisseur", "No smart alerts": "Aucune alerte intelligente",
+    "The provider did not return current alerts.": "Le fournisseur n’a renvoyé aucune alerte actuelle.", "Saved alerts": "Alertes enregistrées",
+    "No local alerts": "Aucune alerte locale", "Use the form above to create a tracking alert.": "Utilisez le formulaire ci-dessus pour créer une alerte de suivi.",
+    "AI recommendations with each trade status: open, under watch, completed, failed, or expired. Every card has an analysis button.": "Recommandations IA avec l’état de chaque transaction : ouverte, sous surveillance, terminée, échouée ou expirée. Chaque carte comporte un bouton d’analyse.",
+    "Signals": "Signaux", "Recommendation list": "Liste des recommandations", "High confidence": "Confiance élevée",
+    "Precision · forward test": "Précision · test prospectif", "Live precision — 90% gate signals": "Précision en direct — signaux au seuil de 90 %",
+    "Awaiting first result": "En attente du premier résultat", "Tracked signals": "Signaux suivis", "Tracked": "Suivis",
+    "Hit target": "Objectif atteint", "Won": "Gagné", "Hit stop": "Stop atteint", "Lost": "Perdu",
+    "Live success": "Réussite en direct", "Live rate": "Taux en direct",
+    "Every signal that passes the precision gate is logged automatically with its published target and stop, then resolved by the first actual touch. This is live proof of success rate, not historical testing alone.": "Chaque signal qui franchit le seuil de précision est enregistré automatiquement avec son objectif et son stop publiés, puis résolu au premier niveau réellement touché. Il s’agit d’une preuve en direct du taux de réussite, et non d’un simple test historique.",
+    "Saved buy/sell signal outcomes, manual followed trades, and recommendation logs. No synthetic results are shown when records are missing.": "Résultats enregistrés des signaux d’achat et de vente, transactions suivies manuellement et journal des recommandations. Aucun résultat synthétique n’est affiché lorsque des données manquent.",
+    "Winning trades": "Transactions gagnantes", "Winning": "Gagnantes", "Losing trades": "Transactions perdantes", "Losing": "Perdantes",
+    "Open trades": "Transactions ouvertes", "Win rate": "Taux de réussite", "Waiting trades": "Transactions en attente",
+    "Trades under watch": "Transactions sous surveillance", "Journal": "Journal", "Detailed journal": "Journal détaillé", "Refresh prices": "Actualiser les cours",
+    "News is read from a real provider. When it is unavailable, a clear message is shown instead of synthetic headlines.": "Les actualités proviennent d’un fournisseur réel. Lorsqu’elles sont indisponibles, un message clair s’affiche au lieu de titres synthétiques.",
+    "The news provider did not return displayable items.": "Le fournisseur d’actualités n’a renvoyé aucun élément affichable.",
+    "Live company earnings, dividends, IPOs, and economic events from real providers. When data is unavailable, the reason is shown clearly without synthetic data.": "Résultats d’entreprises, dividendes, introductions en bourse et événements économiques en direct provenant de fournisseurs réels. Lorsque les données sont indisponibles, la raison est clairement indiquée sans données synthétiques.",
+    "Earnings": "Résultats", "IPOs": "Introductions en bourse", "Economic": "Économie",
+    "Feature unavailable for the current provider entitlement": "Fonction indisponible avec les droits du fournisseur actuel",
+    "This data requires a plan that supports this calendar type.": "Ces données nécessitent une offre prenant en charge ce type de calendrier.",
+    "Showing the latest available data until live updates return.": "Affichage des dernières données disponibles jusqu’au retour des mises à jour en direct.",
+    "The current provider could not fetch data. No fallback data was shown.": "Le fournisseur actuel n’a pas pu récupérer les données. Aucune donnée de repli n’a été affichée.",
+    "Search symbol or company": "Rechercher un symbole ou une entreprise", "No matching earnings rows": "Aucune ligne de résultats correspondante",
+    "Partial rows appear here when the provider sends mostly incomplete records.": "Les lignes partielles apparaissent ici lorsque le fournisseur envoie des enregistrements majoritairement incomplets.",
+    "Try search, source, timing, or the Partial data tab.": "Essayez de modifier la recherche, la source, la période ou l’onglet Données partielles.",
+    "Partially available": "Partiellement disponible", "Connection failed": "Échec de la connexion",
+    "Unavailable for entitlement": "Indisponible avec les droits actuels", "Authorization failed": "Échec de l’autorisation",
+    "Data provider rate limit reached temporarily": "Limite temporaire du fournisseur de données atteinte", "Invalid request": "Requête non valide",
+    "Manual entry": "Saisie manuelle", "Market data": "Données de marché", "High": "Élevé", "Medium": "Moyen", "Low": "Faible",
+    "Unspecified": "Non précisé", "Asset name unavailable from provider": "Nom de l’actif indisponible auprès du fournisseur",
+    "Provider symbol used": "Symbole du fournisseur utilisé", "Used fallback?": "Solution de repli utilisée ?",
+    "Strategy agreement": "Concordance des stratégies", "Technical analysis": "Analyse technique", "AI confidence": "Confiance de l’IA",
+    "Raw AI reading": "Lecture brute de l’IA", "No sufficient signal": "Aucun signal suffisant",
+    "The provider did not return enough data for this symbol.": "Le fournisseur n’a pas renvoyé suffisamment de données pour ce symbole.",
+    "Related news": "Actualités associées", "Try again later or choose another market": "Réessayez plus tard ou choisissez un autre marché",
+    "Follow trade": "Suivre la transaction", "Limited consensus": "Consensus limité", "Awaiting data": "En attente de données",
+    "Neutral · precision gate active": "Neutre · seuil de précision actif", "Bullish": "Haussier", "Bearish": "Baissier",
+    "No sufficient signals right now": "Aucun signal suffisant pour le moment", "Analysis status": "État de l’analyse",
+    "Waiting for market data": "En attente des données de marché", "Complete data is not yet available for a reliable recommendation.": "Les données complètes ne sont pas encore disponibles pour produire une recommandation fiable.",
+    "Overall market bias": "Orientation générale du marché", "Frame": "Cadre", "Market overview": "Vue d’ensemble du marché",
+    "AI market analysis": "Analyse du marché par l’IA", "Market summary": "Résumé du marché", "Analyzed assets": "Actifs analysés",
+    "Market command": "Commande du marché", "First-target hit rate in the backtest for this symbol": "Taux d’atteinte du premier objectif dans le test rétrospectif de ce symbole",
+    "Opportunity heatmap": "Carte thermique des opportunités", "The provider did not return enough price movement data to show this list.": "Le fournisseur n’a pas renvoyé suffisamment de données de mouvement des cours pour afficher cette liste.",
+    "Open settings": "Ouvrir les paramètres", "Chart unavailable": "Graphique indisponible", "Closed": "Fermé",
+    "Overall bias": "Orientation générale", "Explore markets": "Explorer les marchés", "AI score": "Score IA",
+    "Asset name unavailable": "Nom de l’actif indisponible", "Quantity": "Quantité", "Entry": "Entrée", "Current": "Actuel",
+    "P/L": "Pertes et profits", "Entry price": "Cours d’entrée", "Add position": "Ajouter une position", "Price provider": "Fournisseur de cours",
+    "Saved trades": "Transactions enregistrées", "Prices updated": "Cours actualisés", "Missing price data": "Données de cours manquantes",
+    "Data source": "Source des données", "Performance data status": "État des données de performance", "No followed trades yet": "Aucune transaction suivie pour le moment",
+    "Buy and sell signal outcomes will appear here after you save or follow them from recommendations or analysis.": "Les résultats des signaux d’achat et de vente apparaîtront ici après leur enregistrement ou leur suivi depuis les recommandations ou l’analyse.",
+    "Open recommendations": "Ouvrir les recommandations", "Run signal scan": "Lancer l’analyse des signaux", "Add followed trade": "Ajouter une transaction suivie",
+    "Manual track": "Suivi manuel", "Stop loss": "Stop de protection", "Optional": "Facultatif", "Notes": "Notes",
+    "Stocks": "Actions", "Indices": "Indices", "No trades in this category.": "Aucune transaction dans cette catégorie.",
+    "Untitled news": "Actualité sans titre", "No related provider news for this symbol.": "Aucune actualité associée du fournisseur pour ce symbole.",
+    "Alert": "Alerte", "Alert without additional details.": "Alerte sans détails supplémentaires.", "Open symbol": "Ouvrir le symbole",
+    "Percent %": "Pourcentage %", "Delete": "Supprimer", "Cache available": "Cache disponible", "Using stale cache": "Utilisation d’un cache ancien",
+    "Live refresh": "Actualisation en direct", "Provider cache": "Cache du fournisseur", "Live data": "Données en direct", "Disabled": "Désactivé",
+    "Detailed provider market rows are available under Settings / Admin diagnostics.": "Les lignes détaillées des marchés du fournisseur sont disponibles dans Paramètres / Diagnostics d’administration.",
+    "Employees": "Employés", "About the asset and business": "À propos de l’actif et de l’entreprise", "Not enough profile data": "Données de profil insuffisantes",
+    "The provider did not return a profile for this symbol. Connect a fundamentals provider to show business activity, description, and market cap.": "Le fournisseur n’a renvoyé aucun profil pour ce symbole. Connectez un fournisseur de données fondamentales pour afficher l’activité, la description et la capitalisation boursière.",
+    "Final recommendation": "Recommandation finale", "SPAC stock": "Action de SPAC", "Technical analysis does not apply": "L’analyse technique ne s’applique pas",
+    "This is a special purpose acquisition company stock: its price is typically anchored near trust value until a merger is announced, so trend, momentum, and breakout indicators are not meaningful and the system will not issue buy or sell recommendations for it. Decisions here depend on merger news and terms, not the chart.": "Il s’agit d’une action de société d’acquisition à vocation spécifique : son cours reste généralement proche de la valeur fiduciaire jusqu’à l’annonce d’une fusion. Les indicateurs de tendance, de momentum et de cassure ne sont donc pas pertinents, et le système n’émettra pas de recommandation d’achat ou de vente. Les décisions dépendent des modalités et des actualités de la fusion, et non du graphique.",
+    "Automated internal screening": "Filtrage interne automatisé", "Shariah compliance": "Conformité à la charia", "Reason": "Raison",
+    "Last reviewed": "Dernière révision", "Standard": "Norme", "Business activity + financial ratios screening": "Filtrage de l’activité et des ratios financiers",
+    "Preliminary automated classification based on business activity and financial ratio screening (interest-bearing debt <= 33%, interest income <= 5%). This is not a fatwa; for final reliance, consult an accredited Shariah screening service or qualified specialists.": "Classification automatisée préliminaire fondée sur l’activité et les ratios financiers (dette portant intérêt ≤ 33 %, revenus d’intérêts ≤ 5 %). Il ne s’agit pas d’une fatwa ; consultez un service agréé de filtrage conforme à la charia ou des spécialistes qualifiés avant toute décision définitive.",
+    "The symbol is not supported by the current provider.": "Le symbole n’est pas pris en charge par le fournisseur actuel.",
+    "Historical price data is missing.": "Les données historiques de cours sont manquantes.",
+    "The data provider is delayed or temporarily unavailable.": "Le fournisseur de données est retardé ou temporairement indisponible.",
+    "Attempted": "Tentée", "Not attempted": "Non tentée", "Only indicators returned by the provider are shown here; unavailable rows are hidden instead of estimated.": "Seuls les indicateurs renvoyés par le fournisseur sont affichés ; les lignes indisponibles sont masquées au lieu d’être estimées.",
+    "Target 1 · higher probability": "Objectif 1 · probabilité plus élevée", "Target 2 · extension": "Objectif 2 · extension",
+    "Risk/reward": "Risque/rendement", "The first target is intentionally close (around 0.9x ATR) to raise hit probability; historical success is measured against that target. The stop is wider behind the price structure, so risk/reward is read with the second target.": "Le premier objectif est volontairement proche (environ 0,9× l’ATR) afin d’augmenter sa probabilité d’atteinte ; la réussite historique est mesurée par rapport à cet objectif. Le stop est plus large derrière la structure des cours ; le rapport risque/rendement s’apprécie donc avec le deuxième objectif.",
+    "Analytical reading based on available data.": "Lecture analytique fondée sur les données disponibles.", "Technical": "Technique",
+    "Momentum": "Momentum", "Fundamentals": "Fondamentaux", "Signal": "Signal", "Historical accuracy": "Précision historique",
+    "Test samples": "Échantillons du test", "Risk warning": "Avertissement sur les risques", "Trend — moving average cross": "Tendance — croisement des moyennes mobiles",
+    "50 MA is above 200 MA (golden cross)": "La moyenne mobile 50 est au-dessus de la moyenne mobile 200 (croisement haussier)",
+    "50 MA is below 200 MA (death cross)": "La moyenne mobile 50 est au-dessous de la moyenne mobile 200 (croisement baissier)",
+    "RSI — extremes/reversal": "RSI — extrêmes/retournement", "MACD — momentum": "MACD — momentum", "Positive crossover": "Croisement positif",
+    "Negative crossover": "Croisement négatif", "Price versus 50 MA": "Cours par rapport à la moyenne mobile 50", "Price above average": "Cours au-dessus de la moyenne",
+    "Price below average": "Cours au-dessous de la moyenne", "Support/resistance": "Support/résistance", "Near support": "Près du support",
+    "Near resistance": "Près de la résistance", "Inside range": "Dans la zone", "Intraday momentum": "Momentum intrajournalier",
+    "Provider recommendation (AI)": "Recommandation du fournisseur (IA)", "No strategy coverage": "Aucune couverture stratégique",
+    "Limited agreement: one strategy only": "Concordance limitée : une seule stratégie", "Strategy": "Stratégie",
+    "Not enough data is available for this strategy.": "Les données disponibles sont insuffisantes pour cette stratégie.", "Limited agreement": "Concordance limitée",
+    "Strategy agreement · not AI confidence or the final recommendation": "Concordance des stratégies · distincte de la confiance de l’IA et de la recommandation finale",
+    "Agreement is based on limited strategy coverage, so it is not treated as a strong signal even if the raw percentage is 100%.": "La concordance repose sur une couverture stratégique limitée ; elle n’est donc pas considérée comme un signal fort, même si le pourcentage brut atteint 100 %.",
+    "This is only strategy agreement; the final decision combines AI confidence, data quality, samples, risk, and technical analysis.": "Il s’agit uniquement de la concordance des stratégies ; la décision finale combine la confiance de l’IA, la qualité des données, les échantillons, le risque et l’analyse technique.",
+    "strategies": "stratégies", "Available from provider": "Disponible auprès du fournisseur", "Data quality / samples": "Qualité des données / échantillons",
+    "Notice: All content is for educational and informational purposes only and is not investment advice. Trading involves risk that may include the full loss of capital.": "Avis : tout le contenu est fourni à des fins pédagogiques et informatives uniquement et ne constitue pas un conseil en investissement. Le trading comporte un risque pouvant aller jusqu’à la perte totale du capital.",
+    "System online": "Système opérationnel", "Waiting for provider": "En attente du fournisseur",
+    "Local alert saved. A price provider is required to trigger it automatically.": "Alerte locale enregistrée. Un fournisseur de cours est nécessaire pour la déclencher automatiquement.",
+    "1-3 weeks": "1 à 3 semaines", "Trade added to trade performance.": "Transaction ajoutée au suivi des performances.",
+    "Trade saved locally; sign in or apply migrations to save it in the database.": "Transaction enregistrée localement ; connectez-vous ou appliquez les migrations pour l’enregistrer dans la base de données.",
+    "No saved recommendation was found for this symbol.": "Aucune recommandation enregistrée n’a été trouvée pour ce symbole.",
+    "Followed trade prices were updated.": "Les cours des transactions suivies ont été actualisés.", "Followed trades cannot be updated right now.": "Les transactions suivies ne peuvent pas être actualisées pour le moment.",
+    "Local signal scan started; automatic saving requires database permissions.": "Analyse locale des signaux lancée ; l’enregistrement automatique nécessite des autorisations de base de données.",
+    "Signal scan started and available candidates were saved.": "Analyse des signaux lancée et candidats disponibles enregistrés.",
+    "Enter a symbol.": "Saisissez un symbole.", "Not computed": "Non calculé", "Complete": "Complet", "Live": "En direct",
+    "Cached": "En cache", "Delayed": "Différé", "Partial": "Partiel", "Choose market": "Choisir un marché"
+  });
   const THEME_VALUES = ["dark", "light", "system"];
   const DEFAULT_THEME = "dark";
   let systemThemeQuery = null;
   const TRANSLATION_EN_TO_AR = new Map();
   const TRANSLATION_AR_TO_EN = new Map();
+  const TRANSLATION_EN_TO_FR = new Map();
+  const TRANSLATION_AR_TO_FR = new Map();
+  const TRANSLATION_FR_TO_EN = new Map();
+  const TRANSLATION_FR_TO_AR = new Map();
   const TRANSLATION_FRAGMENTS = [];
-  Object.values(TERMINAL_I18N).forEach((entry) => registerTranslationPair(entry.ar, entry.en));
-  TERMINAL_TEXT_PAIRS.forEach(([en, ar]) => registerTranslationPair(ar, en));
+  Object.values(TERMINAL_I18N).forEach((entry) => registerTranslationPair(entry.ar, entry.en, entry.fr || frenchUiText(entry.en)));
+  TERMINAL_TEXT_PAIRS.forEach(([en, ar, fr]) => registerTranslationPair(ar, en, fr || frenchUiText(en)));
   const defaults = ["AAPL", "MSFT", "NVDA", "BTCUSD", "XAUUSD", "KFH.KW"];
   const leadershipCore = ["NAS100", "US30", "XAUUSD", "BTCUSD"];
   const INITIAL_LOADING_MAX_MS = 4500;
   const REQUEST_TIMEOUTS = { providerStatus: 8000, quotes: 30000, signals: 8000, news: 12000, calendar: 15000, default: 10000 };
   const MARKET_UNIVERSE_PAGE_SIZE = 50;
-  const UNAVAILABLE_MESSAGE = "تعذر تحميل هذه البيانات حالياً";
+  const UNAVAILABLE_MESSAGE = "تعذر تحميل البيانات حالياً";
+  const UNAVAILABLE_DESCRIPTION = "لم نتمكن من تحميل هذه البيانات. حاول مرة أخرى أو افتح الصفحة ذات الصلة.";
   const ROUTE_UNAVAILABLE_MESSAGE = "المسار غير متاح حالياً";
   const COVERAGE_NOTICE_AR = "قد لا تتوفر جميع الرموز من المزود الحالي";
   const COVERAGE_NOTICE_EN = "Some symbols may not be available from the current provider";
@@ -381,6 +880,27 @@
       fallbackLabel: "Fallback attempted",
       providerLabel: "Provider",
       providerSymbolLabel: "Provider symbol"
+    },
+    fr: {
+      title: "L’analyse technique est actuellement indisponible",
+      description: "Le fournisseur de données actuel n’a pas renvoyé suffisamment d’indicateurs techniques pour cet actif.",
+      reasonsTitle: "Raisons possibles",
+      reasons: [
+        "Le symbole n’est pas pris en charge par le fournisseur actuel",
+        "Les données historiques de cours sont manquantes",
+        "L’actif est récent ou peu liquide",
+        "Retard temporaire du fournisseur"
+      ],
+      finalNote: "État de l’actif modifié : sous surveillance",
+      retry: "Relancer l’analyse",
+      changeProvider: "Changer de fournisseur",
+      viewPriceData: "Voir les données de cours",
+      detailsTitle: "Détails de l’état",
+      reasonLabel: "Raison",
+      missingFieldsLabel: "Champs manquants",
+      fallbackLabel: "Solution de repli tentée",
+      providerLabel: "Fournisseur",
+      providerSymbolLabel: "Symbole du fournisseur"
     }
   };
   const CRYPTO_DISPLAY_BASES = new Set(["BTC", "ETH", "BNB", "ADA", "APT", "AAVE", "APE", "ALGO", "ATOM", "AVAX", "BCH", "AXS", "ARB", "SOL", "XRP", "DOGE", "DOT", "LTC", "LINK", "USDT", "USDC", "TON", "SUI", "PEPE", "TRX", "XLM", "FIL", "ICP", "ETC", "HBAR", "VET", "NEAR", "OP", "INJ", "GRT", "STX", "COMP"]);
@@ -388,30 +908,36 @@
   const PROVIDER_STATUS_LABELS = {
     provider_status_failed: {
       ar: "تعذر الاتصال بمزود البيانات حالياً",
-      en: "Unable to connect to the data provider right now"
+      en: "Unable to connect to the data provider right now",
+      fr: "Impossible de se connecter au fournisseur de données pour le moment"
     },
     provider_status_loading: {
       ar: "جاري تحميل بيانات المزود",
-      en: "Loading provider data"
+      en: "Loading provider data",
+      fr: "Chargement des données du fournisseur"
     },
     provider_status_available: {
       ar: "مزود البيانات متصل",
-      en: "Data provider connected"
+      en: "Data provider connected",
+      fr: "Fournisseur de données connecté"
     },
     provider_status_partial: {
       ar: "بيانات المزود متاحة جزئياً",
-      en: "Provider data is partially available"
+      en: "Provider data is partially available",
+      fr: "Les données du fournisseur sont partiellement disponibles"
     },
     provider_status_unknown: {
       ar: "حالة مزود البيانات غير معروفة",
-      en: "Unknown provider status"
+      en: "Unknown provider status",
+      fr: "État du fournisseur de données inconnu"
     }
   };
   const PROVIDER_STATUS_EXPLANATION = {
     ar: "سيتم عرض البيانات المتاحة فقط، وقد تكون بعض الأسعار أو التحليلات غير مكتملة.",
-    en: "Only available data will be shown. Some prices or analysis may be incomplete."
+    en: "Only available data will be shown. Some prices or analysis may be incomplete.",
+    fr: "Seules les données disponibles seront affichées. Certains cours ou certaines analyses peuvent être incomplets."
   };
-  const PROVIDER_RETRY_LABEL = { ar: "إعادة المحاولة", en: "Retry" };
+  const PROVIDER_RETRY_LABEL = { ar: "إعادة المحاولة", en: "Retry", fr: "Réessayer" };
   const SETTINGS_COPY = {
     settings: { ar: "الإعدادات", en: "Settings" },
     heroTitle: { ar: "إعدادات النظام", en: "System settings" },
@@ -447,6 +973,7 @@
     save: { ar: "حفظ التفضيلات", en: "Save preferences" },
     arabic: { ar: "العربية", en: "Arabic" },
     english: { ar: "الإنجليزية", en: "English" },
+    french: { ar: "الفرنسية", en: "French", fr: "Français" },
     dark: { ar: "داكن", en: "Dark" },
     light: { ar: "فاتح", en: "Light" },
     system: { ar: "النظام", en: "System" },
@@ -488,7 +1015,7 @@
       ar: "لا نولّد أسعاراً أو توصيات بديلة عند غياب المزود؛ تظهر البيانات المتاحة فقط.",
       en: "The terminal does not invent prices or recommendations when provider data is unavailable."
     },
-    aboutBody: { ar: `منصة تداول وتحليل ذكية. إصدار ${VER}.`, en: `AI trading and analysis terminal. Version ${VER}.` },
+    aboutBody: { ar: `منصة تداول وتحليل ذكية. إصدار ${VER}.`, en: `AI trading and analysis terminal. Version ${VER}.`, fr: `Terminal intelligent de trading et d’analyse. Version ${VER}.` },
     savedPreferences: { ar: "تم حفظ تفضيلات الإشارات.", en: "Signal preferences saved." },
     savedLocal: { ar: "تم حفظها محلياً؛ يلزم تسجيل الدخول لحفظها في الحساب.", en: "Saved locally; sign in to save them to the account." },
     refreshed: { ar: "تم تحديث بيانات السوق.", en: "Market data refreshed." },
@@ -614,6 +1141,7 @@
   const FUND_EMPTY_STATE_EN = "No matching funds for this market or category right now";
   const FUND_PROVIDER_NOTE_AR = "قد لا يدعم المزود الحالي جميع أنواع الصناديق";
   const FUND_PROVIDER_NOTE_EN = "The current provider may not support all fund types";
+  const FUND_PROVIDER_NOTE_FR = "Le fournisseur actuel peut ne pas prendre en charge tous les types de fonds";
   const STRICT_LOCAL_MARKETS = {
     qatar: { country: "Qatar", countries: ["QA", "QATAR"], currency: "QAR", exchange: /QATAR|QSE|DSMD|DSM/i, market: /QATAR|QSE/i, suffix: /\.QA$/i },
     kuwait: { country: "Kuwait", countries: ["KW", "KUWAIT"], currency: "KWD", exchange: /KUWAIT|BOURSA|KSE|XKUW/i, market: /KUWAIT|BOURSA/i, suffix: /\.KW$/i },
@@ -645,29 +1173,40 @@
     const t = now.getUTCHours() + now.getUTCMinutes() / 60;
     const open = !weekend && t >= openH && t < closeH;
     const fmt = (v) => { const hh = Math.floor(v), mm = Math.round((v - hh) * 60); return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`; };
-    return { open, label: open ? `يغلق ${fmt(closeH)} UTC` : `يفتح ${fmt(openH)} UTC` };
+    return {
+      open,
+      label: open
+        ? textPair(`يغلق ${fmt(closeH)} UTC`, `Closes ${fmt(closeH)} UTC`, `Ferme à ${fmt(closeH)} UTC`)
+        : textPair(`يفتح ${fmt(openH)} UTC`, `Opens ${fmt(openH)} UTC`, `Ouvre à ${fmt(openH)} UTC`)
+    };
   }
 
   const LESSONS = {
     "أساسيات": [
-      ["كيف تقرأ توصية AI؟", "التوصية لا تظهر إلا عند وجود مزود بيانات وتحليل مكتمل. عند غياب المزود سترى حالة فارغة بدل أرقام مصطنعة."],
-      ["العملة حسب الأصل", "كل أصل يستخدم عملته الخاصة من بيانات الرمز أو السوق، وليس من السوق المختار في الواجهة."],
-      ["السوق مقابل الرمز", "اختيار السوق يصفّي الرموز فقط؛ السعر والعملة يأتيان من الرمز نفسه."]
+      ["كيف تقرأ توصية الذكاء الاصطناعي؟", "How to read an AI recommendation", "Comment lire une recommandation de l’IA", "التوصية لا تظهر إلا عند وجود مزود بيانات وتحليل مكتمل. عند غياب المزود سترى حالة فارغة بدل أرقام مصطنعة.", "A recommendation appears only when a data provider and complete analysis are available. If the provider is unavailable, an empty state appears instead of invented figures.", "Une recommandation n’apparaît que lorsqu’un fournisseur de données et une analyse complète sont disponibles. Si le fournisseur est indisponible, un état vide remplace les chiffres inventés."],
+      ["العملة حسب الأصل", "Currency by asset", "Devise par actif", "كل أصل يستخدم عملته الخاصة من بيانات الرمز أو السوق، وليس من السوق المختار في الواجهة.", "Each asset uses its own currency from the symbol or market data, not the market selected in the interface.", "Chaque actif utilise sa propre devise issue des données du symbole ou du marché, et non celle du marché sélectionné dans l’interface."],
+      ["السوق مقابل الرمز", "Market versus symbol", "Marché et symbole", "اختيار السوق يصفّي الرموز فقط؛ السعر والعملة يأتيان من الرمز نفسه.", "Choosing a market only filters symbols; the price and currency come from the symbol itself.", "Le choix d’un marché filtre uniquement les symboles ; le cours et la devise proviennent du symbole lui-même."]
     ],
     "إدارة المخاطر": [
-      ["حجم الصفقة", "حدد حجم المركز ونسبة المخاطرة من رأس المال قبل الدخول في أي صفقة."],
-      ["وقف الخسارة", "ضع نقطة إلغاء واضحة قبل الدخول، والتزم بها دون تحريكها عاطفياً."],
-      ["العائد إلى المخاطرة", "ابحث عن صفقات بنسبة عائد/مخاطرة 2:1 على الأقل."]
+      ["حجم الصفقة", "Position size", "Taille de la position", "حدد حجم المركز ونسبة المخاطرة من رأس المال قبل الدخول في أي صفقة.", "Set the position size and capital risk percentage before entering any trade.", "Définissez la taille de la position et le pourcentage du capital risqué avant toute transaction."],
+      ["وقف الخسارة", "Stop loss", "Stop de protection", "ضع نقطة إلغاء واضحة قبل الدخول، والتزم بها دون تحريكها عاطفياً.", "Set a clear invalidation point before entry and follow it without moving it emotionally.", "Définissez un niveau d’invalidation clair avant l’entrée et respectez-le sans le déplacer sous l’effet de l’émotion."],
+      ["العائد إلى المخاطرة", "Risk/reward", "Risque/rendement", "ابحث عن صفقات بنسبة عائد/مخاطرة 2:1 على الأقل.", "Look for trades with a risk/reward ratio of at least 2:1.", "Recherchez des transactions avec un rapport risque/rendement d’au moins 2:1."]
     ],
     "التحليل الفني": [
-      ["الدعم والمقاومة", "مناطق يتكرر عندها ارتداد السعر؛ تُستخدم لتحديد الدخول والأهداف."],
-      ["الاتجاه", "تداول مع الاتجاه العام أعلى احتمالاً من معاكسته."],
-      ["الحجم", "تأكيد الحركة السعرية بحجم تداول مرتفع يزيد موثوقيتها."]
+      ["الدعم والمقاومة", "Support and resistance", "Support et résistance", "مناطق يتكرر عندها ارتداد السعر؛ تُستخدم لتحديد الدخول والأهداف.", "Zones where price repeatedly reverses, used to define entries and targets.", "Zones où le cours se retourne régulièrement, utilisées pour définir les entrées et les objectifs."],
+      ["الاتجاه", "Trend", "Tendance", "تداول مع الاتجاه العام أعلى احتمالاً من معاكسته.", "Trading with the prevailing trend is more probable than trading against it.", "Négocier dans le sens de la tendance dominante est généralement plus probable que de s’y opposer."],
+      ["الحجم", "Volume", "Volume", "تأكيد الحركة السعرية بحجم تداول مرتفع يزيد موثوقيتها.", "Confirming a price move with high trading volume increases its reliability.", "La confirmation d’un mouvement de cours par un volume élevé renforce sa fiabilité."]
     ],
     "المحفظة": [
-      ["التنويع", "وزّع المخاطر عبر أسواق وقطاعات مختلفة لتقليل أثر أصل واحد."],
-      ["التوزيع", "حدد نسبة كل فئة أصول وأعد التوازن دورياً."]
+      ["التنويع", "Diversification", "Diversification", "وزّع المخاطر عبر أسواق وقطاعات مختلفة لتقليل أثر أصل واحد.", "Spread risk across different markets and sectors to reduce the impact of one asset.", "Répartissez le risque entre différents marchés et secteurs afin de réduire l’impact d’un seul actif."],
+      ["التوزيع", "Allocation", "Allocation", "حدد نسبة كل فئة أصول وأعد التوازن دورياً.", "Set the share of each asset class and rebalance periodically.", "Définissez la part de chaque classe d’actifs et rééquilibrez périodiquement."]
     ]
+  };
+  const LESSON_CATEGORY_LABELS = {
+    "أساسيات": ["أساسيات", "Fundamentals", "Principes de base"],
+    "إدارة المخاطر": ["إدارة المخاطر", "Risk management", "Gestion des risques"],
+    "التحليل الفني": ["التحليل الفني", "Technical analysis", "Analyse technique"],
+    "المحفظة": ["المحفظة", "Portfolio", "Portefeuille"]
   };
 
   // Brand color map for recognizable tickers (badge fallback, no external network).
@@ -715,13 +1254,38 @@
   state.settings.theme = readStoredThemePreference();
   applyThemePreference(state.settings.theme);
 
-  function registerTranslationPair(ar, en) {
+  function registerTranslationPair(ar, en, fr) {
     const arText = String(ar || "").trim();
     const enText = String(en || "").trim();
     if (!arText || !enText) return;
+    const frText = String(fr || frenchUiText(enText)).trim();
     TRANSLATION_AR_TO_EN.set(normalizeTranslationKey(arText), enText);
     TRANSLATION_EN_TO_AR.set(normalizeTranslationKey(enText), arText);
-    TRANSLATION_FRAGMENTS.push({ ar: arText, en: enText });
+    if (frText) {
+      TRANSLATION_EN_TO_FR.set(normalizeTranslationKey(enText), frText);
+      TRANSLATION_AR_TO_FR.set(normalizeTranslationKey(arText), frText);
+      TRANSLATION_FR_TO_EN.set(normalizeTranslationKey(frText), enText);
+      TRANSLATION_FR_TO_AR.set(normalizeTranslationKey(frText), arText);
+    }
+    TRANSLATION_FRAGMENTS.push({ ar: arText, en: enText, fr: frText });
+  }
+
+  function frenchUiText(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return text;
+    const exact = TERMINAL_FRENCH_TEXT[text] || TERMINAL_FRENCH_EXTRA[text];
+    if (exact) return exact;
+    const dynamic = text
+      .replace(/^Showing ([\d,.]+) of ([\d,.]+) symbols$/i, "Affichage de $1 symboles sur $2")
+      .replace(/^Showing ([\d,.]+) of ([\d,.]+) funds$/i, "Affichage de $1 fonds sur $2")
+      .replace(/^Showing ([\d,.]+) of ([\d,.]+) rows$/i, "Affichage de $1 lignes sur $2")
+      .replace(/^Page ([\d,.]+) \/ ([\d,.]+)$/i, "Page $1 / $2")
+      .replace(/^([\d,.]+) results$/i, "$1 résultats")
+      .replace(/^([\d,.]+) symbols$/i, "$1 symboles")
+      .replace(/^([\d,.]+) assets$/i, "$1 actifs")
+      .replace(/^Loading (.+)$/i, (_match, label) => `Chargement de ${frenchUiText(label).toLocaleLowerCase("fr")}`);
+    if (dynamic !== text) return dynamic;
+    return text;
   }
 
   function normalizeLanguage(value) {
@@ -753,16 +1317,32 @@
     return currentLanguage() === "en";
   }
 
+  function isFrenchLanguage() {
+    return currentLanguage() === "fr";
+  }
+
+  function isLtrLanguage() {
+    return currentLanguage() !== "ar";
+  }
+
+  function terminalLocale() {
+    return isFrenchLanguage() ? "fr-FR" : isEnglishLanguage() ? "en-US" : "ar-KW";
+  }
+
   function terminalText(key, vars = {}) {
     const entry = TERMINAL_I18N[key] || { ar: key, en: key };
-    let text = entry[currentLanguage()] || entry.ar || entry.en || key;
+    const lang = currentLanguage();
+    let text = lang === "fr"
+      ? (entry.fr || frenchUiText(entry.en || key))
+      : (entry[lang] || entry.ar || entry.en || key);
     Object.entries(vars).forEach(([name, value]) => {
       text = text.replaceAll(`{${name}}`, String(value));
     });
     return text;
   }
 
-  function textPair(ar, en) {
+  function textPair(ar, en, fr) {
+    if (isFrenchLanguage()) return fr || frenchUiText(en);
     return isEnglishLanguage() ? en : ar;
   }
 
@@ -789,7 +1369,11 @@
     if (mixed) text = mixed;
 
     const normalized = normalizeTranslationKey(text);
-    const exact = isEnglishLanguage() ? TRANSLATION_AR_TO_EN.get(normalized) : TRANSLATION_EN_TO_AR.get(normalized);
+    const exact = isFrenchLanguage()
+      ? (TRANSLATION_AR_TO_FR.get(normalized) || TRANSLATION_EN_TO_FR.get(normalized) || frenchUiText(text))
+      : isEnglishLanguage()
+        ? (TRANSLATION_AR_TO_EN.get(normalized) || TRANSLATION_FR_TO_EN.get(normalized))
+        : (TRANSLATION_EN_TO_AR.get(normalized) || TRANSLATION_FR_TO_AR.get(normalized));
     if (exact) return `${leading}${exact}${trailing}`;
 
     text = translateDynamicUiText(text);
@@ -798,6 +1382,13 @@
   }
 
   function translateDynamicUiText(text) {
+    if (isFrenchLanguage()) {
+      const dynamic = text
+        .replace(/Showing\s+([\d,.\s]+)\s+of\s+([\d,.\s]+)\s+symbols/gi, (_m, shown, total) => `Affichage de ${shown.trim()} symboles sur ${total.trim()}`)
+        .replace(/Showing\s+([\d,.\s]+)\s+of\s+([\d,.\s]+)\s+funds/gi, (_m, shown, total) => `Affichage de ${shown.trim()} fonds sur ${total.trim()}`)
+        .replace(/Page\s+([\d,.\s]+)\s*\/\s*([\d,.\s]+)/gi, (_m, page, total) => `Page ${page.trim()} / ${total.trim()}`);
+      return replaceKnownUiFragments(dynamic);
+    }
     if (isEnglishLanguage()) {
       const dynamic = text
         .replace(/يعرض\s+([\d,.\s]+)\s+من\s+([\d,.\s]+)\s+رمز/g, (_m, shown, total) => terminalText("showingSymbols", { shown: shown.trim(), total: total.trim() }))
@@ -813,8 +1404,8 @@
   }
 
   function replaceKnownUiFragments(text) {
-    const source = isEnglishLanguage() ? "ar" : "en";
-    const target = isEnglishLanguage() ? "en" : "ar";
+    const source = isFrenchLanguage() ? (hasArabicText(text) ? "ar" : "en") : isEnglishLanguage() ? "ar" : "en";
+    const target = isFrenchLanguage() ? "fr" : isEnglishLanguage() ? "en" : "ar";
     return TRANSLATION_FRAGMENTS
       .filter(pair => pair[source] && pair[target] && pair[source].length > 2)
       .sort((a, b) => b[source].length - a[source].length)
@@ -842,7 +1433,7 @@
       /unavailable/i.test(part)
     ));
     if (!arabicPart || !englishPart) return "";
-    return isEnglishLanguage() ? englishPart : arabicPart;
+    return isFrenchLanguage() ? frenchUiText(englishPart) : isEnglishLanguage() ? englishPart : arabicPart;
   }
 
   function isOfficialMarketCode(value) {
@@ -883,6 +1474,7 @@
       document.body.dir = dir;
       document.body.classList.toggle("language-en", lang === "en");
       document.body.classList.toggle("language-ar", lang === "ar");
+      document.body.classList.toggle("language-fr", lang === "fr");
     }
     const shell = document.getElementById("app-shell");
     if (shell) shell.dir = dir;
@@ -979,6 +1571,10 @@
         button.textContent = "EN";
         button.title = terminalText("language.english");
       }
+      if (button.dataset.language === "fr") {
+        button.textContent = "FR";
+        button.title = terminalText("language.french");
+      }
     });
   }
 
@@ -987,28 +1583,28 @@
   }
 
   function marketName(market) {
-    return textPair(market.ar, market.en);
+    return textPair(market.ar, market.en, market.fr);
   }
 
   function marketFamilyName(family) {
     const labels = {
-      Equities: ["الأسهم", "Equities"],
-      FX: ["العملات", "FX"],
-      Digital: ["الأصول الرقمية", "Digital"],
-      Macro: ["الاقتصاد الكلي", "Macro"],
-      Benchmarks: ["المؤشرات", "Benchmarks"],
-      Funds: ["الصناديق", "Funds"],
-      Tadawul: ["تداول", "Tadawul"],
-      Boursa: ["بورصة", "Boursa"],
-      "ADX/DFM": ["ADX/DFM", "ADX/DFM"],
-      QSE: ["QSE", "QSE"],
-      BHB: ["BHB", "BHB"],
-      MSX: ["MSX", "MSX"],
-      Global: ["عالمي", "Global"],
-      Sector: ["قطاع", "Sector"]
+      Equities: ["الأسهم", "Equities", "Actions"],
+      FX: ["العملات", "FX", "Devises"],
+      Digital: ["الأصول الرقمية", "Digital", "Actifs numériques"],
+      Macro: ["الاقتصاد الكلي", "Macro", "Macroéconomie"],
+      Benchmarks: ["المؤشرات", "Benchmarks", "Indices de référence"],
+      Funds: ["الصناديق", "Funds", "Fonds"],
+      Tadawul: ["تداول", "Tadawul", "Tadawul"],
+      Boursa: ["بورصة", "Boursa", "Boursa"],
+      "ADX/DFM": ["ADX/DFM", "ADX/DFM", "ADX/DFM"],
+      QSE: ["QSE", "QSE", "QSE"],
+      BHB: ["BHB", "BHB", "BHB"],
+      MSX: ["MSX", "MSX", "MSX"],
+      Global: ["عالمي", "Global", "International"],
+      Sector: ["قطاع", "Sector", "Secteur"]
     };
     const label = labels[family];
-    return label ? textPair(label[0], label[1]) : String(family || "");
+    return label ? textPair(label[0], label[1], label[2]) : String(family || "");
   }
 
   function translateRenderedUi(root = document.body) {
@@ -1271,19 +1867,18 @@
   }
 
   function themeCopy() {
-    const en = currentLanguage() === "en";
     return {
-      title: en ? "Theme" : "المظهر",
-      choose: en ? "Choose theme" : "اختيار المظهر",
+      title: textPair("المظهر", "Theme"),
+      choose: textPair("اختيار المظهر", "Choose theme", "Choisir le thème"),
       options: {
-        dark: en ? "Dark" : "داكن",
-        light: en ? "Light" : "فاتح",
-        system: en ? "System" : "حسب النظام"
+        dark: textPair("داكن", "Dark"),
+        light: textPair("فاتح", "Light"),
+        system: textPair("حسب النظام", "System")
       },
       descriptions: {
-        dark: en ? "Premium dark terminal" : "الواجهة الداكنة الفاخرة",
-        light: en ? "Clean light terminal" : "واجهة فاتحة نظيفة",
-        system: en ? "Follow device appearance" : "يتبع مظهر الجهاز"
+        dark: textPair("الواجهة الداكنة الفاخرة", "Premium dark terminal", "Terminal sombre haut de gamme"),
+        light: textPair("واجهة فاتحة نظيفة", "Clean light terminal", "Terminal clair et épuré"),
+        system: textPair("يتبع مظهر الجهاز", "Follow device appearance", "Suit l’apparence de l’appareil")
       }
     };
   }
@@ -1552,7 +2147,7 @@
     document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
       event.preventDefault();
       const symbol = sym(document.getElementById("symbol-input")?.value || "");
-      if (!symbol) return toast("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.");
+      if (!symbol) return toast(textPair("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.", "Enter a symbol first, such as AAPL or BTCUSD.", "Saisissez d’abord un symbole, comme AAPL ou BTCUSD."));
       navigate(`${ROOT}/symbol/${encodeURIComponent(symbol)}`);
     });
     document.addEventListener("submit", (event) => {
@@ -1756,13 +2351,13 @@
       ${marketLeadership(rec)}
       ${opportunityHeatmap(rec)}
       <section class="market-movers-grid">
-        ${moverPanel("TOP GAINERS", "الأكثر ارتفاعاً", movers.gainers.slice(0, 3), "up")}
-        ${moverPanel("TOP LOSERS", "الأكثر انخفاضاً", movers.losers.slice(0, 3), "down")}
+        ${moverPanel(textPair("الأكثر ارتفاعاً", "TOP GAINERS", "PLUS FORTES HAUSSES"), textPair("الأكثر ارتفاعاً", "Top gainers", "Plus fortes hausses"), movers.gainers.slice(0, 3), "up")}
+        ${moverPanel(textPair("الأكثر انخفاضاً", "TOP LOSERS", "PLUS FORTES BAISSES"), textPair("الأكثر انخفاضاً", "Top losers", "Plus fortes baisses"), movers.losers.slice(0, 3), "down")}
       </section>
       <section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يرجع مزود الأسعار أو التوصيات بيانات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>
       <section class="dashboard-lower-grid">
         <article class="panel"><span class="eyebrow">${h(textPair("أخبار السوق", "Market news"))}</span><h2>${h(textPair("آخر الأخبار", "Latest news"))}</h2>${news.length ? newsList(news.slice(0, 3)) : unavailableSection(state.news, textPair("مزود الأخبار لم يرجع عناصر حالية.", "The news provider did not return current items."), textPair("صفحة الأخبار", "News page"), `${ROOT}/news`)}</article>
-        <article class="panel"><span class="eyebrow">${h(textPair("تحليل الذكاء الاصطناعي", "AI analysis"))}</span><h2>${h(textPair("حالة التحليل الذكي", "AI analysis status"))}</h2>${alerts.length ? alertList(alerts) : unavailableSection(state.signals, textPair("سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "Analysis will appear when market data and recommendations are available."), textPair("افتح الماسح", "Open scanner"), `${ROOT}/ai-scanner`)}</article>
+        <article class="panel"><span class="eyebrow">${h(textPair("تحليل الذكاء الاصطناعي", "AI analysis"))}</span><h2>${h(textPair("حالة التحليل الذكي", "AI analysis status"))}</h2>${alerts.length ? alertList(alerts) : unavailableSection(state.signals, textPair("سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "Analysis will appear when market data and recommendations are available."), textPair("فتح الماسح", "Open scanner"), `${ROOT}/ai-scanner`)}</article>
         <article class="panel"><span class="eyebrow">${h(textPair("حالة النظام", "System status"))}</span><h2>${h(textPair("حالة النظام", "System status"))}</h2>${publicSystemStatus()}</article>
       </section>
       ${disclaimer()}
@@ -1784,10 +2379,10 @@
     const marketLabel = marketName(m);
     const body = cached
       ? marketUniversePanel(m, cached)
-      : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair(`جاري تحميل ${m.ar}`, `Loading ${m.en}`))}</h2><p>${h(textPair(COVERAGE_NOTICE_AR, COVERAGE_NOTICE_EN))}</p></div></div>`;
+      : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair(`جاري تحميل ${m.ar}`, `Loading ${m.en}`, `Chargement de ${frenchUiText(m.en)}`))}</h2><p>${h(textPair(COVERAGE_NOTICE_AR, COVERAGE_NOTICE_EN))}</p></div></div>`;
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ ${h(terminalText("allMarkets"))}</a>
-      ${hero(h(marketLabel), textPair(`${marketFamilyName(m.family)} · العملة الأساسية: ${m.currency}. الصفحة تعرض الكون الكامل المتاح من المزود مع ترقيم صفحات بحجم ${latinNumber(MARKET_UNIVERSE_PAGE_SIZE)} رمزاً.`, `${marketFamilyName(m.family)}. Base currency: ${m.currency}. This page shows the full provider universe with ${MARKET_UNIVERSE_PAGE_SIZE} symbols per page.`), "MARKET")}
+      ${hero(h(marketLabel), textPair(`${marketFamilyName(m.family)} · العملة الأساسية: ${m.currency}. الصفحة تعرض الكون الكامل المتاح من المزود مع ترقيم صفحات بحجم ${latinNumber(MARKET_UNIVERSE_PAGE_SIZE)} رمزاً.`, `${marketFamilyName(m.family)}. Base currency: ${m.currency}. This page shows the full provider universe with ${MARKET_UNIVERSE_PAGE_SIZE} symbols per page.`, `${marketFamilyName(m.family)}. Devise de base : ${m.currency}. Cette page présente l’univers complet du fournisseur avec ${MARKET_UNIVERSE_PAGE_SIZE} symboles par page.`), "MARKET")}
       ${marketPreviewStrip(m, total)}
       ${body}
       ${disclaimer()}
@@ -1842,7 +2437,16 @@
         <span>${h(terminalText(countKey, { shown: latinNumber(rows.length), total: latinNumber(pagination.total) }))}</span>
         <span>${h(terminalText("page"))} <b class="ltr">${latinNumber(pagination.page)}</b> / <b class="ltr">${latinNumber(pageCount)}</b></span>
       </div>
-      ${rows.length ? marketUniverseTable(rows) : emptyState(m.id === "etfs" ? FUND_EMPTY_STATE_AR : "لا توجد رموز مطابقة", m.id === "etfs" ? FUND_EMPTY_STATE_EN : "غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "", "")}
+      ${rows.length ? marketUniverseTable(rows) : emptyState(
+        m.id === "etfs"
+          ? textPair(FUND_EMPTY_STATE_AR, FUND_EMPTY_STATE_EN, "Aucun fonds ne correspond actuellement à ce marché ou à cette catégorie")
+          : textPair("لا توجد رموز مطابقة", "No matching symbols", "Aucun symbole correspondant"),
+        m.id === "etfs"
+          ? textPair("غيّر البحث أو الفلاتر للعثور على صناديق أخرى.", "Change the search or filters to find other funds.", "Modifiez la recherche ou les filtres pour trouver d’autres fonds.")
+          : textPair("غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "Change the search or filters. We will not add synthetic symbols instead of provider data.", "Modifiez la recherche ou les filtres. Aucun symbole synthétique ne remplacera les données du fournisseur."),
+        "",
+        ""
+      )}
       <div class="provider-market-pagination market-universe-pagination">
         <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page - 1}" ${pagination.page <= 1 ? "disabled" : ""}>${h(terminalText("previous"))}</button>
         <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page + 1}" ${pagination.page >= pageCount ? "disabled" : ""}>${h(terminalText("next"))}</button>
@@ -1883,7 +2487,7 @@
       sectors: arr(fromPayload.sectors).length ? fromPayload.sectors : unique(rows.map(x => x.sector).filter(Boolean)),
       industries: arr(fromPayload.industries).length ? fromPayload.industries : unique(rows.map(x => x.industry).filter(Boolean)),
       assetTypes: arr(fromPayload.assetTypes).length ? fromPayload.assetTypes : unique(rows.map(x => x.assetType || assetType(x.symbol)).filter(Boolean)),
-      fundFilters: arr(fromPayload.fundFilters).length ? fromPayload.fundFilters.map(item => Array.isArray(item) ? item : [item.id || item.value || item, item.ar || item.en ? textPair(item.ar || item.en, item.en || item.ar) : item.label || item.en || item.id || item]) : FUND_FILTERS,
+      fundFilters: arr(fromPayload.fundFilters).length ? fromPayload.fundFilters.map(item => Array.isArray(item) ? item : [item.id || item.value || item, item.ar || item.en ? textPair(item.ar || item.en, item.en || item.ar, item.fr) : item.label || item.fr || item.en || item.id || item]) : FUND_FILTERS,
     };
   }
   function filterOptions(items, selected, allLabel) {
@@ -1901,25 +2505,34 @@
     const total = num(coverage.totalFilteredSymbols, discovery.totalFilteredSymbols, payload && payload.marketUniverse && payload.marketUniverse.total, rows.length) || rows.length;
     const lastUpdated = latinDateTime((payload && (payload.lastUpdated || payload.generatedAt || payload.updatedAt)) || discovery.lastUpdated || new Date().toISOString());
     if (market && market.id === "etfs") {
+      const totalFundsLabel = textPair("إجمالي الصناديق", "Total funds", "Total des fonds");
+      const availableFundsLabel = textPair("الصناديق المتاحة", "Available funds", "Fonds disponibles");
+      const fundsWithoutPriceLabel = textPair("الصناديق بدون سعر", "Funds without price", "Fonds sans cours");
+      const lastUpdatedLabel = terminalText("lastUpdated");
       return `<div class="coverage-stack">
-        <div class="provider-market-state warn coverage-notice"><strong>${h(textPair(FUND_PROVIDER_NOTE_AR, FUND_PROVIDER_NOTE_EN))}</strong></div>
+        <div class="provider-market-state warn coverage-notice"><strong>${h(textPair(FUND_PROVIDER_NOTE_AR, FUND_PROVIDER_NOTE_EN, FUND_PROVIDER_NOTE_FR))}</strong></div>
         <div class="detail-grid compact-detail-grid">
-          ${detailCard("إجمالي الصناديق", latinNumber(total), "Total funds")}
-          ${detailCard("الصناديق المتاحة", latinNumber(available), "Available funds")}
-          ${detailCard("الصناديق بدون سعر", latinNumber(unavailable), "Funds without price")}
-          ${detailCard("آخر تحديث", lastUpdated, "Last updated")}
+          ${detailCard(totalFundsLabel, latinNumber(total), totalFundsLabel)}
+          ${detailCard(availableFundsLabel, latinNumber(available), availableFundsLabel)}
+          ${detailCard(fundsWithoutPriceLabel, latinNumber(unavailable), fundsWithoutPriceLabel)}
+          ${detailCard(lastUpdatedLabel, lastUpdated, lastUpdatedLabel)}
         </div>
       </div>`;
     }
     const showNotice = failed > 0 || unavailable > 0 || Boolean(payload && payload.reason);
+    const totalDiscoveredLabel = textPair("إجمالي مكتشف", "Total discovered", "Total découvert");
+    const loadedLabel = terminalText("loaded");
+    const availableWithPriceLabel = textPair("بسعر متاح", "Available with price", "Disponibles avec un cours");
+    const unavailablePriceLabel = textPair("السعر غير متاح", "Unavailable price", "Cours indisponible");
+    const failedLabel = terminalText("failed");
     return `<div class="coverage-stack">
       ${showNotice ? `<div class="provider-market-state warn coverage-notice"><strong>${h(textPair(COVERAGE_NOTICE_AR, COVERAGE_NOTICE_EN))}</strong></div>` : ""}
       <div class="detail-grid compact-detail-grid">
-        ${detailCard("إجمالي مكتشف", latinNumber(total), "Total discovered")}
-        ${detailCard("تم تحميله", latinNumber(loaded), "Loaded")}
-        ${detailCard("بسعر متاح", latinNumber(available), "Available with price")}
-        ${detailCard("السعر غير متاح", latinNumber(unavailable), "Unavailable price")}
-        ${detailCard("فشل", latinNumber(failed), "Failed")}
+        ${detailCard(totalDiscoveredLabel, latinNumber(total), totalDiscoveredLabel)}
+        ${detailCard(loadedLabel, latinNumber(loaded), loadedLabel)}
+        ${detailCard(availableWithPriceLabel, latinNumber(available), availableWithPriceLabel)}
+        ${detailCard(unavailablePriceLabel, latinNumber(unavailable), unavailablePriceLabel)}
+        ${detailCard(failedLabel, latinNumber(failed), failedLabel)}
       </div>
     </div>`;
   }
@@ -2045,7 +2658,7 @@
     const quick = unique(defaults.concat(["EURUSD", "SPY", "2222.SR", "ETHUSD"]));
     return `<div class="page-stack">${hero(textPair("قائمة متابعة ذكية ونظيفة", "Clean smart watchlist"), textPair("أضف الرموز التي تريد مراقبتها. الأسعار والتحليلات تظهر فقط عند توفرها من المزود، والعملة تتبع كل رمز.", "Add the symbols you want to watch. Prices and analysis appear only when available from the provider, and currency follows each symbol."), "WATCHLIST")}
       <section class="panel"><span class="eyebrow">${h(textPair("إضافة سريعة", "Quick add"))}</span><h2>${h(textPair("إضافة سريعة", "Quick add"))}</h2><div class="quick-actions">${quick.map(s => `<button class="ghost-btn" data-quick-add="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</div></section>
-      <section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("قائمتي", "My watchlist"))}</span><h2>${h(textPair(`قائمتي (${state.watch.length})`, `My watchlist (${state.watch.length})`))}</h2></div></div>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("قائمتي", "My watchlist"))}</span><h2>${h(textPair(`قائمتي (${state.watch.length})`, `My watchlist (${state.watch.length})`, `Ma liste de suivi (${state.watch.length})`))}</h2></div></div>
         ${state.watch.length ? watchlistTable(state.watch.map(s => matchRec(s) || { symbol: s, name: s }), { removable: true }) : emptyState(textPair("قائمة المتابعة فارغة", "Watchlist is empty"), textPair("أضف رموزاً من الأعلى. لن نملأها ببيانات وهمية.", "Add symbols above. We will not fill it with synthetic data."), textPair("افتح الأسواق", "Open markets"), `${ROOT}/markets`)}
       </section></div>`;
   }
@@ -2076,7 +2689,7 @@
       </section>
       <section class="alert-grid">
         <article class="panel"><span class="eyebrow">${h(textPair("تنبيهات ذكية", "Smart alerts"))}</span><h2>${h(textPair("تنبيهات المزود", "Provider alerts"))}</h2>${smart.length ? alertList(smart) : emptyState(textPair("لا توجد تنبيهات ذكية", "No smart alerts"), textPair("لم يرجع المزود تنبيهات حالية.", "The provider did not return current alerts."), textPair("التوصيات", "Recommendations"), `${ROOT}/recommendations`)}</article>
-        <article class="panel"><span class="eyebrow">${h(textPair(`تنبيهات محلية (${local.length})`, `Local alerts (${local.length})`))}</span><h2>${h(textPair("تنبيهاتي المحفوظة", "Saved alerts"))}</h2>${local.length ? local.map(localAlertRow).join("") : emptyState(textPair("لا توجد تنبيهات محلية", "No local alerts"), textPair("استخدم النموذج بالأعلى لإنشاء تنبيه متابعة.", "Use the form above to create a tracking alert."), "", "")}</article>
+        <article class="panel"><span class="eyebrow">${h(textPair(`تنبيهات محلية (${local.length})`, `Local alerts (${local.length})`, `Alertes locales (${local.length})`))}</span><h2>${h(textPair("تنبيهاتي المحفوظة", "Saved alerts"))}</h2>${local.length ? local.map(localAlertRow).join("") : emptyState(textPair("لا توجد تنبيهات محلية", "No local alerts"), textPair("استخدم النموذج بالأعلى لإنشاء تنبيه متابعة.", "Use the form above to create a tracking alert."), "", "")}</article>
       </section></div>`;
   }
 
@@ -2096,7 +2709,7 @@
     const resolved = (pl.won || 0) + (pl.lost || 0);
     const liveRate = pl.successRate === null || pl.successRate === undefined ? "--" : `${pl.successRate}%`;
     return `<section class="panel precision-live-panel">
-      <div class="panel-head"><div><span class="eyebrow">${h(textPair("الدقة · اختبار أمامي", "Precision · forward test"))}</span><h2>${h(textPair("الدقة الحية — إشارات بوابة الـ90%", "Live precision — 90% gate signals"))}</h2></div><span class="precision-badge ${resolved && pl.successRate >= 90 ? "pass" : "info"}">${h(resolved ? textPair(`نجاح حي ${liveRate}`, `Live success ${liveRate}`) : textPair("بانتظار أول نتيجة", "Awaiting first result"))}</span></div>
+      <div class="panel-head"><div><span class="eyebrow">${h(textPair("الدقة · اختبار أمامي", "Precision · forward test"))}</span><h2>${h(textPair("الدقة الحية — إشارات بوابة الـ90%", "Live precision — 90% gate signals"))}</h2></div><span class="precision-badge ${resolved && pl.successRate >= 90 ? "pass" : "info"}">${h(resolved ? textPair(`نجاح حي ${liveRate}`, `Live success ${liveRate}`, `Réussite en direct ${liveRate}`) : textPair("بانتظار أول نتيجة", "Awaiting first result"))}</span></div>
       <div class="metric-grid">${stat(textPair("إشارات متتبعة", "Tracked signals"), pl.total, textPair("متتبعة", "Tracked"))}${stat(textPair("أصابت الهدف", "Hit target"), pl.won || 0, textPair("ربحت", "Won"))}${stat(textPair("لمست الوقف", "Hit stop"), pl.lost || 0, textPair("خسرت", "Lost"))}${stat(terminalText("open"), pl.open || 0, terminalText("open"))}${stat(textPair("النجاح الحي", "Live success"), liveRate, textPair("المعدل الحي", "Live rate"))}</div>
       <p class="muted-note">${h(textPair("كل إشارة اجتازت بوابة الدقة تُسجَّل تلقائياً بهدفها ووقفها المنشورَين، وتُحسم فوز/خسارة حسب أول ملامسة فعلية. هذا هو الإثبات الحي لنسبة النجاح، وليس الاختبار التاريخي وحده.", "Every signal that passes the precision gate is logged automatically with its published target and stop, then resolved by the first actual touch. This is live proof of success rate, not historical testing alone."))}</p>
     </section>`;
@@ -2533,7 +3146,7 @@
     return official[key] || raw;
   }
 
-  function resultCountText(value) { return value === null || value === undefined ? "--" : textPair(`${latinNumber(value)} نتيجة`, `${latinNumber(value)} results`); }
+  function resultCountText(value) { return value === null || value === undefined ? "--" : textPair(`${latinNumber(value)} نتيجة`, `${latinNumber(value)} results`, `${latinNumber(value)} résultats`); }
   function valueText(value) { return value === null || value === undefined || value === "" ? "--" : String(value); }
   function percentText(value) { return value === null || value === undefined || value === "" ? "--" : `${latinNumber(value)}%`; }
   function impactLabel(value) { const v = String(value || "unknown"); return v === "high" ? textPair("مرتفع", "High") : v === "medium" ? textPair("متوسط", "Medium") : v === "low" ? textPair("منخفض", "Low") : textPair("غير محدد", "Unspecified"); }
@@ -2556,7 +3169,10 @@
   function educationPage() {
     const cats = Object.keys(LESSONS);
     return `<div class="page-stack">${hero(textPair("مركز التعليم", "Education center"), textPair("تعليم مختصر يوضح قيود المنصة: لا توصيات بدون بيانات، لا أسعار وهمية، وكل رمز له عملته.", "Short lessons explaining terminal limits: no recommendations without data, no synthetic prices, and every symbol keeps its own currency."), "EDUCATION")}
-      ${cats.map((c, i) => `<section class="panel accordion ${i === 0 ? "is-open" : ""}"><button class="acc-head" data-acc>${h(translateUiText(c))}<span class="acc-icon">+</span></button><div class="acc-body"><div class="education-grid">${LESSONS[c].map(([t, b]) => `<article class="lesson-card"><span class="eyebrow">${h(textPair("درس", "Lesson"))}</span><strong>${h(translateUiText(t))}</strong><p>${h(translateUiText(b))}</p></article>`).join("")}</div></div></section>`).join("")}
+      ${cats.map((c, i) => {
+        const category = LESSON_CATEGORY_LABELS[c] || [c, c, c];
+        return `<section class="panel accordion ${i === 0 ? "is-open" : ""}"><button class="acc-head" data-acc>${h(textPair(category[0], category[1], category[2]))}<span class="acc-icon">+</span></button><div class="acc-body"><div class="education-grid">${LESSONS[c].map(([titleAr, titleEn, titleFr, bodyAr, bodyEn, bodyFr]) => `<article class="lesson-card"><span class="eyebrow">${h(textPair("درس", "Lesson"))}</span><strong>${h(textPair(titleAr, titleEn, titleFr))}</strong><p>${h(textPair(bodyAr, bodyEn, bodyFr))}</p></article>`).join("")}</div></div></section>`;
+      }).join("")}
     </div>`;
   }
 
@@ -2576,7 +3192,7 @@
         </span>
       </label>`;
     }).join("");
-    const languageButtons = ["ar", "en"].map(language => `<button class="settings-segment-btn ${lang === language ? "is-active" : ""}" type="button" data-language="${language}" aria-pressed="${lang === language ? "true" : "false"}">${h(settingsT(language === "ar" ? "arabic" : "english", lang))}</button>`).join("");
+    const languageButtons = ["ar", "en", "fr"].map(language => `<button class="settings-segment-btn ${lang === language ? "is-active" : ""}" type="button" data-language="${language}" aria-pressed="${lang === language ? "true" : "false"}">${h(settingsT(language === "ar" ? "arabic" : language === "fr" ? "french" : "english", lang))}</button>`).join("");
     return `<div class="page-stack trader-settings-page" dir="${dir}">${hero(settingsT("heroTitle", lang), settingsT("heroBody", lang), settingsT("settings", lang))}
       <section class="settings-grid settings-grid-polished">
         <article class="panel settings-panel provider-settings-panel">
@@ -2587,7 +3203,7 @@
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("signalPreferences", lang))}</span><h2>${h(settingsT("signalPreferences", lang))}</h2></div></div>
           <form id="settings-form" class="settings-form">
             <div class="settings-form-grid">
-              <label class="settings-field"><span>${h(settingsT("defaultMarket", lang))}</span><select name="defaultMarket">${MARKETS.map(m => `<option value="${m.id}" ${s.defaultMarket === m.id ? "selected" : ""}>${h(lang === "en" ? m.en : m.ar)}</option>`).join("")}</select></label>
+              <label class="settings-field"><span>${h(settingsT("defaultMarket", lang))}</span><select name="defaultMarket">${MARKETS.map(m => `<option value="${m.id}" ${s.defaultMarket === m.id ? "selected" : ""}>${h(textPair(m.ar, m.en, m.fr))}</option>`).join("")}</select></label>
               <label class="settings-field"><span>${h(settingsT("riskProfile", lang))}</span><select name="risk">${["conservative", "balanced", "aggressive"].map(r => `<option value="${r}" ${s.risk === r ? "selected" : ""}>${h(riskLabelLocalized(r, lang))}</option>`).join("")}</select></label>
               <label class="settings-field"><span>${h(settingsT("minConfidence", lang))}</span><input name="signalMinConfidence" inputmode="numeric" value="${h(prefs.minConfidence)}" /></label>
             </div>
@@ -2631,8 +3247,8 @@
         <article class="panel settings-panel settings-policy-panel">
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("dataPolicy", lang))}</span><h2>${h(settingsT("dataPolicy", lang))}</h2></div></div>
           <div class="settings-info-grid">
-            <div class="status-card settings-info-card"><strong>${h(settingsT("languageDirectionTitle", lang))}</strong><p>${h(settingsT("languageDirectionBody", lang))}</p><span class="state-badge ok">${lang === "ar" ? "اتجاه مضبوط" : "Direction clean"}</span></div>
-            <div class="status-card settings-info-card"><strong>${h(settingsT("noSyntheticTitle", lang))}</strong><p>${h(settingsT("noSyntheticBody", lang))}</p><span class="state-badge warn">${lang === "ar" ? "بيانات حقيقية فقط" : "Real data only"}</span></div>
+            <div class="status-card settings-info-card"><strong>${h(settingsT("languageDirectionTitle", lang))}</strong><p>${h(settingsT("languageDirectionBody", lang))}</p><span class="state-badge ok">${h(textPair("اتجاه مضبوط", "Direction clean", "Sens d’écriture correct"))}</span></div>
+            <div class="status-card settings-info-card"><strong>${h(settingsT("noSyntheticTitle", lang))}</strong><p>${h(settingsT("noSyntheticBody", lang))}</p><span class="state-badge warn">${h(textPair("بيانات حقيقية فقط", "Real data only", "Données réelles uniquement"))}</span></div>
             <div class="status-card settings-info-card about-card"><strong>${h(terminalBrandFullTitle())}</strong><p>${h(settingsT("aboutBody", lang))}</p><span class="state-badge">Powered by M.ALQ</span></div>
           </div>
         </article>
@@ -2640,10 +3256,23 @@
   }
 
   function symbolPage(symbol) {
-    if (!symbol) return `<div class="page-stack">${hero("تفاصيل الرمز", "اكتب رمزاً في البحث العلوي لفتح صفحة تحليل مخصصة. أمثلة: AAPL, BTCUSD, XAUUSD, KFH.KW", "SYMBOL DETAILS")}<section class="panel">${emptyState("لم يتم اختيار رمز", "استخدم البحث العلوي أو أزرار التفاصيل من الأسواق والتوصيات.", "الأسواق", `${ROOT}/markets`)}</section></div>`;
-    return `<div class="page-stack"><a class="back-link" href="${ROOT}/markets" data-route-link>‹ الأسواق</a>
-      ${hero(`تحليل <span class="ltr">${h(symbol)}</span>`, "صفحة تفاصيل حقيقية لكل رمز تعرض الملف والعملة والمصدر والتحليل عند توفرها من المزود.", "SYMBOL DETAILS")}
-      <section id="symbol-details-body"><div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>جاري فحص <span class="ltr">${h(symbol)}</span></h2></div></div></section>${disclaimer()}</div>`;
+    if (!symbol) return `<div class="page-stack">${hero(
+      textPair("تفاصيل الرمز", "Symbol details", "Détails du symbole"),
+      textPair("اكتب رمزاً في البحث العلوي لفتح صفحة تحليل مخصصة. أمثلة: AAPL, BTCUSD, XAUUSD, KFH.KW", "Enter a symbol in the top search to open a dedicated analysis page. Examples: AAPL, BTCUSD, XAUUSD, KFH.KW", "Saisissez un symbole dans la recherche supérieure pour ouvrir une page d’analyse dédiée. Exemples : AAPL, BTCUSD, XAUUSD, KFH.KW"),
+      textPair("تفاصيل الرمز", "SYMBOL DETAILS", "DÉTAILS DU SYMBOLE")
+    )}<section class="panel">${emptyState(
+      textPair("لم يتم اختيار رمز", "No symbol selected", "Aucun symbole sélectionné"),
+      textPair("استخدم البحث العلوي أو أزرار التفاصيل من الأسواق والتوصيات.", "Use the top search or the detail buttons in markets and recommendations.", "Utilisez la recherche supérieure ou les boutons de détail des marchés et des recommandations."),
+      terminalText("market"),
+      `${ROOT}/markets`
+    )}</section></div>`;
+    return `<div class="page-stack"><a class="back-link" href="${ROOT}/markets" data-route-link>‹ ${h(terminalText("market"))}</a>
+      ${hero(
+        textPair(`تحليل <span class="ltr">${h(symbol)}</span>`, `Analysis of <span class="ltr">${h(symbol)}</span>`, `Analyse de <span class="ltr">${h(symbol)}</span>`),
+        textPair("صفحة تفاصيل حقيقية لكل رمز تعرض الملف والعملة والمصدر والتحليل عند توفرها من المزود.", "A real detail page for each symbol, showing its profile, currency, source, and analysis when the provider supplies them.", "Une page détaillée réelle pour chaque symbole, avec son profil, sa devise, sa source et son analyse lorsque le fournisseur les fournit."),
+        textPair("تفاصيل الرمز", "SYMBOL DETAILS", "DÉTAILS DU SYMBOLE")
+      )}
+      <section id="symbol-details-body"><div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair("جاري فحص", "Checking", "Vérification de"))} <span class="ltr">${h(symbol)}</span></h2></div></div></section>${disclaimer()}</div>`;
   }
 
   /* ───────────────────── Async loaders ───────────────────── */
@@ -2793,7 +3422,7 @@
       }
     } catch (error) {
       devLog("quotes", "failed", { route: "symbol-details", symbol: key, message: errorMessage(error) });
-      target.innerHTML = `<div class="panel">${emptyState(UNAVAILABLE_MESSAGE, errorMessage(error), "الإعدادات", `${ROOT}/settings`)}</div>`;
+      target.innerHTML = `<div class="panel">${emptyState(UNAVAILABLE_MESSAGE, errorMessage(error), terminalText("settings"), `${ROOT}/settings`)}</div>`;
     }
   }
 
@@ -2812,8 +3441,8 @@
       <article class="panel detail-main" id="price-data-panel">
         <div class="asset-head big">${logo(a, "lg")}<div class="asset-title"><strong class="symbol-code">${h(a.symbol)}</strong><small>${h(a.name || textPair("اسم الأصل غير متوفر من المزود", "Asset name unavailable from provider"))}</small></div>
           ${rec || technicalUnavailable ? `<span class="state-badge ${signalCardClass(finalModel.action)} big">${h(sigLabel(finalModel.action))}</span>` : ""}</div>
-        <div class="detail-grid">${detailCard(terminalText("price"), price(p, c), "Price")}${detailCard(textPair("التغير", "Change"), change(chg), "Change")}${detailCard(terminalText("currency"), c, "Currency")}${detailCard(terminalText("type"), a.assetType || assetType(a.symbol), "Type")}${detailCard(terminalText("market"), a.exchange || a.market || "--", "Exchange")}${detailCard(terminalText("source"), detail.source || "--", "Source")}</div>
-        <div class="detail-grid">${detailCard(textPair("رمز المزود المستخدم", "Provider symbol used"), providerSymbolUsed, "Provider symbol")}${detailCard(textPair("استخدم الاحتياطي؟", "Used fallback?"), fallbackUsed, "Fallback")}${detailCard(terminalText("lastUpdated"), lastUpdated === "--" ? terminalText("unavailable") : lastUpdated, "Last updated")}${detailCard(terminalText("dataQuality"), quality, "Data quality")}</div>
+        <div class="detail-grid">${detailCard(terminalText("price"), price(p, c), terminalText("price"))}${detailCard(textPair("التغير", "Change", "Variation"), change(chg), textPair("التغير", "Change", "Variation"))}${detailCard(terminalText("currency"), c, terminalText("currency"))}${detailCard(terminalText("type"), a.assetType || assetType(a.symbol), terminalText("type"))}${detailCard(terminalText("exchange"), a.exchange || a.market || "--", terminalText("exchange"))}${detailCard(terminalText("source"), detail.source || "--", terminalText("source"))}</div>
+        <div class="detail-grid">${detailCard(textPair("رمز المزود المستخدم", "Provider symbol used", "Symbole du fournisseur utilisé"), providerSymbolUsed, textPair("رمز المزود", "Provider symbol", "Symbole du fournisseur"))}${detailCard(textPair("استخدم الاحتياطي؟", "Used fallback?", "Solution de repli utilisée ?"), fallbackUsed, textPair("الاحتياطي", "Fallback", "Solution de repli"))}${detailCard(terminalText("lastUpdated"), lastUpdated === "--" ? terminalText("unavailable") : lastUpdated, terminalText("lastUpdated"))}${detailCard(terminalText("dataQuality"), quality, terminalText("dataQuality"))}</div>
         <div class="card-actions"><button class="action-btn" data-quick-add="${h(a.symbol)}">${h(textPair("أضف للمتابعة", "Add to watchlist"))}</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">${h(textPair("أنشئ تنبيه", "Create alert"))}</button></div>
         ${miniChart(a)}
         ${assetAboutPanel(a)}
@@ -2836,7 +3465,10 @@
     return Recommendation.statusTone(recommendation && recommendation.status);
   }
   function recommendationLabel(recommendation) {
-    if (!recommendation) return isEnglishLanguage() ? Recommendation.labelEn("watch") : Recommendation.labelAr("watch");
+    if (!recommendation) {
+      return isFrenchLanguage() ? Recommendation.labelFr("watch") : isEnglishLanguage() ? Recommendation.labelEn("watch") : Recommendation.labelAr("watch");
+    }
+    if (isFrenchLanguage()) return recommendation.actionLabelFr || Recommendation.labelFr(recommendation.status);
     return isEnglishLanguage() ? recommendation.actionLabelEn || Recommendation.labelEn(recommendation.status) : recommendation.actionLabelAr || Recommendation.labelAr(recommendation.status);
   }
   function recommendationStatusText(recommendation, fallbackAsset) {
@@ -2912,7 +3544,7 @@
   function followTradeButton(recommendation, symbol, className = "ghost-btn", small = false, asset = null) {
     const disabled = !hasTradeableQuote(asset || { symbol }, recommendation);
     const label = disabled ? recommendationLabel(recommendation) : textPair("متابعة الصفقة", "Follow trade");
-    const title = disabled ? h((asset && asset.unavailableReason ? unavailablePriceText(asset) : null) || (recommendation && recommendation.reason) || textPair("السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.", "Price, target, or stop is currently unavailable; the trade cannot be followed.")) : "";
+    const title = disabled ? h(translateUiText((asset && asset.unavailableReason ? unavailablePriceText(asset) : null) || (recommendation && recommendation.reason) || textPair("السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.", "Price, target, or stop is currently unavailable; the trade cannot be followed."))) : "";
     return `<button class="${className}${small ? " sm" : ""}" data-follow-trade="${h(symbol)}" type="button"${disabled ? ` disabled aria-disabled="true" title="${title}"` : ""}>${h(label)}</button>`;
   }
   function isBuySignalName(value) { return value === "buy" || value === "cautious_buy" || value === "weak_buy"; }
@@ -2952,11 +3584,11 @@
     const pct = rawPct === null ? null : Math.max(0, Math.min(limited ? 66 : 100, Math.round(rawPct)));
     return {
       value: limited ? textPair("توافق محدود", "Limited consensus") : pct === null ? terminalText("unavailable") : `${pct}%`,
-      helper: limited ? textPair(`${latinNumber(count)} استراتيجية فقط`, `${latinNumber(count)} strategies only`) : textPair(`${latinNumber(count)} استراتيجية`, `${latinNumber(count)} strategies`),
+      helper: limited ? textPair(`${latinNumber(count)} استراتيجية فقط`, `${latinNumber(count)} strategies only`, `${latinNumber(count)} stratégies seulement`) : textPair(`${latinNumber(count)} استراتيجية`, `${latinNumber(count)} strategies`, `${latinNumber(count)} stratégies`),
       count,
       agreementPct: pct,
       limited,
-      label: (agreement && (isEnglishLanguage() ? agreement.labelEn || agreement.label : agreement.labelAr || agreement.label)) || (limited ? textPair("توافق محدود", "Limited consensus") : textPair("اتفاق الاستراتيجيات", "Strategy agreement")),
+      label: (agreement && (isFrenchLanguage() ? agreement.labelFr || frenchUiText(agreement.label) : isEnglishLanguage() ? agreement.labelEn || agreement.label : agreement.labelAr || agreement.label)) || (limited ? textPair("توافق محدود", "Limited consensus") : textPair("اتفاق الاستراتيجيات", "Strategy agreement")),
     };
   }
   function backendConsensusFromRecords(...records) {
@@ -2992,9 +3624,9 @@
     const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
     const actionable = buy + sell;
     // بدون إشارات منشورة، السوق ليس "هابطاً" — بوابة الدقة حاجبة فقط
-    if (!actionable) return { label: textPair("محايد · وضع الدقة نشط", "Neutral · precision gate active"), en: "NEUTRAL — PRECISION GATE", bull: 0, bear: 0, neutral: 100, conf, tone: "", note: textPair(`لا توجد إشارات تتجاوز حد النشر حالياً (${latinNumber(total)} أصل قيد المراقبة)`, `No signals currently pass the publishing threshold (${latinNumber(total)} assets under watch)`) };
+    if (!actionable) return { label: textPair("محايد · وضع الدقة نشط", "Neutral · precision gate active"), en: "NEUTRAL — PRECISION GATE", bull: 0, bear: 0, neutral: 100, conf, tone: "", note: textPair(`لا توجد إشارات تتجاوز حد النشر حالياً (${latinNumber(total)} أصل قيد المراقبة)`, `No signals currently pass the publishing threshold (${latinNumber(total)} assets under watch)`, `Aucun signal ne dépasse actuellement le seuil de publication (${latinNumber(total)} actifs sous surveillance)`) };
     const bull = Math.round((buy / actionable) * 100), bear = 100 - bull, neutral = Math.round(((total - actionable) / total) * 100);
-    return { label: bull >= 55 ? textPair("صاعد", "Bullish") : bull <= 40 ? textPair("هابط", "Bearish") : textPair("محايد", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} شراء · ${latinNumber(sell)} بيع من أصل ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`) };
+    return { label: bull >= 55 ? textPair("صاعد", "Bullish") : bull <= 40 ? textPair("هابط", "Bearish") : textPair("محايد", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} شراء · ${latinNumber(sell)} بيع من أصل ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`, `${latinNumber(buy)} achats · ${latinNumber(sell)} ventes sur ${latinNumber(total)}`) };
   }
   function marketBias(rec) {
     const valid = rec.filter(hasValidDirectionalSignal);
@@ -3010,7 +3642,7 @@
     const bull = Math.round((buy / actionable) * 100);
     const bear = 100 - bull;
     const neutral = Math.round(((total - actionable) / total) * 100);
-    return { label: bull >= 55 ? textPair("\u0635\u0627\u0639\u062f", "Bullish") : bull <= 40 ? textPair("\u0647\u0627\u0628\u0637", "Bearish") : textPair("\u0645\u062d\u0627\u064a\u062f", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} \u0634\u0631\u0627\u0621 · ${latinNumber(sell)} \u0628\u064a\u0639 \u0645\u0646 \u0623\u0635\u0644 ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`) };
+    return { label: bull >= 55 ? textPair("\u0635\u0627\u0639\u062f", "Bullish") : bull <= 40 ? textPair("\u0647\u0627\u0628\u0637", "Bearish") : textPair("\u0645\u062d\u0627\u064a\u062f", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} \u0634\u0631\u0627\u0621 · ${latinNumber(sell)} \u0628\u064a\u0639 \u0645\u0646 \u0623\u0635\u0644 ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`, `${latinNumber(buy)} achats · ${latinNumber(sell)} ventes sur ${latinNumber(total)}`) };
   }
   function marketOverview(rec) {
     const b = marketBias(rec);
@@ -3081,7 +3713,7 @@
     if (rate === null) return "";
     const req = pm && num(pm.required) !== null ? Math.round(num(pm.required)) : 90;
     const passed = pm ? pm.passed === true : false;
-    const text = passed ? textPair(`✓ دقة تاريخية ${rate}%`, `✓ Historical accuracy ${rate}%`) : textPair(`دقة تاريخية ${rate}% · حد النشر ${req}%`, `Historical accuracy ${rate}% · publish threshold ${req}%`);
+    const text = passed ? textPair(`✓ دقة تاريخية ${rate}%`, `✓ Historical accuracy ${rate}%`, `✓ Précision historique ${rate}%`) : textPair(`دقة تاريخية ${rate}% · حد النشر ${req}%`, `Historical accuracy ${rate}% · publish threshold ${req}%`, `Précision historique ${rate}% · seuil de publication ${req}%`);
     return `<span class="precision-badge ${passed ? "pass" : "info"}" title="${h(textPair("نسبة إصابة الهدف الأول في الاختبار الخلفي على نفس الرمز", "First-target hit rate in the backtest for this symbol"))}">${h(text)}</span>`;
   }
   function leadershipCard(symbol, asset) {
@@ -3110,7 +3742,7 @@
   function opportunityHeatmap(rec) {
     const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
     return `<section class="panel opportunity-heatmap">
-      <div class="panel-head"><div><span class="eyebrow">${h(textPair("خريطة الفرص", "Opportunity heatmap"))}</span><h2>${h(textPair("خريطة حرارة الفرص", "Opportunity heatmap"))}</h2></div><span class="state-badge">${h(rec.length ? textPair(`${latinNumber(rec.length)} أصل`, `${latinNumber(rec.length)} assets`) : textPair("البيانات غير متاحة حالياً", "Data is currently unavailable"))}</span></div>
+      <div class="panel-head"><div><span class="eyebrow">${h(textPair("خريطة الفرص", "Opportunity heatmap"))}</span><h2>${h(textPair("خريطة حرارة الفرص", "Opportunity heatmap"))}</h2></div><span class="state-badge">${h(rec.length ? textPair(`${latinNumber(rec.length)} أصل`, `${latinNumber(rec.length)} assets`, `${latinNumber(rec.length)} actifs`) : textPair("البيانات غير متاحة حالياً", "Data is currently unavailable"))}</span></div>
       <div class="opportunity-heat-grid">${symbols.map(s => heatmapCard(s, findAssetForSymbol(s, rec))).join("")}</div>
     </section>`;
   }
@@ -3427,7 +4059,7 @@
   function tradeCard(t) {
     const s = sym(t.symbol || t.ticker || t.asset || "--"), a = norm({ ...t, symbol: s }), c = currency(a), pnl = num(t.profitLossPercent, t.pnl, t.profitLoss, t.returnPercent), sig = tradeAction(t);
     const status = tradeStatus(t), current = num(t.currentPrice, t.current), entry = num(t.entryPrice, t.entry), target = num(t.targetPrice, t.target), stop = num(t.stopLoss, t.stop);
-    return `<article class="trade-item"><div class="asset-head">${logo({ symbol: s })}<div class="asset-title"><strong class="ltr">${h(s)}</strong><small>${h(a.name || t.status || "متابعة")}</small></div></div>
+    return `<article class="trade-item"><div class="asset-head">${logo({ symbol: s })}<div class="asset-title"><strong class="ltr">${h(s)}</strong><small>${h(translateUiText(a.name || t.status || textPair("متابعة", "Followed", "Suivie")))}</small></div></div>
       <div class="badge-row"><span class="state-badge ${sig === "buy" ? "ok" : sig === "sell" ? "warn" : ""}">${h(sigLabel(sig))}</span><span class="status-tag ${tradeStatusTone(status)}">${h(tradeStatusLabel(status))}</span></div>
       <div class="trade-row"><span>${h(textPair("الدخول", "Entry"))}<b class="ltr">${h(price(entry, c))}</b></span><span>${h(textPair("الحالي", "Current"))}<b class="ltr">${h(current === null ? "--" : price(current, c))}</b></span><span>P/L<b class="${pnl === null ? "" : pnl >= 0 ? "up" : "down"}">${pnl === null ? "--" : pnl + "%"}</b></span></div>
       <div class="trade-row"><span>${h(terminalText("target"))}<b class="ltr">${h(price(target, c))}</b></span><span>${h(textPair("وقف الخسارة", "Stop loss"))}<b class="ltr">${h(price(stop, c))}</b></span><span>${h(terminalText("confidence"))}<b class="ltr">${h(t.confidence == null ? "--" : Math.round(Number(t.confidence)) + "%")}</b></span></div>
@@ -3649,17 +4281,16 @@
       return empty || UNAVAILABLE_MESSAGE;
     }
     // ── ما بعد هذه النقطة يُعرض في لوحة الأدمن فقط ──
-    const en = isEnglishLanguage();
-    if (isRateLimitText(value)) return en ? "Data provider rate limit reached temporarily" : "تم الوصول إلى حد استخدام مزود البيانات مؤقتاً";
+    if (isRateLimitText(value)) return textPair("تم الوصول إلى حد استخدام مزود البيانات مؤقتاً", "Data provider rate limit reached temporarily", "La limite du fournisseur de données est temporairement atteinte");
     const lower = value.toLowerCase();
     if (/^provider_status_/i.test(lower)) return getProviderStatusMessage(lower);
-    if (lower.includes("fmp_not_configured") || (en && lower.includes("fmp") && hasArabicText(value))) return en ? "FMP is not configured" : "FMP غير مهيأ";
-    if (lower.includes("provider_not_configured") || lower.includes("missing_provider")) return en ? "Data provider is not configured" : "مزود البيانات غير مهيأ";
-    if (/^[a-z0-9_-]+_not_configured$/i.test(value)) return en ? "Data provider is not configured" : "مزود البيانات غير مهيأ";
-    if (lower.includes("provider_temporarily_unavailable")) return en ? "Data provider is temporarily unavailable" : "مزود البيانات غير متاح مؤقتاً";
-    if (lower.includes("provider_access_denied") || lower.includes("unauthorized") || lower.includes("forbidden")) return en ? "Provider permissions do not allow this data" : "صلاحية المزود لا تسمح بعرض هذه البيانات";
-    if (/^[a-z0-9_-]+_[a-z0-9_-]+$/i.test(value)) return en ? "A provider route could not be refreshed" : "تعذر تحديث أحد مسارات المزود";
-    if (en && hasArabicText(value)) return "Data provider is not configured";
+    if (lower.includes("fmp_not_configured") || (isLtrLanguage() && lower.includes("fmp") && hasArabicText(value))) return textPair("FMP غير مهيأ", "FMP is not configured", "FMP n’est pas configuré");
+    if (lower.includes("provider_not_configured") || lower.includes("missing_provider")) return textPair("مزود البيانات غير مهيأ", "Data provider is not configured", "Le fournisseur de données n’est pas configuré");
+    if (/^[a-z0-9_-]+_not_configured$/i.test(value)) return textPair("مزود البيانات غير مهيأ", "Data provider is not configured", "Le fournisseur de données n’est pas configuré");
+    if (lower.includes("provider_temporarily_unavailable")) return textPair("مزود البيانات غير متاح مؤقتاً", "Data provider is temporarily unavailable", "Le fournisseur de données est temporairement indisponible");
+    if (lower.includes("provider_access_denied") || lower.includes("unauthorized") || lower.includes("forbidden")) return textPair("صلاحية المزود لا تسمح بعرض هذه البيانات", "Provider permissions do not allow this data", "Les autorisations du fournisseur ne permettent pas d’afficher ces données");
+    if (/^[a-z0-9_-]+_[a-z0-9_-]+$/i.test(value)) return textPair("تعذر تحديث أحد مسارات المزود", "A provider route could not be refreshed", "Impossible d’actualiser l’un des itinéraires du fournisseur");
+    if (isLtrLanguage() && hasArabicText(value)) return textPair("مزود البيانات غير مهيأ", "Data provider is not configured", "Le fournisseur de données n’est pas configuré");
     return value.length > 140 ? `${value.slice(0, 137).trim()}...` : value;
   }
   function formatProviderValue(value) {
@@ -3692,7 +4323,7 @@
     }
     return 0;
   }
-  function countText(value) { return textPair(`${latinNumber(numberValue(value))} رمز`, `${latinNumber(numberValue(value))} symbols`); }
+  function countText(value) { return textPair(`${latinNumber(numberValue(value))} رمز`, `${latinNumber(numberValue(value))} symbols`, `${latinNumber(numberValue(value))} symboles`); }
   function cacheStatusLabel(value) {
     const status = String(value || "").toLowerCase();
     if (status === "hit") return textPair("الكاش متاح", "Cache available");
@@ -3708,18 +4339,39 @@
     return labels[value] || value;
   }
   function featureLabelLocalized(value, lang = currentLanguage()) {
-    if (normalizeLanguage(lang) === "ar") return featureLabel(value);
-    const labels = { prices: "Prices", quotes: "Quotes", symbols: "Symbols", earnings: "Earnings", dividends: "Dividends", ipos: "IPOs", economic: "Economic calendar", economicCalendar: "Economic calendar", news: "News", technicalAnalysis: "Technical analysis" };
-    return labels[value] || value;
+    const normalized = normalizeLanguage(lang);
+    if (normalized === "ar") return featureLabel(value);
+    const labels = {
+      prices: { en: "Prices", fr: "Cours" }, quotes: { en: "Quotes", fr: "Cotations" }, symbols: { en: "Symbols", fr: "Symboles" },
+      earnings: { en: "Earnings", fr: "Résultats" }, dividends: { en: "Dividends", fr: "Dividendes" }, ipos: { en: "IPOs", fr: "Introductions en bourse" },
+      economic: { en: "Economic calendar", fr: "Calendrier économique" }, economicCalendar: { en: "Economic calendar", fr: "Calendrier économique" },
+      news: { en: "News", fr: "Actualités" }, technicalAnalysis: { en: "Technical analysis", fr: "Analyse technique" }
+    };
+    return labels[value]?.[normalized] || value;
   }
   function providerRouteLabel(value) {
     const key = String(value || "").trim();
-    const labels = { "stock-list": "stock list", "etf-list": "ETF list", "indexes-list": "indexes list", "batch-forex-quotes": "forex quotes", "batch-crypto-quotes": "crypto quotes", "batch-commodity-quotes": "commodity quotes", "batch-index-quotes": "index quotes", "batch-quote": "stock quotes" };
+    const labels = {
+      "stock-list": textPair("قائمة الأسهم", "stock list", "liste des actions"),
+      "etf-list": textPair("قائمة الصناديق المتداولة", "ETF list", "liste des ETF"),
+      "indexes-list": textPair("قائمة المؤشرات", "indexes list", "liste des indices"),
+      "batch-forex-quotes": textPair("أسعار العملات", "forex quotes", "cotations des devises"),
+      "batch-crypto-quotes": textPair("أسعار الأصول الرقمية", "crypto quotes", "cotations des cryptoactifs"),
+      "batch-commodity-quotes": textPair("أسعار السلع", "commodity quotes", "cotations des matières premières"),
+      "batch-index-quotes": textPair("أسعار المؤشرات", "index quotes", "cotations des indices"),
+      "batch-quote": textPair("أسعار الأسهم", "stock quotes", "cotations des actions")
+    };
     return labels[key] || key.replace(/^fmp_/, "").replace(/_http_429$/i, "").replace(/_/g, " ") || "provider route";
   }
   function isRateLimitText(value) { return /429|rate_limited|rate limit|too many|provider_rate_limited|http_429/i.test(String(value || "")); }
   function isLatinMetric(value) { return /^[\d\s.,:%A-Za-z/_-]+$/.test(String(value || "")); }
-  function featureTitle(key) { return key === "earnings" ? "الأرباح" : key === "dividends" ? "التوزيعات" : key === "ipos" ? "الاكتتابات" : key === "economic" ? "الاقتصادي" : key; }
+  function featureTitle(key) {
+    return key === "earnings" ? textPair("الأرباح", "Earnings", "Résultats")
+      : key === "dividends" ? textPair("التوزيعات", "Dividends", "Dividendes")
+        : key === "ipos" ? textPair("الاكتتابات", "IPOs", "Introductions en bourse")
+          : key === "economic" ? textPair("الاقتصادي", "Economic", "Économie")
+            : translateUiText(key);
+  }
   function providerMarkets() {
     const rows = arr(state.markets.markets || state.markets.data || state.markets.results);
     const diagnostics = state.markets.providerMarketsDiagnostics || {};
@@ -3753,7 +4405,7 @@
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: [textPair("منخفضة", "Low"), "ok"], medium: [textPair("متوسطة", "Medium"), "warn"], high: [textPair("مرتفعة", "High"), "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${h(L[k][0])}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
   function miniChart(a) {
     const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
-    if (series.length < 2) return `<div class="chart-empty">لا توجد بيانات رسم بياني كافية من المزود بعد. حدّث الرمز أو اربط مزود بيانات تاريخية لعرض حركة السعر.</div>`;
+    if (series.length < 2) return `<div class="chart-empty">${h(textPair("لا توجد بيانات رسم بياني كافية من المزود بعد. حدّث الرمز أو اربط مزود بيانات تاريخية لعرض حركة السعر.", "The provider has not supplied enough chart data yet. Refresh the symbol or connect a historical data provider to display price movement.", "Le fournisseur n’a pas encore transmis suffisamment de données graphiques. Actualisez le symbole ou connectez un fournisseur de données historiques pour afficher l’évolution du cours."))}</div>`;
     const W = 100, H = 40, top = 3, bottom = 37, n = series.length;
     const min = Math.min(...series), max = Math.max(...series), rng = (max - min) || 1;
     const X = i => (i / (n - 1)) * W;
@@ -3775,7 +4427,7 @@
     // الألوان inline كـ attributes كي لا تعتمد على CSS داخل الإطار (iframe) وتتفادى التعبئة السوداء الافتراضية للتدرّج
     const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="rgba(122,153,186,.16)" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
     return `<div class="detail-chart-wrap ${up ? "up" : "down"}">
-      <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="رسم حركة السعر">
+      <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${h(textPair("رسم حركة السعر", "Price movement chart", "Graphique d’évolution du cours"))}">
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stroke}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="${stroke}" stop-opacity="0"></stop></linearGradient></defs>
         <g>${grid}</g>
         <path d="${area}" fill="url(#${gid})" stroke="none"></path>
@@ -3801,7 +4453,11 @@
     return /^https?:\/\/[^\s"'<>]+$/i.test(url) ? url : "";
   }
   function assetAboutPanel(a) {
-    const desc = a.description || a.objective || a.summary || a.longBusinessSummary || "";
+    const desc = isFrenchLanguage()
+      ? a.descriptionFr || a.description_fr || a.summaryFr || a.summary_fr || a.descriptionEn || a.description_en || a.longBusinessSummary || a.description || a.objective || a.summary || ""
+      : isEnglishLanguage()
+        ? a.descriptionEn || a.description_en || a.summaryEn || a.summary_en || a.longBusinessSummary || a.description || a.objective || a.summary || ""
+        : a.descriptionAr || a.description_ar || a.summaryAr || a.summary_ar || a.description || a.objective || a.summary || a.longBusinessSummary || "";
     const sector = a.sector || a.sectorName || "";
     const industry = a.industry || a.industryName || "";
     const country = a.country || a.region || "";
@@ -3840,7 +4496,11 @@
   }
   function shariaCompliancePanel(a) {
     const meta = assetShariaStatusMeta(a.shariahStatus || a.shariaStatus);
-    const reason = a.shariahReasonAr || a.shariah_reason_ar || a.shariahReason || a.shariaReason || a.shariahDescription || "";
+    const reason = isFrenchLanguage()
+      ? a.shariahReasonFr || a.shariah_reason_fr || a.shariahReasonEn || a.shariah_reason_en || a.shariahReason || a.shariaReason || a.shariahDescription || ""
+      : isEnglishLanguage()
+        ? a.shariahReasonEn || a.shariah_reason_en || a.shariahReason || a.shariaReason || a.shariahDescription || a.shariahReasonAr || a.shariah_reason_ar || ""
+        : a.shariahReasonAr || a.shariah_reason_ar || a.shariahReason || a.shariaReason || a.shariahDescription || "";
     const source = a.shariahSource || a.shariaSource || (meta.cls === "muted" ? "" : textPair("الفحص الداخلي الآلي", "Automated internal screening"));
     const reviewed = latinDateTime(a.shariahLastReviewedAt || a.shariaCheckedAt) || "--";
     return `<article class="panel sharia-panel ${meta.cls}">
@@ -3878,13 +4538,13 @@
     const raw = String(value || "");
     const s = raw.toLowerCase();
     if (!s) return "";
-    if (s.includes("bull") || s.includes("up") || s.includes("صاعد")) return "صاعد";
-    if (s.includes("bear") || s.includes("down") || s.includes("هابط")) return "هابط";
-    if (s.includes("side") || s.includes("neutral") || s.includes("flat") || s.includes("جانبي") || s.includes("محايد")) return "جانبي";
-    return raw;
+    if (s.includes("bull") || s.includes("up") || s.includes("صاعد")) return textPair("صاعد", "Bullish", "Haussier");
+    if (s.includes("bear") || s.includes("down") || s.includes("هابط")) return textPair("هابط", "Bearish", "Baissier");
+    if (s.includes("side") || s.includes("neutral") || s.includes("flat") || s.includes("جانبي") || s.includes("محايد")) return textPair("جانبي", "Sideways", "Latéral");
+    return translateUiText(raw);
   }
   function technicalUnavailableCopy() {
-    return TECHNICAL_UNAVAILABLE_COPY[currentLanguage() === "en" ? "en" : "ar"];
+    return TECHNICAL_UNAVAILABLE_COPY[currentLanguage()];
   }
   function technicalPayloadFromResponse(response) {
     if (!response || typeof response !== "object") return null;
@@ -3947,11 +4607,9 @@
   function providerDisplayNameForLanguage(value) {
     const name = providerName(value);
     if (!name) return terminalText("unavailable");
-    if (isEnglishLanguage()) {
-      if (name === "بيانات السوق") return "Market data";
-      if (name === "إدخال يدوي") return "Manual input";
-    }
-    return name;
+    if (name === "بيانات السوق" || name === "Market data") return textPair("بيانات السوق", "Market data", "Données de marché");
+    if (name === "إدخال يدوي" || name === "Manual input") return textPair("إدخال يدوي", "Manual input", "Saisie manuelle");
+    return translateUiText(name);
   }
   function technicalUnavailableReason(payload) {
     const copy = technicalUnavailableCopy();
@@ -3982,6 +4640,7 @@
       status: "watch",
       actionLabelAr: Recommendation.labelAr("watch"),
       actionLabelEn: Recommendation.labelEn("watch"),
+      actionLabelFr: Recommendation.labelFr("watch"),
       reason: `${copy.description} ${copy.finalNote}`,
       canFollowTrade: false,
       safetyReasons: [...arr(recommendation?.safetyReasons), technicalUnavailableReason(detail?.tech)].filter(Boolean)
@@ -4014,37 +4673,37 @@
     const rLevels = [r1raw, r2raw].filter(v => v !== null && (current === null || v >= current * 0.998)).sort((a, b) => a - b);
     const s1 = sLevels[0] ?? null, s2 = sLevels[1] ?? null;
     const r1 = rLevels[0] ?? null, r2 = rLevels[1] ?? null;
-    const trend = trendText(t.trend || t.direction || ind.trend || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "صاعد" : "هابط") : ""));
-    const rsiTag = rsi === null ? "" : rsi >= 70 ? " (تشبع شرائي)" : rsi <= 30 ? " (تشبع بيعي)" : "";
-    const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? " · إيجابي" : " · سلبي") : "";
+    const trend = trendText(t.trend || t.direction || ind.trend || (ma50 !== null && ma200 !== null ? (ma50 >= ma200 ? "bullish" : "bearish") : ""));
+    const rsiTag = rsi === null ? "" : rsi >= 70 ? ` (${textPair("تشبع شرائي", "Overbought", "Surachat")})` : rsi <= 30 ? ` (${textPair("تشبع بيعي", "Oversold", "Survente")})` : "";
+    const macdTag = (macd !== null && macdSig !== null) ? (macd >= macdSig ? ` · ${textPair("إيجابي", "Positive", "Positif")}` : ` · ${textPair("سلبي", "Negative", "Négatif")}`) : "";
     const rows = [
-      ["الاتجاه العام", trend],
+      [textPair("الاتجاه العام", "Overall trend", "Tendance générale"), trend],
       ["RSI (14)", rsi === null ? "" : Math.round(rsi) + rsiTag],
       ["MACD", macd === null ? "" : (Math.round(macd * 1000) / 1000) + macdTag],
       ["EMA 20", ma20 === null ? "" : price(ma20, null)],
       ["EMA 50", ma50 === null ? "" : price(ma50, null)],
       ["EMA 200", ma200 === null ? "" : price(ma200, null)],
-      ["دعم 1", s1 === null ? "" : price(s1, null)],
-      ["دعم 2", s2 === null ? "" : price(s2, null)],
-      ["مقاومة 1", r1 === null ? "" : price(r1, null)],
-      ["مقاومة 2", r2 === null ? "" : price(r2, null)],
-      ["التذبذب", vol === null ? "" : (Math.round(vol * 100) / 100)],
-      ["تأكيد الحجم", volumeRatio === null ? "" : `${Math.round(volumeRatio * 100) / 100}×`]
+      [textPair("دعم 1", "Support 1", "Support 1"), s1 === null ? "" : price(s1, null)],
+      [textPair("دعم 2", "Support 2", "Support 2"), s2 === null ? "" : price(s2, null)],
+      [textPair("مقاومة 1", "Resistance 1", "Résistance 1"), r1 === null ? "" : price(r1, null)],
+      [textPair("مقاومة 2", "Resistance 2", "Résistance 2"), r2 === null ? "" : price(r2, null)],
+      [textPair("التذبذب", "Volatility", "Volatilité"), vol === null ? "" : (Math.round(vol * 100) / 100)],
+      [textPair("تأكيد الحجم", "Volume confirmation", "Confirmation du volume"), volumeRatio === null ? "" : `${Math.round(volumeRatio * 100) / 100}×`]
     ].filter(([, v]) => hasDisplayValue(v));
     const recommendation = t.recommendation || t.action || t.signal || "";
-    if (recommendation && rows.length) rows.push(["التوصية الفنية", recommendation]);
+    if (recommendation && rows.length) rows.push([textPair("التوصية الفنية", "Technical recommendation", "Recommandation technique"), recommendation]);
     return { available: rows.length > 0, rows, raw: t, current };
   }
   function technicalUnavailableState(detail, asset = {}, options = {}) {
     const copy = technicalUnavailableCopy();
     const diagnostics = technicalUnavailableDiagnostics(detail, asset);
     const reason = detail?.technicalReason || technicalUnavailableReason(detail?.tech || {});
-    const missingFields = diagnostics.missingFields.map(formatTechnicalMissingField).join(isEnglishLanguage() ? ", " : "، ");
-    const fallback = diagnostics.fallbackAttempted ? textPair("تمت المحاولة", "Attempted") : textPair("لم تتم", "Not attempted");
-    const direction = currentLanguage() === "en" ? "ltr" : "rtl";
+    const missingFields = diagnostics.missingFields.map(formatTechnicalMissingField).join(isLtrLanguage() ? ", " : "، ");
+    const fallback = diagnostics.fallbackAttempted ? textPair("تمت المحاولة", "Attempted", "Tentée") : textPair("لم تتم", "Not attempted", "Non tentée");
+    const direction = isLtrLanguage() ? "ltr" : "rtl";
     const compactClass = options.compact ? " is-compact" : "";
     const details = options.compact ? "" : `<dl class="technical-unavailable-details">
-        <div><dt>${h(copy.reasonLabel)}</dt><dd>${h(reason)}</dd></div>
+        <div><dt>${h(copy.reasonLabel)}</dt><dd>${h(translateUiText(reason))}</dd></div>
         <div><dt>${h(copy.providerLabel)}</dt><dd>${h(providerDisplayNameForLanguage(diagnostics.provider))}</dd></div>
         <div><dt>${h(copy.providerSymbolLabel)}</dt><dd class="ltr">${h(diagnostics.providerSymbol || terminalText("unavailable"))}</dd></div>
         <div><dt>${h(copy.missingFieldsLabel)}</dt><dd>${h(missingFields || terminalText("unavailable"))}</dd></div>
@@ -4075,7 +4734,11 @@
     const snapshot = technicalSnapshot(a, tech);
     if (!snapshot.available) return technicalUnavailableState(detail, a);
     const summary = a.technicalSummary || a.technical_summary || (tech && (tech.technicalSummary || tech.technical_summary)) || {};
-    const summaryText = summary.summaryAr || summary.summary_ar || summary.summaryEn || summary.summary_en || "";
+    const summaryText = isFrenchLanguage()
+      ? summary.summaryFr || summary.summary_fr || summary.summaryEn || summary.summary_en || summary.summaryAr || summary.summary_ar || ""
+      : isEnglishLanguage()
+        ? summary.summaryEn || summary.summary_en || summary.summaryAr || summary.summary_ar || ""
+        : summary.summaryAr || summary.summary_ar || summary.summaryEn || summary.summary_en || "";
     return `${summaryText ? `<p class="muted-note">${h(translateUiText(summaryText))}</p>` : ""}<div class="table-shell technical-available"><table><tbody>${snapshot.rows.map(([k, v]) => `<tr><th>${h(translateUiText(k))}</th><td class="${valueTextClass(v)}">${h(translateUiText(v))}</td></tr>`).join("")}</tbody></table></div>
       <p class="muted-note">${h(textPair("تظهر هنا المؤشرات التي أرجعها المزود فقط؛ تم إخفاء الصفوف غير المتاحة بدلاً من تقديرها.", "Only indicators returned by the provider are shown here; unavailable rows are hidden instead of estimated."))}</p>`;
   }
@@ -4090,7 +4753,7 @@
     const risk = Math.abs(entry - sl); if (!risk) return "";
     const rr1 = Math.round(Math.abs(tgt1 - entry) / risk * 100) / 100;
     const rr2 = tgt2 === null ? null : Math.round(Math.abs(tgt2 - entry) / risk * 100) / 100;
-    return `<div class="detail-grid">${detailCard(textPair("الدخول", "Entry"), price(entry, c), "Entry")}${detailCard(textPair("الهدف 1 · احتمال مرتفع", "Target 1 · higher probability"), price(tgt1, c), "TP1")}${tgt2 !== null ? detailCard(textPair("الهدف 2 · تمديد", "Target 2 · extension"), price(tgt2, c), "TP2") : ""}${detailCard(textPair("وقف الخسارة", "Stop loss"), price(sl, c), "Stop")}${detailCard(textPair("العائد/المخاطرة", "Risk/reward"), rr2 !== null ? `${rr2}:1 · TP2` : `${rr1}:1 · TP1`, "R/R")}</div>
+    return `<div class="detail-grid">${detailCard(textPair("الدخول", "Entry", "Entrée"), price(entry, c), textPair("الدخول", "Entry", "Entrée"))}${detailCard(textPair("الهدف 1 · احتمال مرتفع", "Target 1 · higher probability", "Objectif 1 · probabilité supérieure"), price(tgt1, c), "TP1")}${tgt2 !== null ? detailCard(textPair("الهدف 2 · تمديد", "Target 2 · extension", "Objectif 2 · extension"), price(tgt2, c), "TP2") : ""}${detailCard(textPair("وقف الخسارة", "Stop loss", "Stop de protection"), price(sl, c), textPair("وقف الخسارة", "Stop", "Stop"))}${detailCard(textPair("العائد/المخاطرة", "Risk/reward", "Risque/rendement"), rr2 !== null ? `${rr2}:1 · TP2` : `${rr1}:1 · TP1`, "R/R")}</div>
     <p class="muted-note">${h(textPair("الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة، وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.", "The first target is intentionally close (around 0.9x ATR) to raise hit probability; historical success is measured against that target. The stop is wider behind the price structure, so risk/reward is read with the second target."))}</p>`;
   }
   function signalAnalysis(rec, c) {
@@ -4113,14 +4776,14 @@
     return `<div class="signal-analysis">
       <p>${h(summary)}</p>
       <div class="detail-grid">
-        ${detailCard(textPair("الإشارة", "Signal"), sigLabel(sig), "Action")}
-        ${detailCard(terminalText("confidence"), conf, "Confidence")}
-        ${precisionRate !== null ? detailCard(textPair("الدقة التاريخية", "Historical accuracy"), `${precisionRate}%${pm && pm.passed ? " ✓" : ""}`, "Backtest") : ""}
-        ${bt && num(bt.samples) !== null ? detailCard(textPair("عينات الاختبار", "Test samples"), latinNumber(bt.samples), "Samples") : ""}
-        ${detailCard(textPair("المخاطرة", "Risk"), riskShort(rec.risk || rec.riskLevel), "Risk")}
-        ${detailCard(textPair("المدة", "Horizon"), rec.timeframe || rec.horizon || rec.duration || "--", "Horizon")}
-        ${detailCard(textPair("مزود البيانات", "Data provider"), provider, "Provider")}
-        ${detailCard(terminalText("dataQuality"), dataQualityLabel(quality), "Quality")}
+        ${detailCard(textPair("الإشارة", "Signal", "Signal"), sigLabel(sig), textPair("الإجراء", "Action", "Action"))}
+        ${detailCard(terminalText("confidence"), conf, terminalText("confidence"))}
+        ${precisionRate !== null ? detailCard(textPair("الدقة التاريخية", "Historical accuracy", "Précision historique"), `${precisionRate}%${pm && pm.passed ? " ✓" : ""}`, textPair("اختبار خلفي", "Backtest", "Test rétrospectif")) : ""}
+        ${bt && num(bt.samples) !== null ? detailCard(textPair("عينات الاختبار", "Test samples", "Échantillons du test"), latinNumber(bt.samples), textPair("العينات", "Samples", "Échantillons")) : ""}
+        ${detailCard(textPair("المخاطرة", "Risk", "Risque"), riskShort(rec.risk || rec.riskLevel), textPair("المخاطرة", "Risk", "Risque"))}
+        ${detailCard(textPair("المدة", "Horizon", "Horizon"), rec.timeframe || rec.horizon || rec.duration || "--", textPair("المدة", "Horizon", "Horizon"))}
+        ${detailCard(textPair("مزود البيانات", "Data provider", "Fournisseur de données"), provider, textPair("المزود", "Provider", "Fournisseur"))}
+        ${detailCard(terminalText("dataQuality"), dataQualityLabel(quality), terminalText("dataQuality"))}
       </div>
       ${riskReward(rec, c)}
       ${scoreRows.length ? `<div class="table-shell"><table><tbody>${scoreRows.map(([label, value, max]) => `<tr><th>${h(label)}</th><td class="ltr">${h(latinNumber(value))} / ${h(max)}</td></tr>`).join("")}</tbody></table></div>` : ""}
@@ -4175,7 +4838,7 @@
     const chg = quote.changePercent;
     const push = (name, signal, weight, note) => sigs.push({ name, signal, weight, note });
     if (ma50 !== null && ma200 !== null) push(textPair("اتجاه — تقاطع المتوسطات", "Trend — moving average cross"), ma50 >= ma200 ? "buy" : "sell", 1.3, ma50 >= ma200 ? textPair("المتوسط 50 فوق 200 (تقاطع ذهبي)", "50 MA is above 200 MA (golden cross)") : textPair("المتوسط 50 تحت 200 (تقاطع موت)", "50 MA is below 200 MA (death cross)"));
-    if (rsi !== null) push(textPair("RSI — تشبع/ارتداد", "RSI — extremes/reversal"), rsi <= 30 ? "buy" : rsi >= 70 ? "sell" : "neutral", 1.0, rsi <= 30 ? textPair(`تشبع بيعي (${Math.round(rsi)})`, `Oversold (${Math.round(rsi)})`) : rsi >= 70 ? textPair(`تشبع شرائي (${Math.round(rsi)})`, `Overbought (${Math.round(rsi)})`) : textPair(`محايد (${Math.round(rsi)})`, `Neutral (${Math.round(rsi)})`));
+    if (rsi !== null) push(textPair("RSI — تشبع/ارتداد", "RSI — extremes/reversal"), rsi <= 30 ? "buy" : rsi >= 70 ? "sell" : "neutral", 1.0, rsi <= 30 ? textPair(`تشبع بيعي (${Math.round(rsi)})`, `Oversold (${Math.round(rsi)})`, `Survente (${Math.round(rsi)})`) : rsi >= 70 ? textPair(`تشبع شرائي (${Math.round(rsi)})`, `Overbought (${Math.round(rsi)})`, `Surachat (${Math.round(rsi)})`) : textPair(`محايد (${Math.round(rsi)})`, `Neutral (${Math.round(rsi)})`, `Neutre (${Math.round(rsi)})`));
     if (macd !== null && macdSig !== null) push(textPair("MACD — زخم", "MACD — momentum"), macd >= macdSig ? "buy" : "sell", 1.1, macd >= macdSig ? textPair("تقاطع إيجابي", "Positive crossover") : textPair("تقاطع سلبي", "Negative crossover"));
     if (price !== null && ma50 !== null) push(textPair("السعر مقابل المتوسط 50", "Price versus 50 MA"), price >= ma50 ? "buy" : "sell", 0.9, price >= ma50 ? textPair("السعر فوق المتوسط", "Price above average") : textPair("السعر تحت المتوسط", "Price below average"));
     if (price !== null && s1 !== null && r1 !== null) { const mid = (s1 + r1) / 2; push(textPair("الدعم/المقاومة", "Support/resistance"), price <= s1 * 1.02 ? "buy" : price >= r1 * 0.98 ? "sell" : price >= mid ? "buy" : "neutral", 0.8, price <= s1 * 1.02 ? textPair("قرب الدعم", "Near support") : price >= r1 * 0.98 ? textPair("قرب المقاومة", "Near resistance") : textPair("داخل النطاق", "Inside range")); }
@@ -4208,10 +4871,10 @@
   function limitedConsensusText(count) {
     if (count <= 0) return textPair("لا توجد تغطية استراتيجية", "No strategy coverage");
     if (count === 1) return textPair("اتفاق محدود: استراتيجية واحدة فقط", "Limited agreement: one strategy only");
-    return textPair(`اتفاق محدود: ${latinNumber(count)} استراتيجيات فقط`, `Limited agreement: ${latinNumber(count)} strategies only`);
+    return textPair(`اتفاق محدود: ${latinNumber(count)} استراتيجيات فقط`, `Limited agreement: ${latinNumber(count)} strategies only`, `Consensus limité : ${latinNumber(count)} stratégies seulement`);
   }
   function consensusMetricText(c) {
-    return c.count < 3 ? limitedConsensusText(c.count) : textPair(`${latinNumber(c.agreement)}% اتفاق`, `${latinNumber(c.agreement)}% agreement`);
+    return c.count < 3 ? limitedConsensusText(c.count) : textPair(`${latinNumber(c.agreement)}% اتفاق`, `${latinNumber(c.agreement)}% agreement`, `${latinNumber(c.agreement)}% de consensus`);
   }
   function strategyConsensus(asset, tech, rec) {
     const backendRows = strategyRowsFromBackend(rec, asset);
@@ -4227,13 +4890,27 @@
       c.limited = backendMetric.limited;
       if (backendMetric.agreementPct !== null) c.agreement = backendMetric.agreementPct;
     }
-    if (!sigs.length) return emptyState("لا توجد بيانات كافية للاستراتيجيات", "يحتاج محرك الاتفاق مؤشرات فنية أو توصية من المزود لتشغيل الاستراتيجيات. لن نعرض اتفاقاً تقديرياً عند غياب البيانات.", "الإعدادات", `${ROOT}/settings`);
+    if (!sigs.length) return emptyState(
+      textPair("لا توجد بيانات كافية للاستراتيجيات", "Not enough strategy data", "Données insuffisantes pour les stratégies"),
+      textPair("يحتاج محرك الاتفاق مؤشرات فنية أو توصية من المزود لتشغيل الاستراتيجيات. لن نعرض اتفاقاً تقديرياً عند غياب البيانات.", "The agreement engine needs technical indicators or a provider recommendation to run the strategies. No estimated agreement is shown when data is missing.", "Le moteur de consensus a besoin d’indicateurs techniques ou d’une recommandation du fournisseur pour exécuter les stratégies. Aucun consensus estimé n’est affiché en l’absence de données."),
+      terminalText("settings"),
+      `${ROOT}/settings`
+    );
     const tone = c.limited ? "muted" : signalCardClass(c.signal);
     const rows = sigs.map(s => {
       const unavailable = s.available === false;
       const rowSignal = unavailable ? "insufficient_data" : (finalRecommendationAction(s.signal) || s.signal || "watch");
-      const name = isEnglishLanguage() ? s.nameEn || s.name_en || s.name || s.nameAr || s.name_ar || s.id || textPair("استراتيجية", "Strategy") : s.nameAr || s.name_ar || s.name || s.nameEn || s.name_en || s.id || textPair("استراتيجية", "Strategy");
-      const note = isEnglishLanguage() ? s.noteEn || s.note_en || s.note || s.noteAr || s.note_ar || (unavailable ? textPair("لم تتوفر بيانات كافية لهذه الاستراتيجية.", "Not enough data is available for this strategy.") : "") : s.noteAr || s.note_ar || s.note || s.noteEn || s.note_en || (unavailable ? textPair("لم تتوفر بيانات كافية لهذه الاستراتيجية.", "Not enough data is available for this strategy.") : "");
+      const name = isFrenchLanguage()
+        ? s.nameFr || s.name_fr || s.nameEn || s.name_en || s.name || s.nameAr || s.name_ar || s.id || textPair("استراتيجية", "Strategy", "Stratégie")
+        : isEnglishLanguage()
+          ? s.nameEn || s.name_en || s.name || s.nameAr || s.name_ar || s.id || textPair("استراتيجية", "Strategy", "Stratégie")
+          : s.nameAr || s.name_ar || s.name || s.nameEn || s.name_en || s.id || textPair("استراتيجية", "Strategy", "Stratégie");
+      const unavailableNote = unavailable ? textPair("لم تتوفر بيانات كافية لهذه الاستراتيجية.", "Not enough data is available for this strategy.", "Les données disponibles sont insuffisantes pour cette stratégie.") : "";
+      const note = isFrenchLanguage()
+        ? s.noteFr || s.note_fr || s.noteEn || s.note_en || s.note || s.noteAr || s.note_ar || unavailableNote
+        : isEnglishLanguage()
+          ? s.noteEn || s.note_en || s.note || s.noteAr || s.note_ar || unavailableNote
+          : s.noteAr || s.note_ar || s.note || s.noteEn || s.note_en || unavailableNote;
       return `<div class="strat-row ${unavailable ? "is-unavailable" : ""}"><span class="strat-name">${h(translateUiText(name))}</span><span class="strat-note">${h(translateUiText(note))}</span><span class="vote ${signalCardClass(rowSignal)}">${h(unavailable ? terminalText("unavailable") : sigLabel(rowSignal))}</span></div>`;
     }).join("");
     const scoreValue = c.limited ? `<b>${h(textPair("توافق محدود", "Limited agreement"))}</b>` : `<b>${h(latinNumber(c.agreement))}%</b>`;
@@ -4297,8 +4974,36 @@
       explanation: recommendation.reason
     };
   }
+  function dataSufficiencyChecklistCard(rec) {
+    const ds = rec && rec.dataSufficiency;
+    if (!ds) return "";
+    const items = Array.isArray(ds.items) ? ds.items : [];
+    const rows = items.map(item => {
+      const label = textPair(item.labelAr, item.labelEn, item.labelFr);
+      const detail = textPair(item.detailAr, item.detailEn, item.detailFr);
+      return `<li class="sufficiency-row ${item.satisfied ? "is-ok" : "is-missing"}"><span class="sufficiency-icon" aria-hidden="true">${item.satisfied ? "✓" : "✕"}</span><div><b>${h(label)}</b><p>${h(detail)}</p></div></li>`;
+    }).join("");
+    const unavailableStrategies = Array.isArray(ds.unavailableStrategies) ? ds.unavailableStrategies : [];
+    const strategyRows = unavailableStrategies.map(s => {
+      const name = textPair(s.nameAr, s.nameEn, s.nameFr);
+      const reason = textPair(s.reasonAr, s.reasonEn, s.reasonFr);
+      return `<li class="sufficiency-strategy"><b>${h(name)}</b><span>${h(reason)}</span></li>`;
+    }).join("");
+    const coverageText = textPair(
+      `تغطية الاستراتيجيات: ${latinNumber(ds.strategyCoverage.available)} من ${latinNumber(ds.strategyCoverage.total)}`,
+      `Strategy coverage: ${latinNumber(ds.strategyCoverage.available)} of ${latinNumber(ds.strategyCoverage.total)}`,
+      `Couverture des stratégies : ${latinNumber(ds.strategyCoverage.available)} sur ${latinNumber(ds.strategyCoverage.total)}`
+    );
+    return `<div class="data-sufficiency-checklist">
+      <h3>${h(textPair("قائمة تحقق كفاية البيانات", "Data sufficiency checklist", "Liste de vérification de la suffisance des données"))}</h3>
+      <p class="sufficiency-coverage">${h(coverageText)}</p>
+      <ul class="sufficiency-list">${rows}</ul>
+      ${strategyRows ? `<div class="sufficiency-strategies"><span class="sufficiency-subtitle">${h(textPair("استراتيجيات غير متاحة", "Unavailable strategies", "Stratégies indisponibles"))}</span><ul class="sufficiency-strategy-list">${strategyRows}</ul></div>` : ""}
+    </div>`;
+  }
   function finalRecommendationCard(asset, detail, rec, c) {
     const model = finalRecommendationModel(asset, detail, rec, c);
+    const insufficient = model.action === "insufficient_data";
     const confidenceText = model.confidence === null ? terminalText("unavailable") : `${latinNumber(Math.round(model.confidence))}%`;
     const samplesText = model.samples === null ? terminalText("unavailable") : latinNumber(model.samples);
     const finalLabel = recommendationLabel(model.normalizedRecommendation);
@@ -4317,24 +5022,32 @@
       </div>
       <div class="final-signal-grid">${metrics.map(([label, value, helper]) => detailCard(label, value, helper)).join("")}</div>
       <p class="recommendation-explanation">${h(translateUiText(model.explanation || terminalText("unavailable")))}</p>
+      ${insufficient ? dataSufficiencyChecklistCard(rec) : ""}
     </article>`;
   }
   function stat(label, value, helper) { return `<article class="stat-card"><span class="card-kicker">${h(translateUiText(helper))}</span><strong>${h(String(value))}</strong><small>${h(translateUiText(label))}</small></article>`; }
   function hero(title, body, kicker) { return `<section class="page-hero"><span class="eyebrow">${h(translateUiText(kicker))}</span><h2>${title}</h2><p>${h(translateUiText(body))}</p></section>`; }
   function unavailableSection(response, fallbackBody, label, href) {
     const unavailableTitle = response && response.routeUnavailable ? ROUTE_UNAVAILABLE_MESSAGE : UNAVAILABLE_MESSAGE;
-    const body = formatProviderError((response && response.message) || fallbackBody || UNAVAILABLE_MESSAGE, { empty: fallbackBody || UNAVAILABLE_MESSAGE });
+    const body = formatProviderError((response && response.message) || fallbackBody || UNAVAILABLE_DESCRIPTION, { empty: fallbackBody || UNAVAILABLE_DESCRIPTION });
     return emptyState(unavailableTitle, body, label, href);
   }
-  function selectionEmptyState() { return emptyState(SELECTION_EMPTY_STATE_AR, SELECTION_EMPTY_STATE_EN, "", ""); }
+  function selectionEmptyState() {
+    return emptyState(
+      textPair(SELECTION_EMPTY_STATE_AR, SELECTION_EMPTY_STATE_EN, "Aucun actif ne correspond actuellement à ce marché ou à cette catégorie"),
+      textPair("غيّر السوق أو التصنيف لعرض أصول أخرى متاحة من المزود.", "Change the market or category to view other assets available from the provider.", "Modifiez le marché ou la catégorie pour afficher d’autres actifs disponibles auprès du fournisseur."),
+      "",
+      ""
+    );
+  }
   function emptyState(title, body, label, href) {
     const cleanTitle = translateUiText(formatProviderError(title, { empty: UNAVAILABLE_MESSAGE }));
-    const cleanBody = translateUiText(formatProviderError(body, { empty: UNAVAILABLE_MESSAGE }));
+    const cleanBody = translateUiText(formatProviderError(body, { empty: UNAVAILABLE_DESCRIPTION }));
     return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(cleanTitle)}</h3><p>${h(cleanBody)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(translateUiText(label))}</a>` : ""}<button class="ghost-btn" data-retry>${h(terminalText("retry"))}</button></div></div>`;
   }
   function miniEmpty() { return `<div class="empty-state compact"><p>${h(textPair("لا توجد بيانات حالياً من المزود.", "No provider data is available right now."))}</p></div>`; }
-  function marketUnavailable(m, data) { const provider = providerCopy(); const message = translateUiText(formatProviderError(data && data.message, { empty: provider.copy })); return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>${h(textPair(`بيانات ${marketName(m)} غير متاحة`, `${marketName(m)} data is unavailable`))}</h2><p>${h(message)}</p>
-    <div class="detail-grid">${detailCard(textPair("الرموز المدعومة", "Supported symbols"), String(m.symbols.length), "Symbols")}${detailCard(terminalText("currency"), m.currency, "Currency")}${detailCard(textPair("الحالة", "Status"), provider.label, "Status")}${detailCard(terminalText("lastUpdated"), new Date().toLocaleTimeString(isEnglishLanguage() ? "en-US" : "ar-KW", { hour: "2-digit", minute: "2-digit" }), "Updated")}</div>
+  function marketUnavailable(m, data) { const provider = providerCopy(); const message = translateUiText(formatProviderError(data && data.message, { empty: provider.copy })); return `<section class="panel unavailable-panel"><span class="empty-glyph">⚠</span><h2>${h(textPair(`بيانات ${marketName(m)} غير متاحة`, `${marketName(m)} data is unavailable`, `Les données de ${marketName(m)} sont indisponibles`))}</h2><p>${h(message)}</p>
+    <div class="detail-grid">${detailCard(textPair("الرموز المدعومة", "Supported symbols", "Symboles pris en charge"), String(m.symbols.length), terminalText("symbol"))}${detailCard(terminalText("currency"), m.currency, terminalText("currency"))}${detailCard(textPair("الحالة", "Status", "État"), provider.label, textPair("الحالة", "Status", "État"))}${detailCard(terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit" }), terminalText("lastUpdated"))}</div>
     <div class="chip-row">${m.symbols.map(s => `<button class="badge" data-symbol-details="${h(s)}"><span class="ltr">${h(s)}</span></button>`).join("")}</div>
     <div class="row-actions"><button class="ghost-btn" data-retry>${h(terminalText("retry"))}</button></div></section>`; }
   function disclaimer() {
@@ -4427,7 +5140,7 @@
     const statsHost = document.getElementById("topbar-stats");
     const bar = document.getElementById("terminal-statusbar");
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
-    const cells = [[textPair("البيانات اللحظية", "Real-time"), p.className === "online" ? textPair("متصلة", "Connected") : textPair("غير متصلة", "Disconnected"), textPair("البيانات اللحظية", "Real-time")], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(isEnglishLanguage() ? "en-US" : "ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
+    const cells = [[textPair("البيانات اللحظية", "Real-time"), p.className === "online" ? textPair("متصلة", "Connected") : textPair("غير متصلة", "Disconnected", "Déconnecté"), textPair("البيانات اللحظية", "Real-time")], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
     const metricCellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("");
     const statusCellHtml = `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${h(p.className === "online" ? textPair("النظام يعمل", "System online") : textPair("بانتظار المزود", "Waiting for provider"))}</strong></div>`;
     if (statsHost) statsHost.innerHTML = metricCellsHtml;
@@ -4436,9 +5149,9 @@
   }
 
   /* ───────────────────── Actions ───────────────────── */
-  function addWatch(raw) { const s = sym(raw); if (!s) return; state.watch = unique([s, ...state.watch]); write(keys.watch, state.watch); toast(textPair(`تمت إضافة ${s} لقائمة المتابعة.`, `${s} added to watchlist.`)); render(); }
-  function removeWatch(raw) { const s = sym(raw); state.watch = state.watch.filter(x => x !== s); write(keys.watch, state.watch); toast(textPair(`تمت إزالة ${s}.`, `${s} removed.`)); render(); }
-  function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: textPair(`متابعة ${s}`, `Watch ${s}`), message: textPair("تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", "Local alert saved. A price provider is required to trigger it automatically."), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`)); render(); }
+  function addWatch(raw) { const s = sym(raw); if (!s) return; state.watch = unique([s, ...state.watch]); write(keys.watch, state.watch); toast(textPair(`تمت إضافة ${s} لقائمة المتابعة.`, `${s} added to watchlist.`, `${s} a été ajouté à la liste de suivi.`)); render(); }
+  function removeWatch(raw) { const s = sym(raw); state.watch = state.watch.filter(x => x !== s); write(keys.watch, state.watch); toast(textPair(`تمت إزالة ${s}.`, `${s} removed.`, `${s} a été supprimé.`)); render(); }
+  function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: textPair(`متابعة ${s}`, `Watch ${s}`, `Surveiller ${s}`), message: textPair("تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", "Local alert saved. A price provider is required to trigger it automatically."), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`, `Alerte créée pour ${s}.`)); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {
     const a = normalizeQuote(norm(asset)), recommendation = sharedRecommendation(a), action = recommendation.status, now = new Date().toISOString(), entry = num(a.entryPrice, a.entry, a.currentPrice, a.price, a.lastPrice);
@@ -4484,7 +5197,7 @@
     const s = sym(raw), rec = matchRec(s);
     if (!rec) return toast(textPair("لم أجد توصية محفوظة لهذا الرمز حالياً.", "No saved recommendation was found for this symbol."));
     const recommendation = sharedRecommendation(rec);
-    if (!hasTradeableQuote(rec, recommendation)) return toast(rec.unavailableReason ? unavailablePriceText(rec) : recommendation.reason || textPair("السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.", "Price, target, or stop is currently unavailable; the trade cannot be followed."));
+    if (!hasTradeableQuote(rec, recommendation)) return toast(translateUiText(rec.unavailableReason ? unavailablePriceText(rec) : recommendation.reason || textPair("السعر أو الهدف/الوقف غير متاح حالياً؛ لا يمكن متابعة الصفقة.", "Price, target, or stop is currently unavailable; the trade cannot be followed.")));
     persistFollowedTrade(tradeDraftFromAsset(rec, "recommendation_card"));
   }
   async function refreshFollowedTrades(force) {
@@ -4512,8 +5225,8 @@
 
   // form submits via delegation (forms re-render, so use document-level submit)
   document.addEventListener("submit", async (e) => {
-    if (e.target.id === "alert-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.alerts = [{ symbol: s, type: f.get("type"), value: f.get("value"), title: textPair(`تنبيه ${s}`, `${s} alert`), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`)); render(); }
-    if (e.target.id === "holding-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.holdings = [{ symbol: s, qty: f.get("qty"), entry: f.get("entry") }, ...state.holdings].slice(0, 50); write(keys.holdings, state.holdings); toast(textPair(`تمت إضافة مركز ${s}.`, `${s} position added.`)); render(); }
+    if (e.target.id === "alert-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.alerts = [{ symbol: s, type: f.get("type"), value: f.get("value"), title: textPair(`تنبيه ${s}`, `${s} alert`, `Alerte ${s}`), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`, `Alerte créée pour ${s}.`)); render(); }
+    if (e.target.id === "holding-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.holdings = [{ symbol: s, qty: f.get("qty"), entry: f.get("entry") }, ...state.holdings].slice(0, 50); write(keys.holdings, state.holdings); toast(textPair(`تمت إضافة مركز ${s}.`, `${s} position added.`, `Position ${s} ajoutée.`)); render(); }
     if (e.target.id === "followed-trade-form") {
       e.preventDefault();
       const f = new FormData(e.target);
@@ -4784,7 +5497,7 @@
   function signalHistoryItems() {
     const rows = arr(state.signals.history || state.signals.signalHistory || state.signals.signal_history);
     if (rows.length) return rows.map(row => ({
-      title: row.title || textPair(`تغيرت الإشارة على ${sym(row.symbol)}`, `Signal changed on ${sym(row.symbol)}`),
+      title: row.title || textPair(`تغيرت الإشارة على ${sym(row.symbol)}`, `Signal changed on ${sym(row.symbol)}`, `Le signal a changé sur ${sym(row.symbol)}`),
       symbol: row.symbol,
       message: row.message || `${sigLabel(row.old_action || row.oldAction || "watch")} → ${sigLabel(row.new_action || row.newAction || "watch")} · ${latinNumber(row.new_confidence || row.newConfidence)}%`
     }));
@@ -4824,7 +5537,14 @@
     const action = tradeAction(t);
     return action === "wait" ? "waiting" : action === "watch" ? "watching" : "open";
   }
-  function tradeStatusLabel(st) { return st === "won" ? "رابحة" : st === "lost" ? "خاسرة" : st === "open" ? "مفتوحة" : st === "waiting" ? "انتظار" : st === "expired" ? "منتهية" : "تحت المتابعة"; }
+  function tradeStatusLabel(st) {
+    return st === "won" ? textPair("رابحة", "Won", "Gagnée")
+      : st === "lost" ? textPair("خاسرة", "Lost", "Perdue")
+        : st === "open" ? textPair("مفتوحة", "Open", "Ouverte")
+          : st === "waiting" ? textPair("انتظار", "Waiting", "En attente")
+            : st === "expired" ? textPair("منتهية", "Expired", "Expirée")
+              : textPair("تحت المتابعة", "Under watch", "Sous surveillance");
+  }
   function tradeStatusTone(st) { return st === "won" ? "ok" : st === "lost" ? "bad" : st === "waiting" ? "warn" : st === "expired" ? "muted" : ""; }
   function groupTrades(items) {
     const g = { win: [], loss: [], open: [], wait: [], follow: [] };
@@ -4879,10 +5599,29 @@
   function signal(x) {
     return sharedRecommendation(x).status;
   }
-  function sigLabel(s) { return isEnglishLanguage() ? sigLabelEn(s) : Recommendation.labelAr(Recommendation.parseRecommendationStatus(s) || s || "watch"); }
+  function sigLabel(s) {
+    const status = Recommendation.parseRecommendationStatus(s) || s || "watch";
+    if (isFrenchLanguage()) return Recommendation.labelFr(status);
+    return isEnglishLanguage() ? Recommendation.labelEn(status) : Recommendation.labelAr(status);
+  }
   function sigLabelEn(s) { return Recommendation.labelEn(Recommendation.parseRecommendationStatus(s) || s || "watch"); }
-  function recStatus(x) { const s = String(x.status || x.state || "open").toLowerCase(); if (s.includes("complet") || s.includes("مكتمل")) return "مكتملة"; if (s.includes("fail") || s.includes("فاشل")) return "فاشلة"; if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "منتهية"; if (s.includes("watch") || s.includes("متابعة")) return "تحت المتابعة"; return "مفتوحة"; }
-  function recStatusTone(x) { const s = recStatus(x); return s === "مكتملة" ? "ok" : s === "فاشلة" ? "bad" : s === "منتهية" ? "muted" : ""; }
+  function recStatusKey(x) {
+    const s = String(x.status || x.state || "open").toLowerCase();
+    if (s.includes("complet") || s.includes("مكتمل")) return "completed";
+    if (s.includes("fail") || s.includes("فاشل")) return "failed";
+    if (s.includes("expир") || s.includes("expire") || s.includes("منتهي")) return "expired";
+    if (s.includes("watch") || s.includes("متابعة")) return "watching";
+    return "open";
+  }
+  function recStatus(x) {
+    const status = recStatusKey(x);
+    if (status === "completed") return textPair("مكتملة", "Completed", "Terminée");
+    if (status === "failed") return textPair("فاشلة", "Failed", "Échouée");
+    if (status === "expired") return textPair("منتهية", "Expired", "Expirée");
+    if (status === "watching") return textPair("تحت المتابعة", "Under watch", "Sous surveillance");
+    return textPair("مفتوحة", "Open", "Ouverte");
+  }
+  function recStatusTone(x) { const s = recStatusKey(x); return s === "completed" ? "ok" : s === "failed" ? "bad" : s === "expired" ? "muted" : ""; }
   function confComputed(x) {
     const flag = x.confidenceComputed ?? x.confidence_computed;
     return flag === undefined || flag === null ? true : Boolean(flag);
@@ -4951,7 +5690,7 @@
   }
   function price(v, c) { const n = num(v); return !isValidPrice(n) ? priceUnavailableText() : `${n.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${c && c !== "--" ? c : ""}`.trim(); }
   function change(v) { const n = num(v); return !isValidChange(n) ? changeUnavailableText() : `${n > 0 ? "+" : ""}${n.toFixed(2)}%`; }
-  function date(v) { if (!v) return "--"; const d = new Date(Number(v) ? Number(v) * (String(v).length <= 10 ? 1000 : 1) : v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString(isEnglishLanguage() ? "en-US" : "ar-KW", { dateStyle: "medium", timeStyle: "short" }); }
+  function date(v) { if (!v) return "--"; const d = new Date(Number(v) ? Number(v) * (String(v).length <= 10 ? 1000 : 1) : v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString(terminalLocale(), { dateStyle: "medium", timeStyle: "short" }); }
   function num(...values) { for (const v of values) { if (v === null || v === undefined || v === "") continue; const n = Number(v); if (Number.isFinite(n)) return n; } return null; }
   function arr(v) { if (Array.isArray(v)) return v; if (v && typeof v === "object") return Object.values(v).filter(x => x && typeof x === "object"); return []; }
   function unique(v) { return Array.from(new Set(v.map(sym).filter(Boolean))); }
@@ -4960,14 +5699,18 @@
   function settingsT(key, lang = currentLanguage()) {
     const entry = SETTINGS_COPY[key];
     const normalized = normalizeLanguage(lang);
-    return entry ? (entry[normalized] || entry.ar || entry.en || key) : key;
+    if (!entry) return key;
+    if (normalized === "fr") return entry.fr || frenchUiText(entry.en || key);
+    return entry[normalized] || entry.ar || entry.en || key;
   }
   function countTextLocalized(value, lang = currentLanguage()) {
     const n = latinNumber(numberValue(value));
     return `${n} ${settingsT("symbolCount", lang)}`;
   }
   function yesNoLocalized(value, lang = currentLanguage()) {
-    return value ? (normalizeLanguage(lang) === "en" ? "Yes" : "نعم") : (normalizeLanguage(lang) === "en" ? "No" : "لا");
+    const normalized = normalizeLanguage(lang);
+    if (normalized === "fr") return value ? "Oui" : "Non";
+    return value ? (normalized === "en" ? "Yes" : "نعم") : (normalized === "en" ? "No" : "لا");
   }
   function riskLabelLocalized(r, lang = currentLanguage()) {
     if (r === "conservative") return settingsT("conservative", lang);
@@ -4975,7 +5718,8 @@
     return settingsT("balanced", lang);
   }
   function settingsMarketLabel(option, lang = currentLanguage()) {
-    return h(option[normalizeLanguage(lang)] || option.en || option.id);
+    const normalized = normalizeLanguage(lang);
+    return h(normalized === "fr" ? (option.fr || frenchUiText(option.en || option.id)) : (option[normalized] || option.en || option.id));
   }
   function settingsCheckbox(name, checked, label, hint) {
     return `<label class="settings-check-row">
@@ -5088,6 +5832,7 @@
   }
   function providerLocale(locale) {
     const value = String(locale || document.documentElement.lang || navigator.language || "ar").toLowerCase();
+    if (value.startsWith("fr")) return "fr";
     return value.startsWith("en") ? "en" : "ar";
   }
   function canonicalProviderStatusKey(status) {
@@ -5104,15 +5849,18 @@
   function getProviderStatusMessage(status, locale) {
     const statusKey = canonicalProviderStatusKey(status);
     const lang = providerLocale(locale);
-    return (PROVIDER_STATUS_LABELS[statusKey] || PROVIDER_STATUS_LABELS.provider_status_unknown)[lang];
+    const entry = PROVIDER_STATUS_LABELS[statusKey] || PROVIDER_STATUS_LABELS.provider_status_unknown;
+    return lang === "fr" ? (entry.fr || frenchUiText(entry.en)) : entry[lang];
   }
   function getProviderStatusExplanation(status, locale) {
     const statusKey = canonicalProviderStatusKey(status);
     if (statusKey !== "provider_status_failed" && statusKey !== "provider_status_partial") return "";
-    return PROVIDER_STATUS_EXPLANATION[providerLocale(locale)];
+    const lang = providerLocale(locale);
+    return lang === "fr" ? (PROVIDER_STATUS_EXPLANATION.fr || frenchUiText(PROVIDER_STATUS_EXPLANATION.en)) : PROVIDER_STATUS_EXPLANATION[lang];
   }
   function getProviderRetryLabel(locale) {
-    return PROVIDER_RETRY_LABEL[providerLocale(locale)];
+    const lang = providerLocale(locale);
+    return lang === "fr" ? (PROVIDER_RETRY_LABEL.fr || "Réessayer") : PROVIDER_RETRY_LABEL[lang];
   }
   function providerStatusCopy(status, options = {}) {
     const locale = providerLocale(options.locale);
@@ -5120,7 +5868,7 @@
     const title = getProviderStatusMessage(statusKey, locale);
     const explanation = getProviderStatusExplanation(statusKey, locale);
     const provider = providerName(options.provider || "");
-    const activeProviderCopy = locale === "en" ? `Active provider: ${provider}` : `المزود النشط: ${provider}`;
+    const activeProviderCopy = locale === "fr" ? `Fournisseur actif : ${provider}` : locale === "en" ? `Active provider: ${provider}` : `المزود النشط: ${provider}`;
     return {
       title,
       copy: options.copy || (statusKey === "provider_status_available" ? activeProviderCopy : explanation || title),
@@ -5201,7 +5949,7 @@
     ensureMarketSelectorCss();
     const m = currentMarket();
     const isOpen = !!_marketSelectorOpen;
-    const dir = isEnglishLanguage() ? "ltr" : "rtl";
+    const dir = isLtrLanguage() ? "ltr" : "rtl";
     const selectorLabel = textPair("\u0627\u062e\u062a\u0631 \u0627\u0644\u0633\u0648\u0642", "Choose market");
     const chkSvg = '<svg class="ms-chk" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6l3 3 5-5"/></svg>';
     const chevSvg = '<span class="ms-chevron-box" aria-hidden="true"><svg class="ms-chevron' + (isOpen ? " ms-open" : "") + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span>';

@@ -60,12 +60,12 @@ type FormState = {
 
 type CompanyFormMode = 'create' | 'edit';
 
-const statusCopy: Record<CompanyStatus, { ar: string; en: string; tone: 'amber' | 'green' | 'red' | 'blue' | 'slate' }> = {
-  pending_review: { ar: 'قيد المراجعة', en: 'Pending review', tone: 'amber' },
-  approved: { ar: 'معتمدة', en: 'Approved', tone: 'green' },
-  rejected: { ar: 'مرفوضة', en: 'Rejected', tone: 'red' },
-  needs_changes: { ar: 'تحتاج تعديل', en: 'Needs changes', tone: 'blue' },
-  inactive: { ar: 'غير نشطة', en: 'Inactive', tone: 'slate' },
+const statusTone: Record<CompanyStatus, 'amber' | 'green' | 'red' | 'blue' | 'slate'> = {
+  pending_review: 'amber',
+  approved: 'green',
+  rejected: 'red',
+  needs_changes: 'blue',
+  inactive: 'slate',
 };
 
 const toneClass: Record<string, string> = {
@@ -76,12 +76,12 @@ const toneClass: Record<string, string> = {
   slate: 'owner-status slate',
 };
 
-function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn') {
-  if (!value) return 'غير محدد';
+function formatDate(value?: string | null, locale = 'ar-KW-u-nu-latn', fallback = '') {
+  if (!value) return fallback;
   try {
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
   } catch {
-    return 'غير محدد';
+    return fallback;
   }
 }
 
@@ -170,6 +170,13 @@ export function OwnerCompaniesPage() {
     value: category,
     label: t(COMPANY_CATEGORY_CONFIGS[category].labelKey),
   })), [t]);
+  const statusLabels: Record<CompanyStatus, string> = {
+    approved: t('company_status_approved'),
+    pending_review: t('company_status_pending'),
+    rejected: t('company_status_rejected'),
+    needs_changes: t('company_status_changes'),
+    inactive: t('company_status_inactive'),
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -190,7 +197,7 @@ export function OwnerCompaniesPage() {
         setCompanies(Array.isArray(payload.items) ? payload.items : []);
       })
       .catch(() => {
-        if (!cancelled) setMessage({ type: 'error', text: 'تعذر تحميل شركاتك حالياً.' });
+        if (!cancelled) setMessage({ type: 'error', text: t('company_load_mine_error') });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -199,7 +206,7 @@ export function OwnerCompaniesPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, router, session]);
+  }, [authLoading, router, session, t]);
 
   function openEdit(company: CompanyListing) {
     const nextForm = formFromCompany(company);
@@ -238,10 +245,10 @@ export function OwnerCompaniesPage() {
       closeEdit();
       setMessage({
         type: 'ok',
-        text: payload.pendingReview ? 'تم إرسال التعديلات للمراجعة قبل نشرها.' : 'تم تحديث بيانات الشركة وإرسالها للمراجعة.',
+        text: payload.pendingReview ? t('company_update_sent') : t('company_updated_sent'),
       });
     } catch {
-      setMessage({ type: 'error', text: 'تعذر حفظ التعديلات. تأكد من البيانات وحاول مرة أخرى.' });
+      setMessage({ type: 'error', text: t('company_save_changes_error') });
     } finally {
       setSaving(false);
     }
@@ -251,8 +258,8 @@ export function OwnerCompaniesPage() {
     if (!session) return;
     const approved = company.status === 'approved';
     const prompt = approved
-      ? 'سيتم إرسال طلب حذف الشركة للإدارة قبل إلغاء النشر. هل تريد المتابعة؟'
-      : 'هل أنت متأكد من حذف طلب الشركة؟ لا يمكن التراجع عن هذا الإجراء.';
+      ? t('company_confirm_unpublish')
+      : t('company_confirm_delete');
     if (!window.confirm(prompt)) return;
 
     setDeletingId(company.id);
@@ -266,13 +273,13 @@ export function OwnerCompaniesPage() {
       if (!response.ok || !payload.ok) throw new Error(payload.code ?? 'DELETE_FAILED');
       if (payload.deleted) {
         setCompanies(previous => previous.filter(item => item.id !== company.id));
-        setMessage({ type: 'ok', text: 'تم حذف طلب الشركة.' });
+        setMessage({ type: 'ok', text: t('company_request_deleted') });
       } else if (payload.item) {
         setCompanies(previous => previous.map(item => item.id === company.id ? payload.item : item));
-        setMessage({ type: 'ok', text: 'تم إرسال طلب حذف الشركة للمراجعة.' });
+        setMessage({ type: 'ok', text: t('company_deletion_sent') });
       }
     } catch {
-      setMessage({ type: 'error', text: 'تعذر تنفيذ الطلب حالياً.' });
+      setMessage({ type: 'error', text: t('company_request_error') });
     } finally {
       setDeletingId(null);
     }
@@ -281,7 +288,7 @@ export function OwnerCompaniesPage() {
   return (
     <>
       <Sidebar />
-      <DashboardPageShell ariaLabel="شركاتي" className="owner-companies-shell" contentClassName="owner-companies-content">
+      <DashboardPageShell ariaLabel={t('company_my_companies')} className="owner-companies-shell" contentClassName="owner-companies-content">
       <style>{`
         .owner-companies-shell{direction:${dir};}
         .owner-companies-content{max-width:1180px;margin:0 auto;padding:clamp(1rem,3vw,2rem);display:flex;flex-direction:column;gap:1.25rem}
@@ -329,12 +336,12 @@ export function OwnerCompaniesPage() {
       <section className="owner-hero">
         <div>
           <p>THE SFM</p>
-          <h1>شركاتي</h1>
-          <p>تابع طلبات إدراج شركاتك، عدل البيانات، وأرسل التحديثات للمراجعة قبل النشر.</p>
+          <h1>{t('company_my_companies')}</h1>
+          <p>{t('company_my_companies_desc')}</p>
         </div>
         <Link className="owner-add-btn" href="/company-listing/submit">
           <Plus size={18} />
-          إضافة شركة
+          {t('company_add')}
         </Link>
       </section>
 
@@ -343,22 +350,22 @@ export function OwnerCompaniesPage() {
       {loading || authLoading ? (
         <div className="owner-loading">
           <Loader2 size={18} className="animate-spin" />
-          جاري تحميل شركاتك...
+          {t('company_loading_mine')}
         </div>
       ) : companies.length === 0 ? (
         <section className="owner-empty">
           <Building2 size={34} />
-          <h2>لم تقم بإضافة أي شركة بعد.</h2>
-          <p>أرسل بيانات شركتك للمراجعة حتى تظهر في دليل خدمات THE SFM بعد الاعتماد.</p>
+          <h2>{t('company_mine_empty')}</h2>
+          <p>{t('company_mine_empty_body')}</p>
           <Link className="owner-primary-btn" href="/company-listing/submit">
             <Plus size={16} />
-            إضافة شركة
+            {t('company_add')}
           </Link>
         </section>
       ) : (
         <section className="owner-grid">
           {companies.map(company => {
-            const status = statusCopy[company.status];
+            const tone = statusTone[company.status];
             const categoryLabel = t(COMPANY_CATEGORY_CONFIGS[company.category].labelKey);
             const hasAdminNote = (company.status === 'rejected' || company.status === 'needs_changes') && company.admin_notes;
             return (
@@ -379,44 +386,44 @@ export function OwnerCompaniesPage() {
                       <p>{categoryLabel}</p>
                     </div>
                   </div>
-                  <span className={toneClass[status.tone]}>
+                  <span className={toneClass[tone]}>
                     <BadgeCheck size={14} />
-                    {lang === 'ar' ? status.ar : status.en}
+                    {statusLabels[company.status]}
                   </span>
                 </div>
 
                 {company.update_status === 'pending_update' ? (
                   <div className="owner-update-note">
-                    توجد تعديلات مرسلة بانتظار مراجعة الإدارة قبل نشرها.
+                    {t('company_pending_updates')}
                   </div>
                 ) : null}
                 {company.deletion_requested ? (
                   <div className="owner-update-note">
-                    يوجد طلب حذف / إلغاء نشر بانتظار قرار الإدارة.
+                    {t('company_pending_deletion')}
                   </div>
                 ) : null}
                 {hasAdminNote ? (
                   <div className="owner-note">
-                    <AlertCircle size={16} /> ملاحظات الإدارة: {company.admin_notes}
+                    <AlertCircle size={16} /> {t('company_admin_notes')} {company.admin_notes}
                   </div>
                 ) : null}
 
                 <div className="owner-facts">
                   <div className="owner-fact">
-                    <span><MapPin size={13} /> الدولة / المدينة</span>
-                    <strong>{[company.country, company.city].filter(Boolean).join(' / ') || 'غير محدد'}</strong>
+                    <span><MapPin size={13} /> {t('company_country_city')}</span>
+                    <strong>{[company.country, company.city].filter(Boolean).join(' / ') || t('company_unspecified')}</strong>
                   </div>
                   <div className="owner-fact">
-                    <span><CalendarDays size={13} /> تاريخ التقديم</span>
-                    <strong>{formatDate(company.created_at, locale)}</strong>
+                    <span><CalendarDays size={13} /> {t('company_submission_date')}</span>
+                    <strong>{formatDate(company.created_at, locale, t('company_unspecified'))}</strong>
                   </div>
                   <div className="owner-fact">
-                    <span>تاريخ المراجعة</span>
-                    <strong>{formatDate(company.reviewed_at, locale)}</strong>
+                    <span>{t('company_review_date')}</span>
+                    <strong>{formatDate(company.reviewed_at, locale, t('company_unspecified'))}</strong>
                   </div>
                   <div className="owner-fact">
-                    <span>حالة التحديث</span>
-                    <strong>{company.update_status === 'pending_update' ? 'تعديل بانتظار المراجعة' : company.deletion_requested ? 'طلب حذف' : 'لا يوجد'}</strong>
+                    <span>{t('company_update_status')}</span>
+                    <strong>{company.update_status === 'pending_update' ? t('company_update_pending') : company.deletion_requested ? t('company_delete_request') : t('company_none')}</strong>
                   </div>
                 </div>
 
@@ -424,16 +431,16 @@ export function OwnerCompaniesPage() {
                   {company.status === 'approved' ? (
                     <Link className="owner-secondary-btn" href={`/companies/${company.id}`}>
                       <Eye size={16} />
-                      عرض الصفحة العامة
+                      {t('company_public_page')}
                     </Link>
                   ) : null}
                   <button type="button" className="owner-primary-btn" onClick={() => openEdit(company)}>
                     {company.status === 'approved' ? <FilePenLine size={16} /> : <Edit3 size={16} />}
-                    {company.status === 'approved' ? 'طلب تعديل البيانات' : company.status === 'needs_changes' || company.status === 'rejected' ? 'تعديل وإعادة الإرسال' : 'تعديل البيانات'}
+                    {company.status === 'approved' ? t('company_request_edit') : company.status === 'needs_changes' || company.status === 'rejected' ? t('company_edit_resubmit') : t('company_edit_details')}
                   </button>
                   <button type="button" className="owner-danger-btn" disabled={deletingId === company.id} onClick={() => void deleteCompany(company)}>
                     {deletingId === company.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                    {company.status === 'approved' ? 'طلب حذف الشركة' : 'حذف الطلب'}
+                    {company.status === 'approved' ? t('company_request_delete') : t('company_delete_application')}
                   </button>
                 </div>
               </article>
@@ -444,48 +451,48 @@ export function OwnerCompaniesPage() {
 
       {editing && form ? (
         <div className="owner-modal-overlay" onClick={event => { if (event.target === event.currentTarget) closeEdit(); }}>
-          <section key={`company-edit-${editing.id}`} className="owner-modal" aria-modal="true" role="dialog" aria-label="تعديل بيانات الشركة">
+          <section key={`company-edit-${editing.id}`} className="owner-modal" aria-modal="true" role="dialog" aria-label={t('company_edit_dialog')}>
             <div className="owner-modal-head">
-              <h2>{editing.status === 'approved' ? 'طلب تعديل بيانات الشركة' : 'تعديل بيانات الشركة'}</h2>
-              <button type="button" className="owner-modal-close" onClick={closeEdit} aria-label="إغلاق">×</button>
+              <h2>{editing.status === 'approved' ? t('company_request_edit') : t('company_edit_dialog')}</h2>
+              <button type="button" className="owner-modal-close" onClick={closeEdit} aria-label={t('company_close')}>×</button>
             </div>
             <div className="owner-form">
-              <Field label="اسم الشركة" value={form.companyName} onChange={value => updateForm('companyName', value)} />
+              <Field label={t('company_listing_company_name')} value={form.companyName} onChange={value => updateForm('companyName', value)} />
               <label className="owner-field">
-                <span>نوع الشركة</span>
+                <span>{t('company_type')}</span>
                 <select value={form.category} onChange={event => updateForm('category', event.target.value as CompanyCategory)}>
                   {categoryOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </label>
-              <Field label="الدولة" value={form.country} onChange={value => updateForm('country', value)} />
-              <Field label="المدينة" value={form.city} onChange={value => updateForm('city', value)} />
-              <Field label="عنوان الشركة بالكامل" value={form.fullAddress} onChange={value => updateForm('fullAddress', value)} full placeholder="المنطقة، الشارع، المبنى، الدور أو المكتب" />
-              <Field label="رابط Google Maps / موقع الدبوس" value={form.googleMapsUrl} onChange={value => updateForm('googleMapsUrl', value)} dir="ltr" full placeholder="https://maps.google.com/..." />
-              <Field label="خط العرض" value={form.latitude} onChange={value => updateForm('latitude', value)} dir="ltr" />
-              <Field label="خط الطول" value={form.longitude} onChange={value => updateForm('longitude', value)} dir="ltr" />
-              <Field label="وصف مختصر" value={form.shortDescription} onChange={value => updateForm('shortDescription', value)} full />
-              <Field label="وصف تفصيلي" value={form.longDescription} onChange={value => updateForm('longDescription', value)} textarea full />
-              <Field label="الموقع الإلكتروني" value={form.websiteUrl} onChange={value => updateForm('websiteUrl', value)} dir="ltr" />
-              <Field label="البريد الإلكتروني" value={form.email} onChange={value => updateForm('email', value)} dir="ltr" />
-              <Field label="رقم الهاتف" value={form.phone} onChange={value => updateForm('phone', value)} dir="ltr" placeholder="+965 12345678" />
-              <Field label="واتساب" value={form.whatsapp} onChange={value => updateForm('whatsapp', value)} dir="ltr" placeholder="+965 12345678" />
+              <Field label={t('company_country')} value={form.country} onChange={value => updateForm('country', value)} />
+              <Field label={t('company_city')} value={form.city} onChange={value => updateForm('city', value)} />
+              <Field label={t('company_full_address')} value={form.fullAddress} onChange={value => updateForm('fullAddress', value)} full placeholder={t('company_address_placeholder')} />
+              <Field label={t('company_google_maps')} value={form.googleMapsUrl} onChange={value => updateForm('googleMapsUrl', value)} dir="ltr" full placeholder="https://maps.google.com/..." />
+              <Field label={t('company_latitude')} value={form.latitude} onChange={value => updateForm('latitude', value)} dir="ltr" />
+              <Field label={t('company_longitude')} value={form.longitude} onChange={value => updateForm('longitude', value)} dir="ltr" />
+              <Field label={t('company_short_description')} value={form.shortDescription} onChange={value => updateForm('shortDescription', value)} full />
+              <Field label={t('company_detailed_description')} value={form.longDescription} onChange={value => updateForm('longDescription', value)} textarea full />
+              <Field label={t('company_website')} value={form.websiteUrl} onChange={value => updateForm('websiteUrl', value)} dir="ltr" />
+              <Field label={t('company_email')} value={form.email} onChange={value => updateForm('email', value)} dir="ltr" />
+              <Field label={t('company_phone')} value={form.phone} onChange={value => updateForm('phone', value)} dir="ltr" placeholder="+965 12345678" />
+              <Field label={t('company_whatsapp')} value={form.whatsapp} onChange={value => updateForm('whatsapp', value)} dir="ltr" placeholder="+965 12345678" />
               <Field label="LinkedIn" value={form.linkedinUrl} onChange={value => updateForm('linkedinUrl', value)} dir="ltr" />
               <Field label="X / Twitter" value={form.twitterUrl} onChange={value => updateForm('twitterUrl', value)} dir="ltr" />
               <Field label="Instagram" value={form.instagramUrl} onChange={value => updateForm('instagramUrl', value)} dir="ltr" />
-              <Field label="سنة التأسيس" value={form.foundedYear} onChange={value => updateForm('foundedYear', value)} dir="ltr" />
-              <Field label="رقم الترخيص" value={form.licenseNumber} onChange={value => updateForm('licenseNumber', value)} />
-              <Field label="الجهة المنظمة" value={form.regulatorName} onChange={value => updateForm('regulatorName', value)} />
-              <Field label="الخدمات المقدمة" value={form.services} onChange={value => updateForm('services', value)} textarea full />
-              <CompanyImageUploadField key={`company-edit-${editing.id}-logo`} mode="edit" resetKey={`edit-${editing.id}-logo`} label="رابط شعار الشركة" value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} kind="logo" companyId={editing.id} />
-              <CompanyImageUploadField key={`company-edit-${editing.id}-cover`} mode="edit" resetKey={`edit-${editing.id}-cover`} label="رابط صورة الغلاف" value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} kind="cover" companyId={editing.id} />
+              <Field label={t('company_founded_year')} value={form.foundedYear} onChange={value => updateForm('foundedYear', value)} dir="ltr" />
+              <Field label={t('company_license_number')} value={form.licenseNumber} onChange={value => updateForm('licenseNumber', value)} />
+              <Field label={t('company_regulator')} value={form.regulatorName} onChange={value => updateForm('regulatorName', value)} />
+              <Field label={t('company_services')} value={form.services} onChange={value => updateForm('services', value)} textarea full />
+              <CompanyImageUploadField key={`company-edit-${editing.id}-logo`} mode="edit" resetKey={`edit-${editing.id}-logo`} label={t('company_logo_link')} value={form.logoUrl} onChange={value => updateForm('logoUrl', value)} kind="logo" companyId={editing.id} />
+              <CompanyImageUploadField key={`company-edit-${editing.id}-cover`} mode="edit" resetKey={`edit-${editing.id}-cover`} label={t('company_cover_link')} value={form.coverImageUrl} onChange={value => updateForm('coverImageUrl', value)} kind="cover" companyId={editing.id} />
             </div>
             <div className="owner-modal-actions">
               <button type="button" className="owner-primary-btn" disabled={saving} onClick={() => void saveEdit()}>
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                إرسال للمراجعة
+                {t('company_send_review')}
               </button>
               <button type="button" className="owner-secondary-btn" disabled={saving} onClick={closeEdit}>
-                إلغاء
+                {t('company_cancel')}
               </button>
             </div>
           </section>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Clock3, DatabaseZap, Newspaper, RefreshCcw } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type TechNewsHeaderProps = {
   title: string;
@@ -27,6 +28,7 @@ export function TechNewsHeader({
   refreshing,
   onRefresh,
 }: TechNewsHeaderProps) {
+  const { t } = useLanguage();
   return (
     <section className="tech-news-header">
       <div className="tech-news-title-row">
@@ -62,7 +64,7 @@ export function TechNewsHeader({
         <button
           type="button"
           className="tech-news-refresh-btn"
-          aria-label="Refresh technology news"
+          aria-label={t('accessibility_refresh_technology_news')}
           onClick={onRefresh}
           disabled={refreshing}
         >

@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Building2, CheckCircle2, ChevronRight, CreditCard, ExternalLink, MapPin, Send } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
-import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
@@ -190,7 +188,7 @@ function digitsOnly(value: string) {
 }
 
 export function CompanySubmitForm() {
-  const { t, dir } = useLanguage();
+  const { t, dir, lang } = useLanguage();
   const { session, loading: authLoading } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() => createEmptyCompanyForm());
@@ -244,16 +242,18 @@ export function CompanySubmitForm() {
     label: t(COMPANY_CATEGORY_CONFIGS[category].labelKey),
   })), [t]);
   const countryOptions = useMemo(() => {
-    const locale = dir === 'rtl' ? 'ar' : 'en';
+    const locale = lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en';
     const displayNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl
       ? new Intl.DisplayNames([locale], { type: 'region' })
       : null;
     return COUNTRY_CODES
       .map(code => ({ code, label: displayNames?.of(code) ?? FALLBACK_COUNTRY_NAMES[code] ?? code }))
       .sort((a, b) => a.label.localeCompare(b.label, locale));
-  }, [dir]);
+  }, [lang]);
   const selectedCountryCode = countryOptions.find(option => option.label === form.country)?.code ?? '';
-  const cityOptions = selectedCountryCode ? (CITY_OPTIONS_BY_COUNTRY[selectedCountryCode] ?? []) : [];
+  const cityOptions = selectedCountryCode
+    ? (CITY_OPTIONS_BY_COUNTRY[selectedCountryCode] ?? []).filter(city => lang === 'ar' ? /[\u0600-\u06ff]/.test(city) : !/[\u0600-\u06ff]/.test(city))
+    : [];
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -293,30 +293,25 @@ export function CompanySubmitForm() {
   }
 
   function validateForm() {
-    const imageUrls = [
-      [form.logoUrl, 'رابط شعار الشركة'],
-      [form.coverImageUrl, 'رابط صورة الغلاف'],
-    ] as const;
-    if (!hasLetter(form.companyName)) return 'اسم الشركة يجب أن يحتوي على أحرف واضحة.';
-    if (!form.country.trim()) return 'اختر الدولة من القائمة.';
-    if (form.fullAddress.trim() && !hasLetter(form.fullAddress)) return 'عنوان الشركة بالكامل يجب أن يحتوي على أحرف أو جملة واضحة.';
-    if (!isAsciiUrl(form.googleMapsUrl)) return 'رابط Google Maps يجب أن يكون رابطاً صحيحاً.';
-    if (!isValidCoordinate(form.latitude, -90, 90)) return 'خط العرض غير صحيح. يجب أن يكون بين -90 و 90.';
-    if (!isValidCoordinate(form.longitude, -180, 180)) return 'خط الطول غير صحيح. يجب أن يكون بين -180 و 180.';
-    if (form.shortDescription.trim() && !hasLetter(form.shortDescription)) return 'الوصف المختصر يجب أن يكون أحرفاً أو جملة واضحة.';
-    if (form.longDescription.trim() && !hasLetter(form.longDescription)) return 'الوصف التفصيلي يجب أن يحتوي على أحرف أو جملة واضحة.';
-    if (!isAsciiUrl(form.websiteUrl)) return 'الموقع الإلكتروني يجب أن يكون رابطاً صحيحاً باللغة الإنجليزية.';
-    if (!isValidEmail(form.email)) return 'البريد الإلكتروني يجب أن يكون بصيغة EXAMPLE@EXAMPLE.COM.';
-    if (form.phone.trim() && digitsOnly(form.phone).length < 5) return 'رقم الهاتف يجب أن يحتوي على أرقام كافية مع رمز الدولة.';
-    if (form.whatsapp.trim() && digitsOnly(form.whatsapp).length < 5) return 'رقم واتساب يجب أن يحتوي على أرقام كافية مع رمز الدولة.';
-    if (!isValidCompanySocialInput(form.linkedinUrl, 'linkedin')) return 'رابط LinkedIn يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (!isValidCompanySocialInput(form.twitterUrl, 'twitter')) return 'رابط X / Twitter يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (!isValidCompanySocialInput(form.instagramUrl, 'instagram')) return 'رابط Instagram يجب أن يكون @EXAMPLE أو رابطاً صحيحاً.';
-    if (form.regulatorName.trim() && !hasLetter(form.regulatorName)) return 'الجهة المنظمة يجب أن تكون أحرفاً أو جملة.';
-    if (form.services.trim() && !hasLetter(form.services)) return 'الخدمات المقدمة يجب أن تكون أحرفاً أو جملاً.';
-    for (const [url, label] of imageUrls) {
-      if (url.trim() && !isAsciiUrl(url)) return `${label} يجب أن يكون رابط صورة صحيحاً.`;
-    }
+    if (!hasLetter(form.companyName)) return t('company_validation_name');
+    if (!form.country.trim()) return t('company_validation_country');
+    if (form.fullAddress.trim() && !hasLetter(form.fullAddress)) return t('company_validation_address');
+    if (!isAsciiUrl(form.googleMapsUrl)) return t('company_validation_maps');
+    if (!isValidCoordinate(form.latitude, -90, 90)) return t('company_validation_latitude');
+    if (!isValidCoordinate(form.longitude, -180, 180)) return t('company_validation_longitude');
+    if (form.shortDescription.trim() && !hasLetter(form.shortDescription)) return t('company_validation_short_description');
+    if (form.longDescription.trim() && !hasLetter(form.longDescription)) return t('company_validation_long_description');
+    if (!isAsciiUrl(form.websiteUrl)) return t('company_validation_website');
+    if (!isValidEmail(form.email)) return t('company_validation_email');
+    if (form.phone.trim() && digitsOnly(form.phone).length < 5) return t('company_validation_phone');
+    if (form.whatsapp.trim() && digitsOnly(form.whatsapp).length < 5) return t('company_validation_whatsapp');
+    if (!isValidCompanySocialInput(form.linkedinUrl, 'linkedin')) return t('company_validation_linkedin');
+    if (!isValidCompanySocialInput(form.twitterUrl, 'twitter')) return t('company_validation_twitter');
+    if (!isValidCompanySocialInput(form.instagramUrl, 'instagram')) return t('company_validation_instagram');
+    if (form.regulatorName.trim() && !hasLetter(form.regulatorName)) return t('company_validation_regulator');
+    if (form.services.trim() && !hasLetter(form.services)) return t('company_validation_services');
+    if (form.logoUrl.trim() && !isAsciiUrl(form.logoUrl)) return t('company_validation_logo');
+    if (form.coverImageUrl.trim() && !isAsciiUrl(form.coverImageUrl)) return t('company_validation_cover');
     return '';
   }
   function submissionPayload() {
@@ -461,19 +456,19 @@ export function CompanySubmitForm() {
 
       <form className="company-submit-form" onSubmit={submitForm} dir={dir}>
         <FormSection title={t('company_listing_basic_info')}>
-          <Field label={t('company_listing_company_name')} required value={form.companyName} placeholder="شركة المثال المالية" onChange={value => updateField('companyName', value)} />
+          <Field label={t('company_listing_company_name')} required value={form.companyName} placeholder={t('company_example_name')} onChange={value => updateField('companyName', value)} />
           <label className="submit-field">
             <span>{t('company_listing_company_type')} <b>*</b></span>
             <select value={form.category} onChange={event => updateField('category', event.target.value as CompanyCategory)}>
               {categoryOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
-          <SelectField label={t('company_listing_country')} required value={form.country} onChange={updateCountry} options={countryOptions.map(option => option.label)} placeholder="اختر الدولة" />
-          <Field label={t('company_listing_city')} value={form.city} onChange={value => updateField('city', value)} listId="company-city-options" placeholder={cityOptions[0] ?? 'اكتب المدينة'} />
+          <SelectField label={t('company_listing_country')} required value={form.country} onChange={updateCountry} options={countryOptions.map(option => option.label)} placeholder={t('company_select_country')} />
+          <Field label={t('company_listing_city')} value={form.city} onChange={value => updateField('city', value)} listId="company-city-options" placeholder={cityOptions[0] ?? t('company_enter_city')} />
           <datalist id="company-city-options">
             {cityOptions.map(city => <option key={city} value={city} />)}
           </datalist>
-          <Field label="عنوان الشركة بالكامل" value={form.fullAddress} placeholder="المنطقة، الشارع، المبنى، الدور أو المكتب" onChange={value => updateField('fullAddress', value)} span />
+          <Field label={t('company_full_address')} value={form.fullAddress} placeholder={t('company_address_placeholder')} onChange={value => updateField('fullAddress', value)} span />
           <MapLocationField
             mapsUrl={form.googleMapsUrl}
             latitude={form.latitude}
@@ -483,8 +478,8 @@ export function CompanySubmitForm() {
             onLongitudeChange={value => updateField('longitude', value)}
             onOpenMaps={openGoogleMapsPicker}
           />
-          <Field label={t('company_listing_short_description')} value={form.shortDescription} placeholder="وصف مختصر عن نشاط الشركة" onChange={value => updateField('shortDescription', value)} span />
-          <Field label={t('company_listing_long_description')} value={form.longDescription} placeholder="وصف تفصيلي يشمل الخبرة والخدمات والأرقام المهمة" onChange={value => updateField('longDescription', value)} span textarea />
+          <Field label={t('company_listing_short_description')} value={form.shortDescription} placeholder={t('company_short_description_placeholder')} onChange={value => updateField('shortDescription', value)} span />
+          <Field label={t('company_listing_long_description')} value={form.longDescription} placeholder={t('company_detailed_description_placeholder')} onChange={value => updateField('longDescription', value)} span textarea />
         </FormSection>
 
         <FormSection title={t('company_listing_contact_info')}>
@@ -498,10 +493,10 @@ export function CompanySubmitForm() {
         </FormSection>
 
         <FormSection title={t('company_listing_extra_info')}>
-          <SelectField label={t('company_listing_founded_year')} value={form.foundedYear} onChange={value => updateField('foundedYear', value)} options={YEAR_OPTIONS} placeholder="اختر السنة" />
-          <Field label={t('company_listing_license_number')} value={form.licenseNumber} placeholder="رقم أو أحرف الترخيص" onChange={value => updateField('licenseNumber', value)} />
-          <Field label={t('company_listing_regulator_name')} value={form.regulatorName} placeholder="اسم الجهة المنظمة أو الرقابية" onChange={value => updateField('regulatorName', value)} />
-          <Field label={t('company_listing_services')} value={form.services} placeholder="اكتب الخدمات مفصولة بفواصل" onChange={value => updateField('services', value)} span textarea />
+          <SelectField label={t('company_listing_founded_year')} value={form.foundedYear} onChange={value => updateField('foundedYear', value)} options={YEAR_OPTIONS} placeholder={t('company_select_year')} />
+          <Field label={t('company_listing_license_number')} value={form.licenseNumber} placeholder={t('company_license_placeholder')} onChange={value => updateField('licenseNumber', value)} />
+          <Field label={t('company_listing_regulator_name')} value={form.regulatorName} placeholder={t('company_regulator_placeholder')} onChange={value => updateField('regulatorName', value)} />
+          <Field label={t('company_listing_services')} value={form.services} placeholder={t('company_services_placeholder')} onChange={value => updateField('services', value)} span textarea />
           <CompanyImageUploadField key={`company-create-logo-${uploadResetVersion}`} mode="create" resetKey={uploadResetVersion} label={t('company_listing_logo_url')} value={form.logoUrl} onChange={value => updateField('logoUrl', value)} kind="logo" />
           <CompanyImageUploadField key={`company-create-cover-${uploadResetVersion}`} mode="create" resetKey={uploadResetVersion} label={t('company_listing_cover_url')} value={form.coverImageUrl} onChange={value => updateField('coverImageUrl', value)} kind="cover" />
         </FormSection>
@@ -552,11 +547,12 @@ function SelectField({ label, value, onChange, options, placeholder, required = 
 }
 
 function PhoneField({ label, code, value, onCodeChange, onChange }: { label: string; code: string; value: string; onCodeChange: (value: string) => void; onChange: (value: string) => void }) {
+  const { t } = useLanguage();
   return (
     <label className="submit-field">
       <span>{label}</span>
       <div className="phone-field">
-        <select value={code} onChange={event => onCodeChange(event.target.value)} aria-label={`${label} رمز الدولة`}>
+        <select value={code} onChange={event => onCodeChange(event.target.value)} aria-label={`${label} — ${t('company_country_code')}`}>
           {DIAL_CODE_OPTIONS.map(([country, dial]) => (
             <option key={`${country}-${dial}`} value={dial}>{dial} {country}</option>
           ))}
@@ -590,20 +586,21 @@ function MapLocationField({
   onLongitudeChange: (value: string) => void;
   onOpenMaps: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="map-location-field span-2">
       <div className="map-location-head">
         <div>
-          <span>تحديد الموقع على Google Maps</span>
-          <small>افتح الخرائط، اختر دبوس الشركة، ثم انسخ رابط المشاركة هنا.</small>
+          <span>{t('company_map_picker_title')}</span>
+          <small>{t('company_map_picker_help')}</small>
         </div>
         <button type="button" onClick={onOpenMaps}>
           <ExternalLink size={16} />
-          فتح Google Maps
+          {t('company_open_google_maps')}
         </button>
       </div>
       <label>
-        <span>رابط الدبوس أو المشاركة</span>
+        <span>{t('company_map_share_link')}</span>
         <div className="map-url-input">
           <MapPin size={17} />
           <input value={mapsUrl} onChange={event => onMapsUrlChange(event.target.value)} inputMode="url" dir="ltr" placeholder="https://maps.google.com/..." />
@@ -611,51 +608,15 @@ function MapLocationField({
       </label>
       <div className="map-coordinate-grid">
         <label>
-          <span>خط العرض</span>
+          <span>{t('company_latitude')}</span>
           <input value={latitude} onChange={event => onLatitudeChange(event.target.value)} inputMode="decimal" dir="ltr" placeholder="29.3759" />
         </label>
         <label>
-          <span>خط الطول</span>
+          <span>{t('company_longitude')}</span>
           <input value={longitude} onChange={event => onLongitudeChange(event.target.value)} inputMode="decimal" dir="ltr" placeholder="47.9774" />
         </label>
       </div>
     </div>
-  );
-}
-
-function ImageUrlField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const valid = isAsciiUrl(value);
-  const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(valid ? value : '');
-  return (
-    <label className="submit-field image-url-field">
-      <span>{label}</span>
-      <input value={value} onChange={event => onChange(event.target.value)} inputMode="url" dir="ltr" placeholder="https://example.com/logo.png" />
-      {value.trim() ? (
-        <div className={`image-preview ${valid && !failed ? '' : 'invalid'}`}>
-          {valid && imageUrl && !failed ? (
-            <Image
-              src={imageUrl}
-              alt={label}
-              width={480}
-              height={260}
-              unoptimized
-              loading="lazy"
-              onError={() => setFailed(true)}
-            />
-          ) : null}
-          {valid && loading ? <span className="image-preview-loader">...</span> : null}
-          <small>
-            {!valid
-              ? 'الرابط غير صحيح'
-              : loading
-                ? 'جاري التحقق من الصورة'
-                : failed
-                  ? 'تعذر عرض صورة من هذا الرابط'
-                  : 'معاينة الصورة'}
-          </small>
-        </div>
-      ) : null}
-    </label>
   );
 }
 

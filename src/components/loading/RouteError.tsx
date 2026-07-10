@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface RouteErrorProps {
   error: Error & { digest?: string };
@@ -8,14 +9,15 @@ interface RouteErrorProps {
   title?: string;
 }
 
-export function RouteError({ error, reset, title = 'حدث خطأ' }: RouteErrorProps) {
+export function RouteError({ error, reset, title }: RouteErrorProps) {
+  const { t, dir } = useLanguage();
   useEffect(() => {
     console.error('[RouteError]', error);
   }, [error]);
 
   return (
     <main
-      dir="rtl"
+      dir={dir}
       className="sfm-route-error"
       style={{
         minHeight: '60vh',
@@ -29,9 +31,9 @@ export function RouteError({ error, reset, title = 'حدث خطأ' }: RouteError
       }}
     >
       <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>⚠️</div>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{title}</h2>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{title || t('error_generic_title')}</h2>
       <p style={{ color: 'var(--muted-foreground, #888)', margin: 0, maxWidth: '30ch', lineHeight: 1.6 }}>
-        {error.message || 'فشل تحميل هذه الصفحة. يرجى المحاولة مجدداً.'}
+        {t('error_generic_body')}
       </p>
       <button
         onClick={reset}
@@ -47,7 +49,7 @@ export function RouteError({ error, reset, title = 'حدث خطأ' }: RouteError
           fontWeight: 500,
         }}
       >
-        إعادة المحاولة
+        {t('market_retry')}
       </button>
     </main>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type ShariahStatus = 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified';
 
@@ -33,29 +34,29 @@ type ApiResponse = {
   code?: string;
 };
 
-const statuses: Array<{ value: ShariahStatus; label: string }> = [
-  { value: 'compliant', label: 'متوافق' },
-  { value: 'non_compliant', label: 'غير متوافق' },
-  { value: 'needs_review', label: 'يحتاج مراجعة' },
-  { value: 'unclassified', label: 'غير مصنف' },
-];
-
-function statusLabel(value: string | null | undefined) {
-  return statuses.find(status => status.value === value)?.label ?? 'غير مصنف';
+function rowName(row: ShariahRow, lang: string) {
+  return lang === 'ar'
+    ? row.company_name_ar || row.company_name_en || row.name || row.symbol
+    : row.company_name_en || row.name || row.company_name_ar || row.symbol;
 }
 
-function rowName(row: ShariahRow) {
-  return row.company_name_ar || row.company_name_en || row.name || row.symbol;
-}
-
-function dateText(value: string | null | undefined) {
+function dateText(value: string | null | undefined, locale: string) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('ar-KW', { dateStyle: 'medium', timeStyle: 'short' });
+  return date.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
+  const { t, lang, dir } = useLanguage();
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const statuses: Array<{ value: ShariahStatus; label: string }> = useMemo(() => [
+    { value: 'compliant', label: t('admin_shariah_compliant') },
+    { value: 'non_compliant', label: t('admin_shariah_non_compliant') },
+    { value: 'needs_review', label: t('admin_shariah_needs_review') },
+    { value: 'unclassified', label: t('admin_shariah_unclassified') },
+  ], [t]);
+  const statusLabel = (value: string | null | undefined) => statuses.find(item => item.value === value)?.label ?? t('admin_shariah_unclassified');
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<ShariahRow[]>([]);
   const [selected, setSelected] = useState<ShariahRow | null>(null);
@@ -78,11 +79,11 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       setItems(Array.isArray(data.items) ? data.items : []);
     } catch (error) {
       setItems([]);
-      setMessage(error instanceof Error ? error.message : 'تعذر تحميل البيانات.');
+      setMessage(t('admin_shariah_load_error'));
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, t]);
 
   useEffect(() => {
     void load('');
@@ -96,7 +97,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       acc[key] += 1;
       return acc;
     }, { compliant: 0, non_compliant: 0, needs_review: 0, unclassified: 0 });
-  }, [items]);
+  }, [items, statuses]);
 
   function choose(row: ShariahRow) {
     setSelected(row);
@@ -118,7 +119,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
           symbol: selected.symbol,
           exchange: selected.exchange,
           providerSymbol: selected.provider_symbol,
-          name: rowName(selected),
+          name: rowName(selected, lang),
           assetType: selected.asset_type,
           country: selected.country,
           currency: selected.currency,
@@ -133,20 +134,20 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       if (!response.ok || data.ok === false || !data.item) throw new Error(data.message || data.code || 'SAVE_FAILED');
       setItems(current => current.map(item => item.symbol === data.item?.symbol ? data.item : item));
       setSelected(data.item);
-      setMessage('تم حفظ التصنيف.');
+      setMessage(t('admin_shariah_saved'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'تعذر حفظ التصنيف.');
+      setMessage(t('admin_shariah_save_error'));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <main dir="rtl" style={{ display: 'grid', gap: 16, padding: 24 }}>
+    <main dir={dir} style={{ display: 'grid', gap: 16, padding: 24 }}>
       <header style={{ display: 'grid', gap: 8 }}>
-        <p style={{ margin: 0, color: '#64748b', fontWeight: 800 }}>لوحة الإدارة</p>
-        <h1 style={{ margin: 0 }}>تصنيفات التوافق الشرعي</h1>
-        <p style={{ margin: 0, color: '#475569' }}>راجع رموز السوق واحفظ التصنيف اليدوي عبر بيانات حقيقية من جدول market_symbols.</p>
+        <p style={{ margin: 0, color: '#64748b', fontWeight: 800 }}>{t('admin_permission_dashboard')}</p>
+        <h1 style={{ margin: 0 }}>{t('admin_shariah_title')}</h1>
+        <p style={{ margin: 0, color: '#475569' }}>{t('admin_shariah_desc')}</p>
       </header>
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
@@ -168,23 +169,23 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
         <input
           value={query}
           onChange={event => setQuery(event.target.value)}
-          placeholder="ابحث بالرمز أو الاسم"
+          placeholder={t('admin_shariah_search_placeholder')}
           style={{ minHeight: 40, minWidth: 240, flex: '1 1 260px', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 12px' }}
         />
         <button type="submit" disabled={loading} style={{ minHeight: 40, borderRadius: 8, padding: '0 14px' }}>
-          {loading ? 'جار التحميل' : 'بحث'}
+          {loading ? t('admin_shariah_loading') : t('admin_search')}
         </button>
       </form>
 
-      {message ? <p style={{ margin: 0, color: message.includes('تم ') ? '#047857' : '#b91c1c', fontWeight: 700 }}>{message}</p> : null}
+      {message ? <p style={{ margin: 0, color: message === t('admin_shariah_saved') ? '#047857' : '#b91c1c', fontWeight: 700 }}>{message}</p> : null}
 
       <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.8fr)', gap: 14, alignItems: 'start' }}>
         <div style={{ overflowX: 'auto', border: '1px solid #dbe3ef', borderRadius: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr>
-                {['الرمز', 'الاسم', 'السوق', 'الحالة', 'آخر مراجعة', ''].map(label => (
-                  <th key={label} style={{ textAlign: 'right', padding: 10, borderBottom: '1px solid #dbe3ef', color: '#475569' }}>{label}</th>
+                {[t('admin_shariah_symbol'), t('admin_name'), t('admin_shariah_market'), t('admin_status'), t('admin_shariah_last_review'), ''].map(label => (
+                  <th key={label} style={{ textAlign: 'start', padding: 10, borderBottom: '1px solid #dbe3ef', color: '#475569' }}>{label}</th>
                 ))}
               </tr>
             </thead>
@@ -192,48 +193,48 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
               {items.map(item => (
                 <tr key={`${item.symbol}:${item.exchange ?? ''}`}>
                   <td style={{ padding: 10, borderBottom: '1px solid #eef2f7', direction: 'ltr', textAlign: 'right', fontWeight: 800 }}>{item.display_symbol || item.symbol}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{rowName(item)}</td>
+                  <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{rowName(item, lang)}</td>
                   <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{item.exchange || '—'}</td>
                   <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{statusLabel(item.shariah_status)}</td>
-                  <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{dateText(item.shariah_last_reviewed_at)}</td>
+                  <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>{dateText(item.shariah_last_reviewed_at, locale)}</td>
                   <td style={{ padding: 10, borderBottom: '1px solid #eef2f7' }}>
-                    <button type="button" onClick={() => choose(item)} style={{ borderRadius: 8, padding: '6px 10px' }}>مراجعة</button>
+                    <button type="button" onClick={() => choose(item)} style={{ borderRadius: 8, padding: '6px 10px' }}>{t('admin_shariah_review')}</button>
                   </td>
                 </tr>
               ))}
               {!items.length ? (
-                <tr><td colSpan={6} style={{ padding: 18, textAlign: 'center', color: '#64748b' }}>{loading ? 'جار التحميل' : 'لا توجد نتائج.'}</td></tr>
+                <tr><td colSpan={6} style={{ padding: 18, textAlign: 'center', color: '#64748b' }}>{loading ? t('admin_shariah_loading') : t('admin_shariah_empty')}</td></tr>
               ) : null}
             </tbody>
           </table>
         </div>
 
         <aside style={{ border: '1px solid #dbe3ef', borderRadius: 8, padding: 14, display: 'grid', gap: 10 }}>
-          <h2 style={{ margin: 0 }}>المراجعة اليدوية</h2>
+          <h2 style={{ margin: 0 }}>{t('admin_shariah_manual_review')}</h2>
           {selected ? (
             <>
               <strong style={{ direction: 'ltr', textAlign: 'right' }}>{selected.display_symbol || selected.symbol}</strong>
-              <span>{rowName(selected)}</span>
+              <span>{rowName(selected, lang)}</span>
               <label style={{ display: 'grid', gap: 6 }}>
-                الحالة
+                {t('admin_status')}
                 <select value={status} onChange={event => setStatus(event.target.value as ShariahStatus)} style={{ minHeight: 38, borderRadius: 8 }}>
                   {statuses.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
                 </select>
               </label>
               <label style={{ display: 'grid', gap: 6 }}>
-                السبب
+                {t('admin_shariah_reason')}
                 <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} style={{ borderRadius: 8, padding: 10 }} />
               </label>
               <label style={{ display: 'grid', gap: 6 }}>
-                المصدر
+                {t('admin_shariah_source')}
                 <input value={source} onChange={event => setSource(event.target.value)} style={{ minHeight: 38, borderRadius: 8, padding: '0 10px' }} />
               </label>
               <button type="button" onClick={() => void save()} disabled={saving} style={{ minHeight: 40, borderRadius: 8 }}>
-                {saving ? 'جار الحفظ' : 'حفظ التصنيف'}
+                {saving ? t('admin_shariah_saving') : t('admin_shariah_save')}
               </button>
             </>
           ) : (
-            <p style={{ margin: 0, color: '#64748b' }}>اختر رمزاً من الجدول لبدء المراجعة.</p>
+            <p style={{ margin: 0, color: '#64748b' }}>{t('admin_shariah_select')}</p>
           )}
         </aside>
       </section>

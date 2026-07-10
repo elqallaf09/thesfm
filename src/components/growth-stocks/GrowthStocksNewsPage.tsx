@@ -1333,15 +1333,15 @@ function trendLabel(value: string | null | undefined, text: typeof COPY[LangCode
 }
 
 function compareAriaLabel(symbol: string, lang: LangCode) {
-  return lang === 'ar' ? `مقارنة سهم ${symbol}` : `Compare ${symbol} stock`;
+  return lang === 'ar' ? `مقارنة سهم ${symbol}` : lang === 'fr' ? `Comparer l’action ${symbol}` : `Compare ${symbol} stock`;
 }
 
 function analysisAriaLabel(symbol: string, lang: LangCode) {
-  return lang === 'ar' ? `عرض تحليل سهم ${symbol}` : `View ${symbol} stock analysis`;
+  return lang === 'ar' ? `عرض تحليل سهم ${symbol}` : lang === 'fr' ? `Afficher l’analyse de l’action ${symbol}` : `View ${symbol} stock analysis`;
 }
 
 function removeAriaLabel(symbol: string, lang: LangCode) {
-  return lang === 'ar' ? `إزالة سهم ${symbol} من المقارنة` : `Remove ${symbol} from comparison`;
+  return lang === 'ar' ? `إزالة سهم ${symbol} من المقارنة` : lang === 'fr' ? `Retirer l’action ${symbol} de la comparaison` : `Remove ${symbol} from comparison`;
 }
 
 function compareActionLabel(selected: boolean | undefined, text: typeof COPY[LangCode], lang: LangCode) {

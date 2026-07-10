@@ -860,6 +860,17 @@ export const TR_MARKET: Record<string, TranslationEntry> = {
   market_movers_empty_body: { ar:'لا توجد بيانات كافية لعرض هذه القائمة حاليًا.', en:'There is not enough data to display this list right now.', fr:'Les données sont insuffisantes pour afficher cette liste actuellement.' },
   market_movers_limited_data: { ar:'قد لا تتوفر جميع بيانات السوق من مزود البيانات الحالي.', en:'Some market data may be unavailable from the current provider.', fr:'Certaines données de marché peuvent être indisponibles auprès du fournisseur actuel.' },
 
+  // ── Private trader access gate ──
+  trader_access_eyebrow: { ar:'صلاحية الوصول إلى المحلل الذكي', en:'Smart Analyzer access', fr:'Accès à l’analyseur intelligent' },
+  trader_access_not_approved_title: { ar:'المحلل الذكي الخاص من SFM', en:'Private SFM Smart Analyzer', fr:'Analyseur intelligent privé SFM' },
+  trader_access_not_approved_body: { ar:'هذه الصفحة متاحة حالياً للمشرفين فقط. ويمكن لاحقاً منح المشتركين المعتمدين صلاحية الوصول من لوحة تحكم الإدارة.', en:'This page is currently available to admins only. Approved subscribers can later be granted access from the admin control panel.', fr:'Cette page est actuellement réservée aux administrateurs. Les abonnés approuvés pourront ensuite recevoir un accès depuis le panneau d’administration.' },
+  trader_access_expired_title: { ar:'انتهت صلاحية الوصول إلى المحلل الذكي', en:'Smart Analyzer access expired', fr:'Accès à l’analyseur intelligent expiré' },
+  trader_access_expired_body: { ar:'انتهت صلاحية اشتراكك أو موافقتك على المحلل الذكي. تواصل مع الإدارة لتجديد الوصول.', en:'Your Smart Analyzer subscription or approval has expired. Contact the admin to renew access.', fr:'Votre abonnement ou votre autorisation d’accès à l’analyseur intelligent a expiré. Contactez l’administration pour renouveler l’accès.' },
+  trader_access_database_unavailable_title: { ar:'تعذر التحقق من صلاحية الوصول', en:'Access check unavailable', fr:'Vérification de l’accès indisponible' },
+  trader_access_database_unavailable_body: { ar:'لم يكتمل إعداد قاعدة البيانات بعد. يجب إعداد مفاتيح خادم Supabase قبل تفعيل موافقات المشتركين.', en:'The database configuration is incomplete. Configure the Supabase server keys before enabling subscriber approvals.', fr:'La configuration de la base de données est incomplète. Configurez les clés serveur Supabase avant d’activer les approbations des abonnés.' },
+  trader_access_back_dashboard: { ar:'العودة إلى لوحة التحكم', en:'Back to dashboard', fr:'Retour au tableau de bord' },
+  trader_access_admin_control: { ar:'لوحة تحكم الإدارة', en:'Admin control', fr:'Panneau d’administration' },
+
   // ── Portfolio comparison card ──
   portfolio_comparison_company:           { ar: 'الشركة',                       en: 'Company',                fr: 'Société' },
   portfolio_comparison_error_body:        { ar: 'حدث خطأ أثناء تحميل المقارنة', en: 'Error loading comparison', fr: 'Erreur lors du chargement' },

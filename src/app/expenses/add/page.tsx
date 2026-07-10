@@ -22,9 +22,9 @@ const EXPENSE_CATEGORIES = [
 ];
 
 const NECESSITIES = [
-  { id: 'essential', ar: 'ضروري', en: 'Essential', color: '#EF4444', hintAr: 'الإيجار، الفواتير' },
-  { id: 'important', ar: 'مهم', en: 'Important', color: '#F59E0B', hintAr: 'التأمين، التعليم' },
-  { id: 'optional', ar: 'اختياري', en: 'Optional', color: '#22C55E', hintAr: 'الترفيه، التسوق' },
+  { id: 'essential', ar: 'ضروري', en: 'Essential', fr: 'Essentiel', color: '#EF4444', hintAr: 'الإيجار، الفواتير', hintEn: 'Rent, bills', hintFr: 'Loyer, factures' },
+  { id: 'important', ar: 'مهم', en: 'Important', fr: 'Important', color: '#F59E0B', hintAr: 'التأمين، التعليم', hintEn: 'Insurance, education', hintFr: 'Assurance, éducation' },
+  { id: 'optional', ar: 'اختياري', en: 'Optional', fr: 'Facultatif', color: '#22C55E', hintAr: 'الترفيه، التسوق', hintEn: 'Entertainment, shopping', hintFr: 'Divertissement, achats' },
 ];
 
 export default function AddExpensePage() {
@@ -67,7 +67,7 @@ export default function AddExpensePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (supabaseConfigError) {
-      alert(supabaseConfigError);
+      alert(isAr ? 'خدمة حفظ البيانات غير مهيأة حالياً.' : isFr ? 'Le service d’enregistrement des données n’est pas configuré actuellement.' : 'The data-saving service is not currently configured.');
       return;
     }
     if (!user || !category || !necessity || !amount) return;
@@ -81,7 +81,7 @@ export default function AddExpensePage() {
         user_id: user.id,
         amount: parseFloat(amount),
         currency,
-        name: `${getLabel(selectedCategory)} | ${isAr ? selectedNecessity.ar : selectedNecessity.en} | ${userText}${notes.trim() ? ` | ${notes.trim()}` : ''}`,
+        name: `${getLabel(selectedCategory)} | ${isAr ? selectedNecessity.ar : isFr ? selectedNecessity.fr : selectedNecessity.en} | ${userText}${notes.trim() ? ` | ${notes.trim()}` : ''}`,
       }).select().single();
 
       if (error) throw error;
@@ -92,7 +92,7 @@ export default function AddExpensePage() {
         router.push('/expenses');
       }, 1500);
     } catch {
-      alert('حدث خطأ أثناء إضافة المصروف');
+      alert(isAr ? 'تعذر إضافة المصروف.' : isFr ? 'Impossible d’ajouter la dépense.' : 'Unable to add the expense.');
     } finally {
       setLoading(false);
     }
@@ -211,7 +211,7 @@ export default function AddExpensePage() {
 
               <div className="form-group">
                 <label className="form-label">
-                  {isAr ? 'درجة الضرورة *' : 'Necessity *'}
+                  {isAr ? 'درجة الضرورة *' : isFr ? 'Niveau de nécessité *' : 'Necessity *'}
                 </label>
                 <div className="necessity-row">
                   {NECESSITIES.map(item => (
@@ -222,8 +222,8 @@ export default function AddExpensePage() {
                       onClick={() => setNecessity(item.id)}
                       style={{ borderColor: necessity === item.id ? item.color : 'rgba(167,243,240,.2)' }}
                     >
-                      <div style={{ fontWeight: 800, color: item.color }}>{isAr ? item.ar : item.en}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : item.id}</div>
+                      <div style={{ fontWeight: 800, color: item.color }}>{isAr ? item.ar : isFr ? item.fr : item.en}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
                     </button>
                   ))}
                 </div>

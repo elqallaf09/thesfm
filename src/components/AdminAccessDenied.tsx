@@ -1,10 +1,14 @@
+'use client';
+
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
+import { useLanguage } from '@/hooks/useLanguage';
 
 export function AdminAccessDenied() {
+  const { t, dir } = useLanguage();
   return (
     <AdminDashboardShell contentStyle={{ width: '100%', maxWidth: '100%' }}>
       <main
-        dir="rtl"
+        dir={dir}
         style={{
           minHeight: '60vh',
           display: 'grid',
@@ -27,10 +31,10 @@ export function AdminAccessDenied() {
           }}
         >
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: 'var(--sfm-foreground, #0f172a)' }}>
-            ليس لديك صلاحية للوصول إلى هذه الصفحة.
+            {t('admin_access_denied_title')}
           </h1>
           <p style={{ margin: 0, color: 'var(--sfm-muted, #64748b)', fontWeight: 800, lineHeight: 1.8 }}>
-            إذا كنت تحتاج هذه الصلاحية، تواصل مع Super Admin.
+            {t('admin_access_denied_body')}
           </p>
         </section>
       </main>

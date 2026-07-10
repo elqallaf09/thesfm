@@ -8,6 +8,7 @@ import { LanguageProvider } from '@/components/LanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
+import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
 
@@ -56,7 +57,6 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${cairo.variable} ${tajawal.variable} ${ibmPlexSansArabic.variable} font-cairo antialiased`}>
-        <a className="sfm-skip-link" href="#main-content">تخطّي إلى المحتوى</a>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -67,6 +67,7 @@ export default function RootLayout({
           <Toaster />
           <AuthProvider>
             <LanguageProvider>
+              <LocalizedSkipLink />
               <CurrencyProvider>
                 <AnalyticsTracker />
                 <AppLayout>{children}</AppLayout>

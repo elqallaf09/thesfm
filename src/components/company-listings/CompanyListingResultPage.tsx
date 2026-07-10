@@ -28,8 +28,8 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
           <ActionButtonLink
             href="/investment-companies"
             icon={<ChevronRight size={18} />}
-            label="العودة إلى الخدمات"
-            ariaLabel="العودة إلى صفحة الخدمات"
+            label={t('company_back_services')}
+            ariaLabel={t('company_back_services_aria')}
             variant="secondary"
           />
         </div>

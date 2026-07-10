@@ -3,6 +3,7 @@
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import type { GulfMarket, GulfMarketId } from '@/lib/gulf/gulfMarkets';
 import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type GulfExchangeSelectorProps = {
   markets: GulfMarket[];
@@ -30,8 +31,9 @@ export function GulfExchangeSelector({
   formatPercent,
   onSelect,
 }: GulfExchangeSelectorProps) {
+  const { t } = useLanguage();
   return (
-    <section className="gulf-news-exchange-grid" aria-label="Gulf markets">
+    <section className="gulf-news-exchange-grid" aria-label={t('gulf_news_title')}>
       {markets.map(market => {
         const active = selectedMarket === market.id;
         const data = marketData[market.id];

@@ -15,7 +15,7 @@ import { TR_MARKET } from '@/lib/translations/market';
 import { TR_SAVINGS } from '@/lib/translations/savings';
 import { TR_COMMON } from '@/lib/translations/common';
 
-function checkDomain(name: string, domain: Record<string, { ar: string; en: string }>) {
+function checkDomain(name: string, domain: Record<string, { ar: string; en: string; fr?: string }>) {
   describe(`domain: ${name}`, () => {
     it('all keys are present in merged TR barrel', () => {
       for (const key of Object.keys(domain)) {
@@ -32,6 +32,12 @@ function checkDomain(name: string, domain: Record<string, { ar: string; en: stri
     it('all keys have non-empty English text', () => {
       for (const [key, entry] of Object.entries(domain)) {
         expect(entry.en, `Empty English for "${key}"`).toBeTruthy();
+      }
+    });
+
+    it('all keys have non-empty French text', () => {
+      for (const [key, entry] of Object.entries(domain)) {
+        expect(entry.fr, `Empty French for "${key}"`).toBeTruthy();
       }
     });
   });
@@ -62,5 +68,12 @@ describe('i18n completeness', () => {
       .filter(([, v]) => !v.ar)
       .map(([k]) => k);
     expect(broken, `Keys with empty Arabic: ${broken.join(', ')}`).toHaveLength(0);
+  });
+
+  it('TR barrel has no key whose French value is empty', () => {
+    const broken = Object.entries(TR)
+      .filter(([, value]) => !value.fr)
+      .map(([key]) => key);
+    expect(broken, `Keys with empty French: ${broken.join(', ')}`).toHaveLength(0);
   });
 });

@@ -2151,7 +2151,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <strong>{dataError.title}</strong>
               <span>{dataError.body}</span>
               <small>{dataError.queryName}</small>
-              <button type="button" onClick={() => window.location.reload()}>{isAr ? 'إعادة المحاولة' : lang === 'fr' ? 'Reessayer' : 'Retry'}</button>
+              <button type="button" onClick={() => window.location.reload()}>{t('market_retry')}</button>
             </div>
           )}
 
@@ -2795,7 +2795,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
       <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}${kind === 'savings' ? ' savings-main' : ''}${kind === 'goals' ? ' goals-main' : ''}`}>
         <header className="sfm-header">
-          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open navigation">
+          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label={t('accessibility_open_navigation')}>
             <Menu size={20} />
           </button>
           <div className="title-wrap">
@@ -2820,7 +2820,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <Image src="/sfm-logo.png" alt="THE SFM" width={32} height={32} priority className="sfm-brand-mark sfm-brand-mark--header" />
                 <strong>THE SFM</strong>
               </span>
-              <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="Close navigation">
+              <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label={t('accessibility_close_navigation')}>
                 <X size={19} />
               </button>
             </div>
@@ -2860,7 +2860,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             <strong>{dataError.title}</strong>
             <span>{dataError.body}</span>
             <small>{dataError.queryName}</small>
-            <button type="button" onClick={() => window.location.reload()}>{isAr ? 'إعادة المحاولة' : lang === 'fr' ? 'Reessayer' : 'Retry'}</button>
+            <button type="button" onClick={() => window.location.reload()}>{t('market_retry')}</button>
           </div>
         )}
 
@@ -3095,7 +3095,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 }}
                 placeholder={t('ai_placeholder')}
               />
-              <button aria-label="Send message" onClick={() => void sendAiMessage()} disabled={chatLoading}>
+              <button aria-label={t('accessibility_send_message')} onClick={() => void sendAiMessage()} disabled={chatLoading}>
                 <Send size={18} />
               </button>
             </div>

@@ -151,6 +151,7 @@ export function GulfNewsPage() {
         sortSource: 'Source name',
         gridView: 'Grid',
         listView: 'List',
+        viewMode: 'View mode',
         loadMore: 'Load more news',
         activeFilters: 'Active filters',
         marketPulse: 'Gulf market pulse',
@@ -179,6 +180,7 @@ export function GulfNewsPage() {
         sortSource: 'Nom de source',
         gridView: 'Grille',
         listView: 'Liste',
+        viewMode: 'Mode d’affichage',
         loadMore: 'Afficher plus',
         activeFilters: 'Filtres actifs',
         marketPulse: 'Synthèse des marchés du Golfe',
@@ -206,6 +208,7 @@ export function GulfNewsPage() {
       sortSource: 'اسم المصدر',
       gridView: 'شبكة',
       listView: 'قائمة',
+      viewMode: 'طريقة العرض',
       loadMore: 'عرض المزيد من الأخبار',
       activeFilters: 'الفلاتر النشطة',
       marketPulse: 'ملخص الأسواق الخليجية اليوم',
@@ -597,7 +600,7 @@ export function GulfNewsPage() {
                     </span>
                     <h2>{ui.resultsTitle}</h2>
                   </div>
-                  <div className="gulf-news-view-toggle" role="group" aria-label="View mode">
+                  <div className="gulf-news-view-toggle" role="group" aria-label={ui.viewMode}>
                     <button type="button" className={viewMode === 'grid' ? 'active' : ''} aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
                       <LayoutGrid size={15} />
                       {ui.gridView}

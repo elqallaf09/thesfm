@@ -140,6 +140,8 @@ type Copy = {
   adminCodeHelp: string;
   languages: Record<Lang, string>;
   contentTypes: Record<ContentType, string>;
+  refresh: string;
+  languageVersion: string;
 };
 
 const COPY: Record<Lang, Copy> = {
@@ -199,6 +201,8 @@ const COPY: Record<Lang, Copy> = {
       'يتم التحقق من الكود من جهة السيرفر وتُخزَّن جلسة الأدمن في كوكي آمنة، بدون عرض الكود في الكود العميل.',
     languages: { ar: 'العربية', en: 'الإنجليزية', fr: 'الفرنسية' },
     contentTypes: { reel: 'ريل', post: 'منشور', story: 'ستوري' },
+    refresh: 'تحديث',
+    languageVersion: 'نسخة الكتابة حسب اللغة',
   },
   en: {
     title: 'Instagram Automation',
@@ -256,6 +260,8 @@ const COPY: Record<Lang, Copy> = {
     adminCodeHelp: 'The code is validated on the server and stored in a secure http-only session cookie.',
     languages: { ar: 'Arabic', en: 'English', fr: 'French' },
     contentTypes: { reel: 'Reel', post: 'Post', story: 'Story' },
+    refresh: 'Refresh',
+    languageVersion: 'Writing version by language',
   },
   fr: {
     title: 'Automatisation Instagram',
@@ -313,6 +319,8 @@ const COPY: Record<Lang, Copy> = {
     adminCodeHelp: 'La vÃ©rification se fait uniquement côté serveur via un cookie de session httpOnly.',
     languages: { ar: 'Arabe', en: 'Anglais', fr: 'FranÃ§ais' },
     contentTypes: { reel: 'Reel', post: 'Post', story: 'Story' },
+    refresh: 'Actualiser',
+    languageVersion: 'Version du texte par langue',
   },
 };
 
@@ -911,7 +919,7 @@ export default function InstagramAutomationClient({
           </div>
         </section>
 
-        <section className="ig-stats" aria-label="instagram automation summary">
+        <section className="ig-stats" aria-label={text.title}>
           <div className="ig-stat"><span>{text.statusDraft}</span><strong>{statusCounts.draft}</strong></div>
           <div className="ig-stat"><span>{text.statusPending}</span><strong>{statusCounts.approval}</strong></div>
           <div className="ig-stat"><span>{text.statusApproved}</span><strong>{statusCounts.approved}</strong></div>
@@ -981,7 +989,7 @@ export default function InstagramAutomationClient({
             <section className="ig-panel">
               <h2><Clock3 size={17} />{text.timeline}</h2>
               <div className="ig-meta">
-                <span className="ig-badge">مسودة: {selectedPost ? mapCodeToStatus(selectedPost.status, text) : '-'}</span>
+                <span className="ig-badge">{text.statusDraft}: {selectedPost ? mapCodeToStatus(selectedPost.status, text) : '-'}</span>
                 {selectedPost ? <span className="ig-badge">{text.platform}: {selectedPost.platform ?? 'instagram'}</span> : null}
                 {selectedPost ? <span className="ig-badge">{text.language}: {selectedPost.language ?? 'ar'}</span> : null}
               </div>
@@ -1042,9 +1050,9 @@ export default function InstagramAutomationClient({
                 <label className="ig-field wide">
                   <span>{text.topic}</span>
                   <input
-                    dir="rtl"
+                    dir={dir}
                     value={form.topic}
-                    placeholder="مثال: إطلاق حملة عيد المرأة"
+                    placeholder={text.topic}
                     onChange={event => setForm(current => ({ ...current, topic: event.target.value }))}
                     required
                   />
@@ -1059,14 +1067,14 @@ export default function InstagramAutomationClient({
                 </label>
                 <div className="ig-field wide">
                   <span>{text.notes}</span>
-                  <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="أضف الملاحظات إن وجدت" />
+                  <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder={text.notes} />
                 </div>
                 <label className="ig-field wide">
                   <span>{text.titleField}</span>
                   <input
                     value={form.titles[activeLanguage]}
                     onChange={event => updateLocalized('titles', event.target.value)}
-                    placeholder="عنوان واضح وموجز"
+                    placeholder={text.titleField}
                   />
                 </label>
                 <label className="ig-field wide">
@@ -1074,7 +1082,7 @@ export default function InstagramAutomationClient({
                   <textarea
                     value={form.assetPrompts[activeLanguage]}
                     onChange={event => updateLocalized('assetPrompts', event.target.value)}
-                    placeholder="اكتب وصف مظهر الصورة المطلوبة"
+                    placeholder={text.prompt}
                   />
                 </label>
                 <label className="ig-field wide">
@@ -1082,7 +1090,7 @@ export default function InstagramAutomationClient({
                   <textarea
                     value={form.captions[activeLanguage]}
                     onChange={event => updateLocalized('captions', event.target.value)}
-                    placeholder="النص الرئيسي للصورة"
+                    placeholder={text.caption}
                   />
                 </label>
                 <label className="ig-field">
@@ -1099,7 +1107,7 @@ export default function InstagramAutomationClient({
                   <input
                     value={form.ctas[activeLanguage]}
                     onChange={event => updateLocalized('ctas', event.target.value)}
-                    placeholder="مثال: تابع الرابط"
+                    placeholder={text.cta}
                   />
                 </label>
                 <label className="ig-field wide">
@@ -1112,7 +1120,7 @@ export default function InstagramAutomationClient({
                     dir="ltr"
                     value={form.thumbnailUrl}
                     onChange={event => setForm(current => ({ ...current, thumbnailUrl: event.target.value }))}
-                    placeholder="رابط الصورة المصغرة"
+                    placeholder={text.thumbnailUrl}
                   />
                 </label>
                 <label className="ig-field wide">
@@ -1128,13 +1136,13 @@ export default function InstagramAutomationClient({
                   <textarea
                     value={form.descriptions[activeLanguage]}
                     onChange={event => updateLocalized('descriptions', event.target.value)}
-                    placeholder="معلومات إضافية للمراجعة"
+                    placeholder={text.description}
                   />
                 </label>
               </div>
 
               <label className="ig-field wide">
-                <span>نسخة الكتابة حسب اللغة</span>
+                <span>{text.languageVersion}</span>
                 <div className="ig-tabs">
                   {(['ar', 'en', 'fr'] as Lang[]).map(item => (
                     <button
@@ -1186,7 +1194,7 @@ export default function InstagramAutomationClient({
                 disabled={loading}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <BellRing size={16} />}
-                تحديث
+                {text.refresh}
               </button>
             </div>
 

@@ -6,6 +6,31 @@
   const ROOT = "/thesfm-trader-own";
   const PAGE_SIZE = 25;
   const LANG_STORAGE_KEY = "sfm_lang";
+  const FRENCH_COPY = Object.freeze({
+    "All markets": "Tous les marchés", "US stocks": "Actions américaines", "Kuwait": "Koweït",
+    "Saudi": "Arabie saoudite", "UAE": "Émirats arabes unis", "Qatar": "Qatar", "Bahrain": "Bahreïn",
+    "Oman": "Oman", "Forex": "Devises", "Crypto": "Cryptoactifs", "Commodities": "Matières premières",
+    "Indices": "Indices", "ETFs": "ETF", "All assets": "Tous les actifs", "Stocks": "Actions",
+    "Funds": "Fonds", "Display symbol": "Symbole affiché", "Name": "Nom", "Market": "Marché",
+    "Currency": "Devise", "Source": "Source", "Asset type": "Type d’actif", "Provider symbol": "Symbole du fournisseur",
+    "Visible": "Visibles", "After filters": "Après filtrage", "Loaded": "Chargés",
+    "Deduped catalog": "Catalogue dédoublonné", "Hidden": "Masqués", "Incomplete rows": "Lignes incomplètes",
+    "Duplicates": "Doublons", "Merged rows": "Lignes fusionnées", "Admin diagnostics": "Diagnostics d’administration",
+    "Provider markets summary": "Résumé des marchés du fournisseur", "Settings": "Paramètres",
+    "Detailed provider market rows are available under Settings / Admin diagnostics. The table is hidden here to keep markets focused on tradable assets.": "Les lignes détaillées des marchés du fournisseur sont disponibles dans Paramètres / Diagnostics d’administration. Le tableau est masqué ici afin de conserver l’accent sur les actifs négociables.",
+    "Provider markets catalog, symbols, and source quality": "Catalogue des marchés du fournisseur, symboles et qualité des sources",
+    "Search symbol, name, provider symbol": "Rechercher un symbole, un nom ou un symbole fournisseur",
+    "Search": "Rechercher", "Asset": "Actif", "Rows": "Lignes", "Sort": "Tri", "Direction": "Sens",
+    "Loading provider market diagnostics...": "Chargement des diagnostics des marchés du fournisseur…",
+    "Diagnostics unavailable": "Diagnostics indisponibles", "Retry": "Réessayer",
+    "No provider market rows match these filters.": "Aucune ligne de marché du fournisseur ne correspond à ces filtres.",
+    "Showing": "Affichage de", "of": "sur", "Page": "Page", "Previous": "Précédent", "Next": "Suivant",
+    "Incomplete": "Incomplet", "Incomplete row": "Ligne incomplète", "Provider": "Fournisseur",
+    "All sources": "Toutes les sources", "Catalog": "Catalogue", "All currencies": "Toutes les devises",
+    "Complete only": "Lignes complètes uniquement", "All rows": "Toutes les lignes", "Incomplete only": "Lignes incomplètes uniquement",
+    "Ascending": "Croissant", "Descending": "Décroissant",
+    "Unable to load provider market diagnostics.": "Impossible de charger les diagnostics des marchés du fournisseur."
+  });
   const MARKET_FILTERS = [
     ["all", "كل الأسواق", "All markets"],
     ["us-stocks", "الأسهم الأمريكية", "US stocks"],
@@ -73,15 +98,19 @@
   function currentLanguage() {
     try {
       const stored = localStorage.getItem(LANG_STORAGE_KEY);
+      if (String(stored || "").toLowerCase().startsWith("fr")) return "fr";
       if (String(stored || "").toLowerCase().startsWith("en")) return "en";
       const settings = JSON.parse(localStorage.getItem("sfmTraderSettings:v1") || "{}");
+      if (String(settings.lang || settings.language || "").toLowerCase().startsWith("fr")) return "fr";
       if (String(settings.lang || settings.language || "").toLowerCase().startsWith("en")) return "en";
     } catch (_error) {}
     return "ar";
   }
 
-  function pair(ar, en) {
-    return currentLanguage() === "en" ? en : ar;
+  function pair(ar, en, fr) {
+    const lang = currentLanguage();
+    if (lang === "fr") return fr || FRENCH_COPY[en] || en;
+    return lang === "en" ? en : ar;
   }
 
   function labelText(label) {
@@ -89,7 +118,7 @@
   }
 
   function rowCountLabel(count) {
-    return currentLanguage() === "en" ? `${number(count)} rows` : `${number(count)} صف`;
+    return currentLanguage() === "fr" ? `${number(count)} lignes` : currentLanguage() === "en" ? `${number(count)} rows` : `${number(count)} صف`;
   }
 
   function arr(value) {
@@ -179,8 +208,12 @@
         if (!response.ok || !payload) throw new Error((payload && payload.message) || `markets_${response.status}`);
         view.payload = payload;
       })
-      .catch((error) => {
-        view.error = error instanceof Error ? error.message : String(error || "Unable to load provider markets");
+      .catch((_error) => {
+        view.error = pair(
+          "تعذر تحميل تشخيصات أسواق المزود.",
+          "Unable to load provider market diagnostics.",
+          "Impossible de charger les diagnostics des marchés du fournisseur."
+        );
       })
       .finally(() => {
         view.loading = false;

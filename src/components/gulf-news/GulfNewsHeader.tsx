@@ -1,6 +1,7 @@
 'use client';
 
 import { Landmark, RefreshCcw } from 'lucide-react';
+import { useLanguage } from '@/hooks/useLanguage';
 
 type GulfNewsHeaderProps = {
   title: string;
@@ -10,6 +11,7 @@ type GulfNewsHeaderProps = {
 };
 
 export function GulfNewsHeader({ title, subtitle, refreshing, onRefresh }: GulfNewsHeaderProps) {
+  const { t } = useLanguage();
   return (
     <section className="gulf-news-header">
       <div className="gulf-news-title-row">
@@ -25,7 +27,7 @@ export function GulfNewsHeader({ title, subtitle, refreshing, onRefresh }: GulfN
         </div>
       </div>
       <div className="gulf-news-header-actions">
-        <button type="button" className="gulf-news-icon-btn" aria-label="Refresh" onClick={onRefresh} disabled={refreshing}>
+        <button type="button" className="gulf-news-icon-btn" aria-label={t('accessibility_refresh')} onClick={onRefresh} disabled={refreshing}>
           <RefreshCcw size={18} className={refreshing ? 'spinning' : ''} />
         </button>
       </div>

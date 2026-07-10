@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export default function Error({
   error,
 }: {
   error: Error & { digest?: string; cause?: any };
 }) {
+  const { t, dir } = useLanguage();
   const [errorDetails, setErrorDetails] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -24,8 +26,8 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4">
-      <div className="text-2xl font-semibold text-red-500">Error</div>
+    <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4" dir={dir}>
+      <div className="text-2xl font-semibold text-red-500">{t('error_generic_title')}</div>
       <Button
         onClick={() => {
           if (window.parent && window.parent !== window) {
@@ -41,7 +43,7 @@ export default function Error({
         variant="default"
         className="mt-4 cursor-pointer"
       >
-        Fix Error
+        {t('error_report_action')}
       </Button>
     </div>
   );

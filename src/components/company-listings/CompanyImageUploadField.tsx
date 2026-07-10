@@ -5,6 +5,7 @@ import NextImage from 'next/image';
 import { ImagePlus, Loader2, RotateCcw, Trash2, UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
 import { useResolvedImageUrl } from '@/components/company-listings/useResolvedImageUrl';
 
 type CompanyImageKind = 'logo' | 'cover';
@@ -25,16 +26,6 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
-};
-
-const AR_MESSAGES = {
-  unsupportedType: 'نوع الملف غير مدعوم. يرجى رفع صورة PNG أو JPG أو WEBP.',
-  logoTooLarge: 'حجم الصورة كبير جداً. الحد الأقصى للشعار 2MB.',
-  coverTooLarge: 'حجم الصورة كبير جداً. الحد الأقصى لصورة الغلاف 5MB.',
-  logoRatio: 'يفضل أن يكون شعار الشركة بصورة مربعة.',
-  coverRatio: 'يفضل أن تكون صورة الغلاف بعرض أكبر من الارتفاع.',
-  authRequired: 'يرجى تسجيل الدخول لرفع الصور.',
-  uploadFailed: 'تعذر رفع الصورة حالياً. حاول مرة أخرى.',
 };
 
 function isAsciiUrl(value: string) {
@@ -107,6 +98,7 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
   const inputRef = useRef<HTMLInputElement | null>(null);
   const fieldId = useId();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const valid = isAsciiUrl(value);
   const { imageUrl, loading, failed, setFailed } = useResolvedImageUrl(valid ? value : '');
   const [uploading, setUploading] = useState(false);
@@ -124,17 +116,17 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
   const copy = useMemo(() => {
     if (kind === 'logo') {
       return {
-        uploadLabel: 'رفع شعار الشركة',
-        hint: 'PNG أو JPG أو WEBP - الحد الأقصى 2MB - يفضل 512x512 أو 800x800',
+        uploadLabel: t('company_upload_logo'),
+        hint: t('company_upload_logo_hint'),
         maxBytes: 2 * 1024 * 1024,
       };
     }
     return {
-      uploadLabel: 'رفع صورة الغلاف',
-      hint: 'PNG أو JPG أو WEBP - الحد الأقصى 5MB - يفضل 1600x600',
+      uploadLabel: t('company_upload_cover'),
+      hint: t('company_upload_cover_hint'),
       maxBytes: 5 * 1024 * 1024,
     };
-  }, [kind]);
+  }, [kind, t]);
 
   useEffect(() => {
     setError('');
@@ -148,15 +140,15 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
     setWarning('');
     if (!file) return;
     if (!user?.id) {
-      setError(AR_MESSAGES.authRequired);
+      setError(t('company_upload_auth_error'));
       return;
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError(AR_MESSAGES.unsupportedType);
+      setError(t('company_upload_type_error'));
       return;
     }
     if (file.size > copy.maxBytes) {
-      setError(kind === 'logo' ? AR_MESSAGES.logoTooLarge : AR_MESSAGES.coverTooLarge);
+      setError(kind === 'logo' ? t('company_logo_size_error') : t('company_cover_size_error'));
       return;
     }
 
@@ -164,9 +156,9 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
       const dimensions = await readImageDimensions(file);
       if (kind === 'logo') {
         const ratio = dimensions.width / dimensions.height;
-        if (ratio < 0.82 || ratio > 1.22) setWarning(AR_MESSAGES.logoRatio);
+        if (ratio < 0.82 || ratio > 1.22) setWarning(t('company_logo_ratio_warning'));
       } else if (dimensions.width <= dimensions.height || dimensions.width / dimensions.height < 2) {
-        setWarning(AR_MESSAGES.coverRatio);
+        setWarning(t('company_cover_ratio_warning'));
       }
 
       setUploading(true);
@@ -183,7 +175,7 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
       onChange(data.publicUrl);
       setFailed(false);
     } catch {
-      setError(AR_MESSAGES.uploadFailed);
+      setError(t('company_upload_error'));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -211,7 +203,7 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
           />
           <button type="button" className="image-upload-trigger" disabled={uploading} onClick={() => inputRef.current?.click()}>
             {uploading ? <Loader2 size={18} className="image-upload-spin" /> : <UploadCloud size={18} />}
-            <span>{uploading ? 'جاري رفع الصورة...' : copy.uploadLabel}</span>
+            <span>{uploading ? t('company_uploading_image') : copy.uploadLabel}</span>
           </button>
           <small id={`${fieldId}-hint`}>{copy.hint}</small>
         </div>
@@ -241,28 +233,28 @@ export function CompanyImageUploadField({ label, value, onChange, kind, companyI
             {valid && loading ? <span className="image-preview-loader">...</span> : null}
             <small>
               {!valid
-                ? 'الرابط غير صحيح'
+                ? t('company_invalid_link')
                 : loading
-                  ? 'جاري التحقق من الصورة'
+                  ? t('company_checking_image')
                   : failed
-                    ? 'تعذر عرض صورة من هذا الرابط'
-                    : 'معاينة الصورة'}
+                    ? t('company_image_unavailable')
+                    : t('company_image_preview')}
             </small>
             <div className="image-upload-actions">
               <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}>
                 <RotateCcw size={14} />
-                استبدال الصورة
+                {t('company_replace_image')}
               </button>
               <button type="button" className="danger" onClick={() => onChange('')} disabled={uploading}>
                 <Trash2 size={14} />
-                حذف الصورة
+                {t('company_delete_image')}
               </button>
             </div>
           </div>
         ) : (
           <div className="image-upload-empty">
             <ImagePlus size={18} />
-            <span>اسحب الصورة هنا أو اضغط للاختيار</span>
+            <span>{t('company_drop_image')}</span>
           </div>
         )}
         {warning ? (

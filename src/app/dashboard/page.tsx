@@ -248,6 +248,8 @@ const TEXT = {
     completeSetup: 'إكمال الإعداد',
     loading: 'جاري تحميل لوحة القيادة...',
     dataError: 'تعذر تحميل بعض البيانات حالياً',
+    debugLabel: 'تشخيص لوحة التحكم التنفيذية',
+    debugTitle: 'تشخيص لوحة التحكم: أقسام تعذر تحميلها',
     addIncomeAction: 'أضف دخلك الشهري لتفعيل تقارير الدخل ولوحة القيادة.',
     reportNeedsDataAction: 'أكمل البيانات المطلوبة في مركز التقارير.',
     overdueTaskAction: 'راجع المهام المتأخرة في مشاريعك.',
@@ -344,6 +346,8 @@ const TEXT = {
     completeSetup: 'Complete Setup',
     loading: 'Loading home page...',
     dataError: 'Could not load some data right now.',
+    debugLabel: 'Executive dashboard diagnostics',
+    debugTitle: 'Dashboard diagnostics: failed sections',
     addIncomeAction: 'Add monthly income to activate income reports and dashboard totals.',
     reportNeedsDataAction: 'Complete the required data in Reports Center.',
     overdueTaskAction: 'Review overdue tasks in your projects.',
@@ -440,6 +444,8 @@ const TEXT = {
     completeSetup: 'Terminer la configuration',
     loading: 'Chargement du tableau de bord exécutif...',
     dataError: 'Impossible de charger certaines données pour le moment.',
+    debugLabel: 'Diagnostics du tableau de bord exécutif',
+    debugTitle: 'Diagnostics du tableau de bord : sections en échec',
     addIncomeAction: 'Ajoutez vos revenus mensuels pour activer les rapports et les totaux du tableau de bord.',
     reportNeedsDataAction: 'Complétez les données requises dans le Centre des rapports.',
     overdueTaskAction: 'Vérifiez les tâches en retard de vos projets.',
@@ -853,8 +859,8 @@ export default function ExecutiveDashboardPage() {
         ) : null}
 
         {process.env.NODE_ENV !== 'production' && loadFailures.length > 0 ? (
-          <section className="dashboard-debug-panel" aria-label="Executive dashboard debug">
-            <strong>Dashboard debug: failed sections</strong>
+          <section className="dashboard-debug-panel" aria-label={text.debugLabel}>
+            <strong>{text.debugTitle}</strong>
             <ul>
               {loadFailures.map((failure) => (
                 <li key={`${failure.section}-${failure.table}`}>

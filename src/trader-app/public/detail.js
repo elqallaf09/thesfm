@@ -9,7 +9,15 @@ const LANGUAGE_CHANGE_EVENT = "sfm-language-change";
 const Recommendation = window.SFMRecommendation;
 const DETAIL_BRAND_AR = "اس اف ام المحلل الذكي";
 const DETAIL_BRAND_EN = "SFM Smart Analyzer";
+const DETAIL_BRAND_FR = "Analyseur intelligent SFM";
 let detailTitleSymbol = symbol;
+
+function detailNumberLocale() {
+  const language = getDetailLanguage();
+  if (language === "fr") return "fr-FR-u-nu-latn";
+  if (language === "en") return "en-US-u-nu-latn";
+  return NUMBER_LOCALE;
+}
 
 function normalizeDigits(value) {
   return String(value ?? "")
@@ -365,8 +373,248 @@ const DETAIL_EXTRA_TEXT_TRANSLATIONS = {
   "أسهم أشباه الموصلات": "Semiconductor stocks",
   "قائمة مخصصة": "Custom list",
   "رمز مضاف من قائمة المراقبة، وقد يحتاج مزود بيانات يدعمه بشكل مباشر.": "A watchlist symbol that may require a provider with direct support.",
-  "السوق مغلق الآن؛ راقب الإشارة عند الافتتاح ولا تدخل قبل ظهور أسعار حية.": "The market is closed now; monitor the signal at the open and do not enter before live prices appear."
+  "السوق مغلق الآن؛ راقب الإشارة عند الافتتاح ولا تدخل قبل ظهور أسعار حية.": "The market is closed now; monitor the signal at the open and do not enter before live prices appear.",
+  "التوصية النهائية المشتركة ليست شراء أو بيع.": "The combined final recommendation is neither buy nor sell.",
+  "جودة البيانات متأخرة أو جزئية، لذلك تم خفض الإشارة إلى المراقبة.": "Data quality is delayed or partial, so the signal was reduced to watch.",
+  "المؤشرات الفنية الأساسية غير مكتملة.": "Core technical indicators are incomplete.",
+  "مستويات الدعم والمقاومة غير مكتملة.": "Support and resistance levels are incomplete.",
+  "ATR غير متاح، لذلك لا يمكن ضبط المخاطرة بثقة.": "ATR is unavailable, so risk cannot be set confidently.",
+  "سياق الأخبار أو المعنويات غير متاح.": "News or sentiment context is unavailable.",
+  "نسبة العائد إلى المخاطرة لا تجتاز بوابة الأمان.": "The risk/reward ratio does not pass the safety gate.",
+  "المخاطرة مرتفعة، لذلك لا تُعرض إشارة شراء أو بيع.": "Risk is high, so no buy or sell signal is shown.",
+  "البيانات غير كافية لإصدار إشارة شراء أو بيع آمنة.": "There is not enough data to issue a safe buy or sell signal."
 };
+const DETAIL_FRENCH_TEXT = Object.freeze({
+  "SFM Smart Analyzer": "Analyseur intelligent SFM",
+  "Stock details - SFM Smart Analyzer": "Détails de l’action - Analyseur intelligent SFM",
+  "Stock analysis page": "Page d’analyse de l’action",
+  "Back to markets": "Retour aux marchés",
+  "Loading analysis": "Chargement de l’analyse",
+  "Live alert": "Alerte en direct",
+  "The combined final recommendation is neither buy nor sell.": "La recommandation finale combinée n’est ni un achat ni une vente.",
+  "Data quality is delayed or partial, so the signal was reduced to watch.": "Les données sont différées ou partielles ; le signal a donc été ramené à la surveillance.",
+  "Core technical indicators are incomplete.": "Les principaux indicateurs techniques sont incomplets.",
+  "Support and resistance levels are incomplete.": "Les niveaux de support et de résistance sont incomplets.",
+  "ATR is unavailable, so risk cannot be set confidently.": "L’ATR est indisponible ; le risque ne peut donc pas être défini avec fiabilité.",
+  "News or sentiment context is unavailable.": "Le contexte d’actualité ou de sentiment est indisponible.",
+  "The risk/reward ratio does not pass the safety gate.": "Le rapport risque/rendement ne franchit pas le seuil de sécurité.",
+  "Risk is high, so no buy or sell signal is shown.": "Le risque est élevé ; aucun signal d’achat ou de vente n’est affiché.",
+  "There is not enough data to issue a safe buy or sell signal.": "Les données sont insuffisantes pour émettre un signal d’achat ou de vente sûr.",
+  "Preparing the recommendation.": "Préparation de la recommandation.",
+  "Current price": "Cours actuel", "Expected price": "Cours attendu", "Target 1": "Objectif 1", "Target 2": "Objectif 2",
+  "Stop loss": "Stop de protection", "Support": "Support", "Resistance": "Résistance", "Expected move": "Mouvement attendu",
+  "Duration": "Durée", "Score": "Score", "Risk": "Risque", "Analysis quality": "Qualité de l’analyse",
+  "Data health": "État des données", "General information": "Informations générales", "What is this stock?": "Qu’est-ce que cette action ?",
+  "Sharia": "Charia", "Sharia compliance": "Conformité à la charia", "From 1 minute to 1 month": "D’une minute à un mois",
+  "Timeframe analysis": "Analyse des unités de temps", "Outlook": "Perspectives", "Upcoming targets": "Prochains objectifs",
+  "Reasons": "Raisons", "Why this recommendation?": "Pourquoi cette recommandation ?", "Mini chart": "Mini-graphique",
+  "Recent price action": "Évolution récente du cours", "Price movement chart": "Graphique d’évolution du cours",
+  "Backtest": "Test rétrospectif", "Signal quality": "Qualité du signal", "No stock symbol was selected.": "Aucun symbole boursier n’a été sélectionné.",
+  "Analyzing the stock": "Analyse de l’action", "Could not load stock details": "Impossible de charger les détails de l’action",
+  "Live cached data": "Données en direct mises en cache", "Fresh analysis": "Nouvelle analyse",
+  "Not enough descriptive information is available for this symbol.": "Les informations descriptives disponibles pour ce symbole sont insuffisantes.",
+  "confidence": "confiance", "Timeframe agreement": "Concordance des unités de temps", "coverage": "couverture",
+  "Specialty": "Spécialité", "Market": "Marché", "Region": "Région", "Exchange": "Bourse", "Currency": "Devise",
+  "Market status": "État du marché", "Provider note": "Note du fournisseur", "Relative volume": "Volume relatif",
+  "Unknown": "Inconnu", "No confirmed Sharia rating is available.": "Aucune classification conforme à la charia n’est confirmée.",
+  "Sharia compliant": "Conforme à la charia", "Not Sharia compliant": "Non conforme à la charia",
+  "Sharia status is disputed": "Statut de conformité à la charia discuté", "Source": "Source",
+  "Internal rating, subject to updates": "Classification interne susceptible d’être mise à jour", "Last review": "Dernière révision",
+  "Timeframes are currently incomplete for this symbol.": "Les unités de temps sont actuellement incomplètes pour ce symbole.",
+  "Confidence": "Confiance", "Momentum": "Momentum", "Trend": "Tendance",
+  "No monthly targets are available for this symbol.": "Aucun objectif mensuel n’est disponible pour ce symbole.",
+  "No sufficient reasons are available for this symbol right now.": "Aucune justification suffisante n’est disponible pour ce symbole pour le moment.",
+  "Win rate": "Taux de réussite", "Samples": "Échantillons", "Test horizon": "Horizon du test", "days": "jours",
+  "Average return": "Rendement moyen", "Execution plan": "Plan d’exécution", "Risk notes": "Notes sur les risques",
+  "Buy now": "Acheter maintenant", "Strong buy signal": "Signal d’achat fort", "Watch price and target before execution.": "Surveillez le cours et l’objectif avant l’exécution.",
+  "Sell now": "Vendre maintenant", "Clear sell signal": "Signal de vente clair", "Avoid long entry until the timeframes change.": "Évitez une position acheteuse tant que les unités de temps n’ont pas changé.",
+  "Wait": "Attendre", "Do not trade this stock now": "Ne négociez pas cette action pour le moment",
+  "Loading failed": "Échec du chargement", "Very strong": "Très fort", "Strong": "Fort", "Medium": "Moyen", "Weak": "Faible",
+  "Yes": "Oui", "No": "Non", "Provider symbol used": "Symbole du fournisseur utilisé", "Fallback used?": "Solution de repli utilisée ?",
+  "Last updated": "Dernière mise à jour", "Data quality": "Qualité des données", "Reason": "Raison",
+  "Analysis quality": "Qualité de l’analyse", "The shared final recommendation does not allow a buy or sell signal now.": "La recommandation finale commune ne permet pas actuellement de signal d’achat ou de vente.",
+  "Final buy signal": "Signal final d’achat", "Final sell signal": "Signal final de vente", "Insufficient data": "Données insuffisantes",
+  "Under watch": "Sous surveillance", "Unavailable": "Indisponible", "Price unavailable": "Cours indisponible",
+  "Change unavailable": "Variation indisponible", "Unspecified": "Non précisé", "Live": "En direct", "Cached data": "Données en cache",
+  "Delayed": "Différé", "Partial": "Partiel", "Low risk": "Risque faible", "Medium risk": "Risque moyen", "High risk": "Risque élevé",
+  "Buy": "Acheter", "Sell": "Vendre", "Watch": "Surveiller", "Shariah-compliant": "Conforme à la charia",
+  "Not Shariah-compliant": "Non conforme à la charia", "Needs review": "À examiner", "Unclassified": "Non classé",
+  "1 minute": "1 minute", "15 minutes": "15 minutes", "30 minutes": "30 minutes", "1 hour": "1 heure",
+  "Daily": "Journalier", "Weekly": "Hebdomadaire", "Monthly": "Mensuel", "Yearly": "Annuel"
+});
+const DETAIL_FRENCH_EXTRA_TEXT = Object.freeze({
+  "A quick summary showing whether short and long timeframes agree or conflict.": "Un résumé rapide indiquant si les unités de temps courtes et longues concordent ou divergent.",
+  "Timeframes agree by": "Les unités de temps concordent à",
+  "and confidence": "et la confiance",
+  "The trend leans sell with confidence": "La tendance penche vers la vente avec une confiance de",
+  "Signals are insufficient or conflicting. It is better to wait until entry timeframes align with the daily.": "Les signaux sont insuffisants ou contradictoires. Il est préférable d’attendre que les unités de temps d’entrée s’alignent sur l’unité journalière.",
+  "Refresh page now": "Actualiser la page maintenant",
+  "Oil and energy": "Pétrole et énergie",
+  "Requires Sharia review": "Nécessite une révision conforme à la charia",
+  "Commodity contract requires Sharia review": "Le contrat sur matières premières nécessite une révision conforme à la charia",
+  "No confirmed Sharia classification is available for this symbol in the app right now": "Aucune classification conforme à la charia n’est actuellement confirmée pour ce symbole dans l’application",
+  "No confirmed Sharia classification is available for this symbol in the app right now.": "Aucune classification conforme à la charia n’est actuellement confirmée pour ce symbole dans l’application.",
+  "Internal classification may be updated": "La classification interne peut être mise à jour",
+  "Local classification based on general Sharia screening references and requiring periodic updates": "Classification locale fondée sur des références générales de filtrage conforme à la charia et nécessitant des mises à jour périodiques",
+  "Internally classified as Sharia compliant based on the data available in the app.": "Classé en interne comme conforme à la charia selon les données disponibles dans l’application.",
+  "Internally classified as not Sharia compliant; it is better to avoid it if Sharia compliance is required.": "Classé en interne comme non conforme à la charia ; il est préférable de l’éviter si cette conformité est requise.",
+  "The Sharia classification is not conclusive in the app data and requires review by a Sharia screening provider.": "La classification conforme à la charia n’est pas concluante dans les données de l’application et doit être examinée par un fournisseur spécialisé.",
+  "Disputed": "Discuté",
+  "Disputed Sharia status": "Statut de conformité à la charia discuté",
+  "Bullish": "Haussier",
+  "Bearish": "Baissier",
+  "Mixed": "Mixte",
+  "Sideways": "Latéral",
+  "Neutral": "Neutre",
+  "Excellent": "Excellent",
+  "Normal": "Normal",
+  "High": "Élevé",
+  "Low": "Faible",
+  "Avoid this trade now": "Évitez cette transaction pour le moment",
+  "Conditional buy opportunity": "Opportunité d’achat conditionnelle",
+  "Clear selling pressure": "Pression vendeuse nette",
+  "Wait for confirmation": "Attendre la confirmation",
+  "Do not trade": "Ne pas négocier",
+  "No clear trade is available; wait for timeframe agreement.": "Aucune transaction claire n’est disponible ; attendez la concordance des unités de temps.",
+  "No clear trade is available; wait for timeframe agreement": "Aucune transaction claire n’est disponible ; attendez la concordance des unités de temps",
+  "The signal is not strong enough for entry. It is better to wait for the fast timeframes to align with the daily.": "Le signal n’est pas assez fort pour entrer. Il est préférable d’attendre que les unités de temps rapides s’alignent sur l’unité journalière.",
+  "Risk is high compared with signal quality.": "Le risque est élevé par rapport à la qualité du signal.",
+  "Risk is high compared with signal quality": "Le risque est élevé par rapport à la qualité du signal",
+  "Wait until the 15-minute, hourly, and daily timeframes align": "Attendez l’alignement des unités de 15 minutes, horaire et journalière",
+  "15 minutes to 4 weeks": "De 15 minutes à 4 semaines",
+  "1 day to 6 weeks": "De 1 jour à 6 semaines",
+  "3 to 10 days": "De 3 à 10 jours",
+  "Risk/reward ratio is incomplete": "Le rapport risque/rendement est incomplet",
+  "No nearby high-impact economic events are affecting this symbol.": "Aucun événement économique proche à fort impact n’affecte ce symbole.",
+  "Wait until the news impact settles, then reread the chart": "Attendez que l’impact de l’actualité se stabilise, puis relisez le graphique",
+  "Wait until data quality improves and the daily timeframe aligns with the fast timeframes": "Attendez que la qualité des données s’améliore et que l’unité journalière s’aligne sur les unités rapides",
+  "The trade plan is incomplete because the risk/reward ratio is unclear.": "Le plan de transaction est incomplet, car le rapport risque/rendement n’est pas clair.",
+  "The risk/reward ratio is weak, so the entry signal was cancelled.": "Le rapport risque/rendement est faible ; le signal d’entrée a donc été annulé.",
+  "The risk/reward ratio is barely acceptable, so confidence is limited.": "Le rapport risque/rendement est à peine acceptable ; la confiance reste donc limitée.",
+  "Price variance across timeframes is high, so the decision was changed to wait until the data aligns.": "L’écart de prix entre les unités de temps est élevé ; la décision a donc été remplacée par une attente jusqu’à l’alignement des données.",
+  "Data quality is low; there is not enough confidence to issue a buy or sell signal now.": "La qualité des données est faible ; la confiance est insuffisante pour émettre maintenant un signal d’achat ou de vente.",
+  "The daily timeframe conflicts with the other timeframes, so it is better to wait for clearer confirmation.": "L’unité journalière diverge des autres unités de temps ; il est donc préférable d’attendre une confirmation plus nette.",
+  "Price is above the 20-day average": "Le cours est au-dessus de la moyenne à 20 jours",
+  "Price is below the 20-day average": "Le cours est en dessous de la moyenne à 20 jours",
+  "Trend is above the 50-day average": "La tendance est au-dessus de la moyenne à 50 jours",
+  "Trend is below the 50-day average": "La tendance est en dessous de la moyenne à 50 jours",
+  "The 20-day average is above the 50-day average": "La moyenne à 20 jours est au-dessus de la moyenne à 50 jours",
+  "The 20-day average is below the 50-day average": "La moyenne à 20 jours est en dessous de la moyenne à 50 jours",
+  "MACD is positive": "Le MACD est positif",
+  "MACD is negative": "Le MACD est négatif",
+  "Price is above VWAP: buyers are stronger": "Le cours est au-dessus du VWAP : les acheteurs sont plus forts",
+  "Price is below VWAP: selling pressure": "Le cours est en dessous du VWAP : pression vendeuse",
+  "One-month momentum is positive": "Le momentum sur un mois est positif",
+  "One-month momentum is negative": "Le momentum sur un mois est négatif",
+  "RSI is low: possible rebound": "Le RSI est faible : rebond possible",
+  "RSI is high: possible profit-taking": "Le RSI est élevé : prises de bénéfices possibles",
+  "RSI is in a neutral range": "Le RSI se situe dans une zone neutre",
+  "Activity is above normal": "L’activité est supérieure à la normale",
+  "Intraday volume is above average": "Le volume intrajournalier est supérieur à la moyenne",
+  "Trading volume is weak": "Le volume de négociation est faible",
+  "Volatility is relatively high": "La volatilité est relativement élevée",
+  "Signals are close and do not provide a clear edge": "Les signaux sont proches et ne dégagent aucun avantage clair",
+  "No strong conflict between core and fast timeframes": "Aucune divergence marquée entre les unités de temps principales et rapides",
+  "Entry timeframes support the decision": "Les unités de temps d’entrée confirment la décision",
+  "Low volatility": "Faible volatilité",
+  "Medium volatility": "Volatilité moyenne",
+  "High volatility": "Forte volatilité",
+  "The signal is not sharp": "Le signal manque de netteté",
+  "Medium timeframe agreement": "Concordance moyenne des unités de temps",
+  "Activity is below normal": "L’activité est inférieure à la normale",
+  "RSI is at a strong edge": "Le RSI se trouve à un niveau extrême",
+  "Fast timeframes": "Unités de temps rapides",
+  "Long timeframes": "Unités de temps longues",
+  "Conflict detected": "Divergence détectée",
+  "Forex currency pair": "Paire de devises Forex",
+  "Crypto asset": "Cryptoactif",
+  "Commodity or futures contract": "Matière première ou contrat à terme",
+  "Market index": "Indice de marché",
+  "Listed financial instrument": "Instrument financier coté",
+  "Digital currency and digital store of value": "Monnaie numérique et réserve de valeur numérique",
+  "Smart-contract network and decentralized applications": "Réseau de contrats intelligents et d’applications décentralisées",
+  "Digital asset for a trading and blockchain ecosystem": "Actif numérique destiné à un écosystème de négociation et de chaîne de blocs",
+  "High-speed blockchain network": "Réseau de chaîne de blocs à haut débit",
+  "Digital payments and transfers": "Paiements et transferts numériques",
+  "Smart-contract network": "Réseau de contrats intelligents",
+  "Decentralized applications network": "Réseau d’applications décentralisées",
+  "Blockchain data oracle": "Oracle de données de chaîne de blocs",
+  "Interoperability network for blockchains": "Réseau d’interopérabilité entre chaînes de blocs",
+  "Gold futures": "Contrats à terme sur l’or",
+  "Silver futures": "Contrats à terme sur l’argent",
+  "WTI crude oil futures": "Contrats à terme sur le pétrole brut WTI",
+  "Brent crude oil futures": "Contrats à terme sur le pétrole brut Brent",
+  "Natural gas futures": "Contrats à terme sur le gaz naturel",
+  "Copper futures": "Contrats à terme sur le cuivre",
+  "Consumer technology and smart devices": "Technologies grand public et appareils intelligents",
+  "Software, cloud computing, and AI": "Logiciels, informatique en nuage et IA",
+  "Graphics chips and AI": "Puces graphiques et IA",
+  "Processors and computing chips": "Processeurs et puces informatiques",
+  "Digital advertising, search, and cloud": "Publicité numérique, recherche et informatique en nuage",
+  "E-commerce and cloud computing": "Commerce électronique et informatique en nuage",
+  "Electric vehicles and energy": "Véhicules électriques et énergie",
+  "Social networks and digital advertising": "Réseaux sociaux et publicité numérique",
+  "Islamic banking": "Banque islamique",
+  "Traditional banking": "Banque traditionnelle",
+  "Telecom and digital services": "Télécommunications et services numériques",
+  "Major currency pairs. Yahoo prices may be delayed depending on the pair.": "Principales paires de devises. Les cours Yahoo peuvent être différés selon la paire.",
+  "Gold, silver, oil, gas, and copper. Futures symbols may be delayed depending on the provider.": "Or, argent, pétrole, gaz et cuivre. Les symboles à terme peuvent être différés selon le fournisseur.",
+  "Highly liquid US stocks from technology, consumer, healthcare, and banking sectors.": "Actions américaines très liquides des secteurs de la technologie, de la consommation, de la santé et de la banque.",
+  "Alphabet / Google operates in search, advertising, YouTube, Android, Google Cloud, and AI technologies.": "Alphabet / Google exerce ses activités dans la recherche, la publicité, YouTube, Android, Google Cloud et les technologies d’IA.",
+  "Apple operates in iPhone, Mac, iPad, digital services, and the App Store, and trades in the US market.": "Apple exerce ses activités dans l’iPhone, le Mac, l’iPad, les services numériques et l’App Store, et se négocie sur le marché américain.",
+  "Microsoft operates in operating systems, Azure, Office, gaming, and AI services, and trades in the US market.": "Microsoft exerce ses activités dans les systèmes d’exploitation, Azure, Office, les jeux vidéo et les services d’IA, et se négocie sur le marché américain.",
+  "NVIDIA leads graphics processors, AI accelerators, and data centers, and trades in the US market.": "NVIDIA est un acteur majeur des processeurs graphiques, des accélérateurs d’IA et des centres de données, et se négocie sur le marché américain.",
+  "AMD operates in PC and server processors, graphics cards, and AI accelerators, and trades in the US market.": "AMD exerce ses activités dans les processeurs pour PC et serveurs, les cartes graphiques et les accélérateurs d’IA, et se négocie sur le marché américain.",
+  "US stocks": "Actions américaines",
+  "Forex": "Devises",
+  "Crypto": "Cryptoactifs",
+  "Commodities": "Matières premières",
+  "Gulf markets": "Marchés du Golfe",
+  "Saudi market": "Marché saoudien",
+  "Kuwait market": "Marché koweïtien",
+  "UAE market": "Marché des Émirats arabes unis",
+  "Qatar market": "Marché qatari",
+  "Bahrain market": "Marché bahreïnien",
+  "Oman market": "Marché omanais",
+  "European stocks": "Actions européennes",
+  "Asian stocks": "Actions asiatiques",
+  "Technology stocks": "Actions technologiques",
+  "Food / consumer staples": "Alimentation / biens de consommation de base",
+  "Pharmaceutical / healthcare": "Pharmacie / santé",
+  "Banking stocks": "Actions bancaires",
+  "Energy stocks": "Actions énergétiques",
+  "AI stocks": "Actions liées à l’IA",
+  "Semiconductor stocks": "Actions de semi-conducteurs",
+  "Custom list": "Liste personnalisée",
+  "A watchlist symbol that may require a provider with direct support.": "Un symbole de liste de suivi qui peut nécessiter un fournisseur assurant une prise en charge directe.",
+  "The market is closed now; monitor the signal at the open and do not enter before live prices appear.": "Le marché est actuellement fermé ; surveillez le signal à l’ouverture et n’entrez pas avant l’apparition des cours en direct.",
+  "Americas": "Amériques",
+  "America": "Amérique",
+  "Europe": "Europe",
+  "Asia": "Asie",
+  "GCC": "CCG",
+  "FX": "Devises",
+  "Technology": "Technologie",
+  "Consumer staples": "Biens de consommation de base",
+  "Healthcare": "Santé",
+  "Financials": "Services financiers",
+  "Energy": "Énergie",
+  "AI / Cloud": "IA / Informatique en nuage",
+  "Semiconductors": "Semi-conducteurs",
+  "Global": "Monde",
+  "Custom": "Personnalisé"
+});
+
+function detailFrenchText(value) {
+  const text = String(value ?? "");
+  const leading = text.match(/^\s*/)?.[0] || "";
+  const trailing = text.match(/\s*$/)?.[0] || "";
+  const core = text.trim();
+  if (!core) return text;
+  const exact = DETAIL_FRENCH_TEXT[core] || DETAIL_FRENCH_EXTRA_TEXT[core];
+  if (exact) return `${leading}${exact}${trailing}`;
+  return `${leading}${core}${trailing}`;
+}
 const detailOriginalTextByNode = new WeakMap();
 const DETAIL_TRANSLATABLE_ATTRS = ["placeholder", "title", "aria-label"];
 const DETAIL_TEXT_TRANSLATION_ENTRIES = Object.entries({ ...DETAIL_TEXT_TRANSLATIONS, ...DETAIL_EXTRA_TEXT_TRANSLATIONS })
@@ -859,7 +1107,7 @@ function renderBacktest(item) {
   elements.backtest.innerHTML = `
     ${renderInfoRow(detailText("معدل النجاح", "Win rate"), item.backtest?.winRate ? `${item.backtest.winRate}%` : localizeDetailText(item.backtest?.label || "--"))}
     ${renderInfoRow(detailText("عدد العينات", "Samples"), item.backtest?.samples ?? "--")}
-    ${renderInfoRow(detailText("أفق الاختبار", "Test horizon"), item.backtest?.horizonDays ? detailText(`${item.backtest.horizonDays} يوم`, `${item.backtest.horizonDays} days`) : "--")}
+    ${renderInfoRow(detailText("أفق الاختبار", "Test horizon"), item.backtest?.horizonDays ? detailText(`${item.backtest.horizonDays} يوم`, `${item.backtest.horizonDays} days`, `${item.backtest.horizonDays} jours`) : "--")}
     ${renderInfoRow(detailText("متوسط العائد", "Average return"), Number.isFinite(item.backtest?.avgReturnPct) ? formatPercent(item.backtest.avgReturnPct) : "--")}
     ${renderInfoRow(detailText("جودة التحليل", "Analysis quality"), item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : unavailableText())}
     ${renderInfoRow(detailText("خطة التنفيذ", "Execution plan"), localizeDetailText(item.tradePlan?.note || "--"))}
@@ -878,11 +1126,12 @@ function buildDecision(item, recommendation) {
   if (recommendation.status === "buy") {
     return {
       kind: "buy",
-      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn, recommendation.actionLabelFr),
       title: detailText("إشارة شراء نهائية", "Final buy signal"),
       message: detailText(
         `الحالة المشتركة النهائية شراء، والثقة ${confidenceText}. راقب السعر والهدف قبل التنفيذ.`,
-        `The shared final status is Buy with ${confidenceText} confidence. Watch price and target before execution.`
+        `The shared final status is Buy with ${confidenceText} confidence. Watch price and target before execution.`,
+        `Le statut final commun est Acheter avec une confiance de ${confidenceText}. Surveillez le cours et l’objectif avant l’exécution.`
       )
     };
   }
@@ -890,18 +1139,19 @@ function buildDecision(item, recommendation) {
   if (recommendation.status === "sell") {
     return {
       kind: "sell",
-      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+      badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn, recommendation.actionLabelFr),
       title: detailText("إشارة بيع نهائية", "Final sell signal"),
       message: detailText(
         `الحالة المشتركة النهائية بيع، والثقة ${confidenceText}. لا تُعرض كشراء حتى تتغير التوصية النهائية.`,
-        `The shared final status is Sell with ${confidenceText} confidence. It is not displayed as Buy unless the final recommendation changes.`
+        `The shared final status is Sell with ${confidenceText} confidence. It is not displayed as Buy unless the final recommendation changes.`,
+        `Le statut final commun est Vendre avec une confiance de ${confidenceText}. Il ne sera pas affiché comme un achat tant que la recommandation finale n’aura pas changé.`
       )
     };
   }
 
   return {
     kind: "hold",
-    badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn),
+    badge: detailText(recommendation.actionLabelAr, recommendation.actionLabelEn, recommendation.actionLabelFr),
     title: recommendation.status === "insufficient_data"
       ? detailText("بيانات غير كافية", "Insufficient data")
       : detailText("تحت المراقبة", "Under watch"),
@@ -1024,21 +1274,26 @@ function getDetailLanguage() {
 }
 
 function isDetailEnglishLanguage() {
-  return ["en", "fr"].includes(getDetailLanguage());
+  return getDetailLanguage() === "en";
 }
 
-function detailText(arabic, english) {
+function isDetailFrenchLanguage() {
+  return getDetailLanguage() === "fr";
+}
+
+function detailText(arabic, english, french) {
+  if (isDetailFrenchLanguage()) return french || detailFrenchText(english);
   return isDetailEnglishLanguage() ? english : arabic;
 }
 
 function detailBrandTitle() {
-  return detailText(DETAIL_BRAND_AR, DETAIL_BRAND_EN);
+  return detailText(DETAIL_BRAND_AR, DETAIL_BRAND_EN, DETAIL_BRAND_FR);
 }
 
 function updateDetailDocumentTitle(symbolValue = detailTitleSymbol) {
   document.title = symbolValue
     ? `${symbolValue} - ${detailBrandTitle()}`
-    : detailText(`تفاصيل السهم - ${DETAIL_BRAND_AR}`, `Stock details - ${DETAIL_BRAND_EN}`);
+    : detailText(`تفاصيل السهم - ${DETAIL_BRAND_AR}`, `Stock details - ${DETAIL_BRAND_EN}`, `Détails de l’action - ${DETAIL_BRAND_FR}`);
 }
 
 function unavailableText() {
@@ -1084,6 +1339,10 @@ function metadataDetailText(...values) {
 function localizeDetailText(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   const text = String(value);
+  if (isDetailFrenchLanguage()) {
+    const english = detailHasArabicText(text) ? translateDetailArabicToEnglish(text) : text;
+    return detailFrenchText(english);
+  }
   return isDetailEnglishLanguage()
     ? translateDetailArabicToEnglish(text)
     : translateDetailEnglishToArabic(text);
@@ -1102,7 +1361,7 @@ function localizeDataQuality(value) {
 function formatDateTime(value) {
   const timestamp = Date.parse(value || "");
   if (!Number.isFinite(timestamp)) return unavailableText();
-  return normalizeDigits(new Date(timestamp).toLocaleString(NUMBER_LOCALE, {
+  return normalizeDigits(new Date(timestamp).toLocaleString(detailNumberLocale(), {
     ...NUMBER_OPTIONS,
     year: "numeric",
     month: "2-digit",
@@ -1172,7 +1431,7 @@ function localizeRegion(value) {
 
 function localizeConfidenceText(value) {
   if (!Number.isFinite(Number(value))) return unavailableText();
-  return detailText(`${value}% ثقة`, `${value}% confidence`);
+  return detailText(`${value}% ثقة`, `${value}% confidence`, `${value}% de confiance`);
 }
 
 function localizeAgreementText(consensus = {}) {
@@ -1182,14 +1441,15 @@ function localizeAgreementText(consensus = {}) {
   const total = consensus.total || 0;
   return detailText(
     `توافق الفريمات ${agreement}% · تغطية ${coverage}/${total}`,
-    `Timeframe agreement ${agreement}% · coverage ${coverage}/${total}`
+    `Timeframe agreement ${agreement}% · coverage ${coverage}/${total}`,
+    `Concordance des unités de temps ${agreement}% · couverture ${coverage}/${total}`
   );
 }
 
 function localizeJoinedList(values, fallback = "--") {
   const list = (values || []).map((value) => localizeDetailText(value)).filter(Boolean);
   if (!list.length) return fallback;
-  return list.join(isDetailEnglishLanguage() ? ", " : "، ");
+  return list.join(getDetailLanguage() === "ar" ? "، " : ", ");
 }
 
 function localizeInstrumentName(name) {
@@ -1202,7 +1462,8 @@ function applyDetailLanguage() {
   document.documentElement.lang = language;
   document.documentElement.dir = ltr ? "ltr" : "rtl";
   if (document.body) document.body.dir = ltr ? "ltr" : "rtl";
-  document.body?.classList.toggle("language-en", ltr);
+  document.body?.classList.toggle("language-en", language === "en");
+  document.body?.classList.toggle("language-fr", language === "fr");
   document.body?.classList.toggle("language-ar", !ltr);
   translateDetailInterface();
   updateDetailDocumentTitle();
@@ -1231,15 +1492,16 @@ function translateDetailInterface(root = document.body) {
 }
 
 function translateDetailTextNode(node) {
-  const english = isDetailEnglishLanguage();
+  const language = getDetailLanguage();
   const currentText = node.nodeValue || "";
 
-  if (english) {
+  if (language === "en" || language === "fr") {
     if (detailHasArabicText(currentText)) detailOriginalTextByNode.set(node, currentText);
     const originalText = detailOriginalTextByNode.get(node) || currentText;
-    node.nodeValue = detailHasArabicText(originalText)
+    const englishText = detailHasArabicText(originalText)
       ? translateDetailArabicToEnglish(originalText)
       : originalText;
+    node.nodeValue = language === "fr" ? detailFrenchText(englishText) : englishText;
     return;
   }
 
@@ -1254,19 +1516,18 @@ function translateDetailTextNode(node) {
 function translateDetailElementAttributes(element) {
   if (shouldSkipDetailTranslation(element)) return;
 
-  const english = isDetailEnglishLanguage();
+  const language = getDetailLanguage();
   for (const attr of DETAIL_TRANSLATABLE_ATTRS) {
     if (!element.hasAttribute(attr)) continue;
 
     const datasetKey = `original${toDetailDatasetSuffix(attr)}`;
     const currentValue = element.getAttribute(attr) || "";
 
-    if (english) {
+    if (language === "en" || language === "fr") {
       if (detailHasArabicText(currentValue)) element.dataset[datasetKey] = currentValue;
       const originalValue = element.dataset[datasetKey] || currentValue;
-      if (detailHasArabicText(originalValue)) {
-        element.setAttribute(attr, translateDetailArabicToEnglish(originalValue));
-      }
+      const englishValue = detailHasArabicText(originalValue) ? translateDetailArabicToEnglish(originalValue) : originalValue;
+      element.setAttribute(attr, language === "fr" ? detailFrenchText(englishValue) : englishValue);
       continue;
     }
 
@@ -1471,7 +1732,7 @@ function formatPercent(value) {
 function formatNumber(value, options = {}) {
   const number = Number(value);
   if (!Number.isFinite(number)) return unavailableText();
-  return normalizeDigits(number.toLocaleString(NUMBER_LOCALE, {
+  return normalizeDigits(number.toLocaleString(detailNumberLocale(), {
     ...NUMBER_OPTIONS,
     ...options
   }));
