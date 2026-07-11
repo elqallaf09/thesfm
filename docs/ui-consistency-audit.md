@@ -63,3 +63,19 @@ its own 12/16/20/28px scale, from the same declarations.
 - Migrate raw `<input>`/`<select>` to the shadcn primitives page-by-page over time; the global
   element CSS now matches them, so migrations become invisible.
 - Cleanup: `components/Wakeel.tsx.backup-*` files at the repo root should be deleted or gitignored.
+
+## Theme scoping (2026-07-12)
+
+The unification sweep above applied one global control/radius standard to every product area,
+which unintentionally re-metered the approved Core Finance identity (42px button floor, 48px
+fields, 50px touch fields, 9/18/22px dark radii on chips/panels/cards). Visual identity is now
+split into product-area scopes — `core-finance`, `business`, `trader`, `admin`, `shariah`:
+
+- `src/lib/navigation/themeScopes.ts` — route → scope map (pure, unit-tested).
+- `src/components/AppLayout.tsx` — stamps `data-theme-scope` on `#main-content`.
+- `src/styles/scopes.css` — per-scope token overrides; core-finance/business restore the
+  approved finance metrics, trader/admin/shariah intentionally carry no overrides so their
+  approved appearance is untouched.
+
+Known gap: portal-rendered dialogs (Radix) mount outside `#main-content`, so modal controls on
+finance pages keep the unified 44px standard rather than the 48px finance fields.

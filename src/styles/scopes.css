@@ -1,0 +1,93 @@
+/*
+ * Product-area theme scopes.
+ *
+ * AppLayout stamps `data-theme-scope` on the page-content container from the
+ * route → scope map in src/lib/navigation/themeScopes.ts. Each product area
+ * owns its identity here instead of sharing one global set, so a redesign in
+ * one area (e.g. the Trader workspace) cannot leak into another.
+ *
+ * Scopes: core-finance, business (shares the Core Finance identity),
+ * trader, admin, shariah.
+ *
+ * Trader, admin and shariah currently render exactly their approved
+ * appearance from the global defaults, so those scopes only declare their
+ * accent hook and intentionally carry no metric overrides — adding overrides
+ * there would change approved pages.
+ */
+
+/* ── Scope accent hooks ── */
+[data-theme-scope='core-finance'],
+[data-theme-scope='business'],
+[data-theme-scope='admin'] {
+  --scope-accent: var(--brand-primary);
+}
+
+[data-theme-scope='trader'] {
+  --scope-accent: var(--brand-secondary);
+}
+
+[data-theme-scope='shariah'] {
+  --scope-accent: var(--shariah-compliant);
+}
+
+/*
+ * ── Core Finance restoration ──
+ *
+ * The control-unification sweep moved every area onto one global control
+ * standard (44px controls in Light Mode, 40px in Dark Mode, 48px on touch)
+ * and onto the shared radius tokens. That unintentionally re-metered the
+ * approved Core Finance identity:
+ *   - finance buttons had a 42px floor (both modes)   → became 44px / 40px
+ *   - finance fields (input/select) were 48px tall    → became 44px / 40px
+ *   - finance fields on tablet/mobile were 50px tall  → became 48px
+ *   - dark-mode finance radii drifted (cards 22px → 28px, panels 18px → 20px,
+ *     chips 9px → 8px) because the dark token scale differs from the values
+ *     the finance pages were designed with.
+ *
+ * The overrides below restore the approved metrics inside the Core Finance
+ * and Business scopes only; every other area keeps the unified standard.
+ */
+
+[data-theme-scope='core-finance'],
+[data-theme-scope='business'] {
+  /* Approved finance button floor (both themes). */
+  --control-h: 42px;
+  /* Approved finance field height. */
+  --finance-field-h: 48px;
+  /* Approved finance radius scale — identical to the Light Mode values;
+     re-declared on the scope so Dark Mode stops drifting to 8/20/28px. */
+  --r-sm: 9px;
+  --r-xl: 18px;
+  --r-2xl: 22px;
+}
+
+[data-theme-scope='core-finance'] input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset'], [type='image'], [type='hidden']),
+[data-theme-scope='core-finance'] select,
+[data-theme-scope='business'] input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset'], [type='image'], [type='hidden']),
+[data-theme-scope='business'] select {
+  height: var(--finance-field-h);
+}
+
+/* Approved finance touch layouts use 50px fields (tablet and mobile). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-theme-scope='core-finance'],
+  [data-theme-scope='business'] {
+    --finance-field-h: 50px;
+  }
+}
+
+@media (max-width: 767px) {
+  [data-theme-scope='core-finance'],
+  [data-theme-scope='business'] {
+    --finance-field-h: 50px;
+  }
+
+  /* The global mobile reset pins field heights with !important; restore the
+     approved 50px inside the finance scopes at equal weight. */
+  [data-theme-scope='core-finance'] input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset'], [type='image'], [type='hidden']),
+  [data-theme-scope='core-finance'] select,
+  [data-theme-scope='business'] input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset'], [type='image'], [type='hidden']),
+  [data-theme-scope='business'] select {
+    height: var(--finance-field-h) !important;
+  }
+}
