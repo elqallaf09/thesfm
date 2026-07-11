@@ -289,6 +289,7 @@
     ["Wait", "انتظار"],
     ["Buy", "شراء"],
     ["Sell", "بيع"],
+    ["1-3 weeks", "1-3 أسابيع", "1 à 3 semaines"],
     ["Neutral", "محايد"],
     ["Change", "التغير"],
     ["Recommendation", "التوصية"],
@@ -1494,8 +1495,20 @@
       .reduce((output, pair) => {
         const from = pair[source], to = pair[target];
         if (output === from || isOfficialMarketCode(from)) return output;
-        return output.split(from).join(to);
+        return replaceFragmentWithBoundaries(output, from, to);
       }, text);
+  }
+
+  function replaceFragmentWithBoundaries(output, from, to) {
+    if (!output.includes(from)) return output;
+    // الاستبدال عند حدود الكلمات فقط: كلمة "بيع" يجب ألا تُستبدل داخل "أسابيع".
+    const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const letter = "[A-Za-z\\u0600-\\u06FF]";
+    try {
+      return output.replace(new RegExp(`(?<!${letter})${escaped}(?!${letter})`, "gu"), to);
+    } catch (_) {
+      return output.split(from).join(to);
+    }
   }
 
   function mixedUiText(text) {
@@ -4997,9 +5010,9 @@
     const accessibleName = [displaySymbolFor(symbol), a.name, change(chg)].filter(Boolean).join(" · ");
     const tooltipText = [record.sector, recommendationLabel(recommendation), conf === null ? "" : `${terminalText("confidence")} ${Math.round(conf)}%`, a.volume == null ? "" : `${terminalText("volume")} ${bigNumber(a.volume)}`].filter(Boolean).join(" · ");
     return `<button class="opportunity-cell heatmap-tile ${size} tone-${tone} ${tone} ${selected ? "is-selected" : ""}" data-symbol-details="${h(symbol)}" type="button" aria-pressed="${selected}" aria-describedby="${h(tooltipId)}" aria-label="${h(accessibleName)}">
-      <span class="heatmap-tile-head">${logo({ ...a, symbol }, "sm")}<span><strong class="ltr">${h(displaySymbolFor(symbol))}</strong><small>${h(a.name || record.sector)}</small></span></span>
-      <span class="heatmap-tile-performance ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
-      <span class="heatmap-tile-meta"><em>${h(recommendationLabel(recommendation))}</em><b>${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</b></span>
+      <span class="heatmap-tile-head">${logo({ ...a, symbol }, "sm")}<span><strong class="ltr">${h(displaySymbolFor(symbol))}</strong><small>${h(a.name || record.sector || "")}</small></span></span>
+      <span class="heatmap-tile-performance ltr ${chg === null ? "is-unavailable" : chg >= 0 ? "up" : "down"}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</span>
+      <span class="heatmap-tile-meta"><em>${h(recommendationLabel(recommendation))}</em><b>${conf === null ? dashCell() : `${Math.round(conf)}%`}</b></span>
       <span class="heatmap-tooltip" id="${h(tooltipId)}" role="tooltip">${h(tooltipText)}</span>
     </button>`;
   }
@@ -5123,7 +5136,7 @@
       const statusLabel = statusKey === "open" ? textPair("مفتوحة", "Open", "Ouverte") : statusKey === "upcoming" ? textPair("قادمة", "Upcoming", "À venir") : textPair("مغلقة", "Closed", "Fermée");
       const name = textPair(ar, en);
       const sessionKey = sessionClassName(en);
-      const quoteHtml = q === null ? `<div class="st-quote is-empty"><small>${h(terminalText("unavailable"))}</small></div>` : `<div class="st-quote"><b>${h(price(q.price, q.currency))}</b><small class="${chgTone}">${h(change(q.chg))}</small></div>`;
+      const quoteHtml = q === null ? `<div class="st-quote is-empty"><small title="${h(terminalText("unavailable"))}" aria-label="${h(terminalText("unavailable"))}">—</small></div>` : `<div class="st-quote"><b>${h(price(q.price, q.currency))}</b><small class="${chgTone}">${h(change(q.chg))}</small></div>`;
       return `<div class="st-row session-row ${sessionKey} is-${statusKey}" data-session-state="${statusKey}">
         <div class="session-name-cell"><div class="st-name">${h(name)}</div><div class="st-ex st-status ${statusKey}"><span class="session-state-dot" aria-hidden="true"></span>${h(statusLabel)} · ${h(translateUiText(st.label))}</div></div>
         <div class="st-track session-track" aria-label="${h(`${name} · ${statusLabel}`)}">${segBars(nowFrac, segs, sessionKey, statusKey, name)}</div>
@@ -5145,7 +5158,7 @@
     }).join("");
     const cq = sessionQuote("BTCUSD", rec);
     const cqTone = cq === null ? "" : cq.chg > 0 ? "up" : cq.chg < 0 ? "down" : "flat";
-    const cqHtml = cq === null ? `<div class="st-quote is-empty"><small>${h(terminalText("unavailable"))}</small></div>` : `<div class="st-quote"><b>${h(price(cq.price, cq.currency))}</b><small class="${cqTone}">${h(change(cq.chg))}</small></div>`;
+    const cqHtml = cq === null ? `<div class="st-quote is-empty"><small title="${h(terminalText("unavailable"))}" aria-label="${h(terminalText("unavailable"))}">—</small></div>` : `<div class="st-quote"><b>${h(price(cq.price, cq.currency))}</b><small class="${cqTone}">${h(change(cq.chg))}</small></div>`;
     const cryptoLabel = textPair("العملات الرقمية", "Crypto", "Crypto");
     const cryptoRow = `<div class="st-row session-row session-crypto is-open" data-session-state="open">
       <div class="session-name-cell"><div class="st-name">BTC/USD</div><div class="st-ex st-status open"><span class="session-state-dot" aria-hidden="true"></span>${h(textPair("مفتوحة دائماً", "Always open", "Toujours ouverte"))}</div></div>
@@ -5194,17 +5207,27 @@
       const conf = recommendation.confidence, p = a.price;
       const chg = a.changePercent, tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
       const risk = a.risk || a.riskLevel;
+      const ds = assetDataState(a, recommendation);
+      // عندما تكون الأدلة غير مكتملة لا نعرض نسب ثقة تبدو مؤكدة —
+      // تُستبدل بشرطة مع تلميح يوضح السبب (العرض فقط، دون تغيير الحسابات).
+      const evidenceGated = ds.key !== "available";
+      const gateNote = evidenceGated ? ds.label : "";
+      const recommendationHtml = ds.key === "unavailable"
+        ? `<span class="state-badge ${ds.tone}">${h(ds.label)}</span>`
+        : `<span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span>`;
+      const confHtml = conf === null || evidenceGated ? dashCell(gateNote) : Math.round(conf) + "%";
+      const scoreHtml = score === null || evidenceGated ? dashCell(gateNote) : (score > 10 ? Math.round(score) + "%" : score.toFixed(1));
       const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="${h(textPair("إزالة", "Remove"))}">✕</button>` : "";
       return `<tr>
-        <td class="wt-asset" data-label="${h(terminalText("asset"))}"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || terminalText("unavailable"))}</small></span></button></td>
+        <td class="wt-asset" data-label="${h(terminalText("asset"))}"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || displaySymbolFor(a.symbol))}</small></span></button></td>
         <td class="ltr" data-label="${h(terminalText("price"))}">${h(price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="${h(textPair("التغير", "Change"))}">${h(change(chg))}</td>
-        <td data-label="${h(textPair("التوصية", "Recommendation"))}"><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></td>
-        <td class="ltr" data-label="${h(terminalText("confidence"))}">${conf === null ? terminalText("unavailable") : Math.round(conf) + "%"}</td>
-        <td class="ltr" data-label="${h(terminalText("target"))}">${isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable")}</td>
-        <td data-label="${h(textPair("المدة", "Horizon"))}">${h(a.timeframe || a.horizon || a.duration || terminalText("unavailable"))}</td>
-        <td data-label="${h(textPair("المخاطرة", "Risk"))}">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : terminalText("unavailable")}</td>
-        <td class="ltr" data-label="${h(textPair("سكور AI", "AI score"))}">${score === null ? terminalText("unavailable") : (score > 10 ? Math.round(score) + "%" : score.toFixed(1))}</td>
+        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="${h(textPair("التغير", "Change"))}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</td>
+        <td data-label="${h(textPair("التوصية", "Recommendation"))}">${recommendationHtml}</td>
+        <td class="ltr" data-label="${h(terminalText("confidence"))}">${confHtml}</td>
+        <td class="ltr" data-label="${h(terminalText("target"))}">${isValidPrice(tgt) ? price(tgt, c) : dashCell()}</td>
+        <td data-label="${h(textPair("المدة", "Horizon"))}">${h(a.timeframe || a.horizon || a.duration) || dashCell()}</td>
+        <td data-label="${h(textPair("المخاطرة", "Risk"))}">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : dashCell()}</td>
+        <td class="ltr" data-label="${h(textPair("سكور AI", "AI score"))}">${scoreHtml}</td>
         <td class="row-actions" data-label="${h(terminalText("action"))}"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">${h(terminalText("analysis"))}</button>${rm}</td>
       </tr>`;
     }).join("");
@@ -5251,7 +5274,7 @@
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(marketFamilyName(m.family))}</span></div><strong>${h(marketName(m))}</strong><p>${h(terminalText("currency"))} <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(terminalText(countKey, { shown: latinNumber(visible.length), total: latinNumber(total) }))}</span><span class="market-card-action">${h(marketActionLabel(m))}</span></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = normalizeQuote(norm(x)), recommendation = sharedRecommendation(a), chg = a.changePercent; return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = normalizeQuote(norm(x)), recommendation = sharedRecommendation(a), chg = a.changePercent; return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
@@ -6435,7 +6458,13 @@
       const chg = q.changePercent;
       const label = q.displaySymbol || displaySymbolFor(s);
       const amount = price(p, currency({ ...q, symbol: s }));
-      return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...q, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${h(amount)} <i class="${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</i></small></span></button>`;
+      // بدل تكرار "السعر غير متاح · التغير غير متاح" في كل شريحة، تُعرض حالة
+      // واحدة مضغوطة عند غياب السعر، وشرطة مع تلميح عند غياب التغير فقط.
+      const amountHtml = isValidPrice(p) ? h(amount) : `<i class="chip-unavailable">${h(terminalText("unavailable"))}</i>`;
+      const changeHtml = chg === null
+        ? (isValidPrice(p) ? `<i class="chip-dash" title="${h(changeUnavailableText())}" aria-label="${h(changeUnavailableText())}">—</i>` : "")
+        : `<i class="${chg >= 0 ? "up" : "down"}">${h(change(chg))}</i>`;
+      return `<button class="ticker-chip" data-symbol-details="${h(s)}" type="button">${logo({ ...q, symbol: s })}<span><strong>${h(label)}</strong><small class="ltr">${amountHtml} ${changeHtml}</small></span></button>`;
     }).join("");
   }
   function isQuickTickerVisible() {
@@ -6981,6 +7010,12 @@
   function sym(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, "").replace(/[\\/:]/g, ""); }
   function priceUnavailableText() { return textPair(PRICE_UNAVAILABLE_AR, PRICE_UNAVAILABLE_EN); }
   function changeUnavailableText() { return textPair(CHANGE_UNAVAILABLE_AR, CHANGE_UNAVAILABLE_EN); }
+  // شرطة مضغوطة للقيم غير المتاحة في الجداول والبطاقات بدل تكرار كلمة "غير متاح"،
+  // مع الإبقاء على النص الكامل للتلميح وقارئات الشاشة.
+  function dashCell(reason) {
+    const label = String(reason || terminalText("unavailable"));
+    return `<span class="cell-dash" title="${h(label)}" aria-label="${h(label)}">—</span>`;
+  }
   function isValidPrice(value) { const n = num(value); return n !== null && n > 0; }
   function isValidChange(value) { const n = num(value); return n !== null && n > -100 && Math.abs(n) < 100000; }
   function normalizeSymbol(symbol, assetClass) {

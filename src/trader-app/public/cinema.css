@@ -484,7 +484,8 @@ button {
 
 .ticker-chip {
   display: grid;
-  grid-template-columns: 34px max-content;
+  /* عمود الشعار يطابق مقاس الشعار المُوحّد (44px) حتى لا يتراكب على السعر */
+  grid-template-columns: 44px minmax(0, 1fr);
   gap: 9px;
   align-items: center;
   min-width: 160px;
@@ -2309,7 +2310,7 @@ button.topbar-chip {
 
 .ticker-chip {
   min-width: 172px;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
 }
 
 .ticker-chip span,
@@ -6962,7 +6963,11 @@ html[data-theme="light"] .earnings-controls select {
   color: #0b1724 !important;
 }
 
-html[data-theme="light"] :is(input::placeholder, textarea::placeholder) {
+/* ملاحظة: العناصر الزائفة مثل ::placeholder غير مسموحة داخل :is() —
+   الصيغة السابقة كانت تُسقط القاعدة كاملة فيبقى النص الإرشادي شبه أبيض
+   على خلفية بيضاء في الوضع النهاري. */
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
   color: #718294 !important;
 }
 
@@ -7353,7 +7358,8 @@ html[data-theme="light"] :is(
   box-shadow: 0 8px 18px rgba(20, 55, 87, 0.06) !important;
 }
 
-html[data-theme="light"] :is(input::placeholder, textarea::placeholder) {
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
   color: var(--terminal-light-text-muted) !important;
   opacity: 1 !important;
 }
@@ -9488,7 +9494,8 @@ html[data-theme="light"] :is(input, select, textarea):not(:disabled):hover {
   background: #F9FBFC !important;
 }
 
-html[data-theme="light"] :is(input::placeholder, textarea::placeholder) {
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
   color: var(--light-text-muted) !important;
   opacity: 1 !important;
 }
@@ -10613,6 +10620,13 @@ html[data-theme="light"] .workspace-tabs-shell {
 
 html[data-theme="light"] .workspace-tabs button { color: var(--light-text-secondary); }
 html[data-theme="light"] .workspace-tabs button:hover { background: var(--light-hover); color: var(--light-text-primary); }
+/* قاعدة الوضع النهاري أعلاه أعلى تحديداً من .is-active فكانت تُلوّن نص
+   التبويب النشط بلون داكن فوق التدرج الداكن — النص الأبيض يُعاد فرضه هنا. */
+html[data-theme="light"] .workspace-tabs button.is-active,
+html[data-theme="light"] .workspace-tabs button.is-active:hover {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 82%, #081522), color-mix(in srgb, var(--teal) 76%, #081522));
+  color: #FFFFFF;
+}
 html[data-theme="light"] :is(.workspace-overview-grid article, .workspace-source-grid article, .workspace-filter-form input, .workspace-filter-form select, .workspace-issues-panel > details, .workspace-issue-list details, .news-card-details) {
   border-color: var(--light-divider);
   background: var(--light-card);
@@ -12564,7 +12578,20 @@ html[data-theme="light"] .symbol-drawer-backdrop { background: rgba(20, 35, 50, 
   min-height: 0;
 }
 .command-deck-card > p,
-.command-deck-empty { margin: 0; color: var(--trader-muted); font-size: 0.72rem; line-height: 1.6; }
+/* حالة فارغة واضحة ومقصودة بدل نص صغير تائه وسط مساحة واسعة */
+.command-deck-empty {
+  margin: 0;
+  display: grid;
+  place-content: center;
+  min-height: 68px;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--trader-edge) 80%, transparent);
+  border-radius: 12px;
+  color: var(--trader-muted);
+  font-size: 0.74rem;
+  line-height: 1.6;
+  text-align: center;
+}
 .command-deck-head > span:first-child { color: var(--trader-muted); font-size: 0.72rem; font-weight: 820; }
 .command-deck-head > :is(b, strong) { color: var(--trader-text); font: 820 0.74rem var(--font-mono); }
 
@@ -12889,4 +12916,34 @@ html[data-theme="light"] .heatmap-sector-filter select { border-color: var(--lig
   .detail-chart-wrap { height: auto; min-height: 220px; padding-top: 0; }
   .detail-chart-wrap .detail-chart { height: 180px !important; }
   .drawer-provider dl > div { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── لمسات صقل لوحة التداول (المرحلة 2.6) ──
+   شرطات القيم غير المتاحة: عرض مضغوط موحّد بدل تكرار كلمة "غير متاح"
+   في الشرائح والجداول وخلايا الخريطة الحرارية. */
+.cell-dash {
+  color: var(--trader-muted, var(--muted));
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.ticker-chip .chip-unavailable,
+.ticker-chip .chip-dash {
+  font-style: normal;
+  color: var(--trader-muted, var(--muted));
+}
+
+.heatmap-tile-performance.is-unavailable {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--trader-muted, var(--muted));
+}
+
+.st-quote.is-empty small {
+  color: var(--trader-muted, var(--muted));
+  font-weight: 600;
+}
+
+html[data-theme="light"] :is(.cell-dash, .ticker-chip .chip-unavailable, .ticker-chip .chip-dash, .heatmap-tile-performance.is-unavailable, .st-quote.is-empty small) {
+  color: var(--light-text-muted, #5c7186);
 }

@@ -93,8 +93,8 @@ describe('SFM Trader workspace experience', () => {
   it('mounts the drawer host, skip link, and cache-busted workspace assets', () => {
     expect(html).toContain('class="terminal-skip-link"');
     expect(html).toContain('id="symbol-drawer-host"');
-    expect(html).toContain('cinema.css?v=20260712-trader-workspace');
-    expect(html).toContain('app.js?v=20260712-trader-workspace');
+    expect(html).toContain('cinema.css?v=20260712-trader-polish');
+    expect(html).toContain('app.js?v=20260712-trader-polish');
   });
 
   it('includes mobile reflow, dark-mobile repair, RTL wrapping, and reduced motion', () => {
