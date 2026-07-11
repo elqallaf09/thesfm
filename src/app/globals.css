@@ -2,6 +2,7 @@
 @import "../styles/tokens.css";
 @import "../styles/themes.css";
 @import "../styles/scopes.css";
+@import "../styles/density.css";
 @import "../components/market-analysis/market-page.css";
 @import "./invest/invest.css";
 @import "./financial-theories/financial-theories.css";

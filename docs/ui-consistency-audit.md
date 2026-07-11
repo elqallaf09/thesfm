@@ -79,3 +79,30 @@ split into product-area scopes — `core-finance`, `business`, `trader`, `admin`
 
 Known gap: portal-rendered dialogs (Radix) mount outside `#main-content`, so modal controls on
 finance pages keep the unified 44px standard rather than the 48px finance fields.
+
+## Information density (2026-07-12)
+
+Added a reusable density system: `comfortable` (default — renders exactly the approved
+identity) and `compact` (opt-in, persisted per user).
+
+- `src/lib/ui/density.ts` — preference model + safe storage (own key, mirrored into
+  `sfm_settings` like the theme preference); `dense` mode reserved but rejected until
+  its CSS tier exists.
+- `src/hooks/useDensity.tsx` — `DensityProvider` stamps `data-density` on the root
+  element after mount; `useDensity()` exposes set/toggle.
+- `src/components/DensityToggle.tsx` — header toggle next to the theme toggle
+  (Arabic/English/French labels, `aria-pressed`).
+- `src/styles/density.css` — the compact tier: cards 22/24→14/16px, CardHeader/Content
+  tightened, table cells 13/14→8/10px, KPI tiles/grids/heroes reduced (hero padding
+  clamp 22–42→14–22px, h1 clamp 28–46→22–30px). Trader/admin scopes get a denser table
+  tier (6/8px cells); Core Finance stays on the gentle base tier. Mobile guardrail
+  restores approved card padding and roomier cells under 768px.
+
+Hard guarantees (asserted in `src/__tests__/unit/densityMode.test.ts`): no color
+declarations, no control metrics (44px+ touch floors survive), no font size below
+12px, RTL-safe logical spacing only.
+
+Remaining density work (next phase): the standalone trader SPA (`src/trader-app/`)
+does not load `globals.css` and needs its own compact tier; per-page bespoke layouts
+(reports-center grids, documents lists) could adopt summary strips; list
+virtualization for very long tables.

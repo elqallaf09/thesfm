@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Cairo, IBM_Plex_Sans_Arabic, Tajawal } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { DensityProvider } from '@/hooks/useDensity';
 import { Toaster } from '@/components/ui/sonner';
 import GlobalClientEffects from '@/components/GlobalClientEffects';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -65,16 +66,18 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Toaster />
-          <AuthProvider>
-            <LanguageProvider>
-              <LocalizedSkipLink />
-              <CurrencyProvider>
-                <AnalyticsTracker />
-                <AppLayout>{children}</AppLayout>
-              </CurrencyProvider>
-              <GlobalClientEffects />
-            </LanguageProvider>
-          </AuthProvider>
+          <DensityProvider>
+            <AuthProvider>
+              <LanguageProvider>
+                <LocalizedSkipLink />
+                <CurrencyProvider>
+                  <AnalyticsTracker />
+                  <AppLayout>{children}</AppLayout>
+                </CurrencyProvider>
+                <GlobalClientEffects />
+              </LanguageProvider>
+            </AuthProvider>
+          </DensityProvider>
         </ThemeProvider>
       </body>
     </html>

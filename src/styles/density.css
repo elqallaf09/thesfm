@@ -1,0 +1,142 @@
+/*
+ * Information-density layer.
+ *
+ * DensityProvider (src/hooks/useDensity.tsx) stamps `data-density` on the
+ * root element from the stored preference (src/lib/ui/density.ts).
+ *
+ *   comfortable — the approved default appearance; no rules exist for it,
+ *                 so selecting it renders exactly the approved identity.
+ *   compact     — tightens cards, tables, grids, KPI tiles and page heroes
+ *                 so more information fits above the fold.
+ *
+ * Hard rules for this file (asserted by src/__tests__/unit/densityMode.test.ts):
+ *   - No color declarations of any kind — density must never touch the
+ *     approved visual identity of any product area.
+ *   - No control metrics — button/input heights and paddings stay owned by
+ *     the control tokens (--control-h, --finance-field-h), so touch targets
+ *     keep their 44px+ floors in every mode.
+ *   - No font size below 12px.
+ *
+ * Density is context-specific, not uniform: the base compact tier below is
+ * deliberately gentle so Core Finance keeps its restored proportions, and
+ * the data-heavy trader/admin scopes (see themeScopes.ts) add a denser
+ * table tier on top of it.
+ */
+
+/* ── Compact: cards ── */
+:root[data-density='compact'] .sfm-card {
+  padding: 14px 16px;
+}
+
+:root[data-density='compact'] [class*='CardHeader'] {
+  padding: 12px 16px 8px !important;
+}
+
+:root[data-density='compact'] [class*='CardContent'] {
+  padding: 8px 16px 12px !important;
+}
+
+/* ── Compact: KPI / stat tiles ── */
+:root[data-density='compact'] .kpi-card {
+  padding: 12px 14px;
+}
+
+:root[data-density='compact'] .kpi-val {
+  font-size: 23px;
+}
+
+:root[data-density='compact'] .kpi-label {
+  margin-bottom: 3px;
+}
+
+/* ── Compact: tables ── */
+:root[data-density='compact'] th {
+  padding: 7px 10px;
+}
+
+:root[data-density='compact'] td {
+  padding: 8px 10px;
+}
+
+:root[data-density='compact'] :where(thead th) {
+  min-height: 40px;
+}
+
+:root[data-density='compact'] :where(tbody tr) {
+  min-height: 44px;
+}
+
+/* ── Compact: dashboard grids and section rhythm ── */
+:root[data-density='compact'] .sfm-dashboard-overview {
+  gap: 10px;
+}
+
+:root[data-density='compact'] .sfm-reference-row,
+:root[data-density='compact'] .sfm-dashboard-charts,
+:root[data-density='compact'] .sfm-dashboard-goals {
+  gap: 10px;
+}
+
+:root[data-density='compact'] .sfm-dashboard-kpis {
+  gap: 10px;
+}
+
+/* ── Compact: page heroes (largest above-the-fold win) ── */
+:root[data-density='compact'] .sfm-page-hero {
+  padding: clamp(14px, 2vw, 22px);
+  gap: 12px;
+}
+
+:root[data-density='compact'] .sfm-page-hero-icon {
+  width: 44px;
+  height: 44px;
+}
+
+:root[data-density='compact'] .sfm-page-hero-copy h1 {
+  margin: 4px 0;
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+:root[data-density='compact'] .sfm-page-hero-copy p {
+  line-height: 1.55;
+}
+
+/* ── Compact: chips keep their touch floor, only trim horizontal air ── */
+:root[data-density='compact'] .sfm-chip {
+  padding-inline: 10px;
+}
+
+/*
+ * ── Scope tier: trader and admin workspaces ──
+ * Data-heavy tables in the trader and operations areas read well one step
+ * denser than the base compact tier. Core Finance intentionally stays on
+ * the gentler base tier.
+ */
+:root[data-density='compact'] [data-theme-scope='trader'] th,
+:root[data-density='compact'] [data-theme-scope='admin'] th {
+  padding: 5px 8px;
+}
+
+:root[data-density='compact'] [data-theme-scope='trader'] td,
+:root[data-density='compact'] [data-theme-scope='admin'] td {
+  padding: 6px 8px;
+}
+
+/*
+ * ── Mobile guardrail ──
+ * Compact must not make touch layouts cramped: card padding returns to the
+ * approved mobile values and table cells keep enough height for 44px row
+ * taps. Controls are untouched by this file everywhere, so inputs/buttons
+ * keep the global 44px+ mobile floors in both modes.
+ */
+@media (max-width: 767px) {
+  :root[data-density='compact'] .sfm-card {
+    padding: 16px 18px;
+  }
+
+  :root[data-density='compact'] td,
+  :root[data-density='compact'] [data-theme-scope='trader'] td,
+  :root[data-density='compact'] [data-theme-scope='admin'] td {
+    padding: 10px 10px;
+  }
+}
