@@ -6,6 +6,10 @@
   const Recommendation = window.SFMRecommendation;
   let _marketSelectorOpen = false;
   let _themeMenuOpen = false;
+  let drawerReturnFocus = null;
+  let drawerBodyOverflow = "";
+  let drawerFocusPending = false;
+  let chartInstanceCounter = 0;
 
   /* ─────────────────────────── Config ─────────────────────────── */
   const API = "/" + "api";
@@ -1215,11 +1219,14 @@
     // عطلة الأسواق الخليجية جمعة-سبت، وباقي الأسواق سبت-أحد؛ اليوم محسوب بالتوقيت المحلي للسوق نفسه
     const weekend = kind === "gulf" ? (day === 5 || day === 6) : (day === 0 || day === 6);
     const open = !weekend && t >= openLocal && t < closeLocal;
+    const upcoming = !weekend && t < openLocal;
     const offset = tzOffsetHours(tz);
     const toUTC = (v) => (((v - offset) % 24) + 24) % 24;
     const openUTC = toUTC(openLocal), closeUTC = toUTC(closeLocal);
     return {
       open,
+      upcoming,
+      weekend,
       openUTC,
       closeUTC,
       label: open
@@ -1306,6 +1313,8 @@
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
     newsView: { search: "", source: "all" },
     recommendationView: { signal: "all" },
+    heatmapView: { search: "", tone: "all", sector: "all", zoom: 1, density: "comfortable", selected: "" },
+    drawer: { symbol: "", tab: "summary", compare: [] },
     workspace: {
       dashboard: "overview",
       markets: "overview",
@@ -2084,6 +2093,68 @@
         });
         return;
       }
+      const drawerClose = event.target.closest("[data-drawer-close]");
+      if (drawerClose) { event.preventDefault(); closeSymbolDrawer(); return; }
+      const drawerTab = event.target.closest("[data-drawer-tab]");
+      if (drawerTab) {
+        event.preventDefault();
+        setDrawerTab(drawerTab.dataset.drawerTab, { focus: true });
+        return;
+      }
+      const drawerAnalyze = event.target.closest("[data-drawer-analyze]");
+      if (drawerAnalyze) { event.preventDefault(); setDrawerTab("ai", { focus: true }); return; }
+      const drawerWatch = event.target.closest("[data-drawer-watch]");
+      if (drawerWatch) { event.preventDefault(); toggleDrawerWatch(drawerWatch.dataset.drawerWatch); return; }
+      const drawerAlert = event.target.closest("[data-drawer-alert]");
+      if (drawerAlert) { event.preventDefault(); drawerFocusPending = true; createAlert(drawerAlert.dataset.drawerAlert); return; }
+      const drawerCompare = event.target.closest("[data-drawer-compare]");
+      if (drawerCompare) {
+        event.preventDefault();
+        const symbol = sym(drawerCompare.dataset.drawerCompare);
+        if (symbol && !state.drawer.symbol) openSymbolDrawer(symbol, drawerCompare);
+        toggleDrawerCompare(symbol);
+        return;
+      }
+      const drawerExport = event.target.closest("[data-drawer-export]");
+      if (drawerExport) { event.preventDefault(); exportDrawerSymbol(drawerExport.dataset.drawerExport, drawerExport); return; }
+      const drawerShare = event.target.closest("[data-drawer-share]");
+      if (drawerShare) {
+        event.preventDefault();
+        shareDrawerSymbol(drawerShare.dataset.drawerShare).catch(() => {
+          toast(textPair("تعذر نسخ الرابط على هذا الجهاز.", "Link copying is unavailable on this device.", "La copie du lien n’est pas disponible sur cet appareil."));
+        });
+        return;
+      }
+      const drawerFull = event.target.closest("[data-drawer-full]");
+      if (drawerFull) {
+        event.preventDefault();
+        const symbol = sym(drawerFull.dataset.drawerFull);
+        closeSymbolDrawer({ restoreFocus: false });
+        if (symbol) navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`);
+        return;
+      }
+      const heatmapTone = event.target.closest("[data-heatmap-tone]");
+      if (heatmapTone) {
+        event.preventDefault();
+        state.heatmapView.tone = heatmapTone.dataset.heatmapTone || "all";
+        renderAndRestoreFocus(`[data-heatmap-tone="${state.heatmapView.tone}"]`);
+        return;
+      }
+      const heatmapZoom = event.target.closest("[data-heatmap-zoom]");
+      if (heatmapZoom) {
+        event.preventDefault();
+        const action = heatmapZoom.dataset.heatmapZoom;
+        state.heatmapView.zoom = action === "reset" ? 1 : Math.max(0.8, Math.min(1.4, state.heatmapView.zoom + (action === "in" ? 0.1 : -0.1)));
+        renderAndRestoreFocus(`[data-heatmap-zoom="${action}"]`);
+        return;
+      }
+      const heatmapDensity = event.target.closest("[data-heatmap-density]");
+      if (heatmapDensity) {
+        event.preventDefault();
+        state.heatmapView.density = heatmapDensity.dataset.heatmapDensity === "compact" ? "compact" : "comfortable";
+        renderAndRestoreFocus(`[data-heatmap-density="${state.heatmapView.density}"]`);
+        return;
+      }
       const workspaceTab = event.target.closest("[data-workspace-tab]");
       if (workspaceTab) {
         event.preventDefault();
@@ -2179,7 +2250,7 @@
         return;
       }
       const detail = event.target.closest("[data-symbol-details]");
-      if (detail) { event.preventDefault(); const s = sym(detail.dataset.symbolDetails); if (s) navigate(`${ROOT}/symbol/${encodeURIComponent(s)}`); return; }
+      if (detail) { event.preventDefault(); const s = sym(detail.dataset.symbolDetails); if (s) openSymbolDrawer(s, detail); return; }
       const add = event.target.closest("[data-quick-add]");
       if (add) { event.preventDefault(); addWatch(add.dataset.quickAdd); return; }
       const remove = event.target.closest("[data-remove-watch]");
@@ -2253,6 +2324,8 @@
       if (_themeMenuOpen && !event.target.closest("[data-theme-switcher]")) { _themeMenuOpen = false; renderThemeSwitcher(); }
     });
     document.addEventListener("keydown", function(ev) {
+      if (handleSymbolDrawerKeydown(ev)) return;
+      if (dismissFocusedTooltip(ev)) return;
       if (_themeMenuOpen) {
         const _themeItems = Array.prototype.slice.call(document.querySelectorAll("[data-theme-switcher] [data-theme-option]") || []);
         const _themeIdx = _themeItems.indexOf(document.activeElement);
@@ -2310,7 +2383,7 @@
       event.preventDefault();
       const symbol = sym(document.getElementById("symbol-input")?.value || "");
       if (!symbol) return toast(textPair("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.", "Enter a symbol first, such as AAPL or BTCUSD.", "Saisissez d’abord un symbole, comme AAPL ou BTCUSD."));
-      navigate(`${ROOT}/symbol/${encodeURIComponent(symbol)}`);
+      navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`);
     });
     document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-earnings-search-form]");
@@ -2326,6 +2399,13 @@
       event.preventDefault();
       state.newsView.search = String(new FormData(form).get("newsSearch") || "").trim();
       render();
+    });
+    document.addEventListener("submit", (event) => {
+      const form = event.target.closest("[data-heatmap-search-form]");
+      if (!form) return;
+      event.preventDefault();
+      state.heatmapView.search = String(new FormData(form).get("heatmapSearch") || "").trim();
+      renderAndRestoreFocus('[data-heatmap-search-form] input[name="heatmapSearch"]');
     });
     document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-market-universe-search]");
@@ -2351,6 +2431,12 @@
       if (!filter) return;
       state.newsView.source = filter.value || "all";
       render();
+    });
+    document.addEventListener("change", (event) => {
+      const filter = event.target.closest("[data-heatmap-sector]");
+      if (!filter) return;
+      state.heatmapView.sector = filter.value || "all";
+      renderAndRestoreFocus("[data-heatmap-sector]");
     });
     document.addEventListener("change", (event) => {
       const filter = event.target.closest("[data-market-universe-filter]");
@@ -2542,7 +2628,7 @@
           const selected = tab.id === active;
           return `<button type="button" role="tab" id="workspace-${h(scope)}-tab-${h(tab.id)}" aria-selected="${selected ? "true" : "false"}" aria-controls="workspace-${h(scope)}-panel-${h(tab.id)}" tabindex="${selected ? "0" : "-1"}" data-workspace-tab="${h(tab.id)}" data-workspace-scope="${h(scope)}" class="${selected ? "is-active" : ""}"><span>${h(tab.label)}</span>${Number.isFinite(Number(tab.count)) ? `<b>${h(latinNumber(Number(tab.count)))}</b>` : ""}</button>`;
         }).join("")}
-      </nav>
+      </nav>${keepMounted ? "" : tabs.filter(tab => tab.id !== active).map(tab => `<section id="workspace-${h(scope)}-panel-${h(tab.id)}" role="tabpanel" aria-labelledby="workspace-${h(scope)}-tab-${h(tab.id)}" hidden></section>`).join("")}
     </div>`;
   }
 
@@ -2614,6 +2700,10 @@
         afterWorkspaceViewChange("calendar", pendingView);
       }
     });
+    document.addEventListener("focusout", clearDismissedTooltip);
+    document.addEventListener("pointerout", clearDismissedTooltip);
+    document.addEventListener("focusin", clearDismissedTooltip);
+    document.addEventListener("pointerover", clearDismissedTooltip);
   }
 
   function handleWorkspaceTabKeydown(event) {
@@ -2652,13 +2742,42 @@
     const title = document.getElementById("page-title");
     if (title) title.textContent = routeTitle(state.route.id);
     updateTerminalDocumentTitle();
-    document.querySelectorAll("[data-route]").forEach((node) => node.classList.toggle("is-active", node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details")));
+    document.querySelectorAll("[data-route]").forEach((node) => {
+      const active = node.dataset.route === state.route.id || (state.route.id === "symbol-details" && node.dataset.route === "symbol-details");
+      node.classList.toggle("is-active", active);
+      if (active) node.setAttribute("aria-current", "page");
+      else node.removeAttribute("aria-current");
+    });
+    const skipLink = document.querySelector(".terminal-skip-link");
+    if (skipLink) {
+      const skipLabel = textPair("تخطَّ إلى المحتوى", "Skip to content", "Aller au contenu");
+      skipLink.textContent = skipLabel;
+      skipLink.setAttribute("aria-label", skipLabel);
+    }
     status(); ticker(); statusBar(); renderThemeSwitcher();
     const content = document.getElementById("terminal-content");
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
     translateRenderedUi(document.getElementById("app-shell") || content);
+    enhanceCommandDeckSemantics(content);
+    renderSymbolDrawer();
     window.requestAnimationFrame(syncWorkspaceLayout);
+  }
+
+  function renderAndRestoreFocus(selector) {
+    render();
+    window.requestAnimationFrame(() => document.querySelector(selector)?.focus());
+  }
+
+  function enhanceCommandDeckSemantics(root) {
+    root.querySelectorAll(".command-deck-card").forEach(card => {
+      const heading = card.querySelector(".command-deck-head > span:first-child");
+      const label = heading?.textContent?.trim();
+      if (!label) return;
+      heading.setAttribute("role", "heading");
+      heading.setAttribute("aria-level", "3");
+      card.setAttribute("aria-label", label);
+    });
   }
 
   function syncWorkspaceLayout() {
@@ -2720,30 +2839,52 @@
 
   /* ─────────────────────────── Pages ─────────────────────────── */
   function dashboardPage() {
-    const rec = recs(), news = newsItems(), alerts = smartAlerts();
-    const movers = sortMovers(rec);
+    const rec = recs();
+    const active = workspaceView("dashboard");
     const tabs = [
       { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
       { id: "analysis", label: textPair("تحليل السوق", "Market Analysis", "Analyse du marché") },
       { id: "recommendations", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: rec.length },
       { id: "sessions", label: textPair("جلسات السوق", "Market Sessions", "Séances de marché") },
       { id: "heatmap", label: textPair("الخريطة الحرارية", "Heatmap", "Carte thermique") },
-      { id: "news", label: textPair("سياق الأخبار", "News Context", "Contexte actualités"), count: news.length },
+      { id: "news", label: textPair("سياق الأخبار", "News Context", "Contexte actualités"), count: newsItems().length },
       { id: "diagnostics", label: textPair("التشخيصات", "Diagnostics", "Diagnostics"), count: state.errors ? Object.keys(state.errors).length : 0 }
     ];
-    const recommendationPanel = `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يعرض مزود الأسعار توصيات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>`;
-    const newsPanel = `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("أخبار السوق", "Market news", "Actualités des marchés"))}</span><h2>${h(textPair("آخر الأخبار", "Latest news", "Dernières actualités"))}</h2></div><a class="rdp-view-all" href="${ROOT}/news" data-route-link>${h(textPair("عرض كل الأخبار", "View all news", "Voir toutes les actualités"))}</a></div>${news.length ? newsList(news.slice(0, 8)) : unavailableSection(state.news, textPair("لم يعرض مزود الأخبار عناصر حالية.", "The news provider did not return current items."), textPair("صفحة الأخبار", "News page"), `${ROOT}/news`)}</section>`;
     return `<div class="page-stack smart-analysis-workspace">
       ${workspaceTabBar("dashboard", tabs, textPair("مساحة التحليل الذكي", "Smart analysis workspace", "Espace d’analyse intelligent"))}
-      ${workspacePanel("dashboard", "overview", `${commandCenter(rec)}${dashboardOverviewSummary(rec, alerts)}`)}
-      ${workspacePanel("dashboard", "analysis", `${marketOverview(rec, "analysis")}${marketLeadership(rec)}<section class="market-movers-grid">${moverPanel(textPair("الأكثر ارتفاعاً", "TOP GAINERS", "PLUS FORTES HAUSSES"), textPair("الأكثر ارتفاعاً", "Top gainers", "Plus fortes hausses"), movers.gainers.slice(0, 3), "up")}${moverPanel(textPair("الأكثر انخفاضاً", "TOP LOSERS", "PLUS FORTES BAISSES"), textPair("الأكثر انخفاضاً", "Top losers", "Plus fortes baisses"), movers.losers.slice(0, 3), "down")}</section>`)}
-      ${workspacePanel("dashboard", "recommendations", recommendationPanel)}
-      ${workspacePanel("dashboard", "sessions", marketOverview(rec, "sessions"))}
-      ${workspacePanel("dashboard", "heatmap", opportunityHeatmap(rec))}
-      ${workspacePanel("dashboard", "news", newsPanel)}
-      ${workspacePanel("dashboard", "diagnostics", `<section class="panel"><span class="eyebrow">${h(textPair("حالة النظام", "System status", "État du système"))}</span><h2>${h(textPair("اكتمال البيانات والمزود", "Data completeness and provider", "Complétude et fournisseur"))}</h2>${publicSystemStatus()}<div class="workspace-quick-actions"><a class="ghost-btn" href="${ROOT}/settings?view=issues" data-route-link>${h(textPair("فتح تفاصيل المزود", "Open provider details", "Ouvrir les détails fournisseur"))}</a></div></section>`)}
+      ${workspacePanel("dashboard", active, dashboardWorkspaceContent(active, rec))}
       ${disclaimer()}
     </div>`;
+  }
+
+  function dashboardWorkspaceContent(active, rec) {
+    if (active === "analysis") {
+      const movers = sortMovers(rec);
+      const primary = rec
+        .filter(hasValidDirectionalSignal)
+        .slice()
+        .sort((left, right) => (num(right.confidence, right.score, right.aiConfidence) || 0) - (num(left.confidence, left.score, left.aiConfidence) || 0))[0] || rec[0] || {};
+      return `${smartAnalysisTerminal(primary)}${marketOverview(rec, "analysis")}${marketLeadership(rec)}<section class="market-movers-grid">${moverPanel(textPair("الأكثر ارتفاعاً", "TOP GAINERS", "PLUS FORTES HAUSSES"), textPair("الأكثر ارتفاعاً", "Top gainers", "Plus fortes hausses"), movers.gainers.slice(0, 3), "up")}${moverPanel(textPair("الأكثر انخفاضاً", "TOP LOSERS", "PLUS FORTES BAISSES"), textPair("الأكثر انخفاضاً", "Top losers", "Plus fortes baisses"), movers.losers.slice(0, 3), "down")}</section>`;
+    }
+    if (active === "recommendations") return dashboardRecommendationsPanel(rec);
+    if (active === "sessions") return marketOverview(rec, "sessions");
+    if (active === "heatmap") return opportunityHeatmap(rec);
+    if (active === "news") return dashboardNewsPanel();
+    if (active === "diagnostics") return dashboardDiagnosticsPanel();
+    return commandCenter(rec);
+  }
+
+  function dashboardRecommendationsPanel(rec) {
+    return `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يعرض مزود الأسعار توصيات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>`;
+  }
+
+  function dashboardNewsPanel() {
+    const news = newsItems();
+    return `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("أخبار السوق", "Market news", "Actualités des marchés"))}</span><h2>${h(textPair("آخر الأخبار", "Latest news", "Dernières actualités"))}</h2></div><a class="rdp-view-all" href="${ROOT}/news" data-route-link>${h(textPair("عرض كل الأخبار", "View all news", "Voir toutes les actualités"))}</a></div>${news.length ? newsList(news.slice(0, 8)) : unavailableSection(state.news, textPair("لم يعرض مزود الأخبار عناصر حالية.", "The news provider did not return current items."), textPair("صفحة الأخبار", "News page"), `${ROOT}/news`)}</section>`;
+  }
+
+  function dashboardDiagnosticsPanel() {
+    return `<section class="panel"><span class="eyebrow">${h(textPair("حالة النظام", "System status", "État du système"))}</span><h2>${h(textPair("اكتمال البيانات والمزود", "Data completeness and provider", "Complétude et fournisseur"))}</h2>${publicSystemStatus()}<div class="workspace-quick-actions"><a class="ghost-btn" href="${ROOT}/settings?view=issues" data-route-link>${h(textPair("فتح تفاصيل المزود", "Open provider details", "Ouvrir les détails fournisseur"))}</a></div></section>`;
   }
 
   function dashboardOverviewSummary(rec, alerts) {
@@ -2770,10 +2911,48 @@
   }
 
   function marketsPage() {
+    const groups = marketMapGroups();
     return `<div class="page-stack">${hero(textPair("خريطة أسواق كاملة", "Complete markets map"), textPair("الأسهم، الخليج، العملات، الكريبتو، السلع، المؤشرات، الصناديق والقطاعات. كل بطاقة تعرض العملة الخاصة بالأصل ولا ترث عملة السوق المختار.", "Stocks, Gulf markets, currencies, crypto, commodities, indices, funds, and sectors. Each card shows the asset currency instead of inheriting the selected market currency."), "MARKETS")}
-      <section class="market-grid">${MARKETS.map(marketCard).join("")}</section>
+      <section class="market-map-workspace" aria-labelledby="market-map-title">
+        <div class="market-map-header"><div><span class="eyebrow">${h(textPair("وعي السوق", "Market awareness", "Conscience du marché"))}</span><h2 id="market-map-title">${h(textPair("مساحة خريطة السوق", "Market map workspace", "Espace carte des marchés"))}</h2></div><span class="state-badge">${h(textPair(`${latinNumber(MARKETS.length)} سوقاً`, `${latinNumber(MARKETS.length)} markets`, `${latinNumber(MARKETS.length)} marchés`))}</span></div>
+        <div class="market-map-legend" aria-label="${h(textPair("دليل الخريطة", "Map legend", "Légende de la carte"))}">
+          <span><i class="legend-swatch selected" aria-hidden="true"></i>${h(textPair("السوق النشط", "Active market", "Marché actif"))}</span>
+          <span><i class="legend-swatch featured" aria-hidden="true"></i>${h(textPair("سوق مميز", "Featured market", "Marché en vedette"))}</span>
+          <span><i class="legend-swatch standard" aria-hidden="true"></i>${h(textPair("مجموعة سوق", "Market group", "Groupe de marché"))}</span>
+        </div>
+        <div class="market-map-groups">${groups.map(marketMapRegion).join("")}</div>
+      </section>
       <section class="panel"><span class="eyebrow">${h(terminalText("adminDiagnostics"))}</span><h2>${h(textPair("بيانات الأسواق من المزود", "Provider market data"))}</h2>${providerMarkets()}</section>
     </div>`;
+  }
+
+  function marketMapGroups() {
+    const ids = {
+      gulf: new Set(["saudi", "kuwait", "uae", "qatar", "bahrain", "oman"]),
+      global: new Set(["us-stocks", "europe", "asia"]),
+      cross: new Set(["forex", "crypto", "commodities", "indices", "etfs"])
+    };
+    return [
+      { id: "gulf", label: textPair("الأسواق الخليجية", "Gulf markets", "Marchés du Golfe"), markets: MARKETS.filter(m => ids.gulf.has(m.id)) },
+      { id: "global", label: textPair("الأسهم العالمية", "Global equities", "Actions mondiales"), markets: MARKETS.filter(m => ids.global.has(m.id)) },
+      { id: "cross-asset", label: textPair("الأصول المتقاطعة", "Cross-asset", "Multi-actifs"), markets: MARKETS.filter(m => ids.cross.has(m.id)) },
+      { id: "sectors", label: textPair("القطاعات والموضوعات", "Sectors and themes", "Secteurs et thèmes"), markets: MARKETS.filter(m => !ids.gulf.has(m.id) && !ids.global.has(m.id) && !ids.cross.has(m.id)) }
+    ];
+  }
+
+  function marketMapRegion(group) {
+    return `<section class="market-map-region market-map-region-${h(group.id)}" data-market-map-region="${h(group.id)}" aria-labelledby="market-map-${h(group.id)}"><div class="market-map-region-head"><h3 id="market-map-${h(group.id)}">${h(group.label)}</h3><span class="market-map-count">${h(latinNumber(group.markets.length))}</span></div><div class="market-map-region-grid">${group.markets.map(marketMapNode).join("")}</div></section>`;
+  }
+
+  function marketMapNode(m) {
+    const active = state.settings.defaultMarket === m.id;
+    const total = marketUniverseTotal(m);
+    const visible = marketPreviewSymbols(m).slice(0, 4);
+    return `<a class="market-map-node ${active ? "is-active" : ""} ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${h(m.id)}" data-route-link data-market-map-id="${h(m.id)}" ${active ? 'aria-current="true"' : ""}>
+      <span class="market-map-icon" aria-hidden="true">${marketGlyph(m)}</span>
+      <span class="market-map-copy"><small>${h(marketFamilyName(m.family))}</small><strong>${h(marketName(m))}</strong><span><b class="ltr">${h(m.currency)}</b> · ${h(textPair(`${latinNumber(total)} رمز`, `${latinNumber(total)} symbols`, `${latinNumber(total)} symboles`))}</span></span>
+      <span class="market-map-tags" aria-hidden="true">${visible.map(symbol => `<i class="ltr">${h(displaySymbolFor(symbol))}</i>`).join("")}</span>
+    </a>`;
   }
 
   function marketDetailPage(id) {
@@ -2786,7 +2965,7 @@
       ? marketUniversePanel(m, cached)
       : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair(`جاري تحميل ${m.ar}`, `Loading ${m.en}`, `Chargement de ${frenchUiText(m.en)}`))}</h2><p>${h(textPair(COVERAGE_NOTICE_AR, COVERAGE_NOTICE_EN))}</p></div></div>`;
     return `<div class="page-stack">
-      <a class="back-link" href="${ROOT}/markets" data-route-link>‹ ${h(terminalText("allMarkets"))}</a>
+      <a class="back-link" href="${ROOT}/markets" data-route-link><span class="back-arrow mirror-inline" aria-hidden="true">‹</span> ${h(terminalText("allMarkets"))}</a>
       ${hero(h(marketLabel), textPair(`${marketFamilyName(m.family)} · العملة الأساسية: ${m.currency}. الصفحة تعرض الكون الكامل المتاح من المزود مع ترقيم صفحات بحجم ${latinNumber(MARKET_UNIVERSE_PAGE_SIZE)} رمزاً.`, `${marketFamilyName(m.family)}. Base currency: ${m.currency}. This page shows the full provider universe with ${MARKET_UNIVERSE_PAGE_SIZE} symbols per page.`, `${marketFamilyName(m.family)}. Devise de base : ${m.currency}. Cette page présente l’univers complet du fournisseur avec ${MARKET_UNIVERSE_PAGE_SIZE} symboles par page.`), "MARKET")}
       ${body}
       ${disclaimer()}
@@ -3849,7 +4028,7 @@
       terminalText("market"),
       `${ROOT}/markets`
     )}</section></div>`;
-    return `<div class="page-stack"><a class="back-link" href="${ROOT}/markets" data-route-link>‹ ${h(terminalText("market"))}</a>
+    return `<div class="page-stack"><a class="back-link" href="${ROOT}/markets" data-route-link><span class="back-arrow mirror-inline" aria-hidden="true">‹</span> ${h(terminalText("market"))}</a>
       ${hero(
         textPair(`تحليل <span class="ltr">${h(symbol)}</span>`, `Analysis of <span class="ltr">${h(symbol)}</span>`, `Analyse de <span class="ltr">${h(symbol)}</span>`),
         textPair("صفحة تفاصيل حقيقية لكل رمز تعرض الملف والعملة والمصدر والتحليل عند توفرها من المزود.", "A real detail page for each symbol, showing its profile, currency, source, and analysis when the provider supplies them.", "Une page détaillée réelle pour chaque symbole, avec son profil, sa devise, sa source et son analyse lorsque le fournisseur les fournit."),
@@ -4053,6 +4232,331 @@
       </aside></div>`;
   }
 
+  function drawerTabs() {
+    return [
+      ["summary", textPair("الملخص", "Summary", "Résumé")],
+      ["technical", textPair("الفني", "Technical", "Technique")],
+      ["news", textPair("الأخبار", "News", "Actualités")],
+      ["earnings", textPair("الأرباح", "Earnings", "Résultats")],
+      ["recommendation", textPair("التوصية", "Recommendation", "Recommandation")],
+      ["ai", textPair("الذكاء الاصطناعي", "AI", "IA")],
+      ["provider", textPair("المزود", "Provider", "Fournisseur")]
+    ];
+  }
+
+  function drawerLoadedContext(symbol) {
+    const key = sym(symbol);
+    const aliases = symbolAliases(key);
+    const cachedEntry = Array.from(state.cache.entries()).find(([cacheKey]) => aliases.includes(sym(cacheKey)));
+    const cachedDetail = cachedEntry ? cachedEntry[1] : null;
+    let loaded = mergeRecLists(legacyRecsFrom(state.commandCards), recs());
+    const marketRows = [];
+    state.marketCache.forEach(payload => marketRows.push(...marketUniverseRows(payload)));
+    loaded = mergeRecLists(marketRows, loaded);
+    const loadedAsset = findAssetForSymbol(key, loaded) || matchRec(key) || null;
+    const rec = cachedDetail && cachedDetail.rec || loadedAsset;
+    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(rec || {}) }));
+    return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
+  }
+
+  function openSymbolDrawer(symbol, trigger) {
+    const key = sym(symbol);
+    if (!key) return;
+    if (!state.drawer.symbol) drawerReturnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
+    state.drawer.symbol = key;
+    state.drawer.tab = "summary";
+    state.heatmapView.selected = key;
+    document.querySelectorAll(".heatmap-tile[data-symbol-details]").forEach(tile => {
+      const selected = sym(tile.dataset.symbolDetails) === key;
+      tile.classList.toggle("is-selected", selected);
+      tile.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+    drawerFocusPending = true;
+    renderSymbolDrawer();
+  }
+
+  function setDrawerBackgroundState(active) {
+    const appShell = document.getElementById("app-shell");
+    const skipLink = document.querySelector(".terminal-skip-link");
+    [appShell, skipLink].forEach(node => {
+      if (!node) return;
+      node.inert = active;
+      if (active) node.setAttribute("aria-hidden", "true");
+      else node.removeAttribute("aria-hidden");
+    });
+  }
+
+  function closeSymbolDrawer(options = {}) {
+    const closingSymbol = state.drawer.symbol;
+    const restore = options.restoreFocus !== false ? drawerReturnFocus : null;
+    state.drawer.symbol = "";
+    state.drawer.tab = "summary";
+    drawerFocusPending = false;
+    renderSymbolDrawer();
+    drawerReturnFocus = null;
+    if (options.restoreFocus !== false) {
+      window.requestAnimationFrame(() => {
+        if (restore && typeof restore.focus === "function" && document.contains(restore)) {
+          restore.focus();
+          return;
+        }
+        const fallback = Array.from(document.querySelectorAll("[data-symbol-details]")).find(node => sym(node.dataset.symbolDetails) === closingSymbol);
+        fallback?.focus();
+      });
+    }
+  }
+
+  function setDrawerTab(tab, options = {}) {
+    const allowed = drawerTabs().map(([value]) => value);
+    if (!allowed.includes(tab) || !state.drawer.symbol) return;
+    state.drawer.tab = tab;
+    drawerFocusPending = options.focus === true;
+    renderSymbolDrawer();
+  }
+
+  function renderSymbolDrawer() {
+    let host = document.getElementById("symbol-drawer-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "symbol-drawer-host";
+      document.body.appendChild(host);
+    }
+    if (!state.drawer.symbol) {
+      host.innerHTML = "";
+      host.hidden = true;
+      document.body.classList.remove("symbol-drawer-open");
+      document.body.style.overflow = drawerBodyOverflow;
+      setDrawerBackgroundState(false);
+      return;
+    }
+    if (!document.body.classList.contains("symbol-drawer-open")) drawerBodyOverflow = document.body.style.overflow;
+    document.body.classList.add("symbol-drawer-open");
+    document.body.style.overflow = "hidden";
+    setDrawerBackgroundState(true);
+    host.hidden = false;
+    host.innerHTML = symbolQuickDrawerHtml(drawerLoadedContext(state.drawer.symbol));
+    translateRenderedUi(host);
+    if (drawerFocusPending) {
+      drawerFocusPending = false;
+      window.requestAnimationFrame(() => {
+        const target = host.querySelector(`[data-drawer-tab="${state.drawer.tab}"]`) || host.querySelector("[data-drawer-close]");
+        target?.focus();
+      });
+    }
+  }
+
+  function symbolQuickDrawerHtml(context) {
+    const { symbol, asset } = context;
+    const active = drawerTabs().some(([value]) => value === state.drawer.tab) ? state.drawer.tab : "summary";
+    const watched = state.watch.some(item => sym(item) === symbol);
+    const compared = state.drawer.compare.some(item => sym(item) === symbol);
+    const panel = drawerTabContent(active, context);
+    return `<div class="symbol-drawer-layer is-open" data-drawer-close-layer>
+      <button class="symbol-drawer-backdrop" type="button" data-drawer-close aria-label="${h(textPair("إغلاق لوحة الرمز", "Close symbol drawer", "Fermer le panneau du symbole"))}" tabindex="-1"></button>
+      <aside class="symbol-quick-drawer" data-symbol-drawer role="dialog" aria-modal="true" aria-labelledby="symbol-drawer-title" aria-describedby="symbol-drawer-description" dir="${isLtrLanguage() ? "ltr" : "rtl"}">
+        <header class="drawer-head"><div class="drawer-identity">${logo(asset, "lg")}<div><span class="eyebrow">${h(textPair("عرض سريع", "Quick view", "Vue rapide"))}</span><h2 class="ltr" id="symbol-drawer-title">${h(displaySymbolFor(symbol))}</h2><p id="symbol-drawer-description">${h(asset.name || textPair("تفاصيل الرمز من البيانات المحملة", "Symbol details from loaded data", "Détails issus des données chargées"))}</p></div></div><button class="drawer-close" type="button" data-drawer-close aria-label="${h(textPair("إغلاق", "Close", "Fermer"))}">×</button></header>
+        <nav class="drawer-tabs" role="tablist" aria-label="${h(textPair("أقسام تفاصيل الرمز", "Symbol detail sections", "Sections du symbole"))}">${drawerTabs().map(([value, label]) => `<button class="drawer-tab ${active === value ? "is-active" : ""}" type="button" role="tab" id="drawer-tab-${value}" aria-selected="${active === value}" aria-controls="drawer-panel-${value}" tabindex="${active === value ? "0" : "-1"}" data-drawer-tab="${value}">${h(label)}</button>`).join("")}</nav>
+        <section class="drawer-panel" id="drawer-panel-${active}" role="tabpanel" aria-labelledby="drawer-tab-${active}" tabindex="0">${panel}</section>${drawerTabs().filter(([value]) => value !== active).map(([value]) => `<section id="drawer-panel-${value}" role="tabpanel" aria-labelledby="drawer-tab-${value}" hidden></section>`).join("")}
+        <div class="drawer-actions" aria-label="${h(textPair("إجراءات السوق", "Market actions", "Actions de marché"))}"><button class="action-btn" type="button" data-drawer-analyze="${h(symbol)}">${h(textPair("حلل", "Analyze", "Analyser"))}</button><button class="ghost-btn" type="button" data-drawer-full="${h(symbol)}">${h(textPair("افتح التحليل الكامل", "Open full analysis", "Ouvrir l’analyse complète"))}</button><button class="ghost-btn ${watched ? "is-active" : ""}" type="button" data-drawer-watch="${h(symbol)}">${h(watched ? textPair("إزالة من المتابعة", "Remove from watchlist", "Retirer du suivi") : textPair("أضف للمتابعة", "Add to watchlist", "Ajouter au suivi"))}</button><button class="ghost-btn" type="button" data-drawer-alert="${h(symbol)}">${h(textPair("أنشئ تنبيهاً", "Create alert", "Créer une alerte"))}</button><button class="ghost-btn ${compared ? "is-active" : ""}" type="button" data-drawer-compare="${h(symbol)}">${h(compared ? textPair("إزالة من المقارنة", "Remove comparison", "Retirer la comparaison") : textPair("قارن", "Compare", "Comparer"))}</button><button class="ghost-btn" type="button" data-drawer-export="${h(symbol)}">${h(textPair("تصدير PDF", "Export PDF", "Exporter en PDF"))}</button><button class="ghost-btn" type="button" data-drawer-share="${h(symbol)}">${h(textPair("مشاركة", "Share", "Partager"))}</button></div>
+        ${drawerCompareTray()}
+      </aside>
+    </div>`;
+  }
+
+  function drawerTabContent(tab, context) {
+    if (tab === "technical") return drawerTechnicalTab(context);
+    if (tab === "news") return drawerNewsTab(context);
+    if (tab === "earnings") return drawerEarningsTab(context);
+    if (tab === "recommendation") return drawerRecommendationTab(context);
+    if (tab === "ai") return smartAnalysisTerminal(context.rec || context.asset, "drawer-analysis-terminal-title");
+    if (tab === "provider") return drawerProviderTab(context);
+    return drawerSummaryTab(context);
+  }
+
+  function drawerSummaryTab({ asset }) {
+    const recommendation = sharedRecommendation(asset);
+    const c = currency(asset);
+    const chg = asset.changePercent;
+    return `<div class="drawer-summary"><div class="drawer-price"><span>${h(terminalText("price"))}</span><strong class="ltr">${h(price(asset.price, c))}</strong><b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></div><div class="drawer-metrics">${drawerMetric(textPair("التوصية", "Recommendation", "Recommandation"), recommendationLabel(recommendation), recommendationTone(recommendation))}${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(textPair("المخاطر", "Risk", "Risque"), asset.risk || asset.riskLevel ? riskShort(asset.risk || asset.riskLevel) : terminalText("unavailable"))}${drawerMetric(textPair("الاتجاه", "Trend", "Tendance"), trendText(asset.trend || asset.technicalTrend || asset.direction) || terminalText("unavailable"))}</div>${miniChart(asset)}${stockCardMeta(asset)}</div>`;
+  }
+
+  function drawerTechnicalTab({ asset, cachedDetail }) {
+    const technicalData = cachedDetail && cachedDetail.tech || asset.technical || asset.technicalAnalysis || asset.indicators;
+    if (!technicalData) return drawerUnavailable(textPair("التحليل الفني غير محمل لهذا الرمز", "Technical analysis is not loaded for this symbol", "L’analyse technique n’est pas chargée pour ce symbole"), textPair("افتح التحليل الكامل لجلب بيانات الرمز عند الحاجة.", "Open full analysis to load symbol data when needed.", "Ouvrez l’analyse complète pour charger les données si nécessaire."));
+    return `<div class="drawer-technical">${technical(asset, technicalData, currency(asset), cachedDetail || {})}</div>`;
+  }
+
+  function drawerNewsForSymbol(symbol, cachedDetail) {
+    const payload = cachedDetail && cachedDetail.news || state.news;
+    const items = arr(payload && (payload.items || payload.articles || payload.news || payload.data || payload.results));
+    const aliases = symbolAliases(symbol);
+    return items.filter(item => {
+      const symbols = arr(item.symbols || item.tickers || item.relatedSymbols || item.related_symbols).map(sym);
+      const direct = sym(item.symbol || item.ticker);
+      if (direct && aliases.includes(direct)) return true;
+      if (symbols.some(value => aliases.includes(value))) return true;
+      return aliases.some(alias => alias.length > 2 && `${item.title || ""} ${item.summary || item.description || ""}`.toUpperCase().includes(alias));
+    });
+  }
+
+  function drawerNewsTab({ symbol, cachedDetail }) {
+    const items = drawerNewsForSymbol(symbol, cachedDetail).slice(0, 6);
+    return items.length ? `<div class="drawer-news">${newsList(items)}</div>` : drawerUnavailable(textPair("لا توجد أخبار محملة لهذا الرمز", "No loaded news for this symbol", "Aucune actualité chargée pour ce symbole"), textPair("تعرض هذه اللوحة الأخبار المحملة مسبقاً فقط.", "This drawer only shows news already loaded in the workspace.", "Ce panneau affiche uniquement les actualités déjà chargées."));
+  }
+
+  function drawerCalendarRows(symbol, kind) {
+    const aliases = symbolAliases(symbol);
+    const payload = state.calendar && state.calendar[kind];
+    return arr(payload && (payload.data || payload.items || payload.results || payload.events)).filter(item => aliases.includes(sym(item.symbol || item.ticker || item.code)));
+  }
+
+  function drawerEarningsTab({ symbol }) {
+    const earnings = drawerCalendarRows(symbol, "earnings");
+    const dividends = drawerCalendarRows(symbol, "dividends");
+    if (!earnings.length && !dividends.length) return drawerUnavailable(textPair("لا توجد أرباح محملة لهذا الرمز", "No loaded earnings for this symbol", "Aucun résultat chargé pour ce symbole"), textPair("تعرض اللوحة بيانات التقويم الموجودة في الذاكرة فقط دون طلب إضافي.", "The drawer shows only calendar data already in memory, without another request.", "Le panneau affiche uniquement les données du calendrier déjà en mémoire."));
+    const row = (item, kind) => `<article class="drawer-event"><span class="state-badge">${h(kind)}</span><strong>${h(item.companyName || item.name || displaySymbolFor(symbol))}</strong><small class="ltr">${h(latinDateTime(item.reportDate || item.date || item.exDate || item.paymentDate))}</small><p>${h(item.status || item.time || item.amount || item.epsEstimate || terminalText("unavailable"))}</p></article>`;
+    return `<div class="drawer-events">${earnings.map(item => row(item, textPair("أرباح", "Earnings", "Résultats"))).join("")}${dividends.map(item => row(item, textPair("توزيعات", "Dividends", "Dividendes"))).join("")}</div>`;
+  }
+
+  function drawerRecommendationTab({ asset, rec }) {
+    const source = rec || asset;
+    const recommendation = sharedRecommendation(source);
+    const c = currency(asset);
+    const target = num(source.target, source.targetPrice, recommendation.targetPrice);
+    const stop = num(source.stop, source.stopLoss, recommendation.stopLoss);
+    return `<div class="drawer-recommendation"><div class="drawer-recommendation-verdict ${recommendationTone(recommendation)}"><span>${h(textPair("التوصية", "Recommendation", "Recommandation"))}</span><strong>${h(recommendationLabel(recommendation))}</strong></div><div class="drawer-metrics">${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(terminalText("target"), target === null ? terminalText("unavailable") : price(target, c))}${drawerMetric(terminalText("stop"), stop === null ? terminalText("unavailable") : price(stop, c))}${drawerMetric(textPair("الأفق", "Horizon", "Horizon"), source.timeframe || source.horizon || source.duration || terminalText("unavailable"))}</div>${recommendation.reason || source.reason ? `<p>${h(translateUiText(recommendation.reason || source.reason))}</p>` : `<p>${h(textPair("لم يقدم المزود سبباً تفصيلياً.", "The provider supplied no detailed rationale.", "Le fournisseur n’a fourni aucune justification détaillée."))}</p>`}</div>`;
+  }
+
+  function drawerProviderTab({ asset, cachedDetail }) {
+    const p = providerCopy();
+    const detailStatus = cachedDetail && cachedDetail.providerStatus || asset.providerStatus || {};
+    const rows = [
+      [textPair("حالة المزود", "Provider status", "État du fournisseur"), p.label],
+      [textPair("المزود", "Provider", "Fournisseur"), stockProviderValue(asset)],
+      [textPair("رمز المزود", "Provider symbol", "Symbole fournisseur"), asset.providerSymbolUsed || asset.providerSymbol || detailStatus.providerSymbolUsed],
+      [terminalText("dataQuality"), dataQualityLabel(asset.dataQuality || detailStatus.dataQuality)],
+      [terminalText("lastUpdated"), stockFreshnessValue(asset)],
+      [terminalText("source"), cachedDetail && cachedDetail.source || asset.source]
+    ];
+    return `<div class="drawer-provider"><div class="analysis-provider-state ${p.tone || ""}"><span>${h(textPair("حالة المزود", "Provider status", "État du fournisseur"))}</span><strong>${h(p.label)}</strong><small>${h(p.explanation || p.copy || "")}</small></div><dl>${rows.map(([label, value]) => `<div><dt>${h(label)}</dt><dd>${h(value || terminalText("unavailable"))}</dd></div>`).join("")}</dl></div>`;
+  }
+
+  function drawerMetric(label, value, tone = "") {
+    return `<span class="drawer-metric ${tone}"><small>${h(label)}</small><b>${h(value || terminalText("unavailable"))}</b></span>`;
+  }
+
+  function drawerUnavailable(title, body) {
+    return `<div class="drawer-empty" role="status"><span aria-hidden="true">⌁</span><h3>${h(title)}</h3><p>${h(body)}</p></div>`;
+  }
+
+  function drawerCompareTray() {
+    if (!state.drawer.compare.length) return "";
+    return `<div class="drawer-compare-tray"><span>${h(textPair("قائمة المقارنة", "Compare tray", "Liste de comparaison"))}</span><div>${state.drawer.compare.map(symbol => `<button type="button" class="badge" data-symbol-details="${h(symbol)}"><span class="ltr">${h(displaySymbolFor(symbol))}</span></button>`).join("")}</div></div>`;
+  }
+
+  function toggleDrawerWatch(raw) {
+    const symbol = sym(raw);
+    if (!symbol) return;
+    drawerFocusPending = true;
+    if (state.watch.some(item => sym(item) === symbol)) removeWatch(symbol);
+    else addWatch(symbol);
+  }
+
+  function toggleDrawerCompare(raw) {
+    const symbol = sym(raw);
+    if (!symbol) return;
+    drawerFocusPending = true;
+    const exists = state.drawer.compare.some(item => sym(item) === symbol);
+    if (exists) state.drawer.compare = state.drawer.compare.filter(item => sym(item) !== symbol);
+    else if (state.drawer.compare.length < 4) state.drawer.compare = [...state.drawer.compare, symbol];
+    else return toast(textPair("يمكن مقارنة أربعة رموز كحد أقصى.", "Compare up to four symbols.", "Comparez jusqu’à quatre symboles."));
+    renderSymbolDrawer();
+  }
+
+  async function shareDrawerSymbol(raw) {
+    const symbol = sym(raw || state.drawer.symbol);
+    if (!symbol) return;
+    const url = new URL(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`, location.origin).href;
+    const title = `${textPair("تحليل", "Analysis", "Analyse")} ${displaySymbolFor(symbol)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title, text: title, url }); return; } catch (error) { if (errorName(error) === "AbortError") return; }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast(textPair("تم نسخ رابط التحليل.", "Analysis link copied.", "Lien d’analyse copié."));
+        return;
+      } catch (_error) {
+        // Fall through to the explicit unavailable message below.
+      }
+    }
+    toast(textPair("تعذر نسخ الرابط على هذا الجهاز.", "Link copying is unavailable on this device.", "La copie du lien n’est pas disponible sur cet appareil."));
+  }
+
+  function exportDrawerSymbol(raw, trigger) {
+    const symbol = sym(raw || state.drawer.symbol);
+    if (!symbol) {
+      toast(textPair("اختر رمزاً قبل التصدير.", "Choose a symbol before exporting.", "Choisissez un symbole avant l’exportation."));
+      return;
+    }
+    if (state.drawer.symbol !== symbol) openSymbolDrawer(symbol, trigger);
+    window.requestAnimationFrame(() => window.print());
+  }
+
+  function dismissFocusedTooltip(event) {
+    if (event.key !== "Escape") return false;
+    const trigger = event.target.closest?.(".session-bar, .heatmap-tile")
+      || document.querySelector(".session-bar:hover, .heatmap-tile:hover");
+    if (!trigger) return false;
+    trigger.classList.add("tooltip-dismissed");
+    const clearWhenInactive = () => {
+      if (!trigger.matches(":focus, :hover")) trigger.classList.remove("tooltip-dismissed");
+    };
+    trigger.addEventListener("blur", clearWhenInactive, { once: true });
+    trigger.addEventListener("pointerleave", clearWhenInactive, { once: true });
+    event.preventDefault();
+    return true;
+  }
+
+  function clearDismissedTooltip(event) {
+    const trigger = event.target.closest?.(".session-bar, .heatmap-tile");
+    if (!trigger || (event.relatedTarget && trigger.contains(event.relatedTarget))) return;
+    trigger.classList.remove("tooltip-dismissed");
+  }
+
+  function handleSymbolDrawerKeydown(event) {
+    if (!state.drawer.symbol) return false;
+    const drawer = document.querySelector("[data-symbol-drawer]");
+    if (!drawer) return false;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSymbolDrawer();
+      return true;
+    }
+    const activeTab = event.target.closest?.("[data-drawer-tab]");
+    if (activeTab && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const tabs = drawerTabs().map(([value]) => value);
+      const current = tabs.indexOf(activeTab.dataset.drawerTab);
+      const rtl = !isLtrLanguage();
+      let next = current;
+      if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = tabs.length - 1;
+      else if (event.key === "ArrowRight") next = (current + (rtl ? -1 : 1) + tabs.length) % tabs.length;
+      else next = (current + (rtl ? 1 : -1) + tabs.length) % tabs.length;
+      setDrawerTab(tabs[next], { focus: true });
+      return true;
+    }
+    if (event.key !== "Tab") return false;
+    const focusable = Array.from(drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(node => !node.hidden && node.getAttribute("aria-hidden") !== "true");
+    if (!focusable.length) return false;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return true; }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return true; }
+    if (!drawer.contains(document.activeElement)) { event.preventDefault(); first.focus(); return true; }
+    return false;
+  }
+
   /* ───────────────────── Components ───────────────────── */
   function sharedRecommendation(asset, context = {}) {
     return Recommendation.normalizeRecommendation(asset, context);
@@ -4214,17 +4718,6 @@
     return [];
   }
   function marketBias(rec) {
-    const buy = rec.filter(x => isBuySignalName(signal(x))).length, sell = rec.filter(x => isSellSignalName(signal(x))).length, total = rec.length;
-    if (!total) return { label: textPair("بانتظار البيانات", "Awaiting data"), en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: "" };
-    const cf = rec.map(x => num(x.confidence, x.score, x.aiConfidence)).filter(v => v !== null);
-    const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
-    const actionable = buy + sell;
-    // بدون إشارات منشورة، السوق ليس "هابطاً" — بوابة الدقة حاجبة فقط
-    if (!actionable) return { label: textPair("محايد · وضع الدقة نشط", "Neutral · precision gate active"), en: "NEUTRAL — PRECISION GATE", bull: 0, bear: 0, neutral: 100, conf, tone: "", note: textPair(`لا توجد إشارات تتجاوز حد النشر حالياً (${latinNumber(total)} أصل قيد المراقبة)`, `No signals currently pass the publishing threshold (${latinNumber(total)} assets under watch)`, `Aucun signal ne dépasse actuellement le seuil de publication (${latinNumber(total)} actifs sous surveillance)`) };
-    const bull = Math.round((buy / actionable) * 100), bear = 100 - bull, neutral = Math.round(((total - actionable) / total) * 100);
-    return { label: bull >= 55 ? textPair("صاعد", "Bullish") : bull <= 40 ? textPair("هابط", "Bearish") : textPair("محايد", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} شراء · ${latinNumber(sell)} بيع من أصل ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`, `${latinNumber(buy)} achats · ${latinNumber(sell)} ventes sur ${latinNumber(total)}`) };
-  }
-  function marketBias(rec) {
     const valid = rec.filter(hasValidDirectionalSignal);
     const buy = valid.filter(x => isBuySignalName(signal(x))).length;
     const sell = valid.filter(x => isSellSignalName(signal(x))).length;
@@ -4270,7 +4763,7 @@
           <div class="ai-analysis-bull ${b.tone === "warn" ? "bearish" : ""}" aria-hidden="true"></div>
         </div>`;
     const sessionsPanel = `<section class="panel market-overview">
-      <div class="panel-head"><div><span class="eyebrow">${h(textPair("نظرة السوق", "Market overview"))}</span><h2>${h(textPair("نظرة عامة على الأسواق", "Market overview"))}</h2></div><div class="mo-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${t}</button>`).join("")}</div></div>
+      <div class="panel-head"><div><span class="eyebrow">${h(textPair("نظرة السوق", "Market overview"))}</span><h2>${h(textPair("نظرة عامة على الأسواق", "Market overview"))}</h2></div><div class="mo-timeframes" role="group" aria-label="${h(textPair("الإطار الزمني", "Timeframe", "Période"))}">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button type="button" data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}" aria-pressed="${state.timeframe === t}">${t}</button>`).join("")}</div></div>
       ${marketSessionTimeline(rec)}
     </section>`;
     const analysisPanel = `<section class="panel ai-market-analysis">
@@ -4283,17 +4776,96 @@
   }
   function commandCenter(rec) {
     const p = providerCopy(), b = marketBias(rec), market = currentMarket();
-    const validSignals = rec.filter(hasValidDirectionalSignal);
-    const buy = validSignals.filter(x => isBuySignalName(signal(x))).length, sell = validSignals.filter(x => isSellSignalName(signal(x))).length;
-    const configured = p.className === "online";
-    return `<section class="terminal-command-center" aria-label="${h(textPair("ملخص السوق", "Market summary"))}">
-      ${commandMetric("PROVIDER", configured ? terminalText("connected") : textPair("غير مهيأ", "Not configured"), p.label || p.title, configured ? "ok" : "warn")}
-      ${commandMetric("AI CONFIDENCE", b.conf ? `${b.conf}%` : terminalText("unavailable"), b.conf ? b.label : textPair("بانتظار البيانات", "Awaiting data"), b.tone || "neutral")}
-      ${commandMetric(textPair("إشارات الشراء", "Buy signals"), buy, textPair("فرص شراء", "Buy opportunities"), buy ? "ok" : "neutral")}
-      ${commandMetric(textPair("إشارات البيع", "Sell signals"), sell, textPair("فرص بيع", "Sell opportunities"), sell ? "bad" : "neutral")}
-      ${commandMetric("ANALYZED ASSETS", rec.length || terminalText("unavailable"), textPair("أصول محللة", "Analyzed assets"), rec.length ? "ok" : "neutral")}
-      ${commandMetric("ACTIVE MARKET", marketName(market), `${marketName(market)} · ${market.currency}`, "blue")}
+    const validSignals = rec
+      .filter(hasValidDirectionalSignal)
+      .slice()
+      .sort((left, right) => (num(right.confidence, right.score, right.aiConfidence) || 0) - (num(left.confidence, left.score, left.aiConfidence) || 0));
+    const opportunities = validSignals.filter(x => isBuySignalName(signal(x))).slice(0, 4);
+    const riskSignals = validSignals.filter(x => isSellSignalName(signal(x))).slice(0, 3);
+    const alerts = smartAlerts().slice(0, 3);
+    const aiPicks = validSignals.slice(0, 3);
+    const news = newsItems().slice(0, 3);
+    const watch = state.watch.slice(0, 5).map(symbol => findAssetForSymbol(symbol, rec) || { symbol });
+    const sessionStates = SESSIONS.map(([ar, en, tz, kind, openLocal, closeLocal]) => ({ ar, en, state: sessionState(tz, kind, openLocal, closeLocal) }));
+    const sessions = sessionStates.slice(0, 6);
+    const openSessions = sessionStates.filter(item => item.state.open).length;
+    const primarySymbol = sym((aiPicks[0] && aiPicks[0].symbol) || state.watch[0] || "");
+    return `<section class="terminal-command-center trader-command-deck" aria-labelledby="command-deck-title">
+      <header class="command-deck-title"><div><span class="eyebrow">${h(textPair("وعي لحظي", "Live awareness", "Vue en direct"))}</span><h2 id="command-deck-title">${h(textPair("مركز قيادة السوق", "Market Command Center", "Centre de commandement du marché"))}</h2></div><span class="state-badge ${p.tone || ""}">${h(marketName(market))} · <b class="ltr">${h(market.currency)}</b></span></header>
+      <div class="command-deck-layout">
+        <article class="command-deck-card command-deck-status"><div class="command-deck-head"><span>${h(textPair("حالة السوق", "Market status", "État du marché"))}</span><i class="status-light ${openSessions ? "is-live" : "is-idle"}" aria-hidden="true"></i></div><strong>${h(marketName(market))}</strong><p>${h(textPair(`${latinNumber(openSessions)} جلسات مفتوحة الآن`, `${latinNumber(openSessions)} sessions open now`, `${latinNumber(openSessions)} séances ouvertes`))}</p><div class="command-deck-system"><small>${h(textPair("حالة النظام", "System status", "État du système"))}</small><b>${h(p.label || p.title)}</b></div></article>
+        <article class="command-deck-card command-deck-opportunities"><div class="command-deck-head"><span>${h(textPair("أفضل الفرص", "Top opportunities", "Meilleures opportunités"))}</span><b>${h(latinNumber(opportunities.length))}</b></div>${commandDeckAssetList(opportunities, textPair("لا توجد فرص منشورة حالياً", "No published opportunities right now", "Aucune opportunité publiée"))}</article>
+        <article class="command-deck-card command-deck-risks"><div class="command-deck-head"><span>${h(textPair("أهم المخاطر", "Top risks", "Risques principaux"))}</span><b>${h(latinNumber(riskSignals.length + alerts.length))}</b></div>${commandDeckRiskList(riskSignals, alerts)}</article>
+        <article class="command-deck-card command-deck-ai"><div class="command-deck-head"><span>${h(textPair("اختيارات الذكاء الاصطناعي", "AI picks", "Sélections IA"))}</span><span class="state-badge ${b.tone || "neutral"}">${h(b.conf ? `${b.conf}%` : terminalText("unavailable"))}</span></div><small>${h(textPair("حالة تحليل الذكاء الاصطناعي", "AI analysis status", "État de l’analyse IA"))}</small>${commandDeckAssetList(aiPicks, textPair("بانتظار إشارات مكتملة", "Awaiting complete signals", "En attente de signaux complets"))}</article>
+        <article class="command-deck-card command-deck-watchlist"><div class="command-deck-head"><span>${h(textPair("قائمة المتابعة", "Watchlist", "Liste de suivi"))}</span><b>${h(latinNumber(state.watch.length))}</b></div>${commandDeckAssetList(watch, textPair("قائمة المتابعة فارغة", "Watchlist is empty", "La liste de suivi est vide"))}<a class="command-deck-link" href="${ROOT}/watchlist" data-route-link>${h(textPair("فتح قائمة المتابعة", "Open watchlist", "Ouvrir la liste"))}</a></article>
+        <article class="command-deck-card command-deck-sentiment"><div class="command-deck-head"><span>${h(textPair("معنويات السوق", "Market sentiment", "Sentiment du marché"))}</span><strong class="${b.tone || "neutral"}">${h(b.label)}</strong></div><div class="command-deck-sentiment-bars" role="img" aria-label="${h(b.note || b.label)}"><span class="bull" style="--value:${b.bull}%"><i></i><b class="ltr">${b.bull}%</b></span><span class="bear" style="--value:${b.bear}%"><i></i><b class="ltr">${b.bear}%</b></span><span class="neutral" style="--value:${b.neutral}%"><i></i><b class="ltr">${b.neutral}%</b></span></div><p>${h(b.note || terminalText("unavailable"))}</p></article>
+        <article class="command-deck-card command-deck-provider"><div class="command-deck-head"><span>${h(textPair("ملخص المزود", "Provider summary", "Résumé fournisseur"))}</span><span class="state-badge ${p.tone || ""}">${h(p.label)}</span></div><strong>${h(p.title)}</strong><p>${h(p.copy || p.explanation || terminalText("unavailable"))}</p><a class="command-deck-link" href="${ROOT}/settings?view=overview" data-route-link>${h(textPair("فتح حالة المزود", "Open provider status", "Ouvrir l’état fournisseur"))}</a></article>
+        <article class="command-deck-card command-deck-sessions"><div class="command-deck-head"><span>${h(textPair("جلسات السوق", "Market sessions", "Séances de marché"))}</span><b class="ltr">UTC</b></div><ul class="command-deck-list">${sessions.map(item => `<li><span>${h(textPair(item.ar, item.en))}</span><b class="${item.state.open ? "is-open" : item.state.upcoming ? "is-upcoming" : "is-closed"}">${h(item.state.open ? textPair("مفتوحة", "Open", "Ouverte") : item.state.upcoming ? textPair("قادمة", "Upcoming", "À venir") : textPair("مغلقة", "Closed", "Fermée"))}</b></li>`).join("")}</ul></article>
+        <article class="command-deck-card command-deck-actions"><div class="command-deck-head"><span>${h(textPair("إجراءات سريعة", "Quick actions", "Actions rapides"))}</span></div><div class="command-deck-action-grid"><a class="action-btn" href="${ROOT}/ai-scanner" data-route-link>${h(textPair("حلل", "Analyze", "Analyser"))}</a><a class="ghost-btn" href="${ROOT}/watchlist" data-route-link>${h(textPair("قائمة المتابعة", "Watchlist", "Liste de suivi"))}</a>${primarySymbol ? `<button class="ghost-btn" type="button" data-create-alert="${h(primarySymbol)}">${h(textPair("أنشئ تنبيهاً", "Create alert", "Créer une alerte"))}</button><button class="ghost-btn" type="button" data-drawer-compare="${h(primarySymbol)}">${h(textPair("قارن", "Compare", "Comparer"))}</button><button class="ghost-btn" type="button" data-drawer-share="${h(primarySymbol)}">${h(textPair("مشاركة", "Share", "Partager"))}</button><button class="ghost-btn" type="button" data-drawer-export="${h(primarySymbol)}">${h(textPair("تصدير PDF", "Export PDF", "Exporter en PDF"))}</button>` : ""}</div></article>
+        <article class="command-deck-card command-deck-news"><div class="command-deck-head"><span>${h(textPair("آخر الأخبار", "Latest news", "Dernières actualités"))}</span><b>${h(latinNumber(news.length))}</b></div>${news.length ? newsList(news) : `<p class="command-deck-empty">${h(textPair("لا توجد أخبار حديثة من المزود", "No recent provider news", "Aucune actualité récente"))}</p>`}<a class="command-deck-link" href="${ROOT}/news" data-route-link>${h(textPair("كل الأخبار", "All news", "Toutes les actualités"))}</a></article>
+      </div>
     </section>`;
+  }
+
+  function commandDeckAssetList(items, emptyLabel) {
+    if (!items.length) return `<p class="command-deck-empty">${h(emptyLabel)}</p>`;
+    return `<div class="command-deck-list">${items.map(item => {
+      const a = normalizeQuote(norm(item));
+      const recommendation = sharedRecommendation(a);
+      const confidence = recommendation.confidence;
+      return `<button class="command-deck-symbol" type="button" data-symbol-details="${h(a.symbol)}"><span>${logo(a, "sm")}<b class="ltr">${h(displaySymbolFor(a.symbol))}</b></span><em class="${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}${confidence === null ? "" : ` · ${Math.round(confidence)}%`}</em></button>`;
+    }).join("")}</div>`;
+  }
+
+  function commandDeckRiskList(riskSignals, alerts) {
+    const signalRows = riskSignals.map(item => {
+      const a = normalizeQuote(norm(item));
+      return `<button class="command-deck-symbol risk" type="button" data-symbol-details="${h(a.symbol)}"><span>${logo(a, "sm")}<b class="ltr">${h(displaySymbolFor(a.symbol))}</b></span><em>${h(recommendationLabel(sharedRecommendation(a)))}</em></button>`;
+    }).join("");
+    const alertRows = alerts.map(alert => `<div class="command-deck-alert"><span aria-hidden="true">!</span><p><b>${h(alert.title || alert.symbol || textPair("تنبيه سوق", "Market alert", "Alerte marché"))}</b><small>${h(alert.message || alert.description || terminalText("unavailable"))}</small></p></div>`).join("");
+    return signalRows || alertRows ? `<div class="command-deck-list">${signalRows}${alertRows}</div>` : `<p class="command-deck-empty">${h(textPair("لا توجد مخاطر منشورة حالياً", "No published risks right now", "Aucun risque publié"))}</p>`;
+  }
+
+  function smartAnalysisTerminal(rec, titleId = "analysis-terminal-title") {
+    const a = normalizeQuote(norm(rec || {}));
+    const recommendation = sharedRecommendation(a);
+    const agreement = strategyAgreementMetric(a);
+    const c = currency(a);
+    const technicalData = a.technical || a.technicalAnalysis || a.indicators || {};
+    const support = num(a.support, a.support1, a.s1, a.levels && a.levels.support, technicalData.support, technicalData.s1);
+    const resistance = num(a.resistance, a.resistance1, a.r1, a.levels && a.levels.resistance, technicalData.resistance, technicalData.r1);
+    const momentum = a.momentum ?? a.momentumSignal ?? technicalData.momentum ?? technicalData.momentumSignal ?? null;
+    const breadth = a.marketBreadth ?? a.market_breadth ?? a.breadth ?? null;
+    const opportunityScore = num(a.opportunityScore, a.opportunity_score);
+    const risk = a.risk || a.riskLevel || null;
+    const trend = trendText(a.trend || a.technicalTrend || a.direction || technicalData.trend);
+    const rawSignals = arr(a.signals || a.signalList || a.strategies);
+    const p = providerCopy();
+    const metric = (label, value, tone = "") => `<div class="analysis-metric ${tone}"><span>${h(label)}</span><strong class="${typeof value === "string" && /[\d%.-]/.test(value) ? "ltr" : ""}">${h(value || terminalText("unavailable"))}</strong></div>`;
+    return `<section class="analysis-terminal" aria-labelledby="${h(titleId)}">
+      <div class="analysis-terminal-hero"><div>${a.symbol ? logo(a, "lg") : ""}<span><small>${h(textPair("محطة التحليل الذكي", "Smart analysis terminal", "Terminal d’analyse intelligent"))}</small><h2 id="${h(titleId)}">${h(a.symbol ? displaySymbolFor(a.symbol) : textPair("تحليل السوق", "Market analysis", "Analyse du marché"))}</h2><p>${h(a.name || textPair("تعرض المحطة القيم المتاحة فقط من المزود", "The terminal shows only provider-supplied values", "Le terminal affiche uniquement les valeurs du fournisseur"))}</p></span></div><span class="signal-badge ${recommendation.status || "unavailable"}">${h(recommendationLabel(recommendation))}</span></div>
+      <div class="analysis-terminal-grid">
+        ${metric(textPair("ثقة الذكاء الاصطناعي", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`, recommendationTone(recommendation))}
+        ${metric(textPair("اتفاق الاستراتيجيات", "Strategy agreement", "Accord des stratégies"), agreement.value)}
+        ${metric(textPair("الإشارات", "Signals", "Signaux"), rawSignals.length ? textPair(`${latinNumber(rawSignals.length)} إشارات`, `${latinNumber(rawSignals.length)} signals`, `${latinNumber(rawSignals.length)} signaux`) : signal(a) ? sigLabel(signal(a)) : terminalText("unavailable"))}
+        ${metric(textPair("الاتجاه", "Trend", "Tendance"), trend || terminalText("unavailable"))}
+        ${metric(textPair("المخاطر", "Risk", "Risque"), risk ? riskShort(risk) : terminalText("unavailable"), risk ? riskTone(risk) : "")}
+        ${metric(textPair("الدعم", "Support", "Support"), support === null ? terminalText("unavailable") : price(support, c))}
+        ${metric(textPair("المقاومة", "Resistance", "Résistance"), resistance === null ? terminalText("unavailable") : price(resistance, c))}
+        ${metric(textPair("الزخم", "Momentum", "Momentum"), analysisDisplayValue(momentum))}
+        ${metric(textPair("اتساع السوق", "Market breadth", "Amplitude du marché"), analysisDisplayValue(breadth))}
+        ${metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), opportunityScore === null ? terminalText("unavailable") : latinNumber(opportunityScore))}
+      </div>
+      <div class="analysis-signal-strip">${rawSignals.length ? rawSignals.slice(0, 6).map(item => `<span>${h(analysisDisplayValue(item && typeof item === "object" ? item.label || item.name || item.signal || item.value : item))}</span>`).join("") : `<span>${h(textPair("لا توجد إشارات تفصيلية متاحة", "No detailed signals available", "Aucun signal détaillé disponible"))}</span>`}</div>
+      <div class="analysis-provider-state ${p.tone || ""}"><span>${h(textPair("حالة المزود", "Provider status", "État du fournisseur"))}</span><strong>${h(p.label)}</strong><small>${h(stockProviderValue(a))}</small></div>
+    </section>`;
+  }
+
+  function analysisDisplayValue(value) {
+    if (value === null || value === undefined || value === "") return terminalText("unavailable");
+    if (typeof value === "number") return latinNumber(value);
+    if (typeof value === "object") return analysisDisplayValue(value.label ?? value.name ?? value.value ?? value.score ?? null);
+    return translateUiText(String(value));
   }
   function commandMetric(kicker, value, label, tone) {
     return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(translateUiText(kicker))}</span><strong>${h(translateUiText(String(value)))}</strong><small>${h(translateUiText(label || terminalText("unavailable")))}</small></article>`;
@@ -4315,48 +4887,81 @@
     const text = passed ? textPair(`✓ دقة تاريخية ${rate}%`, `✓ Historical accuracy ${rate}%`, `✓ Précision historique ${rate}%`) : textPair(`دقة تاريخية ${rate}% · حد النشر ${req}%`, `Historical accuracy ${rate}% · publish threshold ${req}%`, `Précision historique ${rate}% · seuil de publication ${req}%`);
     return `<span class="precision-badge ${passed ? "pass" : "info"}" title="${h(textPair("نسبة إصابة الهدف الأول في الاختبار الخلفي على نفس الرمز", "First-target hit rate in the backtest for this symbol"))}">${h(text)}</span>`;
   }
-  function leadershipCard(symbol, asset) {
-    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
-    const display = a.displaySymbol || displaySymbolFor(symbol);
-    const detailSymbol = a.canonicalSymbol || symbol;
-    const c = currency({ ...a, symbol: detailSymbol });
-    const p = a.price;
-    const chg = a.changePercent;
-    const recommendation = sharedRecommendation(a);
-    const conf = recommendation.confidence;
-    const sig = recommendation.status;
-    const quality = a.dataQuality || (!isValidPrice(p) ? "unavailable" : a.chartAvailable === false ? "partial" : "delayed");
-    const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
-    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
-      <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
-      <div class="leadership-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
-      ${sparkline(a, chg)}
-      <div class="leadership-foot">
-        <span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span>
-        <span class="quality-badge">${h(conf === null ? terminalText("unavailable") : `${terminalText("confidence")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>
-        ${precisionBadge(a)}
-      </div>
-    </button>`;
+  function stockProviderValue(asset) {
+    const provider = asset.provider || asset.dataProvider || asset.source || asset.providerName || asset.providerStatus && (asset.providerStatus.provider || asset.providerStatus.active);
+    return providerName(provider) || providerCopy().label || terminalText("unavailable");
+  }
+  function stockFreshnessValue(asset) {
+    const updated = asset.updatedAt || asset.lastUpdated || asset.timestamp || asset.providerStatus && asset.providerStatus.lastUpdated;
+    return updated ? latinDateTime(updated) : terminalText("unavailable");
+  }
+  function stockCardMeta(asset) {
+    const risk = asset.risk || asset.riskLevel;
+    const trend = trendText(asset.trend || asset.technicalTrend || asset.direction || asset.technical && asset.technical.trend);
+    const watched = state.watch.some(symbol => sym(symbol) === sym(asset.symbol));
+    const item = (label, value, tone = "", valueLtr = false) => `<span class="stock-meta-item ${tone}"><small>${h(label)}</small><b class="${valueLtr ? "ltr" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;
+    return `<div class="stock-card-meta">
+      ${item(terminalText("volume"), asset.volume == null ? terminalText("unavailable") : bigNumber(asset.volume), "", true)}
+      ${item(textPair("المخاطر", "Risk", "Risque"), risk ? riskShort(risk) : terminalText("unavailable"), risk ? riskTone(risk) : "")}
+      ${item(textPair("الاتجاه", "Trend", "Tendance"), trend || terminalText("unavailable"))}
+      ${item(textPair("المزود", "Provider", "Fournisseur"), stockProviderValue(asset))}
+      ${item(textPair("حداثة البيانات", "Freshness", "Fraîcheur"), stockFreshnessValue(asset), "", true)}
+      ${item(textPair("المتابعة", "Watch state", "Suivi"), watched ? textPair("قيد المتابعة", "Watching", "Suivi") : textPair("غير مضاف", "Not watched", "Non suivi"), `watch-state ${watched ? "is-watched" : ""}`)}
+    </div>`;
   }
   function opportunityHeatmap(rec) {
-    const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 24);
-    return `<section class="panel opportunity-heatmap">
-      <div class="panel-head"><div><span class="eyebrow">${h(textPair("خريطة الفرص", "Opportunity heatmap"))}</span><h2>${h(textPair("خريطة حرارة الفرص", "Opportunity heatmap"))}</h2></div><span class="state-badge">${h(rec.length ? textPair(`${latinNumber(rec.length)} أصل`, `${latinNumber(rec.length)} assets`, `${latinNumber(rec.length)} actifs`) : textPair("البيانات غير متاحة حالياً", "Data is currently unavailable"))}</span></div>
-      <div class="opportunity-heat-grid">${symbols.map(s => heatmapCard(s, findAssetForSymbol(s, rec))).join("")}</div>
+    const symbols = unique([...dashboardSymbols(), ...rec.map(x => x.symbol)]).slice(0, 60);
+    const allAssets = symbols.map((symbol, index) => {
+      const asset = normalizeQuote(norm(findAssetForSymbol(symbol, rec) || { symbol, name: terminalText("unavailable") }));
+      const sector = heatmapSector(asset);
+      return { symbol, asset, rank: index + 1, sectorKey: sector.key, sector: sector.label };
+    });
+    const sectors = Array.from(new Map(allAssets.map(item => [item.sectorKey, item.sector])).entries()).map(([key, label]) => ({ key, label }));
+    const query = state.heatmapView.search.trim().toLocaleLowerCase();
+    const visible = allAssets.filter(item => {
+      const tone = heatmapTone(item.asset.changePercent);
+      const matchesQuery = !query || `${item.symbol} ${item.asset.name || ""}`.toLocaleLowerCase().includes(query);
+      const matchesTone = state.heatmapView.tone === "all" || state.heatmapView.tone === tone;
+      const matchesSector = state.heatmapView.sector === "all" || state.heatmapView.sector === item.sectorKey;
+      return matchesQuery && matchesTone && matchesSector;
+    });
+    const groups = sectors.map(sector => ({ ...sector, items: visible.filter(item => item.sectorKey === sector.key) })).filter(group => group.items.length);
+    const toneButtons = [["all", terminalText("all")], ["positive", textPair("الرابحون", "Gainers", "Hausses")], ["negative", textPair("الخاسرون", "Losers", "Baisses")], ["neutral", textPair("محايد", "Neutral", "Neutre")]];
+    return `<section class="panel opportunity-heatmap heatmap-workspace" aria-labelledby="heatmap-title" data-density="${h(state.heatmapView.density)}" data-zoom-level="${h(state.heatmapView.zoom.toFixed(1))}" style="--heatmap-zoom:${state.heatmapView.zoom.toFixed(1)}">
+      <div class="panel-head"><div><span class="eyebrow">${h(textPair("خريطة الفرص", "Opportunity heatmap", "Carte thermique des opportunités"))}</span><h2 id="heatmap-title">${h(textPair("خريطة حرارة السوق", "Market performance heatmap", "Carte thermique du marché"))}</h2></div><span class="state-badge">${h(textPair(`${latinNumber(visible.length)} أصل`, `${latinNumber(visible.length)} assets`, `${latinNumber(visible.length)} actifs`))}</span></div>
+      <div class="heatmap-toolbar">
+        <form class="heatmap-search" data-heatmap-search-form role="search"><label><span class="sr-only">${h(textPair("ابحث في الخريطة", "Search heatmap", "Rechercher dans la carte"))}</span><input name="heatmapSearch" value="${h(state.heatmapView.search)}" placeholder="${h(textPair("ابحث بالرمز أو الاسم", "Search symbol or name", "Rechercher un symbole ou un nom"))}" autocomplete="off" /></label><button class="ghost-btn compact-btn" type="submit">${h(terminalText("search"))}</button></form>
+        <div class="heatmap-filters" role="group" aria-label="${h(textPair("فلتر الأداء", "Performance filter", "Filtre de performance"))}">${toneButtons.map(([value, label]) => `<button type="button" data-heatmap-tone="${value}" class="${state.heatmapView.tone === value ? "is-active" : ""}" aria-pressed="${state.heatmapView.tone === value}">${h(label)}</button>`).join("")}</div>
+        <label class="heatmap-sector-filter"><span>${h(textPair("القطاع", "Sector", "Secteur"))}</span><select data-heatmap-sector><option value="all">${h(textPair("كل القطاعات", "All sectors", "Tous les secteurs"))}</option>${sectors.map(sector => `<option value="${h(sector.key)}" ${state.heatmapView.sector === sector.key ? "selected" : ""}>${h(sector.label)}</option>`).join("")}</select></label>
+        <div class="heatmap-view-controls"><span>${h(textPair("التكبير", "Zoom", "Zoom"))}</span><button type="button" data-heatmap-zoom="out" aria-label="${h(textPair("تصغير", "Zoom out", "Réduire"))}">−</button><button type="button" data-heatmap-zoom="reset" aria-label="${h(textPair("إعادة ضبط التكبير", "Reset zoom", "Réinitialiser le zoom"))}">${h(Math.round(state.heatmapView.zoom * 100))}%</button><button type="button" data-heatmap-zoom="in" aria-label="${h(textPair("تكبير", "Zoom in", "Agrandir"))}">+</button><button type="button" data-heatmap-density="comfortable" class="${state.heatmapView.density === "comfortable" ? "is-active" : ""}" aria-pressed="${state.heatmapView.density === "comfortable"}">${h(textPair("مريح", "Roomy", "Aéré"))}</button><button type="button" data-heatmap-density="compact" class="${state.heatmapView.density === "compact" ? "is-active" : ""}" aria-pressed="${state.heatmapView.density === "compact"}">${h(textPair("كثيف", "Dense", "Dense"))}</button></div>
+      </div>
+      ${groups.length ? `<div class="heatmap-treemap">${groups.map(group => `<section class="heatmap-sector-group" data-heatmap-group="${h(group.key)}"><header class="heatmap-sector-header"><h3>${h(group.label)}</h3><span>${h(latinNumber(group.items.length))}</span></header><div class="heatmap-sector-tiles">${group.items.map(heatmapCard).join("")}</div></section>`).join("")}</div>` : `<div class="empty-state compact"><span class="empty-glyph">⌁</span><h3>${h(textPair("لا توجد نتائج مطابقة", "No matching heatmap results", "Aucun résultat correspondant"))}</h3><p>${h(textPair("غيّر البحث أو فلتر الأداء أو القطاع.", "Change the search, performance filter, or sector.", "Modifiez la recherche, le filtre de performance ou le secteur."))}</p></div>`}
     </section>`;
   }
-  function heatmapCard(symbol, asset) {
-    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
-    const chg = a.changePercent;
-    const recommendation = sharedRecommendation(a);
-    const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
-    const conf = recommendation.confidence;
-    return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
-      ${logo({ ...a, symbol }, "sm")}
-      <strong class="ltr">${h(symbol === "BTCUSD" ? "BTC/USD" : symbol)}</strong>
-      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
-      <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
-    </button>`;
+
+  function heatmapSector(asset) {
+    const direct = asset.sector || asset.sectorName || asset.industry || asset.industryName;
+    if (direct) {
+      const key = String(direct).trim();
+      return { key, label: translateUiText(key) };
+    }
+    const market = marketForSymbol(asset.symbol);
+    return market
+      ? { key: `market:${market.id}`, label: marketName(market) }
+      : { key: "other", label: textPair("أخرى", "Other", "Autres") };
+  }
+
+  function heatmapTone(changeValue) {
+    return changeValue === null ? "unavailable" : changeValue > 0 ? "positive" : changeValue < 0 ? "negative" : "neutral";
+  }
+
+  function heatmapSizeClass(asset, rank) {
+    const cap = num(asset.marketCap, asset.marketCapitalization);
+    const volume = num(asset.volume, asset.averageVolume, asset.avgVolume);
+    const providerRank = num(asset.rank, asset.marketCapRank, asset.volumeRank, rank);
+    if ((providerRank !== null && providerRank <= 3) || (cap !== null && cap >= 100000000000) || (volume !== null && volume >= 50000000)) return "size-lg";
+    if ((providerRank !== null && providerRank <= 10) || (cap !== null && cap >= 10000000000) || (volume !== null && volume >= 10000000)) return "size-md";
+    return "size-sm";
   }
   function leadershipCard(symbol, asset) {
     const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
@@ -4369,42 +4974,33 @@
     const conf = recommendation.confidence;
     const sig = recommendation.status;
     const dataState = assetDataState(a, recommendation);
-    if (dataState.key === "unavailable") {
-      return `<button class="leadership-card unavailable is-empty" data-symbol-details="${h(detailSymbol)}" type="button">
-        <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div><span class="state-badge muted">${h(dataState.label)}</span></div>
-        ${marketDataEmptyHtml()}
-        <div class="leadership-foot"><span class="signal-badge unavailable">${h(dataState.label)}</span><span class="quality-badge ${dataState.tone}">${h(dataQualityLabel(dataState.quality))}</span></div>
-      </button>`;
-    }
     const quality = a.dataQuality || (a.chartAvailable === false ? "partial" : "live");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
-    return `<button class="leadership-card ${stateClass}" data-symbol-details="${h(detailSymbol)}" type="button">
-      <div class="asset-head">${logo({ ...a, symbol: display })}<div class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></div></div>
-      <div class="leadership-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
-      ${sparkline(a, chg)}
-      <div class="leadership-foot"><span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span><span class="quality-badge">${h(conf === null ? dataState.label : `${terminalText("confidence")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>${precisionBadge(a)}</div>
-    </button>`;
+    return `<article class="leadership-card trader-stock-card ${stateClass} ${dataState.key === "unavailable" ? "unavailable is-empty" : ""}">
+      <button class="asset-head stock-card-primary" data-symbol-details="${h(detailSymbol)}" type="button" aria-label="${h(textPair(`فتح العرض السريع لـ ${display}`, `Open quick view for ${display}`, `Ouvrir l’aperçu de ${display}`))}">${logo({ ...a, symbol: display })}<span class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></span><span class="watch-state ${state.watch.some(item => sym(item) === sym(detailSymbol)) ? "is-watched" : ""}" aria-hidden="true">★</span></button>
+      <div class="leadership-price stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
+      <div class="stock-card-chart">${sparkline(a, chg)}</div>
+      <div class="leadership-foot"><span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span><span class="quality-badge ${dataState.tone || ""}">${h(conf === null ? dataState.label : `${textPair("ثقة AI", "AI confidence", "Confiance IA")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>${precisionBadge(a)}</div>
+      ${stockCardMeta({ ...a, symbol: detailSymbol })}
+    </article>`;
   }
-  function heatmapCard(symbol, asset) {
-    const a = normalizeQuote(asset ? norm(asset) : { symbol, name: terminalText("unavailable") });
+  function heatmapCard(record) {
+    const symbol = record.symbol;
+    const a = record.asset;
     const chg = a.changePercent;
     const recommendation = sharedRecommendation(a);
-    const dataState = assetDataState(a, recommendation);
-    const display = symbol === "BTCUSD" ? "BTC/USD" : symbol;
-    if (dataState.key === "unavailable") {
-      return `<button class="opportunity-cell unavailable is-empty" data-symbol-details="${h(symbol)}" type="button">
-        ${logo({ ...a, symbol }, "sm")}
-        <strong class="ltr">${h(display)}</strong>
-        ${marketDataEmptyHtml("compact")}
-      </button>`;
-    }
-    const stateClass = chg === null ? "unavailable" : chg > 0 ? "positive" : chg < 0 ? "negative" : "neutral";
+    const tone = heatmapTone(chg);
+    const size = heatmapSizeClass(a, record.rank);
     const conf = recommendation.confidence;
-    return `<button class="opportunity-cell ${stateClass}" data-symbol-details="${h(symbol)}" type="button">
-      ${logo({ ...a, symbol }, "sm")}
-      <strong class="ltr">${h(display)}</strong>
-      <span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
-      <em>${h(recommendationLabel(recommendation))}${conf === null ? "" : ` · ${Math.round(conf)}%`}</em>
+    const selected = sym(state.heatmapView.selected) === sym(symbol);
+    const tooltipId = `heatmap-tip-${String(symbol).replace(/[^a-z0-9_-]/gi, "-")}`;
+    const accessibleName = [displaySymbolFor(symbol), a.name, change(chg)].filter(Boolean).join(" · ");
+    const tooltipText = [record.sector, recommendationLabel(recommendation), conf === null ? "" : `${terminalText("confidence")} ${Math.round(conf)}%`, a.volume == null ? "" : `${terminalText("volume")} ${bigNumber(a.volume)}`].filter(Boolean).join(" · ");
+    return `<button class="opportunity-cell heatmap-tile ${size} tone-${tone} ${tone} ${selected ? "is-selected" : ""}" data-symbol-details="${h(symbol)}" type="button" aria-pressed="${selected}" aria-describedby="${h(tooltipId)}" aria-label="${h(accessibleName)}">
+      <span class="heatmap-tile-head">${logo({ ...a, symbol }, "sm")}<span><strong class="ltr">${h(displaySymbolFor(symbol))}</strong><small>${h(a.name || record.sector)}</small></span></span>
+      <span class="heatmap-tile-performance ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span>
+      <span class="heatmap-tile-meta"><em>${h(recommendationLabel(recommendation))}</em><b>${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</b></span>
+      <span class="heatmap-tooltip" id="${h(tooltipId)}" role="tooltip">${h(tooltipText)}</span>
     </button>`;
   }
   function moverPanel(kicker, title, items, tone) {
@@ -4479,11 +5075,18 @@
   }
   function sparkline(asset, chg) {
     const series = arr(asset.history || asset.sparkline || asset.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
-    if (series.length < 2) return `<div class="leadership-sparkline empty">${h(textPair("الشارت غير متاح", "Chart unavailable"))}</div>`;
+    const chartLabel = `${asset.displaySymbol || asset.symbol || textPair("الأصل", "Asset", "Actif")} · ${textPair("اتجاه السعر المصغر", "Mini price trend", "Mini-tendance du cours")}`;
+    if (series.length < 2) return `<div class="leadership-sparkline empty chart-empty" role="img" aria-label="${h(chartLabel)}">${h(textPair("الشارت غير متاح", "Chart unavailable", "Graphique indisponible"))}</div>`;
     const min = Math.min(...series), max = Math.max(...series), rng = max - min || 1;
     const points = series.map((v, i) => `${(i / (series.length - 1) * 100).toFixed(2)},${(34 - (v - min) / rng * 30).toFixed(2)}`).join(" ");
     const tone = chg === null ? (series[series.length - 1] >= series[0] ? "up" : "down") : chg >= 0 ? "up" : "down";
-    return `<svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><polyline class="${tone}" points="${points}"></polyline></svg>`;
+    const markerIndexes = Array.from(new Set([0, Math.floor((series.length - 1) / 2), series.length - 1]));
+    const markers = markerIndexes.map(index => {
+      const x = (index / (series.length - 1) * 100).toFixed(2);
+      const y = (34 - (series[index] - min) / rng * 30).toFixed(2);
+      return `<circle class="sparkline-hover-point ${tone}" cx="${x}" cy="${y}" r="1.8"><title>${h(`${latinNumber(series[index])} · ${index + 1}/${series.length}`)}</title></circle>`;
+    }).join("");
+    return `<figure class="stock-sparkline" aria-busy="false"><svg class="leadership-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label="${h(chartLabel)}"><title>${h(chartLabel)}</title><desc>${h(textPair(`من ${latinNumber(series[0])} إلى ${latinNumber(series[series.length - 1])}`, `From ${latinNumber(series[0])} to ${latinNumber(series[series.length - 1])}`, `De ${latinNumber(series[0])} à ${latinNumber(series[series.length - 1])}`))}</desc><g class="sparkline-grid" aria-hidden="true"><line x1="0" y1="9" x2="100" y2="9"></line><line x1="0" y1="18" x2="100" y2="18"></line><line x1="0" y1="27" x2="100" y2="27"></line></g><polyline class="${tone}" points="${points}"></polyline>${markers}</svg><figcaption class="sparkline-legend"><span>${h(textPair("الأدنى", "Low", "Bas"))} <b class="ltr">${h(latinNumber(min))}</b></span><span>${h(textPair("الأعلى", "High", "Haut"))} <b class="ltr">${h(latinNumber(max))}</b></span></figcaption></figure>`;
   }
   function sessionQuote(symbol, rec) {
     if (!symbol) return null;
@@ -4493,9 +5096,21 @@
     if (!isValidPrice(a.price)) return null;
     return { price: a.price, chg: a.changePercent, currency: currency({ ...a, symbol }) };
   }
-  function segBars(nowFrac, segs, toneClass) {
-    return segs.map(([s, e]) => `<span class="st-seg ${toneClass}" style="left:${(s / 24 * 100).toFixed(2)}%;width:${((e - s) / 24 * 100).toFixed(2)}%"></span>`).join("")
-      + `<span class="st-now" style="left:${(nowFrac / 24 * 100).toFixed(2)}%"></span>`;
+  function sessionClassName(value) {
+    return `session-${String(value || "market").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+  }
+  function sessionGridLines() {
+    return Array.from({ length: 9 }, (_, index) => `<i class="session-gridline" aria-hidden="true" style="left:${(index / 8 * 100).toFixed(2)}%"></i>`).join("");
+  }
+  function segBars(nowFrac, segs, sessionKey, statusKey, label) {
+    const stateClass = `is-${statusKey}`;
+    const bars = segs.map(([start, end]) => {
+      const range = `${fmtHM(start)}–${fmtHM(end)} UTC`;
+      const tooltip = `${label} · ${range}`;
+      const edgeClass = start <= 1 ? "tooltip-edge-start" : end >= 23 ? "tooltip-edge-end" : "";
+      return `<span class="st-seg session-bar ${sessionKey} ${stateClass} ${edgeClass}" style="left:${(start / 24 * 100).toFixed(2)}%;width:${((end - start) / 24 * 100).toFixed(2)}%" tabindex="0" role="img" aria-label="${h(tooltip)}"><span class="session-tooltip" role="tooltip">${h(tooltip)}</span></span>`;
+    }).join("");
+    return `${sessionGridLines()}${bars}<span class="st-now session-now-line" style="left:${(nowFrac / 24 * 100).toFixed(2)}%" aria-hidden="true"></span>`;
   }
   function marketSessionTimeline(rec) {
     const nowFrac = utcNowFraction();
@@ -4504,44 +5119,60 @@
       const segs = st.closeUTC > st.openUTC ? [[st.openUTC, st.closeUTC]] : [[st.openUTC, 24], [0, st.closeUTC]];
       const q = sessionQuote(symbol, rec);
       const chgTone = q === null ? "" : q.chg > 0 ? "up" : q.chg < 0 ? "down" : "flat";
-      const quoteHtml = q === null ? "<div></div>" : `<div class="st-quote"><b>${h(price(q.price, q.currency))}</b><small class="${chgTone}">${h(change(q.chg))}</small></div>`;
-      return `<div class="st-row">
-        <div><div class="st-name">${h(textPair(ar, en))}</div><div class="st-ex st-status ${st.open ? "open" : "closed"}">${h(st.open ? textPair("مفتوح", "Open") : textPair("مغلق", "Closed"))} · ${h(translateUiText(st.label))}</div></div>
-        <div class="st-track">${segBars(nowFrac, segs, "open")}</div>
+      const statusKey = st.open ? "open" : st.upcoming ? "upcoming" : "closed";
+      const statusLabel = statusKey === "open" ? textPair("مفتوحة", "Open", "Ouverte") : statusKey === "upcoming" ? textPair("قادمة", "Upcoming", "À venir") : textPair("مغلقة", "Closed", "Fermée");
+      const name = textPair(ar, en);
+      const sessionKey = sessionClassName(en);
+      const quoteHtml = q === null ? `<div class="st-quote is-empty"><small>${h(terminalText("unavailable"))}</small></div>` : `<div class="st-quote"><b>${h(price(q.price, q.currency))}</b><small class="${chgTone}">${h(change(q.chg))}</small></div>`;
+      return `<div class="st-row session-row ${sessionKey} is-${statusKey}" data-session-state="${statusKey}">
+        <div class="session-name-cell"><div class="st-name">${h(name)}</div><div class="st-ex st-status ${statusKey}"><span class="session-state-dot" aria-hidden="true"></span>${h(statusLabel)} · ${h(translateUiText(st.label))}</div></div>
+        <div class="st-track session-track" aria-label="${h(`${name} · ${statusLabel}`)}">${segBars(nowFrac, segs, sessionKey, statusKey, name)}</div>
         ${quoteHtml}
       </div>`;
     }).join("");
     const fxRows = FX_SESSIONS.map(([ar, en, segs]) => {
       const active = segs.some(([s, e]) => nowFrac >= s && nowFrac < e);
-      return `<div class="st-row">
-        <div><div class="st-name">${h(textPair(ar, en))}</div><div class="st-ex st-status ${active ? "active" : "closed"}">${h(active ? textPair("نشطة الآن", "Active now") : textPair("غير نشطة", "Inactive"))}</div></div>
-        <div class="st-track">${segBars(nowFrac, segs, "active")}</div>
-        <div></div>
+      const upcoming = !active && segs.some(([start]) => start > nowFrac);
+      const statusKey = active ? "open" : upcoming ? "upcoming" : "closed";
+      const statusLabel = active ? textPair("نشطة الآن", "Active now", "Active") : upcoming ? textPair("قادمة", "Upcoming", "À venir") : textPair("مغلقة", "Closed", "Fermée");
+      const name = textPair(ar, en);
+      const sessionKey = sessionClassName(`fx-${en}`);
+      return `<div class="st-row session-row ${sessionKey} is-${statusKey}" data-session-state="${statusKey}">
+        <div class="session-name-cell"><div class="st-name">${h(name)}</div><div class="st-ex st-status ${statusKey}"><span class="session-state-dot" aria-hidden="true"></span>${h(statusLabel)}</div></div>
+        <div class="st-track session-track" aria-label="${h(`${name} · ${statusLabel}`)}">${segBars(nowFrac, segs, sessionKey, statusKey, name)}</div>
+        <div class="st-quote is-empty"><small>FX</small></div>
       </div>`;
     }).join("");
     const cq = sessionQuote("BTCUSD", rec);
     const cqTone = cq === null ? "" : cq.chg > 0 ? "up" : cq.chg < 0 ? "down" : "flat";
-    const cqHtml = cq === null ? "<div></div>" : `<div class="st-quote"><b>${h(price(cq.price, cq.currency))}</b><small class="${cqTone}">${h(change(cq.chg))}</small></div>`;
-    const cryptoRow = `<div class="st-row">
-      <div><div class="st-name">BTC/USD</div><div class="st-ex st-status open">${h(textPair("مفتوحة دائماً", "Always open"))}</div></div>
-      <div class="st-track">${segBars(nowFrac, [[0, 24]], "open")}</div>
+    const cqHtml = cq === null ? `<div class="st-quote is-empty"><small>${h(terminalText("unavailable"))}</small></div>` : `<div class="st-quote"><b>${h(price(cq.price, cq.currency))}</b><small class="${cqTone}">${h(change(cq.chg))}</small></div>`;
+    const cryptoLabel = textPair("العملات الرقمية", "Crypto", "Crypto");
+    const cryptoRow = `<div class="st-row session-row session-crypto is-open" data-session-state="open">
+      <div class="session-name-cell"><div class="st-name">BTC/USD</div><div class="st-ex st-status open"><span class="session-state-dot" aria-hidden="true"></span>${h(textPair("مفتوحة دائماً", "Always open", "Toujours ouverte"))}</div></div>
+      <div class="st-track session-track" aria-label="${h(textPair("جلسة العملات الرقمية مفتوحة دائماً", "Crypto session is always open", "La séance crypto est toujours ouverte"))}">${segBars(nowFrac, [[0, 24]], "session-crypto", "open", cryptoLabel)}</div>
       ${cqHtml}
     </div>`;
-    return `<div class="session-timeline">
+    const axisTicks = Array.from({ length: 9 }, (_, index) => index * 3).map(hour => `<span class="session-axis-tick" style="left:${(hour / 24 * 100).toFixed(2)}%"><b class="ltr">${String(hour).padStart(2, "0")}:00</b></span>`).join("");
+    const nowLabel = `${textPair("الآن", "Now", "Maintenant")} ${fmtHM(nowFrac)} UTC`;
+    const nowPercent = nowFrac / 24 * 100;
+    const nowLabelLeft = Math.max(5, Math.min(95, nowPercent));
+    const nowLabelEdge = nowPercent < 25 ? "is-edge-start" : nowPercent > 75 ? "is-edge-end" : "";
+    return `<div class="session-timeline market-session-terminal" aria-label="${h(textPair("الخط الزمني لجلسات السوق", "Market session timeline", "Chronologie des séances de marché"))}">
       <div class="st-legend">
         <span>${h(textPair("جلسات التداول · توقيت غرينتش UTC", "Trading sessions · UTC"))}</span>
         <span class="st-legend-items">
           <span><i class="st-dot open"></i>${h(textPair("مفتوح", "Open"))}</span>
           <span><i class="st-dot closed"></i>${h(textPair("مغلق", "Closed"))}</span>
+          <span><i class="st-dot upcoming"></i>${h(textPair("قادم", "Upcoming", "À venir"))}</span>
           <span><i class="st-now-swatch"></i>${h(textPair("الآن", "Now"))}</span>
         </span>
       </div>
-      <div class="st-axis"><div></div><div class="st-axis-track"><span style="left:0%">00</span><span style="left:25%">06</span><span style="left:50%">12</span><span style="left:75%">18</span><span style="left:100%;transform:translateX(-100%)">24</span></div><div></div></div>
-      ${exRows}
-      <div class="st-group-label">${h(textPair("جلسات الفوركس", "Forex sessions"))}</div>
-      ${fxRows}
-      <div class="st-group-label">${h(textPair("العملات الرقمية", "Crypto"))}</div>
-      ${cryptoRow}
+      <div class="st-axis session-axis-grid"><div></div><div class="st-axis-track">${axisTicks}<span class="session-now-label ${nowLabelEdge}" style="left:${nowLabelLeft.toFixed(2)}%">${h(nowLabel)}</span></div><div></div></div>
+      <div class="session-groups">
+        <section class="session-group session-group-exchanges"><h3 class="st-group-label session-group-label">${h(textPair("البورصات العالمية والخليجية", "Global and Gulf exchanges", "Bourses mondiales et du Golfe"))}</h3>${exRows}</section>
+        <section class="session-group session-group-forex"><h3 class="st-group-label session-group-label">${h(textPair("جلسات الفوركس", "Forex sessions", "Séances Forex"))}</h3>${fxRows}</section>
+        <section class="session-group session-group-crypto"><h3 class="st-group-label session-group-label">${h(textPair("العملات الرقمية", "Crypto", "Crypto"))}</h3>${cryptoRow}</section>
+      </div>
       <div class="st-note">${h(textPair("الأسعار قد تكون متأخرة بضع دقائق حسب المزود.", "Prices may be delayed a few minutes depending on the provider."))}</div>
     </div>`;
   }
@@ -4580,46 +5211,36 @@
     return `<div class="table-shell watchlist-table"><table><thead><tr><th>${h(terminalText("asset"))}</th><th>${h(terminalText("price"))}</th><th>${h(textPair("التغير", "Change"))}</th><th>${h(textPair("التوصية", "Recommendation"))}</th><th>${h(terminalText("confidence"))}</th><th>${h(terminalText("target"))}</th><th>${h(textPair("المدة", "Horizon"))}</th><th>${h(textPair("المخاطرة", "Risk"))}</th><th>${h(textPair("سكور AI", "AI score"))}</th><th>${h(terminalText("action"))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
-  function recCard(x) {
-    const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
-    const p = a.price, tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
-    const unavailableNote = !isValidPrice(p) || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : "";
-    return `<article class="rec-card ${sig}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></div>
-      <div class="rec-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("confidence"))}<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>
-      ${unavailableNote}
-      <div class="rec-foot"><span class="status-tag ${recommendationTone(recommendation) || recStatusTone(a)}">${h(recommendationStatusText(recommendation, a))}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button></div></div></article>`;
-  }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(normalizeQuote(norm(x)))).join("")}</div>`; }
-  function assetCard(asset, opts = {}) {
-    const a = normalizeQuote(norm(asset)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence, p = a.price;
-    const chg = a.changePercent;
-    const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">${h(textPair("إزالة", "Remove"))}</button>` : "";
-    return `<article class="asset-card"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable"))}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag">${h(recommendationStatusText(recommendation, a))}</span></div>
-      <div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>
-      ${!isValidPrice(p) || a.available === false ? `<p class="muted-note">${h(unavailablePriceText(a))}</p>` : ""}
-      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
-  }
   function recCard(x) {
     const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status, conf = recommendation.confidence;
     const p = a.price, tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
+    const chg = a.changePercent;
     const dataState = assetDataState(a, recommendation);
-    const metricBlock = dataState.key === "unavailable" ? "" : `<div class="rec-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("confidence"))}<b>${conf === null ? "--" : Math.round(conf) + "%"}</b></span></div>`;
-    return `<article class="rec-card ${sig} ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || "--")}</small></div><span class="state-badge ${dataState.tone || recommendationTone(recommendation)}">${h(dataState.label)}</span></div>
-      ${metricBlock}
-      ${dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : ""}
-      <div class="rec-foot"><span class="status-tag ${dataState.tone || recommendationTone(recommendation) || recStatusTone(a)}">${h(dataState.label)}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button></div></div></article>`;
+    const watched = state.watch.some(symbol => sym(symbol) === sym(a.symbol));
+    return `<article class="rec-card trader-stock-card ${sig} ${dataState.key === "unavailable" ? "is-empty" : ""}">
+      <div class="stock-card-top"><button class="asset-head stock-card-primary" data-symbol-details="${h(a.symbol)}" type="button">${logo(a)}<span class="asset-title"><strong class="ltr">${h(displaySymbolFor(a.symbol))}</strong><small>${h(a.name || terminalText("unavailable"))}</small></span></button><span class="state-badge ${dataState.tone || recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></div>
+      <div class="stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
+      <div class="stock-card-chart">${sparkline(a, chg)}</div>
+      <div class="rec-metrics"><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))}<b>${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</b></span></div>
+      ${stockCardMeta(a)}
+      <div class="rec-foot stock-card-actions"><span class="status-tag ${dataState.tone || recommendationTone(recommendation) || recStatusTone(a)}">${h(dataState.label)}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button><button class="ghost-btn sm ${watched ? "is-active" : ""}" ${watched ? `data-remove-watch="${h(a.symbol)}"` : `data-quick-add="${h(a.symbol)}"`} type="button">${h(watched ? textPair("إزالة من المتابعة", "Remove watch", "Retirer du suivi") : textPair("أضف للمتابعة", "Add to watchlist", "Ajouter au suivi"))}</button></div></div>
+    </article>`;
   }
   function assetCard(asset, opts = {}) {
     const a = normalizeQuote(norm(asset)), c = currency(a), recommendation = sharedRecommendation(a), conf = recommendation.confidence, p = a.price;
     const chg = a.changePercent;
     const dataState = assetDataState(a, recommendation);
-    const remove = opts.removable ? `<button class="danger-btn" data-remove-watch="${h(a.symbol)}">${h(textPair("\u0625\u0632\u0627\u0644\u0629", "Remove"))}</button>` : "";
-    const metricBlock = dataState.key === "unavailable" ? marketDataEmptyHtml("card-empty-state") : `<div class="asset-metrics"><span>${h(terminalText("price"))}<b class="ltr">${h(price(p, c))}</b></span><span>${h(textPair("التغيير", "Change"))}<b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></span><span>${h(textPair("ثقة AI", "AI confidence"))}<b>${conf === null ? terminalText("unavailable") : `${Math.round(conf)}%`}</b></span></div>`;
-    return `<article class="asset-card ${dataState.key === "unavailable" ? "is-empty" : ""}"><div class="asset-head">${logo(a)}<div class="asset-title"><strong class="symbol-code">${h(a.symbol || "--")}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable"))}</small></div></div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span></div>
-      ${metricBlock}
-      <div class="card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn" data-quick-add="${h(a.symbol)}">${h(terminalText("watchlist"))}</button>${remove}</div></article>`;
+    const watched = state.watch.some(symbol => sym(symbol) === sym(a.symbol));
+    const removable = watched || opts.removable === true;
+    return `<article class="asset-card trader-stock-card ${dataState.key === "unavailable" ? "is-empty" : ""}">
+      <div class="stock-card-top"><button class="asset-head stock-card-primary" data-symbol-details="${h(a.symbol)}" type="button">${logo(a)}<span class="asset-title"><strong class="symbol-code">${h(displaySymbolFor(a.symbol || "--"))}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable", "Nom de l’actif indisponible"))}</small></span></button><span class="watch-state ${watched ? "is-watched" : ""}" aria-label="${h(textPair("حالة المتابعة", "Watch state", "État du suivi"))}">★</span></div>
+      <div class="stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
+      <div class="stock-card-chart">${sparkline(a, chg)}</div>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span><span class="quality-badge">${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))} ${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</span></div>
+      ${stockCardMeta(a)}
+      <div class="card-actions stock-card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn ${removable ? "is-active" : ""}" ${removable ? `data-remove-watch="${h(a.symbol)}"` : `data-quick-add="${h(a.symbol)}"`}>${h(removable ? textPair("إزالة من المتابعة", "Remove watch", "Retirer du suivi") : textPair("أضف للمتابعة", "Add to watchlist", "Ajouter au suivi"))}</button></div>
+    </article>`;
   }
   function marketCard(m) {
     const visible = marketPreviewSymbols(m).slice(0, 8);
@@ -5072,7 +5693,7 @@
   function riskRadar(r) { if (!r.length) return miniEmpty(); const levels = { low: 0, medium: 0, high: 0 }; r.forEach(x => { const k = riskKey(x.risk || x.riskLevel); levels[k]++; }); const max = Math.max(1, ...Object.values(levels)); const L = { low: [textPair("منخفضة", "Low"), "ok"], medium: [textPair("متوسطة", "Medium"), "warn"], high: [textPair("مرتفعة", "High"), "bear"] }; return `<div class="conf-bars">${Object.entries(levels).map(([k, v]) => `<div class="bias-row"><span>${h(L[k][0])}</span><div class="mo-bar"><i class="${L[k][1] === "ok" ? "" : L[k][1]}" style="width:${v / max * 100}%"></i></div><b>${v}</b></div>`).join("")}</div>`; }
   function miniChart(a) {
     const series = arr(a.history || a.sparkline || a.candles).map(p => num(p.close, p.c, p.price, p)).filter(v => v !== null);
-    if (series.length < 2) return `<div class="chart-empty">${h(textPair("لا توجد بيانات رسم بياني كافية من المزود بعد. حدّث الرمز أو اربط مزود بيانات تاريخية لعرض حركة السعر.", "The provider has not supplied enough chart data yet. Refresh the symbol or connect a historical data provider to display price movement.", "Le fournisseur n’a pas encore transmis suffisamment de données graphiques. Actualisez le symbole ou connectez un fournisseur de données historiques pour afficher l’évolution du cours."))}</div>`;
+    if (series.length < 2) return `<div class="chart-empty" role="status" aria-live="polite" aria-busy="false"><span aria-hidden="true">⌁</span><p>${h(textPair("لا توجد بيانات رسم بياني كافية من المزود بعد. حدّث الرمز أو اربط مزود بيانات تاريخية لعرض حركة السعر.", "The provider has not supplied enough chart data yet. Refresh the symbol or connect a historical data provider to display price movement.", "Le fournisseur n’a pas encore transmis suffisamment de données graphiques. Actualisez le symbole ou connectez un fournisseur de données historiques pour afficher l’évolution du cours."))}</p></div>`;
     const W = 100, H = 40, top = 3, bottom = 37, n = series.length;
     const min = Math.min(...series), max = Math.max(...series), rng = (max - min) || 1;
     const X = i => (i / (n - 1)) * W;
@@ -5088,10 +5709,10 @@
     }
     const area = `${d} L ${W} ${H} L 0 ${H} Z`;
     const up = series[n - 1] >= series[0];
-    const gid = `cg${Math.random().toString(36).slice(2, 8)}`;
     const stroke = up ? "var(--terminal-chart-success, #34e58b)" : "var(--terminal-chart-danger, #ff5c6c)";
     const glow = up ? "var(--terminal-chart-success-glow, rgba(52,229,139,.55))" : "var(--terminal-chart-danger-glow, rgba(255,92,108,.55))";
     const chartSymbol = a.displaySymbol || a.symbol || a.ticker || textPair("\u0627\u0644\u0623\u0635\u0644", "asset", "actif");
+    const gid = `cg-${String(chartSymbol).replace(/[^a-z0-9_-]/gi, "-")}-${++chartInstanceCounter}`;
     const rawPeriod = a.period || a.timeframe || a.range;
     const chartPeriod = typeof rawPeriod === "string"
       ? rawPeriod
@@ -5107,15 +5728,30 @@
       `Mouvement du cours de ${chartSymbol}. P\u00e9riode : ${chartPeriod}. Tendance ${chartDirection}, de ${latinNumber(series[0])} \u00e0 ${latinNumber(series[n - 1])}, sur ${latinNumber(n)} observations.`
     );
     // CSS-variable attributes keep Light Mode canonical while preserving the established dark fallbacks.
-    const grid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.34))" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
-    return `<div class="detail-chart-wrap ${up ? "up" : "down"}">
+    const horizontalGrid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.34))" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
+    const verticalGrid = [0.2, 0.4, 0.6, 0.8].map(f => `<line x1="${(W * f).toFixed(2)}" y1="${top}" x2="${(W * f).toFixed(2)}" y2="${bottom}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.26))" stroke-width="0.35" stroke-dasharray="1.4 2.4"></line>`).join("");
+    const markerStep = Math.max(1, Math.ceil(n / 7));
+    const markerIndexes = Array.from(new Set([0, ...Array.from({ length: n }, (_, index) => index).filter(index => index % markerStep === 0), n - 1]));
+    const markers = markerIndexes.map(index => {
+      const x = X(index);
+      const y = Y(series[index]);
+      const markerLabel = `${chartSymbol} · ${latinNumber(series[index])} · ${index + 1}/${n}`;
+      const labelX = Math.max(8, Math.min(92, x));
+      const labelY = y < 10 ? y + 7 : y - 4;
+      return `<circle class="detail-chart-point" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.25" fill="${stroke}" tabindex="0" role="img" aria-label="${h(markerLabel)}"><title>${h(markerLabel)}</title></circle><text class="detail-chart-value" x="${labelX.toFixed(2)}" y="${labelY.toFixed(2)}" text-anchor="middle" aria-hidden="true">${h(latinNumber(series[index]))}</text>`;
+    }).join("");
+    return `<figure class="detail-chart-wrap ${up ? "up" : "down"}" aria-busy="false">
+      <figcaption class="detail-chart-legend"><span><i class="chart-legend-line ${up ? "up" : "down"}" aria-hidden="true"></i><b class="ltr">${h(chartSymbol)}</b> · ${h(chartPeriod)}</span><span>${h(textPair("الأدنى", "Low", "Bas"))} <b class="ltr">${h(latinNumber(min))}</b></span><span>${h(textPair("الأعلى", "High", "Haut"))} <b class="ltr">${h(latinNumber(max))}</b></span><span>${h(textPair("الأحدث", "Latest", "Dernier"))} <b class="ltr">${h(latinNumber(series[n - 1]))}</b></span></figcaption>
       <svg class="detail-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${h(chartLabel)}">
+        <title>${h(chartLabel)}</title><desc>${h(textPair("مرّر المؤشر أو استخدم لوحة المفاتيح على النقاط لعرض القيم.", "Hover or focus chart points to inspect values.", "Survolez ou ciblez les points pour consulter les valeurs."))}</desc>
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stroke}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="${stroke}" stop-opacity="0"></stop></linearGradient></defs>
-        <g>${grid}</g>
+        <g class="detail-chart-grid" aria-hidden="true">${horizontalGrid}${verticalGrid}</g>
         <path d="${area}" fill="url(#${gid})" stroke="none"></path>
         <path d="${d}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px ${glow})"></path>
+        <g class="detail-chart-points">${markers}</g>
       </svg>
-    </div>`;
+      <div class="detail-chart-axis" aria-hidden="true"><span>${h(textPair("البداية", "Start", "Début"))}</span><span>${h(textPair("المنتصف", "Midpoint", "Milieu"))}</span><span>${h(textPair("الأحدث", "Latest", "Dernier"))}</span></div>
+    </figure>`;
   }
   function assetShariaStatusMeta(value) {
     const v = String(value || "").toLowerCase();

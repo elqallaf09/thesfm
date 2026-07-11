@@ -39,7 +39,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/cinema.css?v=20260711-workspaces" />
+    <link rel="stylesheet" href="/cinema.css?v=20260712-trader-workspace" />
     <script>
       // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
       // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).
@@ -62,6 +62,7 @@
     </script>
   </head>
   <body>
+    <a class="terminal-skip-link" href="#terminal-content">تخطَّ إلى مساحة التداول</a>
     <div class="market-cinema" aria-hidden="true">
       <svg class="mc-candles mc-candles-bull" viewBox="0 0 320 420" preserveAspectRatio="xMidYMid slice">
         <g stroke-linecap="round">
@@ -208,9 +209,10 @@
       </nav>
     </div>
 
+    <div id="symbol-drawer-host"></div>
     <div class="toast-root" id="toast-root" aria-live="polite"></div>
-    <script src="/recommendation.js?v=20260711-workspaces" defer></script>
-    <script src="/app.js?v=20260711-workspaces" defer></script>
-    <script src="/provider-markets-diagnostics.js?v=20260711-workspaces" defer></script>
+    <script src="/recommendation.js?v=20260712-trader-workspace" defer></script>
+    <script src="/app.js?v=20260712-trader-workspace" defer></script>
+    <script src="/provider-markets-diagnostics.js?v=20260712-trader-workspace" defer></script>
   </body>
 </html>
