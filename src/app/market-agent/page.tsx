@@ -1034,7 +1034,7 @@ export default function MarketAgentPage() {
           gap:18px;
           padding:26px 28px;
           border:1px solid rgba(167,243,240,.18);
-          border-radius:26px;
+          border-radius:var(--r-2xl);
           background:
             radial-gradient(circle at 12% 8%,rgba(24,212,212,.18),transparent 32%),
             linear-gradient(135deg,#061b33 0%,#08243f 56%,#0d4b61 100%);
@@ -1090,7 +1090,7 @@ export default function MarketAgentPage() {
           gap:12px;
           min-height:64px;
           padding:12px 14px;
-          border-radius:18px;
+          border-radius:var(--r-xl);
           border:1px solid rgba(167,243,240,.20);
           background:rgba(255,255,255,.08);
           color:#f8fcff;
@@ -1128,7 +1128,7 @@ export default function MarketAgentPage() {
           gap:14px;
           padding:22px;
           border:1px solid var(--agent-border);
-          border-radius:22px;
+          border-radius:var(--r-2xl);
           background:rgba(255,255,255,.96);
           box-shadow:var(--agent-shadow);
         }
@@ -1169,7 +1169,7 @@ export default function MarketAgentPage() {
           border:1px solid var(--agent-border-strong);
           background:var(--agent-surface-soft);
           color:var(--agent-text);
-          border-radius:14px;
+          border-radius:var(--r-md);
           padding:0 13px;
           transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
         }
@@ -1229,7 +1229,7 @@ export default function MarketAgentPage() {
           gap:6px;
           padding:4px;
           border:1px solid var(--agent-border);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:var(--agent-surface-soft);
         }
 
@@ -1239,7 +1239,7 @@ export default function MarketAgentPage() {
           border:1px solid transparent;
           background:transparent;
           color:var(--agent-muted);
-          border-radius:12px;
+          border-radius:var(--r-md);
           font:950 13px Arial,sans-serif;
           cursor:pointer;
           transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
@@ -1265,7 +1265,7 @@ export default function MarketAgentPage() {
           align-items:center;
           justify-content:center;
           gap:8px;
-          border-radius:14px;
+          border-radius:var(--r-md);
           font-family:Tajawal,Arial,sans-serif;
           font-weight:950;
           line-height:1.2;
@@ -1305,7 +1305,7 @@ export default function MarketAgentPage() {
           align-items:start;
           padding:14px 16px;
           border:1px solid rgba(180,83,9,.18);
-          border-radius:18px;
+          border-radius:var(--r-xl);
           background:linear-gradient(135deg,rgba(255,247,237,.92),rgba(255,255,255,.96));
           box-shadow:0 10px 28px rgba(3,18,37,.045);
         }
@@ -1320,7 +1320,7 @@ export default function MarketAgentPage() {
           height:38px;
           display:grid;
           place-items:center;
-          border-radius:14px;
+          border-radius:var(--r-md);
           background:rgba(245,158,11,.12);
           color:var(--agent-warning);
         }
@@ -1350,7 +1350,7 @@ export default function MarketAgentPage() {
         .agent-history-panel{
           border:1px solid var(--agent-border);
           background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
-          border-radius:24px;
+          border-radius:var(--r-2xl);
           padding:22px;
           box-shadow:var(--agent-shadow);
         }
@@ -1369,7 +1369,7 @@ export default function MarketAgentPage() {
           height:58px;
           display:grid;
           place-items:center;
-          border-radius:20px;
+          border-radius:var(--r-xl);
           background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.16));
           color:var(--agent-primary);
           border:1px solid rgba(24,212,212,.20);
@@ -1460,7 +1460,7 @@ export default function MarketAgentPage() {
 
         .agent-skeleton-grid span{
           height:84px;
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:linear-gradient(90deg,rgba(29,140,255,.08),rgba(24,212,212,.14),rgba(29,140,255,.08));
           background-size:220% 100%;
           animation:agentSkeleton 1.1s ease-in-out infinite;
@@ -1541,7 +1541,7 @@ export default function MarketAgentPage() {
           padding:14px;
           border:1px solid var(--agent-border);
           background:var(--agent-surface);
-          border-radius:18px;
+          border-radius:var(--r-xl);
           box-shadow:var(--agent-shadow-soft);
         }
 
@@ -1565,7 +1565,7 @@ export default function MarketAgentPage() {
         .agent-workspace{
           border:1px solid var(--agent-border);
           background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(247,251,255,.96));
-          border-radius:26px;
+          border-radius:var(--r-2xl);
           padding:22px;
           box-shadow:var(--agent-shadow);
         }
@@ -1621,7 +1621,7 @@ export default function MarketAgentPage() {
           min-width:0;
           border:1px solid var(--agent-border);
           background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
-          border-radius:22px;
+          border-radius:var(--r-2xl);
           padding:18px;
           box-shadow:var(--agent-shadow-soft);
         }
@@ -1674,7 +1674,7 @@ export default function MarketAgentPage() {
           position:relative;
           min-height:210px;
           border:1px solid rgba(29,140,255,.14);
-          border-radius:20px;
+          border-radius:var(--r-xl);
           background:
             linear-gradient(90deg,rgba(29,140,255,.08) 1px,transparent 1px),
             linear-gradient(0deg,rgba(29,140,255,.08) 1px,transparent 1px),
@@ -1797,7 +1797,7 @@ export default function MarketAgentPage() {
           gap:8px;
           padding:13px;
           border:1px solid var(--agent-border);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:var(--agent-surface);
         }
 
@@ -1885,7 +1885,7 @@ export default function MarketAgentPage() {
           min-width:0;
           padding:15px;
           border:1px solid var(--agent-border);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:var(--agent-surface);
         }
 
@@ -2039,7 +2039,7 @@ export default function MarketAgentPage() {
           justify-content:center;
           gap:8px;
           border:1px solid var(--agent-border);
-          border-radius:14px;
+          border-radius:var(--r-md);
           background:var(--agent-surface);
           color:var(--agent-heading);
           font:950 12px Tajawal,Arial,sans-serif;
@@ -2067,7 +2067,7 @@ export default function MarketAgentPage() {
         .agent-explanation{
           border:1px solid var(--agent-border);
           background:var(--agent-surface-soft);
-          border-radius:18px;
+          border-radius:var(--r-xl);
           padding:16px;
         }
 
@@ -2170,7 +2170,7 @@ export default function MarketAgentPage() {
           gap:9px;
           padding:0 12px;
           border:1px solid var(--agent-border);
-          border-radius:14px;
+          border-radius:var(--r-md);
           background:var(--agent-surface-soft);
           color:var(--agent-muted);
         }
@@ -2224,7 +2224,7 @@ export default function MarketAgentPage() {
           min-height:70px;
           padding:12px 14px;
           border:1px solid var(--agent-border);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:var(--agent-surface);
           color:var(--agent-text);
           box-shadow:0 8px 20px rgba(3,18,37,.04);
@@ -2336,7 +2336,7 @@ export default function MarketAgentPage() {
           margin:0;
           padding:18px;
           border:1px dashed var(--agent-border-strong);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           background:var(--agent-surface-soft);
           color:var(--agent-muted);
           font-size:14px;
@@ -2461,7 +2461,7 @@ export default function MarketAgentPage() {
           .agent-workspace,
           .agent-result-panel,
           .agent-history-panel{
-            border-radius:20px;
+            border-radius:var(--r-xl);
             padding:18px;
           }
           .agent-workspace-header{

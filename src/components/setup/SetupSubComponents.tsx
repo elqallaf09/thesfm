@@ -91,8 +91,8 @@ export function SummaryCard({
   };
   const ic = iconColors[tone] ?? iconColors.count;
   return (
-    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'18px',padding:'15px',minWidth:0,minHeight:'100px',boxShadow:'0 8px 22px rgba(3,18,37,.05)'}}>
-      <div style={{width:'40px',height:'40px',borderRadius:'13px',display:'grid',placeItems:'center',background:ic.bg,color:ic.color,flexShrink:0}} aria-hidden="true">
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'var(--r-xl)',padding:'15px',minWidth:0,minHeight:'100px',boxShadow:'0 8px 22px rgba(3,18,37,.05)'}}>
+      <div style={{width:'40px',height:'40px',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',background:ic.bg,color:ic.color,flexShrink:0}} aria-hidden="true">
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
@@ -106,8 +106,8 @@ export function SummaryCard({
 
 export function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideIcon; title: string; value: string; detail: string }) {
   return (
-    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'16px',padding:'14px',boxShadow:'0 6px 18px rgba(3,18,37,.05)'}}>
-      <div style={{width:'38px',height:'38px',borderRadius:'12px',display:'grid',placeItems:'center',background:'rgba(29,140,255,.08)',color:'var(--sfm-primary)',flexShrink:0}} aria-hidden="true">
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'var(--r-lg)',padding:'14px',boxShadow:'0 6px 18px rgba(3,18,37,.05)'}}>
+      <div style={{width:'38px',height:'38px',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',background:'rgba(29,140,255,.08)',color:'var(--sfm-primary)',flexShrink:0}} aria-hidden="true">
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
@@ -149,7 +149,7 @@ export function Stepper({
       <style jsx>{`
         .setup-stepper{display:flex;flex-wrap:wrap;gap:9px;overflow-x:visible;padding:2px 2px 16px;margin:0 0 18px;list-style:none;scrollbar-width:none;max-width:100%;min-width:0}
         .setup-stepper::-webkit-scrollbar{display:none}
-        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-muted-readable);border-radius:18px;padding:9px 11px;font-weight:900;font-size:12px;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-muted-readable);border-radius:var(--r-xl);padding:9px 11px;font-weight:900;font-size:12px;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
         .setup-stepper li.active{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-card-dark));color:#FFFFFF;border-color:rgba(167,243,240,.30);box-shadow:0 12px 28px rgba(29,140,255,.18),inset 0 -2px 0 rgba(24,212,212,.50)}
         .setup-stepper li.done{background:#ECFDF5;color:#047857;border-color:rgba(16,185,129,.22)}
         .setup-stepper li.upcoming{background:#FFFFFF}
@@ -189,7 +189,7 @@ export function IncomeDecisionCard({
           gap: 18px;
           border: 1px solid rgba(29,140,255,.16);
           background: linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.72));
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           padding: clamp(22px,4vw,34px);
           box-shadow: 0 18px 46px rgba(3,18,37,.08);
           min-width: 0;
@@ -216,7 +216,7 @@ export function IncomeDecisionCard({
           max-width: 340px;
         }
         .income-action-btn {
-          width: 100%; min-height: 52px; border-radius: 18px; padding: 0 22px;
+          width: 100%; min-height: 52px; border-radius: var(--r-xl); padding: 0 22px;
           font: 950 15px Tajawal,Arial,sans-serif;
           display: inline-flex; align-items: center; justify-content: center; gap: 10px;
           cursor: pointer; white-space: nowrap; min-width: 0;
@@ -230,7 +230,7 @@ export function IncomeDecisionCard({
         .income-action-btn:active { transform: translateY(0) scale(.985); }
         .income-skip-link {
           display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-          background: none; border: none; padding: 6px 12px; border-radius: 10px;
+          background: none; border: none; padding: 6px 12px; border-radius: var(--r-sm);
           font: 700 13px Tajawal,Arial,sans-serif;
           color: var(--sfm-muted-readable);
           cursor: pointer; transition: color .18s, background .18s; white-space: nowrap;
@@ -320,7 +320,7 @@ export function ToggleRow({
   no: string;
 }) {
   const base: React.CSSProperties = {
-    minHeight: '48px', borderRadius: '14px', padding: '0 22px',
+    minHeight: '48px', borderRadius: 'var(--r-md)', padding: '0 22px',
     fontSize: '15px', fontWeight: 900, cursor: 'pointer',
     fontFamily: 'Tajawal, Arial, sans-serif', display: 'inline-flex',
     alignItems: 'center', justifyContent: 'center', transition: 'all .18s ease',

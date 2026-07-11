@@ -603,7 +603,7 @@ export default function FinancialTodayPage() {
           gap: 24px;
           padding: clamp(24px, 4vw, 40px);
           border: 1px solid rgba(167, 243, 240, .18);
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 18% 18%, rgba(24, 212, 212, .20), transparent 30%),
             linear-gradient(135deg, #031225 0%, #061B33 52%, #0B3A66 100%);
@@ -729,7 +729,7 @@ export default function FinancialTodayPage() {
           min-width: 0;
           padding: 12px;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: var(--sfm-card);
           box-shadow: 0 12px 28px rgba(3, 18, 37, .06);
         }
@@ -800,12 +800,12 @@ export default function FinancialTodayPage() {
             min-height: 0;
             grid-template-columns: 1fr;
             padding: 22px;
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
           }
           .today-hero-mark {
             width: 86px;
             height: 86px;
-            border-radius: 24px;
+            border-radius: var(--r-2xl);
             order: -1;
           }
           .today-hero-actions,
@@ -837,7 +837,7 @@ function TodayMetric({ label, value, icon, tone = 'blue' }: { label: string; val
   const t = toneMap[tone];
   return (
     <div style={{display:'flex',alignItems:'center',gap:'14px',minWidth:0,padding:'4px 0'}}>
-      <span aria-hidden="true" style={{width:'46px',height:'46px',display:'grid',placeItems:'center',flex:'0 0 46px',borderRadius:'16px',background:t.bg,color:t.color,boxShadow:`0 4px 14px ${t.bg}`}}>
+      <span aria-hidden="true" style={{width:'46px',height:'46px',display:'grid',placeItems:'center',flex:'0 0 46px',borderRadius:'var(--r-lg)',background:t.bg,color:t.color,boxShadow:`0 4px 14px ${t.bg}`}}>
         {icon}
       </span>
       <div style={{minWidth:0,display:'grid',gap:'4px'}}>
@@ -1074,7 +1074,7 @@ function PriorityLane({
           display: grid;
           place-items: center;
           flex: 0 0 40px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }
@@ -1105,7 +1105,7 @@ function PriorityLane({
         .today-lane-empty {
           margin: 0;
           border: 1px dashed rgba(29, 140, 255, .20);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .04);
           color: var(--sfm-muted);
           padding: 13px;
@@ -1123,7 +1123,7 @@ function PriorityLane({
           align-items: center;
           min-width: 0;
           padding: 12px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           border: 1px solid rgba(29, 140, 255, .13);
           background: rgba(248, 251, 255, .78);
           color: var(--sfm-foreground);

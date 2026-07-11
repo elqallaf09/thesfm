@@ -996,7 +996,7 @@ export function CryptoNewsPage() {
         .crypto-hero,.crypto-ticker-panel,.crypto-panel,.crypto-featured,.crypto-movers,.crypto-filter-panel,.crypto-results-bar,.crypto-news-card,.crypto-compact-row,.crypto-side-card,.crypto-disclaimer,.crypto-state{
           border:1px solid var(--crypto-border);
           background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,252,255,.94));
-          border-radius:22px;
+          border-radius:var(--r-2xl);
           box-shadow:var(--crypto-shadow);
         }
         .dark .crypto-hero,.dark .crypto-ticker-panel,.dark .crypto-panel,.dark .crypto-featured,.dark .crypto-movers,.dark .crypto-filter-panel,.dark .crypto-results-bar,.dark .crypto-news-card,.dark .crypto-compact-row,.dark .crypto-side-card,.dark .crypto-disclaimer,.dark .crypto-state{
@@ -1030,13 +1030,13 @@ export function CryptoNewsPage() {
         .crypto-hero-meta span{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#E6FBFF}
         .crypto-hero-meta span.ok{color:#BDFBE8}
         .crypto-hero-meta span.warn{color:#FFE8A3}
-        .crypto-coverage-notice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid rgba(217,119,6,.3);border-radius:16px;background:rgba(245,158,11,.09);color:#92400E;font-size:13px;font-weight:850;line-height:1.55}
+        .crypto-coverage-notice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid rgba(217,119,6,.3);border-radius:var(--r-lg);background:rgba(245,158,11,.09);color:#92400E;font-size:13px;font-weight:850;line-height:1.55}
         .crypto-coverage-notice svg{margin-top:2px;flex:none}
         .dark .crypto-coverage-notice{color:#FDE68A}
         .crypto-refresh-btn,.crypto-load-more,.crypto-state button{
           min-height:44px;
           border:0;
-          border-radius:14px;
+          border-radius:var(--r-md);
           background:linear-gradient(135deg,var(--crypto-primary),var(--crypto-accent));
           color:#061A2E;
           display:inline-flex;
@@ -1070,7 +1070,7 @@ export function CryptoNewsPage() {
         .crypto-section-head h2{margin:0;color:var(--crypto-text);font-size:22px;font-weight:950}
         .crypto-section-head p{margin:5px 0 0;color:var(--crypto-muted);font-size:13px;font-weight:850;line-height:1.65}
         .crypto-section-head span{display:inline-flex;align-items:center;gap:7px;color:#075985;background:#E0F2FE;border:1px solid rgba(14,165,233,.18);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:950}
-        .crypto-snapshot-card{min-height:116px;display:grid;gap:8px;align-content:center;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);padding:14px}
+        .crypto-snapshot-card{min-height:116px;display:grid;gap:8px;align-content:center;border:1px solid var(--crypto-border);border-radius:var(--r-xl);background:var(--crypto-soft);padding:14px}
         .crypto-snapshot-card small{color:var(--crypto-muted);font-size:12px;font-weight:900}
         .crypto-snapshot-card strong{color:var(--crypto-text);font-size:clamp(20px,2.2vw,28px);font-weight:950;line-height:1.15}
         .crypto-snapshot-card em{font-style:normal;color:var(--crypto-muted);font-size:12px;font-weight:850}
@@ -1079,11 +1079,11 @@ export function CryptoNewsPage() {
 
         .crypto-featured{padding:18px;display:grid;gap:14px}
         .crypto-featured-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:14px}
-        .crypto-lead-card{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:stretch;padding:18px;border:1px solid var(--crypto-border);border-radius:20px;background:var(--crypto-soft);min-width:0}
-        .crypto-lead-art{min-height:210px;border-radius:18px;background:radial-gradient(circle at 25% 20%,rgba(36,213,197,.3),transparent 34%),linear-gradient(135deg,#061A2E,#0B3955);display:grid;place-items:center;color:#A7FFF4}
+        .crypto-lead-card{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;align-items:stretch;padding:18px;border:1px solid var(--crypto-border);border-radius:var(--r-xl);background:var(--crypto-soft);min-width:0}
+        .crypto-lead-art{min-height:210px;border-radius:var(--r-xl);background:radial-gradient(circle at 25% 20%,rgba(36,213,197,.3),transparent 34%),linear-gradient(135deg,#061A2E,#0B3955);display:grid;place-items:center;color:#A7FFF4}
         .crypto-lead-body,.crypto-mini-list,.crypto-news-card,.crypto-compact-row{min-width:0}
         .crypto-meta-row,.crypto-symbol-row,.crypto-category-row,.crypto-card-actions,.crypto-active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .crypto-evidence{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);color:var(--crypto-muted);font-size:12px;line-height:1.45}
+        .crypto-evidence{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid var(--crypto-border);border-radius:var(--r-md);background:var(--crypto-soft);color:var(--crypto-muted);font-size:12px;line-height:1.45}
         .crypto-evidence>svg{margin-top:2px;flex:none;color:#167D91}
         .crypto-evidence>div{display:grid;gap:2px;min-width:0}
         .crypto-evidence strong{color:var(--crypto-text);font-weight:950}
@@ -1102,15 +1102,15 @@ export function CryptoNewsPage() {
         .crypto-lead-card p,.crypto-news-card p,.crypto-compact-row p{margin:0;color:var(--crypto-muted);font-size:14px;font-weight:820;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
         .crypto-news-link{min-height:40px;border-radius:999px;background:linear-gradient(135deg,var(--crypto-primary),var(--crypto-accent));color:#061A2E;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px;font-size:12px;font-weight:950}
         .crypto-mini-list{display:grid;gap:10px}
-        .crypto-mini-story{display:grid;gap:8px;padding:14px;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);text-decoration:none;color:inherit}
+        .crypto-mini-story{display:grid;gap:8px;padding:14px;border:1px solid var(--crypto-border);border-radius:var(--r-xl);background:var(--crypto-soft);text-decoration:none;color:inherit}
         .crypto-mini-story strong{color:var(--crypto-text);font-size:14px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
         .crypto-mini-story small,.crypto-meta-row span,.crypto-compact-row small{display:inline-flex;align-items:center;gap:5px;color:var(--crypto-muted);font-size:12px;font-weight:850}
 
         .crypto-movers{padding:18px;display:grid;gap:14px}
         .crypto-movers-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-        .crypto-mover-card{display:grid;gap:10px;align-content:start;border:1px solid var(--crypto-border);border-radius:18px;background:var(--crypto-soft);padding:13px;min-width:0}
+        .crypto-mover-card{display:grid;gap:10px;align-content:start;border:1px solid var(--crypto-border);border-radius:var(--r-xl);background:var(--crypto-soft);padding:13px;min-width:0}
         .crypto-mover-card h3{margin:0;color:var(--crypto-text);font-size:15px;font-weight:950}
-        .crypto-coin-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;min-height:58px;border:1px solid rgba(29,78,116,.1);border-radius:15px;background:var(--crypto-surface);padding:8px;text-decoration:none;color:inherit}
+        .crypto-coin-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;min-height:58px;border:1px solid rgba(29,78,116,.1);border-radius:var(--r-lg);background:var(--crypto-surface);padding:8px;text-decoration:none;color:inherit}
         .crypto-coin-logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#E0F2FE;color:#075985;font-size:12px;font-weight:950;overflow:hidden}
         .crypto-coin-id{display:grid;gap:2px;min-width:0}
         .crypto-coin-id strong{color:var(--crypto-text);font-size:13px;font-weight:950;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -1127,7 +1127,7 @@ export function CryptoNewsPage() {
         .crypto-field{display:grid;gap:6px;min-width:0;color:var(--crypto-muted);font-size:12px;font-weight:900}
         .crypto-search{position:relative}
         .crypto-search svg{position:absolute;inset-inline-start:14px;bottom:13px;color:#7890A7}
-        .crypto-field input,.crypto-field select{width:100%;min-height:44px;border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);color:var(--crypto-text);padding:0 13px;font:900 13px Tajawal,Arial,sans-serif;outline:none}
+        .crypto-field input,.crypto-field select{width:100%;min-height:44px;border:1px solid var(--crypto-border);border-radius:var(--r-md);background:var(--crypto-soft);color:var(--crypto-text);padding:0 13px;font:900 13px Tajawal,Arial,sans-serif;outline:none}
         .crypto-search input{padding-inline-start:42px}
         .crypto-field input:focus,.crypto-field select:focus{border-color:var(--crypto-accent);box-shadow:0 0 0 4px rgba(36,213,197,.13)}
         .crypto-category-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
@@ -1159,7 +1159,7 @@ export function CryptoNewsPage() {
         .crypto-side-card h3{margin:0;color:var(--crypto-text);font-size:15px;font-weight:950;display:flex;align-items:center;gap:8px}
         .crypto-side-card h3 svg{color:#075985}
         .crypto-side-list{display:grid;gap:9px}
-        .crypto-side-item,.crypto-side-symbol,.crypto-side-source{border:1px solid var(--crypto-border);border-radius:14px;background:var(--crypto-soft);padding:10px;text-decoration:none;color:inherit}
+        .crypto-side-item,.crypto-side-symbol,.crypto-side-source{border:1px solid var(--crypto-border);border-radius:var(--r-md);background:var(--crypto-soft);padding:10px;text-decoration:none;color:inherit}
         .crypto-side-item{display:grid;gap:5px}
         .crypto-side-item strong{color:var(--crypto-text);font-size:12.5px;font-weight:950;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
         .crypto-side-symbol,.crypto-side-source{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -1173,7 +1173,7 @@ export function CryptoNewsPage() {
         .crypto-skeleton-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .crypto-skeleton{min-height:210px;padding:18px;display:grid;gap:12px}
         .crypto-skeleton span,.crypto-skeleton i,.crypto-skeleton b{display:block;border-radius:999px;background:linear-gradient(90deg,rgba(142,166,195,.12),rgba(36,213,197,.2),rgba(142,166,195,.12));background-size:220% 100%;animation:cryptoShimmer 1.2s linear infinite}
-        .crypto-skeleton span{height:22px;width:45%}.crypto-skeleton i{height:14px;width:100%}.crypto-skeleton i:nth-child(3){width:78%}.crypto-skeleton b{height:40px;width:62%;border-radius:14px}
+        .crypto-skeleton span{height:22px;width:45%}.crypto-skeleton i{height:14px;width:100%}.crypto-skeleton i:nth-child(3){width:78%}.crypto-skeleton b{height:40px;width:62%;border-radius:var(--r-md)}
         @keyframes cryptoShimmer{to{background-position:-220% 0}}
         .crypto-disclaimer{display:flex;align-items:flex-start;gap:10px;padding:16px}
         .crypto-disclaimer svg{color:var(--crypto-warning)}
@@ -1195,7 +1195,7 @@ export function CryptoNewsPage() {
         }
         @media(max-width:760px){
           .crypto-news-shell .crypto-news-main{width:calc(100% - 24px);gap:18px;padding-top:84px}
-          .crypto-hero{grid-template-columns:1fr;padding:20px;border-radius:24px}
+          .crypto-hero{grid-template-columns:1fr;padding:20px;border-radius:var(--r-2xl)}
           .crypto-refresh-btn{width:100%}
           .crypto-snapshot-grid,.crypto-movers-grid,.crypto-filter-grid,.crypto-skeleton-grid{grid-template-columns:1fr}
           .crypto-section-head,.crypto-filter-title,.crypto-results-bar{display:grid}

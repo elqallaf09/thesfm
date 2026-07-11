@@ -74,7 +74,7 @@ function ActionButtonLinkStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         padding: 0 16px;
         border: 1px solid rgba(11, 118, 224, 0.18);
         text-decoration: none;

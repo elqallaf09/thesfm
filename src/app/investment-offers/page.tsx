@@ -1234,7 +1234,7 @@ export default function InvestmentOffersPage() {
         .investment-warning,
         .investment-note {
           border: 1px solid rgba(29, 140, 255, .16);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, .84);
           box-shadow: 0 12px 30px rgba(3, 18, 37, .06);
           padding: 14px 16px;
@@ -1279,7 +1279,7 @@ export default function InvestmentOffersPage() {
         .investment-stat > span {
           width: 42px;
           height: 42px;
-          border-radius: 15px;
+          border-radius: var(--r-lg);
           display: grid;
           place-items: center;
           color: var(--sfm-primary);
@@ -1400,7 +1400,7 @@ export default function InvestmentOffersPage() {
         .status-icon {
           width: 46px;
           height: 46px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           display: grid;
           place-items: center;
           background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(24, 212, 212, .14));
@@ -1485,7 +1485,7 @@ export default function InvestmentOffersPage() {
           outline: none;
         }
         :global(.investment-tab-panel):focus-visible {
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           box-shadow: 0 0 0 3px color-mix(in srgb, var(--sfm-primary) 24%, transparent);
         }
         .investment-tab-heading {
@@ -1642,7 +1642,7 @@ export default function InvestmentOffersPage() {
         }
         :global(.investment-detail-list) > div {
           min-width: 0;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: var(--sfm-light-card, color-mix(in srgb, var(--sfm-card) 92%, var(--sfm-primary)));
           padding: 10px 11px;
         }
@@ -1667,7 +1667,7 @@ export default function InvestmentOffersPage() {
           min-width: 0;
           display: grid;
           gap: 5px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: var(--sfm-light-card, color-mix(in srgb, var(--sfm-card) 92%, var(--sfm-primary)));
           padding: 11px;
         }
@@ -1706,7 +1706,7 @@ export default function InvestmentOffersPage() {
         }
         .investment-detail-empty.standalone {
           border: 1px dashed var(--sfm-border);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: var(--sfm-card);
           padding: 14px;
         }

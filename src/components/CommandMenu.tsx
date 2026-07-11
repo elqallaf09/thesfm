@@ -285,7 +285,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
         }
         .sfm-command-dialog [cmdk-item] {
           border: 1px solid transparent;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           padding: 10px;
           margin: 2px 0;
           cursor: pointer;
@@ -300,7 +300,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
         .sfm-command-icon {
           width: 34px;
           height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           background: rgba(29, 140, 255, .10);

@@ -27,7 +27,7 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
           width: 100%;
           min-height: 42px;
           border: 1px solid rgba(167, 243, 240, 0.20);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(255, 255, 255, 0.07);
           color: #EAF6FF;
           display: flex;
@@ -72,7 +72,7 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
         }
         .sfm-command-trigger kbd {
           border: 1px solid rgba(167, 243, 240, .20);
-          border-radius: 9px;
+          border-radius: var(--r-sm);
           padding: 3px 7px;
           color: #A7C7E7;
           background: rgba(255, 255, 255, .06);

@@ -48,7 +48,7 @@ export function HealthScoreCard({ overview }: { overview: OperationsCenterState[
         .ops-health-score-heading small { color: var(--sfm-muted); font-size: 12px; font-weight: 800; }
         .ops-health-score-percent { font-size: 26px; font-weight: 900; color: var(--sfm-heading); font-variant-numeric: tabular-nums; }
         .ops-health-score-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-        .ops-health-score-stats > div { text-align: center; border: 1px solid var(--sfm-border); border-radius: 12px; padding: 8px; background: var(--sfm-light-card); }
+        .ops-health-score-stats > div { text-align: center; border: 1px solid var(--sfm-border); border-radius: var(--r-md); padding: 8px; background: var(--sfm-light-card); }
         .ops-health-score-stats strong { display: block; font-size: 18px; font-weight: 900; color: var(--sfm-heading); }
         .ops-health-score-stats span { display: block; margin-top: 2px; font-size: 10.5px; color: var(--sfm-muted); font-weight: 750; }
         .ops-health-score-meta { margin: 0; color: var(--sfm-muted-readable); font-size: 12px; }

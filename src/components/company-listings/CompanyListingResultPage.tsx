@@ -41,7 +41,7 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         .company-result-card {
           text-align: center;
           border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           padding: 38px 24px;
           background:
             linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10)),
@@ -54,7 +54,7 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
           margin: 0 auto 16px;
           display: grid;
           place-items: center;
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
         }
         .result-icon.success {
           background: rgba(22, 163, 74, 0.12);
@@ -85,7 +85,7 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         }
         .result-actions a {
           min-height: 46px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           padding: 0 18px;
           display: inline-flex;
           align-items: center;

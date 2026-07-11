@@ -230,13 +230,13 @@ export default function CharityPage() {
         .charity-content { width: 100%; max-width: none; margin: 0; min-width: 0; }
         .g2 > *, .charity-kpi-grid > *, .cc { min-width: 0; }
         .cp ::-webkit-scrollbar { width: 4px; }
-        .cp ::-webkit-scrollbar-thumb { background: rgba(167,243,240,.3); border-radius: 10px; }
-        .cc { background: var(--sfm-card); border: 1px solid rgba(167,243,240,.14); border-radius: 22px; box-shadow: 0 4px 22px rgba(3,18,37,.06); transition: all .25s cubic-bezier(.4,0,.2,1); }
+        .cp ::-webkit-scrollbar-thumb { background: rgba(167,243,240,.3); border-radius: var(--r-sm); }
+        .cc { background: var(--sfm-card); border: 1px solid rgba(167,243,240,.14); border-radius: var(--r-2xl); box-shadow: 0 4px 22px rgba(3,18,37,.06); transition: all .25s cubic-bezier(.4,0,.2,1); }
         .cc:hover:not(.no-h) { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(3,18,37,.10); }
-        .ci { width: 100%; background: rgba(247,243,234,.7); border: 1.5px solid rgba(167,243,240,.25); border-radius: 13px; padding: 13px 16px; font-family: 'Tajawal', sans-serif; font-size: 15px; color: var(--sfm-foreground); outline: none; transition: border-color .2s, box-shadow .2s; -webkit-appearance: none; }
+        .ci { width: 100%; background: rgba(247,243,234,.7); border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); padding: 13px 16px; font-family: 'Tajawal', sans-serif; font-size: 15px; color: var(--sfm-foreground); outline: none; transition: border-color .2s, box-shadow .2s; -webkit-appearance: none; }
         .ci:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.14); }
         .ci-sel { background: rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231D8CFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center; cursor: pointer; }
-        .save-btn { width: 100%; height: 54px; background: linear-gradient(135deg, var(--sfm-foreground) 0%, var(--sfm-primary-dark) 50%, var(--sfm-soft-cyan) 100%); border: none; border-radius: 16px; color: #fff; font-family: 'Tajawal', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s; position: relative; overflow: hidden; }
+        .save-btn { width: 100%; height: var(--control-h-lg); background: linear-gradient(135deg, var(--sfm-foreground) 0%, var(--sfm-primary-dark) 50%, var(--sfm-soft-cyan) 100%); border: none; border-radius: var(--r-lg); color: #fff; font-family: 'Tajawal', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s; position: relative; overflow: hidden; }
         .save-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); opacity: 0; transition: opacity .25s; }
         .save-btn:hover:not(:disabled)::before { opacity: 1; }
         .save-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(21,21,21,.25), 0 0 0 1px rgba(167,243,240,.35); }
@@ -245,17 +245,17 @@ export default function CharityPage() {
         .save-btn span { position: relative; z-index: 1; }
         .row-hover:hover { background: rgba(167,243,240,.04) !important; }
         .charity-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 16px; align-items: stretch; margin: 4px 0 24px; }
-        .charity-kpi-card { min-height: 128px; padding: 18px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; gap: 8px 13px; border-radius: 18px; }
-        .charity-kpi-icon { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex: 0 0 auto; }
+        .charity-kpi-card { min-height: 128px; padding: 18px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; gap: 8px 13px; border-radius: var(--r-xl); }
+        .charity-kpi-icon { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: var(--r-md); display: grid; place-items: center; flex: 0 0 auto; }
         .charity-kpi-label { color: var(--sfm-muted); font-size: 12.5px; font-weight: 900; line-height: 1.45; }
         .charity-kpi-value { align-self: end; color: var(--sfm-primary-dark); font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: clamp(20px, 1.55vw, 25px); font-weight: 950; line-height: 1.2; unicode-bidi: isolate; }
-        .charity-projects-shortcut { margin: -6px 0 22px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: radial-gradient(circle at 12% 15%, rgba(167,243,240,.18), transparent 30%), linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 62%,var(--sfm-card-dark) 145%); border: 1px solid rgba(167,243,240,.24); border-radius: 22px; box-shadow: 0 12px 34px rgba(3,18,37,.14); color: var(--sfm-card); overflow: hidden; }
-        .charity-projects-shortcut-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(167,243,240,.16); border: 1px solid rgba(167,243,240,.22); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
+        .charity-projects-shortcut { margin: -6px 0 22px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: radial-gradient(circle at 12% 15%, rgba(167,243,240,.18), transparent 30%), linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 62%,var(--sfm-card-dark) 145%); border: 1px solid rgba(167,243,240,.24); border-radius: var(--r-2xl); box-shadow: 0 12px 34px rgba(3,18,37,.14); color: var(--sfm-card); overflow: hidden; }
+        .charity-projects-shortcut-icon { width: 52px; height: 52px; border-radius: var(--r-lg); background: rgba(167,243,240,.16); border: 1px solid rgba(167,243,240,.22); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
         .charity-projects-shortcut-copy { display: flex; align-items: center; gap: 14px; min-width: 0; }
         .charity-projects-shortcut h2 { margin: 0; color: var(--sfm-card); font-size: 18px; font-weight: 900; }
         .charity-projects-shortcut p { margin: 5px 0 0; color: rgba(248,251,255,.68); font-size: 13px; line-height: 1.75; max-width: 760px; }
         .charity-projects-shortcut-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-        .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: 14px; background: linear-gradient(135deg,var(--sfm-soft-cyan),var(--sfm-soft-cyan)); color: var(--sfm-foreground); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(167,243,240,.22); }
+        .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: var(--r-md); background: linear-gradient(135deg,var(--sfm-soft-cyan),var(--sfm-soft-cyan)); color: var(--sfm-foreground); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(167,243,240,.22); }
         @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .charity-kpi-grid { grid-template-columns: 1fr 1fr !important; } }
         @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut-actions { display: grid; } .charity-projects-shortcut button { width: 100%; } }
         @media (max-width: 560px) { .charity-kpi-grid { grid-template-columns: 1fr !important; } .charity-kpi-card { min-height: 116px; } }
@@ -269,7 +269,7 @@ export default function CharityPage() {
           <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: '12px', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: 'var(--r-md)', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
             >{t('common_backToDashboard')}</button>
             <div style={{ flex: 1, minWidth: '220px' }}>
               <h1 style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: '900', color: 'var(--sfm-foreground)', lineHeight: 1.2 }}>
@@ -327,7 +327,7 @@ export default function CharityPage() {
 
               {/* Message */}
               {msg && (
-                <div style={{ padding: '13px 18px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '10px', background: msg.type === 'ok' ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)', border: `1.5px solid ${msg.type === 'ok' ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)'}`, color: msg.type === 'ok' ? '#16A34A' : '#DC2626', animation: 'fadeUp .3s ease', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', fontWeight: '600' }}>
+                <div style={{ padding: '13px 18px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '10px', background: msg.type === 'ok' ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)', border: `1.5px solid ${msg.type === 'ok' ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)'}`, color: msg.type === 'ok' ? '#16A34A' : '#DC2626', animation: 'fadeUp .3s ease', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', fontWeight: '600' }}>
                   {msg.text}
                 </div>
               )}
@@ -335,7 +335,7 @@ export default function CharityPage() {
               {/* Add charity form */}
               <div className="cc" style={{ ...S(80), padding: '26px 28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px', paddingBottom: '18px', borderBottom: '1px solid rgba(167,243,240,.10)' }}>
-                  <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 14px rgba(167,243,240,.3)' }}>🤲</div>
+                  <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 14px rgba(167,243,240,.3)' }}>🤲</div>
                   <div>
                     <h2 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{t('charity.addDonation')}</h2>
                     <p style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginTop: '2px' }}>{t('charity.autoExpenseNote')}</p>
@@ -355,7 +355,7 @@ export default function CharityPage() {
                   {/* Amount */}
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>💰 {t('charity.amount')}</label>
-                    <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.25)', borderRadius: '13px', overflow: 'hidden', background: 'rgba(247,243,234,.7)', transition: 'border-color .2s, box-shadow .2s' }}
+                    <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.25)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'rgba(247,243,234,.7)', transition: 'border-color .2s, box-shadow .2s' }}
                       onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--sfm-soft-cyan)'}
                       onBlurCapture={e => e.currentTarget.style.borderColor = 'rgba(167,243,240,.25)'}>
                       <span style={{ padding: '0 12px', fontSize: '12.5px', fontWeight: '700', color: 'var(--sfm-soft-cyan)', borderInlineStart: '1px solid rgba(167,243,240,.18)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{currencyLabel}</span>
@@ -405,7 +405,7 @@ export default function CharityPage() {
                       </span>
                     )}
                   </h3>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', background: 'rgba(167,243,240,.10)', borderRadius: '20px', color: 'var(--sfm-muted)', fontWeight: '700' }}>
+                  <span style={{ fontSize: '11px', padding: '3px 10px', background: 'rgba(167,243,240,.10)', borderRadius: 'var(--r-xl)', color: 'var(--sfm-muted)', fontWeight: '700' }}>
                     {t('charity.donationCountValue').replace('{count}', String(monthRecords.length))}
                   </span>
                 </div>
@@ -443,7 +443,7 @@ export default function CharityPage() {
                           <td style={{ padding: '12px 10px', fontSize: '12px', color: 'var(--sfm-muted)' }}>{labelFromYM(r.month, lang)}</td>
                           <td style={{ padding: '12px 10px', textAlign: 'left' }}>
                             <button onClick={() => remove(r.id)} disabled={deleting === r.id}
-                              style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: '9px', cursor: 'pointer', color: '#EF4444', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
+                              style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 'var(--r-sm)', cursor: 'pointer', color: '#EF4444', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
                               {deleting === r.id ? '...' : '✕'}
                             </button>
                           </td>
@@ -498,7 +498,7 @@ export default function CharityPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'sticky', top: '20px' }}>
 
               {/* Progress card */}
-              <div style={{ background: 'linear-gradient(145deg,var(--sfm-primary-dark),var(--sfm-card-dark))', borderRadius: '22px', padding: '24px 20px', textAlign: 'center', border: '1px solid rgba(167,243,240,.2)', boxShadow: '0 8px 32px rgba(3,18,37,.22)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(145deg,var(--sfm-primary-dark),var(--sfm-card-dark))', borderRadius: 'var(--r-2xl)', padding: '24px 20px', textAlign: 'center', border: '1px solid rgba(167,243,240,.2)', boxShadow: '0 8px 32px rgba(3,18,37,.22)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '130px', height: '130px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(167,243,240,.12) 0%,transparent 70%)', pointerEvents: 'none' }} />
                 <div style={{ fontSize: '13px', color: 'rgba(167,243,240,.6)', marginBottom: '16px', fontWeight: '600', letterSpacing: '.04em' }}>{t('charity.thisMonth')}</div>
                 <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 14px' }}>
@@ -538,7 +538,7 @@ export default function CharityPage() {
               </div>
 
               {/* AI tip */}
-              <div style={{ background: 'rgba(167,243,240,.07)', border: '1px solid rgba(167,243,240,.2)', borderRadius: '18px', padding: '18px 16px' }}>
+              <div style={{ background: 'rgba(167,243,240,.07)', border: '1px solid rgba(167,243,240,.2)', borderRadius: 'var(--r-xl)', padding: '18px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                   <span style={{ fontSize: '16px' }}>✨</span>
                   <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-soft-cyan)' }}>{t('charity.dailyMessage')}</span>

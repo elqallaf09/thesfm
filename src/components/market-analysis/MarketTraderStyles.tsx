@@ -81,7 +81,7 @@ export function MarketTraderStyles() {
         display: grid;
         gap: 15px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(135deg, rgba(29, 140, 255, .055), rgba(47, 214, 192, .075)),
           var(--sfm-card) !important;
@@ -108,7 +108,7 @@ export function MarketTraderStyles() {
         align-content: center;
         gap: 5px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, .78);
         padding: 12px 14px;
       }
@@ -116,7 +116,7 @@ export function MarketTraderStyles() {
       .technical-selected-chip-icon {
         width: 38px;
         height: 38px;
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         color: #1D8CFF;
@@ -151,7 +151,7 @@ export function MarketTraderStyles() {
         width: 100%;
         min-width: 0;
         min-height: 50px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, .86);
       }
 
@@ -209,7 +209,7 @@ export function MarketTraderStyles() {
         width: 100%;
         min-width: 0;
         border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(47, 214, 192, .055);
         padding: 10px;
       }
@@ -222,7 +222,7 @@ export function MarketTraderStyles() {
         grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         gap: 12px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(135deg, rgba(29, 140, 255, .05), rgba(47, 214, 192, .07)),
           rgba(255, 255, 255, .72);
@@ -320,7 +320,7 @@ export function MarketTraderStyles() {
         background:
           linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(244, 248, 252, .86)),
           var(--sfm-card);
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
       }
 
@@ -339,7 +339,7 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-tab-disclaimer > svg {
         width: 42px;
         height: 42px;
-        border-radius: 17px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -419,7 +419,7 @@ export function MarketTraderStyles() {
         min-width: 0;
         border-color: rgba(29, 140, 255, .12);
         background: rgba(248, 250, 252, .92);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         padding: 10px 12px;
       }
 
@@ -506,7 +506,7 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-range-card,
       .technical-dashboard .technical-education-card,
       .technical-dashboard .technical-tab-disclaimer {
-        border-radius: 28px;
+        border-radius: var(--r-2xl);
         border-color: rgba(29, 140, 255, .14);
         background:
           linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(244, 248, 252, .86)),
@@ -519,7 +519,7 @@ export function MarketTraderStyles() {
 
       .technical-dashboard .technical-range-track {
         height: 112px;
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(90deg, rgba(16, 185, 129, .10), rgba(29, 140, 255, .10), rgba(239, 68, 68, .10)),
           rgba(248, 250, 252, .92);
@@ -553,7 +553,7 @@ export function MarketTraderStyles() {
         gap: 10px;
         border-color: rgba(29, 140, 255, .12);
         background: rgba(248, 250, 252, .92);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         padding: 13px;
       }
 
@@ -677,7 +677,7 @@ export function MarketTraderStyles() {
 
       @media (max-width: 780px) {
         .technical-dashboard {
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           padding: 15px;
         }
 
@@ -803,7 +803,7 @@ export function MarketTraderStyles() {
         min-height: 58px;
         min-width: 112px;
         border: 0;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -899,7 +899,7 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-no-results {
         width: 100%;
         border: 1px dashed rgba(14, 165, 233, .24) !important;
-        border-radius: 18px !important;
+        border-radius: var(--r-xl) !important;
         background: rgba(240, 249, 255, .78) !important;
         color: #475569 !important;
         padding: 12px 14px !important;
@@ -1131,7 +1131,7 @@ export function MarketTraderStyles() {
         align-items: center;
         min-height: 76px;
         border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(234, 246, 255, .56)), var(--sfm-card);
         color: var(--sfm-foreground);
         padding: 12px;
@@ -1184,7 +1184,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-switcher-icon {
         width: 40px;
         height: 40px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -1204,7 +1204,7 @@ export function MarketTraderStyles() {
         max-width: 100%;
         min-width: 0;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 28px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(135deg, rgba(29, 140, 255, .045), rgba(47, 214, 192, .07)), var(--sfm-light-card);
         padding: clamp(12px, 1.7vw, 18px);
         overflow: hidden;
@@ -1279,7 +1279,7 @@ export function MarketTraderStyles() {
         gap: 8px;
         min-width: 0;
         border: 1px solid rgba(47, 214, 192, .22);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(234, 246, 255, .58)), var(--sfm-card);
         padding: 5px;
         box-shadow: 0 12px 26px rgba(3, 18, 37, .06);
@@ -1290,7 +1290,7 @@ export function MarketTraderStyles() {
         min-width: 0;
         min-height: 46px;
         border: 1px solid transparent;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: transparent;
         color: var(--sfm-muted);
         font: 950 13px Tajawal, Arial, sans-serif;
@@ -1325,7 +1325,7 @@ export function MarketTraderStyles() {
       }
 
       .trader-premium-dashboard .trader-tool-card {
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         box-shadow: 0 14px 34px rgba(3, 18, 37, .07);
       }
 
@@ -1357,7 +1357,7 @@ export function MarketTraderStyles() {
         top: 14px;
         width: 34px;
         height: 34px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(47, 214, 192, .18));
         border: 1px solid rgba(47, 214, 192, .20);
       }
@@ -1474,18 +1474,18 @@ export function MarketTraderStyles() {
         .trader-premium-dashboard .trader-tool-switcher > button {
           flex-basis: min(210px, 82vw);
           min-height: 68px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           padding: 10px;
         }
 
         .trader-premium-dashboard .trader-switcher-icon {
           width: 36px;
           height: 36px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
         }
 
         .trader-premium-dashboard .trader-active-workspace {
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           padding: 12px;
         }
 
@@ -1542,7 +1542,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-tool-switcher > button {
         flex-basis: min(206px, 70vw);
         min-height: 68px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         padding: 10px;
       }
 
@@ -1574,7 +1574,7 @@ export function MarketTraderStyles() {
         gap: 12px;
         min-width: 0;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(135deg, rgba(255, 255, 255, .76), rgba(234, 246, 255, .56)), var(--sfm-light-card);
         padding: 13px;
         box-shadow: 0 10px 24px rgba(3, 18, 37, .045);
@@ -1591,7 +1591,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .tool-result-icon {
         width: 34px;
         height: 34px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -1616,18 +1616,18 @@ export function MarketTraderStyles() {
 
       .trader-premium-dashboard .tool-input-shell {
         min-height: 52px;
-        border-radius: 17px;
+        border-radius: var(--r-lg);
       }
 
       .trader-premium-dashboard .tool-input .tool-input-shell input,
       .trader-premium-dashboard .tool-input .tool-input-shell select {
-        height: 50px !important;
+        height: var(--control-h-lg) !important;
         font-size: 15px;
       }
 
       .trader-premium-dashboard .tool-advanced {
         margin-top: 0;
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         padding: 10px 12px;
       }
 
@@ -1637,7 +1637,7 @@ export function MarketTraderStyles() {
       }
 
       .trader-premium-dashboard .trader-highlight-result {
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         padding: 18px;
         gap: 8px;
         background:
@@ -1653,7 +1653,7 @@ export function MarketTraderStyles() {
 
       .trader-premium-dashboard .tool-results {
         padding: 13px;
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
       }
 
       .trader-premium-dashboard .tool-result-grid {
@@ -1697,19 +1697,19 @@ export function MarketTraderStyles() {
       }
 
       .trader-premium-dashboard .tool-formula-card {
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         padding: 14px;
       }
 
       .trader-premium-dashboard .trader-support-card {
         padding: 14px;
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
       }
 
       .trader-premium-dashboard .trader-support-icon {
         width: 36px;
         height: 36px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
       }
 
       .trader-premium-dashboard .trader-steps {
@@ -1774,7 +1774,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-switcher-arrow {
         width: 46px;
         height: 46px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(47, 214, 192, .22);
         background: linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(234, 246, 255, .62)), var(--sfm-card);
         color: var(--sfm-primary-hover);
@@ -1806,7 +1806,7 @@ export function MarketTraderStyles() {
         min-width: min(320px, 100%);
         max-width: 100%;
         border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(234, 246, 255, .56)), var(--sfm-card);
         padding: 10px;
         box-shadow: 0 10px 24px rgba(3, 18, 37, .05);
@@ -1815,7 +1815,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-premium-save-icon {
         width: 36px;
         height: 36px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         display: grid;
         place-items: center;
         background: rgba(47, 214, 192, .12);
@@ -1853,7 +1853,7 @@ export function MarketTraderStyles() {
         justify-content: center;
         gap: 7px;
         border: 0;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
         color: #FFFFFF;
         padding: 0 13px;

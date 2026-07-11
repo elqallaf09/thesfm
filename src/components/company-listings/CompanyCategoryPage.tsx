@@ -417,7 +417,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             gap: 24px;
             padding: 24px 26px;
             border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
             background:
               radial-gradient(circle at 14% 15%, rgba(24, 212, 212, 0.18), transparent 28%),
               linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10)),
@@ -457,7 +457,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-empty button,
           .company-error button {
             border: 0;
-            border-radius: 14px;
+            border-radius: var(--r-md);
             min-height: 46px;
             padding: 0 18px;
             display: inline-flex;
@@ -489,7 +489,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             overflow: hidden;
             border: 1px solid rgba(15, 23, 42, 0.08);
             background: #ffffff;
-            border-radius: 18px;
+            border-radius: var(--r-xl);
             padding: 18px;
             box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
             min-height: 132px;
@@ -508,7 +508,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-stat-icon {
             width: 38px;
             height: 38px;
-            border-radius: 13px;
+            border-radius: var(--r-md);
             display: inline-grid;
             place-items: center;
             color: #0b76e0;
@@ -554,7 +554,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-filter-panel,
           .company-results-panel {
             border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
             background: rgba(255, 255, 255, 0.94);
             box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
           }
@@ -603,7 +603,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             align-items: center;
             gap: 8px;
             border: 1px solid rgba(15, 23, 42, 0.10);
-            border-radius: 14px;
+            border-radius: var(--r-md);
             padding: 0 12px;
             background: #f8fbff;
             color: #64748b;
@@ -623,7 +623,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-clear-filters {
             min-height: 46px;
             border: 1px solid rgba(11, 118, 224, 0.16);
-            border-radius: 14px;
+            border-radius: var(--r-md);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -678,14 +678,14 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             gap: 4px;
             padding: 4px;
             border: 1px solid rgba(15, 23, 42, 0.10);
-            border-radius: 14px;
+            border-radius: var(--r-md);
             background: #f8fbff;
           }
           .company-view-toggle button {
             width: 38px;
             height: 36px;
             border: 0;
-            border-radius: 10px;
+            border-radius: var(--r-sm);
             display: inline-grid;
             place-items: center;
             color: #64748b;
@@ -810,7 +810,7 @@ function CompanySelect({
           width: 100%;
           min-height: 46px;
           border: 1px solid rgba(15, 23, 42, 0.10);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: #f8fbff;
           color: #0f172a;
           padding: 0 12px;
@@ -973,7 +973,7 @@ function CompanyCard({
         .company-card {
           min-width: 0;
           border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: #ffffff;
           padding: 18px;
           box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
@@ -1004,7 +1004,7 @@ function CompanyCard({
           flex: 0 0 auto;
           width: 64px;
           height: 64px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           display: grid;
           place-items: center;
           overflow: hidden;
@@ -1129,7 +1129,7 @@ function CompanyCard({
         }
         .company-actions :global(.sfm-action-link) {
           min-height: 44px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           padding: 0 14px;
           font-size: 13px;
         }
@@ -1190,7 +1190,7 @@ function CompanySkeleton() {
         }
         .company-skeleton {
           min-height: 310px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
           background-size: 400% 100%;
           animation: shimmer 1.4s ease infinite;
@@ -1229,7 +1229,7 @@ function CompanyEmpty({ filtered, onAdd, onClear }: { filtered?: boolean; onAdd:
         .company-empty {
           margin-top: 18px;
           border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background:
             linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.07)),
             #ffffff;
@@ -1241,7 +1241,7 @@ function CompanyEmpty({ filtered, onAdd, onClear }: { filtered?: boolean; onAdd:
           width: 56px;
           height: 56px;
           margin: 0 auto;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           padding: 13px;
           background: rgba(11, 118, 224, 0.08);
           color: #0b76e0;
@@ -1274,7 +1274,7 @@ function CompanyEmpty({ filtered, onAdd, onClear }: { filtered?: boolean; onAdd:
           min-height: 48px;
           padding: 0 22px;
           border: 0;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: linear-gradient(135deg, #0b76e0, #18d4d4);
           color: #ffffff;
           font: 950 14px/1 Tajawal, Arial, sans-serif;
@@ -1319,7 +1319,7 @@ function CompanyError({ message, onRetry }: { message: string; onRetry: () => vo
         .company-error {
           margin-top: 18px;
           border: 1px solid rgba(220, 38, 38, 0.16);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: #ffffff;
           padding: 28px;
           text-align: center;
@@ -1340,7 +1340,7 @@ function CompanyError({ message, onRetry }: { message: string; onRetry: () => vo
         }
         button {
           border: 0;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           min-height: 46px;
           padding: 0 18px;
           color: #ffffff;

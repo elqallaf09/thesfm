@@ -21,7 +21,7 @@ export function AdminAccessDenied() {
           style={{
             width: 'min(100%, 560px)',
             border: '1px solid rgba(29,140,255,.14)',
-            borderRadius: 22,
+            borderRadius: 'var(--r-2xl)',
             background: 'var(--sfm-card-bg, #fff)',
             boxShadow: '0 18px 50px rgba(3,18,37,.10)',
             padding: 24,

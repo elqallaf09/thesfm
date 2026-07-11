@@ -236,7 +236,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           justify-content: center;
           gap: 8px;
           min-height: 44px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           padding: 0 15px;
           text-decoration: none;
           font: 950 13px Tajawal, Arial, sans-serif;
@@ -294,7 +294,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           width: 100%;
           min-height: 78vh;
           border: 0;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: #f1f5f9;
         }
 
@@ -328,7 +328,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           display: grid;
           gap: 10px;
           padding: 18px;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(15, 118, 110, 0.14);
           background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(204, 251, 241, 0.38));
           color: #0f172a;

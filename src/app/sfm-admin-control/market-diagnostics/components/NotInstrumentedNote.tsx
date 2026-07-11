@@ -33,7 +33,7 @@ export function NotInstrumentedNote({ value, label }: { value: NotInstrumented; 
       <style jsx global>{`
         .ops-tab-section { display: grid; gap: 14px; min-width: 0; }
         .ops-section-title { margin: 0; color: var(--sfm-heading); font-size: 14px; font-weight: 900; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--sfm-muted); font-size: 13px; border: 1px dashed var(--sfm-border); border-radius: 14px; }
+        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--sfm-muted); font-size: 13px; border: 1px dashed var(--sfm-border); border-radius: var(--r-md); }
         .ops-not-instrumented { display: flex; gap: 10px; border: 1px dashed var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-light-card); padding: 12px; }
         .ops-not-instrumented-icon { flex: 0 0 auto; color: var(--sfm-muted); margin-top: 2px; }
         .ops-not-instrumented-body { min-width: 0; display: grid; gap: 4px; }

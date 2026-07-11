@@ -2343,7 +2343,7 @@ const subscriptionManagerStyles = `
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(47, 214, 192, 0.22);
-    border-radius: 28px;
+    border-radius: var(--r-2xl);
     background:
       radial-gradient(circle at 12% 18%, rgba(24, 212, 212, 0.24), transparent 32%),
       linear-gradient(135deg, #031225, #0b3558 58%, #0f766e 130%);
@@ -2404,7 +2404,7 @@ const subscriptionManagerStyles = `
   .subscription-export-row button,
   .payment-action-grid button {
     min-height: 44px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     border: 1px solid transparent;
     padding: 0 15px;
     display: inline-flex;
@@ -2438,7 +2438,7 @@ const subscriptionManagerStyles = `
   .payment-action-grid button {
     min-height: 38px;
     padding-inline: 12px;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     font-size: 0.82rem;
   }
 
@@ -2480,7 +2480,7 @@ const subscriptionManagerStyles = `
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(12px);
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     padding: 15px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -2498,7 +2498,7 @@ const subscriptionManagerStyles = `
   .kpi-icon {
     width: 42px;
     height: 42px;
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     display: grid;
     place-items: center;
     color: #fff;
@@ -2579,7 +2579,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     padding: 16px;
     box-shadow: 0 16px 40px rgba(3, 18, 37, 0.07);
   }
@@ -2595,7 +2595,7 @@ const subscriptionManagerStyles = `
   .subscription-toolbar {
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 20px;
+    border-radius: var(--r-xl);
     padding: 12px;
     display: grid;
     grid-template-columns: minmax(220px, 1.1fr) repeat(3, minmax(150px, 0.44fr)) auto;
@@ -2607,7 +2607,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     min-height: 44px;
     border: 1px solid rgba(29, 140, 255, 0.18);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: var(--sfm-light-card);
     display: flex;
     align-items: center;
@@ -2628,7 +2628,7 @@ const subscriptionManagerStyles = `
     border: 1px solid rgba(29, 140, 255, 0.18);
     background: var(--sfm-light-card);
     color: var(--sfm-foreground);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     min-height: 44px;
     padding: 10px 12px;
     font-family: inherit;
@@ -2669,7 +2669,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     padding: 15px;
     display: grid;
     gap: 13px;
@@ -2686,7 +2686,7 @@ const subscriptionManagerStyles = `
   .client-avatar {
     width: 44px;
     height: 44px;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     display: grid;
     place-items: center;
     color: #fff;
@@ -2696,8 +2696,8 @@ const subscriptionManagerStyles = `
     flex: 0 0 auto;
   }
 
-  .client-avatar.sm { width: 36px; height: 36px; border-radius: 13px; }
-  .client-avatar.lg { width: 74px; height: 74px; border-radius: 24px; }
+  .client-avatar.sm { width: 36px; height: 36px; border-radius: var(--r-md); }
+  .client-avatar.lg { width: 74px; height: 74px; border-radius: var(--r-2xl); }
   .client-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .client-avatar b { font-size: 0.86rem; font-weight: 950; }
   .client-avatar.lg b { font-size: 1.2rem; }
@@ -2737,7 +2737,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
     background: var(--sfm-light-card);
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     padding: 10px;
   }
 
@@ -2856,7 +2856,7 @@ const subscriptionManagerStyles = `
     width: 40px;
     height: 40px;
     border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: 13px;
+    border-radius: var(--r-md);
     background: var(--sfm-light-card);
     color: var(--sfm-primary-hover);
     display: grid;
@@ -2865,7 +2865,7 @@ const subscriptionManagerStyles = `
   }
 
   .subscription-alert {
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     display: flex;
     align-items: center;
@@ -2888,7 +2888,7 @@ const subscriptionManagerStyles = `
   .subscription-alert button {
     margin-inline-start: auto;
     min-height: 36px;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     border: 1px solid rgba(29, 140, 255, 0.18);
     background: var(--sfm-card);
     color: inherit;
@@ -2928,7 +2928,7 @@ const subscriptionManagerStyles = `
 
   .subscription-skeleton-grid i {
     height: 110px;
-    border-radius: 20px;
+    border-radius: var(--r-xl);
     background: linear-gradient(90deg, rgba(148, 163, 184, 0.12), rgba(34, 211, 238, 0.13), rgba(148, 163, 184, 0.12));
     background-size: 220% 100%;
     animation: subscription-shimmer 1.15s linear infinite;
@@ -2943,7 +2943,7 @@ const subscriptionManagerStyles = `
     overflow: hidden;
     min-height: 220px;
     border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: 26px;
+    border-radius: var(--r-2xl);
     background: linear-gradient(135deg, var(--sfm-card), var(--sfm-light-card));
     padding: 18px;
     display: grid;
@@ -2996,7 +2996,7 @@ const subscriptionManagerStyles = `
   .subscription-info-panel header span {
     width: 36px;
     height: 36px;
-    border-radius: 13px;
+    border-radius: var(--r-md);
     display: grid;
     place-items: center;
     color: #fff;
@@ -3036,7 +3036,7 @@ const subscriptionManagerStyles = `
     margin: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
     background: var(--sfm-light-card);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     padding: 10px;
     color: var(--sfm-muted-readable);
     line-height: 1.7;
@@ -3046,7 +3046,7 @@ const subscriptionManagerStyles = `
   .subscription-file-link {
     min-height: 40px;
     border: 1px solid rgba(29, 140, 255, 0.14);
-    border-radius: 13px;
+    border-radius: var(--r-md);
     background: var(--sfm-light-card);
     color: var(--sfm-primary-hover);
     padding: 10px 12px;
@@ -3096,7 +3096,7 @@ const subscriptionManagerStyles = `
     min-height: 100px;
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     background: var(--sfm-light-card);
     padding: 9px;
     display: grid;
@@ -3110,7 +3110,7 @@ const subscriptionManagerStyles = `
   }
 
   .calendar-dot {
-    border-radius: 9px;
+    border-radius: var(--r-sm);
     padding: 5px 6px;
     font-size: 0.68rem;
     font-weight: 900;
@@ -3192,7 +3192,7 @@ const subscriptionManagerStyles = `
     border: 1px dashed rgba(29, 140, 255, 0.24);
     background: var(--sfm-light-card);
     color: var(--sfm-muted-readable);
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     padding: 16px;
     text-align: center;
     font-weight: 900;
@@ -3202,7 +3202,7 @@ const subscriptionManagerStyles = `
     border: 1px solid rgba(16, 185, 129, 0.22);
     background: rgba(16, 185, 129, 0.10);
     color: #047857;
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     padding: 12px;
     display: flex;
     gap: 8px;
@@ -3214,7 +3214,7 @@ const subscriptionManagerStyles = `
   .subscription-reminder-status {
     border: 1px solid rgba(29, 140, 255, 0.14);
     background: var(--sfm-light-card);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px;
     display: grid;
     gap: 10px;
@@ -3240,7 +3240,7 @@ const subscriptionManagerStyles = `
   .subscription-reminder-status header > span {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     display: grid;
     place-items: center;
     color: #fff;
@@ -3266,7 +3266,7 @@ const subscriptionManagerStyles = `
     border: 1px dashed rgba(185, 28, 28, 0.22);
     background: rgba(239, 68, 68, 0.08);
     color: #991B1B;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 9px 10px;
     font-size: 0.78rem;
     font-weight: 900;
@@ -3283,7 +3283,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
     background: var(--sfm-card);
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 9px;
   }
 
@@ -3315,7 +3315,7 @@ const subscriptionManagerStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
     background: var(--sfm-card);
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 10px;
     display: grid;
     gap: 8px;
@@ -3388,7 +3388,7 @@ const subscriptionManagerStyles = `
     max-height: min(92vh, 980px);
     overflow: auto;
     border: 1px solid rgba(29, 140, 255, 0.18);
-    border-radius: 26px;
+    border-radius: var(--r-2xl);
     background: var(--sfm-card);
     box-shadow: 0 34px 100px rgba(3, 18, 37, 0.28);
     padding: 20px;
@@ -3458,7 +3458,7 @@ const subscriptionManagerStyles = `
 
   .subscription-color-palette button {
     width: 34px;
-    height: 34px;
+    height: var(--control-h-sm);
     border-radius: 999px;
     border: 2px solid transparent;
     cursor: pointer;
@@ -3619,7 +3619,7 @@ const subscriptionManagerStyles = `
     }
 
     .subscription-modal {
-      border-radius: 24px 24px 0 0;
+      border-radius: var(--r-2xl) var(--r-2xl) 0 0;
       max-height: 92vh;
       padding: 16px;
     }

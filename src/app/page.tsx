@@ -1191,7 +1191,7 @@ const landingStyles = `
     margin: 12px auto 0;
     min-height: 64px;
     border: 1px solid var(--landing-border);
-    border-radius: 24px;
+    border-radius: var(--r-2xl);
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 16px 44px rgba(3, 18, 37, 0.12);
     backdrop-filter: blur(18px);
@@ -1215,7 +1215,7 @@ const landingStyles = `
     font-weight: 950;
   }
   .landing-logo {
-    border-radius: 14px;
+    border-radius: var(--r-md);
     object-fit: cover;
     box-shadow: 0 10px 24px rgba(3, 18, 37, 0.16);
   }
@@ -1268,7 +1268,7 @@ const landingStyles = `
     width: 40px;
     min-width: 40px;
     height: 40px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
   }
   .nav-primary, .primary-cta, .final-cta a {
     border: 1px solid rgba(24, 212, 212, 0.24);
@@ -1299,8 +1299,8 @@ const landingStyles = `
   .mobile-menu-button {
     display: none;
     width: 40px;
-    height: 40px;
-    border-radius: 14px;
+    height: var(--control-h);
+    border-radius: var(--r-md);
     border: 1px solid rgba(29, 140, 255, 0.26);
     background: #FFFFFF;
     color: var(--landing-heading);
@@ -1444,7 +1444,7 @@ const landingStyles = `
   .preview-grid div {
     min-width: 0;
     border: 1px solid rgba(15, 118, 110, 0.18);
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     background: rgba(255, 255, 255, 0.78);
     padding: 14px;
   }
@@ -1463,7 +1463,7 @@ const landingStyles = `
   .preview-warning {
     margin-top: 14px;
     border: 1px solid rgba(15, 118, 110, 0.2);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px;
     background: rgba(45, 212, 191, 0.16);
     color: #0F766E;
@@ -1519,7 +1519,7 @@ const landingStyles = `
     grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
     gap: 18px;
     align-items: center;
-    border-radius: 28px;
+    border-radius: var(--r-2xl);
     background: #FFFFFF;
     border: 1px solid rgba(29, 140, 255, 0.14);
     box-shadow: 0 18px 46px rgba(3, 18, 37, 0.08);
@@ -1546,7 +1546,7 @@ const landingStyles = `
   .trust-card {
     gap: 10px;
     min-width: 0;
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     background: #F8FBFF;
     border: 1px solid rgba(29, 140, 255, 0.12);
     padding: 14px;
@@ -1565,7 +1565,7 @@ const landingStyles = `
   .how-card {
     position: relative;
     min-width: 0;
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     background: #FFFFFF;
     border: 1px solid rgba(29, 140, 255, 0.13);
     box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
@@ -1589,7 +1589,7 @@ const landingStyles = `
     height: 46px;
     display: grid;
     place-items: center;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
     border: 1px solid rgba(29, 140, 255, 0.14);
     color: #18D4D4;
@@ -1623,7 +1623,7 @@ const landingStyles = `
   }
   .feature-card, .pricing-card, .faq-item, .audience-grid article {
     min-width: 0;
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     background: #FFFFFF;
     border: 1px solid rgba(29, 140, 255, 0.13);
     box-shadow: 0 14px 36px rgba(3, 18, 37, 0.07);
@@ -1642,7 +1642,7 @@ const landingStyles = `
     width: 46px;
     height: 46px;
     justify-content: center;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
     border: 1px solid rgba(29, 140, 255, 0.14);
   }
@@ -1725,7 +1725,7 @@ const landingStyles = `
     height: 46px;
     display: grid;
     place-items: center;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.14));
     border: 1px solid rgba(29, 140, 255, 0.14);
     color: #18D4D4;
@@ -1894,7 +1894,7 @@ const landingStyles = `
     border: 1px solid rgba(220, 38, 38, 0.22);
     background: rgba(254, 242, 242, 0.9);
     color: #991B1B;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     padding: 12px 16px;
     text-align: center;
     font-weight: 900;
@@ -1962,7 +1962,7 @@ const landingStyles = `
     width: 100%;
     min-height: 48px;
     border: 1px solid rgba(11, 118, 224, 0.18);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: #FFFFFF;
     color: #0B76E0;
     font: 950 15px/1 Tajawal, Arial, sans-serif;
@@ -2173,7 +2173,7 @@ const landingStyles = `
     color: var(--landing-muted);
     text-decoration: none;
     font-weight: 850;
-    border-radius: 10px;
+    border-radius: var(--r-sm);
     padding: 2px 0;
     transition: color 180ms var(--ease), transform 180ms var(--ease), text-decoration-color 180ms var(--ease);
   }
@@ -2508,7 +2508,7 @@ const landingStyles = `
       margin-top: 10px;
       padding: 10px;
       border: 1px solid rgba(29, 140, 255, 0.16);
-      border-radius: 18px;
+      border-radius: var(--r-xl);
       background: rgba(255, 255, 255, 0.94);
       box-shadow: 0 16px 34px rgba(3, 18, 37, 0.10);
     }
@@ -2553,7 +2553,7 @@ const landingStyles = `
     }
     .landing-footer {
       padding-inline: 16px;
-      border-radius: 24px;
+      border-radius: var(--r-2xl);
     }
     .footer-brand,
     .footer-column {
@@ -2586,7 +2586,7 @@ const landingStyles = `
     }
     .landing-nav {
       margin-top: 12px;
-      border-radius: 20px;
+      border-radius: var(--r-xl);
     }
     .landing-brand span {
       display: none;
@@ -2612,7 +2612,7 @@ const landingStyles = `
     }
     .landing-preview-panel {
       padding: 18px;
-      border-radius: 24px;
+      border-radius: var(--r-2xl);
     }
     .preview-grid, .trust-grid {
       grid-template-columns: 1fr;
@@ -2625,7 +2625,7 @@ const landingStyles = `
     }
     .landing-ai-example {
       width: 100%;
-      border-radius: 16px;
+      border-radius: var(--r-lg);
     }
     .landing-footer {
       margin-top: 32px;

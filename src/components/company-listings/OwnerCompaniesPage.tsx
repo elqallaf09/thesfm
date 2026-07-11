@@ -292,42 +292,42 @@ export function OwnerCompaniesPage() {
       <style>{`
         .owner-companies-shell{direction:${dir};}
         .owner-companies-content{max-width:1180px;margin:0 auto;padding:clamp(1rem,3vw,2rem);display:flex;flex-direction:column;gap:1.25rem}
-        .owner-hero{border:1px solid rgba(47,214,192,.24);border-radius:24px;padding:clamp(1.25rem,3vw,2rem);background:linear-gradient(135deg,#062238,#0b3150 52%,#0f6f78);color:#fff;box-shadow:0 18px 50px rgba(3,18,37,.16);display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
+        .owner-hero{border:1px solid rgba(47,214,192,.24);border-radius:var(--r-2xl);padding:clamp(1.25rem,3vw,2rem);background:linear-gradient(135deg,#062238,#0b3150 52%,#0f6f78);color:#fff;box-shadow:0 18px 50px rgba(3,18,37,.16);display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
         .owner-hero h1{margin:0;font-size:clamp(2rem,5vw,3.4rem);font-weight:950;letter-spacing:0}
         .owner-hero p{margin:.5rem 0 0;color:rgba(255,255,255,.78);font-weight:800;line-height:1.8}
-        .owner-add-btn,.owner-primary-btn,.owner-secondary-btn,.owner-danger-btn{min-height:44px;border-radius:14px;border:1px solid rgba(47,214,192,.24);display:inline-flex;align-items:center;justify-content:center;gap:.45rem;padding:.65rem 1rem;font-weight:900;text-decoration:none;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+        .owner-add-btn,.owner-primary-btn,.owner-secondary-btn,.owner-danger-btn{min-height:44px;border-radius:var(--r-md);border:1px solid rgba(47,214,192,.24);display:inline-flex;align-items:center;justify-content:center;gap:.45rem;padding:.65rem 1rem;font-weight:900;text-decoration:none;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
         .owner-add-btn,.owner-primary-btn{background:linear-gradient(135deg,#1d8cff,#18d4d4);color:#fff;box-shadow:0 12px 28px rgba(29,140,255,.20)}
         .owner-secondary-btn{background:rgba(255,255,255,.86);color:#0b2138;border-color:rgba(11,118,224,.18)}
         .owner-danger-btn{background:#fff1f2;color:#be123c;border-color:#fecdd3}
         .owner-add-btn:hover,.owner-primary-btn:hover,.owner-secondary-btn:hover,.owner-danger-btn:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(3,18,37,.14)}
-        .owner-message{border-radius:16px;padding:.85rem 1rem;font-weight:900}
+        .owner-message{border-radius:var(--r-lg);padding:.85rem 1rem;font-weight:900}
         .owner-message.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}.owner-message.error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
         .owner-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem;align-items:start}
-        .owner-card{border:1px solid rgba(47,214,192,.22);border-radius:22px;background:rgba(255,255,255,.92);box-shadow:0 14px 34px rgba(3,18,37,.08);padding:1rem;display:flex;flex-direction:column;gap:1rem;color:#0b2138}
+        .owner-card{border:1px solid rgba(47,214,192,.22);border-radius:var(--r-2xl);background:rgba(255,255,255,.92);box-shadow:0 14px 34px rgba(3,18,37,.08);padding:1rem;display:flex;flex-direction:column;gap:1rem;color:#0b2138}
         .owner-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
         .owner-company-main{display:flex;align-items:center;gap:.85rem;min-width:0}
-        .owner-company-logo{width:58px;height:58px;border-radius:18px;object-fit:cover;background:#e8f4fb;border:1px solid rgba(47,214,192,.22);flex:0 0 auto}
+        .owner-company-logo{width:58px;height:58px;border-radius:var(--r-xl);object-fit:cover;background:#e8f4fb;border:1px solid rgba(47,214,192,.22);flex:0 0 auto}
         .owner-company-title{min-width:0}
         .owner-company-title h2{margin:0;font-size:1.08rem;font-weight:950;color:#061b33;overflow-wrap:anywhere}
         .owner-company-title p{margin:.3rem 0 0;color:#64748b;font-weight:800;font-size:.86rem}
         .owner-status{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.35rem .75rem;font-size:.78rem;font-weight:950;white-space:nowrap}
         .owner-status.amber{background:#fef3c7;color:#92400e}.owner-status.green{background:#dcfce7;color:#166534}.owner-status.red{background:#fee2e2;color:#991b1b}.owner-status.blue{background:#dbeafe;color:#1e40af}.owner-status.slate{background:#e2e8f0;color:#334155}
-        .owner-update-note{border:1px solid rgba(245,158,11,.22);background:#fffbeb;color:#92400e;border-radius:14px;padding:.75rem .85rem;font-weight:900;font-size:.84rem}
+        .owner-update-note{border:1px solid rgba(245,158,11,.22);background:#fffbeb;color:#92400e;border-radius:var(--r-md);padding:.75rem .85rem;font-weight:900;font-size:.84rem}
         .owner-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
-        .owner-fact{border:1px solid rgba(11,118,224,.12);background:#f8fbff;border-radius:14px;padding:.75rem}
+        .owner-fact{border:1px solid rgba(11,118,224,.12);background:#f8fbff;border-radius:var(--r-md);padding:.75rem}
         .owner-fact span{display:block;color:#64748b;font-size:.76rem;font-weight:850}.owner-fact strong{display:block;margin-top:.25rem;color:#061b33;font-weight:950;overflow-wrap:anywhere}
-        .owner-note{border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.8rem;font-weight:850;line-height:1.7}
+        .owner-note{border-radius:var(--r-md);background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.8rem;font-weight:850;line-height:1.7}
         .owner-actions{display:flex;gap:.6rem;flex-wrap:wrap}
         .owner-actions a,.owner-actions button{flex:1;min-width:135px}
-        .owner-empty{border:1px dashed rgba(11,118,224,.24);border-radius:22px;background:rgba(255,255,255,.82);padding:2rem;text-align:center;color:#0b2138;box-shadow:0 14px 34px rgba(3,18,37,.06)}
+        .owner-empty{border:1px dashed rgba(11,118,224,.24);border-radius:var(--r-2xl);background:rgba(255,255,255,.82);padding:2rem;text-align:center;color:#0b2138;box-shadow:0 14px 34px rgba(3,18,37,.06)}
         .owner-empty svg{color:#17c6cb}.owner-empty h2{margin:.75rem 0 .35rem;font-size:1.25rem}.owner-empty p{margin:0 0 1rem;color:#64748b;font-weight:800}
         .owner-loading{display:flex;align-items:center;justify-content:center;gap:.6rem;min-height:180px;font-weight:900;color:#0b76e0}
         .owner-modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(3,18,37,.56);display:flex;align-items:center;justify-content:center;padding:1rem}
-        .owner-modal{position:relative;z-index:1010;width:min(920px,100%);max-height:92dvh;overflow:visible;border-radius:24px;background:#fff;color:#0b2138;box-shadow:0 24px 70px rgba(0,0,0,.28);display:flex;flex-direction:column}
+        .owner-modal{position:relative;z-index:1010;width:min(920px,100%);max-height:92dvh;overflow:visible;border-radius:var(--r-2xl);background:#fff;color:#0b2138;box-shadow:0 24px 70px rgba(0,0,0,.28);display:flex;flex-direction:column}
         .owner-modal-head{position:relative;flex:0 0 auto;background:linear-gradient(135deg,#f8fcff,#e8fbfb);border-bottom:1px solid rgba(47,214,192,.18);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;z-index:1020;border-start-start-radius:24px;border-start-end-radius:24px}
-        .owner-modal-head h2{margin:0;font-size:1.25rem;font-weight:950}.owner-modal-close{width:44px;height:44px;border-radius:14px;border:1px solid rgba(11,118,224,.14);background:#fff;font-size:1.2rem;cursor:pointer}
+        .owner-modal-head h2{margin:0;font-size:1.25rem;font-weight:950}.owner-modal-close{width:44px;height:44px;border-radius:var(--r-md);border:1px solid rgba(11,118,224,.14);background:#fff;font-size:1.2rem;cursor:pointer}
         .owner-form{padding:1.25rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;overflow-y:auto;overflow-x:visible;overscroll-behavior:contain;max-height:calc(92dvh - 142px);min-height:0}
-        .owner-field{display:flex;flex-direction:column;gap:.4rem;min-width:0;overflow:visible}.owner-field.full{grid-column:1/-1}.owner-field label,.owner-field>span{font-size:.82rem;font-weight:950;color:#334155}.owner-field input,.owner-field select,.owner-field textarea{width:100%;box-sizing:border-box;border:1.5px solid #dbeafe;background:#f8fbff;border-radius:14px;min-height:46px;padding:.7rem .85rem;font:800 .9rem Tajawal,Arial,sans-serif;color:#0b2138}.owner-field textarea{min-height:92px;resize:vertical}.owner-field input:focus,.owner-field select:focus,.owner-field textarea:focus{outline:none;border-color:#18d4d4;box-shadow:0 0 0 4px rgba(47,214,192,.14)}
+        .owner-field{display:flex;flex-direction:column;gap:.4rem;min-width:0;overflow:visible}.owner-field.full{grid-column:1/-1}.owner-field label,.owner-field>span{font-size:.82rem;font-weight:950;color:#334155}.owner-field input,.owner-field select,.owner-field textarea{width:100%;box-sizing:border-box;border:1.5px solid #dbeafe;background:#f8fbff;border-radius:var(--r-md);min-height:46px;padding:.7rem .85rem;font:800 .9rem Tajawal,Arial,sans-serif;color:#0b2138}.owner-field textarea{min-height:92px;resize:vertical}.owner-field input:focus,.owner-field select:focus,.owner-field textarea:focus{outline:none;border-color:#18d4d4;box-shadow:0 0 0 4px rgba(47,214,192,.14)}
         .owner-modal-actions{position:relative;z-index:1020;flex:0 0 auto;background:rgba(255,255,255,.96);border-top:1px solid rgba(47,214,192,.18);padding:1rem 1.25rem;display:flex;gap:.75rem;justify-content:flex-start;flex-wrap:wrap;border-end-start-radius:24px;border-end-end-radius:24px}
         .dark .owner-card,.dark .owner-empty,.dark .owner-modal{background:#0f1d31;color:#e8eef6;border-color:#1d3050}.dark .owner-company-title h2,.dark .owner-fact strong,.dark .owner-empty{color:#e8eef6}.dark .owner-company-title p,.dark .owner-empty p,.dark .owner-fact span{color:#9fb2c8}.dark .owner-fact{background:#071a2e;border-color:#1d3050}.dark .owner-modal-head,.dark .owner-modal-actions{background:#0b1728;border-color:#1d3050}.dark .owner-field input,.dark .owner-field select,.dark .owner-field textarea{background:#071a2e;color:#e8eef6;border-color:#1d3050}.dark .owner-secondary-btn{background:#10243b;color:#e8eef6;border-color:#1d3050}
         @media(max-width:720px){.owner-companies-content{padding:1rem}.owner-hero{align-items:stretch;flex-direction:column}.owner-add-btn{width:100%}.owner-facts{grid-template-columns:1fr}.owner-actions{flex-direction:column}.owner-actions a,.owner-actions button{width:100%}.owner-form{grid-template-columns:1fr}.owner-modal-actions button{width:100%}}

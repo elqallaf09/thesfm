@@ -49,21 +49,21 @@ export default function SavingsEducationPage() {
         .savings-data-page{min-height:100vh;background:var(--sfm-light-card);color:#24160E;font-family:Tajawal,Arial,sans-serif;padding:22px}
         .savings-wrap{width:min(1120px,100%);margin:0 auto;display:grid;gap:18px}
         .savings-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-        .savings-back{border:1px solid rgba(29,140,255,.18);border-radius:14px;background:var(--sfm-card);color:var(--sfm-primary-dark);padding:10px 15px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
-        .savings-hero{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight));border-radius:28px;padding:clamp(24px,5vw,54px);color:var(--sfm-card);box-shadow:0 24px 70px rgba(3,18,37,.20)}
+        .savings-back{border:1px solid rgba(29,140,255,.18);border-radius:var(--r-md);background:var(--sfm-card);color:var(--sfm-primary-dark);padding:10px 15px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
+        .savings-hero{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-midnight));border-radius:var(--r-2xl);padding:clamp(24px,5vw,54px);color:var(--sfm-card);box-shadow:0 24px 70px rgba(3,18,37,.20)}
         .savings-hero h1{margin:0 0 10px;font-size:clamp(32px,7vw,64px);line-height:1;font-weight:900;letter-spacing:0}
         .savings-hero p{margin:0;max-width:720px;color:rgba(234,246,255,.78);font-size:clamp(15px,2.2vw,19px);line-height:1.8;font-weight:700}
         .savings-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
-        .savings-actions button,.savings-card button{border:0;border-radius:15px;padding:12px 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
+        .savings-actions button,.savings-card button{border:0;border-radius:var(--r-lg);padding:12px 18px;font:900 13px Tajawal,Arial,sans-serif;cursor:pointer}
         .savings-primary{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF}
         .savings-secondary{background:rgba(234,246,255,.10);color:var(--sfm-card);border:1px solid rgba(234,246,255,.18)!important}
         .savings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-        .savings-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.15);border-radius:22px;padding:20px;display:grid;gap:12px;box-shadow:0 12px 34px rgba(3,18,37,.07)}
+        .savings-card{background:var(--sfm-card);border:1px solid rgba(29,140,255,.15);border-radius:var(--r-2xl);padding:20px;display:grid;gap:12px;box-shadow:0 12px 34px rgba(3,18,37,.07)}
         .savings-card h2{margin:0;color:var(--sfm-primary-dark);font-size:19px;font-weight:900}
         .savings-card p{margin:0;color:var(--sfm-muted);line-height:1.75;font-size:14px;font-weight:700}
         .savings-card button{justify-self:start;background:var(--sfm-primary-dark);color:var(--sfm-card)}
-        .savings-note{background:var(--sfm-card);border:1px dashed rgba(29,140,255,.28);border-radius:20px;padding:18px;color:var(--sfm-primary);font-weight:900;line-height:1.7;text-align:center}
-        @media(max-width:820px){.savings-data-page{padding:14px}.savings-grid{grid-template-columns:1fr}.savings-hero{border-radius:22px}.savings-actions button,.savings-card button{width:100%}}
+        .savings-note{background:var(--sfm-card);border:1px dashed rgba(29,140,255,.28);border-radius:var(--r-xl);padding:18px;color:var(--sfm-primary);font-weight:900;line-height:1.7;text-align:center}
+        @media(max-width:820px){.savings-data-page{padding:14px}.savings-grid{grid-template-columns:1fr}.savings-hero{border-radius:var(--r-2xl)}.savings-actions button,.savings-card button{width:100%}}
       `}</style>
 
       <div className="savings-wrap">

@@ -663,7 +663,7 @@ export default function SiteMapPage() {
         }
 
         .site-map-search-panel {
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           padding: 14px;
         }
 
@@ -674,7 +674,7 @@ export default function SiteMapPage() {
           min-height: 56px;
           padding: 0 16px;
           border: 1px solid var(--border);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: var(--card);
           color: var(--primary);
           box-shadow: 0 10px 26px rgba(15, 37, 64, 0.06);
@@ -705,7 +705,7 @@ export default function SiteMapPage() {
         .site-map-main-section {
           display: grid;
           gap: 18px;
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           padding: 20px;
         }
 
@@ -770,7 +770,7 @@ export default function SiteMapPage() {
           grid-template-rows: auto minmax(0, 1fr) auto;
           gap: 10px;
           padding: 15px;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
         }
 
         .site-map-feature-card:hover,
@@ -789,7 +789,7 @@ export default function SiteMapPage() {
           height: 44px;
           display: grid;
           place-items: center;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           color: #EAF6FF;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           box-shadow: 0 16px 32px rgba(29, 140, 255, 0.18);
@@ -838,7 +838,7 @@ export default function SiteMapPage() {
           gap: 16px;
           min-width: 0;
           min-height: 0;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           padding: 16px;
         }
 
@@ -854,7 +854,7 @@ export default function SiteMapPage() {
           height: 42px;
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           color: var(--primary);
           background: var(--site-map-icon-background);
           border: 1px solid var(--border);
@@ -899,7 +899,7 @@ export default function SiteMapPage() {
           min-width: 0;
           min-height: 72px;
           padding: 11px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           box-shadow: 0 8px 22px rgba(15, 37, 64, 0.045);
         }
 
@@ -915,7 +915,7 @@ export default function SiteMapPage() {
           height: 38px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: var(--site-map-icon-background);
           color: var(--primary);
           transition: all 0.2s ease;
@@ -976,7 +976,7 @@ export default function SiteMapPage() {
           place-items: center;
           gap: 10px;
           text-align: center;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           padding: 24px;
           color: var(--muted-foreground);
           font-weight: 900;
@@ -1006,13 +1006,13 @@ export default function SiteMapPage() {
         .site-map-hero {
           min-height: 0 !important;
           padding: 22px !important;
-          border-radius: 24px !important;
+          border-radius: var(--r-2xl) !important;
         }
 
         .site-map-hero .sfm-page-hero-icon {
           width: 54px !important;
           height: 54px !important;
-          border-radius: 18px !important;
+          border-radius: var(--r-xl) !important;
         }
 
         .site-map-hero h1 {
@@ -1120,7 +1120,7 @@ export default function SiteMapPage() {
         .site-map-accordion-item {
           border: 1px solid var(--border);
           background: var(--card);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           overflow: hidden;
         }
 
@@ -1188,7 +1188,7 @@ export default function SiteMapPage() {
           .site-map-featured,
           .site-map-main-section,
           .site-map-search-panel {
-            border-radius: 20px;
+            border-radius: var(--r-xl);
             padding: 16px;
           }
 

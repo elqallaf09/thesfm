@@ -1592,7 +1592,7 @@ export function DefensiveStocksNewsPage() {
         .def-card,.def-hero,.def-tabs,.def-data-status,.def-disclaimer,.def-filter-card,.def-stock-card,.def-news-card,.def-sector-card{
           border:1px solid var(--def-border);
           background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,252,255,.94));
-          border-radius:24px;
+          border-radius:var(--r-2xl);
           box-shadow:var(--def-shadow);
         }
         .def-ticker-panel{padding:8px 10px;overflow:hidden}
@@ -1607,7 +1607,7 @@ export function DefensiveStocksNewsPage() {
         .def-ticker-strip:focus-within .def-ticker-track,.def-ticker-strip.is-paused .def-ticker-track{animation-play-state:paused}
         .def-ticker-set{display:flex;align-items:center;gap:9px;flex:none}
         .def-ticker-status{display:inline-flex;align-items:center;gap:6px;padding:0 10px;min-height:28px;border-radius:999px;background:#E0F2FE;color:#075985;font-size:11px;font-weight:900;white-space:nowrap}
-        .def-ticker-item{width:196px;max-width:196px;min-width:196px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--def-border);border-radius:14px;background:#fff}
+        .def-ticker-item{width:196px;max-width:196px;min-width:196px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--def-border);border-radius:var(--r-md);background:#fff}
         .def-ticker-copy{display:grid;gap:1px;min-width:0}
         .def-ticker-item strong{font-size:13px;font-weight:950;color:var(--def-text);line-height:1.15}
         .def-ticker-item small{font-size:10px;font-weight:850;color:var(--def-muted);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1635,19 +1635,19 @@ export function DefensiveStocksNewsPage() {
             linear-gradient(135deg,#061A2E,#0E4A5C 88%);
           color:white;
         }
-        .def-hero:after{content:"";position:absolute;inset:18px;pointer-events:none;border:1px solid rgba(255,255,255,.08);border-radius:20px}
+        .def-hero:after{content:"";position:absolute;inset:18px;pointer-events:none;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-xl)}
         .def-badge,.def-kicker{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;background:rgba(36,213,197,.14);border:1px solid rgba(36,213,197,.26);color:#9FF7EF;font-size:12px;font-weight:950}
         .def-hero h1{margin:14px 0 10px;font-size:clamp(34px,4vw,58px);line-height:1.05;font-weight:950;letter-spacing:0;color:#fff}
         .def-hero p{max-width:760px;margin:0;color:#DDF9FF;font-size:16px;font-weight:850;line-height:1.8}
         .def-hero small{display:block;margin-top:12px;color:#AFD8E4;font-size:12px;font-weight:850;line-height:1.7}
         .def-hero-side{position:relative;z-index:1;display:grid;gap:10px;justify-items:stretch}
-        .def-hero-side button{min-height:48px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--def-primary),var(--def-accent));color:#061A2E;font:950 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
-        .def-hero-side span{min-height:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.10);color:#E6FBFF;font-size:12px;font-weight:900}
+        .def-hero-side button{min-height:48px;border:0;border-radius:var(--r-lg);background:linear-gradient(135deg,var(--def-primary),var(--def-accent));color:#061A2E;font:950 13px Tajawal,Arial,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+        .def-hero-side span{min-height:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.18);border-radius:var(--r-md);background:rgba(255,255,255,.10);color:#E6FBFF;font-size:12px;font-weight:900}
         .spinning{animation:defSpin 1s linear infinite}
         @keyframes defSpin{to{transform:rotate(360deg)}}
 
         .def-tabs{display:flex;gap:8px;overflow-x:auto;padding:8px;background:rgba(255,255,255,.82);box-shadow:0 12px 30px rgba(10,43,74,.07)}
-        .def-tabs button{flex:0 0 auto;min-height:44px;border:1px solid transparent;border-radius:16px;background:transparent;color:var(--def-muted);padding:0 18px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer}
+        .def-tabs button{flex:0 0 auto;min-height:44px;border:1px solid transparent;border-radius:var(--r-lg);background:transparent;color:var(--def-muted);padding:0 18px;font:950 13px Tajawal,Arial,sans-serif;cursor:pointer}
         .def-tabs button.active{background:linear-gradient(135deg,var(--def-primary),var(--def-accent));color:#061A2E;box-shadow:0 12px 26px rgba(21,149,242,.18)}
         .def-tabs button:hover,.def-tabs button:focus-visible{outline:none;border-color:var(--def-accent)}
         .def-data-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;color:var(--def-muted);font-size:12px;font-weight:850}
@@ -1662,8 +1662,8 @@ export function DefensiveStocksNewsPage() {
         .def-section-head strong{display:inline-flex;align-items:center;min-height:36px;padding:0 13px;border-radius:999px;background:#E0F2FE;color:#075985;font-size:13px}
 
         .def-metric-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-        .def-metric-card{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--def-border);border-radius:20px;background:#fff;box-shadow:0 12px 28px rgba(10,43,74,.06)}
-        .def-metric-card > span{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;background:#E0F2FE;color:#075985}
+        .def-metric-card{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--def-border);border-radius:var(--r-xl);background:#fff;box-shadow:0 12px 28px rgba(10,43,74,.06)}
+        .def-metric-card > span{width:38px;height:38px;border-radius:var(--r-md);display:grid;place-items:center;background:#E0F2FE;color:#075985}
         .def-metric-card small{display:block;color:var(--def-muted);font-size:12px;font-weight:850}
         .def-metric-card strong{display:block;margin-top:4px;color:var(--def-text);font-size:20px;font-weight:950}
         .def-metric-card em{display:block;margin-top:2px;color:var(--def-muted);font-style:normal;font-size:12px;font-weight:850}
@@ -1682,11 +1682,11 @@ export function DefensiveStocksNewsPage() {
         .def-bar-track i.down{background:linear-gradient(90deg,#DC2626,#FCA5A5)}
         .def-bar-track i.neutral{background:#CBD5E1}
         .def-compare-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-        .def-compare-picker button{min-height:36px;border:1px solid var(--def-border);border-radius:12px;background:#fff;color:var(--def-text);padding:0 11px;font-weight:950;cursor:pointer}
+        .def-compare-picker button{min-height:36px;border:1px solid var(--def-border);border-radius:var(--r-md);background:#fff;color:var(--def-text);padding:0 11px;font-weight:950;cursor:pointer}
         .def-compare-picker button.active{border-color:transparent;background:#CCFBF1;color:#0F766E}
 
         .def-accordion{display:grid;gap:8px}
-        .def-accordion section{border:1px solid var(--def-border);border-radius:16px;background:#fff;overflow:hidden}
+        .def-accordion section{border:1px solid var(--def-border);border-radius:var(--r-lg);background:#fff;overflow:hidden}
         .def-accordion button{width:100%;min-height:48px;border:0;background:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;color:var(--def-text);font:950 13px Tajawal,Arial,sans-serif;cursor:pointer}
         .def-accordion button span{display:inline-flex;align-items:center;gap:8px}
         .def-accordion p{margin:0;padding:0 14px 14px;color:var(--def-muted);line-height:1.8;font-size:13px;font-weight:850}
@@ -1695,9 +1695,9 @@ export function DefensiveStocksNewsPage() {
         .def-filter-card label{display:grid;gap:7px;color:var(--def-muted);font-size:12px;font-weight:900}
         .def-search{position:relative}
         .def-search svg{position:absolute;inset-inline-start:14px;bottom:14px;color:#7890A7}
-        .def-filter-card input,.def-filter-card select{width:100%;min-height:46px;border:1px solid var(--def-border);border-radius:15px;background:#F8FCFF;color:var(--def-text);padding:0 14px;font:900 13px Tajawal,Arial,sans-serif}
+        .def-filter-card input,.def-filter-card select{width:100%;min-height:46px;border:1px solid var(--def-border);border-radius:var(--r-lg);background:#F8FCFF;color:var(--def-text);padding:0 14px;font:900 13px Tajawal,Arial,sans-serif}
         .def-search input{padding-inline-start:42px}
-        .def-filter-card button{min-height:46px;align-self:end;border:1px solid var(--def-border);border-radius:15px;background:#fff;color:var(--def-text);font-weight:950;cursor:pointer}
+        .def-filter-card button{min-height:46px;align-self:end;border:1px solid var(--def-border);border-radius:var(--r-lg);background:#fff;color:var(--def-text);font-weight:950;cursor:pointer}
         .def-stock-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .def-stock-card{padding:18px;display:grid;gap:12px}
         .def-stock-card header{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -1707,39 +1707,39 @@ export function DefensiveStocksNewsPage() {
         .def-stock-card h3{margin:0;color:var(--def-text);font-size:17px;font-weight:950}
         .def-stock-card > small{color:var(--def-muted);font-size:12px;font-weight:900}
         .def-stock-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-        .def-stock-metrics span{padding:10px;border:1px solid var(--def-border);border-radius:14px;background:#F8FCFF;display:grid;gap:4px}
+        .def-stock-metrics span{padding:10px;border:1px solid var(--def-border);border-radius:var(--r-md);background:#F8FCFF;display:grid;gap:4px}
         .def-stock-metrics small{color:var(--def-muted);font-size:11px;font-weight:850}
         .def-stock-metrics strong{color:var(--def-text);font-size:12px;font-weight:950}
-        .def-stock-card a,.def-news-card footer a,.def-load-more button,.def-state button{min-height:42px;border-radius:14px;background:linear-gradient(135deg,var(--def-primary),var(--def-accent));color:#061A2E;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 13px;text-decoration:none;font-size:12px;font-weight:950;border:0;cursor:pointer}
+        .def-stock-card a,.def-news-card footer a,.def-load-more button,.def-state button{min-height:42px;border-radius:var(--r-md);background:linear-gradient(135deg,var(--def-primary),var(--def-accent));color:#061A2E;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 13px;text-decoration:none;font-size:12px;font-weight:950;border:0;cursor:pointer}
         .def-news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .def-featured-news{display:grid;gap:10px}
         .def-news-card{padding:16px;display:grid;gap:11px;align-content:start;box-shadow:0 12px 30px rgba(10,43,74,.07)}
         .def-news-card.featured{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;padding:18px}
-        .def-news-art{min-height:210px;border-radius:18px;background:radial-gradient(circle at 20% 20%,rgba(36,213,197,.28),transparent 34%),linear-gradient(135deg,#061A2E,#0E4A5C);display:grid;place-items:center;color:#B9FFF7}
+        .def-news-art{min-height:210px;border-radius:var(--r-xl);background:radial-gradient(circle at 20% 20%,rgba(36,213,197,.28),transparent 34%),linear-gradient(135deg,#061A2E,#0E4A5C);display:grid;place-items:center;color:#B9FFF7}
         .def-news-meta,.def-news-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .def-news-meta span,.def-news-tags span{display:inline-flex;align-items:center;gap:5px;border-radius:999px;background:#EFF8FF;color:#075985;padding:5px 9px;font-size:11px;font-weight:900}
         .def-news-card h3{margin:0;color:var(--def-text);font-size:18px;font-weight:950;line-height:1.55}
         .def-news-card p{margin:0;color:#4A5F78;font-size:13px;font-weight:820;line-height:1.75;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-        .def-stock-context{border:1px solid var(--def-border);border-radius:16px;background:#F8FCFF;padding:11px;display:grid;gap:7px}
+        .def-stock-context{border:1px solid var(--def-border);border-radius:var(--r-lg);background:#F8FCFF;padding:11px;display:grid;gap:7px}
         .def-stock-context small{color:var(--def-muted);font-size:11px;font-weight:850}
         .def-stock-context div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .def-stock-context b,.def-stock-context strong{color:var(--def-text);font-weight:950;font-size:12px}
         .def-stock-context em{border-radius:999px;padding:4px 8px;font-style:normal;font-size:11px;font-weight:950}
         .def-news-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
-        .def-news-card footer button{min-height:38px;border:1px solid var(--def-border);border-radius:13px;background:#fff;color:var(--def-text);font-size:12px;font-weight:950;cursor:pointer}
+        .def-news-card footer button{min-height:38px;border:1px solid var(--def-border);border-radius:var(--r-md);background:#fff;color:var(--def-text);font-size:12px;font-weight:950;cursor:pointer}
         .def-disabled-link{color:var(--def-muted);font-size:12px;font-weight:850}
         .def-load-more{display:grid;place-items:center;margin-top:4px}
         .def-load-more span{color:var(--def-muted);font-size:13px;font-weight:850}
         .def-sector-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .def-sector-card{padding:20px;display:grid;gap:10px}
-        .def-sector-card > span{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:#E0F2FE;color:#075985}
+        .def-sector-card > span{width:46px;height:46px;border-radius:var(--r-lg);display:grid;place-items:center;background:#E0F2FE;color:#075985}
         .def-sector-card h3{margin:0;color:var(--def-text);font-size:20px;font-weight:950}
         .def-sector-card p,.def-sector-card small{margin:0;color:var(--def-muted);font-size:13px;font-weight:850;line-height:1.7}
         .def-sector-card div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-        .def-sector-card div b{padding:9px;border-radius:13px;background:#F8FCFF;border:1px solid var(--def-border);font-size:12px}
+        .def-sector-card div b{padding:9px;border-radius:var(--r-md);background:#F8FCFF;border:1px solid var(--def-border);font-size:12px}
         .def-sector-card footer{display:flex;flex-wrap:wrap;gap:8px}
         .def-sector-card footer a{border:1px solid var(--def-border);border-radius:999px;background:#fff;color:#075985;text-decoration:none;padding:6px 10px;font-size:12px;font-weight:950}
-        .def-state{min-height:180px;display:grid;place-items:center;gap:10px;text-align:center;padding:28px;border:1px dashed var(--def-border-strong);border-radius:24px;background:rgba(255,255,255,.72);color:var(--def-muted)}
+        .def-state{min-height:180px;display:grid;place-items:center;gap:10px;text-align:center;padding:28px;border:1px dashed var(--def-border-strong);border-radius:var(--r-2xl);background:rgba(255,255,255,.72);color:var(--def-muted)}
         .def-state strong{color:var(--def-text);font-size:17px;font-weight:950}
         .def-state p{margin:0;color:var(--def-muted);font-size:13px;font-weight:850}
         .def-state.mini{min-height:120px}
@@ -1767,7 +1767,7 @@ export function DefensiveStocksNewsPage() {
         }
         @media(max-width:720px){
           .defensive-hub .def-container{width:calc(100% - 24px);margin-inline-start:auto;margin-inline-end:auto;gap:16px}
-          .def-hero{padding:20px;border-radius:24px}
+          .def-hero{padding:20px;border-radius:var(--r-2xl)}
           .def-hero h1{font-size:34px}
           .def-hero-side span{justify-content:flex-start;padding-inline:12px;text-align:start}
           .def-data-status{display:grid}
@@ -1781,7 +1781,7 @@ export function DefensiveStocksNewsPage() {
           .def-ticker-viewport{overflow:hidden}
           .def-ticker-track{gap:8px;animation-duration:42s}
           .def-ticker-set{gap:8px}
-          .def-ticker-item{width:178px;max-width:178px;min-width:178px;padding:7px 9px;border-radius:13px}
+          .def-ticker-item{width:178px;max-width:178px;min-width:178px;padding:7px 9px;border-radius:var(--r-md)}
           .def-ticker-item strong{font-size:12px}
           .def-ticker-item small{font-size:9.5px}
           .def-ticker-item b{font-size:11px}

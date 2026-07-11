@@ -392,7 +392,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           min-width: 0;
           padding: clamp(18px, 2.2vw, 26px);
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 10% 10%, rgba(24, 212, 212, .10), transparent 28%),
             var(--sfm-card);
@@ -401,7 +401,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           font-family: Tajawal, Arial, sans-serif;
         }
         .account-completion-card.compact {
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
         }
         .account-completion-loading {
           min-height: 150px;
@@ -470,7 +470,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           min-width: 0;
           padding: 11px;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(255, 255, 255, .62);
           color: var(--sfm-foreground);
           text-decoration: none;
@@ -488,7 +488,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           height: 34px;
           display: grid;
           place-items: center;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: rgba(245, 158, 11, .12);
           color: #B45309;
         }
@@ -532,7 +532,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 8px;
           width: fit-content;
           max-width: 100%;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           padding: 12px 14px;
           background: rgba(16, 185, 129, .10);
           color: #047857;
@@ -564,7 +564,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 10px;
           min-width: 0;
           padding: 18px;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(24, 212, 212, .16);
           background:
             radial-gradient(circle at 50% 0%, rgba(24, 212, 212, .14), transparent 45%),
@@ -634,7 +634,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           min-height: 96px;
           padding: 12px;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(248, 251, 255, .78);
           color: var(--sfm-foreground);
           text-decoration: none;
@@ -654,7 +654,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         .step-icon {
           width: 38px;
           height: 38px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           flex: 0 0 auto;

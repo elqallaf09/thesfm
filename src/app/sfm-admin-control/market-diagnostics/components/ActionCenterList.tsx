@@ -23,9 +23,9 @@ export function ActionCenterList({ actions, onAction }: { actions: OpsAction[]; 
       ))}
       <style jsx global>{`
         .ops-action-center-list { display: grid; gap: 8px; }
-        .ops-action-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--sfm-border); border-radius: 12px; padding: 10px 12px; background: var(--sfm-light-card); }
+        .ops-action-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--sfm-border); border-radius: var(--r-md); padding: 10px 12px; background: var(--sfm-light-card); }
         .ops-action-item span { min-width: 0; color: var(--sfm-body); font-size: 12.5px; font-weight: 750; }
-        .ops-action-item button { flex: 0 0 auto; min-height: 34px; border: 1px solid var(--sfm-border); border-radius: 10px; padding-inline: 12px; background: var(--sfm-card-elevated); color: var(--sfm-foreground); font: 850 12px Tajawal, Arial, sans-serif; cursor: pointer; }
+        .ops-action-item button { flex: 0 0 auto; min-height: 34px; border: 1px solid var(--sfm-border); border-radius: var(--r-sm); padding-inline: 12px; background: var(--sfm-card-elevated); color: var(--sfm-foreground); font: 850 12px Tajawal, Arial, sans-serif; cursor: pointer; }
         .ops-action-item button:disabled { opacity: .55; cursor: not-allowed; }
       `}</style>
     </div>

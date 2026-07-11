@@ -3270,7 +3270,7 @@ function DividendStyles() {
         align-items: stretch;
         padding: clamp(20px, 2.4vw, 26px);
         border: 1px solid rgba(63, 127, 158, 0.22);
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(8, 92, 103, 0.9)),
           radial-gradient(circle at 14% 20%, rgba(45, 212, 191, 0.26), transparent 21rem);
@@ -3347,7 +3347,7 @@ function DividendStyles() {
         gap: 18px;
         align-content: space-between;
         padding: 20px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, 0.11);
         border: 1px solid rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(8px);
@@ -3373,7 +3373,7 @@ function DividendStyles() {
       .link-button,
       .guide-button {
         min-height: 44px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         border: 1px solid rgba(53, 116, 146, 0.18);
         font: inherit;
         transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -3412,7 +3412,7 @@ function DividendStyles() {
         overflow-x: auto;
         padding: 8px;
         border: 1px solid rgba(69, 132, 159, 0.16);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, 0.78);
         box-shadow: 0 14px 36px rgba(15, 61, 92, 0.08);
       }
@@ -3440,7 +3440,7 @@ function DividendStyles() {
         min-width: 0;
         border: 1px solid rgba(58, 124, 154, 0.16);
         background: rgba(255, 255, 255, 0.9);
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         box-shadow: 0 16px 40px rgba(24, 62, 92, 0.08);
       }
       .section,
@@ -3480,7 +3480,7 @@ function DividendStyles() {
         gap: 10px;
         min-width: 0;
         padding: 18px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: linear-gradient(180deg, #ffffff, #f8fcff);
       }
@@ -3489,7 +3489,7 @@ function DividendStyles() {
         place-items: center;
         width: 38px;
         height: 38px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: rgba(25, 190, 213, 0.12);
         color: #138da6;
       }
@@ -3541,7 +3541,7 @@ function DividendStyles() {
         display: grid;
         gap: 5px;
         padding: 9px 10px;
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         background: #fff;
         border: 1px solid rgba(58, 124, 154, 0.13);
         min-width: 0;
@@ -3689,7 +3689,7 @@ function DividendStyles() {
         grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
         gap: 15px;
         padding: 20px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 252, 255, 0.94)),
           radial-gradient(circle at 12% 0%, rgba(20, 184, 166, 0.11), transparent 16rem);
@@ -3726,7 +3726,7 @@ function DividendStyles() {
         width: 52px;
         height: 52px;
         flex: 0 0 52px;
-        border-radius: 17px;
+        border-radius: var(--r-lg);
         color: #0e7490;
         background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
         border: 1px solid rgba(14, 165, 233, 0.16);
@@ -3764,7 +3764,7 @@ function DividendStyles() {
       .stock-logo.small {
         width: 40px;
         height: 40px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
       }
       .stock-title {
         min-width: 0;
@@ -3790,7 +3790,7 @@ function DividendStyles() {
         align-items: center;
         justify-content: space-between;
         padding: 12px 14px;
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         background: linear-gradient(135deg, rgba(6, 78, 59, 0.08), rgba(14, 165, 233, 0.08));
         border: 1px solid rgba(20, 184, 166, 0.14);
       }
@@ -3806,7 +3806,7 @@ function DividendStyles() {
       .mini-metric {
         min-width: 0;
         padding: 12px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: #f7fbff;
         border: 1px solid rgba(58, 124, 154, 0.12);
       }
@@ -3862,7 +3862,7 @@ function DividendStyles() {
       }
       .dividend-data-notice {
         padding: 12px 13px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
       }
       .dividend-empty-inline {
         width: fit-content;
@@ -3903,7 +3903,7 @@ function DividendStyles() {
         align-content: start;
         gap: 16px;
         padding: 20px;
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         border: 1px solid rgba(58, 124, 154, 0.18);
         background: #ffffff;
         box-shadow: 0 24px 70px rgba(8, 22, 38, 0.26);
@@ -3940,7 +3940,7 @@ function DividendStyles() {
         height: 42px;
         display: inline-grid;
         place-items: center;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         border: 1px solid rgba(58, 124, 154, 0.16);
         background: #f8fbff;
         color: #1768a8;
@@ -3960,7 +3960,7 @@ function DividendStyles() {
         align-items: center;
         gap: 9px;
         padding: 12px 13px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         font-size: 13px;
         font-weight: 900;
         line-height: 1.6;
@@ -3986,7 +3986,7 @@ function DividendStyles() {
         display: grid;
         gap: 6px;
         padding: 12px;
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         border: 1px solid rgba(58, 124, 154, 0.12);
         background: #f8fbff;
       }
@@ -4006,7 +4006,7 @@ function DividendStyles() {
         display: grid;
         gap: 7px;
         padding: 14px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: linear-gradient(135deg, rgba(14, 165, 233, 0.07), rgba(20, 184, 166, 0.07));
       }
@@ -4026,7 +4026,7 @@ function DividendStyles() {
         gap: 10px;
         align-items: end;
         padding: 16px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: #fff;
       }
@@ -4041,7 +4041,7 @@ function DividendStyles() {
         gap: 12px;
         margin-bottom: 16px;
         padding: 14px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: #ffffff;
         box-shadow: 0 12px 30px rgba(10, 42, 75, 0.07);
@@ -4146,7 +4146,7 @@ function DividendStyles() {
       .table-wrap {
         margin-top: 16px;
         overflow-x: auto;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: #fff;
       }
@@ -4210,7 +4210,7 @@ function DividendStyles() {
         gap: 12px;
         align-items: center;
         padding: 13px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         border: 1px solid rgba(58, 124, 154, 0.13);
         background: #fff;
       }
@@ -4346,7 +4346,7 @@ function DividendStyles() {
         display: grid;
         gap: 10px;
         padding: 15px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background: linear-gradient(180deg, #ffffff, #f8fcff);
       }
@@ -4370,7 +4370,7 @@ function DividendStyles() {
       }
       .strategy-card {
         padding: 18px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(58, 124, 154, 0.14);
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.96)),
@@ -4384,7 +4384,7 @@ function DividendStyles() {
       .comparison-table {
         display: grid;
         margin-top: 14px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         overflow: hidden;
         border: 1px solid rgba(58, 124, 154, 0.12);
         background: #ffffff;
@@ -4411,7 +4411,7 @@ function DividendStyles() {
         min-width: 0;
         padding: 10px 12px;
         border: 1px solid rgba(58, 124, 154, 0.1);
-        border-radius: 13px;
+        border-radius: var(--r-md);
         background: rgba(255, 255, 255, 0.72);
         color: #41566b;
         font-size: 13px;
@@ -4490,7 +4490,7 @@ function DividendStyles() {
         gap: 14px;
         padding: 16px;
         border: 1px solid rgba(14, 116, 144, 0.16);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: #ffffff;
         text-align: start;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -4504,7 +4504,7 @@ function DividendStyles() {
         width: 44px;
         height: 44px;
         flex: 0 0 44px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: rgba(14, 165, 233, 0.1);
         color: #0e7490;
       }
@@ -4608,7 +4608,7 @@ function DividendStyles() {
         position: relative;
         overflow: hidden;
         min-height: 120px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: #eaf4fb;
       }
       .skeleton::after {
@@ -4655,7 +4655,7 @@ function DividendStyles() {
         }
         .hero {
           padding: 20px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
         }
         .section,
         .panel {
@@ -4706,7 +4706,7 @@ function DividendStyles() {
         .details-drawer {
           width: 100%;
           max-height: 90vh;
-          border-radius: 22px 22px 0 0;
+          border-radius: var(--r-2xl) var(--r-2xl) 0 0;
         }
         .details-head {
           gap: 10px;
@@ -4733,7 +4733,7 @@ function DividendStyles() {
         .event-empty-icon {
           width: 50px;
           height: 50px;
-          border-radius: 17px;
+          border-radius: var(--r-lg);
         }
         .event-empty-hints {
           justify-content: flex-start;

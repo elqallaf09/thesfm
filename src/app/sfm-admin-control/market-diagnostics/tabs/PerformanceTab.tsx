@@ -73,7 +73,7 @@ export function PerformanceTab() {
         .ops-performance-process span { color: var(--sfm-muted); font-size: 11.5px; font-weight: 750; }
         .ops-performance-process em { color: var(--sfm-muted); font-size: 10px; font-style: normal; opacity: .8; }
         .ops-performance-slowest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--sfm-border); border-radius: 10px; padding: 8px 12px; background: var(--sfm-light-card); font-size: 12.5px; }
+        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--sfm-border); border-radius: var(--r-sm); padding: 8px 12px; background: var(--sfm-light-card); font-size: 12.5px; }
         .ops-performance-not-instrumented { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
       `}</style>
     </section>

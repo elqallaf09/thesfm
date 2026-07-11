@@ -55,7 +55,7 @@ function ReportsCenterShortcut() {
           align-items:start;
           gap:12px;
           padding:14px;
-          border-radius:18px;
+          border-radius:var(--r-xl);
           border:1px solid rgba(29,140,255,.22);
           background:rgba(234,246,255,.96);
           box-shadow:0 16px 36px rgba(3,18,37,.16);
@@ -66,7 +66,7 @@ function ReportsCenterShortcut() {
         .shortcut-icon{
           width:42px;
           height:42px;
-          border-radius:14px;
+          border-radius:var(--r-md);
           display:grid;
           place-items:center;
           color:var(--sfm-card);
@@ -98,7 +98,7 @@ function ReportsCenterShortcut() {
           grid-column:2;
           justify-self:start;
           border:0;
-          border-radius:12px;
+          border-radius:var(--r-md);
           padding:10px 12px;
           color:var(--sfm-card);
           background:var(--sfm-primary);

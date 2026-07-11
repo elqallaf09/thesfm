@@ -29,7 +29,7 @@ export function MarketChartStyles() {
         .trader-premium-dashboard .trader-switcher-arrow {
           width: 40px;
           height: 40px;
-          border-radius: 15px;
+          border-radius: var(--r-lg);
         }
 
         .trader-premium-dashboard .trader-premium-save {
@@ -281,7 +281,7 @@ export function MarketChartStyles() {
         width: min(230px, calc(100% - 28px));
         transform: translate(-50%, -104%);
         border: 1px solid rgba(47, 214, 192, .26);
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: rgba(255, 255, 255, .94);
         box-shadow: 0 18px 44px rgba(3, 18, 37, .16);
         backdrop-filter: blur(12px);
@@ -392,7 +392,7 @@ export function MarketChartStyles() {
           radial-gradient(circle at 10% 0%, rgba(47, 214, 192, .12), transparent 34%),
           linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(239, 248, 255, .88));
         box-shadow: 0 18px 44px rgba(3, 18, 37, .09);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         color: var(--sfm-muted);
         padding: 18px;
         line-height: 1.8;
@@ -408,7 +408,7 @@ export function MarketChartStyles() {
       .price-chart-state-icon {
         width: 48px;
         height: 48px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         display: grid;
         place-items: center;
         background: rgba(47, 214, 192, .12);
@@ -474,7 +474,7 @@ export function MarketChartStyles() {
         overflow: hidden;
         border: 1px solid rgba(167, 243, 240, .16);
         background: rgba(255, 255, 255, .74);
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         padding: 10px 11px;
         display: grid;
         gap: 5px;
@@ -546,7 +546,7 @@ export function MarketChartStyles() {
         display: grid;
         gap: 12px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background:
           radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 34%),
           linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(239, 248, 255, .68));
@@ -564,7 +564,7 @@ export function MarketChartStyles() {
         overflow: hidden;
         border: 1px solid rgba(167, 243, 240, .16);
         background: rgba(255, 255, 255, .74);
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         padding: 12px;
         display: grid;
         gap: 6px;
@@ -893,7 +893,7 @@ export function MarketChartStyles() {
         .price-chart-state-icon {
           width: 42px;
           height: 42px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
         }
 
         .price-chart-summary-grid {

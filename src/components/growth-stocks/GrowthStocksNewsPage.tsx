@@ -1838,7 +1838,7 @@ export function GrowthStocksNewsPage() {
           align-items: stretch;
           padding: 26px;
           border: 1px solid rgba(63, 127, 158, 0.22);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background:
             linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(9, 78, 101, 0.9)),
             radial-gradient(circle at 12% 20%, rgba(42, 213, 235, 0.32), transparent 22rem);
@@ -1914,7 +1914,7 @@ export function GrowthStocksNewsPage() {
           gap: 18px;
           align-content: space-between;
           padding: 20px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, 0.11);
           border: 1px solid rgba(255, 255, 255, 0.2);
           backdrop-filter: blur(8px);
@@ -1940,7 +1940,7 @@ export function GrowthStocksNewsPage() {
         .icon-button,
         .guide-button {
           min-height: 44px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(53, 116, 146, 0.18);
           font: inherit;
           transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -1986,7 +1986,7 @@ export function GrowthStocksNewsPage() {
           overflow-x: auto;
           padding: 8px;
           border: 1px solid rgba(69, 132, 159, 0.16);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, 0.78);
           box-shadow: 0 14px 36px rgba(15, 61, 92, 0.08);
         }
@@ -2014,7 +2014,7 @@ export function GrowthStocksNewsPage() {
           align-items: center;
           padding: 14px;
           border: 1px solid rgba(58, 124, 154, 0.18);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, 0.94);
           box-shadow: 0 16px 36px rgba(15, 61, 92, 0.12);
           backdrop-filter: blur(10px);
@@ -2059,7 +2059,7 @@ export function GrowthStocksNewsPage() {
           width: 26px;
           height: 26px;
           flex-basis: 26px;
-          border-radius: 10px;
+          border-radius: var(--r-sm);
         }
         .comparison-tray-actions {
           justify-content: flex-end;
@@ -2087,7 +2087,7 @@ export function GrowthStocksNewsPage() {
           max-height: min(88dvh, 940px);
           overflow: auto;
           border: 1px solid rgba(58, 124, 154, 0.18);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: #f8fbff;
           box-shadow: 0 30px 80px rgba(4, 24, 46, 0.26);
           padding: 20px;
@@ -2135,7 +2135,7 @@ export function GrowthStocksNewsPage() {
           min-width: 0;
           padding: 15px;
           border: 1px solid rgba(58, 124, 154, 0.14);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #fff;
         }
         .compare-card-head {
@@ -2208,7 +2208,7 @@ export function GrowthStocksNewsPage() {
           margin-bottom: 14px;
           padding: 12px 14px;
           border: 1px solid rgba(58, 124, 154, 0.14);
-          border-radius: 15px;
+          border-radius: var(--r-lg);
           background: #fff;
           color: #1768a8;
           font-weight: 900;
@@ -2217,7 +2217,7 @@ export function GrowthStocksNewsPage() {
           margin-bottom: 16px;
           padding: 14px;
           border: 1px solid rgba(58, 124, 154, 0.14);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #fff;
         }
         .analysis-identity > div {
@@ -2244,7 +2244,7 @@ export function GrowthStocksNewsPage() {
         .analysis-disclaimer {
           padding: 14px;
           border: 1px solid rgba(58, 124, 154, 0.14);
-          border-radius: 17px;
+          border-radius: var(--r-lg);
           background: #fff;
         }
         .analysis-section .section-header {
@@ -2284,7 +2284,7 @@ export function GrowthStocksNewsPage() {
           height: 30px;
           min-height: 30px;
           padding: 0;
-          border-radius: 10px;
+          border-radius: var(--r-sm);
         }
         .section,
         .panel,
@@ -2294,7 +2294,7 @@ export function GrowthStocksNewsPage() {
         .state-box {
           border: 1px solid rgba(58, 124, 154, 0.16);
           background: rgba(255, 255, 255, 0.88);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           box-shadow: 0 16px 40px rgba(24, 62, 92, 0.08);
         }
         .section,
@@ -2338,7 +2338,7 @@ export function GrowthStocksNewsPage() {
           gap: 10px;
           min-width: 0;
           padding: 18px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           border: 1px solid rgba(58, 124, 154, 0.14);
           background: linear-gradient(180deg, #ffffff, #f8fcff);
         }
@@ -2347,7 +2347,7 @@ export function GrowthStocksNewsPage() {
           place-items: center;
           width: 38px;
           height: 38px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(25, 190, 213, 0.12);
           color: #138da6;
         }
@@ -2404,7 +2404,7 @@ export function GrowthStocksNewsPage() {
           display: grid;
           gap: 6px;
           padding: 11px 12px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #fff;
           border: 1px solid rgba(58, 124, 154, 0.13);
           min-width: 0;
@@ -2566,7 +2566,7 @@ export function GrowthStocksNewsPage() {
           width: 34px;
           height: 34px;
           flex: 0 0 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           color: #0e7490;
           background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
           border: 1px solid rgba(14, 165, 233, 0.16);
@@ -2599,7 +2599,7 @@ export function GrowthStocksNewsPage() {
           width: 52px;
           height: 52px;
           flex: 0 0 52px;
-          border-radius: 17px;
+          border-radius: var(--r-lg);
           color: #0e7490;
           background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
           border: 1px solid rgba(14, 165, 233, 0.16);
@@ -2648,7 +2648,7 @@ export function GrowthStocksNewsPage() {
         .mini-metric {
           min-width: 0;
           padding: 12px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: #f7fbff;
           border: 1px solid rgba(58, 124, 154, 0.12);
         }
@@ -2672,7 +2672,7 @@ export function GrowthStocksNewsPage() {
           margin-top: 16px;
           overflow: hidden;
           border: 1px solid rgba(58, 124, 154, 0.14);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #fff;
         }
         .stock-table-scroll {
@@ -2727,7 +2727,7 @@ export function GrowthStocksNewsPage() {
         .table-actions .ghost-button,
         .table-actions .primary-button {
           min-height: 36px;
-          border-radius: 11px;
+          border-radius: var(--r-md);
           padding: 0 10px;
           font-size: 12px;
           box-shadow: none;
@@ -2738,7 +2738,7 @@ export function GrowthStocksNewsPage() {
           gap: 10px;
           align-items: end;
           padding: 16px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           border: 1px solid rgba(58, 124, 154, 0.14);
           background: #fff;
         }
@@ -2870,7 +2870,7 @@ export function GrowthStocksNewsPage() {
           display: grid;
           gap: 8px;
           padding: 12px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           border: 1px solid rgba(58, 124, 154, 0.14);
           background: #fff;
           min-width: 0;
@@ -2889,7 +2889,7 @@ export function GrowthStocksNewsPage() {
           gap: 9px;
           min-width: 0;
           padding: 12px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           border: 1px solid rgba(58, 124, 154, 0.12);
           background: linear-gradient(180deg, #ffffff, #f8fcff);
         }
@@ -2908,7 +2908,7 @@ export function GrowthStocksNewsPage() {
           align-items: center;
           min-width: 0;
           padding: 10px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: #f8fbff;
           border: 1px solid rgba(58, 124, 154, 0.1);
         }
@@ -2918,7 +2918,7 @@ export function GrowthStocksNewsPage() {
           width: 38px;
           height: 38px;
           flex: 0 0 38px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           color: #0e7490;
           background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(37, 99, 235, 0.11));
           border: 1px solid rgba(14, 165, 233, 0.14);
@@ -2943,7 +2943,7 @@ export function GrowthStocksNewsPage() {
           min-height: 56px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px dashed rgba(58, 124, 154, 0.18);
           background: #f8fbff;
           color: #64748b;
@@ -2954,14 +2954,14 @@ export function GrowthStocksNewsPage() {
           justify-self: start;
           min-height: 34px;
           padding: 0 10px;
-          border-radius: 11px;
+          border-radius: var(--r-md);
         }
         .rank {
           display: grid;
           place-items: center;
           width: 28px;
           height: 28px;
-          border-radius: 10px;
+          border-radius: var(--r-sm);
           background: rgba(24, 196, 212, 0.11);
           color: #0e7490;
           font-weight: 950;
@@ -2974,7 +2974,7 @@ export function GrowthStocksNewsPage() {
           min-width: 0;
           overflow: hidden;
           border: 1px solid rgba(58, 124, 154, 0.12);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: linear-gradient(180deg, #ffffff, #f9fcff);
         }
         .guide-button {
@@ -3012,7 +3012,7 @@ export function GrowthStocksNewsPage() {
           place-items: center;
           width: 44px;
           height: 44px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(20, 184, 216, 0.12);
           color: #0e7490;
         }
@@ -3066,7 +3066,7 @@ export function GrowthStocksNewsPage() {
           position: relative;
           overflow: hidden;
           min-height: 120px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #eaf4fb;
         }
         .skeleton::after {
@@ -3124,7 +3124,7 @@ export function GrowthStocksNewsPage() {
           }
           .hero {
             padding: 20px;
-            border-radius: 20px;
+            border-radius: var(--r-xl);
           }
           .section,
           .panel {
@@ -3153,7 +3153,7 @@ export function GrowthStocksNewsPage() {
           .modal-panel {
             max-height: 92dvh;
             padding: 16px;
-            border-radius: 20px;
+            border-radius: var(--r-xl);
           }
           .modal-header {
             gap: 10px;

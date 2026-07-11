@@ -2317,7 +2317,7 @@ export function BankNewsPage() {
           align-items: stretch;
           padding: 18px;
           border: 1px solid rgba(148, 163, 184, 0.26);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(239, 250, 255, 0.92));
           box-shadow: 0 18px 45px rgba(15, 35, 61, 0.08);
           min-width: 0;
@@ -2372,7 +2372,7 @@ export function BankNewsPage() {
           gap: 4px;
           min-width: 0;
           padding: 10px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #fff;
           border: 1px solid rgba(203, 213, 225, 0.8);
           color: #64748b;
@@ -2415,7 +2415,7 @@ export function BankNewsPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: linear-gradient(135deg, #0ea5e9, #14b8a6);
           color: #fff;
           font-weight: 900;
@@ -2440,7 +2440,7 @@ export function BankNewsPage() {
           border: 1px solid rgba(148, 163, 184, 0.36);
           background: #fff;
           color: #0f365e;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           font-weight: 800;
         }
 
@@ -2502,7 +2502,7 @@ export function BankNewsPage() {
         .bankDisclaimer,
         .bankWarning {
           border: 1px solid rgba(203, 213, 225, 0.82);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, 0.96);
           box-shadow: 0 14px 32px rgba(15, 35, 61, 0.07);
         }
@@ -2608,7 +2608,7 @@ export function BankNewsPage() {
         .bankMetricCard,
         .bankSkeletonCard {
           border: 1px solid rgba(203, 213, 225, 0.78);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #fff;
         }
 
@@ -2699,7 +2699,7 @@ export function BankNewsPage() {
           height: 32px;
           display: grid;
           place-items: center;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: #eff6ff;
           color: #0284c7;
         }
@@ -2756,7 +2756,7 @@ export function BankNewsPage() {
         .bankStockLogo {
           width: 40px;
           height: 40px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           color: #082f49;
@@ -2813,7 +2813,7 @@ export function BankNewsPage() {
           justify-content: space-between;
           gap: 10px;
           padding: 10px 12px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: #f8fafc;
           border: 1px solid rgba(226, 232, 240, 0.88);
         }
@@ -2848,7 +2848,7 @@ export function BankNewsPage() {
         .bankStockMetrics div,
         .bankStockMetaGrid div {
           padding: 8px 10px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: #f8fafc;
           border: 1px solid rgba(226, 232, 240, 0.88);
           min-width: 0;
@@ -3017,7 +3017,7 @@ export function BankNewsPage() {
           min-height: 44px;
           width: 100%;
           border: 1px solid rgba(148, 163, 184, 0.42);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: #f8fbff;
           color: #10243d;
           font: inherit;
@@ -3139,7 +3139,7 @@ export function BankNewsPage() {
           gap: 6px;
           min-height: 38px;
           padding: 0 10px;
-          border-radius: 11px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(203, 213, 225, 0.85);
           background: #fff;
           color: #0f365e;
@@ -3194,7 +3194,7 @@ export function BankNewsPage() {
           justify-content: space-between;
           gap: 10px;
           border: 1px solid rgba(226, 232, 240, 0.9);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: #f8fafc;
           padding: 10px;
           color: inherit;
@@ -3270,7 +3270,7 @@ export function BankNewsPage() {
           align-items: center;
           gap: 10px;
           border: 1px dashed rgba(148, 163, 184, 0.72);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #f8fafc;
           color: #64748b;
           line-height: 1.65;
@@ -3427,7 +3427,7 @@ export function BankNewsPage() {
         .quickTechnicalGrid div,
         .quickExplanation {
           border: 1px solid rgba(203, 213, 225, 0.86);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #fff;
           padding: 13px;
         }
@@ -3573,7 +3573,7 @@ export function BankNewsPage() {
           .quickAnalysisPanel {
             height: min(88vh, 760px);
             width: 100%;
-            border-radius: 24px 24px 0 0;
+            border-radius: var(--r-2xl) var(--r-2xl) 0 0;
           }
         }
 
@@ -3587,7 +3587,7 @@ export function BankNewsPage() {
           .bankFilterPanel,
           .bankSideRail {
             padding: 14px;
-            border-radius: 18px;
+            border-radius: var(--r-xl);
           }
 
           .bankHero {

@@ -689,7 +689,7 @@ export default function InstagramAutomationClient({
         .ig-hero{
           border:1px solid rgba(29,140,255,.18);
           background:linear-gradient(135deg,#04152D,#0A2F4F 56%,#0F6B67);
-          color:#fff;border-radius:24px;padding:20px;display:grid;gap:16px;grid-template-columns:1fr auto;align-items:center;
+          color:#fff;border-radius:var(--r-2xl);padding:20px;display:grid;gap:16px;grid-template-columns:1fr auto;align-items:center;
           min-width:0;box-shadow:0 18px 45px rgba(3,18,37,.18)
         }
         .ig-hero h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.05;font-weight:900}
@@ -710,7 +710,7 @@ export default function InstagramAutomationClient({
         .ig-panel{
           border:1px solid rgba(29,140,255,.14);
           background:var(--sfm-card);
-          border-radius:20px;
+          border-radius:var(--r-xl);
           padding:14px;
           box-shadow:0 14px 32px rgba(3,18,37,.05);
           min-width:0;
@@ -743,14 +743,14 @@ export default function InstagramAutomationClient({
         .ig-stat{
           border:1px solid rgba(29,140,255,.16);
           background:var(--sfm-card);
-          border-radius:15px;
+          border-radius:var(--r-lg);
           padding:12px;
           min-width:0;
         }
         .ig-stat span{color:var(--sfm-muted);font-size:12px;font-weight:900}
         .ig-stat strong{display:block;margin-top:4px;font-size:26px;font-weight:950;color:var(--sfm-primary-dark)}
         .ig-banner{
-          border-radius:14px;
+          border-radius:var(--r-md);
           padding:12px 14px;
           display:grid;
           gap:6px;
@@ -779,7 +779,7 @@ export default function InstagramAutomationClient({
         .ig-badge.neutral{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE}
         .ig-action{
           border:1px solid rgba(29,140,255,.18);
-          border-radius:12px;
+          border-radius:var(--r-md);
           min-height:42px;
           padding:0 12px;
           background:var(--sfm-card);
@@ -813,7 +813,7 @@ export default function InstagramAutomationClient({
           border:1px solid rgba(29,140,255,.16);
           background:var(--sfm-light-card);
           color:var(--sfm-foreground);
-          border-radius:12px;
+          border-radius:var(--r-md);
           min-height:42px;
           padding:10px 12px;
           font:900 13px Tajawal,Arial,sans-serif;
@@ -832,7 +832,7 @@ export default function InstagramAutomationClient({
         .ig-tabs button.active{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;border:0}
         .ig-actions{display:flex;gap:8px;flex-wrap:wrap}
         .ig-list{display:grid;gap:8px;max-height:640px;overflow:auto;padding-inline-end:2px}
-        .ig-item{display:grid;gap:8px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:14px;padding:10px;text-align:start;min-width:0}
+        .ig-item{display:grid;gap:8px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:var(--r-md);padding:10px;text-align:start;min-width:0}
         .ig-item:hover{border-color:rgba(29,140,255,.45)}
         .ig-item.active{border-color:rgba(24,212,212,.55);box-shadow:0 0 0 3px rgba(24,212,212,.12);background:linear-gradient(135deg,rgba(47,214,192,.11),rgba(29,140,255,.05))}
         .ig-item strong{font-size:14px;display:block;overflow-wrap:anywhere;color:var(--sfm-midnight)}
@@ -842,7 +842,7 @@ export default function InstagramAutomationClient({
         .ig-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
         .ig-media{
           border:1px solid rgba(29,140,255,.14);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           min-height:210px;
           background:var(--sfm-light-card);
           display:grid;
@@ -855,7 +855,7 @@ export default function InstagramAutomationClient({
         .ig-empty{
           border:1px dashed rgba(29,140,255,.28);
           background:var(--sfm-light-card);
-          border-radius:14px;
+          border-radius:var(--r-md);
           min-height:180px;
           display:grid;
           place-items:center;
@@ -866,13 +866,13 @@ export default function InstagramAutomationClient({
         }
         .ig-empty strong{color:var(--sfm-midnight)}
         .ig-event-list{display:grid;gap:8px;max-height:230px;overflow:auto;padding-inline-end:2px}
-        .ig-event{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:12px;padding:9px;display:grid;gap:5px}
+        .ig-event{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:var(--r-md);padding:9px;display:grid;gap:5px}
         .ig-event strong{font-size:12px;color:var(--sfm-midnight)}
         .ig-event small{font-size:11px;color:var(--sfm-muted);font-weight:900}
         .ig-code-card{
           border:1px solid rgba(29,140,255,.22);
           background:var(--sfm-card);
-          border-radius:16px;
+          border-radius:var(--r-lg);
           padding:12px;
           display:grid;
           gap:10px;

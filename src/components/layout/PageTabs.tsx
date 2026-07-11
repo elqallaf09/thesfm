@@ -247,25 +247,25 @@ export function PageTabs({
 
         :global(html[dir='rtl']) .page-section-tabs-fade.lead {
           right: 0;
-          border-radius: 0 24px 24px 0;
+          border-radius: 0 var(--r-2xl) var(--r-2xl) 0;
           background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
         }
 
         :global(html[dir='rtl']) .page-section-tabs-fade.trail {
           left: 0;
-          border-radius: 24px 0 0 24px;
+          border-radius: var(--r-2xl) 0 0 var(--r-2xl);
           background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
         }
 
         :global(html[dir='ltr']) .page-section-tabs-fade.lead {
           left: 0;
-          border-radius: 24px 0 0 24px;
+          border-radius: var(--r-2xl) 0 0 var(--r-2xl);
           background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
         }
 
         :global(html[dir='ltr']) .page-section-tabs-fade.trail {
           right: 0;
-          border-radius: 0 24px 24px 0;
+          border-radius: 0 var(--r-2xl) var(--r-2xl) 0;
           background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
         }
 
@@ -290,7 +290,7 @@ export function PageTabs({
           overflow-y: hidden;
           padding: 8px;
           border: 1px solid rgba(47, 214, 192, .14);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background: linear-gradient(135deg, rgba(29, 140, 255, .05), rgba(47, 214, 192, .06)), var(--sfm-card);
           box-shadow: 0 10px 28px rgba(3, 18, 37, .05);
           scrollbar-width: none;
@@ -305,7 +305,7 @@ export function PageTabs({
           max-width: 100%;
           min-height: 44px;
           border: 1px solid rgba(29, 140, 255, .20);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: var(--sfm-card);
           color: var(--sfm-muted-readable);
           padding: 0 16px;
@@ -323,7 +323,7 @@ export function PageTabs({
           grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 8px;
           padding: 8px;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           overflow: visible;
         }
         .page-section-tabs.charity-tabs button {
@@ -382,7 +382,7 @@ export function PageTabs({
             overflow-y: hidden;
             gap: 8px;
             padding: 8px;
-            border-radius: 20px;
+            border-radius: var(--r-xl);
           }
           .page-section-tabs button {
             max-width: none;
@@ -423,7 +423,7 @@ export function PageTabs({
             width: 100%;
             min-height: 48px;
             border: 1px solid rgba(29, 140, 255, .24);
-            border-radius: 16px;
+            border-radius: var(--r-lg);
             background: var(--sfm-card);
             color: var(--sfm-heading);
             padding-inline: 14px 40px;

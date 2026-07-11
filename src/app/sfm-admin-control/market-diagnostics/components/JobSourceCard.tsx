@@ -40,7 +40,7 @@ export function JobSourceCard({ title, stats }: { title: string; stats: JobSourc
         .ops-job-source-card { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 16px); background: var(--sfm-card); padding: 14px; box-shadow: var(--shadow-sm); display: grid; gap: 10px; }
         .ops-job-source-card header strong { color: var(--sfm-heading); font-size: 13.5px; font-weight: 900; }
         .ops-job-source-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; }
-        .ops-job-source-count { display: grid; justify-items: center; gap: 3px; border: 1px solid var(--sfm-border); border-radius: 12px; padding: 8px 6px; background: var(--sfm-light-card); }
+        .ops-job-source-count { display: grid; justify-items: center; gap: 3px; border: 1px solid var(--sfm-border); border-radius: var(--r-md); padding: 8px 6px; background: var(--sfm-light-card); }
         .ops-job-source-count strong { font-size: 16px; font-weight: 900; color: var(--sfm-heading); }
         .ops-job-source-count span:last-child { font-size: 10.5px; color: var(--sfm-muted); font-weight: 750; text-align: center; }
         .ops-job-source-count.tone-success .ops-job-source-count-icon { color: var(--green); }

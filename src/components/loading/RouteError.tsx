@@ -40,7 +40,7 @@ export function RouteError({ error, reset, title }: RouteErrorProps) {
         style={{
           marginTop: '0.5rem',
           padding: '0.6rem 1.6rem',
-          borderRadius: '8px',
+          borderRadius: 'var(--r-sm)',
           border: '1px solid var(--border, #e2e8f0)',
           background: 'var(--primary, #1d8cff)',
           color: '#fff',

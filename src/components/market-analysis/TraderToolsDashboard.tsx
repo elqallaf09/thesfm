@@ -676,7 +676,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: clamp(16px, 2vw, 22px);
           border: 1px solid var(--trader-line);
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           background:
             linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(239, 248, 255, .84)),
             var(--trader-card);
@@ -697,7 +697,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-tool-icon {
           width: 44px;
           height: 44px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           color: #ffffff;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           box-shadow: 0 14px 26px rgba(31, 149, 255, .18);
@@ -785,7 +785,7 @@ export function TraderToolsDashboard({
           overflow: hidden;
           padding: clamp(14px, 1.8vw, 20px);
           border: 1px solid rgba(32, 104, 145, .18);
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           background:
             linear-gradient(135deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .76)),
             var(--trader-card);
@@ -802,7 +802,7 @@ export function TraderToolsDashboard({
           overflow: hidden;
           padding: 15px;
           border: 1px solid var(--trader-line);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: rgba(255, 255, 255, .88);
           box-shadow: 0 12px 28px rgba(7, 28, 52, .06);
         }
@@ -818,7 +818,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-support-icon {
           width: 38px;
           height: 38px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           color: var(--trader-cyan);
           background: rgba(32, 212, 207, .10);
           border: 1px solid rgba(32, 212, 207, .18);
@@ -849,7 +849,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-guidance-note > span {
           width: 30px;
           height: 30px;
-          border-radius: 11px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           color: var(--trader-cyan);
@@ -884,14 +884,14 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 10px;
           border: 1px solid rgba(32, 104, 145, .12);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(255, 255, 255, .74);
         }
 
         .trader-premium-dashboard .trader-side-stat-icon {
           width: 34px;
           height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           color: var(--trader-cyan);
           background: rgba(31, 149, 255, .08);
           border: 1px solid rgba(31, 149, 255, .12);
@@ -968,7 +968,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 12px;
           border: 1px solid rgba(32, 104, 145, .14);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: rgba(247, 251, 255, .82);
         }
 
@@ -988,14 +988,14 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 10px;
           border: 1px solid rgba(32, 212, 207, .20);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, .78);
         }
 
         .trader-premium-dashboard .trader-premium-save-icon {
           width: 34px;
           height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           color: var(--trader-cyan);
@@ -1062,7 +1062,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 7px;
           border: 1px solid rgba(32, 104, 145, .14);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: #edf7ff;
         }
 
@@ -1072,7 +1072,7 @@ export function TraderToolsDashboard({
           display: grid;
           place-items: center;
           border: 1px solid rgba(32, 104, 145, .16);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: #ffffff;
           color: var(--trader-cyan);
           cursor: pointer;
@@ -1112,7 +1112,7 @@ export function TraderToolsDashboard({
           align-items: center;
           gap: 9px;
           border: 1px solid rgba(32, 104, 145, .13);
-          border-radius: 15px;
+          border-radius: var(--r-lg);
           background: rgba(255, 255, 255, .82);
           color: var(--trader-muted);
           padding: 9px 10px;
@@ -1155,7 +1155,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-switcher-icon {
           width: 32px;
           height: 32px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           color: var(--trader-cyan);
           background: rgba(32, 212, 207, .10);
           border: 1px solid rgba(32, 212, 207, .16);
@@ -1223,7 +1223,7 @@ export function TraderToolsDashboard({
           overflow: hidden;
           padding: 15px;
           border: 1px solid rgba(32, 104, 145, .16);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(247, 251, 255, .84));
           box-shadow: 0 14px 34px rgba(7, 28, 52, .07);
         }
@@ -1241,7 +1241,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-tool-card-head > span {
           width: 40px;
           height: 40px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           color: #ffffff;
@@ -1295,7 +1295,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 12px;
           border: 1px solid rgba(32, 104, 145, .15);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: linear-gradient(180deg, #f8fcff, #eef7ff);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
         }
@@ -1312,7 +1312,7 @@ export function TraderToolsDashboard({
           height: 28px;
           display: grid;
           place-items: center;
-          border-radius: 10px;
+          border-radius: var(--r-sm);
           color: var(--trader-cyan);
           background: rgba(32, 212, 207, .10);
         }
@@ -1369,7 +1369,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 0 9px;
           border: 1px solid rgba(32, 104, 145, .25);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: linear-gradient(180deg, #ffffff, #f9fcff);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, .70);
           transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
@@ -1389,7 +1389,7 @@ export function TraderToolsDashboard({
           white-space: nowrap;
           text-align: center;
           border: 1px solid rgba(32, 212, 207, .24);
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: rgba(32, 212, 207, .10);
           color: #047a8f;
           padding: 7px 8px;
@@ -1403,7 +1403,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .tool-input .tool-input-shell select {
           width: 100%;
           min-width: 0;
-          height: 50px !important;
+          height: var(--control-h-lg) !important;
           border: 0 !important;
           background: transparent !important;
           color: var(--trader-ink);
@@ -1430,14 +1430,14 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 5px;
           border: 1px solid rgba(32, 104, 145, .14);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #edf7ff;
         }
 
         .trader-premium-dashboard .tool-segmented-row button {
           min-height: 40px;
           border: 1px solid transparent;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: transparent;
           color: var(--trader-muted);
           font: 950 12px Tajawal, Arial, sans-serif;
@@ -1462,7 +1462,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 10px;
           border: 1px solid rgba(32, 104, 145, .13);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(237, 247, 255, .72);
         }
 
@@ -1519,7 +1519,7 @@ export function TraderToolsDashboard({
           overflow: hidden;
           padding: clamp(18px, 2.3vw, 26px);
           border: 1px solid rgba(159, 246, 240, .22);
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 88% 12%, rgba(32, 212, 207, .28), transparent 32%),
             linear-gradient(135deg, #061a2f 0%, #0b3d5f 54%, #0f8fb8 126%);
@@ -1578,7 +1578,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 14px;
           border: 1px solid var(--trader-line);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background: rgba(255, 255, 255, .88);
           box-shadow: 0 12px 30px rgba(7, 28, 52, .06);
         }
@@ -1623,7 +1623,7 @@ export function TraderToolsDashboard({
           min-height: 110px;
           padding: 13px;
           border: 1px solid rgba(32, 104, 145, .16);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: linear-gradient(180deg, #ffffff, #f4faff);
           box-shadow: 0 10px 24px rgba(7, 28, 52, .045);
         }
@@ -1631,7 +1631,7 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .tool-result-icon {
           width: 34px;
           height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           color: var(--trader-cyan);
           background: rgba(32, 212, 207, .10);
         }
@@ -1666,14 +1666,14 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 14px;
           border: 1px solid rgba(32, 104, 145, .14);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: rgba(247, 251, 255, .84);
         }
 
         .trader-premium-dashboard .tool-formula-card > span {
           width: 38px;
           height: 38px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           color: var(--trader-cyan);
@@ -1702,7 +1702,7 @@ export function TraderToolsDashboard({
           margin-top: 8px;
           padding: 7px 9px;
           border: 1px solid rgba(32, 212, 207, .22);
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: rgba(32, 212, 207, .10);
           color: #047a8f;
           font-size: 11px;
@@ -1717,7 +1717,7 @@ export function TraderToolsDashboard({
           margin: 0;
           padding: 11px 12px;
           border: 1px solid rgba(180, 83, 9, .22);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #fff7df;
           color: #8a4b0a;
           font-size: 12px;
@@ -1733,7 +1733,7 @@ export function TraderToolsDashboard({
           min-width: 0;
           padding: 15px 16px;
           border: 1px solid var(--trader-line);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background: rgba(255, 255, 255, .82);
           box-shadow: 0 12px 30px rgba(7, 28, 52, .06);
         }
@@ -1743,7 +1743,7 @@ export function TraderToolsDashboard({
           height: 40px;
           display: grid;
           place-items: center;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           color: var(--trader-cyan);
           background: rgba(31, 149, 255, .08);
           border: 1px solid rgba(31, 149, 255, .12);
@@ -1893,7 +1893,7 @@ export function TraderToolsDashboard({
           .trader-premium-dashboard .trader-premium-header,
           .trader-premium-dashboard .trader-premium-main-card,
           .trader-premium-dashboard .trader-premium-disclaimer {
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
           }
 
           .trader-premium-dashboard .trader-premium-header {
@@ -1924,13 +1924,13 @@ export function TraderToolsDashboard({
             grid-template-columns: 32px minmax(0, 1fr) 32px;
             gap: 5px;
             padding: 5px;
-            border-radius: 18px;
+            border-radius: var(--r-xl);
           }
 
           .trader-premium-dashboard .trader-switcher-arrow {
             width: 32px;
             height: 32px;
-            border-radius: 11px;
+            border-radius: var(--r-md);
           }
 
           .trader-premium-dashboard .trader-tool-switcher > button {
@@ -1942,7 +1942,7 @@ export function TraderToolsDashboard({
           .trader-premium-dashboard .trader-switcher-icon {
             width: 28px;
             height: 28px;
-            border-radius: 10px;
+            border-radius: var(--r-sm);
           }
 
           .trader-premium-dashboard .trader-tool-card-head {
@@ -1956,7 +1956,7 @@ export function TraderToolsDashboard({
 
           .trader-premium-dashboard .trader-highlight-result {
             min-height: 168px;
-            border-radius: 24px;
+            border-radius: var(--r-2xl);
           }
 
           .trader-premium-dashboard .trader-highlight-result strong {
@@ -1978,7 +1978,7 @@ export function TraderToolsDashboard({
           .trader-premium-dashboard .trader-premium-tool-icon {
             width: 38px;
             height: 38px;
-            border-radius: 14px;
+            border-radius: var(--r-md);
           }
 
           .trader-premium-dashboard .tool-input-shell {

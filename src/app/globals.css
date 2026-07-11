@@ -506,6 +506,7 @@
   --shadow-gold: 0 10px 24px rgba(27, 94, 200, 0.18);
   --r-xs: 6px; --r-sm: 9px; --r-md: var(--sfm-light-radius-control);
   --r-lg: 16px; --r-xl: var(--sfm-light-radius-card); --r-2xl: var(--sfm-light-radius-section);
+  --control-h-sm: 36px; --control-h: 44px; --control-h-lg: 52px;
   --sidebar-w: 220px;
   --topbar-h: 64px;
   --ease: var(--sfm-light-ease);
@@ -629,6 +630,8 @@
   --r-lg: 16px;
   --r-xl: 20px;
   --r-2xl: 28px;
+  /* Dark keeps the legacy shadcn control scale (h-10 default, h-11 lg). */
+  --control-h-sm: 36px; --control-h: 40px; --control-h-lg: 44px;
   --ease: cubic-bezier(0.4,0,0.2,1);
   --duration: 0.2s;
 }
@@ -706,7 +709,7 @@ main,section,article,aside,header,footer,nav,div{min-width:0}
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: var(--control-h);
   border-radius: 999px;
   font-family: 'Tajawal', var(--font-cairo, 'Cairo'), Arial, sans-serif;
   font-weight: 900;
@@ -1237,7 +1240,7 @@ textarea,select{
   opacity:1 !important;
   -webkit-appearance:none;
   background:var(--bg-input);
-  height:48px;
+  height:var(--control-h);
   padding:0 14px;
   border:1.5px solid var(--border-2);
   border-radius:var(--r-md);
@@ -1429,7 +1432,7 @@ tbody tr:hover td{background:var(--bg-muted)}
   .sfm-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sfm-dashboard-goals{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sfm-donut-layout{grid-template-columns:200px 1fr}
-  input,select{height:50px;font-size:16px !important}
+  input,select{height:48px;font-size:16px !important}
   button,[role="button"]{min-height:44px}
 }
 
@@ -1453,7 +1456,7 @@ tbody tr:hover td{background:var(--bg-muted)}
   .sfm-donut-layout{grid-template-columns:1fr}
   .sfm-chart-box{height:210px}
   .sfm-achievement{align-items:flex-start;flex-direction:column}
-  input,select,textarea{height:50px !important;font-size:16px !important;border-radius:var(--r-md) !important}
+  input,select,textarea{height:48px !important;font-size:16px !important;border-radius:var(--r-md) !important}
   textarea{height:auto !important}
   button,[role="button"]{min-height:44px}
   h1{font-size:24px}
@@ -6721,7 +6724,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 }
 
 :root:not(.dark) :where(.sfm-button-base, .sfm-button-primary, .sfm-button-secondary, .sfm-button-ghost, .sfm-button-danger, .sfm-button-success) {
-  min-height: 42px;
+  min-height: var(--control-h);
   border-radius: var(--sfm-light-radius-control) !important;
   transition:
     transform var(--sfm-light-transition-fast) var(--sfm-light-ease),
@@ -6796,7 +6799,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   textarea,
   [role="combobox"]
 ) {
-  min-height: 42px;
+  min-height: var(--control-h);
   border-color: var(--sfm-light-border-primary) !important;
   border-radius: var(--sfm-light-radius-control);
   background: var(--sfm-light-surface-elevated) !important;

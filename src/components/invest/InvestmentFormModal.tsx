@@ -1591,7 +1591,7 @@ export function InvestmentFormModal({
           .invest-form-section span {
             width: 28px;
             height: 28px;
-            border-radius: 10px;
+            border-radius: var(--r-sm);
             display: grid;
             place-items: center;
             background: linear-gradient(135deg, rgba(29,140,255,.12), rgba(24,212,212,.16));
@@ -1605,7 +1605,7 @@ export function InvestmentFormModal({
           .invest-type-grid button {
             min-height: 56px;
             border: 1px solid rgba(14,116,144,.16);
-            border-radius: 14px;
+            border-radius: var(--r-md);
             background: rgba(255,255,255,.7);
             color: var(--sfm-foreground);
             padding: 9px;
@@ -1701,7 +1701,7 @@ export function InvestmentFormModal({
             gap: 8px;
             padding: 10px;
             border: 1px solid rgba(167,243,240,.24);
-            border-radius: 18px;
+            border-radius: var(--r-xl);
             background: rgba(255,255,255,.98);
             box-shadow: 0 22px 55px rgba(3,18,37,.18);
             max-height: 320px;
@@ -1721,7 +1721,7 @@ export function InvestmentFormModal({
             gap: 6px;
             justify-items: start;
             padding: 13px;
-            border-radius: 14px;
+            border-radius: var(--r-md);
             background: var(--sfm-light-card);
             color: var(--sfm-muted);
             font: 850 12px Tajawal,Arial,sans-serif;
@@ -1752,7 +1752,7 @@ export function InvestmentFormModal({
             min-width: 0;
             border: 1px solid rgba(167,243,240,.14);
             background: var(--sfm-card);
-            border-radius: 16px;
+            border-radius: var(--r-lg);
             padding: 10px;
             display: grid;
             grid-template-columns: 38px minmax(0,1fr) auto;
@@ -1779,7 +1779,7 @@ export function InvestmentFormModal({
           .invest-asset-result-icon {
             width: 38px;
             height: 38px;
-            border-radius: 14px;
+            border-radius: var(--r-md);
             background: linear-gradient(135deg,rgba(29,140,255,.13),rgba(24,212,212,.16));
             display: grid;
             place-items: center;
@@ -1821,7 +1821,7 @@ export function InvestmentFormModal({
             gap: 10px;
             padding: 12px;
             border: 1px solid rgba(47,214,192,.24);
-            border-radius: 18px;
+            border-radius: var(--r-xl);
             background: linear-gradient(135deg,rgba(45,212,191,.12),rgba(29,140,255,.08));
           }
           .invest-selected-asset {
@@ -1831,7 +1831,7 @@ export function InvestmentFormModal({
           .invest-summary-item {
             background: rgba(255,255,255,.62);
             border: 1px solid rgba(167,243,240,.16);
-            border-radius: 15px;
+            border-radius: var(--r-lg);
             padding: 11px;
             display: grid;
             gap: 5px;
@@ -1900,8 +1900,8 @@ export function InvestmentFormModal({
             font-weight: 950;
           }
           .invest-summary-head button {
-            height: 32px;
-            border-radius: 11px;
+            height: var(--control-h-sm);
+            border-radius: var(--r-md);
             border: 1px solid rgba(47,214,192,.24);
             background: rgba(45,212,191,.12);
             color: #0f766e;
@@ -1917,7 +1917,7 @@ export function InvestmentFormModal({
           .invest-summary-empty {
             margin: 0;
             border: 1px dashed rgba(14,116,144,.22);
-            border-radius: 15px;
+            border-radius: var(--r-lg);
             background: rgba(236,254,255,.52);
             color: var(--sfm-muted);
             padding: 13px;
@@ -1931,13 +1931,13 @@ export function InvestmentFormModal({
             color: #B8C7D9;
           }
           .invest-inline-alert {
-            border-radius: 14px;
+            border-radius: var(--r-md);
             padding: 11px 12px;
             font: 900 12px Tajawal, Arial, sans-serif;
           }
           .invest-price-unavailable {
             min-height: 44px;
-            border-radius: 14px;
+            border-radius: var(--r-md);
             padding: 11px 12px;
             font: 900 12px Tajawal,Arial,sans-serif;
           }
@@ -1947,7 +1947,7 @@ export function InvestmentFormModal({
             gap: 10px;
             align-items: start;
             border: 1px solid rgba(245,158,11,.22);
-            border-radius: 16px;
+            border-radius: var(--r-lg);
             background: linear-gradient(135deg, rgba(255,251,235,.92), rgba(236,254,255,.72));
             color: #92400e;
             padding: 12px 13px;

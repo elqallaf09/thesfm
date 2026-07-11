@@ -402,7 +402,7 @@ export function DebtStyles() {
       }
 
       .debts-notice {
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         padding: 14px 16px;
         display: flex;
         align-items: center;
@@ -425,7 +425,7 @@ export function DebtStyles() {
 
       .debt-summary-card {
         min-height: 118px;
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         padding: 16px;
         display: flex;
         align-items: flex-start;
@@ -440,7 +440,7 @@ export function DebtStyles() {
       .debt-summary-card > span {
         width: 42px;
         height: 42px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         color: var(--sfm-soft-cyan);
@@ -585,7 +585,7 @@ export function DebtStyles() {
       }
 
       .debt-card {
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         padding: 18px;
         display: grid;
         gap: 14px;
@@ -642,7 +642,7 @@ export function DebtStyles() {
         width: 44px;
         height: 44px;
         border: 1px solid rgba(47, 214, 192, .20);
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: rgba(47, 214, 192, .08);
         color: var(--sfm-primary-hover);
         display: inline-flex;
@@ -686,7 +686,7 @@ export function DebtStyles() {
 
       .debt-detail-group {
         border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(248, 252, 255, .72);
         padding: 12px;
         display: grid;
@@ -781,7 +781,7 @@ export function DebtStyles() {
       .debt-metric {
         min-width: 0;
         border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: var(--sfm-light-card);
         padding: 10px;
         display: grid;
@@ -806,7 +806,7 @@ export function DebtStyles() {
         color: #92400e;
         background: rgba(245, 158, 11, .12);
         border: 1px solid rgba(245, 158, 11, .24);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         padding: 10px 12px;
         font-size: 12px;
         font-weight: 900;
@@ -905,7 +905,7 @@ export function DebtStyles() {
         bottom: calc(100% + 8px);
         min-width: 220px;
         border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: #fff;
         padding: 8px;
         display: grid;
@@ -929,7 +929,7 @@ export function DebtStyles() {
       .insight-row,
       .payment-row {
         border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: var(--sfm-light-card);
         padding: 12px;
         display: grid;
@@ -939,7 +939,7 @@ export function DebtStyles() {
       .insight-copy,
       .insight-alert {
         margin: 0;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         padding: 12px;
         color: var(--sfm-muted);
         background: rgba(47, 214, 192, .08);
@@ -1003,7 +1003,7 @@ export function DebtStyles() {
 
       .payments-empty {
         border: 1px dashed rgba(47, 214, 192, .24);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         padding: 18px;
         color: var(--sfm-muted);
         background: rgba(236, 254, 255, .38);
@@ -1014,7 +1014,7 @@ export function DebtStyles() {
 
       .debts-empty,
       .debts-loading {
-        border-radius: 28px;
+        border-radius: var(--r-2xl);
         padding: 32px;
         display: grid;
         justify-items: center;
@@ -1110,9 +1110,9 @@ export function DebtStyles() {
 
       .debt-modal-head > button {
         width: 44px;
-        height: 44px;
+        height: var(--control-h);
         border: 1px solid rgba(29, 140, 255, .18);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: rgba(255, 255, 255, .76);
         color: var(--sfm-foreground);
         cursor: pointer;
@@ -1138,7 +1138,7 @@ export function DebtStyles() {
         align-items: flex-start;
         gap: 11px;
         border: 1px solid rgba(245, 158, 11, .28);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(245, 158, 11, .10);
         color: #92400e;
         padding: 13px;
@@ -1150,7 +1150,7 @@ export function DebtStyles() {
         align-items: flex-start;
         gap: 12px;
         border: 1px solid rgba(220, 38, 38, .24);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: rgba(220, 38, 38, .08);
         color: #b91c1c;
         padding: 14px;
@@ -1268,7 +1268,7 @@ export function DebtStyles() {
         min-width: 0;
         min-height: 52px;
         border: 1.5px solid rgba(15, 118, 110, .22);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, .92);
         color: var(--sfm-foreground);
         padding: 0 14px;
@@ -1350,7 +1350,7 @@ export function DebtStyles() {
         justify-content: space-between;
         gap: 14px;
         border: 1.5px solid rgba(15, 118, 110, .18);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(236, 254, 255, .44);
         padding: 14px;
       }
@@ -1682,7 +1682,7 @@ export function DebtStyles() {
       @media (max-width: 720px) {
         .debts-hero {
           display: grid;
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
         }
         .debts-primary,
         .debts-secondary-hero,
@@ -1700,7 +1700,7 @@ export function DebtStyles() {
           gap: 10px;
         }
         .debt-card {
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           padding: 14px;
           gap: 12px;
         }
@@ -1728,7 +1728,7 @@ export function DebtStyles() {
           width: 100%;
           max-height: calc(100dvh - 20px);
           overflow-y: auto;
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           padding: 18px;
         }
         .debt-modal-head {
@@ -1736,7 +1736,7 @@ export function DebtStyles() {
         }
         .debt-modal-head > button {
           width: 42px;
-          height: 42px;
+          height: var(--control-h);
         }
         .toggle-row {
           display: grid;
@@ -1834,7 +1834,7 @@ export function DebtStyles() {
         align-items: flex-start;
         gap: 10px;
         border: 1px solid rgba(245, 158, 11, .24);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(245, 158, 11, .10);
         color: #92400e;
         padding: 12px 14px;
@@ -1874,7 +1874,7 @@ export function DebtStyles() {
       }
 
       .strategy-card {
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         padding: 20px;
         display: grid;
         gap: 16px;
@@ -1943,7 +1943,7 @@ export function DebtStyles() {
       }
 
       .strategy-stat {
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         padding: 12px;
         display: grid;
         gap: 6px;
@@ -1996,7 +1996,7 @@ export function DebtStyles() {
         display: flex;
         align-items: center;
         gap: 10px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         padding: 10px 12px;
         border: 1px solid rgba(47, 214, 192, .10);
         background: var(--sfm-canvas, #f8fafc);
@@ -2048,7 +2048,7 @@ export function DebtStyles() {
         display: flex;
         align-items: center;
         gap: 12px;
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         padding: 14px 16px;
         background: rgba(34, 197, 94, .09);
         border: 1px solid rgba(34, 197, 94, .24);

@@ -1232,7 +1232,7 @@ const dashboardStyles = `
     top: 30px;
     width: 54%;
     height: 72%;
-    border-radius: 28px;
+    border-radius: var(--r-2xl);
     border: 1px solid rgba(167, 243, 240, 0.16);
     background:
       linear-gradient(rgba(234, 246, 255, 0.08) 1px, transparent 1px),
@@ -1363,7 +1363,7 @@ const dashboardStyles = `
   .hero-kpi-card {
     min-width: 0;
     padding: 14px;
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     background: linear-gradient(180deg, rgba(234, 246, 255, 0.14), rgba(234, 246, 255, 0.07));
     border: 1px solid rgba(167, 243, 240, 0.22);
     box-shadow: 0 18px 38px rgba(3, 18, 37, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -1423,14 +1423,14 @@ const dashboardStyles = `
     gap: 10px;
     margin-top: 18px;
     padding: 14px 16px;
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     color: var(--sfm-primary-hover);
   }
 
   .dashboard-debug-panel {
     margin-top: 14px;
     padding: 14px 16px;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     border: 1px dashed rgba(239, 68, 68, 0.38);
     background: rgba(254, 242, 242, 0.88);
     color: #7F1D1D;
@@ -1455,7 +1455,7 @@ const dashboardStyles = `
     display: grid;
     gap: 4px;
     padding: 10px;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     background: rgba(255, 255, 255, 0.72);
     border: 1px solid rgba(127, 29, 29, 0.12);
   }
@@ -1478,7 +1478,7 @@ const dashboardStyles = `
     gap: 18px;
     margin-top: 18px;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--r-xl);
   }
 
   .setup-card h2 {
@@ -1503,7 +1503,7 @@ const dashboardStyles = `
     gap: 14px;
     min-width: 0;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--r-xl);
   }
 
   .metric-icon,
@@ -1514,7 +1514,7 @@ const dashboardStyles = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     color: #FFFFFF;
     background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
   }
@@ -1550,7 +1550,7 @@ const dashboardStyles = `
 
   .dashboard-card {
     min-width: 0;
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     padding: 20px;
   }
 
@@ -1582,7 +1582,7 @@ const dashboardStyles = `
     justify-content: center;
     gap: 9px;
     padding: 9px 14px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     text-decoration: none;
     font-weight: 900;
     font-size: 0.88rem;
@@ -1619,7 +1619,7 @@ const dashboardStyles = `
     flex: 0 0 26px;
     display: inline-grid;
     place-items: center;
-    border-radius: 9px;
+    border-radius: var(--r-sm);
     background: rgba(255, 255, 255, 0.16);
     color: inherit;
   }
@@ -1665,7 +1665,7 @@ const dashboardStyles = `
   .small-stat {
     min-width: 0;
     padding: 14px;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: var(--sfm-light-card);
     border: 1px solid rgba(29, 140, 255, 0.14);
   }
@@ -1686,7 +1686,7 @@ const dashboardStyles = `
 
   .empty-state {
     padding: 18px;
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     background: var(--sfm-light-card);
     border: 1px dashed rgba(29, 140, 255, 0.34);
     color: var(--sfm-muted);
@@ -1736,7 +1736,7 @@ const dashboardStyles = `
 
   .priority-card {
     padding: 16px;
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     border: 1px solid rgba(29, 140, 255, 0.18);
     background: var(--sfm-light-card);
   }
@@ -1777,7 +1777,7 @@ const dashboardStyles = `
   .notification-list a {
     display: block;
     padding: 12px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: var(--sfm-light-card);
     color: var(--sfm-primary-dark);
     text-decoration: none;
@@ -1805,7 +1805,7 @@ const dashboardStyles = `
   .quick-links {
     margin-top: 18px;
     padding: 16px;
-    border-radius: 20px;
+    border-radius: var(--r-xl);
   }
 
   .dark .dashboard-shell {
@@ -2073,7 +2073,7 @@ const dashboardStyles = `
 
     .hero-card {
       padding: 24px 20px;
-      border-radius: 22px;
+      border-radius: var(--r-2xl);
       gap: 18px;
     }
 
@@ -2102,7 +2102,7 @@ const dashboardStyles = `
 
     .dashboard-card,
     .metric-card {
-      border-radius: 18px;
+      border-radius: var(--r-xl);
       padding: 16px;
     }
 

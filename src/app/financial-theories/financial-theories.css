@@ -49,7 +49,7 @@
         .hero-note {
           display: inline-flex;
           max-width: 330px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(167, 243, 240, .18);
           background: rgba(255, 255, 255, .08);
           color: #D9ECFF;
@@ -66,7 +66,7 @@
         .smart-tool-card button,
         .cta-actions a {
           min-height: 40px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           padding: 0 13px;
           display: inline-flex;
           align-items: center;
@@ -163,7 +163,7 @@
           display: grid;
           align-content: center;
           gap: 2px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(15, 118, 110, .16);
           background: rgba(255, 255, 255, .48);
           color: var(--sfm-muted-readable);
@@ -197,7 +197,7 @@
           align-content: start;
           gap: 7px;
           border: 1px solid var(--sfm-border);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: var(--sfm-light-card);
           color: var(--sfm-heading);
           padding: 15px;
@@ -237,7 +237,7 @@
           gap: 14px;
           align-items: center;
           border: 1px solid rgba(24, 212, 212, .18);
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           background: rgba(24, 212, 212, .07);
           padding: 14px;
         }
@@ -296,7 +296,7 @@
           gap: 18px;
           align-items: center;
           min-width: 0;
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(24, 212, 212, .22);
           background:
             radial-gradient(circle at 0% 0%, rgba(24, 212, 212, .18), transparent 34%),
@@ -310,7 +310,7 @@
           height: 54px;
           display: grid;
           place-items: center;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           color: #FFFFFF;
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           box-shadow: 0 16px 34px rgba(29, 140, 255, .22);
@@ -340,7 +340,7 @@
           display: grid;
           gap: 4px;
           margin-top: 12px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           border: 1px solid rgba(15, 118, 110, .20);
           background: rgba(45, 212, 191, .13);
           padding: 11px 12px;
@@ -359,7 +359,7 @@
         .theory-of-day-card button {
           min-height: 46px;
           border: 0;
-          border-radius: 15px;
+          border-radius: var(--r-lg);
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           padding: 0 16px;
@@ -375,7 +375,7 @@
 
         .guided-filter-summary {
           min-height: 42px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(24, 212, 212, .18);
           background: rgba(24, 212, 212, .08);
           display: flex;
@@ -405,7 +405,7 @@
         .theory-accordion {
           min-width: 0;
           border: 1px solid var(--sfm-border);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background: var(--sfm-light-card);
           overflow: hidden;
         }
@@ -512,7 +512,7 @@
         .smart-tool-icon {
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
           border: 1px solid rgba(29, 140, 255, .13);
@@ -521,7 +521,7 @@
         .theory-stat-card > span {
           width: 38px;
           height: 38px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
         }
 
         .theory-stat-card strong {
@@ -554,7 +554,7 @@
         .why-icon {
           width: 48px;
           height: 48px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
         }
 
         .why-copy span,
@@ -596,7 +596,7 @@
           gap: 9px;
           align-items: center;
           border: 1px solid rgba(24, 212, 212, .16);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: rgba(24, 212, 212, .07);
           padding: 10px 12px;
           color: var(--sfm-heading);
@@ -616,7 +616,7 @@
 
         .section-panel {
           border: 1px solid var(--sfm-border);
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           background: var(--sfm-card);
           box-shadow: 0 14px 34px rgba(3, 18, 37, .045);
           padding: 20px;
@@ -634,7 +634,7 @@
           align-items: center;
           min-width: 0;
           border: 1px solid var(--sfm-border);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: var(--sfm-card);
           padding: 12px;
           box-shadow: 0 12px 30px rgba(3, 18, 37, .05);
@@ -648,7 +648,7 @@
           gap: 10px;
           align-items: center;
           border: 1px solid var(--sfm-border);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: var(--sfm-input-bg);
           color: var(--sfm-primary-hover);
           padding: 0 14px;
@@ -703,7 +703,7 @@
           min-width: 0;
           min-height: 100%;
           padding: 18px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           border: 1px solid var(--sfm-border);
           background: var(--sfm-card);
           box-shadow: 0 14px 32px rgba(3, 18, 37, .065);
@@ -732,7 +732,7 @@
           justify-content: center;
           width: 36px;
           height: 36px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: var(--sfm-midnight);
           color: var(--sfm-soft-cyan);
           font-size: 13px;
@@ -743,7 +743,7 @@
         .theory-icon {
           width: 36px;
           height: 36px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
         }
 
         .theory-category {
@@ -806,7 +806,7 @@
         .theory-meta-row {
           min-width: 0;
           border: 1px solid rgba(15, 118, 110, .20);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: rgba(45, 212, 191, .14);
           padding: 9px 10px;
         }
@@ -864,7 +864,7 @@
         .theory-actions button,
         .theory-actions a {
           min-height: 36px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -963,25 +963,25 @@
 
         .detail-block th {
           width: 104px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           color: var(--sfm-primary-hover);
           white-space: nowrap;
         }
 
         .detail-block td {
-          border-radius: 13px;
+          border-radius: var(--r-md);
           font-weight: 850;
         }
 
         .tool-block {
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(45, 212, 191, .14);
           border: 1px solid rgba(15, 118, 110, .20);
           padding: 12px;
         }
 
         .mistake-block {
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           border: 1px solid rgba(245, 158, 11, .22);
           background: rgba(245, 158, 11, .08);
           padding: 12px;
@@ -998,7 +998,7 @@
         .theory-mark-read {
           width: fit-content;
           min-height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(15, 118, 110, .22);
           background: rgba(45, 212, 191, .14);
           color: #0F766E;
@@ -1036,7 +1036,7 @@
         .featured-index {
           width: 34px;
           height: 34px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           display: grid;
           place-items: center;
           background: var(--sfm-midnight);
@@ -1064,7 +1064,7 @@
         }
 
         .tool-category-tabs {
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           border: 1px solid var(--sfm-border);
           background: var(--sfm-card);
           padding: 10px !important;
@@ -1096,7 +1096,7 @@
           display: grid;
           gap: 4px;
           margin-top: auto;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(29, 140, 255, .12);
           background: rgba(29, 140, 255, .06);
           padding: 8px 9px;
@@ -1144,7 +1144,7 @@
         .smart-tool-icon {
           width: 40px;
           height: 40px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
         }
 
         .financial-theories-shell .status {
@@ -1195,7 +1195,7 @@
           gap: 18px;
           min-width: 0;
           border: 1px solid rgba(24, 212, 212, .22);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 10% 0%, rgba(24, 212, 212, .12), transparent 32%),
             var(--sfm-light-card);
@@ -1237,7 +1237,7 @@
           width: 40px;
           height: 40px;
           border: 1px solid var(--sfm-border);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: var(--sfm-card);
           color: var(--sfm-heading);
           cursor: pointer;
@@ -1275,7 +1275,7 @@
           align-items: end;
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-card);
           padding: 12px;
         }
@@ -1284,7 +1284,7 @@
         .calculator-remove {
           min-height: 44px;
           width: fit-content;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(24, 212, 212, .26);
           background: rgba(24, 212, 212, .10);
           color: var(--sfm-primary-hover);
@@ -1307,7 +1307,7 @@
         .risk-question {
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-card);
           padding: 12px;
         }
@@ -1354,7 +1354,7 @@
         .calculator-mode-actions button {
           min-height: 40px;
           border: 0;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           padding: 0 13px;
@@ -1398,7 +1398,7 @@
           width: 100%;
           min-height: 50px;
           border: 1px solid rgba(29, 140, 255, .20);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: var(--sfm-input-bg);
           color: var(--sfm-foreground);
           padding: 0 12px;
@@ -1426,7 +1426,7 @@
           display: grid;
           align-content: center;
           gap: 4px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(29, 140, 255, .16);
           background: var(--sfm-card);
           padding: 9px 12px;
@@ -1473,7 +1473,7 @@
 
         .calculator-result-card {
           border: 1px solid var(--sfm-border);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-card);
           padding: 12px;
           display: grid;
@@ -1507,7 +1507,7 @@
         .calculator-error,
         .calculator-success {
           margin: 0;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           padding: 11px 12px;
           line-height: 1.65;
           font-weight: 920;
@@ -1531,7 +1531,7 @@
 
         .calculator-list-card {
           border: 1px solid var(--sfm-border);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-card);
           padding: 12px;
           display: grid;
@@ -1571,7 +1571,7 @@
 
         .calculator-actions button {
           min-height: 40px;
-          border-radius: 13px;
+          border-radius: var(--r-md);
           border: 1px solid var(--sfm-border);
           background: var(--sfm-card);
           color: var(--sfm-heading);
@@ -1589,7 +1589,7 @@
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 20px;
           align-items: center;
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           padding: 28px;
           color: #EAF6FF;
           background:
@@ -1847,7 +1847,7 @@
 
           .calculator-panel {
             padding: 14px;
-            border-radius: 20px;
+            border-radius: var(--r-xl);
           }
 
           .calculator-panel-head,
@@ -1873,7 +1873,7 @@
 
           .section-panel {
             padding: 12px;
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
           }
 
           .learning-stats-grid {
@@ -1909,7 +1909,7 @@
 
           .theory-tool-pill {
             align-items: flex-start;
-            border-radius: 14px;
+            border-radius: var(--r-md);
             flex-direction: column;
           }
 

@@ -1378,7 +1378,7 @@ const businessRecordsModuleStyles = `
   .business-form-head button {
     font-family: inherit;
     min-height: 42px;
-    border-radius: 14px;
+    border-radius: var(--r-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1405,7 +1405,7 @@ const businessRecordsModuleStyles = `
     border-color: rgba(24, 212, 212, 0.28);
     background: rgba(29, 140, 255, 0.08);
     color: var(--sfm-primary);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 0 16px;
     font-size: 0.92rem;
     box-shadow: 0 12px 28px rgba(29, 140, 255, 0.08);
@@ -1456,7 +1456,7 @@ const businessRecordsModuleStyles = `
   .business-alert,
   .business-notice,
   .business-form-error {
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     font-weight: 850;
   }
@@ -1486,7 +1486,7 @@ const businessRecordsModuleStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 24px;
+    border-radius: var(--r-2xl);
     box-shadow: 0 16px 38px rgba(3, 18, 37, 0.07);
   }
 
@@ -1519,7 +1519,7 @@ const businessRecordsModuleStyles = `
     align-items: center;
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     padding: 12px;
   }
 
@@ -1527,7 +1527,7 @@ const businessRecordsModuleStyles = `
     flex: 1 1 260px;
     min-height: 46px;
     border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: 15px;
+    border-radius: var(--r-lg);
     background: var(--sfm-surface);
     padding: 0 13px;
     display: inline-flex;
@@ -1545,7 +1545,7 @@ const businessRecordsModuleStyles = `
     width: 100%;
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: var(--sfm-surface);
     color: var(--sfm-foreground);
     padding: 11px 12px;
@@ -1642,7 +1642,7 @@ const businessRecordsModuleStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.12);
     background: var(--sfm-surface);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px;
   }
 
@@ -1704,7 +1704,7 @@ const businessRecordsModuleStyles = `
     grid-template-columns: auto 1fr;
     align-items: center;
     border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: var(--sfm-surface);
     padding: 11px 12px;
   }
@@ -1738,7 +1738,7 @@ const businessRecordsModuleStyles = `
     background:
       linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(45, 212, 191, 0.05)),
       var(--sfm-surface);
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     padding: 14px;
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
   }
@@ -1782,7 +1782,7 @@ const businessRecordsModuleStyles = `
     background: rgba(14, 165, 233, 0.1);
     color: var(--sfm-primary);
     min-height: 40px;
-    border-radius: 13px;
+    border-radius: var(--r-md);
     padding: 0 12px;
     display: inline-flex;
     align-items: center;
@@ -1808,7 +1808,7 @@ const businessRecordsModuleStyles = `
     position: relative;
     min-height: 128px;
     border: 1px dashed rgba(29, 140, 255, 0.34);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: rgba(255, 255, 255, 0.68);
     display: grid;
     place-items: center;
@@ -1848,7 +1848,7 @@ const businessRecordsModuleStyles = `
   .business-ai-file-row {
     border: 1px solid rgba(29, 140, 255, 0.13);
     background: var(--sfm-card);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     padding: 10px 12px;
   }
 
@@ -1870,7 +1870,7 @@ const businessRecordsModuleStyles = `
     background: rgba(239, 68, 68, 0.1);
     color: #b91c1c;
     min-height: 34px;
-    border-radius: 11px;
+    border-radius: var(--r-md);
     padding: 0 10px;
     display: inline-flex;
     align-items: center;
@@ -1884,7 +1884,7 @@ const businessRecordsModuleStyles = `
     border: 1px solid rgba(245, 158, 11, 0.2);
     background: rgba(245, 158, 11, 0.1);
     color: #92400e;
-    border-radius: 13px;
+    border-radius: var(--r-md);
     padding: 10px 12px;
     display: flex;
     align-items: center;
@@ -1904,7 +1904,7 @@ const businessRecordsModuleStyles = `
   .business-ai-result-card {
     border: 1px solid rgba(16, 185, 129, 0.22);
     background: linear-gradient(180deg, rgba(240, 253, 250, 0.8), rgba(255, 255, 255, 0.9));
-    border-radius: 18px;
+    border-radius: var(--r-xl);
     padding: 14px;
     display: grid;
     gap: 12px;
@@ -1929,7 +1929,7 @@ const businessRecordsModuleStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.11);
     background: rgba(255, 255, 255, 0.72);
-    border-radius: 13px;
+    border-radius: var(--r-md);
     padding: 10px;
     display: grid;
     gap: 3px;
@@ -1949,7 +1949,7 @@ const businessRecordsModuleStyles = `
   .business-ai-line-items {
     border: 1px solid rgba(29, 140, 255, 0.11);
     background: rgba(255, 255, 255, 0.7);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     padding: 11px 12px;
   }
 
@@ -2012,7 +2012,7 @@ const businessRecordsModuleStyles = `
     .business-form-modal {
       width: 100%;
       max-height: 92vh;
-      border-radius: 22px 22px 0 0;
+      border-radius: var(--r-2xl) var(--r-2xl) 0 0;
     }
 
     .business-form-head,

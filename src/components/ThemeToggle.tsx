@@ -63,7 +63,7 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
           height: 44px;
           min-width: 44px;
           border: 1px solid var(--sfm-light-border-primary, #788e9e);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: inline-grid;
           place-items: center;
           background: var(--sfm-light-surface-elevated, #fcfdfd);

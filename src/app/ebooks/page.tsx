@@ -617,7 +617,7 @@ export default function EbooksPage() {
           display: inline-flex;
           max-width: 520px;
           padding: 10px 14px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, 0.10);
           border: 1px solid rgba(255, 255, 255, 0.16);
           color: #dff9ff;
@@ -631,7 +631,7 @@ export default function EbooksPage() {
         .ebooks-category-section,
         .ebooks-reading-path,
         .ebooks-disclaimer {
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(15, 118, 110, 0.14);
           background: rgba(255, 255, 255, 0.86);
           box-shadow: 0 18px 44px rgba(15, 37, 64, 0.08);
@@ -649,7 +649,7 @@ export default function EbooksPage() {
           gap: 10px;
           min-height: 52px;
           padding: 0 16px;
-          border-radius: 20px;
+          border-radius: var(--r-xl);
           border: 1px solid rgba(15, 118, 110, 0.18);
           background: #ffffff;
           color: #0f766e;
@@ -793,7 +793,7 @@ export default function EbooksPage() {
           grid-template-columns: minmax(220px, 300px) 1fr;
           gap: 22px;
           align-items: stretch;
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(15, 118, 110, 0.14);
           background: linear-gradient(135deg, rgba(204, 251, 241, 0.62), rgba(255, 255, 255, 0.88));
           padding: 18px;
@@ -834,7 +834,7 @@ export default function EbooksPage() {
           display: grid;
           grid-template-rows: auto 1fr;
           min-width: 0;
-          border-radius: 26px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(15, 118, 110, 0.14);
           background: rgba(255, 255, 255, 0.92);
           box-shadow: 0 16px 34px rgba(15, 37, 64, 0.08);
@@ -877,7 +877,7 @@ export default function EbooksPage() {
         .ebook-cover-inner {
           height: 100%;
           min-height: 184px;
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(255, 255, 255, 0.18);
           background:
             radial-gradient(circle at top right, rgba(167, 243, 240, 0.24), transparent 12rem),
@@ -951,7 +951,7 @@ export default function EbooksPage() {
           justify-content: center;
           gap: 8px;
           min-height: 42px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           padding: 0 14px;
           font: 950 13px Tajawal, Arial, sans-serif;
           text-decoration: none;
@@ -993,7 +993,7 @@ export default function EbooksPage() {
         }
 
         .ebooks-category-grid button {
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           min-height: 92px;
           justify-content: space-between;
           display: flex;
@@ -1095,7 +1095,7 @@ export default function EbooksPage() {
           z-index: 2;
           width: 40px;
           height: 40px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(15, 118, 110, 0.16);
           background: rgba(255, 255, 255, 0.92);
           color: #0f766e;
@@ -1123,7 +1123,7 @@ export default function EbooksPage() {
         }
 
         .ebooks-modal dl div {
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           border: 1px solid rgba(15, 118, 110, 0.14);
           background: rgba(241, 245, 249, 0.70);
           padding: 12px;

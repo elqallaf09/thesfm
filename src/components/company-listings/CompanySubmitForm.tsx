@@ -407,7 +407,7 @@ export function CompanySubmitForm() {
         <style jsx>{`
           .company-submit-loading {
             min-height: 420px;
-            border-radius: 24px;
+            border-radius: var(--r-2xl);
             background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
             background-size: 400% 100%;
             animation: shimmer 1.4s ease infinite;
@@ -654,7 +654,7 @@ function SubmitStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         border: 1px solid rgba(11, 118, 224, 0.18);
         background: rgba(255, 255, 255, 0.94);
         color: #0b2a4a;
@@ -685,7 +685,7 @@ function SubmitStyles() {
       .company-submit-hero,
       .company-submit-gate {
         border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10)),
           #ffffff;
@@ -733,7 +733,7 @@ function SubmitStyles() {
       }
       .submit-section {
         border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         background: #ffffff;
         padding: 18px;
         box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
@@ -762,7 +762,7 @@ function SubmitStyles() {
         display: grid;
         gap: 12px;
         border: 1px solid rgba(11, 118, 224, 0.14);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
         padding: 14px;
       }
@@ -790,7 +790,7 @@ function SubmitStyles() {
       .map-location-head button {
         min-height: 44px;
         border: 1px solid rgba(11, 118, 224, 0.18);
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: #ffffff;
         color: #0b76e0;
         padding: 0 14px;
@@ -817,7 +817,7 @@ function SubmitStyles() {
         grid-template-columns: 34px minmax(0, 1fr);
         align-items: center;
         border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: #f8fbff;
       }
       .map-url-input svg {
@@ -846,7 +846,7 @@ function SubmitStyles() {
       .submit-field select {
         width: 100%;
         border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 14px;
+        border-radius: var(--r-md);
         background: #f8fbff;
         color: #0f172a;
         padding: 12px;
@@ -871,7 +871,7 @@ function SubmitStyles() {
       }
       .image-preview {
         border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: #f8fbff;
         padding: 10px;
         display: grid;
@@ -880,7 +880,7 @@ function SubmitStyles() {
       .image-preview img {
         width: 100%;
         max-height: 160px;
-        border-radius: 12px;
+        border-radius: var(--r-md);
         object-fit: contain;
         background: #ffffff;
       }
@@ -890,7 +890,7 @@ function SubmitStyles() {
       }
       .image-preview-loader {
         min-height: 52px;
-        border-radius: 12px;
+        border-radius: var(--r-md);
         display: grid;
         place-items: center;
         color: #0f766e;
@@ -908,7 +908,7 @@ function SubmitStyles() {
       }
       .submit-message {
         margin-top: 14px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         padding: 12px 14px;
         display: flex;
         align-items: center;
@@ -932,7 +932,7 @@ function SubmitStyles() {
         display: flex;
         justify-content: flex-end;
         padding: 12px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         border: 1px solid rgba(15, 23, 42, 0.08);
         background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(12px);
@@ -941,7 +941,7 @@ function SubmitStyles() {
       .company-submit-gate button {
         border: 0;
         min-height: 48px;
-        border-radius: 14px;
+        border-radius: var(--r-md);
         padding: 0 20px;
         display: inline-flex;
         align-items: center;

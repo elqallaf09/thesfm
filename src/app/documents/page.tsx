@@ -688,7 +688,7 @@ export default function DocumentsCenterPage() {
           gap: 14px;
           padding: 18px;
           border: 1px solid rgba(29, 140, 255, .16);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 6% 10%, rgba(24, 212, 212, .18), transparent 30%),
             linear-gradient(180deg, #FFFFFF, var(--sfm-light-card));
@@ -712,7 +712,7 @@ export default function DocumentsCenterPage() {
           list-style: none;
           cursor: pointer;
           color: var(--sfm-primary-dark);
-          border-radius: 14px;
+          border-radius: var(--r-md);
         }
         .documents-upload-summary::-webkit-details-marker {
           display: none;
@@ -748,7 +748,7 @@ export default function DocumentsCenterPage() {
           display: inline-flex;
           align-items: center;
           padding-inline: 14px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
           font-size: 13px;
@@ -788,7 +788,7 @@ export default function DocumentsCenterPage() {
         .documents-secondary-action {
           min-height: 44px;
           border: 0;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
           color: #FFFFFF;
           padding: 0 18px;
@@ -827,7 +827,7 @@ export default function DocumentsCenterPage() {
           gap: 8px;
           padding: 10px;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: #FFFFFF;
           box-shadow: 0 22px 60px rgba(3, 18, 37, .18);
         }
@@ -835,7 +835,7 @@ export default function DocumentsCenterPage() {
         .documents-upload-options button {
           min-height: 46px;
           border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: var(--sfm-light-card);
           color: var(--sfm-primary-dark);
           display: flex;
@@ -883,7 +883,7 @@ export default function DocumentsCenterPage() {
           align-items: center;
           gap: 14px;
           border: 1px dashed rgba(29, 140, 255, .34);
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           background: rgba(255, 255, 255, .72);
           color: var(--sfm-primary-dark);
           padding: 16px;
@@ -903,7 +903,7 @@ export default function DocumentsCenterPage() {
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
           flex: 0 0 auto;
@@ -930,7 +930,7 @@ export default function DocumentsCenterPage() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: #FFFFFF;
           border: 1px solid rgba(29, 140, 255, .18);
           color: var(--sfm-primary-dark);
@@ -943,7 +943,7 @@ export default function DocumentsCenterPage() {
           border: 1px solid rgba(29, 140, 255, .2);
           background: #FFFFFF;
           color: var(--sfm-primary-dark);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           padding: 12px 14px;
           font-weight: 900;
         }
@@ -964,7 +964,7 @@ export default function DocumentsCenterPage() {
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }
@@ -994,7 +994,7 @@ export default function DocumentsCenterPage() {
           border: 1px solid rgba(29, 140, 255, .18);
           background: var(--sfm-light-card);
           color: var(--sfm-primary);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           padding: 0 12px;
           min-width: 0;
         }
@@ -1037,7 +1037,7 @@ export default function DocumentsCenterPage() {
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }
@@ -1086,7 +1086,7 @@ export default function DocumentsCenterPage() {
         .source-delete-note {
           margin: 0;
           border: 1px dashed rgba(29, 140, 255, .22);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           padding: 9px 10px;
           color: var(--sfm-muted);
           background: var(--sfm-light-card);
@@ -1102,7 +1102,7 @@ export default function DocumentsCenterPage() {
         .document-actions a {
           min-height: 40px;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 13px;
+          border-radius: var(--r-md);
           background: #FFFFFF;
           color: var(--sfm-primary-dark);
           display: inline-flex;
@@ -1150,7 +1150,7 @@ export default function DocumentsCenterPage() {
           }
           .documents-upload-panel {
             padding: 14px;
-            border-radius: 19px;
+            border-radius: var(--r-xl);
           }
           .documents-upload-summary {
             align-items: flex-start;

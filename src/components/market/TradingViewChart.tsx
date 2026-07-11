@@ -101,9 +101,9 @@ export function TradingViewChart({ symbol, assetType, exchange, theme = 'light' 
     <div className="tradingview-shell" aria-label={`TradingView chart for ${symbol}`}>
       <div ref={containerRef} className="tradingview-container" />
       <style jsx>{`
-        .tradingview-shell{position:relative;width:100%;height:420px;min-height:320px;border-radius:18px;overflow:hidden;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14)}
+        .tradingview-shell{position:relative;width:100%;height:420px;min-height:320px;border-radius:var(--r-xl);overflow:hidden;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14)}
         .tradingview-container{position:absolute;inset:0;width:100%;height:100%}
-        @media(max-width:720px){.tradingview-shell{height:360px;border-radius:16px}}
+        @media(max-width:720px){.tradingview-shell{height:360px;border-radius:var(--r-lg)}}
       `}</style>
     </div>
   );

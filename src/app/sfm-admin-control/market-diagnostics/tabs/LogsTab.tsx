@@ -154,7 +154,7 @@ export function LogsTab() {
         .ops-log-chevron { color: var(--sfm-muted); font-size: 18px; line-height: 1; transition: transform .18s ease; }
         .ops-log-card[open] .ops-log-chevron { transform: rotate(180deg); }
         .ops-log-card dl { margin: 0; padding: 0 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        .ops-log-card dl > div { min-width: 0; border-radius: 10px; background: var(--sfm-light-card); padding: 9px 10px; }
+        .ops-log-card dl > div { min-width: 0; border-radius: var(--r-sm); background: var(--sfm-light-card); padding: 9px 10px; }
         .ops-log-card dt { color: var(--sfm-muted); font-size: 10.5px; font-weight: 850; }
         .ops-log-card dd { margin: 3px 0 0; color: var(--sfm-body); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
         .ops-log-card .ops-log-detail { grid-column: 1 / -1; }

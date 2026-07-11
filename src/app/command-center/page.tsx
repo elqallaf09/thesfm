@@ -465,7 +465,7 @@ export default function CommandCenterPage() {
           gap: 24px;
           padding: clamp(24px, 4vw, 40px);
           border: 1px solid rgba(167, 243, 240, .18);
-          border-radius: 28px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 18% 18%, rgba(24, 212, 212, .20), transparent 30%),
             linear-gradient(135deg, #031225 0%, #061B33 52%, #0B3A66 100%);
@@ -633,7 +633,7 @@ export default function CommandCenterPage() {
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
           box-shadow: inset 0 0 0 1px rgba(29, 140, 255, .08);
@@ -691,7 +691,7 @@ export default function CommandCenterPage() {
           display: grid;
           place-items: center;
           flex: 0 0 48px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(24, 212, 212, .12);
           color: var(--sfm-primary);
         }
@@ -731,7 +731,7 @@ export default function CommandCenterPage() {
           justify-content: space-between;
           gap: 10px;
           padding: 0 13px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(29, 140, 255, .14);
           background: rgba(29, 140, 255, .06);
           color: var(--sfm-foreground);
@@ -788,12 +788,12 @@ export default function CommandCenterPage() {
             min-height: 0;
             grid-template-columns: 1fr;
             padding: 22px;
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
           }
           .command-hero-mark {
             width: 86px;
             height: 86px;
-            border-radius: 24px;
+            border-radius: var(--r-2xl);
             order: -1;
           }
           .command-hero-actions,
@@ -834,7 +834,7 @@ function Metric({ label, value, hint, icon }: { label: string; value: string; hi
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }

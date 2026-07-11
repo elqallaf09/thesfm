@@ -730,7 +730,7 @@ const businessOperationsStyles = `
     border: 1px solid rgba(239, 68, 68, 0.24);
     background: rgba(239, 68, 68, 0.10);
     color: #B91C1C;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     font-weight: 850;
     display: flex;
@@ -750,7 +750,7 @@ const businessOperationsStyles = `
   .business-alert button {
     min-height: 36px;
     border: 1px solid rgba(185, 28, 28, 0.24);
-    border-radius: 12px;
+    border-radius: var(--r-md);
     background: var(--sfm-card);
     color: #B91C1C;
     padding: 0 12px;
@@ -770,7 +770,7 @@ const businessOperationsStyles = `
     border: 1px solid rgba(16, 185, 129, 0.24);
     background: rgba(16, 185, 129, 0.10);
     color: #047857;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     font-weight: 850;
   }
@@ -779,7 +779,7 @@ const businessOperationsStyles = `
     border: 1px solid rgba(245, 158, 11, 0.24);
     background: rgba(245, 158, 11, 0.09);
     color: #92400E;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     display: flex;
     align-items: center;
@@ -791,7 +791,7 @@ const businessOperationsStyles = `
     border: 1px solid rgba(29, 140, 255, 0.18);
     background: rgba(29, 140, 255, 0.08);
     color: var(--sfm-primary-hover);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 12px 14px;
     display: flex;
     align-items: center;
@@ -803,7 +803,7 @@ const businessOperationsStyles = `
     border: 1px solid rgba(239, 68, 68, 0.22);
     background: rgba(15, 23, 42, 0.96);
     color: #F8FAFC;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     padding: 14px;
     display: grid;
     gap: 10px;
@@ -833,7 +833,7 @@ const businessOperationsStyles = `
   .business-ghost-btn {
     min-height: 42px;
     border: 1px solid rgba(29, 140, 255, 0.18);
-    border-radius: 14px;
+    border-radius: var(--r-md);
     background: var(--sfm-card);
     color: var(--sfm-primary);
     padding: 0 15px;
@@ -866,7 +866,7 @@ const businessOperationsStyles = `
     min-width: 0;
     border: 1px solid rgba(29, 140, 255, 0.16);
     background: var(--sfm-card);
-    border-radius: 22px;
+    border-radius: var(--r-2xl);
     box-shadow: 0 16px 38px rgba(3, 18, 37, 0.07);
   }
 
@@ -910,7 +910,7 @@ const businessOperationsStyles = `
   .business-hub-card.active {
     border: 1px solid rgba(29, 140, 255, 0.18);
     background: var(--sfm-card);
-    border-radius: 24px;
+    border-radius: var(--r-2xl);
     box-shadow: 0 18px 42px rgba(3, 18, 37, 0.08);
     transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
   }
@@ -927,7 +927,7 @@ const businessOperationsStyles = `
   .business-card-icon {
     width: 48px;
     height: 48px;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     display: grid;
     place-items: center;
     color: #EAF6FF;
@@ -1020,7 +1020,7 @@ const businessOperationsStyles = `
     color: var(--sfm-muted);
     font-weight: 850;
     border: 1px dashed rgba(29, 140, 255, 0.22);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     background: var(--sfm-light-card);
     padding: 22px;
     gap: 9px;
@@ -1029,7 +1029,7 @@ const businessOperationsStyles = `
   .business-chart-empty-icon {
     width: 48px;
     height: 48px;
-    border-radius: 16px;
+    border-radius: var(--r-lg);
     display: grid;
     place-items: center;
     color: #EAF6FF;

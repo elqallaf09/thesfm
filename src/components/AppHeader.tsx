@@ -153,9 +153,9 @@ export function AppHeader() {
 
           .sfm-global-menu-button {
             width: 44px;
-            height: 44px;
+            height: var(--control-h);
             border: 1px solid rgba(167, 243, 240, 0.34);
-            border-radius: 14px;
+            border-radius: var(--r-md);
             display: grid;
             place-items: center;
             background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
@@ -233,7 +233,7 @@ export function AppHeader() {
             width: 40px;
             min-width: 40px;
             height: 40px;
-            border-radius: 13px;
+            border-radius: var(--r-md);
           }
         }
       `}</style>

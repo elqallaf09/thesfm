@@ -211,7 +211,7 @@ export function StockTickerStrip({
                 gap: 9px;
                 padding: 10px 12px 12px;
                 border: 1px solid rgba(203, 213, 225, 0.86);
-                border-radius: 16px;
+                border-radius: var(--r-lg);
                 background: #ffffff;
                 color: #0f172a;
                 box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
@@ -317,7 +317,7 @@ export function StockTickerStrip({
                 display: grid;
                 place-items: center;
                 border: 1px dashed rgba(148, 163, 184, 0.82);
-                border-radius: 16px;
+                border-radius: var(--r-lg);
                 background: rgba(248, 250, 252, 0.92);
                 color: #64748b;
                 font-size: 13px;

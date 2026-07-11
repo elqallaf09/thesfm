@@ -120,20 +120,20 @@ export default function AdCampaignCalculatorPage() {
         .ad-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif;padding:24px}
         .wrap{max-width:1120px;margin:0 auto}
         .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
-        .home{border:0;border-radius:12px;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:10px 16px;font-weight:800;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
-        .panel{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:22px;box-shadow:0 4px 22px rgba(3,18,37,.06);padding:22px}
+        .home{border:0;border-radius:var(--r-md);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:10px 16px;font-weight:800;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
+        .panel{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:var(--r-2xl);box-shadow:0 4px 22px rgba(3,18,37,.06);padding:22px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
         label{display:block;font-size:13px;font-weight:800;color:var(--sfm-muted);margin-bottom:7px}
-        input,select{width:100%;height:48px;border:1.5px solid rgba(167,243,240,.24);border-radius:13px;background:var(--sfm-card);padding:0 13px;font:700 15px Tajawal,Arial,sans-serif;outline:none}
+        input,select{width:100%;height:var(--control-h-lg);border:1.5px solid rgba(167,243,240,.24);border-radius:var(--r-md);background:var(--sfm-card);padding:0 13px;font:700 15px Tajawal,Arial,sans-serif;outline:none}
         input:focus,select:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.12)}
         .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(167,243,240,.08)}
         .bar{height:24px;border-radius:999px;overflow:hidden;background:rgba(167,243,240,.10);display:flex;margin-top:14px}
         .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
-        .kpi{background:rgba(167,243,240,.08);border-radius:16px;padding:16px;text-align:center}
+        .kpi{background:rgba(167,243,240,.08);border-radius:var(--r-lg);padding:16px;text-align:center}
         .kpi strong{display:block;font-size:22px;color:var(--sfm-foreground)}
         .kpi span{font-size:12px;color:var(--sfm-muted);font-weight:800}
         table{width:100%;border-collapse:collapse;margin-top:14px}th,td{padding:10px;border-bottom:1px solid rgba(167,243,240,.10);text-align:start;font-size:13px}th{color:var(--sfm-muted)}
-        .save{margin-top:16px;width:100%;height:50px;border:0;border-radius:14px;background:var(--sfm-foreground);color:var(--sfm-soft-cyan);font-weight:900;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
+        .save{margin-top:16px;width:100%;height:50px;border:0;border-radius:var(--r-md);background:var(--sfm-foreground);color:var(--sfm-soft-cyan);font-weight:900;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
         .save:disabled{opacity:.55;cursor:not-allowed}
         @media(max-width:760px){.grid,.kpis{grid-template-columns:1fr}.platform{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
       `}</style>
@@ -198,7 +198,7 @@ export default function AdCampaignCalculatorPage() {
                 ))}
               </tbody>
             </table>
-            <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'rgba(167,243,240,.08)', color: 'var(--sfm-muted)', lineHeight: 1.8, fontWeight: 700 }}>
+            <div style={{ marginTop: 14, padding: 14, borderRadius: 'var(--r-md)', background: 'rgba(167,243,240,.08)', color: 'var(--sfm-muted)', lineHeight: 1.8, fontWeight: 700 }}>
               {t('ad_recommendation')}
             </div>
             <button className="save" disabled={!user || !totalBudget || totalPct !== 100 || saving} onClick={saveCampaign}>

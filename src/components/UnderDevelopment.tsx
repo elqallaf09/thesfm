@@ -50,9 +50,9 @@ export function UnderDevelopment({ titleKey, descriptionKey, helperKey, statusKe
         .sfm-under-shell{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif}
         .sfm-under-main{min-height:100vh;display:grid;place-items:center;padding:28px;margin-inline-end:230px}
         [dir="ltr"] .sfm-under-main{margin-inline-end:0;margin-inline-start:230px}
-        .sfm-under-card{width:min(100%,470px);background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:24px;box-shadow:0 18px 60px rgba(3,18,37,.10);padding:34px;text-align:center;position:relative;overflow:hidden}
+        .sfm-under-card{width:min(100%,470px);background:var(--sfm-card);border:1px solid rgba(167,243,240,.16);border-radius:var(--r-2xl);box-shadow:0 18px 60px rgba(3,18,37,.10);padding:34px;text-align:center;position:relative;overflow:hidden}
         .sfm-under-card:before{content:"";position:absolute;inset-inline-start:-80px;top:-90px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(167,243,240,.16),transparent 70%);pointer-events:none}
-        .sfm-under-icon{width:72px;height:72px;margin:0 auto 18px;border-radius:22px;background:linear-gradient(135deg,rgba(167,243,240,.18),rgba(154,108,60,.08));color:var(--sfm-muted);display:grid;place-items:center;border:1px solid rgba(167,243,240,.22);position:relative;z-index:1}
+        .sfm-under-icon{width:72px;height:72px;margin:0 auto 18px;border-radius:var(--r-2xl);background:linear-gradient(135deg,rgba(167,243,240,.18),rgba(154,108,60,.08));color:var(--sfm-muted);display:grid;place-items:center;border:1px solid rgba(167,243,240,.22);position:relative;z-index:1}
         .sfm-under-kicker{margin:0 0 8px;color:var(--sfm-muted);font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1}
         .sfm-under-card h1{margin:0;color:var(--sfm-foreground);font-size:25px;font-weight:900;line-height:1.25;position:relative;z-index:1}
         .sfm-under-message{margin:12px 0 0;color:var(--sfm-muted);font-size:15px;font-weight:800;line-height:1.7;position:relative;z-index:1}

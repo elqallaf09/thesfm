@@ -410,7 +410,7 @@ export function ProjectSelector({
           width: 100%;
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 24px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 12% 0%, rgba(167, 243, 240, .24), transparent 30%),
             linear-gradient(135deg, #FFFFFF, var(--sfm-light-card));
@@ -445,7 +445,7 @@ export function ProjectSelector({
           width: 100%;
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           background:
             radial-gradient(circle at 12% 0%, rgba(167, 243, 240, .22), transparent 28%),
             linear-gradient(135deg, #FFFFFF, var(--sfm-light-card));
@@ -480,7 +480,7 @@ export function ProjectSelector({
         .project-selector-icon {
           width: 48px;
           height: 48px;
-          border-radius: 17px;
+          border-radius: var(--r-lg);
           display: grid;
           place-items: center;
           background: linear-gradient(135deg, rgba(29, 140, 255, .15), rgba(24, 212, 212, .16));
@@ -575,14 +575,14 @@ export function ProjectSelector({
           padding: 10px 12px;
           background: linear-gradient(135deg, rgba(29,140,255,.04), rgba(24,212,212,.04));
           border: 1px solid rgba(29,140,255,.10);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
         }
         .project-selector-action {
           flex: 1 1 170px;
           min-width: 0;
           min-height: 44px;
           border: 1px solid transparent;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -606,7 +606,7 @@ export function ProjectSelector({
         }
         .project-selector-action.add-primary {
           min-height: 48px;
-          border-radius: 18px;
+          border-radius: var(--r-xl);
           padding: 0 20px;
           border-color: rgba(24, 212, 212, .22);
           background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
@@ -668,13 +668,13 @@ export function ProjectSelector({
           padding: 10px 12px;
           background: linear-gradient(135deg, rgba(29, 140, 255, .04), rgba(24, 212, 212, .04));
           border: 1px solid rgba(29, 140, 255, .10);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
         }
         :global(.sfm-project-selector .project-selector-action) {
           min-width: 0;
           min-height: 44px;
           border: 1px solid transparent;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -780,7 +780,7 @@ export function ProjectSelector({
           z-index: 80;
           inset-inline: 0;
           top: calc(100% + 10px);
-          border-radius: 22px;
+          border-radius: var(--r-2xl);
           border: 1px solid rgba(29, 140, 255, .18);
           background: rgba(255, 255, 255, .98);
           box-shadow: 0 24px 70px rgba(3, 18, 37, .22);
@@ -806,7 +806,7 @@ export function ProjectSelector({
           width: 100%;
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 14px;
+          border-radius: var(--r-md);
           min-height: 42px;
           background: var(--sfm-light-card);
           color: var(--sfm-primary-dark);
@@ -827,7 +827,7 @@ export function ProjectSelector({
           width: 100%;
           min-width: 0;
           border: 1px solid rgba(29, 140, 255, .12);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-light-card);
           color: var(--sfm-primary-dark);
           padding: 11px 12px;
@@ -890,7 +890,7 @@ export function ProjectSelector({
         .project-selector-empty {
           margin: 0;
           border: 1px dashed rgba(29, 140, 255, .22);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: var(--sfm-light-card);
           color: var(--sfm-muted-readable, #475569);
           padding: 16px;
@@ -908,7 +908,7 @@ export function ProjectSelector({
         @media (max-width: 720px) {
           .project-selector-empty-card {
             grid-template-columns: auto minmax(0, 1fr);
-            border-radius: 22px;
+            border-radius: var(--r-2xl);
             padding: 15px;
           }
           .project-selector-empty-card .project-selector-action {
@@ -917,7 +917,7 @@ export function ProjectSelector({
           }
           .project-selector-card {
             grid-template-columns: auto minmax(0, 1fr);
-            border-radius: 20px;
+            border-radius: var(--r-xl);
           }
           .project-selector-change {
             grid-column: 1 / -1;
@@ -948,7 +948,7 @@ export function ProjectSelector({
             top: auto;
             bottom: calc(12px + env(safe-area-inset-bottom));
             max-height: min(76dvh, 620px);
-            border-radius: 24px 24px 18px 18px;
+            border-radius: var(--r-2xl) var(--r-2xl) var(--r-xl) var(--r-xl);
           }
           .project-selector-list button {
             grid-template-columns: 1fr;

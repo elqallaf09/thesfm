@@ -568,7 +568,7 @@ export function AuthForm() {
               </div>
 
               {/* Security Questions */}
-              <div style={{background:'var(--sfm-light-card)', border:'1.5px solid var(--sfm-border)', borderRadius:'12px', padding:'16px', marginBottom:'4px'}}>
+              <div style={{background:'var(--sfm-light-card)', border:'1.5px solid var(--sfm-border)', borderRadius:'var(--r-md)', padding:'16px', marginBottom:'4px'}}>
                 <p style={{fontSize:'12.5px', fontWeight:'700', color:'var(--sfm-foreground)', marginBottom:'12px', fontFamily:'Tajawal,sans-serif'}}>
                   🔐 {isArabic ? 'أسئلة الأمان (الأول والثاني إجباري)' : 'Security Questions (1st & 2nd required)'}
                 </p>

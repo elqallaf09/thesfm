@@ -294,7 +294,7 @@ function ImageUploadStyles() {
         position: relative;
         z-index: 0;
         border: 1px dashed rgba(11, 118, 224, 0.24);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
         padding: 12px;
         display: grid;
@@ -311,7 +311,7 @@ function ImageUploadStyles() {
       .image-upload-trigger,
       .image-upload-actions button {
         min-height: 42px;
-        border-radius: 13px;
+        border-radius: var(--r-md);
         border: 1px solid rgba(11, 118, 224, 0.18);
         background: #ffffff;
         color: #0b76e0;
@@ -353,7 +353,7 @@ function ImageUploadStyles() {
         position: relative;
         z-index: 0;
         border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: #f8fbff;
         padding: 10px;
         display: grid;
@@ -363,7 +363,7 @@ function ImageUploadStyles() {
       .image-preview img {
         width: 100%;
         max-height: 180px;
-        border-radius: 12px;
+        border-radius: var(--r-md);
         object-fit: contain;
         background: #ffffff;
       }
@@ -381,7 +381,7 @@ function ImageUploadStyles() {
       }
       .image-preview-loader {
         min-height: 52px;
-        border-radius: 12px;
+        border-radius: var(--r-md);
         display: grid;
         place-items: center;
         color: #0f766e;
@@ -417,7 +417,7 @@ function ImageUploadStyles() {
         position: relative;
         z-index: 1;
         margin: 0;
-        border-radius: 12px;
+        border-radius: var(--r-md);
         padding: 10px 12px;
         display: block;
         font-weight: 900;

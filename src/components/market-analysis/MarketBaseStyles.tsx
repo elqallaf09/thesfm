@@ -44,7 +44,7 @@ export function MarketBaseStyles() {
         display: grid;
         gap: 14px;
         border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .07)), var(--sfm-light-card);
         padding: 16px;
         min-width: 0;
@@ -78,7 +78,7 @@ export function MarketBaseStyles() {
         display: grid;
         gap: 9px;
         border: 1px solid rgba(167, 243, 240, .14);
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         background: var(--sfm-card);
         padding: 12px;
       }
@@ -113,7 +113,7 @@ export function MarketBaseStyles() {
         display: grid;
         gap: 14px;
         border: 1px solid rgba(245, 158, 11, .26);
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         background:
           linear-gradient(135deg, rgba(245, 158, 11, .10), rgba(47, 214, 192, .06)),
           var(--sfm-light-card);
@@ -133,7 +133,7 @@ export function MarketBaseStyles() {
       .technical-partial-state-head > span {
         width: 38px;
         height: 38px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -170,7 +170,7 @@ export function MarketBaseStyles() {
         display: grid;
         gap: 6px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(255, 255, 255, .74);
         padding: 12px;
         min-width: 0;
@@ -193,7 +193,7 @@ export function MarketBaseStyles() {
         display: grid;
         gap: 4px;
         border: 1px solid rgba(148, 163, 184, .18);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: rgba(15, 23, 42, .035);
         padding: 12px;
       }
@@ -260,7 +260,7 @@ export function MarketBaseStyles() {
         gap: 14px;
         align-items: center;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .08)), var(--sfm-card);
         padding: clamp(15px, 2vw, 20px);
         box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
@@ -270,7 +270,7 @@ export function MarketBaseStyles() {
       .technical-dashboard-icon {
         width: 54px;
         height: 54px;
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -351,7 +351,7 @@ export function MarketBaseStyles() {
         align-content: center;
         gap: 5px;
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: var(--sfm-light-card);
         padding: 12px 14px;
         min-width: 0;
@@ -416,7 +416,7 @@ export function MarketBaseStyles() {
       .technical-education-card,
       .technical-tab-disclaimer {
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 26px;
+        border-radius: var(--r-2xl);
         background: var(--sfm-card);
         box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
         padding: clamp(15px, 2vw, 20px);
@@ -457,7 +457,7 @@ export function MarketBaseStyles() {
       .technical-range-head > span {
         width: 40px;
         height: 40px;
-        border-radius: 16px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         background: rgba(47, 214, 192, .12);
@@ -469,7 +469,7 @@ export function MarketBaseStyles() {
       .technical-range-track {
         position: relative;
         height: 92px;
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         background: linear-gradient(90deg, rgba(34, 197, 94, .08), rgba(29, 140, 255, .08), rgba(239, 68, 68, .08));
         border: 1px solid rgba(148, 163, 184, .16);
         overflow: visible;
@@ -573,7 +573,7 @@ export function MarketBaseStyles() {
       .technical-tab-disclaimer > svg {
         width: 38px;
         height: 38px;
-        border-radius: 15px;
+        border-radius: var(--r-lg);
         display: grid;
         place-items: center;
         background: rgba(29, 140, 255, .10);
@@ -597,7 +597,7 @@ export function MarketBaseStyles() {
         align-items: start;
         gap: 9px;
         border: 1px solid rgba(167, 243, 240, .14);
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         background: var(--sfm-light-card);
         padding: 11px;
         min-width: 0;
@@ -684,7 +684,7 @@ export function MarketBaseStyles() {
       .portfolio-card-title > span {
         width: 58px;
         height: 58px;
-        border-radius: 22px;
+        border-radius: var(--r-2xl);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
@@ -753,7 +753,7 @@ export function MarketBaseStyles() {
         gap: 11px;
         border: 1px solid rgba(47, 214, 192, .18);
         background: rgba(47, 214, 192, .08);
-        border-radius: 20px;
+        border-radius: var(--r-xl);
         padding: 13px 14px;
         color: var(--sfm-primary-hover);
       }
@@ -783,7 +783,7 @@ export function MarketBaseStyles() {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 24px;
+        border-radius: var(--r-2xl);
         overflow: hidden;
         background: rgba(255, 255, 255, .45);
       }
@@ -812,7 +812,7 @@ export function MarketBaseStyles() {
       .portfolio-metric-icon {
         width: 44px;
         height: 44px;
-        border-radius: 18px;
+        border-radius: var(--r-xl);
         display: grid;
         place-items: center;
         color: var(--sfm-primary-hover);
@@ -964,7 +964,7 @@ export function MarketBaseStyles() {
         .technical-dashboard-icon {
           width: 48px;
           height: 48px;
-          border-radius: 19px;
+          border-radius: var(--r-xl);
         }
 
         .technical-refresh-button {
@@ -1014,7 +1014,7 @@ export function MarketBaseStyles() {
 
         .technical-analysis-panel {
           padding: 14px !important;
-          border-radius: 24px !important;
+          border-radius: var(--r-2xl) !important;
         }
 
         .technical-selected-summary {

@@ -449,7 +449,7 @@ export default function TasksCenterPage() {
           gap: 10px;
           min-width: 0;
           padding: 12px 14px;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           border: 1px solid rgba(245, 158, 11, .25);
           background: rgba(245, 158, 11, .10);
           color: #92400E;
@@ -474,7 +474,7 @@ export default function TasksCenterPage() {
           width: fit-content;
           min-height: 34px;
           border: 1px solid rgba(245, 158, 11, .28);
-          border-radius: 12px;
+          border-radius: var(--r-md);
           background: #FFFFFF;
           color: #92400E;
           padding: 0 12px;
@@ -492,7 +492,7 @@ export default function TasksCenterPage() {
           align-items: center;
           gap: 10px;
           border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: #FFFFFF;
           color: var(--sfm-primary);
           padding: 0 14px;
@@ -581,7 +581,7 @@ function TaskMetric({
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: 14px;
+          border-radius: var(--r-md);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }
@@ -690,7 +690,7 @@ function TaskCard({
           height: 46px;
           display: grid;
           place-items: center;
-          border-radius: 16px;
+          border-radius: var(--r-lg);
           background: rgba(29, 140, 255, .10);
           color: var(--sfm-primary);
         }
@@ -760,7 +760,7 @@ function TaskCard({
           align-items: center;
           justify-content: center;
           gap: 7px;
-          border-radius: 12px;
+          border-radius: var(--r-md);
           border: 1px solid rgba(29, 140, 255, .18);
           background: #FFFFFF;
           color: var(--sfm-primary-dark);
