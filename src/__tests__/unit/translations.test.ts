@@ -39,7 +39,7 @@ describe('translation function t()', () => {
 
   it('investment_offers_ domain has arabic text for all keys', () => {
     const keys = Object.keys(TR).filter(k => k.startsWith('investment_offers_'));
-    expect(keys.length).toBe(41);
+    expect(keys.length).toBeGreaterThanOrEqual(41);
     for (const key of keys) {
       expect(TR[key].ar, `Missing Arabic for key: ${key}`).toBeTruthy();
     }

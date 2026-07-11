@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type KeyboardEvent,
+} from 'react';
 
 export type PageTabItem = {
   id: string;
@@ -9,26 +17,71 @@ export type PageTabItem = {
   disabled?: boolean;
 };
 
-type PageTabsProps = {
+export type PageTabsActivationMode = 'automatic' | 'manual';
+export type PageTabsMobileMode = 'scroll' | 'select' | 'auto';
+
+export type PageTabsProps = {
   tabs: PageTabItem[];
   active: string;
   onChange: (id: string) => void;
   ariaLabel: string;
   className?: string;
+  idBase?: string;
+  sticky?: boolean;
+  activationMode?: PageTabsActivationMode;
+  mobileMode?: PageTabsMobileMode;
 };
 
-export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: PageTabsProps) {
+function safeIdPart(value: string) {
+  return value.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'tab';
+}
+
+export function pageTabTriggerId(idBase: string, value: string) {
+  return `${safeIdPart(idBase)}-tab-${safeIdPart(value)}`;
+}
+
+export function pageTabPanelId(idBase: string, value: string) {
+  return `${safeIdPart(idBase)}-panel-${safeIdPart(value)}`;
+}
+
+const AUTO_SELECT_TAB_THRESHOLD = 6;
+
+export function PageTabs({
+  tabs,
+  active,
+  onChange,
+  ariaLabel,
+  className = '',
+  idBase,
+  sticky = false,
+  activationMode = 'automatic',
+  mobileMode = 'scroll',
+}: PageTabsProps) {
+  const generatedId = useId();
+  const resolvedIdBase = useMemo(
+    () => safeIdPart(idBase || `page-tabs-${generatedId}`),
+    [generatedId, idBase],
+  );
   const scrollerRef = useRef<HTMLElement | null>(null);
   const leadSentinelRef = useRef<HTMLSpanElement | null>(null);
   const trailSentinelRef = useRef<HTMLSpanElement | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
   const [hasHiddenLead, setHasHiddenLead] = useState(false);
   const [hasHiddenTrail, setHasHiddenTrail] = useState(false);
+  const [focusedTabId, setFocusedTabId] = useState<string | null>(null);
+  const enabledTabs = tabs.filter(tab => !tab.disabled);
+  const preferredRovingTabId = activationMode === 'manual' ? focusedTabId : active;
+  const rovingTabId = enabledTabs.some(tab => tab.id === preferredRovingTabId)
+    ? preferredRovingTabId
+    : enabledTabs.some(tab => tab.id === active) ? active : enabledTabs[0]?.id;
+  const selectOnMobile = mobileMode === 'select'
+    || (mobileMode === 'auto' && tabs.length > AUTO_SELECT_TAB_THRESHOLD);
 
   useEffect(() => {
     const root = scrollerRef.current;
     const leadEl = leadSentinelRef.current;
     const trailEl = trailSentinelRef.current;
-    if (!root || !leadEl || !trailEl) return;
+    if (!root || !leadEl || !trailEl || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(
       entries => {
@@ -44,13 +97,48 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
     return () => observer.disconnect();
   }, [tabs.length]);
 
+  useEffect(() => {
+    const activeElement = tabRefs.current.get(active);
+    if (!activeElement || activeElement.getClientRects().length === 0) return;
+    activeElement.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [active, tabs.length]);
+
+  const focusTab = (tabId: string) => {
+    setFocusedTabId(tabId);
+    tabRefs.current.get(tabId)?.focus();
+    if (activationMode === 'automatic') onChange(tabId);
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, tabId: string) => {
+    if (enabledTabs.length === 0) return;
+
+    const currentIndex = enabledTabs.findIndex(tab => tab.id === tabId);
+    if (currentIndex < 0) return;
+
+    let nextIndex: number | null = null;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = enabledTabs.length - 1;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      const localDirection = event.currentTarget.closest('[dir]')?.getAttribute('dir');
+      const isRtl = localDirection === 'rtl' || (!localDirection && document.documentElement.dir === 'rtl');
+      const movesForward = event.key === 'ArrowRight' ? !isRtl : isRtl;
+      nextIndex = (currentIndex + (movesForward ? 1 : -1) + enabledTabs.length) % enabledTabs.length;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    focusTab(enabledTabs[nextIndex].id);
+  };
+
   return (
-    <div className="page-section-tabs-shell">
+    <div className={`page-section-tabs-shell${sticky ? ' sticky' : ''}${selectOnMobile ? ' mobile-select' : ''}`}>
       <nav
         ref={scrollerRef}
+        id={`${resolvedIdBase}-list`}
         className={`page-section-tabs ${className}`}
         aria-label={ariaLabel}
         role="tablist"
+        aria-orientation="horizontal"
       >
         <span ref={leadSentinelRef} className="page-section-tabs-sentinel" aria-hidden="true" />
         {tabs.map(tab => {
@@ -60,11 +148,20 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
               key={tab.id}
               type="button"
               role="tab"
+              id={pageTabTriggerId(resolvedIdBase, tab.id)}
+              aria-controls={pageTabPanelId(resolvedIdBase, tab.id)}
               className={isActive ? 'active' : ''}
               aria-selected={isActive}
               aria-disabled={tab.disabled || undefined}
               disabled={tab.disabled}
+              tabIndex={tab.id === rovingTabId ? 0 : -1}
+              ref={element => {
+                if (element) tabRefs.current.set(tab.id, element);
+                else tabRefs.current.delete(tab.id);
+              }}
               onClick={() => onChange(tab.id)}
+              onFocus={() => setFocusedTabId(tab.id)}
+              onKeyDown={event => handleTabKeyDown(event, tab.id)}
             >
               <span>{tab.label}</span>
               {typeof tab.count === 'number' && <b>{tab.count}</b>}
@@ -73,6 +170,20 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         })}
         <span ref={trailSentinelRef} className="page-section-tabs-sentinel" aria-hidden="true" />
       </nav>
+      <label className="page-section-tabs-select">
+        <span className="page-section-tabs-select-label">{ariaLabel}</span>
+        <select
+          value={active}
+          aria-label={ariaLabel}
+          onChange={event => onChange(event.target.value)}
+        >
+          {tabs.map(tab => (
+            <option key={tab.id} value={tab.id} disabled={tab.disabled}>
+              {tab.label}{typeof tab.count === 'number' ? ` (${tab.count})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
       <span className={`page-section-tabs-fade lead ${hasHiddenLead ? 'visible' : ''}`} aria-hidden="true" />
       <span className={`page-section-tabs-fade trail ${hasHiddenTrail ? 'visible' : ''}`} aria-hidden="true" />
       <style jsx>{`
@@ -81,6 +192,27 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
           width: 100%;
           max-width: 100%;
           min-width: 0;
+        }
+
+        .page-section-tabs-shell.sticky {
+          position: sticky;
+          inset-block-start: var(--sfm-sticky-subnav-offset, 0px);
+          z-index: 30;
+          padding-block: 4px;
+          background: var(--sfm-card);
+          background: color-mix(in srgb, var(--sfm-card) 94%, transparent);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+        }
+
+        .page-section-tabs-select {
+          display: none;
+        }
+
+        @media (max-width: 1024px) {
+          .page-section-tabs-shell.sticky {
+            inset-block-start: var(--sfm-sticky-subnav-offset, calc(74px + env(safe-area-inset-top)));
+          }
         }
 
         .page-section-tabs-sentinel {
@@ -270,6 +402,33 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
             flex: 0 0 max(152px, 46vw);
             white-space: normal;
           }
+
+          .page-section-tabs-shell.mobile-select .page-section-tabs,
+          .page-section-tabs-shell.mobile-select .page-section-tabs-fade {
+            display: none;
+          }
+
+          .page-section-tabs-shell.mobile-select .page-section-tabs-select {
+            display: grid;
+            gap: 6px;
+            width: 100%;
+          }
+
+          .page-section-tabs-select-label {
+            color: var(--sfm-muted-readable);
+            font: 850 12px Tajawal, Arial, sans-serif;
+          }
+
+          .page-section-tabs-select select {
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid rgba(29, 140, 255, .24);
+            border-radius: 16px;
+            background: var(--sfm-card);
+            color: var(--sfm-heading);
+            padding-inline: 14px 40px;
+            font: 850 14px Tajawal, Arial, sans-serif;
+          }
         }
         @media (max-width: 1180px) and (min-width: 721px) {
           .page-section-tabs.charity-tabs {
@@ -283,5 +442,40 @@ export function PageTabs({ tabs, active, onChange, ariaLabel, className = '' }: 
         }
       `}</style>
     </div>
+  );
+}
+
+export type PageTabPanelProps = Omit<ComponentPropsWithoutRef<'section'>, 'hidden' | 'id'> & {
+  idBase: string;
+  value: string;
+  active: boolean;
+  keepMounted?: boolean;
+};
+
+export function PageTabPanel({
+  idBase,
+  value,
+  active,
+  keepMounted = false,
+  className = '',
+  children,
+  tabIndex = 0,
+  ...props
+}: PageTabPanelProps) {
+  if (!active && !keepMounted) return null;
+
+  return (
+    <section
+      {...props}
+      id={pageTabPanelId(idBase, value)}
+      role="tabpanel"
+      aria-labelledby={pageTabTriggerId(idBase, value)}
+      data-state={active ? 'active' : 'inactive'}
+      hidden={!active}
+      tabIndex={tabIndex}
+      className={`page-tab-panel ${className}`.trim()}
+    >
+      {children}
+    </section>
   );
 }

@@ -31,7 +31,9 @@ import {
 } from 'lucide-react';
 import type { WatchlistItem } from '@/components/market-analysis/types';
 import { readLocalList, WATCHLIST_STORAGE_KEY, writeLocalList } from '@/components/market-analysis/utils';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { ComplianceCompanyMark } from '@/components/shariah-stocks/ComplianceCompanyMark';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/locale';
@@ -65,6 +67,18 @@ import type { Lang } from '@/lib/translations';
 import styles from './ShariaResearchPage.module.css';
 
 type CheckStatus = 'pass' | 'fail' | 'review' | 'unavailable';
+
+const COMPLIANCE_REPORT_TABS = [
+  'result',
+  'business-activity',
+  'financial-ratios',
+  'methodology',
+  'evidence',
+  'sources',
+  'diagnostics',
+] as const;
+
+type ComplianceReportTab = typeof COMPLIANCE_REPORT_TABS[number];
 
 type RatioView = ExportRatio & {
   id: string;
@@ -206,6 +220,15 @@ function localizeWarning(value: string, tr: ShariaResearchTranslator) {
   return tr('sharia_research_limit_missing');
 }
 
+function evidenceTitle(category: ShariaScreeningResult['evidence'][number]['category'], tr: ShariaResearchTranslator) {
+  if (category === 'identity') return tr('sharia_research_verified');
+  if (category === 'business_activity') return tr('sharia_research_detailed_evidence');
+  if (category === 'financial_value') return tr('sharia_research_calculations_title');
+  if (category === 'methodology') return tr('sharia_research_methodology_title');
+  if (category === 'conflict') return tr('sharia_research_status_conflicting_evidence');
+  return tr('sharia_research_source_news');
+}
+
 function sourceTypeLabel(sourceType: SourceType, tr: ShariaResearchTranslator) {
   if (sourceType === 'company_ir') return tr('sharia_research_source_company_ir');
   if (sourceType === 'annual_report' || sourceType === 'quarterly_report' || sourceType === 'fund_prospectus') return tr('sharia_research_source_annual');
@@ -322,6 +345,24 @@ export function ComplianceAccordion({
   );
 }
 
+function ReportPanelHeading({
+  icon,
+  title,
+  badge,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div className={styles.reportPanelHeading}>
+      <span aria-hidden="true">{icon}</span>
+      <h2>{title}</h2>
+      {badge ? <div>{badge}</div> : null}
+    </div>
+  );
+}
+
 export function ComplianceSummaryCard({
   result,
   locale,
@@ -393,11 +434,14 @@ export function ComplianceRatioCard({ ratio, locale, tr }: { ratio: RatioView; l
 
 function ComplianceEvidenceCard({ title, excerpt, source }: { title: string; excerpt: string; source: string }) {
   return (
-    <article className={styles.evidenceCard}>
-      <div><ShieldCheck size={17} /><strong>{title}</strong></div>
-      <blockquote dir="auto">{excerpt}</blockquote>
-      <small dir="auto">{source}</small>
-    </article>
+    <details className={styles.evidenceCard}>
+      <summary>
+        <ShieldCheck size={17} aria-hidden="true" />
+        <span><strong dir="auto">{title}</strong><small dir="auto">{source}</small></span>
+        <ChevronDown size={17} aria-hidden="true" />
+      </summary>
+      <div><blockquote dir="auto">{excerpt}</blockquote></div>
+    </details>
   );
 }
 
@@ -421,7 +465,12 @@ function ComplianceSourceItem({ source, excerpts, locale, tr }: { source: Report
         <div><dt>{tr('sharia_research_publication_date')}</dt><dd>{formatDate(document.publicationDate || document.filingDate || document.retrievalDate, locale) || tr('sharia_research_unavailable_value')}</dd></div>
         <div><dt>{tr('sharia_research_extracted_information')}</dt><dd>{sourceInformation(document.sourceType, tr)}</dd></div>
       </dl>
-      {excerpts[0] ? <blockquote className={styles.sourceExcerpt} dir="auto">{excerpts[0]}</blockquote> : null}
+      {excerpts[0] ? (
+        <details className={styles.sourceExcerptDisclosure}>
+          <summary>{tr('sharia_research_detailed_evidence')}<ChevronDown size={16} aria-hidden="true" /></summary>
+          <blockquote className={styles.sourceExcerpt} dir="auto">{excerpts[0]}</blockquote>
+        </details>
+      ) : null}
       <a className={styles.externalSourceLink} href={document.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${tr('sharia_research_open_source')}: ${document.publisher || document.sourceTitle}`}>
         <ExternalLink size={16} />{tr('sharia_research_open_source')}
       </a>
@@ -488,6 +537,7 @@ export function ComplianceReportActions({
   sources,
   conclusion,
   limitations,
+  onPrint,
   onRefresh,
   onReset,
 }: {
@@ -498,6 +548,7 @@ export function ComplianceReportActions({
   sources: ReportSource[];
   conclusion: string;
   limitations: string;
+  onPrint: () => void;
   onRefresh: () => void;
   onReset: () => void;
 }) {
@@ -573,7 +624,7 @@ export function ComplianceReportActions({
     <section className={styles.reportActions} aria-label={tr('sharia_research_report_title')}>
       <div className={styles.primaryActions}>
         <button type="button" onClick={downloadPdf} title={tr('sharia_research_pdf_help')}><Download size={17} />{tr('sharia_research_download_pdf')}</button>
-        <button type="button" onClick={() => window.print()}><Printer size={17} />{tr('sharia_research_print')}</button>
+        <button type="button" onClick={onPrint}><Printer size={17} />{tr('sharia_research_print')}</button>
         <button type="button" onClick={share}><Share2 size={17} />{tr('sharia_research_share')}</button>
         <button type="button" onClick={copyLink}><Copy size={17} />{tr('sharia_research_copy_link')}</button>
         <button type="button" onClick={saveWatchlist} disabled={saved}><Star size={17} />{saved ? tr('sharia_research_saved_watchlist') : tr('sharia_research_save_watchlist')}</button>
@@ -588,11 +639,25 @@ export function ComplianceReportActions({
 }
 
 export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, partialFailureCount, onRefresh, onReset }: ComplianceAnalysisReportProps) {
-  const [openSections, setOpenSections] = useState<Set<ReportSectionId>>(() => new Set(['quick', 'ratios']));
+  const [activeReportTab, setActiveReportTab] = useUrlTabState<ComplianceReportTab>({
+    param: 'reportTab',
+    values: COMPLIANCE_REPORT_TABS,
+    defaultValue: 'result',
+    omitDefault: true,
+  });
+  const [openSections, setOpenSections] = useState<Set<ReportSectionId>>(() => new Set());
+  const [printAllTabs, setPrintAllTabs] = useState(false);
   const ratios = useMemo(() => buildRatioViews(result, locale, tr), [locale, result, tr]);
   const counts = useMemo(() => screeningCounts(result), [result]);
   const groupedSources = useMemo(() => groupReportSources([...result.documents, ...result.relatedNews]), [result]);
   const flatSources = useMemo(() => SOURCE_CATEGORY_ORDER.flatMap(category => groupedSources[category]), [groupedSources]);
+  const reportEvidence = useMemo(() => {
+    const combined = [
+      ...result.evidence,
+      ...result.businessScreen.detectedActivities.flatMap(activity => activity.evidence),
+    ];
+    return Array.from(new Map(combined.map(item => [item.id, item] as const)).values());
+  }, [result.businessScreen.detectedActivities, result.evidence]);
   const conclusion = tr(classificationExplanationKey(result.classification));
   const limitations = dataLimitations(result, tr, partialFailureCount);
   const primaryReason = mainReason(result, ratios, tr);
@@ -606,6 +671,16 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
   const businessStatus = result.businessScreen.status;
   const primaryActivity = result.security.industry || result.security.sector || tr('sharia_research_unavailable_value');
   const suspectedActivities = result.businessScreen.detectedActivities.map(activity => ACTIVITY_KEYS[activity.category] ? tr(ACTIVITY_KEYS[activity.category]) : tr('sharia_research_source_other'));
+  const qualityIssueCount = partialFailureCount + result.conflicts.length + result.unavailableChecks.length + result.warnings.length;
+  const reportTabs = useMemo(() => [
+    { id: 'result', label: tr('sharia_research_tab_result') },
+    { id: 'business-activity', label: tr('sharia_research_tab_business_activity') },
+    { id: 'financial-ratios', label: tr('sharia_research_tab_financial_ratios'), count: ratios.length },
+    { id: 'methodology', label: tr('sharia_research_tab_methodology') },
+    { id: 'evidence', label: tr('sharia_research_tab_evidence'), count: reportEvidence.length },
+    { id: 'sources', label: tr('sharia_research_tab_sources'), count: flatSources.length },
+    { id: 'diagnostics', label: tr('sharia_research_tab_diagnostics'), count: qualityIssueCount },
+  ], [flatSources.length, qualityIssueCount, ratios.length, reportEvidence.length, tr]);
 
   const setSection = (section: ReportSectionId, open: boolean) => {
     setOpenSections(previous => {
@@ -618,7 +693,14 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
   const collapseAll = () => setOpenSections(new Set());
   const showFullDetails = () => {
     expandAll();
-    window.requestAnimationFrame(() => document.getElementById('compliance-full-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    setActiveReportTab('business-activity');
+  };
+  const printReport = () => {
+    setPrintAllTabs(true);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      window.print();
+      setPrintAllTabs(false);
+    }));
   };
 
   const calculationName = (field: string) => {
@@ -633,20 +715,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
   return (
     <div className={styles.report} data-compliance-report="true">
       <ComplianceSummaryCard result={result} locale={locale} tr={tr} />
-      <div className={styles.quickSection}>
-        <ComplianceAccordion id="quick-decision" title={tr('sharia_research_quick_title')} icon={<ListChecks size={19} />} open={openSections.has('quick')} onToggle={() => setSection('quick', !openSections.has('quick'))}>
-          <div className={styles.quickDecision}>
-            <div className={styles.mainReason}><span>{tr('sharia_research_main_reason')}</span><strong>{primaryReason}</strong></div>
-            <div className={styles.decisionCounts}>
-              <div data-count-status="pass"><CheckCircle2 size={17} /><span>{tr('sharia_research_passed')}</span><strong>{formatNumber(counts.passed, locale)}</strong></div>
-              <div data-count-status="fail"><XCircle size={17} /><span>{tr('sharia_research_failed')}</span><strong>{formatNumber(counts.failed, locale)}</strong></div>
-              <div data-count-status="unavailable"><CircleDashed size={17} /><span>{tr('sharia_research_unavailable')}</span><strong>{formatNumber(counts.unavailable, locale)}</strong></div>
-            </div>
-            {warning ? <p className={styles.mainWarning}><AlertTriangle size={17} /><span><b>{tr('sharia_research_main_warning')}:</b> {warning}</span></p> : null}
-            <button type="button" className={styles.viewDetailsButton} onClick={showFullDetails}>{tr('sharia_research_view_details')}<ChevronDown size={17} /></button>
-          </div>
-        </ComplianceAccordion>
-      </div>
+      {warning ? <p className={`${styles.mainWarning} ${styles.reportCriticalWarning}`} role="alert"><AlertTriangle size={17} /><span><b>{tr('sharia_research_main_warning')}:</b> {warning}</span></p> : null}
       <ComplianceReportActions
         result={result}
         locale={locale}
@@ -655,35 +724,62 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         sources={flatSources}
         conclusion={conclusion}
         limitations={limitations}
+        onPrint={printReport}
         onRefresh={onRefresh}
         onReset={onReset}
       />
 
-      <div className={styles.accordionControls} aria-label={tr('sharia_research_view_details')}>
-        <button type="button" onClick={expandAll}><Check size={16} />{tr('sharia_research_expand_all')}</button>
-        <button type="button" onClick={collapseAll}><ChevronDown size={16} />{tr('sharia_research_collapse_all')}</button>
+      <div className={styles.reportTabsShell}>
+        <PageTabs
+          idBase="compliance-report"
+          tabs={reportTabs}
+          active={activeReportTab}
+          onChange={tab => setActiveReportTab(tab as ComplianceReportTab)}
+          ariaLabel={tr('sharia_research_report_tabs_aria')}
+          className={styles.reportTabs}
+          mobileMode="auto"
+        />
+        <div className={styles.accordionControls} aria-label={tr('sharia_research_view_details')}>
+          <button type="button" onClick={expandAll}><Check size={16} />{tr('sharia_research_expand_all')}</button>
+          <button type="button" onClick={collapseAll}><ChevronDown size={16} />{tr('sharia_research_collapse_all')}</button>
+        </div>
       </div>
 
-      <div id="compliance-full-details" className={styles.reportSections}>
-        <ComplianceAccordion id="financial-ratios" title={tr('sharia_research_ratios_title')} icon={<FileCheck2 size={19} />} open={openSections.has('ratios')} onToggle={() => setSection('ratios', !openSections.has('ratios'))} badge={<span>{formatNumber(ratios.length, locale)}</span>}>
-          <div className={styles.ratioGrid}>{ratios.map(ratio => <ComplianceRatioCard key={ratio.id} ratio={ratio} locale={locale} tr={tr} />)}</div>
-        </ComplianceAccordion>
-
-        <ComplianceAccordion id="business-activity" title={tr('sharia_research_business_title')} icon={<Building2 size={19} />} open={openSections.has('business')} onToggle={() => setSection('business', !openSections.has('business'))} badge={<ComplianceStatusBadge status={businessStatus} tr={tr} />} summary={primaryActivity}>
-          <div className={styles.businessGrid}>
-            <dl className={styles.businessFacts}>
-              <div><dt>{tr('sharia_research_primary_activity')}</dt><dd dir="auto">{primaryActivity}</dd></div>
-              <div><dt>{tr('sharia_research_activity_permissible')}</dt><dd><ComplianceStatusBadge status={businessStatus} tr={tr} /></dd></div>
-              <div><dt>{tr('sharia_research_revenue_exposure')}</dt><dd dir="ltr">{result.businessScreen.prohibitedRevenueRatio === null ? '—' : formatPercent(result.businessScreen.prohibitedRevenueRatio, locale, { maximumFractionDigits: 2 })}</dd></div>
-              <div><dt>{tr('sharia_research_suspected_activities')}</dt><dd>{suspectedActivities.length ? suspectedActivities.join(' · ') : tr('sharia_research_no_suspected_activities')}</dd></div>
-            </dl>
-            <div className={styles.businessExplanation}><strong>{tr('sharia_research_business_explanation')}</strong><p>{localizedBusinessReason(result.businessScreen, result.classification, tr)}</p></div>
+      <PageTabPanel idBase="compliance-report" value="result" active={activeReportTab === 'result'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<ListChecks size={20} />} title={tr('sharia_research_tab_result')} />
+        <div className={styles.quickDecision}>
+          <div className={styles.mainReason}><span>{tr('sharia_research_main_reason')}</span><strong>{primaryReason}</strong></div>
+          <div className={styles.decisionCounts}>
+            <div data-count-status="pass"><CheckCircle2 size={17} /><span>{tr('sharia_research_passed')}</span><strong>{formatNumber(counts.passed, locale)}</strong></div>
+            <div data-count-status="fail"><XCircle size={17} /><span>{tr('sharia_research_failed')}</span><strong>{formatNumber(counts.failed, locale)}</strong></div>
+            <div data-count-status="unavailable"><CircleDashed size={17} /><span>{tr('sharia_research_unavailable')}</span><strong>{formatNumber(counts.unavailable, locale)}</strong></div>
           </div>
-          {result.businessScreen.detectedActivities.some(activity => activity.evidence.length > 0) ? (
-            <section className={styles.businessEvidence}><h3>{tr('sharia_research_detailed_evidence')}</h3><div>{result.businessScreen.detectedActivities.flatMap(activity => activity.evidence.slice(0, 2).map(evidence => <ComplianceEvidenceCard key={evidence.id} title={ACTIVITY_KEYS[activity.category] ? tr(ACTIVITY_KEYS[activity.category]) : tr('sharia_research_suspected_activities')} excerpt={evidence.excerpt} source={evidence.publisher || evidence.sourceTitle} />))}</div></section>
-          ) : null}
-        </ComplianceAccordion>
+          <button type="button" className={styles.viewDetailsButton} onClick={showFullDetails}>{tr('sharia_research_view_details')}<ChevronDown size={17} /></button>
+        </div>
+        <div className={styles.resultDetailGrid}>
+          <div><span>{tr('sharia_research_reasons')}</span><ul>{mainReasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
+          <div><span>{tr('sharia_research_limitations')}</span><p>{limitations}</p></div>
+          <div><span>{tr('sharia_research_next_step')}</span><p>{nextStep(result, tr)}</p></div>
+        </div>
+      </PageTabPanel>
 
+      <PageTabPanel idBase="compliance-report" value="business-activity" active={activeReportTab === 'business-activity'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<Building2 size={20} />} title={tr('sharia_research_tab_business_activity')} badge={<ComplianceStatusBadge status={businessStatus} tr={tr} />} />
+        <div className={styles.businessGrid}>
+          <dl className={styles.businessFacts}>
+            <div><dt>{tr('sharia_research_primary_activity')}</dt><dd dir="auto">{primaryActivity}</dd></div>
+            <div><dt>{tr('sharia_research_activity_permissible')}</dt><dd><ComplianceStatusBadge status={businessStatus} tr={tr} /></dd></div>
+            <div><dt>{tr('sharia_research_revenue_exposure')}</dt><dd dir="ltr">{result.businessScreen.prohibitedRevenueRatio === null ? '—' : formatPercent(result.businessScreen.prohibitedRevenueRatio, locale, { maximumFractionDigits: 2 })}</dd></div>
+            <div><dt>{tr('sharia_research_suspected_activities')}</dt><dd>{suspectedActivities.length ? suspectedActivities.join(' · ') : tr('sharia_research_no_suspected_activities')}</dd></div>
+          </dl>
+          <div className={styles.businessExplanation}><strong>{tr('sharia_research_business_explanation')}</strong><p>{localizedBusinessReason(result.businessScreen, result.classification, tr)}</p></div>
+        </div>
+        {reportEvidence.length > 0 ? <button type="button" className={styles.viewDetailsButton} onClick={() => setActiveReportTab('evidence')}>{tr('sharia_research_detailed_evidence')}<ChevronDown size={17} /></button> : null}
+      </PageTabPanel>
+
+      <PageTabPanel idBase="compliance-report" value="financial-ratios" active={activeReportTab === 'financial-ratios'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<FileCheck2 size={20} />} title={tr('sharia_research_tab_financial_ratios')} badge={<span className={styles.panelCount}>{formatNumber(ratios.length, locale)}</span>} />
+        <div className={styles.ratioGrid}>{ratios.map(ratio => <ComplianceRatioCard key={ratio.id} ratio={ratio} locale={locale} tr={tr} />)}</div>
         <ComplianceAccordion id="screening-calculations" title={tr('sharia_research_calculations_title')} icon={<Clipboard size={19} />} open={openSections.has('calculations')} onToggle={() => setSection('calculations', !openSections.has('calculations'))}>
           <div className={styles.calculationList}>{ratios.map(ratio => (
             <article key={ratio.id} className={styles.calculationCard}>
@@ -697,53 +793,61 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
             </article>
           ))}</div>
         </ComplianceAccordion>
+      </PageTabPanel>
 
-        <ComplianceAccordion id="source-evidence" title={tr('sharia_research_sources_title')} icon={<Link2 size={19} />} open={openSections.has('sources')} onToggle={() => setSection('sources', !openSections.has('sources'))} badge={<span>{tr('sharia_research_sources_count', { count: flatSources.length })}</span>}>
-          <ComplianceSourcesList result={result} locale={locale} tr={tr} />
-        </ComplianceAccordion>
-
-        <ComplianceAccordion id="methodology" title={tr('sharia_research_methodology_title')} icon={<BookOpenCheck size={19} />} open={openSections.has('methodology')} onToggle={() => setSection('methodology', !openSections.has('methodology'))} summary={locale === 'ar' ? result.methodology.nameAr : locale === 'fr' ? result.methodology.nameFr : result.methodology.name}>
-          <div className={styles.methodologyCard}>
-            <dl>
-              <div><dt>{tr('sharia_research_methodology')}</dt><dd>{locale === 'ar' ? result.methodology.nameAr : locale === 'fr' ? result.methodology.nameFr : result.methodology.name}</dd></div>
-              <div><dt>{tr('sharia_research_methodology_version')}</dt><dd dir="ltr">{result.methodology.version}</dd></div>
-              <div><dt>{tr('sharia_research_methodology_freshness')}</dt><dd>{tr('sharia_research_months', { count: result.methodology.freshnessMonths })}</dd></div>
-            </dl>
-            <p>{tr('sharia_research_methodology_denominator')}</p>
-            <p>{tr('sharia_research_methodology_purification')}</p>
-            <a href={result.methodology.sourceDocument.url} target="_blank" rel="noreferrer"><ExternalLink size={16} /><span>{result.methodology.sourceDocument.publisher} · {result.methodology.sourceDocument.title}</span></a>
-          </div>
-        </ComplianceAccordion>
-
+      <PageTabPanel idBase="compliance-report" value="methodology" active={activeReportTab === 'methodology'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<BookOpenCheck size={20} />} title={tr('sharia_research_tab_methodology')} />
+        <div className={styles.methodologyCard}>
+          <dl>
+            <div><dt>{tr('sharia_research_methodology')}</dt><dd>{locale === 'ar' ? result.methodology.nameAr : locale === 'fr' ? result.methodology.nameFr : result.methodology.name}</dd></div>
+            <div><dt>{tr('sharia_research_methodology_version')}</dt><dd dir="ltr">{result.methodology.version}</dd></div>
+            <div><dt>{tr('sharia_research_methodology_freshness')}</dt><dd>{tr('sharia_research_months', { count: result.methodology.freshnessMonths })}</dd></div>
+          </dl>
+          <p>{tr('sharia_research_methodology_denominator')}</p>
+          <p>{tr('sharia_research_methodology_purification')}</p>
+          <a href={result.methodology.sourceDocument.url} target="_blank" rel="noreferrer"><ExternalLink size={16} /><span>{result.methodology.sourceDocument.publisher} · {result.methodology.sourceDocument.title}</span></a>
+        </div>
         <ComplianceAccordion id="references" title={tr('sharia_research_references_title')} icon={<Scale size={19} />} open={openSections.has('references')} onToggle={() => setSection('references', !openSections.has('references'))}>
           <div className={styles.referenceCard}><p>{tr('sharia_research_references_body')}</p><p>{tr('sharia_research_disclaimer')}</p></div>
         </ComplianceAccordion>
+      </PageTabPanel>
+
+      <PageTabPanel idBase="compliance-report" value="evidence" active={activeReportTab === 'evidence'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<ShieldCheck size={20} />} title={tr('sharia_research_tab_evidence')} badge={<span className={styles.panelCount}>{formatNumber(reportEvidence.length, locale)}</span>} />
+        {reportEvidence.length > 0 ? (
+          <div className={styles.evidenceGrid}>
+            {reportEvidence.map(evidence => <ComplianceEvidenceCard key={evidence.id} title={evidenceTitle(evidence.category, tr)} excerpt={evidence.excerpt} source={evidence.publisher || evidence.sourceTitle} />)}
+          </div>
+        ) : <p className={styles.panelEmptyState}>{tr('sharia_research_evidence_empty')}</p>}
+      </PageTabPanel>
+
+      <PageTabPanel idBase="compliance-report" value="sources" active={activeReportTab === 'sources'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<Link2 size={20} />} title={tr('sharia_research_tab_sources')} badge={<span className={styles.panelCount}>{formatNumber(flatSources.length, locale)}</span>} />
+        <ComplianceSourcesList result={result} locale={locale} tr={tr} />
+      </PageTabPanel>
+
+      <PageTabPanel idBase="compliance-report" value="diagnostics" active={activeReportTab === 'diagnostics'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+        <ReportPanelHeading icon={<Database size={20} />} title={tr('sharia_research_tab_diagnostics')} badge={<span className={styles.panelCount}>{formatNumber(qualityIssueCount, locale)}</span>} />
+        <div className={styles.diagnosticsSummary}>
+          <div><span>{tr('sharia_research_sources_title')}</span><strong>{formatNumber(flatSources.length, locale)}</strong></div>
+          <div><span>{tr('sharia_research_partial_failures')}</span><strong>{formatNumber(partialFailureCount, locale)}</strong></div>
+          <div><span>{tr('sharia_research_unavailable')}</span><strong>{formatNumber(result.unavailableChecks.length, locale)}</strong></div>
+          <div><span>{tr('sharia_research_diagnostic_conflicts')}</span><strong>{formatNumber(result.conflicts.length, locale)}</strong></div>
+        </div>
 
         {sourceStatus.length > 0 ? <ComplianceAccordion id="provider-details" title={tr('sharia_research_provider_status')} icon={<Database size={19} />} open={openSections.has('providers')} onToggle={() => setSection('providers', !openSections.has('providers'))}>
           <div className={styles.providerGrid}>{sourceStatus.map(status => <div key={status.id} className={styles.providerRow}>{status.enabled ? <CheckCircle2 size={16} /> : <CircleDashed size={16} />}<span>{providerLabel(status, tr)}</span><b>{status.enabled ? tr('sharia_research_provider_enabled') : tr('sharia_research_provider_disabled')}</b>{!status.enabled ? <small>{tr('sharia_research_provider_setup')}</small> : null}</div>)}</div>
         </ComplianceAccordion> : null}
 
-        {(result.warnings.length > 0 || result.unavailableChecks.length > 0 || result.conflicts.length > 0 || partialFailureCount > 0) ? <ComplianceAccordion id="quality-notes" title={tr('sharia_research_quality_title')} icon={<ShieldAlert size={19} />} open={openSections.has('quality')} onToggle={() => setSection('quality', !openSections.has('quality'))}>
+        {qualityIssueCount > 0 ? <ComplianceAccordion id="quality-notes" title={tr('sharia_research_quality_title')} icon={<ShieldAlert size={19} />} open={openSections.has('quality')} onToggle={() => setSection('quality', !openSections.has('quality'))}>
           <ul className={styles.qualityList}>
             {partialFailureCount > 0 ? <li>{tr('sharia_research_partial_failures')} ({formatNumber(partialFailureCount, locale)}). {tr('sharia_research_partial_failure_body')}</li> : null}
             {result.conflicts.length > 0 ? <li>{tr('sharia_research_limit_conflict')}</li> : null}
             {result.unavailableChecks.length > 0 ? <li>{tr('sharia_research_limit_missing')}</li> : null}
             {result.warnings.map((item, index) => <li key={`${index}-${item.slice(0, 20)}`}>{localizeWarning(item, tr)}</li>)}
           </ul>
-        </ComplianceAccordion> : null}
-      </div>
-
-      <section className={`${styles.finalVerdict} ${styles[`tone_${classificationTone(result.classification)}`]}`}>
-        <div className={styles.finalVerdictHeader}><div><span>{tr('sharia_research_final_title')}</span><h2><StatusIcon status={classificationTone(result.classification)} size={23} />{tr(classificationTranslationKey(result.classification))}</h2></div><strong>{formatPercent(result.confidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
-        <div className={styles.finalVerdictGrid}>
-          <div><span>{tr('sharia_research_conclusion')}</span><p>{conclusion}</p></div>
-          <div><span>{tr('sharia_research_classification_confidence')}</span><p>{formatPercent(result.classificationConfidence / 100, locale, { maximumFractionDigits: 0 })}</p></div>
-          <div><span>{tr('sharia_research_reasons')}</span><ul>{mainReasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
-          <div><span>{tr('sharia_research_limitations')}</span><p>{limitations}</p></div>
-          <div><span>{tr('sharia_research_next_step')}</span><p>{nextStep(result, tr)}</p></div>
-        </div>
-        <div className={styles.finalDisclaimer}><ShieldAlert size={17} /><p>{tr('sharia_research_disclaimer')}</p></div>
-      </section>
+        </ComplianceAccordion> : <p className={styles.diagnosticsClear}><CheckCircle2 size={17} />{tr('sharia_research_diagnostics_clear')}</p>}
+      </PageTabPanel>
     </div>
   );
 }

@@ -8,12 +8,13 @@ import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieC
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { EmptyState } from '@/components/invest/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
 import { formatMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -70,7 +71,9 @@ const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 const LIVE_PRICE_REFRESH_MS = 3000;
 const LIVE_PRICE_BATCH_CONCURRENCY = 4;
-type InvestTab = 'portfolio' | 'assets' | 'performance' | 'risk' | 'reports';
+const INVEST_TAB_IDS = ['portfolio', 'assets', 'performance', 'risk', 'reports'] as const;
+type InvestTab = typeof INVEST_TAB_IDS[number];
+const INVEST_TABS_ID = 'investment-workspace';
 type PortfolioLiveTrend = {
   direction: 'up' | 'down' | 'flat';
   delta: number;
@@ -250,7 +253,12 @@ export default function InvestPage() {
   const [refreshingAllPrices, setRefreshingAllPrices] = useState(false);
   const [priceRefreshStatuses, setPriceRefreshStatuses] = useState<Record<string, InvestmentPriceRefreshStatus>>({});
   const [toast, setToast] = useState('');
-  const [activeTab, setActiveTab] = useState<InvestTab>('portfolio');
+  const [activeTab, setActiveTab] = useUrlTabState<InvestTab>({
+    param: 'tab',
+    values: INVEST_TAB_IDS,
+    defaultValue: 'portfolio',
+    omitDefault: true,
+  });
   const [portfolioLiveTrend, setPortfolioLiveTrend] = useState<PortfolioLiveTrend | null>(null);
   const [liveRefreshState, setLiveRefreshState] = useState<'idle' | 'refreshing' | 'error'>('idle');
   const [lastLiveRefreshAt, setLastLiveRefreshAt] = useState<string | null>(null);
@@ -1077,8 +1085,12 @@ export default function InvestPage() {
               active={activeTab}
               onChange={id => setActiveTab(id as InvestTab)}
               ariaLabel={labels.heroTitle}
+              idBase={INVEST_TABS_ID}
+              sticky
+              mobileMode="scroll"
             />
 
+            <PageTabPanel idBase={INVEST_TABS_ID} value={activeTab} active>
             {activeTab === 'portfolio' && (
             <section className="invest-portfolio-grid">
             <section className="invest-panel invest-preview-panel">
@@ -1239,6 +1251,7 @@ export default function InvestPage() {
               priceRefreshStatuses={priceRefreshStatuses}
             />
             )}
+            </PageTabPanel>
           </>
         )}
 

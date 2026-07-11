@@ -217,7 +217,7 @@
 
 .report { margin-top: 14px; }
 .quickSection { margin-top: 9px; }
-.summaryHero, .reportActions, .accordion, .finalVerdict {
+.summaryHero, .reportActions, .accordion, .finalVerdict, .reportTabPanel {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--paper);
@@ -277,7 +277,27 @@
 .primaryActions button:first-child { color: #fff; border-color: var(--teal-deep); background: var(--teal-deep); }
 .secondaryActions button:first-child { color: var(--teal-deep); border-color: color-mix(in srgb, var(--teal) 28%, var(--line)); }
 .actionNotice { flex-basis: 100%; margin: 0; padding: 7px 9px; color: var(--teal-deep); border-radius: 8px; background: var(--canvas); font-size: 14px; font-weight: 750; }
-.accordionControls { display: flex; justify-content: flex-end; gap: 7px; margin-top: 10px; }
+.reportCriticalWarning { margin-top: 10px; background: color-mix(in srgb, var(--amber) 6%, var(--paper)); }
+.reportTabsShell { display: grid; gap: 8px; margin-top: 10px; }
+.reportTabs { min-height: 62px; }
+.reportTabPanel { display: grid; gap: 12px; margin-top: 10px; padding: clamp(14px, 2vw, 20px); outline: none; }
+.reportTabPanel:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 30%, transparent), 0 10px 28px rgba(12, 38, 58, .06); }
+.reportPanelHeading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.reportPanelHeading > span { width: 38px; height: 38px; display: grid; place-items: center; color: var(--teal-deep); border: 1px solid color-mix(in srgb, var(--teal) 24%, var(--line)); border-radius: 10px; background: var(--canvas); }
+.reportPanelHeading h2 { margin: 0; color: var(--ink); font-size: clamp(19px, 2vw, 23px); line-height: 1.35; }
+.reportPanelHeading > div { min-width: 0; }
+.panelCount { min-width: 32px; min-height: 30px; display: inline-grid; place-items: center; padding-inline: 8px; color: var(--teal-deep); border: 1px solid color-mix(in srgb, var(--teal) 25%, var(--line)); border-radius: 999px; background: var(--canvas); font-weight: 900; font-variant-numeric: tabular-nums; }
+.resultDetailGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.resultDetailGrid > div { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); }
+.resultDetailGrid span, .diagnosticsSummary span { display: block; color: var(--muted); font-size: 14px; font-weight: 800; }
+.resultDetailGrid p, .resultDetailGrid ul { margin: 4px 0 0; color: var(--ink); }
+.resultDetailGrid ul { padding-inline-start: 17px; }
+.panelEmptyState, .diagnosticsClear { margin: 0; padding: 18px; color: var(--muted); border: 1px dashed var(--line); border-radius: 11px; background: var(--canvas); text-align: center; font-weight: 750; }
+.diagnosticsSummary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.diagnosticsSummary > div { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); }
+.diagnosticsSummary strong { display: block; margin-top: 4px; color: var(--ink); font-size: 21px; font-variant-numeric: tabular-nums; }
+.diagnosticsClear { display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--green); }
+.accordionControls { display: flex; justify-content: flex-end; gap: 7px; margin: 0; }
 .accordionControls button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding-inline: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 9px; background: var(--paper); font-weight: 850; }
 .reportSections { display: grid; gap: 9px; margin-top: 9px; scroll-margin-top: 190px; }
 .accordion { overflow: hidden; }
@@ -334,11 +354,18 @@
 .businessEvidence { grid-column: 1 / -1; margin-top: 12px; }
 .businessEvidence h3 { margin: 0 0 8px; font-size: 15px; }
 .businessEvidence > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.evidenceCard { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
-.evidenceCard > div { display: flex; gap: 7px; align-items: center; }
-.evidenceCard svg { color: var(--teal); }
-.evidenceCard blockquote { margin: 7px 0 0; padding-inline-start: 10px; color: var(--muted); border-inline-start: 3px solid color-mix(in srgb, var(--teal) 30%, var(--line)); font-size: 14px; overflow-wrap: anywhere; }
-.evidenceCard small { display: block; margin-top: 6px; color: var(--subtle); font-size: 14px; }
+.evidenceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.evidenceCard { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.evidenceCard > summary { min-height: 58px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 11px; color: var(--ink); cursor: pointer; list-style: none; }
+.evidenceCard > summary::-webkit-details-marker { display: none; }
+.evidenceCard > summary > svg:first-child { color: var(--teal); }
+.evidenceCard > summary > svg:last-child { color: var(--muted); transition: transform .2s ease; }
+.evidenceCard[open] > summary > svg:last-child { transform: rotate(180deg); }
+.evidenceCard > summary span { display: grid; gap: 3px; min-width: 0; }
+.evidenceCard > summary strong, .evidenceCard > summary small { overflow-wrap: anywhere; }
+.evidenceCard > summary small { color: var(--subtle); font-size: 14px; }
+.evidenceCard > div { padding: 0 11px 11px; border-top: 1px solid var(--line); }
+.evidenceCard blockquote { margin: 10px 0 0; padding-inline-start: 10px; color: var(--muted); border-inline-start: 3px solid color-mix(in srgb, var(--teal) 30%, var(--line)); font-size: 14px; overflow-wrap: anywhere; }
 
 .calculationList { display: grid; gap: 8px; padding-top: 13px; }
 .calculationCard { padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
@@ -364,7 +391,12 @@
 .sourceMeta { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr); gap: 7px; margin: 9px 0 0; }
 .sourceMeta > div { padding: 8px; border-radius: 8px; background: var(--canvas); }
 .sourceMeta dd { margin: 3px 0 0; color: var(--ink); font-size: 14px; font-weight: 750; overflow-wrap: anywhere; }
-.sourceExcerpt { max-height: 92px; margin: 8px 0 0; padding: 8px 10px; overflow: hidden; color: var(--muted); border-inline-start: 3px solid color-mix(in srgb, var(--teal) 28%, var(--line)); border-radius: 7px; background: var(--canvas); font-size: 14px; overflow-wrap: anywhere; }
+.sourceExcerptDisclosure { margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); overflow: hidden; }
+.sourceExcerptDisclosure > summary { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; color: var(--teal-deep); cursor: pointer; list-style: none; font-size: 14px; font-weight: 850; }
+.sourceExcerptDisclosure > summary::-webkit-details-marker { display: none; }
+.sourceExcerptDisclosure > summary svg { flex: 0 0 auto; color: var(--muted); transition: transform .2s ease; }
+.sourceExcerptDisclosure[open] > summary svg { transform: rotate(180deg); }
+.sourceExcerpt { max-height: 150px; margin: 0; padding: 9px 10px; overflow: auto; color: var(--muted); border-top: 1px solid var(--line); border-inline-start: 3px solid color-mix(in srgb, var(--teal) 28%, var(--line)); font-size: 14px; overflow-wrap: anywhere; }
 .externalSourceLink { min-height: 44px; width: fit-content; display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding-inline: 10px; color: var(--teal-deep); border: 1px solid color-mix(in srgb, var(--teal) 24%, var(--line)); border-radius: 8px; text-decoration: none; font-weight: 900; }
 
 .methodologyCard, .referenceCard { padding-top: 13px; }
@@ -413,7 +445,8 @@
   .summaryHero { grid-template-columns: 1fr; }
   .resultExplanation, .verificationGrid, .heroDisclaimer { grid-column: auto; }
   .quickDecision, .businessGrid { grid-template-columns: 1fr; }
-  .ratioGrid, .sourceList { grid-template-columns: 1fr; }
+  .ratioGrid, .sourceList, .evidenceGrid { grid-template-columns: 1fr; }
+  .resultDetailGrid, .diagnosticsSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .calculationCard dl { grid-template-columns: 1fr; }
   .methodologyCard dl { grid-template-columns: 1fr; }
   .providerGrid { grid-template-columns: 1fr; }
@@ -455,6 +488,10 @@
   .secondaryActions { display: grid; grid-template-columns: 1fr 1fr; }
   .accordionControls { justify-content: stretch; }
   .accordionControls button { flex: 1; justify-content: center; }
+  .reportTabPanel { padding: 13px 11px; }
+  .reportPanelHeading { grid-template-columns: auto minmax(0, 1fr); }
+  .reportPanelHeading > div { grid-column: 2; }
+  .resultDetailGrid, .diagnosticsSummary { grid-template-columns: 1fr; }
   .accordionTrigger { min-height: 62px; grid-template-columns: auto minmax(0, 1fr) auto; padding-inline: 11px; }
   .accordionBadge { grid-column: 2; }
   .accordionChevron { grid-column: 3; grid-row: 1 / span 2; }
@@ -472,6 +509,9 @@
 @media (max-width: 390px) {
   .searchButton { font-size: 14px; }
   .verificationGrid, .ratioValues { grid-template-columns: 1fr; }
+  .reportPanelHeading { grid-template-columns: minmax(0, 1fr) auto; }
+  .reportPanelHeading > span { display: none; }
+  .reportPanelHeading > div { grid-column: auto; }
   .primaryActions { grid-template-columns: 1fr; }
   .primaryActions button { grid-column: auto !important; }
   .steps { grid-template-columns: 1fr; }
@@ -502,23 +542,26 @@
 :global(.dark) .stickySearch { background: color-mix(in srgb, #0b1d2b 94%, transparent); box-shadow: 0 16px 38px rgba(0, 0, 0, .28); }
 :global(.dark) .searchButton, :global(.dark) .primaryActions button:first-child { color: #06241f; background: #59d2c0; border-color: #59d2c0; }
 :global(.dark) .progressTrack, :global(.dark) .confidenceTrack, :global(.dark) .ratioTrack { background: #263d4b; }
-:global(.dark) .summaryHero, :global(.dark) .reportActions, :global(.dark) .accordion, :global(.dark) .finalVerdict, :global(.dark) .introCard, :global(.dark) .loadingState, :global(.dark) .selectionPanel, :global(.dark) .errorState, :global(.dark) .historyPanel { box-shadow: 0 12px 32px rgba(0, 0, 0, .24); }
+:global(.dark) .summaryHero, :global(.dark) .reportActions, :global(.dark) .accordion, :global(.dark) .finalVerdict, :global(.dark) .reportTabPanel, :global(.dark) .introCard, :global(.dark) .loadingState, :global(.dark) .selectionPanel, :global(.dark) .errorState, :global(.dark) .historyPanel { box-shadow: 0 12px 32px rgba(0, 0, 0, .24); }
 
 @media print {
   .page { max-width: none; padding: 0; color: #102238; font-size: 11px; overflow: visible; }
-  .stickySearch, .reportActions, .accordionControls { display: none !important; }
+  .stickySearch, .reportActions, .reportTabsShell { display: none !important; }
   .report { margin: 0; }
-  .summaryHero, .accordion, .finalVerdict { border-color: #cfdbe0; border-radius: 0; background: #fff !important; box-shadow: none; break-inside: avoid; }
+  .summaryHero, .accordion, .finalVerdict, .reportTabPanel { border-color: #cfdbe0; border-radius: 0; background: #fff !important; box-shadow: none; break-inside: avoid; }
+  .reportTabPanel, .reportTabPanel[hidden] { display: grid !important; margin-top: 6px; padding: 10px; }
   .summaryHero { padding: 14px; }
   .summaryIdentity h2 { color: #102238; font-size: 24px; }
-  .summaryIdentity h3, .resultExplanation, .verificationGrid dd, .accordionTrigger, .ratioHeader h3, .ratioValues strong, .businessFacts dd, .sourceMeta dd, .calculationCard dd, .finalVerdictHeader h2, .finalVerdictGrid p, .finalVerdictGrid ul { color: #102238 !important; }
-  .confidencePanel, .verificationGrid > div, .accordionIcon, .mainReason, .decisionCounts > div, .ratioValues > div, .businessFacts > div, .businessExplanation, .calculationCard dl > div, .sourceMeta > div, .methodologyCard dl > div, .referenceCard, .providerRow { background: #fff !important; }
+  .summaryIdentity h3, .resultExplanation, .verificationGrid dd, .accordionTrigger, .ratioHeader h3, .ratioValues strong, .businessFacts dd, .sourceMeta dd, .calculationCard dd, .finalVerdictHeader h2, .finalVerdictGrid p, .finalVerdictGrid ul, .reportPanelHeading h2, .resultDetailGrid p, .resultDetailGrid ul, .diagnosticsSummary strong { color: #102238 !important; }
+  .confidencePanel, .verificationGrid > div, .accordionIcon, .mainReason, .decisionCounts > div, .ratioValues > div, .businessFacts > div, .businessExplanation, .calculationCard dl > div, .sourceMeta > div, .methodologyCard dl > div, .referenceCard, .providerRow, .resultDetailGrid > div, .diagnosticsSummary > div { background: #fff !important; }
   .reportSections { gap: 6px; margin-top: 8px; }
   .accordionTrigger { min-height: 40px; padding: 6px 10px; pointer-events: none; }
   .accordionChevron { display: none; }
   .accordionContent, .accordionContent[hidden] { display: block !important; padding: 0 10px 10px; }
-  .ratioGrid, .sourceList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ratioGrid, .sourceList, .evidenceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ratioCard, .sourceCard, .calculationCard, .evidenceCard { background: #fff !important; break-inside: avoid; }
+  .evidenceCard > div, .sourceExcerptDisclosure > blockquote { display: block !important; }
+  .evidenceCard > summary > svg:last-child, .sourceExcerptDisclosure > summary svg { display: none; }
   .externalSourceLink { min-height: 28px; border: 0; padding: 0; }
   .sourceExcerpt { max-height: none; }
   .finalVerdict { margin-top: 8px; }

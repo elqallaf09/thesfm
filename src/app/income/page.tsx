@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, ExternalLink, FileDown, FileText, Gauge, LineChart, Paperclip, Plus, ReceiptText, Sparkles, Trash2, TrendingUp, Wallet, X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { Sidebar } from '@/components/Sidebar';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { isProjectLinkedIncomeRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
@@ -22,7 +23,9 @@ type FrequencyMode = Frequency | 'one-time';
 type CalculationMode = 'full_month' | 'prorated_current_month';
 type Lang = 'ar' | 'en' | 'fr';
 type IncomeFilter = 'all' | IncomeStatus | 'recurring' | 'one-time';
-type IncomePageTab = 'overview' | 'sources' | 'recurring' | 'analytics' | 'reports';
+const INCOME_TAB_IDS = ['overview', 'sources', 'recurring', 'analytics', 'reports'] as const;
+type IncomePageTab = typeof INCOME_TAB_IDS[number];
+const INCOME_TABS_ID = 'income-workspace';
 
 type IncomeRow = {
   id: string;
@@ -688,7 +691,12 @@ export default function IncomePage() {
   const [toast, setToast] = useState('');
   const [insightOpen, setInsightOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<IncomeFilter>('all');
-  const [activeTab, setActiveTab] = useState<IncomePageTab>('overview');
+  const [activeTab, setActiveTab] = useUrlTabState<IncomePageTab>({
+    param: 'tab',
+    values: INCOME_TAB_IDS,
+    defaultValue: 'overview',
+    omitDefault: true,
+  });
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => todayDateOnly().slice(0, 7));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -1597,8 +1605,12 @@ export default function IncomePage() {
           active={activeTab}
           onChange={id => setActiveTab(id as IncomePageTab)}
           ariaLabel={tr('title', lang)}
+          idBase={INCOME_TABS_ID}
+          sticky
+          mobileMode="scroll"
         />
 
+        <PageTabPanel idBase={INCOME_TABS_ID} value={activeTab} active>
         {activeTab === 'overview' && (
           <>
         <section className="smart-grid">
@@ -1761,6 +1773,7 @@ export default function IncomePage() {
           </div>
         </section>
         )}
+        </PageTabPanel>
       </main>
 
       {modalOpen && (

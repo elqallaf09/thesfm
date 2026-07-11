@@ -6,12 +6,13 @@ import dynamic from 'next/dynamic';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { Sidebar } from '@/components/Sidebar';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabs, pageTabPanelId, pageTabTriggerId } from '@/components/layout/PageTabs';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
 import { MarketSignalMiniBadge, MarketSignalPanel } from '@/components/market/MarketSignalPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
@@ -59,13 +60,13 @@ import {
   marketSearchMatchRank, normalizeAssetSearchResult, normalizeSearchItems,
   findExactSearchMatch, normalizeSearchItem, suggestionToMarketItem,
   normalizeErrorSuggestions, suggestionButtonLabel, normalizePublicMarketErrorCode,
+  normalizeMarketTab,
   canAnalyzeDirectNormalizedInput, hasUsableAnalysis, historyFromPricePoints,
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
   fetchMarketToolState,
   fetchJsonWithTimeout,
   type PriceHistoryResponse,
-  normalizeMarketTab,
   chartErrorText,
   delay,
   formatSavedAlertThreshold,
@@ -142,6 +143,21 @@ const NewsSentimentPanel = dynamic(
   () => import('@/components/market-analysis/NewsSentimentPanel').then(mod => mod.NewsSentimentPanel),
   { ssr: false, loading: lazyMarketPanel('Loading news and sentiment...', 3) },
 );
+
+const MARKET_ANALYSIS_TAB_IDS = [
+  'analyze',
+  'traderTools',
+  'economicCalendar',
+  'sessions',
+  'technicalAnalysis',
+  'newsSentiment',
+  'watchlist',
+  'alerts',
+  'comparison',
+  'assetReport',
+] as const satisfies readonly MarketTab[];
+
+const MARKET_ANALYSIS_TABS_ID = 'market-analysis-workspace';
 
 const PriceHistoryChart = dynamic(
   () => import('@/components/market-analysis/MarketChartComponents').then(mod => mod.PriceHistoryChart),
@@ -289,7 +305,14 @@ export default function MarketAnalysisPage() {
   const [scenarioCurrencyTouched, setScenarioCurrencyTouched] = useState(false);
   const [scenarioCurrencyOpen, setScenarioCurrencyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<MarketTab>('analyze');
+  const [activeTab, setActiveTab] = useUrlTabState<MarketTab>({
+    param: 'tab',
+    values: MARKET_ANALYSIS_TAB_IDS,
+    defaultValue: 'analyze',
+    omitDefault: true,
+    legacyValueResolver: normalizeMarketTab,
+    legacyHash: true,
+  });
   const hasAutoRunUrlAnalysisRef = useRef(false);
   const [traderToolTab, setTraderToolTab] = useState<TraderToolsSubTab>('risk');
   const activeToolRequirements = useMemo(
@@ -599,22 +622,6 @@ export default function MarketAnalysisPage() {
       }
     })();
   }, [t]);
-
-  useEffect(() => {
-    const syncTabFromRoute = () => {
-      const params = new URLSearchParams(window.location.search);
-      const routeTab = normalizeMarketTab(params.get('tab')) ?? normalizeMarketTab(window.location.hash);
-      if (routeTab) setActiveTab(routeTab);
-    };
-
-    syncTabFromRoute();
-    window.addEventListener('hashchange', syncTabFromRoute);
-    window.addEventListener('popstate', syncTabFromRoute);
-    return () => {
-      window.removeEventListener('hashchange', syncTabFromRoute);
-      window.removeEventListener('popstate', syncTabFromRoute);
-    };
-  }, []);
 
   useEffect(() => {
     if (activeTab !== 'traderTools' || traderToolTab !== 'performance' || performance.loading || performance.items.length > 0 || performance.message || performance.code) return;
@@ -977,7 +984,7 @@ export default function MarketAnalysisPage() {
       return;
     }
     void requestAnalysis(initial.symbol, initial.assetType);
-  }, [requestAnalysis]);
+  }, [requestAnalysis, setActiveTab]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -2131,7 +2138,7 @@ export default function MarketAnalysisPage() {
       search?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       search?.focus({ preventScroll: true });
     });
-  }, []);
+  }, [setActiveTab]);
   const primaryErrorSuggestion = errorSuggestions[0];
 
   return (
@@ -2328,11 +2335,14 @@ export default function MarketAnalysisPage() {
         </section>
 
         <PageTabs
+          idBase={MARKET_ANALYSIS_TABS_ID}
           tabs={marketTabs}
           active={activeTab}
           onChange={id => setActiveTab(id as MarketTab)}
           ariaLabel={t('market_title')}
           className="market-dashboard-tabs"
+          sticky
+          mobileMode="auto"
         />
 
         {notice && <div className="market-notice success" role="status">{notice}</div>}
@@ -2391,7 +2401,13 @@ export default function MarketAnalysisPage() {
           </div>
         )}
 
-        <section className="market-active-dashboard">
+        <section
+          className="market-active-dashboard"
+          id={pageTabPanelId(MARKET_ANALYSIS_TABS_ID, activeTab)}
+          role="tabpanel"
+          aria-labelledby={pageTabTriggerId(MARKET_ANALYSIS_TABS_ID, activeTab)}
+          tabIndex={0}
+        >
         {activeTab === 'analyze' && !selected && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <MarketSectionLoading label={loadingLabel} cards={4} />

@@ -197,6 +197,14 @@
     return `${API}/markets?${params.toString()}`;
   }
 
+  function diagnosticsRouteActive() {
+    const routeQuery = new URLSearchParams(location.search).get("route");
+    const pathRoute = location.pathname.replace(/^\/thesfm-trader-own\/?/, "").replace(/^\/+|\/+$/g, "");
+    const route = String(routeQuery || pathRoute || "dashboard").split("/")[0];
+    const workspaceView = new URLSearchParams(location.search).get("view") || "overview";
+    return route === "settings" && workspaceView === "capabilities";
+  }
+
   async function load() {
     if (loadingPromise) return loadingPromise;
     view.loading = true;
@@ -384,14 +392,14 @@
   }
 
   function ensureSettingsHost() {
-    const grid = document.querySelector("#terminal-content .settings-grid");
-    if (!grid) return null;
-    let host = grid.querySelector("[data-provider-market-admin-host]");
+    const panel = document.querySelector('#terminal-content [data-workspace-panel="capabilities"]');
+    if (!panel) return null;
+    let host = panel.querySelector("[data-provider-market-admin-host]");
     if (!host) {
       host = document.createElement("article");
       host.className = "panel provider-market-admin-panel";
       host.dataset.providerMarketAdminHost = "true";
-      grid.appendChild(host);
+      panel.appendChild(host);
     }
     return host;
   }
@@ -399,12 +407,12 @@
   function renderAll() {
     rendering = true;
     const marketsHost = findProviderMarketsPanel();
-    if (marketsHost) {
+    if (marketsHost && diagnosticsRouteActive()) {
       marketsHost.dataset.providerMarketsSummary = "true";
       marketsHost.innerHTML = marketsSummaryPanel();
     }
     const settingsHost = ensureSettingsHost();
-    if (settingsHost) settingsHost.innerHTML = diagnosticsPanel();
+    if (settingsHost) settingsHost.innerHTML = diagnosticsRouteActive() ? diagnosticsPanel() : "";
     queueMicrotask(() => { rendering = false; });
   }
 
@@ -467,11 +475,19 @@
 
   function boot() {
     bind();
+    const activate = () => {
+      if (diagnosticsRouteActive() && !view.payload && !loadingPromise) load();
+      scheduleRender();
+    };
+    window.addEventListener("sfm:workspace-change", activate);
+    window.addEventListener("popstate", () => queueMicrotask(activate));
     const observer = new MutationObserver(() => {
-      if (!rendering) scheduleRender();
+      if (rendering) return;
+      if (diagnosticsRouteActive() && !view.payload && !loadingPromise) load();
+      scheduleRender();
     });
     observer.observe(document.getElementById("terminal-content") || document.body, { childList: true, subtree: true });
-    load();
+    if (diagnosticsRouteActive()) load();
     scheduleRender();
   }
 

@@ -17,9 +17,10 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/financeData';
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
@@ -29,7 +30,9 @@ import { zakatImportCandidates } from '@/lib/data/zakatData';
 type Lang = 'ar' | 'en' | 'fr';
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
 type NisabMethod = 'gold' | 'silver' | 'conservative';
-type ZakatTab = 'calculator' | 'assets' | 'history' | 'reminders' | 'reports';
+const ZAKAT_TAB_IDS = ['calculator', 'assets', 'history', 'reminders', 'reports'] as const;
+type ZakatTab = typeof ZAKAT_TAB_IDS[number];
+const ZAKAT_TABS_ID = 'zakat-workspace';
 
 type MetalsPriceResponse = {
   success: boolean;
@@ -167,6 +170,7 @@ const RAW_TEXT = {
     saved: 'تم الحفظ بنجاح.',
     error: 'تعذر تنفيذ العملية حالياً.',
     openCharityProjects: 'المشاريع الخيرية',
+    openReportsCenter: 'فتح مركز التقارير',
     importedDataTitle: 'قيم مالية من حسابك',
     importedDataHint: 'يمكنك إدخال هذه القيم في حساب الزكاة بعد موافقتك فقط.',
     foundSavings: 'تم العثور على مدخرات بقيمة {amount}. هل تريد إضافتها لحساب الزكاة؟',
@@ -267,6 +271,7 @@ const RAW_TEXT = {
     saved: 'Saved successfully.',
     error: 'Could not complete this action right now.',
     openCharityProjects: 'Charity Projects',
+    openReportsCenter: 'Open Reports Center',
     importedDataTitle: 'Financial values from your account',
     importedDataHint: 'You can include these values in zakat only after you confirm.',
     foundSavings: 'Savings of {amount} were found. Do you want to include them in zakat calculation?',
@@ -367,6 +372,7 @@ const RAW_TEXT = {
     saved: 'Enregistré avec succès.',
     error: 'Impossible d’effectuer cette action pour le moment.',
     openCharityProjects: 'Projets caritatifs',
+    openReportsCenter: 'Ouvrir le centre des rapports',
     importedDataTitle: 'Valeurs financières de votre compte',
     importedDataHint: 'Vous pouvez inclure ces valeurs dans la zakat uniquement après confirmation.',
     foundSavings: 'Une épargne de {amount} a été trouvée. Voulez-vous l’inclure dans le calcul de la zakat ?',
@@ -453,6 +459,7 @@ const ZAKAT_ARABIC_OVERRIDES = {
   disclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية.',
   metalsDisclaimer: 'هذه الحاسبة تقديرية ولا تُعد فتوى شرعية. راجع جهة شرعية مختصة للحالات الخاصة.',
   openCharityProjects: 'المشاريع الخيرية',
+  openReportsCenter: 'فتح مركز التقارير',
   noHistory: 'لا توجد حسابات زكاة محفوظة حتى الآن.',
   noDueDate: 'غير متاح',
   noSavedCalculation: 'غير متاح',
@@ -520,7 +527,12 @@ export default function ZakatPage() {
   const [assets, setAssets] = useState<ZakatAsset[]>([]);
   const [history, setHistory] = useState<ZakatCalculation[]>([]);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<ZakatTab>('calculator');
+  const [activeTab, setActiveTab] = useUrlTabState<ZakatTab>({
+    param: 'tab',
+    values: ZAKAT_TAB_IDS,
+    defaultValue: 'calculator',
+    omitDefault: true,
+  });
   const [saving, setSaving] = useState(false);
   const [loadingMetals, setLoadingMetals] = useState(false);
   const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
@@ -886,9 +898,12 @@ export default function ZakatPage() {
           active={activeTab}
           onChange={id => setActiveTab(id as ZakatTab)}
           ariaLabel={tr.title}
+          idBase={ZAKAT_TABS_ID}
+          sticky
+          mobileMode="scroll"
         />
 
-        {activeTab === 'calculator' && (
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="calculator" active={activeTab === 'calculator'}>
         <section id="zakat-calculator" className="zakat-main-grid">
           <article className="warm-card input-panel">
             <div className="section-head"><h2>{tr.zakatInputs}</h2><Coins size={22} /></div>
@@ -1017,10 +1032,10 @@ export default function ZakatPage() {
             <p className="disclaimer">{tr.metalsDisclaimer}</p>
           </article>
         </section>
-        )}
+        </PageTabPanel>
 
-        {(activeTab === 'assets' || activeTab === 'reminders') && (
-        <section id="hawl-tracking" className="split-grid">
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="assets" active={activeTab === 'assets'}>
+        <section id="hawl-tracking">
           <article className="warm-card">
             <div className="section-head"><h2>{tr.hawlTracking}</h2><CalendarDays size={22} /></div>
             <div className="form-grid one">
@@ -1033,7 +1048,11 @@ export default function ZakatPage() {
               <button className="primary-wide" type="button" onClick={saveAsset}><Save size={16} /> {tr.addAsset}</button>
             </div>
           </article>
+        </section>
+        </PageTabPanel>
 
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="reminders" active={activeTab === 'reminders'}>
+        <section>
           <article className="warm-card">
             <div className="section-head"><h2>{tr.hawlTracking}</h2><ShieldCheck size={22} /></div>
             {assets.length === 0 ? <p className="muted">{tr.noDueDate}</p> : (
@@ -1053,9 +1072,9 @@ export default function ZakatPage() {
             )}
           </article>
         </section>
-        )}
+        </PageTabPanel>
 
-        {(activeTab === 'history' || activeTab === 'reports') && (
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="history" active={activeTab === 'history'}>
         <section className="warm-card">
           <div className="section-head">
             <h2>{tr.zakatHistory}</h2>
@@ -1076,7 +1095,17 @@ export default function ZakatPage() {
             </div>
           )}
         </section>
-        )}
+        </PageTabPanel>
+
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="reports" active={activeTab === 'reports'}>
+          <section className="warm-card">
+            <div className="section-head">
+              <h2>{zakatTabs.find(tab => tab.id === 'reports')?.label}</h2>
+              <Link className="secondary-link" href="/reports-center">{tr.openReportsCenter}</Link>
+            </div>
+            <p className="muted">{tr.zakatHistory}: {history.length}</p>
+          </section>
+        </PageTabPanel>
       </DashboardPageShell>
 
       <style jsx>{`

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Bot, Coins, ClipboardList, FileText, Globe2, Pencil, Plus, Target } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -15,8 +15,10 @@ import {
   type ProjectMilestoneRow, type ProjectTaskRow, type ProjectTasksSummary,
 } from '@/components/projects/ProjectTasksTab';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
@@ -49,9 +51,11 @@ import { IncomeModal } from './_IncomeModal';
 import { DeleteModal } from './_DeleteModal';
 import { WorkspaceStyles } from './_styles';
 
+const PROJECT_TAB_IDS = tabs.map(tab => tab.id) as TabId[];
+const PROJECT_TABS_ID = 'project-workspace';
+
 export default function ProjectWorkspacePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const params = useParams();
   const id = Array.isArray(params?.id) ? params.id[0] : String(params?.id ?? '');
   const { user, loading } = useAuth();
@@ -65,12 +69,12 @@ export default function ProjectWorkspacePage() {
   const [projectExpenses, setProjectExpenses] = useState<ProjectExpenseRow[]>([]);
   const [savings, setSavings] = useState(0);
   const [loadingProject, setLoadingProject] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
-
-  useEffect(() => {
-    const tab = searchParams?.get('tab') as TabId | null;
-    if (tab && tabs.some(t => t.id === tab)) setActiveTab(tab);
-  }, [searchParams]);
+  const [activeTab, setActiveTab] = useUrlTabState<TabId>({
+    param: 'tab',
+    values: PROJECT_TAB_IDS,
+    defaultValue: 'overview',
+    omitDefault: true,
+  });
 
   // ── Feasibility state ─────────────────────────────────────────────────
   const [feasibility, setFeasibility] = useState<FeasibilityForm>(() => createEmptyFeasibility());
@@ -742,28 +746,17 @@ export default function ProjectWorkspacePage() {
           </div>
         </section>
 
-        <nav className="workspace-tabs" role="tablist" aria-label={tr.workspace}>
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id} type="button" role="tab" aria-selected={active}
-                className={active ? 'active' : ''}
-                onClick={() => setActiveTab(tab.id)}
-                onKeyDown={e => {
-                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-                  const idx = tabs.findIndex(t => t.id === activeTab);
-                  const next = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
-                  setActiveTab(tabs[(next + tabs.length) % tabs.length].id);
-                }}
-              >
-                <Icon size={16} /> {tabLabel(tab.id)}
-              </button>
-            );
-          })}
-        </nav>
+        <PageTabs
+          tabs={tabs.map(tab => ({ id: tab.id, label: tabLabel(tab.id) }))}
+          active={activeTab}
+          onChange={id => setActiveTab(id as TabId)}
+          ariaLabel={tr.workspace}
+          idBase={PROJECT_TABS_ID}
+          sticky
+          mobileMode="auto"
+        />
 
+        <PageTabPanel idBase={PROJECT_TABS_ID} value={activeTab} active>
         {activeTab === 'overview' ? (
           <OverviewTab
             tr={tr} projectTitle={projectTitle} model={model} typeLabel={typeLabel}
@@ -824,6 +817,7 @@ export default function ProjectWorkspacePage() {
             })}
           </section>
         )}
+        </PageTabPanel>
       </DashboardPageShell>
 
       {projectExpenseOpen ? (

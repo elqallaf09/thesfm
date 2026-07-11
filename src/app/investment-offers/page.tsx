@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   BriefcaseBusiness,
   CheckCircle2,
+  ChevronDown,
   FileText,
   FolderKanban,
   Gauge,
@@ -22,16 +23,19 @@ import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { PageHero } from '@/components/layout/PageHero';
+import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import type { TR } from '@/lib/translations';
 
 type Lang = 'ar' | 'en' | 'fr';
 type Row = Record<string, any>;
+type InvestorJourneyTab = typeof INVESTOR_JOURNEY_TABS[number];
 type ProjectRow = Row & { id: string; name?: string | null; created_at?: string | null; updated_at?: string | null };
 type LoadState = {
   projects: ProjectRow[];
@@ -45,12 +49,20 @@ type StatusCardItem = {
   title: string;
   description: string;
   ready: boolean;
-  detail: string;
   href: string;
   actionLabel: string;
   icon: ReactNode;
   actionIcon: ReactNode;
 };
+
+type DisclosureDetail = {
+  label: string;
+  value: ReactNode;
+  dir?: 'auto' | 'ltr' | 'rtl';
+};
+
+const INVESTOR_JOURNEY_TABS = ['overview', 'readiness', 'financials', 'documents', 'pitch-deck'] as const;
+const INVESTOR_TABS_ID_BASE = 'investment-offers';
 
 const EMPTY_DATA: LoadState = {
   projects: [],
@@ -102,6 +114,42 @@ const TEXT_KEYS = {
   fundsMissing: 'investment_offers_funds_missing',
   sourceNote: 'investment_offers_source_note',
   partialLoadError: 'investment_offers_partial_load_error',
+  tabOverview: 'investment_offers_tab_overview',
+  tabReadiness: 'investment_offers_tab_readiness',
+  tabFinancials: 'investment_offers_tab_financials',
+  tabDocuments: 'investment_offers_tab_documents',
+  tabPitchDeck: 'investment_offers_tab_pitch_deck',
+  workspaceTotals: 'investment_offers_workspace_totals',
+  missingItems: 'investment_offers_missing_items',
+  nextAction: 'investment_offers_next_action',
+  packageReady: 'investment_offers_package_ready',
+  packageReadyBody: 'investment_offers_package_ready_body',
+  investorActivityUnavailable: 'investment_offers_investor_activity_unavailable',
+  fundingNeed: 'investment_offers_funding_need',
+  fundingType: 'investment_offers_funding_type',
+  financialDetails: 'investment_offers_financial_details',
+  lastUpdated: 'investment_offers_last_updated',
+  notes: 'investment_offers_notes',
+  notRecorded: 'investment_offers_not_recorded',
+  useOfFundsBreakdown: 'investment_offers_use_of_funds_breakdown',
+  amount: 'investment_offers_amount',
+  allocation: 'investment_offers_allocation',
+  fundsProduct: 'investment_offers_funds_product',
+  fundsMarketing: 'investment_offers_funds_marketing',
+  fundsOperations: 'investment_offers_funds_operations',
+  fundsHiring: 'investment_offers_funds_hiring',
+  fundsLicensesLegal: 'investment_offers_funds_licenses_legal',
+  fundsEmergencyReserve: 'investment_offers_funds_emergency_reserve',
+  fundsOther: 'investment_offers_funds_other',
+  strategicDocumentSource: 'investment_offers_strategic_document_source',
+  projectDocumentSource: 'investment_offers_project_document_source',
+  documentCategory: 'investment_offers_document_category',
+  fileName: 'investment_offers_file_name',
+  dataSource: 'investment_offers_data_source',
+  pitchDeckDetails: 'investment_offers_pitch_deck_details',
+  pitchSlides: 'investment_offers_pitch_slides',
+  deckLanguage: 'investment_offers_deck_language',
+  noSlideDetails: 'investment_offers_no_slide_details',
 } as const satisfies Record<string, keyof typeof TR>;
 
 function textValue(row: Row | null | undefined, keys: string[], fallback = '') {
@@ -204,6 +252,81 @@ function formatPercent(value: number | null, fallback: string) {
   return `${Math.round(value)}%`;
 }
 
+function recordValue(value: unknown): Row {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {};
+}
+
+function rowArray(value: unknown): Row[] {
+  return Array.isArray(value)
+    ? value.filter(item => item && typeof item === 'object' && !Array.isArray(item)) as Row[]
+    : [];
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => String(item ?? '').trim()).filter(Boolean)
+    : [];
+}
+
+function formatFundingAmount(value: unknown, currency: unknown, lang: Lang, fallback: string) {
+  const amount = numberValue(value);
+  if (amount === null || amount <= 0) return fallback;
+
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const currencyCode = String(currency ?? '').trim().toUpperCase();
+  try {
+    if (/^[A-Z]{3}$/.test(currencyCode)) {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currencyCode,
+        maximumFractionDigits: 3,
+      }).format(amount);
+    }
+  } catch {
+    // Fall through to a truthful number plus the stored currency value.
+  }
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(amount);
+  return currencyCode ? `${formatted} ${currencyCode}` : formatted;
+}
+
+function DisclosureCard({
+  summary,
+  meta,
+  open,
+  onOpenChange,
+  children,
+}: {
+  summary: string;
+  meta?: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  return (
+    <details className="investment-disclosure" open={open} onToggle={event => onOpenChange(event.currentTarget.open)}>
+      <summary>
+        <span className="investment-disclosure-title">{summary}</span>
+        {meta ? <span className="investment-disclosure-meta">{meta}</span> : null}
+        <ChevronDown className="investment-disclosure-chevron" size={18} aria-hidden="true" />
+      </summary>
+      <div className="investment-disclosure-content">{children}</div>
+    </details>
+  );
+}
+
+function DetailList({ items }: { items: DisclosureDetail[] }) {
+  return (
+    <dl className="investment-detail-list">
+      {items.map(item => (
+        <div key={item.label}>
+          <dt>{item.label}</dt>
+          <dd dir={item.dir}>{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 async function loadRows(table: string, userId: string, options: { projectScoped?: boolean; select?: string } = {}) {
   try {
     const query = supabase
@@ -287,7 +410,6 @@ function StatusCard({ item, readyLabel, needsDataLabel }: { item: StatusCardItem
         </div>
         <h2>{item.title}</h2>
         <p>{item.description}</p>
-        <small>{item.detail}</small>
       </div>
       <div className="investment-status-footer">
         <InvestmentActionButton
@@ -315,6 +437,17 @@ export default function InvestmentOffersPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [activeTab, setActiveTab] = useUrlTabState<InvestorJourneyTab>({
+    param: 'tab',
+    values: INVESTOR_JOURNEY_TABS,
+    defaultValue: 'overview',
+    omitDefault: true,
+  });
+  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
+
+  const setDisclosureOpen = useCallback((key: string, open: boolean) => {
+    setOpenDetails(current => current[key] === open ? current : { ...current, [key]: open });
+  }, []);
 
   const reload = useCallback(async () => {
     if (authLoading) return;
@@ -389,6 +522,33 @@ export default function InvestmentOffersPage() {
     () => data.projectDocuments.filter(row => projectId(row) === selectedProjectId && looksStrategicDocument(row)),
     [data.projectDocuments, selectedProjectId],
   );
+  const selectedDocuments = useMemo(() => [
+    ...selectedStrategicDocuments.map(row => ({ row, origin: 'strategic' as const })),
+    ...selectedProjectDocuments.map(row => ({ row, origin: 'project' as const })),
+  ], [selectedProjectDocuments, selectedStrategicDocuments]);
+  const selectedPitchSlides = useMemo(
+    () => rowArray(recordValue(selectedPitchDeck?.deck_data).slides),
+    [selectedPitchDeck],
+  );
+  const useOfFundsRows = useMemo(() => {
+    const labels: Record<string, string> = {
+      product: text.fundsProduct,
+      marketing: text.fundsMarketing,
+      operations: text.fundsOperations,
+      hiring: text.fundsHiring,
+      licensesLegal: text.fundsLicensesLegal,
+      emergencyReserve: text.fundsEmergencyReserve,
+      other: text.fundsOther,
+    };
+    return Object.entries(recordValue(selectedFunding?.use_of_funds))
+      .map(([key, value]) => {
+        const entry = recordValue(value);
+        const amount = numberValue(Object.keys(entry).length ? entry.amount : value);
+        const percent = numberValue(entry.percent);
+        return { key, label: labels[key] ?? key, amount, percent, meaningful: hasMeaningfulValue(value) };
+      })
+      .filter(entry => entry.meaningful);
+  }, [selectedFunding, text]);
 
   const fundingScore = numberValue(selectedFunding?.readiness_score);
   const pitchScore = numberValue(selectedPitchDeck?.readiness_score);
@@ -403,6 +563,9 @@ export default function InvestmentOffersPage() {
   const businessHubFundingHref = selectedProject ? `/business-hub?tab=funding&project=${selectedProject.id}` : '/business-hub?tab=funding';
   const selectedProjectName = selectedProject ? textValue(selectedProject, ['name', 'project_name', 'title'], selectedProject.id) : text.insufficientData;
   const selectedProjectUpdated = selectedProject ? formatDate(selectedProject.updated_at ?? selectedProject.created_at, locale) : '';
+  const selectedFundingUpdated = selectedFunding ? formatDate(selectedFunding.updated_at ?? selectedFunding.created_at, locale) : '';
+  const selectedPitchUpdated = selectedPitchDeck ? formatDate(selectedPitchDeck.updated_at ?? selectedPitchDeck.created_at, locale) : '';
+  const fundingAmount = formatFundingAmount(selectedFunding?.funding_needed, selectedFunding?.currency, locale, text.insufficientData);
 
   const statusCards: StatusCardItem[] = [
     {
@@ -410,7 +573,6 @@ export default function InvestmentOffersPage() {
       title: text.pitchDecks,
       description: selectedPitchDeck ? text.pitchDeckReady : text.pitchDeckMissing,
       ready: Boolean(selectedPitchDeck),
-      detail: selectedPitchDeck ? formatPercent(pitchScore, text.ready) : text.insufficientData,
       href: projectPitchHref,
       actionLabel: selectedPitchDeck ? text.openProjectPitchDeck : text.createProjectPitchDeck,
       icon: <Presentation size={22} />,
@@ -421,7 +583,6 @@ export default function InvestmentOffersPage() {
       title: text.fundingReadiness,
       description: hasFundingReadiness ? text.fundingReady : text.fundingMissing,
       ready: hasFundingReadiness,
-      detail: formatPercent(fundingScore, text.insufficientData),
       href: businessHubFundingHref,
       actionLabel: text.openFundingReadiness,
       icon: <Gauge size={22} />,
@@ -432,7 +593,6 @@ export default function InvestmentOffersPage() {
       title: text.strategicDocuments,
       description: hasStrategicDocuments ? text.docsReady : text.docsMissing,
       ready: hasStrategicDocuments,
-      detail: hasStrategicDocuments ? `${selectedStrategicDocuments.length + selectedProjectDocuments.length}` : text.insufficientData,
       href: businessHubDocumentsHref,
       actionLabel: text.openBusinessHub,
       icon: <FileText size={22} />,
@@ -443,12 +603,20 @@ export default function InvestmentOffersPage() {
       title: text.useOfFunds,
       description: hasUseOfFunds ? text.fundsReady : text.fundsMissing,
       ready: hasUseOfFunds,
-      detail: hasUseOfFunds ? text.ready : text.insufficientData,
       href: businessHubFundingHref,
       actionLabel: text.openFundingReadiness,
       icon: <Landmark size={22} />,
       actionIcon: <Landmark size={16} aria-hidden="true" />,
     },
+  ];
+  const missingStatusItems = statusCards.filter(item => !item.ready);
+  const nextAction = missingStatusItems[0] ?? null;
+  const tabs: PageTabItem[] = [
+    { id: 'overview', label: text.tabOverview },
+    { id: 'readiness', label: text.tabReadiness },
+    { id: 'financials', label: text.tabFinancials },
+    { id: 'documents', label: text.tabDocuments, count: selectedDocuments.length },
+    { id: 'pitch-deck', label: text.tabPitchDeck, count: selectedPitchDeck ? 1 : 0 },
   ];
 
   const heroActions = (
@@ -508,13 +676,6 @@ export default function InvestmentOffersPage() {
               </div>
             )}
 
-            <StatGrid>
-              <StatCard label={text.availableProjects} value={data.projects.length} icon={<FolderKanban size={18} />} />
-              <StatCard label={text.savedPitchDecks} value={data.pitchDecks.length} icon={<Presentation size={18} />} />
-              <StatCard label={text.fundingRecords} value={data.fundingReadiness.length} icon={<Gauge size={18} />} />
-              <StatCard label={text.strategicDocs} value={data.strategicDocuments.length + data.projectDocuments.filter(looksStrategicDocument).length} icon={<FileText size={18} />} />
-            </StatGrid>
-
             {data.projects.length === 0 ? (
               <EmptyState
                 icon={<BriefcaseBusiness size={34} />}
@@ -545,46 +706,339 @@ export default function InvestmentOffersPage() {
                   />
                 </section>
 
-                <AppCard className="investment-package-card" tone="dark">
-                  <div className="package-copy">
-                    <span>{text.selectedProject}</span>
-                    <h2>{selectedProjectName}</h2>
+                <PageTabs
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  tabs={tabs}
+                  active={activeTab}
+                  onChange={id => setActiveTab(id as InvestorJourneyTab)}
+                  ariaLabel={text.title}
+                  sticky
+                  mobileMode="auto"
+                />
+
+                <PageTabPanel
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  value="overview"
+                  active={activeTab === 'overview'}
+                  className="investment-tab-panel"
+                >
+                  <div className="investment-tab-heading">
+                    <div>
+                      <span>{text.tabOverview}</span>
+                      <h2>{selectedProjectName}</h2>
+                    </div>
                     <p>{text.sourceNote}</p>
-                    {selectedProjectUpdated && <small>{selectedProjectUpdated}</small>}
                   </div>
-                  <div className="package-meter" aria-label={`${text.packageProgress}: ${packagePercent ?? 0}%`}>
-                    <strong>{packagePercent ?? 0}%</strong>
-                    <span>{text.packageProgress}</span>
-                    <em>{readyCount}/4 {text.readyItems}</em>
+
+                  <AppCard className="investment-package-card" tone="dark">
+                    <div className="package-copy">
+                      <span>{text.selectedProject}</span>
+                      <h2>{selectedProjectName}</h2>
+                      <p>{nextAction ? nextAction.description : text.packageReadyBody}</p>
+                      {selectedProjectUpdated && <small>{selectedProjectUpdated}</small>}
+                    </div>
+                    <div className="package-meter" aria-label={`${text.packageProgress}: ${packagePercent ?? 0}%`}>
+                      <strong>{packagePercent ?? 0}%</strong>
+                      <span>{text.packageProgress}</span>
+                      <em>{readyCount}/4 {text.readyItems}</em>
+                    </div>
+                    <div className="package-actions">
+                      <InvestmentActionButton
+                        className="investment-package-action"
+                        href={projectHref}
+                        label={text.openProjects}
+                        icon={<FolderKanban size={16} />}
+                        variant="secondary"
+                      />
+                      <InvestmentActionButton
+                        className="investment-package-action"
+                        href={nextAction?.href ?? projectPitchHref}
+                        label={nextAction?.actionLabel ?? text.openProjectPitchDeck}
+                        icon={nextAction ? nextAction.actionIcon : <Presentation size={16} />}
+                        variant="primary"
+                      />
+                    </div>
+                  </AppCard>
+
+                  <div className="investment-overview-grid">
+                    <AppCard className="investment-next-action-card">
+                      <span>{text.nextAction}</span>
+                      <h3>{nextAction?.title ?? text.packageReady}</h3>
+                      <p>{nextAction?.description ?? text.packageReadyBody}</p>
+                      <InvestmentActionButton
+                        href={nextAction?.href ?? projectPitchHref}
+                        label={nextAction?.actionLabel ?? text.openProjectPitchDeck}
+                        icon={nextAction ? nextAction.actionIcon : <Presentation size={16} />}
+                        variant="primary"
+                      />
+                    </AppCard>
+                    <AppCard className="investment-missing-card">
+                      <span>{text.missingItems}</span>
+                      <strong>{missingStatusItems.length}</strong>
+                      {missingStatusItems.length ? (
+                        <ul>
+                          {missingStatusItems.map(item => <li key={item.key}>{item.title}</li>)}
+                        </ul>
+                      ) : <p>{text.packageReadyBody}</p>}
+                    </AppCard>
                   </div>
-                  <div className="package-actions">
+
+                  <DisclosureCard
+                    summary={text.workspaceTotals}
+                    meta={data.projects.length}
+                    open={Boolean(openDetails['workspace-totals'])}
+                    onOpenChange={open => setDisclosureOpen('workspace-totals', open)}
+                  >
+                    <StatGrid>
+                      <StatCard label={text.availableProjects} value={data.projects.length} icon={<FolderKanban size={18} />} />
+                      <StatCard label={text.savedPitchDecks} value={data.pitchDecks.length} icon={<Presentation size={18} />} />
+                      <StatCard label={text.fundingRecords} value={data.fundingReadiness.length} icon={<Gauge size={18} />} />
+                      <StatCard label={text.strategicDocs} value={data.strategicDocuments.length + data.projectDocuments.filter(looksStrategicDocument).length} icon={<FileText size={18} />} />
+                    </StatGrid>
+                  </DisclosureCard>
+
+                  <section className="investment-note">
+                    <Target size={18} aria-hidden="true" />
+                    <div>
+                      <p>{text.noFakeOffers}</p>
+                      <small>{text.investorActivityUnavailable}</small>
+                    </div>
+                  </section>
+                </PageTabPanel>
+
+                <PageTabPanel
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  value="readiness"
+                  active={activeTab === 'readiness'}
+                  className="investment-tab-panel"
+                >
+                  <div className="investment-tab-heading">
+                    <div>
+                      <span>{text.packageProgress}</span>
+                      <h2>{text.tabReadiness}</h2>
+                    </div>
+                    <p>{readyCount}/4 {text.readyItems}</p>
+                  </div>
+                  <CardsGrid className="investment-status-grid">
+                    {statusCards.map(item => (
+                      <StatusCard key={item.key} item={item} readyLabel={text.ready} needsDataLabel={text.needsData} />
+                    ))}
+                  </CardsGrid>
+                </PageTabPanel>
+
+                <PageTabPanel
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  value="financials"
+                  active={activeTab === 'financials'}
+                  className="investment-tab-panel"
+                >
+                  <div className="investment-tab-heading has-action">
+                    <div>
+                      <span>{text.fundingReadiness}</span>
+                      <h2>{text.tabFinancials}</h2>
+                    </div>
                     <InvestmentActionButton
-                      className="investment-package-action"
-                      href={projectHref}
-                      label={text.openProjects}
-                      icon={<FolderKanban size={16} />}
-                      variant="secondary"
+                      href={businessHubFundingHref}
+                      label={text.openFundingReadiness}
+                      icon={<Gauge size={16} />}
+                      variant="primary"
                     />
+                  </div>
+
+                  <StatGrid>
+                    <StatCard label={text.fundingReadiness} value={formatPercent(fundingScore, text.insufficientData)} icon={<Gauge size={18} />} />
+                    <StatCard label={text.fundingNeed} value={fundingAmount} icon={<Landmark size={18} />} />
+                    <StatCard label={text.useOfFunds} value={hasUseOfFunds ? text.ready : text.needsData} icon={<Target size={18} />} />
+                  </StatGrid>
+
+                  {!selectedFunding ? (
+                    <EmptyState
+                      icon={<Gauge size={34} />}
+                      title={text.fundingReadiness}
+                      description={text.fundingMissing}
+                      actions={<InvestmentActionButton href={businessHubFundingHref} label={text.openFundingReadiness} icon={<Gauge size={16} />} />}
+                    />
+                  ) : (
+                    <div className="investment-disclosure-list">
+                      <DisclosureCard
+                        summary={text.financialDetails}
+                        meta={formatPercent(fundingScore, text.insufficientData)}
+                        open={Boolean(openDetails[`${selectedProjectId}:financial-details`])}
+                        onOpenChange={open => setDisclosureOpen(`${selectedProjectId}:financial-details`, open)}
+                      >
+                        <DetailList items={[
+                          { label: text.fundingNeed, value: fundingAmount },
+                          { label: text.fundingType, value: textValue(selectedFunding, ['funding_type'], text.notRecorded), dir: 'auto' },
+                          { label: text.fundingReadiness, value: formatPercent(fundingScore, text.insufficientData) },
+                          { label: text.lastUpdated, value: selectedFundingUpdated || text.notRecorded },
+                          { label: text.notes, value: textValue(selectedFunding, ['notes'], text.notRecorded), dir: 'auto' },
+                        ]} />
+                      </DisclosureCard>
+
+                      <DisclosureCard
+                        summary={text.useOfFundsBreakdown}
+                        meta={useOfFundsRows.length}
+                        open={Boolean(openDetails[`${selectedProjectId}:use-of-funds`])}
+                        onOpenChange={open => setDisclosureOpen(`${selectedProjectId}:use-of-funds`, open)}
+                      >
+                        {useOfFundsRows.length ? (
+                          <div className="investment-allocation-list">
+                            {useOfFundsRows.map(item => (
+                              <div key={item.key}>
+                                <strong>{item.label}</strong>
+                                <span>{text.amount}: {item.amount === null ? text.notRecorded : formatFundingAmount(item.amount, selectedFunding.currency, locale, text.notRecorded)}</span>
+                                <span>{text.allocation}: {item.percent === null ? text.notRecorded : `${item.percent}%`}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="investment-detail-empty">{text.fundsMissing}</p>}
+                      </DisclosureCard>
+                    </div>
+                  )}
+                </PageTabPanel>
+
+                <PageTabPanel
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  value="documents"
+                  active={activeTab === 'documents'}
+                  className="investment-tab-panel"
+                >
+                  <div className="investment-tab-heading has-action">
+                    <div>
+                      <span>{selectedDocuments.length}</span>
+                      <h2>{text.tabDocuments}</h2>
+                    </div>
                     <InvestmentActionButton
-                      className="investment-package-action"
+                      href={businessHubDocumentsHref}
+                      label={text.openBusinessHub}
+                      icon={<FileText size={16} />}
+                      variant="primary"
+                    />
+                  </div>
+
+                  {selectedDocuments.length === 0 ? (
+                    <EmptyState
+                      icon={<FileText size={34} />}
+                      title={text.strategicDocuments}
+                      description={text.docsMissing}
+                      actions={<InvestmentActionButton href={businessHubDocumentsHref} label={text.openBusinessHub} icon={<FileText size={16} />} />}
+                    />
+                  ) : (
+                    <div className="investment-disclosure-list">
+                      {selectedDocuments.map(({ row, origin }, index) => {
+                        const rowId = String(row.id ?? `${origin}-${index}`);
+                        const disclosureKey = `${selectedProjectId}:document:${origin}:${rowId}`;
+                        const title = textValue(row, ['title', 'name', 'file_name'], text.insufficientData);
+                        const category = textValue(row, ['document_type', 'type', 'category', 'file_type'], text.notRecorded);
+                        const updatedAt = formatDate(row.updated_at ?? row.uploaded_at ?? row.created_at, locale) || text.notRecorded;
+                        return (
+                          <DisclosureCard
+                            key={`${origin}:${rowId}`}
+                            summary={title}
+                            meta={category}
+                            open={Boolean(openDetails[disclosureKey])}
+                            onOpenChange={open => setDisclosureOpen(disclosureKey, open)}
+                          >
+                            <DetailList items={[
+                              { label: text.documentCategory, value: category, dir: 'auto' },
+                              { label: text.dataSource, value: origin === 'strategic' ? text.strategicDocumentSource : text.projectDocumentSource },
+                              { label: text.fileName, value: textValue(row, ['file_name'], text.notRecorded), dir: 'auto' },
+                              { label: text.lastUpdated, value: updatedAt },
+                              { label: text.notes, value: textValue(row, ['notes'], text.notRecorded), dir: 'auto' },
+                            ]} />
+                          </DisclosureCard>
+                        );
+                      })}
+                    </div>
+                  )}
+                </PageTabPanel>
+
+                <PageTabPanel
+                  idBase={INVESTOR_TABS_ID_BASE}
+                  value="pitch-deck"
+                  active={activeTab === 'pitch-deck'}
+                  className="investment-tab-panel"
+                >
+                  <div className="investment-tab-heading has-action">
+                    <div>
+                      <span>{text.pitchDecks}</span>
+                      <h2>{text.tabPitchDeck}</h2>
+                    </div>
+                    <InvestmentActionButton
                       href={projectPitchHref}
-                      label={text.openProjectPitchDeck}
+                      label={selectedPitchDeck ? text.openProjectPitchDeck : text.createProjectPitchDeck}
                       icon={<Presentation size={16} />}
                       variant="primary"
                     />
                   </div>
-                </AppCard>
 
-                <CardsGrid className="investment-status-grid">
-                  {statusCards.map(item => (
-                    <StatusCard key={item.key} item={item} readyLabel={text.ready} needsDataLabel={text.needsData} />
-                  ))}
-                </CardsGrid>
+                  {!selectedPitchDeck ? (
+                    <EmptyState
+                      icon={<Presentation size={34} />}
+                      title={text.pitchDecks}
+                      description={text.pitchDeckMissing}
+                      actions={<InvestmentActionButton href={projectPitchHref} label={text.createProjectPitchDeck} icon={<Presentation size={16} />} />}
+                    />
+                  ) : (
+                    <>
+                      <StatGrid>
+                        <StatCard label={text.fundingReadiness} value={formatPercent(pitchScore, text.insufficientData)} icon={<Gauge size={18} />} />
+                        <StatCard label={text.pitchSlides} value={selectedPitchSlides.length} icon={<Presentation size={18} />} />
+                        <StatCard label={text.deckLanguage} value={textValue(selectedPitchDeck, ['language'], text.notRecorded)} icon={<FileText size={18} />} />
+                      </StatGrid>
 
-                <section className="investment-note">
-                  <Target size={18} aria-hidden="true" />
-                  <p>{text.noFakeOffers}</p>
-                </section>
+                      <div className="investment-disclosure-list">
+                        <DisclosureCard
+                          summary={text.pitchDeckDetails}
+                          meta={selectedPitchUpdated || text.notRecorded}
+                          open={Boolean(openDetails[`${selectedProjectId}:pitch-details`])}
+                          onOpenChange={open => setDisclosureOpen(`${selectedProjectId}:pitch-details`, open)}
+                        >
+                          <DetailList items={[
+                            { label: text.fundingReadiness, value: formatPercent(pitchScore, text.insufficientData) },
+                            { label: text.deckLanguage, value: textValue(selectedPitchDeck, ['language'], text.notRecorded), dir: 'auto' },
+                            { label: text.dataSource, value: textValue(selectedPitchDeck, ['source'], text.notRecorded), dir: 'auto' },
+                            { label: text.lastUpdated, value: selectedPitchUpdated || text.notRecorded },
+                          ]} />
+                        </DisclosureCard>
+
+                        {selectedPitchSlides.length ? selectedPitchSlides.map((slide, index) => {
+                          const slideId = String(slide.id ?? index);
+                          const disclosureKey = `${selectedProjectId}:pitch-slide:${slideId}`;
+                          const content = recordValue(slide.content);
+                          const headline = textValue(content, ['headline']);
+                          const bullets = stringArray(content.bullets);
+                          const missingData = rowArray(slide.missingData)
+                            .map(item => textValue(item, ['label']))
+                            .filter(Boolean);
+                          const hasSlideDetail = Boolean(headline || bullets.length || missingData.length);
+                          return (
+                            <DisclosureCard
+                              key={slideId}
+                              summary={textValue(slide, ['title'], `${text.pitchSlides} ${index + 1}`)}
+                              meta={textValue(slide, ['status'], text.notRecorded)}
+                              open={Boolean(openDetails[disclosureKey])}
+                              onOpenChange={open => setDisclosureOpen(disclosureKey, open)}
+                            >
+                              {hasSlideDetail ? (
+                                <div className="investment-slide-detail">
+                                  {headline ? <p>{headline}</p> : null}
+                                  {bullets.length ? <ul>{bullets.map((bullet, bulletIndex) => <li key={`${slideId}:bullet:${bulletIndex}`}>{bullet}</li>)}</ul> : null}
+                                  {missingData.length ? (
+                                    <div className="investment-slide-missing">
+                                      <strong>{text.missingItems}</strong>
+                                      <ul>{missingData.map((item, itemIndex) => <li key={`${slideId}:missing:${itemIndex}`}>{item}</li>)}</ul>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : <p className="investment-detail-empty">{text.noSlideDetails}</p>}
+                            </DisclosureCard>
+                          );
+                        }) : <p className="investment-detail-empty standalone">{text.noSlideDetails}</p>}
+                      </div>
+                    </>
+                  )}
+                </PageTabPanel>
               </>
             )}
           </>
@@ -1024,6 +1478,248 @@ export default function InvestmentOffersPage() {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
+        :global(.investment-tab-panel) {
+          display: grid;
+          gap: 16px;
+          min-width: 0;
+          outline: none;
+        }
+        :global(.investment-tab-panel):focus-visible {
+          border-radius: 16px;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--sfm-primary) 24%, transparent);
+        }
+        .investment-tab-heading {
+          min-width: 0;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 2px 2px 0;
+        }
+        .investment-tab-heading > div {
+          min-width: 0;
+          display: grid;
+          gap: 5px;
+        }
+        .investment-tab-heading span {
+          color: var(--sfm-primary);
+          font-size: 12px;
+          font-weight: 950;
+        }
+        .investment-tab-heading h2,
+        :global(.investment-next-action-card) h3 {
+          margin: 0;
+          color: var(--sfm-heading, var(--sfm-midnight));
+          overflow-wrap: anywhere;
+        }
+        .investment-tab-heading h2 {
+          font-size: clamp(22px, 3vw, 30px);
+          line-height: 1.2;
+        }
+        .investment-tab-heading p {
+          max-width: 560px;
+          margin: 0;
+          color: var(--sfm-muted-readable, #475569);
+          line-height: 1.65;
+          font-weight: 800;
+        }
+        .investment-tab-heading.has-action {
+          align-items: center;
+        }
+        .investment-overview-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(240px, .6fr);
+          gap: 14px;
+          min-width: 0;
+        }
+        :global(.investment-next-action-card),
+        :global(.investment-missing-card) {
+          min-width: 0;
+          display: grid;
+          align-content: start;
+          gap: 10px;
+        }
+        :global(.investment-next-action-card) > span,
+        :global(.investment-missing-card) > span {
+          color: var(--sfm-primary);
+          font-size: 12px;
+          font-weight: 950;
+        }
+        :global(.investment-next-action-card) h3 {
+          font-size: 21px;
+        }
+        :global(.investment-next-action-card) p,
+        :global(.investment-missing-card) p {
+          margin: 0;
+          color: var(--sfm-muted-readable, #475569);
+          line-height: 1.65;
+          font-weight: 800;
+        }
+        :global(.investment-next-action-card) :global(.investment-action-button) {
+          width: fit-content;
+          max-width: 100%;
+          margin-top: 3px;
+        }
+        :global(.investment-missing-card) > strong {
+          color: var(--sfm-heading, var(--sfm-midnight));
+          font-size: 34px;
+          line-height: 1;
+        }
+        :global(.investment-missing-card) ul,
+        .investment-slide-detail ul,
+        .investment-slide-missing ul {
+          margin: 0;
+          padding-inline-start: 20px;
+          color: var(--sfm-body, var(--sfm-foreground));
+          line-height: 1.65;
+          font-weight: 800;
+        }
+        .investment-disclosure-list {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+        }
+        :global(.investment-disclosure) {
+          min-width: 0;
+          border: 1px solid var(--sfm-border);
+          border-radius: var(--sfm-light-radius-card, 16px);
+          background: var(--sfm-card);
+          overflow: hidden;
+          box-shadow: 0 8px 24px color-mix(in srgb, var(--sfm-heading) 6%, transparent);
+        }
+        :global(.investment-disclosure) > summary {
+          min-height: 52px;
+          list-style: none;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto 20px;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 14px;
+          color: var(--sfm-heading, var(--sfm-midnight));
+          cursor: pointer;
+        }
+        :global(.investment-disclosure) > summary::-webkit-details-marker {
+          display: none;
+        }
+        :global(.investment-disclosure) > summary:focus-visible {
+          outline: 3px solid color-mix(in srgb, var(--sfm-primary) 28%, transparent);
+          outline-offset: -3px;
+        }
+        :global(.investment-disclosure-title) {
+          min-width: 0;
+          font-weight: 950;
+          overflow-wrap: anywhere;
+        }
+        :global(.investment-disclosure-meta) {
+          max-width: min(260px, 34vw);
+          border-radius: 999px;
+          padding: 4px 9px;
+          background: color-mix(in srgb, var(--sfm-primary) 9%, transparent);
+          color: var(--sfm-primary-hover, var(--sfm-primary));
+          font-size: 11px;
+          font-weight: 900;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        :global(.investment-disclosure-chevron) {
+          color: var(--sfm-muted-readable, #475569);
+          transition: transform .18s ease;
+        }
+        :global(.investment-disclosure)[open] :global(.investment-disclosure-chevron) {
+          transform: rotate(180deg);
+        }
+        :global(.investment-disclosure-content) {
+          min-width: 0;
+          border-top: 1px solid var(--sfm-border);
+          padding: 14px;
+        }
+        :global(.investment-detail-list) {
+          margin: 0;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px;
+        }
+        :global(.investment-detail-list) > div {
+          min-width: 0;
+          border-radius: 12px;
+          background: var(--sfm-light-card, color-mix(in srgb, var(--sfm-card) 92%, var(--sfm-primary)));
+          padding: 10px 11px;
+        }
+        :global(.investment-detail-list) dt {
+          color: var(--sfm-muted-readable, #475569);
+          font-size: 11px;
+          font-weight: 900;
+        }
+        :global(.investment-detail-list) dd {
+          margin: 4px 0 0;
+          color: var(--sfm-body, var(--sfm-foreground));
+          font-weight: 850;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+        }
+        .investment-allocation-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+          gap: 9px;
+        }
+        .investment-allocation-list > div {
+          min-width: 0;
+          display: grid;
+          gap: 5px;
+          border-radius: 12px;
+          background: var(--sfm-light-card, color-mix(in srgb, var(--sfm-card) 92%, var(--sfm-primary)));
+          padding: 11px;
+        }
+        .investment-allocation-list strong {
+          color: var(--sfm-heading, var(--sfm-midnight));
+          overflow-wrap: anywhere;
+        }
+        .investment-allocation-list span {
+          color: var(--sfm-muted-readable, #475569);
+          font-size: 12px;
+          font-weight: 800;
+          overflow-wrap: anywhere;
+        }
+        .investment-slide-detail {
+          display: grid;
+          gap: 12px;
+          min-width: 0;
+        }
+        .investment-slide-detail > p,
+        .investment-detail-empty {
+          margin: 0;
+          color: var(--sfm-body, var(--sfm-foreground));
+          line-height: 1.7;
+          font-weight: 800;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+        }
+        .investment-slide-missing {
+          display: grid;
+          gap: 7px;
+          border-inline-start: 3px solid var(--sfm-warning, #D97706);
+          padding-inline-start: 12px;
+        }
+        .investment-slide-missing strong {
+          color: var(--sfm-heading, var(--sfm-midnight));
+        }
+        .investment-detail-empty.standalone {
+          border: 1px dashed var(--sfm-border);
+          border-radius: 14px;
+          background: var(--sfm-card);
+          padding: 14px;
+        }
+        .investment-note > div {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+        .investment-note small {
+          color: var(--sfm-muted-readable, #475569);
+          line-height: 1.55;
+          font-weight: 800;
+        }
         @keyframes investment-spin {
           to { transform: rotate(360deg); }
         }
@@ -1050,6 +1746,32 @@ export default function InvestmentOffersPage() {
           .package-actions {
             grid-template-columns: 1fr;
           }
+          .investment-tab-heading,
+          .investment-tab-heading.has-action {
+            align-items: stretch;
+            flex-direction: column;
+          }
+          .investment-tab-heading :global(.investment-action-button),
+          :global(.investment-next-action-card) :global(.investment-action-button) {
+            width: 100%;
+          }
+          .investment-overview-grid,
+          :global(.investment-detail-list) {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          :global(.investment-disclosure) > summary {
+            grid-template-columns: minmax(0, 1fr) 18px;
+          }
+          :global(.investment-disclosure-meta) {
+            grid-column: 1 / 2;
+            grid-row: 2;
+            width: fit-content;
+            max-width: 100%;
+          }
+          :global(.investment-disclosure-chevron) {
+            grid-column: 2;
+            grid-row: 1 / 3;
+          }
           :global(.investment-primary-action),
           :global(.investment-secondary-action),
           :global(.investment-status-action),
@@ -1060,6 +1782,11 @@ export default function InvestmentOffersPage() {
           .investment-warning,
           .investment-note {
             align-items: flex-start;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global(.investment-disclosure-chevron) {
+            transition: none;
           }
         }
       `}</style>

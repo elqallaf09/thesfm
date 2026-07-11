@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
-  BarChart3,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -12,21 +11,20 @@ import {
   FileSpreadsheet,
   FileText,
   Filter,
-  FolderKanban,
-  HandHeart,
-  LineChart,
   Loader2,
   Printer,
   Settings2,
   ShieldAlert,
-  Wallet,
+  X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
@@ -38,7 +36,9 @@ import { recordAccountActivity } from '@/lib/accountActivity';
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
 type ReportCategory = 'financial' | 'investment' | 'projects' | 'charity';
-type ReportView = 'all' | 'ready' | 'needs_data' | ReportCategory;
+type ReportStatusFilter = 'all' | 'ready' | 'needs_data';
+const REPORT_WORKSPACE_TAB_IDS = ['recent', 'financial', 'markets', 'business', 'charity', 'ai-generated', 'archived'] as const;
+type ReportWorkspaceTab = typeof REPORT_WORKSPACE_TAB_IDS[number];
 type TableKey =
   | 'income'
   | 'expenses'
@@ -102,7 +102,6 @@ type Filters = {
   endDate: string;
   currency: string;
   projectId: string;
-  category: 'all' | ReportCategory;
 };
 
 type RecordsState = Record<TableKey, any[]>;
@@ -427,8 +426,24 @@ const TEXT = {
 
 const EXTRA_TEXT = {
   ar: {
+    tabRecent: 'الأحدث',
+    tabFinancial: 'المالية',
+    tabMarkets: 'الأسواق',
+    tabBusiness: 'الأعمال',
+    tabCharity: 'الأعمال الخيرية',
+    tabAiGenerated: 'منشأة بالذكاء الاصطناعي',
+    tabArchived: 'المؤرشفة',
     tabReady: 'الجاهزة',
     tabNeedsData: 'تحتاج بيانات',
+    statusAll: 'كل الحالات',
+    filterSummary: 'الحالة وفلاتر التقرير',
+    noReportsMatch: 'لا توجد تقارير تطابق هذه الحالة والفلاتر.',
+    recentDescription: 'التقارير الجاهزة حالياً من بياناتك المسجلة. لا يحفظ المركز سجل التوليد بعد.',
+    recentEmpty: 'لا توجد تقارير جاهزة من البيانات الحالية.',
+    aiEmptyTitle: 'لا توجد تقارير منشأة بالذكاء الاصطناعي',
+    aiEmptyBody: 'هذا القسم يعرض فقط التقارير المنشأة والمحفوظة فعلياً، ولا توجد بيانات محفوظة حالياً.',
+    archivedEmptyTitle: 'لا توجد تقارير مؤرشفة',
+    archivedEmptyBody: 'ستظهر هنا فقط التقارير التي يتم حفظها أو أرشفتها فعلياً.',
     viewAll: 'عرض الكل',
     viewLess: 'عرض أقل',
     showRequirements: 'عرض المتطلبات',
@@ -442,8 +457,24 @@ const EXTRA_TEXT = {
     reportsAvailable: 'تقارير متاحة',
   },
   en: {
+    tabRecent: 'Recent',
+    tabFinancial: 'Financial',
+    tabMarkets: 'Markets',
+    tabBusiness: 'Business',
+    tabCharity: 'Charity',
+    tabAiGenerated: 'AI Generated',
+    tabArchived: 'Archived',
     tabReady: 'Ready',
     tabNeedsData: 'Needs Data',
+    statusAll: 'All statuses',
+    filterSummary: 'Status and report filters',
+    noReportsMatch: 'No reports match this status and filter selection.',
+    recentDescription: 'Reports currently ready from your recorded data. The center does not yet store generation history.',
+    recentEmpty: 'No reports are ready from the current data.',
+    aiEmptyTitle: 'No AI-generated reports',
+    aiEmptyBody: 'This view only shows reports that were actually generated and saved; none are stored right now.',
+    archivedEmptyTitle: 'No archived reports',
+    archivedEmptyBody: 'Only reports that are actually saved or archived will appear here.',
     viewAll: 'View All',
     viewLess: 'View Less',
     showRequirements: 'Show requirements',
@@ -457,8 +488,24 @@ const EXTRA_TEXT = {
     reportsAvailable: 'reports available',
   },
   fr: {
+    tabRecent: 'Récents',
+    tabFinancial: 'Financiers',
+    tabMarkets: 'Marchés',
+    tabBusiness: 'Entreprise',
+    tabCharity: 'Charité',
+    tabAiGenerated: 'Générés par IA',
+    tabArchived: 'Archivés',
     tabReady: 'Prêts',
     tabNeedsData: 'Données requises',
+    statusAll: 'Tous les statuts',
+    filterSummary: 'Statut et filtres du rapport',
+    noReportsMatch: 'Aucun rapport ne correspond à ce statut et à ces filtres.',
+    recentDescription: 'Rapports actuellement prêts à partir de vos données enregistrées. Le centre ne conserve pas encore l’historique de génération.',
+    recentEmpty: 'Aucun rapport n’est prêt avec les données actuelles.',
+    aiEmptyTitle: 'Aucun rapport généré par IA',
+    aiEmptyBody: 'Cette vue affiche uniquement les rapports réellement générés et enregistrés ; aucun n’est stocké actuellement.',
+    archivedEmptyTitle: 'Aucun rapport archivé',
+    archivedEmptyBody: 'Seuls les rapports réellement enregistrés ou archivés apparaîtront ici.',
     viewAll: 'Tout afficher',
     viewLess: 'Afficher moins',
     showRequirements: 'Afficher les exigences',
@@ -665,23 +712,6 @@ const REPORTS: ReportDefinition[] = [
     route: '/charity-projects',
     exportable: true,
   },
-];
-
-const REPORT_VIEW_TABS: Array<{ id: ReportView; labelKey: 'tabAll' | 'tabFinancial' | 'tabInvestment' | 'tabProjects' | 'tabCharity' | keyof typeof EXTRA_TEXT.ar }> = [
-  { id: 'all', labelKey: 'tabAll' },
-  { id: 'ready', labelKey: 'tabReady' },
-  { id: 'needs_data', labelKey: 'tabNeedsData' },
-  { id: 'financial', labelKey: 'tabFinancial' },
-  { id: 'projects', labelKey: 'tabProjects' },
-  { id: 'charity', labelKey: 'tabCharity' },
-  { id: 'investment', labelKey: 'tabInvestment' },
-];
-
-const CATEGORY_SECTIONS: Array<{ id: ReportCategory; labelKey: 'financial' | 'investment' | 'projects' | 'charity' }> = [
-  { id: 'financial', labelKey: 'financial' },
-  { id: 'projects', labelKey: 'projects' },
-  { id: 'charity', labelKey: 'charity' },
-  { id: 'investment', labelKey: 'investment' },
 ];
 
 const STATUS_TONE: Record<ReportStatus, string> = {
@@ -1816,16 +1846,16 @@ export default function ReportsCenterPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeReportId, setActiveReportId] = useState<ReportType>('monthly-financial');
   const [toast, setToast] = useState('');
-  const [reportView, setReportView] = useState<ReportView>('all');
-  const [reportViewTouched, setReportViewTouched] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useUrlTabState<ReportWorkspaceTab>({
+    param: 'tab',
+    values: REPORT_WORKSPACE_TAB_IDS,
+    defaultValue: 'recent',
+    omitDefault: true,
+  });
+  const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
   const [expandedRequirements, setExpandedRequirements] = useState<Record<string, boolean>>({});
   const [previewFit, setPreviewFit] = useState<'width' | 'page'>('width');
-  const [openCategories, setOpenCategories] = useState<Record<ReportCategory, boolean>>({
-    financial: false,
-    projects: false,
-    charity: false,
-    investment: false,
-  });
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     year: String(now.getFullYear()),
     month: 'all',
@@ -1833,7 +1863,6 @@ export default function ReportsCenterPage() {
     endDate: '',
     currency: 'KWD',
     projectId: '',
-    category: 'all',
   });
 
   const activeReport = REPORTS.find(report => report.id === activeReportId) ?? REPORTS[0];
@@ -1894,21 +1923,41 @@ export default function ReportsCenterPage() {
   const readyCount = reportCards.filter(card => card.status === 'ready').length;
   const needsCount = reportCards.filter(card => card.status === 'needs_data').length;
   const unavailableCount = reportCards.filter(card => card.status === 'unavailable' || card.status === 'error').length;
-  const readyCards = reportCards.filter(card => card.status === 'ready' && card.rows.length > 0);
-  const visibleCards = useMemo(() => reportCards.filter(card => {
-    if (reportView === 'all') return true;
-    if (reportView === 'ready') return card.status === 'ready';
-    if (reportView === 'needs_data') return card.status === 'needs_data';
-    return card.report.category === reportView;
-  }), [reportCards, reportView]);
+  const readyCards = useMemo(
+    () => reportCards.filter(card => card.status === 'ready' && card.rows.length > 0),
+    [reportCards],
+  );
+  const tabScopedCards = useMemo(() => {
+    if (workspaceTab === 'recent') return readyCards;
+    if (workspaceTab === 'ai-generated' || workspaceTab === 'archived') return [];
+    const category: ReportCategory = workspaceTab === 'markets'
+      ? 'investment'
+      : workspaceTab === 'business'
+        ? 'projects'
+        : workspaceTab;
+    return reportCards.filter(card => card.report.category === category);
+  }, [readyCards, reportCards, workspaceTab]);
+  const visibleCards = useMemo(
+    () => tabScopedCards.filter(card => statusFilter === 'all' || card.status === statusFilter),
+    [statusFilter, tabScopedCards],
+  );
+  const reportTabs = useMemo<PageTabItem[]>(() => [
+    { id: 'recent', label: extra.tabRecent, count: readyCards.length },
+    { id: 'financial', label: extra.tabFinancial, count: reportCards.filter(card => card.report.category === 'financial').length },
+    { id: 'markets', label: extra.tabMarkets, count: reportCards.filter(card => card.report.category === 'investment').length },
+    { id: 'business', label: extra.tabBusiness, count: reportCards.filter(card => card.report.category === 'projects').length },
+    { id: 'charity', label: extra.tabCharity, count: reportCards.filter(card => card.report.category === 'charity').length },
+    { id: 'ai-generated', label: extra.tabAiGenerated, count: 0 },
+    { id: 'archived', label: extra.tabArchived, count: 0 },
+  ], [extra, readyCards.length, reportCards]);
   const activeCanExport = activeStatus === 'ready' && activeRows.length > 0;
+  const activeReportInView = visibleCards.some(card => card.report.id === activeReport.id);
   const activeMissing = missingDataKeys(activeReport, records);
   const projects = records.projects;
 
   useEffect(() => {
-    if (isLoading || reportViewTouched) return;
-    setReportView(readyCount > 0 ? 'ready' : 'all');
-  }, [isLoading, readyCount, reportViewTouched]);
+    setPreviewOpen(false);
+  }, [workspaceTab]);
 
   const missingActionForKey = useCallback((key: TableKey): MissingAction => {
     if (key === 'income') return { label: tr.addIncome, href: '/income/add' };
@@ -1927,24 +1976,18 @@ export default function ReportsCenterPage() {
     return { label: tr.openModule, href: '/dashboard' };
   }, [tr]);
 
-  const selectReportView = useCallback((view: ReportView) => {
-    setReportView(view);
-    setReportViewTouched(true);
-    const nextCard = reportCards.find(card => {
-      if (view === 'all') return true;
-      if (view === 'ready') return card.status === 'ready';
-      if (view === 'needs_data') return card.status === 'needs_data';
-      return card.report.category === view;
-    });
-    if (nextCard) setActiveReportId(nextCard.report.id);
-  }, [reportCards]);
+  const selectWorkspaceTab = useCallback((id: string) => {
+    if (!REPORT_WORKSPACE_TAB_IDS.includes(id as ReportWorkspaceTab)) return;
+    setWorkspaceTab(id as ReportWorkspaceTab);
+  }, [setWorkspaceTab]);
+
+  const openReportPreview = useCallback((reportId: ReportType) => {
+    setActiveReportId(reportId);
+    setPreviewOpen(true);
+  }, []);
 
   const toggleRequirements = useCallback((reportId: ReportType) => {
     setExpandedRequirements(prev => ({ ...prev, [reportId]: !prev[reportId] }));
-  }, []);
-
-  const toggleCategory = useCallback((category: ReportCategory) => {
-    setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
   }, []);
 
   const exportCsv = useCallback((report: ReportDefinition) => {
@@ -2007,6 +2050,7 @@ export default function ReportsCenterPage() {
       return;
     }
     setActiveReportId(report.id);
+    setPreviewOpen(true);
     window.setTimeout(() => {
       const previousTitle = document.title;
       const nextTitle = reportFileName(report, filters, lang as Lang).replace(/\.pdf$/i, '');
@@ -2104,7 +2148,7 @@ export default function ReportsCenterPage() {
             <button type="button" onClick={() => router.push('/documents')} aria-label={tr.documentsCenter}>
               <FileText size={18} /> {tr.documentsCenter}
             </button>
-            <button type="button" disabled={!activeCanExport} aria-disabled={!activeCanExport} onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
+            <button type="button" disabled={!activeCanExport || !activeReportInView} aria-disabled={!activeCanExport || !activeReportInView} onClick={() => printReport(activeReport)} aria-label={tr.printPdf}>
               <Printer size={18} /> {tr.printPdf}
             </button>
           </div>
@@ -2129,233 +2173,212 @@ export default function ReportsCenterPage() {
           </article>
         </section>
 
-        <nav className="category-tabs no-print" aria-label={tr.category}>
-          {REPORT_VIEW_TABS.map(tab => {
-            const isActive = reportView === tab.id;
-            const count = tab.id === 'all'
-              ? reportCards.length
-              : tab.id === 'ready'
-                ? readyCount
-                : tab.id === 'needs_data'
-                  ? needsCount
-                  : reportCards.filter(card => card.report.category === tab.id).length;
-            const label = tab.labelKey in extra ? extra[tab.labelKey as keyof typeof extra] : tr[tab.labelKey as keyof typeof tr];
-            return (
-              <button key={tab.id} type="button" className={isActive ? 'active' : ''} onClick={() => selectReportView(tab.id)} aria-pressed={isActive}>
-                {label} <span>{count}</span>
-              </button>
-            );
-          })}
-        </nav>
+        <div className="no-print">
+          <PageTabs
+            idBase="reports-center-tabs"
+            tabs={reportTabs}
+            active={workspaceTab}
+            onChange={selectWorkspaceTab}
+            ariaLabel={tr.category}
+            sticky
+            mobileMode="auto"
+          />
+        </div>
 
-        <section className="filters-panel no-print" aria-label={tr.filters}>
-          <div className="section-title">
-            <Filter size={18} />
-            <h2>{tr.filters}</h2>
-          </div>
-          <div className="filters-grid">
-            <label>
-              <span>{tr.year}</span>
-              <input value={filters.year} onChange={event => setFilters(prev => ({ ...prev, year: event.target.value.replace(/\D/g, '').slice(0, 4) || String(now.getFullYear()) }))} inputMode="numeric" />
-            </label>
-            <label>
-              <span>{tr.month}</span>
-              <select value={filters.month} onChange={event => setFilters(prev => ({ ...prev, month: event.target.value }))}>
-                <option value="all">{tr.allCategories}</option>
-                {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map(month => <option key={month} value={month}>{month}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>{tr.from}</span>
-              <input type="date" value={filters.startDate} onChange={event => setFilters(prev => ({ ...prev, startDate: event.target.value }))} />
-            </label>
-            <label>
-              <span>{tr.to}</span>
-              <input type="date" value={filters.endDate} onChange={event => setFilters(prev => ({ ...prev, endDate: event.target.value }))} />
-            </label>
-            <label>
-              <span>{tr.currency}</span>
-              <select value={filters.currency} onChange={event => setFilters(prev => ({ ...prev, currency: event.target.value }))}>
-                <option value="KWD">KWD</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-              </select>
-            </label>
-            <div className="filters-project-selector">
-              <ProjectSelector
-                projects={projects}
-                selectedProjectId={filters.projectId}
-                onChange={projectId => setFilters(prev => ({ ...prev, projectId }))}
-                label={tr.project}
-                hint={tr.filters}
-                allowEmpty
-                emptyOptionLabel={tr.allProjects}
-                compact
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="ready-panel no-print" aria-label={tr.readyReports}>
-          <div className="section-title">
-            <CheckCircle2 size={18} />
-            <h2>{tr.readyReports}</h2>
-          </div>
-          {readyCards.length ? (
-            <div className="ready-list">
-              {readyCards.slice(0, 3).map(({ report, rows }) => (
-                <button key={report.id} type="button" onClick={() => setActiveReportId(report.id)} aria-label={`${tr.preview} ${report.title[lang as Lang]}`}>
-                  <span>{report.title[lang as Lang]}</span>
-                  <strong>{tr.rows}: {rows.length}</strong>
-                </button>
-              ))}
-              {readyCards.length > 3 && (
-                <button type="button" className="view-all-ready" onClick={() => selectReportView('ready')} aria-label={extra.viewAll}>
-                  <span>{extra.viewAll}</span>
-                  <strong>{readyCards.length} {extra.reportsAvailable}</strong>
-                </button>
-              )}
-            </div>
-          ) : (
-            <p>{tr.noReadyReports}</p>
-          )}
-        </section>
-
-        <div className="reports-layout">
-          <section className="report-categories no-print">
-            {CATEGORY_SECTIONS.map(({ id: category, labelKey }) => {
-              const items = visibleCards.filter(card => card.report.category === category);
-              if (!items.length) return null;
-              const Icon = category === 'financial' ? Wallet : category === 'investment' ? LineChart : category === 'projects' ? FolderKanban : HandHeart;
-              const isOpen = openCategories[category];
-              const categoryReadyCount = items.filter(card => card.status === 'ready').length;
-              const categoryNeedsCount = items.filter(card => card.status === 'needs_data').length;
-              return (
-                <div key={category} className="category-section">
+        <details className="report-filter-drawer no-print">
+          <summary>
+            <span><Filter size={18} /> <strong>{extra.filterSummary}</strong></span>
+            <span className="filter-context">{filters.year} · {filters.currency} · {statusFilter === 'all' ? extra.statusAll : statusFilter === 'ready' ? extra.tabReady : extra.tabNeedsData}</span>
+            <ChevronDown className="filter-chevron" size={18} aria-hidden="true" />
+          </summary>
+          <div className="filter-drawer-content">
+            <fieldset className="status-filter">
+              <legend>{tr.status}</legend>
+              <div>
+                {([
+                  { id: 'all', label: extra.statusAll },
+                  { id: 'ready', label: extra.tabReady },
+                  { id: 'needs_data', label: extra.tabNeedsData },
+                ] as const).map(option => (
                   <button
+                    key={option.id}
                     type="button"
-                    className="category-summary"
-                    aria-expanded={isOpen}
-                    aria-controls={`reports-category-${category}`}
-                    onClick={() => toggleCategory(category)}
+                    className={statusFilter === option.id ? 'active' : ''}
+                    aria-pressed={statusFilter === option.id}
+                    onClick={() => setStatusFilter(option.id)}
                   >
-                    <span className="category-title">
-                      <Icon size={19} />
-                      <strong>{tr[labelKey]}</strong>
-                    </span>
-                    <span className="category-counts">
-                      <em>{tr.allReports}: {items.length}</em>
-                      <em>{tr.ready}: {categoryReadyCount}</em>
-                      <em>{tr.needsData}: {categoryNeedsCount}</em>
-                      <ChevronDown className="category-chevron" size={18} aria-hidden="true" />
-                    </span>
+                    {option.label}
                   </button>
-                  {isOpen && (
-                    <div className="reports-grid" id={`reports-category-${category}`}>
-                      {items.map(({ report, status, rows }) => {
-                        const missing = missingDataKeys(report, records);
-                        const requirements = missing.length ? missing : report.required;
-                        const missingActions = uniqueActions(requirements.map(key => missingActionForKey(key as TableKey)));
-                        const canPrint = status === 'ready' && rows.length > 0;
-                        const canCsv = canPrint && report.exportable;
-                        const requirementsOpen = !!expandedRequirements[report.id];
-                        const primaryLabel = status === 'ready' ? tr.preview : status === 'needs_data' ? extra.addRequiredData : extra.openSource;
-                        const primaryAction = () => {
-                          if (status === 'ready') return setActiveReportId(report.id);
-                          if (status === 'needs_data' && missingActions[0]) return router.push(missingActions[0].href);
-                          return router.push(report.route);
-                        };
-                        return (
-                          <article key={report.id} className={`report-card ${status}`}>
-                            <div className="report-card-head">
-                              <div>
-                                <h3>{report.title[lang as Lang]}</h3>
-                                <p>{report.description[lang as Lang]}</p>
-                              </div>
-                              <span className="status-badge" style={{ color: STATUS_TONE[status], background: `${STATUS_TONE[status]}12`, borderColor: `${STATUS_TONE[status]}30` }}>
-                                {statusLabel(status)}
-                              </span>
+                ))}
+              </div>
+            </fieldset>
+            <div className="filters-grid">
+              <label>
+                <span>{tr.year}</span>
+                <input value={filters.year} onChange={event => setFilters(prev => ({ ...prev, year: event.target.value.replace(/\D/g, '').slice(0, 4) || String(now.getFullYear()) }))} inputMode="numeric" />
+              </label>
+              <label>
+                <span>{tr.month}</span>
+                <select value={filters.month} onChange={event => setFilters(prev => ({ ...prev, month: event.target.value }))}>
+                  <option value="all">{tr.allCategories}</option>
+                  {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map(month => <option key={month} value={month}>{month}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{tr.from}</span>
+                <input type="date" value={filters.startDate} onChange={event => setFilters(prev => ({ ...prev, startDate: event.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.to}</span>
+                <input type="date" value={filters.endDate} onChange={event => setFilters(prev => ({ ...prev, endDate: event.target.value }))} />
+              </label>
+              <label>
+                <span>{tr.currency}</span>
+                <select value={filters.currency} onChange={event => setFilters(prev => ({ ...prev, currency: event.target.value }))}>
+                  <option value="KWD">KWD</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </label>
+              <div className="filters-project-selector">
+                <ProjectSelector
+                  projects={projects}
+                  selectedProjectId={filters.projectId}
+                  onChange={projectId => setFilters(prev => ({ ...prev, projectId }))}
+                  label={tr.project}
+                  hint={tr.filters}
+                  allowEmpty
+                  emptyOptionLabel={tr.allProjects}
+                  compact
+                />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div className={`reports-layout${previewOpen ? ' preview-open' : ''}`}>
+          <PageTabPanel
+            idBase="reports-center-tabs"
+            value={workspaceTab}
+            active
+            className="report-categories no-print"
+          >
+            {workspaceTab === 'recent' && <p className="workspace-note">{extra.recentDescription}</p>}
+            {workspaceTab === 'ai-generated' || workspaceTab === 'archived' ? (
+              <div className="workspace-empty" role="status">
+                <FileText size={26} aria-hidden="true" />
+                <strong>{workspaceTab === 'ai-generated' ? extra.aiEmptyTitle : extra.archivedEmptyTitle}</strong>
+                <p>{workspaceTab === 'ai-generated' ? extra.aiEmptyBody : extra.archivedEmptyBody}</p>
+              </div>
+            ) : visibleCards.length ? (
+              <div className="reports-grid">
+                {visibleCards.map(({ report, status, rows }) => {
+                  const missing = missingDataKeys(report, records);
+                  const requirements = missing.length ? missing : report.required;
+                  const missingActions = uniqueActions(requirements.map(key => missingActionForKey(key as TableKey)));
+                  const canPrint = status === 'ready' && rows.length > 0;
+                  const canCsv = canPrint && report.exportable;
+                  const requirementsOpen = !!expandedRequirements[report.id];
+                  const primaryLabel = status === 'ready' ? tr.preview : status === 'needs_data' ? extra.addRequiredData : extra.openSource;
+                  const primaryAction = () => {
+                    if (status === 'ready') return openReportPreview(report.id);
+                    if (status === 'needs_data' && missingActions[0]) return router.push(missingActions[0].href);
+                    return router.push(report.route);
+                  };
+                  return (
+                    <article key={report.id} className={`report-card ${status}`}>
+                      <div className="report-card-head">
+                        <div>
+                          <h3>{report.title[lang as Lang]}</h3>
+                          <p>{report.description[lang as Lang]}</p>
+                        </div>
+                        <span className="status-badge" style={{ color: STATUS_TONE[status], background: `${STATUS_TONE[status]}12`, borderColor: `${STATUS_TONE[status]}30` }}>
+                          {statusLabel(status)}
+                        </span>
+                      </div>
+
+                      <div className="card-meta">
+                        <span>{tr.rows}: {rows.length}</span>
+                        <span>{tr.lastGenerated}: {tr.notSaved}</span>
+                      </div>
+
+                      {status === 'ready' ? (
+                        <div className="sources compact">
+                          <strong>{tr.dataUsed}</strong>
+                          <div>{report.sources[lang as Lang].slice(0, 3).map(source => <span key={source}>{sourceLabel(source, lang as Lang)}</span>)}</div>
+                        </div>
+                      ) : (
+                        <div className="requirements-compact">
+                          <div>
+                            <strong>{status === 'unavailable' ? tr.unavailable : status === 'error' ? tr.error : `${requirements.length} ${extra.missingCount}`}</strong>
+                            <span>{status === 'unavailable' ? tr.unavailableCopy : status === 'error' ? tr.loadError : tr.missingData}</span>
+                          </div>
+                          {status === 'needs_data' && (
+                            <button
+                              type="button"
+                              onClick={() => toggleRequirements(report.id)}
+                              aria-expanded={requirementsOpen}
+                              aria-controls={`requirements-${report.id}`}
+                            >
+                              {requirementsOpen ? extra.hideRequirements : extra.showRequirements}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {status === 'needs_data' && requirementsOpen && (
+                        <div className="missing-requirements" id={`requirements-${report.id}`}>
+                          <strong>{tr.requiredData}</strong>
+                          <ul>
+                            {requirements.map(key => <li key={key}>{tableKeyLabel(key as TableKey, lang as Lang)}</li>)}
+                          </ul>
+                          {missingActions.length > 0 && (
+                            <div className="missing-actions">
+                              {missingActions.slice(0, 3).map(action => (
+                                <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
+                                  {action.label}
+                                </button>
+                              ))}
                             </div>
+                          )}
+                        </div>
+                      )}
 
-                            <div className="card-meta">
-                              <span>{tr.rows}: {rows.length}</span>
-                              <span>{tr.lastGenerated}: {tr.notSaved}</span>
-                            </div>
+                      <div className="card-actions compact-actions">
+                        <button type="button" className="primary-card-action" onClick={primaryAction} aria-label={`${primaryLabel} ${report.title[lang as Lang]}`}>
+                          <FileText size={15} /> {primaryLabel}
+                        </button>
+                        <details className="report-actions-menu">
+                          <summary>{extra.actions}</summary>
+                          <div>
+                            <button type="button" disabled={!canPrint} aria-disabled={!canPrint} title={!canPrint ? tr.exportsDisabled : undefined} onClick={() => printReport(report)} aria-label={`${tr.pdf} ${report.title[lang as Lang]}`}>
+                              <Printer size={15} /> {tr.pdf}
+                            </button>
+                            <button type="button" disabled={!canCsv} aria-disabled={!canCsv} title={!canCsv ? tr.exportsDisabled : undefined} onClick={() => exportCsv(report)} aria-label={`${tr.excel} ${report.title[lang as Lang]}`}>
+                              <FileSpreadsheet size={15} /> {report.exportable ? tr.excel : tr.comingSoon}
+                            </button>
+                            <button type="button" onClick={() => openReportPreview(report.id)} aria-label={`${extra.reportDetails} ${report.title[lang as Lang]}`}>
+                              <FileText size={15} /> {extra.reportDetails}
+                            </button>
+                            <button type="button" onClick={() => router.push(report.route)} aria-label={`${tr.configure} ${report.title[lang as Lang]}`}>
+                              <Settings2 size={15} /> {tr.configure}
+                            </button>
+                          </div>
+                        </details>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="workspace-empty" role="status">
+                <ShieldAlert size={26} aria-hidden="true" />
+                <strong>{workspaceTab === 'recent' ? extra.recentEmpty : extra.noReportsMatch}</strong>
+              </div>
+            )}
+          </PageTabPanel>
 
-                            {status === 'ready' ? (
-                              <div className="sources compact">
-                                <strong>{tr.dataUsed}</strong>
-                                <div>{report.sources[lang as Lang].slice(0, 3).map(source => <span key={source}>{sourceLabel(source, lang as Lang)}</span>)}</div>
-                              </div>
-                            ) : (
-                              <div className="requirements-compact">
-                                <div>
-                                  <strong>{status === 'unavailable' ? tr.unavailable : status === 'error' ? tr.error : `${requirements.length} ${extra.missingCount}`}</strong>
-                                  <span>{status === 'unavailable' ? tr.unavailableCopy : status === 'error' ? tr.loadError : tr.missingData}</span>
-                                </div>
-                                {status === 'needs_data' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleRequirements(report.id)}
-                                    aria-expanded={requirementsOpen}
-                                    aria-controls={`requirements-${report.id}`}
-                                  >
-                                    {requirementsOpen ? extra.hideRequirements : extra.showRequirements}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {status === 'needs_data' && requirementsOpen && (
-                              <div className="missing-requirements" id={`requirements-${report.id}`}>
-                                <strong>{tr.requiredData}</strong>
-                                <ul>
-                                  {requirements.map(key => <li key={key}>{tableKeyLabel(key as TableKey, lang as Lang)}</li>)}
-                                </ul>
-                                {missingActions.length > 0 && (
-                                  <div className="missing-actions">
-                                    {missingActions.slice(0, 3).map(action => (
-                                      <button key={`${action.href}-${action.label}`} type="button" onClick={() => router.push(action.href)} aria-label={action.label}>
-                                        {action.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="card-actions compact-actions">
-                              <button type="button" className="primary-card-action" onClick={primaryAction} aria-label={`${primaryLabel} ${report.title[lang as Lang]}`}>
-                                <FileText size={15} /> {primaryLabel}
-                              </button>
-                              <details className="report-actions-menu">
-                                <summary>{extra.actions}</summary>
-                                <div>
-                                  <button type="button" disabled={!canPrint} aria-disabled={!canPrint} title={!canPrint ? tr.exportsDisabled : undefined} onClick={() => printReport(report)} aria-label={`${tr.pdf} ${report.title[lang as Lang]}`}>
-                                    <Printer size={15} /> {tr.pdf}
-                                  </button>
-                                  <button type="button" disabled={!canCsv} aria-disabled={!canCsv} title={!canCsv ? tr.exportsDisabled : undefined} onClick={() => exportCsv(report)} aria-label={`${tr.excel} ${report.title[lang as Lang]}`}>
-                                    <FileSpreadsheet size={15} /> {report.exportable ? tr.excel : tr.comingSoon}
-                                  </button>
-                                  <button type="button" onClick={() => setActiveReportId(report.id)} aria-label={`${extra.reportDetails} ${report.title[lang as Lang]}`}>
-                                    <FileText size={15} /> {extra.reportDetails}
-                                  </button>
-                                  <button type="button" onClick={() => router.push(report.route)} aria-label={`${tr.configure} ${report.title[lang as Lang]}`}>
-                                    <Settings2 size={15} /> {tr.configure}
-                                  </button>
-                                </div>
-                              </details>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </section>
-
+          {previewOpen && (
           <aside className="preview-panel" aria-label={tr.reportPreview}>
             <div className="pdf-preview-toolbar no-print">
               <div>
@@ -2364,6 +2387,9 @@ export default function ReportsCenterPage() {
                 <p>{pdfText.printReady}</p>
               </div>
               <div className="pdf-preview-controls" aria-label={pdfText.previewControls}>
+                <button type="button" className="close-preview" onClick={() => setPreviewOpen(false)} aria-label={tr.closePreview}>
+                  <X size={16} /> {tr.closePreview}
+                </button>
                 <button type="button" className={previewFit === 'width' ? 'active' : ''} onClick={() => setPreviewFit('width')}>
                   {pdfText.fitWidth}
                 </button>
@@ -2488,15 +2514,8 @@ export default function ReportsCenterPage() {
               </article>
             </div>
           </aside>
+          )}
         </div>
-
-        <section className="history-panel no-print">
-          <div className="section-title">
-            <BarChart3 size={18} />
-            <h2>{tr.generatedReports}</h2>
-          </div>
-          <p>{tr.noGeneratedReports}</p>
-        </section>
 
         {toast && <div className="toast no-print">{toast}</div>}
       </DashboardPageShell>
@@ -2520,22 +2539,21 @@ const pageStyles = `
   .reports-hero button,.card-actions button{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}
   .reports-hero button{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;white-space:nowrap}.reports-hero button:disabled{background:rgba(234,246,255,.2);color:rgba(234,246,255,.62);cursor:not-allowed}
   .report-summary-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.report-summary-cards article{min-width:0;border:1px solid rgba(29,140,255,.14);border-radius:18px;background:var(--sfm-card);box-shadow:0 12px 34px rgba(3,18,37,.06);padding:14px;display:grid;gap:7px}.report-summary-cards span{color:var(--sfm-muted);font-size:12px;font-weight:950}.report-summary-cards strong{color:var(--sfm-primary-dark);font-size:24px;line-height:1.1;overflow-wrap:anywhere}
-  .category-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}.category-tabs button{flex:0 0 auto;min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,color .18s ease,background .18s ease}.category-tabs button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.34);color:var(--sfm-primary-dark);box-shadow:0 10px 24px rgba(29,140,255,.10)}.category-tabs button span{min-width:24px;border-radius:999px;background:rgba(29,140,255,.10);color:var(--sfm-primary-hover);padding:3px 7px}.category-tabs button.active,.category-tabs button:focus-visible{background:var(--sfm-primary-dark);color:var(--sfm-soft-cyan);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.category-tabs button.active span{background:rgba(167,243,240,.16);color:var(--sfm-soft-cyan)}
-  .filters-panel,.category-section,.preview-panel,.history-panel,.ready-panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:22px;box-shadow:0 14px 44px rgba(3,18,37,.07);min-width:0}
-  .filters-panel,.history-panel,.ready-panel{padding:16px}.section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:var(--sfm-primary)}.section-title h2{margin:0;color:var(--sfm-primary-dark);font-size:18px;font-weight:950}
+  .report-filter-drawer,.preview-panel{background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:22px;box-shadow:0 14px 44px rgba(3,18,37,.07);min-width:0}
+  .report-filter-drawer>summary{list-style:none;min-height:58px;padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;color:var(--sfm-primary-dark);cursor:pointer;border-radius:22px}.report-filter-drawer>summary::-webkit-details-marker{display:none}.report-filter-drawer>summary>span:first-child{display:inline-flex;align-items:center;gap:9px;min-width:0}.report-filter-drawer>summary svg{color:var(--sfm-primary)}.report-filter-drawer>summary strong{font-size:15px;font-weight:950}.report-filter-drawer>summary:focus-visible{outline:3px solid rgba(24,212,212,.30);outline-offset:3px}.filter-context{color:var(--sfm-muted-readable);font-size:11px;font-weight:900;text-align:end;overflow-wrap:anywhere}.filter-chevron{transition:transform .18s ease}.report-filter-drawer[open] .filter-chevron{transform:rotate(180deg)}
+  .filter-drawer-content{padding:0 16px 16px;display:grid;gap:14px;border-top:1px solid rgba(29,140,255,.10)}.status-filter{margin:14px 0 0;padding:0;border:0;display:grid;gap:7px}.status-filter legend{padding:0;color:var(--sfm-muted-readable);font-size:11px;font-weight:950}.status-filter>div{display:flex;gap:7px;flex-wrap:wrap}.status-filter button{min-height:40px;border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-muted-readable);padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}.status-filter button:hover,.status-filter button:focus-visible{border-color:var(--sfm-accent);outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.14)}.status-filter button.active{background:var(--sfm-primary-dark);border-color:var(--sfm-primary-dark);color:#FFFFFF}
   .filters-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}.filters-grid label{display:grid;gap:6px;min-width:0}.filters-grid span{font-size:11px;font-weight:950;color:var(--sfm-muted)}.filters-grid input,.filters-grid select{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:var(--sfm-light-card);color:var(--sfm-primary-dark);padding:10px 11px;font:900 12px Tajawal,Arial,sans-serif;outline:0}.filters-grid input:focus,.filters-grid select:focus{border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.14)}.filters-project-selector{grid-column:span 2;min-width:0}
-  .ready-panel p{margin:0;color:var(--sfm-muted);font-weight:900;line-height:1.7}.ready-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:8px}.ready-list button{min-width:0;border:1px solid rgba(21,128,61,.14);border-radius:15px;background:#F2FAEA;color:#047857;padding:10px 12px;text-align:start;display:grid;gap:4px;font-family:inherit;cursor:pointer}.ready-list button.view-all-ready{background:#FFFFFF;border-color:rgba(29,140,255,.18);color:var(--sfm-primary-dark)}.ready-list button span{font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ready-list button strong{font-size:11px;color:#4D6B32}
-  .reports-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:18px;align-items:start;min-width:0}.report-categories{display:grid;gap:14px;min-width:0}.category-section{padding:0;overflow:visible}.category-summary{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--sfm-primary-dark);font-family:inherit;cursor:pointer;text-align:start;min-height:60px;border-radius:22px;transition:background .18s ease,box-shadow .18s ease,color .18s ease}.category-summary:hover{background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(24,212,212,.08));box-shadow:inset 0 0 0 1px rgba(24,212,212,.18)}.category-summary:focus-visible{outline:3px solid rgba(24,212,212,.28);outline-offset:3px}.category-title{display:inline-flex;align-items:center;gap:9px;min-width:0}.category-title svg{color:var(--sfm-primary)}.category-title strong{font-size:18px;font-weight:950;overflow-wrap:anywhere}.category-counts{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.category-counts em{font-style:normal;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);border-radius:999px;padding:5px 8px;color:var(--sfm-muted);font-size:11px;font-weight:950}.category-chevron{flex:0 0 auto;color:var(--sfm-primary);transition:transform .18s ease}.category-summary[aria-expanded="true"] .category-chevron{transform:rotate(180deg)}.reports-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:12px;min-width:0;padding:0 18px 18px}
+  .reports-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start;min-width:0}.reports-layout.preview-open{grid-template-columns:minmax(0,1fr) minmax(320px,380px)}.report-categories{display:grid;gap:14px;min-width:0;outline:none}.report-categories:focus-visible{border-radius:20px;box-shadow:0 0 0 3px rgba(24,212,212,.20)}.reports-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:12px;min-width:0}.workspace-note{margin:0;border:1px solid rgba(29,140,255,.12);border-radius:16px;background:var(--sfm-card);color:var(--sfm-muted-readable);padding:12px 14px;font-size:12px;font-weight:850;line-height:1.7}.workspace-empty{min-height:210px;display:grid;place-items:center;align-content:center;gap:9px;text-align:center;border:1px dashed rgba(29,140,255,.24);border-radius:20px;background:var(--sfm-card);color:var(--sfm-primary);padding:24px}.workspace-empty strong{color:var(--sfm-primary-dark);font-size:18px}.workspace-empty p{max-width:620px;margin:0;color:var(--sfm-muted-readable);font-size:13px;font-weight:850;line-height:1.7}
   .report-card{background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.13);border-radius:18px;padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;min-width:0;min-height:218px}.report-card.ready{border-color:rgba(21,128,61,.18)}.report-card.needs_data{border-color:rgba(154,94,13,.22)}.report-card.unavailable,.report-card.error{background:var(--sfm-light-card)}.report-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}.report-card h3{margin:0 0 5px;color:var(--sfm-primary-dark);font-size:16px;font-weight:950;line-height:1.35}.report-card p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .status-badge{display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950;white-space:nowrap}.sources,.missing-requirements{display:grid;gap:7px}.sources strong,.missing-requirements strong{font-size:11px;color:var(--sfm-primary)}.sources div{display:flex;flex-wrap:wrap;gap:5px}.sources span{font-size:11px;font-weight:900;color:var(--sfm-muted);background:var(--sfm-card);border:1px solid rgba(29,140,255,.12);border-radius:999px;padding:4px 7px}.missing-requirements{background:#FFF7ED;border:1px solid rgba(154,94,13,.16);border-radius:13px;padding:10px}.missing-requirements ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px}.missing-requirements li{font-size:11px;font-weight:950;color:#7A4B09;background:#FFFFFF;border:1px solid rgba(154,94,13,.16);border-radius:999px;padding:4px 8px}
   .card-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--sfm-muted);font-size:11px;font-weight:900}.requirements-compact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(154,94,13,.08);border:1px solid rgba(154,94,13,.14);border-radius:13px;padding:10px}.requirements-compact div{min-width:0;display:grid;gap:3px}.requirements-compact strong{color:#7A4B09;font-size:12px}.requirements-compact span{color:#7A4B09;font-size:11px;font-weight:850;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.requirements-compact button,.missing-actions button{border:1px solid rgba(29,140,255,.18);border-radius:999px;background:var(--sfm-card);color:var(--sfm-primary-hover);padding:7px 10px;font:950 11px Tajawal,Arial,sans-serif;cursor:pointer}.missing-actions{display:flex;flex-wrap:wrap;gap:6px}
   .card-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;min-width:0;align-items:center}.card-actions button,.report-actions-menu summary{border:0;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;min-height:42px;padding:0 13px}.primary-card-action{background:var(--sfm-primary-dark)!important;color:var(--sfm-card)!important;min-width:0;white-space:normal}.report-actions-menu{position:relative;justify-self:end}.report-actions-menu summary{list-style:none;border:1px solid rgba(29,140,255,.18);background:#FFFFFF;color:var(--sfm-primary-dark)}.report-actions-menu summary::-webkit-details-marker{display:none}.report-actions-menu div{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:20;min-width:220px;display:grid;gap:6px;background:#FFFFFF;border:1px solid rgba(29,140,255,.16);border-radius:16px;box-shadow:0 18px 48px rgba(3,18,37,.18);padding:8px}.report-actions-menu button{width:100%;justify-content:flex-start;background:#FFFFFF;color:var(--sfm-primary-dark);border:1px solid rgba(29,140,255,.10);white-space:normal}.report-actions-menu button:hover{background:rgba(29,140,255,.08)}.card-actions button:disabled,.report-actions-menu button:disabled{opacity:1;background:#EEF2F7!important;color:#64748B!important;border:1px solid rgba(100,116,139,.18);cursor:not-allowed}
-  .preview-panel{padding:0;position:sticky;top:18px;overflow:hidden}.pdf-preview-toolbar{display:grid;gap:14px;padding:16px;border-bottom:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F7FBFF)}.pdf-preview-toolbar span{color:var(--sfm-primary);font-size:12px;font-weight:950}.pdf-preview-toolbar h2{margin:4px 0;color:var(--sfm-primary-dark);font-size:22px;line-height:1.25}.pdf-preview-toolbar p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.65}.pdf-preview-controls{display:flex;gap:8px;flex-wrap:wrap}.pdf-preview-controls button{min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:#FFFFFF;color:var(--sfm-primary-dark);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}.pdf-preview-controls button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.35);background:#F0FDFF}.pdf-preview-controls button.active{background:var(--sfm-primary-dark);color:#FFFFFF}.pdf-preview-controls button:disabled{opacity:1;background:#EEF2F7;color:#64748B;cursor:not-allowed}.pdf-preview-viewport{background:#E8EFF6;max-height:72vh;overflow:auto;padding:22px;display:flex;justify-content:center}.pdf-preview-viewport.fit-page{align-items:flex-start}.pdf-report-page{width:min(100%,794px);min-height:1123px;background:#FFFFFF;color:#10233E;border:1px solid rgba(15,39,66,.08);box-shadow:0 20px 60px rgba(15,39,66,.18);border-radius:8px;padding:34px;display:flex;flex-direction:column;gap:18px;font-family:Tajawal,Arial,sans-serif}.pdf-report-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;border-bottom:3px solid #0F2742;padding-bottom:16px;break-inside:avoid}.pdf-brand-lockup{display:flex;align-items:flex-start;gap:14px;min-width:0}.pdf-logo{border-radius:14px;object-fit:contain;border:1px solid #D9E8F5;background:#F8FAFC;padding:4px}.pdf-brand-lockup span{display:block;color:#0A8FA7;font-size:12px;font-weight:950}.pdf-brand-lockup h2{margin:3px 0;color:#0F2742;font-size:28px;font-weight:950;line-height:1.2}.pdf-brand-lockup p{margin:0;color:#52657B;font-size:12px;font-weight:850;line-height:1.7;max-width:520px}.pdf-report-reference{display:grid;justify-items:end;gap:5px;text-align:end}.pdf-report-reference span{color:#0A8FA7;font-size:11px;font-weight:950}.pdf-report-reference strong{color:#0F2742;font-size:13px;font-weight:950}.pdf-report-reference em{font-style:normal;color:#64748B;font-size:10px;font-weight:850;max-width:220px;overflow-wrap:anywhere}.pdf-metadata-grid,.pdf-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border:1px solid #D8E7F3;background:#F8FBFF;border-radius:12px;padding:10px 12px;min-width:0}.pdf-summary-grid div{background:#FFFFFF;border-color:#D6E9F5}.pdf-metadata-grid span,.pdf-summary-grid span{display:block;color:#64748B;font-size:10px;font-weight:900;margin-bottom:4px}.pdf-metadata-grid strong,.pdf-summary-grid strong{display:block;color:#0F2742;font-size:13px;font-weight:950;overflow-wrap:anywhere}.pdf-summary-grid div:first-child{border-color:#7DD3FC;background:#EFFBFF}.pdf-summary-grid div:first-child strong{font-size:16px;color:#0369A1}.pdf-table-section{display:grid;gap:10px;min-width:0}.pdf-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;break-inside:avoid}.pdf-section-heading h3{margin:0;color:#0F2742;font-size:16px;font-weight:950}.pdf-section-heading span{color:#64748B;font-size:11px;font-weight:900}.preview-table-wrap{max-width:100%;overflow:auto;border:1px solid #D6E3EE;border-radius:14px;background:#FFFFFF}.pdf-report-table{width:100%;border-collapse:collapse;background:#FFFFFF;table-layout:fixed}.pdf-report-table thead{display:table-header-group}.pdf-report-table th,.pdf-report-table td{padding:9px 10px;border-bottom:1px solid #E2EAF2;text-align:start;vertical-align:top;font-size:11px;line-height:1.55;overflow-wrap:anywhere}.pdf-report-table th{background:#0F2742;color:#FFFFFF;font-size:10.5px;font-weight:950;white-space:nowrap}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FBFF}.pdf-report-table tr{break-inside:avoid;page-break-inside:avoid}.pdf-report-table .is-numeric{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}.pdf-total-row td{background:#EAF8FF!important;color:#0F2742;font-weight:950;border-top:2px solid #7DD3FC}.pdf-report-footer{margin-top:auto;border-top:1px solid #D8E7F3;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#64748B;font-size:9.5px;font-weight:850;break-inside:avoid}.pdf-page-number::after{content:" " counter(page) " / " counter(pages)}
+  .preview-panel{padding:0;position:sticky;top:18px;overflow:hidden}.pdf-preview-toolbar{display:grid;gap:14px;padding:16px;border-bottom:1px solid rgba(29,140,255,.12);background:linear-gradient(180deg,#FFFFFF,#F7FBFF)}.pdf-preview-toolbar span{color:var(--sfm-primary);font-size:12px;font-weight:950}.pdf-preview-toolbar h2{margin:4px 0;color:var(--sfm-primary-dark);font-size:22px;line-height:1.25}.pdf-preview-toolbar p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:850;line-height:1.65}.pdf-preview-controls{display:flex;gap:8px;flex-wrap:wrap}.pdf-preview-controls button{min-height:42px;border:1px solid rgba(29,140,255,.18);border-radius:13px;background:#FFFFFF;color:var(--sfm-primary-dark);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}.pdf-preview-controls button:hover{transform:translateY(-1px);border-color:rgba(24,212,212,.35);background:#F0FDFF}.pdf-preview-controls button.active{background:var(--sfm-primary-dark);color:#FFFFFF}.pdf-preview-controls button.close-preview{margin-inline-end:auto;background:var(--sfm-card);color:var(--sfm-muted-readable)}.pdf-preview-controls button:disabled{opacity:1;background:#EEF2F7;color:#64748B;cursor:not-allowed}.pdf-preview-viewport{background:#E8EFF6;max-height:72vh;overflow:auto;padding:22px;display:flex;justify-content:center}.pdf-preview-viewport.fit-page{align-items:flex-start}.pdf-report-page{width:min(100%,794px);min-height:1123px;background:#FFFFFF;color:#10233E;border:1px solid rgba(15,39,66,.08);box-shadow:0 20px 60px rgba(15,39,66,.18);border-radius:8px;padding:34px;display:flex;flex-direction:column;gap:18px;font-family:Tajawal,Arial,sans-serif}.pdf-report-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;border-bottom:3px solid #0F2742;padding-bottom:16px;break-inside:avoid}.pdf-brand-lockup{display:flex;align-items:flex-start;gap:14px;min-width:0}.pdf-logo{border-radius:14px;object-fit:contain;border:1px solid #D9E8F5;background:#F8FAFC;padding:4px}.pdf-brand-lockup span{display:block;color:#0A8FA7;font-size:12px;font-weight:950}.pdf-brand-lockup h2{margin:3px 0;color:#0F2742;font-size:28px;font-weight:950;line-height:1.2}.pdf-brand-lockup p{margin:0;color:#52657B;font-size:12px;font-weight:850;line-height:1.7;max-width:520px}.pdf-report-reference{display:grid;justify-items:end;gap:5px;text-align:end}.pdf-report-reference span{color:#0A8FA7;font-size:11px;font-weight:950}.pdf-report-reference strong{color:#0F2742;font-size:13px;font-weight:950}.pdf-report-reference em{font-style:normal;color:#64748B;font-size:10px;font-weight:850;max-width:220px;overflow-wrap:anywhere}.pdf-metadata-grid,.pdf-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border:1px solid #D8E7F3;background:#F8FBFF;border-radius:12px;padding:10px 12px;min-width:0}.pdf-summary-grid div{background:#FFFFFF;border-color:#D6E9F5}.pdf-metadata-grid span,.pdf-summary-grid span{display:block;color:#64748B;font-size:10px;font-weight:900;margin-bottom:4px}.pdf-metadata-grid strong,.pdf-summary-grid strong{display:block;color:#0F2742;font-size:13px;font-weight:950;overflow-wrap:anywhere}.pdf-summary-grid div:first-child{border-color:#7DD3FC;background:#EFFBFF}.pdf-summary-grid div:first-child strong{font-size:16px;color:#0369A1}.pdf-table-section{display:grid;gap:10px;min-width:0}.pdf-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;break-inside:avoid}.pdf-section-heading h3{margin:0;color:#0F2742;font-size:16px;font-weight:950}.pdf-section-heading span{color:#64748B;font-size:11px;font-weight:900}.preview-table-wrap{max-width:100%;overflow:auto;border:1px solid #D6E3EE;border-radius:14px;background:#FFFFFF}.pdf-report-table{width:100%;border-collapse:collapse;background:#FFFFFF;table-layout:fixed}.pdf-report-table thead{display:table-header-group}.pdf-report-table th,.pdf-report-table td{padding:9px 10px;border-bottom:1px solid #E2EAF2;text-align:start;vertical-align:top;font-size:11px;line-height:1.55;overflow-wrap:anywhere}.pdf-report-table th{background:#0F2742;color:#FFFFFF;font-size:10.5px;font-weight:950;white-space:nowrap}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FBFF}.pdf-report-table tr{break-inside:avoid;page-break-inside:avoid}.pdf-report-table .is-numeric{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}.pdf-total-row td{background:#EAF8FF!important;color:#0F2742;font-weight:950;border-top:2px solid #7DD3FC}.pdf-report-footer{margin-top:auto;border-top:1px solid #D8E7F3;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#64748B;font-size:9.5px;font-weight:850;break-inside:avoid}.pdf-page-number::after{content:" " counter(page) " / " counter(pages)}
   .preview-empty{min-height:260px;display:grid;place-items:center;text-align:center;align-content:center;gap:9px;background:var(--sfm-light-card);border:1px dashed rgba(29,140,255,.26);border-radius:18px;color:var(--sfm-primary);padding:18px}.preview-empty strong{color:var(--sfm-primary-dark);font-size:18px}.preview-empty p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:900}.preview-requirements{width:100%;display:grid;gap:8px;text-align:start;background:var(--sfm-card);border:1px solid rgba(29,140,255,.14);border-radius:14px;padding:12px}.preview-requirements>strong{font-size:12px;color:var(--sfm-primary)}.preview-requirements ul{margin:0;padding-inline-start:20px;color:#7A4B09;font-weight:950}
-  .history-panel p{margin:0;color:var(--sfm-muted);line-height:1.7;font-weight:800}.toast{position:fixed;inset:auto 24px 24px auto;z-index:80;background:var(--sfm-primary-dark);color:var(--sfm-card);border:1px solid rgba(29,140,255,.3);border-radius:16px;padding:12px 14px;font-weight:950;box-shadow:0 18px 50px rgba(3,18,37,.28)}
+  .toast{position:fixed;inset:auto 24px 24px auto;z-index:80;background:var(--sfm-primary-dark);color:var(--sfm-card);border:1px solid rgba(29,140,255,.3);border-radius:16px;padding:12px 14px;font-weight:950;box-shadow:0 18px 50px rgba(3,18,37,.28)}
   [dir="rtl"] .toast{inset:auto auto 24px 24px}
-  @media(max-width:1200px){.filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.filters-project-selector{grid-column:1 / -1}.reports-layout{grid-template-columns:1fr}.preview-panel{position:static}.reports-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}}
+  @media(max-width:1200px){.filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.filters-project-selector{grid-column:1 / -1}.reports-layout.preview-open{grid-template-columns:1fr}.preview-panel{position:static}.reports-grid{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}}
   @media(max-width:1024px){.reports-center-main{width:100%!important;max-width:100%!important;margin-inline-start:0!important;margin-inline-end:0!important;padding:calc(84px + env(safe-area-inset-top)) 16px 24px!important}.reports-hero{grid-template-columns:1fr}.reports-hero button{width:100%}.report-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:720px){.filters-grid,.report-summary-cards{grid-template-columns:1fr}.card-actions{grid-template-columns:1fr}.report-actions-menu,.report-actions-menu summary,.primary-card-action{width:100%}.report-actions-menu div{position:static;margin-top:8px;min-width:0}.requirements-compact{grid-template-columns:1fr}.requirements-compact button{width:100%}.category-summary{align-items:flex-start;flex-direction:column}.category-counts{justify-content:flex-start}.reports-grid{padding:0 14px 14px}.reports-hero{border-radius:22px}.topbar{align-items:flex-start}.reports-center-content{gap:14px}.pdf-preview-viewport{padding:12px;max-height:68vh}.pdf-report-page{padding:20px;min-height:780px}.pdf-report-header{grid-template-columns:1fr}.pdf-report-reference{justify-items:start;text-align:start}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:1fr}.pdf-report-table th,.pdf-report-table td{font-size:10.5px;padding:8px}.toast{left:14px;right:14px;bottom:14px;text-align:center}}
-  @media print{@page{size:A4;margin:16mm}.sfm-shared-sidebar,.no-print,.topbar,.reports-hero,.filters-panel,.report-categories,.history-panel,.toast,.skip-link,.sfm-skip-link,[href="#main-content"]{display:none!important}html,body{background:#FFFFFF!important}.reports-center-main{width:100%!important;margin:0!important;padding:0!important}.reports-center-shell{background:white!important;color:#0F2742!important}.reports-layout{display:block!important}.preview-panel{position:static!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:white!important;overflow:visible!important}.pdf-preview-viewport{display:block!important;max-height:none!important;overflow:visible!important;background:white!important;padding:0!important}.pdf-report-page{width:100%!important;min-height:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 0 14mm!important;color:#0F2742!important;display:block!important}.pdf-report-header{break-inside:avoid;page-break-inside:avoid;border-bottom:2px solid #0F2742;padding-bottom:10px;margin-bottom:12px;grid-template-columns:minmax(0,1fr) auto}.pdf-brand-lockup h2{font-size:22pt}.pdf-brand-lockup p{font-size:9.5pt}.pdf-logo{width:42px!important;height:42px!important}.pdf-report-reference em{font-size:7.5pt}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border-color:#CBD5E1!important;background:#F8FAFC!important;border-radius:6px!important;padding:7px 8px!important}.pdf-metadata-grid span,.pdf-summary-grid span{font-size:8pt}.pdf-metadata-grid strong,.pdf-summary-grid strong{font-size:9.5pt}.pdf-summary-grid div:first-child strong{font-size:12pt}.pdf-section-heading{break-inside:avoid;page-break-inside:avoid;margin-bottom:6px}.preview-table-wrap{overflow:visible!important;border:1px solid #CBD5E1!important;border-radius:0!important}.pdf-report-table{table-layout:fixed!important;width:100%!important;border-collapse:collapse!important}.pdf-report-table thead{display:table-header-group!important}.pdf-report-table th{background:#0F2742!important;color:#FFFFFF!important;font-size:8.6pt!important}.pdf-report-table th,.pdf-report-table td{padding:6px 7px!important;border-color:#DDE7F0!important;font-size:8.8pt!important;line-height:1.45!important}.pdf-report-table tr{break-inside:avoid!important;page-break-inside:avoid!important}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FAFC!important}.pdf-total-row td{background:#EAF8FF!important;border-top:1.5px solid #38BDF8!important}.pdf-report-footer{position:fixed;left:0;right:0;bottom:0;margin:0;padding:5mm 0 0;border-top:1px solid #CBD5E1;background:#FFFFFF;font-size:7.5pt}.preview-empty{display:none!important}}
+  @media(max-width:720px){.report-filter-drawer>summary{grid-template-columns:minmax(0,1fr) auto}.filter-context{grid-column:1 / -1;grid-row:2;text-align:start}.filter-chevron{grid-column:2;grid-row:1}.filters-grid,.report-summary-cards{grid-template-columns:1fr}.card-actions{grid-template-columns:1fr}.report-actions-menu,.report-actions-menu summary,.primary-card-action{width:100%}.report-actions-menu div{position:static;margin-top:8px;min-width:0}.requirements-compact{grid-template-columns:1fr}.requirements-compact button{width:100%}.reports-hero{border-radius:22px}.topbar{align-items:flex-start}.reports-center-content{gap:14px}.pdf-preview-viewport{padding:12px;max-height:68vh}.pdf-report-page{padding:20px;min-height:780px}.pdf-report-header{grid-template-columns:1fr}.pdf-report-reference{justify-items:start;text-align:start}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:1fr}.pdf-report-table th,.pdf-report-table td{font-size:10.5px;padding:8px}.toast{left:14px;right:14px;bottom:14px;text-align:center}}
+  @media print{@page{size:A4;margin:16mm}.sfm-shared-sidebar,.no-print,.topbar,.reports-hero,.report-filter-drawer,.report-categories,.toast,.skip-link,.sfm-skip-link,[href="#main-content"]{display:none!important}html,body{background:#FFFFFF!important}.reports-center-main{width:100%!important;margin:0!important;padding:0!important}.reports-center-shell{background:white!important;color:#0F2742!important}.reports-layout{display:block!important}.preview-panel{position:static!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:white!important;overflow:visible!important}.pdf-preview-viewport{display:block!important;max-height:none!important;overflow:visible!important;background:white!important;padding:0!important}.pdf-report-page{width:100%!important;min-height:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 0 14mm!important;color:#0F2742!important;display:block!important}.pdf-report-header{break-inside:avoid;page-break-inside:avoid;border-bottom:2px solid #0F2742;padding-bottom:10px;margin-bottom:12px;grid-template-columns:minmax(0,1fr) auto}.pdf-brand-lockup h2{font-size:22pt}.pdf-brand-lockup p{font-size:9.5pt}.pdf-logo{width:42px!important;height:42px!important}.pdf-report-reference em{font-size:7.5pt}.pdf-metadata-grid,.pdf-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid}.pdf-metadata-grid div,.pdf-summary-grid div{border-color:#CBD5E1!important;background:#F8FAFC!important;border-radius:6px!important;padding:7px 8px!important}.pdf-metadata-grid span,.pdf-summary-grid span{font-size:8pt}.pdf-metadata-grid strong,.pdf-summary-grid strong{font-size:9.5pt}.pdf-summary-grid div:first-child strong{font-size:12pt}.pdf-section-heading{break-inside:avoid;page-break-inside:avoid;margin-bottom:6px}.preview-table-wrap{overflow:visible!important;border:1px solid #CBD5E1!important;border-radius:0!important}.pdf-report-table{table-layout:fixed!important;width:100%!important;border-collapse:collapse!important}.pdf-report-table thead{display:table-header-group!important}.pdf-report-table th{background:#0F2742!important;color:#FFFFFF!important;font-size:8.6pt!important}.pdf-report-table th,.pdf-report-table td{padding:6px 7px!important;border-color:#DDE7F0!important;font-size:8.8pt!important;line-height:1.45!important}.pdf-report-table tr{break-inside:avoid!important;page-break-inside:avoid!important}.pdf-report-table tbody tr:nth-child(even) td{background:#F8FAFC!important}.pdf-total-row td{background:#EAF8FF!important;border-top:1.5px solid #38BDF8!important}.pdf-report-footer{position:fixed;left:0;right:0;bottom:0;margin:0;padding:5mm 0 0;border-top:1px solid #CBD5E1;background:#FFFFFF;font-size:7.5pt}.preview-empty{display:none!important}}
 `;

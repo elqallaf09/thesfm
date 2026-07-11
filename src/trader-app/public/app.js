@@ -1282,12 +1282,38 @@
   };
 
   /* ─────────────────────────── State ─────────────────────────── */
+  const WORKSPACE_VIEW_IDS = Object.freeze({
+    dashboard: ["overview", "analysis", "recommendations", "sessions", "heatmap", "news", "diagnostics"],
+    markets: ["overview", "data", "filters", "sources", "issues"],
+    recommendations: ["overview", "data", "filters", "sources", "issues"],
+    news: ["overview", "data", "filters", "sources", "issues"],
+    calendar: ["overview", "earnings", "dividends", "ipos", "economic", "sources", "issues"],
+    settings: ["overview", "capabilities", "issues", "preferences"]
+  });
+  const CALENDAR_VIEW_IDS = ["earnings", "dividends", "ipos", "economic"];
+  const hydrationLoaded = new Set();
+  const hydrationInFlight = new Map();
+  const hydrationGeneration = new Map();
+  const hydrationExpectedCacheKey = new Map();
+  let workspaceHistoryHost = null;
+
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
     rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, newsContextKey: "", followed: {}, provider: {}, providerStatus: {}, commandCards: {},
-    calendarRange: "30", calendarLoading: false, calendarLoaded: false,
+    calendarRange: "30", calendarLoading: false, calendarPendingView: "",
+    calendarLoaded: { provider: false, earnings: false, dividends: false, ipos: false, economic: false },
     calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
     earningsView: { search: "", tab: "complete", sortKey: "reportDate", sortDir: "asc", source: "all", timing: "all", page: 1, pageSize: 10 },
+    newsView: { search: "", source: "all" },
+    recommendationView: { signal: "all" },
+    workspace: {
+      dashboard: "overview",
+      markets: "overview",
+      recommendations: "overview",
+      news: "overview",
+      calendar: "overview",
+      settings: "overview"
+    },
     marketUniverseView: { page: 1, pageSize: MARKET_UNIVERSE_PAGE_SIZE, q: "", exchange: "all", currency: "all", sector: "all", industry: "all", assetType: "all", fundType: "all", availability: "all", sort: "symbol", dir: "asc" },
     marketUniverseActiveMarket: null,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
@@ -1682,6 +1708,7 @@
   else boot();
   async function boot() {
     state.route = readRoute();
+    syncWorkspaceViewFromLocation(state.route.id);
     applyTerminalLanguage();
     bind();
     render();
@@ -1705,22 +1732,74 @@
     }
   }
 
-  async function hydrate() {
+  function invalidateHydrationCache(...keys) {
+    Array.from(hydrationLoaded).forEach((cacheKey) => {
+      if (keys.some(key => cacheKey === key || cacheKey.startsWith(`${key}:`))) hydrationLoaded.delete(cacheKey);
+    });
+    keys.forEach((key) => {
+      hydrationGeneration.set(key, (hydrationGeneration.get(key) || 0) + 1);
+      hydrationExpectedCacheKey.delete(key);
+    });
+  }
+
+  async function hydrate(force = false) {
     const commandSymbols = dashboardSymbols();
     const newsPath = marketNewsPath(12);
-    const settled = await Promise.allSettled([
-      get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`),
-      get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`),
-      get("/market/signals?limit=60"),
-      get("/market/signal-alerts?limit=50"),
-      get("/markets"), get(newsPath), get("/followed-trades"),
-      get("/trader/provider-status", { label: "providerStatus" })
-    ]);
-    const [rec, commandCards, signals, signalAlerts, mk, news, followed, providerStatus] = settled.map((result, index) => settledValue(result, ["quotes", "quotes", "signals", "signals", "quotes", "news", "quotes", "providerStatus"][index]));
-    state.rec = rec; state.commandCards = commandCards; state.signals = signals; state.signalAlerts = signalAlerts; state.markets = mk; state.news = news; state.followed = followed;
-    state.newsContextKey = newsPath;
-    state.providerStatus = providerStatus || {};
-    state.provider = providerStatus.dataProvider || commandCards.dataProvider || rec.dataProvider || mk.dataProvider || news.dataProvider || commandCards.provider || rec.provider || mk.provider || news.provider || { configured: false, status: "not_configured" };
+    const routeId = state.route.id;
+    const needs = new Set();
+    if (routeId === "dashboard") ["rec", "commandCards", "signals", "signalAlerts", "markets", "news", "followed", "providerStatus"].forEach(key => needs.add(key));
+    else if (["ai-scanner", "recommendations"].includes(routeId)) ["rec", "signals", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "markets") ["markets", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "news") ["news", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "alerts") ["rec", "signals", "signalAlerts", "providerStatus"].forEach(key => needs.add(key));
+    else if (["portfolio", "trade-performance"].includes(routeId)) ["rec", "followed", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "watchlist") ["rec", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "settings") needs.add("providerStatus");
+    else if (routeId !== "calendar") needs.add("providerStatus");
+
+    const requestMap = {
+      rec: { cacheKey: `rec:${marketApi(state.settings.defaultMarket)}`, load: () => get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`), label: "quotes" },
+      commandCards: { cacheKey: `commandCards:${commandSymbols.join(",")}`, load: () => get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`), label: "quotes" },
+      signals: { cacheKey: "signals", load: () => get("/market/signals?limit=60"), label: "signals" },
+      signalAlerts: { cacheKey: "signalAlerts", load: () => get("/market/signal-alerts?limit=50"), label: "signals" },
+      markets: { cacheKey: "markets", load: () => get("/markets"), label: "quotes" },
+      news: { cacheKey: `news:${newsPath}`, load: () => get(newsPath), label: "news" },
+      followed: { cacheKey: "followed", load: () => get("/followed-trades"), label: "quotes" },
+      providerStatus: { cacheKey: "providerStatus", load: () => get("/trader/provider-status", { label: "providerStatus" }), label: "providerStatus" }
+    };
+    const requests = [];
+    Array.from(needs).forEach((key) => {
+      const request = requestMap[key];
+      const cacheKey = request.cacheKey || key;
+      const previousCacheKey = hydrationExpectedCacheKey.get(key);
+      const contextChanged = previousCacheKey !== undefined && previousCacheKey !== cacheKey;
+      if (contextChanged) hydrationGeneration.set(key, (hydrationGeneration.get(key) || 0) + 1);
+      hydrationExpectedCacheKey.set(key, cacheKey);
+      const generation = hydrationGeneration.get(key) || 0;
+      if (!force && !contextChanged && hydrationLoaded.has(cacheKey)) return;
+      let inFlight = hydrationInFlight.get(cacheKey);
+      if (!inFlight || inFlight.key !== key || inFlight.generation !== generation) {
+        const promise = Promise.resolve().then(request.load);
+        inFlight = { key, generation, promise };
+        hydrationInFlight.set(cacheKey, inFlight);
+      }
+      requests.push({ key, cacheKey, generation, label: request.label, promise: inFlight.promise });
+    });
+    const settled = await Promise.allSettled(requests.map(request => request.promise));
+    settled.forEach((result, index) => {
+      const request = requests[index];
+      const isCurrent = hydrationExpectedCacheKey.get(request.key) === request.cacheKey
+        && (hydrationGeneration.get(request.key) || 0) === request.generation;
+      if (isCurrent) {
+        state[request.key] = settledValue(result, request.label);
+        if (request.key === "providerStatus") state.calendarLoaded.provider = true;
+        hydrationLoaded.add(request.cacheKey);
+      }
+      if (hydrationInFlight.get(request.cacheKey)?.promise === request.promise) hydrationInFlight.delete(request.cacheKey);
+    });
+    if (needs.has("news")) state.newsContextKey = newsPath;
+    state.providerStatus = state.providerStatus || {};
+    state.provider = state.providerStatus.dataProvider || state.commandCards.dataProvider || state.rec.dataProvider || state.markets.dataProvider || state.news.dataProvider || state.commandCards.provider || state.rec.provider || state.markets.provider || state.news.provider || { configured: false, status: "not_configured" };
     renderAfterData();
   }
 
@@ -1984,6 +2063,9 @@
 
   /* ─────────────────────────── Router ─────────────────────────── */
   function bind() {
+    bindWorkspaceHostHistory();
+    window.addEventListener("pagehide", unbindWorkspaceHostHistory);
+    window.addEventListener("pageshow", bindWorkspaceHostHistory);
     document.addEventListener("click", (event) => {
       const link = event.target.closest("[data-route-link]");
       if (link) { event.preventDefault(); navigate(link.getAttribute("href")); return; }
@@ -2002,6 +2084,19 @@
         });
         return;
       }
+      const workspaceTab = event.target.closest("[data-workspace-tab]");
+      if (workspaceTab) {
+        event.preventDefault();
+        setWorkspaceView(workspaceTab.dataset.workspaceScope, workspaceTab.dataset.workspaceTab, { focus: false });
+        return;
+      }
+      const recommendationSignal = event.target.closest("[data-rec-signal]");
+      if (recommendationSignal) {
+        event.preventDefault();
+        state.recommendationView.signal = recommendationSignal.dataset.recSignal || "all";
+        render();
+        return;
+      }
       const tab = event.target.closest("[data-tab]");
       if (tab) { event.preventDefault(); onTab(tab); return; }
       const tf = event.target.closest("[data-timeframe]");
@@ -2009,16 +2104,34 @@
       const cr = event.target.closest("[data-calendar-range]");
       if (cr) {
         event.preventDefault();
+        const activeCalendarView = workspaceView("calendar");
         state.calendarRange = cr.dataset.calendarRange || "30";
         state.earningsView.page = 1;
+        state.calendarLoaded = { provider: state.calendarLoaded.provider, earnings: false, dividends: false, ipos: false, economic: false };
         state.calendarLoading = true;
         render();
-        loadCalendars(true).catch((error) => {
+        loadCalendars(true, CALENDAR_VIEW_IDS.includes(activeCalendarView) ? [activeCalendarView] : []).catch((error) => {
           devLog("calendar", "failed", { message: errorMessage(error) });
         }).finally(() => {
           state.calendarLoading = false;
           render();
           afterRoute();
+        });
+        return;
+      }
+      const calendarRetry = event.target.closest("[data-calendar-retry-kind]");
+      if (calendarRetry) {
+        event.preventDefault();
+        const kind = calendarRetry.dataset.calendarRetryKind;
+        if (!CALENDAR_VIEW_IDS.includes(kind)) return;
+        state.calendarLoaded[kind] = false;
+        state.calendarLoading = true;
+        render();
+        loadCalendars(true, [kind]).catch((error) => {
+          devLog("calendar", "failed", { view: kind, message: errorMessage(error) });
+        }).finally(() => {
+          state.calendarLoading = false;
+          render();
         });
         return;
       }
@@ -2169,6 +2282,7 @@
           return;
         }
       }
+      if (handleWorkspaceTabKeydown(ev)) return;
       if (!_marketSelectorOpen) return;
       const _items = Array.prototype.slice.call(document.querySelectorAll("[data-select-market]") || []);
       if (!_items.length) return;
@@ -2207,6 +2321,13 @@
       render();
     });
     document.addEventListener("submit", (event) => {
+      const form = event.target.closest("[data-news-search-form]");
+      if (!form) return;
+      event.preventDefault();
+      state.newsView.search = String(new FormData(form).get("newsSearch") || "").trim();
+      render();
+    });
+    document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-market-universe-search]");
       if (!form) return;
       event.preventDefault();
@@ -2224,6 +2345,12 @@
         state.earningsView.page = 1;
         render();
       }
+    });
+    document.addEventListener("change", (event) => {
+      const filter = event.target.closest("[data-news-source-filter]");
+      if (!filter) return;
+      state.newsView.source = filter.value || "all";
+      render();
     });
     document.addEventListener("change", (event) => {
       const filter = event.target.closest("[data-market-universe-filter]");
@@ -2248,7 +2375,27 @@
         render();
       }
     });
-    window.addEventListener("popstate", () => { state.route = readRoute(); render(); afterRoute(); });
+    window.addEventListener("popstate", (event) => {
+      const previousRoute = state.route;
+      const nextRoute = readRoute();
+      const routeChanged = previousRoute.id !== nextRoute.id
+        || previousRoute.market !== nextRoute.market
+        || previousRoute.symbol !== nextRoute.symbol;
+      state.route = nextRoute;
+      const scope = state.route.id;
+      const historyWorkspace = event.state && event.state.sfmWorkspace;
+      const values = WORKSPACE_VIEW_IDS[scope] || [];
+      const isWorkspaceHistory = Boolean(historyWorkspace && historyWorkspace.scope === scope);
+      const historyValue = isWorkspaceHistory ? historyWorkspace.value : "";
+      const activeView = values.includes(historyValue)
+        ? (state.workspace[scope] = historyValue)
+        : syncWorkspaceViewFromLocation(scope);
+      if (!activeView || !activateMountedWorkspace(scope, activeView)) render();
+      if (routeChanged) afterRoute();
+      else if (isWorkspaceHistory) afterWorkspaceViewChange(scope, activeView);
+      else afterRoute();
+    });
+    window.addEventListener("resize", syncWorkspaceLayout, { passive: true });
     window.addEventListener("storage", (event) => {
       if ([LANG_STORAGE_KEY, keys.settings].includes(event.key || "")) {
         state.settings.lang = currentLanguage();
@@ -2274,6 +2421,7 @@
     if (!href) return;
     try { history.pushState({}, "", href); } catch (_e) { location.href = href; return; }
     state.route = readRoute();
+    syncWorkspaceViewFromLocation(state.route.id);
     document.getElementById("terminal-content")?.scrollIntoView({ block: "start" });
     render();
     afterRoute();
@@ -2290,7 +2438,8 @@
         state.cache.delete(sym(state.route.symbol));
         await loadSymbol(state.route.symbol, true);
       } else if (state.route.id === "calendar") {
-        await loadCalendars(true);
+        const activeCalendarView = workspaceView("calendar");
+        await loadCalendars(true, CALENDAR_VIEW_IDS.includes(activeCalendarView) ? [activeCalendarView] : []);
       } else if (state.route.id === "news") {
         await loadNews(true);
       } else if (state.route.id === "ai-scanner" || state.route.id === "recommendations") {
@@ -2299,7 +2448,7 @@
         await ensureScanData(true);
       } else {
         state.marketCache.clear();
-        await hydrate();
+        await hydrate(true);
       }
       toast(textPair("تمت إعادة المحاولة.", "Retried."));
     } catch (error) {
@@ -2324,6 +2473,169 @@
     return routes[id] ? { id, market: rest[0] } : { id: "dashboard" };
   }
 
+  function workspaceDefault(scope) {
+    return (WORKSPACE_VIEW_IDS[scope] || ["overview"])[0];
+  }
+
+  function sameOriginWorkspaceHost() {
+    if (window.parent === window) return null;
+    try {
+      return window.parent.location.origin === window.location.origin ? window.parent : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function workspaceHistoryWindow() {
+    return sameOriginWorkspaceHost() || window;
+  }
+
+  function bindWorkspaceHostHistory() {
+    const host = sameOriginWorkspaceHost();
+    if (host === workspaceHistoryHost) return;
+    unbindWorkspaceHostHistory();
+    workspaceHistoryHost = host;
+    workspaceHistoryHost?.addEventListener("popstate", handleWorkspaceHostPopState);
+  }
+
+  function unbindWorkspaceHostHistory() {
+    if (!workspaceHistoryHost) return;
+    try { workspaceHistoryHost.removeEventListener("popstate", handleWorkspaceHostPopState); } catch (_error) {}
+    workspaceHistoryHost = null;
+  }
+
+  function handleWorkspaceHostPopState(event) {
+    const scope = state.route.id;
+    const values = WORKSPACE_VIEW_IDS[scope] || [];
+    if (!values.length) return;
+    const historyWorkspace = event.state && event.state.sfmWorkspace;
+    const historyValue = historyWorkspace && historyWorkspace.scope === scope ? historyWorkspace.value : "";
+    const activeView = values.includes(historyValue)
+      ? (state.workspace[scope] = historyValue)
+      : syncWorkspaceViewFromLocation(scope);
+    if (!activeView || !activateMountedWorkspace(scope, activeView)) render();
+    afterWorkspaceViewChange(scope, activeView);
+    window.dispatchEvent(new CustomEvent("sfm:workspace-change", { detail: { scope, value: activeView } }));
+  }
+
+  function syncWorkspaceViewFromLocation(scope = state.route.id) {
+    const values = WORKSPACE_VIEW_IDS[scope];
+    if (!values) return "";
+    const requested = new URLSearchParams(workspaceHistoryWindow().location.search).get("view");
+    const next = values.includes(requested) ? requested : workspaceDefault(scope);
+    state.workspace[scope] = next;
+    return next;
+  }
+
+  function workspaceView(scope) {
+    const values = WORKSPACE_VIEW_IDS[scope] || [];
+    const current = state.workspace[scope];
+    return values.includes(current) ? current : workspaceDefault(scope);
+  }
+
+  function workspaceTabBar(scope, tabs, label, options = {}) {
+    const active = workspaceView(scope);
+    const keepMounted = options.keepMounted === true;
+    return `<div class="workspace-tabs-shell" data-workspace-shell="${h(scope)}" data-workspace-keep-mounted="${keepMounted ? "true" : "false"}">
+      <nav class="workspace-tabs" role="tablist" aria-label="${h(label)}" data-workspace-tablist="${h(scope)}">
+        ${tabs.map((tab) => {
+          const selected = tab.id === active;
+          return `<button type="button" role="tab" id="workspace-${h(scope)}-tab-${h(tab.id)}" aria-selected="${selected ? "true" : "false"}" aria-controls="workspace-${h(scope)}-panel-${h(tab.id)}" tabindex="${selected ? "0" : "-1"}" data-workspace-tab="${h(tab.id)}" data-workspace-scope="${h(scope)}" class="${selected ? "is-active" : ""}"><span>${h(tab.label)}</span>${Number.isFinite(Number(tab.count)) ? `<b>${h(latinNumber(Number(tab.count)))}</b>` : ""}</button>`;
+        }).join("")}
+      </nav>
+    </div>`;
+  }
+
+  function workspacePanel(scope, value, content, options = {}) {
+    const active = workspaceView(scope) === value;
+    if (!active && options.keepMounted !== true) return "";
+    return `<section class="workspace-tab-panel ${options.className || ""}" id="workspace-${h(scope)}-panel-${h(value)}" role="tabpanel" aria-labelledby="workspace-${h(scope)}-tab-${h(value)}" tabindex="0" data-workspace-panel="${h(value)}" data-workspace-scope="${h(scope)}" ${active ? "" : "hidden"}>${content}</section>`;
+  }
+
+  function activateMountedWorkspace(scope, value) {
+    const shell = document.querySelector(`[data-workspace-shell="${scope}"]`);
+    if (!shell || shell.dataset.workspaceKeepMounted !== "true") return false;
+    document.querySelectorAll(`[data-workspace-tab][data-workspace-scope="${scope}"]`).forEach((button) => {
+      const selected = button.dataset.workspaceTab === value;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+      button.tabIndex = selected ? 0 : -1;
+    });
+    document.querySelectorAll(`[data-workspace-panel][data-workspace-scope="${scope}"]`).forEach((panel) => {
+      panel.hidden = panel.dataset.workspacePanel !== value;
+    });
+    return true;
+  }
+
+  function setWorkspaceView(scope, value, options = {}) {
+    const values = WORKSPACE_VIEW_IDS[scope] || [];
+    if (!values.includes(value)) return;
+    const previous = workspaceView(scope);
+    state.workspace[scope] = value;
+    if (options.history !== false && previous !== value) {
+      const historyWindow = workspaceHistoryWindow();
+      const url = new URL(historyWindow.location.href);
+      if (value === workspaceDefault(scope)) url.searchParams.delete("view");
+      else url.searchParams.set("view", value);
+      const method = options.replace ? "replaceState" : "pushState";
+      const priorState = historyWindow.history.state && typeof historyWindow.history.state === "object" ? historyWindow.history.state : {};
+      historyWindow.history[method]({ ...priorState, sfmWorkspace: { scope, value } }, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    const switchedInPlace = activateMountedWorkspace(scope, value);
+    if (!switchedInPlace) render();
+    if (options.focus !== false) {
+      window.requestAnimationFrame(() => document.getElementById(`workspace-${scope}-tab-${value}`)?.focus());
+    }
+    afterWorkspaceViewChange(scope, value);
+    window.dispatchEvent(new CustomEvent("sfm:workspace-change", { detail: { scope, value } }));
+  }
+
+  function afterWorkspaceViewChange(scope, value) {
+    if (scope !== "calendar") return;
+    if (!CALENDAR_VIEW_IDS.includes(value) || state.calendarLoaded[value]) {
+      state.calendarPendingView = "";
+      return;
+    }
+    if (state.calendarLoading) {
+      state.calendarPendingView = value;
+      return;
+    }
+    state.calendarPendingView = "";
+    state.calendarLoading = true;
+    render();
+    loadCalendars(false, [value]).catch((error) => {
+      devLog("calendar", "failed", { view: value, message: errorMessage(error) });
+    }).finally(() => {
+      state.calendarLoading = false;
+      render();
+      const pendingView = state.calendarPendingView;
+      state.calendarPendingView = "";
+      if (pendingView && workspaceView("calendar") === pendingView && !state.calendarLoaded[pendingView]) {
+        afterWorkspaceViewChange("calendar", pendingView);
+      }
+    });
+  }
+
+  function handleWorkspaceTabKeydown(event) {
+    const current = event.target.closest?.("[role='tab'][data-workspace-tab]");
+    if (!current) return false;
+    const list = current.closest("[data-workspace-tablist]");
+    const tabs = Array.from(list?.querySelectorAll("[data-workspace-tab]:not([disabled])") || []);
+    if (!tabs.length) return false;
+    const index = tabs.indexOf(current);
+    const rtl = (list.closest("[dir]")?.getAttribute("dir") || document.documentElement.dir) === "rtl";
+    let nextIndex = index;
+    if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = tabs.length - 1;
+    else if (event.key === "ArrowRight") nextIndex = (index + (rtl ? -1 : 1) + tabs.length) % tabs.length;
+    else if (event.key === "ArrowLeft") nextIndex = (index + (rtl ? 1 : -1) + tabs.length) % tabs.length;
+    else return false;
+    event.preventDefault();
+    const next = tabs[nextIndex];
+    setWorkspaceView(next.dataset.workspaceScope, next.dataset.workspaceTab, { focus: true });
+    return true;
+  }
+
   function onTab(el) {
     const group = el.dataset.tab, value = el.dataset.value;
     el.parentElement.querySelectorAll("[data-tab]").forEach(n => n.classList.toggle("is-active", n === el));
@@ -2346,10 +2658,20 @@
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
     translateRenderedUi(document.getElementById("app-shell") || content);
+    window.requestAnimationFrame(syncWorkspaceLayout);
+  }
+
+  function syncWorkspaceLayout() {
+    const topbar = document.querySelector(".terminal-topbar");
+    const top = topbar ? Math.ceil(topbar.getBoundingClientRect().height + 12) : 12;
+    document.documentElement.style.setProperty("--workspace-sticky-top", `${top}px`);
+    const active = document.querySelector("[data-workspace-tab][aria-selected='true']");
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
   function afterRoute() {
     const id = state.route.id;
+    if (id !== "calendar") hydrate().catch((error) => devLog("route-hydration", "failed", { route: id, message: errorMessage(error) }));
     if (id === "symbol-details" && state.route.symbol) loadSymbol(state.route.symbol);
     if (id === "markets" && state.route.market) {
       if (state.marketUniverseActiveMarket !== state.route.market) {
@@ -2358,16 +2680,23 @@
       }
       loadMarket(state.route.market);
     }
-    if (id === "ai-scanner" || id === "recommendations") ensureScanData();
-    if (id === "news") loadNews(false).catch((error) => devLog("news", "failed", { message: errorMessage(error) }));
-    if (id === "calendar" && !state.calendarLoaded && !state.calendarLoading) {
+    if (id === "calendar" && !state.calendarLoading) {
+      const activeCalendarView = workspaceView("calendar");
+      const requiredKinds = CALENDAR_VIEW_IDS.includes(activeCalendarView) ? [activeCalendarView] : [];
+      const needsProvider = !state.calendarLoaded.provider;
+      const needsData = requiredKinds.some(kind => !state.calendarLoaded[kind]);
+      if (!needsProvider && !needsData) return;
+      state.calendarPendingView = "";
       state.calendarLoading = true;
       render();
-      loadCalendars(false).catch((error) => {
+      loadCalendars(false, requiredKinds).catch((error) => {
         devLog("calendar", "failed", { message: errorMessage(error) });
       }).finally(() => {
         state.calendarLoading = false;
         render();
+        // A user may switch tabs while the provider summary is still loading.
+        // Re-evaluate the active view so its first dataset request is not lost.
+        afterRoute();
       });
     }
   }
@@ -2393,23 +2722,51 @@
   function dashboardPage() {
     const rec = recs(), news = newsItems(), alerts = smartAlerts();
     const movers = sortMovers(rec);
-    return `<div class="page-stack">
-      ${commandCenter(rec)}
-      ${marketOverview(rec)}
-      ${marketLeadership(rec)}
-      ${opportunityHeatmap(rec)}
-      <section class="market-movers-grid">
-        ${moverPanel(textPair("الأكثر ارتفاعاً", "TOP GAINERS", "PLUS FORTES HAUSSES"), textPair("الأكثر ارتفاعاً", "Top gainers", "Plus fortes hausses"), movers.gainers.slice(0, 3), "up")}
-        ${moverPanel(textPair("الأكثر انخفاضاً", "TOP LOSERS", "PLUS FORTES BAISSES"), textPair("الأكثر انخفاضاً", "Top losers", "Plus fortes baisses"), movers.losers.slice(0, 3), "down")}
-      </section>
-      <section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يرجع مزود الأسعار أو التوصيات بيانات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>
-      <section class="dashboard-lower-grid">
-        <article class="panel"><span class="eyebrow">${h(textPair("أخبار السوق", "Market news"))}</span><h2>${h(textPair("آخر الأخبار", "Latest news"))}</h2>${news.length ? newsList(news.slice(0, 3)) : unavailableSection(state.news, textPair("مزود الأخبار لم يرجع عناصر حالية.", "The news provider did not return current items."), textPair("صفحة الأخبار", "News page"), `${ROOT}/news`)}</article>
-        <article class="panel"><span class="eyebrow">${h(textPair("تحليل الذكاء الاصطناعي", "AI analysis"))}</span><h2>${h(textPair("حالة التحليل الذكي", "AI analysis status"))}</h2>${alerts.length ? alertList(alerts) : unavailableSection(state.signals, textPair("سيظهر التحليل عند توفر بيانات السوق والتوصيات.", "Analysis will appear when market data and recommendations are available."), textPair("فتح الماسح", "Open scanner"), `${ROOT}/ai-scanner`)}</article>
-        <article class="panel"><span class="eyebrow">${h(textPair("حالة النظام", "System status"))}</span><h2>${h(textPair("حالة النظام", "System status"))}</h2>${publicSystemStatus()}</article>
-      </section>
+    const tabs = [
+      { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
+      { id: "analysis", label: textPair("تحليل السوق", "Market Analysis", "Analyse du marché") },
+      { id: "recommendations", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: rec.length },
+      { id: "sessions", label: textPair("جلسات السوق", "Market Sessions", "Séances de marché") },
+      { id: "heatmap", label: textPair("الخريطة الحرارية", "Heatmap", "Carte thermique") },
+      { id: "news", label: textPair("سياق الأخبار", "News Context", "Contexte actualités"), count: news.length },
+      { id: "diagnostics", label: textPair("التشخيصات", "Diagnostics", "Diagnostics"), count: state.errors ? Object.keys(state.errors).length : 0 }
+    ];
+    const recommendationPanel = `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يعرض مزود الأسعار توصيات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>`;
+    const newsPanel = `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("أخبار السوق", "Market news", "Actualités des marchés"))}</span><h2>${h(textPair("آخر الأخبار", "Latest news", "Dernières actualités"))}</h2></div><a class="rdp-view-all" href="${ROOT}/news" data-route-link>${h(textPair("عرض كل الأخبار", "View all news", "Voir toutes les actualités"))}</a></div>${news.length ? newsList(news.slice(0, 8)) : unavailableSection(state.news, textPair("لم يعرض مزود الأخبار عناصر حالية.", "The news provider did not return current items."), textPair("صفحة الأخبار", "News page"), `${ROOT}/news`)}</section>`;
+    return `<div class="page-stack smart-analysis-workspace">
+      ${workspaceTabBar("dashboard", tabs, textPair("مساحة التحليل الذكي", "Smart analysis workspace", "Espace d’analyse intelligent"))}
+      ${workspacePanel("dashboard", "overview", `${commandCenter(rec)}${dashboardOverviewSummary(rec, alerts)}`)}
+      ${workspacePanel("dashboard", "analysis", `${marketOverview(rec, "analysis")}${marketLeadership(rec)}<section class="market-movers-grid">${moverPanel(textPair("الأكثر ارتفاعاً", "TOP GAINERS", "PLUS FORTES HAUSSES"), textPair("الأكثر ارتفاعاً", "Top gainers", "Plus fortes hausses"), movers.gainers.slice(0, 3), "up")}${moverPanel(textPair("الأكثر انخفاضاً", "TOP LOSERS", "PLUS FORTES BAISSES"), textPair("الأكثر انخفاضاً", "Top losers", "Plus fortes baisses"), movers.losers.slice(0, 3), "down")}</section>`)}
+      ${workspacePanel("dashboard", "recommendations", recommendationPanel)}
+      ${workspacePanel("dashboard", "sessions", marketOverview(rec, "sessions"))}
+      ${workspacePanel("dashboard", "heatmap", opportunityHeatmap(rec))}
+      ${workspacePanel("dashboard", "news", newsPanel)}
+      ${workspacePanel("dashboard", "diagnostics", `<section class="panel"><span class="eyebrow">${h(textPair("حالة النظام", "System status", "État du système"))}</span><h2>${h(textPair("اكتمال البيانات والمزود", "Data completeness and provider", "Complétude et fournisseur"))}</h2>${publicSystemStatus()}<div class="workspace-quick-actions"><a class="ghost-btn" href="${ROOT}/settings?view=issues" data-route-link>${h(textPair("فتح تفاصيل المزود", "Open provider details", "Ouvrir les détails fournisseur"))}</a></div></section>`)}
       ${disclaimer()}
     </div>`;
+  }
+
+  function dashboardOverviewSummary(rec, alerts) {
+    const priority = rec
+      .filter(hasValidDirectionalSignal)
+      .slice()
+      .sort((left, right) => (num(right.confidence, right.score, right.aiConfidence) || 0) - (num(left.confidence, left.score, left.aiConfidence) || 0))[0];
+    const recommendation = priority ? sharedRecommendation(priority) : null;
+    const priorityText = priority
+      ? `${displaySymbolFor(priority.symbol)} · ${recommendationLabel(recommendation)} · ${recommendation.confidence === null ? terminalText("unavailable") : Math.round(recommendation.confidence) + "%"}`
+      : terminalText("unavailable");
+    const provider = providerCopy();
+    const aiConfidence = recommendation && recommendation.confidence !== null
+      ? `${Math.round(recommendation.confidence)}%`
+      : terminalText("unavailable");
+    return `<section class="panel workspace-overview-panel" aria-label="${h(textPair("ملخص القرار", "Decision summary", "Résumé de décision"))}">
+      <div class="workspace-overview-grid">
+        <article><span>${h(textPair("أعلى أولوية", "Top priority", "Priorité principale"))}</span><strong class="ltr">${h(priorityText)}</strong><a href="${ROOT}/recommendations" data-route-link>${h(textPair("مراجعة التوصيات", "Review recommendations", "Voir les recommandations"))}</a></article>
+        <article><span>${h(textPair("المخاطر الرئيسية", "Key risks", "Risques clés"))}</span><strong>${h(alerts.length ? textPair(`${latinNumber(alerts.length)} تنبيهات تحتاج المراجعة`, `${latinNumber(alerts.length)} alerts need review`, `${latinNumber(alerts.length)} alertes à vérifier`) : textPair("لا توجد تنبيهات حرجة حالياً", "No critical alerts right now", "Aucune alerte critique"))}</strong><a href="${ROOT}/alerts" data-route-link>${h(textPair("فتح التنبيهات", "Open alerts", "Ouvrir les alertes"))}</a></article>
+        <article><span>${h(textPair("اكتمال البيانات", "Data completeness", "Complétude des données"))}</span><strong>${h(rec.length ? textPair(`${latinNumber(rec.length)} أصل محلل`, `${latinNumber(rec.length)} analyzed assets`, `${latinNumber(rec.length)} actifs analysés`) : terminalText("unavailable"))}</strong><small>${h(provider.label || provider.title)}</small></article>
+        <article><span>${h(textPair("حالة التحليل الذكي", "AI analysis status", "État de l’analyse IA"))}</span><strong class="ltr">${h(aiConfidence)}</strong><a href="${ROOT}/ai-scanner" data-route-link>${h(textPair("فتح الماسح", "Open scanner", "Ouvrir le scanner"))}</a></article>
+      </div>
+    </section>`;
   }
 
   function marketsPage() {
@@ -2431,7 +2788,6 @@
     return `<div class="page-stack">
       <a class="back-link" href="${ROOT}/markets" data-route-link>‹ ${h(terminalText("allMarkets"))}</a>
       ${hero(h(marketLabel), textPair(`${marketFamilyName(m.family)} · العملة الأساسية: ${m.currency}. الصفحة تعرض الكون الكامل المتاح من المزود مع ترقيم صفحات بحجم ${latinNumber(MARKET_UNIVERSE_PAGE_SIZE)} رمزاً.`, `${marketFamilyName(m.family)}. Base currency: ${m.currency}. This page shows the full provider universe with ${MARKET_UNIVERSE_PAGE_SIZE} symbols per page.`, `${marketFamilyName(m.family)}. Devise de base : ${m.currency}. Cette page présente l’univers complet du fournisseur avec ${MARKET_UNIVERSE_PAGE_SIZE} symboles par page.`), "MARKET")}
-      ${marketPreviewStrip(m, total)}
       ${body}
       ${disclaimer()}
     </div>`;
@@ -2477,29 +2833,50 @@
     const pagination = marketUniversePagination(payload);
     const pageCount = Math.max(1, Math.ceil(pagination.total / pagination.pageSize));
     const countKey = m.id === "etfs" ? "showingFunds" : "showingSymbols";
-    return `<section class="panel market-universe-panel" data-selected-market="${h(m.id)}">
-      <div class="panel-head"><div><span class="eyebrow">${h(terminalText("allSymbols"))}</span><h2>${h(terminalText("allSymbols"))}</h2></div><button class="ghost-btn compact-btn" data-retry type="button">${h(terminalText("refresh"))}</button></div>
-      ${coverageNotice(payload, rows, m)}
-      ${marketUniverseControls(m, payload)}
-      <div class="provider-market-result-meta market-universe-result-meta">
-        <span>${h(terminalText(countKey, { shown: latinNumber(rows.length), total: latinNumber(pagination.total) }))}</span>
-        <span>${h(terminalText("page"))} <b class="ltr">${latinNumber(pagination.page)}</b> / <b class="ltr">${latinNumber(pageCount)}</b></span>
-      </div>
-      ${rows.length ? marketUniverseTable(rows) : emptyState(
-        m.id === "etfs"
-          ? textPair(FUND_EMPTY_STATE_AR, FUND_EMPTY_STATE_EN, "Aucun fonds ne correspond actuellement à ce marché ou à cette catégorie")
-          : textPair("لا توجد رموز مطابقة", "No matching symbols", "Aucun symbole correspondant"),
-        m.id === "etfs"
-          ? textPair("غيّر البحث أو الفلاتر للعثور على صناديق أخرى.", "Change the search or filters to find other funds.", "Modifiez la recherche ou les filtres pour trouver d’autres fonds.")
-          : textPair("غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "Change the search or filters. We will not add synthetic symbols instead of provider data.", "Modifiez la recherche ou les filtres. Aucun symbole synthétique ne remplacera les données du fournisseur."),
-        "",
-        ""
-      )}
-      <div class="provider-market-pagination market-universe-pagination">
-        <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page - 1}" ${pagination.page <= 1 ? "disabled" : ""}>${h(terminalText("previous"))}</button>
-        <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page + 1}" ${pagination.page >= pageCount ? "disabled" : ""}>${h(terminalText("next"))}</button>
-      </div>
-    </section>`;
+    const coverage = (payload && payload.coverage) || {};
+    const discovery = (payload && payload.symbolDiscovery) || {};
+    const failed = num(coverage.failed, discovery.failedCount, arr(payload && payload.failed).length) || 0;
+    const unavailable = num(coverage.unavailablePrice, discovery.unavailablePriceCount, discovery.unavailableCount, arr(payload && payload.unavailable).length) || 0;
+    const issueCount = failed + unavailable + (payload && (payload.reason || payload.message) ? 1 : 0);
+    const tabs = [
+      { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
+      { id: "data", label: textPair("البيانات", "Data", "Données"), count: pagination.total },
+      { id: "filters", label: textPair("الفلاتر", "Filters", "Filtres") },
+      { id: "sources", label: textPair("المصادر", "Sources", "Sources") },
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: issueCount }
+    ];
+    const active = workspaceView("markets");
+    let panel = "";
+
+    if (active === "overview") {
+      panel = `<div class="market-workspace-overview">${marketPreviewStrip(m, pagination.total)}${coverageNotice(payload, rows, m)}</div>`;
+    } else if (active === "data") {
+      panel = `<section class="panel market-universe-panel" data-selected-market="${h(m.id)}">
+        <div class="panel-head"><div><span class="eyebrow">${h(terminalText("allSymbols"))}</span><h2>${h(terminalText("allSymbols"))}</h2></div><button class="ghost-btn compact-btn" data-retry type="button">${h(terminalText("refresh"))}</button></div>
+        <div class="provider-market-result-meta market-universe-result-meta">
+          <span>${h(terminalText(countKey, { shown: latinNumber(rows.length), total: latinNumber(pagination.total) }))}</span>
+          <span>${h(terminalText("page"))} <b class="ltr">${latinNumber(pagination.page)}</b> / <b class="ltr">${latinNumber(pageCount)}</b></span>
+        </div>
+        ${rows.length ? marketUniverseTable(rows) : emptyState(
+          m.id === "etfs" ? textPair(FUND_EMPTY_STATE_AR, FUND_EMPTY_STATE_EN, "Aucun fonds ne correspond actuellement à ce marché ou à cette catégorie") : textPair("لا توجد رموز مطابقة", "No matching symbols", "Aucun symbole correspondant"),
+          m.id === "etfs" ? textPair("غيّر البحث أو الفلاتر للعثور على صناديق أخرى.", "Change the search or filters to find other funds.", "Modifiez la recherche ou les filtres pour trouver d’autres fonds.") : textPair("غيّر البحث أو الفلاتر. لن نضيف رموزاً تجريبية بدلاً من بيانات المزود.", "Change the search or filters. We will not add synthetic symbols instead of provider data.", "Modifiez la recherche ou les filtres. Aucun symbole synthétique ne remplacera les données du fournisseur."), "", "")}
+        <div class="provider-market-pagination market-universe-pagination">
+          <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page - 1}" ${pagination.page <= 1 ? "disabled" : ""}>${h(terminalText("previous"))}</button>
+          <button class="ghost-btn compact-btn" data-market-universe-page="${pagination.page + 1}" ${pagination.page >= pageCount ? "disabled" : ""}>${h(terminalText("next"))}</button>
+        </div>
+      </section>`;
+    } else if (active === "filters") {
+      panel = `<section class="panel compact-filter-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("تخصيص النتائج", "Refine results", "Affiner les résultats"))}</span><h2>${h(textPair("فلاتر السوق", "Market filters", "Filtres du marché"))}</h2></div></div>${marketUniverseControls(m, payload)}</section>`;
+    } else if (active === "sources") {
+      panel = `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("التغطية والحداثة", "Coverage and freshness", "Couverture et fraîcheur"))}</span><h2>${h(textPair("بيانات المزود", "Provider data", "Données fournisseur"))}</h2></div></div>${providerMarkets()}</section>`;
+    } else {
+      const reason = String((payload && (payload.reason || payload.message)) || "").trim();
+      panel = `<section class="panel issues-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("التغطية الجزئية", "Partial coverage", "Couverture partielle"))}</span><h2>${h(textPair("مشكلات السوق", "Market issues", "Problèmes du marché"))}</h2></div><button class="ghost-btn compact-btn" data-retry type="button">${h(terminalText("refresh"))}</button></div>
+        ${issueCount ? `<div class="workspace-issue-list"><article><strong>${h(textPair("طلبات فشلت", "Failed requests", "Requêtes échouées"))}</strong><span class="ltr">${latinNumber(failed)}</span></article><article><strong>${h(textPair("أسعار غير متاحة", "Unavailable prices", "Cours indisponibles"))}</strong><span class="ltr">${latinNumber(unavailable)}</span></article>${reason ? `<article><strong>${h(terminalText("reason"))}</strong><span>${h(reason)}</span></article>` : ""}</div>` : miniEmpty()}
+      </section>`;
+    }
+
+    return `${workspaceTabBar("markets", tabs, textPair("مساحة بيانات السوق", "Market data workspace", "Espace de données du marché"))}${workspacePanel("markets", active, panel)}`;
   }
   function marketUniverseControls(m, payload) {
     const view = state.marketUniverseView, options = marketUniverseFilterOptions(payload);
@@ -2743,12 +3120,39 @@
 
   function recPage() {
     const r = recs(), buy = r.filter(x => signal(x) === "buy"), sell = r.filter(x => signal(x) === "sell"), wait = r.filter(x => !["buy", "sell"].includes(signal(x)));
-    return `<div class="page-stack">${hero(textPair("التوصيات والتحليل", "Recommendations and analysis"), textPair("توصيات الذكاء مع حالة كل صفقة: مفتوحة، تحت المتابعة، مكتملة، فاشلة أو منتهية. كل بطاقة لها زر تحليل.", "AI recommendations with each trade status: open, under watch, completed, failed, or expired. Every card has an analysis button."), "RECOMMENDATIONS")}
-      <section class="metric-grid">${stat(terminalText("all"), r.length, terminalText("all"))}${stat(textPair("شراء", "Buy"), buy.length, textPair("شراء", "Buy"))}${stat(textPair("بيع", "Sell"), sell.length, textPair("بيع", "Sell"))}${stat(textPair("انتظار", "Wait"), wait.length, textPair("انتظار", "Wait"))}</section>
-      <section class="panel"><span class="eyebrow">${h(textPair("الإشارات", "Signals"))}</span><h2>${h(textPair("قائمة التوصيات", "Recommendation list"))}</h2><div class="rec-market-chips">${MARKETS.map(m => `<button class="chip ${state.settings.defaultMarket === m.id ? "is-active" : ""}" data-rec-market="${m.id}">${h(marketName(m))}</button>`).join("")}</div>
-        <div class="seg-tabs"><button class="is-active" data-tab="rec" data-value="all">${h(terminalText("all"))}</button><button data-tab="rec" data-value="buy">${h(textPair("شراء", "Buy"))}</button><button data-tab="rec" data-value="sell">${h(textPair("بيع", "Sell"))}</button><button data-tab="rec" data-value="wait">${h(textPair("انتظار", "Wait"))}</button><button data-tab="rec" data-value="high">${h(textPair("ثقة عالية", "High confidence"))}</button></div>
-        <div data-tabpanel="rec" data-render="rec">${r.length ? recCards(r) : selectionEmptyState()}</div>
-      </section>${disclaimer()}</div>`;
+    const filtered = recommendationFilteredItems(r);
+    const tabs = [
+      { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
+      { id: "data", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: filtered.length },
+      { id: "filters", label: textPair("الفلاتر", "Filters", "Filtres") },
+      { id: "sources", label: textPair("المصادر", "Sources", "Sources") },
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: state.rec && state.rec.message ? 1 : 0 }
+    ];
+    const filterButtons = [
+      ["all", terminalText("all")], ["buy", textPair("شراء", "Buy", "Achat")], ["sell", textPair("بيع", "Sell", "Vente")],
+      ["wait", textPair("انتظار", "Wait", "Attendre")], ["high", textPair("ثقة عالية", "High confidence", "Confiance élevée")]
+    ].map(([value, label]) => `<button type="button" class="${state.recommendationView.signal === value ? "is-active" : ""}" data-rec-signal="${h(value)}" aria-pressed="${state.recommendationView.signal === value ? "true" : "false"}">${h(label)}</button>`).join("");
+    return `<div class="page-stack recommendation-workspace">${hero(textPair("التوصيات والتحليل", "Recommendations and analysis"), textPair("توصيات الذكاء مع حالة كل صفقة: مفتوحة، تحت المتابعة، مكتملة، فاشلة أو منتهية. كل بطاقة لها زر تحليل.", "AI recommendations with each trade status: open, under watch, completed, failed, or expired. Every card has an analysis button."), "RECOMMENDATIONS")}
+      ${workspaceTabBar("recommendations", tabs, textPair("مساحة التوصيات", "Recommendations workspace", "Espace des recommandations"))}
+      ${workspacePanel("recommendations", "overview", `<section class="metric-grid">${stat(terminalText("all"), r.length, terminalText("all"))}${stat(textPair("شراء", "Buy"), buy.length, textPair("شراء", "Buy"))}${stat(textPair("بيع", "Sell"), sell.length, textPair("بيع", "Sell"))}${stat(textPair("انتظار", "Wait"), wait.length, textPair("انتظار", "Wait"))}</section><section class="panel workspace-next-action"><span class="eyebrow">${h(textPair("الخطوة التالية", "Next action", "Prochaine action"))}</span><h2>${h(r.length ? textPair("راجع الإشارات ذات الثقة الأعلى أولاً", "Review the highest-confidence signals first", "Vérifiez d’abord les signaux les plus fiables") : textPair("لا توجد توصيات قابلة للعرض", "No displayable recommendations", "Aucune recommandation disponible"))}</h2><button class="action-btn" type="button" data-workspace-tab="data" data-workspace-scope="recommendations">${h(textPair("فتح التوصيات", "Open recommendations", "Ouvrir les recommandations"))}</button></section>`)}
+      ${workspacePanel("recommendations", "data", `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الإشارات", "Signals", "Signaux"))}</span><h2>${h(textPair("قائمة التوصيات", "Recommendation list", "Liste des recommandations"))}</h2></div><span class="state-badge">${h(latinNumber(filtered.length))}</span></div>${filtered.length ? recCards(filtered) : selectionEmptyState()}</section>`)}
+      ${workspacePanel("recommendations", "filters", `<section class="panel compact-filter-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الفلاتر", "Filters", "Filtres"))}</span><h2>${h(textPair("السوق ونوع الإشارة", "Market and signal type", "Marché et type de signal"))}</h2></div></div><div class="rec-market-chips">${MARKETS.map(m => `<button class="chip ${state.settings.defaultMarket === m.id ? "is-active" : ""}" data-rec-market="${m.id}">${h(marketName(m))}</button>`).join("")}</div><div class="seg-tabs" role="group" aria-label="${h(textPair("نوع الإشارة", "Signal type", "Type de signal"))}">${filterButtons}</div><button class="action-btn" type="button" data-workspace-tab="data" data-workspace-scope="recommendations">${h(textPair("عرض النتائج", "View results", "Voir les résultats"))}</button></section>`)}
+      ${workspacePanel("recommendations", "sources", `<section class="panel"><span class="eyebrow">${h(textPair("المصادر", "Sources", "Sources"))}</span><h2>${h(textPair("مصدر التوصيات وحالة البيانات", "Recommendation source and data status", "Source et état des données"))}</h2>${publicSystemStatus()}</section>`)}
+      ${workspacePanel("recommendations", "issues", recommendationIssuesPanel())}
+      ${disclaimer()}</div>`;
+  }
+
+  function recommendationFilteredItems(items) {
+    const view = state.recommendationView.signal || "all";
+    if (view === "all") return items;
+    if (view === "high") return items.filter(item => (num(item.confidence, item.score, item.aiConfidence) || 0) >= 70);
+    if (view === "wait") return items.filter(item => !["buy", "sell"].includes(signal(item)));
+    return items.filter(item => signal(item) === view);
+  }
+
+  function recommendationIssuesPanel() {
+    const issue = formatProviderError(state.rec && (state.rec.message || state.rec.error || state.rec.reason), { empty: "" });
+    return `<section class="panel workspace-issues-panel"><span class="eyebrow">${h(textPair("المشكلات", "Issues", "Problèmes"))}</span><h2>${h(issue ? textPair("توجد مشكلة في تغطية التوصيات", "Recommendation coverage needs attention", "La couverture nécessite une vérification") : textPair("لا توجد مشكلات نشطة", "No active issues", "Aucun problème actif"))}</h2>${issue ? `<details><summary>${h(textPair("عرض السبب الآمن", "Show safe reason", "Afficher la raison"))}</summary><p>${h(issue)}</p><button class="ghost-btn" data-retry type="button">${h(terminalText("retry"))}</button></details>` : `<p class="provider-clean-note">${h(textPair("اكتملت آخر محاولة بدون مشكلة قابلة للعرض.", "The latest attempt completed without a displayable issue.", "La dernière tentative ne présente aucun problème."))}</p>`}</section>`;
   }
 
   function precisionLivePanel() {
@@ -2775,25 +3179,132 @@
   }
 
   function newsPage() {
-    const n = newsItems();
-    return `<div class="page-stack">${hero(textPair("أخبار السوق", "Market news", "Actualités des marchés"), textPair("تُجمع الأخبار من مصادر مستقلة وتُعرض مع حالة التحقق بوضوح، دون عناوين مصطنعة.", "News is consolidated from independent sources and shown with clear verification status, without synthetic headlines.", "Les actualités sont consolidées à partir de sources indépendantes et accompagnées d’un statut de vérification clair, sans titres artificiels."), "NEWS")}
-      <section class="news-grid">${n.length ? n.map(newsCard).join("") : unavailableSection(state.news, textPair("مزود الأخبار لم يرجع عناصر قابلة للعرض.", "The news provider did not return displayable items."), terminalText("settings"), `${ROOT}/settings`)}</section></div>`;
+    const items = newsItems();
+    const filtered = filteredNewsItems(items);
+    const sources = newsSourceCounts(items);
+    const verifiedCount = items.filter(item => newsEvidence(item).tone === "ok").length;
+    const tabs = [
+      { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
+      { id: "data", label: textPair("الأخبار", "Data", "Actualités"), count: filtered.length },
+      { id: "filters", label: textPair("الفلاتر", "Filters", "Filtres") },
+      { id: "sources", label: textPair("المصادر", "Sources", "Sources"), count: sources.length },
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: newsIssueText() ? 1 : 0 }
+    ];
+    return `<div class="page-stack news-workspace">${hero(textPair("أخبار السوق", "Market news", "Actualités des marchés"), textPair("تُجمع الأخبار من مصادر مستقلة وتُعرض مع حالة التحقق بوضوح، دون عناوين مصطنعة.", "News is consolidated from independent sources and shown with clear verification status, without synthetic headlines.", "Les actualités sont consolidées à partir de sources indépendantes et accompagnées d’un statut de vérification clair, sans titres artificiels."), "NEWS")}
+      ${workspaceTabBar("news", tabs, textPair("مساحة أخبار السوق", "Market news workspace", "Espace actualités"))}
+      ${workspacePanel("news", "overview", `<section class="metric-grid">${stat(textPair("التغطية الحالية", "Current coverage", "Couverture actuelle"), items.length, textPair("خبر", "items", "articles"))}${stat(textPair("أخبار موثقة", "Verified items", "Articles vérifiés"), verifiedCount, textPair("موثق", "verified", "vérifiés"))}${stat(textPair("المصادر", "Sources", "Sources"), sources.length, textPair("مصدر مستقل", "independent sources", "sources indépendantes"))}${stat(textPair("آخر تحديث", "Latest update", "Dernière mise à jour"), latinDateTime(state.news.lastUpdated || state.news.lastSuccessfulUpdate || state.news.generatedAt), providerName(state.news.provider) || terminalText("unavailable"))}</section>${publicSystemStatus()}${newsIssueText() ? `<div class="provider-warning" role="status">${h(textPair("توجد تغطية جزئية. راجع تبويب المشكلات.", "Coverage is partial. Review the Issues tab.", "La couverture est partielle. Consultez Problèmes."))}</div>` : ""}`)}
+      ${workspacePanel("news", "data", `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("البيانات", "Data", "Données"))}</span><h2>${h(textPair("أخبار السوق", "Market news", "Actualités des marchés"))}</h2></div><span class="state-badge">${h(latinNumber(filtered.length))}</span></div><div class="news-grid">${filtered.length ? filtered.map(newsCard).join("") : emptyState(textPair("لا توجد أخبار مطابقة", "No matching news", "Aucune actualité correspondante"), textPair("غيّر البحث أو المصدر ثم حاول مرة أخرى.", "Change the search or source and try again.", "Modifiez la recherche ou la source."), "", "")}</div></section>`)}
+      ${workspacePanel("news", "filters", newsFiltersPanel(sources))}
+      ${workspacePanel("news", "sources", newsSourcesPanel(sources))}
+      ${workspacePanel("news", "issues", newsIssuesPanel())}
+    </div>`;
+  }
+
+  function newsSourceName(item) {
+    return String(item && (item.sourceName || item.source || item.publisher) || terminalText("unavailable")).trim();
+  }
+
+  function newsSourceCounts(items) {
+    const counts = new Map();
+    items.forEach(item => {
+      const source = newsSourceName(item);
+      counts.set(source, (counts.get(source) || 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([source, count]) => ({ source, count })).sort((left, right) => right.count - left.count);
+  }
+
+  function filteredNewsItems(items) {
+    const search = String(state.newsView.search || "").trim().toLowerCase();
+    const source = state.newsView.source || "all";
+    return items.filter(item => {
+      if (source !== "all" && newsSourceName(item) !== source) return false;
+      if (!search) return true;
+      return [item.title, item.headline, item.summary, item.description, newsSourceName(item), ...arr(item.symbols || item.relatedSymbols)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+  }
+
+  function newsFiltersPanel(sources) {
+    return `<section class="panel compact-filter-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الفلاتر", "Filters", "Filtres"))}</span><h2>${h(textPair("ابحث وحدد المصدر", "Search and choose a source", "Rechercher et choisir une source"))}</h2></div></div><form class="workspace-filter-form" data-news-search-form><label><span>${h(terminalText("search"))}</span><input name="newsSearch" value="${h(state.newsView.search || "")}" placeholder="${h(textPair("عنوان أو رمز أو كلمة", "Title, symbol, or keyword", "Titre, symbole ou mot-clé"))}" /></label><label><span>${h(terminalText("source"))}</span><select data-news-source-filter>${[`<option value="all" ${state.newsView.source === "all" ? "selected" : ""}>${h(terminalText("all"))}</option>`, ...sources.map(item => `<option value="${h(item.source)}" ${state.newsView.source === item.source ? "selected" : ""}>${h(item.source)} (${h(latinNumber(item.count))})</option>`)].join("")}</select></label><button class="action-btn" type="submit">${h(textPair("تطبيق", "Apply", "Appliquer"))}</button></form><button class="ghost-btn" type="button" data-workspace-tab="data" data-workspace-scope="news">${h(textPair("عرض الأخبار", "View news", "Voir les actualités"))}</button></section>`;
+  }
+
+  function newsSourcesPanel(sources) {
+    return `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("المصادر", "Sources", "Sources"))}</span><h2>${h(textPair("تغطية المصادر الحالية", "Current source coverage", "Couverture des sources"))}</h2></div></div>${sources.length ? `<div class="workspace-source-grid">${sources.map(item => `<article><strong>${h(item.source)}</strong><span>${h(latinNumber(item.count))} ${h(textPair("أخبار", "items", "articles"))}</span></article>`).join("")}</div>` : `<p class="provider-clean-note">${h(textPair("لا توجد مصادر متاحة حالياً.", "No sources are currently available.", "Aucune source disponible."))}</p>`}<div class="provider-feature-strip"><span>${h(textPair("آخر تحديث ناجح", "Last successful update", "Dernière mise à jour réussie"))}</span><b>${h(latinDateTime(state.news.lastSuccessfulUpdate || state.news.lastUpdated || state.news.generatedAt))}</b></div></section>`;
+  }
+
+  function newsIssueText() {
+    return formatProviderError(state.news && (state.news.message || state.news.error || state.news.partialFailure || state.news.failureReason), { empty: "" });
+  }
+
+  function newsIssuesPanel() {
+    const issue = newsIssueText();
+    return `<section class="panel workspace-issues-panel"><span class="eyebrow">${h(textPair("المشكلات", "Issues", "Problèmes"))}</span><h2>${h(issue ? textPair("تغطية الأخبار جزئية أو غير متاحة", "News coverage is partial or unavailable", "La couverture est partielle ou indisponible") : textPair("لا توجد مشكلات نشطة", "No active issues", "Aucun problème actif"))}</h2>${issue ? `<details><summary>${h(textPair("التفاصيل الآمنة وإعادة المحاولة", "Safe details and retry", "Détails et nouvelle tentative"))}</summary><p>${h(issue)}</p><button class="ghost-btn" data-retry type="button">${h(terminalText("retry"))}</button></details>` : `<p class="provider-clean-note">${h(textPair("اكتملت آخر محاولة بدون مشكلة قابلة للعرض.", "The latest attempt completed without a displayable issue.", "La dernière tentative ne présente aucun problème."))}</p>`}</section>`;
   }
 
   function calendarPage() {
     const c = state.calendar || {};
-    return `<div class="page-stack trader-calendar-page">${hero(textPair("تقويم السوق", "Market calendar"), textPair("تقويم حي لأرباح الشركات والتوزيعات والاكتتابات والأحداث الاقتصادية من مزودين حقيقيين. عند تعذر البيانات نعرض السبب بوضوح بدون بيانات وهمية.", "Live company earnings, dividends, IPOs, and economic events from real providers. When data is unavailable, the reason is shown clearly without synthetic data."), "CALENDAR")}
-      <section class="panel trader-calendar-toolbar">
-        <div><span class="eyebrow">${h(terminalText("dateRange"))}</span><h2>${h(terminalText("dateRange"))}</h2></div>
-        <div class="calendar-ranges">${calendarRangeButtons()}</div>
-      </section>
-      ${calendarProviderOverview()}
-      <section class="calendar-grid">
-        ${calendarPanel("earnings", textPair("الأرباح", "Earnings"), textPair("أرباح الشركات", "Company earnings"), c.earnings, earningsRows)}
-        ${calendarPanel("dividends", textPair("التوزيعات", "Dividends"), textPair("التوزيعات", "Dividends"), c.dividends, dividendRows)}
-        ${calendarPanel("ipos", textPair("الاكتتابات", "IPOs"), textPair("الاكتتابات", "IPOs"), c.ipos, ipoRows)}
-        ${calendarPanel("economic", textPair("الاقتصاد", "Economic"), textPair("التقويم الاقتصادي", "Economic calendar"), c.economic, economicRows)}
-      </section></div>`;
+    const countFor = kind => c[kind] && (c[kind].resultCount ?? arr(c[kind].data).length);
+    const tabs = [
+      { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
+      { id: "earnings", label: textPair("الأرباح", "Earnings", "Résultats"), count: countFor("earnings") },
+      { id: "dividends", label: textPair("التوزيعات", "Dividends", "Dividendes"), count: countFor("dividends") },
+      { id: "ipos", label: textPair("الاكتتابات", "IPOs", "Introductions"), count: countFor("ipos") },
+      { id: "economic", label: textPair("الاقتصاد", "Economic", "Économie"), count: countFor("economic") },
+      { id: "sources", label: textPair("المصادر", "Sources", "Sources") },
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: calendarIssueCount() }
+    ];
+    const dataPanel = (kind, eyebrow, title, renderer) => `${calendarFilterToolbar()}<section class="calendar-grid single-view">${calendarPanel(kind, eyebrow, title, c[kind], renderer, { forceOpen: true })}</section>`;
+    return `<div class="page-stack trader-calendar-page calendar-workspace">${hero(textPair("تقويم السوق", "Market calendar"), textPair("تقويم حي لأرباح الشركات والتوزيعات والاكتتابات والأحداث الاقتصادية من مزودين حقيقيين. عند تعذر البيانات نعرض السبب بوضوح بدون بيانات وهمية.", "Live company earnings, dividends, IPOs, and economic events from real providers. When data is unavailable, the reason is shown clearly without synthetic data."), "CALENDAR")}
+      ${workspaceTabBar("calendar", tabs, textPair("مساحة تقويم السوق", "Market calendar workspace", "Espace calendrier"))}
+      ${workspacePanel("calendar", "overview", `${calendarFilterToolbar()}${calendarOverviewPanel()}`)}
+      ${workspacePanel("calendar", "earnings", dataPanel("earnings", textPair("الأرباح", "Earnings", "Résultats"), textPair("أرباح الشركات", "Company earnings", "Résultats des sociétés"), earningsRows))}
+      ${workspacePanel("calendar", "dividends", dataPanel("dividends", textPair("التوزيعات", "Dividends", "Dividendes"), textPair("التوزيعات", "Dividends", "Dividendes"), dividendRows))}
+      ${workspacePanel("calendar", "ipos", dataPanel("ipos", textPair("الاكتتابات", "IPOs", "Introductions"), textPair("الاكتتابات", "IPOs", "Introductions"), ipoRows))}
+      ${workspacePanel("calendar", "economic", dataPanel("economic", textPair("الاقتصاد", "Economic", "Économie"), textPair("التقويم الاقتصادي", "Economic calendar", "Calendrier économique"), economicRows))}
+      ${workspacePanel("calendar", "sources", calendarProviderOverview())}
+      ${workspacePanel("calendar", "issues", calendarIssuesPanel())}
+    </div>`;
+  }
+
+  function calendarFilterToolbar() {
+    return `<section class="panel trader-calendar-toolbar compact-filter-panel"><div><span class="eyebrow">${h(terminalText("dateRange"))}</span><h2>${h(terminalText("dateRange"))}</h2></div><div class="calendar-ranges">${calendarRangeButtons()}</div></section>`;
+  }
+
+  function calendarOverviewPanel() {
+    const ps = state.providerStatus || {}, features = ps.features || {};
+    const rows = [
+      [textPair("أرباح الشركات", "Company earnings", "Résultats"), features.earnings],
+      [textPair("التوزيعات", "Dividends", "Dividendes"), features.dividends],
+      [textPair("الاكتتابات", "IPOs", "Introductions"), features.ipos],
+      [textPair("التقويم الاقتصادي", "Economic calendar", "Calendrier économique"), features.economic]
+    ];
+    return `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("التغطية الحالية", "Current coverage", "Couverture actuelle"))}</span><h2>${h(textPair("ملخص التقويم", "Calendar summary", "Résumé du calendrier"))}</h2></div></div><div class="provider-state-grid">${rows.map(([label, feature]) => providerFeatureCard(label, feature)).join("")}</div>${calendarIssueCount() ? `<p class="provider-warning">${h(textPair("بعض مجموعات البيانات تحتاج مراجعة. افتح تبويب المشكلات.", "Some datasets need attention. Open the Issues tab.", "Certaines données nécessitent une vérification."))}</p>` : ""}</section>`;
+  }
+
+  function calendarIssueRows() {
+    return CALENDAR_VIEW_IDS.map(kind => ({ kind, response: state.calendar && state.calendar[kind] || {} })).filter(({ response }) => {
+      const status = String(response.status || response.providerStatus || "").toLowerCase();
+      return response.message || response.error || response.partialFailure || ["error", "failed", "unavailable", "partial", "timeout"].includes(status);
+    });
+  }
+
+  function calendarIssueCount() {
+    return calendarIssueRows().length;
+  }
+
+  function calendarIssuesPanel() {
+    const issues = calendarIssueRows();
+    return `<section class="panel workspace-issues-panel"><span class="eyebrow">${h(textPair("المشكلات", "Issues", "Problèmes"))}</span><h2>${h(issues.length ? textPair("تغطية جزئية أو غير متاحة", "Partial or unavailable coverage", "Couverture partielle ou indisponible") : textPair("لا توجد مشكلات نشطة", "No active issues", "Aucun problème actif"))}</h2>${issues.length ? `<div class="workspace-issue-list">${issues.map(({ kind, response }) => `<details><summary><span>${h(calendarKindLabel(kind))}</span><span class="state-badge ${featureStatusTone(response.status)}">${h(featureStatusLabel(response.status))}</span></summary><p>${h(formatProviderError(response.message || response.error || response.partialFailure, { empty: textPair("لم يعرض المزود سبباً إضافياً.", "The provider returned no additional reason.", "Aucun détail supplémentaire." ) }))}</p><button class="ghost-btn" type="button" data-calendar-retry-kind="${h(kind)}">${h(terminalText("retry"))}</button></details>`).join("")}</div>` : `<p class="provider-clean-note">${h(textPair("اكتملت آخر المحاولات بدون مشكلة قابلة للعرض.", "The latest attempts completed without a displayable issue.", "Les dernières tentatives ne présentent aucun problème."))}</p>`}</section>`;
+  }
+
+  function calendarKindLabel(kind) {
+    if (kind === "earnings") return textPair("الأرباح", "Earnings", "Résultats");
+    if (kind === "dividends") return textPair("التوزيعات", "Dividends", "Dividendes");
+    if (kind === "ipos") return textPair("الاكتتابات", "IPOs", "Introductions");
+    return textPair("الاقتصاد", "Economic", "Économie");
   }
 
   function calendarRangeButtons() {
@@ -2826,10 +3337,10 @@
     </article>`;
   }
 
-  function calendarPanel(kind, eyebrow, title, response, rowRenderer) {
+  function calendarPanel(kind, eyebrow, title, response, rowRenderer, options = {}) {
     response = response || {};
     const rows = arr(response.data);
-    const isOpen = state.calendarOpen && state.calendarOpen[kind] === true;
+    const isOpen = options.forceOpen === true || (state.calendarOpen && state.calendarOpen[kind] === true);
     const count = response.resultCount ?? rows.length;
     return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${isOpen ? "is-open" : "is-collapsed"}">
       <div class="panel-head calendar-panel-head">
@@ -2837,7 +3348,7 @@
         <div class="calendar-head-actions">
           ${providerBadge(response)}
           <span class="state-badge muted">${h(latinNumber(count))} ${h(terminalText("rows"))}</span>
-          <button class="ghost-btn compact-btn" data-calendar-section-toggle="${h(kind)}" aria-expanded="${isOpen ? "true" : "false"}">${h(isOpen ? terminalText("collapse") : terminalText("open"))}</button>
+          ${options.forceOpen ? "" : `<button class="ghost-btn compact-btn" data-calendar-section-toggle="${h(kind)}" aria-expanded="${isOpen ? "true" : "false"}">${h(isOpen ? terminalText("collapse") : terminalText("open"))}</button>`}
           <button class="ghost-btn compact-btn" data-retry>${h(terminalText("retry"))}</button>
         </div>
       </div>
@@ -2875,7 +3386,7 @@
       title = UNAVAILABLE_MESSAGE;
       body = textPair("انتهت مهلة الطلب. يمكنك إعادة المحاولة بدون إعادة تحميل الصفحة.", "The request timed out. You can retry without reloading the page.");
       settings = false;
-    } else if (status === "success") {
+    } else if (["success", "available", "connected", "healthy"].includes(status)) {
       title = textPair("لا توجد أحداث ضمن الفترة الحالية", "No events in the current range");
       body = textPair("جرّب تغيير الفترة أو السوق أو نوع الحدث.", "Try changing the range, market, or event type.");
       settings = false;
@@ -3241,13 +3752,13 @@
       </label>`;
     }).join("");
     const languageButtons = ["ar", "en", "fr"].map(language => `<button class="settings-segment-btn ${lang === language ? "is-active" : ""}" type="button" data-language="${language}" aria-pressed="${lang === language ? "true" : "false"}">${h(settingsT(language === "ar" ? "arabic" : language === "fr" ? "french" : "english", lang))}</button>`).join("");
-    return `<div class="page-stack trader-settings-page" dir="${dir}">${hero(settingsT("heroTitle", lang), settingsT("heroBody", lang), settingsT("settings", lang))}
-      <section class="settings-grid settings-grid-polished">
-        <article class="panel settings-panel provider-settings-panel">
-          <div class="panel-head"><div><span class="eyebrow">${h(settingsT("provider", lang))}</span><h2>${h(settingsT("provider", lang))}</h2></div><div class="provider-panel-actions"><button class="ghost-btn compact-btn" data-settings-action="retry-provider-now" type="button">${h(settingsT("retryNow", lang))}</button><button class="ghost-btn compact-btn danger-lite" data-settings-action="clear-provider-cache" type="button">${h(settingsT("clearProviderCache", lang))}</button><button class="ghost-btn compact-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button></div></div>
-          ${diagnostics()}
-        </article>
-        <article class="panel settings-panel signal-settings-panel">
+    const tabs = [
+      { id: "overview", label: textPair("نظرة المزود", "Provider Overview", "Vue du fournisseur") },
+      { id: "capabilities", label: textPair("القدرات", "Capabilities", "Capacités") },
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: providerUserMessage(normalizedProviderStatus(), providerCopy(), lang) ? 1 : 0 },
+      { id: "preferences", label: textPair("التفضيلات", "Preferences", "Préférences") }
+    ];
+    const signalPanel = `<article class="panel settings-panel signal-settings-panel">
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("signalPreferences", lang))}</span><h2>${h(settingsT("signalPreferences", lang))}</h2></div></div>
           <form id="settings-form" class="settings-form">
             <div class="settings-form-grid">
@@ -3272,8 +3783,8 @@
             </div>
             <div class="settings-form-actions"><button class="action-btn settings-save-btn" type="submit">${h(settingsT("save", lang))}</button></div>
           </form>
-        </article>
-        <article class="panel settings-panel settings-actions-panel">
+        </article>`;
+    const appearancePanel = `<article class="panel settings-panel settings-actions-panel">
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("platformActions", lang))}</span><h2>${h(settingsT("platformActions", lang))}</h2></div></div>
           <div class="settings-action-group">
             <span class="settings-section-label">${h(settingsT("language", lang))}</span>
@@ -3283,24 +3794,48 @@
             <span class="settings-section-label">${h(settingsT("theme", lang))}</span>
             <div class="settings-theme-grid" role="listbox" aria-label="${h(settingsT("theme", lang))}">${themeOptionsHtml("settings")}</div>
           </div>
-          <div class="settings-action-group">
-            <span class="settings-section-label">${h(settingsT("dataActions", lang))}</span>
-            <div class="settings-data-actions">
-              <button class="ghost-btn" data-settings-action="retry-provider-now" type="button">${h(settingsT("retryNow", lang))}</button>
-              <button class="ghost-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button>
-              <button class="ghost-btn danger-lite" data-settings-action="clear-provider-cache" type="button">${h(settingsT("clearProviderCache", lang))}</button>
-            </div>
-          </div>
-        </article>
-        <article class="panel settings-panel settings-policy-panel">
+        </article>`;
+    const policyPanel = `<article class="panel settings-panel settings-policy-panel">
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("dataPolicy", lang))}</span><h2>${h(settingsT("dataPolicy", lang))}</h2></div></div>
           <div class="settings-info-grid">
             <div class="status-card settings-info-card"><strong>${h(settingsT("languageDirectionTitle", lang))}</strong><p>${h(settingsT("languageDirectionBody", lang))}</p><span class="state-badge ok">${h(textPair("اتجاه مضبوط", "Direction clean", "Sens d’écriture correct"))}</span></div>
             <div class="status-card settings-info-card"><strong>${h(settingsT("noSyntheticTitle", lang))}</strong><p>${h(settingsT("noSyntheticBody", lang))}</p><span class="state-badge warn">${h(textPair("بيانات حقيقية فقط", "Real data only", "Données réelles uniquement"))}</span></div>
             <div class="status-card settings-info-card about-card"><strong>${h(terminalBrandFullTitle())}</strong><p>${h(settingsT("aboutBody", lang))}</p><span class="state-badge">Powered by M.ALQ</span></div>
           </div>
-        </article>
-      </section>${disclaimer()}</div>`;
+        </article>`;
+    return `<div class="page-stack trader-settings-page settings-workspace" dir="${dir}">${hero(settingsT("heroTitle", lang), settingsT("heroBody", lang), settingsT("settings", lang))}
+      ${workspaceTabBar("settings", tabs, textPair("مساحة إعدادات المزود", "Provider settings workspace", "Espace fournisseur"), { keepMounted: true })}
+      ${workspacePanel("settings", "overview", providerSettingsOverview(lang), { keepMounted: true })}
+      ${workspacePanel("settings", "capabilities", providerSettingsCapabilities(lang), { keepMounted: true })}
+      ${workspacePanel("settings", "issues", providerSettingsIssues(lang), { keepMounted: true })}
+      ${workspacePanel("settings", "preferences", `<section class="settings-grid settings-grid-polished">${signalPanel}${appearancePanel}${policyPanel}</section>`, { keepMounted: true })}
+      ${disclaimer()}</div>`;
+  }
+
+  function providerSettingsOverview(lang) {
+    const normalized = normalizedProviderStatus();
+    const status = providerCopy();
+    const tone = normalizedStatusTone(normalized.status) || status.tone || "";
+    const cards = [
+      [settingsT("providerStatus", lang), status.label, tone],
+      [settingsT("providerName", lang), normalized.provider, ""],
+      [settingsT("loadedSymbols", lang), countTextLocalized(normalized.loadedCount, lang), normalized.loadedCount > 0 ? "ok" : "warn"],
+      [settingsT("lastUpdated", lang), latinDateTime(normalized.lastUpdated), ""]
+    ];
+    return `<section class="panel settings-panel provider-settings-panel"><div class="provider-status-banner ${tone}"><div><span class="eyebrow">${h(settingsT("provider", lang))}</span><strong>${h(normalized.provider)}</strong><p>${h(status.title)}</p></div><span class="state-badge ${tone}">${h(normalized.configured ? settingsT("configured", lang) : settingsT("notConfigured", lang))}</span></div><div class="provider-status-cards compact">${cards.map(([label, value, cardTone]) => providerMetricCard(label, value, cardTone)).join("")}</div></section>`;
+  }
+
+  function providerSettingsCapabilities(lang) {
+    const normalized = normalizedProviderStatus();
+    const featureList = normalized.supportedFeatures.length ? normalized.supportedFeatures.map(feature => featureLabelLocalized(feature, lang)).join(" · ") : settingsT("noFeatures", lang);
+    return `<section class="panel settings-panel provider-settings-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("القدرات", "Capabilities", "Capacités"))}</span><h2>${h(settingsT("supportedFeatures", lang))}</h2></div></div><div class="provider-feature-strip"><span>${h(settingsT("supportedFeatures", lang))}</span><b>${h(featureList)}</b></div></section><article class="panel provider-market-admin-panel" data-provider-market-admin-host="true" aria-live="polite"></article>`;
+  }
+
+  function providerSettingsIssues(lang) {
+    const normalized = normalizedProviderStatus();
+    const status = providerCopy();
+    const issue = providerUserMessage(normalized, status, lang);
+    return `<section class="panel settings-panel provider-settings-panel workspace-issues-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("المشكلات", "Issues", "Problèmes"))}</span><h2>${h(issue ? textPair("المزود يحتاج مراجعة", "Provider needs attention", "Le fournisseur nécessite une vérification") : textPair("لا توجد مشكلة نشطة", "No active provider issue", "Aucun problème actif"))}</h2></div><div class="provider-panel-actions"><button class="ghost-btn compact-btn" data-settings-action="retry-provider-now" type="button">${h(settingsT("retryNow", lang))}</button><button class="ghost-btn compact-btn" data-settings-action="test-provider-connection" type="button">${h(settingsT("testProviderConnection", lang))}</button><button class="ghost-btn compact-btn danger-lite" data-settings-action="clear-provider-cache" type="button">${h(settingsT("clearProviderCache", lang))}</button></div></div>${issue ? `<p class="provider-warning">${h(issue)}</p>` : `<p class="provider-clean-note">${h(textPair("اكتملت آخر محاولة بدون خطأ قابل للعرض.", "The latest attempt completed without a displayable error.", "La dernière tentative ne présente aucune erreur."))}</p>`}${diagnosticDetails(normalized)}</section>`;
   }
 
   function symbolPage(symbol) {
@@ -3331,20 +3866,33 @@
     if (symbols.length) params.set("symbols", symbols.join(","));
     return params.toString();
   }
-  async function loadCalendars(force) {
+  async function loadCalendars(force, kinds = CALENDAR_VIEW_IDS) {
     const qs = calendarQuery(force);
-    const settled = await Promise.allSettled([
-      get("/trader/provider-status", { label: "providerStatus" }),
-      get(`/trader/calendar/earnings?${qs}`, { label: "calendar" }),
-      get(`/trader/calendar/dividends?${qs}`, { label: "calendar" }),
-      get(`/trader/calendar/ipos?${qs}`, { label: "calendar" }),
-      get(`/trader/calendar/economic?${qs}`, { label: "calendar" })
-    ]);
-    const [providerStatus, earnings, dividends, ipos, economic] = settled.map((result, index) => settledValue(result, index === 0 ? "providerStatus" : "calendar"));
-    state.providerStatus = providerStatus || {};
-    state.calendar = { earnings, dividends, ipos, economic };
-    state.calendarLoaded = true;
-    if (providerStatus && providerStatus.dataProvider) state.provider = providerStatus.dataProvider;
+    const requestedKinds = Array.from(new Set(arr(kinds).filter(kind => CALENDAR_VIEW_IDS.includes(kind))));
+    const requests = [];
+    if (force || !state.calendarLoaded.provider) {
+      requests.push({ key: "provider", promise: get("/trader/provider-status", { label: "providerStatus" }), label: "providerStatus" });
+    }
+    requestedKinds.forEach(kind => {
+      if (force || !state.calendarLoaded[kind]) {
+        requests.push({ key: kind, promise: get(`/trader/calendar/${kind}?${qs}`, { label: "calendar" }), label: "calendar" });
+      }
+    });
+    if (!requests.length) return;
+    const settled = await Promise.allSettled(requests.map(request => request.promise));
+    settled.forEach((result, index) => {
+      const request = requests[index];
+      const value = settledValue(result, request.label);
+      if (request.key === "provider") {
+        state.providerStatus = value || {};
+        state.calendarLoaded.provider = true;
+        hydrationLoaded.add("providerStatus");
+        if (value && value.dataProvider) state.provider = value.dataProvider;
+        return;
+      }
+      state.calendar[request.key] = value;
+      state.calendarLoaded[request.key] = true;
+    });
     renderAfterData();
   }
   function marketUniverseCacheKey(id) {
@@ -3692,7 +4240,7 @@
     const neutral = Math.round(((total - actionable) / total) * 100);
     return { label: bull >= 55 ? textPair("\u0635\u0627\u0639\u062f", "Bullish") : bull <= 40 ? textPair("\u0647\u0627\u0628\u0637", "Bearish") : textPair("\u0645\u062d\u0627\u064a\u062f", "Neutral"), en: bull >= 55 ? "BULLISH" : bull <= 40 ? "BEARISH" : "NEUTRAL", bull, bear, neutral, conf, tone: bull >= 55 ? "ok" : bull <= 40 ? "warn" : "", note: textPair(`${latinNumber(buy)} \u0634\u0631\u0627\u0621 · ${latinNumber(sell)} \u0628\u064a\u0639 \u0645\u0646 \u0623\u0635\u0644 ${latinNumber(total)}`, `${latinNumber(buy)} buy · ${latinNumber(sell)} sell out of ${latinNumber(total)}`, `${latinNumber(buy)} achats · ${latinNumber(sell)} ventes sur ${latinNumber(total)}`) };
   }
-  function marketOverview(rec) {
+  function marketOverview(rec, view = "all") {
     const b = marketBias(rec);
     const verdict = b.en === "AWAITING" ? "--" : isEnglishLanguage() ? b.en.replace("NEUTRAL — PRECISION GATE", "NEUTRAL") : b.label;
     const analysisUnavailable = b.en === "AWAITING" || b.en === "NO SUFFICIENT SIGNALS";
@@ -3721,14 +4269,17 @@
           </div>
           <div class="ai-analysis-bull ${b.tone === "warn" ? "bearish" : ""}" aria-hidden="true"></div>
         </div>`;
-    return `<section class="panel market-overview">
+    const sessionsPanel = `<section class="panel market-overview">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("نظرة السوق", "Market overview"))}</span><h2>${h(textPair("نظرة عامة على الأسواق", "Market overview"))}</h2></div><div class="mo-timeframes">${["1D", "1W", "1M", "1Y", "ALL"].map(t => `<button data-timeframe="${t}" class="${state.timeframe === t ? "is-active" : ""}">${t}</button>`).join("")}</div></div>
       ${marketSessionTimeline(rec)}
-    </section>
-    <section class="panel ai-market-analysis">
+    </section>`;
+    const analysisPanel = `<section class="panel ai-market-analysis">
       <div class="panel-head"><div><span class="eyebrow">${h(textPair("تحليل السوق بالذكاء الاصطناعي", "AI market analysis"))}</span><h2>${h(textPair("تحليل السوق الذكي", "AI market analysis"))}</h2></div></div>
       ${analysisBody}
     </section>`;
+    if (view === "sessions") return sessionsPanel;
+    if (view === "analysis") return analysisPanel;
+    return `${sessionsPanel}${analysisPanel}`;
   }
   function commandCenter(rec) {
     const p = providerCopy(), b = marketBias(rec), market = currentMarket();
@@ -4191,7 +4742,8 @@
     const title = n.title || n.headline || n.name || textPair("خبر بدون عنوان", "Untitled news", "Actualité sans titre"), src = n.sourceName || n.source || n.publisher || textPair("المصدر غير متاح", "Source unavailable", "Source indisponible"), when = date(n.publishedAt || n.datetime || n.date || n.createdAt), url = safeExternalUrl(n.originalUrl || n.canonicalUrl || n.url || n.link || ""), text = n.summary || n.description || n.text || "", impact = (n.expectedImpact || n.impact || "").toString().toLowerCase();
     const syms = arr(n.symbols || n.relatedSymbols).slice(0, 3);
     const evidence = newsEvidence(n);
-    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span><span class="impact ${evidence.tone}">${h(evidence.label)}</span></div>${evidence.countLabel && !evidence.label.includes(evidence.countLabel) ? `<div class="news-meta"><span>${h(evidence.countLabel)}</span>${impact ? `<span>${h(translateUiText(impact))}</span>` : ""}</div>` : impact ? `<div class="news-meta"><span>${h(translateUiText(impact))}</span></div>` : ""}<strong>${h(title)}</strong>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener noreferrer nofollow">${h(terminalText("source"))}</a>` : ""}</article>`;
+    const hasDetails = Boolean(text || syms.length || url);
+    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span><span class="impact ${evidence.tone}">${h(evidence.label)}</span></div>${evidence.countLabel && !evidence.label.includes(evidence.countLabel) ? `<div class="news-meta"><span>${h(evidence.countLabel)}</span>${impact ? `<span>${h(translateUiText(impact))}</span>` : ""}</div>` : impact ? `<div class="news-meta"><span>${h(translateUiText(impact))}</span></div>` : ""}<strong>${h(title)}</strong>${hasDetails ? `<details class="news-card-details"><summary>${h(textPair("الملخص والأدلة", "Summary and evidence", "Résumé et preuves"))}</summary>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener noreferrer nofollow">${h(terminalText("source"))}</a>` : ""}</details>` : ""}</article>`;
   }
   function relatedNews(symbol, detail = {}) {
     const detailNews = arr(detail.news && (detail.news.items || detail.news.articles || detail.news.news || detail.news.data || detail.news.results));
@@ -6026,10 +6578,27 @@
   document.addEventListener("click", async (e) => {
     const chip = e.target.closest("[data-rec-market]");
     if (!chip) return;
-    state.settings.defaultMarket = chip.dataset.recMarket;
+    const requestedMarket = chip.dataset.recMarket;
+    state.settings.defaultMarket = requestedMarket;
     try { localStorage.setItem(keys.settings, JSON.stringify(state.settings)); } catch {}
+    state.rec = {};
+    state.commandCards = {};
+    state.news = {};
+    state.newsContextKey = "";
+    invalidateHydrationCache("rec", "commandCards", "news");
+    const cacheKey = `rec:${marketApi(requestedMarket)}`;
+    hydrationExpectedCacheKey.set("rec", cacheKey);
+    const generation = hydrationGeneration.get("rec") || 0;
     render();
-    state.rec = await get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`, { label: "quotes" });
+    const promise = get(`/recommendations?market=${marketApi(requestedMarket)}`, { label: "quotes" });
+    hydrationInFlight.set(cacheKey, { key: "rec", generation, promise });
+    const result = await promise;
+    if (hydrationInFlight.get(cacheKey)?.promise === promise) hydrationInFlight.delete(cacheKey);
+    if (state.settings.defaultMarket !== requestedMarket
+      || hydrationExpectedCacheKey.get("rec") !== cacheKey
+      || (hydrationGeneration.get("rec") || 0) !== generation) return;
+    state.rec = result;
+    hydrationLoaded.add(cacheKey);
     render();
   });
 
@@ -6044,6 +6613,9 @@
     state.commandCards = {};
     state.signals = {};
     state.signalAlerts = {};
+    state.news = {};
+    state.newsContextKey = "";
+    invalidateHydrationCache("rec", "commandCards", "signals", "signalAlerts", "news");
     if (state.marketCache && state.marketCache.clear) state.marketCache.clear();
     if (state.route.id === "markets" && state.route.market) {
       navigate(`${ROOT}/markets/${encodeURIComponent(mid)}`);

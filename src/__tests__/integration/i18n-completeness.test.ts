@@ -57,8 +57,8 @@ describe('i18n completeness', () => {
     expect(Object.keys(TR_INVEST).length).toBeGreaterThanOrEqual(232);
   });
 
-  it('investment_offers_ domain has exactly 41 keys', () => {
-    expect(Object.keys(TR_INVESTMENT_OFFERS).length).toBe(41);
+  it('investment_offers_ domain retains its complete baseline while allowing new journey copy', () => {
+    expect(Object.keys(TR_INVESTMENT_OFFERS).length).toBeGreaterThanOrEqual(41);
   });
 
   it('charity. domain has ≥ 40 keys', () => {

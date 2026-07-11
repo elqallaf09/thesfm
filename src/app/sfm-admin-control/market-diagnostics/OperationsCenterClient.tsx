@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { formatDateTime } from '@/lib/locale';
-import { PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { OperationsCenterStateProvider, useOperationsCenterContext } from './OperationsCenterStateProvider';
 import { OverviewTab } from './tabs/OverviewTab';
 import { ProvidersTab } from './tabs/ProvidersTab';
@@ -16,12 +16,19 @@ import { AiTab } from './tabs/AiTab';
 import { ShariahTab } from './tabs/ShariahTab';
 import { LogsTab } from './tabs/LogsTab';
 
-type TabId = 'overview' | 'providers' | 'market' | 'errors' | 'background_jobs' | 'performance' | 'ai' | 'shariah' | 'logs';
+const TAB_IDS = ['overview', 'providers', 'market', 'errors', 'background_jobs', 'performance', 'ai', 'shariah', 'logs'] as const;
+type TabId = typeof TAB_IDS[number];
+const TAB_ID_BASE = 'ops-center';
 
 function OperationsCenterContent() {
   const { t, lang, dir } = useLanguage();
   const { ops, isLoading } = useOperationsCenterContext();
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useUrlTabState<TabId>({
+    param: 'tab',
+    values: TAB_IDS,
+    defaultValue: 'overview',
+    omitDefault: true,
+  });
 
   const attentionCount = ops ? ops.overview.criticalIssueCount + ops.overview.warningCount : undefined;
   const tabs: PageTabItem[] = [
@@ -45,25 +52,43 @@ function OperationsCenterContent() {
         </div>
       </header>
 
-      <PageTabs tabs={tabs} active={activeTab} onChange={id => setActiveTab(id as TabId)} ariaLabel={t('ops_center_title')} />
+      <PageTabs
+        idBase={TAB_ID_BASE}
+        tabs={tabs}
+        active={activeTab}
+        onChange={id => setActiveTab(id as TabId)}
+        ariaLabel={t('ops_center_title')}
+        sticky
+        mobileMode="auto"
+      />
 
-      <div className="ops-center-tab-panel" role="tabpanel" aria-busy={isLoading}>
-        {!ops && isLoading ? (
-          <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p>
-        ) : (
-          <>
-            {activeTab === 'overview' && <OverviewTab />}
-            {activeTab === 'providers' && <ProvidersTab />}
-            {activeTab === 'market' && <MarketTab />}
-            {activeTab === 'errors' && <ErrorsTab />}
-            {activeTab === 'background_jobs' && <BackgroundJobsTab />}
-            {activeTab === 'performance' && <PerformanceTab />}
-            {activeTab === 'ai' && <AiTab />}
-            {activeTab === 'shariah' && <ShariahTab />}
-            {activeTab === 'logs' && <LogsTab />}
-          </>
-        )}
-      </div>
+      <PageTabPanel idBase={TAB_ID_BASE} value="overview" active={activeTab === 'overview'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <OverviewTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="providers" active={activeTab === 'providers'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <ProvidersTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="market" active={activeTab === 'market'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <MarketTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="errors" active={activeTab === 'errors'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <ErrorsTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="background_jobs" active={activeTab === 'background_jobs'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <BackgroundJobsTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="performance" active={activeTab === 'performance'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <PerformanceTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="ai" active={activeTab === 'ai'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <AiTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="shariah" active={activeTab === 'shariah'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <ShariahTab />}
+      </PageTabPanel>
+      <PageTabPanel idBase={TAB_ID_BASE} value="logs" active={activeTab === 'logs'} className="ops-center-tab-panel" aria-busy={isLoading}>
+        {!ops && isLoading ? <p className="ops-center-loading" role="status">{t('ops_center_loading')}</p> : <LogsTab />}
+      </PageTabPanel>
 
       <style jsx global>{`
         .market-diagnostics-admin { max-width: 1160px; margin: 0 auto; padding: clamp(18px,3vw,30px) 16px 48px; display: grid; gap: 18px; color: var(--sfm-foreground); }

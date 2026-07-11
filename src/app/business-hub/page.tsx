@@ -29,10 +29,11 @@ import {
 import { Sidebar } from '@/components/Sidebar';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -53,7 +54,7 @@ import {
   JURISDICTION_STEPS, OFFICIAL_VERIFICATION_KEYS, OPERATIONAL_NEED_OPTIONS,
   SHORTLIST_STATUSES, TARGET_CUSTOMER_OPTIONS, USE_OF_FUNDS_KEYS,
   initialWizard, emptyFundingForm, emptyFundingDirectoryFilters, emptyFundingProgramImportForm,
-  normalizeBusinessHubTab, firstText, fundingRowToForm, normalizeWizard,
+  firstText, fundingRowToForm, normalizeBusinessHubTab, normalizeWizard,
   feasibilitySectionCount, moduleExists, calculateUseOfFundsTotals,
   getUseOfFundsStatusFromTotals, buildInvestorPackageItems, buildFundingWarnings,
   completionStatus, buildStrategicDocumentItems, hasFundingPlan,
@@ -68,6 +69,9 @@ import {
   buildDocumentDraft,
 } from './_lib';
 
+const BUSINESS_HUB_TAB_IDS = ['readiness', 'funding', 'jurisdiction', 'documents', 'directory', 'copilot'] as const satisfies readonly BusinessHubTab[];
+const BUSINESS_HUB_TABS_ID = 'business-hub-workspace';
+
 export default function BusinessHubPage() {
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
@@ -75,7 +79,14 @@ export default function BusinessHubPage() {
   const text = useMemo(() => ({ ...TEXT[locale], ...STRATEGIC_TEXT[locale], ...JURISDICTION_TEXT[locale], ...FUNDING_DIRECTORY_TEXT[locale] }), [locale]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [activeTab, setActiveTab] = useState<BusinessHubTab>('readiness');
+  const [activeTab, setActiveTab] = useUrlTabState<BusinessHubTab>({
+    param: 'tab',
+    values: BUSINESS_HUB_TAB_IDS,
+    defaultValue: 'readiness',
+    omitDefault: true,
+    legacyValueResolver: normalizeBusinessHubTab,
+    legacyHash: true,
+  });
   const [modules, setModules] = useState<ModuleRows>(EMPTY_MODULES);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingModules, setLoadingModules] = useState(false);
@@ -100,13 +111,6 @@ export default function BusinessHubPage() {
   const [fundingImportForm, setFundingImportForm] = useState<FundingProgramImportForm>(emptyFundingProgramImportForm);
   const [savingFundingProgram, setSavingFundingProgram] = useState(false);
   const [fundingImportMessage, setFundingImportMessage] = useState('');
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const requestedTab = normalizeBusinessHubTab(params.get('tab')) ?? normalizeBusinessHubTab(window.location.hash);
-    if (requestedTab) setActiveTab(requestedTab);
-  }, []);
 
   const loadProjects = useCallback(async () => {
     if (!user) {
@@ -765,8 +769,12 @@ export default function BusinessHubPage() {
           active={activeTab}
           onChange={id => setActiveTab(id as BusinessHubTab)}
           ariaLabel={text.title}
+          idBase={BUSINESS_HUB_TABS_ID}
+          sticky
+          mobileMode="auto"
         />
 
+        <PageTabPanel idBase={BUSINESS_HUB_TABS_ID} value={activeTab} active>
         {projects.length === 0 ? (
           <section className="empty-state">
             <Building2 size={34} />
@@ -1607,6 +1615,7 @@ export default function BusinessHubPage() {
             </div>
           </article>
         </section>}
+        </PageTabPanel>
       </main>
       <style>{styles}</style>
     </div>

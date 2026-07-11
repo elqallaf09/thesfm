@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,14 +32,24 @@ import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
-import { PageTabs } from '@/components/layout/PageTabs';
+import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { useUnifiedDocuments } from '@/hooks/useUnifiedDocuments';
 import { supabase } from '@/integrations/supabase/client';
 import type { UnifiedDocument, UnifiedDocumentSourceModule } from '@/lib/documents/unifiedDocuments';
 
 type Lang = 'ar' | 'en' | 'fr';
-type FilterId = 'all' | UnifiedDocumentSourceModule;
+type DocumentWorkspaceTab = 'recent' | 'financial' | 'markets' | 'business' | 'charity' | 'ai' | 'archived';
+
+const DOCUMENT_WORKSPACE_TABS = ['recent', 'financial', 'markets', 'business', 'charity', 'ai', 'archived'] as const satisfies readonly DocumentWorkspaceTab[];
+const DOCUMENT_WORKSPACE_ID = 'documents-workspace';
+
+const DOCUMENT_TAB_LABELS: Record<Lang, Record<DocumentWorkspaceTab, string>> = {
+  ar: { recent: 'الأحدث', financial: 'مالي', markets: 'الأسواق', business: 'الأعمال', charity: 'الخيري', ai: 'مولّد بالذكاء الاصطناعي', archived: 'مؤرشف' },
+  en: { recent: 'Recent', financial: 'Financial', markets: 'Markets', business: 'Business', charity: 'Charity', ai: 'AI Generated', archived: 'Archived' },
+  fr: { recent: 'Récents', financial: 'Financier', markets: 'Marchés', business: 'Entreprise', charity: 'Caritatif', ai: 'Générés par IA', archived: 'Archivés' },
+};
 
 const signedUrlExpirySeconds = 600;
 
@@ -278,6 +288,25 @@ function sourceLabel(source: UnifiedDocumentSourceModule, text: DocumentText) {
   return text[source] ?? text.other;
 }
 
+function documentWorkspaceCategory(document: UnifiedDocument): Exclude<DocumentWorkspaceTab, 'recent'> | null {
+  const searchable = [
+    document.category,
+    document.documentType,
+    document.title,
+    document.fileName,
+    document.notes,
+    document.status,
+  ].join(' ').toLocaleLowerCase();
+
+  if (/\b(archive|archived)\b|\b(archive|archivé)\b|مؤرشف|أرشيف/.test(searchable)) return 'archived';
+  if (/\b(ai|artificial intelligence|ai[-_ ]generated)\b|intelligence artificielle|ذكاء اصطناعي|الذكاء الاصطناعي/.test(searchable)) return 'ai';
+  if (document.sourceModule === 'charity') return 'charity';
+  if (/\b(market|markets|trading|stock|stocks|security|securities|dividend|ipo|forex|crypto)\b|marché|السوق|الأسواق|تداول/.test(searchable)) return 'markets';
+  if (document.sourceModule === 'income' || document.sourceModule === 'expenses' || document.sourceModule === 'reports') return 'financial';
+  if (document.sourceModule === 'projects' || document.sourceModule === 'pitch_deck' || document.sourceModule === 'business') return 'business';
+  return null;
+}
+
 function DocumentIcon({ document }: { document: UnifiedDocument }) {
   const extension = extensionOf(document.fileName);
   if (String(document.fileType ?? '').startsWith('image') || ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension)) return <FileImage size={22} />;
@@ -303,10 +332,28 @@ export default function DocumentsCenterPage() {
   const locale = (lang === 'en' || lang === 'fr' || lang === 'ar' ? lang : 'ar') as Lang;
   const text = TEXT[locale] as DocumentText;
   const { documents, loading, errors, reload } = useUnifiedDocuments();
-  const [activeFilter, setActiveFilter] = useState<FilterId>('all');
+  const [activeFilter, setActiveFilter] = useUrlTabState<DocumentWorkspaceTab>({
+    param: 'tab',
+    values: DOCUMENT_WORKSPACE_TABS,
+    defaultValue: 'recent',
+    omitDefault: true,
+  });
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState('');
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
   const [uploadOptionsOpen, setUploadOptionsOpen] = useState(false);
+  const uploadPanelRef = useRef<HTMLDetailsElement>(null);
+  const uploadActionRef = useRef<HTMLButtonElement>(null);
+
+  const revealUploadControls = () => {
+    setUploadPanelOpen(true);
+    setUploadOptionsOpen(true);
+
+    window.requestAnimationFrame(() => {
+      uploadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      uploadActionRef.current?.focus({ preventScroll: true });
+    });
+  };
 
   const summary = useMemo(() => ({
     total: documents.length,
@@ -317,28 +364,19 @@ export default function DocumentsCenterPage() {
   }), [documents]);
 
   const tabs = useMemo(() => {
-    const sources: Array<{ id: FilterId; label: string }> = [
-      { id: 'all', label: text.all },
-      { id: 'projects', label: text.projects },
-      { id: 'charity', label: text.charity },
-      { id: 'income', label: text.income },
-      { id: 'expenses', label: text.expenses },
-      { id: 'reports', label: text.reports },
-      { id: 'pitch_deck', label: text.pitch_deck },
-      { id: 'business', label: text.business },
-    ];
-    return sources.map(tab => ({
-      ...tab,
-      count: tab.id === 'all'
+    return DOCUMENT_WORKSPACE_TABS.map(id => ({
+      id,
+      label: DOCUMENT_TAB_LABELS[locale][id],
+      count: id === 'recent'
         ? documents.length
-        : documents.filter(item => item.sourceModule === tab.id).length,
+        : documents.filter(item => documentWorkspaceCategory(item) === id).length,
     }));
-  }, [documents, text]);
+  }, [documents, locale]);
 
   const filteredDocuments = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return documents.filter(document => {
-      const matchesFilter = activeFilter === 'all' || document.sourceModule === activeFilter;
+      const matchesFilter = activeFilter === 'recent' || documentWorkspaceCategory(document) === activeFilter;
       const haystack = [
         document.title,
         document.fileName,
@@ -436,18 +474,34 @@ export default function DocumentsCenterPage() {
         {notice ? <div className="documents-notice" role="status">{notice}</div> : null}
         {hasLoadErrors ? <div className="documents-notice warning" role="status">{text.loadError}</div> : null}
 
-        <section className="documents-upload-panel" aria-label={text.uploadDocument}>
-          <div className="documents-upload-panel-head">
-            <div>
-              <span>{text.eyebrow}</span>
-              <h2>{text.uploadDocument}</h2>
-            </div>
-            <div className="documents-upload-wrap">
+        <details
+          id="documents-upload-panel"
+          ref={uploadPanelRef}
+          className="documents-upload-panel"
+          open={uploadPanelOpen}
+          onToggle={event => setUploadPanelOpen(event.currentTarget.open)}
+        >
+          <summary className="documents-upload-summary">
+            <span className="documents-upload-summary-copy">
+              <span className="documents-dropzone-icon" aria-hidden="true"><Upload size={19} /></span>
+              <span><strong>{text.uploadDocument}</strong><small>{text.dropzoneDescription}</small></span>
+            </span>
+            <span className="documents-upload-summary-action">{text.chooseFile}</span>
+          </summary>
+          <div className="documents-upload-panel-body">
+            <div className="documents-upload-panel-head">
+              <div>
+                <span>{text.eyebrow}</span>
+                <h2>{text.uploadDocument}</h2>
+              </div>
+              <div className="documents-upload-wrap">
               <button
+                ref={uploadActionRef}
                 type="button"
                 className="documents-primary-action"
                 onClick={() => setUploadOptionsOpen(open => !open)}
                 aria-expanded={uploadOptionsOpen}
+                aria-controls="documents-upload-options"
                 aria-haspopup="dialog"
                 aria-label={text.uploadDocument}
               >
@@ -455,7 +509,7 @@ export default function DocumentsCenterPage() {
                 {text.uploadDocument}
               </button>
               {uploadOptionsOpen ? (
-                <div className="documents-upload-options" role="dialog" aria-label={text.uploadMenu}>
+                <div id="documents-upload-options" className="documents-upload-options" role="dialog" aria-label={text.uploadMenu}>
                   <Link href="/projects">
                     <FolderKanban size={17} />
                     {text.uploadProject}
@@ -471,29 +525,30 @@ export default function DocumentsCenterPage() {
                   </button>
                 </div>
               ) : null}
+              </div>
             </div>
-          </div>
 
-          <button
-            type="button"
-            className="documents-dropzone"
-            onClick={() => setUploadOptionsOpen(true)}
-            onDragOver={event => event.preventDefault()}
-            onDrop={event => {
-              event.preventDefault();
-              setUploadOptionsOpen(true);
-            }}
-          >
-            <span className="documents-dropzone-icon" aria-hidden="true">
-              <Upload size={22} />
-            </span>
-            <span className="documents-dropzone-copy">
-              <strong>{text.dropzoneTitle}</strong>
-              <small>{text.dropzoneDescription}</small>
-            </span>
-            <span className="documents-dropzone-button">{text.chooseFile}</span>
-          </button>
-        </section>
+            <button
+              type="button"
+              className="documents-dropzone"
+              onClick={() => setUploadOptionsOpen(true)}
+              onDragOver={event => event.preventDefault()}
+              onDrop={event => {
+                event.preventDefault();
+                setUploadOptionsOpen(true);
+              }}
+            >
+              <span className="documents-dropzone-icon" aria-hidden="true">
+                <Upload size={22} />
+              </span>
+              <span className="documents-dropzone-copy">
+                <strong>{text.dropzoneTitle}</strong>
+                <small>{text.dropzoneDescription}</small>
+              </span>
+              <span className="documents-dropzone-button">{text.chooseFile}</span>
+            </button>
+          </div>
+        </details>
 
         <StatGrid>
           <AppCard><DocumentMetric icon={<FileText size={19} />} label={text.totalDocuments} value={summary.total} /></AppCard>
@@ -520,27 +575,37 @@ export default function DocumentsCenterPage() {
         <PageTabs
           tabs={tabs}
           active={activeFilter}
-          onChange={id => setActiveFilter(id as FilterId)}
+          onChange={id => setActiveFilter(id as DocumentWorkspaceTab)}
           ariaLabel={text.title}
+          idBase={DOCUMENT_WORKSPACE_ID}
+          sticky
+          mobileMode="auto"
         />
 
-        {loading ? (
-          <EmptyState icon={<Loader2 className="spin" size={26} />} title={text.loading} />
-        ) : filteredDocuments.length === 0 ? (
-          <EmptyState
-            icon={<FileText size={34} />}
-            title={text.noDocuments}
-            description={text.noDocumentsBody}
-            actions={(
-              <button type="button" className="documents-secondary-action" onClick={() => setUploadOptionsOpen(true)}>
-                <Upload size={17} />
-                {text.uploadDocument}
-              </button>
-            )}
-          />
-        ) : (
-          <CardsGrid className="documents-card-grid">
-            {filteredDocuments.map(document => (
+        <PageTabPanel idBase={DOCUMENT_WORKSPACE_ID} value={activeFilter} active>
+          {loading ? (
+            <EmptyState icon={<Loader2 className="spin" size={26} />} title={text.loading} />
+          ) : filteredDocuments.length === 0 ? (
+            <EmptyState
+              icon={<FileText size={34} />}
+              title={text.noDocuments}
+              description={text.noDocumentsBody}
+              actions={(
+                <button
+                  type="button"
+                  className="documents-secondary-action"
+                  onClick={revealUploadControls}
+                  aria-controls="documents-upload-panel"
+                  aria-expanded={uploadPanelOpen}
+                >
+                  <Upload size={17} />
+                  {text.uploadDocument}
+                </button>
+              )}
+            />
+          ) : (
+            <CardsGrid className="documents-card-grid">
+              {filteredDocuments.map(document => (
               <AppCard key={document.id} className="document-card">
                 <div className="document-card-head">
                   <div className="document-card-icon" aria-hidden="true">
@@ -592,9 +657,10 @@ export default function DocumentsCenterPage() {
                   ) : null}
                 </div>
               </AppCard>
-            ))}
-          </CardsGrid>
-        )}
+              ))}
+            </CardsGrid>
+          )}
+        </PageTabPanel>
       </DashboardPageShell>
 
       <style jsx global>{`
@@ -629,6 +695,64 @@ export default function DocumentsCenterPage() {
           box-shadow: 0 16px 40px rgba(3, 18, 37, .08);
           overflow: visible;
           z-index: 4;
+        }
+        .documents-upload-panel-body {
+          display: grid;
+          gap: 14px;
+          padding-block-start: 14px;
+          border-block-start: 1px solid rgba(29, 140, 255, .12);
+        }
+        .documents-upload-summary {
+          min-width: 0;
+          min-height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          list-style: none;
+          cursor: pointer;
+          color: var(--sfm-primary-dark);
+          border-radius: 14px;
+        }
+        .documents-upload-summary::-webkit-details-marker {
+          display: none;
+        }
+        .documents-upload-summary:focus-visible {
+          outline: 3px solid rgba(24, 212, 212, .22);
+          outline-offset: 3px;
+        }
+        .documents-upload-summary-copy {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .documents-upload-summary-copy > span:last-child {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+        }
+        .documents-upload-summary-copy strong {
+          color: var(--sfm-primary-dark);
+          font-size: 16px;
+          font-weight: 950;
+        }
+        .documents-upload-summary-copy small {
+          color: var(--sfm-muted-readable);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .documents-upload-summary-action {
+          flex: 0 0 auto;
+          min-height: 38px;
+          display: inline-flex;
+          align-items: center;
+          padding-inline: 14px;
+          border-radius: 12px;
+          background: rgba(29, 140, 255, .10);
+          color: var(--sfm-primary);
+          font-size: 13px;
+          font-weight: 950;
         }
         .documents-upload-panel-head {
           display: flex;
@@ -1027,6 +1151,16 @@ export default function DocumentsCenterPage() {
           .documents-upload-panel {
             padding: 14px;
             border-radius: 19px;
+          }
+          .documents-upload-summary {
+            align-items: flex-start;
+          }
+          .documents-upload-summary-copy .documents-dropzone-icon {
+            width: 40px;
+            height: 40px;
+          }
+          .documents-upload-summary-action {
+            display: none;
           }
           .documents-upload-panel-head {
             display: grid;
