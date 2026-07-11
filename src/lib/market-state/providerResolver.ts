@@ -8,6 +8,7 @@ import type {
   ProviderConnectionStatus,
   ProviderPriorityContext,
   ProviderResolution,
+  ProviderRole,
 } from './types';
 
 /**
@@ -114,6 +115,38 @@ export function getProviderCapabilityStatus(
   };
   const configured = Boolean(cleanEnv(envKeyByProvider[provider]));
   return normalizeProviderConnectionStatus({ configured, status: configured ? 'healthy' : 'not_configured' });
+}
+
+/**
+ * Derives a provider's role purely from its position across every capability's declared priority
+ * list for the given context — no new data, just a read over PROVIDER_PRIORITY. index 0 across
+ * all its capabilities → primary, 1 → secondary, 2+ → fallback. A provider whose ONLY declared
+ * capability is symbols/news/profiles(+logos) gets the more specific discovery/news/metadata role
+ * instead, since calling e.g. RSS "secondary" would be misleading (it never serves quotes at all).
+ */
+export function deriveProviderRole(provider: MarketProviderId, context: ProviderPriorityContext = 'general'): ProviderRole {
+  let bestIndex: number | null = null;
+  const capabilitiesServed = new Set<MarketCapabilityKey>();
+
+  for (const capability of Object.keys(PROVIDER_PRIORITY) as MarketCapabilityKey[]) {
+    const index = priorityListFor(capability, context).indexOf(provider);
+    if (index === -1) continue;
+    capabilitiesServed.add(capability);
+    if (bestIndex === null || index < bestIndex) bestIndex = index;
+  }
+
+  if (bestIndex === null) return 'fallback'; // not declared anywhere for this context
+
+  if (capabilitiesServed.size === 1) {
+    const [onlyCapability] = capabilitiesServed;
+    if (onlyCapability === 'symbols') return 'discovery_only';
+    if (onlyCapability === 'news') return 'news_only';
+    if (onlyCapability === 'profiles' || onlyCapability === 'logos') return 'metadata_only';
+  }
+
+  if (bestIndex === 0) return 'primary';
+  if (bestIndex === 1) return 'secondary';
+  return 'fallback';
 }
 
 export function resolveProviderForCapability(

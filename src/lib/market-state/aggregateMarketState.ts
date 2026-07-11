@@ -1,10 +1,13 @@
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
+import { getProviderHealth } from '@/lib/market/marketDataProviders';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
+import { buildProviderProfiles, STATUS_RANK } from './capabilityMatrixView';
 import { classifyCatalogCompleteness } from './completeness';
 import { normalizeProviderConnectionStatus } from './normalizeStatus';
-import { getProviderCapabilityStatus, normalizeMarketDataProviderName, priorityListFor } from './providerResolver';
+import { getProviderCapabilityStatus, normalizeMarketDataProviderName, priorityListFor, type ProviderHealthLike } from './providerResolver';
+import { getProviderConfigurationStatus } from './providerConfigStatus';
 import {
   MARKET_CAPABILITY_KEYS,
   type CapabilityMatrix,
@@ -19,8 +22,25 @@ import {
 const SNAPSHOT_CACHE_KEY = 'market_system_state_snapshot';
 const SNAPSHOT_TTL_MS = 10 * 60 * 1000;
 const AGGREGATE_CACHE_MS = 30_000;
+/** Bounds the live getProviderHealth() probe (real network calls) so one slow provider can't
+ *  stall every page that now reads this aggregation. */
+const HEALTH_PROBE_TIMEOUT_MS = 4_000;
 
 let memoryCache: { value: MarketSystemState; expiresAt: number } | null = null;
+let pendingCompute: Promise<MarketSystemState> | null = null;
+
+async function getBoundedProviderHealth(): Promise<ProviderHealthLike[]> {
+  try {
+    return await Promise.race([
+      getProviderHealth(),
+      new Promise<never>((_resolve, reject) => {
+        setTimeout(() => reject(new Error('provider_health_probe_timeout')), HEALTH_PROBE_TIMEOUT_MS);
+      }),
+    ]);
+  } catch {
+    return []; // falls back to the cheap configured-key check per provider — never blocks aggregation
+  }
+}
 
 type ProviderCapabilityLike = {
   configured: boolean;
@@ -91,9 +111,9 @@ const DERIVED_CAPABILITIES: Array<[MarketCapabilityKey, ProviderPriorityContext]
   ['gcc_markets', 'general'],
 ];
 
-async function computeMarketSystemState(): Promise<MarketSystemState> {
+async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSystemState> {
   const generatedAt = new Date().toISOString();
-  const catalog = await getTraderMarketCatalog({});
+  const catalog = await getTraderMarketCatalog({ forceFresh });
   const cells: ProviderCapabilityCell[] = [];
 
   for (const [rawProvider, cap] of Object.entries(catalog.capabilityMatrix) as Array<[string, ProviderCapabilityLike]>) {
@@ -119,14 +139,21 @@ async function computeMarketSystemState(): Promise<MarketSystemState> {
     latencyMs: catalog.diagnostics.providerLatencyMs.fmp ?? null,
   });
 
+  // Real live health probes (issued once per aggregation, bounded by HEALTH_PROBE_TIMEOUT_MS) for
+  // Twelve Data/EODHD/Finnhub/Marketstack/Yahoo — previously these 5 providers were represented by
+  // a bare "is the API key set" check here, never their actual reachability. FMP/Trading Economics
+  // keep their existing lightweight in-memory trackers (no extra network call needed for those).
+  const healthResults = await getBoundedProviderHealth();
+
   for (const [capabilityKey, context] of DERIVED_CAPABILITIES) {
     for (const provider of priorityListFor(capabilityKey, context)) {
       if (cells.some(cell => cell.capability === capabilityKey && cell.provider === provider)) continue;
-      cells.push(emptyCell(provider, capabilityKey, getProviderCapabilityStatus(provider)));
+      cells.push(emptyCell(provider, capabilityKey, getProviderCapabilityStatus(provider, { healthResults })));
     }
   }
 
   const providers = buildProviderSummary(cells);
+  const providerProfiles = buildProviderProfiles(cells);
   const { succeeded, degraded, failed } = bucketFeatures(cells);
   const catalogBreakdown = classifyCatalogCompleteness(catalog.diagnostics);
   const overall = computeOverallStatus(failed, degraded);
@@ -136,6 +163,8 @@ async function computeMarketSystemState(): Promise<MarketSystemState> {
     overall,
     providers,
     capabilityMatrix: cells,
+    providerProfiles,
+    configuration: getProviderConfigurationStatus(),
     featuresSucceeded: succeeded,
     featuresDegraded: degraded,
     featuresFailed: failed,
@@ -143,16 +172,6 @@ async function computeMarketSystemState(): Promise<MarketSystemState> {
     lastSynchronizedAt: catalog.diagnostics.generatedAt ?? generatedAt,
   };
 }
-
-const STATUS_RANK: Record<ProviderConnectionStatus, number> = {
-  connected: 0,
-  degraded: 1,
-  rate_limited: 2,
-  disabled: 3,
-  misconfigured: 4,
-  disconnected: 5,
-  unknown: 6,
-};
 
 function buildProviderSummary(cells: ProviderCapabilityCell[]): MarketSystemState['providers'] {
   const byProvider = new Map<MarketProviderId, ProviderCapabilityCell[]>();
@@ -214,6 +233,8 @@ function emptySystemState(now: number): MarketSystemState {
     overall: 'unknown',
     providers: {},
     capabilityMatrix: [],
+    providerProfiles: [],
+    configuration: getProviderConfigurationStatus(),
     featuresSucceeded: [],
     featuresDegraded: [],
     featuresFailed: [...MARKET_CAPABILITY_KEYS],
@@ -275,15 +296,25 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
   if (!options.forceFresh && memoryCache && memoryCache.expiresAt > now) {
     return memoryCache.value;
   }
+  // Dedup concurrent callers onto one in-flight compute — without this, N requests racing a
+  // cache-expiry window would each trigger their own full aggregation (including the live
+  // getProviderHealth() probes below), not just the post-hoc 30s memoryCache above.
+  if (pendingCompute) return pendingCompute;
 
-  try {
-    const state = await computeMarketSystemState();
-    memoryCache = { value: state, expiresAt: now + AGGREGATE_CACHE_MS };
-    void persistSnapshot(state);
-    return state;
-  } catch {
-    const fallback = await getPersistentCache<MarketSystemState>(SNAPSHOT_CACHE_KEY);
-    if (fallback) return fallback;
-    return emptySystemState(now);
-  }
+  pendingCompute = (async () => {
+    try {
+      const state = await computeMarketSystemState(Boolean(options.forceFresh));
+      memoryCache = { value: state, expiresAt: Date.now() + AGGREGATE_CACHE_MS };
+      void persistSnapshot(state);
+      return state;
+    } catch {
+      const fallback = await getPersistentCache<MarketSystemState>(SNAPSHOT_CACHE_KEY);
+      if (fallback) return fallback;
+      return emptySystemState(now);
+    } finally {
+      pendingCompute = null;
+    }
+  })();
+
+  return pendingCompute;
 }

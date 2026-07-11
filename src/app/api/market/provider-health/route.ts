@@ -6,6 +6,7 @@ import {
   getMarketSentimentProviderConfig,
 } from '@/lib/market/providerConfig';
 import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
+import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +42,12 @@ export async function GET(request: NextRequest) {
 
   const centralBankNews = getCentralBankNewsProviderConfig();
   const marketSentiment = getMarketSentimentProviderConfig();
+  // Additive-only field — the new unified market-state view; existing consumers can ignore it.
+  const state = await getMarketSystemState();
 
   return NextResponse.json({
     ok: true,
+    state,
     centralBankNews: {
       configured: centralBankNews.configured,
       provider: centralBankNews.provider,

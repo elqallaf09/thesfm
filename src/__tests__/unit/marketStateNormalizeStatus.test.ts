@@ -42,6 +42,12 @@ describe('normalizeProviderConnectionStatus', () => {
   it('does not misread "unhealthy" as connected via its "healthy" substring', () => {
     expect(normalizeProviderConnectionStatus({ status: 'unhealthy' })).toBe('disconnected');
   });
+
+  it('maps an intentionally-off provider to disabled, never to disconnected/error (task scenario: forbidden/not_entitled text)', () => {
+    expect(normalizeProviderConnectionStatus({ configured: true, status: 'disabled' })).toBe('disabled');
+    expect(normalizeProviderConnectionStatus({ configured: true, status: 'not_entitled' })).toBe('disabled');
+    expect(normalizeProviderConnectionStatus({ configured: true, healthy: false, status: 'forbidden' })).toBe('disabled');
+  });
 });
 
 describe('normalizeFeatureDataStatus', () => {

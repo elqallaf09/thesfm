@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, HelpCircle, Info, XCircle } from 'lucide-react';
 import type { ProviderConnectionStatus } from '@/lib/market-state/types';
 
 export type StatusTone = 'success' | 'info' | 'warning' | 'danger' | 'muted';
@@ -11,6 +11,7 @@ export const PROVIDER_STATUS_TONE: Record<ProviderConnectionStatus, StatusTone> 
   misconfigured: 'muted',
   disabled: 'muted',
   unknown: 'muted',
+  unsupported: 'muted',
 };
 
 export const PROVIDER_STATUS_ICON: Record<ProviderConnectionStatus, typeof CheckCircle2> = {
@@ -21,4 +22,5 @@ export const PROVIDER_STATUS_ICON: Record<ProviderConnectionStatus, typeof Check
   misconfigured: Info,
   disabled: Info,
   unknown: Info,
+  unsupported: HelpCircle,
 };

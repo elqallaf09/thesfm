@@ -71,6 +71,8 @@ export const TRADER_PROVIDER_LABELS: Record<string, string> = {
   openbb: 'OpenBB',
   tradingeconomics: 'Trading Economics',
   trading_economics: 'Trading Economics',
+  rss: 'RSS Feeds',
+  newsapi: 'NewsAPI',
 };
 
 export const TRADER_MARKET_METADATA: Record<string, TraderMarketMetadata> = {

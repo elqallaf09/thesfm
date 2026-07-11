@@ -6,6 +6,7 @@ const getFmpRuntimeStatus = vi.fn();
 const createServerSupabaseAdmin = vi.fn();
 const getPersistentCache = vi.fn();
 const setPersistentCache = vi.fn();
+const getProviderHealth = vi.fn();
 
 vi.mock('@/lib/trader/marketCatalog', () => ({ getTraderMarketCatalog: (...args: unknown[]) => getTraderMarketCatalog(...args) }));
 vi.mock('@/lib/market-news/registry', () => ({ getConfiguredProviderDescriptors: (...args: unknown[]) => getConfiguredProviderDescriptors(...args) }));
@@ -15,6 +16,8 @@ vi.mock('@/lib/trader/persistentCache', () => ({
   getPersistentCache: (...args: unknown[]) => getPersistentCache(...args),
   setPersistentCache: (...args: unknown[]) => setPersistentCache(...args),
 }));
+// Never let the real live-quote health probe run in tests — no network calls in unit tests.
+vi.mock('@/lib/market/marketDataProviders', () => ({ getProviderHealth: (...args: unknown[]) => getProviderHealth(...args) }));
 
 const baseCapability = {
   configured: true,
@@ -68,6 +71,7 @@ describe('market system state — no contradictory combinations (the core bug fr
     createServerSupabaseAdmin.mockReset().mockReturnValue(null);
     getPersistentCache.mockReset().mockResolvedValue(null);
     setPersistentCache.mockReset().mockResolvedValue(undefined);
+    getProviderHealth.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {

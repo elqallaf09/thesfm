@@ -9,7 +9,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { FeatureDataStatus, MarketSystemState } from '@/lib/market-state/types';
-import { PROVIDER_STATUS_TONE } from './statusPresentation';
+import { CapabilityMatrixSection } from './CapabilityMatrixSection';
 
 export function ProviderDetailsDrawer({
   open,
@@ -42,20 +42,7 @@ export function ProviderDetailsDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="market-provider-drawer-table" role="table" aria-colcount={3} aria-rowcount={system.capabilityMatrix.length + 1}>
-          <div className="market-provider-drawer-row market-provider-drawer-head" role="row" aria-rowindex={1}>
-            <span role="columnheader" aria-colindex={1}>{t('market_state_capability_column')}</span>
-            <span role="columnheader" aria-colindex={2}>{t('market_state_provider_column')}</span>
-            <span role="columnheader" aria-colindex={3}>{t('market_state_status_column')}</span>
-          </div>
-          {system.capabilityMatrix.map((cell, index) => (
-            <div className="market-provider-drawer-row" role="row" aria-rowindex={index + 2} key={`${cell.provider}:${cell.capability}`}>
-              <span role="cell" aria-colindex={1} data-label={t('market_state_capability_column')}>{cell.capability}</span>
-              <span role="cell" aria-colindex={2} data-label={t('market_state_provider_column')}><span dir="ltr">{cell.provider}</span></span>
-              <span role="cell" aria-colindex={3} data-label={t('market_state_status_column')}><span className={`market-status-badge ${PROVIDER_STATUS_TONE[cell.status]}`}>{t(`market_state_status_${cell.status}`)}</span></span>
-            </div>
-          ))}
-        </div>
+        <CapabilityMatrixSection system={system} />
 
         {status === 'error' || status === 'unavailable' ? (
           <button type="button" onClick={onRetry}>{t('market_state_retry')}</button>

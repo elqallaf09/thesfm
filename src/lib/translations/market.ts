@@ -1034,4 +1034,48 @@ export const TR_MARKET: Record<string, TranslationEntry> = {
   market_state_retrying:              { ar: 'جارٍ إعادة المحاولة…',                    en: 'Retrying…',             fr: 'Nouvelle tentative…' },
   market_state_retry_cooldown:        { ar: 'يمكن إعادة المحاولة بعد قليل',            en: 'You can retry again shortly', fr: 'Réessayez dans un instant' },
   market_state_retry_exhausted:       { ar: 'تم الوصول إلى الحد الأقصى لمحاولات إعادة الاتصال', en: 'Maximum retry attempts reached', fr: 'Nombre maximal de tentatives atteint' },
+  market_state_status_unsupported:    { ar: 'غير مدعوم',                              en: 'Unsupported',           fr: 'Non pris en charge' },
+
+  // Unified compact Provider Header — the literal Arabic labels from the task spec.
+  market_header_status_title:         { ar: 'حالة بيانات السوق',                       en: 'Market data status',    fr: 'État des données de marché' },
+  market_header_active_sources:       { ar: 'المصادر النشطة',                         en: 'Active sources',        fr: 'Sources actives' },
+  market_header_live:                 { ar: 'مباشر',                                  en: 'Live',                  fr: 'En direct' },
+  market_header_delayed:              { ar: 'متأخر',                                  en: 'Delayed',               fr: 'Différé' },
+  market_header_cached:               { ar: 'مخزن مؤقتاً',                             en: 'Cached',                fr: 'En cache' },
+  market_header_partial:              { ar: 'يعمل جزئياً',                             en: 'Partially working',     fr: 'Fonctionnement partiel' },
+  market_header_temporarily_limited:  { ar: 'محدود مؤقتاً',                            en: 'Temporarily limited',   fr: 'Limité temporairement' },
+  market_header_not_configured:       { ar: 'غير مهيأ',                                en: 'Not configured',        fr: 'Non configuré' },
+  market_header_view_sources:         { ar: 'تفاصيل المصادر',                          en: 'Source details',        fr: 'Détails des sources' },
+
+  // Provider Details Drawer — per-provider card fields.
+  market_provider_latency:            { ar: 'زمن الاستجابة',                           en: 'Latency',               fr: 'Latence' },
+  market_provider_success_rate:       { ar: 'معدل النجاح',                             en: 'Success rate',          fr: 'Taux de réussite' },
+  market_provider_last_success:       { ar: 'آخر نجاح',                                en: 'Last success',          fr: 'Dernier succès' },
+  market_provider_last_failure:       { ar: 'آخر فشل',                                 en: 'Last failure',          fr: 'Dernier échec' },
+  market_provider_rate_limit_reset:   { ar: 'إعادة تعيين الحد',                        en: 'Rate-limit reset',      fr: 'Réinitialisation de la limite' },
+  market_provider_role:               { ar: 'الدور',                                   en: 'Role',                  fr: 'Rôle' },
+  market_provider_role_primary:       { ar: 'المصدر الأساسي',                          en: 'Primary',               fr: 'Principal' },
+  market_provider_role_secondary:     { ar: 'المصدر الثانوي',                          en: 'Secondary',             fr: 'Secondaire' },
+  market_provider_role_fallback:      { ar: 'احتياطي',                                en: 'Fallback',              fr: 'Solution de repli' },
+  market_provider_role_discovery_only:{ ar: 'اكتشاف الفهرس فقط',                       en: 'Discovery only',        fr: 'Découverte uniquement' },
+  market_provider_role_news_only:     { ar: 'الأخبار فقط',                             en: 'News only',             fr: 'Actualités uniquement' },
+  market_provider_role_metadata_only: { ar: 'البيانات الوصفية فقط',                    en: 'Metadata only',         fr: 'Métadonnées uniquement' },
+
+  // Capability display names — the 11 Provider Details Drawer matrix rows.
+  market_capability_quotes:            { ar: 'الأسعار',                                en: 'Quotes',                fr: 'Cotations' },
+  market_capability_news:              { ar: 'الأخبار',                                en: 'News',                  fr: 'Actualités' },
+  market_capability_earnings:          { ar: 'الأرباح',                                en: 'Earnings',              fr: 'Résultats' },
+  market_capability_dividends:         { ar: 'التوزيعات',                              en: 'Dividends',             fr: 'Dividendes' },
+  market_capability_economic_calendar: { ar: 'التقويم الاقتصادي',                       en: 'Economic calendar',     fr: 'Calendrier économique' },
+  market_capability_profiles:          { ar: 'الملفات التعريفية للشركات',                en: 'Company profiles',      fr: 'Profils d’entreprise' },
+  market_capability_technical_data:    { ar: 'التحليل الفني',                          en: 'Technical analysis',    fr: 'Analyse technique' },
+  market_capability_gcc_markets:       { ar: 'أسواق الخليج',                            en: 'GCC markets',           fr: 'Marchés du Golfe' },
+  market_capability_forex:             { ar: 'العملات',                                en: 'Forex',                 fr: 'Forex' },
+  market_capability_crypto:            { ar: 'العملات الرقمية',                        en: 'Crypto',                fr: 'Cryptomonnaies' },
+  market_capability_shariah_financials:{ ar: 'البيانات المالية الشرعية',                en: 'Shariah financials',    fr: 'Données financières charia' },
+
+  // Safe configuration-status overview — admin-only, presence only, never the credential value.
+  market_configuration_title:         { ar: 'حالة الإعداد',                            en: 'Configuration status',  fr: 'État de la configuration' },
+  market_configuration_configured:    { ar: 'مُهيأ',                                   en: 'Configured',            fr: 'Configuré' },
+  market_configuration_missing:       { ar: 'مفتاح مفقود',                             en: 'Missing key',           fr: 'Clé manquante' },
 };

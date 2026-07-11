@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getEconomicDataProviderStatus } from '@/lib/providers/economic-data';
 import { getEconomicCalendarProviderStatus } from '@/lib/providers/economic-calendar';
 import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
+import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +27,14 @@ export async function GET() {
   };
   const economicCalendar = getEconomicCalendarProviderStatus();
   const economicData = getEconomicDataProviderStatus();
+  // Additive-only field — the new unified market-state view; existing consumers can ignore it.
+  const state = await getMarketSystemState();
 
   return NextResponse.json({
     news,
     economicCalendar,
     economicData,
+    state,
   }, {
     headers: {
       'Cache-Control': 'private, max-age=60',

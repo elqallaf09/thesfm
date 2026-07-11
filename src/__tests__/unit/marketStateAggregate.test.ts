@@ -6,6 +6,7 @@ const getFmpRuntimeStatus = vi.fn();
 const createServerSupabaseAdmin = vi.fn();
 const getPersistentCache = vi.fn();
 const setPersistentCache = vi.fn();
+const getProviderHealth = vi.fn();
 
 vi.mock('@/lib/trader/marketCatalog', () => ({ getTraderMarketCatalog: (...args: unknown[]) => getTraderMarketCatalog(...args) }));
 vi.mock('@/lib/market-news/registry', () => ({ getConfiguredProviderDescriptors: (...args: unknown[]) => getConfiguredProviderDescriptors(...args) }));
@@ -15,6 +16,8 @@ vi.mock('@/lib/trader/persistentCache', () => ({
   getPersistentCache: (...args: unknown[]) => getPersistentCache(...args),
   setPersistentCache: (...args: unknown[]) => setPersistentCache(...args),
 }));
+// Never let the real live-quote health probe run in tests — no network calls in unit tests.
+vi.mock('@/lib/market/marketDataProviders', () => ({ getProviderHealth: (...args: unknown[]) => getProviderHealth(...args) }));
 
 const baseCapability = {
   configured: true,
@@ -69,6 +72,7 @@ describe('getMarketSystemState', () => {
     createServerSupabaseAdmin.mockReset().mockReturnValue(null);
     getPersistentCache.mockReset().mockResolvedValue(null);
     setPersistentCache.mockReset().mockResolvedValue(undefined);
+    getProviderHealth.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -140,5 +144,54 @@ describe('getMarketSystemState', () => {
     const state = await getMarketSystemState({ forceFresh: true });
     expect(state.overall).toBe('unknown');
     expect(state.featuresFailed.length).toBeGreaterThan(0);
+  });
+
+  it('attaches providerProfiles and (admin-shaped, non-null) configuration to every returned state', async () => {
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState({ forceFresh: true });
+    expect(Array.isArray(state.providerProfiles)).toBe(true);
+    expect(state.providerProfiles.length).toBeGreaterThan(0);
+    expect(state.configuration).not.toBeNull();
+    expect(state.configuration).toHaveLength(7);
+  });
+
+  it('derives a role for every provider profile it returns', async () => {
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState({ forceFresh: true });
+    const roles = ['primary', 'secondary', 'fallback', 'discovery_only', 'news_only', 'metadata_only'];
+    for (const profile of state.providerProfiles) {
+      expect(roles).toContain(profile.role);
+    }
+  });
+
+  describe('getProviderHealth() wiring for the 5 previously bare-boolean providers', () => {
+    const previousTwelveDataKey = process.env.TWELVE_DATA_API_KEY;
+
+    afterEach(() => {
+      if (previousTwelveDataKey === undefined) delete process.env.TWELVE_DATA_API_KEY;
+      else process.env.TWELVE_DATA_API_KEY = previousTwelveDataKey;
+    });
+
+    it('uses the live getProviderHealth() result for Twelve Data instead of the bare "is the key set" check when a live result is available', async () => {
+      delete process.env.TWELVE_DATA_API_KEY; // bare-boolean check alone would say "misconfigured"
+      getProviderHealth.mockResolvedValue([{ provider: 'twelve_data', configured: true, status: 'degraded' }]);
+      getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+      const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+      const state = await getMarketSystemState({ forceFresh: true });
+      const twelveDataForex = state.capabilityMatrix.find(cell => cell.provider === 'twelvedata' && cell.capability === 'forex');
+      expect(twelveDataForex?.status).toBe('degraded');
+    });
+
+    it('falls back to the cheap configured-key check when getProviderHealth() times out or throws (never blocks aggregation)', async () => {
+      delete process.env.TWELVE_DATA_API_KEY;
+      getProviderHealth.mockRejectedValue(new Error('network unreachable'));
+      getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+      const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+      const state = await getMarketSystemState({ forceFresh: true });
+      const twelveDataForex = state.capabilityMatrix.find(cell => cell.provider === 'twelvedata' && cell.capability === 'forex');
+      expect(twelveDataForex?.status).toBe('misconfigured');
+    });
   });
 });

@@ -36,7 +36,6 @@ import type {
   AccountCurrencyCode, SelectedMarketAsset, TechnicalState, TechnicalSymbolCategory,
   TechnicalSymbolOption, TraderToolsSubTab, WatchlistItem,
 } from '@/components/market-analysis/types';
-import { marketServiceStatusPresentation } from '@/components/market-analysis/serviceStatusPresentation';
 
 // â”€â”€ Local utils (extracted to components/market-analysis/utils.ts) â”€â”€â”€â”€â”€â”€â”€â”€
 import {
@@ -84,11 +83,13 @@ import {
 } from '@/components/market-analysis/utils';
 
 // â”€â”€ Extracted panel components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard, MarketStatusBanner } from '@/components/market-analysis/MarketPanelPrimitives';
+import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard } from '@/components/market-analysis/MarketPanelPrimitives';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
 import { getMarketToolRequirements } from '@/components/market-analysis/toolRequirements';
 import type { MarketNewsServerQuery } from '@/components/market-analysis/NewsSentimentPanel';
+import { MarketSystemStateProvider } from '@/components/market/MarketSystemStateProvider';
+import { MarketHeaderSummary } from '@/components/market/MarketHeaderSummary';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
   return (
@@ -273,7 +274,6 @@ export default function MarketAnalysisPage() {
   const [error, setError] = useState('');
   const [errorSuggestions, setErrorSuggestions] = useState<MarketSearchSuggestion[]>([]);
   const [notice, setNotice] = useState('');
-  const [serviceState, setServiceState] = useState<MarketServiceState>('checking');
   const [timeframe, setTimeframe] = useState<MarketTimeframe>(initialUrlStateRef.current.timeframe);
   const [chartType, setChartType] = useState<MarketChartType>('area');
   const [chartHistory, setChartHistory] = useState<MarketHistoryPoint[]>([]);
@@ -797,7 +797,6 @@ export default function MarketAnalysisPage() {
       setAnalysis(null);
       setChartHistory([]);
       setAiInsight(null);
-      setServiceState(current => current === 'checking' ? 'connected' : current);
       setLoading(false);
       return;
     }
@@ -882,7 +881,6 @@ export default function MarketAnalysisPage() {
       if (!result.success) {
         const publicCode = normalizePublicMarketErrorCode(result.code);
         const symbolIssue = publicCode === 'INVALID_SYMBOL';
-        setServiceState(symbolIssue ? 'connected' : result.marketDataService === 'degraded' || result.marketDataService === 'slow' ? 'degraded' : result.marketDataService === 'not_configured' ? 'not_configured' : 'unavailable');
         const suggestions = result.suggestions?.length ? result.suggestions : symbolIssue ? normalizedInput.suggestions : [];
         setSelectedAsset(symbolIssue ? null : selectedMeta);
         setErrorSuggestions(normalizeErrorSuggestions(suggestions, symbolInput));
@@ -945,12 +943,6 @@ export default function MarketAnalysisPage() {
         setError(t('market_analysis_unavailable'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
-      if (result.marketDataService === 'not_configured' || result.marketDataService === 'unavailable' || result.marketDataService === 'slow' || result.marketDataService === 'degraded') {
-        setServiceState(result.marketDataService === 'slow' ? 'degraded' : result.marketDataService);
-      } else if (result.success) {
-        setServiceState('connected');
-      }
     } catch (err) {
       setAnalysis(null);
       setChartHistory([]);
@@ -1196,7 +1188,6 @@ export default function MarketAnalysisPage() {
       try {
         const health = await fetchJsonWithTimeout<{ ok?: boolean; marketDataService?: MarketServiceState; code?: string }>('/api/market/health', MARKET_REQUEST_TIMEOUT_MS, true);
         if (!cancelled) {
-          setServiceState(health.marketDataService === 'slow' ? 'degraded' : health.marketDataService ?? (health.ok ? 'connected' : 'unavailable'));
           if (health.ok) {
             setLoading(false);
           } else {
@@ -1206,7 +1197,6 @@ export default function MarketAnalysisPage() {
         }
       } catch {
         if (!cancelled) {
-          setServiceState('unavailable');
           setLoading(false);
           setError(t('market_service_unavailable'));
         }
@@ -1499,7 +1489,6 @@ export default function MarketAnalysisPage() {
       } else {
         setSelectedAsset(null);
         setAnalysis(null);
-        setServiceState(current => current === 'checking' ? 'connected' : current);
         setError(invalidSymbolMessage(t, normalizedInput.correction));
         setErrorSuggestions(suggestionCandidates.length > 0 ? suggestionCandidates : normalizeErrorSuggestions(normalizedInput.suggestions, cleanQuery));
         setSearchMessage(invalidSymbolMessage(t, normalizedInput.correction));
@@ -1588,7 +1577,6 @@ export default function MarketAnalysisPage() {
       fallback: Boolean((selected as { fallback?: boolean }).fallback),
     });
   }, [selectedProviderStatus, selected, marketUnavailableBadge]);
-  const { value: serviceStatusValue, tone: serviceStatusTone, notice: serviceNotice } = marketServiceStatusPresentation(serviceState, t);
   const heroBadge = t('market_badge_live');
   const chartBadge = t('market_chart_live');
   const selectedDisplayName = selectedAsset && selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;
@@ -2279,16 +2267,15 @@ export default function MarketAnalysisPage() {
           </div>
         </section>
 
+        {activeToolRequirements.requiresMarketData ? (
+          <MarketSystemStateProvider>
+            <MarketHeaderSummary />
+          </MarketSystemStateProvider>
+        ) : null}
+
         <section className="market-status-grid">
           {activeToolRequirements.requiresMarketData ? (
             <>
-              <MarketStatusCard
-                icon={serviceState === 'connected' ? <CheckCircle2 size={18} /> : <Activity size={18} />}
-                label={t('market_service_status')}
-                value={serviceStatusValue}
-                helper={serviceState === 'connected' ? t('market_status_service_connected_hint') : t('market_status_service_pending_hint')}
-                tone={serviceStatusTone}
-              />
               <MarketStatusCard
                 icon={<WalletCards size={18} />}
                 label={t('market_selected_asset')}
@@ -2347,10 +2334,6 @@ export default function MarketAnalysisPage() {
           ariaLabel={t('market_title')}
           className="market-dashboard-tabs"
         />
-
-        {activeToolRequirements.requiresMarketData && serviceState !== 'connected' && (
-          <MarketStatusBanner t={t} state={serviceState} serviceNotice={serviceNotice} />
-        )}
 
         {notice && <div className="market-notice success" role="status">{notice}</div>}
         {slowLoading && <div className="market-notice slow" role="status">{t('market_slow_loading')}</div>}

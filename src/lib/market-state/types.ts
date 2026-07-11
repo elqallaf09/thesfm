@@ -3,7 +3,12 @@ import type { ShariahStatus } from '@/lib/market/shariah-screening';
 
 export type { ProviderApiStatus, ShariahStatus };
 
-/** Is the underlying provider/service reachable and usable right now. */
+/**
+ * Is the underlying provider/service reachable and usable right now.
+ * 'unsupported' is structural only — synthesized by capabilityMatrixView.ts for a
+ * provider×capability pair that is simply absent from PROVIDER_PRIORITY (the provider never
+ * serves that capability at all), never produced by normalizeProviderConnectionStatus().
+ */
 export const PROVIDER_CONNECTION_STATUSES = [
   'connected',
   'degraded',
@@ -12,6 +17,7 @@ export const PROVIDER_CONNECTION_STATUSES = [
   'misconfigured',
   'disabled',
   'unknown',
+  'unsupported',
 ] as const;
 export type ProviderConnectionStatus = typeof PROVIDER_CONNECTION_STATUSES[number];
 
@@ -76,6 +82,34 @@ export type MarketProviderId = typeof MARKET_PROVIDER_IDS[number];
 
 /** Which fetch-order context a priority declaration applies to — see providerResolver.ts §5 of the plan. */
 export type ProviderPriorityContext = 'general' | 'trader_terminal';
+
+/**
+ * A provider's role for a given priority context, derived purely from its position in
+ * PROVIDER_PRIORITY (index 0 = primary, 1 = secondary, 2+ = fallback), with special cases for
+ * providers whose priority-list appearances are confined to a single non-quote capability.
+ */
+export type ProviderRole = 'primary' | 'secondary' | 'fallback' | 'discovery_only' | 'news_only' | 'metadata_only';
+
+/** Per-provider summary derived from the flat capabilityMatrix — no new fetches, pure aggregation. */
+export type ProviderProfile = {
+  provider: MarketProviderId;
+  role: ProviderRole;
+  status: ProviderConnectionStatus;
+  configured: boolean;
+  latencyMs: number | null;
+  /** round(100 * healthyCells / totalCells) for this provider; null when it has zero cells. */
+  successRatePercent: number | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  rateLimitedUntil: string | null;
+};
+
+/** Safe configuration-status entry — presence only, never the credential value. Admin-only. */
+export type ProviderConfigEntry = {
+  envVar: string;
+  provider: MarketProviderId;
+  configured: boolean;
+};
 
 export type ProviderCapabilityCell = {
   provider: MarketProviderId;
@@ -166,6 +200,9 @@ export type MarketSystemState = {
     latencyMs: number | null;
   }>>;
   capabilityMatrix: CapabilityMatrix;
+  providerProfiles: ProviderProfile[];
+  /** Admin-only — omitted entirely from the public API payload, never just emptied. */
+  configuration: ProviderConfigEntry[] | null;
   featuresSucceeded: MarketCapabilityKey[];
   featuresDegraded: MarketCapabilityKey[];
   featuresFailed: MarketCapabilityKey[];
