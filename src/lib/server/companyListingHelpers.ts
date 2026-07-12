@@ -11,6 +11,41 @@ import { normalizeCompanySocialUrl, type CompanySocialPlatform } from '@/lib/com
 
 export const COMPANY_LISTING_SELECT_COLUMNS = 'id,user_id,stripe_customer_id,stripe_subscription_id,company_name,category,country,city,full_address,google_maps_url,latitude,longitude,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,license_number,regulator_name,services,logo_url,cover_image_url,status,update_status,pending_update,deletion_requested,deletion_requested_at,last_owner_update_at,admin_notes,reviewed_at,reviewed_by,is_featured,created_at,updated_at,approved_at';
 
+/**
+ * The only company-listing columns that may be read for an unauthenticated
+ * directory or public-profile response. Keep this allowlist explicit: the full
+ * table also contains ownership, billing, review, deletion and exact-location
+ * data that must remain limited to owner/admin flows.
+ */
+export const PUBLIC_COMPANY_LISTING_SELECT_COLUMNS = 'id,company_name,category,country,city,short_description,long_description,website_url,email,phone,whatsapp,linkedin_url,twitter_url,instagram_url,founded_year,regulator_name,services,logo_url,cover_image_url,status,is_featured,created_at,approved_at';
+
+export type PublicCompanyListing = Pick<
+  CompanyListing,
+  | 'id'
+  | 'company_name'
+  | 'category'
+  | 'country'
+  | 'city'
+  | 'short_description'
+  | 'long_description'
+  | 'website_url'
+  | 'email'
+  | 'phone'
+  | 'whatsapp'
+  | 'linkedin_url'
+  | 'twitter_url'
+  | 'instagram_url'
+  | 'founded_year'
+  | 'regulator_name'
+  | 'services'
+  | 'logo_url'
+  | 'cover_image_url'
+  | 'status'
+  | 'is_featured'
+  | 'created_at'
+  | 'approved_at'
+>;
+
 function numericOrNull(value: unknown) {
   if (value === null || value === undefined || String(value).trim() === '') return null;
   const parsed = Number(value);
@@ -97,5 +132,34 @@ export function normalizeCompanyListing(row: Record<string, unknown>): CompanyLi
     created_at: row.created_at ? String(row.created_at) : null,
     updated_at: row.updated_at ? String(row.updated_at) : null,
     approved_at: row.approved_at ? String(row.approved_at) : null,
+  };
+}
+
+export function normalizePublicCompanyListing(row: Record<string, unknown>): PublicCompanyListing {
+  const listing = normalizeCompanyListing(row);
+  return {
+    id: listing.id,
+    company_name: listing.company_name,
+    category: listing.category,
+    country: listing.country,
+    city: listing.city,
+    short_description: listing.short_description,
+    long_description: listing.long_description,
+    website_url: listing.website_url,
+    email: listing.email,
+    phone: listing.phone,
+    whatsapp: listing.whatsapp,
+    linkedin_url: listing.linkedin_url,
+    twitter_url: listing.twitter_url,
+    instagram_url: listing.instagram_url,
+    founded_year: listing.founded_year,
+    regulator_name: listing.regulator_name,
+    services: listing.services,
+    logo_url: listing.logo_url,
+    cover_image_url: listing.cover_image_url,
+    status: listing.status,
+    is_featured: listing.is_featured,
+    created_at: listing.created_at,
+    approved_at: listing.approved_at,
   };
 }

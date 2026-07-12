@@ -138,14 +138,11 @@ async function fetchRemoteMarketProvider(path: string, params?: URLSearchParams,
             : response.status >= 500
               ? 'market_data_unreachable'
               : 'provider_error';
-      const errorBody = await response.text().catch(() => '');
       console.warn('Market data request failed', {
         path,
-        url: url.pathname,
         status: response.status,
         elapsedMs,
         code,
-        body: errorBody.slice(0, 400),
       });
       return { configured: true as const, available: false as const, elapsedMs, status: response.status, code };
     }
@@ -155,26 +152,17 @@ async function fetchRemoteMarketProvider(path: string, params?: URLSearchParams,
       const now = Date.now();
       responseCache.set(cacheKey, { expiresAt: now + ttlMs, createdAt: now, data });
     }
-    console.info('Market data request completed', {
-      path,
-      symbol: url.searchParams.get('symbol') || url.searchParams.get('symbols'),
-      status: response.status,
-      elapsedMs,
-      success: data?.success === true,
-      hasQuote: Boolean(data?.latestPrice || data?.quote?.price),
-      hasHistory: Array.isArray(data?.history) ? data.history.length > 0 : Array.isArray(data?.results) ? data.results.some((item: any) => Array.isArray(item?.history) && item.history.length > 0) : false,
-    });
     return { configured: true as const, available: true as const, data, elapsedMs, fromCache: false, status: response.status };
   } catch (error) {
     const timedOut = error instanceof Error && error.name === 'AbortError';
-    console.warn('Market data request exception', { path, url: url.pathname, elapsedMs: Date.now() - startedAt, code: timedOut ? 'market_data_timeout' : 'market_data_unreachable' });
+    console.warn('Market data request exception', { path, elapsedMs: Date.now() - startedAt, code: timedOut ? 'market_data_timeout' : 'market_data_unreachable' });
     return {
       configured: true as const,
       available: false as const,
       elapsedMs: Date.now() - startedAt,
       timedOut,
       code: timedOut ? 'market_data_timeout' : 'market_data_unreachable',
-      error: error instanceof Error ? error.message : 'Market data request failed',
+      error: timedOut ? 'Market data request timed out.' : 'Market data service is unavailable.',
     };
   }
 }

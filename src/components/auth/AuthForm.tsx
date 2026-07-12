@@ -59,7 +59,7 @@ export function AuthForm() {
   const [resetStep, setResetStep] = useState<'username' | 'question' | 'reset'>('username');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [storedQuestion, setStoredQuestion] = useState('');
+  const [storedQuestion] = useState('');
   const [resetUsername, setResetUsername] = useState('');
 
   const isRegister = mode === 'register';
@@ -137,74 +137,22 @@ export function AuthForm() {
   };
 
   const handleForgotPassword = async () => {
-
-    // ── Step 1: البحث عن المستخدم ──
-    if (resetStep === 'username') {
-      if (!resetUsername.trim()) { setError(t.enterUsernameFirst); return; }
-      setLoading(true); setError('');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email, security_question')
-        .eq('username', resetUsername.trim().toLowerCase())
-        .maybeSingle();
-
-      if (!profile) {
-        setError(isArabic ? 'اسم المستخدم غير موجود. تحقق من الكتابة.' : 'Username not found. Check spelling.');
-        setLoading(false); return;
-      }
-
-      if (!profile.security_question) {
-        // لا توجد أسئلة أمان - أرسل رابط مباشرة
-        await sendResetEmail(profile.email);
-        setLoading(false); return;
-      }
-
-      setStoredQuestion(profile.security_question);
-      setResetStep('question');
-      setLoading(false); return;
-    }
-
-    // ── Step 2: التحقق من سؤال الأمان ──
-    if (resetStep === 'question') {
-      if (!securityAnswer.trim()) { setError(t.enterSecurityAnswer); return; }
-      setLoading(true); setError('');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email, security_answer_hash')
-        .eq('username', resetUsername.trim().toLowerCase())
-        .maybeSingle();
-
-      if (!profile) { setError(t.errorOccurred); setLoading(false); return; }
-
-      const correct = profile.security_answer_hash
-        ? await hashSecurityAnswer(securityAnswer, profile.email || resetUsername.trim().toLowerCase()) === profile.security_answer_hash
-        : false;
-      if (!correct) {
-        setError(isArabic ? 'إجابة خاطئة. حاول مرة أخرى.' : 'Wrong answer. Try again.');
-        setLoading(false); return;
-      }
-
-      // ✅ الإجابة صحيحة - أرسل رابط الاستعادة
-      await sendResetEmail(profile.email);
-      setLoading(false); return;
-    }
+    if (!resetUsername.trim()) { setError(t.enterUsernameFirst); return; }
+    setLoading(true);
+    setError('');
+    await sendResetEmail(resetUsername);
+    setLoading(false);
   };
 
-  const sendResetEmail = async (email: string) => {
-    if (!email) {
-      setError(isArabic ? 'لا يوجد بريد إلكتروني مرتبط بهذا الحساب' : 'No email linked to this account');
-      return;
-    }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: typeof window !== 'undefined'
-        ? `${window.location.origin}/reset-password`
-        : undefined,
+  const sendResetEmail = async (identifier: string) => {
+    const response = await fetch('/api/auth/password-reset/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: identifier.trim().toLowerCase() }),
+      cache: 'no-store',
     });
 
-    if (error) {
+    if (!response.ok) {
       setError(isArabic ? 'حدث خطأ. تحقق من بريدك الإلكتروني وحاول مرة أخرى.' : 'Error occurred. Check your email and try again.');
     } else {
       setForgotPasswordSuccess(
@@ -221,19 +169,7 @@ export function AuthForm() {
   const handleSendEmailReset = async () => {
     if (!resetUsername.trim()) { setError(t.enterUsernameFirst); return; }
     setLoading(true); setError('');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('username', resetUsername.trim().toLowerCase())
-      .maybeSingle();
-
-    if (!profile?.email) {
-      setError(isArabic ? 'لم يتم العثور على الحساب' : 'Account not found');
-      setLoading(false); return;
-    }
-
-    await sendResetEmail(profile.email);
+    await sendResetEmail(resetUsername);
     setLoading(false);
   };
 
@@ -259,20 +195,25 @@ export function AuthForm() {
     setLoading(true);
     if (!isRegister) {
       const loginIdentifier = username.trim();
-      const isEmail = loginIdentifier.includes('@');
-      if (isEmail) {
-        const { error } = await supabase.auth.signInWithPassword({ email: loginIdentifier, password });
-        if (error) { setError(error.message || t.operationFailed); setLoading(false); return; }
-      } else {
-        const { error } = await signIn(loginIdentifier, password);
-        if (error) {
-          const msg = error.message || '';
-          if (msg.includes('Invalid login credentials')) setError('اسم المستخدم أو كلمة المرور غير صحيحة');
-          else if (msg.includes('Failed to fetch') || msg.includes('network')) setError('فشل الاتصال بالخادم');
-          else setError(msg || 'حدث خطأ غير متوقع');
-        }
-        setLoading(false); return;
+      const result = await signIn(loginIdentifier, password);
+      if (result.error) {
+        setError(result.code === 'invalid_credentials'
+          ? (isArabic ? 'اسم المستخدم أو كلمة المرور غير صحيحة' : 'The username/email or password is incorrect')
+          : t.operationFailed);
+        setLoading(false);
+        return;
       }
+      if (result.code === 'mfa_email_required') {
+        window.location.href = '/login?mfa=email';
+        return;
+      }
+      if (result.code === 'mfa_totp_required') {
+        window.location.href = '/mfa/verify?next=/dashboard';
+        return;
+      }
+      router.push('/dashboard');
+      router.refresh();
+      return;
     } else {
       const result = await signUp(username, password, email.trim().toLowerCase(), age, gender, securityQuestion, securityAnswer);
       if (result.error) { setError(result.error.message || t.operationFailed); setLoading(false); return; }

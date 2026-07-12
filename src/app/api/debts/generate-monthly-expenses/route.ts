@@ -126,8 +126,7 @@ function isCronAuthorized(request: NextRequest) {
   if (!secret) return false;
   const token = bearerToken(request);
   const headerSecret = request.headers.get('x-cron-secret')?.trim();
-  const querySecret = request.nextUrl.searchParams.get('secret')?.trim();
-  return token === secret || headerSecret === secret || querySecret === secret;
+  return token === secret || headerSecret === secret;
 }
 
 async function getAuthorizedUserId(request: NextRequest) {

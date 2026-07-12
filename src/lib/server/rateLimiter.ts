@@ -5,15 +5,35 @@
  */
 
 const store = new Map<string, { count: number; resetAt: number }>();
+const MAX_STORE_ENTRIES = 10_000;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+function pruneExpiredEntries(now = Date.now()) {
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt <= now) store.delete(key);
+  }
+}
+
+function ensureStoreCapacity(now: number) {
+  if (store.size < MAX_STORE_ENTRIES) return;
+  pruneExpiredEntries(now);
+  while (store.size >= MAX_STORE_ENTRIES) {
+    const oldestKey = store.keys().next().value as string | undefined;
+    if (!oldestKey) return;
+    store.delete(oldestKey);
+  }
+}
 
 // Clean up expired entries every 5 minutes to prevent memory leaks
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store.entries()) {
-      if (entry.resetAt <= now) store.delete(key);
-    }
-  }, 5 * 60 * 1000);
+  const runtime = globalThis as typeof globalThis & {
+    __sfmRateLimitCleanupTimer?: ReturnType<typeof setInterval>;
+  };
+  if (!runtime.__sfmRateLimitCleanupTimer) {
+    const cleanupTimer = setInterval(() => pruneExpiredEntries(), CLEANUP_INTERVAL_MS);
+    (cleanupTimer as ReturnType<typeof setInterval> & { unref?: () => void }).unref?.();
+    runtime.__sfmRateLimitCleanupTimer = cleanupTimer;
+  }
 }
 
 export interface RateLimitConfig {
@@ -32,9 +52,9 @@ export interface RateLimitConfig {
 export function getClientIp(request: Request): string {
   const headers = request.headers as Headers;
   const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
+  if (forwarded) return forwarded.split(',')[0].trim().slice(0, 128) || 'unknown';
   const real = headers.get('x-real-ip');
-  if (real) return real.trim();
+  if (real) return real.trim().slice(0, 128) || 'unknown';
   return 'unknown';
 }
 
@@ -51,6 +71,8 @@ export function checkRateLimit(
   const entry = store.get(key);
 
   if (!entry || entry.resetAt <= now) {
+    if (entry) store.delete(key);
+    ensureStoreCapacity(now);
     store.set(key, { count: 1, resetAt: now + windowMs });
     return true;
   }
@@ -73,7 +95,15 @@ export function rateLimitRequest(
   const allowed = checkRateLimit(ip, config);
   if (allowed) return null;
   return new Response(
-    JSON.stringify({ ok: false, code: 'RATE_LIMITED', message: 'Too many requests' }),
+    JSON.stringify({
+      ok: false,
+      success: false,
+      status: 'rate_limited',
+      code: 'RATE_LIMITED',
+      message: 'تم بلوغ حد الطلبات مؤقتاً. يرجى المحاولة بعد دقيقة.',
+      messageEn: 'The request limit was reached. Please try again in one minute.',
+      messageFr: 'La limite de requêtes a été atteinte. Réessayez dans une minute.',
+    }),
     {
       status: 429,
       headers: {

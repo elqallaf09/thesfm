@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { computeCompleteness } from '@/lib/market-state/completeness';
-import { buildFeatureEnvelope } from '@/lib/market-state/envelope';
+import { buildErrorEnvelope, buildFeatureEnvelope } from '@/lib/market-state/envelope';
 import { computeFreshness } from '@/lib/market-state/freshness';
 import { normalizeFeatureDataStatus, normalizeProviderConnectionStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
@@ -10,6 +10,7 @@ import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/tra
 import { getConnectedProvider } from '@/lib/trader/marketQuotes';
 import { getSymbolsForMarketOrSector, getTraderMarketCatalog, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
 import { TRADER_FUND_FILTERS, fundMatchesFilter, normalizeFundFilter } from '@/lib/trader/fundTypes';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,8 +157,16 @@ function uniqueSorted(values: Array<unknown>) {
     .sort((a, b) => a.localeCompare(b));
 }
 
-export async function GET(request: Request) {
+async function handleMarkets(request: Request) {
   const url = new URL(request.url);
+  const forceFresh = url.searchParams.has('refresh');
+  const discover = url.searchParams.has('discover');
+  const limited = rateLimitRequest(request, {
+    max: forceFresh || discover ? 2 : 60,
+    windowMs: 60_000,
+    prefix: forceFresh || discover ? 'markets-expensive' : 'markets',
+  });
+  if (limited) return limited;
   const selectedMarket = url.searchParams.get('market');
   const selectedSector = url.searchParams.get('sector') ?? url.searchParams.get('selectedSector') ?? url.searchParams.get('selected_sector');
   const selectedCategory = normalizeMarketCategory(
@@ -183,8 +192,8 @@ export async function GET(request: Request) {
   const page = clampInteger(url.searchParams.get('page'), 1, 1, 10_000);
   const pageSize = clampInteger(url.searchParams.get('limit') ?? url.searchParams.get('pageSize'), 25, 1, 250);
   const catalog = await getTraderMarketCatalog({
-    forceFresh: url.searchParams.has('refresh'),
-    includeFmpDiscovery: url.searchParams.has('discover') && Boolean(selectedMarket),
+    forceFresh,
+    includeFmpDiscovery: discover && Boolean(selectedMarket),
     marketId: selectedMarket,
   });
 
@@ -254,7 +263,16 @@ export async function GET(request: Request) {
   const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
   const universeEntryBySymbol = new Map((universe?.entries ?? []).map(entry => [normalizeSymbol(entry.symbol), entry]));
   const groups = catalog.markets.map(market => ({
-    ...market,
+    id: market.id,
+    ar: market.ar,
+    en: market.en,
+    family: market.family,
+    currency: market.currency,
+    tone: market.tone,
+    apiMarket: market.apiMarket,
+    source: market.source,
+    totalSymbols: market.totalSymbols,
+    previewSymbols: market.symbols.slice(0, 10),
     marketContext: resolveTraderMarketContext({
       marketId: market.id,
       currency: market.currency,
@@ -341,6 +359,10 @@ export async function GET(request: Request) {
     availableProviders: configuredQuoteProviders,
   });
   const provider = catalog.diagnostics.provider || getConnectedProvider().active || 'Market catalog';
+  const pageRequested = Math.min(pageSize, Math.max(0, sortedRows.length - offset));
+  const catalogFreshness = computeFreshness(catalog.diagnostics.generatedAt, 'symbols');
+  const cached = catalog.diagnostics.cacheStatus === 'hit' || catalog.diagnostics.cacheStatus === 'stale';
+  const delayed = catalog.diagnostics.cacheStatus === 'stale' || catalogFreshness.isStale;
   const diagnostic = createMarketFeatureDiagnostic({
     feature: 'symbols',
     provider: typeof provider === 'string' ? provider : 'Market catalog',
@@ -350,15 +372,18 @@ export async function GET(request: Request) {
   });
 
   // Additive-only field wrapping the diagnostic above in the shared unified envelope shape.
-  const providerConnectionStatus = normalizeProviderConnectionStatus({ status: catalog.diagnostics.summary.fmpStatus });
+  const providerConnectionStatus = pageRequested === 0
+    ? normalizeProviderConnectionStatus({ status: 'connected' })
+    : normalizeProviderConnectionStatus({ status: catalog.diagnostics.summary.fmpStatus });
   const envelope = buildFeatureEnvelope({
     feature: 'symbols',
     status: normalizeFeatureDataStatus({
       isLoading: false,
       hasError: false,
       providerStatus: providerConnectionStatus,
-      requested: sortedRows.length,
-      returned: pagedRows.length,
+      requested: pageRequested,
+      returned: markets.length,
+      isStale: delayed,
     }),
     provider: {
       selected: catalog.diagnostics.provider === 'fmp' ? 'fmp' : catalog.diagnostics.provider === 'supabase' ? null : null,
@@ -367,13 +392,22 @@ export async function GET(request: Request) {
       reason: catalog.diagnostics.reason,
       context: 'general',
       timestamp: catalog.diagnostics.generatedAt,
-      cached: catalog.diagnostics.cacheStatus === 'hit' || catalog.diagnostics.cacheStatus === 'stale',
-      delayed: false,
+      cached,
+      delayed,
     },
-    freshness: computeFreshness(catalog.diagnostics.generatedAt, 'symbols'),
-    completeness: computeCompleteness(sortedRows.length, pagedRows.length),
+    freshness: { ...catalogFreshness, isDelayed: delayed },
+    completeness: computeCompleteness(pageRequested, markets.length),
     data: null,
+    warnings: [
+      ...(cached ? [{ code: 'cached_data', messageKey: 'market_cached_data' }] : []),
+      ...(delayed ? [{ code: 'stale_catalog', messageKey: 'market_data_status_delayed' }] : []),
+    ],
   });
+
+  const publicCapabilityMatrix = Object.fromEntries(Object.entries(catalog.capabilityMatrix).map(([key, capability]) => [
+    key,
+    { ...capability, lastError: null },
+  ]));
 
   return NextResponse.json({
     ...diagnostic,
@@ -383,7 +417,7 @@ export async function GET(request: Request) {
     marketContext,
     availableProviders: configuredQuoteProviders,
     dataProvider: getConnectedProvider(),
-    capabilityMatrix: catalog.capabilityMatrix,
+    capabilityMatrix: publicCapabilityMatrix,
     diagnostics: catalog.diagnostics,
     marketUniverse: universe ? {
       selectedMarket: universe.selectedMarket,
@@ -442,6 +476,35 @@ export async function GET(request: Request) {
     resultCount: diagnostic.count,
     legacyOk: true,
   }, {
-    headers: { 'Cache-Control': 'no-store' },
+    headers: {
+      'Cache-Control': forceFresh || discover
+        ? 'private, no-store'
+        : 'public, s-maxage=300, stale-while-revalidate=1800',
+    },
   });
+}
+
+export async function GET(request: Request) {
+  try {
+    return await handleMarkets(request);
+  } catch (error) {
+    console.error('[api/markets] request_failed', {
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    });
+    const envelope = buildErrorEnvelope('symbols', 'market_catalog_request_failed', 'market_service_unavailable');
+    return NextResponse.json({
+      ...envelope,
+      envelope,
+      markets: [],
+      groups: [],
+      message: 'تعذر تحميل قائمة الأسواق حالياً.',
+      messageEn: 'The market directory could not be loaded right now.',
+      messageFr: 'Le répertoire des marchés ne peut pas être chargé pour le moment.',
+      resultCount: 0,
+      legacyOk: false,
+    }, {
+      status: 503,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
 }

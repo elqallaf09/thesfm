@@ -1500,23 +1500,6 @@ export function GrowthStocksNewsPage() {
     return { rising, falling, strongest, calmest, bestSector };
   }, [sectorStats, stockRows]);
 
-  // Development-only diagnostics for the refresh/hydration data flow. Never logs
-  // secrets — only counts and lightweight status flags.
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    console.debug('[GrowthStocks] state', {
-      tickerItems: ticker?.ok ? ticker.items.length : 0,
-      stockRows: stockRows.length,
-      filteredStocks: filteredStocks.length,
-      newsItems: news?.success ? news.items.length : 0,
-      filteredNews: filteredNews.length,
-      moversOk: movers?.ok ?? false,
-      selectedTab: tab,
-      loading,
-      hasError: Boolean(error),
-    });
-  }, [ticker, news, movers, stockRows.length, filteredStocks.length, filteredNews.length, tab, loading, error]);
-
   const resetStockFilters = () => {
     setStockSearch('');
     setStockSector('all');

@@ -21,6 +21,32 @@ export const STATUS_RANK: Record<ProviderConnectionStatus, number> = {
 };
 
 /**
+ * A provider is globally connected only when every measured capability is connected. A single
+ * successful endpoint must not conceal failures in the provider's other capabilities.
+ */
+export function summarizeProviderStatus(cells: ProviderCapabilityCell[]): ProviderConnectionStatus {
+  if (cells.length === 0) return 'unknown';
+  // Unmeasured cells ("unknown"/"unsupported") carry no reachability signal:
+  // they must not demote a provider whose measured capabilities are healthy,
+  // otherwise a fully-healthy system reads "degraded" (the exact
+  // contradictory combination marketStateGlobalConsistency guards against).
+  const measured = cells.filter(cell => cell.status !== 'unknown' && cell.status !== 'unsupported');
+  if (measured.length === 0) {
+    return cells.some(cell => cell.status === 'unknown') ? 'unknown' : 'unsupported';
+  }
+  const statuses = new Set(measured.map(cell => cell.status));
+  if (statuses.size === 1) return measured[0].status;
+  if (statuses.has('connected')) return 'degraded';
+  if (statuses.has('rate_limited')) return 'rate_limited';
+  if (statuses.has('degraded')) return 'degraded';
+  if (statuses.has('disconnected')) return 'disconnected';
+  if (statuses.has('misconfigured')) return 'misconfigured';
+  if (statuses.has('disabled')) return 'disabled';
+  if (statuses.has('unknown')) return 'unknown';
+  return 'unsupported';
+}
+
+/**
  * Per-provider summary derived purely from the already-fetched flat capabilityMatrix — no new
  * network calls. Feeds the drawer's ProviderCard list.
  */
@@ -34,14 +60,13 @@ export function buildProviderProfiles(cells: CapabilityMatrix): ProviderProfile[
 
   const profiles: ProviderProfile[] = [];
   for (const [provider, providerCells] of byProvider) {
-    const best = providerCells.reduce((a, b) => (STATUS_RANK[a.status] <= STATUS_RANK[b.status] ? a : b));
     const healthyCount = providerCells.filter(cell => cell.status === 'connected').length;
     const latestOf = (values: Array<string | null>) => values.filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
 
     profiles.push({
       provider,
       role: deriveProviderRole(provider, 'general'),
-      status: best.status,
+      status: summarizeProviderStatus(providerCells),
       configured: providerCells.some(cell => cell.configured),
       latencyMs: providerCells.find(cell => cell.latencyMs !== null)?.latencyMs ?? null,
       successRatePercent: providerCells.length > 0 ? Math.round((healthyCount / providerCells.length) * 100) : null,

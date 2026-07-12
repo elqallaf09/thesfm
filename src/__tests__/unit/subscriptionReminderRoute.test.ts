@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '../../app/api/business/subscriptions/reminders/route';
+import { POST } from '../../app/api/business/subscriptions/reminders/route';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { sendSmtpMail } from '@/lib/server/smtpMail';
 import {
@@ -213,7 +213,7 @@ async function runReminderCheck(options: Parameters<typeof createFakeDb>[0] = {}
     responseCode: 250,
   });
 
-  const response = await GET(new NextRequest('https://the-sfm.com/api/business/subscriptions/reminders?date=2026-06-25', {
+  const response = await POST(new NextRequest('https://the-sfm.com/api/business/subscriptions/reminders?date=2026-06-25', {
     headers: { authorization: 'Bearer token' },
   }));
 

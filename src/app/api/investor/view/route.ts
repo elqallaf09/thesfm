@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { hashInvestorToken, verifyInvestorPassword } from '@/lib/server/investorShare';
+import { hashInvestorToken, verifyInvestorPasswordAsync } from '@/lib/server/investorShare';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import {
   documentSharable,
   evaluateLinkState,
@@ -60,6 +61,13 @@ async function logEvent(
 }
 
 export async function POST(request: NextRequest) {
+  const globalLimit = rateLimitRequest(request, {
+    max: 60,
+    windowMs: 60_000,
+    prefix: 'investor-view',
+  });
+  if (globalLimit) return globalLimit;
+
   const supabase = getServiceClient();
   if (!supabase) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
 
@@ -72,6 +80,25 @@ export async function POST(request: NextRequest) {
 
   const token = String(body.token ?? '').trim();
   if (!token) return NextResponse.json({ error: 'token_required' }, { status: 400 });
+  if (token.length > 256) return NextResponse.json({ error: 'invalid_token' }, { status: 400 });
+
+  const action = String(body.action ?? 'view');
+  if (action === 'event') {
+    const limited = rateLimitRequest(request, {
+      max: 30,
+      windowMs: 60_000,
+      prefix: 'investor-event',
+    });
+    if (limited) return limited;
+  }
+  if (action === 'question') {
+    const limited = rateLimitRequest(request, {
+      max: 5,
+      windowMs: 10 * 60_000,
+      prefix: 'investor-question',
+    });
+    if (limited) return limited;
+  }
 
   const { data: link, error: linkError } = await supabase
     .from('project_investor_links')
@@ -89,13 +116,17 @@ export async function POST(request: NextRequest) {
   if (link.password_hash) {
     const password = typeof body.password === 'string' ? body.password : '';
     if (!password) return NextResponse.json({ requiresPassword: true }, { status: 401 });
-    if (!verifyInvestorPassword(password, link.password_hash)) {
-      await logEvent(supabase, link, 'access_denied', null, { reason: 'wrong_password' });
+    const passwordLimit = rateLimitRequest(request, {
+      max: 20,
+      windowMs: 15 * 60_000,
+      prefix: 'investor-password',
+    });
+    if (passwordLimit) return passwordLimit;
+    if (!(await verifyInvestorPasswordAsync(password, link.password_hash))) {
       return NextResponse.json({ requiresPassword: true, error: 'wrong_password' }, { status: 401 });
     }
   }
 
-  const action = String(body.action ?? 'view');
   const sections = normalizeSections(link.visible_sections);
 
   if (action === 'event') {
@@ -219,6 +250,8 @@ export async function POST(request: NextRequest) {
 
   await logEvent(supabase, link, 'offer_opened', null);
   try {
+    // This read-modify-write counter is best-effort and not atomic. Making it atomic requires
+    // a database function/migration, which is intentionally outside this production-hardening pass.
     await supabase
       .from('project_investor_links')
       .update({ last_accessed_at: new Date().toISOString(), access_count: Number(link.access_count ?? 0) + 1 })

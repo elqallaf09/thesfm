@@ -134,7 +134,7 @@ describe('Investor secure sharing (phase 2.9)', () => {
   it('enforces expiry, revocation, and password on the public route', () => {
     expect(viewRoute).toContain('evaluateLinkState(link)');
     expect(viewRoute).toContain("if (state !== 'active')");
-    expect(viewRoute).toContain('verifyInvestorPassword(password, link.password_hash)');
+    expect(viewRoute).toContain('await verifyInvestorPasswordAsync(password, link.password_hash)');
     expect(viewRoute).toContain('requiresPassword: true');
   });
 

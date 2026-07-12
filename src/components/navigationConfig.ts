@@ -192,7 +192,9 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'company_reviews' },
       { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-operations-center', icon: BarChart3, href: '/sfm-admin-control/market-diagnostics', labelKey: 'ops_center_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'instagram_automation' },
       { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },
       { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },

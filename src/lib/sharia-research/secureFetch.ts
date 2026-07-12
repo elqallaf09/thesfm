@@ -1,7 +1,12 @@
 import 'server-only';
 
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { request as httpRequest, type IncomingHttpHeaders } from 'node:http';
+// https.RequestOptions includes the TLS fields (servername) and remains
+// assignable to the plain-http transport's options.
+import { request as httpsRequest, type RequestOptions } from 'node:https';
+import { isIP, type LookupFunction } from 'node:net';
+import { Readable } from 'node:stream';
 
 const DEFAULT_USER_AGENT = process.env.SHARIA_RESEARCH_USER_AGENT?.trim()
   || 'THE-SFM-ShariaResearch/1.0 (+https://www.the-sfm.com; public-source-research)';
@@ -11,6 +16,8 @@ const DEFAULT_REDIRECTS = 4;
 const MAX_CACHE_ENTRIES = 200;
 
 type CacheEntry = { expiresAt: number; value: SecureFetchResult };
+type ResolvedAddress = { address: string; family: 4 | 6 };
+type ResolvedPublicUrl = { url: URL; addresses: ResolvedAddress[] };
 const responseCache = new Map<string, CacheEntry>();
 const domainNextRequestAt = new Map<string, number>();
 
@@ -94,7 +101,7 @@ export function isBlockedIpAddress(ip: string) {
 }
 
 function isBlockedHostname(hostname: string) {
-  const host = hostname.toLowerCase().replace(/\.$/, '');
+  const host = normalizeHostname(hostname).toLowerCase().replace(/\.$/, '');
   return host === 'localhost'
     || host === 'metadata'
     || host === 'metadata.google.internal'
@@ -105,7 +112,13 @@ function isBlockedHostname(hostname: string) {
     || host.endsWith('.home.arpa');
 }
 
-export async function assertSafePublicUrl(input: string | URL) {
+function normalizeHostname(hostname: string) {
+  return hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname;
+}
+
+async function resolveSafePublicUrl(input: string | URL): Promise<ResolvedPublicUrl> {
   let url: URL;
   try {
     url = input instanceof URL ? new URL(input) : new URL(input);
@@ -126,23 +139,40 @@ export async function assertSafePublicUrl(input: string | URL) {
     throw new UnsafeUrlError('INTERNAL_HOST_BLOCKED', 'Internal hostnames are blocked.');
   }
 
-  if (isIP(url.hostname)) {
-    if (isBlockedIpAddress(url.hostname)) {
+  const hostname = normalizeHostname(url.hostname);
+  const literalFamily = isIP(hostname);
+  if (literalFamily) {
+    if (isBlockedIpAddress(hostname)) {
       throw new UnsafeUrlError('PRIVATE_IP_BLOCKED', 'Private, local, and special-use IP addresses are blocked.');
     }
-    return url;
+    return {
+      url,
+      addresses: [{ address: hostname, family: literalFamily as 4 | 6 }],
+    };
   }
 
   let addresses: Array<{ address: string; family: number }>;
   try {
-    addresses = await lookup(url.hostname, { all: true, verbatim: true });
+    addresses = await lookup(hostname, { all: true, verbatim: true });
   } catch {
     throw new UnsafeUrlError('DNS_RESOLUTION_FAILED', 'The source hostname could not be resolved.');
   }
-  if (addresses.length === 0 || addresses.some(address => isBlockedIpAddress(address.address))) {
+  if (addresses.length === 0 || addresses.some(({ address, family }) => {
+    const detectedFamily = isIP(address);
+    return (detectedFamily !== 4 && detectedFamily !== 6)
+      || family !== detectedFamily
+      || isBlockedIpAddress(address);
+  })) {
     throw new UnsafeUrlError('PRIVATE_DNS_TARGET_BLOCKED', 'The source hostname resolves to a blocked network address.');
   }
-  return url;
+  return {
+    url,
+    addresses: addresses.map(({ address, family }) => ({ address, family: family as 4 | 6 })),
+  };
+}
+
+export async function assertSafePublicUrl(input: string | URL) {
+  return (await resolveSafePublicUrl(input)).url;
 }
 
 function sleep(milliseconds: number, signal?: AbortSignal) {
@@ -295,6 +325,96 @@ function contentTypeAllowed(contentType: string | null, accepted: string[]) {
   return accepted.some(type => normalized.includes(type.toLowerCase()));
 }
 
+function toWebHeaders(headers: IncomingHttpHeaders) {
+  const result = new Headers();
+  for (const [name, value] of Object.entries(headers)) {
+    if (typeof value === 'string') result.append(name, value);
+    else if (Array.isArray(value)) value.forEach(item => result.append(name, item));
+  }
+  return result;
+}
+
+function requestHeaders(options: SecureFetchOptions, accepted: string[]) {
+  const headers: Record<string, string> = {
+    accept: accepted.length > 0 ? accepted.join(', ') : '*/*',
+    'user-agent': DEFAULT_USER_AGENT,
+    // Avoid changing the body semantics or introducing a compressed-body bomb.
+    'accept-encoding': 'identity',
+  };
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    const normalizedName = name.trim().toLowerCase();
+    if (!normalizedName || normalizedName === 'host' || normalizedName === ':authority' || normalizedName === 'accept-encoding') {
+      continue;
+    }
+    headers[normalizedName] = value;
+  }
+  return headers;
+}
+
+function createPinnedLookup(address: ResolvedAddress): LookupFunction {
+  return (_hostname, lookupOptions, callback) => {
+    if (lookupOptions.all) {
+      callback(null, [{ address: address.address, family: address.family }]);
+      return;
+    }
+    callback(null, address.address, address.family);
+  };
+}
+
+function requestPinnedUrl(
+  url: URL,
+  address: ResolvedAddress,
+  options: SecureFetchOptions,
+  accepted: string[],
+  signal: AbortSignal,
+) {
+  const hostname = normalizeHostname(url.hostname);
+  const requestOptions: RequestOptions = {
+    protocol: url.protocol,
+    hostname,
+    port: url.port || undefined,
+    path: `${url.pathname}${url.search}`,
+    method: 'GET',
+    headers: requestHeaders(options, accepted),
+    lookup: createPinnedLookup(address),
+    family: address.family,
+    signal,
+  };
+  if (url.protocol === 'https:' && !isIP(hostname)) {
+    requestOptions.servername = hostname;
+  }
+
+  const transport = url.protocol === 'https:' ? httpsRequest : httpRequest;
+  return new Promise<Response>((resolve, reject) => {
+    const request = transport(requestOptions, response => {
+      const status = response.statusCode ?? 502;
+      const body = status === 204 || status === 205 || status === 304
+        ? null
+        : Readable.toWeb(response) as ReadableStream<Uint8Array>;
+      try {
+        resolve(new Response(body, {
+          status,
+          statusText: response.statusMessage,
+          headers: toWebHeaders(response.headers),
+        }));
+      } catch (error) {
+        response.destroy();
+        reject(error);
+      }
+    });
+    request.once('error', reject);
+    request.end();
+  });
+}
+
+async function discardResponseBody(response: Response) {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // The response is already unusable; cancellation is only for connection cleanup.
+  }
+}
+
 async function fetchAttempt(initialUrl: URL, options: SecureFetchOptions) {
   const redirects: string[] = [];
   let current = initialUrl;
@@ -304,40 +424,33 @@ async function fetchAttempt(initialUrl: URL, options: SecureFetchOptions) {
   const accepted = options.acceptedContentTypes ?? [];
 
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
-    current = await assertSafePublicUrl(current);
+    const resolved = await resolveSafePublicUrl(current);
+    current = resolved.url;
     await rateLimitDomain(current.hostname, options.minDomainIntervalMs ?? 350, options.signal);
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
-    const response = await fetch(current, {
-      method: 'GET',
-      redirect: 'manual',
-      cache: 'no-store',
-      signal,
-      headers: {
-        accept: accepted.length > 0 ? accepted.join(', ') : '*/*',
-        'user-agent': DEFAULT_USER_AGENT,
-        ...options.headers,
-      },
-    });
+    const response = await requestPinnedUrl(current, resolved.addresses[0], options, accepted, signal);
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
+      await discardResponseBody(response);
       if (!location) throw new UnsafeUrlError('INVALID_REDIRECT', 'The source returned a redirect without a location.');
       if (redirectCount === maxRedirects) throw new UnsafeUrlError('TOO_MANY_REDIRECTS', 'The source exceeded the redirect limit.');
       const next = new URL(location, current);
-      await assertSafePublicUrl(next);
       redirects.push(next.toString());
       current = next;
       continue;
     }
 
     if (!response.ok) {
+      await discardResponseBody(response);
       const error = new Error(`Source returned HTTP ${response.status}.`);
       (error as Error & { status?: number }).status = response.status;
       throw error;
     }
     const contentType = response.headers.get('content-type');
     if (!contentTypeAllowed(contentType, accepted)) {
+      await discardResponseBody(response);
       throw new UnsafeUrlError('UNSUPPORTED_CONTENT_TYPE', `Unsupported response content type: ${contentType ?? 'unknown'}.`);
     }
     const body = await readLimitedBody(response, maxBytes);

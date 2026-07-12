@@ -8,15 +8,6 @@ export function absoluteUrl(path = '/') {
   return new URL(path, siteUrl).toString();
 }
 
-export function languageAlternates(path = '/') {
-  return {
-    ar: path,
-    en: path,
-    fr: path,
-    'x-default': path,
-  };
-}
-
 export function pageMetadata({
   title,
   description = baseDescription,
@@ -32,7 +23,6 @@ export function pageMetadata({
     description,
     alternates: {
       canonical: path,
-      languages: languageAlternates(path),
     },
     openGraph: {
       title,
@@ -41,7 +31,6 @@ export function pageMetadata({
       siteName: 'THE SFM',
       type: 'website',
       locale: 'ar',
-      alternateLocale: ['en', 'fr'],
       images: [{ url: '/icons/og-image.png', width: 1200, height: 630 }],
     },
     twitter: {

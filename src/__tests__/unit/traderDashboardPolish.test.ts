@@ -32,8 +32,9 @@ describe('trader dashboard polish (phase 2.6)', () => {
     expect(appJs).toContain('const ds = assetDataState(a, recommendation);');
     expect(appJs).toContain("const evidenceGated = ds.key !== \"available\";");
     expect(appJs).toContain('conf === null || evidenceGated ? dashCell(gateNote)');
-    // An unavailable result never renders as a buy/sell/watch badge.
-    expect(appJs).toContain('ds.key === "unavailable"');
+    // Any non-complete evidence state (including unavailable/provider failure)
+    // renders its real data state instead of a buy/sell/watch badge.
+    expect(appJs).toContain('const recommendationHtml = evidenceGated');
   });
 
   it('sizes the ticker chip logo column to the unified 44px logo so prices are not covered', () => {

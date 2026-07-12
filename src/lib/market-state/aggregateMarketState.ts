@@ -3,7 +3,7 @@ import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
 import { getProviderHealth } from '@/lib/market/marketDataProviders';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
-import { buildProviderProfiles, STATUS_RANK } from './capabilityMatrixView';
+import { buildProviderProfiles, summarizeProviderStatus } from './capabilityMatrixView';
 import { classifyCatalogCompleteness } from './completeness';
 import { normalizeProviderConnectionStatus } from './normalizeStatus';
 import { getProviderCapabilityStatus, normalizeMarketDataProviderName, priorityListFor, type ProviderHealthLike } from './providerResolver';
@@ -30,15 +30,19 @@ let memoryCache: { value: MarketSystemState; expiresAt: number } | null = null;
 let pendingCompute: Promise<MarketSystemState> | null = null;
 
 async function getBoundedProviderHealth(): Promise<ProviderHealthLike[]> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
   try {
     return await Promise.race([
       getProviderHealth(),
       new Promise<never>((_resolve, reject) => {
-        setTimeout(() => reject(new Error('provider_health_probe_timeout')), HEALTH_PROBE_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new Error('provider_health_probe_timeout')), HEALTH_PROBE_TIMEOUT_MS);
+        timer.unref?.();
       }),
     ]);
   } catch {
     return []; // falls back to the cheap configured-key check per provider — never blocks aggregation
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -145,10 +149,35 @@ async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSyst
   // keep their existing lightweight in-memory trackers (no extra network call needed for those).
   const healthResults = await getBoundedProviderHealth();
 
+  // Promote/demote only providers that were actually probed. Catalog configuration alone is not
+  // proof of reachability, while a quote probe must not rewrite unrelated providers globally.
+  for (const health of healthResults) {
+    const provider = normalizeMarketDataProviderName(health.provider);
+    if (!provider) continue;
+    const status = normalizeProviderConnectionStatus({ configured: health.configured, status: health.status });
+    for (const cell of cells.filter(item => item.provider === provider && item.capability === 'quotes')) {
+      cell.status = status;
+      cell.configured = health.configured;
+      cell.healthy = status === 'connected';
+      cell.latencyMs = health.latencyMs ?? cell.latencyMs;
+      if (status === 'connected') {
+        cell.lastSuccessAt = health.lastCheckedAt ?? cell.lastSuccessAt;
+        cell.lastErrorReason = null;
+      }
+    }
+  }
+
   for (const [capabilityKey, context] of DERIVED_CAPABILITIES) {
     for (const provider of priorityListFor(capabilityKey, context)) {
       if (cells.some(cell => cell.capability === capabilityKey && cell.provider === provider)) continue;
-      cells.push(emptyCell(provider, capabilityKey, getProviderCapabilityStatus(provider, { healthResults })));
+      const probedConfiguration = healthResults.find(result => normalizeMarketDataProviderName(result.provider) === provider);
+      const status = probedConfiguration
+        ? normalizeProviderConnectionStatus({
+            configured: probedConfiguration.configured,
+            status: probedConfiguration.configured ? 'degraded' : 'not_configured',
+          })
+        : getProviderCapabilityStatus(provider);
+      cells.push(emptyCell(provider, capabilityKey, status));
     }
   }
 
@@ -170,6 +199,7 @@ async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSyst
     featuresFailed: failed,
     catalog: catalogBreakdown,
     lastSynchronizedAt: catalog.diagnostics.generatedAt ?? generatedAt,
+    delivery: { source: 'live', cached: false, delayed: false, reason: null },
   };
 }
 
@@ -183,11 +213,11 @@ function buildProviderSummary(cells: ProviderCapabilityCell[]): MarketSystemStat
 
   const providers: MarketSystemState['providers'] = {};
   for (const [provider, providerCells] of byProvider) {
-    const best = providerCells.reduce((a, b) => (STATUS_RANK[a.status] <= STATUS_RANK[b.status] ? a : b));
+    const status = summarizeProviderStatus(providerCells);
     providers[provider] = {
-      status: best.status,
+      status,
       configured: providerCells.some(cell => cell.configured),
-      healthy: providerCells.some(cell => cell.healthy),
+      healthy: status === 'connected',
       latencyMs: providerCells.find(cell => cell.latencyMs !== null)?.latencyMs ?? null,
     };
   }
@@ -202,9 +232,24 @@ function bucketFeatures(cells: ProviderCapabilityCell[]) {
   for (const capability of MARKET_CAPABILITY_KEYS) {
     const capabilityCells = cells.filter(cell => cell.capability === capability);
     if (capabilityCells.length === 0) continue;
-    if (capabilityCells.some(cell => cell.status === 'connected')) succeeded.push(capability);
-    else if (capabilityCells.some(cell => cell.status === 'degraded' || cell.status === 'rate_limited')) degraded.push(capability);
-    else failed.push(capability);
+    if (capabilityCells.some(cell => cell.status === 'connected')) {
+      succeeded.push(capability);
+      continue;
+    }
+    if (capabilityCells.some(cell => cell.status === 'degraded' || cell.status === 'rate_limited')) {
+      degraded.push(capability);
+      continue;
+    }
+    // "unknown" means unprobed — keyless providers (Yahoo/RSS) are only
+    // promoted to connected after a real measurement, so an unknown cell is
+    // a provider that may well serve the capability. Absence of evidence
+    // must never read as failed: the capability is failed only on an actual
+    // failure signal, or when no possibly-serving provider remains (every
+    // configured option is missing its key and nothing keyless exists).
+    const possiblyServing = capabilityCells.some(cell => cell.status === 'unknown');
+    const hasFailureSignal = capabilityCells.some(cell =>
+      cell.status === 'disconnected' || cell.status === 'disabled');
+    if (hasFailureSignal || !possiblyServing) failed.push(capability);
   }
   return { succeeded, degraded, failed };
 }
@@ -250,6 +295,7 @@ function emptySystemState(now: number): MarketSystemState {
       lastSyncAt: null,
     },
     lastSynchronizedAt: null,
+    delivery: { source: 'unavailable', cached: false, delayed: false, reason: 'market_state_unavailable' },
   };
 }
 
@@ -294,7 +340,15 @@ async function persistSnapshot(state: MarketSystemState) {
 export async function getMarketSystemState(options: { forceFresh?: boolean } = {}): Promise<MarketSystemState> {
   const now = Date.now();
   if (!options.forceFresh && memoryCache && memoryCache.expiresAt > now) {
-    return memoryCache.value;
+    return {
+      ...memoryCache.value,
+      delivery: {
+        source: 'memory_cache',
+        cached: true,
+        delayed: memoryCache.value.delivery?.delayed ?? false,
+        reason: 'aggregate_cache_hit',
+      },
+    };
   }
   // Dedup concurrent callers onto one in-flight compute — without this, N requests racing a
   // cache-expiry window would each trigger their own full aggregation (including the live
@@ -309,7 +363,18 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
       return state;
     } catch {
       const fallback = await getPersistentCache<MarketSystemState>(SNAPSHOT_CACHE_KEY);
-      if (fallback) return fallback;
+      if (fallback) {
+        const synchronizedAt = fallback.lastSynchronizedAt ? Date.parse(fallback.lastSynchronizedAt) : Number.NaN;
+        return {
+          ...fallback,
+          delivery: {
+            source: 'persistent_cache',
+            cached: true,
+            delayed: !Number.isFinite(synchronizedAt) || Date.now() - synchronizedAt > SNAPSHOT_TTL_MS,
+            reason: 'live_aggregation_failed',
+          },
+        };
+      }
       return emptySystemState(now);
     } finally {
       pendingCompute = null;

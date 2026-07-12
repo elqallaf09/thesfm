@@ -761,11 +761,16 @@ export default function ZakatPage() {
     if (savedMethod && ['gold', 'silver', 'conservative'].includes(savedMethod)) setNisabMethod(savedMethod as NisabMethod);
 
     loadMetalsPrices();
-    const interval = window.setInterval(() => {
-      loadMetalsPrices();
-    }, 15000);
+    const refreshVisiblePrices = () => {
+      if (document.visibilityState === 'visible') loadMetalsPrices();
+    };
+    const interval = window.setInterval(refreshVisiblePrices, 5 * 60_000);
+    document.addEventListener('visibilitychange', refreshVisiblePrices);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshVisiblePrices);
+    };
   }, [applyMetalsPrice, loadMetalsPrices, readCachedMetalsPrice]);
 
   useEffect(() => {

@@ -58,7 +58,6 @@ type FormState = {
   coverImageUrl: string;
 };
 
-type CompanyFormMode = 'create' | 'edit';
 
 const statusTone: Record<CompanyStatus, 'amber' | 'green' | 'red' | 'blue' | 'slate'> = {
   pending_review: 'amber',
@@ -111,18 +110,6 @@ function formFromCompany(company: CompanyListing): FormState {
     logoUrl: company.logo_url ?? '',
     coverImageUrl: company.cover_image_url ?? '',
   };
-}
-
-function logCompanyFormInitialized(mode: CompanyFormMode, values: FormState, companyId?: string | null) {
-  if (process.env.NODE_ENV !== 'development') return;
-  console.log('Company form initialized', {
-    mode,
-    companyId: companyId ?? null,
-    hasLogoUrl: Boolean(values.logoUrl),
-    hasCoverUrl: Boolean(values.coverImageUrl),
-    hasLogoFile: false,
-    hasCoverFile: false,
-  });
 }
 
 function formPayload(form: FormState) {
@@ -213,7 +200,6 @@ export function OwnerCompaniesPage() {
     setMessage(null);
     setForm(nextForm);
     setEditing(company);
-    logCompanyFormInitialized('edit', nextForm, company.id);
   }
 
   function closeEdit() {

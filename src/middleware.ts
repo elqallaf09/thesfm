@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isCronApiPath, isCronAuthorized, isProtectedApiPath } from '@/lib/auth/accessPolicy';
+import { AUTH_ACCESS_COOKIE, EMAIL_MFA_PROOF_COOKIE } from '@/lib/auth/sessionSecurity';
+import { clearAuthenticatedCookies } from '@/lib/server/authCookies';
+import { bearerToken, inspectSessionSecurity, type SessionSecurityResult } from '@/lib/server/authSession';
 
 const protectedPrefixes = [
   '/dashboard',
@@ -46,6 +50,7 @@ const protectedPrefixes = [
   '/watchlist',
   '/sfm-admin-control',
   '/thesfm-trader-own',
+  '/wakeel',
 ];
 
 const authPages = ['/login', '/reset-password'];
@@ -82,135 +87,131 @@ function isLocalTraderQaBypass(pathname: string) {
   );
 }
 
-function redirectToLogin(request: NextRequest) {
-  const loginUrl = request.nextUrl.clone();
-  loginUrl.pathname = '/login';
-  loginUrl.searchParams.set('next', request.nextUrl.pathname);
-  return NextResponse.redirect(loginUrl);
+function withSecurityHeaders<T extends NextResponse>(response: T) {
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+  response.headers.set('Permissions-Policy', 'microphone=(self), camera=(self)');
+  return response;
 }
 
-type SessionCheck = {
-  hasSession: boolean;
-  userId?: string;
-  email?: string;
-  token?: string;
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
-};
+function apiError(code: string, status: number, extra?: object) {
+  return withSecurityHeaders(NextResponse.json(
+    { ok: false, code, ...extra },
+    { status, headers: { 'Cache-Control': 'no-store' } },
+  ));
+}
 
 function safeInternalPath(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith('//') || decoded.includes('\\')) return null;
+  } catch {
+    return null;
+  }
   return value;
 }
 
-async function getSupabaseSession(request: NextRequest): Promise<SessionCheck> {
-  const token = request.cookies.get('sfm_access_token')?.value;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!token || !supabaseUrl || !supabaseAnonKey) return { hasSession: false };
-
-  try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    });
-    if (!response.ok) return { hasSession: false };
-    const user = await response.json() as { id?: string; email?: string };
-    return {
-      hasSession: Boolean(user.id),
-      userId: user.id,
-      email: user.email,
-      token,
-      supabaseUrl,
-      supabaseAnonKey,
-    };
-  } catch {
-    return { hasSession: false };
-  }
+function redirectToLogin(request: NextRequest, reason?: string) {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = '/login';
+  loginUrl.search = '';
+  loginUrl.searchParams.set('next', request.nextUrl.pathname);
+  if (reason) loginUrl.searchParams.set('auth', reason);
+  return withSecurityHeaders(NextResponse.redirect(loginUrl));
 }
 
-async function onboardingCompleted(session: SessionCheck) {
-  if (!session.userId || !session.token || !session.supabaseUrl || !session.supabaseAnonKey) return true;
+function redirectToMfa(request: NextRequest, type: 'totp' | 'email') {
+  const url = request.nextUrl.clone();
+  url.pathname = type === 'totp' ? '/mfa/verify' : '/login';
+  url.search = '';
+  url.searchParams.set('next', request.nextUrl.pathname);
+  if (type === 'email') url.searchParams.set('mfa', 'email');
+  return withSecurityHeaders(NextResponse.redirect(url));
+}
 
-  try {
-    const url = new URL(`${session.supabaseUrl}/rest/v1/profiles`);
-    url.searchParams.set('select', 'onboarding_completed,onboarding_skipped');
-    url.searchParams.set('id', `eq.${session.userId}`);
-    url.searchParams.set('limit', '1');
-    const response = await fetch(url, {
-      headers: {
-        apikey: session.supabaseAnonKey,
-        Authorization: `Bearer ${session.token}`,
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-    if (!response.ok) return true;
-    const rows = await response.json() as Array<{ onboarding_completed?: boolean | null; onboarding_skipped?: boolean | null }>;
-    return rows[0]?.onboarding_completed === true || rows[0]?.onboarding_skipped === true;
-  } catch {
-    return true;
-  }
+async function sessionForRequest(request: NextRequest): Promise<SessionSecurityResult> {
+  const token = bearerToken(request) || request.cookies.get(AUTH_ACCESS_COOKIE)?.value;
+  if (!token) return { status: 'unauthenticated' };
+  return inspectSessionSecurity(token, request.cookies.get(EMAIL_MFA_PROOF_COOKIE)?.value);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const response = NextResponse.next();
+  const response = withSecurityHeaders(NextResponse.next());
 
-  // Security: prevent clickjacking by restricting iframe embedding to same origin only
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+  if (pathname.startsWith('/api/')) {
+    if (!isProtectedApiPath(pathname)) return response;
+    if (isCronApiPath(pathname) && isCronAuthorized(request)) return response;
+    const session = await sessionForRequest(request);
+    if (session.status === 'unauthenticated') return apiError('UNAUTHORIZED', 401);
+    if (session.status === 'unavailable') return apiError('AUTH_UNAVAILABLE', 503);
+    if (session.mfaRequirement !== 'none') {
+      return apiError('MFA_REQUIRED', 403, { mfaType: session.mfaRequirement });
+    }
+    return response;
+  }
 
-  const session = await getSupabaseSession(request);
-  const hasSession = session.hasSession;
+  if (isLocalTraderQaBypass(pathname)) return response;
+  const needsSession = authPages.includes(pathname) || isProtected(pathname);
+  if (!needsSession) return response;
+
+  const session = await sessionForRequest(request);
   const hasGuestSession = request.cookies.get('sfm_guest')?.value === 'true';
 
-  if (authPages.includes(pathname) && hasSession) {
-    if (request.cookies.get('sfm_mfa_required')?.value === 'true') {
-      const mfaUrl = request.nextUrl.clone();
-      mfaUrl.pathname = '/mfa/verify';
-      mfaUrl.searchParams.set('next', request.nextUrl.searchParams.get('next') || '/dashboard');
-      return NextResponse.redirect(mfaUrl);
+  if (authPages.includes(pathname)) {
+    if (session.status !== 'ok') {
+      if (session.status === 'unauthenticated' && request.cookies.has(AUTH_ACCESS_COOKIE)) {
+        clearAuthenticatedCookies(response);
+      }
+      return response;
     }
+    if (session.mfaRequirement === 'totp') return redirectToMfa(request, 'totp');
+    if (session.mfaRequirement === 'email') return response;
     const nextPath = safeInternalPath(request.nextUrl.searchParams.get('next'));
     if (nextPath && isProtected(nextPath)) {
       const protectedTargetUrl = request.nextUrl.clone();
       protectedTargetUrl.pathname = nextPath;
       protectedTargetUrl.search = '';
-      return NextResponse.redirect(protectedTargetUrl);
+      return withSecurityHeaders(NextResponse.redirect(protectedTargetUrl));
     }
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = '/dashboard';
     dashboardUrl.search = '';
-    return NextResponse.redirect(dashboardUrl);
+    return withSecurityHeaders(NextResponse.redirect(dashboardUrl));
   }
 
-  if (!isProtected(pathname)) return response;
-  if (isLocalTraderQaBypass(pathname)) return response;
-  if (!hasSession && hasGuestSession && isGuestAllowed(pathname)) return response;
-  if (hasSession) {
-    if (request.cookies.get('sfm_mfa_required')?.value === 'true' && pathname !== '/mfa/verify') {
-      const mfaUrl = request.nextUrl.clone();
-      mfaUrl.pathname = '/mfa/verify';
-      mfaUrl.searchParams.set('next', request.nextUrl.pathname);
-      return NextResponse.redirect(mfaUrl);
-    }
-    if (pathname === '/dashboard' && !(await onboardingCompleted(session))) {
-      const onboardingUrl = request.nextUrl.clone();
-      onboardingUrl.pathname = '/onboarding';
-      onboardingUrl.search = '';
-      return NextResponse.redirect(onboardingUrl);
-    }
-    return response;
+  if (session.status === 'unauthenticated') {
+    if (hasGuestSession && isGuestAllowed(pathname)) return response;
+    const redirect = redirectToLogin(request);
+    if (request.cookies.has(AUTH_ACCESS_COOKIE)) clearAuthenticatedCookies(redirect);
+    return redirect;
   }
+  if (session.status === 'unavailable') return redirectToLogin(request, 'unavailable');
 
-  return redirectToLogin(request);
+  if (session.mfaRequirement !== 'none') {
+    if (pathname === '/mfa/verify' && session.mfaRequirement === 'totp') return response;
+    return redirectToMfa(request, session.mfaRequirement);
+  }
+  if (pathname === '/mfa/verify') {
+    const target = safeInternalPath(request.nextUrl.searchParams.get('next')) || '/dashboard';
+    const targetUrl = request.nextUrl.clone();
+    targetUrl.pathname = target;
+    targetUrl.search = '';
+    return withSecurityHeaders(NextResponse.redirect(targetUrl));
+  }
+  if (pathname === '/dashboard' && !session.onboardingComplete) {
+    const onboardingUrl = request.nextUrl.clone();
+    onboardingUrl.pathname = '/onboarding';
+    onboardingUrl.search = '';
+    return withSecurityHeaders(NextResponse.redirect(onboardingUrl));
+  }
+  return response;
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
+  ],
 };

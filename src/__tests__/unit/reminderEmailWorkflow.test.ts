@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '../../app/api/business/subscriptions/reminders/route';
+import { POST } from '../../app/api/business/subscriptions/reminders/route';
 import {
   CUSTOMER_EMAIL_MISSING_OR_INVALID_MESSAGE,
   CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON,
@@ -244,7 +244,7 @@ async function runReminderCheck(options: Parameters<typeof createFakeDb>[0] & {
   const params = new URLSearchParams({ date });
   if (reminderId) params.set('reminderId', reminderId);
   if (force) params.set('force', '1');
-  const response = await GET(new NextRequest(`https://the-sfm.com/api/business/subscriptions/reminders?${params.toString()}`, {
+  const response = await POST(new NextRequest(`https://the-sfm.com/api/business/subscriptions/reminders?${params.toString()}`, {
     headers: { authorization: 'Bearer token' },
   }));
 

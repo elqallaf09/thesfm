@@ -42,7 +42,6 @@ type FormState = {
   coverImageUrl: string;
 };
 
-type CompanyFormMode = 'create' | 'edit';
 
 const EMPTY_COMPANY_FORM: Readonly<FormState> = Object.freeze({
   companyName: '',
@@ -74,18 +73,6 @@ const EMPTY_COMPANY_FORM: Readonly<FormState> = Object.freeze({
 
 function createEmptyCompanyForm(overrides: Partial<FormState> = {}): FormState {
   return { ...EMPTY_COMPANY_FORM, ...overrides };
-}
-
-function logCompanyFormInitialized(mode: CompanyFormMode, values: FormState, companyId?: string | null) {
-  if (process.env.NODE_ENV !== 'development') return;
-  console.log('Company form initialized', {
-    mode,
-    companyId: companyId ?? null,
-    hasLogoUrl: Boolean(values.logoUrl),
-    hasCoverUrl: Boolean(values.coverImageUrl),
-    hasLogoFile: false,
-    hasCoverFile: false,
-  });
 }
 
 const COUNTRY_CODES = [
@@ -205,7 +192,6 @@ export function CompanySubmitForm() {
     const nextForm = createEmptyCompanyForm(requestedCategory ? { category: requestedCategory } : undefined);
     setForm(nextForm);
     setUploadResetVersion(version => version + 1);
-    logCompanyFormInitialized('create', nextForm, null);
   }, []);
 
   useEffect(() => {
@@ -390,7 +376,6 @@ export function CompanySubmitForm() {
       const nextForm = createEmptyCompanyForm();
       setForm(nextForm);
       setUploadResetVersion(version => version + 1);
-      logCompanyFormInitialized('create', nextForm, null);
       setMessage({ type: 'ok', text: t('company_listing_submit_success') });
     } catch {
       setMessage({ type: 'error', text: t('company_listing_submit_error') });

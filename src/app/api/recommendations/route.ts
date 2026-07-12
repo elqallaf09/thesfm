@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { computeCompleteness } from '@/lib/market-state/completeness';
-import { buildFeatureEnvelope } from '@/lib/market-state/envelope';
+import { buildErrorEnvelope, buildFeatureEnvelope } from '@/lib/market-state/envelope';
 import { computeFreshness } from '@/lib/market-state/freshness';
 import { normalizeFeatureDataStatus, normalizeProviderConnectionStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeMarketDataProviderName } from '@/lib/market-state/providerResolver';
+import type { MarketProviderId, ProviderAttempt, ResearchOrAnalysisStatus } from '@/lib/market-state/types';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
 import {
   assetSelectionDecision,
@@ -17,6 +18,7 @@ import { TRADER_FUND_FILTERS, fundTypeLabel, normalizeFundFilter } from '@/lib/t
 import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +34,27 @@ function priceProviderStatus(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuo
   if (quoteLoad.summary.skippedDueToRateLimit > 0 || quoteLoad.failed.some(item => /rate|limit|429/i.test(item.reason))) {
     return 'rate_limited' as const;
   }
-  return 'available' as const;
+  if (quoteLoad.skipped.length > 0 && quoteLoad.failed.length === 0
+    && quoteLoad.skipped.every(item => /not_configured|missing_api_key/i.test(item.reason))) {
+    return 'not_configured' as const;
+  }
+  if (quoteLoad.failed.length > 0) return 'provider_error' as const;
+  return 'empty' as const;
+}
+
+function providerAttempts(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuotesDetailed>>): ProviderAttempt[] {
+  const attempts = new Map<MarketProviderId, ProviderAttempt>();
+  const add = (rawProvider: string, outcome: ProviderAttempt['outcome'], reason: string | null) => {
+    const provider = normalizeMarketDataProviderName(rawProvider);
+    if (!provider) return;
+    const existing = attempts.get(provider);
+    if (existing?.outcome === 'success' || (existing?.outcome === 'failed' && outcome === 'skipped')) return;
+    attempts.set(provider, { provider, outcome, reason });
+  };
+  quoteLoad.skipped.forEach(item => add(item.provider, 'skipped', item.reason));
+  quoteLoad.failed.forEach(item => add(item.provider, 'failed', item.reason));
+  quoteLoad.loaded.forEach(item => add(item.provider, 'success', null));
+  return Array.from(attempts.values());
 }
 
 function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
@@ -160,10 +182,16 @@ function universeFilterOptions(rows: TraderCatalogSymbol[]) {
   };
 }
 
-export async function GET(request: Request) {
+async function handleRecommendations(request: Request) {
   const url = new URL(request.url);
   const forceFresh = url.searchParams.has('refresh');
   const discover = url.searchParams.has('discover');
+  const limited = rateLimitRequest(request, {
+    max: forceFresh || discover ? 2 : 60,
+    windowMs: 60_000,
+    prefix: forceFresh || discover ? 'recommendations-expensive' : 'recommendations',
+  });
+  if (limited) return limited;
   const marketId = url.searchParams.get('market');
   const selectedCategory = normalizeRecommendationCategory(
     url.searchParams.get('category') ?? url.searchParams.get('assetType') ?? url.searchParams.get('asset_type'),
@@ -267,7 +295,13 @@ export async function GET(request: Request) {
     quote.providerSymbolUsed,
   ].map(normalizeSymbol).map(key => metaBySymbol.get(key)).find(Boolean);
 
-  const quoteLoad = await fetchTraderQuotesDetailed(symbols, { forceFresh, symbolMeta: selectedMeta });
+  const quoteLoad = await fetchTraderQuotesDetailed(symbols, {
+    forceFresh,
+    symbolMeta: selectedMeta,
+    // News is contextual and does not change the formula. Fetch it only for focused detail loads;
+    // bulk pages disclose news as unavailable instead of multiplying provider calls per symbol.
+    includeNews: requestedSymbols.length > 0 && selectedMeta.length <= 2,
+  });
   const quotes = quoteLoad.quotes;
   const inPageUniverse = quotes.filter(q => [
     q.symbol,
@@ -502,8 +536,8 @@ export async function GET(request: Request) {
       unavailableReason: 'all_providers_returned_no_quote',
       dataAvailability: symbol.dataAvailability,
       dataQuality: 'unavailable',
-      lastUpdated: quoteLoad.generatedAt,
-      updatedAt: quoteLoad.generatedAt,
+      lastUpdated: null,
+      updatedAt: null,
       shariahStatus: symbol.shariahStatus,
       shariahReason: symbol.shariahReason,
       shariahSource: symbol.shariahSource,
@@ -562,47 +596,97 @@ export async function GET(request: Request) {
     availableProviders: marketContext.availableProviders,
     source: primaryQuote ? 'quote' : 'provider-status',
   };
+  const attempts = providerAttempts(quoteLoad);
+  const fallbackUsed = pageRecommendations.some(row => row.fallbackUsed === true)
+    || Boolean(marketContext.fallbackUsed);
+  const cached = quoteLoad.cacheStatus === 'provider-cache'
+    || pageRecommendations.some(row => row.dataQuality === 'cached');
+  const delayed = pageRecommendations.some(row => row.delayed === true);
+  const timestamps = pageRecommendations
+    .map(row => row.lastUpdated)
+    .filter((value): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
+  const featureAsOf = timestamps[0] ?? null;
+  const sufficientRecommendationCount = pageRecommendations.filter(row => {
+    const sufficiency = (row as { dataSufficiency?: { sufficient?: boolean } }).dataSufficiency;
+    return row.available === true && isValidPrice(row.price) && sufficiency?.sufficient === true;
+  }).length;
+  const analysisStatus: ResearchOrAnalysisStatus = selectedMeta.length === 0
+    ? 'not_started'
+    : availablePriceCount === 0
+      ? 'failed'
+      : sufficientRecommendationCount === 0
+        ? 'insufficient_data'
+        : sufficientRecommendationCount < selectedMeta.length
+          ? 'partial'
+          : 'completed';
+  const rawProviderStatus = selectedMeta.length === 0
+    ? 'connected'
+    : priceProviderStatus(quoteLoad, availablePriceCount);
   const diagnostic = createMarketFeatureDiagnostic({
     feature: 'prices',
     provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
-    providerStatus: priceProviderStatus(quoteLoad, availablePriceCount),
-    data: recommendations,
-    message: recommendations.length ? null : emptyStateCopy.ar,
-    lastUpdated: quoteLoad.generatedAt,
+    providerStatus: rawProviderStatus,
+    // The named recommendations field is canonical. Retain the legacy data field only on request
+    // to avoid serializing every analysis row twice in normal production responses.
+    data: url.searchParams.get('legacyData') === '1' ? recommendations : [],
+    count: recommendations.length,
+    message: selectedMeta.length === 0 ? emptyStateCopy.ar : null,
+    lastUpdated: featureAsOf,
   });
 
   // Additive-only field wrapping the diagnostic above in the shared unified envelope shape.
   const recommendationsProviderStatus = normalizeProviderConnectionStatus({
-    status: priceProviderStatus(quoteLoad, availablePriceCount),
+    status: rawProviderStatus,
     rateLimited: quoteLoad.summary.skippedDueToRateLimit > 0,
   });
+  const requestFailed = selectedMeta.length > 0
+    && availablePriceCount === 0
+    && quoteLoad.failed.length > 0
+    && quoteLoad.summary.skippedDueToRateLimit === 0;
+  const normalizedStatus = normalizeFeatureDataStatus({
+    isLoading: false,
+    hasError: requestFailed,
+    providerStatus: recommendationsProviderStatus,
+    requested: selectedMeta.length,
+    returned: sufficientRecommendationCount,
+  });
+  const envelopeStatus = analysisStatus === 'insufficient_data' ? 'partial' : normalizedStatus;
   const envelope = buildFeatureEnvelope({
     feature: 'recommendations',
-    status: normalizeFeatureDataStatus({
-      isLoading: false,
-      hasError: false,
-      providerStatus: recommendationsProviderStatus,
-      requested: filteredMeta.length,
-      returned: recommendations.length,
-    }),
+    status: envelopeStatus,
     provider: {
       selected: quoteLoad.provider ? normalizeMarketDataProviderName(quoteLoad.provider) : null,
-      attempted: [],
-      fallbackUsed: Boolean(marketContext.fallbackUsed),
-      reason: quoteLoad.reason ?? null,
+      attempted: attempts,
+      fallbackUsed,
+      reason: quoteLoad.reason ?? (fallbackUsed ? 'primary_provider_unavailable' : null),
       context: 'trader_terminal',
       timestamp: quoteLoad.generatedAt,
-      cached: quoteLoad.cacheStatus === 'provider-cache',
-      delayed: false,
+      cached,
+      delayed,
     },
-    freshness: computeFreshness(quoteLoad.generatedAt, 'recommendations'),
-    completeness: computeCompleteness(filteredMeta.length, recommendations.length),
+    freshness: {
+      ...computeFreshness(featureAsOf, 'recommendations'),
+      isDelayed: delayed,
+    },
+    completeness: computeCompleteness(selectedMeta.length, sufficientRecommendationCount),
     data: null,
+    warnings: [
+      ...(fallbackUsed ? [{ code: 'fallback_used', messageKey: 'market_provider_role_fallback' }] : []),
+      ...(cached ? [{ code: 'cached_data', messageKey: 'market_cached_data' }] : []),
+      ...(delayed ? [{ code: 'delayed_data', messageKey: 'market_prices_delayed' }] : []),
+      ...(sufficientRecommendationCount < selectedMeta.length && availablePriceCount > 0
+        ? [{ code: 'insufficient_analysis_data', messageKey: 'market_analysis_insufficient' }]
+        : []),
+    ],
+    errors: requestFailed ? [{ code: 'provider_request_failed', messageKey: 'market_service_unavailable' }] : [],
   });
 
   return NextResponse.json({
     ...diagnostic,
     envelope,
+    analysisStatus,
+    legacyDataOmitted: url.searchParams.get('legacyData') !== '1',
     market: market.id,
     marketContext,
     selectedMarket: market.id,
@@ -691,7 +775,7 @@ export async function GET(request: Request) {
       availableWithPrice: availablePriceCount,
       unavailablePrice: unavailableCount,
       failed: quoteLoad.failed.length,
-      lastUpdated: quoteLoad.generatedAt,
+      lastUpdated: featureAsOf,
       fundCoverageNote: fundUniverseSelected ? FUND_PROVIDER_COVERAGE_NOTE : null,
     },
     filterOptions: universeFilterOptions(filteredMeta),
@@ -700,6 +784,38 @@ export async function GET(request: Request) {
     message: diagnostic.message,
     legacyOk: true,
   }, {
-    headers: { 'Cache-Control': 'no-store' },
+    headers: {
+      'Cache-Control': forceFresh
+        ? 'private, no-store'
+        : 'public, s-maxage=60, stale-while-revalidate=300',
+    },
   });
+}
+
+export async function GET(request: Request) {
+  try {
+    return await handleRecommendations(request);
+  } catch (error) {
+    // Keep provider messages, URLs, credentials, and stack traces out of both the response and
+    // production logs. The error class is enough to correlate this request with server telemetry.
+    console.error('[api/recommendations] request_failed', {
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    });
+    const envelope = buildErrorEnvelope('recommendations', 'recommendations_request_failed', 'market_service_unavailable');
+    return NextResponse.json({
+      ...envelope,
+      envelope,
+      analysisStatus: 'failed' as ResearchOrAnalysisStatus,
+      recommendations: [],
+      unavailable: [],
+      message: 'تعذر تحميل التوصيات من مزود بيانات السوق حالياً.',
+      messageEn: 'Recommendations could not be loaded from the market data provider right now.',
+      messageFr: 'Les recommandations ne peuvent pas être chargées depuis le fournisseur de données pour le moment.',
+      resultCount: 0,
+      legacyOk: false,
+    }, {
+      status: 503,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
 }

@@ -20,11 +20,13 @@ describe('Sharia page regression contracts', () => {
     expect(screen).toContain("fetch(`/api/sharia-stocks/news?");
   });
 
-  it('keeps every API path outside page-auth and locale redirects', () => {
-    const rootMiddleware = source('middleware.ts');
+  it('keeps public APIs outside page redirects and returns JSON for protected API auth failures', () => {
     const appMiddleware = source('src/middleware.ts');
-    expect(rootMiddleware).toContain('matcher: "/wakeel/:path*"');
-    expect(appMiddleware).toContain("(?!api|_next/static|_next/image|favicon.ico");
+    expect(appMiddleware).toContain("pathname.startsWith('/api/')");
+    expect(appMiddleware).toContain('if (!isProtectedApiPath(pathname)) return response');
+    expect(appMiddleware).toContain("apiError('UNAUTHORIZED', 401)");
+    expect(appMiddleware).toContain("apiError('MFA_REQUIRED', 403");
+    expect(appMiddleware).not.toContain('(?!api|_next/static');
   });
 
   it('loads the PDF parser lazily with its serverless worker', () => {

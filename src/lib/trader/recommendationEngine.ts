@@ -506,7 +506,7 @@ function buildDataSufficiencyChecklist(
   ];
 
   return {
-    sufficient: samples > 0 && technicalAvailable && quality.status !== 'unavailable',
+    sufficient: samplesOk && coverageOk && technicalAvailable && qualityOk,
     samples,
     strategyCoverage: { available: availableStrategies.length, total: strategies.length },
     technicalAnalysisAvailable: technicalAvailable,

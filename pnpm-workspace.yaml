@@ -5,4 +5,8 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 overrides:
+  lodash: 4.18.1
   motion-dom: 12.40.0
+  postcss: 8.5.15
+  qs: 6.15.3
+  ws: 8.21.0

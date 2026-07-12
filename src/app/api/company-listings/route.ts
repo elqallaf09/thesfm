@@ -5,6 +5,7 @@ import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 import {
   COMPANY_LISTING_SELECT_COLUMNS,
+  PUBLIC_COMPANY_LISTING_SELECT_COLUMNS,
   cleanCompanyText,
   cleanCompanySocialUrl,
   cleanCompanyUrl,
@@ -12,6 +13,7 @@ import {
   hasInvalidCompanySocialUrl,
   getCompanyRequestUser,
   normalizeCompanyListing,
+  normalizePublicCompanyListing,
 } from '@/lib/server/companyListingHelpers';
 import {
   normalizeCompanyCategory,
@@ -25,6 +27,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const SELECT_COLUMNS = COMPANY_LISTING_SELECT_COLUMNS;
+const PUBLIC_SELECT_COLUMNS = PUBLIC_COMPANY_LISTING_SELECT_COLUMNS;
 const COMPANY_REVIEW_EMAIL = 'SUPPORT@THE-SFM.COM';
 
 type CompanyPayload = {
@@ -186,13 +189,12 @@ export async function GET(request: NextRequest) {
   const search = cleanCompanyText(request.nextUrl.searchParams.get('q'), 100).toLowerCase();
   const country = cleanCompanyText(request.nextUrl.searchParams.get('country'), 80);
   const city = cleanCompanyText(request.nextUrl.searchParams.get('city'), 80);
-  const status = normalizeCompanyStatus(request.nextUrl.searchParams.get('status')) ?? 'approved';
-  const publicStatus: CompanyStatus = status === 'approved' ? 'approved' : 'approved';
+  const publicStatus: CompanyStatus = 'approved';
 
   try {
     let query = admin
       .from('company_listings')
-      .select(SELECT_COLUMNS)
+      .select(PUBLIC_SELECT_COLUMNS)
       .eq('category', category)
       .eq('status', publicStatus)
       .order('is_featured', { ascending: false })
@@ -204,7 +206,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) throw error;
-    const items = (data ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>))
+    const items = (data ?? []).map(row => normalizePublicCompanyListing(row as Record<string, unknown>))
       .filter(item => {
         if (!search) return true;
         const haystack = `${item.company_name} ${item.short_description ?? ''} ${item.country ?? ''} ${item.city ?? ''} ${(item.services ?? []).join(' ')}`.toLowerCase();

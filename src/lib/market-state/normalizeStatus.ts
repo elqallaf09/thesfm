@@ -75,7 +75,15 @@ export type RawFeatureStatusInput = {
 export function normalizeFeatureDataStatus(input: RawFeatureStatusInput): FeatureDataStatus {
   if (input.isLoading) return 'loading';
   if (input.hasError) return 'error';
-  if (input.providerStatus === 'disconnected' || input.providerStatus === 'misconfigured' || input.providerStatus === 'disabled') {
+  const providerCannotServe = input.providerStatus === 'disconnected'
+    || input.providerStatus === 'misconfigured'
+    || input.providerStatus === 'disabled'
+    || input.providerStatus === 'rate_limited'
+    || input.providerStatus === 'unsupported'
+    || input.providerStatus === 'unknown';
+  // Cached/partial data can still be rendered during a provider outage. Without returned data,
+  // these states are unavailable rather than a misleading successful empty result.
+  if (providerCannotServe && (input.returned === null || input.returned === undefined || input.returned === 0)) {
     return 'unavailable';
   }
 

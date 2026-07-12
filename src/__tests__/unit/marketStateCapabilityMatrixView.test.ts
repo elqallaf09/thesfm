@@ -35,13 +35,13 @@ describe('DRAWER_CAPABILITY_ROWS', () => {
 });
 
 describe('buildProviderProfiles', () => {
-  it('collapses multiple cells for one provider to its best-ranked (STATUS_RANK-lowest) status', () => {
+  it('marks a provider degraded when one capability succeeds and another is rate limited', () => {
     const profiles = buildProviderProfiles([
       cell({ provider: 'fmp', capability: 'quotes', status: 'connected' }),
       cell({ provider: 'fmp', capability: 'earnings', status: 'rate_limited' }),
     ]);
     const fmp = profiles.find(profile => profile.provider === 'fmp');
-    expect(fmp?.status).toBe('connected');
+    expect(fmp?.status).toBe('degraded');
     expect(STATUS_RANK.rate_limited).toBeGreaterThan(STATUS_RANK.connected);
   });
 

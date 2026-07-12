@@ -16,6 +16,7 @@ import {
 type MarketSignalPanelProps = {
   signal: MarketSignal | null;
   loading?: boolean;
+  error?: boolean;
   compact?: boolean;
 };
 
@@ -45,9 +46,9 @@ const DATA_QUALITY_LABELS: Record<MarketSignalDataQuality, Localized> = {
 };
 
 const UI: Record<Lang, Record<string, string>> = {
-  ar: { signal:'إشارة التداول', analysis:'تحليل الإشارة', loading:'جارٍ تحليل البيانات المتاحة...', empty:'البيانات غير كافية لإظهار إشارة موثوقة حالياً.', confidence:'الثقة', currentPrice:'السعر الحالي', target:'الهدف', stop:'وقف الخسارة', upside:'الصعود المتوقع', downside:'الهبوط إلى وقف الخسارة', ratio:'نسبة العائد إلى المخاطرة', timeframe:'الأفق الزمني', risk:'المخاطر', dataQuality:'جودة البيانات', reasons:'أسباب الإشارة', warnings:'المخاطر والتنبيهات', score:'نقاط التقييم', scoreBreakdown:'تفاصيل نقاط التقييم', technical:'فني', momentum:'زخم', news:'أخبار', fundamentals:'أساسيات', defaultTimeframe:'1-3 أسابيع' },
-  en: { signal:'Trading signal', analysis:'Signal analysis', loading:'Analyzing available data...', empty:'There is not enough data to show a reliable signal right now.', confidence:'Confidence', currentPrice:'Current price', target:'Target', stop:'Stop loss', upside:'Expected upside', downside:'Downside to stop loss', ratio:'Risk/reward ratio', timeframe:'Time horizon', risk:'Risk', dataQuality:'Data quality', reasons:'Signal reasons', warnings:'Risks and warnings', score:'Score breakdown', scoreBreakdown:'Score breakdown', technical:'Technical', momentum:'Momentum', news:'News', fundamentals:'Fundamentals', defaultTimeframe:'1–3 weeks' },
-  fr: { signal:'Signal de trading', analysis:'Analyse du signal', loading:'Analyse des données disponibles...', empty:'Les données sont insuffisantes pour afficher un signal fiable pour le moment.', confidence:'Confiance', currentPrice:'Cours actuel', target:'Objectif', stop:'Stop de protection', upside:'Hausse attendue', downside:'Baisse jusqu’au stop', ratio:'Rapport risque/rendement', timeframe:'Horizon temporel', risk:'Risque', dataQuality:'Qualité des données', reasons:'Raisons du signal', warnings:'Risques et avertissements', score:'Détail du score', scoreBreakdown:'Détail du score', technical:'Technique', momentum:'Momentum', news:'Actualités', fundamentals:'Fondamentaux', defaultTimeframe:'1 à 3 semaines' },
+  ar: { signal:'إشارة التداول', analysis:'تحليل الإشارة', loading:'جارٍ تحليل البيانات المتاحة...', loadingBadge:'قيد التحليل', empty:'اكتمل الطلب، لكن البيانات لا تكفي لإظهار إشارة موثوقة حالياً.', emptyBadge:'بيانات غير كافية', error:'تعذر تحميل الإشارة من المزود حالياً. أعد المحاولة بعد قليل.', errorBadge:'تعذر التحميل', confidence:'الثقة', currentPrice:'السعر الحالي', target:'الهدف', stop:'وقف الخسارة', upside:'الصعود المتوقع', downside:'الهبوط إلى وقف الخسارة', ratio:'نسبة العائد إلى المخاطرة', timeframe:'الأفق الزمني', risk:'المخاطر', dataQuality:'جودة البيانات', reasons:'أسباب الإشارة', warnings:'المخاطر والتنبيهات', score:'نقاط التقييم', scoreBreakdown:'تفاصيل نقاط التقييم', technical:'فني', momentum:'زخم', news:'أخبار', fundamentals:'أساسيات', defaultTimeframe:'1-3 أسابيع' },
+  en: { signal:'Trading signal', analysis:'Signal analysis', loading:'Analyzing available data...', loadingBadge:'Analysis in progress', empty:'The request completed, but there is not enough data to show a reliable signal right now.', emptyBadge:'Insufficient data', error:'The signal could not be loaded from the provider. Try again shortly.', errorBadge:'Load failed', confidence:'Confidence', currentPrice:'Current price', target:'Target', stop:'Stop loss', upside:'Expected upside', downside:'Downside to stop loss', ratio:'Risk/reward ratio', timeframe:'Time horizon', risk:'Risk', dataQuality:'Data quality', reasons:'Signal reasons', warnings:'Risks and warnings', score:'Score breakdown', scoreBreakdown:'Score breakdown', technical:'Technical', momentum:'Momentum', news:'News', fundamentals:'Fundamentals', defaultTimeframe:'1–3 weeks' },
+  fr: { signal:'Signal de trading', analysis:'Analyse du signal', loading:'Analyse des données disponibles...', loadingBadge:'Analyse en cours', empty:'La requête a abouti, mais les données sont insuffisantes pour afficher un signal fiable.', emptyBadge:'Données insuffisantes', error:'Le signal n’a pas pu être chargé depuis le fournisseur. Réessayez dans un instant.', errorBadge:'Échec du chargement', confidence:'Confiance', currentPrice:'Cours actuel', target:'Objectif', stop:'Stop de protection', upside:'Hausse attendue', downside:'Baisse jusqu’au stop', ratio:'Rapport risque/rendement', timeframe:'Horizon temporel', risk:'Risque', dataQuality:'Qualité des données', reasons:'Raisons du signal', warnings:'Risques et avertissements', score:'Détail du score', scoreBreakdown:'Détail du score', technical:'Technique', momentum:'Momentum', news:'Actualités', fundamentals:'Fondamentaux', defaultTimeframe:'1 à 3 semaines' },
 };
 
 const REASON_COPY: Record<string, { en: string; fr: string }> = {
@@ -182,16 +183,26 @@ export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, '
   );
 }
 
-export function MarketSignalPanel({ signal, loading = false, compact = false }: MarketSignalPanelProps) {
+export function MarketSignalPanel({ signal, loading = false, error = false, compact = false }: MarketSignalPanelProps) {
   const { lang, dir } = useLanguage();
   const text = UI[lang];
-  const badge = actionLabel(signal?.action ?? 'watch');
+  const lifecycle = loading ? 'loading' : error ? 'error' : signal ? 'success' : 'empty';
+  const badge = signal ? actionLabel(signal.action) : null;
+  const lifecycleBadge = lifecycle === 'loading'
+    ? { className: 'loading', label: text.loadingBadge }
+    : lifecycle === 'error'
+      ? { className: 'error', label: text.errorBadge }
+      : lifecycle === 'empty'
+        ? { className: 'empty', label: text.emptyBadge }
+        : badge
+          ? { className: badge.className, label: badge.label[lang] }
+          : null;
   const confidence = Math.max(0, Math.min(95, Math.round(signal?.confidence ?? 0)));
   const risk = signal?.riskLevel ? RISK_LABELS[signal.riskLevel][lang] : '--';
   const dataQuality = signal?.dataQuality ? DATA_QUALITY_LABELS[signal.dataQuality][lang] : '--';
 
   return (
-    <article className={`market-signal-panel ${compact ? 'compact' : ''}`} dir={dir} aria-busy={loading}>
+    <article className={`market-signal-panel ${compact ? 'compact' : ''}`} dir={dir} aria-busy={loading} aria-live="polite">
       <header className="market-signal-header">
         <div>
           <span className="market-signal-eyebrow">
@@ -200,11 +211,20 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
           </span>
           <h2>{signal?.symbol ? `${text.analysis}: ${signal.symbol}` : text.analysis}</h2>
         </div>
-        <span className={`market-signal-badge ${badge.className}`}>{badge.label[lang]}</span>
+        {lifecycleBadge ? (
+          <span className={`market-signal-badge ${lifecycleBadge.className}`}>
+            {lifecycleBadge.label}
+          </span>
+        ) : null}
       </header>
 
       {loading ? (
         <div className="market-signal-loading" role="status">{text.loading}</div>
+      ) : error ? (
+        <div className="market-signal-error" role="alert">
+          <AlertTriangle size={17} />
+          {text.error}
+        </div>
       ) : !signal ? (
         <div className="market-signal-empty">
           <Info size={17} />
@@ -313,7 +333,10 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
         .market-signal-badge.wait{background:#fef3c7;color:#92400e;border-color:#fde68a}
         .market-signal-badge.watch{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
         .market-signal-badge.insufficient{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
-        .market-signal-loading,.market-signal-empty{
+        .market-signal-badge.loading{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
+        .market-signal-badge.empty{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+        .market-signal-badge.error{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+        .market-signal-loading,.market-signal-empty,.market-signal-error{
           display:flex;
           align-items:center;
           gap:8px;
@@ -324,6 +347,7 @@ export function MarketSignalPanel({ signal, loading = false, compact = false }: 
           color:#475569;
           background:#fff;
         }
+        .market-signal-error{color:#991b1b;border-color:#fecaca;background:#fff7f7}
         .market-signal-main{
           display:grid;
           grid-template-columns:minmax(0,1fr) minmax(160px,.35fr);

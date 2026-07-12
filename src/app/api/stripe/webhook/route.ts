@@ -14,9 +14,19 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type StripeEvent = {
+  id?: string;
+  created?: number;
   type?: string;
   data?: { object?: Record<string, unknown> };
 };
+
+const MAX_WEBHOOK_BYTES = 1024 * 1024;
+const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+const PROCESSED_EVENT_TTL_MS = 10 * 60 * 1000;
+const MAX_TRACKED_EVENTS = 2_000;
+
+const processedEvents = new Map<string, number>();
+const inFlightEvents = new Map<string, Promise<void>>();
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {
@@ -44,14 +54,58 @@ function verifySignature(rawBody: string, signatureHeader: string | null, secret
   const signatures = parts.v1 ?? [];
   if (!timestamp || signatures.length === 0) return false;
 
+  const timestampSeconds = Number(timestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (!Number.isSafeInteger(timestampSeconds) || Math.abs(nowSeconds - timestampSeconds) > SIGNATURE_TOLERANCE_SECONDS) {
+    return false;
+  }
+
   const expected = createHmac('sha256', secret)
     .update(`${timestamp}.${rawBody}`)
     .digest('hex');
-  const expectedBuffer = Buffer.from(expected);
+  const expectedBuffer = Buffer.from(expected, 'hex');
   return signatures.some(signature => {
-    const actualBuffer = Buffer.from(signature);
+    if (!/^[a-f\d]{64}$/i.test(signature)) return false;
+    const actualBuffer = Buffer.from(signature, 'hex');
     return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
   });
+}
+
+async function readLimitedBody(request: NextRequest) {
+  const declaredLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_WEBHOOK_BYTES) return null;
+  if (!request.body) return '';
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_WEBHOOK_BYTES) {
+        await reader.cancel('webhook body too large');
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return new TextDecoder().decode(Buffer.concat(chunks.map(chunk => Buffer.from(chunk))));
+}
+
+function pruneProcessedEvents(now = Date.now()) {
+  for (const [eventId, expiresAt] of processedEvents) {
+    if (expiresAt <= now) processedEvents.delete(eventId);
+  }
+  while (processedEvents.size > MAX_TRACKED_EVENTS) {
+    const oldest = processedEvents.keys().next().value as string | undefined;
+    if (!oldest) break;
+    processedEvents.delete(oldest);
+  }
 }
 
 function metadataOf(value: Record<string, unknown>) {
@@ -122,8 +176,12 @@ async function handleCheckoutCompleted(session: Record<string, unknown>) {
 
 async function handleSubscriptionChanged(subscription: Record<string, unknown>, deleted = false) {
   const subscriptionId = objectId(subscription.id);
+  const currentSubscription = !deleted && subscriptionId
+    ? await fetchStripeSubscription(subscriptionId)
+    : null;
+  const authoritativeSubscription = currentSubscription ?? subscription;
   const existing = subscriptionId ? await findUserSubscriptionByStripeSubscriptionId(subscriptionId) : null;
-  const metadata = metadataOf(subscription);
+  const metadata = metadataOf(authoritativeSubscription);
   const userId = cleanString(metadata.userId) || existing?.user_id || '';
   const plan = normalizePlan(metadata.plan) || existing?.plan || null;
   if (!userId || !plan) {
@@ -140,12 +198,12 @@ async function handleSubscriptionChanged(subscription: Record<string, unknown>, 
     user_id: userId,
     plan,
     billing_interval: normalizeBillingInterval(metadata.billingInterval) || existing?.billing_interval || null,
-    stripe_customer_id: objectId(subscription.customer) || existing?.stripe_customer_id || null,
+    stripe_customer_id: objectId(authoritativeSubscription.customer) || existing?.stripe_customer_id || null,
     stripe_subscription_id: subscriptionId || existing?.stripe_subscription_id || null,
     current_period_end: existing?.current_period_end || null,
     ...(deleted ? { status: 'canceled' as const } : {}),
   };
-  const record = recordFromStripeSubscription(subscription, fallback);
+  const record = recordFromStripeSubscription(authoritativeSubscription, fallback);
 
   if (!record) return;
   if (deleted) record.status = 'canceled';
@@ -164,7 +222,10 @@ export async function POST(request: NextRequest) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim() || '';
   if (!secret) return json({ ok: false, code: 'WEBHOOK_NOT_CONFIGURED' }, { status: 503 });
 
-  const rawBody = await request.text();
+  const rawBody = await readLimitedBody(request);
+  if (rawBody === null) {
+    return json({ ok: false, code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+  }
   if (!verifySignature(rawBody, request.headers.get('stripe-signature'), secret)) {
     return json({ ok: false, code: 'INVALID_SIGNATURE' }, { status: 400 });
   }
@@ -176,17 +237,40 @@ export async function POST(request: NextRequest) {
     return json({ ok: false, code: 'BAD_EVENT' }, { status: 400 });
   }
 
+  const eventId = cleanString(event.id);
+  if (!eventId || !/^evt_[A-Za-z0-9_]+$/.test(eventId)) {
+    return json({ ok: false, code: 'BAD_EVENT' }, { status: 400 });
+  }
+
   try {
-    if (event.type === 'checkout.session.completed' && event.data?.object) {
-      await handleCheckoutCompleted(event.data.object);
+    pruneProcessedEvents();
+    if (processedEvents.has(eventId)) return json({ ok: true, duplicate: true });
+
+    const existingRun = inFlightEvents.get(eventId);
+    if (existingRun) {
+      await existingRun;
+      return json({ ok: true, duplicate: true });
     }
-    if (event.type === 'customer.subscription.updated' && event.data?.object) {
-      await handleSubscriptionChanged(event.data.object);
+
+    const run = (async () => {
+      if (event.type === 'checkout.session.completed' && event.data?.object) {
+        await handleCheckoutCompleted(event.data.object);
+      }
+      if (event.type === 'customer.subscription.updated' && event.data?.object) {
+        await handleSubscriptionChanged(event.data.object);
+      }
+      if (event.type === 'customer.subscription.deleted' && event.data?.object) {
+        await handleSubscriptionChanged(event.data.object, true);
+      }
+    })();
+    inFlightEvents.set(eventId, run);
+    try {
+      await run;
+      processedEvents.set(eventId, Date.now() + PROCESSED_EVENT_TTL_MS);
+    } finally {
+      inFlightEvents.delete(eventId);
     }
-    if (event.type === 'customer.subscription.deleted' && event.data?.object) {
-      await handleSubscriptionChanged(event.data.object, true);
-    }
-    return json({ ok: true });
+    return json({ ok: true, duplicate: false });
   } catch (error) {
     console.error('[stripe] webhook handling failed', {
       type: event.type,

@@ -37,14 +37,9 @@ async function analyzeResolved(input: {
   const resolverQuery = input.displaySymbol || input.symbol;
   const resolved = await resolveMarketSymbol(resolverQuery, input.assetType);
   if (!resolved.ok) {
-    console.info('[market/analyze] invalid symbol rejected before provider request', {
-      requestedSymbol: String(resolverQuery ?? ''),
-      assetType: input.assetType,
-      suggestions: resolved.suggestions.map(item => item.symbol),
-    });
     return publicFailure('INVALID_SYMBOL', {
       suggestions: resolved.suggestions,
-      marketDataService: 'connected',
+      marketDataService: 'not_attempted',
     });
   }
 
@@ -73,14 +68,8 @@ async function analyzeResolved(input: {
 
   const code = normalizeMarketApiCode(result.code);
   console.warn('[market/analyze] provider failed', {
-    requestedSymbol: String(input.symbol ?? ''),
-    resolvedSymbol: resolved.asset.symbol,
-    providerSymbol: resolved.asset.providerSymbol,
-    assetType: resolved.asset.assetType,
     code,
-    providerCode: result.code,
     marketDataService: result.marketDataService,
-    error: result.error,
   });
 
   return publicFailure(code, {
@@ -88,7 +77,7 @@ async function analyzeResolved(input: {
     suggestions: resolved.suggestions,
     marketDataService: result.marketDataService,
     dataStatus: 'unavailable',
-    source: 'yahoo',
+    source: null,
     fallback: false,
     warnings: result.warnings,
   });

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AtSign,
@@ -27,33 +26,15 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeDigits } from '@/lib/locale';
+import { syncServerAuthSession } from '@/lib/auth/clientSession';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'twoFactor';
 type Message = { type: 'error' | 'ok'; text: string } | null;
 type PasswordStrength = 'weak' | 'medium' | 'strong';
 type TwoFactorChallenge = {
-  email: string;
+  kind: 'email';
 };
 const MIN_PASSWORD_LENGTH = 6;
-
-function syncLoggedInCookies(session: Session | null) {
-  if (typeof document === 'undefined') return;
-  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `sfm_auth=${session ? 'true' : ''}; path=/; max-age=${session ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
-  document.cookie = `sfm_access_token=${session?.access_token ?? ''}; path=/; max-age=${session?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
-  document.cookie = 'sfm_guest=; path=/; max-age=0; SameSite=Lax';
-  try {
-    window.localStorage?.removeItem('sfm_guest_mode');
-    window.localStorage?.removeItem('sfm_guest_started_at');
-  } catch {
-    // Keep login navigation working in restricted browser storage contexts.
-  }
-}
-
-function setMfaRequiredCookie(required: boolean) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `sfm_mfa_required=${required ? 'true' : ''}; path=/; max-age=${required ? 60 * 15 : 0}; SameSite=Lax`;
-}
 
 const COUNTRY_OPTIONS = [
   { value: 'Kuwait', ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
@@ -398,6 +379,17 @@ function cleanObject<T extends Record<string, unknown>>(payload: T) {
   ) as Partial<T>;
 }
 
+function safeInternalPath(value: string | null | undefined) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith('//') || decoded.includes('\\')) return '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
+  return value;
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -407,9 +399,12 @@ function LoginContent() {
   const questionOptions = QUESTION_OPTIONS[lang];
 
   const queryMode = searchParams?.get('mode');
-  const initialMode: AuthMode = queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password'
-    ? (queryMode === 'forgot-password' ? 'forgot' : queryMode)
-    : 'login';
+  const queryMfa = searchParams?.get('mfa');
+  const initialMode: AuthMode = queryMfa === 'email'
+    ? 'twoFactor'
+    : queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password'
+      ? (queryMode === 'forgot-password' ? 'forgot' : queryMode)
+      : 'login';
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [signupStep, setSignupStep] = useState<1 | 2>(1);
   const [username, setUsername] = useState('');
@@ -433,15 +428,16 @@ function LoginContent() {
   const [recoveryHash, setRecoveryHash] = useState<string | null>(null);
   const [recoveryAnswer, setRecoveryAnswer] = useState('');
   const [securityAttempts, setSecurityAttempts] = useState(0);
-  const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(
+    queryMfa === 'email' ? { kind: 'email' } : null,
+  );
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [socialLoading, setSocialLoading] = useState<'google' | null>(null);
   const [guestSubmitting, setGuestSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   const nextPath = useMemo(() => {
-    const requested = searchParams?.get('next') || '/dashboard';
-    return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard';
+    return safeInternalPath(searchParams?.get('next'));
   }, [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);
   const passwordScore = useMemo(() => scorePassword(password), [password]);
@@ -461,8 +457,11 @@ function LoginContent() {
   useEffect(() => {
     if (queryMode === 'register' || queryMode === 'forgot' || queryMode === 'forgot-password') {
       setMode(queryMode === 'forgot-password' ? 'forgot' : queryMode);
+    } else if (queryMfa === 'email') {
+      setTwoFactorChallenge({ kind: 'email' });
+      setMode('twoFactor');
     }
-  }, [queryMode]);
+  }, [queryMfa, queryMode]);
 
   useEffect(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -479,20 +478,53 @@ function LoginContent() {
 
   useEffect(() => {
     if (session && mode !== 'reset' && mode !== 'twoFactor' && !submitting && !twoFactorChallenge) {
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
-        if (data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
-          setMfaRequiredCookie(true);
-          router.refresh();
+      let cancelled = false;
+      void (async () => {
+        const synced = await syncServerAuthSession(session);
+        if (cancelled) return;
+        if (!synced.ok && synced.code === 'MFA_REQUIRED' && synced.mfaType === 'totp') {
           router.replace(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
           return;
         }
-        setMfaRequiredCookie(false);
-        console.debug('[auth] redirect target', nextPath);
+        if (!synced.ok && synced.code === 'MFA_REQUIRED' && synced.mfaType === 'email') {
+          const started = await fetch('/api/auth/mfa/email/start', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          });
+          if (cancelled) return;
+          if (!started.ok) {
+            setMessage({ type: 'error', text: text.twoFactorSendError });
+            return;
+          }
+          setTwoFactorChallenge({ kind: 'email' });
+          setTwoFactorCode('');
+          setMode('twoFactor');
+          setMessage({ type: 'ok', text: text.twoFactorSent });
+          return;
+        }
+        if (!synced.ok) {
+          setMessage({ type: 'error', text: text.errorLoginGeneric });
+          return;
+        }
         router.refresh();
         router.replace(nextPath);
-      });
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [mode, nextPath, router, session, submitting, twoFactorChallenge]);
+  }, [
+    mode,
+    nextPath,
+    router,
+    session,
+    submitting,
+    text.errorLoginGeneric,
+    text.twoFactorSendError,
+    text.twoFactorSent,
+    twoFactorChallenge,
+  ]);
 
   useEffect(() => {
     if (mode !== 'reset' || !user) return;
@@ -557,102 +589,29 @@ function LoginContent() {
     return '';
   }
 
-  async function sendLoginTwoFactorCode(emailAddress: string) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email: emailAddress,
-      options: { shouldCreateUser: false },
-    });
-    return error;
-  }
-
-  async function getOrCreateLoginProfile(authUser: User, loginIdentifier: string) {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email_2fa_enabled')
-      .eq('id', authUser.id)
-      .maybeSingle();
-
-    if (profileError) throw new Error(text.errorLoginGeneric);
-    if (profile) return profile;
-
-    const usernameFromLogin = !isEmail(loginIdentifier)
-      ? loginIdentifier.trim().toLowerCase()
-      : typeof authUser.user_metadata?.username === 'string'
-        ? authUser.user_metadata.username.trim().toLowerCase()
-        : null;
-
-    const { data: createdProfile, error: createError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: authUser.id,
-        email: authUser.email || null,
-        username: usernameFromLogin || null,
-        display_name: typeof authUser.user_metadata?.full_name === 'string'
-          ? authUser.user_metadata.full_name
-          : typeof authUser.user_metadata?.display_name === 'string'
-            ? authUser.user_metadata.display_name
-            : usernameFromLogin,
-        created_at: new Date().toISOString(),
-      }, { onConflict: 'id' })
-      .select('id, email_2fa_enabled')
-      .single();
-
-    if (createError) throw new Error(text.profileSetupNeeded);
-    return createdProfile;
-  }
-
   async function handleLogin() {
-    console.debug('[auth] login started');
     const loginIdentifier = username.trim();
     if (!loginIdentifier || !password.trim()) return text.errorEmpty;
     const result = await signIn(loginIdentifier, password);
     if (result.error) {
-      console.error('[auth] login error', result.error);
-      if (result.code === 'username_not_found') return text.errorUsernameNotFound;
-      if (result.code === 'profile_email_missing') return text.errorProfileEmailMissing;
-      if (result.code === 'profile_missing') return text.profileSetupNeeded;
       if (result.code === 'invalid_credentials') return text.errorInvalidCredentials;
+      if (result.code === 'rate_limited') return text.errorLoginGeneric;
       return text.errorLoginGeneric;
     }
-    const activeSession = result.session ?? (await supabase.auth.getSession()).data.session;
-    if (!activeSession?.access_token) return text.errorLoginGeneric;
-    const authUser = result.user ?? activeSession.user ?? null;
-    if (!authUser?.id) return text.errorLoginGeneric;
-    console.debug('[auth] login success', { userId: authUser.id });
-    console.debug('[auth] session returned', { hasSession: Boolean(activeSession), hasAccessToken: Boolean(activeSession.access_token) });
-
-    const profile = await getOrCreateLoginProfile(authUser, loginIdentifier);
-
-    const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal.data?.nextLevel === 'aal2' && aal.data.currentLevel !== 'aal2') {
-      syncLoggedInCookies(activeSession);
-      setMfaRequiredCookie(true);
-      console.debug('[auth] redirect target', '/mfa/verify');
-      completeAuthRedirect(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
-      return '';
-    }
-
-    if (profile?.email_2fa_enabled) {
-      const authEmail = authUser.email?.trim().toLowerCase() || '';
-      if (!isEmail(authEmail) || authEmail.endsWith('@smart-finance.local')) {
-        await signOut();
-        return text.twoFactorNoEmail;
-      }
-
-      const otpError = await sendLoginTwoFactorCode(authEmail);
-      await signOut();
-      if (otpError) return text.twoFactorSendError;
-
-      setTwoFactorChallenge({ email: authEmail });
+    if (result.code === 'mfa_email_required') {
+      setTwoFactorChallenge({ kind: 'email' });
       setTwoFactorCode('');
       setMode('twoFactor');
       setPassword('');
       setMessage({ type: 'ok', text: text.twoFactorSent });
       return '';
     }
-    syncLoggedInCookies(activeSession);
-    setMfaRequiredCookie(false);
-    console.debug('[auth] redirect target', nextPath);
+    const activeSession = result.session ?? (await supabase.auth.getSession()).data.session;
+    if (!activeSession?.access_token) return text.errorLoginGeneric;
+    if (result.code === 'mfa_totp_required') {
+      completeAuthRedirect(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
+      return '';
+    }
     completeAuthRedirect(nextPath);
     return '';
   }
@@ -661,19 +620,33 @@ function LoginContent() {
     if (!twoFactorChallenge) return text.errorLogin;
     const code = twoFactorCode.trim();
     if (code.length !== 6) return text.invalidCode;
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: twoFactorChallenge.email,
-      token: code,
-      type: 'email',
+    const response = await fetch('/api/auth/mfa/email/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      cache: 'no-store',
     });
-    if (error) return error.message.toLowerCase().includes('expired') ? text.codeExpired : text.codeInvalidOrExpired;
-    if (!data.session?.user) return text.errorLoginGeneric;
-    console.debug('[auth] login success', { userId: data.session.user.id, twoFactor: true });
-    console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
-    syncLoggedInCookies(data.session);
-    setMfaRequiredCookie(false);
+    const payload = await response.json().catch(() => null) as {
+      ok?: boolean;
+      code?: string;
+      mfaType?: 'totp';
+      accessToken?: string;
+      refreshToken?: string;
+    } | null;
+    if (!response.ok || !payload?.ok) {
+      return payload?.code === 'CHALLENGE_EXPIRED' ? text.codeExpired : text.codeInvalidOrExpired;
+    }
+    if (!payload.accessToken || !payload.refreshToken) return text.errorLoginGeneric;
+    const { data, error } = await supabase.auth.setSession({
+      access_token: payload.accessToken,
+      refresh_token: payload.refreshToken,
+    });
+    if (error || !data.session) return text.errorLoginGeneric;
     void trackEvent('login', { module: 'auth', metadata: { method: 'email_2fa' } });
-    console.debug('[auth] redirect target', nextPath);
+    if (payload.mfaType === 'totp') {
+      completeAuthRedirect(`/mfa/verify?next=${encodeURIComponent(nextPath)}`);
+      return '';
+    }
     completeAuthRedirect(nextPath);
     return '';
   }
@@ -682,9 +655,9 @@ function LoginContent() {
     if (!twoFactorChallenge) return;
     setSubmitting(true);
     setMessage(null);
-    const error = await sendLoginTwoFactorCode(twoFactorChallenge.email);
+    const response = await fetch('/api/auth/mfa/email/start', { method: 'POST', cache: 'no-store' });
     setSubmitting(false);
-    setMessage(error ? { type: 'error', text: text.twoFactorSendError } : { type: 'ok', text: text.twoFactorSent });
+    setMessage(!response.ok ? { type: 'error', text: text.twoFactorSendError } : { type: 'ok', text: text.twoFactorSent });
   }
 
   async function handleRegister() {
@@ -754,18 +727,12 @@ function LoginContent() {
         console.error('[Signup] Profile creation failed', {
           code: profileError.code,
           message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint,
-          payload: profilePayload,
         });
         return text.errorProfileCreate;
       }
 
-      console.debug('[auth] login success', { userId: newUser.id, source: 'register' });
-      console.debug('[auth] session returned', { hasSession: Boolean(data.session), hasAccessToken: Boolean(data.session.access_token) });
-      syncLoggedInCookies(data.session);
+      if (data.session) await syncServerAuthSession(data.session);
       void trackEvent('signup', { module: 'auth', metadata: { method: 'email' } });
-      console.debug('[auth] redirect target', '/dashboard');
       completeAuthRedirect('/dashboard');
       return '';
     }
@@ -776,50 +743,17 @@ function LoginContent() {
   }
 
   async function handleForgotPassword() {
-    const emailForReset = forgotEmail.trim().toLowerCase();
-    if (!isEmail(emailForReset)) return text.errorEmail;
+    const identifier = forgotEmail.trim().toLowerCase();
+    if (identifier.length < 3) return text.errorEmpty;
 
-    const checkResponse = await fetch('/api/auth/password-reset/check', {
+    const resetResponse = await fetch('/api/auth/password-reset/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailForReset }),
-    }).catch(error => {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[password-reset] Account check request failed', {
-          email: emailForReset,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-      return null;
-    });
+      body: JSON.stringify({ identifier }),
+      cache: 'no-store',
+    }).catch(() => null);
 
-    if (!checkResponse) return text.resetVerifyError;
-    if (checkResponse.status === 400) return text.errorEmail;
-    if (!checkResponse.ok) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[password-reset] Account check returned error', {
-          email: emailForReset,
-          status: checkResponse.status,
-        });
-      }
-      return text.resetVerifyError;
-    }
-
-    const checkPayload = await checkResponse.json().catch(() => null) as { exists?: boolean } | null;
-    if (!checkPayload?.exists) return text.resetAccountNotFound;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(emailForReset, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('[password-reset] resetPasswordForEmail response', {
-        email: emailForReset,
-        ok: !error,
-        errorCode: error?.code,
-        errorMessage: error?.message,
-      });
-    }
-    if (error) return error.message || text.resetSendError;
+    if (!resetResponse || !resetResponse.ok) return text.resetSendError;
     setMessage({ type: 'ok', text: text.resetSent });
     return '';
   }
@@ -878,7 +812,7 @@ function LoginContent() {
   async function signInWithGoogle() {
     setSocialLoading('google');
     setMessage(null);
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     if (error) setMessage({ type: 'error', text: error.message });
     setSocialLoading(null);
@@ -968,8 +902,8 @@ function LoginContent() {
           )}
 
           {mode === 'forgot' && (
-            <AuthField label={text.email} icon={<Mail size={18} />} required>
-              <input value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder={text.emailPlaceholder} type="email" autoComplete="email" dir="ltr" />
+            <AuthField label={text.usernameOrEmail} icon={<Mail size={18} />} required>
+              <input value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder={text.usernamePlaceholder} autoComplete="username" dir="ltr" />
             </AuthField>
           )}
 

@@ -76,15 +76,6 @@ export function useUnifiedDocuments() {
     });
     const documents = normalized.documents;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('[DocumentsCenter] Loaded documents', {
-        rawCount: normalized.rawCount,
-        displayableCount: normalized.displayableCount,
-        deduplicatedCount: documents.length,
-        duplicateKeys: normalized.duplicateKeys,
-      });
-    }
-
     const errors: Record<string, string> = {};
     Object.entries({
       project_documents: projectDocuments.error,

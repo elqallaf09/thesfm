@@ -442,15 +442,10 @@ export async function sendSmtpMail(input: SmtpMailInput): Promise<SmtpMailResult
   let dataResponse: Awaited<ReturnType<typeof expectSmtp>> | null = null;
 
   console.info('[EmailService] sending SMTP email', {
-    provider: config.host,
     secure: config.port === 465,
-    from: maskEmailForLog(from),
-    to: to.map(maskEmailForLog),
-    subject,
+    recipientCount: to.length,
     hasText: Boolean(text),
     hasHtml: Boolean(html),
-    replyTo: replyTo ? maskEmailForLog(replyTo) : null,
-    envelope: maskEnvelopeForLog(envelope),
   });
 
   try {

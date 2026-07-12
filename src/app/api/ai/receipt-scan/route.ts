@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import {
+  exceedsDeclaredBodyLimit,
+  exceedsReceiptAggregateLimit,
+  isValidReceiptFile,
+  mapWithConcurrency,
+} from '@/lib/server/uploadSafety';
 import { normalizeDigits } from '@/lib/locale';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -516,17 +522,6 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
     confidence: selected ? Math.max(score, selected.confidence) : score,
   };
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('Receipt scan debug', {
-      fileName,
-      rawTextLength: rawText.length,
-      candidateCount: result.amountCandidates?.length || 0,
-      selectedAmount: result.totalAmount,
-      selectedAmountLabel: result.selectedAmountLabel,
-      confidenceLevel: result.confidenceLevel,
-    });
-  }
-
   return result;
 }
 
@@ -772,10 +767,14 @@ export async function POST(request: NextRequest) {
     const user = await requestUser(request);
     if (!user) return errorResponse('Unauthorized', 401);
 
+    if (exceedsDeclaredBodyLimit(request)) return errorResponse('Receipt upload is too large', 413);
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
     if (!files.length) return errorResponse('No receipt file uploaded');
     if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413);
+    if (exceedsReceiptAggregateLimit(files)) return errorResponse('Receipt upload is too large', 413);
+    const signatures = await Promise.all(files.map(file => isValidReceiptFile(file, file.type)));
+    if (signatures.some(valid => !valid)) return errorResponse('Unsupported or invalid receipt file', 415);
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
     const openAiUnits = process.env.OPENAI_API_KEY && !hasReceiptText
@@ -797,13 +796,7 @@ export async function POST(request: NextRequest) {
       if (!usage.allowed) return aiUsageLimitResponse(usage);
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('Receipt scan request started', {
-        providerConfigured: Boolean(process.env.OPENAI_API_KEY),
-        files: files.map(file => ({ name: file.name, type: file.type, size: file.size })),
-      });
-    }
-    const results = await Promise.all(files.map(file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined)));
+    const results = await mapWithConcurrency(files, 2, file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined));
     if (files.length === 1) {
       const [result] = results;
       return NextResponse.json({
@@ -818,7 +811,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ success: results.some(result => result.success), results });
   } catch (error) {
-    console.error('Receipt scan route failed:', error);
+    console.error('[legacy-receipt-scan] request_failed', { errorType: error instanceof Error ? error.name : 'UnknownError' });
     return errorResponse('We could not read the receipt clearly', 500);
   }
 }

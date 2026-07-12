@@ -985,9 +985,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       setReceiptBatchProgress('');
       return;
     }
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('Receipt image selected', { name: file.name, type: file.type, size: file.size });
-    }
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowed.includes(inferClientReceiptMimeType(file))) {
       setReceiptError(expenseText('fileUnsupported', lang));
@@ -1081,19 +1078,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         throw new Error(receiptScanErrorText(payload.debug?.errorSource || payload.code, lang, payload.error || expenseText('couldNotRead', lang)));
       }
       const extracted = { ...payload.data, provider: payload.provider || payload.data.provider };
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('AI receipt result', {
-          success: payload.success,
-          provider: payload.provider,
-          apiStatus: response.status,
-          rawTextLength: extracted.rawText?.length || 0,
-          amount: extractedReceiptAmount(extracted),
-          currency: extracted.currency,
-          confidenceLevel: extracted.confidenceLevel,
-          candidates: extracted.amountCandidates || [],
-          debug: payload.debug,
-        });
-      }
       const amount = extractedReceiptAmount(extracted);
       const notes = receiptItemsNotes(extracted.items);
       setExpenseForm(prev => ({
@@ -1155,21 +1139,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         errorSource: batchDebug.errorSource || payload.results?.[0]?.code || payload.code || payload.error,
         message: batchDebug.message || payload.error || payload.results?.[0]?.error,
       } : null);
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('AI receipt batch result', {
-          apiStatus: response.status,
-          success: payload.success,
-          results: payload.results?.map(result => ({
-            fileName: result.fileName,
-            success: result.success,
-            rawTextLength: result.data?.rawText?.length || 0,
-            candidates: result.data?.amountCandidates?.length || 0,
-            selectedAmount: result.data ? extractedReceiptAmount(result.data) : undefined,
-            confidence: result.data?.confidenceLevel,
-            errorSource: result.debug?.errorSource,
-          })),
-        });
-      }
       if (!response.ok) throw new Error(receiptScanErrorText(payload.debug?.errorSource || payload.code, lang, payload.error || expenseText('couldNotRead', lang)));
       const results = payload.results?.length
         ? payload.results
@@ -1578,17 +1547,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               const text = `${supabaseError.message || ''} ${supabaseError.details || ''} ${supabaseError.hint || ''}`.toLowerCase();
               return supabaseError.code === 'PGRST204' || (text.includes('schema cache') && text.includes('column'));
             };
-            const logSavingsSaveError = (error: unknown, payload: Record<string, unknown>) => {
+            const logSavingsSaveError = (error: unknown) => {
               if (process.env.NODE_ENV !== 'development') return;
               const supabaseError = error && typeof error === 'object'
-                ? error as { code?: string; message?: string; details?: string; hint?: string }
+                ? error as { code?: string }
                 : {};
               console.error('[Savings] Failed to save saving', {
                 code: supabaseError.code,
-                message: supabaseError.message,
-                details: supabaseError.details,
-                hint: supabaseError.hint,
-                payload,
               });
             };
             const savingsErrorMessage = (error: unknown) => {
@@ -1599,14 +1564,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               if (text.includes('auth') || text.includes('jwt') || text.includes('session')) return t('savings_error_auth_required');
               return t('savings_error_unknown');
             };
-            if (process.env.NODE_ENV === 'development') {
-              console.info('[Savings] Submit values', {
-                rawForm: entryForm,
-                normalized: normalizedSavingForm,
-                validationErrors: savingFormErrors,
-                payload: mode === 'create' ? createPayload : savingPayload,
-              });
-            }
             const adjustGoal = async (goalId: string | null | undefined, delta: number) => {
               if (!goalId || !Number.isFinite(delta) || delta === 0) return;
               let goalFetchResult = await supabase
@@ -1654,7 +1611,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 .select('*')
                 .single();
               if (createResult.error && isSchemaCacheColumnError(createResult.error)) {
-                logSavingsSaveError(createResult.error, createPayload);
+                logSavingsSaveError(createResult.error);
                 const { created_at: _createdAt, updated_at: _updatedAt, ...schemaSafePayload } = createPayload;
                 createResult = await supabase
                   .from('savings_items')
@@ -1663,7 +1620,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   .single();
               }
               if (createResult.error) {
-                logSavingsSaveError(createResult.error, createPayload);
+                logSavingsSaveError(createResult.error);
                 throw new Error(savingsErrorMessage(createResult.error));
               }
               void trackEvent('add_saving', { module: 'savings', metadata: { saving_type: normalizedSavingForm.savingType || normalizedSavingForm.savingMethod || 'general', linked_goal: Boolean(linkedGoalId) } });
@@ -1678,7 +1635,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 .select('*')
                 .single();
               if (updateResult.error && isSchemaCacheColumnError(updateResult.error)) {
-                logSavingsSaveError(updateResult.error, savingPayload);
+                logSavingsSaveError(updateResult.error);
                 const { updated_at: _updatedAt, ...schemaSafePayload } = savingPayload;
                 updateResult = await supabase
                   .from('savings_items')
@@ -1689,7 +1646,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                   .single();
               }
               if (updateResult.error) {
-                logSavingsSaveError(updateResult.error, savingPayload);
+                logSavingsSaveError(updateResult.error);
                 throw new Error(savingsErrorMessage(updateResult.error));
               }
               if (previous?.goal_id && previous.goal_id !== linkedGoalId) await adjustGoal(previous.goal_id, -Number(previous.amount || 0));

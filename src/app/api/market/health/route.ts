@@ -1,12 +1,29 @@
 import { NextResponse } from 'next/server';
-import { proxyHealth } from '@/lib/market/marketDataProvider';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
+import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
 
 export async function GET() {
-  const health = await proxyHealth();
-  // Additive-only field — every existing key above is byte-compatible with current consumers;
-  // `state` is the new unified market-state view (see /api/market-state/system for the same
-  // canonical shape), safe for any caller to ignore.
   const state = await getMarketSystemState();
-  return NextResponse.json({ ...health, state }, { status: health.ok ? 200 : 503 });
+  const configured = Object.values(state.providers).some(provider => provider?.configured);
+  const returnedCapabilities = state.featuresSucceeded.length + state.featuresDegraded.length;
+  const available = returnedCapabilities > 0;
+  const marketDataService = !configured
+    ? 'not_configured'
+    : state.overall === 'connected' && !state.delivery?.cached && !state.delivery?.delayed
+      ? 'connected'
+      : available
+        ? 'degraded'
+        : 'unavailable';
+
+  return NextResponse.json({
+    ok: available,
+    code: available ? null : configured ? 'MARKET_DATA_UNAVAILABLE' : 'MARKET_DATA_NOT_CONFIGURED',
+    marketDataService,
+    activeProbe: false,
+    measuredAt: state.generatedAt,
+    state: sanitizeMarketSystemStateForPublic(state),
+  }, {
+    status: available ? 200 : 503,
+    headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
+  });
 }

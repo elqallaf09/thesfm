@@ -1,80 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-const POSTGREST_API_KEY = process.env.POSTGREST_API_KEY || "";
-const NEXT_PUBLIC_ZOER_API = "https://api.zoer.ai";
-const proxy_path = "zoer_proxy";
-
-export async function GET(request: NextRequest) {
-  return handleRequest(request);
+function retiredProxyResponse() {
+  return NextResponse.json({
+    success: false,
+    status: 'unsupported',
+    code: 'ZOER_PROXY_RETIRED',
+    message: 'تم إيقاف تكامل Zoer القديم لأسباب أمنية.',
+    messageEn: 'The legacy Zoer integration has been retired for security reasons.',
+    messageFr: 'L’ancienne intégration Zoer a été retirée pour des raisons de sécurité.',
+  }, {
+    status: 410,
+    headers: { 'Cache-Control': 'public, max-age=86400, immutable' },
+  });
 }
 
-export async function POST(request: NextRequest) {
-  return handleRequest(request);
-}
-
-export async function PUT(request: NextRequest) {
-  return handleRequest(request);
-}
-
-export async function DELETE(request: NextRequest) {
-  return handleRequest(request);
-}
-
-export async function PATCH(request: NextRequest) {
-  return handleRequest(request);
-}
-
-async function handleRequest(request: NextRequest) {
-  const url = request.nextUrl;
-  const pathSegments = url.pathname
-    .replace(`/${proxy_path}`, "")
-    .split("/")
-    .filter(Boolean);
-  try {
-    const targetPath = "/" + pathSegments.join("/");
-
-    const targetUrl = `${NEXT_PUBLIC_ZOER_API}${targetPath}${url.search}`;
-
-    const headers = new Headers();
-
-    request.headers.forEach((value, key) => {
-      headers.set(key, value);
-    });
-
-    headers.set("x-zoer-auth", `${POSTGREST_API_KEY}`);
-    headers.set("Postgrest-API-Key", `${POSTGREST_API_KEY}`);
-    headers.delete("Authorization");
-
-    const host = NEXT_PUBLIC_ZOER_API.split("://")[1];
-    if (host) {
-      headers.set("Host", host);
-    }
-
-    let body: BodyInit | undefined;
-    if (["POST", "PUT", "PATCH"].includes(request.method)) {
-      body = await request.arrayBuffer();
-    }
-
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers,
-      body,
-    });
-
-    const responseHeaders = new Headers();
-    response.headers.forEach((value, key) => {
-      responseHeaders.set(key, value);
-    });
-
-    return new NextResponse(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
+export const GET = retiredProxyResponse;
+export const POST = retiredProxyResponse;
+export const PUT = retiredProxyResponse;
+export const PATCH = retiredProxyResponse;
+export const DELETE = retiredProxyResponse;

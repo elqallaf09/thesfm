@@ -20,7 +20,7 @@
   --radius-lg: 18px;
   --radius-md: 14px;
   --font-ar: "IBM Plex Sans Arabic", "Cairo", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 * {
@@ -166,6 +166,10 @@ button {
   height: 100%;
   border-radius: inherit;
   object-fit: contain;
+}
+
+.brand-logo[hidden] {
+  display: none !important;
 }
 
 .brand-fallback {
@@ -13043,3 +13047,240 @@ html[data-theme="light"] :is(.cell-dash, .ticker-chip .chip-unavailable, .ticker
   }
 }
 /* == sfm-density-layer:end == */
+
+/* ==========================================================================
+   Phase 2.10 production polish: readable navigation, scoped market type,
+   accessible mobile overflow navigation, and form feedback.
+   ========================================================================== */
+
+:is(
+  .brand-card small,
+  .sidebar-nav small,
+  .sidebar-status small,
+  .card-kicker,
+  .eyebrow,
+  .nav-group-label,
+  .state-badge,
+  .status-tag,
+  .risk-pill,
+  .quality-badge,
+  .signal-badge,
+  .ai-pro-badge,
+  .profile-avatar,
+  .terminal-language-option,
+  .mobile-nav,
+  button,
+  input,
+  select,
+  textarea
+) {
+  font-family: var(--font-ar) !important;
+}
+
+:is(.detail-card strong, .analysis-metric strong, .analysis-terminal-metric strong, .drawer-metric b, .stock-meta-item b) {
+  font-family: var(--font-ar) !important;
+}
+
+:is(.detail-card strong.market-value, .analysis-metric strong.market-value, .analysis-terminal-metric strong.market-value, .drawer-metric b.market-value, .stock-meta-item b.market-value) {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+:is(.bias-head, .consensus-head strong, .command-deck-sentiment .command-deck-head strong) {
+  font-family: var(--font-ar) !important;
+}
+
+.sidebar-nav a {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  min-height: 48px;
+  padding: 10px 12px;
+}
+
+.sidebar-nav a .nav-label {
+  min-width: 0;
+  color: inherit;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-nav a small:not([hidden]) {
+  display: block;
+  max-width: 92px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  opacity: 0.82;
+  overflow-wrap: anywhere;
+}
+
+.nav-group-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  opacity: 1;
+}
+
+.collapse-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+#app-shell.is-collapsed .sidebar-nav a {
+  grid-template-columns: 24px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 10px;
+}
+
+@media (min-width: 861px) {
+  #app-shell.is-collapsed .sidebar-nav a::after {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: calc(100% + 10px);
+    z-index: 10020;
+    width: max-content;
+    max-width: 240px;
+    padding: 8px 10px;
+    border: 1px solid var(--trader-edge, var(--line));
+    border-radius: 9px;
+    content: attr(data-tooltip);
+    color: var(--trader-text, var(--text));
+    background: var(--trader-surface-raised, #0F2238);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+    font: 700 0.8rem/1.4 var(--font-ar);
+    text-align: start;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+    transition: opacity 140ms ease, transform 140ms ease;
+  }
+
+  html[dir="rtl"] #app-shell.is-collapsed .sidebar-nav a::after {
+    inset-inline-start: auto;
+    inset-inline-end: calc(100% + 10px);
+    transform: translateY(-50%) translateX(4px);
+  }
+
+  #app-shell.is-collapsed .sidebar-nav a:is(:hover, :focus-visible)::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.mobile-more {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.mobile-more-toggle {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: inherit;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mobile-more-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  bottom: calc(100% + 12px);
+  z-index: 12010;
+  display: grid;
+  width: min(310px, calc(100vw - 28px));
+  max-height: min(62vh, 460px);
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--trader-edge, var(--line));
+  border-radius: 16px;
+  background: rgba(6, 17, 31, 0.98);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+}
+
+.mobile-more-menu[hidden] {
+  display: none !important;
+}
+
+.mobile-more-menu a {
+  width: 100%;
+  min-height: 44px !important;
+  padding: 10px 12px !important;
+  justify-content: flex-start !important;
+  text-align: start;
+}
+
+html[data-theme="light"] .mobile-more-menu {
+  border-color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+}
+
+html[data-theme="light"] .mobile-more-menu a {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .mobile-more-menu a:is(:hover, :focus-visible),
+html[data-theme="light"] .mobile-more-menu a.is-active {
+  color: #0B1F33 !important;
+  background: #EAF6F7 !important;
+}
+
+@media (max-width: 860px) {
+  .mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .mobile-nav > a,
+  .mobile-more-toggle {
+    min-height: 48px !important;
+    touch-action: manipulation;
+  }
+
+  .mobile-more-toggle.is-active,
+  .mobile-more-toggle[aria-current="page"] {
+    border-color: color-mix(in srgb, var(--trader-accent, #14B8A6) 55%, transparent);
+    color: var(--trader-text, #F3F7FB);
+    background: color-mix(in srgb, var(--trader-selected, #14B8A6) 16%, transparent);
+  }
+
+  html[data-theme="light"] .mobile-more-toggle {
+    color: #52677A;
+  }
+
+  html[data-theme="light"] .mobile-more-toggle.is-active,
+  html[data-theme="light"] .mobile-more-toggle[aria-current="page"] {
+    border-color: #0F9F92;
+    color: #FFFFFF;
+    background: #0F9F92;
+  }
+}
+
+.form-field-error {
+  display: block;
+  width: 100%;
+  margin: 4px 0 0;
+  color: #FCA5A5;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+html[data-theme="light"] .form-field-error {
+  color: #B91C1C;
+}
+
+form[aria-busy="true"] button[type="submit"] {
+  cursor: wait;
+  opacity: 0.72;
+}

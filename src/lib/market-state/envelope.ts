@@ -41,7 +41,7 @@ export function buildErrorEnvelope(feature: string, code: string, messageKey: st
     feature,
     status: 'error',
     provider: { ...EMPTY_PROVIDER_RESOLUTION, timestamp: new Date().toISOString() },
-    freshness: { asOf: null, ageSeconds: null, isStale: true, isDelayed: false, thresholdSeconds: 0 },
+    freshness: { asOf: null, ageSeconds: null, isStale: false, isDelayed: false, thresholdSeconds: 0 },
     completeness: { requested: 0, returned: 0, missing: 0, percentage: 0 },
     data: null,
     warnings: [],

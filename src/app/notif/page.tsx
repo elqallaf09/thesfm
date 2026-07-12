@@ -1,3 +1,5 @@
-import NotificationsRoute from '@/app/notifications/page';
+import { redirect } from 'next/navigation';
 
-export default NotificationsRoute;
+export default function LegacyNotificationsRedirect() {
+  redirect('/notifications');
+}

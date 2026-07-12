@@ -115,24 +115,6 @@ export function InvestmentRow({
       ? AlertTriangle
       : CheckCircle2;
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Investments] card props and metrics', {
-      id: investment.id,
-      name: investment.name,
-      type: investment.type,
-      symbol: investment.symbol,
-      providerSymbol: investment.providerSymbol,
-      market: investment.market,
-      currency: nativeCurrency,
-      quantity: investment.quantity,
-      purchasePrice: investment.purchasePrice,
-      purchaseTotal: investment.purchaseTotal,
-      currentPrice: investment.currentPrice ?? investment.lastPrice,
-      currentMarketValue: investment.currentMarketValue ?? investment.nativeMarketValue,
-      metrics,
-    });
-  }
-
   return (
     <article className={`invest-row invest-holding-card invest-holding-card--${gainState}`}>
       <header className="invest-holding-head">

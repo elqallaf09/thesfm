@@ -359,8 +359,7 @@ function isCronAuthorized(request: NextRequest) {
   if (!secret) return false;
   const token = bearerToken(request);
   const headerSecret = request.headers.get('x-cron-secret')?.trim();
-  const querySecret = request.nextUrl.searchParams.get('secret')?.trim();
-  return token === secret || headerSecret === secret || querySecret === secret;
+  return token === secret || headerSecret === secret;
 }
 
 async function getScopeUser(request: NextRequest): Promise<ScopeUser | null | undefined> {
@@ -386,6 +385,53 @@ function parseBooleanInput(value: string | null | undefined) {
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 }
 
+type ReminderApiMessageKey =
+  | 'methodNotAllowed'
+  | 'unauthorized'
+  | 'misconfigured'
+  | 'invalidForceRequest'
+  | 'failed';
+
+const REMINDER_API_MESSAGES: Record<'ar' | 'en' | 'fr', Record<ReminderApiMessageKey, string>> = {
+  ar: {
+    methodNotAllowed: 'استخدم طلب POST لتشغيل التذكيرات يدوياً.',
+    unauthorized: 'يجب تسجيل الدخول لتشغيل التذكيرات.',
+    misconfigured: 'خدمة تذكيرات الاشتراكات غير مكتملة الإعداد.',
+    invalidForceRequest: 'يتطلب الإرسال الإجباري تذكيراً محدداً ومفتاح طلب صالحاً.',
+    failed: 'تعذر تشغيل تذكيرات الاشتراكات حالياً. حاول مرة أخرى لاحقاً.',
+  },
+  en: {
+    methodNotAllowed: 'Use a POST request to run reminders manually.',
+    unauthorized: 'Sign in to run subscription reminders.',
+    misconfigured: 'The subscription reminder service is not fully configured.',
+    invalidForceRequest: 'A forced send requires a specific reminder and a valid request key.',
+    failed: 'Subscription reminders could not be run right now. Try again later.',
+  },
+  fr: {
+    methodNotAllowed: 'Utilisez une requête POST pour lancer les rappels manuellement.',
+    unauthorized: 'Connectez-vous pour lancer les rappels d’abonnement.',
+    misconfigured: 'Le service de rappels d’abonnement n’est pas entièrement configuré.',
+    invalidForceRequest: 'Un envoi forcé exige un rappel précis et une clé de requête valide.',
+    failed: 'Les rappels d’abonnement ne peuvent pas être lancés pour le moment. Réessayez plus tard.',
+  },
+};
+
+function requestLanguage(request: NextRequest): 'ar' | 'en' | 'fr' {
+  const requested = request.nextUrl.searchParams.get('locale') || request.nextUrl.searchParams.get('lang');
+  const language = (requested || request.headers.get('accept-language') || 'ar').toLowerCase();
+  if (language.startsWith('fr')) return 'fr';
+  if (language.startsWith('en')) return 'en';
+  return 'ar';
+}
+
+function reminderApiMessage(request: NextRequest, key: ReminderApiMessageKey) {
+  return REMINDER_API_MESSAGES[requestLanguage(request)][key];
+}
+
+function validIdempotencyKey(value: string | null) {
+  return Boolean(value && /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/.test(value));
+}
+
 function todayIso(timezone = 'Asia/Kuwait') {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
@@ -399,17 +445,13 @@ function todayIso(timezone = 'Asia/Kuwait') {
 
 function cleanError(error: unknown) {
   const smtpDetails = getSmtpErrorDetails(error);
-  if (smtpDetails.responseCode || smtpDetails.response || smtpDetails.command) {
-    return [
-      smtpDetails.responseCode ? `responseCode=${smtpDetails.responseCode}` : null,
-      smtpDetails.command ? `command=${smtpDetails.command}` : null,
-      smtpDetails.rejected?.length ? `rejected=${smtpDetails.rejected.map(maskEmailForLog).join(',')}` : null,
-      smtpDetails.response ? `response=${smtpDetails.response.replace(/\s+/g, ' ').trim()}` : null,
-    ].filter(Boolean).join(' | ');
-  }
-  if (!error || typeof error !== 'object') return String(error ?? '');
-  const value = error as { code?: unknown; message?: unknown };
-  return [value.code, value.message].filter(Boolean).join(': ');
+  const candidate = smtpDetails.code || (error && typeof error === 'object'
+    ? (error as { code?: unknown }).code
+    : null);
+  const code = String(candidate ?? '').trim();
+  if (/^[A-Za-z0-9_.-]{1,64}$/.test(code)) return code;
+  if (smtpDetails.responseCode) return `SMTP_${smtpDetails.responseCode}`;
+  return 'INTERNAL_ERROR';
 }
 
 const NO_CUSTOMER_DATA_MESSAGE = 'لا توجد بيانات عملاء لإرسال التذكيرات.';
@@ -425,11 +467,20 @@ const INVALID_REMINDER_AMOUNT_REASON = 'REMINDER_AMOUNT_INVALID';
 const INVALID_REMINDER_TYPE_REASON = 'REMINDER_TYPE_INVALID';
 const SUBSCRIPTION_REMINDER_NOT_FOUND_MESSAGE = 'لم يتم العثور على تذكير مؤهل لهذا العميل حالياً.';
 
-function sanitizeEnvelopeForLog(envelope?: { from: string; to: string[] }) {
-  if (!envelope) return undefined;
+function safeSmtpDiagnostic(error: unknown) {
+  const details = getSmtpErrorDetails(error);
+  const responseCode = Number(details.responseCode);
+  const code = String(details.code ?? '').trim();
   return {
-    from: maskEmailForLog(envelope.from),
-    to: (envelope.to ?? []).map(maskEmailForLog),
+    category: responseCode >= 500
+      ? 'provider_rejected'
+      : responseCode >= 400
+        ? 'temporary_provider_failure'
+        : 'transport_failure',
+    responseCode: Number.isInteger(responseCode) && responseCode >= 100 && responseCode <= 599
+      ? responseCode
+      : undefined,
+    code: /^[A-Za-z0-9_.-]{1,64}$/.test(code) ? code : undefined,
   };
 }
 
@@ -552,7 +603,6 @@ function logReminderEmail(scope: string, input: {
     recipientType: input.recipientType,
     customerEmailExists: Boolean(input.context.customerEmail),
     subscriberEmailExists: Boolean(input.context.subscriber.email),
-    recipientEmail: input.recipientEmail ? maskEmailForLog(input.recipientEmail) : null,
     result: input.status,
     failureReason: input.failureReason ?? null,
     smtpCalled: input.smtpCalled,
@@ -736,7 +786,7 @@ function buildOrphanSubscriptionBundles(input: {
 
 async function insertRunLog(db: any, input: {
   userId: string;
-  runType: 'manual' | 'scheduled' | 'page_load';
+  runType: 'manual' | 'scheduled';
   status: 'completed' | 'failed' | 'partial' | 'skipped';
   baseDate: string;
   timezone: string;
@@ -1098,11 +1148,8 @@ async function sendRecipientReminderEmail(input: {
       replyTo: emailPayload.replyTo ?? contextReplyTo(input.context),
     });
     const smtp = {
-      accepted: sendResult.accepted.map(maskEmailForLog),
-      rejected: sendResult.rejected.map(maskEmailForLog),
+      category: 'accepted',
       responseCode: sendResult.responseCode,
-      response: sendResult.response,
-      envelope: sanitizeEnvelopeForLog(sendResult.envelope),
     };
     const metadata = emailMetadata({
       recipientType: input.recipientType,
@@ -1160,15 +1207,7 @@ async function sendRecipientReminderEmail(input: {
     };
   } catch (error) {
     const userMessage = smtpErrorUserMessage(error);
-    const smtpDetails = getSmtpErrorDetails(error);
-    const smtp = {
-      responseCode: smtpDetails.responseCode,
-      response: smtpDetails.response,
-      command: smtpDetails.command,
-      rejected: smtpDetails.rejected?.map(maskEmailForLog),
-      envelope: sanitizeEnvelopeForLog(smtpDetails.envelope),
-      stack: smtpDetails.stack,
-    };
+    const smtp = safeSmtpDiagnostic(error);
     const metadata = emailMetadata({
       recipientType: input.recipientType,
       status: 'failed',
@@ -1245,11 +1284,31 @@ function emailResultForRecipient(result: Awaited<ReturnType<typeof sendRecipient
   };
 }
 
-export async function GET(request: NextRequest) {
+async function executeReminderRun(request: NextRequest) {
+  const cronAuthorized = isCronAuthorized(request);
+  const requestedReminderId = request.nextUrl.searchParams.get('reminderId')?.trim() || null;
+  const forceEmailSend = parseBooleanInput(request.nextUrl.searchParams.get('force'));
+  const idempotencyKey = request.headers.get('x-idempotency-key')?.trim() || null;
+
+  if (forceEmailSend && (cronAuthorized || !requestedReminderId || !validIdempotencyKey(idempotencyKey))) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'INVALID_FORCE_REMINDER_REQUEST',
+        message: reminderApiMessage(request, 'invalidForceRequest'),
+      },
+      { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+    );
+  }
+
   const db = createServerSupabaseAdmin();
   if (!db) {
     return NextResponse.json(
-      { ok: false, code: 'SUBSCRIPTION_MANAGER_NOT_CONFIGURED' },
+      {
+        ok: false,
+        code: 'SUBSCRIPTION_MANAGER_NOT_CONFIGURED',
+        message: reminderApiMessage(request, 'misconfigured'),
+      },
       { status: 503, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
@@ -1257,21 +1316,15 @@ export async function GET(request: NextRequest) {
   const scopeUser = await getScopeUser(request);
   if (scopeUser === undefined) {
     return NextResponse.json(
-      { ok: false, code: 'UNAUTHORIZED' },
+      { ok: false, code: 'UNAUTHORIZED', message: reminderApiMessage(request, 'unauthorized') },
       { status: 401, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
   const scopeUserId = scopeUser?.id ?? null;
 
   const timezone = safeTimezone(request.nextUrl.searchParams.get('timezone') || request.headers.get('x-client-timezone'));
-  const runType = isCronAuthorized(request)
-    ? 'scheduled'
-    : request.nextUrl.searchParams.get('source') === 'page_load'
-      ? 'page_load'
-      : 'manual';
-  const requestedReminderId = request.nextUrl.searchParams.get('reminderId')?.trim() || null;
-  const forceEmailSend = parseBooleanInput(request.nextUrl.searchParams.get('force'));
-  const currentRunToken = runToken();
+  const runType = cronAuthorized ? 'scheduled' : 'manual';
+  const currentRunToken = forceEmailSend ? idempotencyKey as string : runToken();
   const startedAt = new Date().toISOString();
   const baseDate = request.nextUrl.searchParams.get('date')?.match(/^\d{4}-\d{2}-\d{2}$/)
     ? request.nextUrl.searchParams.get('date') as string
@@ -1343,28 +1396,26 @@ export async function GET(request: NextRequest) {
         recipient: 'both',
       });
 
-      if (runType !== 'page_load') {
-        await Promise.all(usersToLog.map(userId => insertRunLog(db, {
-          userId,
-          runType,
-          status: 'skipped',
-          baseDate,
-          timezone,
-          startedAt,
-          candidatesCount: 0,
-          processedCount: 0,
-          emailSentCount: 0,
-          emailFailedCount: 0,
-          smtpConfigured,
-          message,
-          metadata: {
-            scope: scopeUserId ? 'current_user' : 'all_users',
-            requestedReminderId,
-            smtpMissing: smtpStatus.missing,
-            summary: runSummary,
-          },
-        })));
-      }
+      await Promise.all(usersToLog.map(userId => insertRunLog(db, {
+        userId,
+        runType,
+        status: 'skipped',
+        baseDate,
+        timezone,
+        startedAt,
+        candidatesCount: 0,
+        processedCount: 0,
+        emailSentCount: 0,
+        emailFailedCount: 0,
+        smtpConfigured,
+        message,
+        metadata: {
+          scope: scopeUserId ? 'current_user' : 'all_users',
+          requestedReminderId,
+          smtpMissing: smtpStatus.missing,
+          summary: runSummary,
+        },
+      })));
 
       return NextResponse.json(
         {
@@ -1410,27 +1461,25 @@ export async function GET(request: NextRequest) {
           recipient: 'both' as const,
         };
       });
-      if (runType !== 'page_load') {
-        await Promise.all(usersToLog.map(userId => insertRunLog(db, {
-          userId,
-          runType,
-          status: 'completed',
-          baseDate,
-          timezone,
-          startedAt,
-          candidatesCount: 0,
-          processedCount: 0,
-          emailSentCount: 0,
-          emailFailedCount: 0,
-          smtpConfigured,
-          message,
-          metadata: {
-            scope: scopeUserId ? 'current_user' : 'all_users',
-            smtpMissing: smtpStatus.missing,
-            summary: runSummary,
-          },
-        })));
-      }
+      await Promise.all(usersToLog.map(userId => insertRunLog(db, {
+        userId,
+        runType,
+        status: 'completed',
+        baseDate,
+        timezone,
+        startedAt,
+        candidatesCount: 0,
+        processedCount: 0,
+        emailSentCount: 0,
+        emailFailedCount: 0,
+        smtpConfigured,
+        message,
+        metadata: {
+          scope: scopeUserId ? 'current_user' : 'all_users',
+          smtpMissing: smtpStatus.missing,
+          summary: runSummary,
+        },
+      })));
 
       return NextResponse.json(
         {
@@ -1546,56 +1595,54 @@ export async function GET(request: NextRequest) {
       };
 
       let insertedNotificationId: string | null = null;
-      if (runType !== 'page_load') {
-        const logPayload = {
-          user_id: candidate.client.user_id,
-          client_id: candidate.client.id,
-          subscription_id: candidate.subscription.id,
-          payment_id: candidate.payment?.id ?? null,
-          channel: 'in_app',
-          reminder_type: candidate.reminderType,
-          scheduled_for: new Date().toISOString(),
-          sent_at: new Date().toISOString(),
-          status: 'sent',
-          dedupe_key: candidate.dedupeKey,
-          metadata,
-        };
+      const logPayload = {
+        user_id: candidate.client.user_id,
+        client_id: candidate.client.id,
+        subscription_id: candidate.subscription.id,
+        payment_id: candidate.payment?.id ?? null,
+        channel: 'in_app',
+        reminder_type: candidate.reminderType,
+        scheduled_for: new Date().toISOString(),
+        sent_at: new Date().toISOString(),
+        status: 'sent',
+        dedupe_key: candidate.dedupeKey,
+        metadata,
+      };
 
-        const { data: inserted, error: insertError } = await db
-          .from('subscription_notifications')
-          .insert(logPayload)
-          .select('id')
-          .maybeSingle();
+      const { data: inserted, error: insertError } = await db
+        .from('subscription_notifications')
+        .insert(logPayload)
+        .select('id')
+        .maybeSingle();
 
-        if (insertError) {
-          if (String(insertError.code) === '23505') {
-            results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'skipped_duplicate', channel: 'in_app' });
-          } else {
-            results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'failed', channel: 'in_app', error: cleanError(insertError) });
-          }
+      if (insertError) {
+        if (String(insertError.code) === '23505') {
+          results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'skipped_duplicate', channel: 'in_app' });
         } else {
-          insertedNotificationId = inserted?.id ?? null;
-          await db.from('notifications').insert({
-            user_id: candidate.client.user_id,
-            type: 'subscription_payment_reminder',
-            title: candidate.daysRemaining < 0
-              ? `${candidate.client.full_name} has an overdue payment.`
-              : `${candidate.client.full_name} subscription payment is due.`,
-            message: `${formatMoney(amountDue, currency, 'en')} due on ${candidate.dueDate}.`,
-            read: false,
-            status: 'unread',
-            severity: candidate.daysRemaining < 0 ? 'danger' : candidate.daysRemaining <= 1 ? 'warning' : 'info',
-            source_module: 'business_subscriptions',
-            source_id: insertedNotificationId ?? candidate.payment?.id ?? candidate.subscription.id,
-            action_url: `/business/subscriptions/${candidate.client.id}`,
-            due_date: candidate.dueDate,
-            metadata,
-          });
-          results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'sent', channel: 'in_app' });
+          results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'failed', channel: 'in_app', error: cleanError(insertError) });
         }
+      } else {
+        insertedNotificationId = inserted?.id ?? null;
+        await db.from('notifications').insert({
+          user_id: candidate.client.user_id,
+          type: 'subscription_payment_reminder',
+          title: candidate.daysRemaining < 0
+            ? `${candidate.client.full_name} has an overdue payment.`
+            : `${candidate.client.full_name} subscription payment is due.`,
+          message: `${formatMoney(amountDue, currency, 'en')} due on ${candidate.dueDate}.`,
+          read: false,
+          status: 'unread',
+          severity: candidate.daysRemaining < 0 ? 'danger' : candidate.daysRemaining <= 1 ? 'warning' : 'info',
+          source_module: 'business_subscriptions',
+          source_id: insertedNotificationId ?? candidate.payment?.id ?? candidate.subscription.id,
+          action_url: `/business/subscriptions/${candidate.client.id}`,
+          due_date: candidate.dueDate,
+          metadata,
+        });
+        results.push({ userId: candidate.client.user_id, dedupeKey: candidate.dedupeKey, status: 'sent', channel: 'in_app' });
       }
 
-      if (!smtpConfigured || runType === 'page_load') {
+      if (!smtpConfigured) {
         if (!smtpConfigured) {
           const reasonMessage = `SMTP missing: ${smtpStatus.missing.join(', ')}`;
           for (const recipient of ['customer', 'subscriber'] as const) {
@@ -1725,55 +1772,53 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (runType !== 'page_load') {
-      await Promise.all(usersToLog.map(userId => {
-        const userCandidates = candidates.filter(candidate => candidate.client.user_id === userId);
-        const userResults = results.filter(result => result.userId === userId);
-        const userSummary = summariesByUser.get(userId) ?? initializeReminderSummary(requestedReminderId ?? undefined);
-        const firstCustomerFailure = userResults.find((result): result is RecipientSendResult =>
-          result.channel === 'email' &&
-          result.recipientType === 'customer' &&
-          result.status !== 'sent'
-        );
-        const firstSubscriberFailure = userResults.find((result): result is RecipientSendResult =>
-          result.channel === 'email' &&
-          result.recipientType === 'subscriber' &&
-          result.status !== 'sent'
-        );
-        const bothInvalid = firstCustomerFailure?.customerFailureReason === CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON &&
-          firstSubscriberFailure?.subscriberFailureReason === SUBSCRIBER_EMAIL_MISSING_OR_INVALID_REASON;
-        const status = userSummary.failedCount
-          ? (userSummary.sentCount ? 'partial' : 'failed')
-          : userSummary.notEligibleCount && !userSummary.eligibleCount
-            ? 'skipped'
-            : 'completed';
-        return insertRunLog(db, {
-          userId,
-          runType,
-          status,
-          baseDate,
-          timezone,
-          startedAt,
-          candidatesCount: userCandidates.length,
-          processedCount: userResults.length,
-          emailSentCount: userSummary.sentCount,
-          emailFailedCount: userSummary.failedCount,
-          smtpConfigured,
-          message: bothInvalid
-            ? BOTH_RECIPIENT_EMAILS_INVALID_MESSAGE
-            : firstCustomerFailure?.error ?? firstSubscriberFailure?.error ?? (!smtpConfigured ? `SMTP missing: ${smtpStatus.missing.join(', ')}` : runSummaryMessage(userSummary)),
-          metadata: {
-            scope: scopeUserId ? 'current_user' : 'all_users',
-            requestedReminderId,
-            forceEmailSend,
-            smtpMissing: smtpStatus.missing,
-            customerEmailFailures: userSummary.byRecipient.failedCustomer,
-            subscriberEmailFailures: userSummary.byRecipient.failedSubscriber,
-            summary: userSummary,
-          },
-        });
-      }));
-    }
+    await Promise.all(usersToLog.map(userId => {
+      const userCandidates = candidates.filter(candidate => candidate.client.user_id === userId);
+      const userResults = results.filter(result => result.userId === userId);
+      const userSummary = summariesByUser.get(userId) ?? initializeReminderSummary(requestedReminderId ?? undefined);
+      const firstCustomerFailure = userResults.find((result): result is RecipientSendResult =>
+        result.channel === 'email' &&
+        result.recipientType === 'customer' &&
+        result.status !== 'sent'
+      );
+      const firstSubscriberFailure = userResults.find((result): result is RecipientSendResult =>
+        result.channel === 'email' &&
+        result.recipientType === 'subscriber' &&
+        result.status !== 'sent'
+      );
+      const bothInvalid = firstCustomerFailure?.customerFailureReason === CUSTOMER_EMAIL_MISSING_OR_INVALID_REASON &&
+        firstSubscriberFailure?.subscriberFailureReason === SUBSCRIBER_EMAIL_MISSING_OR_INVALID_REASON;
+      const status = userSummary.failedCount
+        ? (userSummary.sentCount ? 'partial' : 'failed')
+        : userSummary.notEligibleCount && !userSummary.eligibleCount
+          ? 'skipped'
+          : 'completed';
+      return insertRunLog(db, {
+        userId,
+        runType,
+        status,
+        baseDate,
+        timezone,
+        startedAt,
+        candidatesCount: userCandidates.length,
+        processedCount: userResults.length,
+        emailSentCount: userSummary.sentCount,
+        emailFailedCount: userSummary.failedCount,
+        smtpConfigured,
+        message: bothInvalid
+          ? BOTH_RECIPIENT_EMAILS_INVALID_MESSAGE
+          : firstCustomerFailure?.error ?? firstSubscriberFailure?.error ?? (!smtpConfigured ? `SMTP missing: ${smtpStatus.missing.join(', ')}` : runSummaryMessage(userSummary)),
+        metadata: {
+          scope: scopeUserId ? 'current_user' : 'all_users',
+          requestedReminderId,
+          forceEmailSend,
+          smtpMissing: smtpStatus.missing,
+          customerEmailFailures: userSummary.byRecipient.failedCustomer,
+          subscriberEmailFailures: userSummary.byRecipient.failedSubscriber,
+          summary: userSummary,
+        },
+      });
+    }));
 
     const emailResults = results.filter((result): result is RecipientSendResult => result.channel === 'email');
     const firstCustomerValidation = emailResults.find(result =>
@@ -1806,11 +1851,43 @@ export async function GET(request: NextRequest) {
         { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
+    console.error('[business-subscriptions] reminder run failed', {
+      code: cleanError(error),
+      runType,
+      targeted: Boolean(requestedReminderId),
+    });
     return NextResponse.json(
-      { ok: false, code: 'SUBSCRIPTION_REMINDER_FAILED', message: cleanError(error) },
+      {
+        ok: false,
+        code: 'SUBSCRIPTION_REMINDER_FAILED',
+        message: reminderApiMessage(request, 'failed'),
+      },
       { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
     );
   }
 }
 
-export const POST = GET;
+export async function GET(request: NextRequest) {
+  if (!isCronAuthorized(request)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'METHOD_NOT_ALLOWED',
+        message: reminderApiMessage(request, 'methodNotAllowed'),
+      },
+      {
+        status: 405,
+        headers: {
+          Allow: 'POST',
+          'Cache-Control': 'private, no-store',
+        },
+      },
+    );
+  }
+
+  return executeReminderRun(request);
+}
+
+export async function POST(request: NextRequest) {
+  return executeReminderRun(request);
+}

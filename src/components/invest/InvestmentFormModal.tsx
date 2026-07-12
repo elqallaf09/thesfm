@@ -663,23 +663,6 @@ export function InvestmentFormModal({
       setMetalGrams(toInputNumber(initialValues.grams && initialValues.quantity ? initialValues.grams / initialValues.quantity : initialValues.grams, 10));
       setSelectedAsset(initialAsset);
       setSelectedExchange(normalizeMarketExchange(initialValues.market) ?? '');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Investments] prefilled edit form values', {
-          id: initialValues.id,
-          name: initialValues.name,
-          type: nextType,
-          symbol: initialValues.symbol,
-          providerSymbol: initialValues.providerSymbol,
-          market: initialValues.market,
-          currency: initialCurrency,
-          quantity: initialValues.quantity,
-          purchasePrice: initialValues.purchasePrice,
-          purchaseTotal: initialMarketPurchaseTotal ?? initialDirectPurchaseTotal,
-          currentPrice: initialValues.currentPrice ?? initialValues.lastPrice,
-          startDate: initialValues.startDate,
-          hasSelectedAsset: Boolean(initialAsset),
-        });
-      }
       return;
     }
 
@@ -925,25 +908,6 @@ export function InvestmentFormModal({
   function validate() {
     const nextErrors = buildErrors();
     setErrors(nextErrors);
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Investments] form validation result', {
-        mode,
-        valid: Object.keys(nextErrors).length === 0,
-        disabledReasons: Array.from(new Set(Object.values(nextErrors))),
-        formValues: {
-          type,
-          name,
-          currency: formCurrency,
-          quantity,
-          purchasePrice,
-          purchaseTotal: purchaseTotalInput,
-          currentPrice,
-          monthlyContribution,
-          expectedReturn,
-          startDate,
-        },
-      });
-    }
     return Object.keys(nextErrors).length === 0;
   }
 
@@ -1101,25 +1065,6 @@ export function InvestmentFormModal({
       pureMetalGrams: metalTotalGrams ?? undefined,
       priceSource,
     };
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Investments] form values before save', {
-        mode,
-        type: input.type,
-        name: input.name,
-        symbol: input.symbol,
-        providerSymbol: input.providerSymbol,
-        market: input.market,
-        currency: input.currency,
-        quantity: input.quantity,
-        purchasePrice: input.purchasePrice,
-        purchaseTotal: input.purchaseTotal,
-        currentPrice: input.currentPrice,
-        currentMarketValue: input.currentMarketValue,
-        lastPriceUpdatedAt: input.lastPriceUpdatedAt,
-        hasSelectedAsset: Boolean(selectedAsset),
-      });
-    }
 
     await onSave(input, { addAnother });
     if (addAnother && mode === 'create') resetCreateForm(type);

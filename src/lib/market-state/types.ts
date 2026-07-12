@@ -208,4 +208,11 @@ export type MarketSystemState = {
   featuresFailed: MarketCapabilityKey[];
   catalog: CatalogBreakdown;
   lastSynchronizedAt: string | null;
+  /** Additive delivery truth for distinguishing live results from cache and outage fallbacks. */
+  delivery?: {
+    source: 'live' | 'memory_cache' | 'persistent_cache' | 'unavailable';
+    cached: boolean;
+    delayed: boolean;
+    reason: string | null;
+  };
 };

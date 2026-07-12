@@ -32,6 +32,20 @@ const WIDTHS: Record<AppModalSize, string> = {
 
 let openModalCount = 0;
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function focusableElements(container: HTMLElement) {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+}
+
 function lockPageScroll() {
   openModalCount += 1;
   if (openModalCount === 1) {
@@ -64,33 +78,88 @@ export function AppModal({
   closeOnEscape = true,
 }: AppModalProps) {
   const [mounted, setMounted] = useState(false);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!open) return undefined;
-    return lockPageScroll();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !closeOnEscape) return undefined;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [closeOnEscape, onClose, open]);
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus({ preventScroll: true });
-  }, [open]);
+
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const unlockPageScroll = lockPageScroll();
+    const overlay = overlayRef.current;
+    const backgroundState = new Map<HTMLElement, { inert: boolean; ariaHidden: string | null }>();
+
+    Array.from(document.body.children).forEach(child => {
+      if (!(child instanceof HTMLElement) || child === overlay || child.tagName === 'SCRIPT' || child.tagName === 'STYLE') return;
+      backgroundState.set(child, {
+        inert: child.inert,
+        ariaHidden: child.getAttribute('aria-hidden'),
+      });
+      child.inert = true;
+      child.setAttribute('aria-hidden', 'true');
+    });
+
+    const dialog = panelRef.current;
+    const initialFocus = dialog?.querySelector<HTMLElement>('[autofocus]')
+      ?? (dialog ? focusableElements(dialog)[0] : null)
+      ?? dialog;
+    initialFocus?.focus({ preventScroll: true });
+
+    function handleKeyDown(event: KeyboardEvent) {
+      const currentDialog = panelRef.current;
+      if (!currentDialog) return;
+
+      if (event.key === 'Escape' && closeOnEscape) {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusable = focusableElements(currentDialog);
+      if (!focusable.length) {
+        event.preventDefault();
+        currentDialog.focus({ preventScroll: true });
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !currentDialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !currentDialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      backgroundState.forEach(({ inert, ariaHidden }, element) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+      unlockPageScroll();
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [closeOnEscape, open]);
 
   if (!mounted || !open) return null;
 
@@ -124,6 +193,7 @@ export function AppModal({
 
   return createPortal(
     <div
+      ref={overlayRef}
       className="sfm-modal-overlay"
       style={overlayStyle}
       role="presentation"
@@ -136,13 +206,14 @@ export function AppModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={subtitle ? descriptionId : undefined}
         tabIndex={-1}
         onMouseDown={event => event.stopPropagation()}
       >
         <div className="sfm-modal-header">
           <div>
             <h2 id={titleId}>{title}</h2>
-            {subtitle ? <p>{subtitle}</p> : null}
+            {subtitle ? <p id={descriptionId}>{subtitle}</p> : null}
           </div>
           <button type="button" className="sfm-modal-close" onClick={onClose} aria-label={closeLabel}>
             <X size={18} />

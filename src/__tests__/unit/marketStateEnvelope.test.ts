@@ -46,6 +46,7 @@ describe('buildErrorEnvelope', () => {
     expect(envelope.success).toBe(false);
     expect(envelope.status).toBe('error');
     expect(envelope.errors).toEqual([{ code: 'provider_rate_limited', messageKey: 'provider_rate_limited' }]);
+    expect(envelope.freshness.isStale).toBe(false);
     const serialized = JSON.stringify(envelope);
     expect(serialized).not.toMatch(/<html|<!doctype/i);
     expect(serialized).not.toMatch(/at Object\.|node_modules/); // no stack trace leakage

@@ -71,6 +71,11 @@ describe('normalizeFeatureDataStatus', () => {
     expect(status).toBe('empty');
   });
 
+  it('reports unavailable rather than empty when a rate-limited provider returned no data', () => {
+    const status = normalizeFeatureDataStatus({ isLoading: false, hasError: false, providerStatus: 'rate_limited', requested: 5, returned: 0 });
+    expect(status).toBe('unavailable');
+  });
+
   it('reports partial when fewer records returned than requested', () => {
     const status = normalizeFeatureDataStatus({ isLoading: false, hasError: false, providerStatus: 'connected', requested: 25, returned: 18 });
     expect(status).toBe('partial');

@@ -80,6 +80,14 @@ export type TraderQuoteLoadResult = {
   generatedAt: string;
 };
 
+export type TraderQuoteLoadOptions = {
+  forceFresh?: boolean;
+  concurrency?: number;
+  symbolMeta?: TraderCatalogSymbol[];
+  includeHistory?: boolean;
+  includeNews?: boolean;
+};
+
 type ProviderQuote = {
   provider: TraderQuoteProvider;
   providerName: TraderQuoteSource;
@@ -128,6 +136,7 @@ const NEWS_ENRICH_MAX_SYMBOLS = 12;
 const NEWS_CACHE_MS = 20 * 60 * 1000;
 const DEFAULT_QUOTE_PROVIDER_PRIORITY: ActiveQuoteProvider[] = ['fmp', 'yahoo', 'finnhub'];
 const newsSentimentCache = new Map<string, { expiresAt: number; value: RecommendationNewsSentiment }>();
+const pendingQuoteLoads = new Map<string, Promise<TraderQuoteLoadResult>>();
 
 function historyAssetType(assetType: TraderAssetType): 'stock' | 'etf' | 'crypto' | 'forex' | 'commodity' | 'gold' | 'index' {
   if (assetType === 'crypto') return 'crypto';
@@ -1717,9 +1726,9 @@ async function fetchFallbackProvider(
   return { quotes, loaded, failed, skipped, latencyMs: Date.now() - startedAt };
 }
 
-export async function fetchTraderQuotesDetailed(
+async function fetchTraderQuotesDetailedUncoalesced(
   symbols: string[],
-  options?: { forceFresh?: boolean; concurrency?: number; symbolMeta?: TraderCatalogSymbol[] },
+  options?: TraderQuoteLoadOptions,
 ): Promise<TraderQuoteLoadResult> {
   const byMeta = metaMap(options?.symbolMeta);
   const uniqueSymbols = Array.from(new Set(symbols.map(s => normalizedRequestedSymbol(s, byMeta)).filter(Boolean)));
@@ -1777,7 +1786,12 @@ export async function fetchTraderQuotesDetailed(
   }
 
   const assembledQuotes = uniqueSymbols.map(symbol => quotes.get(symbol) ?? unavailableQuote(symbol, 'all_providers_returned_no_quote', byMeta.get(upper(symbol))));
-  const orderedQuotes = await enrichQuotesWithNews(await enrichQuotesWithHistory(assembledQuotes));
+  const historyEnriched = options?.includeHistory === false
+    ? assembledQuotes
+    : await enrichQuotesWithHistory(assembledQuotes);
+  const orderedQuotes = options?.includeNews
+    ? await enrichQuotesWithNews(historyEnriched)
+    : historyEnriched;
   const firstLoadedProvider = loaded[0]?.provider ?? null;
   return {
     quotes: orderedQuotes,
@@ -1798,9 +1812,37 @@ export async function fetchTraderQuotesDetailed(
   };
 }
 
+/** Coalesce identical concurrent route loads so one render cannot multiply provider work. */
+export async function fetchTraderQuotesDetailed(
+  symbols: string[],
+  options?: TraderQuoteLoadOptions,
+): Promise<TraderQuoteLoadResult> {
+  const metaKey = (options?.symbolMeta ?? []).map(item => [
+    item.symbol,
+    item.providerSymbol,
+    item.currency,
+    item.exchange,
+    item.assetType,
+  ].join(':')).sort().join('|');
+  const key = JSON.stringify({
+    symbols: Array.from(new Set(symbols.map(upper))).sort(),
+    forceFresh: Boolean(options?.forceFresh),
+    includeHistory: options?.includeHistory !== false,
+    includeNews: Boolean(options?.includeNews),
+    metaKey,
+  });
+  const existing = pendingQuoteLoads.get(key);
+  if (existing) return existing;
+
+  const pending = fetchTraderQuotesDetailedUncoalesced(symbols, options)
+    .finally(() => pendingQuoteLoads.delete(key));
+  pendingQuoteLoads.set(key, pending);
+  return pending;
+}
+
 export async function fetchTraderQuotes(
   symbols: string[],
-  options?: { forceFresh?: boolean; concurrency?: number; symbolMeta?: TraderCatalogSymbol[] },
+  options?: TraderQuoteLoadOptions,
 ): Promise<TraderQuote[]> {
   return (await fetchTraderQuotesDetailed(symbols, options)).quotes;
 }
@@ -1825,12 +1867,19 @@ export function getConnectedProvider() {
     return Boolean(capability?.configured && capability.status !== 'rate_limited');
   }) ?? 'yahoo';
   const label = quoteProviderLabel(active);
+  const activeCapability = capabilities[active];
+  const status = activeCapability?.status === 'healthy'
+    ? 'connected' as const
+    : activeCapability?.status ?? 'degraded' as const;
   return {
     active: label,
     requested: quoteProviderLabel(fallbackOrder[0] ?? 'fmp'),
     provider: label,
-    configured: active === 'yahoo' ? true : Boolean(capabilities[active] && capabilities[active].configured),
-    status: 'connected' as const,
+    configured: active === 'yahoo' ? true : Boolean(activeCapability?.configured),
+    status,
+    healthMeasured: Boolean(activeCapability?.lastSuccessfulFetch),
+    lastSuccessAt: activeCapability?.lastSuccessfulFetch ?? null,
+    lastFailureReason: activeCapability?.lastError ?? activeCapability?.reason ?? null,
     fallbackOrder: fallbackOrder.map(quoteProviderLabel),
     capabilityMatrix: capabilities,
   };

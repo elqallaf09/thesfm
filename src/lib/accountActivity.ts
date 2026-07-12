@@ -109,30 +109,15 @@ export async function fetchAccountActivities(client: SupabaseClient, limit = 20)
   } = await client.auth.getUser();
 
   if (userError || !user?.id) {
-    if (process.env.NODE_ENV === 'development') {
-      console.info('[account-activity] no authenticated user; returning empty activity', {
-        hasError: Boolean(userError),
-      });
-    }
     return [];
   }
 
-  const cacheKey = accountActivityCacheKey(user.id).join(':');
   const { data, error } = await client
     .from(ACCOUNT_ACTIVITY_TABLE)
     .select('id,user_id,event_type,title,description,entity_type,entity_id,metadata,created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.info('[account-activity] fetch', {
-      userId: user.id,
-      count: Array.isArray(data) ? data.length : 0,
-      cacheKey,
-      source: ACCOUNT_ACTIVITY_TABLE,
-    });
-  }
 
   if (error) throw error;
   return normalizeAccountActivityRows(data);
@@ -145,13 +130,6 @@ export async function recordAccountActivity(client: SupabaseClient, input: Accou
   } = await client.auth.getUser();
 
   if (userError || !user?.id || user.id !== input.userId) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[account-activity] skipped insert due to user mismatch', {
-        authenticatedUserId: user?.id,
-        requestedUserId: input.userId,
-        eventType: input.eventType,
-      });
-    }
     return { skipped: true };
   }
 
@@ -166,15 +144,6 @@ export async function recordAccountActivity(client: SupabaseClient, input: Accou
   };
 
   const { error } = await client.from(ACCOUNT_ACTIVITY_TABLE).insert(payload);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.info('[account-activity] insert', {
-      userId: user.id,
-      eventType: input.eventType,
-      cacheKey: accountActivityCacheKey(user.id).join(':'),
-      ok: !error,
-    });
-  }
 
   if (error) throw error;
   return { skipped: false };

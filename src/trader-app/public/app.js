@@ -6,6 +6,7 @@
   const Recommendation = window.SFMRecommendation;
   let _marketSelectorOpen = false;
   let _themeMenuOpen = false;
+  let _mobileMoreOpen = false;
   let drawerReturnFocus = null;
   let drawerBodyOverflow = "";
   let drawerFocusPending = false;
@@ -1598,6 +1599,13 @@
     document.querySelectorAll(".mobile-nav [data-route]").forEach((node) => {
       node.textContent = routeNavText(node.dataset.route);
     });
+    const mobileMoreToggle = document.getElementById("mobile-more-toggle");
+    if (mobileMoreToggle) {
+      const moreLabel = terminalText("nav.more");
+      mobileMoreToggle.textContent = moreLabel;
+      mobileMoreToggle.setAttribute("aria-label", moreLabel);
+      mobileMoreToggle.setAttribute("title", moreLabel);
+    }
     setText(".brand-card .brand-name strong", terminalBrandFullTitle());
     setText(".topbar-title .eyebrow", terminalText("terminal.kicker"));
     setAttr(".terminal-sidebar", "aria-label", terminalText("nav.trading"));
@@ -1612,6 +1620,7 @@
     const tickerRow = document.getElementById("ticker-row");
     if (tickerRow) tickerRow.setAttribute("aria-label", terminalText("ticker.aria"));
     updateTerminalDocumentTitle();
+    syncMobileMoreActiveState();
   }
 
   function routeNavText(route) {
@@ -1637,9 +1646,64 @@
     document.querySelectorAll(`.terminal-sidebar [data-route='${route}']`).forEach((node) => {
       const label = node.querySelector(".nav-label");
       const small = node.querySelector("small");
-      if (label) label.textContent = terminalText(labelKey);
-      if (small) small.textContent = terminalText(subKey);
+      const primary = terminalText(labelKey);
+      const secondary = subKey ? terminalText(subKey) : "";
+      if (label) label.textContent = primary;
+      node.setAttribute("aria-label", primary);
+      node.setAttribute("title", primary);
+      node.dataset.tooltip = primary;
+      if (small) {
+        const repeated = !secondary || secondary.trim().toLocaleLowerCase() === primary.trim().toLocaleLowerCase();
+        small.hidden = repeated;
+        small.textContent = repeated ? "" : secondary;
+      }
     });
+  }
+
+  function mobileMoreItems() {
+    return Array.from(document.querySelectorAll("#mobile-more-menu [role='menuitem']"));
+  }
+
+  function syncMobileMoreActiveState() {
+    const toggle = document.getElementById("mobile-more-toggle");
+    if (!toggle) return;
+    const active = mobileMoreItems().some(item => item.dataset.route === state.route.id);
+    toggle.classList.toggle("is-active", active);
+    if (active) toggle.setAttribute("aria-current", "page");
+    else toggle.removeAttribute("aria-current");
+  }
+
+  function setMobileMoreOpen(open, options = {}) {
+    const toggle = document.getElementById("mobile-more-toggle");
+    const menu = document.getElementById("mobile-more-menu");
+    _mobileMoreOpen = Boolean(open && toggle && menu);
+    if (!toggle || !menu) return;
+    toggle.setAttribute("aria-expanded", _mobileMoreOpen ? "true" : "false");
+    menu.hidden = !_mobileMoreOpen;
+    if (_mobileMoreOpen && options.focusFirst) mobileMoreItems()[0]?.focus();
+    if (!_mobileMoreOpen && options.restoreFocus) toggle.focus();
+  }
+
+  function handleMobileMoreKeydown(event) {
+    if (!_mobileMoreOpen) return false;
+    const items = mobileMoreItems();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setMobileMoreOpen(false, { restoreFocus: true });
+      return true;
+    }
+    if (!items.length || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return false;
+    event.preventDefault();
+    const index = items.indexOf(document.activeElement);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? items.length - 1
+        : event.key === "ArrowDown"
+          ? (index < 0 ? 0 : (index + 1) % items.length)
+          : (index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length);
+    items[nextIndex]?.focus();
+    return true;
   }
 
   function setText(selector, text) {
@@ -2089,8 +2153,15 @@
     window.addEventListener("pagehide", unbindWorkspaceHostHistory);
     window.addEventListener("pageshow", bindWorkspaceHostHistory);
     document.addEventListener("click", (event) => {
+      if (_mobileMoreOpen && !event.target.closest("[data-mobile-more]")) setMobileMoreOpen(false);
       const link = event.target.closest("[data-route-link]");
       if (link) { event.preventDefault(); navigate(link.getAttribute("href")); return; }
+      const mobileMoreToggle = event.target.closest("[data-mobile-more-toggle]");
+      if (mobileMoreToggle) {
+        event.preventDefault();
+        setMobileMoreOpen(!_mobileMoreOpen, { focusFirst: !_mobileMoreOpen });
+        return;
+      }
       const languageOption = event.target.closest("[data-language]");
       if (languageOption) { event.preventDefault(); setTerminalLanguage(languageOption.dataset.language); return; }
       const themeToggle = event.target.closest("[data-theme-menu-toggle]");
@@ -2291,7 +2362,7 @@
       const refreshTrades = event.target.closest("[data-refresh-trades]");
       if (refreshTrades) { event.preventDefault(); refreshFollowedTrades(true); return; }
       const runSignals = event.target.closest("[data-run-signals]");
-      if (runSignals) { event.preventDefault(); runSignalRefresh(); return; }
+      if (runSignals) { event.preventDefault(); runSignalRefresh(runSignals); return; }
       const tickerToggle = event.target.closest("[data-toggle-ticker]");
       if (tickerToggle) { event.preventDefault(); state.settings.quickTickerVisible = !isQuickTickerVisible(); write(keys.settings, state.settings); render(); return; }
       const universePage = event.target.closest("[data-market-universe-page]");
@@ -2339,6 +2410,7 @@
     document.addEventListener("keydown", function(ev) {
       if (handleSymbolDrawerKeydown(ev)) return;
       if (dismissFocusedTooltip(ev)) return;
+      if (handleMobileMoreKeydown(ev)) return;
       if (_themeMenuOpen) {
         const _themeItems = Array.prototype.slice.call(document.querySelectorAll("[data-theme-switcher] [data-theme-option]") || []);
         const _themeIdx = _themeItems.indexOf(document.activeElement);
@@ -2534,6 +2606,7 @@
 
   function navigate(href) {
     if (!href) return;
+    setMobileMoreOpen(false);
     try { history.pushState({}, "", href); } catch (_e) { location.href = href; return; }
     state.route = readRoute();
     syncWorkspaceViewFromLocation(state.route.id);
@@ -2558,8 +2631,8 @@
       } else if (state.route.id === "news") {
         await loadNews(true);
       } else if (state.route.id === "ai-scanner" || state.route.id === "recommendations") {
-        state.rec = {};
-        state.signals = {};
+        state.rec = { status: "loading" };
+        state.signals = { status: "loading" };
         await ensureScanData(true);
       } else {
         state.marketCache.clear();
@@ -2777,6 +2850,7 @@
       if (active) node.setAttribute("aria-current", "page");
       else node.removeAttribute("aria-current");
     });
+    syncMobileMoreActiveState();
     const skipLink = document.querySelector(".terminal-skip-link");
     if (skipLink) {
       const skipLabel = textPair("تخطَّ إلى المحتوى", "Skip to content", "Aller au contenu");
@@ -2904,7 +2978,7 @@
   }
 
   function dashboardRecommendationsPanel(rec) {
-    return `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : unavailableSection(state.rec, textPair("لم يعرض مزود الأسعار توصيات قابلة للعرض.", "The price or recommendation provider did not return displayable data."), terminalText("settings"), `${ROOT}/settings`)}</section>`;
+    return `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : dataStateEmpty(recommendationFeedState(rec))}</section>`;
   }
 
   function dashboardNewsPanel() {
@@ -3078,7 +3152,7 @@
     } else if (active === "sources") {
       panel = `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("التغطية والحداثة", "Coverage and freshness", "Couverture et fraîcheur"))}</span><h2>${h(textPair("بيانات المزود", "Provider data", "Données fournisseur"))}</h2></div></div>${providerMarkets()}</section>`;
     } else {
-      const reason = String((payload && (payload.reason || payload.message)) || "").trim();
+      const reason = formatProviderError(payload && (payload.reason || payload.message), { empty: "" });
       panel = `<section class="panel issues-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("التغطية الجزئية", "Partial coverage", "Couverture partielle"))}</span><h2>${h(textPair("مشكلات السوق", "Market issues", "Problèmes du marché"))}</h2></div><button class="ghost-btn compact-btn" data-retry type="button">${h(terminalText("refresh"))}</button></div>
         ${issueCount ? `<div class="workspace-issue-list"><article><strong>${h(textPair("طلبات فشلت", "Failed requests", "Requêtes échouées"))}</strong><span class="ltr">${latinNumber(failed)}</span></article><article><strong>${h(textPair("أسعار غير متاحة", "Unavailable prices", "Cours indisponibles"))}</strong><span class="ltr">${latinNumber(unavailable)}</span></article>${reason ? `<article><strong>${h(terminalText("reason"))}</strong><span>${h(reason)}</span></article>` : ""}</div>` : miniEmpty()}
       </section>`;
@@ -3269,23 +3343,24 @@
   function scannerPage() {
     const r = recs(), u = arr(state.rec.unavailable), buy = r.filter(x => signal(x) === "buy"), sell = r.filter(x => signal(x) === "sell"), wait = r.filter(x => !["buy", "sell"].includes(signal(x)));
     const conf = confBuckets(r);
+    const feedState = recommendationFeedState(r);
     return `<div class="page-stack">${hero(textPair("ماسح الذكاء الاصطناعي بدون نتائج مصطنعة", "AI scanner without synthetic results"), textPair("يفرز الماسح التوصيات والإشارات القادمة من الـ API فقط. عند غياب المزود تظهر أسباب الغياب بوضوح.", "The scanner sorts only recommendations and signals returned by the API. When the provider is unavailable, the reason is shown clearly."), "AI SCANNER")}
       <section class="metric-grid">${stat(textPair("فرص شراء", "Buy opportunities"), buy.length, textPair("إشارات الشراء", "Buy signals"))}${stat(textPair("فرص بيع", "Sell opportunities"), sell.length, textPair("إشارات البيع", "Sell signals"))}${stat(textPair("انتظار", "Wait"), wait.length, textPair("انتظار", "Wait"))}${stat(terminalText("unavailable"), u.length, terminalText("unavailable"))}</section>
       <section class="dash-split">
         <article class="panel"><span class="eyebrow">${h(textPair("نتائج الماسح", "Scanner results"))}</span><h2>${h(textPair("نتائج الفحص", "Scanner results"))}</h2>
           <div class="seg-tabs" role="tablist"><button class="is-active" data-tab="scan" data-value="all">${h(terminalText("all"))}</button><button data-tab="scan" data-value="buy">${h(textPair("شراء", "Buy"))}</button><button data-tab="scan" data-value="sell">${h(textPair("بيع", "Sell"))}</button><button data-tab="scan" data-value="wait">${h(textPair("انتظار", "Wait"))}</button></div>
-          <div data-tabpanel="scan" data-render="scan">${r.length ? assetList(r) : selectionEmptyState()}</div>
+          <div data-tabpanel="scan" data-render="scan">${r.length ? assetList(r) : dataStateEmpty(feedState)}</div>
         </article>
         <aside class="dash-rail">
           <article class="panel"><span class="eyebrow">${h(terminalText("confidence"))}</span><h2>${h(textPair("توزيع الثقة", "Confidence distribution"))}</h2>${confBars(conf)}</article>
           <article class="panel"><span class="eyebrow">${h(textPair("رادار المخاطر", "Risk radar"))}</span><h2>${h(textPair("رادار المخاطر", "Risk radar"))}</h2>${riskRadar(r)}</article>
-          <article class="panel"><span class="eyebrow">${h(textPair("الأقوى", "Strongest"))}</span><h2>${h(textPair("أقوى الإشارات", "Strongest signals"))}</h2>${r.length ? assetList(topPicks(r, 3)) : miniEmpty()}</article>
+          <article class="panel"><span class="eyebrow">${h(textPair("الأقوى", "Strongest"))}</span><h2>${h(textPair("أقوى الإشارات", "Strongest signals"))}</h2>${r.length ? assetList(topPicks(r, 3)) : dataStateEmpty(feedState)}</article>
         </aside>
       </section>${disclaimer()}</div>`;
   }
   window.__tabRenderers = window.__tabRenderers || {};
-  window.__tabRenderers.scan = (v) => { const r = recs(); const f = v === "all" ? r : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : selectionEmptyState(); };
-  window.__tabRenderers.rec = (v) => { const r = recs(); const f = v === "all" ? r : v === "high" ? r.filter(x => (num(x.confidence, x.score, x.aiConfidence) || 0) >= 70) : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : selectionEmptyState(); };
+  window.__tabRenderers.scan = (v) => { const r = recs(); const f = v === "all" ? r : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : r.length ? selectionEmptyState() : dataStateEmpty(recommendationFeedState(r)); };
+  window.__tabRenderers.rec = (v) => { const r = recs(); const f = v === "all" ? r : v === "high" ? r.filter(x => (num(x.confidence, x.score, x.aiConfidence) || 0) >= 70) : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : r.length ? selectionEmptyState() : dataStateEmpty(recommendationFeedState(r)); };
 
   function watchPage() {
     const quick = unique(defaults.concat(["EURUSD", "SPY", "2222.SR", "ETHUSD"]));
@@ -3318,7 +3393,13 @@
     const smart = smartAlerts(), local = state.alerts;
     return `<div class="page-stack">${hero(textPair("مركز التنبيهات", "Alerts center"), textPair("أنشئ تنبيهات سعرية ونسبية وتنبيهات إشارة. التنبيهات الذكية من المزود، والمحلية تُحفظ على جهازك.", "Create price, percent, and signal alerts. Smart alerts come from the provider, and local alerts are saved on your device."), "ALERTS")}
       <section class="panel"><span class="eyebrow">${h(textPair("إنشاء تنبيه", "Create alert"))}</span><h2>${h(textPair("إنشاء تنبيه", "Create alert"))}</h2>
-        <form id="alert-form" class="inline-form"><input name="symbol" dir="ltr" placeholder="${h(textPair("الرمز مثل AAPL", "Symbol e.g. AAPL"))}" /><select name="type"><option value="price">${h(textPair("سعر يصل إلى", "Price reaches"))}</option><option value="percent">${h(textPair("تغير نسبة %", "Percent change %"))}</option><option value="signal">${h(textPair("إشارة AI", "AI signal"))}</option><option value="news">${h(textPair("خبر مؤثر", "Market-moving news"))}</option></select><input name="value" inputmode="decimal" placeholder="${h(textPair("القيمة", "Value"))}" /><button class="action-btn" type="submit">${h(textPair("إضافة", "Add"))}</button></form>
+        <form id="alert-form" class="trade-form-grid">
+          <label>${h(textPair("الرمز", "Symbol", "Symbole"))}<input name="symbol" dir="ltr" placeholder="AAPL" maxlength="24" pattern="[A-Za-z0-9._^=/-]{1,24}" autocomplete="off" required /></label>
+          <label>${h(textPair("نوع التنبيه", "Alert type", "Type d’alerte"))}<select name="type" required><option value="price">${h(textPair("سعر يصل إلى", "Price reaches", "Cours atteint"))}</option><option value="percent">${h(textPair("تغير نسبة %", "Percent change %", "Variation en %"))}</option><option value="signal">${h(textPair("إشارة AI", "AI signal", "Signal IA"))}</option><option value="news">${h(textPair("خبر مؤثر", "Market-moving news", "Actualité influente"))}</option></select></label>
+          <label>${h(textPair("القيمة عند الحاجة", "Value when required", "Valeur si nécessaire"))}<input name="value" type="number" inputmode="decimal" step="any" placeholder="0.00" /></label>
+          <button class="action-btn" type="submit">${h(textPair("إضافة", "Add", "Ajouter"))}</button>
+          <p id="alert-form-error" class="form-field-error wide" role="alert" aria-live="assertive" hidden></p>
+        </form>
       </section>
       <section class="alert-grid">
         <article class="panel"><span class="eyebrow">${h(textPair("تنبيهات ذكية", "Smart alerts"))}</span><h2>${h(textPair("تنبيهات المزود", "Provider alerts"))}</h2>${smart.length ? alertList(smart) : emptyState(textPair("لا توجد تنبيهات ذكية", "No smart alerts"), textPair("لم يرجع المزود تنبيهات حالية.", "The provider did not return current alerts."), textPair("التوصيات", "Recommendations"), `${ROOT}/recommendations`)}</article>
@@ -3329,12 +3410,13 @@
   function recPage() {
     const r = recs(), buy = r.filter(x => signal(x) === "buy"), sell = r.filter(x => signal(x) === "sell"), wait = r.filter(x => !["buy", "sell"].includes(signal(x)));
     const filtered = recommendationFilteredItems(r);
+    const feedState = recommendationFeedState(r);
     const tabs = [
       { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
       { id: "data", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: filtered.length },
       { id: "filters", label: textPair("الفلاتر", "Filters", "Filtres") },
       { id: "sources", label: textPair("المصادر", "Sources", "Sources") },
-      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: state.rec && state.rec.message ? 1 : 0 }
+      { id: "issues", label: textPair("المشكلات", "Issues", "Problèmes"), count: [state.rec, state.signals].some(responseFailed) ? 1 : 0 }
     ];
     const filterButtons = [
       ["all", terminalText("all")], ["buy", textPair("شراء", "Buy", "Achat")], ["sell", textPair("بيع", "Sell", "Vente")],
@@ -3343,7 +3425,7 @@
     return `<div class="page-stack recommendation-workspace">${hero(textPair("التوصيات والتحليل", "Recommendations and analysis"), textPair("توصيات الذكاء مع حالة كل صفقة: مفتوحة، تحت المتابعة، مكتملة، فاشلة أو منتهية. كل بطاقة لها زر تحليل.", "AI recommendations with each trade status: open, under watch, completed, failed, or expired. Every card has an analysis button."), "RECOMMENDATIONS")}
       ${workspaceTabBar("recommendations", tabs, textPair("مساحة التوصيات", "Recommendations workspace", "Espace des recommandations"))}
       ${workspacePanel("recommendations", "overview", `<section class="metric-grid">${stat(terminalText("all"), r.length, terminalText("all"))}${stat(textPair("شراء", "Buy"), buy.length, textPair("شراء", "Buy"))}${stat(textPair("بيع", "Sell"), sell.length, textPair("بيع", "Sell"))}${stat(textPair("انتظار", "Wait"), wait.length, textPair("انتظار", "Wait"))}</section><section class="panel workspace-next-action"><span class="eyebrow">${h(textPair("الخطوة التالية", "Next action", "Prochaine action"))}</span><h2>${h(r.length ? textPair("راجع الإشارات ذات الثقة الأعلى أولاً", "Review the highest-confidence signals first", "Vérifiez d’abord les signaux les plus fiables") : textPair("لا توجد توصيات قابلة للعرض", "No displayable recommendations", "Aucune recommandation disponible"))}</h2><button class="action-btn" type="button" data-workspace-tab="data" data-workspace-scope="recommendations">${h(textPair("فتح التوصيات", "Open recommendations", "Ouvrir les recommandations"))}</button></section>`)}
-      ${workspacePanel("recommendations", "data", `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الإشارات", "Signals", "Signaux"))}</span><h2>${h(textPair("قائمة التوصيات", "Recommendation list", "Liste des recommandations"))}</h2></div><span class="state-badge">${h(latinNumber(filtered.length))}</span></div>${filtered.length ? recCards(filtered) : selectionEmptyState()}</section>`)}
+      ${workspacePanel("recommendations", "data", `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الإشارات", "Signals", "Signaux"))}</span><h2>${h(textPair("قائمة التوصيات", "Recommendation list", "Liste des recommandations"))}</h2></div><span class="state-badge ${feedState.tone}">${h(feedState.label)}</span></div>${filtered.length ? recCards(filtered) : r.length ? selectionEmptyState() : dataStateEmpty(feedState)}</section>`)}
       ${workspacePanel("recommendations", "filters", `<section class="panel compact-filter-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الفلاتر", "Filters", "Filtres"))}</span><h2>${h(textPair("السوق ونوع الإشارة", "Market and signal type", "Marché et type de signal"))}</h2></div></div><div class="rec-market-chips">${MARKETS.map(m => `<button class="chip ${state.settings.defaultMarket === m.id ? "is-active" : ""}" data-rec-market="${m.id}">${h(marketName(m))}</button>`).join("")}</div><div class="seg-tabs" role="group" aria-label="${h(textPair("نوع الإشارة", "Signal type", "Type de signal"))}">${filterButtons}</div><button class="action-btn" type="button" data-workspace-tab="data" data-workspace-scope="recommendations">${h(textPair("عرض النتائج", "View results", "Voir les résultats"))}</button></section>`)}
       ${workspacePanel("recommendations", "sources", `<section class="panel"><span class="eyebrow">${h(textPair("المصادر", "Sources", "Sources"))}</span><h2>${h(textPair("مصدر التوصيات وحالة البيانات", "Recommendation source and data status", "Source et état des données"))}</h2>${publicSystemStatus()}</section>`)}
       ${workspacePanel("recommendations", "issues", recommendationIssuesPanel())}
@@ -3359,7 +3441,9 @@
   }
 
   function recommendationIssuesPanel() {
-    const issue = formatProviderError(state.rec && (state.rec.message || state.rec.error || state.rec.reason), { empty: "" });
+    const feedState = recommendationFeedState(recs());
+    const failed = [state.rec, state.signals].some(responseFailed);
+    const issue = failed ? feedState.body : formatProviderError(state.rec && (state.rec.message || state.rec.error || state.rec.reason), { empty: "" });
     return `<section class="panel workspace-issues-panel"><span class="eyebrow">${h(textPair("المشكلات", "Issues", "Problèmes"))}</span><h2>${h(issue ? textPair("توجد مشكلة في تغطية التوصيات", "Recommendation coverage needs attention", "La couverture nécessite une vérification") : textPair("لا توجد مشكلات نشطة", "No active issues", "Aucun problème actif"))}</h2>${issue ? `<details><summary>${h(textPair("عرض السبب الآمن", "Show safe reason", "Afficher la raison"))}</summary><p>${h(issue)}</p><button class="ghost-btn" data-retry type="button">${h(terminalText("retry"))}</button></details>` : `<p class="provider-clean-note">${h(textPair("اكتملت آخر محاولة بدون مشكلة قابلة للعرض.", "The latest attempt completed without a displayable issue.", "La dernière tentative ne présente aucun problème."))}</p>`}</section>`;
   }
 
@@ -4404,9 +4488,11 @@
 
   function drawerSummaryTab({ asset }) {
     const recommendation = sharedRecommendation(asset);
+    const dataState = assetDataState(asset, recommendation);
+    const evidenceReady = dataState.key === "available";
     const c = currency(asset);
     const chg = asset.changePercent;
-    return `<div class="drawer-summary"><div class="drawer-price"><span>${h(terminalText("price"))}</span><strong class="ltr">${h(price(asset.price, c))}</strong><b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></div><div class="drawer-metrics">${drawerMetric(textPair("التوصية", "Recommendation", "Recommandation"), recommendationLabel(recommendation), recommendationTone(recommendation))}${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(textPair("المخاطر", "Risk", "Risque"), asset.risk || asset.riskLevel ? riskShort(asset.risk || asset.riskLevel) : terminalText("unavailable"))}${drawerMetric(textPair("الاتجاه", "Trend", "Tendance"), trendText(asset.trend || asset.technicalTrend || asset.direction) || terminalText("unavailable"))}</div>${miniChart(asset)}${stockCardMeta(asset)}</div>`;
+    return `<div class="drawer-summary"><div class="drawer-price"><span>${h(terminalText("price"))}</span><strong class="ltr">${h(price(asset.price, c))}</strong><b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></div><div class="drawer-metrics">${drawerMetric(textPair("التوصية", "Recommendation", "Recommandation"), evidenceReady ? recommendationLabel(recommendation) : dataState.label, evidenceReady ? recommendationTone(recommendation) : dataState.tone)}${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(textPair("المخاطر", "Risk", "Risque"), asset.risk || asset.riskLevel ? riskShort(asset.risk || asset.riskLevel) : terminalText("unavailable"))}${drawerMetric(textPair("الاتجاه", "Trend", "Tendance"), trendText(asset.trend || asset.technicalTrend || asset.direction) || terminalText("unavailable"))}</div>${!evidenceReady ? `<p class="provider-warning">${h(dataState.body)}</p>` : ""}${miniChart(asset)}${stockCardMeta(asset)}</div>`;
   }
 
   function drawerTechnicalTab({ asset, cachedDetail }) {
@@ -4450,10 +4536,12 @@
   function drawerRecommendationTab({ asset, rec }) {
     const source = rec || asset;
     const recommendation = sharedRecommendation(source);
+    const dataState = assetDataState({ ...asset, ...source }, recommendation);
+    const evidenceReady = dataState.key === "available";
     const c = currency(asset);
     const target = num(source.target, source.targetPrice, recommendation.targetPrice);
     const stop = num(source.stop, source.stopLoss, recommendation.stopLoss);
-    return `<div class="drawer-recommendation"><div class="drawer-recommendation-verdict ${recommendationTone(recommendation)}"><span>${h(textPair("التوصية", "Recommendation", "Recommandation"))}</span><strong>${h(recommendationLabel(recommendation))}</strong></div><div class="drawer-metrics">${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(terminalText("target"), target === null ? terminalText("unavailable") : price(target, c))}${drawerMetric(terminalText("stop"), stop === null ? terminalText("unavailable") : price(stop, c))}${drawerMetric(textPair("الأفق", "Horizon", "Horizon"), source.timeframe || source.horizon || source.duration || terminalText("unavailable"))}</div>${recommendation.reason || source.reason ? `<p>${h(translateUiText(recommendation.reason || source.reason))}</p>` : `<p>${h(textPair("لم يقدم المزود سبباً تفصيلياً.", "The provider supplied no detailed rationale.", "Le fournisseur n’a fourni aucune justification détaillée."))}</p>`}</div>`;
+    return `<div class="drawer-recommendation"><div class="drawer-recommendation-verdict ${evidenceReady ? recommendationTone(recommendation) : dataState.tone}"><span>${h(textPair("التوصية", "Recommendation", "Recommandation"))}</span><strong>${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</strong></div><div class="drawer-metrics">${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(terminalText("target"), evidenceReady && target !== null ? price(target, c) : terminalText("unavailable"))}${drawerMetric(terminalText("stop"), evidenceReady && stop !== null ? price(stop, c) : terminalText("unavailable"))}${drawerMetric(textPair("الأفق", "Horizon", "Horizon"), evidenceReady ? source.timeframe || source.horizon || source.duration || terminalText("unavailable") : dataState.label)}</div><p>${h(evidenceReady ? safeStateText(recommendation.reason || source.reason, textPair("لم يقدم المزود سبباً تفصيلياً.", "The provider supplied no detailed rationale.", "Le fournisseur n’a fourni aucune justification détaillée.")) : dataState.body)}</p></div>`;
   }
 
   function drawerProviderTab({ asset, cachedDetail }) {
@@ -4471,7 +4559,7 @@
   }
 
   function drawerMetric(label, value, tone = "") {
-    return `<span class="drawer-metric ${tone}"><small>${h(label)}</small><b>${h(value || terminalText("unavailable"))}</b></span>`;
+    return `<span class="drawer-metric ${tone}"><small>${h(label)}</small><b class="${isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;
   }
 
   function drawerUnavailable(title, body) {
@@ -4620,28 +4708,183 @@
   function marketDataEmptyHtml(extraClass = "") {
     return `<div class="market-card-empty ${h(extraClass)}"><strong>${h(noMarketDataTitle())}</strong><span>${h(noMarketDataBody())}</span></div>`;
   }
+
+  function marketDataStateCopy(key, detail = {}) {
+    const states = {
+      loading: {
+        tone: "", label: textPair("قيد التحميل", "Loading", "Chargement"),
+        title: textPair("التحليل قيد التنفيذ", "Analysis in progress", "Analyse en cours"),
+        body: textPair("لا تزال المصادر المدعومة قيد المحاولة.", "Supported sources are still being attempted.", "Les sources prises en charge sont toujours en cours d’interrogation.")
+      },
+      empty: {
+        tone: "muted", label: textPair("لا توجد نتائج", "No results", "Aucun résultat"),
+        title: textPair("لا توجد نتائج مطابقة", "No matching results", "Aucun résultat correspondant"),
+        body: textPair("اكتمل الطلب بنجاح ولم يرجع بيانات تطابق السوق أو الفلاتر الحالية.", "The request succeeded but returned no data matching the current market or filters.", "La requête a abouti, mais aucune donnée ne correspond au marché ou aux filtres actuels.")
+      },
+      partial: {
+        tone: "warn", label: textPair("بيانات جزئية", "Partial data", "Données partielles"),
+        title: textPair("تم تحميل جزء من البيانات", "Some data was loaded", "Une partie des données a été chargée"),
+        body: textPair("نجحت بعض المصادر أو الحقول، بينما تعذرت أجزاء أخرى. لا تُعرض ثقة أو توصية نهائية للمدخلات الناقصة.", "Some sources or fields succeeded while others failed. Confidence and final recommendations are hidden for incomplete inputs.", "Certaines sources ou données ont abouti, d’autres non. La confiance et la recommandation finale sont masquées pour les entrées incomplètes.")
+      },
+      stale: {
+        tone: "warn", label: textPair("بيانات قديمة", "Stale data", "Données anciennes"),
+        title: textPair("تُعرض آخر بيانات صالحة", "Showing the last valid data", "Affichage des dernières données valides"),
+        body: textPair("البيانات المخزنة أقدم من حد الحداثة المطلوب ولم ينجح التحديث بعد.", "Cached data is older than the freshness threshold and the refresh has not succeeded yet.", "Les données en cache dépassent le seuil de fraîcheur et l’actualisation n’a pas encore abouti.")
+      },
+      delayed: {
+        tone: "warn", label: textPair("بيانات متأخرة", "Delayed data", "Données différées"),
+        title: textPair("البيانات ليست لحظية", "Data is not real time", "Les données ne sont pas en temps réel"),
+        body: textPair("يعرض المزود بيانات متأخرة. لا تُعامل كبيانات مباشرة.", "The provider is returning delayed data. It is not presented as live data.", "Le fournisseur renvoie des données différées, qui ne sont pas présentées comme étant en direct.")
+      },
+      cached: {
+        tone: "warn", label: textPair("بيانات مخزنة", "Cached data", "Données en cache"),
+        title: textPair("تم استخدام النسخة المخزنة", "Cached data is being used", "Les données en cache sont utilisées"),
+        body: textPair("تعذر التحديث المباشر، لذلك تُعرض آخر نسخة صالحة مع توضيح حالتها.", "Live refresh failed, so the last valid copy is shown with its status disclosed.", "L’actualisation en direct a échoué ; la dernière copie valide est affichée avec son statut.")
+      },
+      unavailable: {
+        tone: "muted", label: textPair("غير متاح", "Unavailable", "Indisponible"),
+        title: textPair("البيانات غير متاحة حالياً", "Data is currently unavailable", "Les données sont indisponibles"),
+        body: textPair("لم تُرجع المصادر المدعومة بيانات قابلة للعرض لهذا الأصل.", "Supported sources returned no displayable data for this asset.", "Les sources prises en charge n’ont renvoyé aucune donnée affichable pour cet actif.")
+      },
+      unsupported: {
+        tone: "muted", label: textPair("غير مدعوم", "Unsupported", "Non pris en charge"),
+        title: textPair("الميزة غير مدعومة", "This feature is unsupported", "Cette fonction n’est pas prise en charge"),
+        body: textPair("لا يدعم أي مزود مهيأ هذه الميزة أو هذا النوع من الأصول.", "No configured provider supports this feature or asset type.", "Aucun fournisseur configuré ne prend en charge cette fonction ou ce type d’actif.")
+      },
+      insufficient: {
+        tone: "warn", label: textPair("بيانات غير كافية", "Insufficient data", "Données insuffisantes"),
+        title: textPair("البيانات لا تكفي لإنتاج توصية", "There is not enough data for a recommendation", "Les données sont insuffisantes pour une recommandation"),
+        body: textPair("توجد بعض البيانات، لكن مدخلات التحليل المطلوبة غير مكتملة.", "Some data exists, but required analysis inputs are incomplete.", "Certaines données existent, mais les entrées requises pour l’analyse sont incomplètes.")
+      },
+      rate_limited: {
+        tone: "warn", label: textPair("تم تجاوز حد الاستخدام", "Rate limited", "Limite d’utilisation atteinte"),
+        title: textPair("أوقف المزود الطلبات مؤقتاً", "The provider temporarily limited requests", "Le fournisseur a temporairement limité les requêtes"),
+        body: textPair("حاول مرة أخرى لاحقاً. لن تُعرض قيم مصطنعة أثناء الانتظار.", "Try again later. No synthetic values are shown while waiting.", "Réessayez plus tard. Aucune valeur artificielle n’est affichée pendant l’attente.")
+      },
+      misconfigured: {
+        tone: "warn", label: textPair("إعداد غير مكتمل", "Misconfigured", "Configuration incomplète"),
+        title: textPair("إعداد المزود غير مكتمل", "Provider configuration is incomplete", "La configuration du fournisseur est incomplète"),
+        body: textPair("يجب إكمال إعداد المزود أو صلاحياته قبل تحميل هذه البيانات.", "Complete the provider configuration or permissions before loading this data.", "Terminez la configuration ou les autorisations du fournisseur avant de charger ces données.")
+      },
+      error: {
+        tone: "warn", label: textPair("تعذر التحميل", "Request failed", "Échec de la requête"),
+        title: textPair("تعذر الاتصال بالمصادر المدعومة", "Supported sources could not be reached", "Impossible de joindre les sources prises en charge"),
+        body: textPair("فشل الطلب ولم تُعرض رسالة المزود الخام أو بيانات بديلة مصطنعة.", "The request failed; raw provider errors and synthetic fallback data are not shown.", "La requête a échoué ; les erreurs brutes du fournisseur et les données de remplacement artificielles ne sont pas affichées.")
+      },
+      available: {
+        tone: "ok", label: textPair("متاح", "Available", "Disponible"),
+        title: textPair("تم تحميل البيانات", "Data loaded", "Données chargées"),
+        body: textPair("اكتمل الطلب بالمدخلات المطلوبة.", "The request completed with the required inputs.", "La requête a abouti avec les entrées requises.")
+      }
+    };
+    return { key, ...(states[key] || states.unavailable), ...detail };
+  }
+
+  function sourceRecommendationStatus(asset) {
+    const a = asset || {};
+    const candidates = [a.normalizedRecommendation, a.finalRecommendationNormalized, a.sharedRecommendation, a.finalRecommendationStatus, a.final_recommendation_status, a.recommendationStatus, a.recommendation_status, a.finalRecommendation, a.final_recommendation, a.finalRecommendationAr, a.final_recommendation_ar, a.action, a.signal, a.recommendation, a.side];
+    for (const candidate of candidates) {
+      const parsed = Recommendation.parseRecommendationStatus(candidate);
+      if (parsed) return parsed;
+    }
+    return "";
+  }
   function assetDataState(asset, recommendation) {
     const a = normalizeQuote(norm(asset));
     const rec = recommendation || sharedRecommendation(a);
-    const qualitySource = a.dataQuality || a.data_quality || (a.providerStatus && a.providerStatus.dataQuality);
+    const providerRecord = a.providerStatus && typeof a.providerStatus === "object" ? a.providerStatus : {};
+    const qualitySource = a.dataQuality || a.data_quality || providerRecord.dataQuality || providerRecord.freshness || a.cacheStatus;
     const quality = qualitySource ? normalizedDataQuality(qualitySource) : "";
-    const providerStatus = String((a.providerStatus && (a.providerStatus.status || a.providerStatus.code)) || a.provider_status || "").toLowerCase();
+    const providerStatus = String((providerRecord.status || providerRecord.code) || a.provider_status || a.statusCode || "").toLowerCase();
+    const failureText = [a.error, a.message, a.reason, a.unavailableReason, providerRecord.error, providerRecord.reason, providerRecord.message, providerStatus].filter(Boolean).join(" ");
+    const hasPrice = isValidPrice(a.price);
+    const isRateLimited = providerStatus === "rate_limited" || isRateLimitText(failureText);
+    const isMisconfigured = /not_configured|missing_provider|misconfigured|configuration_missing|invalid_config/.test(failureText.toLowerCase());
+    const isUnsupported = /unsupported|not_supported|not_entitled/.test(failureText.toLowerCase()) || a.supported === false;
+    const isError = /provider_error|request_failed|failed|failure|timeout|unauthorized|forbidden|invalid_request/.test(failureText.toLowerCase());
     const unavailable = a.available === false
-      || !isValidPrice(a.price)
+      || !hasPrice
       || a.priceUnavailable === true
       || a.dataUnavailable === true
       || quality === "unavailable"
       || providerStatus === "unavailable"
       || providerStatus === "missing";
-    if (unavailable) return { key: "unavailable", tone: "muted", label: textPair("\u063a\u064a\u0631 \u0645\u062a\u0627\u062d", "Unavailable"), quality: quality || "unavailable" };
+    if (!hasPrice || unavailable) {
+      if (isRateLimited) return marketDataStateCopy("rate_limited", { quality: quality || "unavailable" });
+      if (isMisconfigured) return marketDataStateCopy("misconfigured", { quality: quality || "unavailable" });
+      if (isUnsupported) return marketDataStateCopy("unsupported", { quality: quality || "unavailable" });
+      if (isError) return marketDataStateCopy("error", { quality: quality || "unavailable" });
+      return marketDataStateCopy("unavailable", { quality: quality || "unavailable" });
+    }
     if ((rec && rec.status === "insufficient_data")
       || a.technicalAvailable === false
       || a.technical_available === false
-      || ["partial", "delayed", "late", "cached"].includes(quality)) {
-      return { key: "insufficient", tone: "warn", label: textPair("\u0628\u064a\u0627\u0646\u0627\u062a \u063a\u064a\u0631 \u0643\u0627\u0641\u064a\u0629", "Insufficient data"), quality: quality || "partial" };
+      || !sourceRecommendationStatus(a)) {
+      return marketDataStateCopy("insufficient", { quality: quality || "partial" });
     }
-    return { key: "available", tone: "ok", label: textPair("\u0645\u062a\u0627\u062d", "Available"), quality: quality || "live" };
+    if (quality === "stale" || a.stale === true || providerRecord.stale === true) return marketDataStateCopy("stale", { quality: "stale" });
+    if (quality === "delayed" || quality === "late" || a.delayed === true || providerRecord.delayed === true) return marketDataStateCopy("delayed", { quality: "delayed" });
+    if (quality === "cached" || a.cached === true || providerRecord.cached === true) return marketDataStateCopy("cached", { quality: "cached" });
+    if (quality === "partial" || a.partial === true || providerRecord.partial === true || isError) return marketDataStateCopy("partial", { quality: "partial" });
+    return marketDataStateCopy("available", { quality: quality || "live" });
   }
+
+  function payloadFeatureState(payload) {
+    if (!payload || !Object.keys(payload).length) return marketDataStateCopy("loading");
+    const provider = payload.dataProvider || payload.provider || {};
+    const rawStatus = [payload.status, payload.code, payload.legacyStatus, payload.normalizedStatus && payload.normalizedStatus.status, provider.status].filter(Boolean).join(" ").toLowerCase();
+    const reason = [payload.message, payload.error, payload.reason, payload.failureReason, rawStatus].filter(Boolean).join(" ");
+    const quality = normalizedDataQuality(payload.dataQuality || payload.data_quality || payload.freshness || payload.cacheStatus || "");
+    if (/loading|pending|checking|fetching/.test(rawStatus)) return marketDataStateCopy("loading");
+    if (rawStatus === "rate_limited" || isRateLimitText(reason)) return marketDataStateCopy("rate_limited");
+    if (/not_configured|missing_provider|misconfigured|configuration_missing|invalid_config/.test(reason.toLowerCase())) return marketDataStateCopy("misconfigured");
+    if (payload.routeUnavailable || /unsupported|not_supported|not_entitled/.test(reason.toLowerCase())) return marketDataStateCopy("unsupported");
+    if (payload.timeout || /provider_error|request_failed|failed|failure|timeout|unauthorized|forbidden|invalid_request/.test(reason.toLowerCase())) return marketDataStateCopy("error");
+    if (quality === "stale" || payload.stale === true) return marketDataStateCopy("stale");
+    if (quality === "delayed" || quality === "late" || payload.delayed === true) return marketDataStateCopy("delayed");
+    if (quality === "cached" || payload.cached === true) return marketDataStateCopy("cached");
+    if (quality === "partial" || /partial|degraded/.test(rawStatus)) return marketDataStateCopy("partial");
+    if (payload.ok === false) return marketDataStateCopy("error");
+    if (/unavailable|missing/.test(rawStatus)) return marketDataStateCopy("unavailable");
+    return marketDataStateCopy("available");
+  }
+
+  function recommendationFeedState(items = recs()) {
+    const records = arr(items);
+    const pending = state.loading || Array.from(hydrationInFlight.values()).some(entry => entry && ["rec", "signals"].includes(entry.key));
+    const states = [payloadFeatureState(state.rec), payloadFeatureState(state.signals)];
+    const blockingPriority = ["rate_limited", "misconfigured", "error", "unsupported", "unavailable"];
+    if (records.length) {
+      if (states.some(item => blockingPriority.includes(item.key))) return marketDataStateCopy("partial");
+      const itemStates = records.map(item => assetDataState(item, sharedRecommendation(item)));
+      const blockedItems = itemStates.filter(item => blockingPriority.includes(item.key));
+      if (blockedItems.length) {
+        const oneState = blockedItems.every(item => item.key === blockedItems[0].key);
+        return marketDataStateCopy(oneState && blockedItems.length === itemStates.length ? blockedItems[0].key : "partial");
+      }
+      const degradedItems = itemStates.filter(item => item.key !== "available");
+      if (degradedItems.length) {
+        const oneState = degradedItems.every(item => item.key === degradedItems[0].key);
+        return marketDataStateCopy(oneState && degradedItems.length === itemStates.length ? degradedItems[0].key : "partial");
+      }
+      for (const key of ["stale", "delayed", "cached", "partial"]) {
+        if (states.some(item => item.key === key)) return marketDataStateCopy(key);
+      }
+      return marketDataStateCopy("available");
+    }
+    if (pending || states.some(item => item.key === "loading")) return marketDataStateCopy("loading");
+    for (const key of blockingPriority) {
+      if (states.some(item => item.key === key)) return marketDataStateCopy(key);
+    }
+    return marketDataStateCopy("empty");
+  }
+
+  function dataStateEmpty(stateCopy, options = {}) {
+    const showSettings = ["misconfigured", "unsupported"].includes(stateCopy.key);
+    const role = ["error", "rate_limited", "misconfigured"].includes(stateCopy.key) ? "alert" : "status";
+    return `<div class="empty-state compact data-state-empty state-${h(stateCopy.key)}" role="${role}" data-data-state="${h(stateCopy.key)}"><span class="empty-glyph" aria-hidden="true">${stateCopy.key === "loading" ? "…" : stateCopy.key === "error" ? "!" : "◎"}</span><h3>${h(stateCopy.title)}</h3><p>${h(stateCopy.body)}</p><div class="row-actions">${showSettings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>${h(terminalText("settings"))}</a>` : ""}${stateCopy.key !== "empty" || options.retryOnEmpty ? `<button class="ghost-btn" data-retry type="button">${h(terminalText("retry"))}</button>` : ""}</div></div>`;
+  }
+
   function hasValidDirectionalSignal(item) {
     const a = normalizeQuote(norm(item));
     const rec = sharedRecommendation(a);
@@ -4705,40 +4948,7 @@
     const count = num(agreement && (agreement.strategyCount ?? agreement.strategy_count ?? agreement.count));
     return count === null ? 0 : Math.max(0, Math.round(count));
   }
-  function strategyAgreementMetric(...records) {
-    const agreement = agreementObject(...records);
-    const count = backendStrategyCount(...records);
-    const rawPct = num(agreement && (agreement.agreementPct ?? agreement.agreement ?? agreement.percent));
-    const limited = count < 3;
-    const pct = rawPct === null ? null : Math.max(0, Math.min(limited ? 66 : 100, Math.round(rawPct)));
-    return {
-      value: limited ? textPair("توافق محدود", "Limited consensus") : pct === null ? terminalText("unavailable") : `${pct}%`,
-      helper: limited ? textPair(`${latinNumber(count)} استراتيجية فقط`, `${latinNumber(count)} strategies only`, `${latinNumber(count)} stratégies seulement`) : textPair(`${latinNumber(count)} استراتيجية`, `${latinNumber(count)} strategies`, `${latinNumber(count)} stratégies`),
-      count,
-      agreementPct: pct,
-      limited,
-      label: (agreement && (isFrenchLanguage() ? agreement.labelFr || frenchUiText(agreement.label) : isEnglishLanguage() ? agreement.labelEn || agreement.label : agreement.labelAr || agreement.label)) || (limited ? textPair("توافق محدود", "Limited consensus") : textPair("اتفاق الاستراتيجيات", "Strategy agreement")),
-    };
-  }
-  function backendConsensusFromRecords(...records) {
-    const agreement = agreementObject(...records);
-    const metric = strategyAgreementMetric(...records);
-    const buy = Math.round(num(agreement && (agreement.buyPct ?? agreement.buy ?? agreement.buyPercent)) ?? 0);
-    const sell = Math.round(num(agreement && (agreement.sellPct ?? agreement.sell ?? agreement.sellPercent)) ?? 0);
-    const watch = Math.round(num(agreement && (agreement.watchPct ?? agreement.neutralPct ?? agreement.watch ?? agreement.neutral)) ?? Math.max(0, 100 - buy - sell));
-    const rec = records.find(Boolean) || {};
-    return {
-      signal: signal(rec),
-      agreement: metric.agreementPct ?? 0,
-      agreementPct: metric.agreementPct,
-      buy,
-      sell,
-      neutral: watch,
-      count: metric.count,
-      limited: metric.limited,
-      label: metric.label,
-    };
-  }
+
   function strategyRowsFromBackend(...records) {
     for (const record of records) {
       const strategies = arr(record && record.strategies);
@@ -4746,13 +4956,123 @@
     }
     return [];
   }
+
+  function strategyRowComparable(row) {
+    if (!row || typeof row !== "object" || row.available === false || row.valid === false || row.comparable === false || row.participating === false) return false;
+    const rowStatus = String(row.status || row.dataStatus || row.data_status || "").trim().toLowerCase();
+    if (/unavailable|insufficient|unsupported|error|failed|skipped|missing/.test(rowStatus)) return false;
+    const rawSignal = row.signal ?? row.action ?? row.recommendation ?? row.vote ?? row.result;
+    const parsed = Recommendation.parseRecommendationStatus(rawSignal);
+    if (parsed === "buy" || parsed === "sell" || parsed === "watch") return true;
+    return ["neutral", "wait", "hold"].includes(String(rawSignal || "").trim().toLowerCase());
+  }
+
+  function comparableStrategyRow(row) {
+    const rawSignal = row.signal ?? row.action ?? row.recommendation ?? row.vote ?? row.result;
+    const parsed = Recommendation.parseRecommendationStatus(rawSignal);
+    return {
+      ...row,
+      signal: parsed === "buy" || parsed === "sell" ? parsed : "watch",
+      weight: num(row.weight, row.strategyWeight, row.strategy_weight) ?? 1
+    };
+  }
+
+  function strategyCoverageMeta(...records) {
+    const rows = strategyRowsFromBackend(...records);
+    const comparableRows = rows.filter(strategyRowComparable).map(comparableStrategyRow);
+    const agreement = agreementObject(...records) || {};
+    let explicitAvailable = null;
+    let explicitTotal = null;
+    let explicitComplete = false;
+    for (const record of records) {
+      if (!record) continue;
+      const coverage = record.dataSufficiency && record.dataSufficiency.strategyCoverage
+        || record.strategyCoverage
+        || record.strategy_coverage
+        || {};
+      if (explicitAvailable === null) explicitAvailable = num(coverage.available, coverage.valid, coverage.comparable, coverage.participating);
+      if (explicitTotal === null) explicitTotal = num(coverage.total, coverage.required, coverage.expected);
+      explicitComplete = explicitComplete || coverage.complete === true || coverage.isComplete === true;
+    }
+    if (explicitAvailable === null) explicitAvailable = num(agreement.validStrategyCount, agreement.availableStrategyCount, agreement.participatingStrategyCount);
+    if (explicitTotal === null) explicitTotal = num(agreement.requiredStrategyCount, agreement.totalStrategyCount, agreement.expectedStrategyCount);
+    explicitComplete = explicitComplete || agreement.coverageComplete === true || agreement.completeCoverage === true;
+    const count = rows.length ? comparableRows.length : Math.max(0, Math.round(explicitAvailable ?? backendStrategyCount(...records)));
+    const requiredCount = Math.max(0, Math.round(explicitTotal ?? (rows.length ? rows.length : 0)));
+    const rowCoverageComplete = rows.length > 0 && comparableRows.length === rows.length && requiredCount > 0 && comparableRows.length >= requiredCount;
+    const explicitCoverageComplete = explicitComplete || (explicitAvailable !== null && explicitTotal !== null && explicitTotal > 0 && explicitAvailable >= explicitTotal);
+    const completeCoverage = count >= 3 && (rowCoverageComplete || (!rows.length && explicitCoverageComplete));
+    return { rows, comparableRows, count, requiredCount, completeCoverage };
+  }
+
+  function strategyAgreementMetric(...records) {
+    const agreement = agreementObject(...records);
+    const coverage = strategyCoverageMeta(...records);
+    const derived = coverage.comparableRows.length ? consensus(coverage.comparableRows) : null;
+    const rawPct = derived ? derived.agreement : num(agreement && (agreement.agreementPct ?? agreement.agreement ?? agreement.percent));
+    const limited = coverage.count < 3 || !coverage.completeCoverage;
+    const cap = coverage.count < 3 ? 66 : coverage.completeCoverage ? 100 : 99;
+    const pct = rawPct === null ? null : Math.max(0, Math.min(cap, Math.round(rawPct)));
+    const limitedLabel = coverage.count < 3
+      ? textPair("توافق محدود", "Limited consensus", "Consensus limité")
+      : textPair("تغطية استراتيجية جزئية", "Partial strategy coverage", "Couverture stratégique partielle");
+    const helper = coverage.requiredCount > 0
+      ? textPair(`${latinNumber(coverage.count)} من ${latinNumber(coverage.requiredCount)} استراتيجيات قابلة للمقارنة`, `${latinNumber(coverage.count)} of ${latinNumber(coverage.requiredCount)} comparable strategies`, `${latinNumber(coverage.count)} stratégies comparables sur ${latinNumber(coverage.requiredCount)}`)
+      : textPair(`${latinNumber(coverage.count)} استراتيجية قابلة للمقارنة`, `${latinNumber(coverage.count)} comparable strategies`, `${latinNumber(coverage.count)} stratégies comparables`);
+    return {
+      value: limited ? limitedLabel : pct === null ? terminalText("unavailable") : `${pct}%`,
+      helper,
+      count: coverage.count,
+      requiredCount: coverage.requiredCount,
+      completeCoverage: coverage.completeCoverage,
+      agreementPct: pct,
+      limited,
+      label: limited ? limitedLabel : (agreement && (isFrenchLanguage() ? agreement.labelFr || frenchUiText(agreement.label) : isEnglishLanguage() ? agreement.labelEn || agreement.label : agreement.labelAr || agreement.label)) || textPair("اتفاق الاستراتيجيات", "Strategy agreement", "Accord des stratégies"),
+    };
+  }
+  function backendConsensusFromRecords(...records) {
+    const agreement = agreementObject(...records);
+    const metric = strategyAgreementMetric(...records);
+    const comparableRows = strategyCoverageMeta(...records).comparableRows;
+    const comparableConsensus = comparableRows.length ? consensus(comparableRows) : null;
+    const buy = comparableConsensus ? comparableConsensus.buy : Math.round(num(agreement && (agreement.buyPct ?? agreement.buy ?? agreement.buyPercent)) ?? 0);
+    const sell = comparableConsensus ? comparableConsensus.sell : Math.round(num(agreement && (agreement.sellPct ?? agreement.sell ?? agreement.sellPercent)) ?? 0);
+    const watch = comparableConsensus ? comparableConsensus.neutral : Math.round(num(agreement && (agreement.watchPct ?? agreement.neutralPct ?? agreement.watch ?? agreement.neutral)) ?? Math.max(0, 100 - buy - sell));
+    const rec = records.find(Boolean) || {};
+    return {
+      signal: comparableConsensus ? comparableConsensus.signal : signal(rec),
+      agreement: metric.agreementPct ?? 0,
+      agreementPct: metric.agreementPct,
+      buy,
+      sell,
+      neutral: watch,
+      count: metric.count,
+      requiredCount: metric.requiredCount,
+      completeCoverage: metric.completeCoverage,
+      limited: metric.limited,
+      label: metric.label,
+    };
+  }
   function marketBias(rec) {
+    const feedState = recommendationFeedState(rec);
     const valid = rec.filter(hasValidDirectionalSignal);
     const buy = valid.filter(x => isBuySignalName(signal(x))).length;
     const sell = valid.filter(x => isSellSignalName(signal(x))).length;
     const total = valid.length;
-    if (!rec.length) return { label: textPair("\u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a", "Awaiting data"), en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: "" };
-    if (!total) return { label: textPair("\u0644\u0627 \u062a\u0648\u062c\u062f \u0625\u0634\u0627\u0631\u0627\u062a \u0643\u0627\u0641\u064a\u0629 \u062d\u0627\u0644\u064a\u0627\u064b", "No sufficient signals right now"), en: "NO SUFFICIENT SIGNALS", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "neutral", note: noMarketDataBody() };
+    if (!rec.length) {
+      if (feedState.key === "loading") return { label: feedState.title, en: "AWAITING", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "", note: feedState.body };
+      if (feedState.key === "empty") return { label: feedState.title, en: "EMPTY", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "neutral", note: feedState.body };
+      return { label: feedState.title, en: "DATA UNAVAILABLE", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "warn", note: feedState.body };
+    }
+    if (!total) {
+      const itemStates = rec.map(item => assetDataState(item, sharedRecommendation(item)));
+      const blocked = itemStates.find(item => ["rate_limited", "misconfigured", "error", "unsupported", "unavailable"].includes(item.key));
+      if (blocked) return { label: blocked.title, en: "DATA UNAVAILABLE", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "warn", note: blocked.body };
+      const degraded = itemStates.find(item => ["partial", "stale", "delayed", "cached"].includes(item.key));
+      if (degraded) return { label: degraded.title, en: "INSUFFICIENT DATA", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "warn", note: degraded.body };
+      const insufficient = marketDataStateCopy("insufficient");
+      return { label: insufficient.title, en: "INSUFFICIENT DATA", bull: 0, bear: 0, neutral: 0, conf: 0, tone: "neutral", note: insufficient.body };
+    }
     const cf = valid.map(x => num(x.confidence, x.score, x.aiConfidence)).filter(v => v !== null);
     const conf = cf.length ? Math.round(cf.reduce((a, b) => a + b, 0) / cf.length) : 0;
     const actionable = buy + sell;
@@ -4765,7 +5085,7 @@
   function marketOverview(rec, view = "all") {
     const b = marketBias(rec);
     const verdict = b.en === "AWAITING" ? "--" : isEnglishLanguage() ? b.en.replace("NEUTRAL — PRECISION GATE", "NEUTRAL") : b.label;
-    const analysisUnavailable = b.en === "AWAITING" || b.en === "NO SUFFICIENT SIGNALS";
+    const analysisUnavailable = ["AWAITING", "EMPTY", "DATA UNAVAILABLE", "INSUFFICIENT DATA", "NO SUFFICIENT SIGNALS"].includes(b.en);
     const analysisBody = analysisUnavailable
       ? `<div class="market-analysis-empty" role="status">
           <span class="market-analysis-empty-icon" aria-hidden="true">
@@ -4805,6 +5125,7 @@
   }
   function commandCenter(rec) {
     const p = providerCopy(), b = marketBias(rec), market = currentMarket();
+    const feedState = recommendationFeedState(rec);
     const validSignals = rec
       .filter(hasValidDirectionalSignal)
       .slice()
@@ -4819,16 +5140,18 @@
     const sessions = sessionStates.slice(0, 6);
     const openSessions = sessionStates.filter(item => item.state.open).length;
     const primarySymbol = sym((aiPicks[0] && aiPicks[0].symbol) || state.watch[0] || "");
+    const opportunityEmpty = !rec.length && feedState.key !== "empty" ? feedState.title : textPair("لا توجد فرص منشورة حالياً", "No published opportunities right now", "Aucune opportunité publiée");
+    const picksEmpty = !rec.length && feedState.key !== "empty" ? feedState.title : textPair("بانتظار إشارات مكتملة", "Awaiting complete signals", "En attente de signaux complets");
     return `<section class="terminal-command-center trader-command-deck" aria-labelledby="command-deck-title">
       <header class="command-deck-title"><div><span class="eyebrow">${h(textPair("وعي لحظي", "Live awareness", "Vue en direct"))}</span><h2 id="command-deck-title">${h(textPair("مركز قيادة السوق", "Market Command Center", "Centre de commandement du marché"))}</h2></div><span class="state-badge ${p.tone || ""}">${h(marketName(market))} · <b class="ltr">${h(market.currency)}</b></span></header>
       <div class="command-deck-layout">
         <article class="command-deck-card command-deck-status"><div class="command-deck-head"><span>${h(textPair("حالة السوق", "Market status", "État du marché"))}</span><i class="status-light ${openSessions ? "is-live" : "is-idle"}" aria-hidden="true"></i></div><strong>${h(marketName(market))}</strong><p>${h(textPair(`${latinNumber(openSessions)} جلسات مفتوحة الآن`, `${latinNumber(openSessions)} sessions open now`, `${latinNumber(openSessions)} séances ouvertes`))}</p><div class="command-deck-system"><small>${h(textPair("حالة النظام", "System status", "État du système"))}</small><b>${h(p.label || p.title)}</b></div></article>
-        <article class="command-deck-card command-deck-opportunities"><div class="command-deck-head"><span>${h(textPair("أفضل الفرص", "Top opportunities", "Meilleures opportunités"))}</span><b>${h(latinNumber(opportunities.length))}</b></div>${commandDeckAssetList(opportunities, textPair("لا توجد فرص منشورة حالياً", "No published opportunities right now", "Aucune opportunité publiée"))}</article>
+        <article class="command-deck-card command-deck-opportunities"><div class="command-deck-head"><span>${h(textPair("أفضل الفرص", "Top opportunities", "Meilleures opportunités"))}</span><b>${h(latinNumber(opportunities.length))}</b></div>${commandDeckAssetList(opportunities, opportunityEmpty)}</article>
         <article class="command-deck-card command-deck-risks"><div class="command-deck-head"><span>${h(textPair("أهم المخاطر", "Top risks", "Risques principaux"))}</span><b>${h(latinNumber(riskSignals.length + alerts.length))}</b></div>${commandDeckRiskList(riskSignals, alerts)}</article>
-        <article class="command-deck-card command-deck-ai"><div class="command-deck-head"><span>${h(textPair("اختيارات الذكاء الاصطناعي", "AI picks", "Sélections IA"))}</span><span class="state-badge ${b.tone || "neutral"}">${h(b.conf ? `${b.conf}%` : terminalText("unavailable"))}</span></div><small>${h(textPair("حالة تحليل الذكاء الاصطناعي", "AI analysis status", "État de l’analyse IA"))}</small>${commandDeckAssetList(aiPicks, textPair("بانتظار إشارات مكتملة", "Awaiting complete signals", "En attente de signaux complets"))}</article>
+        <article class="command-deck-card command-deck-ai"><div class="command-deck-head"><span>${h(textPair("اختيارات الذكاء الاصطناعي", "AI picks", "Sélections IA"))}</span><span class="state-badge ${b.tone || "neutral"}">${h(b.conf ? `${b.conf}%` : feedState.label)}</span></div><small>${h(textPair("حالة تحليل الذكاء الاصطناعي", "AI analysis status", "État de l’analyse IA"))}</small>${commandDeckAssetList(aiPicks, picksEmpty)}</article>
         <article class="command-deck-card command-deck-watchlist"><div class="command-deck-head"><span>${h(textPair("قائمة المتابعة", "Watchlist", "Liste de suivi"))}</span><b>${h(latinNumber(state.watch.length))}</b></div>${commandDeckAssetList(watch, textPair("قائمة المتابعة فارغة", "Watchlist is empty", "La liste de suivi est vide"))}<a class="command-deck-link" href="${ROOT}/watchlist" data-route-link>${h(textPair("فتح قائمة المتابعة", "Open watchlist", "Ouvrir la liste"))}</a></article>
         <article class="command-deck-card command-deck-sentiment"><div class="command-deck-head"><span>${h(textPair("معنويات السوق", "Market sentiment", "Sentiment du marché"))}</span><strong class="${b.tone || "neutral"}">${h(b.label)}</strong></div><div class="command-deck-sentiment-bars" role="img" aria-label="${h(b.note || b.label)}"><span class="bull" style="--value:${b.bull}%"><i></i><b class="ltr">${b.bull}%</b></span><span class="bear" style="--value:${b.bear}%"><i></i><b class="ltr">${b.bear}%</b></span><span class="neutral" style="--value:${b.neutral}%"><i></i><b class="ltr">${b.neutral}%</b></span></div><p>${h(b.note || terminalText("unavailable"))}</p></article>
-        <article class="command-deck-card command-deck-provider"><div class="command-deck-head"><span>${h(textPair("ملخص المزود", "Provider summary", "Résumé fournisseur"))}</span><span class="state-badge ${p.tone || ""}">${h(p.label)}</span></div><strong>${h(p.title)}</strong><p>${h(p.copy || p.explanation || terminalText("unavailable"))}</p><a class="command-deck-link" href="${ROOT}/settings?view=overview" data-route-link>${h(textPair("فتح حالة المزود", "Open provider status", "Ouvrir l’état fournisseur"))}</a></article>
+        <article class="command-deck-card command-deck-provider"><div class="command-deck-head"><span>${h(textPair("ملخص المزود", "Provider summary", "Résumé fournisseur"))}</span><span class="state-badge ${feedState.tone || p.tone || ""}">${h(feedState.label)}</span></div><strong>${h(p.title)}</strong><p>${h(feedState.key === "available" || feedState.key === "empty" ? (p.copy || p.explanation || terminalText("unavailable")) : feedState.body)}</p><a class="command-deck-link" href="${ROOT}/settings?view=overview" data-route-link>${h(textPair("فتح حالة المزود", "Open provider status", "Ouvrir l’état fournisseur"))}</a></article>
         <article class="command-deck-card command-deck-sessions"><div class="command-deck-head"><span>${h(textPair("جلسات السوق", "Market sessions", "Séances de marché"))}</span><b class="ltr">UTC</b></div><ul class="command-deck-list">${sessions.map(item => `<li><span>${h(textPair(item.ar, item.en))}</span><b class="${item.state.open ? "is-open" : item.state.upcoming ? "is-upcoming" : "is-closed"}">${h(item.state.open ? textPair("مفتوحة", "Open", "Ouverte") : item.state.upcoming ? textPair("قادمة", "Upcoming", "À venir") : textPair("مغلقة", "Closed", "Fermée"))}</b></li>`).join("")}</ul></article>
         <article class="command-deck-card command-deck-actions"><div class="command-deck-head"><span>${h(textPair("إجراءات سريعة", "Quick actions", "Actions rapides"))}</span></div><div class="command-deck-action-grid"><a class="action-btn" href="${ROOT}/ai-scanner" data-route-link>${h(textPair("حلل", "Analyze", "Analyser"))}</a><a class="ghost-btn" href="${ROOT}/watchlist" data-route-link>${h(textPair("قائمة المتابعة", "Watchlist", "Liste de suivi"))}</a>${primarySymbol ? `<button class="ghost-btn" type="button" data-create-alert="${h(primarySymbol)}">${h(textPair("أنشئ تنبيهاً", "Create alert", "Créer une alerte"))}</button><button class="ghost-btn" type="button" data-drawer-compare="${h(primarySymbol)}">${h(textPair("قارن", "Compare", "Comparer"))}</button><button class="ghost-btn" type="button" data-drawer-share="${h(primarySymbol)}">${h(textPair("مشاركة", "Share", "Partager"))}</button><button class="ghost-btn" type="button" data-drawer-export="${h(primarySymbol)}">${h(textPair("تصدير PDF", "Export PDF", "Exporter en PDF"))}</button>` : ""}</div></article>
         <article class="command-deck-card command-deck-news"><div class="command-deck-head"><span>${h(textPair("آخر الأخبار", "Latest news", "Dernières actualités"))}</span><b>${h(latinNumber(news.length))}</b></div>${news.length ? newsList(news) : `<p class="command-deck-empty">${h(textPair("لا توجد أخبار حديثة من المزود", "No recent provider news", "Aucune actualité récente"))}</p>`}<a class="command-deck-link" href="${ROOT}/news" data-route-link>${h(textPair("كل الأخبار", "All news", "Toutes les actualités"))}</a></article>
@@ -4851,13 +5174,15 @@
       const a = normalizeQuote(norm(item));
       return `<button class="command-deck-symbol risk" type="button" data-symbol-details="${h(a.symbol)}"><span>${logo(a, "sm")}<b class="ltr">${h(displaySymbolFor(a.symbol))}</b></span><em>${h(recommendationLabel(sharedRecommendation(a)))}</em></button>`;
     }).join("");
-    const alertRows = alerts.map(alert => `<div class="command-deck-alert"><span aria-hidden="true">!</span><p><b>${h(alert.title || alert.symbol || textPair("تنبيه سوق", "Market alert", "Alerte marché"))}</b><small>${h(alert.message || alert.description || terminalText("unavailable"))}</small></p></div>`).join("");
+    const alertRows = alerts.map(alert => `<div class="command-deck-alert"><span aria-hidden="true">!</span><p><b>${h(alert.title || alert.symbol || textPair("تنبيه سوق", "Market alert", "Alerte marché"))}</b><small>${h(safeStateText(alert.message || alert.description, terminalText("unavailable")))}</small></p></div>`).join("");
     return signalRows || alertRows ? `<div class="command-deck-list">${signalRows}${alertRows}</div>` : `<p class="command-deck-empty">${h(textPair("لا توجد مخاطر منشورة حالياً", "No published risks right now", "Aucun risque publié"))}</p>`;
   }
 
   function smartAnalysisTerminal(rec, titleId = "analysis-terminal-title") {
     const a = normalizeQuote(norm(rec || {}));
     const recommendation = sharedRecommendation(a);
+    const dataState = assetDataState(a, recommendation);
+    const evidenceReady = dataState.key === "available";
     const agreement = strategyAgreementMetric(a);
     const c = currency(a);
     const technicalData = a.technical || a.technicalAnalysis || a.indicators || {};
@@ -4870,23 +5195,23 @@
     const trend = trendText(a.trend || a.technicalTrend || a.direction || technicalData.trend);
     const rawSignals = arr(a.signals || a.signalList || a.strategies);
     const p = providerCopy();
-    const metric = (label, value, tone = "") => `<div class="analysis-metric ${tone}"><span>${h(label)}</span><strong class="${typeof value === "string" && /[\d%.-]/.test(value) ? "ltr" : ""}">${h(value || terminalText("unavailable"))}</strong></div>`;
+    const metric = (label, value, tone = "") => `<div class="analysis-metric ${tone}"><span>${h(label)}</span><strong class="${isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</strong></div>`;
     return `<section class="analysis-terminal" aria-labelledby="${h(titleId)}">
-      <div class="analysis-terminal-hero"><div>${a.symbol ? logo(a, "lg") : ""}<span><small>${h(textPair("محطة التحليل الذكي", "Smart analysis terminal", "Terminal d’analyse intelligent"))}</small><h2 id="${h(titleId)}">${h(a.symbol ? displaySymbolFor(a.symbol) : textPair("تحليل السوق", "Market analysis", "Analyse du marché"))}</h2><p>${h(a.name || textPair("تعرض المحطة القيم المتاحة فقط من المزود", "The terminal shows only provider-supplied values", "Le terminal affiche uniquement les valeurs du fournisseur"))}</p></span></div><span class="signal-badge ${recommendation.status || "unavailable"}">${h(recommendationLabel(recommendation))}</span></div>
+      <div class="analysis-terminal-hero"><div>${a.symbol ? logo(a, "lg") : ""}<span><small>${h(textPair("محطة التحليل الذكي", "Smart analysis terminal", "Terminal d’analyse intelligent"))}</small><h2 id="${h(titleId)}">${h(a.symbol ? displaySymbolFor(a.symbol) : textPair("تحليل السوق", "Market analysis", "Analyse du marché"))}</h2><p>${h(a.name || textPair("تعرض المحطة القيم المتاحة فقط من المزود", "The terminal shows only provider-supplied values", "Le terminal affiche uniquement les valeurs du fournisseur"))}</p></span></div><span class="signal-badge ${evidenceReady ? recommendation.status || "unavailable" : dataState.tone || "unavailable"}">${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</span></div>
       <div class="analysis-terminal-grid">
-        ${metric(textPair("ثقة الذكاء الاصطناعي", "AI confidence", "Confiance IA"), recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`, recommendationTone(recommendation))}
-        ${metric(textPair("اتفاق الاستراتيجيات", "Strategy agreement", "Accord des stratégies"), agreement.value)}
-        ${metric(textPair("الإشارات", "Signals", "Signaux"), rawSignals.length ? textPair(`${latinNumber(rawSignals.length)} إشارات`, `${latinNumber(rawSignals.length)} signals`, `${latinNumber(rawSignals.length)} signaux`) : signal(a) ? sigLabel(signal(a)) : terminalText("unavailable"))}
-        ${metric(textPair("الاتجاه", "Trend", "Tendance"), trend || terminalText("unavailable"))}
-        ${metric(textPair("المخاطر", "Risk", "Risque"), risk ? riskShort(risk) : terminalText("unavailable"), risk ? riskTone(risk) : "")}
-        ${metric(textPair("الدعم", "Support", "Support"), support === null ? terminalText("unavailable") : price(support, c))}
-        ${metric(textPair("المقاومة", "Resistance", "Résistance"), resistance === null ? terminalText("unavailable") : price(resistance, c))}
-        ${metric(textPair("الزخم", "Momentum", "Momentum"), analysisDisplayValue(momentum))}
-        ${metric(textPair("اتساع السوق", "Market breadth", "Amplitude du marché"), analysisDisplayValue(breadth))}
-        ${metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), opportunityScore === null ? terminalText("unavailable") : latinNumber(opportunityScore))}
+        ${metric(textPair("ثقة الذكاء الاصطناعي", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`, evidenceReady ? recommendationTone(recommendation) : dataState.tone)}
+        ${metric(textPair("اتفاق الاستراتيجيات", "Strategy agreement", "Accord des stratégies"), evidenceReady ? agreement.value : dataState.label)}
+        ${metric(textPair("الإشارات", "Signals", "Signaux"), evidenceReady && rawSignals.length ? textPair(`${latinNumber(rawSignals.length)} إشارات`, `${latinNumber(rawSignals.length)} signals`, `${latinNumber(rawSignals.length)} signaux`) : dataState.label)}
+        ${metric(textPair("الاتجاه", "Trend", "Tendance"), evidenceReady ? trend || terminalText("unavailable") : terminalText("unavailable"))}
+        ${metric(textPair("المخاطر", "Risk", "Risque"), evidenceReady && risk ? riskShort(risk) : terminalText("unavailable"), evidenceReady && risk ? riskTone(risk) : "")}
+        ${metric(textPair("الدعم", "Support", "Support"), evidenceReady && support !== null ? price(support, c) : terminalText("unavailable"))}
+        ${metric(textPair("المقاومة", "Resistance", "Résistance"), evidenceReady && resistance !== null ? price(resistance, c) : terminalText("unavailable"))}
+        ${metric(textPair("الزخم", "Momentum", "Momentum"), evidenceReady ? analysisDisplayValue(momentum) : terminalText("unavailable"))}
+        ${metric(textPair("اتساع السوق", "Market breadth", "Amplitude du marché"), evidenceReady ? analysisDisplayValue(breadth) : terminalText("unavailable"))}
+        ${metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), evidenceReady && opportunityScore !== null ? latinNumber(opportunityScore) : terminalText("unavailable"))}
       </div>
-      <div class="analysis-signal-strip">${rawSignals.length ? rawSignals.slice(0, 6).map(item => `<span>${h(analysisDisplayValue(item && typeof item === "object" ? item.label || item.name || item.signal || item.value : item))}</span>`).join("") : `<span>${h(textPair("لا توجد إشارات تفصيلية متاحة", "No detailed signals available", "Aucun signal détaillé disponible"))}</span>`}</div>
-      <div class="analysis-provider-state ${p.tone || ""}"><span>${h(textPair("حالة المزود", "Provider status", "État du fournisseur"))}</span><strong>${h(p.label)}</strong><small>${h(stockProviderValue(a))}</small></div>
+      <div class="analysis-signal-strip">${evidenceReady && rawSignals.length ? rawSignals.slice(0, 6).map(item => `<span>${h(analysisDisplayValue(item && typeof item === "object" ? item.label || item.name || item.signal || item.value : item))}</span>`).join("") : `<span>${h(dataState.body)}</span>`}</div>
+      <div class="analysis-provider-state ${dataState.tone || p.tone || ""}"><span>${h(textPair("حالة بيانات التحليل", "Analysis data status", "État des données d’analyse"))}</span><strong>${h(dataState.label)}</strong><small>${h(stockProviderValue(a))}</small></div>
     </section>`;
   }
 
@@ -4928,7 +5253,7 @@
     const risk = asset.risk || asset.riskLevel;
     const trend = trendText(asset.trend || asset.technicalTrend || asset.direction || asset.technical && asset.technical.trend);
     const watched = state.watch.some(symbol => sym(symbol) === sym(asset.symbol));
-    const item = (label, value, tone = "", valueLtr = false) => `<span class="stock-meta-item ${tone}"><small>${h(label)}</small><b class="${valueLtr ? "ltr" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;
+    const item = (label, value, tone = "", valueLtr = false) => `<span class="stock-meta-item ${tone}"><small>${h(label)}</small><b class="${valueLtr || isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;
     return `<div class="stock-card-meta">
       ${item(terminalText("volume"), asset.volume == null ? terminalText("unavailable") : bigNumber(asset.volume), "", true)}
       ${item(textPair("المخاطر", "Risk", "Risque"), risk ? riskShort(risk) : terminalText("unavailable"), risk ? riskTone(risk) : "")}
@@ -5003,13 +5328,14 @@
     const conf = recommendation.confidence;
     const sig = recommendation.status;
     const dataState = assetDataState(a, recommendation);
+    const evidenceReady = dataState.key === "available";
     const quality = a.dataQuality || (a.chartAvailable === false ? "partial" : "live");
     const stateClass = chg === null ? "neutral" : chg >= 0 ? "positive" : "negative";
-    return `<article class="leadership-card trader-stock-card ${stateClass} ${dataState.key === "unavailable" ? "unavailable is-empty" : ""}">
+    return `<article class="leadership-card trader-stock-card ${stateClass} ${evidenceReady ? "" : "unavailable is-empty"}">
       <button class="asset-head stock-card-primary" data-symbol-details="${h(detailSymbol)}" type="button" aria-label="${h(textPair(`فتح العرض السريع لـ ${display}`, `Open quick view for ${display}`, `Ouvrir l’aperçu de ${display}`))}">${logo({ ...a, symbol: display })}<span class="asset-title"><strong class="ltr">${h(display)}</strong><small>${h(a.name || display)}</small></span><span class="watch-state ${state.watch.some(item => sym(item) === sym(detailSymbol)) ? "is-watched" : ""}" aria-hidden="true">★</span></button>
       <div class="leadership-price stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
       <div class="stock-card-chart">${sparkline(a, chg)}</div>
-      <div class="leadership-foot"><span class="signal-badge ${sig || "unavailable"}">${h(recommendationLabel(recommendation))}</span><span class="quality-badge ${dataState.tone || ""}">${h(conf === null ? dataState.label : `${textPair("ثقة AI", "AI confidence", "Confiance IA")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>${precisionBadge(a)}</div>
+      <div class="leadership-foot"><span class="signal-badge ${evidenceReady ? sig || "unavailable" : dataState.tone || "unavailable"}">${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</span><span class="quality-badge ${dataState.tone || ""}">${h(!evidenceReady || conf === null ? dataState.label : `${textPair("ثقة AI", "AI confidence", "Confiance IA")} ${Math.round(conf)}%`)} · ${h(dataQualityLabel(quality))}</span>${evidenceReady ? precisionBadge(a) : ""}</div>
       ${stockCardMeta({ ...a, symbol: detailSymbol })}
     </article>`;
   }
@@ -5021,14 +5347,16 @@
     const tone = heatmapTone(chg);
     const size = heatmapSizeClass(a, record.rank);
     const conf = recommendation.confidence;
+    const dataState = assetDataState(a, recommendation);
+    const evidenceReady = dataState.key === "available";
     const selected = sym(state.heatmapView.selected) === sym(symbol);
     const tooltipId = `heatmap-tip-${String(symbol).replace(/[^a-z0-9_-]/gi, "-")}`;
     const accessibleName = [displaySymbolFor(symbol), a.name, change(chg)].filter(Boolean).join(" · ");
-    const tooltipText = [record.sector, recommendationLabel(recommendation), conf === null ? "" : `${terminalText("confidence")} ${Math.round(conf)}%`, a.volume == null ? "" : `${terminalText("volume")} ${bigNumber(a.volume)}`].filter(Boolean).join(" · ");
+    const tooltipText = [record.sector, evidenceReady ? recommendationLabel(recommendation) : dataState.label, !evidenceReady || conf === null ? "" : `${terminalText("confidence")} ${Math.round(conf)}%`, a.volume == null ? "" : `${terminalText("volume")} ${bigNumber(a.volume)}`].filter(Boolean).join(" · ");
     return `<button class="opportunity-cell heatmap-tile ${size} tone-${tone} ${tone} ${selected ? "is-selected" : ""}" data-symbol-details="${h(symbol)}" type="button" aria-pressed="${selected}" aria-describedby="${h(tooltipId)}" aria-label="${h(accessibleName)}">
       <span class="heatmap-tile-head">${logo({ ...a, symbol }, "sm")}<span><strong class="ltr">${h(displaySymbolFor(symbol))}</strong><small>${h(a.name || record.sector || "")}</small></span></span>
       <span class="heatmap-tile-performance ltr ${chg === null ? "is-unavailable" : chg >= 0 ? "up" : "down"}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</span>
-      <span class="heatmap-tile-meta"><em>${h(recommendationLabel(recommendation))}</em><b>${conf === null ? dashCell() : `${Math.round(conf)}%`}</b></span>
+      <span class="heatmap-tile-meta"><em>${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</em><b>${!evidenceReady || conf === null ? dashCell(dataState.label) : `${Math.round(conf)}%`}</b></span>
       <span class="heatmap-tooltip" id="${h(tooltipId)}" role="tooltip">${h(tooltipText)}</span>
     </button>`;
   }
@@ -5228,7 +5556,7 @@
       // تُستبدل بشرطة مع تلميح يوضح السبب (العرض فقط، دون تغيير الحسابات).
       const evidenceGated = ds.key !== "available";
       const gateNote = evidenceGated ? ds.label : "";
-      const recommendationHtml = ds.key === "unavailable"
+      const recommendationHtml = evidenceGated
         ? `<span class="state-badge ${ds.tone}">${h(ds.label)}</span>`
         : `<span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span>`;
       const confHtml = conf === null || evidenceGated ? dashCell(gateNote) : Math.round(conf) + "%";
@@ -5256,12 +5584,13 @@
     const p = a.price, tgt = num(a.target, a.targetPrice), sl = num(a.stopLoss, a.stop);
     const chg = a.changePercent;
     const dataState = assetDataState(a, recommendation);
+    const evidenceReady = dataState.key === "available";
     const watched = state.watch.some(symbol => sym(symbol) === sym(a.symbol));
-    return `<article class="rec-card trader-stock-card ${sig} ${dataState.key === "unavailable" ? "is-empty" : ""}">
-      <div class="stock-card-top"><button class="asset-head stock-card-primary" data-symbol-details="${h(a.symbol)}" type="button">${logo(a)}<span class="asset-title"><strong class="ltr">${h(displaySymbolFor(a.symbol))}</strong><small>${h(a.name || terminalText("unavailable"))}</small></span></button><span class="state-badge ${dataState.tone || recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span></div>
+    return `<article class="rec-card trader-stock-card ${evidenceReady ? sig : dataState.key} ${evidenceReady ? "" : "is-empty"}">
+      <div class="stock-card-top"><button class="asset-head stock-card-primary" data-symbol-details="${h(a.symbol)}" type="button">${logo(a)}<span class="asset-title"><strong class="ltr">${h(displaySymbolFor(a.symbol))}</strong><small>${h(a.name || terminalText("unavailable"))}</small></span></button><span class="state-badge ${dataState.tone || recommendationTone(recommendation)}">${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</span></div>
       <div class="stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
       <div class="stock-card-chart">${sparkline(a, chg)}</div>
-      <div class="rec-metrics"><span>${h(terminalText("target"))}<b class="ltr">${h(isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))}<b>${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</b></span></div>
+      <div class="rec-metrics"><span>${h(terminalText("target"))}<b class="ltr">${h(evidenceReady && isValidPrice(tgt) ? price(tgt, c) : terminalText("unavailable"))}</b></span><span>${h(terminalText("stop"))}<b class="ltr">${h(evidenceReady && isValidPrice(sl) ? price(sl, c) : terminalText("unavailable"))}</b></span><span>${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))}<b>${!evidenceReady || conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</b></span></div>
       ${stockCardMeta(a)}
       <div class="rec-foot stock-card-actions"><span class="status-tag ${dataState.tone || recommendationTone(recommendation) || recStatusTone(a)}">${h(dataState.label)}</span><div class="row-actions compact-actions">${followTradeButton(recommendation, a.symbol, "action-btn", true, a)}<button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}" type="button">${h(terminalText("openAnalysis"))}</button><button class="ghost-btn sm ${watched ? "is-active" : ""}" ${watched ? `data-remove-watch="${h(a.symbol)}"` : `data-quick-add="${h(a.symbol)}"`} type="button">${h(watched ? textPair("إزالة من المتابعة", "Remove watch", "Retirer du suivi") : textPair("أضف للمتابعة", "Add to watchlist", "Ajouter au suivi"))}</button></div></div>
     </article>`;
@@ -5270,13 +5599,14 @@
     const a = normalizeQuote(norm(asset)), c = currency(a), recommendation = sharedRecommendation(a), conf = recommendation.confidence, p = a.price;
     const chg = a.changePercent;
     const dataState = assetDataState(a, recommendation);
+    const evidenceReady = dataState.key === "available";
     const watched = state.watch.some(symbol => sym(symbol) === sym(a.symbol));
     const removable = watched || opts.removable === true;
-    return `<article class="asset-card trader-stock-card ${dataState.key === "unavailable" ? "is-empty" : ""}">
+    return `<article class="asset-card trader-stock-card ${evidenceReady ? "" : "is-empty"}">
       <div class="stock-card-top"><button class="asset-head stock-card-primary" data-symbol-details="${h(a.symbol)}" type="button">${logo(a)}<span class="asset-title"><strong class="symbol-code">${h(displaySymbolFor(a.symbol || "--"))}</strong><small>${h(a.name || a.companyName || textPair("اسم الأصل غير متوفر", "Asset name unavailable", "Nom de l’actif indisponible"))}</small></span></button><span class="watch-state ${watched ? "is-watched" : ""}" aria-label="${h(textPair("حالة المتابعة", "Watch state", "État du suivi"))}">★</span></div>
       <div class="stock-card-price"><strong class="ltr">${h(price(p, c))}</strong><span class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</span></div>
       <div class="stock-card-chart">${sparkline(a, chg)}</div>
-      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span><span class="quality-badge">${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))} ${conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</span></div>
+      <div class="badge-row"><span class="currency-badge">${h(c)}</span><span class="state-badge ${evidenceReady ? recommendationTone(recommendation) : dataState.tone}">${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</span><span class="status-tag ${dataState.tone}">${h(dataState.label)}</span><span class="quality-badge">${h(textPair("ثقة AI", "AI confidence", "Confiance IA"))} ${!evidenceReady || conf === null ? h(terminalText("unavailable")) : `${Math.round(conf)}%`}</span></div>
       ${stockCardMeta(a)}
       <div class="card-actions stock-card-actions"><button class="action-btn" data-symbol-details="${h(a.symbol)}">${h(terminalText("openAnalysis"))}</button>${followTradeButton(recommendation, a.symbol, "ghost-btn", false, a)}<button class="ghost-btn ${removable ? "is-active" : ""}" ${removable ? `data-remove-watch="${h(a.symbol)}"` : `data-quick-add="${h(a.symbol)}"`}>${h(removable ? textPair("إزالة من المتابعة", "Remove watch", "Retirer du suivi") : textPair("أضف للمتابعة", "Add to watchlist", "Ajouter au suivi"))}</button></div>
     </article>`;
@@ -5290,14 +5620,14 @@
     return `<a class="market-tile ${m.tone === "featured" ? "featured" : ""}" href="${ROOT}/markets/${m.id}" data-route-link data-market-card="${h(m.id)}"><div class="mt-top"><span class="ex-icon">${marketGlyph(m)}</span><span class="eyebrow">${h(marketFamilyName(m.family))}</span></div><strong>${h(marketName(m))}</strong><p>${h(terminalText("currency"))} <span class="ltr">${h(m.currency)}</span></p><div class="tile-tags">${visible.map(s => `<span class="badge sm"><span class="ltr">${h(s)}</span></span>`).join("")}${more}</div><span class="market-preview-count">${h(terminalText(countKey, { shown: latinNumber(visible.length), total: latinNumber(total) }))}</span><span class="market-card-action">${h(marketActionLabel(m))}</span></a>`;
   }
   function heatmap(items) {
-    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = normalizeQuote(norm(x)), recommendation = sharedRecommendation(a), chg = a.changePercent; return `<button class="heat-cell ${chg === null ? "unavailable" : recommendation.status}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</small><em>${h(recommendationLabel(recommendation))}</em></button>`; }).join("")}</div>`;
+    return `<div class="heatmap">${items.slice(0, 24).map(x => { const a = normalizeQuote(norm(x)), recommendation = sharedRecommendation(a), dataState = assetDataState(a, recommendation), chg = a.changePercent; const evidenceReady = dataState.key === "available"; return `<button class="heat-cell ${chg === null ? "unavailable" : evidenceReady ? recommendation.status : dataState.key}" data-symbol-details="${h(a.symbol)}">${logo(a, "sm")}<strong class="ltr">${h(a.symbol)}</strong><small class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</small><em>${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</em></button>`; }).join("")}</div>`;
   }
   function holdingsTable(items) {
     const rows = items.map((p, i) => { const a = norm(p.rec || { symbol: p.symbol }), c = currency({ symbol: p.symbol }), cur = num(a.price, a.currentPrice), qty = num(p.qty) || 0, entry = num(p.entry) || 0, val = cur !== null ? cur * qty : null, pl = cur !== null ? (cur - entry) * qty : null;
       return `<tr><td class="wt-asset" data-label="${h(terminalText("asset"))}"><button data-symbol-details="${h(p.symbol)}">${logo({ symbol: p.symbol })}<span><strong class="ltr">${h(p.symbol)}</strong></span></button></td><td class="ltr" data-label="${h(textPair("الكمية", "Quantity"))}">${qty}</td><td class="ltr" data-label="${h(textPair("الدخول", "Entry"))}">${price(entry, c)}</td><td class="ltr" data-label="${h(textPair("الحالي", "Current"))}">${cur === null ? "--" : price(cur, c)}</td><td class="ltr" data-label="${h(textPair("القيمة", "Value"))}">${val === null ? "--" : price(val, c)}</td><td class="ltr ${pl === null ? "" : pl >= 0 ? "up" : "down"}" data-label="${h(textPair("ر/خ", "P/L"))}">${pl === null ? "--" : price(pl, c)}</td><td><button class="icon-btn danger" data-remove-holding="${i}" title="${h(textPair("إزالة", "Remove"))}">✕</button></td></tr>`; }).join("");
     return `<div class="table-shell"><table><thead><tr><th>${h(terminalText("asset"))}</th><th>${h(textPair("الكمية", "Quantity"))}</th><th>${h(textPair("الدخول", "Entry"))}</th><th>${h(textPair("الحالي", "Current"))}</th><th>${h(textPair("القيمة", "Value"))}</th><th>${h(textPair("ر/خ", "P/L"))}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  function holdingForm() { return `<form id="holding-form" class="inline-form"><input name="symbol" dir="ltr" placeholder="${h(terminalText("symbol"))}" /><input name="qty" inputmode="decimal" placeholder="${h(textPair("الكمية", "Quantity"))}" /><input name="entry" inputmode="decimal" placeholder="${h(textPair("سعر الدخول", "Entry price"))}" /><button class="action-btn" type="submit">${h(textPair("إضافة مركز", "Add position"))}</button></form>`; }
+  function holdingForm() { return `<form id="holding-form" class="trade-form-grid"><label>${h(textPair("الرمز", "Symbol", "Symbole"))}<input name="symbol" dir="ltr" placeholder="AAPL" maxlength="24" pattern="[A-Za-z0-9._^=/-]{1,24}" autocomplete="off" required /></label><label>${h(textPair("الكمية", "Quantity", "Quantité"))}<input name="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00" required /></label><label>${h(textPair("سعر الدخول", "Entry price", "Prix d’entrée"))}<input name="entry" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00" required /></label><button class="action-btn" type="submit">${h(textPair("إضافة مركز", "Add position", "Ajouter une position"))}</button><p id="holding-form-error" class="form-field-error wide" role="alert" aria-live="assertive" hidden></p></form>`; }
   function tradeProviderStatus(items) {
     const status = state.followed.dataStatus || {};
     const p = state.followed.dataProvider || state.provider || {};
@@ -5329,12 +5659,13 @@
       <form id="followed-trade-form" class="trade-form-grid">
         <label>${h(terminalText("symbol"))}<input name="symbol" dir="ltr" placeholder="AAPL" required /></label>
         <label>${h(terminalText("action"))}<select name="action"><option value="buy">${h(sigLabel("buy"))}</option><option value="sell">${h(sigLabel("sell"))}</option><option value="wait">${h(sigLabel("wait"))}</option><option value="watch">${h(terminalText("underWatch"))}</option></select></label>
-        <label>${h(textPair("سعر الدخول", "Entry price"))}<input name="entryPrice" inputmode="decimal" placeholder="0.00" required /></label>
-        <label>${h(terminalText("target"))}<input name="targetPrice" inputmode="decimal" placeholder="0.00" /></label>
-        <label>${h(textPair("وقف الخسارة", "Stop loss"))}<input name="stopLoss" inputmode="decimal" placeholder="0.00" /></label>
-        <label>${h(terminalText("confidence"))}<input name="confidence" inputmode="numeric" placeholder="${h(textPair("اختياري", "Optional"))}" /></label>
+        <label>${h(textPair("سعر الدخول", "Entry price"))}<input name="entryPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00" required /></label>
+        <label>${h(terminalText("target"))}<input name="targetPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00" /></label>
+        <label>${h(textPair("وقف الخسارة", "Stop loss"))}<input name="stopLoss" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00" /></label>
+        <label>${h(terminalText("confidence"))}<input name="confidence" type="number" inputmode="numeric" min="0" max="100" step="1" placeholder="${h(textPair("اختياري", "Optional"))}" /></label>
         <label class="wide">${h(textPair("ملاحظات", "Notes"))}<input name="notes" placeholder="${h(textPair("اختياري", "Optional"))}" /></label>
         <button class="action-btn" type="submit">${h(textPair("إضافة صفقة متابعة", "Add followed trade"))}</button>
+        <p id="followed-trade-form-error" class="form-field-error wide" role="alert" aria-live="assertive" hidden></p>
       </form>
     </section>`;
   }
@@ -5415,7 +5746,7 @@
     return items.length ? newsList(items) : `<p class="muted-note">${h(textPair("لا توجد أخبار مرتبطة من المزود لهذا الرمز.", "No related provider news for this symbol."))}</p>`;
   }
   function alertList(items) { return `<div class="trade-list">${items.map(i => `<article class="trade-item"><strong>${h(i.title || i.symbol || i.name || textPair("تنبيه", "Alert"))}</strong><p>${h(translateUiText(formatProviderError(i.message || i.reason || i.description || textPair("تنبيه بدون تفاصيل إضافية.", "Alert without additional details."))))}</p>${i.symbol ? `<button class="ghost-btn sm" data-symbol-details="${h(i.symbol)}">${h(textPair("فتح الرمز", "Open symbol"))}</button>` : ""}</article>`).join("")}</div>`; }
-  function localAlertRow(a, i) { const T = { price: terminalText("price"), percent: textPair("نسبة %", "Percent %"), signal: textPair("إشارة AI", "AI signal"), news: terminalText("news") }; return `<article class="trade-item alert-row"><div><strong class="ltr">${h(a.symbol)}</strong><p>${h(T[a.type] || translateUiText(a.type))}${a.value ? " · " + h(a.value) : ""} · ${h(date(a.createdAt))}</p></div><button class="icon-btn danger" data-del-alert="${i}" title="${h(textPair("حذف", "Delete"))}">✕</button></article>`; }
+  function localAlertRow(a, i) { const T = { price: terminalText("price"), percent: textPair("نسبة %", "Percent %"), signal: textPair("إشارة AI", "AI signal"), news: terminalText("news") }; const hasValue = a.value !== "" && a.value !== null && a.value !== undefined; return `<article class="trade-item alert-row"><div><strong class="ltr">${h(a.symbol)}</strong><p>${h(T[a.type] || translateUiText(a.type))}${hasValue ? " · " + h(a.value) : ""} · ${h(date(a.createdAt))}</p></div><button class="icon-btn danger" data-del-alert="${i}" title="${h(textPair("حذف", "Delete"))}">✕</button></article>`; }
 
   function systemCard() {
     const s = providerCopy();
@@ -5718,7 +6049,7 @@
         <div><span class="eyebrow">${h(terminalText("adminDiagnostics"))}</span><h2>${h(terminalText("providerMarketsSummary"))}</h2></div>
         <a class="ghost-btn compact-btn" href="${ROOT}/settings" data-route-link>${h(terminalText("settings"))}</a>
       </div>
-      <p class="provider-market-note">${h(translateUiText(state.markets.message || textPair("صفوف أسواق المزود المفصلة متاحة ضمن الإعدادات / تشخيصات الإدارة.", "Detailed provider market rows are available under Settings / Admin diagnostics.")))}</p>
+      <p class="provider-market-note">${h(formatProviderError(state.markets.message, { empty: textPair("صفوف أسواق المزود المفصلة متاحة ضمن الإعدادات / تشخيصات الإدارة.", "Detailed provider market rows are available under Settings / Admin diagnostics.") }))}</p>
       <div class="provider-market-summary-grid">${stats.map(([label, value, helper]) => `
         <article class="provider-market-summary-card">
           <span>${h(helper)}</span>
@@ -6151,6 +6482,11 @@
   }
   function hasArabicText(value) { return /[\u0600-\u06FF]/.test(String(value ?? "")); }
   function valueTextClass(value) { return hasArabicText(value) ? "rtl-value" : "ltr"; }
+  function isMarketValueText(value) {
+    const shown = String(value ?? "").trim();
+    if (!shown || shown === terminalText("unavailable")) return false;
+    return /[0-9]/.test(shown) || /^[A-Z0-9.^=:/-]{1,16}$/.test(shown);
+  }
   function displayValue(value) {
     if (/^provider_status_/i.test(String(value || ""))) return getProviderStatusMessage(value);
     return value === null || value === undefined || value === "" || value === "--" ? terminalText("unavailable") : translateUiText(String(value));
@@ -6169,7 +6505,8 @@
     if (raw === "complete") return "complete";
     if (raw === "live") return "live";
     if (raw === "cached") return "cached";
-    if (raw === "delayed") return "delayed";
+    if (raw === "stale" || raw === "expired") return "stale";
+    if (raw === "delayed" || raw === "late") return "delayed";
     if (raw === "partial") return "partial";
     if (raw === "unavailable") return "unavailable";
     return raw || "unavailable";
@@ -6180,7 +6517,7 @@
     const keyText = `${helper || ""} ${label || ""}`.toLowerCase();
     const isLongValue = shown.length > 28 || /[\/._-]/.test(shown);
     const longValueClass = longValueKeys.some(key => keyText.includes(key)) || isLongValue ? " detail-card--long" : "";
-    return `<article class="detail-card${longValueClass}"><span class="card-kicker">${h(translateUiText(helper || label))}</span><strong class="${valueTextClass(shown)}">${h(shown)}</strong><p>${h(translateUiText(label))}</p></article>`;
+    return `<article class="detail-card${longValueClass}"><span class="card-kicker">${h(translateUiText(helper || label))}</span><strong class="${valueTextClass(shown)}${isMarketValueText(shown) ? " market-value" : ""}">${h(shown)}</strong><p>${h(translateUiText(label))}</p></article>`;
   }
 
   /* ── Strategy agreement is informational; the final recommendation is weighted separately. ── */
@@ -6206,7 +6543,7 @@
   function consensus(sigs) {
     let buy = 0, sell = 0, neutral = 0, tw = 0;
     sigs.forEach(s => { if (isBuySignalName(s.signal)) buy += s.weight; else if (isSellSignalName(s.signal)) sell += s.weight; else neutral += s.weight; tw += s.weight; });
-    if (!tw) return { signal: "watch", agreement: 0, agreementPct: null, score: 0, buy: 0, sell: 0, neutral: 0, count: 0, limited: true };
+    if (!tw) return { signal: "watch", agreement: 0, agreementPct: null, score: 0, buy: 0, sell: 0, neutral: 0, count: 0, requiredCount: sigs.length, completeCoverage: false, limited: true };
     const top = Math.max(buy, sell, neutral);
     const sigName = (top === buy && buy > 0) ? "buy" : (top === sell && sell > 0) ? "sell" : "watch";
     const rawAgreement = Math.round(top / tw * 100);
@@ -6222,16 +6559,19 @@
       sell: Math.round(sell / tw * 100),
       neutral: Math.round(neutral / tw * 100),
       count: sigs.length,
+      requiredCount: sigs.length,
+      completeCoverage: sigs.length >= 3,
       limited
     };
   }
-  function limitedConsensusText(count) {
-    if (count <= 0) return textPair("لا توجد تغطية استراتيجية", "No strategy coverage");
-    if (count === 1) return textPair("اتفاق محدود: استراتيجية واحدة فقط", "Limited agreement: one strategy only");
+  function limitedConsensusText(count, requiredCount = 0) {
+    if (count <= 0) return textPair("لا توجد تغطية استراتيجية", "No strategy coverage", "Aucune couverture stratégique");
+    if (requiredCount > count) return textPair(`تغطية جزئية: ${latinNumber(count)} من ${latinNumber(requiredCount)}`, `Partial coverage: ${latinNumber(count)} of ${latinNumber(requiredCount)}`, `Couverture partielle : ${latinNumber(count)} sur ${latinNumber(requiredCount)}`);
+    if (count === 1) return textPair("اتفاق محدود: استراتيجية واحدة فقط", "Limited agreement: one strategy only", "Consensus limité : une seule stratégie");
     return textPair(`اتفاق محدود: ${latinNumber(count)} استراتيجيات فقط`, `Limited agreement: ${latinNumber(count)} strategies only`, `Consensus limité : ${latinNumber(count)} stratégies seulement`);
   }
   function consensusMetricText(c) {
-    return c.count < 3 ? limitedConsensusText(c.count) : textPair(`${latinNumber(c.agreement)}% اتفاق`, `${latinNumber(c.agreement)}% agreement`, `${latinNumber(c.agreement)}% de consensus`);
+    return c.limited || c.completeCoverage !== true ? limitedConsensusText(c.count, c.requiredCount) : textPair(`${latinNumber(c.agreement)}% اتفاق`, `${latinNumber(c.agreement)}% agreement`, `${latinNumber(c.agreement)}% de consensus`);
   }
   function strategyConsensus(asset, tech, rec) {
     const backendRows = strategyRowsFromBackend(rec, asset);
@@ -6245,6 +6585,8 @@
     if (backendMetric.count > 0) {
       c.count = backendMetric.count;
       c.limited = backendMetric.limited;
+      c.requiredCount = backendMetric.requiredCount;
+      c.completeCoverage = backendMetric.completeCoverage;
       if (backendMetric.agreementPct !== null) c.agreement = backendMetric.agreementPct;
     }
     if (!sigs.length) return emptyState(
@@ -6255,7 +6597,7 @@
     );
     const tone = c.limited ? "muted" : signalCardClass(c.signal);
     const rows = sigs.map(s => {
-      const unavailable = s.available === false;
+      const unavailable = backendRows.length ? !strategyRowComparable(s) : s.available === false;
       const rowSignal = unavailable ? "insufficient_data" : (finalRecommendationAction(s.signal) || s.signal || "watch");
       const name = isFrenchLanguage()
         ? s.nameFr || s.name_fr || s.nameEn || s.name_en || s.name || s.nameAr || s.name_ar || s.id || textPair("استراتيجية", "Strategy", "Stratégie")
@@ -6294,6 +6636,8 @@
     const technicalUnavailable = isTechnicalUnavailableDetail(detail, source);
     let recommendation = sharedRecommendation(source, { asset: a, detail });
     if (technicalUnavailable) recommendation = downgradedTechnicalRecommendation(recommendation, detail);
+    const dataState = assetDataState({ ...a, ...source }, recommendation);
+    const evidenceReady = dataState.key === "available";
     const backendRows = technicalUnavailable ? [] : strategyRowsFromBackend(rec, a);
     const sigs = backendRows.length ? backendRows : strategySignals(a, tech, rec);
     const consensusResult = backendRows.length ? backendConsensusFromRecords(rec, a) : consensus(sigs);
@@ -6301,20 +6645,24 @@
     if (backendMetric.count > 0) {
       consensusResult.count = backendMetric.count;
       consensusResult.limited = backendMetric.limited;
+      consensusResult.requiredCount = backendMetric.requiredCount;
+      consensusResult.completeCoverage = backendMetric.completeCoverage;
       if (backendMetric.agreementPct !== null) consensusResult.agreement = backendMetric.agreementPct;
     }
-    const confidence = recommendation.confidence;
+    const confidence = evidenceReady ? recommendation.confidence : null;
     const samples = sampleCountFromRec(rec);
     const dataQuality = recommendation.dataQuality.status;
     const technicalState = technicalSnapshot({ ...a, ...(rec || {}) }, tech);
     const riskLevel = recommendation.riskLevel;
-    const consensusStrong = consensusResult.agreement >= 70 && consensusResult.count >= 3;
+    const consensusStrong = consensusResult.agreement >= 70 && consensusResult.count >= 3 && consensusResult.completeCoverage === true;
     const aiStrong = confidence !== null && confidence >= 70;
     const dataStrong = dataQuality === "complete" && samples !== null && samples > 0;
-    const technicalStrong = !technicalUnavailable && technicalState.available && (!rec || rec.technicalAvailable !== false);
+    const technicalStrong = evidenceReady && !technicalUnavailable && technicalState.available && (!rec || rec.technicalAvailable !== false);
     const riskStrong = riskLevel !== "high";
     return {
       action: recommendation.status,
+      dataState,
+      evidenceReady,
       consensusResult,
       confidence,
       samples,
@@ -6360,25 +6708,25 @@
   }
   function finalRecommendationCard(asset, detail, rec, c) {
     const model = finalRecommendationModel(asset, detail, rec, c);
-    const insufficient = model.action === "insufficient_data";
+    const insufficient = model.evidenceReady && model.action === "insufficient_data";
     const confidenceText = model.confidence === null ? terminalText("unavailable") : `${latinNumber(Math.round(model.confidence))}%`;
-    const samplesText = model.samples === null ? terminalText("unavailable") : latinNumber(model.samples);
-    const finalLabel = recommendationLabel(model.normalizedRecommendation);
+    const samplesText = !model.evidenceReady || model.samples === null ? terminalText("unavailable") : latinNumber(model.samples);
+    const finalLabel = model.evidenceReady ? recommendationLabel(model.normalizedRecommendation) : model.dataState.label;
     const metrics = [
       [textPair("التوصية النهائية", "Final recommendation"), finalLabel, textPair("النهائي", "Final")],
-      [textPair("اتفاق الاستراتيجيات", "Strategy agreement"), consensusMetricText(model.consensusResult), textPair("الاتفاق", "Consensus")],
+      [textPair("اتفاق الاستراتيجيات", "Strategy agreement"), model.evidenceReady ? consensusMetricText(model.consensusResult) : model.dataState.label, textPair("الاتفاق", "Consensus")],
       [textPair("ثقة الذكاء الاصطناعي", "AI confidence"), confidenceText, textPair("ثقة الذكاء الاصطناعي", "AI confidence")],
       [textPair("التحليل الفني", "Technical analysis"), model.technicalAvailable ? textPair("متاح من المزود", "Available from provider") : terminalText("unavailable"), textPair("التحليل الفني", "Technical")],
-      [textPair("جودة البيانات / العينات", "Data quality / samples"), `${dataQualityLabel(model.dataQuality)} · ${samplesText}`, textPair("البيانات", "Data")],
-      [textPair("المخاطر", "Risk"), riskShort(model.riskLevel), textPair("المخاطر", "Risk")]
+      [textPair("جودة البيانات / العينات", "Data quality / samples"), model.evidenceReady ? `${dataQualityLabel(model.dataQuality)} · ${samplesText}` : model.dataState.label, textPair("البيانات", "Data")],
+      [textPair("المخاطر", "Risk"), model.evidenceReady ? riskShort(model.riskLevel) : terminalText("unavailable"), textPair("المخاطر", "Risk")]
     ];
-    return `<article class="panel final-recommendation-card ${model.technicalUnavailable ? "muted" : signalCardClass(model.action)}">
+    return `<article class="panel final-recommendation-card ${!model.evidenceReady || model.technicalUnavailable ? "muted" : signalCardClass(model.action)}">
       <div class="final-recommendation-head">
         <div><span class="eyebrow">${h(textPair("التوصية النهائية", "Final recommendation"))}</span><h2>${h(finalLabel)}</h2></div>
-        <span class="state-badge ${model.technicalUnavailable ? "muted" : signalCardClass(model.action)}">${h(finalLabel)}</span>
+        <span class="state-badge ${!model.evidenceReady || model.technicalUnavailable ? model.dataState.tone || "muted" : signalCardClass(model.action)}">${h(finalLabel)}</span>
       </div>
       <div class="final-signal-grid">${metrics.map(([label, value, helper]) => detailCard(label, value, helper)).join("")}</div>
-      <p class="recommendation-explanation">${h(translateUiText(model.explanation || terminalText("unavailable")))}</p>
+      <p class="recommendation-explanation">${h(model.evidenceReady ? translateUiText(model.explanation || terminalText("unavailable")) : model.dataState.body)}</p>
       ${insufficient ? dataSufficiencyChecklistCard(rec) : ""}
     </article>`;
   }
@@ -6397,9 +6745,16 @@
       ""
     );
   }
+  function safeStateText(value, fallback) {
+    if (value === null || value === undefined || value === "") return fallback;
+    if (typeof value === "object") return formatProviderError(value, { empty: fallback });
+    const text = String(value).replace(/\s+/g, " ").trim();
+    if (!text || /(?:api[_-]?key|authorization:\s*bearer|access[_-]?token|password|stack\s*trace|<html|<!doctype|\bat\s+[\w$.]+\s*\([^)]*:\d+:\d+\))/i.test(text)) return fallback;
+    return translateUiText(text.length > 240 ? `${text.slice(0, 237).trim()}...` : text);
+  }
   function emptyState(title, body, label, href) {
-    const cleanTitle = translateUiText(formatProviderError(title, { empty: UNAVAILABLE_MESSAGE }));
-    const cleanBody = translateUiText(formatProviderError(body, { empty: UNAVAILABLE_DESCRIPTION }));
+    const cleanTitle = safeStateText(title, UNAVAILABLE_MESSAGE);
+    const cleanBody = safeStateText(body, UNAVAILABLE_DESCRIPTION);
     return `<div class="empty-state compact"><span class="empty-glyph">◎</span><h3>${h(cleanTitle)}</h3><p>${h(cleanBody)}</p><div class="row-actions">${label && href ? `<a class="ghost-btn" href="${h(href)}" data-route-link>${h(translateUiText(label))}</a>` : ""}<button class="ghost-btn" data-retry>${h(terminalText("retry"))}</button></div></div>`;
   }
   function miniEmpty() { return `<div class="empty-state compact"><p>${h(textPair("لا توجد بيانات حالياً من المزود.", "No provider data is available right now."))}</p></div>`; }
@@ -6503,7 +6858,8 @@
     const statsHost = document.getElementById("topbar-stats");
     const bar = document.getElementById("terminal-statusbar");
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
-    const cells = [[textPair("البيانات اللحظية", "Real-time"), p.className === "online" ? textPair("متصلة", "Connected") : textPair("غير متصلة", "Disconnected", "Déconnecté"), textPair("البيانات اللحظية", "Real-time")], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
+    const feedState = recommendationFeedState(rec);
+    const cells = [[textPair("بيانات التحليل", "Analysis data", "Données d’analyse"), feedState.label, feedState.title], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
     const metricCellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("");
     const statusCellHtml = `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${h(p.className === "online" ? textPair("النظام يعمل", "System online") : textPair("بانتظار المزود", "Waiting for provider"))}</strong></div>`;
     if (statsHost) statsHost.innerHTML = metricCellsHtml;
@@ -6552,7 +6908,7 @@
     } else {
       state.localTrades = [draft, ...state.localTrades].slice(0, 80);
       write(keys.followed, state.localTrades);
-      toast(textPair("تم حفظ الصفقة محلياً؛ سجّل الدخول أو طبّق migrations للحفظ في قاعدة البيانات.", "Trade saved locally; sign in or apply migrations to save it in the database."));
+      toast(textPair("تم حفظ الصفقة على هذا الجهاز لأن الحفظ السحابي غير متاح حالياً.", "The trade was saved on this device because cloud saving is currently unavailable.", "La transaction a été enregistrée sur cet appareil, car l’enregistrement dans le cloud est indisponible."));
     }
     await refreshFollowedTrades(false);
   }
@@ -6574,41 +6930,158 @@
       toast(textPair("تعذر تحديث صفقات المتابعة حالياً.", "Followed trades cannot be updated right now."));
     }
   }
-  async function runSignalRefresh() {
-    const result = await post("/market/signals/refresh", { symbols: defaults, force: true });
-    if (!result.ok) {
-      await get(`/market/signals?symbols=${encodeURIComponent(defaults.join(","))}&refresh=1&limit=${defaults.length}`);
-      toast(textPair("تم تشغيل فحص إشارات محلي؛ الحفظ التلقائي يحتاج صلاحية قاعدة البيانات.", "Local signal scan started; automatic saving requires database permissions."));
-    } else {
-      toast(textPair("تم تشغيل فحص الإشارات وحفظ المرشحات المتاحة.", "Signal scan started and available candidates were saved."));
+  async function runSignalRefresh(trigger) {
+    if (trigger && trigger.disabled) return;
+    if (trigger) { trigger.disabled = true; trigger.setAttribute("aria-busy", "true"); }
+    try {
+      const result = await post("/market/signals/refresh", { symbols: defaults, force: true });
+      if (!result.ok) {
+        const fallback = await get(`/market/signals?symbols=${encodeURIComponent(defaults.join(","))}&refresh=1&limit=${defaults.length}`);
+        if (!fallback.ok) {
+          toast(textPair("تعذر تشغيل فحص الإشارات من جميع المصادر المدعومة.", "The signal scan could not run through any supported source.", "L’analyse des signaux n’a pu être lancée via aucune source prise en charge."));
+          return;
+        }
+        toast(textPair("اكتمل الفحص من المصدر الاحتياطي، لكن الحفظ السحابي غير متاح.", "The fallback scan completed, but cloud saving is unavailable.", "L’analyse de secours a abouti, mais l’enregistrement dans le cloud est indisponible."));
+      } else {
+        toast(textPair("تم تشغيل فحص الإشارات وحفظ المرشحات المتاحة.", "Signal scan started and available candidates were saved.", "L’analyse des signaux a démarré et les candidats disponibles ont été enregistrés."));
+      }
+      await refreshFollowedTrades(true);
+    } finally {
+      if (trigger && trigger.isConnected) { trigger.disabled = false; trigger.removeAttribute("aria-busy"); }
     }
-    await refreshFollowedTrades(true);
   }
-  function toast(message) { const root = document.getElementById("toast-root"); if (!root) return; const node = document.createElement("div"); node.className = "toast"; node.textContent = message; root.appendChild(node); setTimeout(() => node.remove(), 3200); }
+  function toast(message) { const root = document.getElementById("toast-root"); if (!root) return; const node = document.createElement("div"); node.className = "toast"; node.setAttribute("role", "status"); node.dir = isLtrLanguage() ? "ltr" : "rtl"; node.textContent = message; root.appendChild(node); setTimeout(() => node.remove(), 3200); }
+
+  function clearFormError(form) {
+    form.querySelectorAll("[aria-invalid='true']").forEach(field => {
+      field.removeAttribute("aria-invalid");
+      if (field.getAttribute("aria-describedby")?.endsWith("-form-error")) field.removeAttribute("aria-describedby");
+    });
+    const error = form.querySelector(".form-field-error");
+    if (error) { error.textContent = ""; error.hidden = true; }
+  }
+
+  function showFormError(form, message, fieldName) {
+    const error = form.querySelector(".form-field-error");
+    const field = fieldName ? form.elements.namedItem(fieldName) : null;
+    if (error) { error.textContent = message; error.hidden = false; }
+    if (field && typeof field.setAttribute === "function") {
+      field.setAttribute("aria-invalid", "true");
+      if (error && error.id) field.setAttribute("aria-describedby", error.id);
+      field.focus();
+    }
+    toast(message);
+    return false;
+  }
+
+  function setFormBusy(form, busy) {
+    const submit = form.querySelector("button[type='submit']");
+    form.dataset.submitting = busy ? "true" : "false";
+    form.setAttribute("aria-busy", busy ? "true" : "false");
+    if (!submit) return;
+    if (busy && !submit.dataset.idleLabel) submit.dataset.idleLabel = submit.textContent || "";
+    submit.disabled = busy;
+    submit.setAttribute("aria-disabled", busy ? "true" : "false");
+    submit.textContent = busy ? textPair("جارٍ الحفظ...", "Saving...", "Enregistrement...") : submit.dataset.idleLabel || submit.textContent;
+  }
+
+  function validSymbolInput(value) {
+    return /^[A-Za-z0-9._^=\/-]{1,24}$/.test(String(value || "").trim());
+  }
+
+  function decimalFormValue(formData, name) {
+    const raw = String(formData.get(name) ?? "").trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : Number.NaN;
+  }
 
   // form submits via delegation (forms re-render, so use document-level submit)
   document.addEventListener("submit", async (e) => {
-    if (e.target.id === "alert-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.alerts = [{ symbol: s, type: f.get("type"), value: f.get("value"), title: textPair(`تنبيه ${s}`, `${s} alert`, `Alerte ${s}`), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`, `Alerte créée pour ${s}.`)); render(); }
-    if (e.target.id === "holding-form") { e.preventDefault(); const f = new FormData(e.target); const s = sym(f.get("symbol")); if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol.")); state.holdings = [{ symbol: s, qty: f.get("qty"), entry: f.get("entry") }, ...state.holdings].slice(0, 50); write(keys.holdings, state.holdings); toast(textPair(`تمت إضافة مركز ${s}.`, `${s} position added.`, `Position ${s} ajoutée.`)); render(); }
+    if (e.target.id === "alert-form") {
+      e.preventDefault();
+      const form = e.target;
+      if (form.dataset.submitting === "true") return;
+      clearFormError(form);
+      const f = new FormData(form);
+      const rawSymbol = String(f.get("symbol") || "").trim();
+      const s = sym(rawSymbol);
+      const type = String(f.get("type") || "price");
+      const value = decimalFormValue(f, "value");
+      if (!s || !validSymbolInput(rawSymbol)) return showFormError(form, textPair("أدخل رمزاً صالحاً مثل AAPL أو 2222.SR.", "Enter a valid symbol such as AAPL or 2222.SR.", "Saisissez un symbole valide, comme AAPL ou 2222.SR."), "symbol");
+      if (["price", "percent"].includes(type) && (value === null || !Number.isFinite(value))) return showFormError(form, textPair("أدخل قيمة رقمية صالحة لهذا النوع من التنبيه.", "Enter a valid numeric value for this alert type.", "Saisissez une valeur numérique valide pour ce type d’alerte."), "value");
+      if (type === "price" && Number(value) <= 0) return showFormError(form, textPair("يجب أن يكون سعر التنبيه أكبر من صفر.", "The alert price must be greater than zero.", "Le cours de l’alerte doit être supérieur à zéro."), "value");
+      setFormBusy(form, true);
+      state.alerts = [{ symbol: s, type, value: value === null ? "" : value, title: textPair(`تنبيه ${s}`, `${s} alert`, `Alerte ${s}`), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30);
+      write(keys.alerts, state.alerts);
+      toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`, `Alerte créée pour ${s}.`));
+      render();
+      return;
+    }
+    if (e.target.id === "holding-form") {
+      e.preventDefault();
+      const form = e.target;
+      if (form.dataset.submitting === "true") return;
+      clearFormError(form);
+      const f = new FormData(form);
+      const rawSymbol = String(f.get("symbol") || "").trim();
+      const s = sym(rawSymbol);
+      const qty = decimalFormValue(f, "qty");
+      const entry = decimalFormValue(f, "entry");
+      if (!s || !validSymbolInput(rawSymbol)) return showFormError(form, textPair("أدخل رمزاً صالحاً مثل AAPL أو 2222.SR.", "Enter a valid symbol such as AAPL or 2222.SR.", "Saisissez un symbole valide, comme AAPL ou 2222.SR."), "symbol");
+      if (qty === null || !Number.isFinite(qty) || qty <= 0) return showFormError(form, textPair("يجب أن تكون الكمية رقماً أكبر من صفر.", "Quantity must be a number greater than zero.", "La quantité doit être un nombre supérieur à zéro."), "qty");
+      if (entry === null || !Number.isFinite(entry) || entry <= 0) return showFormError(form, textPair("يجب أن يكون سعر الدخول رقماً أكبر من صفر.", "Entry price must be a number greater than zero.", "Le prix d’entrée doit être un nombre supérieur à zéro."), "entry");
+      setFormBusy(form, true);
+      state.holdings = [{ symbol: s, qty, entry }, ...state.holdings].slice(0, 50);
+      write(keys.holdings, state.holdings);
+      toast(textPair(`تمت إضافة مركز ${s}.`, `${s} position added.`, `Position ${s} ajoutée.`));
+      render();
+      return;
+    }
     if (e.target.id === "followed-trade-form") {
       e.preventDefault();
-      const f = new FormData(e.target);
-      const s = sym(f.get("symbol"));
-      if (!s) return toast(textPair("اكتب رمزاً.", "Enter a symbol."));
-      const draft = tradeDraftFromAsset({
+      const form = e.target;
+      if (form.dataset.submitting === "true") return;
+      clearFormError(form);
+      const f = new FormData(form);
+      const rawSymbol = String(f.get("symbol") || "").trim();
+      const s = sym(rawSymbol);
+      const entryPrice = decimalFormValue(f, "entryPrice");
+      const targetPrice = decimalFormValue(f, "targetPrice");
+      const stopLoss = decimalFormValue(f, "stopLoss");
+      const confidence = decimalFormValue(f, "confidence");
+      if (!s || !validSymbolInput(rawSymbol)) return showFormError(form, textPair("أدخل رمزاً صالحاً مثل AAPL أو 2222.SR.", "Enter a valid symbol such as AAPL or 2222.SR.", "Saisissez un symbole valide, comme AAPL ou 2222.SR."), "symbol");
+      if (entryPrice === null || !Number.isFinite(entryPrice) || entryPrice <= 0) return showFormError(form, textPair("يجب أن يكون سعر الدخول رقماً أكبر من صفر.", "Entry price must be a number greater than zero.", "Le prix d’entrée doit être un nombre supérieur à zéro."), "entryPrice");
+      if (targetPrice !== null && (!Number.isFinite(targetPrice) || targetPrice <= 0)) return showFormError(form, textPair("أدخل هدفاً صالحاً أكبر من صفر أو اتركه فارغاً.", "Enter a valid target above zero or leave it empty.", "Saisissez un objectif valide supérieur à zéro ou laissez le champ vide."), "targetPrice");
+      if (stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0)) return showFormError(form, textPair("أدخل وقف خسارة صالحاً أكبر من صفر أو اتركه فارغاً.", "Enter a valid stop loss above zero or leave it empty.", "Saisissez un stop valide supérieur à zéro ou laissez le champ vide."), "stopLoss");
+      if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 100)) return showFormError(form, textPair("يجب أن تكون الثقة بين 0 و100.", "Confidence must be between 0 and 100.", "La confiance doit être comprise entre 0 et 100."), "confidence");
+      const action = String(f.get("action") || "watch");
+      const now = new Date().toISOString();
+      const draft = {
+        id: `manual-${Date.now()}`,
         symbol: s,
-        action: f.get("action"),
-        entryPrice: f.get("entryPrice"),
-        currentPrice: f.get("entryPrice"),
-        targetPrice: f.get("targetPrice"),
-        stopLoss: f.get("stopLoss"),
-        confidence: f.get("confidence"),
-        notes: f.get("notes"),
-        status: f.get("action") === "wait" ? "waiting" : f.get("action") === "watch" ? "watching" : "open",
-        provider: "manual"
-      }, "manual");
-      await persistFollowedTrade(draft);
-      e.target.reset();
+        assetName: s,
+        action,
+        entryPrice,
+        currentPrice: entryPrice,
+        targetPrice,
+        stopLoss,
+        confidence,
+        notes: String(f.get("notes") || "").trim(),
+        status: action === "wait" ? "waiting" : action === "watch" ? "watching" : "open",
+        openedAt: now,
+        updatedAt: now,
+        provider: "manual",
+        sourceType: "manual"
+      };
+      setFormBusy(form, true);
+      try {
+        await persistFollowedTrade(draft);
+        if (form.isConnected) form.reset();
+      } finally {
+        if (form.isConnected) setFormBusy(form, false);
+      }
+      return;
     }
     if (e.target.id === "settings-form") {
       e.preventDefault();
@@ -7000,7 +7473,7 @@
   function riskShort(v) { const k = riskKey(v); return k === "high" ? textPair("عالية", "High") : k === "low" ? textPair("منخفضة", "Low") : textPair("متوسطة", "Medium"); }
   function riskTone(v) { const k = riskKey(v); return k === "high" ? "bad" : k === "low" ? "ok" : "warn"; }
   function riskLabel(r) { return r === "conservative" ? textPair("محافظ", "Conservative") : r === "aggressive" ? textPair("هجومي", "Aggressive") : textPair("متوازن", "Balanced"); }
-  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "complete") return textPair("مكتملة", "Complete"); if (v === "live") return textPair("مباشرة", "Live"); if (v === "cached") return textPair("بيانات مخزنة مؤقتاً", "Cached"); if (v === "late" || v === "delayed") return textPair("متأخرة", "Delayed"); if (v === "partial") return textPair("جزئية", "Partial"); if (v === "unavailable") return textPair("غير متاحة", "Unavailable"); return value ? translateUiText(value) : terminalText("unavailable"); }
+  function dataQualityLabel(value) { const v = String(value || "").toLowerCase(); if (v === "complete") return textPair("مكتملة", "Complete"); if (v === "live") return textPair("مباشرة", "Live"); if (v === "cached") return textPair("بيانات مخزنة مؤقتاً", "Cached"); if (v === "stale") return textPair("قديمة", "Stale", "Anciennes"); if (v === "late" || v === "delayed") return textPair("متأخرة", "Delayed"); if (v === "partial") return textPair("جزئية", "Partial"); if (v === "unavailable") return textPair("غير متاحة", "Unavailable"); return value ? translateUiText(value) : terminalText("unavailable"); }
   function signalPrefs() {
     const s = state.settings || {};
     const enabledMarkets = Array.isArray(s.enabledMarkets) && s.enabledMarkets.length
@@ -7268,7 +7741,7 @@
     const requestedMarket = chip.dataset.recMarket;
     state.settings.defaultMarket = requestedMarket;
     try { localStorage.setItem(keys.settings, JSON.stringify(state.settings)); } catch {}
-    state.rec = {};
+    state.rec = { status: "loading" };
     state.commandCards = {};
     state.news = {};
     state.newsContextKey = "";
@@ -7296,9 +7769,9 @@
     state.settings.defaultMarket = mid;
     _marketSelectorOpen = false;
     write(keys.settings, state.settings);
-    state.rec = {};
+    state.rec = { status: "loading" };
     state.commandCards = {};
-    state.signals = {};
+    state.signals = { status: "loading" };
     state.signalAlerts = {};
     state.news = {};
     state.newsContextKey = "";
@@ -7323,12 +7796,12 @@
       ".ms-pill{min-height:42px;display:inline-flex;align-items:center;gap:10px;padding-block:0;padding-inline:15px 10px;border-radius:999px;border:1px solid rgba(34,211,238,.62);background:linear-gradient(180deg,rgba(9,29,48,.96),rgba(3,15,28,.94));color:#e8f8ff;font-size:14px;font-weight:850;font-family:inherit;cursor:pointer;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease,transform .18s ease;white-space:nowrap;box-shadow:0 0 0 1px rgba(34,211,238,.12),0 0 24px rgba(34,211,238,.14),inset 0 1px 0 rgba(255,255,255,.08);touch-action:manipulation;direction:inherit}" +
       ".ms-pill>*{pointer-events:none}.ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.92);background:linear-gradient(180deg,rgba(12,42,66,.98),rgba(5,22,39,.96));color:#fff;box-shadow:0 0 0 1px rgba(34,211,238,.22),0 0 30px rgba(34,211,238,.22),inset 0 1px 0 rgba(255,255,255,.1)}" +
       ".ms-pill:focus-visible{outline:2px solid rgba(94,234,212,.9);outline-offset:3px;box-shadow:0 0 0 1px rgba(34,211,238,.28),0 0 0 5px rgba(94,234,212,.14),0 0 30px rgba(34,211,238,.22),inset 0 1px 0 rgba(255,255,255,.1)}.ms-pill:active{transform:translateY(1px)}" +
-      ".ms-pill-copy{min-width:0;display:inline-flex;align-items:center;gap:6px;line-height:1}.ms-pill-name{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;text-align:start}.ms-pill-sep{color:rgba(148,211,224,.62);margin:0 1px}.ms-pill-cur{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:900;color:#22D3EE;direction:ltr;unicode-bidi:embed;letter-spacing:.03em}" +
+      ".ms-pill-copy{min-width:0;display:inline-flex;align-items:center;gap:6px;line-height:1}.ms-pill-name{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;text-align:start}.ms-pill-sep{color:rgba(148,211,224,.62);margin:0 1px}.ms-pill-cur{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:900;color:#22D3EE;direction:ltr;unicode-bidi:embed;letter-spacing:.03em}" +
       ".ms-chevron-box{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:999px;border:1px solid rgba(125,249,255,.32);background:rgba(34,211,238,.1);color:#dffaff;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease}.ms-pill:hover .ms-chevron-box,.ms-pill[aria-expanded=true] .ms-chevron-box{border-color:rgba(94,234,212,.58);background:rgba(94,234,212,.16);box-shadow:0 0 16px rgba(34,211,238,.18),inset 0 1px 0 rgba(255,255,255,.1)}.ms-chevron{width:16px;height:16px;flex-shrink:0;transition:transform .22s cubic-bezier(.2,.8,.2,1);animation:ms-chevron-close .22s cubic-bezier(.2,.8,.2,1)}.ms-chevron.ms-open{transform:rotate(180deg);animation:ms-chevron-open .22s cubic-bezier(.2,.8,.2,1)}@keyframes ms-chevron-open{from{transform:rotate(0)}to{transform:rotate(180deg)}}@keyframes ms-chevron-close{from{transform:rotate(180deg)}to{transform:rotate(0)}}@media(prefers-reduced-motion:reduce){.ms-chevron{transition:none;animation:none!important}}" +
       ".ms-dropdown{position:absolute;top:calc(100% + 9px);inset-inline-start:0;min-width:255px;max-height:min(390px,70vh);overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,#071a2c,#04101d);border:1px solid rgba(34,211,238,.42);border-radius:16px;padding:7px;z-index:10050;display:flex;flex-direction:column;gap:3px;box-shadow:0 22px 56px rgba(0,0,0,.64),0 0 0 1px rgba(34,211,238,.09),0 0 36px rgba(34,211,238,.12)}" +
       ".ms-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;border-radius:11px;border:1px solid transparent;background:transparent;color:#a9c1d3;font-size:13px;font-weight:760;cursor:pointer;text-align:start;direction:inherit;width:100%;transition:background .12s,border-color .12s,color .12s}" +
       ".ms-item:hover{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.16);color:#eefbff}.ms-item:focus-visible{outline:2px solid rgba(34,211,238,.7);outline-offset:2px;background:rgba(34,211,238,.12);color:#fff}" +
-      ".ms-item.is-active{color:#22D3EE;font-weight:900;background:rgba(34,211,238,.11);border-color:rgba(34,211,238,.24)}.ms-chk{width:14px;height:14px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:14px;height:14px;flex-shrink:0}.ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.ms-cur-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e8ca1;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:8px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
+      ".ms-item.is-active{color:#22D3EE;font-weight:900;background:rgba(34,211,238,.11);border-color:rgba(34,211,238,.24)}.ms-chk{width:14px;height:14px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:14px;height:14px;flex-shrink:0}.ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.ms-cur-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6e8ca1;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:8px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
       "@media(max-width:640px){.topbar-market-selector,.topbar-market-selector .ms-wrap,.topbar-market-selector .ms-pill{width:100%}.topbar-market-selector .ms-pill{justify-content:center;min-height:40px;padding-inline:12px;font-size:13px}.ms-pill-name{max-width:46vw}.ms-dropdown{inset-inline-start:auto;left:50%;right:auto;transform:translateX(-50%);min-width:min(312px,calc(100vw - 28px));max-width:calc(100vw - 28px)}}";
     document.head.appendChild(_s);
   }

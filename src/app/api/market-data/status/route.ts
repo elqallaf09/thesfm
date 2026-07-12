@@ -3,6 +3,7 @@ import { getEconomicDataProviderStatus } from '@/lib/providers/economic-data';
 import { getEconomicCalendarProviderStatus } from '@/lib/providers/economic-calendar';
 import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
+import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export async function GET() {
     news,
     economicCalendar,
     economicData,
-    state,
+    state: sanitizeMarketSystemStateForPublic(state),
   }, {
     headers: {
       'Cache-Control': 'private, max-age=60',

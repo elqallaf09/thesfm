@@ -361,12 +361,6 @@ export function ProjectDocumentsTab({
     if (!error) {
       const rawRows = (data ?? []) as ProjectDocumentRow[];
       const uniqueRows = uniqueLatestDocuments(rawRows);
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('[ProjectDocumentsTab] Loaded documents', {
-          rawCount: rawRows.length,
-          deduplicatedCount: uniqueRows.length,
-        });
-      }
       setDocuments(uniqueRows);
     }
     setLoading(false);

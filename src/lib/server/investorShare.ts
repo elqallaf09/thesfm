@@ -7,9 +7,17 @@
  *   passwords are never stored or logged.
  */
 
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, scrypt, scryptSync, timingSafeEqual } from 'crypto';
 
 export const INVESTOR_TOKEN_BYTES = 32;
+const SCRYPT_KEY_LENGTH = 32;
+const SCRYPT_OPTIONS = {
+  N: 16_384,
+  r: 8,
+  p: 1,
+  maxmem: 32 * 1024 * 1024,
+} as const;
+const MAX_PASSWORD_BYTES = 1_024;
 
 export function generateInvestorToken(): string {
   return randomBytes(INVESTOR_TOKEN_BYTES).toString('base64url');
@@ -36,4 +44,27 @@ export function verifyInvestorPassword(password: string, stored: string): boolea
   } catch {
     return false;
   }
+}
+
+export async function verifyInvestorPasswordAsync(password: string, stored: string): Promise<boolean> {
+  const [scheme, salt, expected] = String(stored ?? '').split(':');
+  if (
+    scheme !== 'scrypt'
+    || !/^[0-9a-f]{32}$/i.test(salt ?? '')
+    || !/^[0-9a-f]{64}$/i.test(expected ?? '')
+    || Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES
+  ) {
+    return false;
+  }
+
+  return new Promise(resolve => {
+    scrypt(password, salt, SCRYPT_KEY_LENGTH, SCRYPT_OPTIONS, (error, derived) => {
+      if (error) {
+        resolve(false);
+        return;
+      }
+      const expectedBuffer = Buffer.from(expected, 'hex');
+      resolve(derived.length === expectedBuffer.length && timingSafeEqual(derived, expectedBuffer));
+    });
+  });
 }

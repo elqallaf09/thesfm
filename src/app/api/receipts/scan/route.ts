@@ -6,11 +6,16 @@ import {
   getGoogleAccessToken,
   getGoogleReceiptConfig,
   getReceiptProviderStatus,
-  maskGoogleClientEmail,
   readGoogleErrorResponse,
   safeProviderErrorMessage,
   type ReceiptProviderErrorCode,
 } from '@/lib/server/receiptProviderConfig';
+import {
+  exceedsDeclaredBodyLimit,
+  exceedsReceiptAggregateLimit,
+  isValidReceiptFile,
+  mapWithConcurrency,
+} from '@/lib/server/uploadSafety';
 
 export const runtime = 'nodejs';
 
@@ -958,31 +963,6 @@ function googleAmountLabel(kind: AmountCandidate['kind'], entity?: GoogleDocumen
   return cleanTextValue(entity?.type) || 'Amount';
 }
 
-function googleEntityDebugValue(entity: GoogleDocumentEntity) {
-  const normalizedValue = entity.normalizedValue;
-  if (!normalizedValue) return undefined;
-  return {
-    hasText: Boolean(cleanTextValue(normalizedValue.text)),
-    moneyValue: normalizedValue.moneyValue ? {
-      currencyCode: normalizedValue.moneyValue.currencyCode,
-      hasAmount: normalizedValue.moneyValue.units !== undefined || normalizedValue.moneyValue.nanos !== undefined,
-    } : undefined,
-    hasDateValue: Boolean(normalizedValue.dateValue),
-  };
-}
-
-function logGoogleEntitySummary(entities: GoogleDocumentEntity[]) {
-  if (process.env.NODE_ENV === 'production') return;
-  const flattened = flattenGoogleEntities(entities);
-  console.info('Google Document AI invoice entities', flattened.slice(0, 80).map(entity => ({
-    type: entity.type,
-    hasMentionText: Boolean(entity.mentionText),
-    normalizedValue: googleEntityDebugValue(entity),
-    confidence: entity.confidence,
-    pageAnchor: Boolean(entity.pageAnchor),
-  })));
-}
-
 function googleLineItems(entities: GoogleDocumentEntity[]) {
   return entities
     .filter(entity => googleEntityType(entity).includes('line_item') && Array.isArray(entity.properties))
@@ -1011,7 +991,6 @@ function googleLineItems(entities: GoogleDocumentEntity[]) {
 
 function normalizeGoogleInvoiceEntities(document: { text?: string; entities?: GoogleDocumentEntity[] }) {
   const entities = document.entities || [];
-  logGoogleEntitySummary(entities);
   const flattened = flattenGoogleEntities(entities);
   const entityTextBlock = flattened
     .map(entity => [entity.type, entityText(entity), entity.mentionText].filter(Boolean).join(' '))
@@ -1172,20 +1151,6 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
   const token = await getGoogleAccessToken(config.credentials);
   const processorPath = config.processorPath;
   const endpoint = `https://${config.location}-documentai.googleapis.com/v1/${processorPath}:process`;
-  console.info('Google Document AI process request', {
-    env: {
-      hasProjectId: Boolean(config.projectId),
-      hasLocation: Boolean(config.location),
-      hasProcessorId: Boolean(config.processorId),
-      hasCredentialsJson: Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim()),
-    },
-    projectIdPresent: Boolean(config.projectId),
-    location: config.location,
-    processorIdPresent: Boolean(config.processorId),
-    processorPath,
-    serviceAccount: maskGoogleClientEmail(config.credentials.client_email),
-    file: { mimeType, size: file.size },
-  });
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -1202,28 +1167,16 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
       }),
     });
   } catch (error) {
-    console.error('Google Document AI fetch failed', {
-      processorPath,
-      location: config.location,
-      file: { mimeType, size: file.size },
-      errorName: error instanceof Error ? error.name : 'unknown',
-      errorMessage: error instanceof Error ? error.message : 'google_request_failed',
+    console.error('[receipt-scan] google_request_failed', {
+      errorType: error instanceof Error ? error.name : 'UnknownError',
     });
     throw new ReceiptScanProviderError('google_request_failed');
   }
   if (!response.ok) {
     const detail = await readGoogleErrorResponse(response);
-    console.error('Google Document AI process failed', {
-      projectIdPresent: Boolean(config.projectId),
-      location: config.location,
-      processorIdPresent: Boolean(config.processorId),
-      processorPath,
-      serviceAccount: maskGoogleClientEmail(config.credentials.client_email),
-      file: { mimeType, size: file.size },
-      googleStatus: detail.status,
-      googleReason: detail.reason,
-      googleCode: detail.code,
-      googleMessage: detail.message,
+    console.error('[receipt-scan] google_process_failed', {
+      status: detail.status,
+      code: detail.code,
     });
     throw new ReceiptScanProviderError(detail.code, detail.status, detail.reason);
   }
@@ -1513,27 +1466,6 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
   const providerStatus = getReceiptProviderStatus();
   const googleUnavailableCode: ReceiptProviderErrorCode = providerStatus.google.error || 'google_env_missing';
 
-  if (process.env.NODE_ENV !== 'production') {
-    const { config } = getGoogleReceiptConfig();
-    console.info('Receipt scan provider trace', {
-      providerSelected: providerStatus.google.configured ? 'google-document-ai' : providerStatus.openai.configured ? 'openai-vision' : 'manual',
-      envPresence: {
-        hasGoogleProjectId: providerStatus.google.hasProjectId,
-        hasGoogleLocation: providerStatus.google.hasLocation,
-        hasGoogleProcessorId: providerStatus.google.hasProcessorId,
-        hasGoogleCredentialsJson: providerStatus.google.hasCredentialsJson,
-        hasOpenAiKey: providerStatus.openai.hasApiKey,
-      },
-      file: { type: file.type, inferredMimeType: mimeType, size: file.size },
-      googleClientInit: providerStatus.google.clientInitValid,
-      processorLocation: process.env.GOOGLE_DOCUMENT_AI_LOCATION || null,
-      processorIdPresent: providerStatus.google.hasProcessorId,
-      processorPath: config?.processorPath,
-      serviceAccount: maskGoogleClientEmail(config?.credentials.client_email),
-      errorCode: providerStatus.google.error,
-    });
-  }
-
   if (providerStatus.google.configured) {
     try {
       googleResult = withFileDebug(normalizeExtraction(await scanWithGoogleDocumentAI(file, bytes), file.name), file, { provider: 'google-document-ai' });
@@ -1609,10 +1541,14 @@ export async function POST(request: NextRequest) {
       return errorResponse('Receipt scanning requires a paid plan.', 403, { stage: 'provider', errorSource: 'plan_blocked' }, 'plan_blocked');
     }
 
+    if (exceedsDeclaredBodyLimit(request)) return errorResponse('Receipt upload is too large', 413, undefined, 'upload_failed');
     const formData = await request.formData();
     const files = [...formData.getAll('receipt'), ...formData.getAll('receipts')].filter((file): file is File => file instanceof File);
     if (!files.length) return errorResponse('No receipt file uploaded', 400, undefined, 'file_missing');
     if (files.length > MAX_RECEIPTS) return errorResponse('You can upload up to 10 receipts at once', 413, undefined, 'upload_failed');
+    if (exceedsReceiptAggregateLimit(files)) return errorResponse('Receipt upload is too large', 413, undefined, 'upload_failed');
+    const signatures = await Promise.all(files.map(file => isValidReceiptFile(file, inferReceiptMimeType(file))));
+    if (signatures.some(valid => !valid)) return errorResponse('Unsupported or invalid receipt file', 415, undefined, 'upload_failed');
 
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
@@ -1664,16 +1600,7 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('Receipt scan request started', {
-        googleConfigured: googleConfigured(),
-        openaiConfigured: openaiConfigured(),
-      files: files.map(file => ({ type: file.type, size: file.size })),
-      effectiveMimeTypes: files.map(file => inferReceiptMimeType(file)),
-    });
-  }
-
-    const results = await Promise.all(files.map(file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined)));
+    const results = await mapWithConcurrency(files, 2, file => scanFile(file, typeof receiptText === 'string' ? receiptText : undefined));
     if (files.length === 1) {
       const [result] = results;
       return NextResponse.json({
@@ -1703,7 +1630,7 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('Receipt scan route failed:', error);
+    console.error('[receipt-scan] request_failed', { errorType: error instanceof Error ? error.name : 'UnknownError' });
     return errorResponse('We could not read the receipt clearly', 500);
   }
 }

@@ -1,37 +1,22 @@
-import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { cleanEnv } from '@/lib/market/providerConfig';
-import { isAdminAccessCodeConfigured, isValidAdminAccessCode } from '@/lib/server/adminAccess';
+import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { getGoogleClientDiagnostic, getReceiptProviderStatus, parseGoogleCredentialsJson } from '@/lib/server/receiptProviderConfig';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function safeEqual(a: string, b: string) {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && timingSafeEqual(ab, bb);
-}
-
-function requestToken(request: NextRequest): string | null {
-  return (
-    request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ??
-    cleanEnv(request.nextUrl.searchParams.get('token'))
-  );
-}
-
-function isAllowed(request: NextRequest): boolean {
-  if (process.env.NODE_ENV !== 'production') return true;
-  const token = requestToken(request);
-  if (!token) return false;
-  const healthToken = cleanEnv(process.env.MARKET_PROVIDER_HEALTH_TOKEN);
-  if (healthToken && safeEqual(token, healthToken)) return true;
-  return isAdminAccessCodeConfigured() && isValidAdminAccessCode(token);
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAllowed(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (process.env.NODE_ENV === 'production') {
+    const auth = await requireAdminApiAccess(request, 'admin_dashboard').catch(() => null);
+    if (!auth) {
+      return NextResponse.json({ ok: false, code: 'ADMIN_AUTH_CHECK_FAILED' }, { status: 503 });
+    }
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, code: auth.code }, {
+        status: auth.status,
+        headers: { 'Cache-Control': 'private, no-store' },
+      });
+    }
   }
 
   const status = getReceiptProviderStatus();

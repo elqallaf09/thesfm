@@ -5,6 +5,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
+import { syncServerAuthSession } from '@/lib/auth/clientSession';
 
 interface AuthContextValue {
   user: User | null;
@@ -16,8 +17,8 @@ interface AuthContextValue {
     error: Error | null;
     user?: User | null;
     session?: Session | null;
-    email?: string;
-    code?: 'username_not_found' | 'profile_email_missing' | 'profile_missing' | 'invalid_credentials' | 'auth_error';
+    code?: 'invalid_credentials' | 'auth_unavailable' | 'rate_limited' | 'mfa_email_required' | 'mfa_totp_required';
+    mfaType?: 'email' | 'totp';
   }>;
   signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -70,29 +71,14 @@ function clearStoredGuestMode() {
   }
 }
 
-function isConfirmedAuthEmail(user: User | null) {
-  return Boolean(user?.email && (user.email_confirmed_at || user.confirmed_at));
-}
-
-function syncAuthCookies(nextSession: Session | null, guestMode: boolean) {
+function syncGuestCookie(guestMode: boolean) {
   if (typeof document === 'undefined') return false;
   try {
-    const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `sfm_auth=${nextSession ? 'true' : ''}; path=/; max-age=${nextSession ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax`;
-    document.cookie = `sfm_access_token=${nextSession?.access_token ?? ''}; path=/; max-age=${nextSession?.access_token ? 60 * 60 * 24 * 7 : 0}; SameSite=Lax${secureFlag}`;
     document.cookie = `${GUEST_COOKIE_NAME}=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
     return guestMode ? getStoredGuestMode() : !getStoredGuestMode();
   } catch {
     return false;
   }
-}
-
-function normalizeLoginEmail(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function normalizeUsername(value: string) {
-  return value.trim().toLowerCase();
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -104,14 +90,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (!mounted) return;
         const guestMode = getStoredGuestMode();
         if (data.session) clearStoredGuestMode();
+        const sync = await syncServerAuthSession(data.session);
+        if (!mounted) return;
+        if (data.session && !sync.ok && sync.code === 'UNAUTHORIZED') {
+          await supabase.auth.signOut({ scope: 'local' });
+          setSession(null);
+          setUser(null);
+          setIsGuest(guestMode);
+          syncGuestCookie(guestMode);
+          return;
+        }
         setSession(data.session);
         setUser(data.session?.user ?? null);
         setIsGuest(!data.session && guestMode);
-        syncAuthCookies(data.session, !data.session && guestMode);
+        syncGuestCookie(!data.session && guestMode);
       })
       .catch(error => {
         if (mounted) {
@@ -119,7 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setIsGuest(guestMode);
-          syncAuthCookies(null, guestMode);
+          void syncServerAuthSession(null);
+          syncGuestCookie(guestMode);
         }
         if (process.env.NODE_ENV === 'development') {
           console.warn('[auth] failed to load initial session', {
@@ -131,13 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (nextSession) clearStoredGuestMode();
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       const guestMode = getStoredGuestMode();
       setIsGuest(!nextSession && guestMode);
-      syncAuthCookies(nextSession, !nextSession && guestMode);
+      syncGuestCookie(!nextSession && guestMode);
+      void syncServerAuthSession(nextSession);
       setLoading(false);
     });
 
@@ -154,7 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isGuest,
     continueAsGuest: () => {
       const stored = setStoredGuestMode();
-      const cookiesSynced = syncAuthCookies(null, true);
+      void syncServerAuthSession(null);
+      const cookiesSynced = syncGuestCookie(true);
       if (!stored && !cookiesSynced) {
         throw new Error('Guest mode is unavailable in this browser.');
       }
@@ -167,102 +166,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
-        const identifierIsEmail = identifier.includes('@');
-        const normalizedUsername = normalizeUsername(identifier);
-        let email = identifierIsEmail ? normalizeLoginEmail(identifier) : '';
-        if (!identifierIsEmail) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, username, email')
-            .ilike('username', normalizedUsername)
-            .maybeSingle();
-
-          if (profile) {
-            if (!profile.email || !isEmail(profile.email)) {
-              return { error: new Error('Profile email missing'), code: 'profile_email_missing' };
-            }
-            email = normalizeLoginEmail(profile.email);
-          } else {
-            try {
-              const response = await fetch('/api/auth/resolve-username', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: normalizedUsername }),
-              });
-              if (!response.ok) {
-                return { error: new Error('Username lookup failed'), code: 'auth_error' };
-              }
-              const resolved = await response.json() as { success?: boolean; exists?: boolean; email?: string };
-              if (!resolved.success) {
-                return { error: new Error('Username lookup failed'), code: 'auth_error' };
-              }
-              if (!resolved.exists) {
-                return { error: new Error('Username not found'), code: 'username_not_found' };
-              }
-              if (!resolved.email || !isEmail(resolved.email)) {
-                return { error: new Error('Profile email missing'), code: 'profile_email_missing' };
-              }
-              email = normalizeLoginEmail(resolved.email);
-            } catch {
-              return { error: new Error('Username lookup failed'), code: 'auth_error' };
-            }
-          }
+        const currentSession = (await supabase.auth.getSession()).data.session;
+        if (currentSession) {
+          await supabase.auth.signOut({ scope: 'local' });
+          await syncServerAuthSession(null);
         }
 
-        if (!email) {
-          return { error: new Error('Username not found'), code: 'username_not_found' };
-        }
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password }),
+          cache: 'no-store',
         });
+        const payload = await response.json().catch(() => null) as {
+          ok?: boolean;
+          code?: string;
+          status?: 'AUTHENTICATED' | 'MFA_REQUIRED';
+          mfaType?: 'email' | 'totp';
+          accessToken?: string;
+          refreshToken?: string;
+        } | null;
 
-        if (error) {
-          console.error('[auth] login error', error);
-          if (error.message === 'Email not confirmed') {
-            return { error: new Error('الحساب جاهز الآن. أعد الضغط على تسجيل الدخول.') };
-          }
-          const invalidCredentials = /invalid login credentials/i.test(error.message);
-          const code = invalidCredentials ? 'invalid_credentials' : 'auth_error';
-          return { error: new Error(error.message), code };
+        if (!response.ok || !payload?.ok) {
+          const code = payload?.code === 'RATE_LIMITED'
+            ? 'rate_limited'
+            : payload?.code === 'INVALID_CREDENTIALS'
+              ? 'invalid_credentials'
+              : 'auth_unavailable';
+          return { error: new Error(code), code };
         }
-        const currentSession = data.session ?? (await supabase.auth.getSession()).data.session;
-        if (!currentSession?.access_token) {
-          return { error: new Error('Session missing'), code: 'auth_error' };
+
+        if (payload.status === 'MFA_REQUIRED' && payload.mfaType === 'email') {
+          setSession(null);
+          setUser(null);
+          setIsGuest(false);
+          return { error: null, code: 'mfa_email_required', mfaType: 'email' };
         }
-        const signedInSession = currentSession;
-        const signedInUser = data.user ?? signedInSession?.user ?? null;
-        if (!signedInUser?.id) return { error: new Error('Profile missing'), code: 'profile_missing' };
-
-        const { data: profileAfterLogin, error: profileAfterLoginError } = await supabase
-          .from('profiles')
-          .select('id, email')
-          .eq('id', signedInUser.id)
-          .maybeSingle();
-
-        if (profileAfterLoginError) return { error: new Error(profileAfterLoginError.message), code: 'auth_error' };
-        if (!profileAfterLogin) return { error: new Error('Profile missing'), code: 'profile_missing' };
-
-        const confirmedEmail = isConfirmedAuthEmail(signedInUser) ? signedInUser.email?.trim().toLowerCase() : null;
-        const profileEmail = profileAfterLogin.email?.trim().toLowerCase() || null;
-        if (confirmedEmail && profileEmail !== confirmedEmail) {
-          await supabase
-            .from('profiles')
-            .update({ email: confirmedEmail })
-            .eq('id', signedInUser.id);
+        if (!payload.accessToken || !payload.refreshToken) {
+          return { error: new Error('auth_unavailable'), code: 'auth_unavailable' };
         }
+
+        const { data, error } = await supabase.auth.setSession({
+          access_token: payload.accessToken,
+          refresh_token: payload.refreshToken,
+        });
+        if (error || !data.session || !data.user) {
+          await syncServerAuthSession(null);
+          return { error: new Error('auth_unavailable'), code: 'auth_unavailable' };
+        }
+        const signedInSession = data.session;
+        const signedInUser = data.user;
 
         clearStoredGuestMode();
-        syncAuthCookies(signedInSession, false);
+        syncGuestCookie(false);
+        if (payload.mfaType !== 'totp') await syncServerAuthSession(signedInSession);
         setSession(signedInSession);
         setUser(signedInUser);
         setIsGuest(false);
-        void trackEvent('login', { module: 'auth', metadata: { method: identifierIsEmail ? 'email' : 'username' } });
-        return { error: null, session: signedInSession, user: signedInUser, email };
-      } catch (err: any) {
-        console.error('[auth] login error', err);
-        return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
+        void trackEvent('login', { module: 'auth', metadata: { method: identifier.includes('@') ? 'email' : 'username' } });
+        return {
+          error: null,
+          session: signedInSession,
+          user: signedInUser,
+          code: payload.mfaType === 'totp' ? 'mfa_totp_required' : undefined,
+          mfaType: payload.mfaType,
+        };
+      } catch (err: unknown) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[auth] login request failed', { message: err instanceof Error ? err.message : String(err) });
+        }
+        return { error: new Error('auth_unavailable'), code: 'auth_unavailable' };
       }
     },
     signUp: async (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => {
@@ -329,12 +302,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('[Signup] Profile creation failed', {
               code: profileError.code,
               message: profileError.message,
-              details: profileError.details,
-              hint: profileError.hint,
-              payload: profilePayload,
             });
             return { error: new Error('Account created, but we could not save your profile details. Please try again.') };
           }
+          await syncServerAuthSession(signUpData.session);
         }
 
         void trackEvent('account_created', { page_path: '/login', module: 'auth', section_name: 'auth', metadata: { method: 'email' } });
@@ -347,7 +318,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void trackEvent('logout', { module: 'auth' });
       await supabase.auth.signOut();
       clearStoredGuestMode();
-      syncAuthCookies(null, false);
+      syncGuestCookie(false);
+      await syncServerAuthSession(null);
       setSession(null);
       setUser(null);
       setIsGuest(false);

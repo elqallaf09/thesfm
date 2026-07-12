@@ -950,8 +950,8 @@ function capabilityMatrix(cacheAvailable = false) {
   const configuredCapability = (provider: TraderQuoteProvider, configured: boolean, supports: Partial<ProviderCapability> = {}): ProviderCapability => ({
     provider,
     configured,
-    healthy: configured,
-    status: configured ? 'healthy' : 'not_configured',
+    healthy: false,
+    status: configured ? 'degraded' : 'not_configured',
     rateLimited: false,
     lastSuccessfulFetch: null,
     lastError: configured ? null : `${provider}_not_configured`,
@@ -963,7 +963,7 @@ function capabilityMatrix(cacheAvailable = false) {
     supportsDividends: false,
     supportsIpos: false,
     supportsEconomicCalendar: false,
-    reason: configured ? null : `${provider}_not_configured`,
+    reason: configured ? 'health_not_measured' : `${provider}_not_configured`,
     ...supports,
   });
   return {
@@ -1004,8 +1004,8 @@ function capabilityMatrix(cacheAvailable = false) {
     yahoo: {
       provider: 'yahoo',
       configured: true,
-      healthy: true,
-      status: 'healthy',
+      healthy: false,
+      status: 'degraded',
       rateLimited: false,
       lastSuccessfulFetch: null,
       lastError: null,
@@ -1017,7 +1017,7 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsDividends: false,
       supportsIpos: false,
       supportsEconomicCalendar: false,
-      reason: null,
+      reason: 'health_not_measured',
     },
     openbb: {
       provider: 'openbb',

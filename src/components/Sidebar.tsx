@@ -72,6 +72,7 @@ export function Sidebar() {
   useEffect(() => {
     let cancelled = false;
     async function loadUnread() {
+      if (document.visibilityState === 'hidden') return;
       if (!user) {
         setUnreadNotifications(0);
         return;
@@ -98,9 +99,11 @@ export function Sidebar() {
     }
     loadUnread();
     const id = window.setInterval(loadUnread, 60000);
+    document.addEventListener('visibilitychange', loadUnread);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      document.removeEventListener('visibilitychange', loadUnread);
     };
   }, [user]);
 

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { clearTraderMarketCatalogCache, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
@@ -9,7 +11,7 @@ import {
   getFmpRuntimeStatus,
   resetFmpRateLimitCooldown,
 } from '@/lib/trader/providers/fmpRuntime';
-import type { CatalogDiagnostics } from '@/lib/trader/marketCatalog';
+import type { CatalogDiagnostics, ProviderCapability } from '@/lib/trader/marketCatalog';
 import type { FmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
 import type { NormalizedTraderProviderStatus, TraderProviderFeature } from '@/lib/trader/providers/types';
 
@@ -20,15 +22,8 @@ const RATE_LIMIT_MESSAGE_AR = 'تم الوصول مؤقتاً إلى حد است
 const RATE_LIMIT_MESSAGE_EN = 'The data provider usage limit was reached temporarily. We will try a fallback provider or retry later.';
 const FMP_SUPPORTED_FEATURES: TraderProviderFeature[] = ['prices', 'earnings', 'dividends', 'ipos', 'economic'];
 
-// الاستجابة العامة لا تكشف أسماء المزودات ولا أخطاءها ولا عدّ المسارات.
-// التشخيص المفصّل يُتاح فقط لطلب أدمن يحمل التوكن الصحيح.
-function isAdminDiagnosticsRequest(url: URL, request: Request): boolean {
-  const secret = (process.env.ADMIN_DIAGNOSTICS_TOKEN || '').trim();
-  if (!secret) return false;
-  const provided = url.searchParams.get('adminToken') || request.headers.get('x-admin-diagnostics-token');
-  return Boolean(provided) && provided === secret;
-}
-
+// الاستجابة العامة لا تكشف أخطاء المزود الخام ولا تفاصيل التشخيص الداخلية.
+// التشخيص المفصّل والطفرات التشغيلية متاحة فقط لطلب أدمن موثّق.
 function normalizeEnvValue(value: string | undefined) {
   return Boolean(value && value.trim());
 }
@@ -50,7 +45,30 @@ function cleanProviderReason(reason: string | null | undefined) {
   if (/429|rate_limited|rate limit|too many/i.test(value)) return 'provider_rate_limited';
   if (/not_configured/i.test(value)) return 'provider_not_configured';
   if (/timeout|aborted|network/i.test(value)) return 'provider_temporarily_unavailable';
-  return value.length > 140 ? `${value.slice(0, 137).trim()}...` : value;
+  return 'provider_temporarily_unavailable';
+}
+
+function sanitizeCatalogDiagnostics(diagnostics: CatalogDiagnostics): CatalogDiagnostics {
+  return {
+    ...diagnostics,
+    reason: cleanProviderReason(diagnostics.reason),
+    failedSymbols: diagnostics.failedSymbols.map(item => ({
+      ...item,
+      reason: cleanProviderReason(item.reason) ?? 'provider_temporarily_unavailable',
+    })),
+    unsupportedSymbols: diagnostics.unsupportedSymbols.map(item => ({
+      ...item,
+      reason: cleanProviderReason(item.reason) ?? 'provider_unsupported',
+    })),
+  };
+}
+
+function sanitizeCapabilityMatrix(matrix: Record<string, ProviderCapability>) {
+  return Object.fromEntries(Object.entries(matrix).map(([provider, capability]) => [provider, {
+    ...capability,
+    lastError: cleanProviderReason(capability.lastError),
+    reason: cleanProviderReason(capability.reason),
+  }])) as Record<string, ProviderCapability>;
 }
 
 function routeLabel(value: string | null | undefined) {
@@ -203,19 +221,19 @@ function advancedDiagnostics(args: {
   }];
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const isAdmin = isAdminDiagnosticsRequest(url, request);
-  if (url.searchParams.has('retry')) resetFmpRateLimitCooldown();
-  if (url.searchParams.has('clearCache')) {
-    clearTraderQuoteCache();
-    clearTraderMarketCatalogCache();
-    clearFmpRuntimeCacheMarkers();
-  }
+async function buildProviderStatusResponse(options: {
+  isAdmin: boolean;
+  forceFresh?: boolean;
+  discover?: boolean;
+  marketId?: string | null;
+}) {
+  const {
+    isAdmin,
+    forceFresh = false,
+    discover = false,
+    marketId = null,
+  } = options;
   const status = getTraderProviderStatus();
-  const forceFresh = url.searchParams.has('refresh') || url.searchParams.has('retry') || url.searchParams.has('clearCache');
-  const discover = url.searchParams.has('discover');
-  const marketId = url.searchParams.get('market');
   const catalog = await getTraderMarketCatalog({
     forceFresh,
     includeFmpDiscovery: discover && Boolean(marketId),
@@ -233,6 +251,8 @@ export async function GET(request: Request) {
     generatedAt: now,
   });
   const diagnosticSummary = diagnosticGroups(catalog.diagnostics, normalizedStatus);
+  const safeCatalogDiagnostics = sanitizeCatalogDiagnostics(catalog.diagnostics);
+  const safeCapabilityMatrix = sanitizeCapabilityMatrix(catalog.capabilityMatrix);
   const providerSummary = {
     fmp: publicProviderStatus(fmpRuntime.status),
     yahoo: 'healthy',
@@ -275,7 +295,10 @@ export async function GET(request: Request) {
         status: 'rate_limited',
         failureReason: isAdmin ? RATE_LIMIT_REASON : null,
       }
-    : status.dataProvider;
+    : {
+        ...status.dataProvider,
+        failureReason: cleanProviderReason(status.dataProvider.failureReason),
+      };
 
   // Additive-only field — every key below this line already existed and is byte-compatible with
   // the vanilla-JS trader terminal, which calls this exact route (see
@@ -303,11 +326,11 @@ export async function GET(request: Request) {
         },
         lastChecked: now,
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
-        lastError: isAdmin ? fmpRuntime.lastError : null,
+        lastError: isAdmin ? cleanProviderReason(fmpRuntime.lastError) : null,
         rateLimitedUntil: fmpRuntime.rateLimitedUntil,
         nextRetryAt: fmpRuntime.nextRetryAt,
         cacheAvailable: fmpRuntime.cacheAvailable,
-        error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_REASON : fmpRuntime.lastError) : null,
+        error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_REASON : cleanProviderReason(fmpRuntime.lastError)) : null,
       },
       yahoo: {
         configured: true,
@@ -382,7 +405,7 @@ export async function GET(request: Request) {
         rate_limited: fmpRuntime.rateLimited,
         status: publicProviderStatus(fmpRuntime.status),
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
-        lastError: fmpRuntime.lastError,
+        lastError: isAdmin ? cleanProviderReason(fmpRuntime.lastError) : null,
         nextRetryAt: fmpRuntime.nextRetryAt,
         cacheAvailable: fmpRuntime.cacheAvailable,
         supportedFeatures: fmpRuntime.supportedFeatures,
@@ -408,8 +431,8 @@ export async function GET(request: Request) {
         supportedFeatures: ['earnings', 'dividends', 'economicCalendar', 'news'],
       },
     },
-    capabilityMatrix: catalog.capabilityMatrix,
-    diagnostics: isAdmin ? catalog.diagnostics : undefined,
+    capabilityMatrix: safeCapabilityMatrix,
+    diagnostics: isAdmin ? safeCatalogDiagnostics : undefined,
     summary: isAdmin ? providerSummary : undefined,
     loaded: isAdmin
       ? catalog.symbols.slice(0, 50).map(symbol => ({
@@ -418,10 +441,10 @@ export async function GET(request: Request) {
           reason: 'symbol_discovered',
         }))
       : undefined,
-    failed: isAdmin ? catalog.diagnostics.failedSymbols : undefined,
-    skipped: isAdmin ? catalog.diagnostics.unsupportedSymbols.slice(0, 50) : undefined,
+    failed: isAdmin ? safeCatalogDiagnostics.failedSymbols : undefined,
+    skipped: isAdmin ? safeCatalogDiagnostics.unsupportedSymbols.slice(0, 50) : undefined,
     provider: isAdmin ? catalog.diagnostics.provider : undefined,
-    reason: isAdmin ? catalog.diagnostics.reason : undefined,
+    reason: isAdmin ? cleanProviderReason(catalog.diagnostics.reason) : undefined,
     resultCount: catalog.diagnostics.totalSymbolsLoaded,
     generatedAt: now,
   };
@@ -436,4 +459,101 @@ export async function GET(request: Request) {
   return NextResponse.json(response, {
     headers: { 'Cache-Control': 'private, no-store' },
   });
+}
+
+const LEGACY_MUTATION_FLAGS = ['retry', 'clearCache', 'refresh', 'discover'] as const;
+const ADMIN_ACTIONS = new Set(['status', 'retry', 'clearCache', 'refresh', 'discover']);
+
+function providerStatusError(status = 503) {
+  return NextResponse.json({
+    ok: false,
+    code: 'PROVIDER_STATUS_UNAVAILABLE',
+    state: 'error',
+  }, {
+    status,
+    headers: { 'Cache-Control': 'private, no-store' },
+  });
+}
+
+export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, {
+    max: 30,
+    windowMs: 60_000,
+    prefix: 'trader-provider-status-read',
+  });
+  if (limited) return limited;
+
+  const url = new URL(request.url);
+  const rejectedFlags = LEGACY_MUTATION_FLAGS.filter(flag => url.searchParams.has(flag));
+  if (rejectedFlags.length > 0) {
+    return NextResponse.json({
+      ok: false,
+      code: 'MUTATION_REQUIRES_AUTHENTICATED_POST',
+      state: 'unsupported',
+      rejected: rejectedFlags,
+    }, {
+      status: 405,
+      headers: {
+        Allow: 'GET, POST',
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
+
+  try {
+    return await buildProviderStatusResponse({ isAdmin: false });
+  } catch {
+    return providerStatusError();
+  }
+}
+
+export async function POST(request: Request) {
+  const limited = rateLimitRequest(request, {
+    max: 12,
+    windowMs: 60_000,
+    prefix: 'trader-provider-status-admin',
+  });
+  if (limited) return limited;
+
+  const auth = await requireAdminApiAccess(request, 'admin_dashboard').catch(() => null);
+  if (!auth) return providerStatusError();
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, code: auth.code }, {
+      status: auth.status,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  }
+
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) {
+    return NextResponse.json({ ok: false, code: 'INVALID_BODY' }, { status: 400 });
+  }
+
+  const action = typeof body.action === 'string' ? body.action : 'status';
+  if (!ADMIN_ACTIONS.has(action)) {
+    return NextResponse.json({ ok: false, code: 'UNSUPPORTED_ACTION' }, { status: 400 });
+  }
+
+  const marketId = typeof body.market === 'string' ? body.market.trim().slice(0, 80) : null;
+  if (action === 'discover' && !marketId) {
+    return NextResponse.json({ ok: false, code: 'MARKET_REQUIRED' }, { status: 400 });
+  }
+
+  try {
+    if (action === 'retry') resetFmpRateLimitCooldown();
+    if (action === 'clearCache') {
+      clearTraderQuoteCache();
+      clearTraderMarketCatalogCache();
+      clearFmpRuntimeCacheMarkers();
+    }
+
+    return await buildProviderStatusResponse({
+      isAdmin: true,
+      forceFresh: action !== 'status',
+      discover: action === 'discover',
+      marketId,
+    });
+  } catch {
+    return providerStatusError();
+  }
 }

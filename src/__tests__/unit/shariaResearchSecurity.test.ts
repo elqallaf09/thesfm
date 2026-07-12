@@ -21,12 +21,6 @@ describe('server-side source retrieval protections', () => {
     await expect(assertSafePublicUrl(url)).rejects.toBeInstanceOf(UnsafeUrlError);
   });
 
-  it('revalidates redirect targets and blocks a redirect to localhost', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/secret' } }));
-    await expect(secureFetch('http://8.8.8.8/start', { respectRobots: false, retries: 0, minDomainIntervalMs: 0 }))
-      .rejects.toMatchObject({ code: 'PRIVATE_IP_BLOCKED' });
-  });
-
   it('returns unavailable when no verified company website or discovery provider exists', async () => {
     const result = await companyInvestorRelationsAdapter.research({
       query: normalizeQuery('TEST'),

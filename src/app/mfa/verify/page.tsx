@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeDigits } from '@/lib/locale';
+import { syncServerAuthSession } from '@/lib/auth/clientSession';
 
 type Lang = 'ar' | 'en' | 'fr';
 type TotpFactor = { id: string; friendly_name?: string | null; status?: string };
@@ -48,14 +49,15 @@ const TEXT = {
   },
 } as const;
 
-function syncMfaCookies(sessionAccessToken?: string) {
-  if (typeof document === 'undefined') return;
-  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `sfm_mfa_required=; path=/; max-age=0; SameSite=Lax`;
-  if (sessionAccessToken) {
-    document.cookie = `sfm_access_token=${sessionAccessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secureFlag}`;
-    document.cookie = `sfm_auth=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+function safeInternalPath(value: string | null | undefined) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith('//') || decoded.includes('\\')) return '/dashboard';
+  } catch {
+    return '/dashboard';
   }
+  return value;
 }
 
 export default function MfaVerifyPage() {
@@ -70,8 +72,7 @@ export default function MfaVerifyPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const nextPath = useMemo(() => {
-    const requested = searchParams?.get('next') || '/dashboard';
-    return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard';
+    return safeInternalPath(searchParams?.get('next'));
   }, [searchParams]);
 
   useEffect(() => {
@@ -81,10 +82,15 @@ export default function MfaVerifyPage() {
       return;
     }
     let cancelled = false;
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(async ({ data }) => {
       if (cancelled) return;
       if (data?.currentLevel === 'aal2') {
-        syncMfaCookies(session.access_token);
+        const synced = await syncServerAuthSession(session);
+        if (cancelled) return;
+        if (!synced.ok) {
+          setError(text.loadError);
+          return;
+        }
         router.replace(nextPath);
         router.refresh();
       }
@@ -121,7 +127,9 @@ export default function MfaVerifyPage() {
       });
       if (verify.error) throw verify.error;
       const { data } = await supabase.auth.getSession();
-      syncMfaCookies(data.session?.access_token);
+      if (!data.session) throw new Error('Session unavailable after MFA verification');
+      const synced = await syncServerAuthSession(data.session);
+      if (!synced.ok) throw new Error('Server rejected the MFA session');
       router.replace(nextPath);
       router.refresh();
     } catch (verifyError) {

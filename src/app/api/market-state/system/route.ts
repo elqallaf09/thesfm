@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getAdminAccessForUser, getCurrentUserFromRequest, hasAdminPermission } from '@/lib/server/adminAccess';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
@@ -5,7 +6,7 @@ import { buildFeatureEnvelope } from '@/lib/market-state/envelope';
 import { computeCompleteness } from '@/lib/market-state/completeness';
 import { computeFreshness } from '@/lib/market-state/freshness';
 import { normalizeFeatureDataStatus } from '@/lib/market-state/normalizeStatus';
-import type { MarketSystemState, ProviderCapabilityCell } from '@/lib/market-state/types';
+import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,11 +15,13 @@ export const dynamic = 'force-dynamic';
 // happens to be an admin still gets the richer view) OR the diagnostics token (for
 // server-to-server/CLI checks). A client can never safely embed ADMIN_DIAGNOSTICS_TOKEN, so the
 // token-only check alone left every browser-side admin page seeing the stripped public payload.
-function isTokenDiagnosticsRequest(url: URL, request: Request): boolean {
+function isTokenDiagnosticsRequest(request: Request): boolean {
   const secret = (process.env.ADMIN_DIAGNOSTICS_TOKEN || '').trim();
   if (!secret) return false;
-  const provided = url.searchParams.get('adminToken') || request.headers.get('x-admin-diagnostics-token');
-  return Boolean(provided) && provided === secret;
+  const provided = request.headers.get('x-admin-diagnostics-token')?.trim() || '';
+  const secretBuffer = Buffer.from(secret);
+  const providedBuffer = Buffer.from(provided);
+  return providedBuffer.length === secretBuffer.length && timingSafeEqual(providedBuffer, secretBuffer);
 }
 
 async function isSessionAdminRequest(request: Request): Promise<boolean> {
@@ -32,10 +35,6 @@ async function isSessionAdminRequest(request: Request): Promise<boolean> {
   }
 }
 
-function stripCellForPublic(cell: ProviderCapabilityCell): ProviderCapabilityCell {
-  return { ...cell, lastErrorReason: null };
-}
-
 /**
  * Public payload is now the REAL provider/capability view (display-safe — provider ids and
  * capability ids are not secrets, and every UI consumer routes them through
@@ -44,18 +43,10 @@ function stripCellForPublic(cell: ProviderCapabilityCell): ProviderCapabilityCel
  * Previously this stripped `providers`/`capabilityMatrix` entirely, leaving nothing for a real
  * /market-analysis user to see even after the header was mounted there.
  */
-function publicSystemState(state: MarketSystemState): MarketSystemState {
-  return {
-    ...state,
-    capabilityMatrix: state.capabilityMatrix.map(stripCellForPublic),
-    configuration: null,
-  };
-}
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const forceFresh = url.searchParams.get('forceFresh') === '1';
-  const isAdmin = isTokenDiagnosticsRequest(url, request) || await isSessionAdminRequest(request);
+  const isAdmin = isTokenDiagnosticsRequest(request) || await isSessionAdminRequest(request);
+  const forceFresh = isAdmin && url.searchParams.get('forceFresh') === '1';
 
   const state = await getMarketSystemState({ forceFresh });
   const requestedCapabilities = state.featuresSucceeded.length + state.featuresDegraded.length + state.featuresFailed.length;
@@ -77,13 +68,18 @@ export async function GET(request: Request) {
       reason: null,
       context: 'general',
       timestamp: state.generatedAt,
-      cached: false,
-      delayed: false,
+      cached: state.delivery?.cached ?? false,
+      delayed: state.delivery?.delayed ?? false,
     },
-    freshness: computeFreshness(state.lastSynchronizedAt, 'symbols'),
+    freshness: {
+      ...computeFreshness(state.lastSynchronizedAt, 'symbols'),
+      isDelayed: state.delivery?.delayed ?? false,
+    },
     completeness: computeCompleteness(requestedCapabilities, returnedCapabilities),
-    data: isAdmin ? state : publicSystemState(state),
-    warnings: [],
+    data: isAdmin ? state : sanitizeMarketSystemStateForPublic(state),
+    warnings: state.delivery?.reason
+      ? [{ code: state.delivery.reason, messageKey: `marketState.${state.delivery.reason}` }]
+      : [],
     errors: [],
   });
 

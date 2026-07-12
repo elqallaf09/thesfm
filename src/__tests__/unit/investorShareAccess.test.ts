@@ -11,6 +11,7 @@ import {
   hashInvestorPassword,
   hashInvestorToken,
   verifyInvestorPassword,
+  verifyInvestorPasswordAsync,
 } from '@/lib/server/investorShare';
 
 const NOW = new Date('2026-07-12T12:00:00Z').getTime();
@@ -71,7 +72,7 @@ describe('investor share crypto', () => {
     expect(hashInvestorToken(a)).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('verifies scrypt passwords and rejects wrong or malformed values', () => {
+  it('verifies scrypt passwords and rejects wrong or malformed values', async () => {
     const stored = hashInvestorPassword('correct horse');
     expect(stored.startsWith('scrypt:')).toBe(true);
     expect(stored).not.toContain('correct horse');
@@ -79,6 +80,10 @@ describe('investor share crypto', () => {
     expect(verifyInvestorPassword('wrong', stored)).toBe(false);
     expect(verifyInvestorPassword('correct horse', 'plain:abc')).toBe(false);
     expect(verifyInvestorPassword('correct horse', '')).toBe(false);
+    expect(await verifyInvestorPasswordAsync('correct horse', stored)).toBe(true);
+    expect(await verifyInvestorPasswordAsync('wrong', stored)).toBe(false);
+    expect(await verifyInvestorPasswordAsync('correct horse', 'plain:abc')).toBe(false);
+    expect(await verifyInvestorPasswordAsync('x'.repeat(1_025), stored)).toBe(false);
     // Per-link salt: same password never hashes identically twice.
     expect(hashInvestorPassword('correct horse')).not.toBe(stored);
   });

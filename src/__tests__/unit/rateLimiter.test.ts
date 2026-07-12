@@ -18,6 +18,10 @@ describe('getClientIp()', () => {
   it('returns "unknown" when no IP headers present', () => {
     expect(getClientIp(makeReq({}))).toBe('unknown');
   });
+
+  it('bounds untrusted forwarding header keys', () => {
+    expect(getClientIp(makeReq({ 'x-forwarded-for': 'x'.repeat(500) }))).toHaveLength(128);
+  });
 });
 
 // ─── checkRateLimit ─────────────────────────────────────────────────────────
@@ -66,6 +70,16 @@ describe('checkRateLimit()', () => {
     expect(checkRateLimit(ip, cfg1)).toBe(true);
     expect(checkRateLimit(ip, cfg1)).toBe(false);
     expect(checkRateLimit(ip, cfg2)).toBe(true); // different namespace → fresh
+  });
+
+  it('evicts oldest entries when the in-memory store reaches its bound', () => {
+    const prefix = `bounded-${Math.random()}`;
+    const firstIp = `${prefix}-0`;
+    const cfg = { max: 1, windowMs: 60_000, prefix };
+    for (let index = 0; index <= 10_000; index += 1) {
+      expect(checkRateLimit(`${prefix}-${index}`, cfg)).toBe(true);
+    }
+    expect(checkRateLimit(firstIp, cfg)).toBe(true);
   });
 });
 

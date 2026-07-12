@@ -69,7 +69,13 @@ export function normalizeMarketDataProviderName(name: string): MarketProviderId 
 
 const MARKET_PROVIDER_ID_SET = new Set<MarketProviderId>(['fmp', 'twelvedata', 'eodhd', 'finnhub', 'marketstack', 'yahoo', 'tradingeconomics', 'newsapi', 'rss']);
 
-export type ProviderHealthLike = { provider: string; configured: boolean; status: string };
+export type ProviderHealthLike = {
+  provider: string;
+  configured: boolean;
+  status: string;
+  latencyMs?: number | null;
+  lastCheckedAt?: string | null;
+};
 
 /**
  * Cheap, non-network status for a single provider. FMP and Trading Economics use their existing
@@ -103,8 +109,7 @@ export function getProviderCapabilityStatus(
     return normalizeProviderConnectionStatus({ configured: liveResult.configured, status: liveResult.status });
   }
 
-  if (provider === 'yahoo') return 'connected'; // Yahoo requires no API key/configuration in this codebase
-  if (provider === 'rss') return 'connected'; // RSS sources require no API key
+  if (provider === 'yahoo' || provider === 'rss') return 'unknown';
 
   const envKeyByProvider: Partial<Record<MarketProviderId, string | undefined>> = {
     twelvedata: process.env.TWELVE_DATA_API_KEY,
@@ -114,7 +119,7 @@ export function getProviderCapabilityStatus(
     newsapi: process.env.NEWS_API_KEY,
   };
   const configured = Boolean(cleanEnv(envKeyByProvider[provider]));
-  return normalizeProviderConnectionStatus({ configured, status: configured ? 'healthy' : 'not_configured' });
+  return normalizeProviderConnectionStatus({ configured, status: configured ? 'degraded' : 'not_configured' });
 }
 
 /**

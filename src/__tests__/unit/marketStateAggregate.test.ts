@@ -134,7 +134,15 @@ describe('getMarketSystemState', () => {
 
     const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
     const state = await getMarketSystemState({ forceFresh: true });
-    expect(state).toEqual(persistedSnapshot);
+    expect(state).toMatchObject({
+      ...persistedSnapshot,
+      delivery: {
+        source: 'persistent_cache',
+        cached: true,
+        delayed: true,
+        reason: 'live_aggregation_failed',
+      },
+    });
   });
 
   it('falls back to an explicit unknown state (never throws to the caller) when there is no catalog and no persisted snapshot', async () => {

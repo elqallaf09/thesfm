@@ -275,6 +275,7 @@ export default function MarketAnalysisPage() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [marketSignal, setMarketSignal] = useState<MarketSignal | null>(null);
   const [marketSignalLoading, setMarketSignalLoading] = useState(false);
+  const [marketSignalError, setMarketSignalError] = useState(false);
   const [watchlistSignals, setWatchlistSignals] = useState<Record<string, MarketSignal>>({});
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
@@ -1615,23 +1616,32 @@ export default function MarketAnalysisPage() {
     if (!symbol || !selectedMarketAssetType) {
       setMarketSignal(null);
       setMarketSignalLoading(false);
+      setMarketSignalError(false);
       return;
     }
 
     const controller = new AbortController();
+    setMarketSignal(null);
     setMarketSignalLoading(true);
+    setMarketSignalError(false);
     const params = new URLSearchParams({ assetType: selectedMarketAssetType });
     fetch(`/api/market/signals/${encodeURIComponent(symbol)}?${params.toString()}`, {
       signal: controller.signal,
       cache: 'no-store',
     })
-      .then(response => response.ok ? response.json() : null)
+      .then(response => {
+        if (!response.ok) throw new Error('market_signal_request_failed');
+        return response.json();
+      })
       .then(payload => {
         if (controller.signal.aborted) return;
         setMarketSignal((payload?.signal ?? payload?.item ?? null) as MarketSignal | null);
       })
       .catch(fetchError => {
-        if (!isAbortLikeError(fetchError)) setMarketSignal(null);
+        if (!isAbortLikeError(fetchError)) {
+          setMarketSignal(null);
+          setMarketSignalError(true);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setMarketSignalLoading(false);
@@ -2580,7 +2590,7 @@ export default function MarketAnalysisPage() {
               <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
             </section>
 
-            <MarketSignalPanel signal={marketSignal} loading={marketSignalLoading} />
+            <MarketSignalPanel signal={marketSignal} loading={marketSignalLoading} error={marketSignalError} />
 
             <div className="analysis-columns">
               <div className="analysis-main-column">

@@ -28,8 +28,7 @@ function hasCronAccess(request: NextRequest) {
   if (!expected) return false;
   const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
   const headerSecret = request.headers.get('x-cron-secret')?.trim();
-  const querySecret = request.nextUrl.searchParams.get('secret')?.trim();
-  return bearer === expected || headerSecret === expected || querySecret === expected;
+  return bearer === expected || headerSecret === expected;
 }
 
 function normalizeSymbols(value: unknown) {
