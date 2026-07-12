@@ -13,6 +13,9 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/hooks/useViewMode';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { filterGroupsForWorkspace } from '@/config/workspaces/workspace-navigation';
+import { resolveActiveWorkspace } from '@/config/workspaces/workspace-resolver';
 import {
   filterNavigationGroups,
   findActiveNavigationGroup,
@@ -85,7 +88,14 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const { access: adminAccess } = useAdminAccess(user?.id);
-  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, adminAccess), [viewMode, adminAccess]);
+  const activeWorkspace = resolveActiveWorkspace(pathname);
+  // Same rule as Sidebar: view-mode curation only applies inside the
+  // Personal Finance workspace (other workspaces carry no simple-mode tags).
+  const effectiveViewMode = activeWorkspace.id === 'personal-finance' ? viewMode : 'professional';
+  const navGroups = useMemo(
+    () => filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, effectiveViewMode, adminAccess), activeWorkspace.id),
+    [effectiveViewMode, adminAccess, activeWorkspace.id],
+  );
   const activeParentItemIds = useMemo(
     () => navGroups.flatMap(group =>
       group.items
@@ -349,6 +359,10 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           <ViewModeSelector value={viewMode} onChange={setViewMode} variant={isDark ? 'dark' : 'light'} compact />
         </div>
 
+        <div className="sfm-mobile-workspace">
+          <WorkspaceSwitcher isAdmin={adminAccess.isAdmin} onNavigate={onClose} />
+        </div>
+
         <nav className="sfm-mobile-nav" aria-label={menuLabel}>
           {navGroups.map(group => {
             const expanded = openGroupId === group.id;
@@ -514,6 +528,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-user{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
         .sfm-mobile-lang{display:flex;justify-content:center;padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
         .sfm-mobile-view-mode{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
+        .sfm-mobile-workspace{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
         .sfm-mobile-nav{flex:1 1 auto;min-height:0;display:grid;align-content:start;gap:8px;margin-inline:-4px;padding:12px 4px 10px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-block:12px}
         .sfm-mobile-group{display:grid;gap:5px;border-bottom:1px solid var(--mobile-menu-border);padding-bottom:7px}
         .sfm-mobile-group:last-child{border-bottom:0}

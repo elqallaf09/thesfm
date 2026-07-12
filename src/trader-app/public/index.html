@@ -167,6 +167,10 @@
           <a href="/thesfm-trader-own/calendar" data-route-link data-route="calendar"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span class="nav-label">التقويم</span></a>
           <a href="/thesfm-trader-own/education" data-route-link data-route="education"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4L2.5 8.5 12 13l9.5-4.5L12 4Z"/><path d="M6 10.8V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.2"/></svg><span class="nav-label">التعليم</span></a>
           <a href="/thesfm-trader-own/settings" data-route-link data-route="settings"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg><span class="nav-label">الإعدادات</span></a>
+          <!-- Workspace exit (phase 3): plain anchor with target="_top" so it
+               escapes the terminal iframe back to the Markets & Trading
+               workspace; deliberately NOT data-route-link. -->
+          <a href="/market-analysis" target="_top" class="workspace-exit-link"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg><span class="nav-label">العودة للمنصة</span><small>THE SFM</small></a>
         </nav>
       </aside>
 
@@ -195,6 +199,7 @@
               <span class="status-dot"></span>
               <span>جاري فحص مزود البيانات</span>
             </div>
+            <a class="topbar-chip workspace-exit-chip" href="/market-analysis" target="_top">العودة للمنصة</a>
             <a class="topbar-chip" href="/thesfm-trader-own/alerts" data-route-link data-route="alerts">التنبيهات</a>
             <button class="topbar-chip ticker-toggle" id="ticker-toggle" data-toggle-ticker type="button" aria-controls="ticker-row" aria-pressed="true">إخفاء الشريط</button>
             <div class="theme-switcher-host" id="theme-switcher"></div>

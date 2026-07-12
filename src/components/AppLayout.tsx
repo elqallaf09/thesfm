@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { LazyCommandMenu } from '@/components/LazyCommandMenu';
 import { getThemeScope } from '@/lib/navigation/themeScopes';
+import { isPublicShellRoute } from '@/config/workspaces/workspace-resolver';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
-  const isPublicPage = ['/', '/login', '/reset-password', '/about', '/contact', '/terms', '/privacy'].includes(pathname)
-    // Public investor share viewer: recipients have no account, so it must
-    // render without the authenticated app chrome.
-    || pathname.startsWith('/investor/');
+  // Single source of truth for chrome-free public pages (phase 3):
+  // src/config/workspaces/workspace-resolver.ts.
+  const isPublicPage = isPublicShellRoute(pathname);
   const themeScope = getThemeScope(pathname);
 
   return (

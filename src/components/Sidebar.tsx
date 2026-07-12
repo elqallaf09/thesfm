@@ -16,6 +16,9 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { filterGroupsForWorkspace } from '@/config/workspaces/workspace-navigation';
+import { resolveActiveWorkspace } from '@/config/workspaces/workspace-resolver';
 import {
   filterNavigationGroups,
   findActiveNavigationGroup,
@@ -55,7 +58,15 @@ export function Sidebar() {
   );
   const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const { access: adminAccess } = useAdminAccess(user?.id);
-  const navGroups = useMemo(() => filterNavigationGroups(NAV_GROUPS, viewMode, adminAccess), [viewMode, adminAccess]);
+  const activeWorkspace = resolveActiveWorkspace(pathname);
+  // The simple/professional view-mode curation was designed for the finance
+  // home experience; the other workspaces' items carry no simple-mode tags,
+  // so a user who explicitly switched workspace always gets the full menu.
+  const effectiveViewMode = activeWorkspace.id === 'personal-finance' ? viewMode : 'professional';
+  const navGroups = useMemo(
+    () => filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, effectiveViewMode, adminAccess), activeWorkspace.id),
+    [effectiveViewMode, adminAccess, activeWorkspace.id],
+  );
   const activeParentItemIds = useMemo(
     () => navGroups.flatMap(group =>
       group.items
@@ -194,6 +205,8 @@ export function Sidebar() {
         <LanguageSwitcher variant={isDark ? 'dark' : 'light'} compact />
       </div>
       <div className="sfm-shared-tools">
+        <WorkspaceSwitcher isAdmin={adminAccess.isAdmin} />
+        <div style={{ height: 10 }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
           <CommandMenuButton dark={isDark} />
           <ThemeToggle />
