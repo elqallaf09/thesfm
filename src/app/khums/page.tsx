@@ -1,20 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   AlertTriangle,
+  BellRing,
+  Calculator,
   CalendarDays,
   CheckCircle2,
   Coins,
+  CreditCard,
   Download,
   FileText,
+  History,
+  Info,
   Landmark,
   Plus,
   Printer,
   ReceiptText,
   Save,
   Scale,
+  Share2,
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
@@ -32,7 +38,7 @@ import { calculateKhums, type KhumsStatus } from '@/lib/khums';
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 import { formatMoney } from '@/lib/formatMoney';
 
-const KHUMS_PANES = ['overview', 'data-entry', 'calculation', 'distribution', 'history', 'reports'] as const;
+const KHUMS_PANES = ['overview', 'financial-data', 'calculation', 'distribution', 'history', 'reports', 'documents'] as const;
 
 type KhumsPane = typeof KHUMS_PANES[number];
 type ShareType = 'imam' | 'sayyid' | 'unspecified';
@@ -89,6 +95,36 @@ type KhumsReminder = {
   notes: string | null;
 };
 
+const KHUMS_INTEGRITY_COPY = {
+  ar: {
+    loading: 'جارٍ تحميل سجلات الخمس…',
+    splitError: 'يجب أن يساوي مجموع حصص التوزيع 100% بالضبط قبل الحفظ. المجموع الحالي: {total}%.',
+    excludedPayments: 'تم استبعاد {count} من سجلات الدفع ({currencies}) من إجمالي المدفوع، لأن عملة سنة الخمس المحددة هي {currency}. تظل السجلات ظاهرة للمراجعة.',
+    missingCurrency: 'عملة غير محددة',
+    savedCurrencyMissing: 'لا تحتوي سنة الخمس المحفوظة على عملة صريحة. احفظ السنة بعملة صحيحة قبل إضافة دفعة.',
+    paymentStatusSyncError: 'تم حفظ الدفعة، لكن تعذر تحديث حالة سنة الخمس. راجع السجل قبل المتابعة.',
+    deleteStatusSyncError: 'تم حذف الدفعة، لكن تعذر إعادة حساب حالة سنة الخمس. راجع السجل قبل المتابعة.',
+  },
+  en: {
+    loading: 'Loading Khums records…',
+    splitError: 'Distribution shares must total exactly 100% before saving. Current total: {total}%.',
+    excludedPayments: '{count} payment record(s) ({currencies}) are excluded from the paid total because the selected Khums year uses {currency}. The records remain visible for review.',
+    missingCurrency: 'currency not recorded',
+    savedCurrencyMissing: 'The saved Khums year has no explicit currency. Save the year with a valid currency before adding a payment.',
+    paymentStatusSyncError: 'The payment was saved, but the selected Khums year status could not be refreshed. Review the record before continuing.',
+    deleteStatusSyncError: 'The payment was deleted, but the selected Khums year status could not be recalculated. Review the record before continuing.',
+  },
+  fr: {
+    loading: 'Chargement des données du Khums…',
+    splitError: 'La répartition doit totaliser exactement 100 % avant l’enregistrement. Total actuel : {total} %.',
+    excludedPayments: '{count} paiement(s) ({currencies}) sont exclus du total payé, car l’année du Khums sélectionnée utilise {currency}. Les enregistrements restent visibles pour vérification.',
+    missingCurrency: 'devise non renseignée',
+    savedCurrencyMissing: 'L’année du Khums enregistrée ne contient aucune devise explicite. Enregistrez une devise valide avant d’ajouter un paiement.',
+    paymentStatusSyncError: 'Le paiement a été enregistré, mais le statut de l’année du Khums n’a pas pu être actualisé. Vérifiez l’enregistrement avant de continuer.',
+    deleteStatusSyncError: 'Le paiement a été supprimé, mais le statut de l’année du Khums n’a pas pu être recalculé. Vérifiez l’enregistrement avant de continuer.',
+  },
+} as const;
+
 const INCOME_FIELDS = [
   { key: 'salary', labelKey: 'khums_income_salary' },
   { key: 'business', labelKey: 'khums_income_business' },
@@ -141,6 +177,33 @@ function toNumber(value: string | number | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function normalizeCurrencyCode(value: string | null | undefined) {
+  const currency = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return currency || null;
+}
+
+function selectKhumsYearForToday(years: KhumsYear[], preferredYearId?: string, currentDate = today()) {
+  const preferredYear = years.find(year => year.id === preferredYearId);
+  if (preferredYear) return preferredYear;
+
+  const containingToday = years
+    .filter(year => year.start_date.slice(0, 10) <= currentDate && year.end_date.slice(0, 10) >= currentDate)
+    .sort((left, right) => right.end_date.localeCompare(left.end_date))[0];
+  if (containingToday) return containingToday;
+
+  return years
+    .slice()
+    .sort((left, right) => right.end_date.localeCompare(left.end_date))[0] ?? null;
+}
+
+function statusForSavedKhumsDue(khumsDue: number, paidAmount: number): KhumsStatus {
+  const due = Math.max(0, toNumber(khumsDue));
+  const paid = Math.max(0, toNumber(paidAmount));
+  if (due <= 0) return 'not_due';
+  if (paid > due) return 'overpaid';
+  return due - paid <= 0.000001 ? 'complete' : 'incomplete';
+}
+
 function downloadTextFile(filename: string, text: string, mime = 'text/csv;charset=utf-8') {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -156,6 +219,7 @@ function downloadTextFile(filename: string, text: string, mime = 'text/csv;chars
 export default function KhumsPage() {
   const { user, loading } = useAuth();
   const { dir, lang, t } = useLanguage();
+  const integrityCopy = KHUMS_INTEGRITY_COPY[lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en'];
   const locale = toLatinNumberLocale(lang === 'ar' ? 'ar-KW' : lang === 'fr' ? 'fr-FR' : 'en-US');
   const db = supabase as any;
   const statusLabel: Record<KhumsStatus, string> = {
@@ -176,11 +240,12 @@ export default function KhumsPage() {
   };
   const khumsTabs = useMemo(() => [
     { id: 'overview', label: t('khums_tab_overview') },
-    { id: 'data-entry', label: t('khums_tab_data_entry') },
+    { id: 'financial-data', label: t('khums_tab_financial_data') },
     { id: 'calculation', label: t('khums_tab_calculation') },
     { id: 'distribution', label: t('khums_tab_distribution') },
     { id: 'history', label: t('khums_tab_year_history') },
-    { id: 'reports', label: t('khums_tab_reports_documents') },
+    { id: 'reports', label: t('khums_tab_reports') },
+    { id: 'documents', label: t('khums_tab_documents') },
   ], [t]);
 
   const [activePane, setActivePane] = useUrlTabState<KhumsPane>({
@@ -188,6 +253,7 @@ export default function KhumsPage() {
     values: KHUMS_PANES,
     defaultValue: 'overview',
     omitDefault: true,
+    legacyValueResolver: value => value === 'data-entry' ? 'financial-data' : null,
   });
   const [years, setYears] = useState<KhumsYear[]>([]);
   const [activeYearId, setActiveYearId] = useState<string>('');
@@ -221,6 +287,13 @@ export default function KhumsPage() {
     reminder_type: 'custom' as ReminderType,
     notes: '',
   });
+  const paymentAmountRef = useRef<HTMLInputElement>(null);
+  const reminderDetailsRef = useRef<HTMLDetailsElement>(null);
+  const reminderDateRef = useRef<HTMLInputElement>(null);
+  const [distributionFocus, setDistributionFocus] = useState<'payment' | 'reminder' | null>(null);
+  const [printWhenReportsReady, setPrintWhenReportsReady] = useState(false);
+  const activeYear = useMemo(() => years.find(year => year.id === activeYearId) ?? null, [activeYearId, years]);
+  const savedYearCurrency = normalizeCurrencyCode(activeYear?.currency);
 
   const money = useCallback((amount: number, currency = yearForm.currency) => (
     formatMoney(Number.isFinite(amount) ? amount : 0, currency || 'KWD', lang)
@@ -231,12 +304,41 @@ export default function KhumsPage() {
     return normalizeDigits(new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(locale, { numberingSystem: 'latn' }));
   }, [locale]);
 
+  const dateTimeLabel = useCallback((date?: string | null) => {
+    if (!date) return t('khums_not_available');
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return t('khums_not_available');
+    return normalizeDigits(new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      numberingSystem: 'latn',
+    }).format(parsed));
+  }, [locale, t]);
+
   const totalIncome = useMemo(() => INCOME_FIELDS.reduce((sum, field) => sum + Math.max(0, toNumber(incomeValues[field.key])), 0), [incomeValues]);
   const totalExpenses = useMemo(() => EXPENSE_FIELDS.reduce((sum, field) => sum + Math.max(0, toNumber(expenseValues[field.key])), 0), [expenseValues]);
-  const paidTotal = useMemo(() => payments.reduce((sum, payment) => sum + Math.max(0, toNumber(payment.amount)), 0), [payments]);
+  const matchingCurrencyPayments = useMemo(() => (
+    savedYearCurrency
+      ? payments.filter(payment => normalizeCurrencyCode(payment.currency) === savedYearCurrency)
+      : []
+  ), [payments, savedYearCurrency]);
+  const excludedCurrencyPayments = useMemo(() => (
+    activeYear
+      ? payments.filter(payment => normalizeCurrencyCode(payment.currency) !== savedYearCurrency)
+      : []
+  ), [activeYear, payments, savedYearCurrency]);
+  const paidTotal = useMemo(() => matchingCurrencyPayments.reduce(
+    (sum, payment) => sum + Math.max(0, toNumber(payment.amount)),
+    0,
+  ), [matchingCurrencyPayments]);
   const imamPercent = Math.min(1, Math.max(0, toNumber(yearForm.imam_share_percent) / 100));
   const sayyidPercent = Math.min(1, Math.max(0, toNumber(yearForm.sayyid_share_percent) / 100));
   const splitTotal = toNumber(yearForm.imam_share_percent) + toNumber(yearForm.sayyid_share_percent);
+  const splitIsValid = splitTotal === 100;
+  const splitTotalLabel = normalizeDigits(new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 4,
+    numberingSystem: 'latn',
+  }).format(splitTotal));
   const khums = useMemo(() => calculateKhums({
     totalIncome,
     totalExpenses,
@@ -244,7 +346,44 @@ export default function KhumsPage() {
     sayyidSharePercent: sayyidPercent,
     paidAmount: paidTotal,
   }), [imamPercent, paidTotal, sayyidPercent, totalExpenses, totalIncome]);
-  const activeYear = useMemo(() => years.find(year => year.id === activeYearId) ?? null, [activeYearId, years]);
+  const nextReminder = useMemo(() => reminders
+    .filter(reminder => reminder.status === 'active')
+    .slice()
+    .sort((left, right) => left.reminder_date.localeCompare(right.reminder_date))[0] ?? null, [reminders]);
+  const lastPayment = useMemo(() => matchingCurrencyPayments
+    .slice()
+    .sort((left, right) => right.payment_date.localeCompare(left.payment_date))[0] ?? null, [matchingCurrencyPayments]);
+  const currentYearLabel = activeYear
+    ? `${dateLabel(activeYear.start_date)} - ${dateLabel(activeYear.end_date)}`
+    : `${dateLabel(yearForm.start_date)} - ${dateLabel(yearForm.end_date)}`;
+  const recordLastUpdate = activeYear?.updated_at
+    ? dateTimeLabel(activeYear.updated_at)
+    : t('khums_current_draft');
+
+  useEffect(() => {
+    if (activePane !== 'distribution' || !distributionFocus) return;
+    const animationFrame = window.requestAnimationFrame(() => {
+      if (distributionFocus === 'reminder') {
+        if (reminderDetailsRef.current) reminderDetailsRef.current.open = true;
+        reminderDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        reminderDateRef.current?.focus({ preventScroll: true });
+      } else {
+        paymentAmountRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        paymentAmountRef.current?.focus({ preventScroll: true });
+      }
+      setDistributionFocus(null);
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [activePane, distributionFocus]);
+
+  useEffect(() => {
+    if (activePane !== 'reports' || !printWhenReportsReady) return;
+    const animationFrame = window.requestAnimationFrame(() => {
+      setPrintWhenReportsReady(false);
+      window.print();
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [activePane, printWhenReportsReady]);
 
   const hydrateYearForm = useCallback((year: KhumsYear) => {
     setYearForm({
@@ -252,8 +391,8 @@ export default function KhumsPage() {
       end_date: year.end_date,
       currency: year.currency || 'KWD',
       marja_name: year.marja_name ?? '',
-      imam_share_percent: String((toNumber(year.imam_share_percent) || 0.5) * 100),
-      sayyid_share_percent: String((toNumber(year.sayyid_share_percent) || 0.5) * 100),
+      imam_share_percent: String(toNumber(year.imam_share_percent ?? 0.5) * 100),
+      sayyid_share_percent: String(toNumber(year.sayyid_share_percent ?? 0.5) * 100),
       notes: year.notes ?? '',
     });
   }, []);
@@ -308,7 +447,7 @@ export default function KhumsPage() {
     setStorageReady(true);
     const loadedYears = (data ?? []) as KhumsYear[];
     setYears(loadedYears);
-    const selected = loadedYears.find(year => year.id === preferredYearId) ?? loadedYears[0] ?? null;
+    const selected = selectKhumsYearForToday(loadedYears, preferredYearId);
     if (selected) {
       setActiveYearId(selected.id);
       hydrateYearForm(selected);
@@ -375,6 +514,13 @@ export default function KhumsPage() {
     }
     if (new Date(yearForm.end_date) < new Date(yearForm.start_date)) {
       setMessage({ type: 'error', text: t('khums_end_after_start') });
+      return;
+    }
+    if (!splitIsValid) {
+      setMessage({
+        type: 'error',
+        text: integrityCopy.splitError.replace('{total}', splitTotalLabel),
+      });
       return;
     }
 
@@ -448,8 +594,12 @@ export default function KhumsPage() {
   }
 
   async function addPayment() {
-    if (!user || !activeYearId) {
+    if (!user || !activeYearId || !activeYear) {
       setMessage({ type: 'warn', text: t('khums_save_before_payment') });
+      return;
+    }
+    if (!savedYearCurrency) {
+      setMessage({ type: 'error', text: integrityCopy.savedCurrencyMissing });
       return;
     }
     const amount = toNumber(paymentForm.amount);
@@ -462,7 +612,7 @@ export default function KhumsPage() {
       user_id: user.id,
       khums_year_id: activeYearId,
       amount,
-      currency: yearForm.currency,
+      currency: savedYearCurrency,
       payment_date: paymentForm.payment_date || today(),
       recipient: paymentForm.recipient.trim() || null,
       share_type: paymentForm.share_type,
@@ -475,29 +625,41 @@ export default function KhumsPage() {
       return;
     }
 
-    const nextStatus = calculateKhums({
-      totalIncome,
-      totalExpenses,
-      imamSharePercent: imamPercent,
-      sayyidSharePercent: sayyidPercent,
-      paidAmount: paidTotal + amount,
-    }).status;
-    await db.from('khums_years').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', activeYearId).eq('user_id', user.id);
+    const nextStatus = statusForSavedKhumsDue(activeYear.khums_due, paidTotal + amount);
+    const { error: statusError } = await db
+      .from('khums_years')
+      .update({ status: nextStatus, updated_at: new Date().toISOString() })
+      .eq('id', activeYear.id)
+      .eq('user_id', user.id);
     setPaymentForm({ payment_date: today(), amount: '', recipient: '', share_type: 'unspecified', receipt_url: '', notes: '' });
-    await loadYearDetails(activeYearId);
-    await loadYears(activeYearId);
-    setMessage({ type: 'ok', text: t('khums_payment_added') });
+    await loadYearDetails(activeYear.id);
+    await loadYears(activeYear.id);
+    setMessage(statusError
+      ? { type: 'warn', text: integrityCopy.paymentStatusSyncError }
+      : { type: 'ok', text: t('khums_payment_added') });
   }
 
   async function deletePayment(payment: KhumsPayment) {
-    if (!user || !activeYearId) return;
+    if (!user || !activeYearId || !activeYear) return;
     const { error } = await db.from('khums_payments').delete().eq('id', payment.id).eq('user_id', user.id);
     if (error) {
       setMessage({ type: 'error', text: t('khums_payment_delete_error') });
       return;
     }
-    await loadYearDetails(activeYearId);
-    setMessage({ type: 'ok', text: t('khums_payment_deleted') });
+    const remainingPaidTotal = matchingCurrencyPayments
+      .filter(candidate => candidate.id !== payment.id)
+      .reduce((sum, candidate) => sum + Math.max(0, toNumber(candidate.amount)), 0);
+    const nextStatus = statusForSavedKhumsDue(activeYear.khums_due, remainingPaidTotal);
+    const { error: statusError } = await db
+      .from('khums_years')
+      .update({ status: nextStatus, updated_at: new Date().toISOString() })
+      .eq('id', activeYear.id)
+      .eq('user_id', user.id);
+    await loadYearDetails(activeYear.id);
+    await loadYears(activeYear.id);
+    setMessage(statusError
+      ? { type: 'warn', text: integrityCopy.deleteStatusSyncError }
+      : { type: 'ok', text: t('khums_payment_deleted') });
   }
 
   async function addReminder() {
@@ -558,16 +720,54 @@ export default function KhumsPage() {
     downloadTextFile(`khums-report-${yearForm.end_date || today()}.csv`, `\uFEFF${csv}`);
   }
 
+  function openDistributionTarget(target: 'payment' | 'reminder') {
+    setDistributionFocus(target);
+    setActivePane('distribution');
+  }
+
+  function exportPdfFromActionCenter() {
+    setPrintWhenReportsReady(true);
+    setActivePane('reports');
+  }
+
+  async function shareKhumsSummary() {
+    const summary = t('khums_share_text')
+      .replace('{due}', money(khums.khumsDue))
+      .replace('{paid}', money(khums.paidAmount))
+      .replace('{remaining}', money(khums.remainingBalance));
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: t('khums_share_title'), text: summary, url: window.location.href });
+        setMessage({ type: 'ok', text: t('khums_share_success') });
+        return;
+      }
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(`${t('khums_share_title')}\n${summary}\n${window.location.href}`);
+      setMessage({ type: 'ok', text: t('khums_share_copy_success') });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setMessage({ type: 'error', text: t('khums_share_error') });
+    }
+  }
+
   if (loading) {
     return (
-      <div className="khums-loading" dir={dir}>
-        <div />
+      <div
+        className="khums-loading"
+        dir={dir}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={integrityCopy.loading}
+      >
+        <div aria-hidden="true" />
+        <span>{integrityCopy.loading}</span>
       </div>
     );
   }
 
   return (
-    <div className="khums-page" dir={dir}>
+    <div className="khums-page" data-charity-experience="khums" dir={dir}>
       <Sidebar />
       <DashboardPageShell contentClassName="khums-content">
         <section className="khums-hero">
@@ -598,21 +798,45 @@ export default function KhumsPage() {
           onChange={pane => setActivePane(pane as KhumsPane)}
           ariaLabel={t('khums_tabs_aria')}
           className="khums-workspace-tabs"
-          mobileMode="scroll"
+          mobileMode="auto"
           sticky
         />
 
         {message && (
-          <div className={`notice ${message.type}`}>
+          <div
+            className={`notice ${message.type}`}
+            role={message.type === 'error' ? 'alert' : 'status'}
+            aria-live={message.type === 'error' ? 'assertive' : 'polite'}
+            aria-atomic="true"
+          >
             {message.type === 'ok' ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
             <span>{message.text}</span>
           </div>
         )}
 
         {!storageReady && (
-          <div className="notice warn">
+          <div className="notice warn" role="alert" aria-live="assertive" aria-atomic="true">
             <AlertTriangle size={17} />
             <span>{t('khums_storage_notice')}</span>
+          </div>
+        )}
+
+        {activeYear && !savedYearCurrency && (
+          <div className="notice error" role="alert" aria-live="assertive" aria-atomic="true">
+            <AlertTriangle size={17} aria-hidden="true" />
+            <span>{integrityCopy.savedCurrencyMissing}</span>
+          </div>
+        )}
+
+        {activeYear && savedYearCurrency && excludedCurrencyPayments.length > 0 && (
+          <div className="notice warn" role="status" aria-live="polite" aria-atomic="true">
+            <Info size={17} aria-hidden="true" />
+            <span>{integrityCopy.excludedPayments
+              .replace('{count}', String(excludedCurrencyPayments.length))
+              .replace('{currencies}', Array.from(new Set(excludedCurrencyPayments.map(payment => (
+                normalizeCurrencyCode(payment.currency) ?? integrityCopy.missingCurrency
+              )))).join(', '))
+              .replace('{currency}', savedYearCurrency)}</span>
           </div>
         )}
 
@@ -638,14 +862,50 @@ export default function KhumsPage() {
         <PageTabPanel idBase="khums-workspace" value="overview" active={activePane === 'overview'} className="khums-tab-panel">
           <section className="khums-stat-grid" aria-label={t('khums_summary')}>
             {[
-              [t('khums_total_income'), money(khums.totalIncome), Coins],
-              [t('khums_total_expenses'), money(khums.totalExpenses), ReceiptText],
-              [t('khums_annual_surplus'), money(khums.surplus), Scale],
-              [t('khums_due'), money(khums.khumsDue), Landmark],
-              [t('khums_paid'), money(khums.paidAmount), CheckCircle2],
-              [t('khums_remaining'), money(khums.remainingBalance), AlertTriangle],
-            ].map(([label, value, Icon]) => (
-              <StatCard key={String(label)} icon={Icon as LucideIcon} label={String(label)} value={String(value)} />
+              {
+                label: t('khums_current_status'), value: statusLabel[khums.status], icon: ShieldCheck, valueDir: dir,
+                explanation: t('khums_status_explanation'), formula: undefined, source: t('khums_source_financial_and_payments'), lastUpdated: recordLastUpdate,
+              },
+              {
+                label: t('khums_current_year'), value: currentYearLabel, icon: CalendarDays, valueDir: 'ltr',
+                explanation: activeYear ? t('khums_current_year_explanation') : t('khums_current_year_draft_explanation'), formula: undefined, source: activeYear ? t('khums_source_saved_year') : t('khums_source_current_draft'), lastUpdated: recordLastUpdate,
+              },
+              {
+                label: t('khums_due'), value: money(khums.khumsDue), icon: Landmark, valueDir: 'ltr',
+                explanation: t('khums_due_explanation'), formula: t('khums_due_formula_visual'), source: t('khums_source_financial_data'), lastUpdated: recordLastUpdate,
+              },
+              {
+                label: t('khums_paid'), value: money(khums.paidAmount), icon: CheckCircle2, valueDir: 'ltr',
+                explanation: t('khums_paid_explanation'), formula: t('khums_paid_formula_visual'), source: t('khums_source_payment_records'), lastUpdated: lastPayment ? dateLabel(lastPayment.payment_date) : t('khums_not_available'),
+              },
+              {
+                label: t('khums_remaining'), value: money(khums.remainingBalance), icon: Scale, valueDir: 'ltr',
+                explanation: t('khums_remaining_explanation'), formula: t('khums_remaining_formula_visual'), source: t('khums_source_financial_and_payments'), lastUpdated: recordLastUpdate,
+              },
+              {
+                label: t('khums_next_reminder'), value: nextReminder ? dateLabel(nextReminder.reminder_date) : t('khums_no_next_reminder'), icon: BellRing, valueDir: dir,
+                explanation: t('khums_next_reminder_explanation'), formula: undefined, source: t('khums_source_reminders'), lastUpdated: nextReminder ? dateLabel(nextReminder.reminder_date) : t('khums_not_available'),
+              },
+              {
+                label: t('khums_last_payment'), value: lastPayment ? money(toNumber(lastPayment.amount), lastPayment.currency) : t('khums_no_last_payment'), icon: ReceiptText, valueDir: lastPayment ? 'ltr' : dir,
+                explanation: t('khums_last_payment_explanation'), formula: undefined, source: t('khums_source_payment_records'), lastUpdated: lastPayment ? dateLabel(lastPayment.payment_date) : t('khums_not_available'),
+              },
+            ].map(metric => (
+              <StatCard
+                key={metric.label}
+                icon={metric.icon}
+                label={metric.label}
+                value={metric.value}
+                valueDir={metric.valueDir as 'ltr' | 'rtl'}
+                explanation={metric.explanation}
+                formula={metric.formula}
+                source={metric.source}
+                lastUpdated={metric.lastUpdated}
+                detailsLabel={t('khums_metric_details_for').replace('{metric}', metric.label)}
+                formulaLabel={t('khums_metric_formula')}
+                sourceLabel={t('khums_metric_source')}
+                lastUpdatedLabel={t('khums_metric_last_update')}
+              />
             ))}
           </section>
 
@@ -654,9 +914,11 @@ export default function KhumsPage() {
               <SectionHeader
                 eyebrow={t('khums_year_eyebrow')}
                 title={t('khums_current_year')}
-                description={activeYear ? `${dateLabel(activeYear.start_date)} - ${dateLabel(activeYear.end_date)}` : t('khums_current_year_empty')}
+                description={currentYearLabel}
                 icon={<CalendarDays size={22} />}
+                action={<button className="mini-btn compact" type="button" onClick={() => setActivePane('financial-data')}>{t('khums_go_to_financial_data')}</button>}
               />
+              {!activeYear && <p className="muted-note">{t('khums_current_year_empty')}</p>}
               <div className="overview-count-grid">
                 <div><small>{t('khums_saved_years')}</small><strong>{years.length}</strong></div>
                 <div><small>{t('khums_payments_title')}</small><strong>{payments.length}</strong></div>
@@ -666,21 +928,24 @@ export default function KhumsPage() {
 
             <article className="panel-card quick-actions-card">
               <SectionHeader
-                eyebrow={t('khums_summary')}
-                title={t('khums_next_actions')}
-                description={t('khums_next_actions_desc')}
+                eyebrow={t('khums_overview_eyebrow')}
+                title={t('khums_action_center')}
+                description={t('khums_action_center_desc')}
                 icon={<CheckCircle2 size={22} />}
               />
-              <div className="quick-actions">
-                <button className="mini-btn" type="button" onClick={() => setActivePane('data-entry')}>{t('khums_go_to_data_entry')}</button>
-                <button className="mini-btn" type="button" onClick={() => setActivePane('calculation')}>{t('khums_go_to_calculation')}</button>
-                <button className="mini-btn" type="button" onClick={() => setActivePane('distribution')}>{t('khums_go_to_distribution')}</button>
+              <div className="quick-actions" aria-label={t('khums_action_center')}>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_calculate')} onClick={() => setActivePane('calculation')}><Calculator size={16} />{t('khums_action_calculate')}</button>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_pay')} onClick={() => openDistributionTarget('payment')}><CreditCard size={16} />{t('khums_action_pay')}</button>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_export_pdf')} onClick={exportPdfFromActionCenter}><Download size={16} />{t('khums_action_export_pdf')}</button>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_share')} onClick={() => void shareKhumsSummary()}><Share2 size={16} />{t('khums_action_share')}</button>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_history')} onClick={() => setActivePane('history')}><History size={16} />{t('khums_action_history')}</button>
+                <button className="mini-btn" type="button" aria-label={t('khums_action_reminder')} onClick={() => openDistributionTarget('reminder')}><BellRing size={16} />{t('khums_action_reminder')}</button>
               </div>
             </article>
           </section>
         </PageTabPanel>
 
-        <PageTabPanel idBase="khums-workspace" value="data-entry" active={activePane === 'data-entry'} className="khums-tab-panel">
+        <PageTabPanel idBase="khums-workspace" value="financial-data" active={activePane === 'financial-data'} className="khums-tab-panel">
           <article className="panel-card setup-card">
             <SectionHeader
               eyebrow={t('khums_year_eyebrow')}
@@ -693,10 +958,14 @@ export default function KhumsPage() {
               <label><span>{t('khums_year_end')}</span><input type="date" value={yearForm.end_date} onChange={event => setYearForm(prev => ({ ...prev, end_date: event.target.value }))} /></label>
               <div className="currency-field"><CurrencySelect value={yearForm.currency} onChange={currency => setYearForm(prev => ({ ...prev, currency }))} lang={lang} label={t('khums_currency')} ariaLabel={t('khums_currency')} /></div>
               <label><span>{t('khums_religious_authority')}</span><input value={yearForm.marja_name} onChange={event => setYearForm(prev => ({ ...prev, marja_name: event.target.value }))} /></label>
-              <label><span>{t('khums_imam_percent')}</span><input inputMode="decimal" value={yearForm.imam_share_percent} onChange={event => setYearForm(prev => ({ ...prev, imam_share_percent: event.target.value }))} /></label>
-              <label><span>{t('khums_sayyid_percent')}</span><input inputMode="decimal" value={yearForm.sayyid_share_percent} onChange={event => setYearForm(prev => ({ ...prev, sayyid_share_percent: event.target.value }))} /></label>
+              <label><span>{t('khums_imam_percent')}</span><input inputMode="decimal" value={yearForm.imam_share_percent} aria-invalid={!splitIsValid} aria-describedby={!splitIsValid ? 'khums-split-error' : undefined} onChange={event => setYearForm(prev => ({ ...prev, imam_share_percent: event.target.value }))} /></label>
+              <label><span>{t('khums_sayyid_percent')}</span><input inputMode="decimal" value={yearForm.sayyid_share_percent} aria-invalid={!splitIsValid} aria-describedby={!splitIsValid ? 'khums-split-error' : undefined} onChange={event => setYearForm(prev => ({ ...prev, sayyid_share_percent: event.target.value }))} /></label>
             </div>
-            {Math.abs(splitTotal - 100) > 0.01 && <p className="warning-line">{t('khums_split_warning')} {splitTotal.toFixed(1)}%. {t('khums_split_warning_suffix')}</p>}
+            {!splitIsValid && (
+              <p id="khums-split-error" className="warning-line" role="alert" aria-live="assertive">
+                {integrityCopy.splitError.replace('{total}', splitTotalLabel)}
+              </p>
+            )}
             <details className="khums-disclosure optional-notes">
               <summary>{t('khums_optional_notes')}</summary>
               <div className="form-grid disclosure-body">
@@ -760,6 +1029,12 @@ export default function KhumsPage() {
               <strong>{money(khums.surplus)}</strong>
               <span>{t('khums_surplus_formula')}</span>
             </div>
+            <section className="calculation-evidence" aria-label={t('khums_calculation_evidence')}>
+              <div><small>{t('khums_metric_formula')}</small><strong>{t('khums_due_formula_visual')}</strong></div>
+              <div><small>{t('khums_metric_source')}</small><strong>{t('khums_source_financial_data')}</strong></div>
+              <div><small>{t('khums_metric_last_update')}</small><strong>{recordLastUpdate}</strong></div>
+              <div><small>{t('khums_metric_explanation')}</small><strong>{t('khums_due_explanation')}</strong></div>
+            </section>
             <div className={`status-card ${khums.status}`}>
               <small>{t('khums_status')}</small>
               <strong>{statusLabel[khums.status]}</strong>
@@ -793,7 +1068,7 @@ export default function KhumsPage() {
             <div className="payment-layout">
               <div className="payment-form form-grid">
                 <label><span>{t('khums_date')}</span><input type="date" value={paymentForm.payment_date} onChange={event => setPaymentForm(prev => ({ ...prev, payment_date: event.target.value }))} /></label>
-                <label><span>{t('khums_amount')}</span><input inputMode="decimal" value={paymentForm.amount} onChange={event => setPaymentForm(prev => ({ ...prev, amount: event.target.value }))} placeholder="0.000" /></label>
+                <label><span>{t('khums_amount')}</span><input ref={paymentAmountRef} inputMode="decimal" value={paymentForm.amount} onChange={event => setPaymentForm(prev => ({ ...prev, amount: event.target.value }))} placeholder="0.000" /></label>
                 <label><span>{t('khums_recipient')}</span><input value={paymentForm.recipient} onChange={event => setPaymentForm(prev => ({ ...prev, recipient: event.target.value }))} /></label>
                 <label><span>{t('khums_share_type')}</span><select value={paymentForm.share_type} onChange={event => setPaymentForm(prev => ({ ...prev, share_type: event.target.value as ShareType }))}><option value="imam">{t('khums_imam_share')}</option><option value="sayyid">{t('khums_sayyid_share')}</option><option value="unspecified">{t('khums_share_unspecified')}</option></select></label>
                 <label><span>{t('khums_receipt_link')}</span><input value={paymentForm.receipt_url} onChange={event => setPaymentForm(prev => ({ ...prev, receipt_url: event.target.value }))} placeholder="https://" /></label>
@@ -831,14 +1106,14 @@ export default function KhumsPage() {
             )}
           </article>
 
-          <details className="khums-disclosure panel-card reminders-disclosure">
+          <details ref={reminderDetailsRef} className="khums-disclosure panel-card reminders-disclosure" id="khums-reminders">
             <summary>
               <span><strong>{t('khums_reminders_and_follow_up')}</strong><small>{t('khums_reminders_desc')}</small></span>
               <b>{reminders.length}</b>
             </summary>
             <div className="disclosure-body">
               <div className="reminder-form form-grid">
-                <label><span>{t('khums_reminder_date')}</span><input type="date" value={reminderForm.reminder_date} onChange={event => setReminderForm(prev => ({ ...prev, reminder_date: event.target.value }))} /></label>
+                <label><span>{t('khums_reminder_date')}</span><input ref={reminderDateRef} type="date" value={reminderForm.reminder_date} onChange={event => setReminderForm(prev => ({ ...prev, reminder_date: event.target.value }))} /></label>
                 <label><span>{t('khums_reminder_type')}</span><select value={reminderForm.reminder_type} onChange={event => setReminderForm(prev => ({ ...prev, reminder_type: event.target.value as ReminderType }))}><option value="before_year_end_30">{t('khums_reminder_before_30')}</option><option value="year_end">{t('khums_reminder_year_end')}</option><option value="custom">{t('khums_reminder_custom')}</option></select></label>
                 <label className="wide"><span>{t('khums_notes')}</span><input value={reminderForm.notes} onChange={event => setReminderForm(prev => ({ ...prev, notes: event.target.value }))} /></label>
                 <button className="primary-wide wide" type="button" onClick={addReminder} disabled={!activeYearId}>{t('khums_add_reminder')}</button>
@@ -885,7 +1160,7 @@ export default function KhumsPage() {
                 icon={<CalendarDays size={26} />}
                 title={t('khums_year_history_empty')}
                 description={t('khums_year_history_empty_desc')}
-                action={<button className="mini-btn" type="button" onClick={() => setActivePane('data-entry')}>{t('khums_go_to_data_entry')}</button>}
+                action={<button className="mini-btn" type="button" onClick={() => setActivePane('financial-data')}>{t('khums_go_to_financial_data')}</button>}
               />
             ) : (
               <div className="year-history-list">
@@ -956,42 +1231,47 @@ export default function KhumsPage() {
               />
               <p>{t('khums_disclaimer_full')}</p>
             </article>
-            <details className="khums-disclosure panel-card documents-card">
-              <summary>
-                <span><strong>{t('khums_supporting_documents')}</strong><small>{t('khums_supporting_documents_desc')}</small></span>
-                <b>{payments.filter(payment => payment.receipt_url).length}</b>
-              </summary>
-              <div className="disclosure-body">
-                {payments.some(payment => payment.receipt_url) ? (
-                  <ul className="documents-list">
-                    {payments.filter(payment => payment.receipt_url).map(payment => (
-                      <li key={payment.id}>
-                        <div>
-                          <strong>{money(toNumber(payment.amount), payment.currency)}</strong>
-                          <span>{dateLabel(payment.payment_date)} - {payment.recipient || t('khums_recipient_unspecified')}</span>
-                        </div>
-                        <a href={payment.receipt_url ?? '#'} target="_blank" rel="noopener noreferrer">{t('khums_open_document')}</a>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyState
-                    icon={<FileText size={26} />}
-                    title={t('khums_supporting_documents_empty')}
-                    description={t('khums_supporting_documents_empty_desc')}
-                    action={<button className="mini-btn" type="button" onClick={() => setActivePane('distribution')}>{t('khums_go_to_distribution')}</button>}
-                  />
-                )}
-              </div>
-            </details>
           </section>
+        </PageTabPanel>
+
+        <PageTabPanel idBase="khums-workspace" value="documents" active={activePane === 'documents'} className="khums-tab-panel">
+          <article className="panel-card documents-card">
+            <SectionHeader
+              eyebrow={t('khums_tab_documents')}
+              title={t('khums_supporting_documents')}
+              description={t('khums_supporting_documents_desc')}
+              icon={<FileText size={22} />}
+              action={<span className="document-count" aria-label={t('khums_documents_count').replace('{count}', String(payments.filter(payment => payment.receipt_url).length))}>{payments.filter(payment => payment.receipt_url).length}</span>}
+            />
+            {payments.some(payment => payment.receipt_url) ? (
+              <ul className="documents-list">
+                {payments.filter(payment => payment.receipt_url).map(payment => (
+                  <li key={payment.id}>
+                    <div>
+                      <strong>{money(toNumber(payment.amount), payment.currency)}</strong>
+                      <span>{dateLabel(payment.payment_date)} - {payment.recipient || t('khums_recipient_unspecified')}</span>
+                    </div>
+                    <a href={payment.receipt_url ?? '#'} target="_blank" rel="noopener noreferrer">{t('khums_open_document')}</a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                icon={<FileText size={26} />}
+                title={t('khums_supporting_documents_empty')}
+                description={t('khums_supporting_documents_empty_desc')}
+                action={<button className="mini-btn" type="button" onClick={() => openDistributionTarget('payment')}>{t('khums_add_payment_document')}</button>}
+              />
+            )}
+          </article>
         </PageTabPanel>
       </DashboardPageShell>
 
       <style jsx global>{`
         .khums-page{min-height:100vh;background:radial-gradient(circle at 8% 0%,rgba(47,214,192,.11),transparent 30%),var(--sfm-page-gradient);color:var(--sfm-deep-navy);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
-        .khums-loading{min-height:100vh;display:grid;place-items:center;background:var(--sfm-page-gradient)}
+        .khums-loading{min-height:100vh;display:grid;place-items:center;align-content:center;gap:14px;background:var(--sfm-page-gradient)}
         .khums-loading div{width:46px;height:46px;border-radius:50%;border:3px solid rgba(29,140,255,.14);border-top-color:var(--sfm-primary);animation:spin 1s linear infinite}
+        .khums-loading span{color:var(--sfm-body);font-size:14px;font-weight:850}
         @keyframes spin{to{transform:rotate(360deg)}}
         .khums-content{display:grid;gap:18px;width:100%;max-inline-size:min(1280px,100%);margin-inline:auto;min-width:0}
         .khums-content > *,.khums-tab-panel > *,.overview-grid > *,.two-column > *,.reports-layout > *,.form-grid > *,.khums-stat-grid > *{min-width:0}
@@ -1028,9 +1308,9 @@ export default function KhumsPage() {
         .notice.error{background:#FEF2F2;color:#B91C1C;border-color:rgba(185,28,28,.18)}
         .khums-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(170px,1fr));gap:16px;align-items:stretch;margin-top:4px}
         .stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;gap:7px 12px;min-height:136px;padding:18px 16px;border-radius:var(--r-xl);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,251,255,.90));border:1px solid rgba(29,140,255,.13);box-shadow:0 14px 30px rgba(3,18,37,.06)}
-        .stat-card span{grid-row:1 / span 2;width:42px;height:42px;border-radius:var(--r-md);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.10));color:var(--sfm-primary);display:grid;place-items:center}
-        .stat-card small{color:var(--sfm-muted-readable);font-size:12.5px;font-weight:950;line-height:1.45}
-        .stat-card strong{align-self:end;color:var(--sfm-midnight);font-size:clamp(18px,1.35vw,23px);line-height:1.25;overflow-wrap:normal;word-break:keep-all;unicode-bidi:isolate}
+        .stat-card > .stat-icon{grid-row:1 / span 2;width:42px;height:42px;border-radius:var(--r-md);background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,192,.10));color:var(--sfm-primary);display:grid;place-items:center}
+        .stat-card > small{color:var(--sfm-muted-readable);font-size:12.5px;font-weight:950;line-height:1.45}
+        .stat-card > strong{align-self:end;color:var(--sfm-midnight);font-size:clamp(18px,1.35vw,23px);line-height:1.25;overflow-wrap:normal;word-break:keep-all;unicode-bidi:isolate}
         .overview-grid,.two-column,.reports-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
         .overview-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
         .overview-count-grid div{display:grid;gap:6px;border:1px solid rgba(29,140,255,.12);border-radius:var(--r-lg);background:var(--sfm-light-card);padding:13px}
@@ -1121,13 +1401,91 @@ export default function KhumsPage() {
 
         /* Khums route production polish. */
         .khums-page{--khums-radius-xl:26px;--khums-radius-lg:20px;--khums-border:rgba(29,140,255,.15);--khums-shadow:0 18px 44px rgba(3,18,37,.075);overflow-x:clip}.khums-page .sfm-dashboard-page-content.khums-content{width:min(100%,1280px);max-inline-size:min(1280px,calc(100vw - 32px));margin-inline:auto;gap:clamp(16px,1.8vw,24px);min-width:0}.khums-page .sfm-dashboard-page-content.khums-content > *{inline-size:100%;min-width:0}
-        .khums-hero{grid-template-columns:minmax(0,1fr) minmax(300px,max-content);border-radius:var(--khums-radius-xl);min-height:0}.khums-hero h1{font-size:clamp(32px,3.2vw,48px);letter-spacing:0;text-wrap:balance}.khums-hero p{font-size:15.5px;max-width:780px}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}.khums-page :is(.gold-btn,.dark-btn,.primary-wide,.mini-btn){border-radius:var(--r-md);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.khums-page :is(button,a,input,select,textarea):focus-visible{outline:3px solid rgba(47,214,192,.34);outline-offset:2px}
+        .khums-hero{grid-template-columns:minmax(0,1fr) minmax(300px,max-content);border-radius:var(--khums-radius-xl);min-height:0}.khums-hero h1{font-size:clamp(32px,3.2vw,48px);letter-spacing:0;text-wrap:balance;color:#fff!important}.khums-hero p{font-size:15.5px;max-width:780px;color:rgba(234,246,255,.82)!important}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}.khums-page :is(.gold-btn,.dark-btn,.primary-wide,.mini-btn){border-radius:var(--r-md);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.khums-page :is(button,a,input,select,textarea):focus-visible{outline:3px solid rgba(47,214,192,.34);outline-offset:2px}
         .khums-stat-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.stat-card{height:100%;min-height:136px;border-radius:var(--r-xl)}.stat-card strong,.split-grid strong,.payment-summary strong,.report-table strong,.formula-box strong{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
         .panel-card,.notice{border-radius:var(--khums-radius-xl);border:1px solid var(--khums-border);box-shadow:var(--khums-shadow);min-width:0}.two-column,.reports-layout,.payment-layout,.overview-grid{gap:16px}.section-head{align-items:center}.section-head h2{letter-spacing:0;text-wrap:balance}.section-head p{max-width:760px}.form-grid{gap:14px}.form-grid label{line-height:1.45}.form-grid input,.form-grid select,.form-grid textarea{min-height:46px;border-radius:var(--r-md)}.empty-panel{min-height:132px;border-radius:var(--r-xl);padding:18px}.payment-list article,.reminder-grid article,.report-table div,.split-grid div,.formula-box,.status-card,.payment-summary{border-radius:var(--r-xl);min-width:0}.muted-note,.warning-line{border-radius:var(--r-lg)}.report-actions{flex-wrap:wrap}
         .dark .khums-page{--khums-border:rgba(167,243,240,.14);--khums-shadow:0 18px 44px rgba(0,0,0,.22)}.dark .khums-page :is(.panel-card,.stat-card,.notice,.khums-critical-summary,.khums-critical-summary > div,.khums-disclosure,.payment-list article,.reminder-grid article,.documents-list li,.report-table div,.split-grid div,.formula-box,.status-card,.payment-summary,.empty-panel,.overview-count-grid div){background:linear-gradient(180deg,rgba(16,47,82,.88),rgba(8,24,42,.92));border-color:var(--khums-border);box-shadow:var(--khums-shadow)}.dark .khums-page :is(.form-grid input,.form-grid select,.form-grid textarea){background:#081827;border-color:rgba(167,243,240,.18);color:var(--sfm-heading)}.dark .khums-page :is(.section-head h2,.panel-card strong,.stat-card strong,.empty-panel strong,.report-table strong,.khums-critical-summary strong,.khums-disclosure > summary,.documents-list li strong,.overview-count-grid strong){color:var(--sfm-heading)}.dark .khums-page :is(.section-head p,.muted-note,.empty-panel p,.report-table small,.stat-card small,.khums-critical-summary small,.khums-disclosure > summary small,.disclosure-copy p,.history-notes,.documents-list li span,.overview-count-grid small){color:var(--sfm-body)}
         @media(max-width:1260px){.khums-hero{grid-template-columns:1fr}.hero-actions{justify-content:flex-start}.khums-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.two-column,.reports-layout,.payment-layout,.overview-grid{grid-template-columns:1fr}}
         @media(max-width:920px){.khums-page .sfm-dashboard-page-content.khums-content{max-inline-size:min(100%,calc(100vw - 24px))}.khums-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid,.split-grid,.report-table div{grid-template-columns:1fr}.history-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}.section-head{display:grid}.section-head .head-icon{order:-1}}
         @media(max-width:560px){.khums-page .sfm-dashboard-page-content.khums-content{max-inline-size:min(100%,calc(100vw - 18px));gap:14px}.khums-hero{padding:18px;border-radius:var(--r-2xl)}.hero-actions,.report-actions{display:grid;grid-template-columns:1fr;width:100%}.khums-stat-grid{grid-template-columns:1fr}.panel-card{border-radius:var(--r-2xl);padding:16px}.panel-card.khums-disclosure{padding:0}.gold-btn,.dark-btn,.primary-wide,.mini-btn{width:100%}}
+
+        /* Phase 2.8: calm Islamic-finance treatment, scoped to Khums only. */
+        .khums-page{
+          --khums-deep-green:#123F35;
+          --khums-emerald:#087A5F;
+          --khums-emerald-bright:#159B78;
+          --khums-gold:#C8993D;
+          --khums-gold-soft:#F2DFC0;
+          --khums-warm-white:#FCFAF5;
+          --khums-soft-gray:#EEF2EE;
+          --khums-ink:#17352D;
+          --khums-muted:#566B63;
+          --khums-border:rgba(18,63,53,.16);
+          --khums-shadow:0 18px 44px rgba(18,63,53,.09);
+          background:radial-gradient(circle at 12% 0%,rgba(21,155,120,.12),transparent 29%),linear-gradient(180deg,#F8F7F1 0%,var(--khums-warm-white) 48%,#F2F4EF 100%);
+          color:var(--khums-ink);
+        }
+        .khums-page .khums-hero{background:radial-gradient(circle at 15% 12%,rgba(242,223,192,.18),transparent 30%),linear-gradient(135deg,#0A3028 0%,var(--khums-deep-green) 58%,#1A5547 100%);border-color:rgba(242,223,192,.24);box-shadow:0 24px 58px rgba(18,63,53,.24)}
+        .khums-page .eyebrow{border-color:rgba(242,223,192,.28);background:rgba(242,223,192,.11);color:#F3D89F}
+        .khums-page .disclaimer-badge{border-color:rgba(242,223,192,.25);background:rgba(255,255,255,.08);color:#F7F2E8}
+        .khums-page .gold-btn,.khums-page .primary-wide{background:linear-gradient(135deg,var(--khums-emerald),var(--khums-emerald-bright));color:#fff;box-shadow:0 13px 28px rgba(8,122,95,.24)}
+        .khums-page .dark-btn{border-color:rgba(242,223,192,.28);background:rgba(255,255,255,.08);color:#fff}
+        .khums-page .mini-btn{border-color:rgba(18,63,53,.19);background:var(--khums-warm-white);color:var(--khums-deep-green)}
+        .khums-page .quick-actions .mini-btn{justify-content:flex-start;border-inline-start:3px solid var(--khums-gold);padding-inline:14px;background:linear-gradient(135deg,var(--khums-warm-white),#F6F5EE)}
+        .khums-page :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid rgba(200,153,61,.48);outline-offset:2px}
+        .khums-page .page-section-tabs{border-color:rgba(18,63,53,.16);background:linear-gradient(135deg,rgba(8,122,95,.055),rgba(200,153,61,.06)),var(--khums-warm-white);box-shadow:0 12px 30px rgba(18,63,53,.06)}
+        .khums-page .page-section-tabs button{border-color:rgba(18,63,53,.16);background:#FFFEFA;color:var(--khums-muted)}
+        .khums-page .page-section-tabs button:hover,.khums-page .page-section-tabs button:focus-visible{border-color:rgba(8,122,95,.42);color:var(--khums-deep-green);background:#F3F7F3;box-shadow:0 0 0 3px rgba(8,122,95,.10)}
+        .khums-page .page-section-tabs button.active{border-color:rgba(8,122,95,.34);background:linear-gradient(135deg,var(--khums-deep-green),var(--khums-emerald));color:#fff;box-shadow:0 12px 28px rgba(18,63,53,.18),inset 0 -2px 0 rgba(242,223,192,.28)}
+        .khums-page .page-section-tabs-select select{border-color:rgba(18,63,53,.24);background:var(--khums-warm-white);color:var(--khums-deep-green)}
+        .khums-page :is(.panel-card,.stat-card,.notice,.khums-critical-summary,.khums-critical-summary > div,.khums-disclosure,.payment-list article,.reminder-grid article,.documents-list li,.report-table div,.split-grid div,.status-card,.payment-summary div,.empty-panel,.overview-count-grid div){border-color:var(--khums-border);background:linear-gradient(180deg,#FFFEFA,var(--khums-warm-white));box-shadow:var(--khums-shadow)}
+        .khums-page :is(.section-head h2,.stat-card > strong,.khums-critical-summary strong,.overview-count-grid strong,.payment-list strong,.reminder-grid strong,.documents-list li strong,.report-table strong,.split-grid strong,.payment-summary strong){color:var(--khums-ink)}
+        .khums-page :is(.section-head p,.stat-explanation,.khums-critical-summary small,.overview-count-grid small,.payment-list span,.payment-list small,.reminder-grid span,.reminder-grid small,.documents-list li span,.empty-panel p,.history-notes){color:var(--khums-muted)}
+        .khums-page .section-head > div > small,.khums-page .report-table span,.khums-page .split-grid small,.khums-page .payment-summary small{color:#755513}
+        .khums-page .section-head .head-icon,.khums-page .stat-icon,.khums-page .empty-panel-icon{border-color:rgba(8,122,95,.14);background:linear-gradient(135deg,rgba(8,122,95,.11),rgba(200,153,61,.11));color:var(--khums-emerald)}
+        .khums-page .form-grid input,.khums-page .form-grid select,.khums-page .form-grid textarea{border-color:rgba(18,63,53,.20);background:#FFFEFA;color:var(--khums-ink)}
+        .khums-page .form-grid input:focus,.khums-page .form-grid select:focus,.khums-page .form-grid textarea:focus{border-color:var(--khums-emerald);box-shadow:0 0 0 3px rgba(8,122,95,.13)}
+        .khums-page .khums-critical-summary{border-inline-start:4px solid var(--khums-gold)}
+        .khums-page .critical-status.not_due,.khums-page .critical-status.complete,.khums-page .status-card.not_due,.khums-page .status-card.complete,.khums-page .payment-state.not_due,.khums-page .payment-state.complete{background:#DDF4E9;border-color:rgba(8,122,95,.30)}
+        .khums-page .critical-status.incomplete,.khums-page .status-card.incomplete,.khums-page .payment-state.incomplete{background:#FFF0CF;border-color:rgba(160,105,15,.30)}
+        .khums-page .critical-status.overpaid,.khums-page .status-card.overpaid,.khums-page .payment-state.overpaid{background:#DDEFEA;border-color:rgba(18,63,53,.28)}
+        .khums-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+        .stat-card{position:relative;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto 1fr auto;min-height:214px;padding:17px 16px;align-content:start}
+        .stat-card > .stat-icon{grid-row:1 / span 2;background:linear-gradient(135deg,rgba(8,122,95,.12),rgba(200,153,61,.13));color:var(--khums-emerald)}
+        .stat-card > small{grid-column:2}
+        .stat-card > strong{grid-column:2;align-self:start;margin-top:2px;font-size:clamp(17px,1.35vw,22px)}
+        .stat-explanation{grid-column:1/-1;margin:11px 0 0;font-size:12px;font-weight:800;line-height:1.65}
+        .metric-evidence{grid-column:1/-1;align-self:end;margin-top:10px;border-top:1px solid rgba(18,63,53,.12);padding-top:8px}
+        .metric-evidence > summary{width:34px;height:32px;border-radius:var(--r-sm);display:grid;place-items:center;cursor:pointer;list-style:none;color:var(--khums-emerald);background:rgba(8,122,95,.08);border:1px solid rgba(8,122,95,.13)}
+        .metric-evidence > summary::-webkit-details-marker{display:none}
+        .metric-evidence > div{display:grid;gap:7px;margin-top:9px;border-radius:var(--r-md);background:var(--khums-soft-gray);padding:10px}
+        .metric-evidence p{display:grid;gap:2px;margin:0;color:var(--khums-muted);font-size:11px;line-height:1.55}
+        .metric-evidence b{color:var(--khums-deep-green);font-weight:950}
+        .metric-evidence span{width:auto;height:auto;display:block;background:none;color:inherit;border:0;border-radius:0}
+        .calculation-evidence{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+        .calculation-evidence div{min-width:0;border:1px solid rgba(18,63,53,.14);border-radius:var(--r-lg);background:var(--khums-soft-gray);padding:12px}
+        .calculation-evidence small{display:block;color:#755513;font-size:11px;font-weight:950;line-height:1.45}
+        .calculation-evidence strong{display:block;margin-top:5px;color:var(--khums-ink);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+        .khums-page .formula-box{border-color:rgba(242,223,192,.24);background:linear-gradient(135deg,#0A3028,var(--khums-deep-green));box-shadow:0 16px 34px rgba(18,63,53,.18)}
+        .khums-page .formula-box :is(small,span){color:#F3D89F}
+        .document-count{min-width:42px;height:42px;border-radius:999px;display:grid;place-items:center;background:var(--khums-deep-green);color:#fff;font-weight:950;font-variant-numeric:tabular-nums}
+        .khums-page .documents-list a{border-color:rgba(8,122,95,.22);background:#FFFEFA;color:var(--khums-emerald)}
+        .dark .khums-page{--khums-border:rgba(242,223,192,.15);--khums-shadow:0 20px 48px rgba(0,0,0,.26);background:radial-gradient(circle at 12% 0%,rgba(21,155,120,.14),transparent 31%),linear-gradient(180deg,#061A16,#091F1A 58%,#071914);color:#F7F2E8}
+        .dark .khums-page :is(.panel-card,.stat-card,.notice,.khums-critical-summary,.khums-critical-summary > div,.khums-disclosure,.payment-list article,.reminder-grid article,.documents-list li,.report-table div,.split-grid div,.status-card,.payment-summary div,.empty-panel,.overview-count-grid div){border-color:var(--khums-border);background:linear-gradient(180deg,#10352D,#0B2922);box-shadow:var(--khums-shadow)}
+        .dark .khums-page :is(.section-head h2,.stat-card > strong,.khums-critical-summary strong,.overview-count-grid strong,.payment-list strong,.reminder-grid strong,.documents-list li strong,.report-table strong,.split-grid strong,.payment-summary strong,.calculation-evidence strong,.metric-evidence b){color:#F7F2E8}
+        .dark .khums-page :is(.section-head p,.stat-explanation,.khums-critical-summary small,.overview-count-grid small,.payment-list span,.payment-list small,.reminder-grid span,.reminder-grid small,.documents-list li span,.empty-panel p,.history-notes,.metric-evidence p){color:#C8D5CF}
+        .dark .khums-page .page-section-tabs{border-color:rgba(242,223,192,.14);background:linear-gradient(135deg,rgba(8,122,95,.15),rgba(200,153,61,.08)),#0B2922}
+        .dark .khums-page .page-section-tabs button{border-color:rgba(242,223,192,.13);background:#10352D;color:#D5E0DA}
+        .dark .khums-page .page-section-tabs button.active{background:linear-gradient(135deg,#176852,var(--khums-emerald));color:#fff}
+        .dark .khums-page .page-section-tabs-select select,.dark .khums-page .form-grid input,.dark .khums-page .form-grid select,.dark .khums-page .form-grid textarea{border-color:rgba(242,223,192,.17);background:#09251E;color:#F7F2E8}
+        .dark .khums-page .mini-btn,.dark .khums-page .quick-actions .mini-btn{border-color:rgba(242,223,192,.17);background:linear-gradient(135deg,#113A30,#0D3028);color:#F7F2E8}
+        .dark .khums-page .metric-evidence > div,.dark .khums-page .calculation-evidence div{border-color:rgba(242,223,192,.13);background:#09251E}
+        .dark .khums-page .formula-box{background:linear-gradient(135deg,#071E19,#123F35)}
+        .dark .khums-page .documents-list a{border-color:rgba(242,223,192,.18);background:#0D3028;color:#F3D89F}
+        @media(max-width:1260px){.khums-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.calculation-evidence{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:920px){.khums-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:560px){.khums-stat-grid,.calculation-evidence{grid-template-columns:1fr}.stat-card{min-height:196px}.quick-actions{grid-template-columns:1fr}.khums-page .quick-actions .mini-btn{width:100%}.metric-evidence > div{padding:9px}}
+        @media(prefers-reduced-motion:reduce){.khums-page *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
 
       `}</style>
     </div>
@@ -1138,16 +1496,43 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  valueDir = 'ltr',
+  explanation,
+  formula,
+  source,
+  lastUpdated,
+  detailsLabel,
+  formulaLabel,
+  sourceLabel,
+  lastUpdatedLabel,
 }: {
   icon: LucideIcon;
   label: string;
   value: string;
+  valueDir?: 'ltr' | 'rtl';
+  explanation: string;
+  formula?: string;
+  source: string;
+  lastUpdated: string;
+  detailsLabel: string;
+  formulaLabel: string;
+  sourceLabel: string;
+  lastUpdatedLabel: string;
 }) {
   return (
-    <article className="stat-card">
-      <span><Icon size={18} /></span>
+    <article className="stat-card" aria-label={`${label}: ${value}`}>
+      <span className="stat-icon" aria-hidden="true"><Icon size={18} /></span>
       <small>{label}</small>
-      <strong dir="ltr">{value}</strong>
+      {valueDir === 'ltr' ? <strong dir="ltr">{value}</strong> : <strong dir={valueDir}>{value}</strong>}
+      <p className="stat-explanation">{explanation}</p>
+      <details className="metric-evidence">
+        <summary aria-label={detailsLabel} title={detailsLabel}><Info size={15} aria-hidden="true" /></summary>
+        <div>
+          {formula && <p><b>{formulaLabel}</b><span>{formula}</span></p>}
+          <p><b>{sourceLabel}</b><span>{source}</span></p>
+          <p><b>{lastUpdatedLabel}</b><span>{lastUpdated}</span></p>
+        </div>
+      </details>
     </article>
   );
 }

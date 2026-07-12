@@ -7,7 +7,6 @@ import {
   Archive,
   Calculator,
   CalendarDays,
-  Coins,
   FileText,
   FileUp,
   Gift,
@@ -23,17 +22,19 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { PageTabPanel } from '@/components/layout/PageTabs';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMoney } from '@/lib/formatMoney';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 
-import type { Lang, CharityProject, ZakatAsset, Commitment, ProjectDonation, CharityDocument, ReminderType, ReminderStatus, ReminderPriority, BeneficiaryCategory, BeneficiaryStatus, ContributorRole, PaymentStatus, AssetType, DocumentCategory, CharityOrganization, CharityImpactMetric, CharityReminder, MetalsPriceResponse, ZakatCalculation, CharityBeneficiary, CharityContributor, CharityProjectsTab, OrganizationType, VerificationStatus, ProjectCategory, ProjectStatus } from './_types';
+import type { Lang, CharityProject, ZakatAsset, Commitment, ProjectDonation, CharityDocument, ReminderType, ReminderStatus, ReminderPriority, BeneficiaryCategory, BeneficiaryStatus, ContributorRole, PaymentStatus, DocumentCategory, CharityOrganization, CharityImpactMetric, CharityReminder, CharityBeneficiary, CharityContributor, CharityProjectsTab, OrganizationType, VerificationStatus, ProjectCategory, ProjectStatus } from './_types';
 import { TEXT } from './_text';
-import { categories, statuses, assetTypes, documentCategories, reminderTypes, reminderPriorities, beneficiaryCategories, beneficiaryStatuses, contributorRoles, paymentStatuses, organizationTypes, verificationStatuses, goldKarats, nonZakatOptions, allowedDocumentTypes, maxDocumentSize, templates, today, addYear, addDays, daysUntil, toNum, recordDate, isYear, isCurrentMonth, formatFileSize, cleanFileName, estimatedHijriDate } from './_utils';
+import { categories, statuses, documentCategories, reminderTypes, reminderPriorities, beneficiaryCategories, beneficiaryStatuses, contributorRoles, paymentStatuses, organizationTypes, verificationStatuses, allowedDocumentTypes, maxDocumentSize, templates, today, addDays, daysUntil, toNum, recordDate, isYear, isCurrentMonth, formatFileSize, cleanFileName, estimatedHijriDate } from './_utils';
 import { ProjectModal } from './_ProjectModal';
 import { ReminderModal } from './_ReminderModal';
 import { DocumentModal } from './_DocumentModal';
@@ -43,18 +44,131 @@ import { CharityStyles } from './_styles';
 import {
   CharityActionButton,
   CharityEmptyState,
-  CharityFormSection,
   CharityReportCard,
   CharitySectionHeader,
   CharityStatCard,
   CharityTabs,
 } from './_dashboardComponents';
 
+const CHARITY_PROJECTS_TABS = ['overview', 'projects', 'beneficiaries', 'donations', 'reports', 'impact', 'reminders', 'documents'] as const;
+const CHARITY_PROJECTS_TABS_ID = 'charity-projects-workspace';
+const CHARITY_AGGREGATE_CURRENCY = 'KWD';
+const CHARITY_PROJECT_SCOPES = ['charity', 'zakat'] as const;
+
+function isAggregateCurrency(currency?: string | null) {
+  return currency === CHARITY_AGGREGATE_CURRENCY;
+}
+
+function normalizedRecordKind(value?: string | null) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function isZakatRecord(value?: string | null) {
+  return normalizedRecordKind(value) === 'zakat';
+}
+
+function isKhumsRecord(value?: string | null) {
+  return normalizedRecordKind(value) === 'khums';
+}
+
+function isVoluntaryCharityRecord(value?: string | null) {
+  return !isZakatRecord(value) && !isKhumsRecord(value);
+}
+
+function normalizedCurrency(value?: string | null) {
+  const currency = String(value ?? '').trim().toUpperCase();
+  return currency || null;
+}
+
+function hasSameExplicitCurrency(left?: string | null, right?: string | null) {
+  const leftCurrency = normalizedCurrency(left);
+  const rightCurrency = normalizedCurrency(right);
+  return Boolean(leftCurrency && rightCurrency && leftCurrency === rightCurrency);
+}
+
+function encodedLegacyMonth(value?: string | null) {
+  const month = String(value ?? '').split(':')[1] ?? '';
+  return /^\d{4}-(?:0[1-9]|1[0-2])$/.test(month) ? month : null;
+}
+
 export default function CharityProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
-  const tr = TEXT[lang as Lang] ?? TEXT.ar;
+  const baseTr = TEXT[lang as Lang] ?? TEXT.ar;
+  const localCopy = (ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en;
+  const phaseCopy = {
+    tabOverview: localCopy('نظرة عامة', 'Overview', 'Aperçu'),
+    tabProjects: localCopy('المشاريع', 'Projects', 'Projets'),
+    tabBeneficiaries: localCopy('المستفيدون', 'Beneficiaries', 'Bénéficiaires'),
+    tabDonations: localCopy('التبرعات', 'Donations', 'Dons'),
+    tabReports: localCopy('التقارير', 'Reports', 'Rapports'),
+    tabImpact: localCopy('الأثر', 'Impact', 'Impact'),
+    tabReminders: localCopy('التذكيرات', 'Reminders', 'Rappels'),
+    tabDocuments: localCopy('المستندات والإيصالات', 'Documents & Receipts', 'Documents et reçus'),
+    nextCharityReminder: localCopy('تذكير خيري قادم', 'Next charity reminder', 'Prochain rappel caritatif'),
+    noReminderScheduled: localCopy('لا يوجد تذكير خيري مجدول', 'No charity reminder scheduled', 'Aucun rappel caritatif planifié'),
+    projectArtwork: localCopy('صورة توضيحية للمشروع', 'Project artwork', 'Illustration du projet'),
+    projectProgress: localCopy('تقدم المشروع', 'Project progress', 'Progression du projet'),
+    raised: localCopy('المبلغ المحصل', 'Raised', 'Collecté'),
+    remaining: localCopy('المتبقي', 'Remaining', 'Restant'),
+    donorCount: localCopy('المتبرعون', 'Donors', 'Donateurs'),
+    donorIdentityUnavailable: localCopy('هوية المتبرع غير مسجلة', 'Donor identity not recorded', 'Identité du donateur non enregistrée'),
+    location: localCopy('الموقع', 'Location', 'Lieu'),
+    transparency: localCopy('الشفافية', 'Transparency', 'Transparence'),
+    notRecorded: localCopy('غير مسجل', 'Not recorded', 'Non renseigné'),
+    notReviewed: localCopy('لم تتم المراجعة', 'Not reviewed', 'Non évalué'),
+    projectVerification: localCopy('التحقق من الجهة', 'Organization verification', 'Vérification de l’organisme'),
+    donationsTitle: localCopy('سجل التبرعات', 'Donation center', 'Centre des dons'),
+    donationsDescription: localCopy('راجع التبرعات المسجلة وإيصالاتها وادعم مشروعاً مستقلاً.', 'Review recorded donations and receipts, or support an independent project.', 'Consultez les dons et reçus enregistrés, ou soutenez un projet indépendant.'),
+    donationsThisYear: localCopy('تبرعات هذا العام', 'Donated this year', 'Dons cette année'),
+    donationRecords: localCopy('سجلات التبرع', 'Donation records', 'Dons enregistrés'),
+    projectsSupported: localCopy('المشاريع المدعومة', 'Projects supported', 'Projets soutenus'),
+    allProjects: localCopy('كل المشاريع', 'All projects', 'Tous les projets'),
+    latestDonation: localCopy('آخر تبرع', 'Latest donation', 'Dernier don'),
+    noDonations: localCopy('لا توجد تبرعات بعد', 'No donations yet', 'Aucun don pour le moment'),
+    noDonationsBody: localCopy('ابدأ من مشروع موثوق وسيظهر سجل التبرع والإيصال هنا.', 'Support a trusted project and its donation record and receipt will appear here.', 'Soutenez un projet fiable ; le don et son reçu apparaîtront ici.'),
+    receiptAvailable: localCopy('إيصال متاح', 'Receipt available', 'Reçu disponible'),
+    noReceipt: localCopy('لا يوجد إيصال مرتبط', 'No linked receipt', 'Aucun reçu associé'),
+    openReceipt: localCopy('فتح الإيصال', 'Open receipt', 'Ouvrir le reçu'),
+    recordedStatus: localCopy('مسجل', 'Recorded', 'Enregistré'),
+    renewalPriority: localCopy('أولوية التجديد', 'Renewal priority', 'Priorité de renouvellement'),
+    priorityOverdue: localCopy('متأخر', 'Overdue', 'En retard'),
+    priorityHigh: localCopy('عالية', 'High', 'Élevée'),
+    priorityMedium: localCopy('متوسطة', 'Medium', 'Moyenne'),
+    priorityRoutine: localCopy('اعتيادية', 'Routine', 'Normale'),
+    priorityUnknown: localCopy('غير محددة', 'Not determined', 'Non déterminée'),
+    beneficiaryVerification: localCopy('التحقق من المستفيد', 'Beneficiary verification', 'Vérification du bénéficiaire'),
+    verificationNotRecorded: localCopy('لا توجد نتيجة تحقق مسجلة', 'No verification result recorded', 'Aucun résultat de vérification enregistré'),
+    projectDocuments: localCopy('مستندات المشروع', 'Project documents', 'Documents du projet'),
+    projectSupportHistory: localCopy('سجل دعم المشروع', 'Project support history', 'Historique de soutien du projet'),
+    noProjectSupportHistory: localCopy('لا يوجد دعم مسجل لهذا المشروع', 'No support recorded for this project', 'Aucun soutien enregistré pour ce projet'),
+    loading: localCopy('جارٍ تحميل بيانات الأعمال الخيرية…', 'Loading charity records…', 'Chargement des données caritatives…'),
+    zakatProjectScope: localCopy('تعرض هذه الصفحة مشاريع الزكاة المؤهلة فقط. تبقى أحكام الزكاة وحسابها في مسار الزكاة المستقل.', 'This view shows eligible Zakat projects only. Zakat rules and calculations remain in the independent Zakat workflow.', 'Cette vue affiche uniquement les projets éligibles à la zakat. Les règles et calculs restent dans le parcours Zakat indépendant.'),
+    openZakatWorkflow: localCopy('فتح مسار الزكاة', 'Open Zakat workflow', 'Ouvrir le parcours Zakat'),
+    supportRecords: localCopy('سجلات الدعم', 'Support records', 'Soutiens enregistrés'),
+    lastSupport: localCopy('آخر دعم', 'Last support', 'Dernier soutien'),
+    projectLevelScope: localCopy('بيانات على مستوى المشروع، وليست تحققاً فردياً.', 'Project-level data; not individual verification.', 'Données au niveau du projet, sans vérification individuelle.'),
+    reportsLedger: localCopy('سجل التقارير والإيصالات', 'Reports and receipts register', 'Registre des rapports et reçus'),
+    reportAmount: localCopy('المبلغ', 'Amount', 'Montant'),
+    reportCategory: localCopy('الفئة', 'Category', 'Catégorie'),
+    reportCalculation: localCopy('الحساب', 'Calculation', 'Calcul'),
+    reportPayment: localCopy('الدفع', 'Payment', 'Paiement'),
+    reportReceipt: localCopy('الإيصال', 'Receipt', 'Reçu'),
+    reportPdf: localCopy('ملف PDF', 'PDF', 'PDF'),
+    reportStatus: localCopy('الحالة', 'Status', 'Statut'),
+    charityReport: localCopy('تقرير الصدقة', 'Charity report', 'Rapport caritatif'),
+    separateWorkflow: localCopy('يُدار في مساره الديني المستقل', 'Managed in its independent religious workflow', 'Géré dans son parcours religieux indépendant'),
+    openZakatReport: localCopy('فتح تقارير الزكاة', 'Open Zakat reports', 'Ouvrir les rapports de zakat'),
+    openKhumsReport: localCopy('فتح تقارير الخمس', 'Open Khums reports', 'Ouvrir les rapports du khums'),
+    khumsLabel: localCopy('الخمس', 'Khums', 'Khums'),
+    readyStatus: localCopy('جاهز', 'Ready', 'Prêt'),
+    needsDataStatus: localCopy('بانتظار البيانات', 'Needs data', 'Données requises'),
+    notApplicable: localCopy('لا ينطبق', 'Not applicable', 'Sans objet'),
+    recordedPayment: localCopy('دفعات مسجلة', 'Recorded payments', 'Paiements enregistrés'),
+    aggregateCurrencyNote: localCopy('تعرض الإجماليات المالية المجمعة سجلات الدينار الكويتي فقط؛ وتبقى العملة الأصلية ظاهرة في كل سجل تفصيلي.', 'Aggregated financial totals include KWD records only; each detail record keeps its original currency.', 'Les totaux financiers agrégés incluent uniquement les écritures en KWD ; chaque ligne détaillée conserve sa devise d’origine.'),
+  };
+  const tr = { ...baseTr, ...phaseCopy };
   const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
   const unavailableLabel = tr.unavailable ?? (lang === 'fr' ? 'Indisponible' : lang === 'en' ? 'Unavailable' : 'غير متاح');
   const zakatShortcut = {
@@ -88,7 +202,6 @@ export default function CharityProjectsPage() {
   const [reminders, setReminders] = useState<CharityReminder[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<CharityBeneficiary[]>([]);
   const [contributors, setContributors] = useState<CharityContributor[]>([]);
-  const [zakatHistory, setZakatHistory] = useState<ZakatCalculation[]>([]);
   const [organizations, setOrganizations] = useState<CharityOrganization[]>([]);
   const [impactMetrics, setImpactMetrics] = useState<CharityImpactMetric[]>([]);
   const [incomeThisYear, setIncomeThisYear] = useState(0);
@@ -96,7 +209,29 @@ export default function CharityProjectsPage() {
   const [incomeTotal, setIncomeTotal] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<CharityProjectsTab>('overview');
+  const [loading, setLoading] = useState(true);
+  const [projectScope] = useUrlTabState<(typeof CHARITY_PROJECT_SCOPES)[number]>({
+    param: 'scope',
+    values: CHARITY_PROJECT_SCOPES,
+    defaultValue: 'charity',
+    omitDefault: true,
+  });
+  const [activeTab, setActiveTab] = useUrlTabState<CharityProjectsTab>({
+    param: 'tab',
+    values: CHARITY_PROJECTS_TABS,
+    defaultValue: 'overview',
+    omitDefault: true,
+    legacyHash: true,
+    legacyValueResolver: value => {
+      if (value === '#beneficiary-tracking') return 'beneficiaries';
+      if (value === '#charity-reports') return 'reports';
+      if (value === '#document-vault') return 'documents';
+      if (value === '#impact-dashboard') return 'impact';
+      if (value === '#upcoming-reminders') return 'reminders';
+      if (value === 'contributors' || value === '#family-collaboration') return 'donations';
+      return null;
+    },
+  });
   const [projectOpen, setProjectOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -109,11 +244,6 @@ export default function CharityProjectsPage() {
   const [donationProject, setDonationProject] = useState<CharityProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
-  const [exportingExcel, setExportingExcel] = useState(false);
-  const [loadingMetals, setLoadingMetals] = useState(false);
-  const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
-  const [nisabMethod, setNisabMethod] = useState<'gold' | 'silver' | 'conservative'>('conservative');
-  const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
   const [impactDonation, setImpactDonation] = useState('');
   const [selectedReportYear, setSelectedReportYear] = useState(String(new Date().getFullYear()));
   const [projectSearch, setProjectSearch] = useState('');
@@ -123,6 +253,7 @@ export default function CharityProjectsPage() {
   const [documentFilter, setDocumentFilter] = useState<'all' | DocumentCategory>('all');
   const [documentProjectFilter, setDocumentProjectFilter] = useState('');
   const [beneficiarySearch, setBeneficiarySearch] = useState('');
+  const [beneficiaryProjectFilter, setBeneficiaryProjectFilter] = useState('');
   const [beneficiaryStatusFilter, setBeneficiaryStatusFilter] = useState<'all' | BeneficiaryStatus>('all');
   const [beneficiaryCategoryFilter, setBeneficiaryCategoryFilter] = useState<'all' | BeneficiaryCategory>('all');
   const [contributorProjectFilter, setContributorProjectFilter] = useState('');
@@ -131,23 +262,6 @@ export default function CharityProjectsPage() {
   const [organizationVerificationFilter, setOrganizationVerificationFilter] = useState<'all' | VerificationStatus>('all');
   const [manualOrganization, setManualOrganization] = useState(false);
   const [impactMetricForm, setImpactMetricForm] = useState({ project_id: '', metric_name: '', metric_value: '', metric_unit: '', notes: '' });
-  const [zakat, setZakat] = useState({
-    cash: '',
-    investments: '',
-    gold: '',
-    silver: '',
-    debts: '',
-    goldPrice: '',
-    silverPrice: '',
-    goldGrams: '',
-    goldKarat: '24',
-    goldDirectValue: '',
-    silverGrams: '',
-    silverDirectValue: '',
-    nonZakatAssets: [] as string[],
-    nonZakatOther: '',
-  });
-  const [assetForm, setAssetForm] = useState({ asset_name: '', asset_type: 'cash' as AssetType, amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
   const [projectForm, setProjectForm] = useState({
     name: '',
     category: 'ongoing' as ProjectCategory,
@@ -217,44 +331,16 @@ export default function CharityProjectsPage() {
     typeof amount === 'number' && Number.isFinite(amount) ? formatMoney(amount, currency, lang as Lang) : unavailableLabel
   ), [lang, unavailableLabel]);
   const numberLabel = useCallback((value: number) => value.toLocaleString(locale), [locale]);
-  const dateLabel = useCallback((date?: string | null) => date ? new Date(`${date}T00:00:00`).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US') : '-', [lang]);
-
-  const loadMetalsPrices = useCallback(async () => {
-    setLoadingMetals(true);
-    try {
-      const response = await fetch('/api/charity-projects/metals-prices');
-      const data = await response.json() as MetalsPriceResponse;
-      setMetalsPrice(data);
-      if (data.success && data.source === 'api') {
-        setPriceMode('automatic');
-        setZakat(prev => ({
-          ...prev,
-          goldPrice: String(data.gold.pricePerGram24k || data.gold.pricePerGram || ''),
-          silverPrice: String(data.silver.pricePerGram || ''),
-        }));
-      } else {
-        setPriceMode('manual');
-      }
-    } catch {
-      setPriceMode('manual');
-      setMetalsPrice({
-        success: false,
-        source: 'manual',
-        message: tr.apiNotConfigured,
-        currency: 'KWD',
-        gold: { pricePerGram: 0, unit: 'gram' },
-        silver: { pricePerGram: 0, unit: 'gram' },
-        updatedAt: new Date().toISOString(),
-      });
-    } finally {
-      setLoadingMetals(false);
-    }
-  }, [tr.apiNotConfigured]);
+  const dateLabel = useCallback((date?: string | null) => {
+    if (!date) return '-';
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00`) : new Date(date);
+    if (!Number.isFinite(parsed.getTime())) return '-';
+    return parsed.toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US');
+  }, [lang]);
 
   const syncGeneratedReminders = useCallback(async (
     currentReminders: CharityReminder[],
     currentProjects: CharityProject[],
-    currentAssets: ZakatAsset[],
     currentCommitments: Commitment[],
   ) => {
     if (!user) return;
@@ -267,22 +353,7 @@ export default function CharityProjectsPage() {
     ].join('|')));
 
     const generated: any[] = [];
-    currentAssets.forEach(asset => {
-      if (!asset.zakat_due_date || !asset.is_zakatable) return;
-      const key = ['zakat', '', asset.id, '', asset.zakat_due_date].join('|');
-      if (!exists.has(key)) generated.push({
-        user_id: user.id,
-        title: `${tr.zakat} - ${asset.asset_name}`,
-        reminder_type: 'zakat',
-        related_zakat_asset_id: asset.id,
-        due_date: asset.zakat_due_date,
-        hijri_date: estimatedHijriDate(asset.zakat_due_date, lang as Lang) || null,
-        remind_before_days: 30,
-        priority: 'high',
-        notes: tr.hijriEstimated,
-      });
-    });
-    currentCommitments.forEach(commitment => {
+    currentCommitments.filter(commitment => isVoluntaryCharityRecord(commitment.category)).forEach(commitment => {
       if (!commitment.next_due_date || commitment.status !== 'active') return;
       const type = commitment.category === 'sponsorship' ? 'sponsorship' : 'general';
       const key = [type, '', '', commitment.id, commitment.next_due_date].join('|');
@@ -297,7 +368,7 @@ export default function CharityProjectsPage() {
         priority: type === 'sponsorship' ? 'high' : 'normal',
       });
     });
-    currentProjects.forEach(project => {
+    currentProjects.filter(project => isVoluntaryCharityRecord(project.category)).forEach(project => {
       if (!project.end_date || ['completed', 'paused'].includes(project.status)) return;
       const key = ['project_milestone', project.id, '', '', project.end_date].join('|');
       if (!exists.has(key)) generated.push({
@@ -315,12 +386,16 @@ export default function CharityProjectsPage() {
     if (generated.length > 0) {
       await db.from('charity_reminders').insert(generated);
     }
-  }, [db, lang, tr.commitments, tr.endDate, tr.hijriEstimated, tr.zakat, user]);
+  }, [db, lang, tr.commitments, tr.endDate, user]);
 
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, zakatHistoryRes, organizationRes, impactMetricRes, legacyRes, incomeRes, expenseRes] = await Promise.all([
+      const [projectRes, assetRes, commitmentRes, donationRes, documentRes, reminderRes, beneficiaryRes, contributorRes, organizationRes, impactMetricRes, legacyRes, incomeRes, expenseRes] = await Promise.all([
         db.from('charity_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('zakat_assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_commitments').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -329,7 +404,6 @@ export default function CharityProjectsPage() {
         db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
         db.from('charity_beneficiaries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('charity_project_contributors').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        db.from('zakat_calculations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
         db.from('charity_organizations').select('*').eq('is_active', true).order('name_ar', { ascending: true }),
         db.from('charity_project_impact_metrics').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         db.from('expense_items').select('id,name,amount,created_at').eq('user_id', user.id).like('name', 'خيرية:%'),
@@ -343,65 +417,51 @@ export default function CharityProjectsPage() {
       if (!projectRes.error) setProjects(loadedProjects);
       if (!assetRes.error) setAssets(loadedAssets);
       if (!commitmentRes.error) setCommitments(loadedCommitments);
-      const legacyDonations = legacyRes.error ? [] : (legacyRes.data ?? []).map((row: any): ProjectDonation => ({
-        id: row.id,
-        project_id: null,
-        amount: toNum(row.amount),
-        currency: 'KWD',
-        donation_date: row.created_at,
-        donation_type: 'charity',
-        notes: row.name || null,
-        created_at: row.created_at,
-      }));
+      const legacyDonations = legacyRes.error ? [] : (legacyRes.data ?? []).reduce((items: ProjectDonation[], row: any) => {
+        const encodedMonth = encodedLegacyMonth(row.name);
+        if (!encodedMonth) return items;
+        items.push({
+          id: row.id,
+          project_id: null,
+          amount: toNum(row.amount),
+          currency: 'KWD',
+          donation_date: `${encodedMonth}-01`,
+          donation_type: 'charity',
+          notes: row.name || null,
+          created_at: row.created_at,
+        });
+        return items;
+      }, []);
       if (!donationRes.error) setDonations([...(donationRes.data ?? []) as ProjectDonation[], ...legacyDonations]);
       if (!documentRes.error) setDocuments((documentRes.data ?? []) as CharityDocument[]);
       if (!beneficiaryRes.error) setBeneficiaries((beneficiaryRes.data ?? []) as CharityBeneficiary[]);
       if (!contributorRes.error) setContributors((contributorRes.data ?? []) as CharityContributor[]);
-      if (!zakatHistoryRes.error) setZakatHistory((zakatHistoryRes.data ?? []) as ZakatCalculation[]);
       if (!organizationRes.error) setOrganizations((organizationRes.data ?? []) as CharityOrganization[]);
       if (!impactMetricRes.error) setImpactMetrics((impactMetricRes.data ?? []) as CharityImpactMetric[]);
       if (!reminderRes.error) {
         setReminders(loadedReminders);
-        await syncGeneratedReminders(loadedReminders, loadedProjects, loadedAssets, loadedCommitments);
+        await syncGeneratedReminders(loadedReminders, loadedProjects, loadedCommitments);
         const refreshed = await db.from('charity_reminders').select('*').eq('user_id', user.id).order('due_date', { ascending: true });
         if (!refreshed.error) setReminders((refreshed.data ?? []) as CharityReminder[]);
       }
       if (!incomeRes.error) {
-        const rows = personalIncomeRows(incomeRes.data ?? []);
+        const rows = personalIncomeRows(incomeRes.data ?? []).filter((row: any) => isAggregateCurrency(row.currency));
         const currentYear = new Date().getFullYear();
         setIncomeTotal(rows.reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
         setIncomeThisYear(rows.filter((row: any) => isYear(recordDate(row), currentYear)).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
         setIncomeThisMonth(rows.filter((row: any) => isCurrentMonth(recordDate(row))).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
       }
-      if (!expenseRes.error) setExpenseTotal(personalExpenseRows(expenseRes.data ?? []).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
+      if (!expenseRes.error) setExpenseTotal(personalExpenseRows(expenseRes.data ?? []).filter((row: any) => isAggregateCurrency(row.currency)).reduce((sum: number, row: any) => sum + toNum(row.amount), 0));
     } catch {
       setMessage(tr.error);
+    } finally {
+      setLoading(false);
     }
   }, [db, syncGeneratedReminders, tr.error, user]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    const savedGold = window.localStorage.getItem('sfm_charity_gold_price_kwd') ?? '';
-    const savedSilver = window.localStorage.getItem('sfm_charity_silver_price_kwd') ?? '';
-    const savedMethod = window.localStorage.getItem('sfm_charity_nisab_method');
-    if (savedGold || savedSilver) {
-      setZakat(prev => ({ ...prev, goldPrice: savedGold, silverPrice: savedSilver }));
-    }
-    if (savedMethod && ['gold', 'silver', 'conservative'].includes(savedMethod)) setNisabMethod(savedMethod as 'gold' | 'silver' | 'conservative');
-    loadMetalsPrices();
-  }, [loadMetalsPrices]);
-
-  useEffect(() => {
-    window.localStorage.setItem('sfm_charity_gold_price_kwd', zakat.goldPrice);
-    window.localStorage.setItem('sfm_charity_silver_price_kwd', zakat.silverPrice);
-  }, [zakat.goldPrice, zakat.silverPrice]);
-
-  useEffect(() => {
-    window.localStorage.setItem('sfm_charity_nisab_method', nisabMethod);
-  }, [nisabMethod]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -419,42 +479,8 @@ export default function CharityProjectsPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const goldPricesByKarat = {
-    '24': toNum(zakat.goldPrice),
-    '22': (metalsPrice?.gold.pricePerGram22k && metalsPrice.gold.pricePerGram22k > 0) ? metalsPrice.gold.pricePerGram22k : toNum(zakat.goldPrice) * (22 / 24),
-    '21': (metalsPrice?.gold.pricePerGram21k && metalsPrice.gold.pricePerGram21k > 0) ? metalsPrice.gold.pricePerGram21k : toNum(zakat.goldPrice) * (21 / 24),
-    '18': (metalsPrice?.gold.pricePerGram18k && metalsPrice.gold.pricePerGram18k > 0) ? metalsPrice.gold.pricePerGram18k : toNum(zakat.goldPrice) * (18 / 24),
-  };
-  const selectedGoldGramPrice = goldPricesByKarat[zakat.goldKarat as keyof typeof goldPricesByKarat] || 0;
-  const zakatableGoldValue = toNum(zakat.goldDirectValue) > 0 ? toNum(zakat.goldDirectValue) : toNum(zakat.goldGrams) * selectedGoldGramPrice;
-  const zakatableSilverValue = toNum(zakat.silverDirectValue) > 0 ? toNum(zakat.silverDirectValue) : toNum(zakat.silverGrams) * toNum(zakat.silverPrice);
-  const zakatableAmount = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + zakatableGoldValue + zakatableSilverValue - toNum(zakat.debts));
-  const goldNisabValue = toNum(zakat.goldPrice) * 85;
-  const silverNisabValue = toNum(zakat.silverPrice) * 595;
-  const availableNisabValues = [goldNisabValue, silverNisabValue].filter(value => value > 0);
-  const selectedNisabValue = nisabMethod === 'gold'
-    ? goldNisabValue
-    : nisabMethod === 'silver'
-      ? silverNisabValue
-      : availableNisabValues.length > 0 ? Math.min(...availableNisabValues) : 0;
-  const hasCriticalPriceData = goldNisabValue > 0 && silverNisabValue > 0;
-  const reachedNisab = selectedNisabValue > 0 && zakatableAmount >= selectedNisabValue;
-  const zakatAmount = reachedNisab ? zakatableAmount * 0.025 : 0;
-  const nisabDifference = selectedNisabValue > 0 ? zakatableAmount - selectedNisabValue : 0;
-  const closeToNisab = selectedNisabValue > 0 && !reachedNisab && zakatableAmount >= selectedNisabValue * 0.85;
-  const priceSourceLabel = metalsPrice?.source === 'api'
-    ? tr.automaticPrice
-    : metalsPrice?.source === 'fallback'
-      ? tr.failedStatus
-      : tr.manualPrice;
   const tValue = (key: string, fallback = key) => (tr as Record<string, string>)[key] ?? fallback;
   const reminderTypeLabel = (type: ReminderType) => type === 'general' ? tr.other : tValue(type, tr.other);
-  const assetTypeLabel = (type: AssetType) => {
-    if (type === 'savings') return tr.cashSavings;
-    if (type === 'investment') return tr.investments;
-    if (type === 'non_zakat') return tr.nonZakat;
-    return tValue(type, tr.other);
-  };
   const organizationName = (organization?: CharityOrganization | null) => {
     if (!organization) return '';
     if (lang === 'ar') return organization.name_ar;
@@ -473,58 +499,106 @@ export default function CharityProjectsPage() {
     return tr.unverified;
   };
   const selectedOrganization = projectForm.organization_id ? organizationById[projectForm.organization_id] : null;
-  const nisabMethodLabel = (method: string) => method === 'gold'
-    ? tr.goldBased
-    : method === 'silver'
-      ? tr.silverBased
-      : method === 'conservative'
-        ? tr.conservative
-        : method;
-  const totalDonations = projects.reduce((sum, project) => sum + toNum(project.collected_amount), 0);
-  const activeProjects = projects.filter(project => !['completed', 'paused'].includes(project.status)).length;
+  const charityImpactProjects = useMemo(() => projects.filter(project => projectScope === 'zakat'
+    ? isZakatRecord(project.category)
+    : isVoluntaryCharityRecord(project.category)), [projectScope, projects]);
+  const scopedProjectIds = useMemo(() => new Set(charityImpactProjects.map(project => project.id)), [charityImpactProjects]);
+  const voluntaryProjects = useMemo(() => projects.filter(project => isVoluntaryCharityRecord(project.category)), [projects]);
+  const voluntaryProjectIds = useMemo(() => new Set(voluntaryProjects.map(project => project.id)), [voluntaryProjects]);
+  const religiousProjectIds = useMemo(() => new Set(projects
+    .filter(project => isZakatRecord(project.category) || isKhumsRecord(project.category))
+    .map(project => project.id)), [projects]);
+  const charityDonations = useMemo(() => donations.filter(donation => {
+    if (projectScope === 'zakat') {
+      if (isKhumsRecord(donation.donation_type)) return false;
+      return donation.project_id ? scopedProjectIds.has(donation.project_id) : isZakatRecord(donation.donation_type);
+    }
+    return isVoluntaryCharityRecord(donation.donation_type)
+      && (!donation.project_id || (scopedProjectIds.has(donation.project_id) && !religiousProjectIds.has(donation.project_id)));
+  }), [donations, projectScope, religiousProjectIds, scopedProjectIds]);
+  const charityCommitments = useMemo(() => commitments.filter(commitment => projectScope === 'zakat'
+    ? isZakatRecord(commitment.category)
+    : isVoluntaryCharityRecord(commitment.category)), [commitments, projectScope]);
+  const charityBeneficiaries = useMemo(() => beneficiaries.filter(beneficiary => projectScope === 'zakat'
+    ? Boolean(beneficiary.project_id && scopedProjectIds.has(beneficiary.project_id))
+    : !beneficiary.project_id || scopedProjectIds.has(beneficiary.project_id)), [beneficiaries, projectScope, scopedProjectIds]);
+  const charityContributors = useMemo(() => contributors.filter(contributor => scopedProjectIds.has(contributor.project_id)), [contributors, scopedProjectIds]);
+  const charityImpactRecords = useMemo(() => impactMetrics.filter(metric => scopedProjectIds.has(metric.project_id)), [impactMetrics, scopedProjectIds]);
+  const voluntaryDonations = useMemo(() => donations.filter(donation => isVoluntaryCharityRecord(donation.donation_type)
+    && (!donation.project_id || voluntaryProjectIds.has(donation.project_id))), [donations, voluntaryProjectIds]);
+  const voluntaryCommitments = useMemo(() => commitments.filter(commitment => isVoluntaryCharityRecord(commitment.category)), [commitments]);
+  const scopedDonationIds = useMemo(() => new Set(charityDonations.map(donation => donation.id)), [charityDonations]);
+  const scopedCommitmentIds = useMemo(() => new Set(charityCommitments.map(commitment => commitment.id)), [charityCommitments]);
+  const voluntaryDonationIds = useMemo(() => new Set(voluntaryDonations.map(donation => donation.id)), [voluntaryDonations]);
+  const voluntaryCommitmentIds = useMemo(() => new Set(voluntaryCommitments.map(commitment => commitment.id)), [voluntaryCommitments]);
+  const charityDocuments = useMemo(() => documents.filter(document => {
+    if (projectScope === 'zakat') {
+      if (document.category === 'zakat_document' || document.zakat_asset_id) return true;
+      if (document.project_id) return scopedProjectIds.has(document.project_id);
+      if (document.donation_id) return scopedDonationIds.has(document.donation_id);
+      if (document.commitment_id) return scopedCommitmentIds.has(document.commitment_id);
+      return false;
+    }
+    if (document.category === 'zakat_document' || document.zakat_asset_id) return false;
+    if (document.project_id && !scopedProjectIds.has(document.project_id)) return false;
+    if (document.donation_id && !scopedDonationIds.has(document.donation_id)) return false;
+    if (document.commitment_id && !scopedCommitmentIds.has(document.commitment_id)) return false;
+    return true;
+  }), [documents, projectScope, scopedCommitmentIds, scopedDonationIds, scopedProjectIds]);
+  const voluntaryDocuments = useMemo(() => documents.filter(document => {
+    if (document.category === 'zakat_document' || document.zakat_asset_id) return false;
+    if (document.project_id && !voluntaryProjectIds.has(document.project_id)) return false;
+    if (document.donation_id && !voluntaryDonationIds.has(document.donation_id)) return false;
+    if (document.commitment_id && !voluntaryCommitmentIds.has(document.commitment_id)) return false;
+    return true;
+  }), [documents, voluntaryCommitmentIds, voluntaryDonationIds, voluntaryProjectIds]);
+  const aggregateProjects = useMemo(() => charityImpactProjects.filter(project => isAggregateCurrency(project.currency)), [charityImpactProjects]);
+  const aggregateDonations = useMemo(() => charityDonations.filter(donation => isAggregateCurrency(donation.currency)), [charityDonations]);
+  const aggregateCommitments = useMemo(() => charityCommitments.filter(commitment => isAggregateCurrency(commitment.currency)), [charityCommitments]);
+  const aggregateBeneficiaries = useMemo(() => charityBeneficiaries.filter(beneficiary => isAggregateCurrency(beneficiary.currency)), [charityBeneficiaries]);
+  const totalDonations = aggregateProjects.reduce((sum, project) => sum + toNum(project.collected_amount), 0);
+  const activeProjects = charityImpactProjects.filter(project => !['completed', 'paused'].includes(project.status)).length;
   const currentYear = new Date().getFullYear();
-  const completedProjectsCount = projects.filter(project => project.status === 'completed').length;
-  const donationsThisYear = donations.filter(donation => isYear(donation.donation_date || donation.created_at, currentYear));
-  const donationsThisMonth = donations.filter(donation => isCurrentMonth(donation.donation_date || donation.created_at));
+  const completedProjectsCount = charityImpactProjects.filter(project => project.status === 'completed').length;
+  const donationsThisYear = aggregateDonations.filter(donation => isYear(donation.donation_date || donation.created_at, currentYear));
+  const donationsThisMonth = aggregateDonations.filter(donation => isCurrentMonth(donation.donation_date || donation.created_at));
   const totalDonatedThisYear = donationsThisYear.reduce((sum, donation) => sum + toNum(donation.amount), 0);
   const totalDonatedThisMonth = donationsThisMonth.reduce((sum, donation) => sum + toNum(donation.amount), 0);
-  const monthlySponsorshipsTotal = beneficiaries.filter(beneficiary => beneficiary.status === 'active').reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
-  const latestEstimatedZakat = zakatHistory[0]?.zakat_due ?? zakatAmount;
+  const latestDonation = charityDonations.slice().sort((a, b) => (recordDate(b) || '').localeCompare(recordDate(a) || ''))[0] ?? null;
+  const supportedProjectCount = new Set(charityDonations.map(donation => donation.project_id).filter(Boolean)).size;
+  const monthlySponsorshipsTotal = aggregateBeneficiaries.filter(beneficiary => beneficiary.status === 'active').reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
   const givingIncomeRatioYear = incomeThisYear > 0 ? (totalDonatedThisYear / incomeThisYear) * 100 : null;
   const givingIncomeRatioMonth = incomeThisMonth > 0 ? (totalDonatedThisMonth / incomeThisMonth) * 100 : null;
-  const hasImpactData = projects.length > 0 || donations.length > 0 || beneficiaries.length > 0 || commitments.length > 0 || zakatHistory.length > 0 || impactMetrics.length > 0;
+  const hasImpactData = charityImpactProjects.length > 0 || charityDonations.length > 0 || charityBeneficiaries.length > 0 || charityCommitments.length > 0 || charityImpactRecords.length > 0;
   const monthLabels = useMemo(() => Array.from({ length: 12 }, (_, index) => new Date(currentYear, index, 1).toLocaleDateString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' })), [currentYear, lang]);
   const impactByMonth = useMemo(() => monthLabels.map((label, index) => {
-    const donationAmount = donations.filter(donation => {
+    const donationAmount = aggregateDonations.filter(donation => {
       const value = donation.donation_date || donation.created_at;
       if (!isYear(value, currentYear)) return false;
       return new Date(`${value!.slice(0, 10)}T00:00:00`).getMonth() === index;
     }).reduce((sum, donation) => sum + toNum(donation.amount), 0);
-    const sponsorshipAmount = beneficiaries.filter(beneficiary => beneficiary.status === 'active').reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
-    return { label, donationAmount, sponsorshipAmount };
-  }), [beneficiaries, currentYear, donations, monthLabels]);
-  const maxImpactMonth = Math.max(1, ...impactByMonth.map(item => item.donationAmount + item.sponsorshipAmount));
-  const impactByCategory = useMemo(() => categories.map(category => {
-    const projectCollected = projects.filter(project => project.category === category).reduce((sum, project) => sum + toNum(project.collected_amount), 0);
-    const donationAmount = donations.filter(donation => donation.donation_type === category).reduce((sum, donation) => sum + toNum(donation.amount), 0);
-    return { category, amount: projectCollected + donationAmount };
-  }).filter(item => item.amount > 0), [donations, projects]);
+    return { label, donationAmount };
+  }), [aggregateDonations, currentYear, monthLabels]);
+  const maxImpactMonth = Math.max(1, ...impactByMonth.map(item => item.donationAmount));
+  const impactByCategory = useMemo(() => categories.filter(category => category !== 'zakat').map(category => {
+    const projectCollected = aggregateProjects.filter(project => project.category === category).reduce((sum, project) => sum + toNum(project.collected_amount), 0);
+    return { category, amount: projectCollected };
+  }).filter(item => item.amount > 0), [aggregateProjects]);
   const maxImpactCategory = Math.max(1, ...impactByCategory.map(item => item.amount));
   const beneficiaryByCategory = beneficiaryCategories.map(category => ({
     category,
-    count: beneficiaries.filter(beneficiary => beneficiary.category === category).length,
+    count: charityBeneficiaries.filter(beneficiary => beneficiary.category === category).length,
   })).filter(item => item.count > 0);
-  const impactMetricsByProject = useMemo(() => impactMetrics.reduce<Record<string, CharityImpactMetric[]>>((acc, metric) => {
+  const impactMetricsByProject = useMemo(() => charityImpactRecords.reduce<Record<string, CharityImpactMetric[]>>((acc, metric) => {
     acc[metric.project_id] = [...(acc[metric.project_id] || []), metric];
     return acc;
-  }, {}), [impactMetrics]);
-  const expectedCommitments = commitments.reduce((sum, item) => {
+  }, {}), [charityImpactRecords]);
+  const expectedCommitments = aggregateCommitments.reduce((sum, item) => {
     const amount = toNum(item.amount);
     if (item.frequency === 'monthly') return sum + amount * 12;
     if (item.frequency === 'annual') return sum + amount;
     return sum + amount;
-  }, 0) + projects.filter(project => project.status !== 'completed').reduce((sum, project) => sum + Math.max(0, toNum(project.target_amount) - toNum(project.collected_amount)), 0) + toNum(latestEstimatedZakat);
-  const nextDue = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
+  }, 0) + aggregateProjects.filter(project => project.status !== 'completed').reduce((sum, project) => sum + Math.max(0, toNum(project.target_amount) - toNum(project.collected_amount)), 0);
   const reportYears = useMemo(() => {
     const years = new Set<number>([new Date().getFullYear()]);
     const add = (value?: string | null) => {
@@ -532,20 +606,30 @@ export default function CharityProjectsPage() {
       const year = new Date(`${value.slice(0, 10)}T00:00:00`).getFullYear();
       if (Number.isFinite(year)) years.add(year);
     };
-    projects.forEach(project => {
+    voluntaryProjects.forEach(project => {
       add(project.start_date);
       add(project.end_date);
     });
-    assets.forEach(asset => add(asset.zakat_due_date || asset.ownership_date));
-    commitments.forEach(commitment => add(commitment.next_due_date));
-    donations.forEach(donation => add(donation.donation_date || donation.created_at));
+    voluntaryCommitments.forEach(commitment => add(commitment.next_due_date));
+    voluntaryDonations.forEach(donation => add(donation.donation_date || donation.created_at));
     return Array.from(years).sort((a, b) => b - a);
-  }, [assets, commitments, donations, projects]);
+  }, [voluntaryCommitments, voluntaryDonations, voluntaryProjects]);
   const impactValue = toNum(impactDonation);
   const impactPct = incomeTotal > 0 && impactValue > 0 ? (impactValue / incomeTotal) * 100 : null;
   const remainingNet = incomeTotal - expenseTotal - impactValue;
-  const hasReportData = projects.length > 0 || assets.length > 0 || commitments.length > 0 || donations.length > 0;
-  const filteredProjects = projects.filter(project => {
+  const selectedReportDonations = voluntaryDonations.filter(donation => isYear(donation.donation_date || donation.created_at, Number(selectedReportYear)));
+  const selectedReportAmount = selectedReportDonations.filter(donation => isAggregateCurrency(donation.currency)).reduce((sum, donation) => sum + toNum(donation.amount), 0);
+  const selectedReportProjects = voluntaryProjects.filter(project => {
+    const yearStart = `${selectedReportYear}-01-01`;
+    const yearEnd = `${selectedReportYear}-12-31`;
+    return (!project.start_date || project.start_date <= yearEnd) && (!project.end_date || project.end_date >= yearStart);
+  });
+  const selectedReportCommitments = voluntaryCommitments.filter(commitment => commitment.next_due_date
+    ? isYear(commitment.next_due_date, Number(selectedReportYear))
+    : Number(selectedReportYear) === currentYear);
+  const selectedYearHasReportData = selectedReportDonations.length > 0 || selectedReportProjects.length > 0 || selectedReportCommitments.length > 0;
+  const selectedReportReceipts = voluntaryDocuments.filter(document => document.category === 'donation_receipt' && selectedReportDonations.some(donation => donation.id === document.donation_id));
+  const filteredProjects = charityImpactProjects.filter(project => {
     const query = projectSearch.trim().toLowerCase();
     const matchesSearch = !query || [
       project.name,
@@ -557,27 +641,28 @@ export default function CharityProjectsPage() {
     const matchesCategory = projectCategoryFilter === 'all' || project.category === projectCategoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
-  const filteredDocuments = documents.filter(document => {
+  const filteredDocuments = charityDocuments.filter(document => {
     const query = documentSearch.trim().toLowerCase();
     const matchesSearch = !query || [document.title, document.file_name, document.notes ?? ''].some(value => value.toLowerCase().includes(query));
     const matchesFilter = documentFilter === 'all' || document.category === documentFilter;
     const matchesProject = !documentProjectFilter || document.project_id === documentProjectFilter;
     return matchesSearch && matchesFilter && matchesProject;
   });
-  const projectDocumentCounts = useMemo(() => documents.reduce<Record<string, number>>((acc, document) => {
+  const projectDocumentCounts = useMemo(() => charityDocuments.reduce<Record<string, number>>((acc, document) => {
     if (document.project_id) acc[document.project_id] = (acc[document.project_id] || 0) + 1;
     return acc;
-  }, {}), [documents]);
-  const projectBeneficiaryCounts = useMemo(() => beneficiaries.reduce<Record<string, number>>((acc, beneficiary) => {
+  }, {}), [charityDocuments]);
+  const projectBeneficiaryCounts = useMemo(() => charityBeneficiaries.reduce<Record<string, number>>((acc, beneficiary) => {
     if (beneficiary.project_id) acc[beneficiary.project_id] = (acc[beneficiary.project_id] || 0) + 1;
     return acc;
-  }, {}), [beneficiaries]);
-  const filteredBeneficiaries = beneficiaries.filter(beneficiary => {
+  }, {}), [charityBeneficiaries]);
+  const filteredBeneficiaries = charityBeneficiaries.filter(beneficiary => {
     const query = beneficiarySearch.trim().toLowerCase();
     const matchesSearch = !query || [beneficiary.display_name, beneficiary.reference_code ?? '', beneficiary.organization_name ?? '', beneficiary.country ?? ''].some(value => value.toLowerCase().includes(query));
     const matchesStatus = beneficiaryStatusFilter === 'all' || beneficiary.status === beneficiaryStatusFilter;
     const matchesCategory = beneficiaryCategoryFilter === 'all' || beneficiary.category === beneficiaryCategoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    const matchesProject = !beneficiaryProjectFilter || beneficiary.project_id === beneficiaryProjectFilter;
+    return matchesSearch && matchesStatus && matchesCategory && matchesProject;
   });
   const filteredOrganizations = organizations.filter(organization => {
     const query = organizationSearch.trim().toLowerCase();
@@ -595,34 +680,45 @@ export default function CharityProjectsPage() {
     const matchesVerification = organizationVerificationFilter === 'all' || organization.verification_status === organizationVerificationFilter;
     return matchesSearch && matchesType && matchesVerification;
   });
-  const organizationProjectCounts = useMemo(() => projects.reduce<Record<string, number>>((acc, project) => {
+  const organizationProjectCounts = useMemo(() => charityImpactProjects.reduce<Record<string, number>>((acc, project) => {
     if (project.organization_id) acc[project.organization_id] = (acc[project.organization_id] || 0) + 1;
     return acc;
-  }, {}), [projects]);
-  const activeBeneficiaries = beneficiaries.filter(beneficiary => beneficiary.status === 'active');
-  const monthlySupportTotal = activeBeneficiaries.reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
-  const upcomingRenewals = beneficiaries.filter(beneficiary => beneficiary.next_renewal_date && daysUntil(beneficiary.next_renewal_date) <= 45 && daysUntil(beneficiary.next_renewal_date) >= 0);
-  const projectContributorCounts = useMemo(() => contributors.reduce<Record<string, number>>((acc, contributor) => {
+  }, {}), [charityImpactProjects]);
+  const activeBeneficiaries = charityBeneficiaries.filter(beneficiary => beneficiary.status === 'active');
+  const monthlySupportTotal = activeBeneficiaries.filter(beneficiary => isAggregateCurrency(beneficiary.currency)).reduce((sum, beneficiary) => sum + toNum(beneficiary.monthly_support_amount), 0);
+  const upcomingRenewals = charityBeneficiaries.filter(beneficiary => beneficiary.next_renewal_date && daysUntil(beneficiary.next_renewal_date) <= 45 && daysUntil(beneficiary.next_renewal_date) >= 0);
+  const projectContributorCounts = useMemo(() => charityContributors.reduce<Record<string, number>>((acc, contributor) => {
     acc[contributor.project_id] = (acc[contributor.project_id] || 0) + 1;
     return acc;
-  }, {}), [contributors]);
-  const filteredContributors = contributorProjectFilter ? contributors.filter(contributor => contributor.project_id === contributorProjectFilter) : contributors;
-  const totalPledged = filteredContributors.reduce((sum, contributor) => sum + toNum(contributor.pledged_amount), 0);
-  const totalPaid = filteredContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+  }, {}), [charityContributors]);
+  const filteredContributors = contributorProjectFilter ? charityContributors.filter(contributor => contributor.project_id === contributorProjectFilter) : charityContributors;
+  const selectedContributorProject = contributorProjectFilter
+    ? charityImpactProjects.find(project => project.id === contributorProjectFilter) ?? null
+    : null;
+  const contributorSummaryCurrency = selectedContributorProject
+    ? normalizedCurrency(selectedContributorProject.currency)
+    : CHARITY_AGGREGATE_CURRENCY;
+  const comparableContributors = filteredContributors.filter(contributor => selectedContributorProject
+    ? hasSameExplicitCurrency(contributor.currency, selectedContributorProject.currency)
+    : normalizedCurrency(contributor.currency) === CHARITY_AGGREGATE_CURRENCY);
+  const totalPledged = comparableContributors.reduce((sum, contributor) => sum + toNum(contributor.pledged_amount), 0);
+  const totalPaid = comparableContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+  const hasComparableContributorData = Boolean(contributorSummaryCurrency && comparableContributors.length > 0);
   const lateContributors = filteredContributors.filter(contributor => contributor.due_date && daysUntil(contributor.due_date) < 0 && ['pending', 'partial'].includes(contributor.payment_status));
-  const topContributor = filteredContributors.slice().sort((a, b) => toNum(b.paid_amount) - toNum(a.paid_amount))[0];
+  const topContributor = comparableContributors.slice().sort((a, b) => toNum(b.paid_amount) - toNum(a.paid_amount))[0] ?? null;
   const activeReminders = reminders
-    .filter(reminder => reminder.status === 'active')
+    .filter(reminder => reminder.status === 'active' && reminder.reminder_type !== 'zakat' && reminder.reminder_type !== 'hawl')
+    .filter(reminder => !reminder.related_project_id || voluntaryProjectIds.has(reminder.related_project_id))
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
   const urgentReminders = activeReminders.filter(reminder => daysUntil(reminder.due_date) <= reminder.remind_before_days).slice(0, 3);
   const nextReminder = activeReminders[0] ?? null;
-  const nextCharityDueDate = nextReminder?.due_date ?? nextDue ?? null;
+  const nextCharityDueDate = nextReminder?.due_date ?? null;
   const calendarCards = [
     {
-      icon: ShieldCheck,
-      title: tr.nextZakatDue,
-      value: nextDue ? dateLabel(nextDue) : unavailableLabel,
-      description: nextDue ? tr.hijriEstimated : tr.zakatCalendarEmptyHint,
+      icon: CalendarDays,
+      title: tr.nextCharityReminder,
+      value: nextReminder ? dateLabel(nextReminder.due_date) : unavailableLabel,
+      description: nextReminder ? nextReminder.title : tr.noReminderScheduled,
     },
     {
       icon: CalendarDays,
@@ -657,7 +753,7 @@ export default function CharityProjectsPage() {
   ];
 
   const resetProjectForm = () => {
-    setProjectForm({ name: '', category: 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_id: '', organization_name: '', notes: '' });
+    setProjectForm({ name: '', category: projectScope === 'zakat' ? 'zakat' : 'ongoing', status: 'planning', target_amount: '', collected_amount: '', currency: 'KWD', start_date: today(), end_date: '', organization_id: '', organization_name: '', notes: '' });
     setManualOrganization(false);
   };
 
@@ -762,6 +858,7 @@ export default function CharityProjectsPage() {
     const payload = {
       user_id: user.id,
       ...projectForm,
+      category: projectScope === 'zakat' ? 'zakat' : (isVoluntaryCharityRecord(projectForm.category) ? projectForm.category : 'ongoing'),
       target_amount: toNum(projectForm.target_amount),
       collected_amount: toNum(projectForm.collected_amount),
       end_date: projectForm.end_date || null,
@@ -781,76 +878,8 @@ export default function CharityProjectsPage() {
     loadData();
   };
 
-  const saveAsset = async () => {
-    if (!user || !assetForm.asset_name.trim()) return;
-    const { error } = await db.from('zakat_assets').insert({
-      user_id: user.id,
-      ...assetForm,
-      amount: toNum(assetForm.amount),
-      zakat_due_date: assetForm.zakat_due_date || addYear(assetForm.ownership_date),
-    });
-    if (error) setMessage(tr.error);
-    else {
-      setMessage(tr.saved);
-      setAssetForm({ asset_name: '', asset_type: 'cash', amount: '', ownership_date: today(), zakat_due_date: addYear(today()), is_zakatable: true, notes: '' });
-      loadData();
-    }
-  };
-
-  const toggleNonZakatAsset = (asset: string) => {
-    setZakat(prev => ({
-      ...prev,
-      nonZakatAssets: prev.nonZakatAssets.includes(asset)
-        ? prev.nonZakatAssets.filter(item => item !== asset)
-        : [...prev.nonZakatAssets, asset],
-    }));
-  };
-
-  const saveZakatCalculation = async () => {
-    if (!user) return;
-    setSaving(true);
-    const notes = [
-      zakat.nonZakatAssets.length > 0 ? `${tr.nonZakatableAssets}: ${zakat.nonZakatAssets.map(asset => tr[asset as keyof typeof tr] ?? asset).join(', ')}` : '',
-      zakat.nonZakatOther ? `${tr.other}: ${zakat.nonZakatOther}` : '',
-    ].filter(Boolean).join(' | ');
-    const { error } = await db.from('zakat_calculations').insert({
-      user_id: user.id,
-      currency: 'KWD',
-      cash_amount: toNum(zakat.cash),
-      investment_amount: toNum(zakat.investments),
-      gold_value: zakatableGoldValue,
-      silver_value: zakatableSilverValue,
-      deductible_debts: toNum(zakat.debts),
-      net_zakat_base: zakatableAmount,
-      nisab_method: nisabMethod,
-      gold_nisab_value: goldNisabValue,
-      silver_nisab_value: silverNisabValue,
-      selected_nisab_value: selectedNisabValue,
-      zakat_due: zakatAmount,
-      price_source: metalsPrice?.source ?? 'manual',
-      notes: notes || null,
-    });
-    setSaving(false);
-    if (error) {
-      setMessage(tr.error);
-      return;
-    }
-    setMessage(tr.calculationSaved);
-    loadData();
-  };
-
-  const deleteZakatCalculation = async (calculation: ZakatCalculation) => {
-    if (!user) return;
-    const { error } = await db.from('zakat_calculations').delete().eq('id', calculation.id).eq('user_id', user.id);
-    if (error) setMessage(tr.error);
-    else {
-      setMessage(tr.calculationDeleted);
-      loadData();
-    }
-  };
-
   const saveImpactMetric = async () => {
-    if (!user || !impactMetricForm.project_id || !impactMetricForm.metric_name.trim()) return;
+    if (!user || !impactMetricForm.project_id || !scopedProjectIds.has(impactMetricForm.project_id) || !impactMetricForm.metric_name.trim()) return;
     const { error } = await db.from('charity_project_impact_metrics').insert({
       user_id: user.id,
       project_id: impactMetricForm.project_id,
@@ -872,28 +901,43 @@ export default function CharityProjectsPage() {
     if (!user || !donationProject || toNum(donationAmount) <= 0) return;
     setSaving(true);
     const amount = toNum(donationAmount);
-    const { error } = await db.from('charity_project_donations').insert({
-      user_id: user.id,
-      project_id: donationProject.id,
-      organization_id: donationProject.organization_id || null,
-      amount,
-      currency: donationProject.currency,
-      donation_date: today(),
-      donation_type: donationProject.category,
-    });
-    if (!error) {
-      await db.from('charity_projects')
+    try {
+      const { data: insertedDonation, error: insertError } = await db.from('charity_project_donations').insert({
+        user_id: user.id,
+        project_id: donationProject.id,
+        organization_id: donationProject.organization_id || null,
+        amount,
+        currency: donationProject.currency,
+        donation_date: today(),
+        donation_type: donationProject.category,
+      }).select('id').single();
+      if (insertError || !insertedDonation?.id) {
+        setMessage(tr.error);
+        return;
+      }
+
+      const { error: projectUpdateError } = await db.from('charity_projects')
         .update({ collected_amount: toNum(donationProject.collected_amount) + amount })
         .eq('id', donationProject.id)
         .eq('user_id', user.id);
-    }
-    setSaving(false);
-    if (error) setMessage(tr.error);
-    else {
+      if (projectUpdateError) {
+        await db.from('charity_project_donations')
+          .delete()
+          .eq('id', insertedDonation.id)
+          .eq('user_id', user.id);
+        setMessage(tr.error);
+        await loadData();
+        return;
+      }
+
       setMessage(tr.saved);
       setDonationProject(null);
       setDonationAmount('');
-      loadData();
+      await loadData();
+    } catch {
+      setMessage(tr.error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -912,6 +956,14 @@ export default function CharityProjectsPage() {
   const uploadDocument = async () => {
     if (!user) return;
     if (!documentForm.title.trim() || !documentFile) {
+      setMessage(tr.uploadFailed);
+      return;
+    }
+    const hasOutOfScopeLink = (documentForm.project_id && !scopedProjectIds.has(documentForm.project_id))
+      || (documentForm.donation_id && !scopedDonationIds.has(documentForm.donation_id))
+      || (documentForm.commitment_id && !scopedCommitmentIds.has(documentForm.commitment_id))
+      || (projectScope === 'charity' && (documentForm.category === 'zakat_document' || Boolean(documentForm.zakat_asset_id)));
+    if (hasOutOfScopeLink) {
       setMessage(tr.uploadFailed);
       return;
     }
@@ -1047,6 +1099,14 @@ export default function CharityProjectsPage() {
 
   const saveBeneficiary = async () => {
     if (!user || !beneficiaryForm.display_name.trim()) return;
+    if (beneficiaryForm.project_id && !scopedProjectIds.has(beneficiaryForm.project_id)) {
+      setMessage(tr.error);
+      return;
+    }
+    if (projectScope === 'zakat' && !beneficiaryForm.project_id) {
+      setMessage(tr.error);
+      return;
+    }
     setSaving(true);
     const payload = {
       user_id: user.id,
@@ -1103,7 +1163,7 @@ export default function CharityProjectsPage() {
   };
 
   const saveContributor = async () => {
-    if (!user || !contributorForm.project_id || !contributorForm.contributor_name.trim()) return;
+    if (!user || !contributorForm.project_id || !scopedProjectIds.has(contributorForm.project_id) || !contributorForm.contributor_name.trim()) return;
     setSaving(true);
     const pledged = Math.max(0, toNum(contributorForm.pledged_amount));
     const paid = Math.max(0, toNum(contributorForm.paid_amount));
@@ -1156,57 +1216,30 @@ export default function CharityProjectsPage() {
     }
   };
 
-  const exportExcel = async () => {
-    setExportingExcel(true);
-    setMessage(hasReportData ? tr.preparingExcel : tr.emptyReportExported);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error('No active session');
-      const response = await fetch(`/api/charity-projects/export?year=${selectedReportYear}&format=csv&lang=${lang}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error(`Export failed: ${response.status}`);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `charity-report-${selectedReportYear}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setMessage(tr.excelExported);
-    } catch {
-      setMessage(tr.excelExportFailed);
-    } finally {
-      setExportingExcel(false);
-    }
-  };
-
   const summaryCards = [
     { icon: HeartHandshake, label: tr.activeProjects, value: numberLabel(activeProjects) },
     { icon: HandCoins, label: tr.totalDonations, value: safeMoney(totalDonations) },
     { icon: CalendarDays, label: tr.nextDueDateKpi, value: nextCharityDueDate ? dateLabel(nextCharityDueDate) : unavailableLabel },
-    { icon: Gift, label: tr.beneficiariesCountKpi, value: numberLabel(beneficiaries.length) },
+    { icon: Gift, label: tr.beneficiariesCountKpi, value: numberLabel(charityBeneficiaries.length) },
     { icon: ShieldCheck, label: tr.upcomingRemindersKpi, value: numberLabel(activeReminders.length) },
   ];
   const projectStatusCards = statuses.map(status => ({
     label: tr[status],
-    value: numberLabel(projects.filter(project => project.status === status).length),
+    value: numberLabel(charityImpactProjects.filter(project => project.status === status).length),
   }));
   const charityTabs: Array<{ id: CharityProjectsTab; label: string; count?: number }> = [
-    { id: 'overview', label: lang === 'ar' ? 'نظرة عامة' : lang === 'fr' ? 'Aperçu' : 'Overview' },
-    { id: 'projects', label: tr.projects, count: projects.length },
-    { id: 'beneficiaries', label: tr.beneficiaryTracking, count: beneficiaries.length },
-    { id: 'contributors', label: tr.contributors, count: contributors.length },
-    { id: 'documents', label: tr.documentVault, count: documents.length },
-    { id: 'impact', label: tr.impactDashboard },
-    { id: 'reports', label: tr.reports },
+    { id: 'overview', label: tr.tabOverview },
+    { id: 'projects', label: tr.tabProjects, count: charityImpactProjects.length },
+    { id: 'beneficiaries', label: tr.tabBeneficiaries, count: charityBeneficiaries.length },
+    { id: 'donations', label: tr.tabDonations, count: charityDonations.length },
+    { id: 'reports', label: tr.tabReports },
+    { id: 'impact', label: tr.tabImpact },
+    { id: 'reminders', label: tr.tabReminders, count: activeReminders.length },
+    { id: 'documents', label: tr.tabDocuments, count: charityDocuments.length },
   ];
 
   return (
-    <div className="charity-projects-page" dir={dir}>
+    <div className="charity-projects-page" dir={dir} data-charity-experience="projects">
       <Sidebar />
       <DashboardPageShell contentClassName="charity-projects-content">
         <section className="cp-hero">
@@ -1232,13 +1265,16 @@ export default function CharityProjectsPage() {
           </div>
         </section>
 
-        {message && <div className="notice">{message}</div>}
+        {loading && <div className="notice" role="status" aria-live="polite" aria-atomic="true">{tr.loading}</div>}
+        {message && <div className="notice" role="status" aria-live="polite" aria-atomic="true">{message}</div>}
+        {projectScope === 'zakat' && <div className="notice scope-notice"><span>{tr.zakatProjectScope}</span> <a href="/zakat">{tr.openZakatWorkflow}</a></div>}
 
         <section className="summary-grid">
           {summaryCards.map(card => (
             <CharityStatCard key={card.label} icon={card.icon} label={card.label} value={card.value} />
           ))}
         </section>
+        <p className="aggregate-scope-note">{tr.aggregateCurrencyNote}</p>
 
         <CharityTabs
           tabs={charityTabs}
@@ -1248,7 +1284,8 @@ export default function CharityProjectsPage() {
           className="charity-tabs"
         />
 
-        <section className="charity-overview-grid" hidden={activeTab !== 'overview'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="overview" active={activeTab === 'overview'}>
+        <section className="charity-overview-grid">
           <div className="overview-main-stack">
             <section className="warm-card hijri-calendar">
               <div className="section-head vault-head">
@@ -1264,9 +1301,7 @@ export default function CharityProjectsPage() {
                   }}>
                     <CalendarDays size={16} /> {tr.addReminder}
                   </button>
-                  <button className="ghost-btn" type="button" onClick={() => {
-                    document.getElementById('upcoming-reminders')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}>
+                  <button className="ghost-btn" type="button" onClick={() => setActiveTab('reminders')}>
                     <Pencil size={16} /> {tr.editReminders}
                   </button>
                 </div>
@@ -1316,7 +1351,7 @@ export default function CharityProjectsPage() {
               </div>
               <div className="impact-summary-grid compact-impact">
                 <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
-                <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
+                <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(charityBeneficiaries.length)}</strong></div>
                 <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
                 <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
               </div>
@@ -1366,7 +1401,7 @@ export default function CharityProjectsPage() {
               ) : (
                 <div className="reminder-grid">
                   {activeReminders.map(reminder => {
-                    const relatedProject = projects.find(project => project.id === reminder.related_project_id)?.name;
+                    const relatedProject = voluntaryProjects.find(project => project.id === reminder.related_project_id)?.name;
                     const relatedAsset = assets.find(asset => asset.id === reminder.related_zakat_asset_id)?.asset_name;
                     const relatedCommitment = commitments.find(commitment => commitment.id === reminder.related_commitment_id)?.name;
                     return (
@@ -1440,153 +1475,13 @@ export default function CharityProjectsPage() {
               <FileText size={16} /> {tr.reports}
             </button>
           </article>
-          <article id="zakat-calculator" className="warm-card span-7">
-            <div className="section-head">
-              <div><small>2.5%</small><h2>{tr.smartZakat}</h2></div>
-              <Coins size={24} />
-            </div>
-            <div className="zakat-premium-grid">
-              <section className="zakat-panel">
-                <h3>{tr.zakatInputs}</h3>
-                <div className="form-grid">
-                  <label><span>{tr.cashSavings}</span><input inputMode="decimal" value={zakat.cash} onChange={e => setZakat(prev => ({ ...prev, cash: e.target.value }))} placeholder="0.000" /></label>
-                  <label><span>{tr.zakatableInvestments}</span><input inputMode="decimal" value={zakat.investments} onChange={e => setZakat(prev => ({ ...prev, investments: e.target.value }))} placeholder="0.000" /></label>
-                  <label><span>{tr.debts}</span><input inputMode="decimal" value={zakat.debts} onChange={e => setZakat(prev => ({ ...prev, debts: e.target.value }))} placeholder="0.000" /></label>
-                  <label><span>{tr.nisabMethod}</span><select value={nisabMethod} onChange={e => setNisabMethod(e.target.value as 'gold' | 'silver' | 'conservative')}><option value="gold">{tr.goldBased}</option><option value="silver">{tr.silverBased}</option><option value="conservative">{tr.conservative}</option></select></label>
-                </div>
-                <div className="asset-input-box">
-                  <strong>{tr.goldHoldings}</strong>
-                  <div className="form-grid">
-                    <label><span>{tr.goldWeight}</span><input inputMode="decimal" value={zakat.goldGrams} onChange={e => setZakat(prev => ({ ...prev, goldGrams: e.target.value }))} placeholder="0" /></label>
-                    <label><span>{tr.goldKarat}</span><select value={zakat.goldKarat} onChange={e => setZakat(prev => ({ ...prev, goldKarat: e.target.value }))}>{goldKarats.map(karat => <option key={karat} value={karat}>{karat}K</option>)}</select></label>
-                    <label className="wide"><span>{tr.directGoldValue}</span><input inputMode="decimal" value={zakat.goldDirectValue} onChange={e => setZakat(prev => ({ ...prev, goldDirectValue: e.target.value }))} placeholder="0.000" /></label>
-                  </div>
-                </div>
-                <div className="asset-input-box">
-                  <strong>{tr.silverHoldings}</strong>
-                  <div className="form-grid">
-                    <label><span>{tr.silverWeight}</span><input inputMode="decimal" value={zakat.silverGrams} onChange={e => setZakat(prev => ({ ...prev, silverGrams: e.target.value }))} placeholder="0" /></label>
-                    <label><span>{tr.directSilverValue}</span><input inputMode="decimal" value={zakat.silverDirectValue} onChange={e => setZakat(prev => ({ ...prev, silverDirectValue: e.target.value }))} placeholder="0.000" /></label>
-                  </div>
-                </div>
-                <div className="non-zakat-box">
-                  <strong>{tr.nonZakatableAssets}</strong>
-                  <p>{tr.nonZakatHelper}</p>
-                  <div className="chip-grid" role="group" aria-label={tr.nonZakatableAssets}>
-                    {nonZakatOptions.map(option => (
-                      <button
-                        key={option}
-                        type="button"
-                        className={zakat.nonZakatAssets.includes(option) ? 'chip active' : 'chip'}
-                        onClick={() => toggleNonZakatAsset(option)}
-                        aria-pressed={zakat.nonZakatAssets.includes(option)}
-                      >
-                        {option === 'other' ? tr.other : tr[option]}
-                      </button>
-                    ))}
-                  </div>
-                  {zakat.nonZakatAssets.includes('other') && (
-                    <label className="other-asset-input"><span>{tr.otherNonZakatAsset}</span><input value={zakat.nonZakatOther} onChange={e => setZakat(prev => ({ ...prev, nonZakatOther: e.target.value }))} /></label>
-                  )}
-                </div>
-              </section>
-
-              <section className="zakat-panel summary-panel">
-                <h3>{tr.zakatSummaryTitle}</h3>
-                <div className="price-status-grid">
-                  <div className="price-card">
-                    <small>{tr.goldPriceToday}</small>
-                    <strong>{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : '-'}</strong>
-                    <span>{metalsPrice?.success ? tr.liveStatus : tr.failedStatus}</span>
-                  </div>
-                  <div className="price-card">
-                    <small>{tr.silverPriceToday}</small>
-                    <strong>{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : '-'}</strong>
-                    <span>{metalsPrice?.success ? tr.liveStatus : tr.failedStatus}</span>
-                  </div>
-                </div>
-                <div className="price-meta">
-                  <span>{tr.priceSource}: {priceSourceLabel}</span>
-                  <span>{tr.lastUpdated}: {metalsPrice?.updatedAt ? dateLabel(metalsPrice.updatedAt) : '-'}</span>
-                </div>
-                <button className="primary-wide" type="button" onClick={loadMetalsPrices} disabled={loadingMetals} aria-label={tr.refreshPrices}>
-                  <Sparkles size={16} /> {loadingMetals ? tr.automaticPrice : tr.refreshPrices}
-                </button>
-                {(!metalsPrice?.success || priceMode === 'manual') && (
-                  <div className="manual-price-box">
-                    <p>{tr.manualFallback}</p>
-                    <div className="form-grid">
-                      <label><span>{tr.goldPrice}</span><input inputMode="decimal" value={zakat.goldPrice} onChange={e => setZakat(prev => ({ ...prev, goldPrice: e.target.value }))} placeholder="0.000" /></label>
-                      <label><span>{tr.silverPrice}</span><input inputMode="decimal" value={zakat.silverPrice} onChange={e => setZakat(prev => ({ ...prev, silverPrice: e.target.value }))} placeholder="0.000" /></label>
-                    </div>
-                  </div>
-                )}
-                <div className="result-grid">
-                  <div><small>{tr.netZakatBase}</small><strong>{money(zakatableAmount)}</strong></div>
-                  <div><small>{tr.goldNisab}</small><strong>{goldNisabValue > 0 ? money(goldNisabValue) : tr.enterPriceManually}</strong></div>
-                  <div><small>{tr.silverNisab}</small><strong>{silverNisabValue > 0 ? money(silverNisabValue) : tr.enterPriceManually}</strong></div>
-                  <div><small>{tr.usedNisab}</small><strong>{selectedNisabValue > 0 ? money(selectedNisabValue) : tr.enterPriceManually}</strong></div>
-                  <div><small>{tr.differenceFromNisab}</small><strong>{selectedNisabValue > 0 ? money(Math.abs(nisabDifference)) : '-'}</strong></div>
-                  <div><small>{tr.zakatRate}</small><strong>2.5%</strong></div>
-                  <div className={reachedNisab ? 'nisab-reached' : 'nisab-missing'}><small>{tr.reachedNisabQuestion}</small><strong>{hasCriticalPriceData ? (reachedNisab ? tr.reachedNisab : tr.notReachedNisab) : tr.incompleteZakat}</strong></div>
-                  <div><small>{tr.zakatDue}</small><strong>{hasCriticalPriceData ? money(zakatAmount) : '-'}</strong></div>
-                </div>
-                <p className="zakat-outcome">{hasCriticalPriceData ? (reachedNisab ? `${tr.dueSummary} ${money(zakatAmount)}` : tr.notDueSummary) : tr.incompleteZakat}</p>
-              </section>
-
-              <section className="zakat-panel guidance-panel">
-                <h3>{tr.zakatGuidanceTitle}</h3>
-                <div className="guidance-list">
-                  {!hasCriticalPriceData && <p><AlertTriangle size={16} /> {tr.missingPricesNote}</p>}
-                  {reachedNisab && <p><ShieldCheck size={16} /> {tr.aboveNisabNote}</p>}
-                  {closeToNisab && <p><Sparkles size={16} /> {tr.closeToNisabNote}</p>}
-                  {toNum(zakat.debts) > 0 && <p><Coins size={16} /> {tr.highDebtsNote}</p>}
-                  <p><FileText size={16} /> {tr.zakatEstimateDisclaimer}</p>
-                </div>
-                <div className="hawl-mini-list">
-                  <strong>{tr.hawlTracking}</strong>
-                  {assets.length === 0 ? <span>{tr.noZakatHistory}</span> : assets.slice(0, 4).map(asset => {
-                    const dueDays = asset.zakat_due_date ? daysUntil(asset.zakat_due_date) : null;
-                    const label = !asset.ownership_date ? tr.missingOwnershipDate : dueDays !== null && dueDays <= 0 ? tr.completedHawl : tr.upcomingHawl;
-                    return <div key={asset.id}><b>{asset.asset_name}</b><small>{label} • {dateLabel(asset.zakat_due_date || asset.ownership_date)}</small></div>;
-                  })}
-                </div>
-                <button className="primary-wide" type="button" disabled={saving || !user} onClick={saveZakatCalculation}>
-                  <Save size={16} /> {tr.saveZakatCalculation}
-                </button>
-                <p className="disclaimer">{tr.metalsDisclaimer}</p>
-              </section>
-            </div>
-
-            <div className="zakat-history">
-              <div className="section-head"><h3>{tr.zakatHistory}</h3></div>
-              {zakatHistory.length === 0 ? <p className="muted">{tr.noZakatHistory}</p> : zakatHistory.map(item => (
-                <div className="history-row" key={item.id}>
-                  <span>{dateLabel(item.calculation_date)}</span>
-                  <span>{money(toNum(item.net_zakat_base), item.currency)}</span>
-                  <span>{nisabMethodLabel(item.nisab_method)}</span>
-                  <strong>{money(toNum(item.zakat_due), item.currency)}</strong>
-                  <small>{item.price_source || '-'}</small>
-                  <button type="button" onClick={() => deleteZakatCalculation(item)} aria-label={tr.deleteAction}>{tr.deleteAction}</button>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <CharityFormSection className="warm-card span-5" eyebrow={tr.hijriEstimated} title={tr.hawlTracking} icon={<CalendarDays size={24} />}>
-            <div className="form-grid one">
-              <label><span>{tr.assetName}</span><input value={assetForm.asset_name} onChange={e => setAssetForm(prev => ({ ...prev, asset_name: e.target.value }))} /></label>
-              <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{assetTypeLabel(type)}</option>)}</select></label>
-              <label><span>{tr.target}</span><input inputMode="decimal" value={assetForm.amount} onChange={e => setAssetForm(prev => ({ ...prev, amount: e.target.value }))} /></label>
-              <label><span>{tr.ownershipDate}</span><input type="date" value={assetForm.ownership_date} onChange={e => setAssetForm(prev => ({ ...prev, ownership_date: e.target.value, zakat_due_date: addYear(e.target.value) }))} /></label>
-              <label><span>{tr.dueDate}</span><input type="date" value={assetForm.zakat_due_date} onChange={e => setAssetForm(prev => ({ ...prev, zakat_due_date: e.target.value }))} /></label>
-              <label className="check-row"><input type="checkbox" checked={assetForm.is_zakatable} onChange={e => setAssetForm(prev => ({ ...prev, is_zakatable: e.target.checked }))} /><span>{tr.reminder}</span></label>
-              <button className="primary-wide" onClick={saveAsset}><Save size={16} /> {tr.addAsset}</button>
-            </div>
-          </CharityFormSection>
         </section>
+          </div>
+        </section>
+        </PageTabPanel>
 
-        <section className="warm-card project-dashboard" hidden={activeTab !== 'projects'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="projects" active={activeTab === 'projects'}>
+        <section className="warm-card project-dashboard">
           <div className="section-head vault-head">
             <div>
               <small>{tr.projects}</small>
@@ -1616,15 +1511,15 @@ export default function CharityProjectsPage() {
             </select>
             <select value={projectCategoryFilter} onChange={e => setProjectCategoryFilter(e.target.value as 'all' | ProjectCategory)} aria-label={tr.allTypes}>
               <option value="all">{tr.allTypes}</option>
-              {categories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+              {(projectScope === 'zakat' ? categories.filter(category => category === 'zakat') : categories.filter(category => category !== 'zakat')).map(category => <option key={category} value={category}>{tr[category]}</option>)}
             </select>
           </div>
           {filteredProjects.length === 0 ? (
             <EmptyState
               className="charity-empty-state compact"
               icon={<HeartHandshake size={28} />}
-              title={projects.length === 0 ? tr.emptyTitle : tr.noFilteredProjects}
-              description={projects.length === 0 ? tr.emptyBody : tr.noFilteredProjectsBody}
+              title={charityImpactProjects.length === 0 ? tr.emptyTitle : tr.noFilteredProjects}
+              description={charityImpactProjects.length === 0 ? tr.emptyBody : tr.noFilteredProjectsBody}
               actions={(
                 <button className="mini-gold" type="button" onClick={() => { resetProjectForm(); setProjectOpen(true); }}>
                   <Plus size={15} /> {tr.newProject}
@@ -1637,12 +1532,25 @@ export default function CharityProjectsPage() {
                 const target = toNum(project.target_amount);
                 const collected = toNum(project.collected_amount);
                 const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
-                const projectContributors = contributors.filter(contributor => contributor.project_id === project.id);
-                const contributorPaid = projectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
-                const contributorCoverage = target > 0 ? Math.min(100, (contributorPaid / target) * 100) : 0;
+                const projectContributors = charityContributors.filter(contributor => contributor.project_id === project.id);
+                const matchingProjectContributors = projectContributors.filter(contributor => hasSameExplicitCurrency(contributor.currency, project.currency));
+                const projectDonationRecords = charityDonations.filter(donation => donation.project_id === project.id);
+                const contributorPaid = matchingProjectContributors.reduce((sum, contributor) => sum + toNum(contributor.paid_amount), 0);
+                const contributorCoverage = matchingProjectContributors.length > 0 && target > 0 ? Math.min(100, (contributorPaid / target) * 100) : null;
                 const projectOrganization = project.organization_id ? organizationById[project.organization_id] : null;
+                const ArtworkIcon = project.category === 'education' ? FileText
+                  : project.category === 'relief' ? HandCoins
+                    : project.category === 'mosque' ? CalendarDays
+                      : project.category === 'endowment' ? Archive
+                        : project.category === 'sponsorship' || project.category === 'sacrifice' ? Gift
+                          : project.category === 'zakat' ? ShieldCheck
+                            : HeartHandshake;
                 return (
                   <article className="project-card" key={project.id}>
+                    <div className={`phase28-project-artwork artwork-${project.category}`} role="img" aria-label={`${tr.projectArtwork}: ${tr[project.category] ?? tr.other}`}>
+                      <ArtworkIcon size={34} aria-hidden="true" />
+                      <span>{tr[project.category] ?? tr.other}</span>
+                    </div>
                     <div className="project-top">
                       <div><strong>{project.name}</strong><span>{organizationLabel(project.organization_id, project.organization_name)}</span></div>
                       <b className={`status ${project.status}`}>{tr[project.status]}</b>
@@ -1654,16 +1562,24 @@ export default function CharityProjectsPage() {
                     </div>
                     {projectOrganization && projectOrganization.verification_status !== 'verified' && <p className="privacy-note">{tr.unverifiedOrganizationWarning}</p>}
                     <div className="badge-row"><span>{tr[project.category] ?? tr.other}</span><span>{dateLabel(project.start_date)} - {dateLabel(project.end_date)}</span></div>
-                    <div className="progress"><i style={{ width: `${progress}%` }} /></div>
+                    <div className="project-progress-label"><span>{tr.projectProgress}</span><strong>{progress.toFixed(0)}%</strong></div>
+                    <div className="progress" role="progressbar" aria-label={`${tr.projectProgress}: ${project.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><i style={{ width: `${progress}%` }} /></div>
                     <div className="money-row">
                       <div><small>{tr.target}</small><strong>{money(target, project.currency)}</strong></div>
-                      <div><small>{tr.collected}</small><strong>{money(collected, project.currency)}</strong></div>
+                      <div><small>{tr.raised}</small><strong>{money(collected, project.currency)}</strong></div>
                       <div><small>{tr.remaining}</small><strong>{money(Math.max(0, target - collected), project.currency)}</strong></div>
+                    </div>
+                    <div className="phase28-project-meta">
+                      <div><small>{tr.donorCount}</small><strong>{tr.donorIdentityUnavailable}</strong></div>
+                      <div><small>{tr.donationRecords}</small><strong>{numberLabel(projectDonationRecords.length)}</strong></div>
+                      <div><small>{tr.location}</small><strong>{[projectOrganization?.country, projectOrganization?.city].filter(Boolean).join(' / ') || tr.notRecorded}</strong></div>
+                      <div><small>{tr.transparency}</small><strong>{toNum(projectOrganization?.transparency_score) > 0 ? `${projectOrganization?.transparency_score}/100` : tr.notReviewed}</strong></div>
+                      <div><small>{tr.projectVerification}</small><strong>{verificationLabel(projectOrganization?.verification_status)}</strong></div>
                     </div>
                     {projectContributors.length > 0 && (
                       <div className="collab-strip">
-                        <span>{tr.contributorPayments}: {money(contributorPaid, project.currency)}</span>
-                        <span>{tr.projectCoverage}: {contributorCoverage.toFixed(1)}%</span>
+                        <span>{tr.contributorPayments}: {matchingProjectContributors.length > 0 ? money(contributorPaid, project.currency) : unavailableLabel}</span>
+                        <span>{tr.projectCoverage}: {contributorCoverage === null ? unavailableLabel : `${contributorCoverage.toFixed(1)}%`}</span>
                       </div>
                     )}
                     {project.notes && <p>{project.notes}</p>}
@@ -1686,7 +1602,8 @@ export default function CharityProjectsPage() {
                         type="button"
                         aria-label={tr.beneficiariesCount.replace('{count}', String(projectBeneficiaryCounts[project.id] || 0))}
                         onClick={() => {
-                          setBeneficiarySearch(project.name);
+                          setBeneficiarySearch('');
+                          setBeneficiaryProjectFilter(project.id);
                           setBeneficiaryStatusFilter('all');
                           setBeneficiaryCategoryFilter('all');
                           setActiveTab('beneficiaries');
@@ -1700,7 +1617,7 @@ export default function CharityProjectsPage() {
                         aria-label={tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
                         onClick={() => {
                           setContributorProjectFilter(project.id);
-                          setActiveTab('contributors');
+                          setActiveTab('donations');
                         }}
                       >
                         {tr.contributorsCount.replace('{count}', String(projectContributorCounts[project.id] || 0))}
@@ -1717,10 +1634,8 @@ export default function CharityProjectsPage() {
             </div>
           )}
             </section>
-          </div>
-        </section>
 
-        <section className="split-grid project-support-grid" hidden={activeTab !== 'projects'}>
+        {projectScope === 'charity' && <section className="split-grid project-support-grid">
           <article className="warm-card">
             <div className="section-head"><h2>{tr.templates}</h2><Gift size={22} /></div>
             <div className="template-grid">
@@ -1742,9 +1657,9 @@ export default function CharityProjectsPage() {
               </div>
             ) : <p className="muted">{tr.forecastEmpty}</p>}
           </article>
-        </section>
+        </section>}
 
-        <section className="warm-card" id="charity-organization-directory" hidden={activeTab !== 'projects'}>
+        <section className="warm-card" id="charity-organization-directory">
           <div className="vault-head section-head">
             <div>
               <h2>{tr.organizationDirectory}</h2>
@@ -1819,8 +1734,10 @@ export default function CharityProjectsPage() {
           )}
           <p className="disclaimer">{tr.verificationDisclaimer}</p>
         </section>
+        </PageTabPanel>
 
-        <section className="warm-card" id="impact-dashboard" hidden={activeTab !== 'impact'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="impact" active={activeTab === 'impact'}>
+        <section className="warm-card" id="impact-dashboard">
           <div className="vault-head section-head">
             <div>
               <h2>{tr.impactDashboard}</h2>
@@ -1830,12 +1747,13 @@ export default function CharityProjectsPage() {
           </div>
           <div className="impact-summary-grid">
             <div><small>{tr.totalDonations}</small><strong>{hasImpactData ? money(totalDonations) : unavailableLabel}</strong></div>
-            <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(beneficiaries.length)}</strong></div>
+            <div><small>{tr.beneficiariesCountKpi}</small><strong>{numberLabel(charityBeneficiaries.length)}</strong></div>
             <div><small>{tr.completedProjects}</small><strong>{numberLabel(completedProjectsCount)}</strong></div>
             <div><small>{tr.activeCharityProjects}</small><strong>{numberLabel(activeProjects)}</strong></div>
             <div><small>{tr.monthlySponsorships}</small><strong>{hasImpactData ? money(monthlySponsorshipsTotal) : unavailableLabel}</strong></div>
-            <div><small>{tr.estimatedZakatImpact}</small><strong>{toNum(latestEstimatedZakat) > 0 ? money(toNum(latestEstimatedZakat)) : unavailableLabel}</strong></div>
+            <div><small>{tr.supportRecords}</small><strong>{numberLabel(charityDonations.length + charityContributors.length)}</strong></div>
           </div>
+          <p className="aggregate-scope-note">{tr.aggregateCurrencyNote}</p>
           {!hasImpactData ? (
             <EmptyState
               className="charity-empty-state compact"
@@ -1857,7 +1775,7 @@ export default function CharityProjectsPage() {
                     <div className="ratio-grid">
                       <div><small>{tr.thisYear}</small><strong>{givingIncomeRatioYear.toFixed(1)}%</strong></div>
                       <div><small>{tr.currentMonth}</small><strong>{givingIncomeRatioMonth === null ? '-' : `${givingIncomeRatioMonth.toFixed(1)}%`}</strong></div>
-                      <p>{tr.referenceBenchmark}: 2.5% / 10%</p>
+                      <p>{tr.aggregateCurrencyNote}</p>
                     </div>
                   )}
                 </article>
@@ -1865,8 +1783,8 @@ export default function CharityProjectsPage() {
                   <h3>{tr.yearlyImpactSummary}</h3>
                   <div className="impact-lines">
                     <p>{tr.totalDonated}: {money(totalDonatedThisYear)}</p>
-                    <p>{tr.projects}: {projects.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
-                    <p>{tr.beneficiariesSupported}: {beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
+                    <p>{tr.projects}: {charityImpactProjects.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
+                    <p>{tr.beneficiariesSupported}: {charityBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</p>
                     <p>{tr.monthlySponsorships}: {money(monthlySponsorshipsTotal)}</p>
                   </div>
                 </article>
@@ -1877,7 +1795,7 @@ export default function CharityProjectsPage() {
                   <h3>{tr.impactOverTime}</h3>
                   <div className="impact-bars" role="img" aria-label={tr.impactOverTime}>
                     {impactByMonth.map(month => {
-                      const total = month.donationAmount + month.sponsorshipAmount;
+                      const total = month.donationAmount;
                       return (
                         <div key={month.label} className="impact-bar-row">
                           <span>{month.label}</span>
@@ -1906,9 +1824,9 @@ export default function CharityProjectsPage() {
 
               <article className="impact-panel">
                 <h3>{tr.projectImpactProgress}</h3>
-                {projects.length === 0 ? <p className="muted">{tr.emptyBody}</p> : (
+                {charityImpactProjects.length === 0 ? <p className="muted">{tr.emptyBody}</p> : (
                   <div className="project-impact-grid">
-                    {projects.map(project => {
+                    {charityImpactProjects.map(project => {
                       const target = toNum(project.target_amount);
                       const collected = toNum(project.collected_amount);
                       const progress = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
@@ -1941,7 +1859,7 @@ export default function CharityProjectsPage() {
                 <article className="impact-panel">
                   <h3>{tr.customImpactIndicators}</h3>
                   <div className="form-grid">
-                    <label><span>{tr.linkedProject}</span><select value={impactMetricForm.project_id} onChange={e => setImpactMetricForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+                    <label><span>{tr.linkedProject}</span><select value={impactMetricForm.project_id} onChange={e => setImpactMetricForm(prev => ({ ...prev, project_id: e.target.value }))}><option value="">-</option>{charityImpactProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
                     <label><span>{tr.metricName}</span><input value={impactMetricForm.metric_name} onChange={e => setImpactMetricForm(prev => ({ ...prev, metric_name: e.target.value }))} /></label>
                     <label><span>{tr.metricValue}</span><input inputMode="decimal" value={impactMetricForm.metric_value} onChange={e => setImpactMetricForm(prev => ({ ...prev, metric_value: e.target.value }))} /></label>
                     <label><span>{tr.metricUnit}</span><input value={impactMetricForm.metric_unit} onChange={e => setImpactMetricForm(prev => ({ ...prev, metric_unit: e.target.value }))} /></label>
@@ -1953,8 +1871,64 @@ export default function CharityProjectsPage() {
             </>
           )}
         </section>
+        </PageTabPanel>
 
-        <section id="family-collaboration" className="warm-card family-collaboration" hidden={activeTab !== 'contributors'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="donations" active={activeTab === 'donations'}>
+        <section className="warm-card donation-center">
+          <div className="section-head vault-head">
+            <div>
+              <small>{tr.tabDonations}</small>
+              <h2>{tr.donationsTitle}</h2>
+              <p>{tr.donationsDescription}</p>
+            </div>
+            <button className="mini-gold" type="button" onClick={() => setActiveTab('projects')}>
+              <HeartHandshake size={16} /> {tr.tabProjects}
+            </button>
+          </div>
+          <div className="beneficiary-stats donation-stats">
+            <div><small>{tr.donationsThisYear}</small><strong>{money(totalDonatedThisYear)}</strong></div>
+            <div><small>{tr.donationRecords}</small><strong>{numberLabel(charityDonations.length)}</strong></div>
+            <div><small>{tr.projectsSupported}</small><strong>{numberLabel(supportedProjectCount)}</strong></div>
+            <div><small>{tr.latestDonation}</small><strong>{latestDonation ? dateLabel(recordDate(latestDonation)) : unavailableLabel}</strong></div>
+          </div>
+          {charityDonations.length === 0 ? (
+            <EmptyState
+              className="charity-empty-state compact"
+              icon={<HandCoins size={28} />}
+              title={tr.noDonations}
+              description={tr.noDonationsBody}
+              actions={<button className="mini-gold" type="button" onClick={() => setActiveTab('projects')}>{tr.tabProjects}</button>}
+            />
+          ) : (
+            <div className="donation-records">
+              {charityDonations.slice().sort((a, b) => (recordDate(b) || '').localeCompare(recordDate(a) || '')).map(donation => {
+                const project = charityImpactProjects.find(item => item.id === donation.project_id);
+                const receipt = documents.find(document => document.donation_id === donation.id && document.category === 'donation_receipt');
+                return (
+                  <article className="donation-record" key={donation.id}>
+                    <div>
+                      <strong>{money(toNum(donation.amount), donation.currency)}</strong>
+                      <span>{project?.name || tr.notRecorded}</span>
+                    </div>
+                    <div className="donation-record-meta">
+                      <span>{dateLabel(recordDate(donation))}</span>
+                      <span>{donation.donation_type || tr.other}</span>
+                      <b>{tr.recordedStatus}</b>
+                    </div>
+                    <div className="card-actions">
+                      {receipt ? (
+                        <button type="button" onClick={() => openDocument(receipt)} aria-label={tr.openReceipt}>{tr.openReceipt}</button>
+                      ) : <span className="muted">{tr.noReceipt}</span>}
+                      {project && <button type="button" onClick={() => setDonationProject(project)}>{tr.addDonation}</button>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section id="family-collaboration" className="warm-card family-collaboration">
           <div className="section-head vault-head">
             <div>
               <small>{tr.contributors}</small>
@@ -1962,7 +1936,7 @@ export default function CharityProjectsPage() {
               <p>{tr.collaborationDesc}</p>
             </div>
             <button className="mini-gold" type="button" onClick={() => {
-              resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
+              resetContributorForm(contributorProjectFilter || charityImpactProjects[0]?.id || '');
               setContributorOpen(true);
             }}>{tr.addContributor}</button>
           </div>
@@ -1973,17 +1947,17 @@ export default function CharityProjectsPage() {
             </div>
             <select value={contributorProjectFilter} onChange={e => setContributorProjectFilter(e.target.value)} aria-label={tr.projects}>
               <option value="">{tr.projects}</option>
-              {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+              {charityImpactProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
-            <button type="button" onClick={() => { resetContributorForm(contributorProjectFilter || projects[0]?.id || ''); setContributorOpen(true); }}>{tr.addContributor}</button>
+            <button type="button" onClick={() => { resetContributorForm(contributorProjectFilter || charityImpactProjects[0]?.id || ''); setContributorOpen(true); }}>{tr.addContributor}</button>
           </div>
           <div className="beneficiary-stats">
             <div><small>{tr.contributors}</small><strong>{filteredContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
-            <div><small>{tr.totalPledged}</small><strong>{money(totalPledged)}</strong></div>
-            <div><small>{tr.totalPaid}</small><strong>{money(totalPaid)}</strong></div>
+            <div><small>{tr.totalPledged}</small><strong>{hasComparableContributorData ? money(totalPledged, contributorSummaryCurrency ?? CHARITY_AGGREGATE_CURRENCY) : unavailableLabel}</strong></div>
+            <div><small>{tr.totalPaid}</small><strong>{hasComparableContributorData ? money(totalPaid, contributorSummaryCurrency ?? CHARITY_AGGREGATE_CURRENCY) : unavailableLabel}</strong></div>
             <div><small>{tr.lateContribution}</small><strong>{lateContributors.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
           </div>
-          {topContributor && <p className="nisab"><HandCoins size={15} /> {tr.topContributor}: {topContributor.contributor_name} - {money(toNum(topContributor.paid_amount), topContributor.currency)}</p>}
+          <p className="nisab"><HandCoins size={15} /> {tr.topContributor}: {topContributor ? `${topContributor.contributor_name} - ${money(toNum(topContributor.paid_amount), topContributor.currency)}` : unavailableLabel}</p>
           {filteredContributors.length === 0 ? (
             <EmptyState
               className="charity-empty-state compact"
@@ -1992,7 +1966,7 @@ export default function CharityProjectsPage() {
               description={tr.contributorsEmptyBody}
               actions={(
                 <button className="mini-gold" type="button" onClick={() => {
-                  resetContributorForm(contributorProjectFilter || projects[0]?.id || '');
+                  resetContributorForm(contributorProjectFilter || charityImpactProjects[0]?.id || '');
                   setContributorOpen(true);
                 }}>{tr.addContributor}</button>
               )}
@@ -2000,9 +1974,11 @@ export default function CharityProjectsPage() {
           ) : (
             <div className="contributor-grid">
               {filteredContributors.map(contributor => {
-                const project = projects.find(item => item.id === contributor.project_id);
+                const project = charityImpactProjects.find(item => item.id === contributor.project_id);
                 const target = toNum(project?.target_amount);
-                const percent = target > 0 ? (toNum(contributor.paid_amount) / target) * 100 : 0;
+                const percent = project && hasSameExplicitCurrency(contributor.currency, project.currency) && target > 0
+                  ? (toNum(contributor.paid_amount) / target) * 100
+                  : null;
                 const computedLate = contributor.due_date && daysUntil(contributor.due_date) < 0 && ['pending', 'partial'].includes(contributor.payment_status);
                 return (
                   <article className="contributor-card" key={contributor.id}>
@@ -2021,7 +1997,7 @@ export default function CharityProjectsPage() {
                     <div className="money-row">
                       <div><small>{tr.pledgedAmount}</small><strong>{money(toNum(contributor.pledged_amount), contributor.currency)}</strong></div>
                       <div><small>{tr.paidAmount}</small><strong>{money(toNum(contributor.paid_amount), contributor.currency)}</strong></div>
-                      <div><small>{tr.projectCoverage}</small><strong>{percent.toFixed(1)}%</strong></div>
+                      <div><small>{tr.projectCoverage}</small><strong>{percent === null ? unavailableLabel : `${percent.toFixed(1)}%`}</strong></div>
                     </div>
                     <div className="card-actions">
                       <button type="button" onClick={() => openContributorEditor(contributor)} aria-label={tr.edit}>{tr.edit}</button>
@@ -2034,8 +2010,10 @@ export default function CharityProjectsPage() {
             </div>
           )}
         </section>
+        </PageTabPanel>
 
-        <section id="beneficiary-tracking" className="warm-card beneficiary-tracking" hidden={activeTab !== 'beneficiaries'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="beneficiaries" active={activeTab === 'beneficiaries'}>
+        <section id="beneficiary-tracking" className="warm-card beneficiary-tracking">
           <div className="section-head vault-head">
             <div>
               <small>{tr.privacyNote}</small>
@@ -2048,7 +2026,7 @@ export default function CharityProjectsPage() {
             }}>{tr.addBeneficiary}</button>
           </div>
           <div className="beneficiary-stats">
-            <div><small>{tr.totalBeneficiaries}</small><strong>{beneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
+            <div><small>{tr.totalBeneficiaries}</small><strong>{charityBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
             <div><small>{tr.activeSponsorships}</small><strong>{activeBeneficiaries.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
             <div><small>{tr.monthlySupportTotal}</small><strong>{money(monthlySupportTotal)}</strong></div>
             <div><small>{tr.upcomingRenewals}</small><strong>{upcomingRenewals.length.toLocaleString(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US')}</strong></div>
@@ -2065,6 +2043,10 @@ export default function CharityProjectsPage() {
             <select value={beneficiaryCategoryFilter} onChange={e => setBeneficiaryCategoryFilter(e.target.value as 'all' | BeneficiaryCategory)} aria-label={tr.allTypes}>
               <option value="all">{tr.allTypes}</option>
               {beneficiaryCategories.map(category => <option key={category} value={category}>{tr[category]}</option>)}
+            </select>
+            <select value={beneficiaryProjectFilter} onChange={e => setBeneficiaryProjectFilter(e.target.value)} aria-label={tr.linkedProject}>
+              <option value="">{tr.allProjects}</option>
+              {charityImpactProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
           </div>
           {filteredBeneficiaries.length === 0 ? (
@@ -2083,8 +2065,18 @@ export default function CharityProjectsPage() {
           ) : (
             <div className="beneficiary-grid">
               {filteredBeneficiaries.map(beneficiary => {
-                const project = projects.find(item => item.id === beneficiary.project_id);
+                const project = charityImpactProjects.find(item => item.id === beneficiary.project_id);
                 const linkedDocuments = documents.filter(document => document.project_id && document.project_id === beneficiary.project_id).length;
+                const renewalDays = beneficiary.next_renewal_date ? daysUntil(beneficiary.next_renewal_date) : null;
+                const renewalPriority = renewalDays === null ? tr.priorityUnknown
+                  : renewalDays < 0 ? tr.priorityOverdue
+                    : renewalDays <= 14 ? tr.priorityHigh
+                      : renewalDays <= 45 ? tr.priorityMedium
+                        : tr.priorityRoutine;
+                const projectSupport = charityDonations
+                  .filter(donation => donation.project_id && donation.project_id === beneficiary.project_id)
+                  .sort((a, b) => (recordDate(b) || '').localeCompare(recordDate(a) || ''));
+                const lastProjectSupport = projectSupport[0] ?? null;
                 return (
                   <article className="beneficiary-card" key={beneficiary.id}>
                     <div className="project-top">
@@ -2094,15 +2086,26 @@ export default function CharityProjectsPage() {
                       </div>
                       <b className={`status ${beneficiary.status}`}>{tr[beneficiary.status]}</b>
                     </div>
-                    <div className="badge-row">
-                      <span>{tr[beneficiary.category]}</span>
-                      {project && <span>{project.name}</span>}
-                      {beneficiary.next_renewal_date && <span>{tr.nextRenewal}: {dateLabel(beneficiary.next_renewal_date)}</span>}
+                    <div className="beneficiary-meta">
+                      <div><small>{tr.category}</small><strong>{tr[beneficiary.category]}</strong></div>
+                      <div><small>{tr.country}</small><strong>{beneficiary.country || tr.notRecorded}</strong></div>
+                      <div><small>{tr.linkedProject}</small><strong>{project?.name || tr.notRecorded}</strong></div>
+                      <div><small>{tr.nextRenewal}</small><strong>{beneficiary.next_renewal_date ? dateLabel(beneficiary.next_renewal_date) : tr.notRecorded}</strong></div>
+                      <div><small>{tr.renewalPriority}</small><strong>{renewalPriority}</strong></div>
                     </div>
                     <div className="money-row">
                       <div><small>{tr.monthlySupport}</small><strong>{money(toNum(beneficiary.monthly_support_amount), beneficiary.currency)}</strong></div>
-                      <div><small>{tr.responsibleOrg}</small><strong>{beneficiary.organization_name || '-'}</strong></div>
-                      <div><small>{tr.linkedDocuments}</small><strong>{linkedDocuments}</strong></div>
+                      <div><small>{tr.responsibleOrg}</small><strong>{beneficiary.organization_name || tr.notRecorded}</strong></div>
+                      <div><small>{tr.projectDocuments}</small><strong>{numberLabel(linkedDocuments)}</strong></div>
+                    </div>
+                    <div className="beneficiary-assurance">
+                      <div><small>{tr.beneficiaryVerification}</small><strong>{tr.verificationNotRecorded}</strong></div>
+                      <div>
+                        <small>{tr.projectSupportHistory}</small>
+                        <strong>{projectSupport.length > 0 ? `${tr.supportRecords}: ${numberLabel(projectSupport.length)}` : tr.noProjectSupportHistory}</strong>
+                        {lastProjectSupport && <span>{tr.lastSupport}: {dateLabel(recordDate(lastProjectSupport))}</span>}
+                      </div>
+                      <p>{tr.projectLevelScope}</p>
                     </div>
                     <div className="card-actions">
                       <button type="button" onClick={() => setBeneficiaryDetails(beneficiary)} aria-label={tr.view}>{tr.view}</button>
@@ -2116,8 +2119,10 @@ export default function CharityProjectsPage() {
             </div>
           )}
         </section>
+        </PageTabPanel>
 
-        <section id="document-vault" className="warm-card document-vault" hidden={activeTab !== 'documents'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="documents" active={activeTab === 'documents'}>
+        <section id="document-vault" className="warm-card document-vault">
           <div className="section-head vault-head">
             <div>
               <small>{tr.searchInsideSoon}</small>
@@ -2176,7 +2181,7 @@ export default function CharityProjectsPage() {
           ) : (
             <div className="document-grid">
               {filteredDocuments.map(document => {
-                const linkedProject = projects.find(project => project.id === document.project_id)?.name;
+                const linkedProject = charityImpactProjects.find(project => project.id === document.project_id)?.name;
                 return (
                   <article className="document-card" key={document.id}>
                     <div className="document-icon"><FileText size={20} /></div>
@@ -2198,8 +2203,26 @@ export default function CharityProjectsPage() {
             </div>
           )}
         </section>
+        </PageTabPanel>
 
-        <section className="warm-card report-dashboard" id="charity-reports" hidden={activeTab !== 'reports'}>
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="reports" active={activeTab === 'reports'}>
+        {projectScope === 'zakat' ? (
+          <section className="warm-card report-dashboard" id="zakat-project-reports">
+            <CharitySectionHeader
+              eyebrow={tr.zakat}
+              title={tr.openZakatReport}
+              description={tr.zakatProjectScope}
+              icon={<FileText size={22} />}
+            />
+            <CharityEmptyState
+              icon={<FileText size={28} />}
+              title={tr.separateWorkflow}
+              description={tr.zakatProjectScope}
+              action={<button className="mini-gold" type="button" onClick={() => router.push('/zakat?tab=reports')}>{tr.openZakatReport}</button>}
+            />
+          </section>
+        ) : (
+        <section className="warm-card report-dashboard" id="charity-reports">
           <CharitySectionHeader
             eyebrow={tr.reports}
             title={tr.reports}
@@ -2214,15 +2237,54 @@ export default function CharityProjectsPage() {
               </select>
             </label>
             <div className="section-actions">
-              <button className="mini-gold" type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData} aria-label={tr.exportPdf}>
+              <button className="mini-gold" type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!selectedYearHasReportData} aria-label={tr.exportPdf}>
                 <FileText size={16} /> {tr.exportPdf}
-              </button>
-              <button className="ghost-btn" type="button" onClick={exportExcel} disabled={exportingExcel || !hasReportData} aria-label={tr.exportExcel}>
-                <FileText size={16} /> {exportingExcel ? tr.preparingExcel : tr.exportExcel}
               </button>
             </div>
           </div>
-          {!hasReportData && (
+          <p className="aggregate-scope-note">{tr.aggregateCurrencyNote}</p>
+          <table className="phase28-report-register">
+            <caption>{tr.reportsLedger}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tr.reportYear}</th><th scope="col">{tr.reportAmount}</th><th scope="col">{tr.reportCategory}</th><th scope="col">{tr.reportCalculation}</th>
+                <th scope="col">{tr.reportPayment}</th><th scope="col">{tr.reportReceipt}</th><th scope="col">{tr.reportPdf}</th><th scope="col">{tr.reportStatus}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="phase28-report-row">
+                <td data-label={tr.reportYear}>{selectedReportYear}</td>
+                <td data-label={tr.reportAmount}><strong>{money(selectedReportAmount)}</strong></td>
+                <td data-label={tr.reportCategory}>{tr.charityReport}</td>
+                <td data-label={tr.reportCalculation}>Σ {tr.donationRecords}</td>
+                <td data-label={tr.reportPayment}>{selectedReportDonations.length > 0 ? tr.recordedPayment : tr.notRecorded}</td>
+                <td data-label={tr.reportReceipt}><button type="button" onClick={() => { setDocumentProjectFilter(''); setDocumentSearch(''); setDocumentFilter('donation_receipt'); setActiveTab('documents'); }} disabled={selectedReportReceipts.length === 0}>{selectedReportReceipts.length > 0 ? numberLabel(selectedReportReceipts.length) : tr.noReceipt}</button></td>
+                <td data-label={tr.reportPdf}><button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!selectedYearHasReportData}>{tr.exportPdf}</button></td>
+                <td data-label={tr.reportStatus}><b>{selectedYearHasReportData ? tr.readyStatus : tr.needsDataStatus}</b></td>
+              </tr>
+              <tr className="phase28-report-row separate-workflow-row">
+                <td data-label={tr.reportYear}>{selectedReportYear}</td>
+                <td data-label={tr.reportAmount}><strong>{unavailableLabel}</strong></td>
+                <td data-label={tr.reportCategory}>{tr.zakat}</td>
+                <td data-label={tr.reportCalculation}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportPayment}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportReceipt}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportPdf}><button type="button" onClick={() => router.push('/zakat?tab=reports')}>{tr.openZakatReport}</button></td>
+                <td data-label={tr.reportStatus}><b>{tr.separateWorkflow}</b></td>
+              </tr>
+              <tr className="phase28-report-row separate-workflow-row">
+                <td data-label={tr.reportYear}>{selectedReportYear}</td>
+                <td data-label={tr.reportAmount}><strong>{unavailableLabel}</strong></td>
+                <td data-label={tr.reportCategory}>{tr.khumsLabel}</td>
+                <td data-label={tr.reportCalculation}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportPayment}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportReceipt}>{tr.separateWorkflow}</td>
+                <td data-label={tr.reportPdf}><button type="button" onClick={() => router.push('/khums?tab=reports')}>{tr.openKhumsReport}</button></td>
+                <td data-label={tr.reportStatus}><b>{tr.separateWorkflow}</b></td>
+              </tr>
+            </tbody>
+          </table>
+          {!selectedYearHasReportData && (
             <CharityEmptyState
               icon={<AlertTriangle size={28} />}
               title={tr.notEnoughReportData}
@@ -2239,25 +2301,19 @@ export default function CharityProjectsPage() {
               icon={<FileText size={20} />}
               title={tr.yearlyCharityReport}
               description={tr.yearlyReportDesc}
-              action={<button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!hasReportData}>{tr.generateReport}</button>}
-            />
-            <CharityReportCard
-              icon={<Calculator size={20} />}
-              title={tr.zakatKhumsReport}
-              description={tr.zakatKhumsReportDesc}
-              action={<button type="button" onClick={() => router.push('/zakat')} disabled={assets.length === 0 && zakatHistory.length === 0}>{tr.generateReport}</button>}
+              action={<button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!selectedYearHasReportData}>{tr.generateReport}</button>}
             />
             <CharityReportCard
               icon={<HandCoins size={20} />}
               title={tr.donationsReport}
               description={tr.donationsReportDesc}
-              action={<button type="button" onClick={exportExcel} disabled={exportingExcel || donations.length === 0}>{tr.exportExcel}</button>}
+              action={<button type="button" onClick={() => router.push(`/charity-projects/report?year=${selectedReportYear}`)} disabled={!selectedYearHasReportData}>{tr.generateReport}</button>}
             />
             <CharityReportCard
               icon={<HeartHandshake size={20} />}
               title={tr.beneficiariesReport}
               description={tr.beneficiariesReportDesc}
-              action={<button type="button" onClick={() => setActiveTab('beneficiaries')} disabled={beneficiaries.length === 0}>{tr.beneficiaryTracking}</button>}
+              action={<button type="button" onClick={() => setActiveTab('beneficiaries')} disabled={charityBeneficiaries.length === 0}>{tr.beneficiaryTracking}</button>}
             />
             <CharityReportCard className="impact-report-card" icon={<Sparkles size={20} />} title={tr.impact} description={tr.incomeMissing}>
               <label className="impact-input"><span>{tr.donationAmount}</span><input inputMode="decimal" value={impactDonation} onChange={e => setImpactDonation(e.target.value)} placeholder="0.000" /></label>
@@ -2271,6 +2327,44 @@ export default function CharityProjectsPage() {
             </CharityReportCard>
           </div>
         </section>
+        )}
+        </PageTabPanel>
+
+        <PageTabPanel idBase={CHARITY_PROJECTS_TABS_ID} value="reminders" active={activeTab === 'reminders'}>
+          <section className="warm-card reminders-section" id="upcoming-reminders-workspace">
+            <div className="section-head vault-head">
+              <div><small>{tr.charityReminders}</small><h2>{tr.upcomingReminders}</h2><p>{tr.reminderEmptyBody}</p></div>
+              <button className="mini-gold" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>
+                <CalendarDays size={16} /> {tr.addReminder}
+              </button>
+            </div>
+            {activeReminders.length === 0 ? (
+              <EmptyState
+                className="charity-empty-state compact"
+                icon={<CalendarDays size={28} />}
+                title={tr.noReminders}
+                description={tr.reminderEmptyBody}
+                actions={<button className="mini-gold" type="button" onClick={() => { resetReminderForm(); setReminderOpen(true); }}>{tr.addReminder}</button>}
+              />
+            ) : (
+              <div className="reminder-grid phase28-reminder-grid">
+                {activeReminders.map(reminder => (
+                  <article className={`reminder-card ${reminder.priority}`} key={reminder.id}>
+                    <div className="reminder-top"><div><strong>{reminder.title}</strong><span>{reminderTypeLabel(reminder.reminder_type)}</span></div><b>{tr[reminder.priority]}</b></div>
+                    <div className="badge-row"><span>{dateLabel(reminder.due_date)}</span><span>{reminderTimingLabel(reminder)}</span></div>
+                    {reminder.notes && <p>{reminder.notes}</p>}
+                    <div className="card-actions">
+                      <button type="button" onClick={() => updateReminderStatus(reminder, 'completed')}>{tr.completedAction}</button>
+                      <button type="button" onClick={() => updateReminderStatus(reminder, 'dismissed')}>{tr.dismissAction}</button>
+                      <button type="button" onClick={() => openReminderEditor(reminder)}>{tr.edit}</button>
+                      <button type="button" onClick={() => deleteReminder(reminder)}>{tr.deleteAction}</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </PageTabPanel>
       </DashboardPageShell>
 
 
@@ -2290,7 +2384,7 @@ export default function CharityProjectsPage() {
         setManualOrganization={setManualOrganization}
         saving={saving}
         saveProject={saveProject}
-        categories={categories}
+        categories={projectScope === 'zakat' ? categories.filter(category => category === 'zakat') : categories.filter(category => category !== 'zakat')}
         statuses={statuses}
       />
 
@@ -2301,14 +2395,14 @@ export default function CharityProjectsPage() {
         lang={lang}
         reminderForm={reminderForm}
         setReminderForm={setReminderForm}
-        projects={projects}
-        assets={assets}
-        commitments={commitments}
+        projects={voluntaryProjects}
+        assets={[]}
+        commitments={voluntaryCommitments}
         saving={saving}
         saveReminder={saveReminder}
         resetReminderForm={resetReminderForm}
         reminderTypeLabel={reminderTypeLabel}
-        reminderTypes={reminderTypes}
+        reminderTypes={reminderTypes.filter(type => type !== 'zakat' && type !== 'hawl')}
         reminderPriorities={reminderPriorities}
       />
 
@@ -2316,10 +2410,10 @@ export default function CharityProjectsPage() {
         open={documentOpen}
         onClose={() => setDocumentOpen(false)}
         tr={tr as Record<string, string>}
-        projects={projects}
-        donations={donations}
-        assets={assets}
-        commitments={commitments}
+        projects={charityImpactProjects}
+        donations={charityDonations}
+        assets={projectScope === 'zakat' ? assets : []}
+        commitments={charityCommitments}
         documentForm={documentForm}
         setDocumentForm={setDocumentForm}
         documentFile={documentFile}
@@ -2329,7 +2423,7 @@ export default function CharityProjectsPage() {
         money={money}
         toNum={toNum}
         formatFileSize={formatFileSize}
-        documentCategories={documentCategories}
+        documentCategories={projectScope === 'zakat' ? documentCategories : documentCategories.filter(category => category !== 'zakat_document')}
       />
 
       <BeneficiaryModal
@@ -2339,8 +2433,8 @@ export default function CharityProjectsPage() {
         lang={lang}
         beneficiaryForm={beneficiaryForm}
         setBeneficiaryForm={setBeneficiaryForm}
-        projects={projects}
-        documents={documents}
+        projects={charityImpactProjects}
+        documents={charityDocuments}
         saving={saving}
         saveBeneficiary={saveBeneficiary}
         resetBeneficiaryForm={resetBeneficiaryForm}
@@ -2357,8 +2451,8 @@ export default function CharityProjectsPage() {
         beneficiaryDetails={beneficiaryDetails}
         setBeneficiaryDetails={setBeneficiaryDetails}
         tr={tr as Record<string, string>}
-        projects={projects}
-        documents={documents}
+        projects={charityImpactProjects}
+        documents={charityDocuments}
         money={money}
         toNum={toNum}
         dateLabel={dateLabel}
@@ -2371,7 +2465,7 @@ export default function CharityProjectsPage() {
         lang={lang}
         contributorForm={contributorForm}
         setContributorForm={setContributorForm}
-        projects={projects}
+        projects={charityImpactProjects}
         saving={saving}
         saveContributor={saveContributor}
         resetContributorForm={resetContributorForm}

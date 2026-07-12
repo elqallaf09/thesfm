@@ -1,6 +1,7 @@
 'use client';
 import { X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
+import { AccessibleDialog } from './_AccessibleDialog';
 import type { Lang, ContributorRole, PaymentStatus, CharityProject } from './_types';
 
 interface ContributorModalProps {
@@ -38,8 +39,7 @@ export function ContributorModal({
   const close = () => { onClose(); resetContributorForm(); };
   const titleId = 'charity-contributor-modal-title';
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog labelledBy={titleId} onClose={close}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.contributors}</span>
@@ -74,7 +74,6 @@ export function ContributorModal({
             <button type="button" className="gold-btn" disabled={saving} onClick={saveContributor}>{tr.addContributor}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

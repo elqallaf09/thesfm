@@ -1,6 +1,7 @@
 'use client';
 import { X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
+import { AccessibleDialog } from './_AccessibleDialog';
 import type { Lang } from './_types';
 import type { ProjectCategory, ProjectStatus, CharityOrganization } from './_types';
 
@@ -45,8 +46,7 @@ export function ProjectModal({
   if (!open) return null;
   const titleId = 'charity-project-modal-title';
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal charity-project-modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog className="modal charity-project-modal" labelledBy={titleId} onClose={onClose}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.projectName}</span>
@@ -120,7 +120,6 @@ export function ProjectModal({
             <button type="button" className="gold-btn" disabled={saving} onClick={saveProject}>{tr.saveProject}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

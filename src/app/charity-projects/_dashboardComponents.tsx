@@ -64,6 +64,9 @@ export function CharityTabs({
       onChange={id => onChange(id as CharityProjectsTab)}
       ariaLabel={ariaLabel}
       className={className}
+      idBase="charity-projects-workspace"
+      mobileMode="auto"
+      sticky
     />
   );
 }

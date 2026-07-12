@@ -170,8 +170,8 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'khums', icon: Landmark, href: '/khums', labelKey: 'nav_khums' },
       { id: 'charity', icon: HandHeart, href: '/charity', labelKey: 'nav_charity' },
       { id: 'charity-projects', icon: HeartHandshake, href: '/charity-projects', labelKey: 'nav_charity_projects' },
-      { id: 'beneficiaries', icon: UsersRound, href: '/charity-projects#beneficiary-tracking', labelKey: 'nav_beneficiaries' },
-      { id: 'charity-reports', icon: ChartPie, href: '/charity-projects#charity-reports', labelKey: 'nav_charity_reports' },
+      { id: 'beneficiaries', icon: UsersRound, href: '/charity-projects?tab=beneficiaries', labelKey: 'nav_beneficiaries' },
+      { id: 'charity-reports', icon: ChartPie, href: '/charity-projects?tab=reports', labelKey: 'nav_charity_reports' },
     ],
   },
   {

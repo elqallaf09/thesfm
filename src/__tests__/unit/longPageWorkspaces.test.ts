@@ -118,9 +118,10 @@ describe('long-page workspace regression guards', () => {
     expect(documentsPage).toContain('aria-controls="documents-upload-panel"');
   });
 
-  it('labels the Zakat Reports destination independently from Charity Projects', () => {
-    expect(zakatPage).toContain("openReportsCenter: 'Open Reports Center'");
-    expect(zakatPage).toContain("openReportsCenter: 'Ouvrir le centre des rapports'");
-    expect(zakatPage).toContain('href="/reports-center">{tr.openReportsCenter}</Link>');
+  it('keeps Zakat reports inside the independent Zakat workflow', () => {
+    expect(zakatPage).not.toContain('href="/charity-projects?tab=reports">{wx.openReports}</Link>');
+    expect(zakatPage).toContain("onClick={() => setActiveTab('documents')}>{wx.openDocuments}</button>");
+    expect(zakatPage).not.toContain('href="/reports-center?tab=charity"');
+    expect(zakatPage).toContain('data-calculation-scope="zakat"');
   });
 });

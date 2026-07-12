@@ -1,5 +1,6 @@
 'use client';
 import { X, FileText } from 'lucide-react';
+import { AccessibleDialog } from './_AccessibleDialog';
 import type { DocumentCategory, CharityProject, ProjectDonation, ZakatAsset, Commitment } from './_types';
 
 interface DocumentModalProps {
@@ -38,8 +39,7 @@ export function DocumentModal({
   if (!open) return null;
   const titleId = 'charity-document-modal-title';
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog labelledBy={titleId} onClose={onClose}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.documentVault}</span>
@@ -130,7 +130,6 @@ export function DocumentModal({
             <button type="button" className="gold-btn" disabled={uploadingDocument} onClick={uploadDocument}>{tr.uploadDocument}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

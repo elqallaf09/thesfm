@@ -1,5 +1,6 @@
 'use client';
 import { X } from 'lucide-react';
+import { AccessibleDialog } from './_AccessibleDialog';
 import type { Lang } from './_types';
 import type { ReminderType, ReminderPriority, CharityProject, ZakatAsset, Commitment } from './_types';
 import { estimatedHijriDate } from './_utils';
@@ -41,8 +42,7 @@ export function ReminderModal({
   const close = () => { onClose(); resetReminderForm(); };
   const titleId = 'charity-reminder-modal-title';
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog labelledBy={titleId} onClose={close}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.upcomingReminders}</span>
@@ -94,13 +94,15 @@ export function ReminderModal({
                   {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
                 </select>
               </label>
-              <label>
-                <span>{tr.linkZakatAsset}</span>
-                <select value={reminderForm.related_zakat_asset_id} onChange={e => setReminderForm(prev => ({ ...prev, related_zakat_asset_id: e.target.value }))}>
-                  <option value="">-</option>
-                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
-                </select>
-              </label>
+              {reminderTypes.some(type => type === 'zakat' || type === 'hawl') && (
+                <label>
+                  <span>{tr.linkZakatAsset}</span>
+                  <select value={reminderForm.related_zakat_asset_id} onChange={e => setReminderForm(prev => ({ ...prev, related_zakat_asset_id: e.target.value }))}>
+                    <option value="">-</option>
+                    {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+                  </select>
+                </label>
+              )}
               <label>
                 <span>{tr.linkCommitment}</span>
                 <select value={reminderForm.related_commitment_id} onChange={e => setReminderForm(prev => ({ ...prev, related_commitment_id: e.target.value }))}>
@@ -119,7 +121,6 @@ export function ReminderModal({
             <button type="button" className="gold-btn" disabled={saving} onClick={saveReminder}>{tr.addReminder}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

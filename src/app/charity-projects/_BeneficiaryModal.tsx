@@ -1,6 +1,7 @@
 'use client';
 import { X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
+import { AccessibleDialog } from './_AccessibleDialog';
 import type { Lang, BeneficiaryCategory, BeneficiaryStatus, CharityProject, CharityDocument, CharityBeneficiary } from './_types';
 
 interface BeneficiaryModalProps {
@@ -48,8 +49,7 @@ export function BeneficiaryModal({
   const close = () => { onClose(); resetBeneficiaryForm(); };
   const titleId = 'charity-beneficiary-modal-title';
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog labelledBy={titleId} onClose={close}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.beneficiaryTracking}</span>
@@ -93,8 +93,7 @@ export function BeneficiaryModal({
             <button type="button" className="gold-btn" disabled={saving} onClick={saveBeneficiary}>{tr.addBeneficiary}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }
 
@@ -112,15 +111,15 @@ export function BeneficiaryDetailsModal({
 }) {
   if (!beneficiaryDetails) return null;
   const titleId = 'charity-beneficiary-details-title';
+  const close = () => setBeneficiaryDetails(null);
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal small" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <AccessibleDialog className="modal small" labelledBy={titleId} onClose={close}>
         <div className="modal-head">
           <div>
             <span className="modal-kicker">{tr.beneficiaryIdentity}</span>
             <h2 id={titleId}>{beneficiaryDetails.display_name}</h2>
           </div>
-          <button type="button" aria-label={tr.cancel} onClick={() => setBeneficiaryDetails(null)}><X size={18} /></button>
+          <button type="button" aria-label={tr.cancel} onClick={close}><X size={18} /></button>
         </div>
         <div className="details-list">
           <p><b>{tr.referenceNumber}</b><span>{beneficiaryDetails.reference_code || '-'}</span></p>
@@ -133,7 +132,6 @@ export function BeneficiaryDetailsModal({
           <p><b>{tr.linkedDocuments}</b><span>{documents.filter(document => document.project_id && document.project_id === beneficiaryDetails.project_id).length}</span></p>
           {beneficiaryDetails.notes && <p><b>{tr.notes}</b><span>{beneficiaryDetails.notes}</span></p>}
         </div>
-      </div>
-    </div>
+    </AccessibleDialog>
   );
 }

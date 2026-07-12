@@ -5,7 +5,7 @@ export type ProjectCategory = 'ongoing' | 'sponsorship' | 'zakat' | 'sacrifice' 
 export type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
 export type OrganizationType = 'charity' | 'zakat_house' | 'humanitarian' | 'waqf' | 'mosque' | 'education' | 'relief' | 'other';
 export type VerificationStatus = 'verified' | 'pending_review' | 'unverified' | 'rejected';
-export type CharityProjectsTab = 'overview' | 'projects' | 'beneficiaries' | 'contributors' | 'documents' | 'impact' | 'reports';
+export type CharityProjectsTab = 'overview' | 'projects' | 'beneficiaries' | 'donations' | 'reports' | 'impact' | 'reminders' | 'documents';
 
 export type CharityProject = {
   id: string;

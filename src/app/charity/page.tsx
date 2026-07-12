@@ -1,567 +1,763 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { CalendarDays, HandHeart, ListChecks } from 'lucide-react';
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import {
+  ArrowUpRight,
+  Banknote,
+  BellRing,
+  BookOpenCheck,
+  CalendarClock,
+  FileCheck2,
+  FolderHeart,
+  HandCoins,
+  HeartHandshake,
+  Landmark,
+  ReceiptText,
+  Scale,
+  ShieldCheck,
+  Sparkles,
+  UsersRound,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { Sidebar } from '@/components/Sidebar';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { Sidebar } from '@/components/Sidebar';
-import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { financialCurrencyLabel, formatFinancialCurrency, formatFinancialNumber } from '@/lib/financialDisplay';
-import { normalizeDigits } from '@/lib/locale';
-import { MONTHS } from '@/lib/translations';
+import { supabase } from '@/integrations/supabase/client';
+import { formatFinancialCurrency, formatFinancialNumber } from '@/lib/financialDisplay';
+import { isInCalendarYear, LEGACY_CHARITY_PREFIX, parseLegacyCharityRow, toFiniteNumber, type LegacyCharityRow } from './_data';
+import { CHARITY_TEXT } from './_text';
+import styles from './charity.module.css';
 
-const LEGACY_CHARITY_PREFIX = '\u062e\u064a\u0631\u064a\u0629';
-
-/* ─── Types ─── */
-interface CharityRecord {
+type CharityProject = {
   id: string;
-  user_id: string;
   name: string;
+  category: string | null;
+  status: string;
+  target_amount: number | null;
+  collected_amount: number | null;
+  currency: string | null;
+  organization_name: string | null;
+  created_at?: string | null;
+};
+
+type ProjectDonation = {
+  id: string;
+  project_id: string | null;
+  amount: number | null;
+  currency: string | null;
+  donation_date: string | null;
+  donation_type: string | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
+type CharityDocument = {
+  id: string;
+  title: string;
+  category: string;
+  file_url: string | null;
+  uploaded_at: string | null;
+};
+
+type CharityReminder = {
+  id: string;
+  title: string;
+  due_date: string;
+  status: string;
+};
+
+type Beneficiary = {
+  id: string;
+  status: string;
+  project_id: string | null;
+};
+
+type ImpactMetric = {
+  id: string;
+  project_id: string | null;
+  metric_name: string;
+  metric_value: number | null;
+  metric_unit: string | null;
+};
+
+type ZakatCalculation = {
+  id: string;
+  calculation_date: string | null;
+  currency: string | null;
+  zakat_due: number | null;
+  created_at?: string | null;
+};
+
+type KhumsYear = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  currency: string | null;
+  khums_due: number | null;
+  created_at: string | null;
+};
+
+type KhumsPayment = {
+  id: string;
+  khums_year_id: string | null;
+  amount: number | null;
+  currency: string | null;
+  payment_date: string | null;
+};
+
+type KhumsReminder = {
+  id: string;
+  khums_year_id: string | null;
+  reminder_date: string;
+  status: string;
+  notes: string | null;
+};
+
+type CenterData = {
+  projects: CharityProject[];
+  projectDonations: ProjectDonation[];
+  documents: CharityDocument[];
+  reminders: CharityReminder[];
+  beneficiaries: Beneficiary[];
+  impactMetrics: ImpactMetric[];
+  zakatHistory: ZakatCalculation[];
+  khumsYears: KhumsYear[];
+  khumsPayments: KhumsPayment[];
+  khumsReminders: KhumsReminder[];
+  legacyRows: LegacyCharityRow[];
+};
+
+type DonationView = {
+  id: string;
+  name: string;
+  kind: 'general' | 'project' | 'zakat' | 'khums';
   amount: number;
-  month: string;        // "YYYY-MM"
-  note: string;
-  created_at?: string;
+  currency: string;
+  date: string | null;
+  accountingDate: string | null;
+};
+
+type ReminderView = {
+  id: string;
+  title: string;
+  date: string;
+  href: string;
+};
+
+const EMPTY_DATA: CenterData = {
+  projects: [],
+  projectDonations: [],
+  documents: [],
+  reminders: [],
+  beneficiaries: [],
+  impactMetrics: [],
+  zakatHistory: [],
+  khumsYears: [],
+  khumsPayments: [],
+  khumsReminders: [],
+  legacyRows: [],
+};
+
+function timestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const result = new Date(value.length === 10 ? `${value}T00:00:00` : value).getTime();
+  return Number.isFinite(result) ? result : 0;
 }
 
-/* ─── Helpers ─── */
-function currentYM(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+function isZakatDonation(value: string | null | undefined): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized.includes('zakat') || normalized.includes('زكاة') || normalized.includes('زكاه');
 }
 
-function labelFromYM(ym: string, lang: keyof typeof MONTHS): string {
-  const [y, m] = ym.split('-');
-  return `${MONTHS[lang][parseInt(m) - 1]} ${y}`;
+function isKhumsDonation(value: string | null | undefined): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized.includes('khums') || normalized.includes('خمس');
 }
 
-function buildMonthOptions(lang: keyof typeof MONTHS): { value: string; label: string }[] {
-  const opts = [];
-  const now = new Date();
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    opts.push({ value: ym, label: labelFromYM(ym, lang) });
-  }
-  return opts.reverse();
-}
+export default function CharityCenterPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { dir, lang } = useLanguage();
+  const tr = CHARITY_TEXT[lang];
+  const [data, setData] = useState<CenterData>(EMPTY_DATA);
+  const [ready, setReady] = useState(false);
+  const [failedSources, setFailedSources] = useState(0);
+  const db = supabase as any;
 
-/* ─── Progress Ring ─── */
-function Ring({ pct, size = 80 }: { pct: number; size?: number }) {
-  const r = (size - 10) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = (Math.min(pct, 100) / 100) * c;
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <defs>
-        <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--sfm-soft-cyan)" />
-          <stop offset="100%" stopColor="var(--sfm-muted)" />
-        </linearGradient>
-      </defs>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="rgba(167,243,240,0.14)" strokeWidth="8" />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="url(#cg)" strokeWidth="8"
-        strokeDasharray={`${dash} ${c}`} strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 1s ease' }} />
-    </svg>
-  );
-}
+  useEffect(() => {
+    let cancelled = false;
 
-/* ═══════════════════════════════════════
-   CHARITY PAGE
-═══════════════════════════════════════ */
-export default function CharityPage() {
-  const { user, loading } = useAuth();
-  const { dir, lang, t } = useLanguage();
-  const router = useRouter();
-
-  /* ── State ── */
-  const [records, setRecords]   = useState<CharityRecord[]>([]);
-  const [month,   setMonth]     = useState(currentYM());
-  const [amount,  setAmount]    = useState('');
-  const [name,    setName]      = useState('');
-  const [saving,  setSaving]    = useState(false);
-  const [deleting,setDeleting]  = useState<string | null>(null);
-  const [msg,     setMsg]       = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const [mounted, setMounted]   = useState(false);
-
-  const monthOptions = useMemo(() => buildMonthOptions(lang), [lang]);
-  const selectedMonthLabel = labelFromYM(month, lang);
-  const currencyLabel = financialCurrencyLabel('KWD', lang);
-  const money = useCallback((value: unknown) => formatFinancialCurrency(value, 'KWD', lang), [lang]);
-  const number = useCallback((value: unknown) => formatFinancialNumber(value, lang, { maximumFractionDigits: 0 }), [lang]);
-  const zakatShortcut = lang === 'ar'
-    ? { title: 'الزكاة', button: 'فتح صفحة الزكاة' }
-    : lang === 'fr'
-      ? { title: 'Zakat', button: 'Ouvrir la page Zakat' }
-      : { title: 'Zakat', button: 'Open Zakat Page' };
-
-  /* ── Load charity records ── */
-  const load = useCallback(async () => {
-    if (!user) return;
-
-    // Try charity table first; fall back to expense_items with charity category
-    const { data, error } = await supabase
-      .from('expense_items')
-      .select('id, user_id, name, amount, created_at')
-      .eq('user_id', user.id)
-      .like('name', `${LEGACY_CHARITY_PREFIX}:%`)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      setMsg({ type: 'err', text: `${t('charity.loadError')}: ${error.message}` });
-      return;
+    if (authLoading) {
+      setReady(false);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    if (data) {
-      const mapped: CharityRecord[] = data.map(r => {
-        // Legacy stored name format: "<charity-prefix>:YYYY-MM:note"
-        const parts = r.name.split(':');
-        return {
-          id:         r.id,
-          user_id:    r.user_id,
-          name:       parts[2] || t('charity.defaultDonationName'),
-          amount:     Number(r.amount) || 0,
-          month:      parts[1] || currentYM(),
-          note:       parts[2] || '',
-          created_at: r.created_at,
-        };
+    if (!user) {
+      setData(EMPTY_DATA);
+      setFailedSources(0);
+      setReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const userId = user.id;
+
+    async function loadCenter() {
+      setReady(false);
+      const results = await Promise.all([
+        db.from('charity_projects').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        db.from('charity_project_donations').select('*').eq('user_id', userId).order('donation_date', { ascending: false }),
+        db.from('charity_documents').select('*').eq('user_id', userId).order('uploaded_at', { ascending: false }),
+        db.from('charity_reminders').select('*').eq('user_id', userId).order('due_date', { ascending: true }),
+        db.from('charity_beneficiaries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        db.from('charity_project_impact_metrics').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        db.from('zakat_calculations').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1),
+        db.from('khums_years').select('*').eq('user_id', userId).order('end_date', { ascending: false }),
+        db.from('khums_payments').select('*').eq('user_id', userId).order('payment_date', { ascending: false }),
+        db.from('khums_reminders').select('*').eq('user_id', userId).order('reminder_date', { ascending: true }),
+        db.from('expense_items').select('id,user_id,name,amount,created_at').eq('user_id', userId).like('name', `${LEGACY_CHARITY_PREFIX}:%`).order('created_at', { ascending: false }),
+      ]);
+
+      if (cancelled) return;
+      const [projects, projectDonations, documents, reminders, beneficiaries, impactMetrics, zakatHistory, khumsYears, khumsPayments, khumsReminders, legacyRows] = results;
+      setFailedSources(results.filter(result => Boolean(result.error)).length);
+      setData({
+        projects: projects.error ? [] : (projects.data ?? []) as CharityProject[],
+        projectDonations: projectDonations.error ? [] : (projectDonations.data ?? []) as ProjectDonation[],
+        documents: documents.error ? [] : (documents.data ?? []) as CharityDocument[],
+        reminders: reminders.error ? [] : (reminders.data ?? []) as CharityReminder[],
+        beneficiaries: beneficiaries.error ? [] : (beneficiaries.data ?? []) as Beneficiary[],
+        impactMetrics: impactMetrics.error ? [] : (impactMetrics.data ?? []) as ImpactMetric[],
+        zakatHistory: zakatHistory.error ? [] : (zakatHistory.data ?? []) as ZakatCalculation[],
+        khumsYears: khumsYears.error ? [] : (khumsYears.data ?? []) as KhumsYear[],
+        khumsPayments: khumsPayments.error ? [] : (khumsPayments.data ?? []) as KhumsPayment[],
+        khumsReminders: khumsReminders.error ? [] : (khumsReminders.data ?? []) as KhumsReminder[],
+        legacyRows: legacyRows.error ? [] : (legacyRows.data ?? []) as LegacyCharityRow[],
       });
-      setRecords(mapped);
+      setReady(true);
     }
-  }, [t, user]);
 
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 60);
-    return () => clearTimeout(t);
-  }, []);
+    void loadCenter();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, db, user]);
 
-  useEffect(() => {
-    if (user) load();
-  }, [user, load]);
+  const locale = lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const dateLabel = (value: string | null | undefined) => {
+    if (!value) return tr.unavailable;
+    const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+    if (Number.isNaN(date.getTime())) return tr.unavailable;
+    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+  };
+  const money = (value: unknown, currency = 'KWD') => formatFinancialCurrency(value, currency || 'KWD', lang);
+  const count = (value: number) => formatFinancialNumber(value, lang, { maximumFractionDigits: 0 });
 
-  /* ── Save ── */
-  const save = async () => {
-    if (!user || saving) return;
+  const summary = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const startToday = new Date();
+    startToday.setHours(0, 0, 0, 0);
+    const latestZakat = data.zakatHistory[0] ?? null;
+    const khumsYearsByEndDate = data.khumsYears
+      .filter(year => timestamp(year.end_date) > 0)
+      .sort((a, b) => timestamp(b.end_date) - timestamp(a.end_date));
+    const currentKhumsYear = khumsYearsByEndDate.find(year => (
+      timestamp(year.start_date) > 0
+      && timestamp(year.start_date) <= startToday.getTime()
+      && timestamp(year.end_date) >= startToday.getTime()
+    )) ?? khumsYearsByEndDate[0] ?? null;
+    const projectById = new Map(data.projects.map(project => [project.id, project]));
+    const zakatProjectIds = new Set(
+      data.projects.filter(project => isZakatDonation(project.category)).map(project => project.id),
+    );
+    const khumsProjectIds = new Set(
+      data.projects.filter(project => isKhumsDonation(project.category)).map(project => project.id),
+    );
+    const charityProjectIds = new Set(
+      data.projects
+        .filter(project => !zakatProjectIds.has(project.id) && !khumsProjectIds.has(project.id))
+        .map(project => project.id),
+    );
+    const isZakatProjectDonation = (donation: ProjectDonation) => (
+      isZakatDonation(donation.donation_type)
+      || Boolean(donation.project_id && zakatProjectIds.has(donation.project_id))
+    );
+    const isKhumsProjectDonation = (donation: ProjectDonation) => (
+      isKhumsDonation(donation.donation_type)
+      || Boolean(donation.project_id && khumsProjectIds.has(donation.project_id))
+    );
+    const legacyDonations: DonationView[] = data.legacyRows.map(row => {
+      const parsed = parseLegacyCharityRow(row, tr.generalDonation);
+      return {
+        id: `legacy-${parsed.id}`,
+        name: parsed.name,
+        kind: 'general',
+        amount: parsed.amount,
+        currency: 'KWD',
+        date: parsed.created_at ?? `${parsed.month}-01`,
+        accountingDate: `${parsed.month}-01`,
+      };
+    });
+    const projectDonations: DonationView[] = data.projectDonations.map(donation => {
+      const project = donation.project_id ? projectById.get(donation.project_id) : null;
+      const zakat = isZakatProjectDonation(donation);
+      const khums = isKhumsProjectDonation(donation);
+      const donationDate = donation.donation_date || donation.created_at;
+      return {
+        id: `project-${donation.id}`,
+        name: project?.name || donation.notes || (zakat ? tr.zakatPayment : tr.projectDonation),
+        kind: zakat ? 'zakat' : khums ? 'khums' : 'project',
+        amount: toFiniteNumber(donation.amount),
+        currency: donation.currency || 'KWD',
+        date: donationDate,
+        accountingDate: donationDate,
+      };
+    });
+    const donations = [...legacyDonations, ...projectDonations].sort((a, b) => timestamp(b.date) - timestamp(a.date));
+    const latestZakatDate = latestZakat?.calculation_date || latestZakat?.created_at || null;
+    const zakatCurrency = latestZakat?.currency || 'KWD';
+    const zakatPaid = data.projectDonations
+      .filter(isZakatProjectDonation)
+      .filter(donation => donation.currency === zakatCurrency)
+      .filter(donation => !latestZakatDate || timestamp(donation.donation_date || donation.created_at) >= timestamp(latestZakatDate))
+      .reduce((total, donation) => total + toFiniteNumber(donation.amount), 0);
+    const khumsCurrency = currentKhumsYear?.currency || 'KWD';
+    const khumsPaid = currentKhumsYear
+      ? data.khumsPayments
+        .filter(payment => payment.khums_year_id === currentKhumsYear.id)
+        .filter(payment => payment.currency === khumsCurrency)
+        .reduce((total, payment) => total + toFiniteNumber(payment.amount), 0)
+      : 0;
+    const zakatDue = toFiniteNumber(latestZakat?.zakat_due);
+    const khumsDue = toFiniteNumber(currentKhumsYear?.khums_due);
+    const paidThisYear = legacyDonations
+      .filter(donation => isInCalendarYear(donation.accountingDate, currentYear))
+      .reduce((total, donation) => total + donation.amount, 0)
+      + data.projectDonations
+        .filter(donation => isInCalendarYear(donation.donation_date || donation.created_at, currentYear))
+        .filter(donation => donation.currency === 'KWD')
+        .reduce((total, donation) => total + toFiniteNumber(donation.amount), 0)
+      + data.khumsPayments
+        .filter(payment => isInCalendarYear(payment.payment_date, currentYear))
+        .filter(payment => payment.currency === 'KWD')
+        .reduce((total, payment) => total + toFiniteNumber(payment.amount), 0);
 
-    const amt = parseFloat(normalizeDigits(amount).replace(/[^\d.]/g, ''));
-    if (!amt || amt <= 0) { setMsg({ type: 'err', text: t('charity.invalidAmount') }); return; }
-    if (!name.trim())     { setMsg({ type: 'err', text: t('charity.invalidName') }); return; }
+    const reminders: ReminderView[] = [
+      ...data.reminders
+        .filter(reminder => reminder.status === 'active')
+        .map(reminder => ({ id: `charity-${reminder.id}`, title: reminder.title, date: reminder.due_date, href: '/charity-projects?tab=reminders' })),
+      ...data.khumsReminders
+        .filter(reminder => reminder.status === 'active')
+        .filter(reminder => reminder.khums_year_id === currentKhumsYear?.id)
+        .map(reminder => ({ id: `khums-${reminder.id}`, title: reminder.notes || tr.khums, date: reminder.reminder_date, href: '/khums' })),
+    ].sort((a, b) => timestamp(a.date) - timestamp(b.date));
+    const overdueReminder = reminders.find(reminder => timestamp(reminder.date) < startToday.getTime()) ?? null;
+    const nextReminder = overdueReminder ?? reminders.find(reminder => timestamp(reminder.date) >= startToday.getTime()) ?? null;
+    const activeProjects = data.projects.filter(project => charityProjectIds.has(project.id) && !['completed', 'paused'].includes(project.status));
+    const supportedIds = new Set(data.projectDonations
+      .filter(donation => (
+        Boolean(donation.project_id)
+        && charityProjectIds.has(donation.project_id as string)
+        && !isZakatProjectDonation(donation)
+        && !isKhumsProjectDonation(donation)
+      ))
+      .map(donation => donation.project_id as string));
+    const supportedProjects = activeProjects.filter(project => supportedIds.has(project.id));
+    const displayedProjects = supportedProjects.slice(0, 3);
+    const charityBeneficiaries = data.beneficiaries.filter(beneficiary => (
+      !beneficiary.project_id || charityProjectIds.has(beneficiary.project_id)
+    ));
+    const charityImpactMetrics = data.impactMetrics.filter(metric => (
+      !metric.project_id || charityProjectIds.has(metric.project_id)
+    ));
+    const activeBeneficiaries = charityBeneficiaries.filter(beneficiary => beneficiary.status === 'active').length;
 
-    setSaving(true); setMsg(null);
+    return {
+      latestZakat,
+      currentKhumsYear,
+      zakatDue,
+      zakatPaid,
+      zakatRemaining: Math.max(zakatDue - zakatPaid, 0),
+      khumsDue,
+      khumsPaid,
+      khumsRemaining: Math.max(khumsDue - khumsPaid, 0),
+      paidThisYear,
+      donations,
+      nextReminder,
+      overdueReminder,
+      displayedProjects,
+      activeBeneficiaries,
+      totalBeneficiaries: charityBeneficiaries.length,
+      impactMetrics: charityImpactMetrics,
+      supportedProjectCount: supportedIds.size,
+    };
+  }, [data, tr.generalDonation, tr.khums, tr.projectDonation, tr.zakatPayment]);
 
-    /*
-      Store in expense_items using a prefixed name convention:
-        "<charity-prefix>:YYYY-MM:note"
-      This lets us:
-        1. Filter charity records easily
-        2. Count charity as an expense automatically (it IS in expense_items)
-        3. Avoid needing a separate table
-    */
-    const rowName = `${LEGACY_CHARITY_PREFIX}:${month}:${name.trim()}`;
+  const pathways: Array<{ href: string; title: string; description: string; icon: LucideIcon }> = [
+    { href: '/zakat', title: tr.navZakat, description: tr.navZakatDesc, icon: Scale },
+    { href: '/khums', title: tr.navKhums, description: tr.navKhumsDesc, icon: Landmark },
+    { href: '/charity/donations', title: tr.navDonations, description: tr.navDonationsDesc, icon: HandCoins },
+    { href: '/charity-projects?tab=projects', title: tr.navProjects, description: tr.navProjectsDesc, icon: FolderHeart },
+    { href: '/charity-projects?tab=beneficiaries', title: tr.navBeneficiaries, description: tr.navBeneficiariesDesc, icon: UsersRound },
+    { href: '/charity-projects?tab=reports', title: tr.navReports, description: tr.navReportsDesc, icon: ReceiptText },
+    { href: '/charity-projects?tab=impact', title: tr.navImpact, description: tr.navImpactDesc, icon: Sparkles },
+    { href: '/charity-projects?tab=reminders', title: tr.navReminders, description: tr.navRemindersDesc, icon: BellRing },
+  ];
 
-    try {
-      const { error } = await supabase
-        .from('expense_items')
-        .insert({
-          user_id: user.id,
-          name:    rowName,
-          amount:  amt,
-        });
+  const recommendation = summary.overdueReminder
+    ? { title: tr.recommendationOverdueTitle, body: tr.recommendationOverdueBody, href: summary.overdueReminder.href }
+    : summary.latestZakat && summary.zakatRemaining > 0
+      ? { title: tr.recommendationZakatTitle, body: tr.recommendationZakatBody, href: '/zakat' }
+      : summary.currentKhumsYear && summary.khumsRemaining > 0
+        ? { title: tr.recommendationKhumsTitle, body: tr.recommendationKhumsBody, href: '/khums' }
+        : summary.donations.length === 0
+          ? { title: tr.recommendationDonationTitle, body: tr.recommendationDonationBody, href: '/charity/donations' }
+          : { title: tr.recommendationReportsTitle, body: tr.recommendationReportsBody, href: '/charity-projects?tab=reports' };
 
-      if (error) {
-        setMsg({ type: 'err', text: `${t('charity.saveError')}: ${error.message}` });
-      } else {
-        setMsg({ type: 'ok', text: t('charity.saveSuccess').replace('{amount}', formatFinancialNumber(amt, lang, { minimumFractionDigits: 3, maximumFractionDigits: 3 })).replace('{currency}', currencyLabel).replace('{month}', selectedMonthLabel) });
-        setAmount(''); setName('');
-        await load();
-      }
-    } finally {
-      setSaving(false);
-    }
+  const recentDocuments = data.documents.slice(0, 3);
+  const documentKind = (category: string) => {
+    if (category === 'donation_receipt') return tr.receipt;
+    if (category === 'charity_certificate') return tr.certificate;
+    if (category.includes('report')) return tr.report;
+    return tr.document;
   };
 
-  /* ── Delete ── */
-  const remove = async (id: string) => {
-    if (deleting) return;
-
-    setDeleting(id);
-    const { error } = await supabase.from('expense_items').delete().eq('id', id);
-    if (error) {
-      setMsg({ type: 'err', text: `${t('charity.deleteError')}: ${error.message}` });
-    } else {
-      setRecords(r => r.filter(x => x.id !== id));
-      setMsg({ type: 'ok', text: t('charity.deleteSuccess') });
-    }
-    setDeleting(null);
-  };
-
-  /* ── Derived ── */
-  const monthRecords  = records.filter(r => r.month === month);
-  const monthTotal    = monthRecords.reduce((s, r) => s + r.amount, 0);
-  const allTotal      = records.reduce((s, r) => s + r.amount, 0);
-  const targetPct     = allTotal > 0 ? Math.min((monthTotal / (allTotal / 12)) * 100, 100) : 0;
-
-  const S = (d: number) => ({
-    opacity:   mounted ? 1 : 0,
-    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
-    transition: `opacity .5s ease ${d}ms, transform .5s ease ${d}ms`,
-  });
-
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--sfm-light-card)' }}>
-      <div style={{ width: '44px', height: '44px', borderRadius: '50%', border: '3px solid rgba(167,243,240,0.2)', borderTopColor: 'var(--sfm-soft-cyan)', animation: 'spin 1s linear infinite' }} />
-    </div>
-  );
-
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-        .cp { font-family: 'Tajawal', sans-serif; background: var(--sfm-light-card); min-height: 100vh; color: var(--sfm-foreground); display: flex; overflow-x: hidden; }
-        .charity-content { width: 100%; max-width: none; margin: 0; min-width: 0; }
-        .g2 > *, .charity-kpi-grid > *, .cc { min-width: 0; }
-        .cp ::-webkit-scrollbar { width: 4px; }
-        .cp ::-webkit-scrollbar-thumb { background: rgba(167,243,240,.3); border-radius: var(--r-sm); }
-        .cc { background: var(--sfm-card); border: 1px solid rgba(167,243,240,.14); border-radius: var(--r-2xl); box-shadow: 0 4px 22px rgba(3,18,37,.06); transition: all .25s cubic-bezier(.4,0,.2,1); }
-        .cc:hover:not(.no-h) { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(3,18,37,.10); }
-        .ci { width: 100%; background: rgba(247,243,234,.7); border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); padding: 13px 16px; font-family: 'Tajawal', sans-serif; font-size: 15px; color: var(--sfm-foreground); outline: none; transition: border-color .2s, box-shadow .2s; -webkit-appearance: none; }
-        .ci:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.14); }
-        .ci-sel { background: rgba(247,243,234,.7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231D8CFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left 14px center; cursor: pointer; }
-        .save-btn { width: 100%; height: var(--control-h-lg); background: linear-gradient(135deg, var(--sfm-foreground) 0%, var(--sfm-primary-dark) 50%, var(--sfm-soft-cyan) 100%); border: none; border-radius: var(--r-lg); color: #fff; font-family: 'Tajawal', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all .25s; position: relative; overflow: hidden; }
-        .save-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); opacity: 0; transition: opacity .25s; }
-        .save-btn:hover:not(:disabled)::before { opacity: 1; }
-        .save-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(21,21,21,.25), 0 0 0 1px rgba(167,243,240,.35); }
-        .save-btn:active:not(:disabled) { transform: scale(.98); }
-        .save-btn:disabled { opacity: .55; cursor: not-allowed; }
-        .save-btn span { position: relative; z-index: 1; }
-        .row-hover:hover { background: rgba(167,243,240,.04) !important; }
-        .charity-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 16px; align-items: stretch; margin: 4px 0 24px; }
-        .charity-kpi-card { min-height: 128px; padding: 18px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; gap: 8px 13px; border-radius: var(--r-xl); }
-        .charity-kpi-icon { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: var(--r-md); display: grid; place-items: center; flex: 0 0 auto; }
-        .charity-kpi-label { color: var(--sfm-muted); font-size: 12.5px; font-weight: 900; line-height: 1.45; }
-        .charity-kpi-value { align-self: end; color: var(--sfm-primary-dark); font-family: 'IBM Plex Sans Arabic', sans-serif; font-size: clamp(20px, 1.55vw, 25px); font-weight: 950; line-height: 1.2; unicode-bidi: isolate; }
-        .charity-projects-shortcut { margin: -6px 0 22px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: radial-gradient(circle at 12% 15%, rgba(167,243,240,.18), transparent 30%), linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 62%,var(--sfm-card-dark) 145%); border: 1px solid rgba(167,243,240,.24); border-radius: var(--r-2xl); box-shadow: 0 12px 34px rgba(3,18,37,.14); color: var(--sfm-card); overflow: hidden; }
-        .charity-projects-shortcut-icon { width: 52px; height: 52px; border-radius: var(--r-lg); background: rgba(167,243,240,.16); border: 1px solid rgba(167,243,240,.22); display: grid; place-items: center; font-size: 24px; flex: 0 0 auto; }
-        .charity-projects-shortcut-copy { display: flex; align-items: center; gap: 14px; min-width: 0; }
-        .charity-projects-shortcut h2 { margin: 0; color: var(--sfm-card); font-size: 18px; font-weight: 900; }
-        .charity-projects-shortcut p { margin: 5px 0 0; color: rgba(248,251,255,.68); font-size: 13px; line-height: 1.75; max-width: 760px; }
-        .charity-projects-shortcut-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-        .charity-projects-shortcut button { min-height: 44px; border: 0; border-radius: var(--r-md); background: linear-gradient(135deg,var(--sfm-soft-cyan),var(--sfm-soft-cyan)); color: var(--sfm-foreground); padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: Tajawal,sans-serif; font-size: 13px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 22px rgba(167,243,240,.22); }
-        @media (max-width: 768px) { .g2 { grid-template-columns: 1fr !important; } .charity-kpi-grid { grid-template-columns: 1fr 1fr !important; } }
-        @media (max-width: 640px) { .charity-projects-shortcut { display: grid; padding: 18px; } .charity-projects-shortcut-copy { align-items: flex-start; } .charity-projects-shortcut-actions { display: grid; } .charity-projects-shortcut button { width: 100%; } }
-        @media (max-width: 560px) { .charity-kpi-grid { grid-template-columns: 1fr !important; } .charity-kpi-card { min-height: 116px; } }
-      `}</style>
-
-      <div className="cp" dir={dir}>
+  if (authLoading || !ready) {
+    return (
+      <div dir={dir} lang={lang}>
         <Sidebar />
-        <DashboardPageShell className="charity-main" contentClassName="charity-content">
-
-          {/* ─── Header ─── */}
-          <div style={{ ...S(0), display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => router.push('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 16px', background: 'var(--sfm-card)', border: '1.5px solid rgba(167,243,240,.22)', borderRadius: 'var(--r-md)', cursor: 'pointer', color: 'var(--sfm-muted)', fontSize: '13px', fontWeight: '700', fontFamily: 'Tajawal,sans-serif', flexShrink: 0 }}
-            >{t('common_backToDashboard')}</button>
-            <div style={{ flex: 1, minWidth: '220px' }}>
-              <h1 style={{ fontSize: 'clamp(22px,4vw,30px)', fontWeight: '900', color: 'var(--sfm-foreground)', lineHeight: 1.2 }}>
-                🤲 {t('charity.title')}
-              </h1>
-              <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', marginTop: '4px' }}>
-                {t('charity.subtitle')}
-              </p>
-            </div>
-            <LanguageSwitcher variant="gold" compact />
-          </div>
-
-          {/* ─── KPI row ─── */}
-          <div className="charity-kpi-grid" style={S(40)}>
-            {[
-              { icon: HandHeart, label: t('charity.monthTotal').replace('{month}', selectedMonthLabel), value: money(monthTotal), color: 'var(--sfm-soft-cyan)' },
-              { icon: CalendarDays, label: t('charity.yearTotal'), value: money(allTotal), color: '#22C55E' },
-              { icon: ListChecks, label: t('charity.donationCount'), value: number(records.length), color: '#3B82F6' },
-            ].map((k, i) => (
-              <div key={i} className="cc no-h charity-kpi-card">
-                <div className="charity-kpi-icon" style={{ background: `${k.color}14`, color: k.color }}>
-                  {(() => {
-                    const Icon = k.icon as LucideIcon;
-                    return <Icon size={20} strokeWidth={2.4} />;
-                  })()}
-                </div>
-                <div className="charity-kpi-label">{k.label}</div>
-                <div className="charity-kpi-value" dir="ltr">{k.value}</div>
-              </div>
-            ))}
-          </div>
-
-          <section className="charity-projects-shortcut" style={S(70)}>
-            <div className="charity-projects-shortcut-copy">
-              <div className="charity-projects-shortcut-icon" aria-hidden="true">🌙</div>
-              <div>
-                <h2>{t('charity.projectsShortcutTitle')}</h2>
-                <p>{t('charity.projectsShortcutDescription')}</p>
-              </div>
-            </div>
-            <div className="charity-projects-shortcut-actions">
-              <button type="button" onClick={() => router.push('/charity-projects')}>
-                {t('charity.openProjects')}
-              </button>
-              <button type="button" onClick={() => router.push('/zakat')} aria-label={zakatShortcut.button}>
-                {zakatShortcut.button}
-              </button>
-            </div>
-          </section>
-
-          <div className="g2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: '20px', alignItems: 'start' }}>
-
-            {/* ─── LEFT: Form + History ─── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-
-              {/* Message */}
-              {msg && (
-                <div style={{ padding: '13px 18px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: '10px', background: msg.type === 'ok' ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)', border: `1.5px solid ${msg.type === 'ok' ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)'}`, color: msg.type === 'ok' ? '#16A34A' : '#DC2626', animation: 'fadeUp .3s ease', fontFamily: 'Tajawal,sans-serif', fontSize: '14px', fontWeight: '600' }}>
-                  {msg.text}
-                </div>
-              )}
-
-              {/* Add charity form */}
-              <div className="cc" style={{ ...S(80), padding: '26px 28px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px', paddingBottom: '18px', borderBottom: '1px solid rgba(167,243,240,.10)' }}>
-                  <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent))', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 14px rgba(167,243,240,.3)' }}>🤲</div>
-                  <div>
-                    <h2 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{t('charity.addDonation')}</h2>
-                    <p style={{ fontSize: '12px', color: 'var(--sfm-muted)', marginTop: '2px' }}>{t('charity.autoExpenseNote')}</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Month selector */}
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>📅 {t('charity.month')}</label>
-                    <select className="ci ci-sel" value={month} onChange={e => setMonth(e.target.value)}
-                      style={{ height: '48px', paddingLeft: '36px' }}>
-                      {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Amount */}
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>💰 {t('charity.amount')}</label>
-                    <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid rgba(167,243,240,.25)', borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'rgba(247,243,234,.7)', transition: 'border-color .2s, box-shadow .2s' }}
-                      onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--sfm-soft-cyan)'}
-                      onBlurCapture={e => e.currentTarget.style.borderColor = 'rgba(167,243,240,.25)'}>
-                      <span style={{ padding: '0 12px', fontSize: '12.5px', fontWeight: '700', color: 'var(--sfm-soft-cyan)', borderInlineStart: '1px solid rgba(167,243,240,.18)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}>{currencyLabel}</span>
-                      <input
-                        type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={amount}
-                        onChange={e => setAmount(e.target.value)}
-                        style={{ flex: 1, height: '48px', padding: '0 14px', background: 'transparent', border: 'none', outline: 'none', fontSize: '17px', fontWeight: '700', color: 'var(--sfm-foreground)', fontFamily: "'IBM Plex Sans Arabic',sans-serif" }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Name / note */}
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-muted)', display: 'block', marginBottom: '7px' }}>📝 {t('charity.nameOrNote')}</label>
-                    <input className="ci" placeholder={t('charity.namePlaceholder')} value={name}
-                      onChange={e => setName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && save()}
-                      style={{ height: '48px' }} />
-                  </div>
-
-                  {/* Save */}
-                  <button className="save-btn" onClick={save} disabled={saving}>
-                    <span>
-                      {saving
-                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2.5px solid rgba(255,255,255,.25)', borderTopColor: '#fff', animation: 'spin 1s linear infinite', display: 'inline-block' }} />
-                          {t('saving')}
-                        </span>
-                        : `🤲 ${t('charity.saveDonation')}`}
-                    </span>
-                  </button>
-
-                  <p style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--sfm-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                    <span>📊</span> {t('charity.countedInExpenses')}
-                  </p>
-                </div>
-              </div>
-
-              {/* History table */}
-              <div className="cc" style={{ ...S(160), padding: '22px 24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>
-                    {t('charity.historyTitle')}
-                    {monthRecords.length > 0 && (
-                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--sfm-muted)', marginInlineStart: '8px' }}>
-                        ({selectedMonthLabel})
-                      </span>
-                    )}
-                  </h3>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', background: 'rgba(167,243,240,.10)', borderRadius: 'var(--r-xl)', color: 'var(--sfm-muted)', fontWeight: '700' }}>
-                    {t('charity.donationCountValue').replace('{count}', String(monthRecords.length))}
-                  </span>
-                </div>
-
-                {monthRecords.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>🤲</div>
-                    <p style={{ fontSize: '14px', color: 'var(--sfm-muted)', lineHeight: 1.6 }}>
-                      {t('charity.noDonationsForMonth').replace('{month}', selectedMonthLabel)}
-                    </p>
-                  </div>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid rgba(167,243,240,.12)' }}>
-                        {[t('charity.tableName'), t('charity.tableAmount'), t('charity.tableMonth'), ''].map(h => (
-                          <th key={h} style={{ padding: '9px 10px', textAlign: 'right', fontSize: '11.5px', fontWeight: '700', color: 'var(--sfm-muted)', letterSpacing: '.02em' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthRecords.map((r, i) => (
-                        <tr key={r.id} className="row-hover" style={{ borderBottom: i < monthRecords.length - 1 ? '1px solid rgba(167,243,240,.07)' : 'none', background: 'transparent', transition: 'background .15s' }}>
-                          <td style={{ padding: '12px 10px', fontSize: '13.5px', color: 'var(--sfm-muted)', fontWeight: '600' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '16px' }}>🤲</span>
-                              {r.name}
-                            </div>
-                          </td>
-                          <td style={{ padding: '12px 10px' }}>
-                            <span dir="ltr" style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
-                              {money(r.amount)}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 10px', fontSize: '12px', color: 'var(--sfm-muted)' }}>{labelFromYM(r.month, lang)}</td>
-                          <td style={{ padding: '12px 10px', textAlign: 'left' }}>
-                            <button onClick={() => remove(r.id)} disabled={deleting === r.id}
-                              style={{ width: '32px', height: '32px', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 'var(--r-sm)', cursor: 'pointer', color: '#EF4444', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
-                              {deleting === r.id ? '...' : '✕'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    {/* Total row */}
-                    <tfoot>
-                      <tr style={{ borderTop: '2px solid rgba(167,243,240,.12)' }}>
-                        <td colSpan={1} style={{ padding: '12px 10px', fontSize: '13.5px', fontWeight: '800', color: 'var(--sfm-foreground)' }}>{t('charity.total')}</td>
-                        <td style={{ padding: '12px 10px' }}>
-                          <span dir="ltr" style={{ fontSize: '16px', fontWeight: '900', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
-                            {money(monthTotal)}
-                          </span>
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </div>
-
-              {/* All months summary */}
-              {records.length > 0 && (
-                <div className="cc" style={{ ...S(220), padding: '22px 24px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '16px' }}>
-                    {t('charity.allMonthsSummary')}
-                  </h3>
-                  {(() => {
-                    const byMonth: Record<string, number> = {};
-                    records.forEach(r => { byMonth[r.month] = (byMonth[r.month] || 0) + r.amount; });
-                    return Object.entries(byMonth)
-                      .sort((a, b) => b[0].localeCompare(a[0]))
-                      .map(([ym, total]) => (
-                        <div key={ym} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid rgba(167,243,240,.07)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--sfm-soft-cyan)' }} />
-                            <span style={{ fontSize: '13.5px', fontWeight: '600', color: 'var(--sfm-muted)', cursor: 'pointer' }}
-                              onClick={() => setMonth(ym)}>{labelFromYM(ym, lang)}</span>
-                          </div>
-                          <span dir="ltr" style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", unicodeBidi: 'isolate' }}>
-                            {money(total)}
-                          </span>
-                        </div>
-                      ));
-                  })()}
-                </div>
-              )}
-            </div>
-
-            {/* ─── RIGHT: AI Sidebar ─── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'sticky', top: '20px' }}>
-
-              {/* Progress card */}
-              <div style={{ background: 'linear-gradient(145deg,var(--sfm-primary-dark),var(--sfm-card-dark))', borderRadius: 'var(--r-2xl)', padding: '24px 20px', textAlign: 'center', border: '1px solid rgba(167,243,240,.2)', boxShadow: '0 8px 32px rgba(3,18,37,.22)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '130px', height: '130px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(167,243,240,.12) 0%,transparent 70%)', pointerEvents: 'none' }} />
-                <div style={{ fontSize: '13px', color: 'rgba(167,243,240,.6)', marginBottom: '16px', fontWeight: '600', letterSpacing: '.04em' }}>{t('charity.thisMonth')}</div>
-                <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 14px' }}>
-                  <Ring pct={targetPct} size={80} />
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '17px', fontWeight: '900', color: 'var(--sfm-soft-cyan)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", lineHeight: 1 }}>{Math.round(targetPct)}</span>
-                    <span style={{ fontSize: '9px', color: 'rgba(167,243,240,.5)' }}>%</span>
-                  </div>
-                </div>
-                <div dir="ltr" style={{ fontSize: '22px', fontWeight: '900', color: 'var(--sfm-card)', fontFamily: "'IBM Plex Sans Arabic',sans-serif", marginBottom: '6px', unicodeBidi: 'isolate' }}>
-                  {money(monthTotal)}
-                </div>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,.35)' }}>{selectedMonthLabel}</div>
-              </div>
-
-              {/* Charity types guide */}
-              <div className="cc no-h" style={{ padding: '20px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--sfm-foreground)', marginBottom: '14px' }}>🌟 {t('charity.typesTitle')}</h4>
-                {[
-                  { icon: '🙏', name: t('charity.typeGeneral'), desc: t('charity.typeGeneralDesc') },
-                  { icon: '🌙', name: t('charity.typeZakat'), desc: t('charity.typeZakatDesc') },
-                  { icon: '🐑', name: t('charity.typeSacrifice'), desc: t('charity.typeSacrificeDesc') },
-                  { icon: '👶', name: t('charity.typeOrphan'), desc: t('charity.typeOrphanDesc') },
-                  { icon: '📿', name: t('charity.typeKaffara'), desc: t('charity.typeKaffaraDesc') },
-                  { icon: '🕌', name: t('charity.typeWaqf'), desc: t('charity.typeWaqfDesc') },
-                ].map((type, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: i < 5 ? '1px solid rgba(167,243,240,.07)' : 'none', cursor: 'pointer' }}
-                    onClick={() => setName(type.name)}>
-                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{type.icon}</span>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-foreground)' }}>{type.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{type.desc}</div>
-                    </div>
-                    <span style={{ marginInlineStart: 'auto', fontSize: '11px', color: 'var(--sfm-soft-cyan)' }}>{t('charity.selectType')}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* AI tip */}
-              <div style={{ background: 'rgba(167,243,240,.07)', border: '1px solid rgba(167,243,240,.2)', borderRadius: 'var(--r-xl)', padding: '18px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '16px' }}>✨</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--sfm-soft-cyan)' }}>{t('charity.dailyMessage')}</span>
-                </div>
-                <p style={{ fontSize: '13px', color: 'var(--sfm-muted)', lineHeight: 1.75, fontStyle: 'italic' }}>
-                  {t('charity.dailyQuote')}
-                </p>
-              </div>
-
+        <DashboardPageShell ariaLabel={tr.centerAria} className={styles.shell} contentClassName={styles.shellContent}>
+          <div className={styles.page} dir={dir} lang={lang} data-charity-experience="center">
+            <div className={styles.loadingState} role="status" aria-live="polite">
+              <span className={styles.loadingMark} aria-hidden="true"><HeartHandshake size={28} /></span>
+              <span>{tr.loading}</span>
             </div>
           </div>
-
-          {/* Footer */}
-          <div style={{ ...S(300), marginTop: '24px', paddingTop: '18px', borderTop: '1px solid rgba(167,243,240,.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '800', color: 'var(--sfm-soft-cyan)' }}>
-              <Image src="/sfm-logo.png" alt="THE SFM" width={24} height={24} className="sfm-brand-mark sfm-brand-mark--compact" />
-              <span>THE SFM</span>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--sfm-muted)' }}>{t('charity.footerNote')}</p>
-          </div>
-
         </DashboardPageShell>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div dir={dir} lang={lang}>
+      <Sidebar />
+      <DashboardPageShell ariaLabel={tr.centerAria} className={styles.shell} contentClassName={styles.shellContent}>
+        <div className={styles.page} dir={dir} lang={lang} data-charity-experience="center">
+          <header className={styles.hero}>
+            <div className={styles.heroCopy}>
+              <span className={styles.eyebrow}>{tr.eyebrow}</span>
+              <h1>{tr.centerTitle}</h1>
+              <p>{tr.centerSubtitle}</p>
+            </div>
+            <div className={styles.languageControl}>
+              <LanguageSwitcher variant="dark" compact />
+            </div>
+            <div className={styles.heroPrinciple}>
+              <ShieldCheck aria-hidden="true" size={22} />
+              <div>
+                <strong>{tr.centerPrinciple}</strong>
+                <span>{tr.centerPrincipleNote}</span>
+              </div>
+            </div>
+          </header>
+
+          {failedSources > 0 && (
+            <div className={styles.notice} role="status">
+              <BookOpenCheck aria-hidden="true" size={20} />
+              <span>{tr.partialData}</span>
+            </div>
+          )}
+
+          <section className={styles.obligationBoard} aria-label={tr.centerPrinciple}>
+            <article className={styles.obligationLane}>
+              <div className={styles.laneHeader}>
+                <span className={styles.laneIcon}><Scale aria-hidden="true" size={22} /></span>
+                <div>
+                  <h2>{tr.zakat}</h2>
+                  <span className={styles.independentBadge}>{tr.independent}</span>
+                </div>
+              </div>
+              <p className={styles.laneRule}>{tr.zakatRule}</p>
+              <div className={styles.primaryFigure}>
+                <span>{tr.amountDue}</span>
+                <strong title={tr.zakatRule}>{summary.latestZakat ? money(summary.zakatDue, summary.latestZakat.currency || 'KWD') : tr.unavailable}</strong>
+                {!summary.latestZakat && <small>{tr.noZakatCalculation}</small>}
+              </div>
+              <dl className={styles.balanceGrid}>
+                <div>
+                  <dt>{tr.paidToward}</dt>
+                  <dd>{summary.latestZakat ? money(summary.zakatPaid, summary.latestZakat.currency || 'KWD') : tr.unavailable}</dd>
+                </div>
+                <div>
+                  <dt>{tr.remaining}</dt>
+                  <dd>{summary.latestZakat ? money(summary.zakatRemaining, summary.latestZakat.currency || 'KWD') : tr.unavailable}</dd>
+                </div>
+              </dl>
+              <dl className={styles.evidenceList}>
+                <div><dt>{tr.formula}</dt><dd>{tr.zakatFormula}</dd></div>
+                <div><dt>{tr.calculationSource}</dt><dd>{tr.sourceSavedZakat}</dd></div>
+                <div><dt>{tr.lastUpdated}</dt><dd>{dateLabel(summary.latestZakat?.calculation_date || summary.latestZakat?.created_at)}</dd></div>
+              </dl>
+              <Link href="/zakat" className={styles.laneLink}>{tr.openZakat}<ArrowUpRight aria-hidden="true" size={18} /></Link>
+            </article>
+
+            <div className={styles.ledgerDivider} aria-hidden="true"><span /></div>
+
+            <article className={styles.obligationLane}>
+              <div className={styles.laneHeader}>
+                <span className={styles.laneIcon}><Landmark aria-hidden="true" size={22} /></span>
+                <div>
+                  <h2>{tr.khums}</h2>
+                  <span className={styles.independentBadge}>{tr.independent}</span>
+                </div>
+              </div>
+              <p className={styles.laneRule}>{tr.khumsRule}</p>
+              <div className={styles.primaryFigure}>
+                <span>{tr.amountDue}</span>
+                <strong title={tr.khumsRule}>{summary.currentKhumsYear ? money(summary.khumsDue, summary.currentKhumsYear.currency || 'KWD') : tr.unavailable}</strong>
+                {!summary.currentKhumsYear && <small>{tr.noKhumsYear}</small>}
+              </div>
+              <dl className={styles.balanceGrid}>
+                <div>
+                  <dt>{tr.paidToward}</dt>
+                  <dd>{summary.currentKhumsYear ? money(summary.khumsPaid, summary.currentKhumsYear.currency || 'KWD') : tr.unavailable}</dd>
+                </div>
+                <div>
+                  <dt>{tr.remaining}</dt>
+                  <dd>{summary.currentKhumsYear ? money(summary.khumsRemaining, summary.currentKhumsYear.currency || 'KWD') : tr.unavailable}</dd>
+                </div>
+              </dl>
+              <dl className={styles.evidenceList}>
+                <div><dt>{tr.formula}</dt><dd>{tr.khumsFormula}</dd></div>
+                <div><dt>{tr.calculationSource}</dt><dd>{tr.sourceSavedKhums}</dd></div>
+                <div><dt>{tr.currentYear}</dt><dd>{summary.currentKhumsYear ? `${dateLabel(summary.currentKhumsYear.start_date)} — ${dateLabel(summary.currentKhumsYear.end_date)}` : tr.unavailable}</dd></div>
+              </dl>
+              <Link href="/khums" className={styles.laneLink}>{tr.openKhums}<ArrowUpRight aria-hidden="true" size={18} /></Link>
+            </article>
+          </section>
+
+          <section className={styles.statusGrid} aria-label={tr.paidThisYear}>
+            <article className={styles.statusCard}>
+              <span className={styles.statusIcon}><Banknote aria-hidden="true" size={21} /></span>
+              <div>
+                <h2>{tr.paidThisYear}</h2>
+                <strong>{money(summary.paidThisYear)}</strong>
+                <p>{tr.paidThisYearHelp}</p>
+              </div>
+            </article>
+            <article className={styles.statusCard}>
+              <span className={styles.statusIcon}><Scale aria-hidden="true" size={21} /></span>
+              <div className={styles.splitStatus}>
+                <h2>{tr.splitRemaining}</h2>
+                <div>
+                  <span>{tr.zakat}</span>
+                  <strong>{summary.latestZakat ? money(summary.zakatRemaining, summary.latestZakat.currency || 'KWD') : tr.unavailable}</strong>
+                </div>
+                <div>
+                  <span>{tr.khums}</span>
+                  <strong>{summary.currentKhumsYear ? money(summary.khumsRemaining, summary.currentKhumsYear.currency || 'KWD') : tr.unavailable}</strong>
+                </div>
+                <p>{tr.splitRemainingHelp}</p>
+              </div>
+            </article>
+            <article className={styles.statusCard}>
+              <span className={styles.statusIcon}><CalendarClock aria-hidden="true" size={21} /></span>
+              <div>
+                <h2>{tr.nextReminder}</h2>
+                {summary.nextReminder ? (
+                  <>
+                    <strong>{dateLabel(summary.nextReminder.date)}</strong>
+                    <p>{summary.nextReminder.title}</p>
+                    <span className={summary.overdueReminder ? styles.overdueBadge : styles.upcomingBadge}>
+                      {summary.overdueReminder ? tr.overdue : tr.upcoming}
+                    </span>
+                  </>
+                ) : (
+                  <strong className={styles.noValue}>{tr.noReminder}</strong>
+                )}
+              </div>
+            </article>
+          </section>
+
+          <section className={styles.recommendation} aria-labelledby="charity-recommendation-title">
+            <div className={styles.recommendationIcon}><Sparkles aria-hidden="true" size={24} /></div>
+            <div>
+              <span>{tr.recommendedAction}</span>
+              <h2 id="charity-recommendation-title">{recommendation.title}</h2>
+              <p>{recommendation.body}</p>
+            </div>
+            <Link href={recommendation.href} className={styles.primaryAction}>{tr.takeAction}<ArrowUpRight aria-hidden="true" size={18} /></Link>
+          </section>
+
+          <section className={styles.section} aria-labelledby="charity-pathways-title">
+            <div className={styles.sectionHeading}>
+              <div>
+                <span className={styles.sectionKicker}>{tr.centerPrinciple}</span>
+                <h2 id="charity-pathways-title">{tr.pathwaysTitle}</h2>
+                <p>{tr.pathwaysSubtitle}</p>
+              </div>
+            </div>
+            <nav className={styles.pathwayGrid} aria-label={tr.pathwaysTitle}>
+              {pathways.map(item => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href} className={styles.pathwayCard}>
+                    <span className={styles.pathwayIcon}><Icon aria-hidden="true" size={21} /></span>
+                    <span className={styles.pathwayCopy}><strong>{item.title}</strong><small>{item.description}</small></span>
+                    <ArrowUpRight className={styles.pathwayArrow} aria-hidden="true" size={18} />
+                  </Link>
+                );
+              })}
+            </nav>
+          </section>
+
+          <div className={styles.contentGrid}>
+            <section className={`${styles.panel} ${styles.donationsPanel}`} aria-labelledby="recent-donations-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>{tr.tracked}</span>
+                  <h2 id="recent-donations-title">{tr.recentDonations}</h2>
+                  <p>{tr.recentDonationsSubtitle}</p>
+                </div>
+                <Link href="/charity/donations" className={styles.textLink}>{tr.viewAll}<ArrowUpRight aria-hidden="true" size={16} /></Link>
+              </div>
+              {summary.donations.length > 0 ? (
+                <ul className={styles.recordList}>
+                  {summary.donations.slice(0, 4).map(donation => (
+                    <li key={donation.id}>
+                      <span className={styles.recordIcon}><HandCoins aria-hidden="true" size={18} /></span>
+                      <span className={styles.recordCopy}>
+                        <strong>{donation.name}</strong>
+                        <small>{donation.kind === 'zakat' ? tr.zakatPayment : donation.kind === 'khums' ? tr.khums : donation.kind === 'project' ? tr.projectDonation : tr.generalDonation} · {dateLabel(donation.date)}</small>
+                      </span>
+                      <strong className={styles.recordAmount}>{money(donation.amount, donation.currency)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState icon={HandCoins} title={tr.noDonationsTitle} body={tr.noDonationsBody} action={tr.recordDonation} href="/charity/donations" />
+              )}
+            </section>
+
+            <section className={`${styles.panel} ${styles.projectsPanel}`} aria-labelledby="supported-projects-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>{tr.active}</span>
+                  <h2 id="supported-projects-title">{tr.supportedProjects}</h2>
+                  <p>{tr.supportedProjectsSubtitle}</p>
+                </div>
+              </div>
+              {summary.displayedProjects.length > 0 ? (
+                <ul className={styles.projectList}>
+                  {summary.displayedProjects.map(project => {
+                    const target = toFiniteNumber(project.target_amount);
+                    const raised = toFiniteNumber(project.collected_amount);
+                    const progress = target > 0 ? Math.min((raised / target) * 100, 100) : 0;
+                    return (
+                      <li key={project.id}>
+                        <div className={styles.projectTopline}>
+                          <div><strong>{project.name}</strong><small>{project.organization_name || tr.active}</small></div>
+                          <span>{count(Math.round(progress))}%</span>
+                        </div>
+                        <div className={styles.progressTrack} role="progressbar" aria-label={`${tr.projectProgress}: ${project.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+                          <span style={{ width: `${progress}%` }} />
+                        </div>
+                        <dl className={styles.projectAmounts}>
+                          <div><dt>{tr.raised}</dt><dd>{money(raised, project.currency || 'KWD')}</dd></div>
+                          <div><dt>{tr.remainingToTarget}</dt><dd>{money(Math.max(target - raised, 0), project.currency || 'KWD')}</dd></div>
+                        </dl>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <EmptyState icon={FolderHeart} title={tr.noProjectsTitle} body={tr.noProjectsBody} action={tr.exploreProjects} href="/charity-projects?tab=projects" />
+              )}
+              {summary.displayedProjects.length > 0 && <Link href="/charity-projects?tab=projects" className={styles.panelAction}>{tr.exploreProjects}<ArrowUpRight aria-hidden="true" size={17} /></Link>}
+            </section>
+
+            <section className={`${styles.panel} ${styles.beneficiariesPanel}`} aria-labelledby="beneficiaries-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>{tr.beneficiarySummary}</span>
+                  <h2 id="beneficiaries-title">{tr.beneficiarySummary}</h2>
+                </div>
+              </div>
+              <div className={styles.beneficiaryFigures}>
+                <div><span>{tr.activeBeneficiaries}</span><strong>{count(summary.activeBeneficiaries)}</strong></div>
+                <div><span>{tr.totalBeneficiaries}</span><strong>{count(summary.totalBeneficiaries)}</strong></div>
+              </div>
+              <Link href="/charity-projects?tab=beneficiaries" className={styles.panelAction}>{tr.viewBeneficiaries}<ArrowUpRight aria-hidden="true" size={17} /></Link>
+            </section>
+
+            <section className={`${styles.panel} ${styles.documentsPanel}`} aria-labelledby="documents-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>{tr.calculationSource}</span>
+                  <h2 id="documents-title">{tr.receiptsReports}</h2>
+                  <p>{tr.receiptsReportsSubtitle}</p>
+                </div>
+                <Link href="/charity-projects?tab=reports" className={styles.textLink}>{tr.viewReports}<ArrowUpRight aria-hidden="true" size={16} /></Link>
+              </div>
+              {recentDocuments.length > 0 ? (
+                <ul className={styles.recordList}>
+                  {recentDocuments.map(document => (
+                    <li key={document.id}>
+                      <span className={styles.recordIcon}><FileCheck2 aria-hidden="true" size={18} /></span>
+                      <span className={styles.recordCopy}>
+                        <strong>{document.title}</strong>
+                        <small>{documentKind(document.category)} · {dateLabel(document.uploaded_at)}</small>
+                      </span>
+                      {document.file_url && <a href={document.file_url} target="_blank" rel="noreferrer" className={styles.inlineAction}>{tr.openDocument}</a>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState icon={ReceiptText} title={tr.noReportsTitle} body={tr.noReportsBody} action={tr.viewReports} href="/charity-projects?tab=reports" />
+              )}
+            </section>
+
+            <section className={`${styles.panel} ${styles.impactPanel}`} aria-labelledby="impact-title">
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>{tr.impactTitle}</span>
+                  <h2 id="impact-title">{tr.impactTitle}</h2>
+                  <p>{tr.impactSubtitle}</p>
+                </div>
+              </div>
+              <dl className={styles.impactGrid}>
+                <div><dt>{tr.givingThisYear}</dt><dd>{money(summary.paidThisYear)}</dd></div>
+                <div><dt>{tr.projectsSupported}</dt><dd>{count(summary.supportedProjectCount)}</dd></div>
+                <div><dt>{tr.peopleSupported}</dt><dd>{count(summary.activeBeneficiaries)}</dd></div>
+              </dl>
+              {summary.impactMetrics.length > 0 && (
+                <ul className={styles.metricChips}>
+                  {summary.impactMetrics.slice(0, 3).map(metric => (
+                    <li key={metric.id}><strong>{count(toFiniteNumber(metric.metric_value))}</strong><span>{metric.metric_unit || metric.metric_name}</span></li>
+                  ))}
+                </ul>
+              )}
+              <Link href="/charity-projects?tab=impact" className={styles.panelAction}>{tr.viewImpact}<ArrowUpRight aria-hidden="true" size={17} /></Link>
+            </section>
+          </div>
+        </div>
+      </DashboardPageShell>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, body, action, href }: { icon: LucideIcon; title: string; body: string; action: string; href: string }) {
+  return (
+    <div className={styles.emptyState}>
+      <span><Icon aria-hidden="true" size={22} /></span>
+      <strong>{title}</strong>
+      <p>{body}</p>
+      <Link href={href}>{action}<ArrowUpRight aria-hidden="true" size={16} /></Link>
+    </div>
   );
 }

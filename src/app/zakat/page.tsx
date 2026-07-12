@@ -1,23 +1,33 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
   CalendarDays,
   Calculator,
   Coins,
+  CreditCard,
+  Download,
   FileText,
+  History,
+  Info,
+  Landmark,
+  ReceiptText,
   RefreshCw,
   Save,
+  Share2,
   ShieldCheck,
   Sparkles,
   Trash2,
+  WalletCards,
 } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
+import { EmptyState } from '@/components/layout/EmptyState';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useUrlTabState } from '@/hooks/useUrlTabState';
@@ -30,7 +40,7 @@ import { zakatImportCandidates } from '@/lib/data/zakatData';
 type Lang = 'ar' | 'en' | 'fr';
 type AssetType = 'cash' | 'savings' | 'investment' | 'gold' | 'silver' | 'non_zakat';
 type NisabMethod = 'gold' | 'silver' | 'conservative';
-const ZAKAT_TAB_IDS = ['calculator', 'assets', 'history', 'reminders', 'reports'] as const;
+const ZAKAT_TAB_IDS = ['overview', 'assets', 'liabilities', 'calculation', 'payment', 'history', 'reports', 'documents'] as const;
 type ZakatTab = typeof ZAKAT_TAB_IDS[number];
 const ZAKAT_TABS_ID = 'zakat-workspace';
 
@@ -479,6 +489,45 @@ const TEXT = {
   },
 } as const;
 
+const WORKFLOW_TEXT = {
+  ar: {
+    tabsOverview: 'نظرة عامة', tabsAssets: 'الأصول', tabsLiabilities: 'الالتزامات', tabsCalculation: 'الحساب', tabsPayment: 'السداد', tabsHistory: 'السجل', tabsReports: 'التقارير', tabsDocuments: 'المستندات',
+    actionCenter: 'مركز الإجراءات', actionCalculate: 'احسب', actionPay: 'سجّل السداد', actionPdf: 'تصدير PDF', actionShare: 'مشاركة', actionHistory: 'السجل', actionReminder: 'تذكير الحول',
+    overviewTitle: 'حالة الزكاة الحالية', overviewDescription: 'ملخص واضح للمستحق، والنصاب، ومصدر الأسعار، والخطوة التالية.', currentStatus: 'الحالة الحالية', calculationMethod: 'طريقة الحساب', evidence: 'الأدلة والمصادر', evidenceDescription: 'يعرض كل رقم صيغته ومصدره ووقت آخر تحديث؛ الأسعار السوقية تقديرية.', recommendedAction: 'الإجراء المقترح', recommendedCalculate: 'أكمل الأصول والالتزامات ثم راجع نتيجة الحساب.', recommendedPay: 'بلغت النصاب. راجع النتيجة ثم انتقل إلى تسجيل السداد والإيصال.', separateNote: 'حساب الزكاة مستقل تماماً عن الخمس والتبرعات التطوعية.',
+    assetsTitle: 'الأصول الخاضعة للزكاة', assetsDescription: 'أدخل النقد والاستثمارات والذهب والفضة، واستبعد أصول الاستخدام الشخصي بوضوح.', savedAssetsTitle: 'الأصول المحفوظة وتتبع الحول', noAssetsTitle: 'لا توجد أصول زكاة محفوظة', noAssetsDesc: 'أضف أصلاً مع تاريخ التملك ليظهر موعد الحول والتنبيه هنا.', zakatableAsset: 'أصل خاضع للزكاة',
+    liabilitiesTitle: 'الالتزامات القابلة للخصم', liabilitiesDescription: 'سجّل الديون المستحقة المؤهلة فقط. راجع الحالات الخاصة مع جهة شرعية مختصة.', deductibleDebt: 'الديون المستحقة القابلة للخصم', liabilitiesFormula: 'صافي الوعاء = الأصول الخاضعة − الالتزامات المؤهلة', netPreview: 'معاينة صافي الوعاء',
+    calculationTitle: 'مسار حساب الزكاة', calculationDescription: 'الأصول والالتزامات والنصاب والنتيجة في تسلسل واحد قابل للمراجعة.', assetsStep: 'الأصول', liabilitiesStep: 'الالتزامات', netStep: 'صافي المبلغ', nisabStep: 'النصاب', resultStep: 'النتيجة النهائية',
+    paymentTitle: 'السداد والإيصال', paymentDescription: 'تسجيل السداد خطوة منفصلة بعد اعتماد حساب الزكاة؛ لا يغيّر ذلك معادلة الزكاة.', noPaymentsTitle: 'لا توجد دفعات زكاة مسجلة بعد', noPaymentsDesc: 'لا يتوفر هنا سجل مستقل لدفعات الزكاة. للحفاظ على التصنيف الصحيح، سجّل الدعم ضمن مشروع زكاة مؤهل وأرفق الإيصال؛ وتبقى الصدقة العامة منفصلة.', recordPayment: 'فتح مشاريع الزكاة', paymentDue: 'المستحق وفق آخر حساب', paymentRecorded: 'المدفوع المسجل', paymentRemaining: 'المتبقي للتسجيل', notRecorded: 'غير مسجل',
+    reportsTitle: 'تقارير الزكاة', reportsDesc: 'ملخص سنوي يوضح المبلغ وطريقة الحساب وحالة السداد والإيصال.', year: 'السنة', amount: 'المبلغ', category: 'الفئة', calculation: 'الحساب', payment: 'السداد', receipt: 'الإيصال', pdf: 'PDF', status: 'الحالة', ready: 'جاهز', draft: 'مسودة', openReports: 'فتح مركز التقارير', exportPdf: 'طباعة / PDF',
+    documentsTitle: 'مستندات الزكاة', documentsDesc: 'الإيصالات والأدلة والمرفقات تبقى منفصلة عن الحساب، مع رابط واضح إلى خزنة المستندات.', noDocumentsTitle: 'لا توجد مستندات زكاة مرتبطة بعد', noDocumentsDesc: 'أضف إيصال سداد أو مستنداً داعماً من خزنة المستندات.', openDocuments: 'فتح خزنة المستندات',
+    formula: 'الصيغة', source: 'المصدر', lastUpdate: 'آخر تحديث', explanation: 'التوضيح', metricHelp: 'تفاصيل هذا الرقم', noUpdate: 'لم يُحفظ بعد', sourceSavedCalc: 'آخر حساب محفوظ', sourceAssets: 'أصول الزكاة المحفوظة', sourceMetals: 'أسعار الذهب والفضة', formulaZakatDue: 'إذا بلغ صافي الوعاء النصاب: صافي الوعاء × 2.5%', formulaNetBase: 'النقد + الاستثمارات + الذهب + الفضة − الديون المؤهلة', formulaNisab: '85 غ ذهب أو 595 غ فضة حسب الطريقة المختارة', formulaNextHawl: 'أقرب تاريخ استحقاق بين الأصول المحفوظة', formulaLastSaved: 'قيمة الزكاة من أحدث حساب محفوظ', updatedLive: 'محدّث من مصدر الأسعار', calculationEvidence: 'القيم الحالية من نموذج الزكاة فقط', resultEvidence: 'نتيجة تقديرية وليست فتوى شرعية', shareCopied: 'تم نسخ ملخص الزكاة.', shareUnavailable: 'تعذر مشاركة الملخص حالياً.',
+  },
+  en: {
+    tabsOverview: 'Overview', tabsAssets: 'Assets', tabsLiabilities: 'Liabilities', tabsCalculation: 'Calculation', tabsPayment: 'Payment', tabsHistory: 'History', tabsReports: 'Reports', tabsDocuments: 'Documents',
+    actionCenter: 'Action center', actionCalculate: 'Calculate', actionPay: 'Record payment', actionPdf: 'Export PDF', actionShare: 'Share', actionHistory: 'History', actionReminder: 'Hawl reminder',
+    overviewTitle: 'Current Zakat status', overviewDescription: 'A clear view of what is due, the Nisab used, price evidence, and the next step.', currentStatus: 'Current status', calculationMethod: 'Calculation method', evidence: 'Evidence and sources', evidenceDescription: 'Every key figure shows its formula, source, and last update; market prices remain estimates.', recommendedAction: 'Recommended next action', recommendedCalculate: 'Complete assets and liabilities, then review the calculation result.', recommendedPay: 'Nisab is reached. Review the result, then record the payment and receipt.', separateNote: 'Zakat remains completely separate from Khums and voluntary charity.',
+    assetsTitle: 'Zakatable assets', assetsDescription: 'Enter cash, investments, gold, and silver, and clearly exclude personal-use assets.', savedAssetsTitle: 'Saved assets and Hawl tracking', noAssetsTitle: 'No Zakat assets saved', noAssetsDesc: 'Add an asset with its ownership date to see its Hawl date and reminder.', zakatableAsset: 'Zakatable asset',
+    liabilitiesTitle: 'Eligible liabilities', liabilitiesDescription: 'Record only eligible debts currently due. Review special cases with a qualified authority.', deductibleDebt: 'Eligible deductible debts', liabilitiesFormula: 'Net Zakat base = zakatable assets − eligible liabilities', netPreview: 'Net Zakat base preview',
+    calculationTitle: 'Zakat calculation path', calculationDescription: 'Assets, liabilities, net amount, Nisab, and result in one reviewable sequence.', assetsStep: 'Assets', liabilitiesStep: 'Liabilities', netStep: 'Net amount', nisabStep: 'Nisab', resultStep: 'Final result',
+    paymentTitle: 'Payment and receipt', paymentDescription: 'Payment recording is a separate step after reviewing the Zakat calculation; it never changes the Zakat formula.', noPaymentsTitle: 'No Zakat payments recorded yet', noPaymentsDesc: 'A dedicated Zakat payment record is not available here. To keep classification honest, record support against an eligible Zakat project and attach its receipt; general Donations stay separate.', recordPayment: 'Open Zakat projects', paymentDue: 'Due from latest calculation', paymentRecorded: 'Recorded paid amount', paymentRemaining: 'Remaining to record', notRecorded: 'Not recorded',
+    reportsTitle: 'Zakat reports', reportsDesc: 'An annual summary with amount, calculation method, payment, receipt, PDF, and status.', year: 'Year', amount: 'Amount', category: 'Category', calculation: 'Calculation', payment: 'Payment', receipt: 'Receipt', pdf: 'PDF', status: 'Status', ready: 'Ready', draft: 'Draft', openReports: 'Open Reports Center', exportPdf: 'Print / PDF',
+    documentsTitle: 'Zakat documents', documentsDesc: 'Receipts, evidence, and attachments stay separate from the calculation, with a clear path to the document vault.', noDocumentsTitle: 'No Zakat documents linked yet', noDocumentsDesc: 'Add a payment receipt or supporting document from the document vault.', openDocuments: 'Open document vault',
+    formula: 'Formula', source: 'Source', lastUpdate: 'Last update', explanation: 'Explanation', metricHelp: 'Details for this figure', noUpdate: 'Not saved yet', sourceSavedCalc: 'Latest saved calculation', sourceAssets: 'Saved Zakat assets', sourceMetals: 'Gold and silver prices', formulaZakatDue: 'When the net base reaches Nisab: net base × 2.5%', formulaNetBase: 'Cash + investments + gold + silver − eligible debts', formulaNisab: '85 g gold or 595 g silver, based on the selected method', formulaNextHawl: 'Earliest due date among saved assets', formulaLastSaved: 'Zakat due from the latest saved calculation', updatedLive: 'Updated from the price source', calculationEvidence: 'Current values come only from the Zakat form', resultEvidence: 'An estimate, not a religious ruling', shareCopied: 'Zakat summary copied.', shareUnavailable: 'The summary could not be shared.',
+  },
+  fr: {
+    tabsOverview: 'Aperçu', tabsAssets: 'Actifs', tabsLiabilities: 'Passifs', tabsCalculation: 'Calcul', tabsPayment: 'Paiement', tabsHistory: 'Historique', tabsReports: 'Rapports', tabsDocuments: 'Documents',
+    actionCenter: 'Centre d’actions', actionCalculate: 'Calculer', actionPay: 'Enregistrer le paiement', actionPdf: 'Exporter en PDF', actionShare: 'Partager', actionHistory: 'Historique', actionReminder: 'Rappel du Hawl',
+    overviewTitle: 'Statut actuel de la Zakat', overviewDescription: 'Une vue claire du montant dû, du Nisab utilisé, des preuves de prix et de la prochaine étape.', currentStatus: 'Statut actuel', calculationMethod: 'Méthode de calcul', evidence: 'Preuves et sources', evidenceDescription: 'Chaque chiffre clé affiche sa formule, sa source et sa mise à jour ; les prix de marché restent estimatifs.', recommendedAction: 'Prochaine action recommandée', recommendedCalculate: 'Complétez les actifs et les passifs, puis vérifiez le résultat du calcul.', recommendedPay: 'Le Nisab est atteint. Vérifiez le résultat, puis enregistrez le paiement et le reçu.', separateNote: 'La Zakat reste entièrement distincte du Khums et de la charité volontaire.',
+    assetsTitle: 'Actifs soumis à la Zakat', assetsDescription: 'Saisissez les liquidités, investissements, l’or et l’argent, et excluez clairement les biens à usage personnel.', savedAssetsTitle: 'Actifs enregistrés et suivi du Hawl', noAssetsTitle: 'Aucun actif de Zakat enregistré', noAssetsDesc: 'Ajoutez un actif et sa date d’acquisition pour afficher le Hawl et son rappel.', zakatableAsset: 'Actif soumis à la Zakat',
+    liabilitiesTitle: 'Passifs admissibles', liabilitiesDescription: 'Enregistrez uniquement les dettes admissibles actuellement exigibles. Consultez une autorité compétente pour les cas particuliers.', deductibleDebt: 'Dettes admissibles déductibles', liabilitiesFormula: 'Assiette nette = actifs soumis − passifs admissibles', netPreview: 'Aperçu de l’assiette nette',
+    calculationTitle: 'Parcours du calcul de la Zakat', calculationDescription: 'Actifs, passifs, montant net, Nisab et résultat dans une séquence vérifiable.', assetsStep: 'Actifs', liabilitiesStep: 'Passifs', netStep: 'Montant net', nisabStep: 'Nisab', resultStep: 'Résultat final',
+    paymentTitle: 'Paiement et reçu', paymentDescription: 'L’enregistrement du paiement est une étape distincte après le calcul ; il ne modifie jamais la formule de la Zakat.', noPaymentsTitle: 'Aucun paiement de Zakat enregistré', noPaymentsDesc: 'Aucun registre de paiement de Zakat dédié n’est disponible ici. Pour préserver une classification exacte, enregistrez le soutien sur un projet de Zakat éligible et joignez le reçu ; les dons généraux restent séparés.', recordPayment: 'Ouvrir les projets de Zakat', paymentDue: 'Dû selon le dernier calcul', paymentRecorded: 'Montant payé enregistré', paymentRemaining: 'Reste à enregistrer', notRecorded: 'Non enregistré',
+    reportsTitle: 'Rapports de Zakat', reportsDesc: 'Un résumé annuel avec montant, méthode de calcul, paiement, reçu, PDF et statut.', year: 'Année', amount: 'Montant', category: 'Catégorie', calculation: 'Calcul', payment: 'Paiement', receipt: 'Reçu', pdf: 'PDF', status: 'Statut', ready: 'Prêt', draft: 'Brouillon', openReports: 'Ouvrir le centre de rapports', exportPdf: 'Imprimer / PDF',
+    documentsTitle: 'Documents de Zakat', documentsDesc: 'Les reçus, preuves et pièces jointes restent séparés du calcul, avec un accès clair au coffre de documents.', noDocumentsTitle: 'Aucun document de Zakat lié', noDocumentsDesc: 'Ajoutez un reçu de paiement ou un document justificatif depuis le coffre.', openDocuments: 'Ouvrir le coffre de documents',
+    formula: 'Formule', source: 'Source', lastUpdate: 'Dernière mise à jour', explanation: 'Explication', metricHelp: 'Détails de ce chiffre', noUpdate: 'Pas encore enregistré', sourceSavedCalc: 'Dernier calcul enregistré', sourceAssets: 'Actifs de Zakat enregistrés', sourceMetals: 'Prix de l’or et de l’argent', formulaZakatDue: 'Si l’assiette nette atteint le Nisab : assiette nette × 2,5 %', formulaNetBase: 'Liquidités + investissements + or + argent − dettes admissibles', formulaNisab: '85 g d’or ou 595 g d’argent selon la méthode choisie', formulaNextHawl: 'Première échéance parmi les actifs enregistrés', formulaLastSaved: 'Zakat due du dernier calcul enregistré', updatedLive: 'Mis à jour depuis la source des prix', calculationEvidence: 'Les valeurs actuelles proviennent uniquement du formulaire Zakat', resultEvidence: 'Une estimation, pas un avis religieux', shareCopied: 'Résumé de la Zakat copié.', shareUnavailable: 'Impossible de partager le résumé.',
+  },
+} as const;
+
 const goldKarats = ['24', '22', '21', '18'] as const;
 const assetTypes: AssetType[] = ['cash', 'savings', 'investment', 'gold', 'silver', 'non_zakat'];
 const nonZakatOptions = ['personalHome', 'personalCar', 'householdFurniture', 'personalTools', 'residentialLand', 'personalUseAssets', 'other'] as const;
@@ -518,10 +567,33 @@ function estimatedHijriDate(date?: string | null, lang: Lang = 'ar') {
   }
 }
 
+function MetricHelp({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={180}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className="metric-help"
+            type="button"
+            aria-label={label}
+            style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid rgba(15,118,110,.24)', background: 'rgba(15,118,110,.08)', color: 'var(--zakat-primary, #0F766E)', display: 'grid', placeItems: 'center', cursor: 'help' }}
+          >
+            <Info size={14} aria-hidden="true" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs border-emerald-800 bg-emerald-950 px-3 py-2 text-emerald-50 shadow-xl" sideOffset={8}>
+          {children}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 export default function ZakatPage() {
   const { user } = useAuth();
   const { lang, dir } = useLanguage();
   const tr = TEXT[lang as Lang] ?? TEXT.ar;
+  const wx = WORKFLOW_TEXT[lang as Lang] ?? WORKFLOW_TEXT.ar;
   const db = supabase as any;
 
   const [assets, setAssets] = useState<ZakatAsset[]>([]);
@@ -530,7 +602,7 @@ export default function ZakatPage() {
   const [activeTab, setActiveTab] = useUrlTabState<ZakatTab>({
     param: 'tab',
     values: ZAKAT_TAB_IDS,
-    defaultValue: 'calculator',
+    defaultValue: 'overview',
     omitDefault: true,
   });
   const [saving, setSaving] = useState(false);
@@ -538,8 +610,9 @@ export default function ZakatPage() {
   const [priceMode, setPriceMode] = useState<'automatic' | 'manual'>('manual');
   const [metalsPrice, setMetalsPrice] = useState<MetalsPriceResponse | null>(null);
   const fetchingMetalsRef = useRef(false);
+  const printRequestedRef = useRef(false);
   const [nisabMethod, setNisabMethod] = useState<NisabMethod>('conservative');
-  const [importedFinance, setImportedFinance] = useState({ savingsTotal: 0, investmentTotal: 0 });
+  const [importedFinance, setImportedFinance] = useState({ savingsTotal: 0, investmentTotal: 0, excludedSavings: 0, excludedInvestments: 0 });
   const [includedImports, setIncludedImports] = useState({ savings: false, investments: false });
   const [zakat, setZakat] = useState({
     cash: '',
@@ -639,7 +712,14 @@ export default function ZakatPage() {
     ]);
     if (!assetRes.error) setAssets((assetRes.data ?? []) as ZakatAsset[]);
     if (!historyRes.error) setHistory((historyRes.data ?? []) as ZakatCalculation[]);
-    setImportedFinance(zakatImportCandidates(financeRes.records.savings, financeRes.records.investments));
+    const isExplicitKwd = (row: Record<string, unknown>) => String(row.currency ?? '').trim().toUpperCase() === 'KWD';
+    const kwdSavings = financeRes.records.savings.filter(isExplicitKwd);
+    const kwdInvestments = financeRes.records.investments.filter(isExplicitKwd);
+    setImportedFinance({
+      ...zakatImportCandidates(kwdSavings, kwdInvestments),
+      excludedSavings: financeRes.records.savings.length - kwdSavings.length,
+      excludedInvestments: financeRes.records.investments.length - kwdInvestments.length,
+    });
   }, [db, user]);
 
   const loadMetalsPrices = useCallback(async () => {
@@ -710,19 +790,28 @@ export default function ZakatPage() {
   const netZakatBase = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + zakatableGoldValue + zakatableSilverValue - toNum(zakat.debts));
   const goldNisabValue = toNum(zakat.goldPrice) * 85;
   const silverNisabValue = toNum(zakat.silverPrice) * 595;
-  const availableNisabValues = [goldNisabValue, silverNisabValue].filter(value => value > 0);
-  const selectedNisabValue = nisabMethod === 'gold'
-    ? goldNisabValue
+  const hasGoldNisab = goldNisabValue > 0;
+  const hasSilverNisab = silverNisabValue > 0;
+  const hasCriticalPriceData = nisabMethod === 'gold'
+    ? hasGoldNisab
     : nisabMethod === 'silver'
-      ? silverNisabValue
-      : availableNisabValues.length ? Math.min(...availableNisabValues) : 0;
-  const hasCriticalPriceData = goldNisabValue > 0 && silverNisabValue > 0;
+      ? hasSilverNisab
+      : hasGoldNisab && hasSilverNisab;
+  const selectedNisabValue = nisabMethod === 'gold'
+    ? (hasGoldNisab ? goldNisabValue : 0)
+    : nisabMethod === 'silver'
+      ? (hasSilverNisab ? silverNisabValue : 0)
+      : hasGoldNisab && hasSilverNisab ? Math.min(goldNisabValue, silverNisabValue) : 0;
   const reachedNisab = selectedNisabValue > 0 && netZakatBase >= selectedNisabValue;
   const zakatDue = reachedNisab ? netZakatBase * 0.025 : 0;
   const nisabDifference = selectedNisabValue > 0 ? netZakatBase - selectedNisabValue : 0;
   const closeToNisab = selectedNisabValue > 0 && !reachedNisab && netZakatBase >= selectedNisabValue * 0.85;
-  const nextHawl = assets.map(asset => asset.zakat_due_date).filter(Boolean).sort()[0];
+  const nextHawl = assets
+    .map(asset => asset.zakat_due_date)
+    .filter((date): date is string => typeof date === 'string' && date >= today())
+    .sort()[0];
   const lastSaved = history[0];
+  const latestSavedDue = lastSaved ? toNum(lastSaved.zakat_due) : null;
   const priceSourceLabel = metalsPrice?.source === 'api'
     ? tr.apiSource
     : metalsPrice?.source === 'mock'
@@ -743,39 +832,66 @@ export default function ZakatPage() {
 
   const unavailable = lang === 'ar' ? 'غير متاح' : lang === 'fr' ? 'Non disponible' : 'Unavailable';
   const unavailableHelper = lang === 'ar' ? 'سيظهر هذا الرقم بعد إدخال البيانات.' : lang === 'fr' ? 'Ce chiffre apparaitra apres la saisie des donnees.' : 'This figure will appear after data is entered.';
+  const excludedImportCount = importedFinance.excludedSavings + importedFinance.excludedInvestments;
+  const kwdOnlyImportNote = lang === 'ar'
+    ? 'KWD فقط: تم استبعاد السجلات ذات العملات الأخرى لمنع خلط العملات.'
+    : lang === 'fr'
+      ? 'KWD uniquement : les lignes dans une autre devise sont exclues afin de ne pas mélanger les devises.'
+      : 'KWD only: records in other currencies are excluded to prevent mixed-currency calculations.';
+  const zakatableAssetsTotal = Math.max(0, toNum(zakat.cash) + toNum(zakat.investments) + zakatableGoldValue + zakatableSilverValue);
+  const calculationUpdatedAt = goldPriceLastUpdated ? timeLabel(goldPriceLastUpdated) : wx.noUpdate;
   const summaryCards = [
     {
       icon: Coins,
       label: tr.estimatedZakat,
       value: hasCriticalPriceData ? money(zakatDue) : unavailable,
       unavailable: !hasCriticalPriceData,
+      explanation: reachedNisab ? tr.dueSummary : tr.notDueSummary,
+      formula: wx.formulaZakatDue,
+      source: wx.calculationEvidence,
+      updated: calculationUpdatedAt,
     },
-    { icon: Calculator, label: tr.netZakatBase, value: money(netZakatBase), unavailable: false },
+    { icon: Calculator, label: tr.netZakatBase, value: money(netZakatBase), unavailable: false, explanation: wx.liabilitiesFormula, formula: wx.formulaNetBase, source: wx.calculationEvidence, updated: calculationUpdatedAt },
     {
       icon: ShieldCheck,
       label: tr.selectedNisab,
       value: selectedNisabValue > 0 ? money(selectedNisabValue) : unavailable,
       unavailable: selectedNisabValue <= 0,
+      explanation: nisabMethod === 'gold' ? tr.goldBased : nisabMethod === 'silver' ? tr.silverBased : tr.conservative,
+      formula: wx.formulaNisab,
+      source: wx.sourceMetals,
+      updated: calculationUpdatedAt,
     },
     {
       icon: CalendarDays,
       label: tr.nextHawlDate,
       value: nextHawl ? dateLabel(nextHawl) : unavailable,
       unavailable: !nextHawl,
+      explanation: tr.hijriEstimated,
+      formula: wx.formulaNextHawl,
+      source: wx.sourceAssets,
+      updated: nextHawl ? dateLabel(nextHawl) : wx.noUpdate,
     },
     {
       icon: FileText,
       label: tr.lastSaved,
       value: lastSaved ? money(toNum(lastSaved.zakat_due), lastSaved.currency) : unavailable,
       unavailable: !lastSaved,
+      explanation: wx.sourceSavedCalc,
+      formula: wx.formulaLastSaved,
+      source: wx.sourceSavedCalc,
+      updated: lastSaved?.calculation_date ? dateLabel(lastSaved.calculation_date) : wx.noUpdate,
     },
   ];
   const zakatTabs = [
-    { id: 'calculator', label: lang === 'ar' ? 'الزكاة' : lang === 'fr' ? 'Calculateur' : 'Calculator' },
-    { id: 'assets', label: lang === 'ar' ? 'الأصول والحول' : lang === 'fr' ? 'Actifs et hawl' : 'Assets & Hawl', count: assets.length },
-    { id: 'history', label: lang === 'ar' ? 'السجل' : lang === 'fr' ? 'Historique' : 'History', count: history.length },
-    { id: 'reminders', label: lang === 'ar' ? 'التذكيرات' : lang === 'fr' ? 'Rappels' : 'Reminders', count: assets.length },
-    { id: 'reports', label: lang === 'ar' ? 'التقارير' : lang === 'fr' ? 'Rapports' : 'Reports' },
+    { id: 'overview', label: wx.tabsOverview },
+    { id: 'assets', label: wx.tabsAssets, count: assets.length },
+    { id: 'liabilities', label: wx.tabsLiabilities },
+    { id: 'calculation', label: wx.tabsCalculation },
+    { id: 'payment', label: wx.tabsPayment },
+    { id: 'history', label: wx.tabsHistory, count: history.length },
+    { id: 'reports', label: wx.tabsReports },
+    { id: 'documents', label: wx.tabsDocuments },
   ];
 
   const tValue = (key: string, fallback = key) => (tr as Record<string, string>)[key] ?? fallback;
@@ -798,6 +914,11 @@ export default function ZakatPage() {
 
   const saveZakatCalculation = async () => {
     if (!user) return;
+    if (!hasCriticalPriceData) {
+      setMessage(tr.completeData);
+      setActiveTab('calculation');
+      return;
+    }
     setSaving(true);
     const notes = [
       zakat.nonZakatAssets.length > 0 ? `${tr.nonZakatableAssets}: ${zakat.nonZakatAssets.map(asset => tValue(asset, asset)).join(', ')}` : '',
@@ -857,8 +978,38 @@ export default function ZakatPage() {
     }
   };
 
+  const shareSummary = async () => {
+    const text = `${tr.title}: ${hasCriticalPriceData ? money(zakatDue) : unavailable}\n${tr.netZakatBase}: ${money(netZakatBase)}\n${tr.selectedNisab}: ${selectedNisabValue > 0 ? money(selectedNisabValue) : unavailable}`;
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: tr.title, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setMessage(wx.shareCopied);
+      }
+    } catch {
+      setMessage(wx.shareUnavailable);
+    }
+  };
+
+  const requestReportPrint = () => {
+    if (activeTab === 'reports') {
+      window.print();
+      return;
+    }
+    printRequestedRef.current = true;
+    setActiveTab('reports');
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'reports' || !printRequestedRef.current) return;
+    printRequestedRef.current = false;
+    const frame = window.requestAnimationFrame(() => window.print());
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
+
   return (
-    <div className="zakat-page" dir={dir}>
+    <div className="zakat-page" data-charity-experience="zakat" dir={dir}>
       <Sidebar />
       <DashboardPageShell contentClassName="zakat-content">
         <section className="zakat-hero">
@@ -868,7 +1019,7 @@ export default function ZakatPage() {
             <p>{tr.subtitle}</p>
           </div>
           <div className="hero-actions">
-            <button className="gold-btn" type="button" onClick={() => setActiveTab('calculator')}><Calculator size={17} /> {tr.calculator}</button>
+            <button className="gold-btn" type="button" onClick={() => setActiveTab('calculation')}><Calculator size={17} /> {wx.actionCalculate}</button>
             <button className="dark-btn" type="button" onClick={() => setActiveTab('assets')}><CalendarDays size={17} /> {tr.hawlTracking}</button>
             <button className="dark-btn" type="button" onClick={saveZakatCalculation} disabled={!user || saving}>
               <Save size={17} /> {tr.saveCalculation}
@@ -877,20 +1028,18 @@ export default function ZakatPage() {
           </div>
         </section>
 
-        {message && <div className="notice">{message}</div>}
+        {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
 
-        <section className="zakat-summary-grid">
-          {summaryCards.map(card => {
-            const Icon = card.icon;
-            return (
-              <article className={`warm-card summary-card ${card.unavailable ? 'unavailable' : ''}`} key={card.label}>
-                <span><Icon size={18} /></span>
-                <small>{card.label}</small>
-                <strong dir={card.unavailable ? dir : 'ltr'}>{card.value}</strong>
-                {card.unavailable && <em>{unavailableHelper}</em>}
-              </article>
-            );
-          })}
+        <section className="zakat-action-center" aria-label={wx.actionCenter}>
+          <div><small>{wx.actionCenter}</small><strong>{reachedNisab ? wx.recommendedPay : wx.recommendedCalculate}</strong></div>
+          <nav aria-label={wx.actionCenter}>
+            <button className="action-primary" type="button" onClick={() => setActiveTab('calculation')}><Calculator size={16} /> {wx.actionCalculate}</button>
+            <button type="button" onClick={() => setActiveTab('payment')}><CreditCard size={16} /> {wx.actionPay}</button>
+            <button type="button" onClick={requestReportPrint}><Download size={16} /> {wx.actionPdf}</button>
+            <button type="button" onClick={() => void shareSummary()}><Share2 size={16} /> {wx.actionShare}</button>
+            <button type="button" onClick={() => setActiveTab('history')}><History size={16} /> {wx.actionHistory}</button>
+            <button type="button" onClick={() => setActiveTab('assets')}><CalendarDays size={16} /> {wx.actionReminder}</button>
+          </nav>
         </section>
 
         <PageTabs
@@ -900,17 +1049,74 @@ export default function ZakatPage() {
           ariaLabel={tr.title}
           idBase={ZAKAT_TABS_ID}
           sticky
-          mobileMode="scroll"
+          mobileMode="auto"
         />
 
-        <PageTabPanel idBase={ZAKAT_TABS_ID} value="calculator" active={activeTab === 'calculator'}>
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="overview" active={activeTab === 'overview'} className="zakat-overview-panel">
+          <section className="zakat-summary-grid" aria-label={wx.overviewTitle}>
+            {summaryCards.map(card => {
+              const Icon = card.icon;
+              return (
+                <article className={`warm-card summary-card ${card.unavailable ? 'unavailable' : ''}`} key={card.label}>
+                  <span aria-hidden="true"><Icon size={18} /></span>
+                  <small>{card.label}</small>
+                  <MetricHelp label={`${wx.metricHelp}: ${card.label}`}>
+                    <strong>{wx.explanation}</strong><p>{card.explanation}</p>
+                  </MetricHelp>
+                  <strong dir={card.unavailable ? dir : 'ltr'}>{card.value}</strong>
+                  {card.unavailable && <em>{unavailableHelper}</em>}
+                  <dl className="metric-meta">
+                    <div><dt>{wx.formula}</dt><dd>{card.formula}</dd></div>
+                    <div><dt>{wx.source}</dt><dd>{card.source}</dd></div>
+                    <div><dt>{wx.lastUpdate}</dt><dd>{card.updated}</dd></div>
+                  </dl>
+                </article>
+              );
+            })}
+          </section>
+          <section className="zakat-overview-grid">
+            <article className="warm-card status-overview-card">
+              <div className="section-head"><div><small>{wx.currentStatus}</small><h2>{wx.overviewTitle}</h2></div><ShieldCheck size={22} /></div>
+              <div className={`overview-status ${reachedNisab ? 'due' : 'not-due'}`}>
+                <strong>{hasCriticalPriceData ? (reachedNisab ? tr.reached : tr.notReached) : tr.completeData}</strong>
+                <p>{reachedNisab ? wx.recommendedPay : wx.recommendedCalculate}</p>
+              </div>
+              <p className="separation-note"><Landmark size={16} /> {wx.separateNote}</p>
+            </article>
+            <article className="warm-card evidence-card">
+              <div className="section-head"><div><small>{wx.calculationMethod}</small><h2>{wx.evidence}</h2></div><FileText size={22} /></div>
+              <p>{wx.evidenceDescription}</p>
+              <dl>
+                <div><dt>{tr.nisabMethod}</dt><dd>{nisabMethodLabel(nisabMethod)}</dd></div>
+                <div><dt>{wx.source}</dt><dd>{priceSourceLabel}</dd></div>
+                <div><dt>{tr.goldPriceToday}</dt><dd dir="ltr">{toNum(zakat.goldPrice) > 0 ? money(toNum(zakat.goldPrice)) : unavailable}</dd></div>
+                <div><dt>{tr.silverPriceToday}</dt><dd dir="ltr">{toNum(zakat.silverPrice) > 0 ? money(toNum(zakat.silverPrice)) : unavailable}</dd></div>
+                <div><dt>{wx.lastUpdate}</dt><dd>{calculationUpdatedAt}</dd></div>
+              </dl>
+            </article>
+          </section>
+        </PageTabPanel>
+
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="calculation" active={activeTab === 'calculation'} className="zakat-calculation-panel">
+        <article className="warm-card calculation-map" data-calculation-scope="zakat">
+          <div className="section-head"><div><small>{wx.formula}</small><h2>{wx.calculationTitle}</h2><p>{wx.calculationDescription}</p></div><Calculator size={22} /></div>
+          <ol>
+            <li><span>1</span><small>{wx.assetsStep}</small><strong dir="ltr">{money(zakatableAssetsTotal)}</strong><em>{tr.cash} + {tr.investments} + {tr.gold} + {tr.silver}</em></li>
+            <li><span>2</span><small>{wx.liabilitiesStep}</small><strong dir="ltr">− {money(toNum(zakat.debts))}</strong><em>{wx.deductibleDebt}</em></li>
+            <li><span>3</span><small>{wx.netStep}</small><strong dir="ltr">{money(netZakatBase)}</strong><em>{wx.formulaNetBase}</em></li>
+            <li><span>4</span><small>{wx.nisabStep}</small><strong dir="ltr">{selectedNisabValue > 0 ? money(selectedNisabValue) : unavailable}</strong><em>{wx.formulaNisab}</em></li>
+            <li className={reachedNisab ? 'result-due' : ''}><span>5</span><small>{wx.resultStep}</small><strong dir="ltr">{hasCriticalPriceData ? money(zakatDue) : unavailable}</strong><em>{wx.formulaZakatDue}</em></li>
+          </ol>
+          <footer><span>{wx.source}: {wx.calculationEvidence}</span><span>{wx.lastUpdate}: {calculationUpdatedAt}</span><span>{wx.resultEvidence}</span></footer>
+        </article>
         <section id="zakat-calculator" className="zakat-main-grid">
           <article className="warm-card input-panel">
             <div className="section-head"><h2>{tr.zakatInputs}</h2><Coins size={22} /></div>
-            {(importedFinance.savingsTotal > 0 || importedFinance.investmentTotal > 0) && (
+            {(importedFinance.savingsTotal > 0 || importedFinance.investmentTotal > 0 || excludedImportCount > 0) && (
               <div className="import-box">
                 <strong>{tr.importedDataTitle}</strong>
                 <p>{tr.importedDataHint}</p>
+                {excludedImportCount > 0 && <p role="note">{kwdOnlyImportNote} ({excludedImportCount})</p>}
                 {importedFinance.savingsTotal > 0 && (
                   <div>
                     <span>{tr.foundSavings.replace('{amount}', money(importedFinance.savingsTotal))}</span>
@@ -1035,50 +1241,104 @@ export default function ZakatPage() {
         </PageTabPanel>
 
         <PageTabPanel idBase={ZAKAT_TABS_ID} value="assets" active={activeTab === 'assets'}>
-        <section id="hawl-tracking">
-          <article className="warm-card">
-            <div className="section-head"><h2>{tr.hawlTracking}</h2><CalendarDays size={22} /></div>
-            <div className="form-grid one">
-              <label><span>{tr.assetName}</span><input value={assetForm.asset_name} onChange={e => setAssetForm(prev => ({ ...prev, asset_name: e.target.value }))} /></label>
-              <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{assetTypeLabel(type)}</option>)}</select></label>
-              <label><span>{tr.amount}</span><input inputMode="decimal" value={assetForm.amount} onChange={e => setAssetForm(prev => ({ ...prev, amount: e.target.value }))} /></label>
-              <label><span>{tr.ownershipDate}</span><input type="date" value={assetForm.ownership_date} onChange={e => setAssetForm(prev => ({ ...prev, ownership_date: e.target.value, zakat_due_date: addYear(e.target.value) }))} /></label>
-              <label><span>{tr.dueDate}</span><input type="date" value={assetForm.zakat_due_date} onChange={e => setAssetForm(prev => ({ ...prev, zakat_due_date: e.target.value }))} /></label>
-              <label className="check-row"><input type="checkbox" checked={assetForm.is_zakatable} onChange={e => setAssetForm(prev => ({ ...prev, is_zakatable: e.target.checked }))} /><span>{tr.reminder30}</span></label>
-              <button className="primary-wide" type="button" onClick={saveAsset}><Save size={16} /> {tr.addAsset}</button>
-            </div>
-          </article>
-        </section>
+          <section id="hawl-tracking" className="zakat-assets-workspace">
+            <article className="warm-card asset-entry-card">
+              <div className="section-head"><div><small>{wx.tabsAssets}</small><h2>{wx.assetsTitle}</h2><p>{wx.assetsDescription}</p></div><WalletCards size={22} /></div>
+              {(importedFinance.savingsTotal > 0 || importedFinance.investmentTotal > 0 || excludedImportCount > 0) && (
+                <div className="import-box">
+                  <strong>{tr.importedDataTitle}</strong><p>{tr.importedDataHint}</p>
+                  {excludedImportCount > 0 && <p role="note">{kwdOnlyImportNote} ({excludedImportCount})</p>}
+                  {importedFinance.savingsTotal > 0 && <div><span>{tr.foundSavings.replace('{amount}', money(importedFinance.savingsTotal))}</span><button type="button" onClick={() => includeImportedAmount('savings')} disabled={includedImports.savings}>{includedImports.savings ? tr.alreadyIncluded : tr.includeInZakat}</button></div>}
+                  {importedFinance.investmentTotal > 0 && <div><span>{tr.foundInvestments.replace('{amount}', money(importedFinance.investmentTotal))}</span><button type="button" onClick={() => includeImportedAmount('investments')} disabled={includedImports.investments}>{includedImports.investments ? tr.alreadyIncluded : tr.includeInZakat}</button></div>}
+                </div>
+              )}
+              <div className="form-grid">
+                <label><span>{tr.cash}</span><input inputMode="decimal" value={zakat.cash} onChange={e => setZakat(prev => ({ ...prev, cash: e.target.value }))} placeholder="0.000" /></label>
+                <label><span>{tr.investments}</span><input inputMode="decimal" value={zakat.investments} onChange={e => setZakat(prev => ({ ...prev, investments: e.target.value }))} placeholder="0.000" /></label>
+              </div>
+              <div className="asset-metals-grid">
+                <div className="asset-box">
+                  <strong>{tr.gold}</strong>
+                  <div className="form-grid">
+                    <label><span>{tr.goldWeight}</span><input inputMode="decimal" value={zakat.goldGrams} onChange={e => setZakat(prev => ({ ...prev, goldGrams: e.target.value }))} placeholder="0" /></label>
+                    <label><span>{tr.goldKarat}</span><select value={zakat.goldKarat} onChange={e => setZakat(prev => ({ ...prev, goldKarat: e.target.value }))}>{goldKarats.map(karat => <option key={karat} value={karat}>{karat}K</option>)}</select></label>
+                    <label className="wide"><span>{tr.directGoldValue}</span><input inputMode="decimal" value={zakat.goldDirectValue} onChange={e => setZakat(prev => ({ ...prev, goldDirectValue: e.target.value }))} placeholder="0.000" /></label>
+                  </div>
+                </div>
+                <div className="asset-box">
+                  <strong>{tr.silver}</strong>
+                  <div className="form-grid one">
+                    <label><span>{tr.silverWeight}</span><input inputMode="decimal" value={zakat.silverGrams} onChange={e => setZakat(prev => ({ ...prev, silverGrams: e.target.value }))} placeholder="0" /></label>
+                    <label><span>{tr.directSilverValue}</span><input inputMode="decimal" value={zakat.silverDirectValue} onChange={e => setZakat(prev => ({ ...prev, silverDirectValue: e.target.value }))} placeholder="0.000" /></label>
+                  </div>
+                </div>
+              </div>
+              <details className="asset-box non-zakat-disclosure">
+                <summary>{tr.nonZakatableAssets}</summary>
+                <p>{tr.nonZakatHelper}</p>
+                <div className="chip-grid" role="group" aria-label={tr.nonZakatableAssets}>
+                  {nonZakatOptions.map(option => <button key={option} type="button" className={zakat.nonZakatAssets.includes(option) ? 'chip active' : 'chip'} onClick={() => toggleNonZakatAsset(option)} aria-pressed={zakat.nonZakatAssets.includes(option)}>{option === 'other' ? tr.other : tValue(option)}</button>)}
+                </div>
+                {zakat.nonZakatAssets.includes('other') && <label><span>{tr.otherNonZakatAsset}</span><input value={zakat.nonZakatOther} onChange={e => setZakat(prev => ({ ...prev, nonZakatOther: e.target.value }))} /></label>}
+              </details>
+            </article>
+
+            <article className="warm-card saved-assets-card">
+              <div className="section-head"><div><small>{tr.hawlTracking}</small><h2>{wx.savedAssetsTitle}</h2></div><CalendarDays size={22} /></div>
+              <div className="form-grid">
+                <label><span>{tr.assetName}</span><input value={assetForm.asset_name} onChange={e => setAssetForm(prev => ({ ...prev, asset_name: e.target.value }))} /></label>
+                <label><span>{tr.assetType}</span><select value={assetForm.asset_type} onChange={e => setAssetForm(prev => ({ ...prev, asset_type: e.target.value as AssetType, is_zakatable: e.target.value !== 'non_zakat' }))}>{assetTypes.map(type => <option key={type} value={type}>{assetTypeLabel(type)}</option>)}</select></label>
+                <label><span>{tr.amount}</span><input inputMode="decimal" value={assetForm.amount} onChange={e => setAssetForm(prev => ({ ...prev, amount: e.target.value }))} /></label>
+                <label><span>{tr.ownershipDate}</span><input type="date" value={assetForm.ownership_date} onChange={e => setAssetForm(prev => ({ ...prev, ownership_date: e.target.value, zakat_due_date: addYear(e.target.value) }))} /></label>
+                <label><span>{tr.dueDate}</span><input type="date" value={assetForm.zakat_due_date} onChange={e => setAssetForm(prev => ({ ...prev, zakat_due_date: e.target.value }))} /></label>
+                <label className="check-row"><input type="checkbox" checked={assetForm.is_zakatable} onChange={e => setAssetForm(prev => ({ ...prev, is_zakatable: e.target.checked }))} /><span>{wx.zakatableAsset}</span></label>
+                <button className="primary-wide wide" type="button" onClick={saveAsset}><Save size={16} /> {tr.addAsset}</button>
+              </div>
+              {assets.length === 0 ? (
+                <EmptyState className="zakat-empty-state" icon={<CalendarDays size={26} />} title={wx.noAssetsTitle} description={wx.noAssetsDesc} />
+              ) : (
+                <div className="asset-list">
+                  {assets.map(asset => {
+                    const dueDays = asset.zakat_due_date ? daysUntil(asset.zakat_due_date) : null;
+                    const status = !asset.ownership_date ? tr.missingOwnershipDate : dueDays !== null && dueDays <= 0 ? tr.completedHawl : tr.upcomingHawl;
+                    return <article key={asset.id}><div><strong>{asset.asset_name}</strong><span>{assetTypeLabel(asset.asset_type)} • {money(toNum(asset.amount), asset.currency)}</span></div><b>{status}</b><small>{dateLabel(asset.zakat_due_date || asset.ownership_date)} • {estimatedHijriDate(asset.zakat_due_date || asset.ownership_date, lang as Lang)} • {tr.hijriEstimated}</small></article>;
+                  })}
+                </div>
+              )}
+            </article>
+          </section>
         </PageTabPanel>
 
-        <PageTabPanel idBase={ZAKAT_TABS_ID} value="reminders" active={activeTab === 'reminders'}>
-        <section>
-          <article className="warm-card">
-            <div className="section-head"><h2>{tr.hawlTracking}</h2><ShieldCheck size={22} /></div>
-            {assets.length === 0 ? <p className="muted">{tr.noDueDate}</p> : (
-              <div className="asset-list">
-                {assets.map(asset => {
-                  const dueDays = asset.zakat_due_date ? daysUntil(asset.zakat_due_date) : null;
-                  const status = !asset.ownership_date ? tr.missingOwnershipDate : dueDays !== null && dueDays <= 0 ? tr.completedHawl : tr.upcomingHawl;
-                  return (
-                    <article key={asset.id}>
-                      <div><strong>{asset.asset_name}</strong><span>{assetTypeLabel(asset.asset_type)} • {money(toNum(asset.amount), asset.currency)}</span></div>
-                      <b>{status}</b>
-                      <small>{dateLabel(asset.zakat_due_date || asset.ownership_date)} • {estimatedHijriDate(asset.zakat_due_date || asset.ownership_date, lang as Lang)} • {tr.hijriEstimated}</small>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </article>
-        </section>
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="liabilities" active={activeTab === 'liabilities'}>
+          <section className="zakat-liabilities-grid">
+            <article className="warm-card liabilities-entry-card">
+              <div className="section-head"><div><small>{wx.tabsLiabilities}</small><h2>{wx.liabilitiesTitle}</h2><p>{wx.liabilitiesDescription}</p></div><ReceiptText size={22} /></div>
+              <label className="liability-field"><span>{wx.deductibleDebt}</span><input inputMode="decimal" value={zakat.debts} onChange={e => setZakat(prev => ({ ...prev, debts: e.target.value }))} placeholder="0.000" /></label>
+              <p className="formula-note"><Calculator size={16} /> {wx.liabilitiesFormula}</p>
+            </article>
+            <article className="warm-card net-preview-card">
+              <small>{wx.netPreview}</small><strong dir="ltr">{money(netZakatBase)}</strong>
+              <dl><div><dt>{wx.assetsStep}</dt><dd dir="ltr">{money(zakatableAssetsTotal)}</dd></div><div><dt>{wx.liabilitiesStep}</dt><dd dir="ltr">− {money(toNum(zakat.debts))}</dd></div></dl>
+              <p>{wx.formulaNetBase}</p>
+            </article>
+          </section>
+        </PageTabPanel>
+
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="payment" active={activeTab === 'payment'}>
+          <section className="zakat-payment-grid">
+            <article className="warm-card payment-summary-card">
+              <div className="section-head"><div><small>{wx.tabsPayment}</small><h2>{wx.paymentTitle}</h2><p>{wx.paymentDescription}</p></div><CreditCard size={22} /></div>
+              <div className="payment-metrics"><div><small>{wx.paymentDue}</small><strong dir="ltr">{latestSavedDue !== null ? money(latestSavedDue, lastSaved?.currency) : unavailable}</strong></div><div><small>{wx.paymentRecorded}</small><strong>{wx.notRecorded}</strong></div><div><small>{wx.paymentRemaining}</small><strong dir="ltr">{latestSavedDue !== null ? money(latestSavedDue, lastSaved?.currency) : unavailable}</strong></div></div>
+            </article>
+            <EmptyState className="warm-card zakat-empty-state payment-empty" icon={<ReceiptText size={28} />} title={wx.noPaymentsTitle} description={wx.noPaymentsDesc} actions={<Link className="primary-wide" href="/charity-projects?tab=projects&scope=zakat">{wx.recordPayment}</Link>} />
+          </section>
         </PageTabPanel>
 
         <PageTabPanel idBase={ZAKAT_TABS_ID} value="history" active={activeTab === 'history'}>
         <section className="warm-card">
           <div className="section-head">
             <h2>{tr.zakatHistory}</h2>
-            <Link className="secondary-link" href="/charity-projects">{tr.openCharityProjects}</Link>
+            <Link className="secondary-link" href="/charity-projects?tab=projects&scope=zakat">{tr.openCharityProjects}</Link>
           </div>
           {history.length === 0 ? <p className="muted">{tr.noHistory}</p> : (
             <div className="history-list">
@@ -1098,12 +1358,42 @@ export default function ZakatPage() {
         </PageTabPanel>
 
         <PageTabPanel idBase={ZAKAT_TABS_ID} value="reports" active={activeTab === 'reports'}>
-          <section className="warm-card">
+          <section className="warm-card zakat-reports-card">
             <div className="section-head">
-              <h2>{zakatTabs.find(tab => tab.id === 'reports')?.label}</h2>
-              <Link className="secondary-link" href="/reports-center">{tr.openReportsCenter}</Link>
+              <div><small>{wx.tabsReports}</small><h2>{wx.reportsTitle}</h2><p>{wx.reportsDesc}</p></div>
+              <FileText size={22} />
             </div>
-            <p className="muted">{tr.zakatHistory}: {history.length}</p>
+            {history.length === 0 ? (
+              <EmptyState className="zakat-empty-state" icon={<FileText size={28} />} title={tr.noHistory} description={wx.reportsDesc} actions={<button className="primary-wide" type="button" onClick={() => setActiveTab('calculation')}>{wx.actionCalculate}</button>} />
+            ) : (
+              <div className="report-records">
+                {history.map(item => {
+                  const reportYear = item.calculation_date ? new Date(`${item.calculation_date.slice(0, 10)}T00:00:00`).getFullYear() : new Date().getFullYear();
+                  return (
+                    <article className="report-record" key={item.id}>
+                      <dl>
+                        <div><dt>{wx.year}</dt><dd>{reportYear}</dd></div>
+                        <div><dt>{wx.amount}</dt><dd dir="ltr">{money(toNum(item.zakat_due), item.currency)}</dd></div>
+                        <div><dt>{wx.category}</dt><dd>{tr.title}</dd></div>
+                        <div><dt>{wx.calculation}</dt><dd>{nisabMethodLabel(item.nisab_method)}</dd></div>
+                        <div><dt>{wx.payment}</dt><dd>{wx.notRecorded}</dd></div>
+                        <div><dt>{wx.receipt}</dt><dd>{wx.notRecorded}</dd></div>
+                        <div><dt>{wx.pdf}</dt><dd><button type="button" onClick={() => window.print()}>{wx.exportPdf}</button></dd></div>
+                        <div><dt>{wx.status}</dt><dd><span className="report-status draft">{wx.draft}</span></dd></div>
+                      </dl>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+            <div className="report-footer-actions"><button className="primary-wide" type="button" onClick={() => window.print()}><Download size={16} /> {wx.exportPdf}</button><button className="secondary-link" type="button" onClick={() => setActiveTab('documents')}>{wx.openDocuments}</button></div>
+          </section>
+        </PageTabPanel>
+
+        <PageTabPanel idBase={ZAKAT_TABS_ID} value="documents" active={activeTab === 'documents'}>
+          <section className="warm-card zakat-documents-card">
+            <div className="section-head"><div><small>{wx.tabsDocuments}</small><h2>{wx.documentsTitle}</h2><p>{wx.documentsDesc}</p></div><ReceiptText size={22} /></div>
+            <EmptyState className="zakat-empty-state" icon={<ReceiptText size={28} />} title={wx.noDocumentsTitle} description={wx.noDocumentsDesc} actions={<Link className="primary-wide" href="/charity-projects?tab=documents&scope=zakat">{wx.openDocuments}</Link>} />
           </section>
         </PageTabPanel>
       </DashboardPageShell>
@@ -1116,7 +1406,7 @@ export default function ZakatPage() {
         .zakat-page .sfm-dashboard-page-content.zakat-content{width:min(100%,1280px);max-inline-size:min(1280px,calc(100vw - 32px));margin-inline:auto;gap:clamp(16px,1.8vw,24px);min-width:0}
         .zakat-page .sfm-dashboard-page-content.zakat-content > *{inline-size:100%;min-width:0}
         .zakat-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,max-content);align-items:center;border-radius:var(--zakat-radius-xl);min-height:0}
-        .zakat-hero h1{font-size:clamp(32px,3.2vw,46px);letter-spacing:0;text-wrap:balance}.zakat-hero p{font-size:15.5px;max-width:780px}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}
+        .zakat-hero h1{font-size:clamp(32px,3.2vw,46px);letter-spacing:0;text-wrap:balance;color:#fff!important}.zakat-hero p{font-size:15.5px;max-width:780px}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}
         .zakat-page :is(.gold-btn,.dark-btn,.primary-wide,.secondary-link){border-radius:var(--r-md);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.zakat-page :is(.gold-btn,.dark-btn,.primary-wide,.secondary-link):hover:not(:disabled){transform:translateY(-1px)}.zakat-page :is(button,a,input,select):focus-visible{outline:3px solid rgba(47,214,192,.34);outline-offset:2px}
         .zakat-page .page-section-tabs{display:flex;align-items:stretch;gap:8px;min-height:62px;padding:8px;border:1px solid rgba(29,140,255,.13);border-radius:var(--r-2xl);background:linear-gradient(135deg,rgba(255,255,255,.94),rgba(234,246,255,.84));box-shadow:0 14px 34px rgba(3,18,37,.07);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}.zakat-page .page-section-tabs::-webkit-scrollbar{display:none}.zakat-page .page-section-tabs button{flex:1 0 auto;min-width:max-content;min-height:48px;border-radius:var(--r-lg);white-space:nowrap}.zakat-page .page-section-tabs button.active{background:var(--sfm-midnight);color:#fff;border-color:rgba(167,243,240,.32);box-shadow:0 12px 24px rgba(3,18,37,.18)}
         .zakat-page .warm-card{border-radius:var(--zakat-radius-xl);border:1px solid var(--zakat-border);box-shadow:var(--zakat-shadow);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(246,251,255,.94));min-width:0}.zakat-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.zakat-summary-grid .summary-card{height:100%;min-height:124px}.zakat-summary-grid .summary-card strong,.result-grid strong,.price-card strong,.history-list strong,.asset-list strong{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
@@ -1125,6 +1415,37 @@ export default function ZakatPage() {
         @media(max-width:1260px){.zakat-hero{grid-template-columns:1fr}.zakat-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.zakat-main-grid{grid-template-columns:1fr 1fr}.guidance-panel{grid-column:1 / -1}.hero-actions{justify-content:flex-start}}
         @media(max-width:920px){.zakat-page .sfm-dashboard-page-content.zakat-content{max-inline-size:min(100%,calc(100vw - 24px))}.zakat-summary-grid,.zakat-main-grid,.split-grid{grid-template-columns:1fr}.zakat-page .page-section-tabs button{flex:0 0 auto;min-width:142px}.history-list article{grid-template-columns:1fr}}
         @media(max-width:560px){.zakat-page .sfm-dashboard-page-content.zakat-content{max-inline-size:min(100%,calc(100vw - 18px));gap:14px}.zakat-hero{padding:18px;border-radius:var(--r-2xl)}.hero-actions{display:grid;grid-template-columns:1fr;width:100%}.zakat-summary-grid,.form-grid,.price-grid,.result-grid{grid-template-columns:1fr}.warm-card{border-radius:var(--r-2xl);padding:16px}.zakat-page .page-section-tabs button{min-width:132px}.section-head{display:grid}.section-head svg{order:-1}.gold-btn,.dark-btn,.primary-wide,.secondary-link{width:100%}}
+
+        /* Phase 2.8 — route-scoped Islamic finance experience. */
+        .zakat-page{
+          --zakat-bg:#F7F4EC;--zakat-surface:#FFFCF5;--zakat-soft:#EEF3EF;--zakat-ink:#12352D;--zakat-muted:#4F645D;--zakat-border:#C9D6CF;--zakat-primary:#0F766E;--zakat-hover:#0B5B4B;--zakat-emerald:#199B74;--zakat-gold:#D4A037;--zakat-gold-ink:#78520A;
+          --sfm-primary:var(--zakat-primary);--sfm-accent:var(--zakat-emerald);--sfm-primary-dark:var(--zakat-ink);--sfm-midnight:var(--zakat-ink);--sfm-card:var(--zakat-surface);--sfm-light-card:var(--zakat-soft);--sfm-muted:var(--zakat-muted);--sfm-muted-readable:var(--zakat-muted);
+          background:radial-gradient(circle at 8% 0%,rgba(15,118,110,.08),transparent 28%),var(--zakat-bg);color:var(--zakat-ink)
+        }
+        .zakat-hero{background:radial-gradient(circle at 12% 12%,rgba(233,196,106,.18),transparent 28%),linear-gradient(135deg,#0A2D25,#0F4F3F 64%,#0F766E);border-color:rgba(233,196,106,.22);box-shadow:0 22px 54px rgba(7,36,29,.18)}
+        .zakat-hero>div>span{color:#E9C46A}.zakat-hero p{color:rgba(245,250,247,.82)}
+        .zakat-action-center{display:grid;grid-template-columns:minmax(240px,.72fr) minmax(0,1.28fr);gap:16px;align-items:center;padding:16px 18px;border:1px solid var(--zakat-border);border-radius:var(--r-2xl);background:var(--zakat-surface);box-shadow:0 12px 28px rgba(18,53,45,.07)}
+        .zakat-action-center>div{display:grid;gap:4px}.zakat-action-center>div small{color:var(--zakat-gold-ink);font-weight:950}.zakat-action-center>div strong{color:var(--zakat-ink);font-size:14px;line-height:1.6}
+        .zakat-action-center nav{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.zakat-action-center button{min-height:44px;border:1px solid var(--zakat-border);border-radius:var(--r-md);background:var(--zakat-soft);color:var(--zakat-ink);padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:900;cursor:pointer}.zakat-action-center button.action-primary{background:var(--zakat-primary);border-color:var(--zakat-primary);color:#fff}.zakat-action-center button:hover{border-color:var(--zakat-primary);transform:translateY(-1px)}
+        .zakat-overview-panel{display:grid;gap:16px}.zakat-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.zakat-summary-grid .summary-card{min-height:258px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto auto 1fr;align-content:start;gap:7px 11px;background:var(--zakat-surface);border-color:var(--zakat-border)}
+        .zakat-summary-grid .summary-card>span{grid-column:1;grid-row:1 / span 2;background:rgba(15,118,110,.10);color:var(--zakat-primary)}.zakat-summary-grid .summary-card>small{grid-column:2;grid-row:1;color:var(--zakat-muted)}.zakat-summary-grid .summary-card>.metric-help{grid-column:3;grid-row:1 / span 2}.zakat-summary-grid .summary-card>strong{grid-column:2 / 4;grid-row:2;color:var(--zakat-ink);font-size:clamp(18px,1.35vw,24px)}.zakat-summary-grid .summary-card>em{grid-column:2 / 4;grid-row:3}.metric-meta{grid-column:1 / 4;grid-row:4;display:grid;gap:7px;margin:7px 0 0;padding-top:10px;border-top:1px solid var(--zakat-border)}.metric-meta div{display:grid;gap:2px}.metric-meta dt{color:var(--zakat-gold-ink);font-size:10.5px;font-weight:950}.metric-meta dd{margin:0;color:var(--zakat-muted);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+        .zakat-overview-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:16px}.section-head small{display:block;color:var(--zakat-gold-ink);font-weight:950;margin-bottom:4px}.section-head p{margin:5px 0 0;color:var(--zakat-muted);line-height:1.65}.overview-status{border:1px solid var(--zakat-border);border-radius:var(--r-xl);padding:16px;background:var(--zakat-soft)}.overview-status strong{color:var(--zakat-ink);font-size:20px}.overview-status p{margin:6px 0 0;color:var(--zakat-muted);line-height:1.65}.overview-status.due{border-color:rgba(212,160,55,.42);background:#FFF8E6}.separation-note{display:flex;align-items:flex-start;gap:8px;margin:12px 0 0;padding:12px;border-inline-start:3px solid var(--zakat-gold);background:rgba(212,160,55,.08);color:var(--zakat-ink);line-height:1.65}.evidence-card>p{color:var(--zakat-muted);line-height:1.7}.evidence-card>dl{display:grid;gap:0;margin:14px 0 0}.evidence-card>dl div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px;padding:10px 0;border-top:1px solid var(--zakat-border)}.evidence-card dt{color:var(--zakat-muted);font-weight:850}.evidence-card dd{margin:0;color:var(--zakat-ink);font-weight:950;text-align:end}
+        .calculation-map{margin-bottom:16px}.calculation-map ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.calculation-map li{position:relative;min-width:0;padding:14px;border:1px solid var(--zakat-border);border-radius:var(--r-xl);background:var(--zakat-soft);display:grid;gap:6px}.calculation-map li:not(:last-child)::after{content:'›';position:absolute;inset-inline-end:-10px;top:50%;translate:0 -50%;z-index:1;color:var(--zakat-gold);font-size:20px;font-weight:900}.zakat-page[dir='rtl'] .calculation-map li:not(:last-child)::after{content:'‹'}.calculation-map li>span{width:27px;height:27px;border-radius:999px;display:grid;place-items:center;background:var(--zakat-primary);color:#fff;font-weight:950}.calculation-map small{color:var(--zakat-gold-ink);font-weight:950}.calculation-map strong{color:var(--zakat-ink);font-size:17px;overflow-wrap:anywhere}.calculation-map em{color:var(--zakat-muted);font-size:11.5px;line-height:1.5;font-style:normal}.calculation-map li.result-due{background:#FFF8E6;border-color:rgba(212,160,55,.5)}.calculation-map footer{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.calculation-map footer span{border-radius:999px;background:var(--zakat-soft);color:var(--zakat-muted);padding:6px 10px;font-size:11px;font-weight:850}
+        .zakat-calculation-panel .zakat-main-grid{grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr)}.zakat-calculation-panel .input-panel{display:none}.summary-panel,.guidance-panel{background:var(--zakat-surface)}.price-card{background:#0A2D25;border-color:rgba(233,196,106,.20)}.price-card small{color:#E9C46A}.price-meta span{background:rgba(15,118,110,.10);border-color:rgba(15,118,110,.18);color:var(--zakat-ink)}
+        .zakat-assets-workspace{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(340px,.88fr);gap:16px;align-items:start}.asset-entry-card,.saved-assets-card{min-width:0}.asset-metals-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.non-zakat-disclosure summary{cursor:pointer;color:var(--zakat-ink);font-weight:950}.saved-assets-card .asset-list{margin-top:16px}.zakat-empty-state{margin-top:16px;border:1px dashed var(--zakat-border);border-radius:var(--r-xl);background:var(--zakat-soft)}
+        .zakat-liabilities-grid,.zakat-payment-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:16px;align-items:stretch}.liability-field{display:grid;gap:8px;color:var(--zakat-ink);font-weight:900}.liability-field input{width:100%;min-height:48px;border:1px solid var(--zakat-border);border-radius:var(--r-md);background:var(--zakat-surface);color:var(--zakat-ink);padding:0 13px;font:900 16px Tajawal,Arial,sans-serif}.formula-note{display:flex;align-items:center;gap:8px;margin:14px 0 0;padding:12px;border-radius:var(--r-lg);background:var(--zakat-soft);color:var(--zakat-muted);line-height:1.6}.net-preview-card{display:grid;align-content:center;gap:12px}.net-preview-card>small{color:var(--zakat-gold-ink);font-weight:950}.net-preview-card>strong{font-size:clamp(28px,4vw,42px);color:var(--zakat-primary)}.net-preview-card dl{display:grid;gap:8px}.net-preview-card dl div{display:flex;justify-content:space-between;gap:12px}.net-preview-card dt{color:var(--zakat-muted)}.net-preview-card dd{margin:0;color:var(--zakat-ink);font-weight:950}.net-preview-card p{margin:0;color:var(--zakat-muted);line-height:1.6}
+        .payment-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.payment-metrics div{padding:14px;border:1px solid var(--zakat-border);border-radius:var(--r-xl);background:var(--zakat-soft)}.payment-metrics small{display:block;color:var(--zakat-muted);font-weight:900}.payment-metrics strong{display:block;margin-top:7px;color:var(--zakat-ink);font-size:18px}.payment-empty{margin:0!important;display:grid;place-content:center;text-align:center}
+        .report-records{display:grid;gap:12px}.report-record{border:1px solid var(--zakat-border);border-radius:var(--r-xl);background:var(--zakat-soft);padding:14px}.report-record dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0}.report-record dl div{min-width:0;display:grid;gap:5px}.report-record dt{color:var(--zakat-muted);font-size:11px;font-weight:900}.report-record dd{margin:0;color:var(--zakat-ink);font-weight:950;overflow-wrap:anywhere}.report-record button{min-height:36px;border:1px solid var(--zakat-border);border-radius:var(--r-md);background:var(--zakat-surface);color:var(--zakat-primary);padding:0 10px;font-weight:900;cursor:pointer}.report-status{display:inline-flex;border-radius:999px;padding:5px 9px;background:rgba(25,155,116,.12);color:var(--zakat-hover);font-size:11px}.report-status.draft{background:rgba(212,160,55,.14);color:var(--zakat-gold-ink)}.report-footer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+        .zakat-page :is(.gold-btn,.primary-wide){background:var(--zakat-primary);border-color:var(--zakat-primary);color:#fff;box-shadow:0 10px 24px rgba(15,118,110,.18)}.zakat-page .secondary-link{border-color:var(--zakat-border);background:var(--zakat-surface);color:var(--zakat-primary)}.zakat-page :is(input,select,button,a):focus-visible{outline:3px solid rgba(25,155,116,.36);outline-offset:2px}.zakat-page :is(.warm-card,.asset-box,.manual-box,.import-box,.result-grid div,.guidance-list p,.asset-list article,.history-list article){border-color:var(--zakat-border)}
+        :global(.dark) .zakat-page{--zakat-bg:#071712;--zakat-surface:#0C261E;--zakat-soft:#12332A;--zakat-ink:#F2F6F1;--zakat-muted:#B7C8BF;--zakat-border:rgba(202,225,214,.18);--zakat-primary:#5CD6B2;--zakat-hover:#8DE8CC;--zakat-emerald:#31B887;--zakat-gold:#E9C46A;--zakat-gold-ink:#E9C46A;background:radial-gradient(circle at 8% 0%,rgba(49,184,135,.10),transparent 28%),var(--zakat-bg)}
+        :global(.dark) .zakat-page .warm-card,:global(.dark) .zakat-page :is(.asset-box,.manual-box,.import-box,.result-grid div,.guidance-list p,.asset-list article,.history-list article){background:var(--zakat-surface);border-color:var(--zakat-border);box-shadow:0 18px 44px rgba(0,0,0,.20)}
+        :global(.dark) .zakat-page :is(.section-head h2,.summary-card>strong,.result-grid strong,.asset-list strong,.history-list strong,.liability-field,.report-record dd){color:var(--zakat-ink)}:global(.dark) .zakat-page :is(input,select){background:#081D17!important;color:var(--zakat-ink)!important;border-color:var(--zakat-border)!important}.dark .overview-status.due{background:rgba(233,196,106,.10)}
+        @media(max-width:1180px){.zakat-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.calculation-map ol{grid-template-columns:repeat(3,minmax(0,1fr))}.calculation-map li::after{display:none}.zakat-assets-workspace{grid-template-columns:1fr}.zakat-action-center{grid-template-columns:1fr}.zakat-action-center nav{justify-content:flex-start}}
+        @media(max-width:920px){.zakat-overview-grid,.zakat-liabilities-grid,.zakat-payment-grid,.zakat-calculation-panel .zakat-main-grid{grid-template-columns:1fr}.asset-metals-grid{grid-template-columns:1fr}.calculation-map ol{grid-template-columns:repeat(2,minmax(0,1fr))}.report-record dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:560px){.zakat-action-center{padding:14px}.zakat-action-center nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.zakat-action-center button{width:100%;padding:0 9px}.zakat-summary-grid,.calculation-map ol,.payment-metrics,.report-record dl{grid-template-columns:1fr}.zakat-summary-grid .summary-card{min-height:0}.zakat-overview-grid,.zakat-assets-workspace{gap:12px}.report-footer-actions{display:grid}.evidence-card>dl div{grid-template-columns:1fr}.evidence-card dd{text-align:start}}
+        @media(max-width:360px){.zakat-action-center nav{grid-template-columns:1fr}.zakat-page .sfm-dashboard-page-content.zakat-content{max-inline-size:min(100%,calc(100vw - 12px))}}
+        @media(prefers-reduced-motion:reduce){.zakat-page *,.zakat-page *::before,.zakat-page *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+        @media print{.zakat-hero,.zakat-action-center,.page-section-tabs-shell,.hero-actions,.report-footer-actions{display:none!important}.zakat-page{background:#fff}.zakat-content{max-inline-size:none!important}.warm-card{box-shadow:none!important}}
 
       `}</style>
     </div>
