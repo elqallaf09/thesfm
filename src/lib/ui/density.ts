@@ -7,6 +7,13 @@
  * for a future phase and is intentionally rejected by the normalizer until
  * its CSS tier exists.
  *
+ * When the user has never chosen a mode the preference is `auto`: the
+ * data-heavy trader and admin areas resolve to compact on desktop while
+ * every other area (and every mobile viewport) keeps the comfortable
+ * default. An explicit choice always wins everywhere and is the only thing
+ * ever written to storage — `auto` is represented by the absence of a
+ * stored value, so clearing the preference restores the area defaults.
+ *
  * The preference is stored under its own key and mirrored into the shared
  * `sfm_settings` blob, following the theme-preference convention in
  * src/components/ThemeToggle.tsx. All storage access is guarded — a blocked
@@ -14,18 +21,40 @@
  */
 
 export type Density = 'comfortable' | 'compact';
+export type DensityPreference = Density | 'auto';
 
 export const DENSITY_STORAGE_KEY = 'sfm-density';
 export const DEFAULT_DENSITY: Density = 'comfortable';
 export const DENSITY_ATTRIBUTE = 'data-density';
+
+/** Product areas that read best compact on desktop (see themeScopes.ts). */
+export const DENSITY_COMPACT_DEFAULT_SCOPES: readonly string[] = ['trader', 'admin'];
+
+/** Matches the desktop breakpoint used by density.css's mobile guardrail. */
+export const DENSITY_DESKTOP_QUERY = '(min-width: 768px)';
 
 export function normalizeDensity(value: unknown): Density | null {
   if (value === 'comfortable' || value === 'compact') return value;
   return null;
 }
 
-export function readStoredDensity(): Density {
-  if (typeof window === 'undefined') return DEFAULT_DENSITY;
+/**
+ * Effective density for a page: an explicit preference wins; `auto` resolves
+ * to compact only for the trader/admin scopes on desktop viewports.
+ */
+export function resolveDensity(
+  preference: DensityPreference,
+  scope: string | null | undefined,
+  isDesktop: boolean,
+): Density {
+  if (preference !== 'auto') return preference;
+  if (isDesktop && scope && DENSITY_COMPACT_DEFAULT_SCOPES.includes(scope)) return 'compact';
+  return DEFAULT_DENSITY;
+}
+
+/** Explicit stored choice, or `auto` when the user never picked a mode. */
+export function readStoredDensityPreference(): DensityPreference {
+  if (typeof window === 'undefined') return 'auto';
   try {
     const direct = normalizeDensity(window.localStorage.getItem(DENSITY_STORAGE_KEY));
     if (direct) return direct;
@@ -36,9 +65,14 @@ export function readStoredDensity(): Density {
       if (fromSettings) return fromSettings;
     }
   } catch {
-    // Storage unavailable or corrupted — fall through to the default.
+    // Storage unavailable or corrupted — fall through to auto.
   }
-  return DEFAULT_DENSITY;
+  return 'auto';
+}
+
+export function readStoredDensity(): Density {
+  const preference = readStoredDensityPreference();
+  return preference === 'auto' ? DEFAULT_DENSITY : preference;
 }
 
 export function persistDensity(density: Density): void {

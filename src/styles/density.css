@@ -2,7 +2,10 @@
  * Information-density layer.
  *
  * DensityProvider (src/hooks/useDensity.tsx) stamps `data-density` on the
- * root element from the stored preference (src/lib/ui/density.ts).
+ * root element from the resolved preference (src/lib/ui/density.ts): an
+ * explicit user choice wins everywhere; without one, the trader and admin
+ * areas resolve to compact on desktop and everything else stays
+ * comfortable. Only the resolved mode reaches this file.
  *
  *   comfortable — the approved default appearance; no rules exist for it,
  *                 so selecting it renders exactly the approved identity.
@@ -107,6 +110,37 @@
 }
 
 /*
+ * ── Compact: shared layout tokens (desktop only) ──
+ * Page shells and every registered grid family read their rhythm from the
+ * layout-stabilization tokens in globals.css, so tightening the tokens
+ * compacts section gaps, card grids and page padding everywhere at once.
+ * Scoped to the desktop layout breakpoint (sidebar layout, >1024px) so the
+ * mobile/tablet token overrides in globals.css — including the fixed-header
+ * page offset — stay the single source of truth on touch layouts.
+ */
+@media (min-width: 1025px) {
+  :root[data-density='compact'] {
+    --sfm-section-gap: 16px;
+    --sfm-card-gap: 12px;
+    --sfm-page-pad-y: 18px;
+  }
+}
+
+/* ── Compact: app cards and feed rows ── */
+:root[data-density='compact'] .sfm-app-card {
+  padding: 14px 16px;
+}
+
+:root[data-density='compact'] .sfm-feed-item {
+  padding: 9px 10px;
+}
+
+:root[data-density='compact'] .sfm-feed-icon {
+  width: 30px;
+  height: 30px;
+}
+
+/*
  * ── Scope tier: trader and admin workspaces ──
  * Data-heavy tables in the trader and operations areas read well one step
  * denser than the base compact tier. Core Finance intentionally stays on
@@ -123,6 +157,19 @@
 }
 
 /*
+ * The trader/admin scope containers re-declare the layout tokens one step
+ * tighter; grids and section stacks inside them inherit the denser rhythm
+ * while Core Finance keeps the gentler base values above.
+ */
+@media (min-width: 1025px) {
+  :root[data-density='compact'] [data-theme-scope='trader'],
+  :root[data-density='compact'] [data-theme-scope='admin'] {
+    --sfm-section-gap: 14px;
+    --sfm-card-gap: 10px;
+  }
+}
+
+/*
  * ── Mobile guardrail ──
  * Compact must not make touch layouts cramped: card padding returns to the
  * approved mobile values and table cells keep enough height for 44px row
@@ -130,8 +177,18 @@
  * keep the global 44px+ mobile floors in both modes.
  */
 @media (max-width: 767px) {
-  :root[data-density='compact'] .sfm-card {
+  :root[data-density='compact'] .sfm-card,
+  :root[data-density='compact'] .sfm-app-card {
     padding: 16px 18px;
+  }
+
+  :root[data-density='compact'] .sfm-feed-item {
+    padding: 11px;
+  }
+
+  :root[data-density='compact'] .sfm-feed-icon {
+    width: 34px;
+    height: 34px;
   }
 
   :root[data-density='compact'] td,

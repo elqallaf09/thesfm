@@ -12947,3 +12947,99 @@ html[data-theme="light"] .heatmap-sector-filter select { border-color: var(--lig
 html[data-theme="light"] :is(.cell-dash, .ticker-chip .chip-unavailable, .ticker-chip .chip-dash, .heatmap-tile-performance.is-unavailable, .st-quote.is-empty small) {
   color: var(--light-text-muted, #5c7186);
 }
+
+/* ==========================================================================
+   sfm-density-layer:start
+   --------------------------------------------------------------------------
+   Information-density tier for the trader terminal (phase 2.7).
+
+   The pre-paint script in index.html / detail.html stamps `data-density` on
+   <html> from the preference shared with the parent app (localStorage key
+   `sfm-density`, mirrored in `sfm_settings.density`):
+
+     comfortable — explicit choice: the approved appearance, no rules here.
+     compact     — explicit choice: the tier below applies on desktop.
+     auto        — no stored choice: the trader terminal defaults to the
+                   compact tier on desktop; mobile and tablet always keep
+                   the comfortable appearance.
+
+   Hard rules for this layer (asserted by traderDensity unit tests):
+   no color declarations, no font-size below 12px, no button/input metrics
+   (44px+ touch floors survive), desktop-only via min-width media query,
+   RTL-safe logical/symmetric spacing only.
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  html[data-density="auto"] .terminal-stage,
+  html[data-density="compact"] .terminal-stage {
+    padding: 12px clamp(12px, 1.6vw, 22px) 22px;
+  }
+
+  html[data-density="auto"] .page-stack,
+  html[data-density="compact"] .page-stack {
+    gap: 12px;
+  }
+
+  html[data-density="auto"] .panel,
+  html[data-density="compact"] .panel {
+    padding: 14px 16px;
+  }
+
+  html[data-density="auto"] .page-hero,
+  html[data-density="compact"] .page-hero {
+    padding: 12px 16px;
+  }
+
+  html[data-density="auto"] .command-hero,
+  html[data-density="compact"] .command-hero {
+    min-height: auto;
+    gap: 14px;
+    padding: clamp(14px, 1.8vw, 20px);
+  }
+
+  html[data-density="auto"] .stat-card,
+  html[data-density="compact"] .stat-card {
+    min-height: 112px;
+    padding: 14px;
+  }
+
+  html[data-density="auto"] .metric-grid,
+  html[data-density="compact"] .metric-grid,
+  html[data-density="auto"] .bento-grid,
+  html[data-density="compact"] .bento-grid,
+  html[data-density="auto"] .market-grid,
+  html[data-density="compact"] .market-grid,
+  html[data-density="auto"] .watchlist-grid,
+  html[data-density="compact"] .watchlist-grid,
+  html[data-density="auto"] .news-grid,
+  html[data-density="compact"] .news-grid,
+  html[data-density="auto"] .education-grid,
+  html[data-density="compact"] .education-grid,
+  html[data-density="auto"] .settings-grid,
+  html[data-density="compact"] .settings-grid,
+  html[data-density="auto"] .alert-grid,
+  html[data-density="compact"] .alert-grid,
+  html[data-density="auto"] .rec-grid,
+  html[data-density="compact"] .rec-grid {
+    gap: 10px;
+  }
+
+  html[data-density="auto"] .watchlist-table th,
+  html[data-density="compact"] .watchlist-table th,
+  html[data-density="auto"] .watchlist-table td,
+  html[data-density="compact"] .watchlist-table td,
+  html[data-density="auto"] .calendar-table th,
+  html[data-density="compact"] .calendar-table th,
+  html[data-density="auto"] .calendar-table td,
+  html[data-density="compact"] .calendar-table td {
+    padding: 8px 9px;
+  }
+
+  html[data-density="auto"] .hero-copy p,
+  html[data-density="compact"] .hero-copy p,
+  html[data-density="auto"] .page-hero p,
+  html[data-density="compact"] .page-hero p {
+    line-height: 1.6;
+  }
+}
+/* == sfm-density-layer:end == */

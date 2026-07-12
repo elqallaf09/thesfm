@@ -1,16 +1,31 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { usePathname } from 'next/navigation';
 import {
   applyDensityAttribute,
   DEFAULT_DENSITY,
+  DENSITY_DESKTOP_QUERY,
   persistDensity,
-  readStoredDensity,
+  readStoredDensityPreference,
+  resolveDensity,
   type Density,
+  type DensityPreference,
 } from '@/lib/ui/density';
+import { getThemeScope } from '@/lib/navigation/themeScopes';
 
 type DensityContextValue = {
+  /** Effective density for the current page (preference + area default). */
   density: Density;
+  /** The stored choice — `auto` until the user explicitly picks a mode. */
+  preference: DensityPreference;
   setDensity: (density: Density) => void;
   toggleDensity: () => void;
 };
@@ -19,33 +34,45 @@ const DensityContext = createContext<DensityContextValue | null>(null);
 
 export function DensityProvider({ children }: { children: ReactNode }) {
   // Server render and first client paint use the approved comfortable
-  // default; the stored preference is applied after mount so hydration
-  // stays consistent (same pattern as the mounted guard in ThemeToggle).
-  const [density, setDensityState] = useState<Density>(DEFAULT_DENSITY);
+  // default; the stored preference, viewport and area default are applied
+  // after mount so hydration stays consistent (same pattern as the mounted
+  // guard in ThemeToggle).
+  const pathname = usePathname();
+  const [preference, setPreference] = useState<DensityPreference>('auto');
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = readStoredDensity();
-    setDensityState(stored);
-    applyDensityAttribute(stored);
+    setPreference(readStoredDensityPreference());
+    const media = window.matchMedia(DENSITY_DESKTOP_QUERY);
+    setIsDesktop(media.matches);
+    const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches);
+    media.addEventListener('change', onChange);
+    setMounted(true);
+    return () => media.removeEventListener('change', onChange);
   }, []);
 
+  const density = mounted
+    ? resolveDensity(preference, getThemeScope(pathname), isDesktop)
+    : DEFAULT_DENSITY;
+
+  useEffect(() => {
+    if (mounted) applyDensityAttribute(density);
+  }, [density, mounted]);
+
   const setDensity = useCallback((next: Density) => {
-    setDensityState(next);
+    setPreference(next);
     applyDensityAttribute(next);
     persistDensity(next);
   }, []);
 
   const toggleDensity = useCallback(() => {
-    setDensityState((current) => {
-      const next: Density = current === 'compact' ? 'comfortable' : 'compact';
-      applyDensityAttribute(next);
-      persistDensity(next);
-      return next;
-    });
-  }, []);
+    const next: Density = density === 'compact' ? 'comfortable' : 'compact';
+    setDensity(next);
+  }, [density, setDensity]);
 
   return (
-    <DensityContext.Provider value={{ density, setDensity, toggleDensity }}>
+    <DensityContext.Provider value={{ density, preference, setDensity, toggleDensity }}>
       {children}
     </DensityContext.Provider>
   );

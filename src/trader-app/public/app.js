@@ -2507,6 +2507,22 @@
         applyThemePreference(state.settings.theme);
         render();
       }
+      if (["sfm-density", "sfm_settings"].includes(event.key || "")) {
+        // Keep the terminal in step when the parent app's density toggle
+        // changes the shared preference in another tab (no reload needed).
+        try {
+          let density = localStorage.getItem("sfm-density");
+          if (density !== "comfortable" && density !== "compact") {
+            const settings = JSON.parse(localStorage.getItem("sfm_settings") || "{}");
+            density = settings && (settings.density === "comfortable" || settings.density === "compact")
+              ? settings.density
+              : "auto";
+          }
+          document.documentElement.dataset.density = density;
+        } catch (_) {
+          document.documentElement.dataset.density = "auto";
+        }
+      }
     });
     window.addEventListener(LANG_EVENT, () => {
       state.settings.lang = currentLanguage();

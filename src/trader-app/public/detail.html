@@ -34,6 +34,22 @@
           document.documentElement.style.colorScheme = resolved;
           document.querySelector('meta[name="theme-color"]').content = resolved === "light" ? "#EEF2F5" : "#05090D";
         } catch (_) {}
+        try {
+          // Information-density preference shared with the parent app
+          // (src/lib/ui/density.ts). Explicit choice wins; "auto" lets the
+          // density layer in cinema.css default the terminal to compact on
+          // desktop while mobile stays comfortable.
+          var density = localStorage.getItem("sfm-density");
+          if (density !== "comfortable" && density !== "compact") {
+            var settings = JSON.parse(localStorage.getItem("sfm_settings") || "{}");
+            density = settings && (settings.density === "comfortable" || settings.density === "compact")
+              ? settings.density
+              : "auto";
+          }
+          document.documentElement.dataset.density = density;
+        } catch (_) {
+          document.documentElement.dataset.density = "auto";
+        }
       })();
     </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -47,7 +63,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css?v=20260630-cinema" />
     <link rel="stylesheet" href="/desktop-balance.css?v=20260630-cinema" />
-    <link rel="stylesheet" href="/cinema.css?v=20260710-fr-i18n" />
+    <link rel="stylesheet" href="/cinema.css?v=20260712-density" />
     <script>
       // إلغاء أي Service Worker قديم وتنظيف كاشه (نفس معالجة index.html)
       (function () {

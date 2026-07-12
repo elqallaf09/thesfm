@@ -3,10 +3,13 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_DENSITY,
+  DENSITY_COMPACT_DEFAULT_SCOPES,
   DENSITY_STORAGE_KEY,
   normalizeDensity,
   persistDensity,
   readStoredDensity,
+  readStoredDensityPreference,
+  resolveDensity,
 } from '@/lib/ui/density';
 
 type MutableGlobal = { window?: { localStorage: unknown } };
@@ -84,6 +87,22 @@ describe('density preference', () => {
     });
   });
 
+  it('reads auto when the user never chose a mode, and the explicit choice otherwise', () => {
+    withWindow(createLocalStorage(), () => {
+      expect(readStoredDensityPreference()).toBe('auto');
+    });
+    withWindow(createLocalStorage({ [DENSITY_STORAGE_KEY]: 'compact' }), () => {
+      expect(readStoredDensityPreference()).toBe('compact');
+    });
+    withWindow(createLocalStorage({ sfm_settings: JSON.stringify({ density: 'comfortable' }) }), () => {
+      expect(readStoredDensityPreference()).toBe('comfortable');
+    });
+    // Corrupted storage resolves to auto, never to a crash.
+    withWindow(createLocalStorage({ [DENSITY_STORAGE_KEY]: 'garbage', sfm_settings: '{not json' }), () => {
+      expect(readStoredDensityPreference()).toBe('auto');
+    });
+  });
+
   it('survives corrupted or blocked storage without throwing', () => {
     withWindow(createLocalStorage({ [DENSITY_STORAGE_KEY]: 'garbage', sfm_settings: '{not json' }), () => {
       expect(readStoredDensity()).toBe('comfortable');
@@ -100,6 +119,34 @@ describe('density preference', () => {
       expect(readStoredDensity()).toBe('comfortable');
       expect(() => persistDensity('compact')).not.toThrow();
     });
+  });
+});
+
+describe('per-area density defaults', () => {
+  it('lets an explicit preference win everywhere', () => {
+    expect(resolveDensity('compact', 'core-finance', false)).toBe('compact');
+    expect(resolveDensity('compact', null, false)).toBe('compact');
+    expect(resolveDensity('comfortable', 'trader', true)).toBe('comfortable');
+    expect(resolveDensity('comfortable', 'admin', true)).toBe('comfortable');
+  });
+
+  it('defaults the data-heavy trader and admin desktops to compact', () => {
+    expect(DENSITY_COMPACT_DEFAULT_SCOPES).toEqual(['trader', 'admin']);
+    expect(resolveDensity('auto', 'trader', true)).toBe('compact');
+    expect(resolveDensity('auto', 'admin', true)).toBe('compact');
+  });
+
+  it('keeps mobile comfortable even in the compact-default areas', () => {
+    expect(resolveDensity('auto', 'trader', false)).toBe('comfortable');
+    expect(resolveDensity('auto', 'admin', false)).toBe('comfortable');
+  });
+
+  it('keeps finance, business, shariah and unscoped routes comfortable by default', () => {
+    expect(resolveDensity('auto', 'core-finance', true)).toBe('comfortable');
+    expect(resolveDensity('auto', 'business', true)).toBe('comfortable');
+    expect(resolveDensity('auto', 'shariah', true)).toBe('comfortable');
+    expect(resolveDensity('auto', null, true)).toBe('comfortable');
+    expect(resolveDensity('auto', undefined, true)).toBe('comfortable');
   });
 });
 
@@ -142,6 +189,25 @@ describe('density.css compact layer', () => {
     expect(css).toContain('@media (max-width: 767px)');
     expect(css).not.toMatch(/padding-(left|right)|margin-(left|right)|\b(left|right)\s*:/);
   });
+
+  it('tightens the shared layout tokens on the sidebar-desktop layout only', () => {
+    // 1025px matches the desktop layout breakpoint: below it globals.css owns
+    // the tokens (incl. the fixed-header page offset) and must stay in charge.
+    const desktopBlocks = [...css.matchAll(/@media \(min-width: 1025px\)\s*{([\s\S]*?)\n}/g)]
+      .map(([, body]) => body)
+      .join('\n');
+    expect(desktopBlocks).toContain('--sfm-section-gap');
+    expect(desktopBlocks).toContain('--sfm-card-gap');
+    expect(desktopBlocks).toContain('--sfm-page-pad-y');
+    // Token overrides never appear outside the desktop media query.
+    const outside = css.replace(/@media \(min-width: 1025px\)\s*{[\s\S]*?\n}/g, '');
+    expect(outside).not.toContain('--sfm-section-gap');
+    expect(outside).not.toContain('--sfm-page-pad-y');
+  });
+
+  it('re-declares tighter tokens on the trader/admin scope containers', () => {
+    expect(css).toMatch(/\[data-theme-scope='trader'\],\s*:root\[data-density='compact'\] \[data-theme-scope='admin'\] {/);
+  });
 });
 
 describe('density wiring', () => {
@@ -155,6 +221,17 @@ describe('density wiring', () => {
 
     const globals = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     expect(globals).toContain('@import "../styles/density.css";');
+  });
+
+  it('resolves the area default from the route scope and viewport after mount', () => {
+    const hook = readFileSync(join(process.cwd(), 'src/hooks/useDensity.tsx'), 'utf8');
+    expect(hook).toContain("import { getThemeScope } from '@/lib/navigation/themeScopes'");
+    expect(hook).toContain('resolveDensity(preference, getThemeScope(pathname), isDesktop)');
+    expect(hook).toContain('window.matchMedia(DENSITY_DESKTOP_QUERY)');
+    // Hydration safety: server render and first paint stay on the default;
+    // the resolved density is only applied after mount.
+    expect(hook).toContain('const [mounted, setMounted] = useState(false)');
+    expect(hook).toContain('if (mounted) applyDensityAttribute(density)');
   });
 
   it('exposes an accessible, labelled toggle', () => {

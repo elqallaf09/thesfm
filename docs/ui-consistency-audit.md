@@ -102,7 +102,34 @@ Hard guarantees (asserted in `src/__tests__/unit/densityMode.test.ts`): no color
 declarations, no control metrics (44px+ touch floors survive), no font size below
 12px, RTL-safe logical spacing only.
 
-Remaining density work (next phase): the standalone trader SPA (`src/trader-app/`)
-does not load `globals.css` and needs its own compact tier; per-page bespoke layouts
-(reports-center grids, documents lists) could adopt summary strips; list
-virtualization for very long tables.
+### Per-area defaults + trader terminal tier (2026-07-12, phase 2.7)
+
+The preference gained an `auto` tier (the absence of a stored choice — nothing is
+written to storage until the user explicitly picks a mode):
+
+- `resolveDensity(preference, scope, isDesktop)` in `src/lib/ui/density.ts` — an
+  explicit choice wins everywhere; `auto` resolves to compact only for the
+  `trader`/`admin` theme scopes on desktop (`min-width: 768px`). Finance, business,
+  shariah, charity and unscoped routes stay comfortable.
+- `DensityProvider` now resolves from `usePathname()` + `getThemeScope` + a
+  `matchMedia` listener, all applied after mount (no hydration mismatch). The header
+  `DensityToggle` reflects and overrides the effective density.
+- `src/styles/density.css` — compact additionally tightens the shared layout tokens
+  (`--sfm-section-gap` 24→16px, `--sfm-card-gap` 16→12px, `--sfm-page-pad-y` 24→18px)
+  on desktop only, one step tighter again inside the trader/admin scope containers
+  (14/10px); `.sfm-app-card` 18→14/16px and feed rows tightened, with the mobile
+  guardrail restoring the approved touch values.
+- Trader terminal (`src/trader-app/public/`): the pre-paint script in `index.html` /
+  `detail.html` stamps the shared preference (`sfm-density`, `sfm_settings.density`)
+  as `data-density` on `<html>`; a marked layer at the end of `cinema.css`
+  (`sfm-density-layer:start/end`) applies the compact tier at ≥1024px for both
+  `compact` and `auto` — so the terminal is compact by default on desktop while
+  mobile/tablet always keep the comfortable appearance. `app.js` re-stamps on
+  cross-tab `storage` events. Guarantees (asserted in
+  `src/__tests__/unit/traderDensity.test.ts`): no colors, no font sizes, no control
+  metrics, desktop-only media scope, RTL-safe spacing.
+
+Remaining density work (next phase): summary-strip components for repeated metric-card
+groups (market breadth, job status counts, portfolio totals); grouped incident table +
+collapsible logs in the Admin Operations Center; drawer-based secondary fields for
+mobile tables; list virtualization for very long tables; the reserved `dense` tier.
