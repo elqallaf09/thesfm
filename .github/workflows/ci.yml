@@ -130,7 +130,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # The Playwright config runs chromium-desktop, mobile-chrome, AND
+      # mobile-webkit projects — webkit must be installed too, or a third of
+      # the suite fails with a missing-executable error before any page loads.
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
