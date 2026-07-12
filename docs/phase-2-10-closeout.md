@@ -90,6 +90,21 @@ environment-dependent. Follow-up task: harden these assertions to accept
 the product's honest unavailable states; do not merge the PR while the
 smoke check is red unless that check is explicitly accepted as known-red.
 
+## Update after adding smoke-job secrets (commit 08917c83)
+
+`SUPABASE_SERVICE_ROLE_KEY` and `SUPER_ADMIN_EMAILS` are now passed to the
+CI smoke step (plus the existing `E2E_*` variables). Result: the
+credential-gated tests **now execute** instead of skipping — and the
+sign-in step itself fails on every project (`launch-readiness.spec.ts:45`
+and `:84`: after submitting the E2E credentials the page never leaves
+`/login`). Login rate limits are not the cause (30/IP/10 min), and the MFA
+signing secret is satisfied via the service-role fallback. Remaining
+candidates only the secret owner can check: the E2E account does not exist
+in production Supabase, the password secret is wrong, or the account has
+MFA enabled (the smoke sign-in helper has no MFA step — if E2E accounts
+are MFA-enabled, the helper needs an MFA-aware path as a follow-up).
+Other smoke failures remain the documented provider-live family.
+
 ## Requires manual action (Blocked here)
 
 1. **Apply the migration** — this environment has no Supabase access
