@@ -75,6 +75,21 @@ lives on that main; no Phase 3 work was added here.
      provider-live assertions above, which on GitHub-runner IPs are
      expected to hit provider blocks (documented follow-up).
 
+## PR #3 CI result (final)
+
+`phase-2-10-final-verification` → PR #3. Workflow jobs: **TypeScript,
+ESLint, i18n, Production launch guards (fixed by this branch), Unit &
+Integration tests, Production build, Lighthouse CI — all pass.**
+Playwright smoke: 74 passed / 22 skipped / **22 failed**, with zero
+webkit-executable errors (the webkit install fix works; that third of the
+suite now genuinely runs). Every remaining failure is in the
+provider-live family (terminal provider-state text across ar/en/fr,
+calendar lazy-load, sharia research fetches, trader provider views, and
+two webkit-only follow-ons) — pre-existing on every `main` run and
+environment-dependent. Follow-up task: harden these assertions to accept
+the product's honest unavailable states; do not merge the PR while the
+smoke check is red unless that check is explicitly accepted as known-red.
+
 ## Requires manual action (Blocked here)
 
 1. **Apply the migration** — this environment has no Supabase access
