@@ -8,7 +8,10 @@ import { getThemeScope } from '@/lib/navigation/themeScopes';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
-  const isPublicPage = ['/', '/login', '/reset-password', '/about', '/contact', '/terms', '/privacy'].includes(pathname);
+  const isPublicPage = ['/', '/login', '/reset-password', '/about', '/contact', '/terms', '/privacy'].includes(pathname)
+    // Public investor share viewer: recipients have no account, so it must
+    // render without the authenticated app chrome.
+    || pathname.startsWith('/investor/');
   const themeScope = getThemeScope(pathname);
 
   return (

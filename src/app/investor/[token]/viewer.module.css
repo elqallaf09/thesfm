@@ -1,0 +1,320 @@
+/*
+ * Public investor viewer (phase 2.9). Calm, trustworthy, standalone:
+ * no app chrome, business/finance palette, light and dark supported.
+ */
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px clamp(16px, 4vw, 48px) 32px;
+  background: #f4f7fb;
+  color: #10233c;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #155dc7;
+}
+
+.langSwitch {
+  display: flex;
+  gap: 6px;
+}
+
+.langSwitch button {
+  min-block-size: 44px;
+  padding: 6px 14px;
+  border: 1px solid rgba(21, 93, 199, 0.3);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #155dc7;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.langSwitch .langActive {
+  background: #155dc7;
+  color: #ffffff;
+}
+
+.centerBox {
+  margin: auto;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-inline-size: 460px;
+  padding: 32px;
+  border: 1px solid rgba(29, 140, 255, 0.16);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(3, 18, 37, 0.07);
+  text-align: center;
+  color: #155dc7;
+}
+
+.centerBox h1 { margin: 0; font-size: 19px; color: #10233c; }
+.centerBox p { margin: 0; color: #41597a; line-height: 1.7; }
+
+.passwordForm {
+  display: grid;
+  gap: 12px;
+  inline-size: 100%;
+}
+
+.passwordForm label,
+.questionForm label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b3f58;
+  text-align: start;
+}
+
+.passwordForm input,
+.questionForm input,
+.questionForm textarea {
+  min-block-size: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(65, 89, 122, 0.3);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10233c;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.questionForm textarea { resize: vertical; }
+
+.passwordForm button,
+.questionForm button {
+  min-block-size: 44px;
+  padding: 9px 18px;
+  border: 1px solid #155dc7;
+  border-radius: 12px;
+  background: #155dc7;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.passwordForm button:hover,
+.questionForm button:hover { filter: brightness(1.08); }
+
+.questionForm button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.content {
+  display: grid;
+  gap: 16px;
+  inline-size: min(860px, 100%);
+  margin-inline: auto;
+}
+
+.hero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(22px, 4vw, 30px);
+  color: #10233c;
+}
+
+.ownerMessage {
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 140, 255, 0.2);
+  border-radius: 14px;
+  background: #eaf2ff;
+}
+
+.ownerMessage h2 { margin: 0 0 6px; font-size: 13px; color: #155dc7; }
+.ownerMessage p { margin: 0; line-height: 1.7; color: #1c2f45; }
+
+.card {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid rgba(29, 140, 255, 0.14);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(3, 18, 37, 0.05);
+  min-inline-size: 0;
+}
+
+.card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  color: #10233c;
+}
+
+.bodyText { margin: 0; line-height: 1.75; color: #1c2f45; }
+.mutedText { margin: 0; color: #5b7089; font-size: 13px; line-height: 1.65; }
+.errorText { margin: 0; color: #a3122f; font-size: 13px; font-weight: 700; }
+.successText { margin: 0; color: #106b37; font-size: 14px; font-weight: 700; }
+
+.scoreLine { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+.scoreLine strong { font-size: 38px; line-height: 1; color: #10233c; }
+.scoreLine span { color: #5b7089; font-size: 13px; }
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.metaGrid dt { color: #5b7089; font-size: 12px; font-weight: 700; }
+.metaGrid dd { margin: 3px 0 0; color: #10233c; font-size: 14.5px; font-weight: 800; overflow-wrap: anywhere; }
+
+.docList,
+.riskList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid rgba(65, 89, 122, 0.15);
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.docList a {
+  color: #155dc7;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+  min-block-size: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.docList a:hover { text-decoration: underline; }
+
+.riskList li {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(65, 89, 122, 0.15);
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.riskMeta { color: #8a5a00; font-size: 12.5px; font-weight: 700; }
+
+.slideOutline {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-inline-start: 20px;
+}
+
+.slideOutline li { line-height: 1.6; font-size: 14px; }
+
+.card details summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #155dc7;
+  min-block-size: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.questionForm { display: grid; gap: 12px; }
+.questionForm button { justify-self: start; }
+
+.disclaimer {
+  margin-block-start: auto;
+  inline-size: min(860px, 100%);
+  margin-inline: auto;
+  color: #5b7089;
+  font-size: 12.5px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────── */
+
+:global(.dark) .page { background: #0a1626; color: #eaf2fb; }
+:global(.dark) .brand { color: #7cbcff; }
+
+:global(.dark) .langSwitch button {
+  background: rgba(13, 30, 51, 0.7);
+  border-color: rgba(96, 176, 255, 0.35);
+  color: #9cc8ff;
+}
+
+:global(.dark) .langSwitch .langActive { background: #155dc7; color: #ffffff; }
+
+:global(.dark) .centerBox,
+:global(.dark) .card {
+  background: #0f2036;
+  border-color: rgba(96, 176, 255, 0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+:global(.dark) .centerBox h1,
+:global(.dark) .card h2,
+:global(.dark) .hero h1,
+:global(.dark) .metaGrid dd,
+:global(.dark) .scoreLine strong { color: #eaf2fb; }
+
+:global(.dark) .centerBox p,
+:global(.dark) .bodyText,
+:global(.dark) .ownerMessage p { color: #d9e6f5; }
+
+:global(.dark) .mutedText,
+:global(.dark) .metaGrid dt,
+:global(.dark) .scoreLine span,
+:global(.dark) .disclaimer { color: #9fb6d2; }
+
+:global(.dark) .ownerMessage {
+  background: rgba(29, 140, 255, 0.12);
+  border-color: rgba(96, 176, 255, 0.25);
+}
+
+:global(.dark) .ownerMessage h2 { color: #7cbcff; }
+
+:global(.dark) .docList li,
+:global(.dark) .riskList li {
+  background: rgba(13, 30, 51, 0.55);
+  border-color: rgba(148, 168, 192, 0.2);
+}
+
+:global(.dark) .docList a,
+:global(.dark) .card details summary { color: #7cbcff; }
+
+:global(.dark) .riskMeta { color: #f0c063; }
+:global(.dark) .errorText { color: #f099ac; }
+:global(.dark) .successText { color: #6fdca4; }
+
+:global(.dark) .passwordForm label,
+:global(.dark) .questionForm label { color: #c8d8ea; }
+
+:global(.dark) .passwordForm input,
+:global(.dark) .questionForm input,
+:global(.dark) .questionForm textarea {
+  background: rgba(9, 22, 39, 0.8);
+  border-color: rgba(148, 168, 192, 0.3);
+  color: #eaf2fb;
+}
