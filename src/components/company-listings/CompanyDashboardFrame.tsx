@@ -14,8 +14,8 @@ export function CompanyDashboardFrame({ children }: { children: ReactNode }) {
           min-height: 100vh;
           min-height: 100dvh;
           overflow-x: clip;
-          background: var(--sfm-background);
-          color: var(--sfm-foreground);
+          background: var(--background);
+          color: var(--foreground);
           font-family: var(--font-ui);
         }
       `}</style>

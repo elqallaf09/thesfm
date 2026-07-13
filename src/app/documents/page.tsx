@@ -664,15 +664,13 @@ export default function DocumentsCenterPage() {
       <style jsx global>{`
         .documents-center-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
-          color: var(--sfm-primary-dark);
+          background: var(--background);
+          color: var(--foreground);
           overflow-x: hidden;
         }
         .documents-center-content {
           display: grid;
-          gap: var(--sfm-section-gap);
+          gap: var(--workspace-page-section-gap);
         }
         .sfm-page-topbar {
           display: flex;
@@ -685,12 +683,10 @@ export default function DocumentsCenterPage() {
           display: grid;
           gap: 14px;
           padding: 18px;
-          border: 1px solid rgba(29, 140, 255, .16);
-          border-radius: var(--r-2xl);
-          background:
-            radial-gradient(circle at 6% 10%, rgba(24, 212, 212, .18), transparent 30%),
-            linear-gradient(180deg, #FFFFFF, var(--sfm-light-card));
-          box-shadow: 0 16px 40px rgba(3, 18, 37, .08);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
           overflow: visible;
           z-index: 4;
         }
@@ -698,7 +694,7 @@ export default function DocumentsCenterPage() {
           display: grid;
           gap: 14px;
           padding-block-start: 14px;
-          border-block-start: 1px solid rgba(29, 140, 255, .12);
+          border-block-start: 1px solid var(--border);
         }
         .documents-upload-summary {
           min-width: 0;
@@ -709,14 +705,14 @@ export default function DocumentsCenterPage() {
           gap: 14px;
           list-style: none;
           cursor: pointer;
-          color: var(--sfm-primary-dark);
-          border-radius: var(--r-md);
+          color: var(--foreground);
+          border-radius: var(--radius-control);
         }
         .documents-upload-summary::-webkit-details-marker {
           display: none;
         }
         .documents-upload-summary:focus-visible {
-          outline: 3px solid rgba(24, 212, 212, .22);
+          outline: 3px solid var(--focus-ring);
           outline-offset: 3px;
         }
         .documents-upload-summary-copy {
@@ -731,12 +727,12 @@ export default function DocumentsCenterPage() {
           gap: 3px;
         }
         .documents-upload-summary-copy strong {
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 16px;
-          font-weight: 950;
+          font-weight: 600;
         }
         .documents-upload-summary-copy small {
-          color: var(--sfm-muted-readable);
+          color: var(--foreground-secondary);
           font-size: 12px;
           line-height: 1.45;
         }
@@ -746,11 +742,11 @@ export default function DocumentsCenterPage() {
           display: inline-flex;
           align-items: center;
           padding-inline: 14px;
-          border-radius: var(--r-md);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
+          color: var(--primary);
           font-size: 13px;
-          font-weight: 950;
+          font-weight: 600;
         }
         .documents-upload-panel-head {
           display: flex;
@@ -764,16 +760,16 @@ export default function DocumentsCenterPage() {
         }
         .documents-upload-panel-head span {
           display: block;
-          color: var(--sfm-primary);
+          color: var(--primary);
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
         }
         .documents-upload-panel-head h2 {
           margin: 5px 0 0;
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: clamp(20px, 2.4vw, 26px);
           line-height: 1.2;
-          font-weight: 950;
+          font-weight: 600;
         }
         .documents-upload-wrap {
           position: relative;
@@ -786,62 +782,62 @@ export default function DocumentsCenterPage() {
         .documents-secondary-action {
           min-height: 44px;
           border: 0;
-          border-radius: var(--r-md);
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
+          border-radius: var(--radius-control);
+          background: var(--primary);
+          color: var(--primary-foreground);
           padding: 0 18px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 9px;
-          font: 950 14px Tajawal, Arial, sans-serif;
+          font: 600 14px/1.25 var(--font-ui);
           cursor: pointer;
           white-space: nowrap;
-          box-shadow: 0 14px 30px rgba(29, 140, 255, .24);
+          box-shadow: var(--shadow-sm);
           transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
         }
         .documents-primary-action:hover {
           transform: translateY(-1px);
-          filter: saturate(1.08);
-          box-shadow: 0 18px 38px rgba(29, 140, 255, .30);
+          background: var(--primary-hover);
+          box-shadow: var(--shadow-md);
         }
         .documents-secondary-action {
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
-          border: 1px solid rgba(29, 140, 255, .22);
+          background: var(--surface);
+          color: var(--foreground);
+          border: 1px solid var(--border-strong);
           box-shadow: none;
         }
         .documents-secondary-action:hover {
-          border-color: rgba(24, 212, 212, .42);
-          background: rgba(24, 212, 212, .08);
+          border-color: var(--accent);
+          background: var(--surface-hover);
         }
         .documents-upload-options {
           position: absolute;
           z-index: 40;
           inset-block-start: calc(100% + 10px);
           inset-inline-end: 0;
-          width: min(340px, calc(100vw - 32px));
+          width: min(340px, 88vi);
           display: grid;
           gap: 8px;
           padding: 10px;
-          border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: var(--r-xl);
-          background: #FFFFFF;
-          box-shadow: 0 22px 60px rgba(3, 18, 37, .18);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface-elevated);
+          box-shadow: var(--shadow-popover);
         }
         .documents-upload-options a,
         .documents-upload-options button {
           min-height: 46px;
-          border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: var(--r-md);
-          background: var(--sfm-light-card);
-          color: var(--sfm-primary-dark);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface-muted);
+          color: var(--foreground);
           display: flex;
           align-items: center;
           gap: 9px;
           padding: 10px 12px;
           text-decoration: none;
-          font: 900 13px Tajawal, Arial, sans-serif;
+          font: 500 13px/1.4 var(--font-ui);
           text-align: start;
         }
         .documents-upload-options button {
@@ -852,26 +848,8 @@ export default function DocumentsCenterPage() {
         }
         .documents-upload-options small {
           grid-column: 2;
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           line-height: 1.5;
-        }
-        .dark .documents-upload-options {
-          background: #0F1C2E;
-          border-color: rgba(47, 214, 192, .18);
-          box-shadow: 0 22px 60px rgba(0, 0, 0, .45);
-        }
-        .dark .documents-upload-options a,
-        .dark .documents-upload-options button {
-          background: #152035;
-          color: #A7F3D0;
-          border-color: rgba(47, 214, 192, .16);
-        }
-        .dark .documents-upload-options a:hover,
-        .dark .documents-upload-options button:not(:disabled):hover {
-          background: rgba(47, 214, 192, .10);
-        }
-        .dark .documents-upload-options small {
-          color: #8EA6C3;
         }
         .documents-dropzone {
           width: 100%;
@@ -880,30 +858,30 @@ export default function DocumentsCenterPage() {
           grid-template-columns: auto minmax(0, 1fr) auto;
           align-items: center;
           gap: 14px;
-          border: 1px dashed rgba(29, 140, 255, .34);
-          border-radius: var(--r-xl);
-          background: rgba(255, 255, 255, .72);
-          color: var(--sfm-primary-dark);
+          border: 1px dashed var(--border-strong);
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
+          color: var(--foreground);
           padding: 16px;
           text-align: start;
-          font-family: Tajawal, Arial, sans-serif;
+          font-family: var(--font-ui);
           cursor: pointer;
         }
         .documents-dropzone:hover,
         .documents-dropzone:focus-visible {
           outline: none;
-          border-color: rgba(24, 212, 212, .58);
-          background: rgba(24, 212, 212, .07);
-          box-shadow: 0 0 0 4px rgba(24, 212, 212, .12);
+          border-color: var(--accent);
+          background: var(--surface-hover);
+          box-shadow: var(--focus-shadow);
         }
         .documents-dropzone-icon {
           width: 48px;
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-lg);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-card);
+          background: var(--primary-soft);
+          color: var(--primary);
           flex: 0 0 auto;
         }
         .documents-dropzone-copy {
@@ -912,43 +890,43 @@ export default function DocumentsCenterPage() {
           gap: 4px;
         }
         .documents-dropzone-copy strong {
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 16px;
           line-height: 1.3;
-          font-weight: 950;
+          font-weight: 600;
         }
         .documents-dropzone-copy small {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
           line-height: 1.45;
-          font-weight: 900;
+          font-weight: 400;
         }
         .documents-dropzone-button {
           min-height: 38px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: var(--r-md);
-          background: #FFFFFF;
-          border: 1px solid rgba(29, 140, 255, .18);
-          color: var(--sfm-primary-dark);
+          border-radius: var(--radius-control);
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--foreground);
           padding: 0 13px;
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
           white-space: nowrap;
         }
         .documents-notice {
-          border: 1px solid rgba(29, 140, 255, .2);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
-          border-radius: var(--r-lg);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--foreground);
+          border-radius: var(--radius-card);
           padding: 12px 14px;
-          font-weight: 900;
+          font-weight: 500;
         }
         .documents-notice.warning {
-          border-color: rgba(245, 158, 11, .26);
-          color: #B45309;
-          background: #FFFBEB;
+          border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+          color: var(--warning);
+          background: var(--warning-soft);
         }
         .document-metric {
           display: flex;
@@ -962,20 +940,22 @@ export default function DocumentsCenterPage() {
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: var(--r-md);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
+          color: var(--primary);
         }
         .document-metric p {
           margin: 0;
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
         }
         .document-metric strong {
           display: block;
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 24px;
+          font-family: var(--font-data);
+          font-weight: 600;
           line-height: 1.1;
         }
         .documents-tools {
@@ -989,10 +969,10 @@ export default function DocumentsCenterPage() {
           display: flex;
           align-items: center;
           gap: 10px;
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: var(--sfm-light-card);
-          color: var(--sfm-primary);
-          border-radius: var(--r-lg);
+          border: 1px solid var(--border);
+          background: var(--surface-muted);
+          color: var(--primary);
+          border-radius: var(--radius-card);
           padding: 0 12px;
           min-width: 0;
         }
@@ -1002,16 +982,16 @@ export default function DocumentsCenterPage() {
           border: 0;
           outline: 0;
           background: transparent;
-          color: var(--sfm-foreground);
-          font: 900 14px Tajawal, Arial, sans-serif;
+          color: var(--foreground);
+          font: 500 14px/1.4 var(--font-ui);
         }
         .documents-search-field input::placeholder {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
         }
         .documents-tools p {
           margin: 0;
-          color: var(--sfm-muted);
-          font-weight: 900;
+          color: var(--foreground-muted);
+          font-weight: 500;
           line-height: 1.5;
         }
         .documents-card-grid {
@@ -1035,13 +1015,13 @@ export default function DocumentsCenterPage() {
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-lg);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-card);
+          background: var(--primary-soft);
+          color: var(--primary);
         }
         .document-card h2 {
           margin: 8px 0 0;
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 20px;
           line-height: 1.3;
           overflow-wrap: anywhere;
@@ -1051,12 +1031,12 @@ export default function DocumentsCenterPage() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          border-radius: 999px;
-          background: rgba(24, 212, 212, .10);
-          color: var(--sfm-primary-hover);
+          border-radius: var(--radius-pill);
+          background: var(--accent-soft);
+          color: var(--accent-hover);
           padding: 5px 9px;
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
         }
         .document-meta {
           display: grid;
@@ -1068,27 +1048,27 @@ export default function DocumentsCenterPage() {
           grid-template-columns: minmax(100px, .38fr) minmax(0, 1fr);
           gap: 10px;
           padding-bottom: 8px;
-          border-bottom: 1px solid rgba(29, 140, 255, .10);
+          border-bottom: 1px solid var(--border);
           min-width: 0;
         }
         .document-meta dt {
-          color: var(--sfm-muted);
-          font-weight: 900;
+          color: var(--foreground-muted);
+          font-weight: 500;
         }
         .document-meta dd {
           margin: 0;
-          color: var(--sfm-primary-dark);
-          font-weight: 900;
+          color: var(--foreground);
+          font-weight: 500;
           overflow-wrap: anywhere;
         }
         .source-delete-note {
           margin: 0;
-          border: 1px dashed rgba(29, 140, 255, .22);
-          border-radius: var(--r-md);
+          border: 1px dashed var(--border-strong);
+          border-radius: var(--radius-control);
           padding: 9px 10px;
-          color: var(--sfm-muted);
-          background: var(--sfm-light-card);
-          font-weight: 900;
+          color: var(--foreground-muted);
+          background: var(--surface-muted);
+          font-weight: 500;
           line-height: 1.5;
         }
         .document-actions {
@@ -1099,16 +1079,16 @@ export default function DocumentsCenterPage() {
         .document-actions button,
         .document-actions a {
           min-height: 40px;
-          border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: var(--r-md);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface);
+          color: var(--foreground);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 7px;
           padding: 0 10px;
-          font: 950 12px Tajawal, Arial, sans-serif;
+          font: 600 12px/1.25 var(--font-ui);
           text-decoration: none;
           cursor: pointer;
         }
@@ -1118,18 +1098,19 @@ export default function DocumentsCenterPage() {
         .document-actions a:focus-visible,
         .documents-primary-action:focus-visible,
         .documents-secondary-action:focus-visible {
-          outline: none;
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .16);
-          border-color: rgba(24, 212, 212, .38);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          box-shadow: var(--focus-shadow);
+          border-color: var(--focus-ring);
         }
         .document-actions button:disabled {
           opacity: .55;
           cursor: not-allowed;
         }
         .document-actions .danger {
-          color: #B91C1C;
-          border-color: rgba(239, 68, 68, .22);
-          background: #FEF2F2;
+          color: var(--danger);
+          border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+          background: var(--danger-soft);
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -1148,7 +1129,7 @@ export default function DocumentsCenterPage() {
           }
           .documents-upload-panel {
             padding: 14px;
-            border-radius: var(--r-xl);
+            border-radius: var(--radius-card);
           }
           .documents-upload-summary {
             align-items: flex-start;

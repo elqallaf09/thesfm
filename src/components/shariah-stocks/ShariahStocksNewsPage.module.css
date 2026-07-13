@@ -1,42 +1,10 @@
 .page {
-  --sharia-background: var(--background);
-  --sharia-surface: var(--surface);
-  --sharia-surface-elevated: var(--surface-elevated);
-  --sharia-surface-muted: var(--surface-muted);
-  --sharia-surface-hover: var(--surface-hover);
-  --sharia-foreground: var(--foreground);
-  --sharia-foreground-secondary: var(--foreground-secondary);
-  --sharia-foreground-muted: var(--foreground-muted);
-  --sharia-foreground-subtle: var(--foreground-subtle);
-  --sharia-border: var(--border);
-  --sharia-border-strong: var(--border-strong);
-  --sharia-primary: var(--primary);
-  --sharia-primary-hover: var(--primary-hover);
-  --sharia-primary-soft: var(--primary-soft);
-  --sharia-primary-foreground: var(--primary-foreground);
-  --sharia-accent: var(--accent);
-  --sharia-accent-hover: var(--accent-hover);
-  --sharia-accent-soft: var(--accent-soft);
-  --sharia-accent-foreground: var(--accent-foreground);
-  --sharia-success: var(--success);
-  --sharia-success-soft: var(--success-soft);
-  --sharia-warning: var(--warning);
-  --sharia-warning-soft: var(--warning-soft);
-  --sharia-danger: var(--danger);
-  --sharia-danger-soft: var(--danger-soft);
-  --sharia-info: var(--info);
-  --sharia-info-soft: var(--info-soft);
-  --sharia-focus-ring: var(--focus-ring);
-  --sharia-hero: var(--hero-gradient);
-  --sharia-hero-foreground: var(--hero-foreground);
-  --sharia-hero-muted: var(--hero-foreground-muted);
-  --sharia-shadow: var(--shadow-card);
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  background: var(--sharia-background);
-  color: var(--sharia-foreground);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .page,
@@ -65,9 +33,9 @@
 
 .hydrationSkeleton span {
   display: block;
-  border: 1px solid var(--sharia-border);
-  border-radius: var(--r-md);
-  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--skeleton-gradient);
   background-size: 200% 100%;
   animation: shimmer 1.2s linear infinite;
 }
@@ -79,10 +47,10 @@
 .methodologyPanel,
 .disclaimerPanel,
 .alertPanel {
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface);
-  box-shadow: var(--sharia-shadow);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-control);
 }
 
 .hero {
@@ -91,7 +59,7 @@
   align-items: start;
   gap: 22px;
   padding: clamp(20px, 3vw, 30px);
-  background: var(--sharia-surface-elevated);
+  background: var(--surface-elevated);
 }
 
 .heroCopy,
@@ -114,17 +82,17 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border-radius: 999px;
-  font-weight: 950;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
   line-height: 1.35;
 }
 
 .eyebrow,
 .sectionKicker,
 .pill {
-  border: 1px solid color-mix(in srgb, var(--sharia-accent) 28%, var(--sharia-border));
-  background: var(--sharia-accent-soft);
-  color: var(--sharia-accent-hover);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent-hover);
   padding: 7px 11px;
   font-size: 12px;
 }
@@ -133,7 +101,7 @@
 .sectionHead h2,
 .drawerHeader h2 {
   margin: 0;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   letter-spacing: 0;
 }
 
@@ -141,7 +109,7 @@
   margin-top: 10px;
   font-size: clamp(28px, 3.2vw, 40px);
   line-height: 1.12;
-  font-weight: 950;
+  font-weight: 600;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -155,9 +123,9 @@
 .securityCard p,
 .newsCard p {
   margin: 0;
-  color: var(--sharia-foreground-secondary);
+  color: var(--foreground-secondary);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.75;
 }
 
@@ -195,15 +163,15 @@
 .drawerFooter a,
 .clearButton {
   min-height: 44px;
-  border: 1px solid var(--sharia-primary);
-  border-radius: var(--r-md);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 0 14px;
-  background: var(--sharia-primary);
-  color: var(--sharia-primary-foreground);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font: 600 13px/1.4 var(--font-ui);
   text-decoration: none;
   cursor: pointer;
@@ -240,8 +208,8 @@
 .clearButton:focus-visible {
   outline: none;
   transform: translateY(-1px);
-  border-color: var(--sharia-primary-hover);
-  background: var(--sharia-primary-hover);
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
   filter: none;
   box-shadow: var(--shadow-sm);
 }
@@ -261,15 +229,15 @@
 }
 
 .connectedState {
-  border: 1px solid color-mix(in srgb, var(--sharia-success) 32%, var(--sharia-border));
-  background: var(--sharia-success-soft);
-  color: var(--sharia-success);
+  border: 1px solid color-mix(in srgb, var(--success) 32%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .warningState {
-  border: 1px solid color-mix(in srgb, var(--sharia-warning) 32%, var(--sharia-border));
-  background: var(--sharia-warning-soft);
-  color: var(--sharia-warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .spin {
@@ -301,12 +269,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px dashed var(--sharia-border-strong);
-  border-radius: var(--r-md);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  color: var(--foreground-muted);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .tickerLoadingRow {
@@ -319,9 +287,9 @@
 .tickerLoadingRow span {
   flex: 0 0 210px;
   height: 112px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--sharia-border);
-  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: var(--skeleton-gradient);
 }
 
 .sectionHead {
@@ -335,7 +303,7 @@
 .sectionHead h2 {
   margin-top: 8px;
   font-size: clamp(21px, 2vw, 27px);
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .summaryGrid {
@@ -348,9 +316,9 @@
 .metricTile,
 .criteriaCard {
   min-width: 0;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 13px;
 }
 
@@ -360,21 +328,21 @@
 }
 
 .summaryCard svg {
-  color: var(--sharia-accent);
+  color: var(--accent);
 }
 
 .summaryCard span,
 .metricTile span {
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .summaryCard strong {
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 25px;
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.1;
 }
 
@@ -385,43 +353,43 @@
 
 .metricTile strong {
   min-width: 0;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .statusBadge {
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-secondary);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
   padding: 6px 9px;
   font-size: 11px;
 }
 
 .statusCompliant {
-  border-color: color-mix(in srgb, var(--sharia-success) 32%, var(--sharia-border));
-  background: var(--sharia-success-soft);
-  color: var(--sharia-success);
+  border-color: color-mix(in srgb, var(--success) 32%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .statusReview {
-  border-color: color-mix(in srgb, var(--sharia-warning) 32%, var(--sharia-border));
-  background: var(--sharia-warning-soft);
-  color: var(--sharia-warning);
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .statusNonCompliant {
-  border-color: color-mix(in srgb, var(--sharia-danger) 32%, var(--sharia-border));
-  background: var(--sharia-danger-soft);
-  color: var(--sharia-danger);
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .statusUnknown {
-  border-color: var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-secondary);
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
 }
 
 .inlineWarning,
@@ -431,35 +399,35 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  border-radius: var(--r-md);
+  border-radius: var(--radius-control);
   padding: 12px 13px;
-  border: 1px solid color-mix(in srgb, var(--sharia-warning) 32%, var(--sharia-border));
-  background: var(--sharia-warning-soft);
-  color: var(--sharia-warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.65;
 }
 
 .alertPanel {
-  background: var(--sharia-warning-soft);
+  background: var(--warning-soft);
 }
 
 .disclaimerPanel {
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-secondary);
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
 }
 
 .disclaimerPanel strong {
   display: block;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   margin-bottom: 3px;
 }
 
 .disclaimerPanel p {
   margin: 0;
-  color: var(--sharia-foreground-muted);
-  font-weight: 800;
+  color: var(--foreground-muted);
+  font-weight: 500;
 }
 
 .tabs {
@@ -473,10 +441,10 @@
 .tabs button {
   min-height: 44px;
   flex: 0 0 auto;
-  border: 1px solid var(--sharia-border);
-  border-radius: var(--r-md);
-  background: var(--sharia-surface);
-  color: var(--sharia-foreground-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--foreground-secondary);
   padding: 0 14px;
   display: inline-flex;
   align-items: center;
@@ -487,16 +455,16 @@
 
 .tabs button:hover,
 .tabs button:focus-visible {
-  outline: 2px solid var(--sharia-focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  background: var(--sharia-surface-hover);
-  color: var(--sharia-primary-hover);
+  background: var(--surface-hover);
+  color: var(--primary-hover);
 }
 
 .tabs .activeTab {
-  border-color: color-mix(in srgb, var(--sharia-primary) 36%, var(--sharia-border));
-  background: var(--sharia-primary-soft);
-  color: var(--sharia-primary-hover);
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
 }
 
 .overviewGrid {
@@ -531,9 +499,9 @@
 .researchEntryPanel {
   position: relative;
   overflow: hidden;
-  color: var(--sharia-hero-foreground);
-  border-color: color-mix(in srgb, var(--sharia-primary) 42%, var(--sharia-border));
-  background: var(--sharia-hero);
+  color: var(--hero-foreground);
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: var(--hero-gradient);
 }
 
 .researchEntryPanel::after {
@@ -542,15 +510,15 @@
   inset-block: 14px;
   inset-inline-start: 0;
   width: 4px;
-  border-radius: 999px;
-  background: var(--sharia-accent);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
 }
 
-.researchEntryPanel h2 { margin: 8px 0 0; color: var(--sharia-hero-foreground); font-size: 19px; line-height: 1.4; }
-.researchEntryPanel p { margin-top: 7px; color: var(--sharia-hero-muted); font-size: 13px; line-height: 1.7; }
-.researchEntryPanel .sectionKicker { color: var(--sharia-hero-muted); }
-.researchEntryPanel .secondaryButton { width: 100%; margin-top: 14px; color: var(--sharia-primary-hover); background: var(--sharia-primary-soft); box-shadow: none; }
-.researchEntryIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--sharia-accent-foreground, var(--foreground)); border-radius: var(--r-md); background: var(--sharia-accent-soft); }
+.researchEntryPanel h2 { margin: 8px 0 0; color: var(--hero-foreground); font-size: 19px; line-height: 1.4; }
+.researchEntryPanel p { margin-top: 7px; color: var(--hero-foreground-muted); font-size: 13px; line-height: 1.7; }
+.researchEntryPanel .sectionKicker { color: var(--hero-foreground-muted); }
+.researchEntryPanel .secondaryButton { width: 100%; margin-top: 14px; color: var(--primary-hover); background: var(--primary-soft); box-shadow: none; }
+.researchEntryIcon { width: 42px; height: 42px; display: grid; place-items: center; color: var(--accent-foreground, var(--foreground)); border-radius: var(--radius-control); background: var(--accent-soft); }
 
 .stockResultsPanel,
 .newsPreviewPanel,
@@ -587,9 +555,9 @@
 .securityCard,
 .newsCard {
   min-width: 0;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-control);
   padding: 18px;
   display: grid;
   gap: 14px;
@@ -652,8 +620,8 @@
 
 .securityCard strong,
 .newsCard h3 {
-  color: var(--sharia-foreground);
-  font-weight: 950;
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .securityCard header strong {
@@ -669,13 +637,13 @@
 .securityTicker {
   width: fit-content;
   max-width: 100%;
-  border: 1px solid color-mix(in srgb, var(--sharia-accent) 28%, var(--sharia-border));
-  background: var(--sharia-accent-soft);
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
   padding: 3px 8px;
-  color: var(--sharia-foreground-secondary);
+  color: var(--foreground-secondary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.3;
 }
 
@@ -711,9 +679,9 @@
 .clearButton {
   min-height: 38px;
   box-shadow: none;
-  background: var(--sharia-primary-soft);
-  color: var(--sharia-primary-hover);
-  border: 1px solid color-mix(in srgb, var(--sharia-primary) 28%, var(--sharia-border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
 }
 
 .cardActions button,
@@ -731,9 +699,9 @@
 .rowActions button:first-child,
 .drawerFooter button:first-child,
 .secondaryButton {
-  background: var(--sharia-primary);
-  color: var(--sharia-primary-foreground);
-  border: 1px solid var(--sharia-primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid var(--primary);
 }
 
 .filterPanel {
@@ -741,9 +709,9 @@
   grid-template-columns: minmax(240px, 1.4fr) repeat(3, minmax(160px, 0.7fr));
   gap: 10px;
   align-items: end;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 12px;
 }
 
@@ -756,9 +724,9 @@
 
 .searchField > span,
 .selectField > span {
-  color: var(--sharia-foreground-secondary);
+  color: var(--foreground-secondary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .searchField div {
@@ -767,9 +735,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--sharia-border-strong);
-  background: var(--sharia-surface);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-control);
   padding-inline: 12px;
 }
 
@@ -778,10 +746,10 @@
   min-width: 0;
   width: 100%;
   min-height: 44px;
-  border: 1px solid var(--sharia-border-strong);
-  background: var(--sharia-surface);
-  color: var(--sharia-foreground);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--foreground);
+  border-radius: var(--radius-control);
   padding-inline: 12px;
   font: 500 13px/1.4 var(--font-ui);
 }
@@ -795,7 +763,7 @@
 
 .searchField div:focus-within,
 .selectField select:focus-visible {
-  outline: 2px solid var(--sharia-focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -808,13 +776,13 @@
 }
 
 .activeFilters span {
-  border: 1px solid color-mix(in srgb, var(--sharia-primary) 28%, var(--sharia-border));
-  background: var(--sharia-primary-soft);
-  color: var(--sharia-primary-hover);
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  border-radius: var(--radius-pill);
   padding: 6px 10px;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .clearButton {
@@ -825,9 +793,9 @@
   width: 100%;
   min-width: 0;
   overflow-x: auto;
-  border: 1px solid var(--sharia-border);
-  border-radius: var(--r-md);
-  background: var(--sharia-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
 }
 
 .screenerTable {
@@ -839,7 +807,7 @@
 .screenerTable th,
 .screenerTable td {
   padding: 12px;
-  border-bottom: 1px solid var(--sharia-border);
+  border-bottom: 1px solid var(--border);
   text-align: start;
   vertical-align: top;
   font-size: 13px;
@@ -849,20 +817,20 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-secondary);
-  font-weight: 950;
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
+  font-weight: 600;
 }
 
 .screenerTable td {
-  color: var(--sharia-foreground-secondary);
-  font-weight: 850;
+  color: var(--foreground-secondary);
+  font-weight: 600;
 }
 
 .screenerTable small {
   display: block;
   margin-top: 3px;
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 11px;
 }
 
@@ -887,33 +855,33 @@
 }
 
 .companyButtonText strong {
-  color: var(--sharia-foreground);
-  font-weight: 950;
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 .companyButtonText b {
-  color: var(--sharia-accent-hover);
+  color: var(--accent-hover);
   font-size: 12px;
 }
 
 .companyButton:focus-visible {
-  outline: 2px solid var(--sharia-focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
-  border-radius: var(--r-sm);
+  border-radius: var(--radius-sm);
 }
 
 .qualityBadge {
-  border: 1px solid color-mix(in srgb, var(--sharia-info) 28%, var(--sharia-border));
-  background: var(--sharia-info-soft);
-  color: var(--sharia-info);
+  border: 1px solid color-mix(in srgb, var(--info) 28%, var(--border));
+  background: var(--info-soft);
+  color: var(--info);
   padding: 5px 8px;
   font-size: 11px;
 }
 
 .qualityStale {
-  border-color: color-mix(in srgb, var(--sharia-warning) 32%, var(--sharia-border));
-  background: var(--sharia-warning-soft);
-  color: var(--sharia-warning);
+  border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .positiveValue,
@@ -922,13 +890,13 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-weight: 950;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.positiveValue { color: var(--sharia-success); }
-.negativeValue { color: var(--sharia-danger); }
-.neutralValue { color: var(--sharia-foreground-muted); }
+.positiveValue { color: var(--success); }
+.negativeValue { color: var(--danger); }
+.neutralValue { color: var(--foreground-muted); }
 
 .mobileCardList {
   display: none;
@@ -950,9 +918,9 @@
   grid-template-columns: minmax(104px, 0.18fr) minmax(0, 1fr) max-content;
   align-items: start;
   gap: 14px;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 13px 14px;
   color: inherit;
   text-decoration: none;
@@ -966,8 +934,8 @@
 .newsRow:hover,
 .newsRow:focus-visible {
   outline: none;
-  border-color: color-mix(in srgb, var(--sharia-primary) 36%, var(--sharia-border));
-  background: var(--sharia-surface-hover);
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+  background: var(--surface-hover);
   transform: translateY(-1px);
 }
 
@@ -976,9 +944,9 @@
 .newsCard header span,
 .newsCard header time,
 .newsMeta span {
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .newsRowSource {
@@ -994,9 +962,9 @@
 }
 
 .newsRow strong {
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 15px;
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.6;
   overflow: hidden;
   display: -webkit-box;
@@ -1034,9 +1002,9 @@
 }
 
 .newsMeta span {
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-pill);
   padding: 5px 8px;
 }
 
@@ -1048,7 +1016,7 @@
 .methodologyCardCompact {
   align-self: start;
   gap: 14px;
-  background: var(--sharia-surface);
+  background: var(--surface);
 }
 
 .methodologyCardCompact .sectionHead h2,
@@ -1068,26 +1036,26 @@
 
 .methodologyChecklist div {
   min-width: 0;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 11px 12px;
 }
 
 .methodologyChecklist strong {
   display: block;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .methodologyChecklist span {
   display: block;
   margin-top: 3px;
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 12.5px;
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1.65;
 }
 
@@ -1102,24 +1070,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
 }
 
 .sideStatsList span {
   min-width: 0;
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.45;
 }
 
 .sideStatsList strong {
-  color: var(--sharia-accent-hover);
+  color: var(--accent-hover);
   font-size: 17px;
-  font-weight: 950;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1130,9 +1098,9 @@
 }
 
 .criteriaCard strong {
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .accordionList {
@@ -1141,9 +1109,9 @@
 }
 
 .accordionItem {
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 
@@ -1152,7 +1120,7 @@
   min-height: 50px;
   border: 0;
   background: transparent;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   padding: 0 14px;
   display: flex;
   align-items: center;
@@ -1163,7 +1131,7 @@
 }
 
 .accordionItem button:focus-visible {
-  outline: 2px solid var(--sharia-focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -1195,9 +1163,9 @@
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-elevated);
-  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-popover);
 }
 
@@ -1207,35 +1175,35 @@
   justify-content: space-between;
   gap: 14px;
   padding: 18px;
-  border-bottom: 1px solid var(--sharia-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .drawerHeader span {
-  color: var(--sharia-accent-hover);
+  color: var(--accent-hover);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .drawerHeader h2 {
   margin-top: 4px;
   font-size: 22px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .drawerHeader button {
   width: 42px;
   height: var(--control-h);
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   cursor: pointer;
 }
 
 .drawerHeader button:focus-visible {
-  outline: 2px solid var(--sharia-focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1248,9 +1216,9 @@
 
 .drawerBody h3 {
   margin: 0 0 8px;
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .ratioTable {
@@ -1259,29 +1227,29 @@
 }
 
 .ratioRow {
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
   padding: 12px;
   display: grid;
   gap: 5px;
 }
 
 .ratioRow strong {
-  color: var(--sharia-foreground);
+  color: var(--foreground);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .ratioRow span {
-  color: var(--sharia-foreground-muted);
+  color: var(--foreground-muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .drawerFooter {
   padding: 14px 18px;
-  border-top: 1px solid var(--sharia-border);
+  border-top: 1px solid var(--border);
   justify-content: flex-start;
 }
 
@@ -1293,32 +1261,32 @@
   display: flex;
   gap: 7px;
   padding: 12px 18px;
-  border-bottom: 1px solid var(--sharia-border);
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
 
 .timeframeBar button {
   min-height: 38px;
   min-width: 54px;
-  border: 1px solid var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-sm);
-  color: var(--sharia-foreground-secondary);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  color: var(--foreground-secondary);
   font: 500 12px/1.4 var(--font-ui);
   cursor: pointer;
 }
 
 .timeframeBar .activeTimeframe {
-  background: var(--sharia-primary-soft);
-  color: var(--sharia-primary-hover);
-  border-color: color-mix(in srgb, var(--sharia-primary) 36%, var(--sharia-border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
 }
 
 .quickLoading {
   display: grid;
   gap: 12px;
-  color: var(--sharia-foreground-secondary);
-  font-weight: 900;
+  color: var(--foreground-secondary);
+  font-weight: 600;
 }
 
 .skeletonRows {
@@ -1328,8 +1296,8 @@
 
 .skeletonRows span {
   height: 54px;
-  border-radius: var(--r-md);
-  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+  border-radius: var(--radius-control);
+  background: var(--skeleton-gradient);
   background-size: 180% 100%;
   animation: shimmer 1.2s linear infinite;
 }
@@ -1344,144 +1312,12 @@
   place-items: center;
   gap: 8px;
   text-align: center;
-  border: 1px dashed var(--sharia-border-strong);
-  background: var(--sharia-surface-muted);
-  border-radius: var(--r-md);
-  color: var(--sharia-foreground-muted);
-  font-weight: 900;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
+  color: var(--foreground-muted);
+  font-weight: 600;
   padding: 18px;
-}
-
-:global(.dark) .page {
-  background: transparent;
-  color: var(--sharia-foreground);
-}
-
-:global(.dark) .hero,
-:global(.dark) .tickerPanel,
-:global(.dark) .summaryPanel,
-:global(.dark) .panel,
-:global(.dark) .methodologyPanel,
-:global(.dark) .disclaimerPanel,
-:global(.dark) .alertPanel,
-:global(.dark) .summaryCard,
-:global(.dark) .metricTile,
-:global(.dark) .securityCard,
-:global(.dark) .newsCard,
-:global(.dark) .newsRow,
-:global(.dark) .criteriaCard,
-:global(.dark) .filterPanel,
-:global(.dark) .searchField,
-:global(.dark) .selectField,
-:global(.dark) .tableWrap,
-:global(.dark) .mobileCard,
-:global(.dark) .drawer,
-:global(.dark) .detailMetaGrid,
-:global(.dark) .ratioTable,
-:global(.dark) .investmentSeparation,
-:global(.dark) .emptyState {
-  border-color: var(--sharia-border);
-  background: var(--sharia-surface);
-  color: var(--sharia-foreground);
-  box-shadow: var(--sharia-shadow);
-}
-
-:global(.dark) .hero {
-  background: var(--sharia-surface-elevated);
-}
-
-:global(.dark) .researchEntryPanel {
-  background: var(--sharia-hero);
-  color: var(--sharia-hero-foreground);
-}
-
-:global(.dark) .hero h1,
-:global(.dark) .sectionHead h2,
-:global(.dark) .drawerHeader h2,
-:global(.dark) .summaryCard strong,
-:global(.dark) .metricTile strong,
-:global(.dark) .securityCard h3,
-:global(.dark) .newsCard h3,
-:global(.dark) .criteriaCard strong,
-:global(.dark) .ratioRow strong {
-  color: var(--sharia-foreground);
-}
-
-:global(.dark) .hero p,
-:global(.dark) .sectionHead p,
-:global(.dark) .methodologyPanel p,
-:global(.dark) .panel p,
-:global(.dark) .drawerBody p,
-:global(.dark) .criteriaCard p,
-:global(.dark) .securityCard p,
-:global(.dark) .newsCard p,
-:global(.dark) .metricTile span,
-:global(.dark) .summaryCard span,
-:global(.dark) .ratioRow span,
-:global(.dark) .emptyState {
-  color: var(--sharia-foreground-muted);
-}
-
-:global(.dark) .eyebrow,
-:global(.dark) .sectionKicker,
-:global(.dark) .pill,
-:global(.dark) .connectedState,
-:global(.dark) .qualityBadge {
-  border-color: color-mix(in srgb, var(--sharia-accent) 34%, var(--sharia-border));
-  background: var(--sharia-accent-soft);
-  color: var(--sharia-accent);
-}
-
-:global(.dark) .warningState {
-  border-color: color-mix(in srgb, var(--sharia-warning) 34%, var(--sharia-border));
-  background: var(--sharia-warning-soft);
-  color: var(--sharia-warning);
-}
-
-:global(.dark) .searchField input,
-:global(.dark) .selectField select,
-:global(.dark) .searchField div,
-:global(.dark) .timeframeBar button {
-  border-color: var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground);
-}
-
-:global(.dark) .searchField input::placeholder {
-  color: var(--sharia-foreground-muted);
-}
-
-:global(.dark) .tickerEmptyState {
-  border-color: var(--sharia-border);
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-muted);
-}
-
-:global(.dark) .tickerLoadingRow span,
-:global(.dark) .skeletonRows span {
-  background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
-  background-size: 180% 100%;
-  border-color: var(--sharia-border);
-}
-
-:global(.dark) .screenerTable th {
-  background: var(--sharia-surface-muted);
-  color: var(--sharia-foreground-secondary);
-}
-
-:global(.dark) .screenerTable td,
-:global(.dark) .screenerTable small,
-:global(.dark) .newsRow span,
-:global(.dark) .newsRow time,
-:global(.dark) .newsCard header span,
-:global(.dark) .newsCard header time,
-:global(.dark) .newsMeta span {
-  color: var(--sharia-foreground-muted);
-}
-
-:global(.dark) .companyButtonText strong,
-:global(.dark) .newsRow strong {
-  color: var(--sharia-foreground);
 }
 
 @media (max-width: 1180px) {
@@ -1583,7 +1419,7 @@
   .drawer {
     width: 100%;
     max-height: min(82vh, 760px);
-    border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md);
+    border-radius: var(--radius-card) var(--radius-card) var(--radius-control) var(--radius-control);
   }
 }
 
@@ -1598,7 +1434,7 @@
   .panel,
   .methodologyPanel {
     padding: 15px;
-    border-radius: var(--r-sm);
+    border-radius: var(--radius-sm);
   }
 
   .hero h1 {

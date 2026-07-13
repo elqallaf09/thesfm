@@ -113,44 +113,31 @@ export default function PrivacyPage() {
 }
 
 const legalStyles = `
-  .legal-page{min-height:100vh;background:radial-gradient(circle at 16% 10%,rgba(24,212,212,.16),transparent 28%),linear-gradient(180deg,#EEF6FF,#FFFFFF);font-family:Tajawal,Arial,sans-serif;color:#061B33;padding:24px}
+  .legal-page{min-height:100vh;background:var(--background);font-family:var(--font-ui);color:var(--foreground);padding:24px}
   .legal-hero,.legal-content{width:min(100%,960px);margin:0 auto}
   .legal-hero{padding:54px 0 28px}
-  .legal-hero span{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(24,212,212,.24);background:rgba(24,212,212,.10);border-radius:999px;padding:8px 12px;color:#0B2748;font-weight:950}
-  h1{margin:18px 0 10px;font-size:clamp(36px,7vw,64px);line-height:1.05;font-weight:950}
-  .legal-hero p{max-width:760px;margin:0;color:#334155;line-height:1.9;font-weight:800}
-  small{display:block;margin-top:12px;color:#64748B;font-weight:850}
+  .legal-hero > span{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));background:var(--primary-soft);border-radius:var(--radius-pill);padding:8px 12px;color:var(--primary-hover);font-weight:600}
+  h1{margin:18px 0 10px;font-size:clamp(34px,7vw,56px);line-height:1.2;font-weight:600;color:var(--foreground)}
+  .legal-hero p{max-width:760px;margin:0;color:var(--foreground-secondary);line-height:1.9;font-weight:400}
+  small{display:block;margin-top:12px;color:var(--foreground-muted);font-weight:400}
   .legal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
-  .legal-actions a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:0 16px;text-decoration:none;font-weight:950}
-  .legal-actions .primary-action{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff}
-  .legal-actions .secondary-action{background:#fff;color:#061B33;border:1px solid rgba(29,140,255,.18)}
+  .legal-actions a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-control);padding:0 16px;text-decoration:none;font-weight:600;transition:background .18s ease,border-color .18s ease,color .18s ease}
+  .legal-actions .primary-action{background:var(--primary);color:var(--primary-foreground);border:1px solid var(--primary)}
+  .legal-actions .primary-action:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+  .legal-actions .secondary-action{background:var(--surface);color:var(--foreground);border:1px solid var(--border-strong)}
+  .legal-actions .secondary-action:hover{background:var(--surface-hover);border-color:color-mix(in srgb,var(--primary) 36%,var(--border))}
   .legal-content{display:grid;gap:14px;padding-bottom:54px}
-  article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;background:#fff;border:1px solid rgba(29,140,255,.14);border-radius:var(--r-2xl);padding:20px;box-shadow:0 14px 38px rgba(3,18,37,.07)}
-  article svg{margin-top:4px;color:#18D4D4}
-  h2{margin:0 0 8px;color:#061B33;font-size:20px;font-weight:950}
-  article p{margin:0;color:#475569;line-height:1.9;font-weight:780}
-  footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-radius:var(--r-xl);background:#071E3A;color:#EAF6FF;padding:18px 20px}
+  article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;box-shadow:var(--shadow-card)}
+  article svg{margin-top:4px;color:var(--accent)}
+  h2{margin:0 0 8px;color:var(--foreground);font-size:20px;font-weight:600;line-height:1.45}
+  article p{margin:0;color:var(--foreground-secondary);line-height:1.9;font-weight:400}
+  footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-elevated);color:var(--foreground);padding:18px 20px;box-shadow:var(--shadow-card)}
   footer a{color:inherit;text-decoration:none}
-  .privacy-email{overflow-wrap:anywhere;font-weight:950;cursor:pointer;transition:color .18s ease,text-decoration-color .18s ease}
-  .privacy-email:hover{color:#A7F3F0;text-decoration:underline;text-decoration-color:rgba(24,212,212,.7);text-underline-offset:4px}
-  .privacy-contact-link{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(167,243,240,.22);border-radius:999px;background:rgba(24,212,212,.1);color:#A7F3F0!important;padding:9px 12px;font-weight:950}
-  .privacy-contact-link:hover{border-color:rgba(167,243,240,.42);background:rgba(24,212,212,.16)}
-  footer span{color:inherit;font-weight:950}
-  a:focus-visible{outline:3px solid rgba(24,212,212,.58);outline-offset:4px}
-  html.dark .legal-page{background:radial-gradient(circle at 14% 8%,rgba(47,214,192,.15),transparent 30%),radial-gradient(circle at 86% 12%,rgba(29,140,255,.12),transparent 28%),linear-gradient(180deg,#07111F 0%,#0B1728 50%,#06101D 100%);color:#E8EEF6;color-scheme:dark}
-  html.dark .legal-hero span{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.26);color:#8EEAE5}
-  html.dark h1{color:#F8FBFF}
-  html.dark .legal-hero p{color:#C7D3E1}
-  html.dark small{color:#94A9C2}
-  html.dark .legal-actions .primary-action{color:#061A2E;box-shadow:0 18px 38px rgba(47,214,192,.20)}
-  html.dark .legal-actions .secondary-action{background:#0F1D31;color:#E8EEF6;border-color:#1D3050;box-shadow:0 10px 24px rgba(0,0,0,.18)}
-  html.dark article{background:linear-gradient(180deg,#0F1E32,#0B1728);border-color:#1D3050;box-shadow:0 18px 46px rgba(0,0,0,.30)}
-  html.dark article svg{color:#2FD6C0}
-  html.dark h2{color:#F8FBFF}
-  html.dark article p{color:#C7D3E1}
-  html.dark footer{background:#061220;border:1px solid rgba(47,214,192,.20);box-shadow:0 16px 38px rgba(0,0,0,.28)}
-  html.dark .privacy-email{color:#EAF6FF}
-  html.dark .privacy-contact-link{background:rgba(47,214,192,.10);border-color:rgba(47,214,192,.26);color:#8EEAE5!important}
-  html.dark .privacy-contact-link:hover{background:rgba(47,214,192,.16);border-color:rgba(47,214,192,.42)}
+  .privacy-email{overflow-wrap:anywhere;font-weight:600;cursor:pointer;transition:color .18s ease,text-decoration-color .18s ease}
+  .privacy-email:hover{color:var(--primary);text-decoration:underline;text-decoration-color:var(--primary);text-underline-offset:4px}
+  .privacy-contact-link{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:var(--radius-control);background:var(--accent-soft);color:var(--accent-hover)!important;padding:9px 12px;font-weight:600}
+  .privacy-contact-link:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--surface))}
+  footer span{color:inherit;font-weight:600}
+  a:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;box-shadow:var(--focus-shadow)}
   @media(max-width:680px){.legal-page{padding:16px}.legal-hero{padding-top:34px}article{grid-template-columns:1fr}.legal-actions a{width:100%}}
 `;

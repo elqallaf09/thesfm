@@ -907,6 +907,8 @@ export const TR_MARKET: Record<string, TranslationEntry> = {
   market_saved_alerts_only: { ar:'تنبيهات محفوظة فقط حالياً', en:'Saved alerts only for now', fr:'Alertes enregistrées uniquement pour le moment' },
   market_create_alert: { ar:'حفظ التنبيه', en:'Save alert', fr:'Enregistrer l’alerte' },
   market_alert_above: { ar:'عندما يرتفع السعر فوق', en:'Price goes above', fr:'Prix au-dessus de' },
+  market_alert_type_label: { ar:'نوع تنبيه السوق', en:'Market alert type', fr:'Type d’alerte de marché' },
+  market_alert_value_label: { ar:'قيمة تنبيه السوق', en:'Market alert value', fr:'Valeur de l’alerte de marché' },
   market_alert_below: { ar:'عندما ينخفض السعر تحت', en:'Price goes below', fr:'Prix en dessous de' },
   market_alert_change: { ar:'عندما يتجاوز التغير اليومي %', en:'Daily change exceeds %', fr:'Variation quotidienne supérieure à %' },
   market_alert_rsi_above: { ar:'عندما يكون RSI أعلى من 70', en:'RSI is above 70', fr:'RSI supérieur à 70' },

@@ -1,7 +1,9 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
+import { GET as getTraderAsset } from '@/app/thesfm-trader-own/app/[[...path]]/route';
 import { buildTraderHealthPayload, normalizeTraderCompatPath, TRADER_MARKET_CATEGORIES } from '@/lib/trader/compatApi';
+import { STATIC_LIGHT_VISUAL_TOKENS } from '@/styles/static-tokens';
 import type { TraderStatus } from '@/lib/trader/types';
 
 function readProjectFile(relativePath: string) {
@@ -37,6 +39,19 @@ describe('thesfm trader compatibility API', () => {
     expect(manifest.start_url).toBe('/thesfm-trader-own/app/index.html?app=ios');
     expect(manifest.scope).toBe('/thesfm-trader-own/app/');
     expect(manifest.icons?.every((icon) => icon.src?.startsWith('/thesfm-trader-own/app/'))).toBe(true);
+  });
+
+  it('injects centralized semantic colors into the served Trader manifest', async () => {
+    const response = await getTraderAsset(
+      new Request('https://www.the-sfm.com/thesfm-trader-own/app/manifest.webmanifest'),
+      { params: Promise.resolve({ path: ['manifest.webmanifest'] }) },
+    );
+    const manifest = await response.json() as { background_color?: string; theme_color?: string };
+
+    expect(response.status).toBe(200);
+    expect(manifest.background_color).toBe(STATIC_LIGHT_VISUAL_TOKENS.background);
+    expect(manifest.theme_color).toBe(STATIC_LIGHT_VISUAL_TOKENS.primary);
+    expect(readProjectFile('src/trader-app/public/manifest.webmanifest')).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 
   it('normalizes older cached trader API paths without self-fetching', () => {

@@ -82,7 +82,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               className="sfm-workspace-tab"
               data-workspace-id={workspace.id}
               data-active={current ? 'true' : 'false'}
-              aria-current={current ? 'true' : undefined}
+              aria-current={current ? 'page' : undefined}
             >
               <Icon size={16} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
@@ -167,7 +167,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           inset-inline: 10px;
           inset-block-end: 0;
           height: 3px;
-          border-radius: 999px 999px 0 0;
+          border-radius: var(--radius-pill) var(--radius-pill) 0 0;
           background: var(--primary);
         }
 

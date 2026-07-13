@@ -10,13 +10,13 @@ import { trackEvent } from '@/lib/analytics';
 import { normalizeDigits } from '@/lib/locale';
 
 const PLATFORMS = [
-  { id: 'instagram', name: 'Instagram', pct: 30, cpm: 3.8, cpc: 0.42, color: '#EC4899' },
-  { id: 'tiktok', name: 'TikTok', pct: 25, cpm: 2.9, cpc: 0.35, color: 'var(--sfm-foreground)' },
-  { id: 'snapchat', name: 'Snapchat', pct: 15, cpm: 3.2, cpc: 0.38, color: '#FACC15' },
-  { id: 'twitter', name: 'Twitter/X', pct: 10, cpm: 4.1, cpc: 0.48, color: '#3B82F6' },
-  { id: 'facebook', name: 'Facebook', pct: 10, cpm: 3.5, cpc: 0.40, color: '#2563EB' },
-  { id: 'youtube', name: 'YouTube', pct: 5, cpm: 5.5, cpc: 0.62, color: '#EF4444' },
-  { id: 'google', name: 'Google Ads', pct: 5, cpm: 6.2, cpc: 0.70, color: '#22C55E' },
+  { id: 'instagram', name: 'Instagram', pct: 30, cpm: 3.8, cpc: 0.42, color: 'var(--chart-5)' },
+  { id: 'tiktok', name: 'TikTok', pct: 25, cpm: 2.9, cpc: 0.35, color: 'var(--foreground)' },
+  { id: 'snapchat', name: 'Snapchat', pct: 15, cpm: 3.2, cpc: 0.38, color: 'var(--warning)' },
+  { id: 'twitter', name: 'Twitter/X', pct: 10, cpm: 4.1, cpc: 0.48, color: 'var(--chart-1)' },
+  { id: 'facebook', name: 'Facebook', pct: 10, cpm: 3.5, cpc: 0.40, color: 'var(--primary)' },
+  { id: 'youtube', name: 'YouTube', pct: 5, cpm: 5.5, cpc: 0.62, color: 'var(--danger)' },
+  { id: 'google', name: 'Google Ads', pct: 5, cpm: 6.2, cpc: 0.70, color: 'var(--success)' },
 ];
 
 const INDUSTRIES = [
@@ -117,66 +117,67 @@ export default function AdCampaignCalculatorPage() {
   return (
     <div dir={dir} className="ad-page">
       <style>{`
-        .ad-page{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif;padding:24px}
-        .wrap{max-width:1120px;margin:0 auto}
+        .ad-page{width:100%;min-width:0;color:var(--foreground);font-family:var(--font-ui)}
+        .wrap{width:100%;max-width:none;margin:0}
         .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
-        .home{border:0;border-radius:var(--r-md);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#FFFFFF;padding:10px 16px;font-weight:800;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
-        .panel{background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:var(--r-2xl);box-shadow:0 4px 22px rgba(3,18,37,.06);padding:22px}
+        .home{min-height:44px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:10px 16px;font-weight:600;cursor:pointer;font-family:var(--font-ui)}
+        .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:22px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-        label{display:block;font-size:13px;font-weight:800;color:var(--sfm-muted);margin-bottom:7px}
-        input,select{width:100%;height:var(--control-h-lg);border:1.5px solid rgba(167,243,240,.24);border-radius:var(--r-md);background:var(--sfm-card);padding:0 13px;font:700 15px Tajawal,Arial,sans-serif;outline:none}
-        input:focus,select:focus{border-color:var(--sfm-soft-cyan);box-shadow:0 0 0 3px rgba(167,243,240,.12)}
-        .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(167,243,240,.08)}
-        .bar{height:24px;border-radius:999px;overflow:hidden;background:rgba(167,243,240,.10);display:flex;margin-top:14px}
+        label{display:block;font-size:13px;font-weight:500;color:var(--foreground-secondary);margin-bottom:7px}
+        input,select{width:100%;height:var(--control-h-lg);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--control-background);color:var(--foreground);padding:0 13px;font:500 15px/1.5 var(--font-ui);outline:none}
+        input:focus,select:focus,.home:focus-visible,.save:focus-visible{border-color:var(--focus-ring);outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
+        .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+        .bar{height:24px;border-radius:var(--radius-pill);overflow:hidden;background:var(--surface-muted);display:flex;margin-top:14px}
         .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
-        .kpi{background:rgba(167,243,240,.08);border-radius:var(--r-lg);padding:16px;text-align:center}
-        .kpi strong{display:block;font-size:22px;color:var(--sfm-foreground)}
-        .kpi span{font-size:12px;color:var(--sfm-muted);font-weight:800}
-        table{width:100%;border-collapse:collapse;margin-top:14px}th,td{padding:10px;border-bottom:1px solid rgba(167,243,240,.10);text-align:start;font-size:13px}th{color:var(--sfm-muted)}
-        .save{margin-top:16px;width:100%;height:50px;border:0;border-radius:var(--r-md);background:var(--sfm-foreground);color:var(--sfm-soft-cyan);font-weight:900;cursor:pointer;font-family:Tajawal,Arial,sans-serif}
+        .kpi{background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-card);padding:16px;text-align:center}
+        .kpi strong{display:block;font-size:22px;color:var(--foreground);font-family:var(--font-data);font-weight:600}
+        .kpi span{font-size:12px;color:var(--foreground-muted);font-weight:500}
+        .table-wrap{max-width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:var(--radius-card)}table{width:100%;min-width:620px;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:start;font-size:13px}th{background:var(--surface-muted);color:var(--foreground-secondary);font-weight:500}td:not(:first-child){font-family:var(--font-data)}
+        .save{margin-top:16px;width:100%;height:50px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);font-weight:600;cursor:pointer;font-family:var(--font-ui)}
+        .save:hover:not(:disabled),.home:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
         .save:disabled{opacity:.55;cursor:not-allowed}
         @media(max-width:760px){.grid,.kpis{grid-template-columns:1fr}.platform{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
       `}</style>
       <div className="wrap">
         <div className="top">
-          <button className="home" onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '←' : '→'} {t('ad_home')}</button>
-          <LanguageSwitcher variant="gold" compact />
+          <button type="button" className="home" onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '→' : '←'} {t('ad_home')}</button>
+          <LanguageSwitcher compact />
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>🎯 {t('ad_title')}</h1>
-          <p style={{ color: 'var(--sfm-muted)', lineHeight: 1.8 }}>{t('ad_description')}</p>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>🎯 {t('ad_title')}</h1>
+          <p style={{ color: 'var(--foreground-secondary)', lineHeight: 1.8 }}>{t('ad_description')}</p>
         </div>
         <div className="grid">
           <div className="panel">
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
-                <label>{t('ad_total_budget')}</label>
-                <input inputMode="decimal" value={budget} onChange={e => setBudget(normalizeDigits(e.target.value).replace(/[^\d.]/g, ''))} placeholder="0.000" />
+                <label htmlFor="ad-total-budget">{t('ad_total_budget')}</label>
+                <input id="ad-total-budget" inputMode="decimal" value={budget} onChange={e => setBudget(normalizeDigits(e.target.value).replace(/[^\d.]/g, ''))} placeholder="0.000" />
               </div>
               <div>
-                <label>{t('ad_duration_days')}</label>
-                <input inputMode="numeric" value={duration} onChange={e => setDuration(normalizeDigits(e.target.value).replace(/\D/g, ''))} />
+                <label htmlFor="ad-duration-days">{t('ad_duration_days')}</label>
+                <input id="ad-duration-days" inputMode="numeric" value={duration} onChange={e => setDuration(normalizeDigits(e.target.value).replace(/\D/g, ''))} />
               </div>
               <div>
-                <label>{t('ad_industry')}</label>
-                <select value={industry} onChange={e => setIndustry(e.target.value)}>
+                <label htmlFor="ad-industry">{t('ad_industry')}</label>
+                <select id="ad-industry" value={industry} onChange={e => setIndustry(e.target.value)}>
                   {INDUSTRIES.map(item => <option key={item.id} value={item.id}>{t(item.labelKey)}</option>)}
                 </select>
               </div>
-              <div style={{ color: totalPct === 100 ? '#22C55E' : '#EF4444', fontWeight: 900 }}>
+            <div role="status" style={{ color: totalPct === 100 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
                 {t('ad_total_allocation')}: {totalPct}%
               </div>
               {PLATFORMS.map(platform => (
                 <div className="platform" key={platform.id}>
                   <strong>{platform.name}</strong>
-                  <input type="range" min={0} max={100} value={allocations[platform.id] || 0} onChange={e => setAllocations(prev => ({ ...prev, [platform.id]: Number(e.target.value) }))} />
-                  <span style={{ color: platform.color, fontWeight: 900 }}>{allocations[platform.id] || 0}%</span>
+                  <input aria-label={`${platform.name}: ${t('ad_total_allocation')}`} type="range" min={0} max={100} value={allocations[platform.id] || 0} onChange={e => setAllocations(prev => ({ ...prev, [platform.id]: Number(e.target.value) }))} />
+                  <span style={{ color: platform.color, fontWeight: 600, fontFamily: 'var(--font-data)' }}>{allocations[platform.id] || 0}%</span>
                 </div>
               ))}
             </div>
           </div>
           <div className="panel">
-            <h2 style={{ fontSize: 18, fontWeight: 900 }}>{t('ad_outputs')}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 600 }}>{t('ad_outputs')}</h2>
             <div className="bar">
               {rows.map(row => <div key={row.id} title={row.name} style={{ width: `${row.pct}%`, background: row.color }} />)}
             </div>
@@ -185,7 +186,7 @@ export default function AdCampaignCalculatorPage() {
               <div className="kpi"><strong>{totals.clicks.toLocaleString(locale)}</strong><span>{t('ad_clicks')}</span></div>
               <div className="kpi"><strong>{totals.conversions.toLocaleString(locale)}</strong><span>{t('ad_conversions')}</span></div>
             </div>
-            <table>
+            <div className="table-wrap"><table>
               <thead><tr><th>{t('ad_platform')}</th><th>{t('ad_daily')}</th><th>{t('ad_reach')}</th><th>{t('ad_clicks')}</th></tr></thead>
               <tbody>
                 {rows.map(row => (
@@ -197,14 +198,14 @@ export default function AdCampaignCalculatorPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-            <div style={{ marginTop: 14, padding: 14, borderRadius: 'var(--r-md)', background: 'rgba(167,243,240,.08)', color: 'var(--sfm-muted)', lineHeight: 1.8, fontWeight: 700 }}>
+            </table></div>
+          <div style={{ marginTop: 14, padding: 14, borderRadius: 'var(--radius-control)', background: 'var(--accent-soft)', color: 'var(--foreground-secondary)', lineHeight: 1.8, fontWeight: 500 }}>
               {t('ad_recommendation')}
             </div>
             <button className="save" disabled={!user || !totalBudget || totalPct !== 100 || saving} onClick={saveCampaign}>
               {saving ? t('ad_saving') : t('ad_save')}
             </button>
-            {message && <div style={{ marginTop: 12, color: messageTone === 'ok' ? '#22C55E' : '#EF4444', fontWeight: 800 }}>{message}</div>}
+          {message && <div role={messageTone === 'error' ? 'alert' : 'status'} style={{ marginTop: 12, color: messageTone === 'ok' ? 'var(--success)' : 'var(--danger)', fontWeight: 500 }}>{message}</div>}
           </div>
         </div>
       </div>

@@ -469,10 +469,10 @@ export default function FinancialTodayPage() {
         <section className="today-hero" aria-labelledby="financial-today-title">
           <div className="today-hero-copy">
             <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-              <span style={{display:'inline-flex',alignItems:'center',gap:'6px',borderRadius:'999px',padding:'6px 12px',background:'rgba(24,212,212,.14)',border:'1px solid rgba(167,243,240,.22)',color:'#A7F3F0',fontSize:'12px',fontWeight:950}}>
+              <span style={{display:'inline-flex',alignItems:'center',gap:'6px',borderRadius:'var(--radius-pill)',padding:'6px 12px',background:'color-mix(in srgb, var(--hero-foreground) 12%, transparent)',border:'1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent)',color:'var(--hero-foreground)',fontSize:'12px',fontWeight:600}}>
                 <Sparkles size={13} aria-hidden="true" />{text.eyebrow}
               </span>
-              <span style={{borderRadius:'999px',padding:'6px 12px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(167,243,240,.14)',color:'#C7DBF5',fontSize:'12px',fontWeight:900}} dir="ltr">
+              <span style={{borderRadius:'var(--radius-pill)',padding:'6px 12px',background:'color-mix(in srgb, var(--hero-foreground) 8%, transparent)',border:'1px solid color-mix(in srgb, var(--hero-foreground) 16%, transparent)',color:'var(--hero-foreground-muted)',fontSize:'12px',fontWeight:600}} dir="ltr">
                 {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
               </span>
             </div>
@@ -561,26 +561,22 @@ export default function FinancialTodayPage() {
       <style jsx global>{`
         .today-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
+          background: var(--background);
+          color: var(--foreground);
+          font-family: var(--font-ui);
         }
-        .dark .today-shell {
-          background:
-            radial-gradient(circle at 18% 12%, rgba(24, 212, 212, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #061B33 62%, #031225 100%);
-        }
+
         .today-main {
-          width: calc(100% - var(--sidebar-w, 230px)) !important;
+          width: 100% !important;
           max-width: none !important;
-          margin-inline-start: var(--sidebar-w, 230px) !important;
+          margin-inline-start: 0 !important;
           margin-inline-end: 0 !important;
           padding-inline: 24px !important;
         }
         .today-content {
           width: 100%;
-          max-width: 1180px;
-          margin-inline: auto;
+          max-width: none;
+          margin-inline: 0;
           display: grid;
           gap: 24px;
         }
@@ -600,13 +596,11 @@ export default function FinancialTodayPage() {
           align-items: center;
           gap: 24px;
           padding: clamp(24px, 4vw, 40px);
-          border: 1px solid rgba(167, 243, 240, .18);
-          border-radius: var(--r-2xl);
-          background:
-            radial-gradient(circle at 18% 18%, rgba(24, 212, 212, .20), transparent 30%),
-            linear-gradient(135deg, #031225 0%, #061B33 52%, #0B3A66 100%);
-          box-shadow: 0 24px 60px rgba(3, 18, 37, .18);
-          color: #EAF6FF;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);
+          border-radius: var(--radius-panel);
+          background: var(--hero-gradient);
+          box-shadow:var(--shadow-card);
+          color: var(--hero-foreground);
         }
         .today-hero::after {
           content: '';
@@ -614,8 +608,8 @@ export default function FinancialTodayPage() {
           inset: auto -80px -120px auto;
           width: 280px;
           height: 280px;
-          border-radius: 999px;
-          background: rgba(24, 212, 212, .12);
+          border-radius:var(--radius-pill);
+          background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
           filter: blur(8px);
         }
         .today-hero-copy {
@@ -627,24 +621,24 @@ export default function FinancialTodayPage() {
         }
         .today-hero-copy > span {
           width: fit-content;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           padding: 6px 11px;
-          background: rgba(24, 212, 212, .14);
-          border: 1px solid rgba(167, 243, 240, .22);
-          color: #A7F3F0;
-          font: 950 12px Tajawal, Arial, sans-serif;
+          background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 22%, transparent);
+          color: var(--hero-foreground-muted);
+          font:600 12px var(--font-ui);
         }
         .today-hero h1 {
           margin: 0;
-          color: #FFFFFF;
-          font: 950 clamp(34px, 5vw, 56px)/1.05 Tajawal, Arial, sans-serif;
+          color: var(--hero-foreground);
+          font:600 clamp(34px, 5vw, 56px)/1.05 var(--font-ui);
           letter-spacing: 0;
         }
         .today-hero p {
           max-width: 720px;
           margin: 0;
-          color: #C7DBF5;
-          font: 800 clamp(15px, 1.7vw, 18px)/1.8 Tajawal, Arial, sans-serif;
+          color: var(--hero-foreground-muted);
+          font:400 clamp(15px, 1.7vw, 18px)/1.8 var(--font-ui);
         }
         .today-hero-actions {
           display: flex;
@@ -659,17 +653,17 @@ export default function FinancialTodayPage() {
           height: clamp(112px, 14vw, 150px);
           display: grid;
           place-items: center;
-          border-radius: 32px;
-          border: 1px solid rgba(167, 243, 240, .22);
-          background: rgba(255, 255, 255, .08);
-          color: #A7F3F0;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 20px 44px rgba(0, 0, 0, .16);
+          border-radius:var(--radius-panel);
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 22%, transparent);
+          background: color-mix(in srgb, var(--hero-foreground) 8%, transparent);
+          color: var(--hero-foreground-muted);
+          box-shadow:var(--shadow-card);
         }
         .today-hero-spark {
           position: absolute;
           inset-block-start: 22px;
           inset-inline-end: 24px;
-          color: #18D4D4;
+          color: var(--info);
         }
         .sfm-primary-link,
         .sfm-secondary-link {
@@ -678,29 +672,29 @@ export default function FinancialTodayPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           padding: 0 16px;
           text-decoration: none;
-          font: 950 13px Tajawal, Arial, sans-serif;
+          font:600 13px var(--font-ui);
           white-space: nowrap;
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .sfm-primary-link {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
-          box-shadow: 0 12px 24px rgba(29, 140, 255, .22);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow:var(--shadow-card);
         }
         .sfm-secondary-link {
-          border: 1px solid rgba(167, 243, 240, .24);
-          background: rgba(255, 255, 255, .10);
-          color: #EAF6FF;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent);
+          background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
+          color: var(--hero-foreground);
         }
         .sfm-primary-link:hover,
         .sfm-primary-link:focus-visible,
         .sfm-secondary-link:hover,
         .sfm-secondary-link:focus-visible {
           transform: translateY(-1px);
-          box-shadow: 0 0 0 4px rgba(24, 212, 212, .12), 0 16px 28px rgba(29, 140, 255, .16);
+          box-shadow:var(--focus-shadow);
           outline: none;
         }
         .today-summary-grid {
@@ -726,14 +720,14 @@ export default function FinancialTodayPage() {
           gap: 9px;
           min-width: 0;
           padding: 12px;
-          border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: var(--r-xl);
-          background: var(--sfm-card);
-          box-shadow: 0 12px 28px rgba(3, 18, 37, .06);
+          border: 1px solid color-mix(in srgb, var(--info) 14%, transparent);
+          border-radius: var(--radius-card);
+          background: var(--surface);
+          box-shadow:var(--shadow-card);
         }
         .today-quick-links > span {
-          color: var(--sfm-muted);
-          font: 950 12px Tajawal, Arial, sans-serif;
+          color: var(--foreground-muted);
+          font:600 12px var(--font-ui);
           padding-inline: 4px;
         }
         .today-quick-links a {
@@ -741,30 +735,21 @@ export default function FinancialTodayPage() {
           display: inline-flex;
           align-items: center;
           gap: 7px;
-          border-radius: 999px;
-          border: 1px solid rgba(29, 140, 255, .16);
-          background: rgba(29, 140, 255, .06);
-          color: var(--sfm-foreground);
+          border-radius:var(--radius-pill);
+          border: 1px solid color-mix(in srgb, var(--info) 16%, transparent);
+          background: color-mix(in srgb, var(--info) 6%, transparent);
+          color: var(--foreground);
           padding: 0 12px;
           text-decoration: none;
-          font: 900 12px Tajawal, Arial, sans-serif;
+          font:600 12px var(--font-ui);
           transition: border-color .18s ease, background .18s ease, transform .18s ease;
         }
         .today-quick-links a:hover,
         .today-quick-links a:focus-visible {
-          border-color: rgba(24, 212, 212, .34);
-          background: rgba(24, 212, 212, .10);
+          border-color: color-mix(in srgb, var(--info) 34%, transparent);
+          background: color-mix(in srgb, var(--info) 10%, transparent);
           transform: translateY(-1px);
           outline: none;
-        }
-        .dark .today-summary-grid .sfm-app-card,
-        .dark .today-quick-links {
-          border-color: rgba(167, 243, 240, .16) !important;
-        }
-        .dark .today-quick-links a {
-          background: rgba(15, 51, 92, .72);
-          border-color: rgba(167, 243, 240, .16);
-          color: #EAF6FF;
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -798,12 +783,12 @@ export default function FinancialTodayPage() {
             min-height: 0;
             grid-template-columns: 1fr;
             padding: 22px;
-            border-radius: var(--r-2xl);
+            border-radius: var(--radius-panel);
           }
           .today-hero-mark {
             width: 86px;
             height: 86px;
-            border-radius: var(--r-2xl);
+            border-radius: var(--radius-panel);
             order: -1;
           }
           .today-hero-actions,
@@ -827,20 +812,20 @@ function ClockIcon() {
 
 function TodayMetric({ label, value, icon, tone = 'blue' }: { label: string; value: string; icon: ReactNode; tone?: 'blue' | 'teal' | 'danger' | 'warning' }) {
   const toneMap = {
-    blue:    { bg: 'rgba(29,140,255,.12)',   color: '#1D8CE0', valColor: 'var(--sfm-foreground)' },
-    teal:    { bg: 'rgba(24,212,212,.12)',   color: '#0f766e', valColor: 'var(--sfm-foreground)' },
-    danger:  { bg: 'rgba(239,68,68,.10)',    color: '#B91C1C', valColor: '#B91C1C' },
-    warning: { bg: 'rgba(245,158,11,.10)',   color: '#B45309', valColor: '#B45309' },
+    blue:    { bg: 'color-mix(in srgb, var(--info) 12%, transparent)',   color: 'var(--info)', valColor: 'var(--foreground)' },
+    teal:    { bg: 'color-mix(in srgb, var(--info) 12%, transparent)',   color: 'var(--accent)', valColor: 'var(--foreground)' },
+    danger:  { bg: 'color-mix(in srgb, var(--danger) 10%, transparent)',    color: 'var(--danger)', valColor: 'var(--danger)' },
+    warning: { bg: 'color-mix(in srgb, var(--warning) 10%, transparent)',   color: 'var(--danger)', valColor: 'var(--danger)' },
   };
   const t = toneMap[tone];
   return (
     <div style={{display:'flex',alignItems:'center',gap:'14px',minWidth:0,padding:'4px 0'}}>
-      <span aria-hidden="true" style={{width:'46px',height:'46px',display:'grid',placeItems:'center',flex:'0 0 46px',borderRadius:'var(--r-lg)',background:t.bg,color:t.color,boxShadow:`0 4px 14px ${t.bg}`}}>
+      <span aria-hidden="true" style={{width:'46px',height:'46px',display:'grid',placeItems:'center',flex:'0 0 46px',borderRadius:'var(--radius-card)',background:t.bg,color:t.color,boxShadow:'var(--shadow-card)'}}>
         {icon}
       </span>
       <div style={{minWidth:0,display:'grid',gap:'4px'}}>
-        <p style={{margin:0,color:'var(--sfm-muted)',fontSize:'12px',fontWeight:900,lineHeight:1.45}}>{label}</p>
-        <strong style={{color:t.valColor,fontSize:'26px',fontWeight:950,lineHeight:1.05,fontVariantNumeric:'tabular-nums'}}>{value}</strong>
+        <p style={{margin:0,color:'var(--foreground-muted)',fontSize:'12px',fontWeight:600,lineHeight:1.45}}>{label}</p>
+        <strong style={{color:t.valColor,fontSize:'26px',fontWeight:600,lineHeight:1.05,fontFamily:'var(--font-data)',fontVariantNumeric:'tabular-nums'}}>{value}</strong>
       </div>
     </div>
   );
@@ -882,14 +867,10 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
           align-items: center;
           gap: 18px;
           min-height: 220px;
-          background:
-            radial-gradient(circle at 12% 12%, rgba(24, 212, 212, .20), transparent 32%),
-            linear-gradient(135deg, #031225 0%, #061B33 48%, #0B3A66 100%) !important;
+          background: var(--hero-gradient) !important;
         }
         :global(.today-featured-action.stable) {
-          background:
-            radial-gradient(circle at 12% 12%, rgba(16, 185, 129, .18), transparent 32%),
-            linear-gradient(135deg, #031225 0%, #061B33 48%, #0B3A66 100%) !important;
+          background: var(--hero-gradient) !important;
         }
         :global(.today-featured-action)::after {
           content: '';
@@ -897,8 +878,8 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
           inset: auto -90px -120px auto;
           width: 260px;
           height: 260px;
-          border-radius: 999px;
-          background: rgba(24, 212, 212, .12);
+          border-radius:var(--radius-pill);
+          background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
         }
         .today-featured-copy,
         .today-featured-actions {
@@ -912,25 +893,25 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
         }
         .today-featured-eyebrow {
           width: fit-content;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           padding: 6px 11px;
-          border: 1px solid rgba(167, 243, 240, .22);
-          background: rgba(24, 212, 212, .14);
-          color: #A7F3F0;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 22%, transparent);
+          background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
+          color: var(--hero-foreground-muted);
           font-size: 12px;
-          font-weight: 950;
+          font-weight:600;
         }
         h2 {
           margin: 0;
-          color: #FFFFFF;
+          color: var(--hero-foreground);
           font-size: clamp(26px, 3.8vw, 42px);
           line-height: 1.15;
         }
         p {
           max-width: 780px;
           margin: 0;
-          color: #C7DBF5;
-          font-weight: 800;
+          color: var(--hero-foreground-muted);
+          font-weight:400;
           line-height: 1.75;
         }
         .today-featured-meta {
@@ -943,23 +924,23 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
           min-height: 30px;
           display: inline-flex;
           align-items: center;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           padding: 0 10px;
-          border: 1px solid rgba(167, 243, 240, .18);
-          background: rgba(255, 255, 255, .08);
-          color: #EAF6FF;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);
+          background: color-mix(in srgb, var(--hero-foreground) 8%, transparent);
+          color: var(--hero-foreground-muted);
           font-size: 12px;
-          font-weight: 900;
+          font-weight:600;
         }
         .today-featured-meta .priority.urgent {
-          border-color: rgba(239, 68, 68, .34);
-          background: rgba(239, 68, 68, .16);
-          color: #FCA5A5;
+          border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+          background: color-mix(in srgb, var(--danger) 16%, transparent);
+          color: var(--warning);
         }
         .today-featured-meta .priority.high {
-          border-color: rgba(245, 158, 11, .34);
-          background: rgba(245, 158, 11, .16);
-          color: #FCD34D;
+          border-color: color-mix(in srgb, var(--warning) 34%, transparent);
+          background: color-mix(in srgb, var(--warning) 16%, transparent);
+          color: var(--warning);
         }
         .today-featured-actions {
           display: flex;
@@ -1006,10 +987,10 @@ function PriorityLane({
   accent?: 'blue' | 'teal' | 'danger' | 'warning';
 }) {
   const accentMap = {
-    blue:    { iconBg: 'rgba(29,140,255,.12)',  iconColor: '#1D8CE0', countBg: 'rgba(29,140,255,.1)',  countColor: '#1D8CE0', borderTop: 'rgba(29,140,255,.5)' },
-    teal:    { iconBg: 'rgba(24,212,212,.12)',  iconColor: '#0f766e', countBg: 'rgba(24,212,212,.1)',  countColor: '#0f766e', borderTop: 'rgba(24,212,212,.6)' },
-    danger:  { iconBg: 'rgba(239,68,68,.10)',   iconColor: '#B91C1C', countBg: 'rgba(239,68,68,.1)',   countColor: '#B91C1C', borderTop: 'rgba(239,68,68,.6)' },
-    warning: { iconBg: 'rgba(245,158,11,.10)',  iconColor: '#B45309', countBg: 'rgba(245,158,11,.1)',  countColor: '#B45309', borderTop: 'rgba(245,158,11,.6)' },
+    blue:    { iconBg: 'color-mix(in srgb, var(--info) 12%, transparent)',  iconColor: 'var(--info)', countBg: 'color-mix(in srgb, var(--info) 10%, transparent)',  countColor: 'var(--info)', borderTop: 'color-mix(in srgb, var(--info) 50%, transparent)' },
+    teal:    { iconBg: 'color-mix(in srgb, var(--info) 12%, transparent)',  iconColor: 'var(--accent)', countBg: 'color-mix(in srgb, var(--info) 10%, transparent)',  countColor: 'var(--accent)', borderTop: 'color-mix(in srgb, var(--info) 60%, transparent)' },
+    danger:  { iconBg: 'color-mix(in srgb, var(--danger) 10%, transparent)',   iconColor: 'var(--danger)', countBg: 'color-mix(in srgb, var(--danger) 10%, transparent)',   countColor: 'var(--danger)', borderTop: 'color-mix(in srgb, var(--danger) 60%, transparent)' },
+    warning: { iconBg: 'color-mix(in srgb, var(--warning) 10%, transparent)',  iconColor: 'var(--danger)', countBg: 'color-mix(in srgb, var(--warning) 10%, transparent)',  countColor: 'var(--danger)', borderTop: 'color-mix(in srgb, var(--warning) 60%, transparent)' },
   };
   const ac = accentMap[accent];
   return (
@@ -1072,9 +1053,9 @@ function PriorityLane({
           display: grid;
           place-items: center;
           flex: 0 0 40px;
-          border-radius: var(--r-md);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: color-mix(in srgb, var(--info) 10%, transparent);
+          color: var(--primary);
         }
         .today-lane-head div {
           min-width: 0;
@@ -1084,7 +1065,7 @@ function PriorityLane({
         }
         .today-lane-head h2 {
           margin: 0;
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 19px;
           line-height: 1.35;
         }
@@ -1094,20 +1075,20 @@ function PriorityLane({
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: 999px;
-          background: rgba(24, 212, 212, .12);
-          color: var(--sfm-primary);
-          font-weight: 950;
+          border-radius:var(--radius-pill);
+          background: color-mix(in srgb, var(--info) 12%, transparent);
+          color: var(--primary);
+          font-weight:600;
           font-size: 12px;
         }
         .today-lane-empty {
           margin: 0;
-          border: 1px dashed rgba(29, 140, 255, .20);
-          border-radius: var(--r-lg);
-          background: rgba(29, 140, 255, .04);
-          color: var(--sfm-muted);
+          border: 1px dashed color-mix(in srgb, var(--info) 20%, transparent);
+          border-radius: var(--radius-card);
+          background: color-mix(in srgb, var(--info) 4%, transparent);
+          color: var(--foreground-muted);
           padding: 13px;
-          font-weight: 850;
+          font-weight:600;
           line-height: 1.6;
         }
         .today-lane-list {
@@ -1121,18 +1102,18 @@ function PriorityLane({
           align-items: center;
           min-width: 0;
           padding: 12px;
-          border-radius: var(--r-lg);
-          border: 1px solid rgba(29, 140, 255, .13);
-          background: rgba(248, 251, 255, .78);
-          color: var(--sfm-foreground);
+          border-radius: var(--radius-card);
+          border: 1px solid color-mix(in srgb, var(--info) 13%, transparent);
+          background: color-mix(in srgb, var(--surface) 78%, transparent);
+          color: var(--foreground);
           text-decoration: none;
           transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
         }
         .today-lane-item:hover,
         .today-lane-item:focus-visible {
-          border-color: rgba(24, 212, 212, .36);
-          background: rgba(24, 212, 212, .08);
-          box-shadow: 0 14px 28px rgba(29, 140, 255, .10);
+          border-color: color-mix(in srgb, var(--info) 36%, transparent);
+          background: color-mix(in srgb, var(--info) 8%, transparent);
+          box-shadow:var(--shadow-card);
           transform: translateY(-1px);
           outline: none;
         }
@@ -1149,24 +1130,24 @@ function PriorityLane({
         .today-lane-badges span {
           width: fit-content;
           max-width: 100%;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           padding: 4px 8px;
-          background: rgba(29, 140, 255, .08);
-          color: var(--sfm-primary);
+          background: color-mix(in srgb, var(--info) 8%, transparent);
+          color: var(--primary);
           font-size: 11px;
-          font-weight: 950;
+          font-weight:600;
         }
         .today-lane-badges .priority.urgent {
-          background: rgba(239, 68, 68, .14);
-          color: #DC2626;
+          background: color-mix(in srgb, var(--danger) 14%, transparent);
+          color: var(--danger);
         }
         .today-lane-badges .priority.high {
-          background: rgba(245, 158, 11, .14);
-          color: #B45309;
+          background: color-mix(in srgb, var(--warning) 14%, transparent);
+          color: var(--danger);
         }
         .today-lane-badges .priority.low {
-          background: rgba(16, 185, 129, .12);
-          color: #047857;
+          background: color-mix(in srgb, var(--accent) 12%, transparent);
+          color: var(--accent);
         }
         .today-lane-item strong,
         .today-lane-item p,
@@ -1177,17 +1158,17 @@ function PriorityLane({
           overflow-wrap: anywhere;
         }
         .today-lane-item strong {
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 14px;
           line-height: 1.45;
         }
         .today-lane-item p,
         .today-lane-item em {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
           line-height: 1.55;
           font-style: normal;
-          font-weight: 800;
+          font-weight:600;
         }
         .today-lane-action,
         .today-lane-footer {
@@ -1195,83 +1176,51 @@ function PriorityLane({
           align-items: center;
           justify-content: center;
           gap: 6px;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           font-size: 12px;
-          font-weight: 950;
+          font-weight:600;
           white-space: nowrap;
         }
         .today-lane-action {
-          color: var(--sfm-primary);
-          background: rgba(29, 140, 255, .08);
-          border: 1px solid rgba(29, 140, 255, .22);
+          color: var(--primary);
+          background: color-mix(in srgb, var(--info) 8%, transparent);
+          border: 1px solid color-mix(in srgb, var(--info) 22%, transparent);
           min-height: 34px;
           padding: 0 14px;
-          border-radius: 999px;
+          border-radius:var(--radius-pill);
           text-decoration: none;
           font-size: 12px;
-          font-weight: 950;
+          font-weight:600;
           transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
         }
         .today-lane-action:hover,
         .today-lane-action:focus-visible {
-          background: rgba(29, 140, 255, .15);
-          border-color: rgba(24, 212, 212, .38);
+          background: color-mix(in srgb, var(--info) 15%, transparent);
+          border-color: color-mix(in srgb, var(--info) 38%, transparent);
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(29, 140, 255, .14);
+          box-shadow:var(--shadow-card);
           outline: none;
         }
         .today-lane-footer {
           width: fit-content;
           min-height: 36px;
           padding: 0 16px;
-          border: 1px solid rgba(29, 140, 255, .22);
-          background: rgba(29, 140, 255, .06);
-          color: var(--sfm-primary);
+          border: 1px solid color-mix(in srgb, var(--info) 22%, transparent);
+          background: color-mix(in srgb, var(--info) 6%, transparent);
+          color: var(--primary);
           text-decoration: none;
-          font-weight: 950;
+          font-weight:600;
           transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
         }
         .today-lane-footer:hover,
         .today-lane-footer:focus-visible {
-          background: rgba(29, 140, 255, .13);
-          border-color: rgba(24, 212, 212, .38);
+          background: color-mix(in srgb, var(--info) 13%, transparent);
+          border-color: color-mix(in srgb, var(--info) 38%, transparent);
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(29, 140, 255, .14);
+          box-shadow:var(--shadow-card);
           outline: none;
         }
-        :global(.dark) .today-lane-item {
-          background: rgba(15, 51, 92, .72);
-          border-color: rgba(167, 243, 240, .16);
-        }
-        :global(.dark) .today-lane-empty {
-          background: rgba(15, 51, 92, .45);
-          border-color: rgba(167, 243, 240, .16);
-        }
-        :global(.dark) .today-lane-action {
-          background: rgba(29, 140, 255, .12);
-          border-color: rgba(29, 140, 255, .26);
-        }
-        :global(.dark) .today-lane-action:hover {
-          background: rgba(29, 140, 255, .22);
-          border-color: rgba(24, 212, 212, .40);
-        }
-        :global(.dark) .today-lane-footer {
-          background: rgba(29, 140, 255, .10);
-          border-color: rgba(29, 140, 255, .26);
-        }
-        :global(.dark) .today-lane-footer:hover {
-          background: rgba(29, 140, 255, .20);
-          border-color: rgba(24, 212, 212, .40);
-        }
-        :global(.dark) .today-lane-badges .priority.urgent {
-          color: #FCA5A5;
-        }
-        :global(.dark) .today-lane-badges .priority.high {
-          color: #FCD34D;
-        }
-        :global(.dark) .today-lane-badges .priority.low {
-          color: #86EFAC;
-        }
+
         @media (max-width: 640px) {
           .today-lane-item {
             grid-template-columns: 1fr;

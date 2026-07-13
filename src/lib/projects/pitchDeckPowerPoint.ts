@@ -1,5 +1,10 @@
 import pptxgen from 'pptxgenjs';
 
+import {
+  createStaticPresentationCardShadow,
+  STATIC_PRESENTATION_VISUAL_TOKENS,
+} from '@/styles/static-tokens';
+
 export type PitchDeckLanguage = 'ar' | 'en' | 'fr';
 export type PitchDeckSlideStatus = 'complete' | 'needs_data' | 'not_ready';
 
@@ -24,18 +29,6 @@ export type PitchDeckExportData = {
   readinessLabel: string;
   slides: PitchDeckSlide[];
   generatedAt: string;
-};
-
-const COLORS = {
-  darkBrown: '061B33',
-  deepBrown: '031225',
-  gold: '1D8CFF',
-  amber: '18D4D4',
-  cream: 'EEF6FF',
-  warmWhite: 'FFFFFF',
-  muted: '64748B',
-  danger: 'EF4444',
-  success: '10B981',
 };
 
 const NOTES_TEXT = {
@@ -108,9 +101,9 @@ const PPT_TEXT = {
 } as const;
 
 const STATUS_COLOR: Record<PitchDeckSlideStatus, string> = {
-  complete: COLORS.success,
-  needs_data: COLORS.gold,
-  not_ready: COLORS.danger,
+  complete: STATIC_PRESENTATION_VISUAL_TOKENS.success,
+  needs_data: STATIC_PRESENTATION_VISUAL_TOKENS.warning,
+  not_ready: STATIC_PRESENTATION_VISUAL_TOKENS.danger,
 };
 
 function cleanText(value: unknown, fallback = '') {
@@ -121,11 +114,19 @@ function truncate(value: string, max: number) {
   return value.length > max ? `${value.slice(0, Math.max(0, max - 1)).trim()}…` : value;
 }
 
+function fontFaceForMetricValue(value: string) {
+  const hasNumericData = /[0-9٠-٩۰-۹%٪]/u.test(value);
+  const looksLikeTicker = /^[A-Z0-9]{1,6}(?:[.-][A-Z0-9]{1,5})?$/u.test(value.trim());
+  return hasNumericData || looksLikeTicker
+    ? STATIC_PRESENTATION_VISUAL_TOKENS.fontData
+    : STATIC_PRESENTATION_VISUAL_TOKENS.fontUi;
+}
+
 function textOptions(lang: PitchDeckLanguage, extra: Record<string, unknown> = {}) {
   const rtl = lang === 'ar';
   return {
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
-    color: COLORS.deepBrown,
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     valign: 'mid',
@@ -136,23 +137,35 @@ function textOptions(lang: PitchDeckLanguage, extra: Record<string, unknown> = {
   };
 }
 
-function addBrandFooter(slide: pptxgen.Slide, slideNo: number, total: number, deck: PitchDeckExportData) {
+function addBrandFooter(
+  slide: pptxgen.Slide,
+  slideNo: number,
+  total: number,
+  deck: PitchDeckExportData,
+  onDarkSurface = false,
+) {
+  const brandColor = onDarkSurface
+    ? STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft
+    : STATIC_PRESENTATION_VISUAL_TOKENS.primary;
+  const supportingColor = onDarkSurface
+    ? STATIC_PRESENTATION_VISUAL_TOKENS.borderStrong
+    : STATIC_PRESENTATION_VISUAL_TOKENS.foregroundMuted;
   slide.addShape('line', {
     x: 0.55,
     y: 7.04,
     w: 12.2,
     h: 0,
-    line: { color: COLORS.gold, transparency: 65, width: 1 },
+    line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, transparency: 65, width: 1 },
   });
   slide.addText('THE SFM', {
     x: 0.58,
     y: 7.12,
     w: 2.2,
     h: 0.18,
-    fontFace: 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 7.5,
     bold: true,
-    color: COLORS.gold,
+    color: brandColor,
     margin: 0,
     breakLine: false,
   });
@@ -161,10 +174,10 @@ function addBrandFooter(slide: pptxgen.Slide, slideNo: number, total: number, de
     y: 7.12,
     w: 1,
     h: 0.18,
-    fontFace: 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontData,
     fontSize: 7.5,
     bold: true,
-    color: COLORS.muted,
+    color: supportingColor,
     align: 'right',
     margin: 0,
     breakLine: false,
@@ -174,9 +187,9 @@ function addBrandFooter(slide: pptxgen.Slide, slideNo: number, total: number, de
     y: 7.12,
     w: 4.8,
     h: 0.18,
-    fontFace: 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 7.5,
-    color: COLORS.muted,
+    color: supportingColor,
     align: 'center',
     margin: 0,
     breakLine: false,
@@ -190,8 +203,8 @@ function addKicker(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: PitchD
     y: 0,
     w: 13.333,
     h: 0.9,
-    fill: { color: COLORS.darkBrown },
-    line: { color: COLORS.darkBrown },
+    fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground },
+    line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground },
   });
   slide.addShape('rect', {
     x: rtl ? 12.65 : 0.55,
@@ -199,18 +212,18 @@ function addKicker(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: PitchD
     w: 0.16,
     h: 0.16,
     rectRadius: 0.03,
-    fill: { color: COLORS.amber },
-    line: { color: COLORS.amber },
+    fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.accent },
+    line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.accent },
   });
   slide.addText(`${String(index).padStart(2, '0')} · ${slideData.title}`, {
     x: rtl ? 6.45 : 0.78,
     y: 0.19,
     w: 5.95,
     h: 0.28,
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 9,
     bold: true,
-    color: COLORS.gold,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft,
     charSpace: 0.6,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
@@ -222,10 +235,10 @@ function addKicker(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: PitchD
     y: 0.2,
     w: 1.55,
     h: 0.24,
-    fontFace: 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 7.4,
     bold: true,
-    color: COLORS.warmWhite,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundInverse,
     fill: { color: STATUS_COLOR[slideData.status], transparency: 0 },
     align: 'center',
     margin: 0,
@@ -248,20 +261,19 @@ function addMetricCards(slide: pptxgen.Slide, metrics: PitchDeckSlide['content']
       w: 3.25,
       h: 0.68,
       rectRadius: 0.08,
-      fill: { color: COLORS.warmWhite },
-      line: { color: COLORS.gold, transparency: 45 },
-      // @ts-expect-error pptxgenjs shadow type missing distance
-      shadow: { type: 'outer', color: '000000', opacity: 0.12, blur: 1, angle: 45, distance: 1 },
+      fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.surface },
+      line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, transparency: 45 },
+      shadow: createStaticPresentationCardShadow(),
     });
     slide.addText(truncate(metric.label, 28), {
       x: startX + 0.18,
       y: boxY + 0.09,
       w: 2.9,
       h: 0.16,
-      fontFace: rtl ? 'Tahoma' : 'Aptos',
+      fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
       fontSize: 7.4,
       bold: true,
-      color: COLORS.muted,
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundMuted,
       rtlMode: rtl,
       align: rtl ? 'right' : 'left',
       margin: 0,
@@ -273,10 +285,10 @@ function addMetricCards(slide: pptxgen.Slide, metrics: PitchDeckSlide['content']
       y: boxY + 0.32,
       w: 2.9,
       h: 0.22,
-      fontFace: rtl ? 'Tahoma' : 'Aptos',
+      fontFace: fontFaceForMetricValue(metric.value),
       fontSize: 13,
       bold: true,
-      color: COLORS.deepBrown,
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground,
       rtlMode: rtl,
       align: rtl ? 'right' : 'left',
       margin: 0,
@@ -302,9 +314,9 @@ function addBulletList(slide: pptxgen.Slide, bullets: string[], lang: PitchDeckL
     y,
     w,
     h,
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: safeBullets.length > 3 ? 13 : 15,
-    color: COLORS.deepBrown,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     fit: 'shrink',
@@ -324,18 +336,18 @@ function addMissingBox(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: Pi
     w: 11.8,
     h: 0.45,
     rectRadius: 0.08,
-    fill: { color: 'FFF4DE' },
-    line: { color: COLORS.gold, transparency: 60 },
+    fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.warningSoft },
+    line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.warning, transparency: 60 },
   });
   slide.addText(truncate(missingText, 160), {
     x: rtl ? 1.0 : 1.15,
     y: 6.15,
     w: 11.25,
     h: 0.18,
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 8,
     bold: true,
-    color: COLORS.gold,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.warning,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     margin: 0,
@@ -347,7 +359,7 @@ function addMissingBox(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: Pi
 function addFinancialVisual(slide: pptxgen.Slide, slideData: PitchDeckSlide, lang: PitchDeckLanguage) {
   if (slideData.id !== 'financial_plan' || slideData.content.metrics.length < 2) return;
   const rtl = lang === 'ar';
-  const x = rtl ? 0.9 : 4.65;
+  const x = rtl ? 5.3 : 0.9;
   const y = 5.03;
   const metrics = slideData.content.metrics.slice(0, 4);
   metrics.forEach((metric, index) => {
@@ -359,8 +371,8 @@ function addFinancialVisual(slide: pptxgen.Slide, slideData: PitchDeckSlide, lan
       w: 3.1,
       h: 0.13,
       fontSize: 6.6,
-      fontFace: rtl ? 'Tahoma' : 'Aptos',
-      color: COLORS.muted,
+      fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundMuted,
       rtlMode: rtl,
       align: rtl ? 'right' : 'left',
       margin: 0,
@@ -372,8 +384,8 @@ function addFinancialVisual(slide: pptxgen.Slide, slideData: PitchDeckSlide, lan
       y: y + 0.13 + index * 0.24,
       w: barWidth,
       h: 0.05,
-      fill: { color: index % 2 ? COLORS.gold : COLORS.amber },
-      line: { color: index % 2 ? COLORS.gold : COLORS.amber },
+      fill: { color: index % 2 ? STATIC_PRESENTATION_VISUAL_TOKENS.primary : STATIC_PRESENTATION_VISUAL_TOKENS.accent },
+      line: { color: index % 2 ? STATIC_PRESENTATION_VISUAL_TOKENS.primary : STATIC_PRESENTATION_VISUAL_TOKENS.accent },
     });
   });
 }
@@ -405,19 +417,19 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
   const slide = pptx.addSlide();
   const rtl = deck.language === 'ar';
   const firstSlide = deck.slides[0];
-  slide.background = { color: COLORS.darkBrown };
-  slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: COLORS.darkBrown }, line: { color: COLORS.darkBrown } });
-  slide.addShape('rect', { x: rtl ? 0 : 9.5, y: 0, w: 3.833, h: 7.5, fill: { color: COLORS.deepBrown, transparency: 8 }, line: { color: COLORS.deepBrown } });
-  slide.addShape('line', { x: rtl ? 1.1 : 0.85, y: 1.15, w: 2.8, h: 0, line: { color: COLORS.gold, width: 2 } });
+  slide.background = { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground };
+  slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground }, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground } });
+  slide.addShape('rect', { x: rtl ? 0 : 9.5, y: 0, w: 3.833, h: 7.5, fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundSecondary, transparency: 8 }, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundSecondary } });
+  slide.addShape('line', { x: rtl ? 1.1 : 0.85, y: 1.15, w: 2.8, h: 0, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, width: 2 } });
   slide.addText('THE SFM', {
     x: rtl ? 9.6 : 0.82,
     y: 0.6,
     w: 2.8,
     h: 0.3,
-    fontFace: 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 12,
     bold: true,
-    color: COLORS.gold,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     margin: 0,
@@ -428,10 +440,10 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     y: 2.05,
     w: 8.7,
     h: 1.0,
-    fontFace: rtl ? 'Tahoma' : 'Aptos Display',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 35,
     bold: true,
-    color: COLORS.warmWhite,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundInverse,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     margin: 0,
@@ -443,9 +455,9 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     y: 3.15,
     w: 7.95,
     h: 0.52,
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 16,
-    color: 'F8E7C2',
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     margin: 0,
@@ -456,10 +468,10 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
     y: 4.05,
     w: 3.5,
     h: 0.35,
-    fontFace: rtl ? 'Tahoma' : 'Aptos',
+    fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     fontSize: 13,
     bold: true,
-    color: COLORS.gold,
+    color: STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft,
     rtlMode: rtl,
     align: rtl ? 'right' : 'left',
     margin: 0,
@@ -467,18 +479,18 @@ function addCoverSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' | 
   } as any);
   (firstSlide?.content.metrics ?? []).slice(0, 3).forEach((metric, index) => {
     const x = rtl ? 8.7 - index * 2.62 : 0.85 + index * 2.62;
-    slide.addShape('roundRect', { x, y: 5.25, w: 2.32, h: 0.82, rectRadius: 0.08, fill: { color: COLORS.warmWhite, transparency: 4 }, line: { color: COLORS.gold, transparency: 35 } });
-    slide.addText(truncate(metric.label, 20), { x: x + 0.14, y: 5.38, w: 2.04, h: 0.16, fontSize: 6.8, color: COLORS.muted, fontFace: rtl ? 'Tahoma' : 'Aptos', rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
-    slide.addText(truncate(metric.value, 18), { x: x + 0.14, y: 5.65, w: 2.04, h: 0.24, fontSize: 12, bold: true, color: COLORS.deepBrown, fontFace: rtl ? 'Tahoma' : 'Aptos', rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
+    slide.addShape('roundRect', { x, y: 5.25, w: 2.32, h: 0.82, rectRadius: 0.08, fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.surface, transparency: 4 }, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, transparency: 35 } });
+    slide.addText(truncate(metric.label, 20), { x: x + 0.14, y: 5.38, w: 2.04, h: 0.16, fontSize: 6.8, color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundMuted, fontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi, rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
+    slide.addText(truncate(metric.value, 18), { x: x + 0.14, y: 5.65, w: 2.04, h: 0.24, fontSize: 12, bold: true, color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground, fontFace: fontFaceForMetricValue(metric.value), rtlMode: rtl, align: rtl ? 'right' : 'left', margin: 0, fit: 'shrink' });
   });
-  addBrandFooter(slide, 1, totalSlides, deck);
+  addBrandFooter(slide, 1, totalSlides, deck, true);
   slide.addNotes(buildNotes(firstSlide ?? deck.slides[0], deck.language, source));
 }
 
 function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: PitchDeckSlide, index: number, source: 'ai' | 'rules', totalSlides: number) {
   const slide = pptx.addSlide();
   const rtl = deck.language === 'ar';
-  slide.background = { color: COLORS.cream };
+  slide.background = { color: STATIC_PRESENTATION_VISUAL_TOKENS.background };
   addKicker(slide, slideData, deck.language, index);
   slide.addText(truncate(slideData.content.headline || slideData.title, 120), {
     x: rtl ? 4.15 : 0.82,
@@ -488,7 +500,7 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
     ...textOptions(deck.language, {
       fontSize: 25,
       bold: true,
-      color: COLORS.darkBrown,
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground,
     }),
   } as any);
   const bulletX = rtl ? 4.2 : 0.9;
@@ -502,8 +514,8 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
       w: 3.35,
       h: 0.7,
       rectRadius: 0.08,
-      fill: { color: COLORS.warmWhite },
-      line: { color: COLORS.gold, transparency: 55 },
+      fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.surface },
+      line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, transparency: 55 },
     });
     slide.addText(truncate(slideData.suggestions[0], 95), {
       x: rtl ? 1.05 : 5.45,
@@ -513,7 +525,7 @@ function addContentSlide(pptx: pptxgen, deck: PitchDeckExportData, slideData: Pi
       ...textOptions(deck.language, {
         fontSize: 8.2,
         bold: true,
-        color: COLORS.muted,
+        color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundMuted,
       }),
     } as any);
   }
@@ -528,9 +540,9 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
   const t = PPT_TEXT[deck.language] ?? PPT_TEXT.en;
   const notes = NOTES_TEXT[deck.language] ?? NOTES_TEXT.en;
 
-  slide.background = { color: COLORS.darkBrown };
-  slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: COLORS.darkBrown }, line: { color: COLORS.darkBrown } });
-  slide.addShape('rect', { x: rtl ? 0 : 8.8, y: 0, w: 4.533, h: 7.5, fill: { color: COLORS.deepBrown, transparency: 10 }, line: { color: COLORS.deepBrown } });
+  slide.background = { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground };
+  slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground }, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground } });
+  slide.addShape('rect', { x: rtl ? 0 : 8.8, y: 0, w: 4.533, h: 7.5, fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundSecondary, transparency: 10 }, line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundSecondary } });
   slide.addText(t.reviewTitle, {
     x: rtl ? 3.6 : 0.82,
     y: 1.1,
@@ -539,7 +551,7 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
     ...textOptions(deck.language, {
       fontSize: 30,
       bold: true,
-      color: COLORS.warmWhite,
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.foregroundInverse,
     }),
   } as any);
   slide.addText(t.reviewBody, {
@@ -549,7 +561,7 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
     h: 0.72,
     ...textOptions(deck.language, {
       fontSize: 15,
-      color: 'D7E8F7',
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.primarySoft,
     }),
   } as any);
 
@@ -566,8 +578,8 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
       w: 2.75,
       h: 1.45,
       rectRadius: 0.08,
-      fill: { color: COLORS.warmWhite, transparency: 5 },
-      line: { color: COLORS.gold, transparency: 35 },
+      fill: { color: STATIC_PRESENTATION_VISUAL_TOKENS.surface, transparency: 5 },
+      line: { color: STATIC_PRESENTATION_VISUAL_TOKENS.primary, transparency: 35 },
     });
     slide.addText(card.label, {
       x: x + 0.16,
@@ -577,7 +589,7 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
       ...textOptions(deck.language, {
         fontSize: 8.8,
         bold: true,
-        color: COLORS.gold,
+        color: STATIC_PRESENTATION_VISUAL_TOKENS.primary,
       }),
     } as any);
     slide.addText(truncate(card.value, cardIndex === 2 ? 92 : 30), {
@@ -587,8 +599,11 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
       h: 0.42,
       ...textOptions(deck.language, {
         fontSize: cardIndex === 2 ? 9.2 : 15,
+        fontFace: cardIndex === 0
+          ? STATIC_PRESENTATION_VISUAL_TOKENS.fontData
+          : STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
         bold: true,
-        color: COLORS.warmWhite,
+        color: STATIC_PRESENTATION_VISUAL_TOKENS.foreground,
       }),
     } as any);
   });
@@ -600,11 +615,11 @@ function addReviewSlide(pptx: pptxgen, deck: PitchDeckExportData, source: 'ai' |
     h: 0.45,
     ...textOptions(deck.language, {
       fontSize: 9.5,
-      color: 'C9D8E8',
+      color: STATIC_PRESENTATION_VISUAL_TOKENS.borderStrong,
     }),
   } as any);
 
-  addBrandFooter(slide, index, totalSlides, deck);
+  addBrandFooter(slide, index, totalSlides, deck, true);
   slide.addNotes([t.reviewTitle, t.reviewBody, '', t.nextSteps, t.nextStepsBody, '', notes.disclaimer].join('\n'));
 }
 
@@ -618,8 +633,8 @@ export async function buildPitchDeckPowerPoint(deck: PitchDeckExportData, source
   (pptx as any).lang = deck.language === 'ar' ? 'ar-KW-u-nu-latn' : deck.language === 'fr' ? 'fr-FR' : 'en-US';
   pptx.rtlMode = deck.language === 'ar';
   (pptx as any).theme = {
-    headFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos Display',
-    bodyFontFace: deck.language === 'ar' ? 'Tahoma' : 'Aptos',
+    headFontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
+    bodyFontFace: STATIC_PRESENTATION_VISUAL_TOKENS.fontUi,
     lang: (pptx as any).lang,
   };
   const contentSlides = deck.slides.slice(1, 12);

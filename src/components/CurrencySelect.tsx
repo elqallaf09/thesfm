@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { currencyDisplayName, currencyDisplaySymbol, getCurrency, getCurrencyOptions } from '@/lib/currencies';
 import type { CurrencyLocale } from '@/lib/currencies';
@@ -39,7 +39,9 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const selectedCurrency = getCurrency(value);
   const selectedName = currencyDisplayName(selectedCurrency, locale);
@@ -67,7 +69,11 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setQuery('');
+        window.requestAnimationFrame(() => triggerRef.current?.focus());
+      }
     };
     document.addEventListener('mousedown', onPointer);
     window.addEventListener('keydown', onKey);
@@ -86,12 +92,14 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
     onChange(code);
     setOpen(false);
     setQuery('');
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   return (
     <div className={`currency-select-root ${className ?? ''}`} ref={rootRef} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       {label && <span className="currency-label">{label}</span>}
       <button
+        ref={triggerRef}
         type="button"
         className="currency-trigger"
         aria-haspopup="listbox"
@@ -114,13 +122,18 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
             <input
               ref={searchRef}
               value={query}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-expanded="true"
+              aria-activedescendant={filtered[activeIndex] ? `${listboxId}-${filtered[activeIndex].code}` : undefined}
               aria-label={TEXT.searchCurrency[locale]}
               placeholder={TEXT.searchCurrency[locale]}
               onChange={event => setQuery(event.target.value)}
               onKeyDown={event => {
                 if (event.key === 'ArrowDown') {
                   event.preventDefault();
-                  setActiveIndex(index => Math.min(index + 1, filtered.length - 1));
+                  setActiveIndex(index => Math.min(index + 1, Math.max(0, filtered.length - 1)));
                 }
                 if (event.key === 'ArrowUp') {
                   event.preventDefault();
@@ -133,12 +146,13 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
               }}
             />
           </label>
-          <div className="currency-list" role="listbox" aria-label={TEXT.currency[locale]}>
+          <div id={listboxId} className="currency-list" role="listbox" aria-label={TEXT.currency[locale]}>
             {filtered.length === 0 ? (
               <div className="currency-empty">{TEXT.noCurrencies[locale]}</div>
             ) : filtered.slice(0, 80).map((currency, index) => (
               <button
                 type="button"
+                id={`${listboxId}-${currency.code}`}
                 role="option"
                 aria-selected={currency.code === value}
                 className={index === activeIndex ? 'active' : ''}
@@ -160,36 +174,37 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
       )}
       <style jsx>{`
         .currency-select-root{position:relative;display:grid;gap:7px;width:100%;min-width:min(180px,100%)}
-        .currency-label{color:var(--sfm-midnight);font-size:13px;font-weight:800}
-        .currency-trigger{width:100%;min-height:50px;border:1px solid rgba(29,140,255,.20);border-radius:var(--r-md);background:#FFFFFF;color:var(--sfm-midnight);padding-block:8px;padding-inline:12px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;font:800 14px inherit;cursor:pointer;text-align:start;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease,transform .18s ease}
+        .currency-label{color:var(--foreground);font-size:13px;font-weight:500}
+        .currency-trigger{width:100%;min-height:50px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);padding-block:8px;padding-inline:12px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;font:500 14px var(--font-ui);cursor:pointer;text-align:start;overflow:visible;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
         .currency-trigger-content{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"symbol code" "symbol name";align-items:center;column-gap:10px;row-gap:2px;min-width:0;flex:1}
-        .currency-trigger-code,.currency-code{direction:ltr;unicode-bidi:isolate;font-weight:900;letter-spacing:0;color:var(--sfm-midnight);white-space:nowrap}
-        .currency-trigger-code{grid-area:code;font-size:12px;line-height:1;color:var(--sfm-muted)}
-        .currency-trigger-symbol,.currency-symbol{unicode-bidi:isolate;color:var(--sfm-primary);font-weight:900;white-space:nowrap}
-        .currency-trigger-symbol{grid-area:symbol;min-inline-size:44px;min-height:32px;border-radius:var(--r-sm);background:rgba(29,140,255,.09);display:inline-flex;align-items:center;justify-content:center;padding-inline:8px}
-        .currency-trigger-name{grid-area:name;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sfm-secondary);font-size:13px;line-height:1.25}
-        .currency-chevron{flex:0 0 auto;inline-size:16px;min-inline-size:16px;color:var(--sfm-primary);transition:transform .18s ease}
+        .currency-trigger-code,.currency-code{direction:ltr;unicode-bidi:isolate;font-family:var(--font-data);font-weight:600;letter-spacing:0;color:var(--foreground);white-space:nowrap}
+        .currency-trigger-code{grid-area:code;font-size:12px;line-height:1;color:var(--foreground-muted)}
+        .currency-trigger-symbol,.currency-symbol{unicode-bidi:isolate;color:var(--primary);font-family:var(--font-data);font-weight:600;white-space:nowrap}
+        .currency-trigger-symbol{grid-area:symbol;min-inline-size:44px;min-height:32px;border-radius:var(--radius-sm);background:var(--primary-soft);display:inline-flex;align-items:center;justify-content:center;padding-inline:8px}
+        .currency-trigger-name{grid-area:name;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground-secondary);font-size:13px;line-height:1.25}
+        .currency-chevron{flex:0 0 auto;inline-size:16px;min-inline-size:16px;color:var(--primary);transition:transform .18s ease}
         .currency-trigger[aria-expanded="true"] .currency-chevron{transform:rotate(180deg)}
-        .currency-trigger:hover{border-color:rgba(24,212,212,.40);background:var(--sfm-surface-hover);box-shadow:0 10px 24px rgba(3,18,37,.08);transform:translateY(-1px)}
-        .currency-trigger:focus-visible,.currency-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.22);border-color:var(--sfm-primary)}
-        .currency-popover{position:absolute;z-index:120;inset-block-start:calc(100% + 8px);inset-inline-start:0;background:var(--sfm-card);border:1px solid rgba(29,140,255,.22);border-radius:var(--r-lg);padding:10px;box-shadow:0 18px 42px rgba(3,18,37,.16);width:max(100%,320px);min-width:min(320px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:min(360px,70dvh);display:grid;gap:8px}
+        .currency-trigger:hover{border-color:color-mix(in srgb,var(--primary) 36%,var(--border));background:var(--surface-hover);box-shadow:var(--shadow-xs)}
+        .currency-trigger:focus-visible,.currency-search input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow);border-color:var(--focus-ring)}
+        .currency-popover{position:absolute;z-index:120;inset-block-start:100%;margin-block-start:8px;inset-inline-start:0;background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-card);padding:10px;box-shadow:var(--shadow-lg);width:100%;min-width:320px;max-height:min(360px,70dvh);display:grid;gap:8px}
         .currency-select-root[dir="rtl"] .currency-popover{inset-inline-start:auto;inset-inline-end:0}
-        .currency-search{height:var(--control-h);border:1px solid rgba(29,140,255,.16);border-radius:var(--r-md);background:var(--sfm-background);display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--sfm-muted)}
-        .currency-search input{border:0;background:transparent;color:var(--sfm-midnight);width:100%;height:100%;font:700 14px inherit;min-width:0}
+        .currency-search{min-height:44px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);display:flex;align-items:center;gap:8px;padding:0 10px;color:var(--foreground-muted)}
+        .currency-search input{border:0;background:transparent;color:var(--foreground);width:100%;height:44px;font:400 14px var(--font-ui);min-width:0}
         .currency-list{display:grid;gap:4px;overflow:auto;max-height:278px;padding-inline-end:2px}
-        .currency-list button{width:100%;border:1px solid transparent;border-radius:var(--r-md);background:transparent;color:var(--sfm-midnight);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-height:48px;padding:9px 10px;font:750 13px inherit;cursor:pointer;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
-        .currency-list button.active,.currency-list button:hover,.currency-list button:focus-visible{background:rgba(29,140,255,.10);border-color:rgba(24,212,212,.24);color:var(--sfm-primary-hover);outline:0;transform:translateY(-1px)}
-        .currency-list button[aria-selected="true"]{background:linear-gradient(135deg,rgba(29,140,255,.14),rgba(24,212,212,.14));border-color:rgba(24,212,212,.32);box-shadow:inset 0 -2px 0 rgba(24,212,212,.55)}
+        .currency-list button{width:100%;border:1px solid transparent;border-radius:var(--radius-control);background:transparent;color:var(--foreground);display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-height:48px;padding:9px 10px;font:500 13px var(--font-ui);cursor:pointer;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease}
+        .currency-list button.active,.currency-list button:hover,.currency-list button:focus-visible{background:var(--surface-hover);border-color:color-mix(in srgb,var(--primary) 28%,var(--border));color:var(--primary-hover);outline:2px solid var(--focus-ring);outline-offset:1px}
+        .currency-list button[aria-selected="true"]{background:var(--primary-soft);border-color:color-mix(in srgb,var(--primary) 36%,var(--border));box-shadow:var(--active-indicator-shadow)}
         .currency-option-main{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:8px;min-width:0}
-        .currency-name{min-width:0;color:var(--sfm-secondary);line-height:1.35;overflow-wrap:anywhere}
-        .currency-check{color:var(--sfm-primary);filter:drop-shadow(0 0 6px rgba(24,212,212,.35))}
-        .currency-empty{padding:18px;text-align:center;color:var(--sfm-muted);font-size:13px}
+        .currency-name{min-width:0;color:var(--foreground-secondary);line-height:1.35;overflow-wrap:anywhere}
+        .currency-check{color:var(--primary)}
+        .currency-empty{padding:18px;text-align:center;color:var(--foreground-muted);font-size:13px}
         @media(max-width:680px){
           .currency-select-root{min-width:0}
-          .currency-popover{position:fixed;inset-inline:16px;inset-block:auto 16px;width:auto;min-width:0;max-width:none;max-height:min(460px,76dvh)}
+          .currency-popover{position:fixed;inset-inline:16px;inset-block:auto 16px;width:auto;min-width:0;max-height:min(460px,76dvh)}
           .currency-trigger{min-height:52px}
           .currency-list button{min-height:54px}
         }
+        @media(prefers-reduced-motion:reduce){.currency-trigger,.currency-chevron,.currency-list button{transition:none}}
       `}</style>
     </div>
   );

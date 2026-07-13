@@ -11,9 +11,6 @@
     "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: var(--font-ibm-plex-mono, "IBM Plex Mono"),
     "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  --font-cairo: var(--font-ui);
-  --font-tajawal: var(--font-ui);
-  --font-ibm-plex-arabic: var(--font-ui);
 
   --type-display-size: clamp(2rem, 3.2vw, 3rem);
   --type-display-leading: 1.2;
@@ -99,6 +96,14 @@
   --radius-card: 14px;
   --radius-panel: 20px;
   --radius-pill: 999px;
+  --radius-circle: 50%;
+  --radius-chat-incoming: var(--radius-panel) var(--radius-panel) var(--radius-panel) var(--radius-xs);
+  --radius-chat-outgoing: var(--radius-panel) var(--radius-panel) var(--radius-xs) var(--radius-panel);
+
+  /* Shared layout rhythm consumed by application shells and page grids. */
+  --layout-section-gap: var(--space-5);
+  --layout-card-gap: var(--space-4);
+  --layout-card-radius: var(--radius-panel);
 
   --control-h-sm: 36px;
   --control-h: 44px;
@@ -106,6 +111,7 @@
   --sidebar-w: 220px;
   --sidebar-width-icon: 3rem;
   --topbar-h: 64px;
+  --global-header-height: 64px;
 
   /*
    * Workspace content geometry.
@@ -130,42 +136,17 @@
   --shadow-lg: 0 20px 44px color-mix(in srgb, var(--shadow-color) 14%, transparent);
   --shadow-card: var(--shadow-sm);
   --shadow-popover: var(--shadow-md);
+  --active-indicator-shadow: inset 0 -3px 0 var(--primary);
+  --active-indicator-top-raised: inset 0 3px 0 var(--primary), var(--shadow-md);
+  --active-indicator-inline-start: inset 3px 0 0 var(--primary);
+  --active-indicator-inline-end: inset -3px 0 0 var(--primary);
+  --active-indicator-inline-start-raised: var(--active-indicator-inline-start), var(--shadow-xs);
+  --active-indicator-inline-end-raised: var(--active-indicator-inline-end), var(--shadow-xs);
+  --danger-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+  --autofill-background-shadow: 0 0 0 1000px var(--control-background) inset;
 
   --duration-fast: 140ms;
   --duration: 200ms;
   --duration-slow: 280ms;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-
-  /* Compatibility geometry/type aliases for existing production screens. */
-  --sfm-light-space-1: var(--space-1);
-  --sfm-light-space-2: var(--space-2);
-  --sfm-light-space-3: var(--space-3);
-  --sfm-light-space-4: var(--space-4);
-  --sfm-light-space-5: var(--space-5);
-  --sfm-light-space-6: var(--space-6);
-  --sfm-light-radius-control: var(--radius-control);
-  --sfm-light-radius-card: var(--radius-card);
-  --sfm-light-radius-section: var(--radius-panel);
-  --sfm-light-radius-pill: var(--radius-pill);
-  --sfm-light-type-title: var(--type-page-title-size);
-  --sfm-light-type-section: var(--type-section-title-size);
-  --sfm-light-type-card: var(--type-card-title-size);
-  --sfm-light-type-body: var(--type-body-size);
-  --sfm-light-type-caption: var(--type-caption-size);
-  --sfm-light-type-status: var(--type-caption-size);
-  --sfm-light-type-numeric: var(--type-numeric-value-size);
-  --sfm-light-transition-fast: var(--duration-fast);
-  --sfm-light-transition-base: var(--duration);
-  --sfm-light-transition-slow: var(--duration-slow);
-  --sfm-light-ease: var(--ease);
-  --sfm-light-shadow-xs: var(--shadow-xs);
-  --sfm-light-shadow-sm: var(--shadow-sm);
-  --sfm-light-shadow-md: var(--shadow-md);
-  --sfm-light-shadow-lg: var(--shadow-lg);
-  --r-xs: var(--radius-xs);
-  --r-sm: var(--radius-sm);
-  --r-md: var(--radius-control);
-  --r-lg: 12px;
-  --r-xl: var(--radius-card);
-  --r-2xl: var(--radius-panel);
 }

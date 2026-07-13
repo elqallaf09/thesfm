@@ -1,6 +1,10 @@
 import { formatDate, formatDateTime, formatPercent } from '@/lib/locale';
 import type { Lang } from '@/lib/translations';
 import type { ShariaResearchTranslator } from '@/lib/translations/sharia-research';
+import {
+  semanticStandaloneDocumentStyles,
+  semanticStandaloneStylesheetLinks,
+} from '@/lib/visual-system/standaloneDocument';
 import type { ShariaScreeningResult, SourceType } from './types';
 import type { ReportSource } from './reportPresentation';
 import { classificationTranslationKey, reportSourceEvidence } from './reportPresentation';
@@ -92,21 +96,23 @@ export function openCompliancePdfReport({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>${html(title)}</title>
+        ${semanticStandaloneStylesheetLinks()}
         <style>
+          ${semanticStandaloneDocumentStyles()}
           @page{size:A4;margin:13mm}
           *{box-sizing:border-box}
-          body{margin:0;background:#fff;color:#102238;font-family:Tajawal,"Segoe UI",Arial,sans-serif;font-size:12px;line-height:1.65}
+          body{margin:0;background:var(--surface);color:var(--foreground);font-family:var(--font-ui);font-size:12px;line-height:1.65}
           main{width:100%;margin:0 auto}
-          header{border:1px solid #d8e3e8;border-top:5px solid #0e8a7a;border-radius:12px;padding:18px 20px;margin-bottom:14px}
-          .brand{color:#0e7367;font-weight:900;letter-spacing:.08em}.title{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-top:8px}.title h1{margin:0;font-size:24px;line-height:1.25}.title strong{font-size:20px;color:#0a5f56}
+          header{border:1px solid var(--border);border-top:5px solid var(--accent);border-radius:var(--radius-card);padding:18px 20px;margin-bottom:14px}
+          .brand{color:var(--accent);font-weight:600;letter-spacing:.08em}.title{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-top:8px}.title h1{margin:0;font-size:24px;line-height:1.25}.title strong{font-size:20px;color:var(--accent);font-weight:600}
           .identity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:13px}
-          .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:13px}.fact{border:1px solid #e0e8ec;border-radius:8px;padding:8px 10px}.fact span{display:block;color:#5b6b78;font-size:10px}.fact b{display:block;margin-top:2px;font-size:12px;overflow-wrap:anywhere}
-          section{break-inside:avoid;margin-top:14px}h2{margin:0 0 7px;font-size:15px;color:#12344d;border-bottom:1px solid #dce6ea;padding-bottom:5px}p{margin:0;color:#435767}
-          table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #dce6ea;padding:7px;text-align:start;vertical-align:top;overflow-wrap:anywhere}thead th{background:#f3f8f8;color:#17465a;font-size:10px}tbody th{font-size:11px}
-          ul{list-style:none;padding:0;margin:0;display:grid;gap:7px}li{border:1px solid #e0e8ec;border-radius:8px;padding:8px 10px;break-inside:avoid}li div{display:flex;justify-content:space-between;gap:10px}li span{color:#667986;font-size:10px}li p{margin-top:3px;font-size:11px}a{color:#087468;text-decoration:none;font-weight:800}
-          .disclaimer{margin-top:14px;border:1px solid #d9c999;border-inline-start:4px solid #b7791f;border-radius:9px;padding:9px 11px;background:#fffdf7}.footer{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:8px;border-top:1px solid #dce6ea;color:#697985;font-size:10px}
+          .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:13px}.fact{border:1px solid var(--border);border-radius:var(--radius-control);padding:8px 10px;background:var(--surface-muted)}.fact span{display:block;color:var(--foreground-muted);font-size:10px}.fact b{display:block;margin-top:2px;font-size:12px;overflow-wrap:anywhere}.summary .fact b{font-family:var(--font-data)}
+          section{break-inside:avoid;margin-top:14px}h2{margin:0 0 7px;font-size:15px;color:var(--foreground);border-bottom:1px solid var(--border);padding-bottom:5px}p{margin:0;color:var(--foreground-secondary)}
+          table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid var(--border);padding:7px;text-align:start;vertical-align:top;overflow-wrap:anywhere}thead th{background:var(--surface-muted);color:var(--foreground);font-size:10px}tbody th{font-size:11px}td:nth-child(2),td:nth-child(3){font-family:var(--font-data)}
+          ul{list-style:none;padding:0;margin:0;display:grid;gap:7px}li{border:1px solid var(--border);border-radius:var(--radius-control);padding:8px 10px;break-inside:avoid}li div{display:flex;justify-content:space-between;gap:10px}li span{color:var(--foreground-muted);font-size:10px}li p{margin-top:3px;font-size:11px}a{color:var(--accent);text-decoration:none;font-weight:600}
+          .disclaimer{margin-top:14px;border:1px solid var(--warning);border-inline-start:4px solid var(--warning);border-radius:var(--radius-control);padding:9px 11px;background:var(--warning-soft)}.footer{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:8px;border-top:1px solid var(--border);color:var(--foreground-muted);font-size:10px}
           @media(max-width:700px){.identity,.summary{grid-template-columns:1fr}.title{display:grid}table{font-size:10px}}
-          @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}a{color:#087468}}
+          @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}a{color:var(--accent)}}
         </style>
       </head>
       <body>
@@ -133,7 +139,7 @@ export function openCompliancePdfReport({
           <div class="disclaimer"><strong>${html(tr('sharia_research_disclaimer_title'))}</strong><p>${html(tr('sharia_research_disclaimer'))}</p></div>
           <div class="footer"><span>THE SFM</span><span>${html(tr('sharia_research_report_generated'))}: ${html(formatDateTime(new Date(), locale))}</span></div>
         </main>
-        <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>
+        <script>window.addEventListener('load',()=>{(document.fonts?.ready??Promise.resolve()).then(()=>setTimeout(()=>window.print(),250))});</script>
       </body>
     </html>`);
   report.document.close();

@@ -20,7 +20,7 @@ describe('global header workspace navigation contract', () => {
   it('derives the active workspace from the current route without selected state', () => {
     expect(switcher).toContain("const pathname = usePathname() || '/'");
     expect(switcher).toContain('resolveActiveWorkspace(pathname)');
-    expect(switcher).toContain("aria-current={current ? 'true' : undefined}");
+    expect(switcher).toContain("aria-current={current ? 'page' : undefined}");
     expect(switcher).toContain('href={destination}');
     expect(switcher).not.toMatch(/useState|localStorage|sessionStorage|router\.push/);
   });
@@ -57,5 +57,17 @@ describe('global header workspace navigation contract', () => {
     expect([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])
       .toEqual([...new Set([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])].sort((a, b) => a - b));
     expect(brandIndex).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps the mobile drawer modal lifecycle keyboard- and focus-safe', () => {
+    expect(mobile).toContain("document.body.style.overflow = 'hidden'");
+    expect(mobile).toContain("document.body.classList.add('sfm-mobile-lock')");
+    expect(mobile).toContain("document.body.classList.remove('sfm-mobile-lock')");
+    expect(mobile).toContain("if (event.key === 'Escape')");
+    expect(mobile).toContain('onCloseRef.current()');
+    expect(mobile).toContain("if (event.key !== 'Tab') return");
+    expect(mobile).toContain("element.setAttribute('inert', '')");
+    expect(mobile).toContain("previouslyFocused.focus({ preventScroll: true })");
+    expect(mobile).toContain("aria-modal={open ? 'true' : undefined}");
   });
 });

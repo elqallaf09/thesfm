@@ -56,7 +56,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           display: grid;
           grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
           align-items: start;
-          min-height: calc(100dvh - var(--sfm-global-header-height, 64px));
+          min-height: calc(100dvh - var(--global-header-height));
           transition: grid-template-columns var(--duration-fast) ease-out;
         }
 
@@ -76,7 +76,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         @media (max-width: 767px) {
           .sfm-app-shell-grid {
             grid-template-columns: minmax(0, 1fr);
-            min-height: calc(100dvh - var(--sfm-global-header-height, 108px));
+            min-height: calc(100dvh - var(--global-header-height));
           }
 
           .sfm-app-sidebar-slot {

@@ -19,11 +19,11 @@
 [data-theme-scope='core-finance'],
 [data-theme-scope='business'],
 [data-theme-scope='admin'] {
-  --scope-accent: var(--brand-primary);
+  --scope-accent: var(--primary);
 }
 
 [data-theme-scope='trader'] {
-  --scope-accent: var(--brand-secondary);
+  --scope-accent: var(--accent);
 }
 
 [data-theme-scope='shariah'] {
@@ -36,16 +36,13 @@
  * The control-unification sweep moved every area onto one global control
  * standard (44px controls in Light Mode, 40px in Dark Mode, 48px on touch)
  * and onto the shared radius tokens. That unintentionally re-metered the
- * approved Core Finance identity:
+ * approved Core Finance control heights:
  *   - finance buttons had a 42px floor (both modes)   → became 44px / 40px
  *   - finance fields (input/select) were 48px tall    → became 44px / 40px
  *   - finance fields on tablet/mobile were 50px tall  → became 48px
- *   - dark-mode finance radii drifted (cards 22px → 28px, panels 18px → 20px,
- *     chips 9px → 8px) because the dark token scale differs from the values
- *     the finance pages were designed with.
  *
- * The overrides below restore the approved metrics inside the Core Finance
- * and Business scopes only; every other area keeps the unified standard.
+ * The height overrides below preserve finance touch ergonomics. Radii stay
+ * on the shared semantic scale in every product area.
  */
 
 [data-theme-scope='core-finance'],
@@ -54,11 +51,6 @@
   --control-h: 42px;
   /* Approved finance field height. */
   --finance-field-h: 48px;
-  /* Approved finance radius scale — identical to the Light Mode values;
-     re-declared on the scope so Dark Mode stops drifting to 8/20/28px. */
-  --r-sm: 9px;
-  --r-xl: 18px;
-  --r-2xl: 22px;
 }
 
 [data-theme-scope='core-finance'] input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='button'], [type='submit'], [type='reset'], [type='image'], [type='hidden']),

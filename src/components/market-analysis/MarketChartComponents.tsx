@@ -169,9 +169,9 @@ export function PriceHistoryChart({
   const chartStateDescription = ohlcUnavailable
     ? t('market_chart_ohlc_use_line_or_area')
     : t('market_chart_partial_data_body');
-  const lineStartColor = isPositive ? '#1D8CFF' : '#EF4444';
-  const lineEndColor = isPositive ? '#2FD6C0' : '#F59E0B';
-  const areaColor = isPositive ? '#22D3EE' : '#EF4444';
+  const lineStartColor = isPositive ? 'var(--chart-1)' : 'var(--danger)';
+  const lineEndColor = isPositive ? 'var(--chart-2)' : 'var(--warning)';
+  const areaColor = isPositive ? 'var(--chart-2)' : 'var(--danger)';
   const axisValues = Array.from({ length: 5 }, (_, index) => domainMax - (spread * index) / 4);
   const verticalGridCount = Math.min(6, Math.max(3, Math.floor(activePoints.length / 8)));
   const tickWidth = Math.max(5, Math.min(11, candleWidth * 0.86));

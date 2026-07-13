@@ -120,9 +120,9 @@
  */
 @media (min-width: 1025px) {
   :root[data-density='compact'] {
-    --sfm-section-gap: 16px;
-    --sfm-card-gap: 12px;
-    --sfm-page-pad-y: 18px;
+    --layout-section-gap: 16px;
+    --layout-card-gap: 12px;
+    --workspace-page-padding-block: 18px;
   }
 }
 
@@ -164,8 +164,8 @@
 @media (min-width: 1025px) {
   :root[data-density='compact'] [data-theme-scope='trader'],
   :root[data-density='compact'] [data-theme-scope='admin'] {
-    --sfm-section-gap: 14px;
-    --sfm-card-gap: 10px;
+    --layout-section-gap: 14px;
+    --layout-card-gap: 10px;
   }
 }
 

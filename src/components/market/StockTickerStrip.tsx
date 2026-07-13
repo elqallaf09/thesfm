@@ -202,19 +202,19 @@ export function StockTickerStrip({
       </MarketTickerStrip>
       <style jsx>{`
               .sfm-stock-ticker-card {
-                inline-size: clamp(184px, 54vw, 232px);
-                min-inline-size: min(184px, calc(100vw - 44px));
-                max-inline-size: min(232px, calc(100vw - 44px));
+                inline-size: 232px;
+                min-inline-size: min(184px, 100%);
+                max-inline-size: min(232px, 100%);
                 min-height: 128px;
                 display: grid;
                 align-content: start;
                 gap: 9px;
                 padding: 10px 12px 12px;
-                border: 1px solid rgba(203, 213, 225, 0.86);
-                border-radius: var(--r-lg);
-                background: #ffffff;
-                color: #0f172a;
-                box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-card);
+                background: var(--surface);
+                color: var(--foreground);
+                box-shadow: var(--shadow-card);
                 overflow: hidden;
                 unicode-bidi: isolate;
               }
@@ -238,17 +238,18 @@ export function StockTickerStrip({
               }
 
               .sfm-stock-ticker-title strong {
-                color: #0f172a;
+                color: var(--foreground);
                 font-size: 13px;
-                font-weight: 950;
+                font-weight: 600;
+                font-family: var(--font-data);
                 line-height: 1.15;
               }
 
               .sfm-stock-ticker-title span,
               .sfm-stock-ticker-foot small {
-                color: #64748b;
+                color: var(--foreground-muted);
                 font-size: 11px;
-                font-weight: 800;
+                font-weight: 400;
                 line-height: 1.35;
                 overflow-wrap: anywhere;
               }
@@ -263,9 +264,10 @@ export function StockTickerStrip({
 
               .sfm-stock-ticker-values b {
                 min-width: 0;
-                color: #0f172a;
+                color: var(--foreground);
                 font-size: 13px;
-                font-weight: 950;
+                font-weight: 600;
+                font-family: var(--font-data);
                 line-height: 1.2;
                 overflow-wrap: anywhere;
               }
@@ -275,28 +277,29 @@ export function StockTickerStrip({
                 display: inline-flex;
                 align-items: center;
                 gap: 4px;
-                border-radius: 999px;
+                border-radius: var(--radius-pill);
                 padding: 4px 7px;
                 font-size: 10.5px;
                 font-style: normal;
-                font-weight: 950;
+                font-weight: 600;
+                font-family: var(--font-data);
                 line-height: 1;
                 white-space: nowrap;
               }
 
               .sfm-stock-ticker-change.is-up {
-                background: #dcfce7;
-                color: #166534;
+                background: var(--success-soft);
+                color: var(--success);
               }
 
               .sfm-stock-ticker-change.is-down {
-                background: #fee2e2;
-                color: #991b1b;
+                background: var(--danger-soft);
+                color: var(--danger);
               }
 
               .sfm-stock-ticker-change.is-neutral {
-                background: #e2e8f0;
-                color: #334155;
+                background: var(--surface-muted);
+                color: var(--foreground-secondary);
               }
 
               .sfm-stock-ticker-foot {
@@ -309,49 +312,29 @@ export function StockTickerStrip({
 
               .sfm-stock-ticker-unavailable {
                 align-self: start;
-                color: #0f766e;
+                color: var(--accent);
               }
 
               .sfm-stock-ticker-empty {
                 min-height: 72px;
                 display: grid;
                 place-items: center;
-                border: 1px dashed rgba(148, 163, 184, 0.82);
-                border-radius: var(--r-lg);
-                background: rgba(248, 250, 252, 0.92);
-                color: #64748b;
+                border: 1px dashed var(--border-strong);
+                border-radius: var(--radius-card);
+                background: var(--surface-muted);
+                color: var(--foreground-muted);
                 font-size: 13px;
-                font-weight: 900;
+                font-weight: 500;
               }
 
               @media (max-width: 430px) {
                 .sfm-stock-ticker-card {
-                  inline-size: min(218px, calc(100vw - 42px));
+                  inline-size: min(218px, 100%);
                   min-height: 118px;
                   padding: 9px 10px;
                 }
               }
 
-              :global(.dark) .sfm-stock-ticker-card,
-              :global(body.dark) .sfm-stock-ticker-card {
-                border-color: rgba(125, 211, 252, 0.16);
-                background: #0f172a;
-                color: #f8fafc;
-              }
-
-              :global(.dark) .sfm-stock-ticker-title strong,
-              :global(body.dark) .sfm-stock-ticker-title strong,
-              :global(.dark) .sfm-stock-ticker-values b,
-              :global(body.dark) .sfm-stock-ticker-values b {
-                color: #f8fafc;
-              }
-
-              :global(.dark) .sfm-stock-ticker-title span,
-              :global(body.dark) .sfm-stock-ticker-title span,
-              :global(.dark) .sfm-stock-ticker-foot small,
-              :global(body.dark) .sfm-stock-ticker-foot small {
-                color: #cbd5e1;
-              }
             `}</style>
     </>
   );

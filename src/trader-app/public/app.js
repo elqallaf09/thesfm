@@ -1266,17 +1266,31 @@
     "المحفظة": ["المحفظة", "Portfolio", "Portefeuille"]
   };
 
-  // Brand color map for recognizable tickers (badge fallback, no external network).
+  // Recognizable fallback glyphs use semantic visual roles so they remain
+  // legible in every theme without maintaining a second palette in JavaScript.
+  const ICON_VISUAL_ROLE_STYLE = Object.freeze({
+    neutral: "background:var(--surface-muted);color:var(--foreground-secondary)",
+    primary: "background:var(--primary-soft);color:var(--primary)",
+    accent: "background:var(--accent-soft);color:var(--accent)",
+    success: "background:var(--success-soft);color:var(--success)",
+    warning: "background:var(--warning-soft);color:var(--warning)",
+    danger: "background:var(--danger-soft);color:var(--danger)",
+    info: "background:var(--info-soft);color:var(--info)",
+    inverse: "background:var(--foreground);color:var(--background)"
+  });
   const BRAND = {
-    AAPL: ["A", "#e6e9ee", "#0b0b0d"], MSFT: ["⊞", "#ffffff", "#00a4ef"], GOOGL: ["G", "#ffffff", "#4285f4"], GOOG: ["G", "#ffffff", "#4285f4"],
-    NVDA: ["N", "#0b1f0b", "#76b900"], AMZN: ["a", "#0b0b0d", "#ff9900"], META: ["M", "#ffffff", "#0866ff"], TSLA: ["T", "#ffffff", "#e82127"],
-    AMD: ["A", "#ffffff", "#ed1c24"], INTC: ["i", "#ffffff", "#0071c5"], NFLX: ["N", "#ffffff", "#e50914"], CRM: ["S", "#ffffff", "#00a1e0"],
-    ORCL: ["O", "#ffffff", "#f80000"], JPM: ["J", "#0b0b0d", "#a6804f"], BAC: ["B", "#ffffff", "#012169"], LLY: ["L", "#ffffff", "#d52b1e"],
-    PFE: ["P", "#ffffff", "#0093d0"], JNJ: ["J", "#0b0b0d", "#d51900"], MRK: ["M", "#ffffff", "#00857c"], KO: ["C", "#ffffff", "#f40009"],
-    PEP: ["P", "#ffffff", "#004b93"], MCD: ["M", "#27251f", "#ffc72c"], COST: ["C", "#ffffff", "#e31837"], PLTR: ["P", "#ffffff", "#101113"],
-    AVGO: ["B", "#ffffff", "#cc0000"], TSM: ["T", "#ffffff", "#d4002a"], XOM: ["E", "#ffffff", "#ee1c25"], CVX: ["C", "#ffffff", "#0066b2"], OXY: ["O", "#ffffff", "#d6112b"]
+    AAPL: ["A", "neutral"], MSFT: ["⊞", "info"], GOOGL: ["G", "primary"], GOOG: ["G", "primary"],
+    NVDA: ["N", "success"], AMZN: ["a", "warning"], META: ["M", "info"], TSLA: ["T", "danger"],
+    AMD: ["A", "danger"], INTC: ["i", "info"], NFLX: ["N", "danger"], CRM: ["S", "info"],
+    ORCL: ["O", "danger"], JPM: ["J", "warning"], BAC: ["B", "primary"], LLY: ["L", "danger"],
+    PFE: ["P", "info"], JNJ: ["J", "danger"], MRK: ["M", "accent"], KO: ["C", "danger"],
+    PEP: ["P", "primary"], MCD: ["M", "warning"], COST: ["C", "danger"], PLTR: ["P", "inverse"],
+    AVGO: ["B", "danger"], TSM: ["T", "danger"], XOM: ["E", "danger"], CVX: ["C", "info"], OXY: ["O", "danger"]
   };
-  const CRYPTO = { BTC: ["₿", "#f7931a"], ETH: ["Ξ", "#627eea"], BNB: ["◆", "#f3ba2f"], SOL: ["◎", "#14f195"], XRP: ["✕", "#23292f"], ADA: ["₳", "#0033ad"], DOGE: ["Ð", "#c2a633"], USDT: ["₮", "#26a17b"] };
+  const CRYPTO = {
+    BTC: ["₿", "warning"], ETH: ["Ξ", "info"], BNB: ["◆", "warning"], SOL: ["◎", "accent"],
+    XRP: ["✕", "neutral"], ADA: ["₳", "primary"], DOGE: ["Ð", "warning"], USDT: ["₮", "success"]
+  };
   const GULF_FLAG = { KW: "🇰🇼", SR: "🇸🇦", SA: "🇸🇦", AE: "🇦🇪", QA: "🇶🇦", BH: "🇧🇭", OM: "🇴🇲" };
   // ticker -> company domain for favicon fallback; failed images remove themselves and leave the badge.
   const DOMAINS = {
@@ -6080,8 +6094,7 @@
     }
     const area = `${d} L ${W} ${H} L 0 ${H} Z`;
     const up = series[n - 1] >= series[0];
-    const stroke = up ? "var(--terminal-chart-success, #34e58b)" : "var(--terminal-chart-danger, #ff5c6c)";
-    const glow = up ? "var(--terminal-chart-success-glow, rgba(52,229,139,.55))" : "var(--terminal-chart-danger-glow, rgba(255,92,108,.55))";
+    const stroke = up ? "var(--success)" : "var(--danger)";
     const chartSymbol = a.displaySymbol || a.symbol || a.ticker || textPair("\u0627\u0644\u0623\u0635\u0644", "asset", "actif");
     const gid = `cg-${String(chartSymbol).replace(/[^a-z0-9_-]/gi, "-")}-${++chartInstanceCounter}`;
     const rawPeriod = a.period || a.timeframe || a.range;
@@ -6098,9 +6111,9 @@
       `Price movement for ${chartSymbol}. Period: ${chartPeriod}. ${chartDirection} from ${latinNumber(series[0])} to ${latinNumber(series[n - 1])} across ${latinNumber(n)} observations.`,
       `Mouvement du cours de ${chartSymbol}. P\u00e9riode : ${chartPeriod}. Tendance ${chartDirection}, de ${latinNumber(series[0])} \u00e0 ${latinNumber(series[n - 1])}, sur ${latinNumber(n)} observations.`
     );
-    // CSS-variable attributes keep Light Mode canonical while preserving the established dark fallbacks.
-    const horizontalGrid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.34))" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
-    const verticalGrid = [0.2, 0.4, 0.6, 0.8].map(f => `<line x1="${(W * f).toFixed(2)}" y1="${top}" x2="${(W * f).toFixed(2)}" y2="${bottom}" stroke="var(--terminal-chart-grid, rgba(122,153,186,.26))" stroke-width="0.35" stroke-dasharray="1.4 2.4"></line>`).join("");
+    // SVG attributes consume the same semantic chart tokens as the surrounding terminal.
+    const horizontalGrid = [0.25, 0.5, 0.75].map(f => { const yy = (top + f * (bottom - top)).toFixed(2); return `<line x1="0" y1="${yy}" x2="${W}" y2="${yy}" stroke="var(--chart-grid)" stroke-width="0.4" stroke-dasharray="1.4 2.4"></line>`; }).join("");
+    const verticalGrid = [0.2, 0.4, 0.6, 0.8].map(f => `<line x1="${(W * f).toFixed(2)}" y1="${top}" x2="${(W * f).toFixed(2)}" y2="${bottom}" stroke="var(--chart-grid)" stroke-width="0.35" stroke-dasharray="1.4 2.4"></line>`).join("");
     const markerStep = Math.max(1, Math.ceil(n / 7));
     const markerIndexes = Array.from(new Set([0, ...Array.from({ length: n }, (_, index) => index).filter(index => index % markerStep === 0), n - 1]));
     const markers = markerIndexes.map(index => {
@@ -6118,7 +6131,7 @@
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${stroke}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="${stroke}" stop-opacity="0"></stop></linearGradient></defs>
         <g class="detail-chart-grid" aria-hidden="true">${horizontalGrid}${verticalGrid}</g>
         <path d="${area}" fill="url(#${gid})" stroke="none"></path>
-        <path d="${d}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px ${glow})"></path>
+        <path d="${d}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
         <g class="detail-chart-points">${markers}</g>
       </svg>
       <div class="detail-chart-axis" aria-hidden="true"><span>${h(textPair("البداية", "Start", "Début"))}</span><span>${h(textPair("المنتصف", "Midpoint", "Milieu"))}</span><span>${h(textPair("الأحدث", "Latest", "Dernier"))}</span></div>
@@ -6778,21 +6791,24 @@
     }
     return "";
   }
+  function iconVisualRoleStyle(role) {
+    return ICON_VISUAL_ROLE_STYLE[role] || ICON_VISUAL_ROLE_STYLE.neutral;
+  }
   function logo(a, size) {
     const s = sym(a.symbol || a.ticker || a.code || "SFM"), type = assetType(s, a.assetType || a.type), cls = `asset-logo ${type}${size ? " " + size : ""}`;
     const base = s.replace(/[.\-=].*$/, "");
     let style = "", inner = base.slice(0, 3) || "SFM";
-    if (type === "crypto") { const k = base.replace(/USDT?$/, "").replace(/USD$/, ""); const cr = CRYPTO[k]; if (cr) { style = `background:${cr[1]};color:#fff`; inner = cr[0]; } }
+    if (type === "crypto") { const k = base.replace(/USDT?$/, "").replace(/USD$/, ""); const cr = CRYPTO[k]; if (cr) { style = iconVisualRoleStyle(cr[1]); inner = cr[0]; } }
     else if (type === "commodity") {
-      if (/XAU|GOLD/i.test(s)) return `<span class="${cls}" style="background:linear-gradient(135deg,#ffd76a,#b8860b);color:#3a2a00" aria-hidden="true">Au</span>`;
-      if (/XAG|SILVER/i.test(s)) return `<span class="${cls}" style="background:linear-gradient(135deg,#dfe6ee,#9aa6b2);color:#23303a" aria-hidden="true">Ag</span>`;
-      if (/WTI|BRENT|OIL/i.test(s)) return `<span class="${cls}" style="background:#1a1a1a;color:#ffcf3f" aria-hidden="true">⛽</span>`;
+      if (/XAU|GOLD/i.test(s)) return `<span class="${cls}" style="${iconVisualRoleStyle("warning")}" aria-hidden="true">Au</span>`;
+      if (/XAG|SILVER/i.test(s)) return `<span class="${cls}" style="${iconVisualRoleStyle("neutral")}" aria-hidden="true">Ag</span>`;
+      if (/WTI|BRENT|OIL/i.test(s)) return `<span class="${cls}" style="${iconVisualRoleStyle("inverse")}" aria-hidden="true">⛽</span>`;
       return `<span class="${cls}" aria-hidden="true">${h(base.slice(0, 2))}</span>`;
     }
     else if (type === "forex") { return `<span class="${cls}" aria-hidden="true"><b>${h(base.slice(0, 3))}</b><i>${h(base.slice(3, 6))}</i></span>`; }
     else {
       const suffix = s.includes(".") ? s.split(".").pop() : ""; if (GULF_FLAG[suffix]) return `<span class="${cls}" aria-hidden="true">${GULF_FLAG[suffix]}</span>`;
-      const br = BRAND[s] || BRAND[base]; if (br) { style = `background:${br[2]};color:${br[1]}`; inner = br[0]; }
+      const br = BRAND[s] || BRAND[base]; if (br) { style = iconVisualRoleStyle(br[1]); inner = br[0]; }
     }
     const url = logoUrl(s, base, type);
     const img = url ? `<img class="logo-img" src="${url}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.add('ok')" onerror="this.remove()" />` : "";
@@ -7734,7 +7750,7 @@
     const ok = configured && ["success", "available", "configured", "connected", "healthy"].includes(String(raw));
     return providerStatusCopy(ok ? "provider_status_available" : raw, { provider: p.active || p.provider });
   }
-  function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+  function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;"); }
 
   document.addEventListener("click", async (e) => {
     const chip = e.target.closest("[data-rec-market]");
@@ -7794,15 +7810,15 @@
     _s.textContent =
       ".topbar-market-selector{position:relative;display:inline-flex;align-items:center;min-width:0;overflow:visible}" +
       ".ms-wrap{position:relative;display:inline-flex;align-items:center;min-width:0;overflow:visible;direction:inherit}" +
-      ".ms-pill{min-height:42px;display:inline-flex;align-items:center;gap:10px;padding-block:0;padding-inline:15px 10px;border-radius:999px;border:1px solid rgba(34,211,238,.62);background:linear-gradient(180deg,rgba(9,29,48,.96),rgba(3,15,28,.94));color:#e8f8ff;font-size:14px;font-weight:850;font-family:inherit;cursor:pointer;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease,transform .18s ease;white-space:nowrap;box-shadow:0 0 0 1px rgba(34,211,238,.12),0 0 24px rgba(34,211,238,.14),inset 0 1px 0 rgba(255,255,255,.08);touch-action:manipulation;direction:inherit}" +
-      ".ms-pill>*{pointer-events:none}.ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:rgba(34,211,238,.92);background:linear-gradient(180deg,rgba(12,42,66,.98),rgba(5,22,39,.96));color:#fff;box-shadow:0 0 0 1px rgba(34,211,238,.22),0 0 30px rgba(34,211,238,.22),inset 0 1px 0 rgba(255,255,255,.1)}" +
-      ".ms-pill:focus-visible{outline:2px solid rgba(94,234,212,.9);outline-offset:3px;box-shadow:0 0 0 1px rgba(34,211,238,.28),0 0 0 5px rgba(94,234,212,.14),0 0 30px rgba(34,211,238,.22),inset 0 1px 0 rgba(255,255,255,.1)}.ms-pill:active{transform:translateY(1px)}" +
-      ".ms-pill-copy{min-width:0;display:inline-flex;align-items:center;gap:6px;line-height:1}.ms-pill-name{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;text-align:start}.ms-pill-sep{color:rgba(148,211,224,.62);margin:0 1px}.ms-pill-cur{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:900;color:#22D3EE;direction:ltr;unicode-bidi:embed;letter-spacing:.03em}" +
-      ".ms-chevron-box{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:999px;border:1px solid rgba(125,249,255,.32);background:rgba(34,211,238,.1);color:#dffaff;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease}.ms-pill:hover .ms-chevron-box,.ms-pill[aria-expanded=true] .ms-chevron-box{border-color:rgba(94,234,212,.58);background:rgba(94,234,212,.16);box-shadow:0 0 16px rgba(34,211,238,.18),inset 0 1px 0 rgba(255,255,255,.1)}.ms-chevron{width:16px;height:16px;flex-shrink:0;transition:transform .22s cubic-bezier(.2,.8,.2,1);animation:ms-chevron-close .22s cubic-bezier(.2,.8,.2,1)}.ms-chevron.ms-open{transform:rotate(180deg);animation:ms-chevron-open .22s cubic-bezier(.2,.8,.2,1)}@keyframes ms-chevron-open{from{transform:rotate(0)}to{transform:rotate(180deg)}}@keyframes ms-chevron-close{from{transform:rotate(180deg)}to{transform:rotate(0)}}@media(prefers-reduced-motion:reduce){.ms-chevron{transition:none;animation:none!important}}" +
-      ".ms-dropdown{position:absolute;top:calc(100% + 9px);inset-inline-start:0;min-width:255px;max-height:min(390px,70vh);overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,#071a2c,#04101d);border:1px solid rgba(34,211,238,.42);border-radius:16px;padding:7px;z-index:10050;display:flex;flex-direction:column;gap:3px;box-shadow:0 22px 56px rgba(0,0,0,.64),0 0 0 1px rgba(34,211,238,.09),0 0 36px rgba(34,211,238,.12)}" +
-      ".ms-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;border-radius:11px;border:1px solid transparent;background:transparent;color:#a9c1d3;font-size:13px;font-weight:760;cursor:pointer;text-align:start;direction:inherit;width:100%;transition:background .12s,border-color .12s,color .12s}" +
-      ".ms-item:hover{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.16);color:#eefbff}.ms-item:focus-visible{outline:2px solid rgba(34,211,238,.7);outline-offset:2px;background:rgba(34,211,238,.12);color:#fff}" +
-      ".ms-item.is-active{color:#22D3EE;font-weight:900;background:rgba(34,211,238,.11);border-color:rgba(34,211,238,.24)}.ms-chk{width:14px;height:14px;flex-shrink:0;color:#22D3EE}.ms-chk-ph{display:inline-block;width:14px;height:14px;flex-shrink:0}.ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.ms-cur-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6e8ca1;direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:8px}.ms-item.is-active .ms-cur-tag{color:#22D3EE}" +
+      ".ms-pill{min-height:42px;display:inline-flex;align-items:center;gap:10px;padding-block:0;padding-inline:15px 10px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);color:var(--foreground);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .18s ease,background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;white-space:nowrap;box-shadow:var(--shadow-xs);touch-action:manipulation;direction:inherit}" +
+      ".ms-pill>*{pointer-events:none}.ms-pill:hover,.ms-pill[aria-expanded=true]{border-color:color-mix(in srgb,var(--primary) 36%,var(--border));background:var(--primary-soft);color:var(--primary);box-shadow:var(--shadow-xs)}" +
+      ".ms-pill:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;box-shadow:var(--focus-shadow)}.ms-pill:active{transform:translateY(1px)}" +
+      ".ms-pill-copy{min-width:0;display:inline-flex;align-items:center;gap:6px;line-height:1}.ms-pill-name{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;text-align:start}.ms-pill-sep{color:var(--foreground-muted);margin:0 1px}.ms-pill-cur{font-family:var(--font-data);font-size:12px;font-weight:700;color:var(--primary);direction:ltr;unicode-bidi:embed;letter-spacing:.03em}" +
+      ".ms-chevron-box{width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface-muted);color:var(--foreground-secondary);transition:background .18s ease,border-color .18s ease,color .18s ease}.ms-pill:hover .ms-chevron-box,.ms-pill[aria-expanded=true] .ms-chevron-box{border-color:color-mix(in srgb,var(--primary) 36%,var(--border));background:var(--surface);color:var(--primary)}.ms-chevron{width:16px;height:16px;flex-shrink:0;transition:transform .22s cubic-bezier(.2,.8,.2,1);animation:ms-chevron-close .22s cubic-bezier(.2,.8,.2,1)}.ms-chevron.ms-open{transform:rotate(180deg);animation:ms-chevron-open .22s cubic-bezier(.2,.8,.2,1)}@keyframes ms-chevron-open{from{transform:rotate(0)}to{transform:rotate(180deg)}}@keyframes ms-chevron-close{from{transform:rotate(180deg)}to{transform:rotate(0)}}@media(prefers-reduced-motion:reduce){.ms-chevron{transition:none;animation:none!important}}" +
+      ".ms-dropdown{position:absolute;top:calc(100% + 9px);inset-inline-start:0;min-width:255px;max-height:min(390px,70vh);overflow-y:auto;overflow-x:hidden;background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-card);padding:7px;z-index:10050;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow-popover)}" +
+      ".ms-item{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 10px;border-radius:var(--radius-control);border:1px solid transparent;background:transparent;color:var(--foreground-secondary);font-size:13px;font-weight:500;cursor:pointer;text-align:start;direction:inherit;width:100%;transition:background .12s,border-color .12s,color .12s}" +
+      ".ms-item:hover{background:var(--surface-hover);color:var(--foreground)}.ms-item:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;background:var(--surface-hover);color:var(--foreground)}" +
+      ".ms-item.is-active{color:var(--primary);font-weight:600;background:var(--primary-soft);border-color:color-mix(in srgb,var(--primary) 30%,var(--border))}.ms-chk{width:14px;height:14px;flex-shrink:0;color:var(--primary)}.ms-chk-ph{display:inline-block;width:14px;height:14px;flex-shrink:0}.ms-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.ms-cur-tag{font-family:var(--font-data);font-size:11px;color:var(--foreground-muted);direction:ltr;unicode-bidi:embed;margin-inline-start:auto;padding-inline-start:8px}.ms-item.is-active .ms-cur-tag{color:var(--primary)}" +
       "@media(max-width:640px){.topbar-market-selector,.topbar-market-selector .ms-wrap,.topbar-market-selector .ms-pill{width:100%}.topbar-market-selector .ms-pill{justify-content:center;min-height:40px;padding-inline:12px;font-size:13px}.ms-pill-name{max-width:46vw}.ms-dropdown{inset-inline-start:auto;left:50%;right:auto;transform:translateX(-50%);min-width:min(312px,calc(100vw - 28px));max-width:calc(100vw - 28px)}}";
     document.head.appendChild(_s);
   }

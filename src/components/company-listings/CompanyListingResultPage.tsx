@@ -40,13 +40,11 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         }
         .company-result-card {
           text-align: center;
-          border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: var(--r-2xl);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
           padding: 38px 24px;
-          background:
-            linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10)),
-            #ffffff;
-          box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
         }
         .result-icon {
           width: 72px;
@@ -54,28 +52,28 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
           margin: 0 auto 16px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
         }
         .result-icon.success {
-          background: rgba(22, 163, 74, 0.12);
-          color: #15803d;
+          background: var(--success-soft);
+          color: var(--success);
         }
         .result-icon.cancel {
-          background: rgba(245, 158, 11, 0.14);
-          color: #b45309;
+          background: var(--warning-soft);
+          color: var(--warning);
         }
         h1 {
           margin: 0;
-          color: #0f172a;
+          color: var(--foreground);
           font-size: clamp(26px, 3vw, 38px);
-          font-weight: 950;
+          font-weight: 700;
         }
         p {
           max-width: 620px;
           margin: 12px auto 22px;
-          color: #64748b;
+          color: var(--foreground-muted);
           line-height: 1.8;
-          font-weight: 750;
+          font-weight: 400;
         }
         .result-actions {
           display: flex;
@@ -85,37 +83,38 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         }
         .result-actions a {
           min-height: 46px;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           padding: 0 18px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          border: 1px solid rgba(11, 118, 224, 0.18);
-          color: #0b76e0;
-          background: #ffffff;
+          border: 1px solid var(--border);
+          color: var(--primary);
+          background: var(--surface);
           text-decoration: none;
-          font-weight: 950;
+          font-weight: 600;
           cursor: pointer;
           transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
         }
         .result-actions a:hover,
         .result-actions a:focus-visible {
-          outline: none;
-          border-color: rgba(24, 212, 212, 0.40);
-          background: #f0fdff;
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.14), 0 10px 22px rgba(15, 23, 42, 0.08);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          border-color: var(--primary);
+          background: var(--surface-hover);
+          box-shadow: var(--focus-shadow);
           transform: translateY(-1px);
         }
         .result-actions a:active {
           transform: translateY(0) scale(.98);
-          box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+          box-shadow: var(--shadow-xs);
         }
         .result-actions a.primary {
           border-color: transparent;
-          color: #ffffff;
-          background: linear-gradient(135deg, #0b76e0, #18d4d4);
-          box-shadow: 0 14px 28px rgba(11, 118, 224, 0.20);
+          color: var(--primary-foreground);
+          background: var(--primary);
+          box-shadow: var(--shadow-sm);
         }
       `}</style>
     </DashboardPageShell>

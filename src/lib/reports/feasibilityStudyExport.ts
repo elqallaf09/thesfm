@@ -1,6 +1,10 @@
 'use client';
 
 import { formatDate, formatDateTime, formatNumber, normalizeDigits } from '@/lib/locale';
+import {
+  semanticStandaloneDocumentStyles,
+  semanticStandaloneStylesheetLinks,
+} from '@/lib/visual-system/standaloneDocument';
 
 export type FeasibilityExportLang = 'ar' | 'en' | 'fr';
 
@@ -27,6 +31,16 @@ export type FeasibilityStudyExportRow = {
   status: string;
   recommendations: string;
 };
+
+const FINANCIAL_EXPORT_FIELDS = new Set<keyof FeasibilityStudyExportRow>([
+  'currency',
+  'capital',
+  'total_revenue',
+  'total_expenses',
+  'net_profit',
+  'break_even',
+  'score',
+]);
 
 const NOT_SPECIFIED: Record<FeasibilityExportLang, string> = {
   ar: 'غير متوفر',
@@ -225,7 +239,6 @@ export function printFeasibilityStudyToPdf(options: {
 
   const labels = PDF_LABELS[options.lang];
   const dir = options.dir ?? (options.lang === 'ar' ? 'rtl' : 'ltr');
-  const localeFont = options.lang === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif';
   const generatedAtLabel = options.lang === 'ar' ? 'تاريخ الإنشاء' : options.lang === 'fr' ? 'Généré le' : 'Generated at';
   const generatedAt = formatDateTime(new Date(), options.lang);
   const emptyLabel = options.lang === 'ar'
@@ -235,12 +248,16 @@ export function printFeasibilityStudyToPdf(options: {
       : 'No feasibility study data is ready to export.';
   const cards = options.rows.length ? options.rows.map(row => `
     <section class="report-card">
-      ${Object.entries(row).map(([key, value]) => `
-        <div class="report-item">
-          <span>${escapeHtml(labels[key as keyof FeasibilityStudyExportRow] ?? key)}</span>
-          <strong>${escapeHtml(value)}</strong>
-        </div>
-      `).join('')}
+      ${Object.entries(row).map(([key, value]) => {
+        const field = key as keyof FeasibilityStudyExportRow;
+        const valueClass = FINANCIAL_EXPORT_FIELDS.has(field) ? ' class="financial-value"' : '';
+        return `
+          <div class="report-item">
+            <span>${escapeHtml(labels[field] ?? key)}</span>
+            <strong${valueClass}>${escapeHtml(value)}</strong>
+          </div>
+        `;
+      }).join('')}
     </section>
   `).join('') : `<section class="empty-state">${escapeHtml(emptyLabel)}</section>`;
 
@@ -250,50 +267,52 @@ export function printFeasibilityStudyToPdf(options: {
       <head>
         <meta charset="utf-8" />
         <title>${escapeHtml(options.title)}</title>
+        ${semanticStandaloneStylesheetLinks()}
         <style>
+          ${semanticStandaloneDocumentStyles()}
           * { box-sizing: border-box; }
           @page { size: A4; margin: 12mm; }
           body {
             margin: 0;
             padding: 24px;
-            background: #eef6ff;
-            color: #071a2f;
-            font-family: ${localeFont};
+            background: var(--background);
+            color: var(--foreground);
+            font-family: var(--font-ui);
             line-height: 1.65;
           }
           .page {
             overflow: hidden;
-            background: #ffffff;
-            border: 1px solid #d8e7f7;
-            border-radius: 26px;
-            box-shadow: 0 22px 60px rgba(3, 18, 37, .10);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-panel);
+            box-shadow: var(--shadow-card);
           }
           header {
-            background: linear-gradient(135deg, #061a2e, #0b3558 58%, #18d4d4);
-            color: #ffffff;
+            background: var(--primary);
+            color: var(--primary-foreground);
             padding: 28px 30px;
           }
           .brand {
             display: inline-flex;
-            border: 1px solid rgba(255,255,255,.22);
-            background: rgba(255,255,255,.10);
-            border-radius: 999px;
+            border: 1px solid color-mix(in srgb, var(--primary-foreground) 24%, transparent);
+            background: color-mix(in srgb, var(--primary-foreground) 12%, transparent);
+            border-radius: var(--radius-pill);
             padding: 8px 12px;
-            color: #9ff8ef;
+            color: var(--primary-foreground);
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 600;
           }
           h1 {
             margin: 12px 0 6px;
-            color: #ffffff;
+            color: var(--primary-foreground);
             font-size: 30px;
             line-height: 1.25;
-            font-weight: 950;
+            font-weight: 700;
           }
           .header-meta {
-            color: #d9fbff;
+            color: var(--primary-foreground);
             font-size: 12px;
-            font-weight: 850;
+            font-weight: 500;
           }
           .content {
             padding: 24px;
@@ -303,52 +322,56 @@ export function printFeasibilityStudyToPdf(options: {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
             break-inside: avoid;
-            background: #ffffff;
-            border: 1px solid #d8e7f7;
-            border-radius: 18px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
             padding: 18px;
             margin-bottom: 16px;
           }
           .report-item {
-            border: 1px solid #e3edf8;
-            background: linear-gradient(135deg, #f8fbff, #eefaff);
-            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            border-radius: var(--radius-control);
             padding: 13px;
             min-height: 72px;
           }
           .report-item span {
             display: block;
-            color: #475569;
-            font-weight: 800;
+            color: var(--foreground-muted);
+            font-weight: 500;
             font-size: 12px;
             margin-bottom: 8px;
           }
           .report-item strong {
             display: block;
-            color: #061a2e;
+            color: var(--foreground);
+            font-weight: 600;
             font-size: 16px;
             line-height: 1.6;
             overflow-wrap: anywhere;
           }
+          .report-item strong.financial-value {
+            font-family: var(--font-data);
+          }
           .empty-state {
-            border: 1px solid #d8e7f7;
-            background: linear-gradient(135deg, #f8fbff, #eefaff);
-            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            border-radius: var(--radius-card);
             padding: 28px;
-            color: #64748b;
-            font-weight: 850;
+            color: var(--foreground-muted);
+            font-weight: 500;
             text-align: center;
           }
           footer {
-            border-top: 1px solid #e3edf8;
-            background: #f8fbff;
+            border-top: 1px solid var(--border);
+            background: var(--surface-muted);
             padding: 14px 24px;
-            color: #64748b;
+            color: var(--foreground-muted);
             font-size: 11px;
-            font-weight: 850;
+            font-weight: 500;
           }
           @media print {
-            body { background: #ffffff; padding: 0; }
+            body { background: var(--surface); padding: 0; }
             .page { border: 0; border-radius: 0; box-shadow: none; }
             .content { padding: 18px; }
           }

@@ -592,125 +592,114 @@ export function EconomicCalendarPanel({
         </>
       )}
       <style jsx global>{`
-        .economic-calendar-dashboard{width:100%;max-width:1400px;margin-inline:auto;display:grid;gap:18px;overflow:hidden;border-radius:32px}
+        .economic-calendar-dashboard{width:100%;max-width:1400px;margin-inline:auto;display:grid;gap:18px;overflow:hidden;border-radius:var(--radius-panel);font-family:var(--font-ui)}
         .economic-calendar-dashboard-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
-        .economic-calendar-head-icon{width:54px;height:54px;border-radius:var(--r-2xl);display:grid;place-items:center;background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(47,214,192,.16));border:1px solid rgba(47,214,192,.22);color:var(--sfm-primary-hover)}
-        .economic-calendar-dashboard-head small{display:block;color:var(--sfm-primary-hover);font-size:12px;font-weight:950;line-height:1.4}
-        .economic-calendar-dashboard-head h2{margin:3px 0 0;color:var(--sfm-foreground);font-size:clamp(24px,3vw,34px);font-weight:950;line-height:1.2}
-        .economic-calendar-dashboard-head p{margin:8px 0 0;max-width:760px;color:var(--sfm-muted);font-size:14px;font-weight:850;line-height:1.85}
+        .economic-calendar-head-icon{width:54px;height:54px;border-radius:var(--radius-panel);display:grid;place-items:center;background:var(--surface-muted);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);color:var(--primary-hover)}
+        .economic-calendar-dashboard-head small{display:block;color:var(--primary-hover);font-size:12px;font-weight: 700;line-height:1.4}
+        .economic-calendar-dashboard-head h2{margin:3px 0 0;color:var(--foreground);font-size:clamp(24px,3vw,34px);font-weight: 700;line-height:1.2}
+        .economic-calendar-dashboard-head p{margin:8px 0 0;max-width:760px;color:var(--foreground-muted);font-size:14px;font-weight: 500;line-height:1.85}
         .economic-calendar-status-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
-        .economic-calendar-status-row>span,.calendar-provider-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(100,116,139,.16);background:rgba(100,116,139,.07);color:var(--sfm-muted);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950;line-height:1.2}
-        .calendar-provider-pill.connected{border-color:rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover)}
-        .calendar-provider-pill.warning{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.12);color:#B45309}
-        .calendar-provider-pill.error{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.10);color:#B91C1C}
+        .economic-calendar-status-row>span,.calendar-provider-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid color-mix(in srgb, var(--foreground-muted) 16%, transparent);background:color-mix(in srgb, var(--foreground-muted) 7%, transparent);color:var(--foreground-muted);border-radius: var(--radius-pill);padding:7px 10px;font-size:12px;font-weight: 700;line-height:1.2}
+        .calendar-provider-pill.connected{border-color:color-mix(in srgb, var(--accent) 24%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover)}
+        .calendar-provider-pill.warning{border-color:color-mix(in srgb, var(--warning) 25%, transparent);background:color-mix(in srgb, var(--warning) 12%, transparent);color:var(--warning)}
+        .calendar-provider-pill.error{border-color:color-mix(in srgb, var(--danger) 22%, transparent);background:color-mix(in srgb, var(--danger) 10%, transparent);color:var(--danger)}
         .economic-calendar-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-        .calendar-stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;min-width:0;border:1px solid rgba(167,243,240,.16);background:var(--sfm-card);border-radius:var(--r-2xl);padding:14px;box-shadow:0 14px 34px rgba(3,18,37,.06)}
-        .calendar-stat-card i{width:42px;height:42px;border-radius:var(--r-xl);display:grid;place-items:center;font-style:normal;border:1px solid rgba(167,243,240,.18);background:var(--sfm-light-card)}
-        .calendar-stat-card small{display:block;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.45}
-        .calendar-stat-card strong{display:block;margin-top:3px;color:var(--sfm-foreground);font-size:15px;font-weight:950;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .calendar-stat-card.cyan i{color:var(--sfm-primary-hover);background:rgba(47,214,192,.11)}
-        .calendar-stat-card.blue i{color:#2563EB;background:rgba(37,99,235,.09)}
-        .calendar-stat-card.amber i{color:#B45309;background:rgba(245,158,11,.11)}
-        .calendar-stat-card.green i{color:#059669;background:rgba(16,185,129,.11)}
-        .economic-calendar-featured{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:14px;border:1px solid rgba(47,214,192,.22);background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.11)),var(--sfm-card);border-radius:30px;padding:18px;box-shadow:0 18px 46px rgba(3,18,37,.08)}
+        .calendar-stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;min-width:0;border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:14px;box-shadow: var(--shadow-sm)}
+        .calendar-stat-card i{width:42px;height:42px;border-radius:var(--radius-card);display:grid;place-items:center;font-style:normal;border:1px solid color-mix(in srgb, var(--accent) 18%, transparent);background:var(--surface-muted)}
+        .calendar-stat-card small{display:block;color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.45}
+        .calendar-stat-card strong{display:block;margin-top:3px;color:var(--foreground);font-size:15px;font-weight: 700;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .calendar-stat-card.cyan i{color:var(--primary-hover);background:color-mix(in srgb, var(--accent) 11%, transparent)}
+        .calendar-stat-card.blue i{color:var(--primary);background:color-mix(in srgb, var(--primary) 9%, transparent)}
+        .calendar-stat-card.amber i{color:var(--warning);background:color-mix(in srgb, var(--warning) 11%, transparent)}
+        .calendar-stat-card.green i{color:var(--success);background:color-mix(in srgb, var(--success) 11%, transparent)}
+        .economic-calendar-featured{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:14px;border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);background:var(--surface);border-radius: var(--radius-panel);padding:18px;box-shadow: var(--shadow-sm)}
         .economic-calendar-featured-main{display:grid;gap:12px;min-width:0}
-        .economic-calendar-featured-main small,.economic-calendar-featured-metrics small{color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.4}
-        .economic-calendar-featured-main h3{margin:0;color:var(--sfm-foreground);font-size:clamp(19px,2.2vw,26px);font-weight:950;line-height:1.35;overflow-wrap:anywhere}
+        .economic-calendar-featured-main small,.economic-calendar-featured-metrics small{color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.4}
+        .economic-calendar-featured-main h3{margin:0;color:var(--foreground);font-size:clamp(19px,2.2vw,26px);font-weight: 700;line-height:1.35;overflow-wrap:anywhere}
         .economic-calendar-featured-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-        .calendar-currency-badge,.calendar-status-badge,.calendar-source-badge,.calendar-countdown-badge{display:inline-flex;align-items:center;width:max-content;max-width:100%;border-radius:999px;border:1px solid rgba(47,214,192,.22);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);padding:7px 10px;font-size:12px;font-weight:950;line-height:1.2}
-        .calendar-status-badge{border-color:rgba(29,140,255,.20);background:rgba(29,140,255,.09);color:#2563EB}
-        .calendar-source-badge{border-color:rgba(100,116,139,.18);background:rgba(100,116,139,.08);color:var(--sfm-muted)}
-        .calendar-countdown-badge{border-color:rgba(245,158,11,.24);background:rgba(245,158,11,.11);color:#B45309}
+        .calendar-currency-badge,.calendar-status-badge,.calendar-source-badge,.calendar-countdown-badge{display:inline-flex;align-items:center;width:max-content;max-width:100%;border-radius:var(--radius-pill);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover);padding:7px 10px;font-size:12px;font-weight:700;line-height:1.2}
+        .calendar-currency-badge,.calendar-countdown-badge{font-family:var(--font-data)}
+        .calendar-status-badge{border-color:color-mix(in srgb, var(--primary) 20%, transparent);background:color-mix(in srgb, var(--primary) 9%, transparent);color:var(--primary)}
+        .calendar-source-badge{border-color:color-mix(in srgb, var(--foreground-muted) 18%, transparent);background:color-mix(in srgb, var(--foreground-muted) 8%, transparent);color:var(--foreground-muted)}
+        .calendar-countdown-badge{border-color:color-mix(in srgb, var(--warning) 24%, transparent);background:color-mix(in srgb, var(--warning) 11%, transparent);color:var(--warning)}
         .economic-calendar-featured-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-        .economic-calendar-filter-card{display:grid;gap:12px;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:var(--r-2xl);padding:14px;box-shadow:0 14px 34px rgba(3,18,37,.05)}
-        .economic-calendar-refreshing{display:inline-flex;width:max-content;max-width:100%;border:1px solid rgba(29,140,255,.20);background:rgba(29,140,255,.08);color:var(--sfm-primary-hover);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950;line-height:1.35}
-        .economic-calendar-search{display:flex;align-items:center;gap:10px;border:1px solid rgba(167,243,240,.16);background:var(--sfm-light-card);border-radius:var(--r-xl);padding:0 13px;min-height:48px;color:var(--sfm-muted)}
-        .economic-calendar-search input{width:100%;min-width:0;border:0;background:transparent;outline:none;color:var(--sfm-foreground);font:850 14px Tajawal,Arial,sans-serif}
-        .economic-calendar-search input::placeholder{color:var(--sfm-muted)}
+        .economic-calendar-filter-card{display:grid;gap:12px;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:14px;box-shadow: var(--shadow-sm)}
+        .economic-calendar-refreshing{display:inline-flex;width:max-content;max-width:100%;border:1px solid color-mix(in srgb, var(--primary) 20%, transparent);background:color-mix(in srgb, var(--primary) 8%, transparent);color:var(--primary-hover);border-radius: var(--radius-pill);padding:8px 12px;font-size:12px;font-weight: 700;line-height:1.35}
+        .economic-calendar-search{display:flex;align-items:center;gap:10px;border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);background:var(--surface-muted);border-radius:var(--radius-card);padding:0 13px;min-height:48px;color:var(--foreground-muted)}
+        .economic-calendar-search input{width:100%;min-width:0;border:0;background:transparent;outline:none;color:var(--foreground);font: 500 14px var(--font-ui)}
+        .economic-calendar-search input::placeholder{color:var(--foreground-muted)}
         .calendar-filter-group{display:grid;gap:8px;min-width:0}
-        .calendar-filter-group>span{color:var(--sfm-muted);font-size:12px;font-weight:950}
+        .calendar-filter-group>span{color:var(--foreground-muted);font-size:12px;font-weight: 700}
         .calendar-filter-row{display:flex;gap:8px;overflow-x:auto;padding:1px 1px 7px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
         .calendar-filter-row::-webkit-scrollbar{display:none}
-        .calendar-filter-row button{flex:0 0 auto;min-height:39px;border:1px solid rgba(167,243,240,.18);border-radius:999px;background:var(--sfm-light-card);color:var(--sfm-muted);padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease}
-        .calendar-filter-row button:hover,.calendar-filter-row button:focus-visible,.calendar-filter-row button[aria-pressed="true"]{outline:none;background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));border-color:transparent;color:#fff;box-shadow:0 12px 24px rgba(29,140,255,.18);transform:translateY(-1px)}
-        .economic-calendar-clear-filters{width:max-content;min-height:42px;border:1px solid rgba(47,214,192,.25);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 14px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer}
-        .economic-calendar-clear-filters:hover,.economic-calendar-clear-filters:focus-visible{outline:none;border-color:var(--sfm-accent);box-shadow:0 0 0 3px rgba(24,212,212,.18)}
-        .economic-calendar-table-card{overflow-x:auto;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:var(--r-2xl);box-shadow:0 16px 40px rgba(3,18,37,.06)}
+        .calendar-filter-row button{flex:0 0 auto;min-height:39px;border:1px solid color-mix(in srgb, var(--accent) 18%, transparent);border-radius: var(--radius-pill);background:var(--surface-muted);color:var(--foreground-muted);padding:0 13px;font: 700 12px var(--font-ui);cursor:pointer;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,background .18s ease,color .18s ease}
+        .calendar-filter-row button:hover,.calendar-filter-row button:focus-visible,.calendar-filter-row button[aria-pressed="true"]{outline:none;background:var(--primary);border-color:transparent;color:var(--primary-foreground);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+        .calendar-filter-row button:focus-visible,.economic-event-explanation-toggle:focus-visible,.economic-calendar-list-footer button:focus-visible,.economic-calendar-empty-state button:focus-visible,.economic-calendar-empty-state a:focus-visible{box-shadow:var(--focus-shadow)}
+        .economic-calendar-search:focus-within{border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
+        .economic-calendar-clear-filters{width:max-content;min-height:42px;border:1px solid color-mix(in srgb, var(--accent) 25%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover);border-radius: var(--radius-pill);padding:0 14px;font: 700 12px var(--font-ui);cursor:pointer}
+        .economic-calendar-clear-filters:hover,.economic-calendar-clear-filters:focus-visible{outline:none;border-color:var(--accent);box-shadow: var(--focus-shadow)}
+        .economic-calendar-table-card{overflow-x:auto;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-panel);box-shadow: var(--shadow-sm)}
         .economic-calendar-table-card table{width:100%;min-width:1080px;border-collapse:separate;border-spacing:0}
-        .economic-calendar-table-card th{padding:14px 16px;text-align:inherit;color:var(--sfm-muted);font-size:12px;font-weight:950;background:var(--sfm-light-card);white-space:nowrap}
-        .economic-calendar-table-card th:first-child{border-start-start-radius:24px}
-        .economic-calendar-table-card th:last-child{border-start-end-radius:24px}
-        .economic-calendar-table-card td{padding:15px 16px;border-top:1px solid rgba(167,243,240,.12);color:var(--sfm-foreground);font-size:13px;font-weight:850;white-space:nowrap;vertical-align:middle}
+        .economic-calendar-table-card th{padding:14px 16px;text-align:inherit;color:var(--foreground-muted);font-size:12px;font-weight: 700;background:var(--surface-muted);white-space:nowrap}
+        .economic-calendar-table-card th:first-child{border-start-start-radius:var(--radius-panel)}
+        .economic-calendar-table-card th:last-child{border-start-end-radius:var(--radius-panel)}
+        .economic-calendar-table-card td{padding:15px 16px;border-top:1px solid color-mix(in srgb, var(--accent) 12%, transparent);color:var(--foreground);font-size:13px;font-weight: 500;white-space:nowrap;vertical-align:middle}
         .economic-calendar-table-card td:first-child{white-space:normal;min-width:270px}
-        .economic-calendar-table-card td strong{display:block;color:var(--sfm-foreground);font-size:14px;font-weight:950;line-height:1.5}
-        .economic-calendar-table-card td small{display:block;margin-top:4px;color:var(--sfm-muted);font-size:11px;font-weight:900}
+        .economic-calendar-table-card td[dir="ltr"]{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+        .economic-calendar-table-card td strong{display:block;color:var(--foreground);font-size:14px;font-weight: 700;line-height:1.5}
+        .economic-calendar-table-card td small{display:block;margin-top:4px;color:var(--foreground-muted);font-size:11px;font-weight: 700}
         .economic-calendar-mobile-list{display:none;gap:12px}
-        .economic-calendar-event-card{display:grid;gap:13px;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:var(--r-2xl);padding:15px;box-shadow:0 12px 30px rgba(3,18,37,.05)}
+        .economic-calendar-event-card{display:grid;gap:13px;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:15px;box-shadow: var(--shadow-sm)}
         .economic-calendar-event-head{display:grid;gap:10px}
-        .economic-calendar-event-head h3{margin:0;color:var(--sfm-foreground);font-size:16px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}
+        .economic-calendar-event-head h3{margin:0;color:var(--foreground);font-size:16px;font-weight: 700;line-height:1.45;overflow-wrap:anywhere}
         .economic-calendar-event-badges{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
         .economic-calendar-event-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-        .economic-calendar-metric{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.12);background:var(--sfm-light-card);border-radius:var(--r-lg);padding:10px}
-        .economic-calendar-metric small{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.35}
-        .economic-calendar-metric b{color:var(--sfm-foreground);font-size:12px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}
+        .economic-calendar-metric{display:grid;gap:5px;min-width:0;border:1px solid color-mix(in srgb, var(--accent) 12%, transparent);background:var(--surface-muted);border-radius:var(--radius-card);padding:10px}
+        .economic-calendar-metric small{color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.35}
+        .economic-calendar-metric b{color:var(--foreground);font-family:var(--font-data);font-size:12px;font-weight:700;line-height:1.45;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
         .economic-calendar-featured>.economic-event-explanation{grid-column:1/-1}
         .economic-calendar-table-card .economic-event-explanation{margin-top:10px;max-width:520px;white-space:normal}
         .economic-event-explanation{display:grid;gap:10px;min-width:0}
-        .economic-event-explanation-toggle{width:max-content;max-width:100%;min-height:39px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(47,214,192,.34);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:var(--r-md);padding:8px 12px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-        .economic-event-explanation-toggle:hover,.economic-event-explanation-toggle:focus-visible{outline:none;background:rgba(47,214,192,.16);border-color:var(--sfm-accent);box-shadow:0 10px 22px rgba(29,140,255,.12);transform:translateY(-1px)}
+        .economic-event-explanation-toggle{width:max-content;max-width:100%;min-height:39px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid color-mix(in srgb, var(--accent) 34%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover);border-radius:var(--radius-control);padding:8px 12px;font: 700 12px var(--font-ui);cursor:pointer;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .economic-event-explanation-toggle:hover,.economic-event-explanation-toggle:focus-visible{outline:none;background:color-mix(in srgb, var(--accent) 16%, transparent);border-color:var(--accent);box-shadow: var(--shadow-sm);transform:translateY(-1px)}
         .economic-event-explanation-toggle svg:last-child{transition:transform .18s ease}
         .economic-event-explanation-toggle[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
-        .economic-event-explanation-panel{display:grid;gap:11px;border:1px solid rgba(47,214,192,.20);background:linear-gradient(135deg,rgba(29,140,255,.06),rgba(47,214,192,.09)),var(--sfm-light-card);border-radius:var(--r-xl);padding:14px;color:var(--sfm-foreground);animation:economicExplanationIn .18s ease-out}
-        .economic-event-explanation-title{display:flex;align-items:center;gap:8px;color:var(--sfm-primary-hover)}
-        .economic-event-explanation-title strong{font-size:14px;font-weight:950;line-height:1.4}
-        .economic-event-explanation-panel>p{margin:0;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.8}
+        .economic-event-explanation-panel{display:grid;gap:11px;border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);background:var(--surface);border-radius:var(--radius-card);padding:14px;color:var(--foreground);animation:economicExplanationIn .18s ease-out}
+        .economic-event-explanation-title{display:flex;align-items:center;gap:8px;color:var(--primary-hover)}
+        .economic-event-explanation-title strong{font-size:14px;font-weight: 700;line-height:1.4}
+        .economic-event-explanation-panel>p{margin:0;color:var(--foreground-muted);font-size:13px;font-weight: 500;line-height:1.8}
         .economic-event-explanation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-        .economic-event-explanation-item{display:grid;gap:5px;min-width:0;border:1px solid rgba(167,243,240,.14);background:var(--sfm-card);border-radius:var(--r-lg);padding:11px}
-        .economic-event-explanation-item span{color:var(--sfm-muted);font-size:11px;font-weight:950;line-height:1.35}
-        .economic-event-explanation-item b{color:var(--sfm-foreground);font-size:13px;font-weight:950;line-height:1.45;overflow-wrap:anywhere}
-        .economic-event-explanation-item p{margin:0;color:var(--sfm-muted);font-size:12px;font-weight:800;line-height:1.7}
-        .economic-event-explanation-panel>small{display:block;color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.7;border-top:1px solid rgba(167,243,240,.14);padding-top:9px}
+        .economic-event-explanation-item{display:grid;gap:5px;min-width:0;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-card);padding:11px}
+        .economic-event-explanation-item span{color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.35}
+        .economic-event-explanation-item b{color:var(--foreground);font-size:13px;font-weight: 700;line-height:1.45;overflow-wrap:anywhere}
+        .economic-event-explanation-item p{margin:0;color:var(--foreground-muted);font-size:12px;font-weight: 500;line-height:1.7}
+        .economic-event-explanation-panel>small{display:block;color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.7;border-top:1px solid color-mix(in srgb, var(--accent) 14%, transparent);padding-top:9px}
         @keyframes economicExplanationIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-        .calendar-impact-badge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;border:1px solid rgba(100,116,139,.18);background:rgba(100,116,139,.08);color:var(--sfm-muted);padding:7px 10px;font-size:12px;font-weight:950;line-height:1.2}
-        .calendar-impact-badge.high{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.10);color:#DC2626}
-        .calendar-impact-badge.medium{border-color:rgba(245,158,11,.24);background:rgba(245,158,11,.12);color:#B45309}
-        .calendar-impact-badge.low{border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.10);color:#059669}
+        .calendar-impact-badge{display:inline-flex;align-items:center;width:max-content;border-radius: var(--radius-pill);border:1px solid color-mix(in srgb, var(--foreground-muted) 18%, transparent);background:color-mix(in srgb, var(--foreground-muted) 8%, transparent);color:var(--foreground-muted);padding:7px 10px;font-size:12px;font-weight: 700;line-height:1.2}
+        .calendar-impact-badge.high{border-color:color-mix(in srgb, var(--danger) 22%, transparent);background:color-mix(in srgb, var(--danger) 10%, transparent);color:var(--danger)}
+        .calendar-impact-badge.medium{border-color:color-mix(in srgb, var(--warning) 24%, transparent);background:color-mix(in srgb, var(--warning) 12%, transparent);color:var(--warning)}
+        .calendar-impact-badge.low{border-color:color-mix(in srgb, var(--success) 22%, transparent);background:color-mix(in srgb, var(--success) 10%, transparent);color:var(--success)}
         .economic-calendar-list-footer{display:flex;justify-content:center}
-        .economic-calendar-list-footer button,.economic-calendar-list-footer span{border:1px solid rgba(47,214,192,.24);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:10px 16px;font:950 13px Tajawal,Arial,sans-serif}
+        .economic-calendar-list-footer button,.economic-calendar-list-footer span{border:1px solid color-mix(in srgb, var(--accent) 24%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover);border-radius: var(--radius-pill);padding:10px 16px;font: 700 13px var(--font-ui)}
         .economic-calendar-list-footer button{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
-        .economic-calendar-list-footer button:hover,.economic-calendar-list-footer button:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 12px 24px rgba(29,140,255,.16)}
-        .economic-calendar-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid rgba(245,158,11,.22);background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(29,140,255,.04)),var(--sfm-card);border-radius:var(--r-2xl);padding:16px;box-shadow:0 12px 30px rgba(3,18,37,.055)}
-        .economic-calendar-empty-state>span{width:44px;height:44px;border-radius:var(--r-lg);display:grid;place-items:center;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.22);color:#B45309}
-        .economic-calendar-empty-state small{display:block;color:#B45309;font-size:12px;font-weight:950;line-height:1.4;margin-bottom:5px}
-        .economic-calendar-empty-state strong{display:block;color:var(--sfm-foreground);font-size:clamp(17px,1.8vw,22px);font-weight:950;line-height:1.35}
-        .economic-calendar-empty-state p{margin:6px 0 0;max-width:760px;color:var(--sfm-muted);font-size:13px;font-weight:850;line-height:1.75}
+        .economic-calendar-list-footer button:hover,.economic-calendar-list-footer button:focus-visible{outline:none;transform:translateY(-1px);box-shadow: var(--shadow-sm)}
+        .economic-calendar-empty-state{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;border:1px solid color-mix(in srgb, var(--warning) 22%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:16px;box-shadow: var(--shadow-sm)}
+        .economic-calendar-empty-state>span{width:44px;height:44px;border-radius:var(--radius-card);display:grid;place-items:center;background:color-mix(in srgb, var(--warning) 12%, transparent);border:1px solid color-mix(in srgb, var(--warning) 22%, transparent);color:var(--warning)}
+        .economic-calendar-empty-state small{display:block;color:var(--warning);font-size:12px;font-weight: 700;line-height:1.4;margin-bottom:5px}
+        .economic-calendar-empty-state strong{display:block;color:var(--foreground);font-size:clamp(17px,1.8vw,22px);font-weight: 700;line-height:1.35}
+        .economic-calendar-empty-state p{margin:6px 0 0;max-width:760px;color:var(--foreground-muted);font-size:13px;font-weight: 500;line-height:1.75}
         .economic-calendar-empty-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-        .economic-calendar-empty-state button,.economic-calendar-empty-state a{width:max-content;max-width:100%;min-height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(47,214,192,.26);background:rgba(47,214,192,.10);color:var(--sfm-primary-hover);border-radius:999px;padding:0 13px;font:950 12px Tajawal,Arial,sans-serif;cursor:pointer;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease}
-        .economic-calendar-empty-state button:hover,.economic-calendar-empty-state button:focus-visible,.economic-calendar-empty-state a:hover,.economic-calendar-empty-state a:focus-visible{outline:none;transform:translateY(-1px);box-shadow:0 12px 24px rgba(29,140,255,.16)}
-        .economic-calendar-empty-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;color:var(--sfm-muted);font-size:12px;font-weight:900;line-height:1.4}
-        .economic-calendar-empty-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(100,116,139,.15);background:rgba(100,116,139,.06);border-radius:999px;padding:6px 9px}
-        .economic-calendar-empty-meta b{color:var(--sfm-foreground)}
-        .economic-calendar-empty-state.not-entitled{border-color:rgba(245,158,11,.24);background:linear-gradient(135deg,rgba(245,158,11,.075),rgba(47,214,192,.045)),var(--sfm-card)}
-        .economic-calendar-empty-state.not-entitled>span{background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.23);color:#B45309}
-        .economic-calendar-empty-state.error{border-color:rgba(239,68,68,.18);background:linear-gradient(135deg,rgba(239,68,68,.055),rgba(29,140,255,.035)),var(--sfm-card)}
-        .economic-calendar-empty-state.error>span{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.18);color:#B91C1C}
-        .dark .calendar-stat-card,.dark .economic-calendar-filter-card,.dark .economic-calendar-table-card,.dark .economic-calendar-event-card{background:#0f1d31;border-color:#1d3050}
-        .dark .economic-calendar-status-row>span{background:rgba(148,163,184,.10);border-color:#1d3050}
-        .dark .calendar-stat-card i,.dark .economic-calendar-search,.dark .calendar-filter-row button,.dark .economic-calendar-table-card th,.dark .economic-calendar-metric{background:#0a1422;border-color:#1d3050}
-        .dark .economic-event-explanation-toggle{border-color:rgba(47,214,192,.30);background:rgba(47,214,192,.11);color:#A7F3F0}
-        .dark .economic-event-explanation-toggle:hover,.dark .economic-event-explanation-toggle:focus-visible{background:rgba(47,214,192,.16);border-color:#2FD6C0;box-shadow:0 10px 24px rgba(47,214,192,.10)}
-        .dark .economic-event-explanation-panel{background:linear-gradient(135deg,rgba(29,140,255,.08),rgba(47,214,192,.08)),#0a1422;border-color:#1d3050}
-        .dark .economic-event-explanation-item{background:#0f1d31;border-color:#1d3050}
-        .dark .economic-calendar-featured{background:linear-gradient(135deg,rgba(29,140,255,.09),rgba(47,214,192,.10)),#0f1d31;border-color:rgba(47,214,192,.24)}
-        .dark .calendar-status-badge{color:#93C5FD;border-color:rgba(147,197,253,.24);background:rgba(147,197,253,.10)}
-        .dark .calendar-countdown-badge{color:#FDE68A;border-color:rgba(245,185,66,.25);background:rgba(245,185,66,.12)}
-        .dark .calendar-impact-badge.high{color:#FCA5A5}.dark .calendar-impact-badge.medium{color:#FDE68A}.dark .calendar-impact-badge.low{color:#86EFAC}
-        .dark .economic-calendar-empty-state{background:linear-gradient(135deg,rgba(245,185,66,.12),rgba(29,140,255,.07)),#0f1d31;border-color:rgba(245,185,66,.26)}
-        .dark .economic-calendar-empty-state>span{background:rgba(245,185,66,.12);border-color:rgba(245,185,66,.24);color:#F5B942}
-        .dark .economic-calendar-empty-state small{color:#F5B942}
-        .dark .economic-calendar-empty-state.not-entitled{background:linear-gradient(135deg,rgba(245,185,66,.12),rgba(47,214,192,.07)),#0f1d31;border-color:rgba(245,185,66,.26)}
+        .economic-calendar-empty-state button,.economic-calendar-empty-state a{width:max-content;max-width:100%;min-height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb, var(--accent) 26%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover);border-radius: var(--radius-pill);padding:0 13px;font: 700 12px var(--font-ui);cursor:pointer;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease}
+        .economic-calendar-empty-state button:hover,.economic-calendar-empty-state button:focus-visible,.economic-calendar-empty-state a:hover,.economic-calendar-empty-state a:focus-visible{outline:none;transform:translateY(-1px);box-shadow: var(--shadow-sm)}
+        .economic-calendar-empty-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.4}
+        .economic-calendar-empty-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid color-mix(in srgb, var(--foreground-muted) 15%, transparent);background:color-mix(in srgb, var(--foreground-muted) 6%, transparent);border-radius: var(--radius-pill);padding:6px 9px}
+        .economic-calendar-empty-meta b{color:var(--foreground)}
+        .economic-calendar-empty-state.not-entitled{border-color:color-mix(in srgb, var(--warning) 24%, transparent);background:var(--surface)}
+        .economic-calendar-empty-state.not-entitled>span{background:color-mix(in srgb, var(--warning) 11%, transparent);border-color:color-mix(in srgb, var(--warning) 23%, transparent);color:var(--warning)}
+        .economic-calendar-empty-state.error{border-color:color-mix(in srgb, var(--danger) 18%, transparent);background:var(--surface)}
+        .economic-calendar-empty-state.error>span{background:color-mix(in srgb, var(--danger) 8%, transparent);border-color:color-mix(in srgb, var(--danger) 18%, transparent);color:var(--danger)}
         @media(max-width:980px){.economic-calendar-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.economic-calendar-featured{grid-template-columns:1fr}.economic-calendar-table-card{display:none}.economic-calendar-mobile-list{display:grid}}
-        @media(max-width:640px){.economic-calendar-dashboard{border-radius:var(--r-2xl);padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:var(--r-2xl);padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:var(--r-2xl);padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:15px;border-radius:var(--r-xl)}.economic-calendar-empty-state>span{width:42px;height:42px;border-radius:var(--r-lg)}}
+        @media(max-width:640px){.economic-calendar-dashboard{border-radius:var(--radius-panel);padding:16px}.economic-calendar-dashboard-head{grid-template-columns:1fr}.economic-calendar-summary-grid{grid-template-columns:1fr}.calendar-stat-card strong{white-space:normal}.economic-calendar-featured{border-radius:var(--radius-panel);padding:15px}.economic-calendar-featured-metrics,.economic-calendar-event-metrics,.economic-event-explanation-grid{grid-template-columns:1fr}.economic-event-explanation-toggle{width:100%;min-height:44px}.economic-calendar-filter-card{border-radius:var(--radius-panel);padding:12px}.economic-calendar-empty-state{grid-template-columns:1fr;padding:15px;border-radius:var(--radius-card)}.economic-calendar-empty-state>span{width:42px;height:42px;border-radius:var(--radius-card)}}
       `}</style>
     </section>
   );

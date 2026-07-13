@@ -42,7 +42,7 @@ export default function TraderAccessGate({ reason }: { reason: GateReason }) {
 
 const gateStyles = `
   .trader-gate {
-    min-height:calc(100dvh - var(--sfm-global-header-height,64px) - var(--workspace-page-padding-block,24px) - var(--workspace-page-padding-block,24px));
+    min-height:calc(100dvh - var(--global-header-height) - var(--workspace-page-padding-block) - var(--workspace-page-padding-block));
     display:grid;
     place-items:center;
     padding:24px;
@@ -52,7 +52,7 @@ const gateStyles = `
   .trader-gate-card {
     width:min(620px,100%);
     border:1px solid var(--border);
-    border-radius:var(--radius-panel,var(--r-xl));
+    border-radius:var(--radius-panel,var(--radius-card));
     padding:clamp(24px,4vw,34px);
     background:var(--surface-elevated);
     box-shadow:var(--shadow-card);
@@ -86,7 +86,7 @@ const gateStyles = `
     align-items:center;
     justify-content:center;
     border:1px solid var(--border-strong);
-    border-radius:var(--radius-control,var(--r-md));
+    border-radius:var(--radius-control,var(--radius-control));
     padding:8px 16px;
     color:var(--foreground);
     text-decoration:none;

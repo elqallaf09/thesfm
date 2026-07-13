@@ -1202,6 +1202,17 @@ function calculateFinalScore(item) {
   return { score, label };
 }
 
+function resolveCanvasTokenColor(canvas, token) {
+  const root = document.documentElement;
+  const canvasStyles = getComputedStyle(canvas);
+  const rootStyles = getComputedStyle(root);
+
+  return canvasStyles.getPropertyValue(`--${token}`).trim()
+    || rootStyles.getPropertyValue(`--${token}`).trim()
+    || canvasStyles.color
+    || rootStyles.color;
+}
+
 function drawSparkline(canvas, values = [], action) {
   const context = canvas.getContext("2d");
   const rect = canvas.getBoundingClientRect();
@@ -1220,9 +1231,11 @@ function drawSparkline(canvas, values = [], action) {
   const pad = 16;
   const width = rect.width - pad * 2;
   const height = rect.height - pad * 2;
-  const lineColor = action === "sell" ? "#ff6b6b" : action === "hold" ? "#91a7ff" : "#65d98d";
+  const lineToken = action === "sell" ? "danger" : action === "hold" ? "info" : "success";
 
-  context.strokeStyle = "rgba(135, 154, 172, 0.18)";
+  context.save();
+  context.strokeStyle = resolveCanvasTokenColor(canvas, "chart-grid");
+  context.globalAlpha = 0.18;
   context.lineWidth = 1;
   for (let index = 1; index <= 3; index += 1) {
     const y = pad + (height / 4) * index;
@@ -1231,8 +1244,9 @@ function drawSparkline(canvas, values = [], action) {
     context.lineTo(rect.width - pad, y);
     context.stroke();
   }
+  context.restore();
 
-  context.strokeStyle = lineColor;
+  context.strokeStyle = resolveCanvasTokenColor(canvas, lineToken);
   context.lineWidth = 2.5;
   context.beginPath();
   data.forEach((value, index) => {
@@ -1638,11 +1652,23 @@ window.addEventListener(LANGUAGE_CHANGE_EVENT, applyDetailLanguage);
 function initMarketBackground() {
   const canvas = document.querySelector("#market-bg");
   const context = canvas.getContext("2d");
+  const palette = {};
+  const refreshPalette = () => {
+    palette.accent = resolveCanvasTokenColor(canvas, "accent");
+    palette.danger = resolveCanvasTokenColor(canvas, "danger");
+    palette.grid = resolveCanvasTokenColor(canvas, "chart-grid");
+    palette.info = resolveCanvasTokenColor(canvas, "info");
+  };
+  refreshPalette();
+  new MutationObserver(refreshPalette).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "data-theme"]
+  });
   const rows = Array.from({ length: 8 }, (_, index) => ({
     y: 80 + index * 92,
     phase: Math.random() * 100,
     speed: 0.35 + Math.random() * 0.45,
-    color: index % 3 === 0 ? "53, 194, 164" : index % 3 === 1 ? "255, 107, 107" : "90, 167, 255"
+    color: index % 3 === 0 ? palette.accent : index % 3 === 1 ? palette.danger : palette.info
   }));
 
   function resize() {
@@ -1656,17 +1682,21 @@ function initMarketBackground() {
 
   function frame() {
     context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    context.strokeStyle = "rgba(135, 154, 172, 0.055)";
+    context.save();
+    context.strokeStyle = palette.grid;
+    context.globalAlpha = 0.055;
     for (let x = 0; x < window.innerWidth; x += 72) {
       context.beginPath();
       context.moveTo(x, 0);
       context.lineTo(x, window.innerHeight);
       context.stroke();
     }
+    context.restore();
 
+    context.globalAlpha = 0.2;
     for (const row of rows) {
       row.phase += row.speed;
-      context.strokeStyle = `rgba(${row.color}, 0.2)`;
+      context.strokeStyle = row.color;
       context.beginPath();
       for (let x = -20; x <= window.innerWidth + 20; x += 18) {
         const wave = Math.sin((x + row.phase * 3) * 0.012) * 18 + Math.cos((x - row.phase) * 0.027) * 9;
@@ -1676,6 +1706,7 @@ function initMarketBackground() {
       }
       context.stroke();
     }
+    context.globalAlpha = 1;
 
     window.requestAnimationFrame(frame);
   }

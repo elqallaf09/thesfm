@@ -1,4 +1,5 @@
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
+import { STATIC_EMAIL_VISUAL_STYLES, STATIC_LIGHT_VISUAL_TOKENS } from '@/styles/static-tokens';
 
 export type SubscriptionLang = 'ar' | 'en' | 'fr';
 
@@ -834,7 +835,7 @@ export function safeText(value: unknown) {
 
 export function sanitizeColorTag(value: unknown) {
   const color = safeText(value);
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1D8CFF';
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : STATIC_LIGHT_VISUAL_TOKENS.primary;
 }
 
 export function emailReminderTemplate(input: {
@@ -861,13 +862,13 @@ export function emailReminderTemplate(input: {
     `Open Client: ${input.openClientUrl}`,
   ].join('\n');
   const html = `
-    <div style="font-family:Inter,Tajawal,Arial,sans-serif;background:#eef6ff;padding:28px;color:#0b172a">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:auto;background:#ffffff;border:1px solid #dbeafe;border-radius:24px;overflow:hidden">
+    <div style="${STATIC_EMAIL_VISUAL_STYLES.canvas}">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="${STATIC_EMAIL_VISUAL_STYLES.panel};max-width:640px;margin:auto;overflow:hidden">
         <tr>
-          <td style="background:linear-gradient(135deg,#031225,#0b3558 60%,#18d4d4);padding:28px;color:#ffffff">
-            <div style="font-size:12px;font-weight:800;color:#a7f3f0;letter-spacing:.08em">THE SFM</div>
+          <td style="background:${STATIC_LIGHT_VISUAL_TOKENS.primary};padding:28px;color:${STATIC_LIGHT_VISUAL_TOKENS.primaryForeground}">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.08em">THE SFM</div>
             <h1 style="margin:10px 0 0;font-size:26px;line-height:1.25">Payment Reminder</h1>
-            <p style="margin:8px 0 0;color:#dff7ff">A subscription payment is due.</p>
+            <p style="margin:8px 0 0">A subscription payment is due.</p>
           </td>
         </tr>
         <tr>
@@ -881,13 +882,13 @@ export function emailReminderTemplate(input: {
                 ['Days Remaining', daysLabel],
               ].map(([label, value]) => `
                 <tr>
-                  <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #e2e8f0">${label}</td>
-                  <td style="padding:10px 0;color:#0b172a;font-size:14px;font-weight:800;text-align:right;border-bottom:1px solid #e2e8f0">${value}</td>
+                  <td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:10px 0;font-size:13px">${label}</td>
+                  <td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:10px 0;font-size:14px;font-weight:800;text-align:right">${value}</td>
                 </tr>
               `).join('')}
             </table>
             <div style="margin-top:24px">
-              <a href="${input.openClientUrl}" style="display:inline-block;background:linear-gradient(135deg,#1d8cff,#18d4d4);color:#ffffff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:14px">Open Client</a>
+              <a href="${input.openClientUrl}" style="${STATIC_EMAIL_VISUAL_STYLES.primaryAction};padding:12px 18px">Open Client</a>
             </div>
           </td>
         </tr>

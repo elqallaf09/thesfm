@@ -284,18 +284,18 @@ function ImageUploadStyles() {
         gap: 10px;
       }
       .image-upload-label {
-        color: #475569;
+        color: var(--foreground-secondary);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 500;
         line-height: 1.5;
       }
       .image-upload-box,
       .image-upload-empty {
         position: relative;
         z-index: 0;
-        border: 1px dashed rgba(11, 118, 224, 0.24);
-        border-radius: var(--r-lg);
-        background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 12px;
         display: grid;
         gap: 8px;
@@ -311,16 +311,16 @@ function ImageUploadStyles() {
       .image-upload-trigger,
       .image-upload-actions button {
         min-height: 42px;
-        border-radius: var(--r-md);
-        border: 1px solid rgba(11, 118, 224, 0.18);
-        background: #ffffff;
-        color: #0b76e0;
+        border-radius: var(--radius-control);
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--primary);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         padding: 0 14px;
-        font: 950 13px/1 Tajawal, Arial, sans-serif;
+        font: 600 13px/1.25 var(--font-ui);
         cursor: pointer;
         transition: transform .16s ease, border-color .16s ease, background .16s ease;
       }
@@ -333,9 +333,10 @@ function ImageUploadStyles() {
       .image-upload-trigger:focus-visible,
       .image-upload-actions button:hover,
       .image-upload-actions button:focus-visible {
-        outline: none;
-        border-color: rgba(24, 212, 212, 0.5);
-        background: #f0fdff;
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+        border-color: var(--primary);
+        background: var(--surface-hover);
         transform: translateY(-1px);
       }
       .image-upload-trigger:disabled,
@@ -345,16 +346,16 @@ function ImageUploadStyles() {
         transform: none;
       }
       .image-upload-box small {
-        color: #64748b;
-        font-weight: 850;
+        color: var(--foreground-muted);
+        font-weight: 400;
         line-height: 1.6;
       }
       .image-preview {
         position: relative;
         z-index: 0;
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: var(--r-lg);
-        background: #f8fbff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 10px;
         display: grid;
         gap: 10px;
@@ -363,38 +364,38 @@ function ImageUploadStyles() {
       .image-preview img {
         width: 100%;
         max-height: 180px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         object-fit: contain;
-        background: #ffffff;
+        background: var(--surface);
       }
       .image-preview small {
-        color: #0f766e;
-        font-weight: 900;
+        color: var(--accent-hover);
+        font-weight: 500;
         line-height: 1.6;
       }
       .image-preview.invalid {
-        border-color: rgba(220, 38, 38, 0.24);
-        background: rgba(254, 242, 242, 0.88);
+        border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+        background: var(--danger-soft);
       }
       .image-preview.invalid small {
-        color: #991b1b;
+        color: var(--danger);
       }
       .image-preview-loader {
         min-height: 52px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         display: grid;
         place-items: center;
-        color: #0f766e;
-        background: rgba(20, 184, 166, 0.08);
+        color: var(--accent-hover);
+        background: var(--accent-soft);
         font-size: 24px;
-        font-weight: 950;
+        font-weight: 600;
         letter-spacing: 2px;
       }
       .image-upload-empty {
         min-height: 72px;
         place-items: center;
-        color: #0f766e;
-        font-weight: 900;
+        color: var(--accent-hover);
+        font-weight: 500;
         text-align: center;
       }
       .image-upload-actions {
@@ -408,64 +409,37 @@ function ImageUploadStyles() {
         font-size: 12px;
       }
       .image-upload-actions .danger {
-        color: #be123c;
-        border-color: rgba(244, 63, 94, 0.22);
-        background: #fff1f2;
+        color: var(--danger);
+        border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+        background: var(--danger-soft);
       }
       .image-upload-warning,
       .image-upload-error {
         position: relative;
         z-index: 1;
         margin: 0;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         padding: 10px 12px;
         display: block;
-        font-weight: 900;
+        font-weight: 500;
         font-size: 13px;
         line-height: 1.65;
       }
       .image-upload-warning {
-        color: #92400e;
-        background: #fffbeb;
-        border: 1px solid #fde68a;
+        color: var(--warning);
+        background: var(--warning-soft);
+        border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
       }
       .image-upload-error {
-        color: #991b1b;
-        background: #fef2f2;
-        border: 1px solid #fecaca;
+        color: var(--danger);
+        background: var(--danger-soft);
+        border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
       }
       .image-upload-spin {
         animation: imageUploadSpin .8s linear infinite;
       }
       @keyframes imageUploadSpin {
         to { transform: rotate(360deg); }
-      }
-      .dark .image-upload-box,
-      .dark .image-upload-empty {
-        background: rgba(14, 36, 59, 0.78);
-        border-color: rgba(74, 222, 228, 0.22);
-      }
-      .dark .image-upload-trigger,
-      .dark .image-upload-actions button {
-        color: #d9fbff;
-        background: rgba(15, 36, 59, 0.92);
-        border-color: rgba(74, 222, 228, 0.22);
-      }
-      .dark .image-upload-box small {
-        color: #b8c7d9;
-      }
-      .dark .image-preview {
-        background: rgba(7, 26, 46, 0.92);
-        border-color: rgba(74, 222, 228, 0.18);
-      }
-      .dark .image-preview img {
-        background: rgba(15, 36, 59, 0.92);
-      }
-      .dark .image-preview small {
-        color: #9ff7f7;
-      }
-      .dark .image-upload-label {
-        color: #dce8f5;
       }
     `}</style>
   );

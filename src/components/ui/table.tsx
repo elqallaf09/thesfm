@@ -77,7 +77,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "sticky top-0 z-10 h-11 whitespace-nowrap bg-[var(--table-header)] px-4 text-start align-middle text-xs font-semibold tracking-normal text-foreground-secondary shadow-[inset_0_-1px_0_var(--border)] data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
+      "sticky top-0 z-10 h-11 whitespace-nowrap border-b border-border bg-[var(--table-header)] px-4 text-start align-middle text-xs font-semibold tracking-normal text-foreground-secondary data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
       className
     )}
     {...props}

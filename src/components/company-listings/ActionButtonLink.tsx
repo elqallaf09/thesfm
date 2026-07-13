@@ -74,11 +74,11 @@ function ActionButtonLinkStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         padding: 0 16px;
-        border: 1px solid rgba(11, 118, 224, 0.18);
+        border: 1px solid var(--border);
         text-decoration: none;
-        font: 950 13px/1.2 Tajawal, Arial, sans-serif;
+        font: 600 13px/1.25 var(--font-ui);
         cursor: pointer;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
@@ -92,52 +92,53 @@ function ActionButtonLinkStyles() {
 
       .sfm-action-link-primary {
         border-color: transparent;
-        color: #ffffff;
-        background: linear-gradient(135deg, #0b76e0, #18d4d4);
-        box-shadow: 0 12px 24px rgba(11, 118, 224, 0.20);
+        color: var(--primary-foreground);
+        background: var(--primary);
+        box-shadow: var(--shadow-sm);
       }
 
       .sfm-action-link-secondary {
-        color: #0b76e0;
-        background: rgba(255, 255, 255, 0.94);
+        color: var(--primary);
+        background: var(--surface);
       }
 
       .sfm-action-link-ghost {
-        color: #eaf6ff;
-        border-color: rgba(255, 255, 255, 0.18);
-        background: rgba(255, 255, 255, 0.10);
+        color: var(--hero-foreground);
+        border-color: color-mix(in srgb, var(--hero-foreground) 28%, transparent);
+        background: color-mix(in srgb, var(--surface) 12%, transparent);
       }
 
       .sfm-action-link:hover,
       .sfm-action-link:focus-visible {
-        outline: none;
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
         transform: translateY(-1px);
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.16), 0 14px 28px rgba(15, 23, 42, 0.12);
+        box-shadow: var(--focus-shadow);
       }
 
       .sfm-action-link-secondary:hover,
       .sfm-action-link-secondary:focus-visible {
-        border-color: rgba(24, 212, 212, 0.42);
-        background: #f0fdff;
-        color: #075fb8;
+        border-color: var(--primary);
+        background: var(--surface-hover);
+        color: var(--primary-hover);
       }
 
       .sfm-action-link-primary:hover,
       .sfm-action-link-primary:focus-visible {
-        color: #ffffff;
-        background: linear-gradient(135deg, #075fb8, #0fbfc9);
+        color: var(--primary-foreground);
+        background: var(--primary-hover);
       }
 
       .sfm-action-link-ghost:hover,
       .sfm-action-link-ghost:focus-visible {
-        color: #ffffff;
-        border-color: rgba(24, 212, 212, 0.46);
-        background: rgba(255, 255, 255, 0.16);
+        color: var(--hero-foreground);
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--surface) 18%, transparent);
       }
 
       .sfm-action-link:active {
         transform: translateY(0) scale(.98);
-        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10);
+        box-shadow: var(--shadow-xs);
       }
 
       .sfm-action-link-icon {
@@ -151,18 +152,6 @@ function ActionButtonLinkStyles() {
         display: block;
       }
 
-      .dark .sfm-action-link-secondary {
-        color: #d9fbff;
-        border-color: rgba(74, 222, 228, 0.22);
-        background: rgba(15, 36, 59, 0.92);
-      }
-
-      .dark .sfm-action-link-secondary:hover,
-      .dark .sfm-action-link-secondary:focus-visible {
-        color: #ffffff;
-        background: rgba(14, 116, 144, 0.32);
-        border-color: rgba(74, 222, 228, 0.46);
-      }
     `}</style>
   );
 }

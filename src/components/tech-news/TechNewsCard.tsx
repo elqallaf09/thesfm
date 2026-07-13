@@ -53,7 +53,7 @@ function hasDifferentOriginal(item: TechNewsItem) {
 function imageStyle(imageUrl: string | null | undefined) {
   const safeUrl = cleanText(imageUrl);
   if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return undefined;
-  return { backgroundImage: `linear-gradient(135deg, rgba(4, 22, 42, .18), rgba(8, 43, 71, .68)), url("${safeUrl}")` };
+  return { backgroundImage: `url("${safeUrl}")` };
 }
 
 export function TechNewsCard({

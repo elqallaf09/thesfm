@@ -92,7 +92,7 @@ export function AppHeader() {
 
       <style jsx global>{`
         :root {
-          --sfm-global-header-height: 64px;
+          --global-header-height: 64px;
         }
 
         .sfm-global-header {
@@ -101,7 +101,7 @@ export function AppHeader() {
           z-index: 100;
           grid-area: header;
           min-width: 0;
-          min-height: var(--sfm-global-header-height);
+          min-height: var(--global-header-height);
           display: grid;
           grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
           grid-template-areas: 'brand workspaces actions';
@@ -253,7 +253,7 @@ export function AppHeader() {
 
         @media (max-width: 1179px) {
           :root {
-            --sfm-global-header-height: 108px;
+            --global-header-height: 108px;
           }
 
           .sfm-global-header {

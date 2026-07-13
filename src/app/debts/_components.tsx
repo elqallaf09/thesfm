@@ -255,11 +255,9 @@ export function DebtStyles() {
     <style jsx global>{`
       .debts-shell {
         min-height: 100dvh;
-        background:
-          radial-gradient(circle at top left, rgba(47, 214, 192, .10), transparent 34%),
-          var(--sfm-light-card);
-        color: var(--sfm-foreground);
-        font-family: Tajawal, Arial, sans-serif;
+        background: var(--surface-muted);
+        color: var(--foreground);
+        font-family: var(--font-ui);
         overflow-x: hidden;
       }
 
@@ -284,25 +282,25 @@ export function DebtStyles() {
         align-items: flex-end;
         justify-content: space-between;
         gap: 18px;
-        border: 1px solid rgba(167, 243, 240, .24);
-        border-radius: 30px;
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+        border-radius: var(--radius-panel);
         padding: clamp(22px, 3vw, 34px);
-        color: #fff;
-        background: linear-gradient(135deg, var(--sfm-foreground) 0%, var(--sfm-primary-dark) 58%, var(--sfm-soft-cyan) 145%);
-        box-shadow: 0 22px 60px rgba(3, 18, 37, .14);
+        color: var(--hero-foreground);
+        background: var(--hero-gradient);
+        box-shadow: var(--shadow-md);
       }
 
       .debts-eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        border: 1px solid rgba(167, 243, 240, .28);
-        background: rgba(167, 243, 240, .12);
-        color: var(--sfm-soft-cyan);
-        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+        border-radius: var(--radius-pill);
         padding: 7px 12px;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
         margin-bottom: 14px;
       }
 
@@ -310,15 +308,15 @@ export function DebtStyles() {
         margin: 0 0 10px;
         font-size: clamp(34px, 5vw, 58px);
         line-height: 1;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debts-hero p {
         margin: 0;
         max-width: 760px;
-        color: rgba(255, 255, 255, .74);
+        color: color-mix(in srgb, var(--hero-foreground) 74%, transparent);
         font-size: 15px;
-        font-weight: 800;
+        font-weight: 500;
         line-height: 1.8;
       }
 
@@ -335,26 +333,26 @@ export function DebtStyles() {
       .debts-section-head button,
       .debts-secondary-hero {
         border: 0;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         min-height: 46px;
         padding: 0 18px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        color: #fff;
-        font: 950 13px Tajawal, Arial, sans-serif;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font: 600 13px var(--font-ui);
         cursor: pointer;
-        box-shadow: 0 12px 28px rgba(29, 140, 255, .22);
+        box-shadow: var(--shadow-md);
         transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;
       }
 
       .debts-secondary-hero {
-        border: 1px solid rgba(167, 243, 240, .26);
-        background: rgba(255, 255, 255, .10);
-        color: rgba(255, 255, 255, .92);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+        border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+        background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
+        color: color-mix(in srgb, var(--hero-foreground) 92%, transparent);
+        box-shadow: var(--shadow-md);
       }
 
       .debts-primary:hover,
@@ -362,7 +360,7 @@ export function DebtStyles() {
       .debts-secondary-hero:hover {
         transform: translateY(-1px);
         filter: saturate(1.08);
-        box-shadow: 0 16px 34px rgba(29, 140, 255, .30);
+        box-shadow: var(--shadow-md);
       }
 
       .debts-primary:active,
@@ -394,27 +392,25 @@ export function DebtStyles() {
       .debt-card,
       .debt-modal,
       .debts-empty {
-        border: 1px solid rgba(47, 214, 192, .16);
-        background:
-          linear-gradient(135deg, rgba(255, 255, 255, .82), rgba(234, 246, 255, .64)),
-          var(--sfm-card);
-        box-shadow: 0 16px 42px rgba(3, 18, 37, .07);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        background: var(--surface);
+        box-shadow: var(--shadow-md);
       }
 
       .debts-notice {
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         padding: 14px 16px;
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #047857;
-        font-weight: 900;
+        color: var(--success);
+        font-weight: 600;
       }
 
       .debts-notice.error {
-        color: #b91c1c;
-        border-color: rgba(239, 68, 68, .22);
-        background: rgba(239, 68, 68, .08);
+        color: var(--danger);
+        border-color: color-mix(in srgb, var(--danger) 22%, transparent);
+        background: color-mix(in srgb, var(--danger) 8%, transparent);
       }
 
       .debts-summary-grid {
@@ -425,7 +421,7 @@ export function DebtStyles() {
 
       .debt-summary-card {
         min-height: 118px;
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         padding: 16px;
         display: flex;
         align-items: flex-start;
@@ -440,12 +436,12 @@ export function DebtStyles() {
       .debt-summary-card > span {
         width: 42px;
         height: 42px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         display: grid;
         place-items: center;
-        color: var(--sfm-soft-cyan);
-        background: rgba(47, 214, 192, .12);
-        border: 1px solid rgba(47, 214, 192, .20);
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
       }
 
       .debt-summary-card small,
@@ -453,18 +449,18 @@ export function DebtStyles() {
       .insight-row span,
       .payment-row small {
         display: block;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.45;
       }
 
       .debt-summary-card strong {
         display: block;
         margin-top: 7px;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(18px, 2vw, 24px);
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.2;
         overflow-wrap: anywhere;
       }
@@ -479,7 +475,7 @@ export function DebtStyles() {
       .debts-list-panel,
       .debts-insight,
       .payments-panel {
-        border-radius: 30px;
+        border-radius: var(--radius-panel);
         padding: 20px;
         min-width: 0;
       }
@@ -498,17 +494,17 @@ export function DebtStyles() {
 
       .debts-section-head span {
         display: block;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
         margin-bottom: 5px;
       }
 
       .debts-section-head h2 {
         margin: 0;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 20px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-tabs {
@@ -517,9 +513,9 @@ export function DebtStyles() {
         align-items: center;
         margin: 0 0 16px;
         padding: 6px;
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: 999px;
-        background: rgba(236, 254, 255, .52);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--primary) 52%, transparent);
         overflow-x: auto;
         scrollbar-width: none;
       }
@@ -531,50 +527,50 @@ export function DebtStyles() {
       .debt-tabs button {
         min-height: 42px;
         border: 1px solid transparent;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         background: transparent;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         padding: 0 16px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         white-space: nowrap;
-        font: 950 13px Tajawal, Arial, sans-serif;
+        font: 600 13px var(--font-ui);
         cursor: pointer;
         transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
       }
 
       .debt-tabs button:hover,
       .debt-tabs button:focus-visible {
-        color: var(--sfm-foreground);
-        background: rgba(255, 255, 255, .82);
-        border-color: rgba(47, 214, 192, .18);
+        color: var(--foreground);
+        background: color-mix(in srgb, var(--hero-foreground) 82%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 18%, transparent);
         outline: none;
       }
 
       .debt-tabs button.active {
-        color: #fff;
-        border-color: rgba(47, 214, 192, .42);
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        box-shadow: 0 10px 24px rgba(29, 140, 255, .22);
+        color: var(--primary-foreground);
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+        background: var(--primary);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-tabs button span {
         min-width: 26px;
         min-height: 24px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: rgba(15, 23, 42, .08);
+        background: color-mix(in srgb, var(--shadow-color) 8%, transparent);
         color: inherit;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-tabs button.active span {
-        background: rgba(255, 255, 255, .18);
+        background: color-mix(in srgb, var(--hero-foreground) 18%, transparent);
       }
 
       .debt-card-grid {
@@ -585,7 +581,7 @@ export function DebtStyles() {
       }
 
       .debt-card {
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         padding: 18px;
         display: grid;
         gap: 14px;
@@ -595,12 +591,12 @@ export function DebtStyles() {
       }
 
       .debt-card:hover {
-        border-color: rgba(47, 214, 192, .22);
-        box-shadow: 0 18px 44px rgba(3, 18, 37, .09);
+        border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-card.expanded {
-        border-color: rgba(47, 214, 192, .24);
+        border-color: color-mix(in srgb, var(--accent) 24%, transparent);
       }
 
       .debt-card-top {
@@ -616,18 +612,18 @@ export function DebtStyles() {
 
       .debt-card h3 {
         margin: 0 0 4px;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 18px;
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.35;
         overflow-wrap: anywhere;
       }
 
       .debt-card p {
         margin: 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
         overflow-wrap: anywhere;
       }
 
@@ -641,10 +637,10 @@ export function DebtStyles() {
       .debt-expand-toggle {
         width: 44px;
         height: 44px;
-        border: 1px solid rgba(47, 214, 192, .20);
-        border-radius: var(--r-md);
-        background: rgba(47, 214, 192, .08);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--primary-hover);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -654,8 +650,8 @@ export function DebtStyles() {
 
       .debt-expand-toggle:hover,
       .debt-expand-toggle:focus-visible {
-        background: rgba(47, 214, 192, .14);
-        border-color: rgba(47, 214, 192, .34);
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 34%, transparent);
         outline: none;
       }
 
@@ -685,9 +681,9 @@ export function DebtStyles() {
       }
 
       .debt-detail-group {
-        border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: var(--r-xl);
-        background: rgba(248, 252, 255, .72);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--hero-foreground) 72%, transparent);
         padding: 12px;
         display: grid;
         gap: 10px;
@@ -695,9 +691,9 @@ export function DebtStyles() {
 
       .debt-detail-group h4 {
         margin: 0;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 14px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       @keyframes debtReveal {
@@ -714,25 +710,25 @@ export function DebtStyles() {
       .debt-status,
       .debt-due {
         width: max-content;
-        border-radius: 999px;
-        border: 1px solid rgba(47, 214, 192, .24);
-        background: rgba(47, 214, 192, .12);
-        color: #0f766e;
+        border-radius: var(--radius-pill);
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
         padding: 6px 10px;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
         white-space: nowrap;
       }
 
       .debt-status.paused {
-        color: #92400e;
-        background: rgba(245, 158, 11, .12);
-        border-color: rgba(245, 158, 11, .24);
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
+        border-color: color-mix(in srgb, var(--warning) 24%, transparent);
       }
 
       .debt-status.paid {
-        color: #047857;
-        background: #ccfbf1;
+        color: var(--success);
+        background: var(--accent-soft);
       }
 
       .debt-progress {
@@ -748,28 +744,28 @@ export function DebtStyles() {
         display: flex;
         justify-content: space-between;
         gap: 10px;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
       }
 
       .debt-progress strong {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
       }
 
       .debt-progress i {
         height: 10px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         overflow: hidden;
-        border: 1px solid rgba(47, 214, 192, .14);
-        background: rgba(148, 163, 184, .14);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: color-mix(in srgb, var(--foreground-muted) 14%, transparent);
       }
 
       .debt-progress i b {
         display: block;
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        background: var(--primary);
       }
 
       .debt-metrics {
@@ -780,9 +776,9 @@ export function DebtStyles() {
 
       .debt-metric {
         min-width: 0;
-        border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: var(--r-lg);
-        background: var(--sfm-light-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 10px;
         display: grid;
         gap: 6px;
@@ -791,9 +787,9 @@ export function DebtStyles() {
       .debt-metric b,
       .insight-row b,
       .payment-row b {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.35;
         overflow-wrap: anywhere;
       }
@@ -803,13 +799,13 @@ export function DebtStyles() {
         display: inline-flex;
         align-items: flex-start;
         gap: 8px;
-        color: #92400e;
-        background: rgba(245, 158, 11, .12);
-        border: 1px solid rgba(245, 158, 11, .24);
-        border-radius: var(--r-lg);
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+        border-radius: var(--radius-card);
         padding: 10px 12px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.6;
       }
 
@@ -819,8 +815,8 @@ export function DebtStyles() {
       }
 
       .debt-warning strong {
-        color: #78350f;
-        font-weight: 950;
+        color: var(--warning);
+        font-weight: 600;
       }
 
       .debt-actions {
@@ -833,31 +829,31 @@ export function DebtStyles() {
       .debt-actions button,
       .debt-modal-actions button {
         min-height: 38px;
-        border: 1px solid rgba(47, 214, 192, .20);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .08);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--primary-hover);
         padding: 0 12px;
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        font: 900 12px Tajawal, Arial, sans-serif;
+        font: 600  12px var(--font-ui);
         cursor: pointer;
       }
 
       .debt-actions .debt-action-primary {
         min-height: 44px;
         border: 0;
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        color: #fff;
+        background: var(--primary);
+        color: var(--primary-foreground);
         padding-inline: 18px;
-        box-shadow: 0 12px 28px rgba(29, 140, 255, .20);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-actions .danger {
-        color: #dc2626;
-        background: rgba(220, 38, 38, .08);
-        border-color: rgba(220, 38, 38, .18);
+        color: var(--danger);
+        background: color-mix(in srgb, var(--danger) 8%, transparent);
+        border-color: color-mix(in srgb, var(--danger) 18%, transparent);
       }
 
       .debt-action-menu {
@@ -866,15 +862,15 @@ export function DebtStyles() {
 
       .debt-action-menu summary {
         min-height: 44px;
-        border: 1px solid rgba(47, 214, 192, .20);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .08);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--primary-hover);
         padding: 0 14px;
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 600  12px var(--font-ui);
         cursor: pointer;
         list-style: none;
         transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
@@ -893,8 +889,8 @@ export function DebtStyles() {
       .debt-action-menu[open] summary,
       .debt-action-menu summary:hover,
       .debt-action-menu summary:focus-visible {
-        background: rgba(47, 214, 192, .14);
-        border-color: rgba(47, 214, 192, .34);
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 34%, transparent);
         outline: none;
       }
 
@@ -904,13 +900,13 @@ export function DebtStyles() {
         inset-inline-start: 0;
         bottom: calc(100% + 8px);
         min-width: 220px;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: var(--r-xl);
-        background: #fff;
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        border-radius: var(--radius-card);
+        background: var(--surface);
         padding: 8px;
         display: grid;
         gap: 6px;
-        box-shadow: 0 22px 52px rgba(3, 18, 37, .16);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-action-menu > div button {
@@ -928,9 +924,9 @@ export function DebtStyles() {
 
       .insight-row,
       .payment-row {
-        border: 1px solid rgba(47, 214, 192, .12);
-        border-radius: var(--r-xl);
-        background: var(--sfm-light-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 12px;
         display: grid;
         gap: 6px;
@@ -939,20 +935,20 @@ export function DebtStyles() {
       .insight-copy,
       .insight-alert {
         margin: 0;
-        border-radius: var(--r-xl);
+        border-radius: var(--radius-card);
         padding: 12px;
-        color: var(--sfm-muted);
-        background: rgba(47, 214, 192, .08);
-        border: 1px solid rgba(47, 214, 192, .15);
+        color: var(--foreground-muted);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.75;
       }
 
       .insight-alert {
-        color: #92400e;
-        background: rgba(245, 158, 11, .12);
-        border-color: rgba(245, 158, 11, .24);
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
+        border-color: color-mix(in srgb, var(--warning) 24%, transparent);
       }
 
       .payments-list {
@@ -962,78 +958,78 @@ export function DebtStyles() {
       }
 
       .payment-row span {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .payment-row em {
         width: max-content;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         padding: 4px 9px;
         font-style: normal;
         font-size: 11px;
-        font-weight: 950;
-        color: #0f766e;
-        background: rgba(47, 214, 192, .12);
-        border: 1px solid rgba(47, 214, 192, .18);
+        font-weight: 600;
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
       }
 
       .payment-row.overdue {
-        border-color: rgba(220, 38, 38, .24);
-        background: rgba(254, 242, 242, .82);
+        border-color: color-mix(in srgb, var(--danger) 24%, transparent);
+        background: color-mix(in srgb, var(--danger) 82%, transparent);
       }
 
       .payment-row.overdue em {
-        color: #b91c1c;
-        border-color: rgba(220, 38, 38, .18);
-        background: rgba(220, 38, 38, .08);
+        color: var(--danger);
+        border-color: color-mix(in srgb, var(--danger) 18%, transparent);
+        background: color-mix(in srgb, var(--danger) 8%, transparent);
       }
 
       .payment-row.dueToday {
-        border-color: rgba(245, 158, 11, .26);
-        background: rgba(255, 251, 235, .76);
+        border-color: color-mix(in srgb, var(--warning) 26%, transparent);
+        background: color-mix(in srgb, var(--warning) 76%, transparent);
       }
 
       .payment-row.dueToday em {
-        color: #92400e;
-        border-color: rgba(245, 158, 11, .22);
-        background: rgba(245, 158, 11, .12);
+        color: var(--warning);
+        border-color: color-mix(in srgb, var(--warning) 22%, transparent);
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
       }
 
       .payments-empty {
-        border: 1px dashed rgba(47, 214, 192, .24);
-        border-radius: var(--r-xl);
+        border: 1px dashed color-mix(in srgb, var(--accent) 24%, transparent);
+        border-radius: var(--radius-card);
         padding: 18px;
-        color: var(--sfm-muted);
-        background: rgba(236, 254, 255, .38);
+        color: var(--foreground-muted);
+        background: color-mix(in srgb, var(--primary) 38%, transparent);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 600;
         text-align: center;
       }
 
       .debts-empty,
       .debts-loading {
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         padding: 32px;
         display: grid;
         justify-items: center;
         gap: 12px;
         text-align: center;
-        color: var(--sfm-muted);
-        font-weight: 850;
+        color: var(--foreground-muted);
+        font-weight: 600;
         line-height: 1.8;
       }
 
       .debts-empty svg {
-        color: var(--sfm-soft-cyan);
+        color: var(--accent);
       }
 
       .debts-empty h1,
       .debts-empty h2 {
         margin: 0;
-        color: var(--sfm-foreground);
-        font-weight: 950;
+        color: var(--foreground);
+        font-weight: 600;
       }
 
       .debts-empty p {
@@ -1048,9 +1044,7 @@ export function DebtStyles() {
         display: flex;
         align-items: center;
         justify-content: center;
-        background:
-          radial-gradient(circle at 50% 20%, rgba(47, 214, 192, .16), transparent 32%),
-          rgba(3, 18, 37, .58);
+        background: var(--background-overlay);
         backdrop-filter: blur(12px);
         padding: clamp(14px, 3vw, 28px);
         overflow-y: auto;
@@ -1061,11 +1055,11 @@ export function DebtStyles() {
         width: min(860px, 100%);
         max-height: min(90dvh, 940px);
         overflow-y: auto;
-        border-radius: 32px;
+        border-radius: var(--radius-panel);
         padding: clamp(18px, 2.5vw, 28px);
         margin: auto;
         outline: none;
-        box-shadow: 0 30px 90px rgba(3, 18, 37, .32);
+        box-shadow: var(--shadow-md);
         scrollbar-gutter: stable;
       }
 
@@ -1076,57 +1070,57 @@ export function DebtStyles() {
         align-items: flex-start;
         margin-bottom: 18px;
         padding-bottom: 16px;
-        border-bottom: 1px solid rgba(47, 214, 192, .16);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
       }
 
       .debt-modal-head span {
         display: inline-flex;
         width: max-content;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .10);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        color: var(--primary-hover);
         padding: 5px 10px;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-modal-head h2 {
         margin: 10px 0 0;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(24px, 3vw, 32px);
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.15;
       }
 
       .debt-modal-head p {
         margin: 8px 0 0;
         max-width: 560px;
-        color: var(--sfm-muted-readable, #475569);
+        color: var(--foreground-secondary);
         font-size: 14px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.7;
       }
 
       .debt-modal-head > button {
         width: 44px;
         height: var(--control-h);
-        border: 1px solid rgba(29, 140, 255, .18);
-        border-radius: var(--r-lg);
-        background: rgba(255, 255, 255, .76);
-        color: var(--sfm-foreground);
+        border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--hero-foreground) 76%, transparent);
+        color: var(--foreground);
         cursor: pointer;
         flex-shrink: 0;
         display: grid;
         place-items: center;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+        box-shadow: var(--shadow-md);
         transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
       }
 
       .debt-modal-head > button:hover {
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .32);
-        box-shadow: 0 12px 26px rgba(3, 18, 37, .10);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-modal-head > button:active {
@@ -1137,10 +1131,10 @@ export function DebtStyles() {
         display: flex;
         align-items: flex-start;
         gap: 11px;
-        border: 1px solid rgba(245, 158, 11, .28);
-        border-radius: var(--r-xl);
-        background: rgba(245, 158, 11, .10);
-        color: #92400e;
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--warning) 10%, transparent);
+        color: var(--warning);
         padding: 13px;
         margin-bottom: 16px;
       }
@@ -1149,10 +1143,10 @@ export function DebtStyles() {
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        border: 1px solid rgba(220, 38, 38, .24);
-        border-radius: var(--r-xl);
-        background: rgba(220, 38, 38, .08);
-        color: #b91c1c;
+        border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--danger) 8%, transparent);
+        color: var(--danger);
         padding: 14px;
         margin-bottom: 16px;
       }
@@ -1164,16 +1158,16 @@ export function DebtStyles() {
 
       .debt-save-alert strong {
         display: block;
-        color: #991b1b;
+        color: var(--danger);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-save-alert p {
         margin: 6px 0 0;
-        color: #7f1d1d;
+        color: var(--danger);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.7;
       }
 
@@ -1185,7 +1179,7 @@ export function DebtStyles() {
       .debt-validation-panel strong {
         display: block;
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-validation-panel ul {
@@ -1193,9 +1187,9 @@ export function DebtStyles() {
         padding-inline-start: 18px;
         display: grid;
         gap: 4px;
-        color: #78350f;
+        color: var(--warning);
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 600;
       }
 
       .debt-form-grid {
@@ -1220,13 +1214,13 @@ export function DebtStyles() {
         content: "";
         height: 1px;
         flex: 1;
-        background: linear-gradient(90deg, rgba(47, 214, 192, .32), rgba(148, 163, 184, .10));
+        background: var(--accent);
       }
 
       .debt-form-section span {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-field {
@@ -1240,13 +1234,13 @@ export function DebtStyles() {
       }
 
       .debt-field > span {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .debt-field > span i {
-        color: #dc2626;
+        color: var(--danger);
         font-style: normal;
         margin-inline-start: 2px;
       }
@@ -1254,9 +1248,9 @@ export function DebtStyles() {
       .debt-field > span small {
         display: block;
         margin-top: 5px;
-        color: var(--sfm-muted-readable, #475569);
+        color: var(--foreground-secondary);
         font-size: 11px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.6;
       }
 
@@ -1267,20 +1261,20 @@ export function DebtStyles() {
         width: 100%;
         min-width: 0;
         min-height: 52px;
-        border: 1.5px solid rgba(15, 118, 110, .22);
-        border-radius: var(--r-xl);
-        background: rgba(255, 255, 255, .92);
-        color: var(--sfm-foreground);
+        border: 1.5px solid color-mix(in srgb, var(--accent) 22%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--hero-foreground) 92%, transparent);
+        color: var(--foreground);
         padding: 0 14px;
-        font: 900 14px Tajawal, Arial, sans-serif;
+        font: 600  14px var(--font-ui);
         outline: none;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+        box-shadow: var(--shadow-md);
         transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
       }
 
       .debt-field input::placeholder,
       .debt-field textarea::placeholder {
-        color: #64748b;
+        color: var(--foreground-muted);
         opacity: 1;
       }
 
@@ -1294,17 +1288,17 @@ export function DebtStyles() {
       .debt-field select:focus,
       .debt-field textarea:focus,
       .affix-input:focus-within {
-        border-color: var(--sfm-soft-cyan);
-        box-shadow: 0 0 0 4px rgba(47, 214, 192, .16), inset 0 1px 0 rgba(255, 255, 255, .55);
-        background: #fff;
+        border-color: var(--accent);
+        box-shadow: var(--focus-shadow);
+        background: var(--surface);
       }
 
       .debt-field.invalid input,
       .debt-field.invalid select,
       .debt-field.invalid textarea,
       .debt-field.invalid .affix-input {
-        border-color: rgba(220, 38, 38, .58);
-        box-shadow: 0 0 0 4px rgba(220, 38, 38, .10);
+        border-color: color-mix(in srgb, var(--danger) 58%, transparent);
+        box-shadow: var(--shadow-md);
       }
 
       .affix-input {
@@ -1318,16 +1312,16 @@ export function DebtStyles() {
       .affix-input em {
         min-width: 58px;
         min-height: 36px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, rgba(29, 140, 255, .12), rgba(47, 214, 192, .18));
-        color: #0f766e;
-        border: 1px solid rgba(15, 118, 110, .16);
+        background: var(--primary-soft);
+        color: var(--accent);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
         font-style: normal;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
         letter-spacing: .02em;
       }
 
@@ -1349,25 +1343,25 @@ export function DebtStyles() {
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        border: 1.5px solid rgba(15, 118, 110, .18);
-        border-radius: var(--r-xl);
-        background: rgba(236, 254, 255, .44);
+        border: 1.5px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--primary) 44%, transparent);
         padding: 14px;
       }
 
       .toggle-row button {
-        border: 1px solid rgba(47, 214, 192, .22);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .12);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--primary-hover);
         padding: 8px 14px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 600  12px var(--font-ui);
         cursor: pointer;
       }
 
       .toggle-row button[aria-pressed="true"] {
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        color: #fff;
+        background: var(--primary);
+        color: var(--primary-foreground);
       }
 
       .debt-modal-actions {
@@ -1376,25 +1370,25 @@ export function DebtStyles() {
         gap: 10px;
         margin-top: 22px;
         padding-top: 16px;
-        border-top: 1px solid rgba(47, 214, 192, .16);
+        border-top: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
         flex-wrap: wrap;
       }
 
       .debt-modal-actions .debts-primary {
         border: 0;
-        color: #fff;
+        color: var(--primary-foreground);
         width: auto;
         min-width: 190px;
         min-height: 50px;
         font-size: 14px;
-        box-shadow: 0 16px 36px rgba(29, 140, 255, .30);
+        box-shadow: var(--shadow-md);
       }
 
       .debt-modal-actions .debts-primary:disabled,
       .debt-modal-actions .debts-primary[aria-disabled="true"] {
-        background: rgba(15, 23, 42, .08);
-        border: 1px solid rgba(15, 23, 42, .12);
-        color: #475569;
+        background: color-mix(in srgb, var(--shadow-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--shadow-color) 12%, transparent);
+        color: var(--foreground-muted);
         box-shadow: none;
         cursor: not-allowed;
         filter: none;
@@ -1404,19 +1398,19 @@ export function DebtStyles() {
 
       .debt-secondary-action {
         min-height: 50px;
-        border: 1px solid rgba(47, 214, 192, .22);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, .86);
-        color: var(--sfm-foreground);
+        border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--hero-foreground) 86%, transparent);
+        color: var(--foreground);
         padding: 0 20px;
-        font: 950 13px Tajawal, Arial, sans-serif;
+        font: 600 13px var(--font-ui);
         cursor: pointer;
         transition: background .18s ease, border-color .18s ease, transform .18s ease;
       }
 
       .debt-secondary-action:hover {
-        background: rgba(47, 214, 192, .10);
-        border-color: rgba(47, 214, 192, .35);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 35%, transparent);
       }
 
       .debt-secondary-action:active {
@@ -1428,232 +1422,25 @@ export function DebtStyles() {
       .debts-secondary-hero:focus-visible,
       .toggle-row button:focus-visible {
         outline: none;
-        border-color: var(--sfm-soft-cyan);
-        box-shadow: 0 0 0 4px rgba(47, 214, 192, .16);
+        border-color: var(--accent);
+        box-shadow: var(--focus-shadow);
       }
 
       .debt-form-helper {
         margin: 14px 0 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 850;
+        font-weight: 500;
       }
 
-      .dark .debts-shell {
-        background:
-          radial-gradient(circle at top left, rgba(47, 214, 192, .08), transparent 34%),
-          #0a1422;
-      }
-
-      .dark .debt-modal-backdrop {
-        background:
-          radial-gradient(circle at 50% 20%, rgba(47, 214, 192, .10), transparent 34%),
-          rgba(2, 8, 23, .74);
-      }
-
-      .dark .debts-notice,
-      .dark .payments-panel,
-      .dark .debts-list-panel,
-      .dark .debts-insight,
-      .dark .debt-summary-card,
-      .dark .debt-card,
-      .dark .debt-modal,
-      .dark .debts-empty {
-        background:
-          linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)),
-          #0f1d31;
-        border-color: #1d3050;
-        box-shadow: 0 16px 42px rgba(0, 0, 0, .25);
-      }
-
-      .dark .debt-modal {
-        box-shadow: 0 32px 95px rgba(0, 0, 0, .52);
-      }
-
-      .dark .debt-modal-head {
-        border-bottom-color: #1d3050;
-      }
-
-      .dark .debt-modal-head span {
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .25);
-        color: #2fd6c0;
-      }
-
-      .dark .debt-modal-head p,
-      .dark .debt-field > span small,
-      .dark .debt-form-helper {
-        color: #b8c7d9;
-      }
-
-      .dark .debt-metric,
-      .dark .insight-row,
-      .dark .payment-row,
-      .dark .debt-detail-group,
-      .dark .debt-field input,
-      .dark .debt-field select,
-      .dark .debt-field textarea,
-      .dark .affix-input,
-      .dark .toggle-row,
-      .dark .debt-modal-head > button {
-        background: #0a1422;
-        border-color: #1d3050;
-      }
-
-      .dark .debt-tabs {
-        background: #0a1422;
-        border-color: #1d3050;
-      }
-
-      .dark .debt-tabs button {
-        color: #b8c7d9;
-      }
-
-      .dark .debt-tabs button:hover,
-      .dark .debt-tabs button:focus-visible {
-        background: #13243a;
-        color: #e8eef6;
-        border-color: #1d3050;
-      }
-
-      .dark .debt-tabs button span {
-        background: rgba(255, 255, 255, .08);
-      }
-
-      .dark .debt-action-menu summary {
-        background: rgba(47, 214, 192, .10);
-        border-color: rgba(47, 214, 192, .22);
-        color: #2fd6c0;
-      }
-
-      .dark .debt-action-menu > div {
-        background: #0a1422;
-        border-color: #1d3050;
-        box-shadow: 0 22px 52px rgba(0, 0, 0, .35);
-      }
-
-      .dark .payment-row.overdue {
-        background: rgba(127, 29, 29, .16);
-        border-color: rgba(255, 91, 110, .25);
-      }
-
-      .dark .payment-row.dueToday {
-        background: rgba(120, 53, 15, .16);
-        border-color: rgba(245, 185, 66, .24);
-      }
-
-      .dark .payments-empty {
-        background: #0a1422;
-        border-color: #1d3050;
-        color: #b8c7d9;
-      }
-
-      .dark .debt-field input,
-      .dark .debt-field select,
-      .dark .debt-field textarea,
-      .dark .affix-input {
-        color: #e8eef6;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
-      }
-
-      .dark .debt-field input::placeholder,
-      .dark .debt-field textarea::placeholder {
-        color: #8ea6c3;
-      }
-
-      .dark .debt-field > span,
-      .dark .debt-form-section span,
-      .dark .debt-modal-head h2 {
-        color: #e8eef6;
-      }
-
-      .dark .debt-field input:focus,
-      .dark .debt-field select:focus,
-      .dark .debt-field textarea:focus,
-      .dark .affix-input:focus-within {
-        background: #0f1d31;
-        border-color: #2fd6c0;
-        box-shadow: 0 0 0 4px rgba(47, 214, 192, .14), inset 0 1px 0 rgba(255, 255, 255, .04);
-      }
-
-      .dark .debt-field.invalid input,
-      .dark .debt-field.invalid select,
-      .dark .debt-field.invalid textarea,
-      .dark .debt-field.invalid .affix-input {
-        border-color: rgba(255, 91, 110, .64);
-        box-shadow: 0 0 0 4px rgba(255, 91, 110, .12);
-      }
-
-      .dark .affix-input em {
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .25);
-        color: #2fd6c0;
-      }
-
-      .dark .toggle-row {
-        background: #13243a;
-      }
-
-      .dark .debt-status.active,
-      .dark .debt-status.paid {
-        color: #2fd6c0;
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .25);
-      }
-
-      .dark .debt-warning,
-      .dark .debt-due,
-      .dark .insight-alert {
-        color: #f5b942;
-        background: rgba(245, 185, 66, .12);
-        border-color: rgba(245, 185, 66, .25);
-      }
-
-      .dark .debt-validation-panel {
-        background: rgba(245, 185, 66, .12);
-        border-color: rgba(245, 185, 66, .25);
-        color: #f8d47a;
-      }
-
-      .dark .debt-validation-panel ul {
-        color: #f5b942;
-      }
-
-      .dark .debt-save-alert {
-        background: rgba(255, 91, 110, .12);
-        border-color: rgba(255, 91, 110, .28);
-        color: #ffb4bd;
-      }
-
-      .dark .debt-save-alert strong {
-        color: #ffb4bd;
-      }
-
-      .dark .debt-save-alert p {
-        color: #ffd7dc;
-      }
-
-      .dark .debt-modal-actions {
-        border-top-color: #1d3050;
-      }
-
-      .dark .debt-modal-actions .debts-primary:disabled,
-      .dark .debt-modal-actions .debts-primary[aria-disabled="true"] {
-        background: rgba(19, 36, 58, .88);
-        border-color: #1d3050;
-        color: #b8c7d9;
-      }
-
-      .dark .debt-secondary-action {
-        background: #0a1422;
-        border-color: #1d3050;
-        color: #e8eef6;
-      }
-
-      .dark .debt-secondary-action:hover,
-      .dark .debt-modal-head > button:hover {
-        background: #13243a;
-        border-color: rgba(47, 214, 192, .35);
+      .debt-summary-card strong,
+      .debt-metric strong,
+      .payment-row strong,
+      .strategy-stat strong,
+      .strategy-debt-detail b,
+      .affix-input input,
+      .debt-field input[inputmode="decimal"] {
+        font-family: var(--font-data);
       }
 
       @media (max-width: 1180px) {
@@ -1682,7 +1469,7 @@ export function DebtStyles() {
       @media (max-width: 720px) {
         .debts-hero {
           display: grid;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
         }
         .debts-primary,
         .debts-secondary-hero,
@@ -1700,7 +1487,7 @@ export function DebtStyles() {
           gap: 10px;
         }
         .debt-card {
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 14px;
           gap: 12px;
         }
@@ -1728,7 +1515,7 @@ export function DebtStyles() {
           width: 100%;
           max-height: calc(100dvh - 20px);
           overflow-y: auto;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 18px;
         }
         .debt-modal-head {
@@ -1776,16 +1563,16 @@ export function DebtStyles() {
 
       /* ─── Debt Metric Highlight ─────────────────────────────────── */
       .debt-metric--highlight {
-        border-color: rgba(47, 214, 192, .30);
-        background: rgba(47, 214, 192, .08);
+        border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
       }
       .debt-metric--highlight b {
-        color: var(--sfm-primary-hover);
+        color: var(--primary-hover);
       }
 
       /* ─── Strategy Panel ─────────────────────────────────────────── */
       .strategy-panel {
-        border-radius: 30px;
+        border-radius: var(--radius-panel);
         padding: 24px;
         display: grid;
         gap: 20px;
@@ -1801,18 +1588,18 @@ export function DebtStyles() {
 
       .strategy-panel-head h2 {
         margin: 8px 0 4px;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(20px, 2.2vw, 26px);
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.2;
       }
 
       .strategy-panel-head p {
         margin: 0;
         max-width: 540px;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.75;
       }
 
@@ -1824,22 +1611,22 @@ export function DebtStyles() {
       }
 
       .strategy-extra-input > span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .strategy-warning {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        border: 1px solid rgba(245, 158, 11, .24);
-        border-radius: var(--r-xl);
-        background: rgba(245, 158, 11, .10);
-        color: #92400e;
+        border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--warning) 10%, transparent);
+        color: var(--warning);
         padding: 12px 14px;
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.7;
       }
 
@@ -1847,14 +1634,14 @@ export function DebtStyles() {
         content: "!";
         width: 24px;
         height: 24px;
-        border-radius: 50%;
+        border-radius: var(--radius-pill);
         display: inline-grid;
         place-items: center;
         flex: 0 0 auto;
-        color: #fff;
-        background: #f59e0b;
+        color: var(--primary-foreground);
+        background: var(--warning);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .strategy-warning span,
@@ -1863,7 +1650,7 @@ export function DebtStyles() {
       }
 
       .strategy-warning strong {
-        color: #78350f;
+        color: var(--warning);
         margin-top: 2px;
       }
 
@@ -1874,12 +1661,12 @@ export function DebtStyles() {
       }
 
       .strategy-card {
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         padding: 20px;
         display: grid;
         gap: 16px;
-        border: 1px solid rgba(47, 214, 192, .14);
-        background: var(--sfm-light-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface-muted);
       }
 
       .strategy-card-head {
@@ -1894,45 +1681,45 @@ export function DebtStyles() {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         padding: 6px 12px;
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .snowball-badge {
-        background: rgba(56, 189, 248, .12);
-        border: 1px solid rgba(56, 189, 248, .28);
-        color: #0369a1;
+        background: color-mix(in srgb, var(--info) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--info) 28%, transparent);
+        color: var(--info);
       }
 
       .avalanche-badge {
-        background: rgba(168, 85, 247, .12);
-        border: 1px solid rgba(168, 85, 247, .28);
-        color: #7c3aed;
+        background: color-mix(in srgb, var(--info) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--info) 28%, transparent);
+        color: var(--info);
       }
 
       .strategy-tag {
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         padding: 4px 10px;
         font-size: 11px;
-        font-weight: 950;
-        background: rgba(148, 163, 184, .12);
-        border: 1px solid rgba(148, 163, 184, .20);
-        color: var(--sfm-muted);
+        font-weight: 600;
+        background: color-mix(in srgb, var(--foreground-muted) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--foreground-muted) 20%, transparent);
+        color: var(--foreground-muted);
       }
 
       .strategy-tag.recommended {
-        background: rgba(34, 197, 94, .12);
-        border-color: rgba(34, 197, 94, .28);
-        color: #15803d;
+        background: color-mix(in srgb, var(--success) 12%, transparent);
+        border-color: color-mix(in srgb, var(--success) 28%, transparent);
+        color: var(--success);
       }
 
       .strategy-desc {
         margin: 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.75;
       }
 
@@ -1943,45 +1730,45 @@ export function DebtStyles() {
       }
 
       .strategy-stat {
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         padding: 12px;
         display: grid;
         gap: 6px;
-        border: 1px solid rgba(47, 214, 192, .12);
-        background: var(--sfm-canvas, #f8fafc);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        background: var(--background);
       }
 
       .strategy-stat.highlight {
-        border-color: rgba(34, 197, 94, .24);
-        background: rgba(34, 197, 94, .06);
+        border-color: color-mix(in srgb, var(--success) 24%, transparent);
+        background: color-mix(in srgb, var(--success) 6%, transparent);
       }
 
       .strategy-stat small {
         display: block;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .strategy-stat strong {
         display: block;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 15px;
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.3;
         overflow-wrap: anywhere;
       }
 
       .strategy-stat strong.green {
-        color: #15803d;
+        color: var(--success);
       }
 
       .strategy-order-label {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
         padding-bottom: 4px;
-        border-bottom: 1px solid rgba(47, 214, 192, .14);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
       }
 
       .strategy-order {
@@ -1996,30 +1783,30 @@ export function DebtStyles() {
         display: flex;
         align-items: center;
         gap: 10px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         padding: 10px 12px;
-        border: 1px solid rgba(47, 214, 192, .10);
-        background: var(--sfm-canvas, #f8fafc);
+        border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
+        background: var(--background);
       }
 
       .strategy-rank {
         width: 26px;
         height: 26px;
-        border-radius: 50%;
+        border-radius: var(--radius-pill);
         display: grid;
         place-items: center;
         font-size: 12px;
-        font-weight: 950;
-        background: rgba(47, 214, 192, .14);
-        color: var(--sfm-primary-hover);
+        font-weight: 600;
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        color: var(--primary-hover);
         flex-shrink: 0;
       }
 
       .strategy-debt-name {
         flex: 1;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -2033,89 +1820,34 @@ export function DebtStyles() {
       }
 
       .strategy-debt-detail b {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
 
       .strategy-debt-detail small {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 850;
+        font-weight: 500;
       }
 
       .strategy-banner {
         display: flex;
         align-items: center;
         gap: 12px;
-        border-radius: var(--r-xl);
+        border-radius: var(--radius-card);
         padding: 14px 16px;
-        background: rgba(34, 197, 94, .09);
-        border: 1px solid rgba(34, 197, 94, .24);
-        color: #15803d;
+        background: color-mix(in srgb, var(--success) 9%, transparent);
+        border: 1px solid color-mix(in srgb, var(--success) 24%, transparent);
+        color: var(--success);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.65;
       }
 
       .strategy-banner svg {
         flex-shrink: 0;
-        color: #16a34a;
-      }
-
-      /* ─── Dark mode — strategy ───────────────────────────────────── */
-      .dark .strategy-panel,
-      .dark .strategy-card {
-        border-color: rgba(47, 214, 192, .12);
-        background: #0d1f35;
-      }
-
-      .dark .strategy-stat,
-      .dark .strategy-order li {
-        background: #07172a;
-        border-color: rgba(47, 214, 192, .10);
-      }
-
-      .dark .strategy-stat.highlight {
-        background: rgba(34, 197, 94, .08);
-        border-color: rgba(34, 197, 94, .22);
-      }
-
-      .dark .snowball-badge {
-        color: #38bdf8;
-      }
-
-      .dark .avalanche-badge {
-        color: #c084fc;
-      }
-
-      .dark .strategy-tag.recommended {
-        color: #4ade80;
-      }
-
-      .dark .strategy-warning {
-        color: #f5b942;
-        background: rgba(245, 185, 66, .12);
-        border-color: rgba(245, 185, 66, .24);
-      }
-
-      .dark .strategy-warning strong {
-        color: #f8d47a;
-      }
-
-      .dark .strategy-stat strong.green,
-      .dark .strategy-banner {
-        color: #4ade80;
-      }
-
-      .dark .strategy-banner {
-        background: rgba(34, 197, 94, .07);
-        border-color: rgba(34, 197, 94, .18);
-      }
-
-      .dark .debt-metric--highlight {
-        background: rgba(47, 214, 192, .10);
-        border-color: rgba(47, 214, 192, .28);
+        color: var(--success);
       }
 
       /* ─── Strategy responsive ────────────────────────────────────── */

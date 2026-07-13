@@ -151,31 +151,31 @@ export function InvestmentRow({
       </header>
 
       {!isExpanded && (
-        <div style={{display:'flex',flexWrap:'wrap',gap:'8px',alignItems:'center',minWidth:0}}>
+        <div className="invest-holding-summary">
           {metrics.purchasePrice !== null && (
-            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
-              {labels.purchasePrice || 'سعر الشراء'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)}</b>
+            <span className="invest-summary-chip">
+              {labels.purchasePrice || 'سعر الشراء'}: <b className="invest-summary-chip-value" dir="ltr">{formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)}</b>
             </span>
           )}
           {metrics.purchasePrice === null && metrics.totalInvested !== null && (
-            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
-              {labels.totalInvested || 'إجمالي الاستثمار'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)}</b>
+            <span className="invest-summary-chip">
+              {labels.totalInvested || 'إجمالي الاستثمار'}: <b className="invest-summary-chip-value" dir="ltr">{formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)}</b>
             </span>
           )}
           {metrics.purchasePrice === null && metrics.totalInvested === null && (
-            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(245,158,11,.24)',background:'rgba(245,158,11,.08)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'#92400E'}}>
+            <span className="invest-summary-chip invest-summary-chip--warning">
               {labels.purchasePriceMissing || 'سعر الشراء غير مكتمل'}
             </span>
           )}
           {metrics.currentPrice !== null && (
-            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border:'1px solid rgba(167,243,240,.18)',background:'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:'var(--sfm-muted)'}}>
-              {labels.currentPrice || 'السعر الحالي'}: <b style={{color:'var(--sfm-foreground)',fontWeight:950}} dir="ltr">{formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)}</b>
+            <span className="invest-summary-chip">
+              {labels.currentPrice || 'السعر الحالي'}: <b className="invest-summary-chip-value" dir="ltr">{formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)}</b>
             </span>
           )}
           {metrics.profitLossAmount !== null && (
-            <span style={{display:'inline-flex',alignItems:'center',gap:'5px',borderRadius:'999px',border: gainState==='gain'?'1px solid rgba(16,185,129,.24)':gainState==='loss'?'1px solid rgba(239,68,68,.24)':'1px solid rgba(167,243,240,.18)',background:gainState==='gain'?'rgba(16,185,129,.08)':gainState==='loss'?'rgba(239,68,68,.07)':'var(--sfm-light-card)',padding:'5px 10px',fontSize:'12px',fontWeight:900,color:gainState==='gain'?'#047857':gainState==='loss'?'#B91C1C':'var(--sfm-muted)'}}>
+            <span className={`invest-summary-chip invest-summary-chip--${gainState}`}>
               {gainState === 'gain' ? '+' : ''}{formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}
-              {metrics.profitLossPercent !== null && <em style={{fontStyle:'normal',fontWeight:950}}>{` (${formatSignedNumber(metrics.profitLossPercent)}%)`}</em>}
+              {metrics.profitLossPercent !== null && <em className="invest-summary-chip-percent">{` (${formatSignedNumber(metrics.profitLossPercent)}%)`}</em>}
             </span>
           )}
         </div>

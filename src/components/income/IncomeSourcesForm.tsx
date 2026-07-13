@@ -58,35 +58,34 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
   };
 
   return (
-    <main dir={dir} className="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,_#f7faf7_0%,_#eef6ef_42%,_#dfeee7_100%)] px-4 py-8 dark:bg-[linear-gradient(135deg,_#07110d_0%,_#0d1d16_48%,_var(--sfm-foreground)827_100%)]">
-      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(120deg,rgba(0,96,72,0.10)_0,rgba(0,96,72,0.10)_1px,transparent_1px,transparent_42px),linear-gradient(160deg,rgba(187,151,82,0.12)_0,rgba(187,151,82,0.12)_1px,transparent_1px,transparent_68px)] dark:opacity-20" />
-      <div className="relative mx-auto max-w-5xl space-y-6">
+    <main dir={dir} className="relative min-h-screen overflow-hidden bg-background px-4 py-8 text-foreground [font-family:var(--font-ui)]">
+      <div className="relative w-full max-w-none space-y-6">
         <div className="space-y-2 text-center">
-          <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{t('income_sources_welcome')} {username || t('income_sources_you')}</p>
-          <h1 className="text-3xl font-bold text-emerald-950 dark:text-emerald-100">{t('income_sources_title')}</h1>
+          <p className="text-sm font-medium text-success">{t('income_sources_welcome')} {username || t('income_sources_you')}</p>
+          <h1 className="text-3xl font-semibold text-foreground">{t('income_sources_title')}</h1>
           <p className="text-muted-foreground">{t('income_sources_description')}</p>
         </div>
 
-        <Card className="border-border bg-card/90 shadow-[0_24px_80px_rgba(0,66,54,0.14)] backdrop-blur-2xl">
+        <Card className="border-border bg-card/90 shadow-card backdrop-blur-2xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
+            <CardTitle className="flex items-center gap-2 font-semibold text-foreground">
               <Coins className="h-6 w-6" />
               {t('income_sources_form_title')}
             </CardTitle>
             <CardDescription>{t('income_sources_optional_hint')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200">{error}</div>}
+            {error && <div className="rounded-[var(--radius-card)] border border-danger bg-danger-soft p-3 text-sm text-danger">{error}</div>}
             <div className="grid gap-4 md:grid-cols-2">
               {INCOME_CATEGORIES.map((category) => (
-                <section key={category.id} className="rounded-2xl border border-border bg-card/90 p-4 text-card-foreground">
+                <section key={category.id} className="rounded-[var(--radius-card)] border border-border bg-surface p-4 text-foreground shadow-card">
                   <div className="space-y-3">
                     <div>
-                      <h2 className="font-bold text-emerald-950 dark:text-emerald-100">{t(`income_category_${category.id}`)}</h2>
+                      <h2 className="font-semibold text-foreground">{t(`income_category_${category.id}`)}</h2>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {t(`income_category_${category.id}_examples`).split('|').map((example) => (
-                        <span key={example} className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">{example}</span>
+                        <span key={example} className="rounded-[var(--radius-pill)] bg-accent-soft px-2 py-1 text-xs text-foreground-secondary">{example}</span>
                       ))}
                     </div>
                     <div className="space-y-2">
@@ -96,7 +95,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
                         value={amounts[category.id] || ''}
                         onChange={(event) => setAmounts((current) => ({ ...current, [category.id]: normalizeNumberInput(event.target.value) }))}
                         placeholder="0.00"
-                        className="h-12 text-center text-lg font-bold"
+                        className="h-12 text-center text-lg font-semibold [font-family:var(--font-data)]"
                         dir="ltr"
                       />
                     </div>
@@ -105,12 +104,12 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
               ))}
             </div>
 
-            <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-center dark:border-emerald-800 dark:bg-emerald-950/40">
-              <span className="text-sm text-emerald-700 dark:text-emerald-300">{t('income_sources_total')}</span>
-              <p className="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{formatCurrency(totalIncome, 'KWD', lang)}</p>
+            <div className="rounded-[var(--radius-card)] border border-primary bg-primary-soft p-5 text-center">
+              <span className="text-sm text-foreground-secondary">{t('income_sources_total')}</span>
+              <p className="text-4xl font-semibold text-foreground [font-family:var(--font-data)]">{formatCurrency(totalIncome, 'KWD', lang)}</p>
             </div>
 
-            <Button onClick={saveSources} disabled={saving} className="h-12 w-full bg-emerald-700 text-base hover:bg-emerald-800">
+            <Button onClick={saveSources} disabled={saving} className="h-12 w-full bg-primary text-base text-primary-foreground hover:bg-primary-hover">
               <Check className="h-5 w-5" />
               {saving ? t('income_sources_saving') : t('income_sources_save_continue')}
             </Button>

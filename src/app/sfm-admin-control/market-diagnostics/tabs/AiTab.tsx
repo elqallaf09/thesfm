@@ -44,13 +44,13 @@ export function AiTab() {
 
       <style jsx global>{`
         .ops-ai-usage-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .ops-ai-usage-summary article { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-card); padding: 12px; }
-        .ops-ai-usage-summary strong { display: block; color: var(--sfm-heading); font-size: 20px; font-weight: 900; }
-        .ops-ai-usage-summary span { display: block; margin-top: 4px; color: var(--sfm-muted); font-size: 11.5px; font-weight: 750; }
-        .ops-ai-usage-table { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); overflow: auto; max-width: 100%; }
-        .ops-ai-usage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--sfm-border); font-size: 12.5px; }
+        .ops-ai-usage-summary article { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; }
+        .ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 20px var(--font-data); }
+        .ops-ai-usage-summary span { display: block; margin-top: 4px; color: var(--foreground-muted); font-size: 11.5px; font-weight: 750; }
+        .ops-ai-usage-table { border: 1px solid var(--border); border-radius: var(--radius-card); overflow: auto; max-width: 100%; }
+        .ops-ai-usage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); font-size: 12.5px; }
         .ops-ai-usage-row:first-child { border-top: none; }
-        .ops-ai-usage-head { background: var(--sfm-light-card); font-weight: 900; color: var(--sfm-heading); }
+        .ops-ai-usage-head { background: var(--surface-muted); font-weight: 600; color: var(--foreground); }
       `}</style>
     </section>
   );

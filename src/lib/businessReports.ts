@@ -2,6 +2,10 @@ import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 import { normalizeDigits, toLatinNumberLocale } from '@/lib/format';
 import { BUSINESS_TEXT, employeeStatusLabel, numericValue, saleStatusLabel, type BusinessLang } from '@/lib/businessOperations';
+import {
+  semanticStandaloneDocumentStyles,
+  semanticStandaloneStylesheetLinks,
+} from '@/lib/visual-system/standaloneDocument';
 
 type ExportColumn<T> = {
   key: string;
@@ -100,24 +104,26 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
       <head>
         <meta charset="utf-8" />
         <title>${escapeHtml(title)}</title>
+        ${semanticStandaloneStylesheetLinks()}
         <style>
+          ${semanticStandaloneDocumentStyles()}
           @page{size:A4;margin:12mm}
           *{box-sizing:border-box}
-          body{font-family:Tajawal,Arial,sans-serif;background:#eef6ff;color:#071a2f;margin:0;padding:24px;line-height:1.65}
-          .page{background:#fff;border:1px solid #d8e7f7;border-radius:26px;overflow:hidden;box-shadow:0 22px 60px rgba(3,18,37,.10)}
-          header{background:linear-gradient(135deg,#061a2e,#0b3558 58%,#18d4d4);color:#fff;padding:28px 30px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
-          h1{margin:10px 0 0;font-size:30px;line-height:1.25;font-weight:950;letter-spacing:0}
-          .brand{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.10);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:950;color:#9ff8ef}
-          .muted{border:1px solid rgba(255,255,255,.20);background:rgba(6,26,46,.30);border-radius:16px;padding:10px 12px;color:#d9fbff;font-size:12px;font-weight:850;text-align:start;max-width:260px}
+          body{font-family:var(--font-ui);background:var(--background);color:var(--foreground);margin:0;padding:24px;line-height:1.65}
+          .page{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-panel);overflow:hidden;box-shadow:var(--shadow-card)}
+          header{background:var(--primary);color:var(--primary-foreground);padding:28px 30px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+          h1{margin:10px 0 0;font-size:30px;line-height:1.25;font-weight:700;letter-spacing:0}
+          .brand{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--primary-foreground) 24%,transparent);background:color-mix(in srgb,var(--primary-foreground) 12%,transparent);border-radius:var(--radius-pill);padding:8px 12px;font-size:12px;font-weight:600;color:var(--primary-foreground)}
+          .muted{border:1px solid color-mix(in srgb,var(--primary-foreground) 22%,transparent);background:color-mix(in srgb,var(--foreground) 24%,transparent);border-radius:var(--radius-card);padding:10px 12px;color:var(--primary-foreground);font-size:12px;font-weight:500;text-align:start;max-width:260px}
           .content{padding:24px}
-          .section-title{margin:0 0 10px;color:#0b3558;font-size:14px;font-weight:950}
+          .section-title{margin:0 0 10px;color:var(--foreground);font-size:14px;font-weight:600}
           .meta,.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 0 18px}
-          .box{border:1px solid #d8e7f7;background:linear-gradient(135deg,#f8fbff,#eefaff);border-radius:16px;padding:13px 14px;min-height:76px}
-          .box span{display:block;color:#64748b;font-size:11px;font-weight:900}.box strong{display:block;margin-top:6px;color:#061a2e;font-size:14px;font-weight:950;overflow-wrap:anywhere}
-          .table-wrap{border:1px solid #d8e7f7;border-radius:18px;overflow:hidden;background:#fff}
-          table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border-bottom:1px solid #e3edf8;padding:11px 12px;text-align:start;font-size:11px;vertical-align:top;overflow-wrap:anywhere}th{background:#eef7ff;color:#0b3558;font-weight:950}.empty-cell{text-align:center;color:#64748b;font-weight:850;padding:26px}
-          footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e3edf8;background:#f8fbff;padding:14px 24px;color:#64748b;font-size:11px;font-weight:850}
-          @media print{body{background:white;padding:0}.page{border:0;border-radius:0;box-shadow:none}header{border-radius:0}.content{padding:18px}footer{padding:12px 18px}}
+          .box{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:13px 14px;min-height:76px}
+          .box span{display:block;color:var(--foreground-muted);font-size:11px;font-weight:500}.box strong{display:block;margin-top:6px;color:var(--foreground);font-size:14px;font-weight:600;overflow-wrap:anywhere}.totals strong{font-family:var(--font-data)}
+          .table-wrap{border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden;background:var(--surface)}
+          table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border-bottom:1px solid var(--border);padding:11px 12px;text-align:start;font-size:11px;vertical-align:top;overflow-wrap:anywhere}th{background:var(--surface-muted);color:var(--foreground);font-weight:600}.empty-cell{text-align:center;color:var(--foreground-muted);font-weight:500;padding:26px}
+          footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--border);background:var(--surface-muted);padding:14px 24px;color:var(--foreground-muted);font-size:11px;font-weight:500}
+          @media print{body{background:var(--surface);padding:0}.page{border:0;border-radius:0;box-shadow:none}.content{padding:18px}footer{padding:12px 18px}}
           @media(max-width:720px){body{padding:14px}header{display:grid;padding:22px}.content{padding:16px}.meta,.totals{grid-template-columns:1fr}}
         </style>
       </head>
@@ -140,7 +146,7 @@ export function printPdf<T>({ title, lang, columns, rows, totals = [], filters =
           </section>
           <footer><span>THE SFM</span><span>${escapeHtml(title)}</span></footer>
         </main>
-        <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>
+        <script>window.addEventListener('load',()=>{(document.fonts?.ready??Promise.resolve()).then(()=>setTimeout(()=>window.print(),250))});</script>
       </body>
     </html>
   `);

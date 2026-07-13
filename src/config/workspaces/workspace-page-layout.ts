@@ -41,6 +41,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/reports', variant: 'full', description: 'Financial reports' },
   { prefix: '/zakat', variant: 'full', description: 'Financial calculation workspace' },
   { prefix: '/khums', variant: 'full', description: 'Financial calculation workspace' },
+  { prefix: '/education/expenses', variant: 'full', description: 'Expense management data workspace' },
 
   // Discovery, directories, listings, news dashboards, and card-heavy tools.
   { prefix: '/investment-companies', variant: 'wide', description: 'Company directory' },
@@ -51,6 +52,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/companies', variant: 'wide', description: 'Company profile and discovery' },
   { prefix: '/business-hub', variant: 'wide', description: 'Business dashboard' },
   { prefix: '/investment-offers', variant: 'wide', description: 'Investment offer listing' },
+  { prefix: '/projects/ad-calculator', variant: 'standard', description: 'Advertising budget form and results' },
   { prefix: '/projects', variant: 'wide', description: 'Project listing' },
   { prefix: '/financial-theories', variant: 'wide', description: 'Investment research tools' },
   { prefix: '/sharia-stocks', variant: 'wide', description: 'Shariah screening and research' },
@@ -68,10 +70,12 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/tasks', variant: 'wide', description: 'Task workspace' },
   { prefix: '/today', variant: 'wide', description: 'Daily workspace' },
   { prefix: '/ai', variant: 'wide', description: 'AI research workspace' },
+  { prefix: '/education/investments', variant: 'wide', description: 'Investment education and discovery cards' },
+  { prefix: '/education/savings', variant: 'wide', description: 'Savings education and discovery cards' },
+  { prefix: '/site-map', variant: 'wide', description: 'Platform route directory' },
 
-  // Text-heavy application routes retain a readable measure.
+  // Only verified long-form readers retain a narrow reading measure.
   { prefix: '/ebooks/', variant: 'reading', description: 'Long-form educational reader' },
-  { prefix: '/education/', variant: 'reading', description: 'Long-form educational article' },
 
   // Forms, profile/settings, and normal management pages.
   { prefix: '/profile/companies', variant: 'wide', description: 'Owned company listing and management' },

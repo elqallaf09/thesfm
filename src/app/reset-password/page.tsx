@@ -84,7 +84,7 @@ const RECOVERY_STORAGE_KEY = 'sfm_password_recovery_active';
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<main style={{ minHeight: '100vh', background: '#EEF6FF' }} />}>
+    <Suspense fallback={<main style={{ minHeight: '100vh', background: 'var(--background)' }} />}>
       <ResetPasswordContent />
     </Suspense>
   );
@@ -250,16 +250,219 @@ function ResetPasswordContent() {
       </section>
 
       <style jsx global>{`
-        .reset-shell{min-height:100vh;background:radial-gradient(circle at 20% 10%,rgba(24,212,212,.16),transparent 30%),linear-gradient(180deg,#EEF6FF 0%,#F8FBFF 58%,#FFFFFF 100%);display:grid;place-items:center;padding:24px;font-family:Tajawal,Arial,sans-serif;color:#0B172A;overflow-x:hidden}
-        .reset-shell .reset-card{width:min(100%,460px);background:rgba(255,255,255,.95);border:1px solid rgba(29,140,255,.16);border-radius:var(--r-2xl);box-shadow:0 22px 70px rgba(3,18,37,.14);padding:24px;backdrop-filter:blur(18px);min-width:0}
-        .reset-shell .language-row{display:flex;justify-content:flex-end;margin-bottom:14px}.reset-shell .brand{text-align:center;margin-bottom:22px}.reset-shell .mark{margin:0 auto 12px}.reset-shell .brand h1{font-size:clamp(24px,4vw,30px);margin:0 0 8px;color:#061B33}.reset-shell .brand p{font-size:13px;color:#475569;line-height:1.7;margin:0}
-        .reset-shell .form{display:grid;gap:14px}.reset-shell .auth-field{display:grid;gap:7px;min-width:0}.reset-shell .auth-field>span{font-size:13px;font-weight:900;color:#0B2748}.reset-shell .input-wrap{min-height:52px;border:1.5px solid rgba(29,140,255,.22);background:#FFFFFF;border-radius:var(--r-md);display:flex;align-items:center;gap:10px;padding:0 13px;color:#1D8CFF;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.reset-shell .input-wrap:focus-within{border-color:#1D8CFF;background:#F8FBFF;box-shadow:0 0 0 4px rgba(29,140,255,.25)}
-        .reset-shell input{flex:1;border:0;background:transparent;outline:0;color:#0B172A;font:800 14px Tajawal,Arial,sans-serif;min-width:0;width:100%}.reset-shell .icon{border:0;background:transparent;color:#0B2748;display:grid;place-items:center;cursor:pointer;border-radius:999px;padding:4px}.reset-shell .icon:hover{color:#1D8CFF}.reset-shell .icon:focus-visible,.reset-shell .primary:focus-visible,.reset-shell .state-card a:focus-visible{outline:3px solid rgba(24,212,212,.35);outline-offset:3px}
-        .reset-shell .password-meter{display:grid;gap:8px}.reset-shell .meter-top{display:flex;justify-content:space-between;gap:12px;color:#334155;font-size:12px;font-weight:900}.reset-shell .meter-top strong.weak{color:#B91C1C}.reset-shell .meter-top strong.medium{color:#B45309}.reset-shell .meter-top strong.strong{color:#047857}.reset-shell .meter-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.reset-shell .meter-bars span{height:7px;border-radius:999px;background:rgba(100,116,139,.16)}.reset-shell .meter-bars span.on.weak{background:#EF4444}.reset-shell .meter-bars span.on.medium{background:#F59E0B}.reset-shell .meter-bars span.on.strong{background:#10B981}.reset-shell .password-meter p{margin:0;color:#64748B;font-size:12px;font-weight:800}
-        .reset-shell .primary,.reset-shell .state-card a{min-height:54px;border-radius:var(--r-lg);padding:0 18px;font:950 14px Tajawal,Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;background:linear-gradient(135deg,#061B33 0%,#1D8CFF 54%,#18D4D4 100%);border:0;color:#FFFFFF;text-decoration:none;box-shadow:0 14px 34px rgba(29,140,255,.28)}.reset-shell .primary:hover:not(:disabled),.reset-shell .state-card a:hover{transform:translateY(-2px);filter:saturate(1.08) brightness(1.02);box-shadow:0 16px 38px rgba(24,212,212,.22)}.reset-shell .primary:disabled{opacity:.72;cursor:not-allowed;transform:none;box-shadow:none}
-        .reset-shell .message{background:rgba(239,68,68,.08);color:#B91C1C;border:1px solid rgba(239,68,68,.18);border-radius:var(--r-md);padding:11px 13px;font-size:13px;font-weight:850;line-height:1.6}.reset-shell .message.ok{background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.24);color:#047857}
-        .reset-shell .state-card{border:1px solid rgba(29,140,255,.16);background:#F8FBFF;border-radius:var(--r-xl);padding:16px;display:grid;gap:12px;text-align:center;color:#334155;font-weight:850;line-height:1.7}.reset-shell .state-card svg{margin:auto;color:#B45309}.reset-shell .state-card p{margin:0}.reset-shell .state-card.success{background:#ECFDF5;border-color:rgba(16,185,129,.22);color:#047857}
-        @media(max-width:640px){.reset-shell{padding:16px;align-items:start}.reset-shell .reset-card{padding:20px;border-radius:var(--r-2xl);width:100%}.reset-shell .language-row{justify-content:center}.reset-shell .primary,.reset-shell .state-card a{width:100%}.reset-shell .brand{margin-bottom:18px}}
+        .reset-shell {
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          overflow-x: hidden;
+          background: var(--background);
+          color: var(--foreground);
+          font-family: var(--font-ui);
+        }
+        .reset-shell .reset-card {
+          width: min(100%, 460px);
+          min-width: 0;
+          padding: 24px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
+          background: var(--surface-elevated);
+          box-shadow: var(--shadow-lg);
+        }
+        .reset-shell .language-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 14px;
+        }
+        .reset-shell .brand {
+          margin-bottom: 22px;
+          text-align: center;
+        }
+        .reset-shell .mark { margin: 0 auto 12px; }
+        .reset-shell .brand h1 {
+          margin: 0 0 8px;
+          color: var(--foreground);
+          font-size: clamp(24px, 4vw, 30px);
+          font-weight: 700;
+          line-height: 1.3;
+        }
+        .reset-shell .brand p {
+          margin: 0;
+          color: var(--foreground-secondary);
+          font-size: 13px;
+          font-weight: 400;
+          line-height: 1.7;
+        }
+        .reset-shell .form { display: grid; gap: 14px; }
+        .reset-shell .auth-field {
+          display: grid;
+          gap: 7px;
+          min-width: 0;
+        }
+        .reset-shell .auth-field > span {
+          color: var(--foreground-secondary);
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .reset-shell .input-wrap {
+          min-height: 52px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 13px;
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-control);
+          background: var(--control-background);
+          color: var(--primary);
+          transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease;
+        }
+        .reset-shell .input-wrap:focus-within {
+          border-color: var(--focus-ring);
+          background: var(--surface);
+          box-shadow: var(--focus-shadow);
+        }
+        .reset-shell input {
+          flex: 1;
+          width: 100%;
+          min-width: 0;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: var(--foreground);
+          font: 400 14px var(--font-ui);
+        }
+        .reset-shell .icon {
+          display: grid;
+          place-items: center;
+          padding: 6px;
+          border: 0;
+          border-radius: var(--radius-pill);
+          background: transparent;
+          color: var(--foreground-secondary);
+          cursor: pointer;
+        }
+        .reset-shell .icon:hover {
+          background: var(--surface-hover);
+          color: var(--primary);
+        }
+        .reset-shell .icon:focus-visible,
+        .reset-shell .primary:focus-visible,
+        .reset-shell .state-card a:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 3px;
+          box-shadow: var(--focus-shadow);
+        }
+        .reset-shell .password-meter { display: grid; gap: 8px; }
+        .reset-shell .meter-top {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          color: var(--foreground-secondary);
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .reset-shell .meter-top strong { font-weight: 600; }
+        .reset-shell .meter-top strong.weak { color: var(--danger); }
+        .reset-shell .meter-top strong.medium { color: var(--warning); }
+        .reset-shell .meter-top strong.strong { color: var(--success); }
+        .reset-shell .meter-bars {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 5px;
+        }
+        .reset-shell .meter-bars span {
+          height: 7px;
+          border-radius: var(--radius-pill);
+          background: var(--border);
+        }
+        .reset-shell .meter-bars span.on.weak { background: var(--danger); }
+        .reset-shell .meter-bars span.on.medium { background: var(--warning); }
+        .reset-shell .meter-bars span.on.strong { background: var(--success); }
+        .reset-shell .password-meter p {
+          margin: 0;
+          color: var(--foreground-muted);
+          font-size: 12px;
+          font-weight: 400;
+          line-height: 1.6;
+        }
+        .reset-shell .primary,
+        .reset-shell .state-card a {
+          min-height: 54px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 18px;
+          border: 1px solid var(--primary);
+          border-radius: var(--radius-card);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow: var(--shadow-sm);
+          font: 600 14px var(--font-ui);
+          text-decoration: none;
+          cursor: pointer;
+          transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+        }
+        .reset-shell .primary:hover:not(:disabled),
+        .reset-shell .state-card a:hover {
+          border-color: var(--primary-hover);
+          background: var(--primary-hover);
+          box-shadow: var(--shadow-md);
+          transform: translateY(-1px);
+        }
+        .reset-shell .primary:disabled {
+          border-color: var(--border);
+          background: var(--control-disabled);
+          color: var(--foreground-subtle);
+          box-shadow: none;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .reset-shell .message {
+          padding: 11px 13px;
+          border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+          border-radius: var(--radius-control);
+          background: var(--danger-soft);
+          color: var(--danger);
+          font-size: 13px;
+          font-weight: 500;
+          line-height: 1.6;
+        }
+        .reset-shell .message.ok {
+          border-color: color-mix(in srgb, var(--success) 30%, var(--border));
+          background: var(--success-soft);
+          color: var(--success);
+        }
+        .reset-shell .state-card {
+          display: grid;
+          gap: 12px;
+          padding: 16px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
+          color: var(--foreground-secondary);
+          text-align: center;
+          font-weight: 400;
+          line-height: 1.7;
+        }
+        .reset-shell .state-card svg {
+          margin: auto;
+          color: var(--warning);
+        }
+        .reset-shell .state-card p { margin: 0; }
+        .reset-shell .state-card.success {
+          border-color: color-mix(in srgb, var(--success) 30%, var(--border));
+          background: var(--success-soft);
+          color: var(--success);
+        }
+        @media (max-width: 640px) {
+          .reset-shell { align-items: start; padding: 16px; }
+          .reset-shell .reset-card { width: 100%; padding: 20px; }
+          .reset-shell .language-row { justify-content: center; }
+          .reset-shell .primary,
+          .reset-shell .state-card a { width: 100%; }
+          .reset-shell .brand { margin-bottom: 18px; }
+        }
       `}</style>
     </main>
   );

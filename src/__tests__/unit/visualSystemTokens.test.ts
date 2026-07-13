@@ -10,6 +10,8 @@ const normalizedGlobals = globals.replace(/\r\n/g, '\n');
 const layout = read('src/app/layout.tsx');
 const loginPage = read('src/app/(auth)/login/page.tsx');
 const loginStyles = loginPage.slice(loginPage.indexOf('<style jsx global>'));
+const landingPage = read('src/app/page.tsx');
+const landingStyles = landingPage.slice(landingPage.indexOf('const landingStyles = `'));
 const traderAccessGate = read('src/app/thesfm-trader-own/TraderAccessGate.tsx');
 const appHeader = read('src/components/AppHeader.tsx');
 const shariaNewsStyles = read('src/components/shariah-stocks/ShariahStocksNewsPage.module.css');
@@ -113,6 +115,31 @@ describe('central visual-system contract', () => {
     }
   });
 
+  it('keeps dark interactive surfaces on the canonical dark palette', () => {
+    const dark = themeBlock('.dark');
+
+    expect(dark).toContain('--surface-hover: #132D47;');
+    expect(dark).toContain('--surface-active: #12365A;');
+    expect(dark).toContain('--surface-disabled: #14283B;');
+  });
+
+  it('centralizes theme-safe skeleton and print-view colors', () => {
+    const light = themeBlock(':root');
+
+    expect(light).toContain('--skeleton-gradient: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));');
+    expect(tokens).toContain('--active-indicator-shadow: inset 0 -3px 0 var(--primary);');
+    for (const token of [
+      'print-background',
+      'print-surface',
+      'print-foreground',
+      'print-foreground-secondary',
+      'print-foreground-muted',
+      'print-border',
+    ]) {
+      expect(light, token).toMatch(new RegExp(`--${token}\\s*:`));
+    }
+  });
+
   it('keeps core text, button, accent, and sidebar pairs at WCAG AA contrast', () => {
     for (const block of [themeBlock(':root'), themeBlock('.dark')]) {
       const pairs = [
@@ -141,7 +168,7 @@ describe('central visual-system contract', () => {
     }
   });
 
-  it('bridges popovers, tooltips, shadcn colors, and active legacy aliases', () => {
+  it('bridges popovers, tooltips, and shadcn colors without a compatibility palette', () => {
     for (const token of [
       'popover',
       'popover-foreground',
@@ -150,16 +177,25 @@ describe('central visual-system contract', () => {
       'card',
       'input',
       'ring',
-      'sfm-card-bg',
-      'sfm-canvas',
-      'sfm-surface',
-      'sfm-secondary',
-      'sfm-success',
     ]) {
       expect(themes, token).toMatch(new RegExp(`--${token}\\s*:`));
     }
     expect(globals).toContain('--color-popover: var(--popover)');
     expect(globals).toContain('--color-tooltip: var(--tooltip)');
+  });
+
+  it('rejects obsolete foundation aliases and exposes shared layout geometry', () => {
+    const foundation = `${themes}\n${tokens}`;
+
+    expect(tokens).toContain('--layout-section-gap: var(--space-5);');
+    expect(tokens).toContain('--layout-card-gap: var(--space-4);');
+    expect(tokens).toContain('--layout-card-radius: var(--radius-panel);');
+    expect(foundation).not.toMatch(/--sfm-light-[a-z0-9-]+\s*:/i);
+    expect(foundation).not.toMatch(/--sfm-[a-z0-9-]+\s*:/i);
+    expect(tokens).not.toMatch(/--r-(?:xs|sm|md|lg|xl|2xl)\s*:/i);
+    expect(tokens).not.toMatch(/--font-(?:cairo|tajawal|ibm-plex-arabic)\s*:/i);
+    expect(themes).not.toMatch(/--(?:background-(?:page|subtle|muted)|surface-raised|text-(?:primary|secondary|muted|disabled|inverse)|border-(?:default|subtle|2|dark)|brand-[a-z0-9-]+|(?:success|warning|danger|info)-muted|neutral(?:-muted)?)\s*:/i);
+    expect(themes).not.toMatch(/--(?:bg(?:-2|-card|-input|-muted)?|text-(?:1|2|3|white|white-2|white-3)|green(?:-bg)?|red(?:-bg)?|amber(?:-bg)?|blue(?:-bg)?)\s*:/i);
   });
 
   it('uses IBM Plex Sans Arabic globally and scopes IBM Plex Mono to data roles', () => {
@@ -175,10 +211,9 @@ describe('central visual-system contract', () => {
     expect(bodyTag).not.toContain('ibmPlexMono.variable');
     expect(tokens).toContain('--font-ui: var(--font-ibm-plex-sans-arabic');
     expect(tokens).toContain('--font-data: var(--font-ibm-plex-mono');
-    expect(globals).toContain('--font-sans: "IBM Plex Sans Arabic", "IBM Plex Sans Arabic Fallback"');
-    expect(globals).toContain('--font-mono: "IBM Plex Mono", "IBM Plex Mono Fallback"');
-    expect(globals).not.toContain('--font-sans: var(--font-ui)');
-    expect(globals).not.toContain('--font-mono: var(--font-data)');
+    expect(globals).toContain('--font-sans: var(--font-ui)');
+    expect(globals).toContain('--font-mono: var(--font-data)');
+    expect(globals).not.toMatch(/--font-(?:sans|mono):\s*["']/);
     expect(globals).toContain('font-family:var(--font-ui)');
     expect(globals).toContain('font-family: var(--font-data) !important');
     expect(globals).not.toMatch(/body\s*\{[^}]*font-family\s*:\s*var\(--font-data\)/);
@@ -244,26 +279,25 @@ describe('central visual-system contract', () => {
     expect(globals).not.toContain('body.energy-route-active .sfm-app-layout');
   });
 
-  it('provides a semantic secondary news accent with safe fallbacks', () => {
+  it('keeps news surfaces on direct semantic tokens', () => {
     const shellStart = globals.indexOf('.news-page-shell[data-news-page-shell="true"] {');
-    const shellEnd = globals.indexOf('.news-page-shell[data-news-page-shell="true"],', shellStart);
-    const newsShellTokens = globals.slice(shellStart, shellEnd);
+    const newsLayer = globals.slice(shellStart);
 
-    expect(globals).toContain('--news-accent-2: var(--accent)');
-    expect(globals).toContain('var(--news-accent-2, var(--primary))');
-    expect(shariaNewsStyles).toContain('--sharia-primary: var(--primary)');
-    expect(shariaNewsStyles).toContain('--sharia-accent: var(--accent)');
-    expect(shariaNewsStyles).toContain('background: var(--sharia-surface)');
+    expect(shellStart).toBeGreaterThanOrEqual(0);
+    expect(globals).not.toMatch(/--news-[a-z0-9-]+\s*:|var\(--news-/i);
+    expect(shariaNewsStyles).toContain('background: var(--surface)');
+    expect(shariaNewsStyles).toContain('color: var(--foreground)');
+    expect(shariaNewsStyles).not.toMatch(/--sharia-[a-z-]+\s*:|var\(--sharia-/i);
+    expect(shariaNewsStyles).toContain('background: var(--skeleton-gradient)');
     expect(shariaNewsStyles).not.toMatch(/#[0-9a-f]{3,8}|rgba\(|\bTajawal\b|\bArial\b/i);
-    expect(globals).not.toContain('var(--news-accent-2)');
-    expect(shariaNewsStyles).not.toContain('var(--news-accent-2)');
-    expect(newsShellTokens).toContain('--news-bg: var(--background)');
-    expect(newsShellTokens).toContain('--news-card: var(--surface)');
-    expect(newsShellTokens).toContain('--news-accent: var(--primary)');
-    expect(newsShellTokens).toContain('font-family: var(--font-ui)');
-    expect(newsShellTokens).not.toMatch(/\bTajawal\b|#[0-9a-f]{3,8}|rgba\(/i);
-    expect(globals).toContain('--news-bg-base: var(--background) !important');
-    expect(globals).toContain('--news-bg-pattern: none !important');
+    expect(shariaNewsStyles).not.toMatch(/(?:linear|radial|conic)-gradient\(|:global\(\.dark\)|font-weight:\s*(?:8\d{2}|9\d{2})/i);
+    expect(newsLayer).toContain('color: var(--foreground)');
+    expect(newsLayer).toContain('font-family: var(--font-ui)');
+    expect(newsLayer).toContain('gap: var(--workspace-page-section-gap)');
+    expect(newsLayer).toContain('background: var(--surface) !important');
+    expect(newsLayer).toContain('border-radius: var(--radius-panel) !important');
+    expect(newsLayer).toContain('box-shadow: var(--shadow-xs) !important');
+    expect(newsLayer).toContain('background: var(--hero-gradient) !important');
   });
 
   it('keeps authentication and trader access states on the semantic contract', () => {
@@ -276,6 +310,20 @@ describe('central visual-system contract', () => {
     expect(traderAccessGate).toContain('background:var(--surface-elevated)');
     expect(traderAccessGate).toContain('outline:2px solid var(--focus-ring)');
     expect(traderAccessGate).not.toMatch(/#[0-9a-f]{3,8}|rgba\(|(?:linear|radial)-gradient/i);
+  });
+
+  it('keeps the public homepage on shared semantic colors and typography', () => {
+    expect(landingStyles).not.toMatch(/--landing-[a-z0-9-]+\s*:|var\(--landing-/i);
+    expect(landingStyles).toContain('color: var(--foreground)');
+    expect(landingStyles).toContain('color: var(--foreground-secondary)');
+    expect(landingStyles).toContain('color: var(--foreground-muted)');
+    expect(landingStyles).toContain('font-family: var(--font-ui)');
+    expect(landingStyles).toContain('background: var(--surface-elevated)');
+    expect(landingStyles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|\bTajawal\b|\bArial\b/i);
+    expect(landingStyles).not.toContain('html.dark .landing-page');
+    expect(landingStyles).not.toMatch(/(?:linear|radial|conic)-gradient\(/i);
+    expect(landingStyles.match(/background: var\(--hero-gradient\);/g)).toHaveLength(1);
+    expect(landingPage).toContain('data-financial-value="true"');
   });
 
   it('keeps navigation and shared primitives flat and theme-safe', () => {
@@ -296,7 +344,17 @@ describe('central visual-system contract', () => {
     expect(sheet).toContain('shadow-[var(--shadow-popover)]');
     expect(globals).toContain('--color-sidebar-ring: var(--focus-ring)');
     expect(sidebarPrimitive).not.toContain('hsl(var(--sidebar-');
-    expect(sidebarPrimitive).toContain('shadow-[0_0_0_1px_var(--sidebar-border)]');
-    expect(sidebarPrimitive).toContain('hover:shadow-[0_0_0_1px_var(--sidebar-accent)]');
+    expect(sidebarPrimitive).toContain('group-data-[variant=floating]:border-sidebar-border');
+    expect(sidebarPrimitive).toContain('group-data-[variant=floating]:shadow-[var(--shadow-card)]');
+    expect(sidebarPrimitive).toContain('border border-sidebar-border bg-background hover:border-sidebar-accent');
+  });
+
+  it('keeps normal news cards and ticker controls on flat semantic surfaces', () => {
+    const newsStart = globals.indexOf('.news-page-shell[data-news-page-shell="true"] {');
+    const newsLayer = globals.slice(newsStart);
+
+    expect(newsLayer).toContain('background: var(--surface) !important');
+    expect(newsLayer).toContain('background: var(--hero-gradient) !important');
+    expect(newsLayer).not.toMatch(/--news-[a-z0-9-]+\s*:|var\(--news-/i);
   });
 });

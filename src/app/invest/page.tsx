@@ -66,7 +66,13 @@ const ConfirmDeleteModal = dynamic(
 
 const TYPES: InvestmentType[] = ['stocks', 'fund', 'crypto', 'gold', 'silver', 'realEstate', 'cash', 'project', 'other'];
 const RISKS: RiskLevel[] = ['low', 'medium', 'high'];
-const CHART_COLORS = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#6366F1', '#0B3A66', '#14B8A6', '#94A3B8'];
+const CHART_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+];
 const RISK_SCORE: Record<RiskLevel, number> = { low: 1, medium: 2, high: 3 };
 const LIVE_PRICE_REFRESH_MS = 15_000;
 const LIVE_PRICE_BATCH_CONCURRENCY = 4;

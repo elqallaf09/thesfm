@@ -8,8 +8,6 @@
   "scope": "/thesfm-trader-own/app/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#05090d",
-  "theme_color": "#05090d",
   "categories": ["finance", "productivity"],
   "icons": [
     {

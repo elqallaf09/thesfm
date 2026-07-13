@@ -70,21 +70,21 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
       })}
       <style jsx global>{`
         .ops-root-cause-list { display: grid; gap: 8px; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--sfm-muted); font-size: 13px; border: 1px dashed var(--sfm-border); border-radius: var(--r-md); }
-        .ops-root-cause-item { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-card); overflow: hidden; }
+        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
+        .ops-root-cause-item { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
         .ops-root-cause-item summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
         .ops-root-cause-item summary::-webkit-details-marker { display: none; }
         .ops-root-cause-icon { flex: 0 0 auto; }
-        .ops-root-cause-item.tone-danger .ops-root-cause-icon { color: var(--red); }
-        .ops-root-cause-item.tone-warning .ops-root-cause-icon { color: var(--amber); }
-        .ops-root-cause-item.tone-info .ops-root-cause-icon { color: var(--blue); }
-        .ops-root-cause-problem { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--sfm-heading); font-size: 13px; font-weight: 850; }
-        .ops-root-cause-problem b { font-weight: 800; color: var(--sfm-muted-readable); background: var(--sfm-light-card); border-radius: var(--r-sm); padding: 1px 7px; font-size: 12px; }
+        .ops-root-cause-item.tone-danger .ops-root-cause-icon { color: var(--danger); }
+        .ops-root-cause-item.tone-warning .ops-root-cause-icon { color: var(--warning); }
+        .ops-root-cause-item.tone-info .ops-root-cause-icon { color: var(--info); }
+        .ops-root-cause-problem { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--foreground); font-size: 13px; font-weight: 600; }
+        .ops-root-cause-problem b { font-weight: 500; color: var(--foreground-secondary); background: var(--surface-muted); border-radius: var(--radius-sm); padding: 1px 7px; font-size: 12px; }
         .ops-root-cause-item dl { margin: 0; padding: 0 14px 14px; display: grid; gap: 8px; }
         .ops-root-cause-item dl > div { display: grid; grid-template-columns: minmax(120px, 0.6fr) 1fr; gap: 8px; font-size: 12.5px; }
-        .ops-root-cause-item dt { color: var(--sfm-muted); font-weight: 800; }
-        .ops-root-cause-item dd { margin: 0; color: var(--sfm-body); overflow-wrap: anywhere; }
-        .ops-root-cause-item code { background: var(--sfm-light-card); border-radius: var(--r-xs); padding: 1px 6px; font-size: 11.5px; }
+        .ops-root-cause-item dt { color: var(--foreground-muted); font-weight: 500; }
+        .ops-root-cause-item dd { margin: 0; color: var(--foreground-secondary); overflow-wrap: anywhere; }
+        .ops-root-cause-item code { background: var(--surface-muted); border-radius: var(--radius-xs); padding: 1px 6px; font-size: 11.5px; }
         @media (max-width: 560px) {
           .ops-root-cause-item dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
         }

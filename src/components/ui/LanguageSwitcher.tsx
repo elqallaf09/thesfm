@@ -304,7 +304,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           overflow-y: auto;
           overflow-x: hidden;
           overscroll-behavior: contain;
-          border-radius: var(--r-xl);
+          border-radius: var(--radius-card);
           border: 1px solid var(--border);
           background: var(--popover);
           color: var(--popover-foreground);
@@ -329,7 +329,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         .sfm-language-option {
           min-height: 40px;
           border: 1px solid transparent;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           background: transparent;
           color: inherit;
           display: flex;
@@ -396,7 +396,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             max-width: 86px;
             min-height: 40px;
             gap: 6px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             padding-inline: 10px;
           }
           .sfm-language-dropdown[data-compact='true'] .sfm-language-label-full {

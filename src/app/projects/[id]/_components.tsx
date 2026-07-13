@@ -353,7 +353,7 @@ export function EmptyState({ title, button, onClick }: { title: string; button: 
   return (
     <div className="empty-state">
       <article>
-        <FolderKanban size={42} color="var(--sfm-primary)" />
+        <FolderKanban size={42} color="var(--primary)" />
         <h1>{title}</h1>
         <button type="button" onClick={onClick}>{button}</button>
       </article>

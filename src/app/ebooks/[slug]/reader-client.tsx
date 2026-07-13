@@ -152,11 +152,10 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         .ebook-reader-shell {
           min-height: 100vh;
           display: flex;
-          background:
-            radial-gradient(circle at top right, rgba(24, 212, 212, 0.14), transparent 34rem),
-            linear-gradient(180deg, #f6fbff 0%, #eef7fb 48%, #f8fbff 100%);
+          background: var(--background);
           overflow-x: hidden;
-          color: #0f172a;
+          color: var(--foreground);
+          font-family: var(--font-ui);
         }
 
         .ebook-reader-shell .sfm-dashboard-page-shell {
@@ -165,7 +164,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         }
 
         .ebook-reader-content {
-          width: min(1500px, 100%);
+          width: 100%;
           margin: 0 auto;
           padding: 28px clamp(16px, 3vw, 36px) 64px;
           display: grid;
@@ -181,10 +180,10 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         .ebook-reader-hero,
         .ebook-reader-frame-card,
         .ebook-reader-related {
-          border-radius: 30px;
-          border: 1px solid rgba(15, 118, 110, 0.14);
-          background: rgba(255, 255, 255, 0.88);
-          box-shadow: 0 18px 44px rgba(15, 37, 64, 0.08);
+          border-radius: var(--radius-panel);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
         }
 
         .ebook-reader-hero {
@@ -206,24 +205,25 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          color: #0f766e;
-          font-weight: 950;
+          color: var(--accent);
+          font-weight: 600;
           font-size: 13px;
         }
 
         .ebook-reader-title h1,
         .ebook-reader-section-head h2 {
           margin: 0;
-          color: #0f172a;
+          color: var(--foreground);
           font-size: clamp(26px, 4vw, 46px);
+          font-weight: 600;
           line-height: 1.2;
         }
 
         .ebook-reader-title p {
           margin: 0;
           max-width: 820px;
-          color: #475569;
-          font-weight: 780;
+          color: var(--foreground-secondary);
+          font-weight: 400;
           line-height: 1.8;
         }
 
@@ -234,23 +234,38 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           justify-content: center;
           gap: 8px;
           min-height: 44px;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-control);
           padding: 0 15px;
           text-decoration: none;
-          font: 950 13px Tajawal, Arial, sans-serif;
+          font: 600 13px/1.5 var(--font-ui);
           white-space: nowrap;
         }
 
         .ebook-reader-back {
-          border: 1px solid rgba(15, 118, 110, 0.18);
-          color: #0f766e;
-          background: rgba(255, 255, 255, 0.78);
+          border: 1px solid var(--border);
+          color: var(--foreground);
+          background: var(--surface);
         }
 
         .ebook-reader-download {
-          color: #ffffff;
-          background: linear-gradient(135deg, #1d8cff, #18d4d4);
-          box-shadow: 0 14px 28px rgba(29, 140, 255, 0.22);
+          color: var(--primary-foreground);
+          background: var(--primary);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .ebook-reader-back:hover {
+          background: var(--surface-hover);
+          border-color: var(--border-strong);
+        }
+
+        .ebook-reader-download:hover {
+          background: var(--primary-hover);
+        }
+
+        .ebook-reader-back:focus-visible,
+        .ebook-reader-download:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
 
         .ebook-reader-meta {
@@ -263,23 +278,24 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           display: grid;
           gap: 8px;
           padding: 18px;
-          background: rgba(255, 255, 255, 0.90);
-          border-color: rgba(15, 118, 110, 0.14);
+          background: var(--surface);
+          border-color: var(--border);
         }
 
         .ebook-reader-meta-card svg {
-          color: #0f766e;
+          color: var(--accent);
         }
 
         .ebook-reader-meta-card span {
-          color: #64748b;
+          color: var(--foreground-muted);
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
         }
 
         .ebook-reader-meta-card strong {
-          color: #0f172a;
+          color: var(--foreground);
           font-size: 18px;
+          font-weight: 600;
           line-height: 1.4;
         }
 
@@ -292,14 +308,14 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           width: 100%;
           min-height: 78vh;
           border: 0;
-          border-radius: var(--r-2xl);
-          background: #f1f5f9;
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
         }
 
         .ebook-reader-frame-card p {
           margin: 12px 4px 0;
-          color: #64748b;
-          font-weight: 800;
+          color: var(--foreground-muted);
+          font-weight: 400;
           line-height: 1.7;
         }
 
@@ -326,10 +342,10 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           display: grid;
           gap: 10px;
           padding: 18px;
-          border-radius: var(--r-2xl);
-          border: 1px solid rgba(15, 118, 110, 0.14);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(204, 251, 241, 0.38));
-          color: #0f172a;
+          border-radius: var(--radius-card);
+          border: 1px solid var(--border);
+          background: var(--surface-muted);
+          color: var(--foreground);
           text-decoration: none;
           transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
@@ -337,14 +353,15 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         .ebook-reader-related-card:hover,
         .ebook-reader-related-card:focus-visible {
           transform: translateY(-2px);
-          border-color: rgba(14, 165, 233, 0.42);
-          box-shadow: 0 18px 38px rgba(15, 37, 64, 0.12);
-          outline: none;
+          border-color: var(--primary);
+          box-shadow: var(--shadow-md);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
 
         .ebook-reader-related-card svg,
         .ebook-reader-related-card span {
-          color: #0f766e;
+          color: var(--accent);
         }
 
         .ebook-reader-related-card strong {
@@ -352,48 +369,14 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         }
 
         .ebook-reader-related-card span {
-          font-weight: 950;
+          font-weight: 600;
           font-size: 13px;
         }
 
-        .dark .ebook-reader-shell {
-          background:
-            radial-gradient(circle at top right, rgba(34, 211, 238, 0.12), transparent 34rem),
-            linear-gradient(180deg, #071427 0%, #0a1422 56%, #071427 100%);
-          color: #e8eef6;
-        }
-
-        .dark .ebook-reader-hero,
-        .dark .ebook-reader-frame-card,
-        .dark .ebook-reader-related,
-        .dark .ebook-reader-meta-card {
-          background: rgba(15, 29, 49, 0.88);
-          border-color: rgba(167, 243, 240, 0.18);
-          color: #e8eef6;
-          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-        }
-
-        .dark .ebook-reader-title h1,
-        .dark .ebook-reader-section-head h2,
-        .dark .ebook-reader-meta-card strong,
-        .dark .ebook-reader-related-card {
-          color: #e8eef6;
-        }
-
-        .dark .ebook-reader-title p,
-        .dark .ebook-reader-frame-card p,
-        .dark .ebook-reader-meta-card span {
-          color: #b8c7d9;
-        }
-
-        .dark .ebook-reader-back,
-        .dark .ebook-reader-related-card {
-          background: rgba(19, 36, 58, 0.86);
-          border-color: rgba(167, 243, 240, 0.18);
-        }
-
-        .dark .ebook-reader-frame {
-          background: #13243a;
+        @media (prefers-reduced-motion: reduce) {
+          .ebook-reader-related-card { transition: none; }
+          .ebook-reader-related-card:hover,
+          .ebook-reader-related-card:focus-visible { transform: none; }
         }
 
         @media (max-width: 980px) {

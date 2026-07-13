@@ -1,9 +1,8 @@
 /*
  * The SFM semantic colour system.
  *
- * Components consume these intent-based tokens. The compatibility aliases at
- * the end of each theme keep established routes working while they migrate to
- * the semantic names; they do not introduce a second palette.
+ * Components consume these intent-based tokens directly so light and dark
+ * mode share one auditable visual language.
  */
 
 :root {
@@ -94,6 +93,15 @@
   --table-row-selected: var(--primary-soft);
   --skeleton-base: #E2E8F0;
   --skeleton-highlight: #F8FAFC;
+  --skeleton-gradient: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+
+  /* Print views stay legible even when the active application theme is dark. */
+  --print-background: #FFFFFF;
+  --print-surface: #FFFFFF;
+  --print-foreground: #0F2742;
+  --print-foreground-secondary: #334155;
+  --print-foreground-muted: #64748B;
+  --print-border: #CBD5E1;
 
   /* Intentional brand hero only. Normal controls and cards remain flat. */
   --hero-gradient-start: #0F2742;
@@ -136,135 +144,6 @@
   --sidebar-accent: var(--sidebar-hover);
   --sidebar-accent-foreground: var(--sidebar-foreground);
 
-  /* Existing SFM compatibility aliases */
-  --background-page: var(--background);
-  --background-subtle: var(--surface-muted);
-  --background-muted: var(--surface-muted);
-  --surface-raised: var(--surface-elevated);
-  --text-primary: var(--foreground);
-  --text-secondary: var(--foreground-secondary);
-  --text-muted: var(--foreground-muted);
-  --text-disabled: var(--foreground-subtle);
-  --text-inverse: var(--foreground-inverse);
-  --border-default: var(--border);
-  --border-subtle: var(--border);
-  --brand-primary: var(--primary);
-  --brand-primary-hover: var(--primary-hover);
-  --brand-primary-active: var(--primary-active);
-  --brand-secondary: var(--accent);
-  --brand-accent: var(--accent);
-  --success-muted: var(--success-soft);
-  --warning-muted: var(--warning-soft);
-  --danger-muted: var(--danger-soft);
-  --info-muted: var(--info-soft);
-  --neutral: var(--foreground-muted);
-  --neutral-muted: var(--surface-muted);
-
-  --sfm-light-background: var(--background);
-  --sfm-light-surface: var(--surface);
-  --sfm-light-surface-elevated: var(--surface-elevated);
-  --sfm-light-card: var(--surface);
-  --sfm-light-card-primary: var(--surface-muted);
-  --sfm-light-card-secondary: var(--surface-muted);
-  --sfm-light-sidebar: var(--sidebar-background);
-  --sfm-light-header: var(--surface);
-  --sfm-light-footer: var(--surface-muted);
-  --sfm-light-text-primary: var(--foreground);
-  --sfm-light-text-secondary: var(--foreground-secondary);
-  --sfm-light-text-muted: var(--foreground-muted);
-  --sfm-light-border-primary: var(--border);
-  --sfm-light-border-secondary: var(--border);
-  --sfm-light-divider: var(--divider);
-  --sfm-light-chart-grid: var(--chart-grid);
-  --sfm-light-primary: var(--primary);
-  --sfm-light-primary-hover: var(--primary-hover);
-  --sfm-light-primary-active: var(--primary-active);
-  --sfm-light-secondary: var(--accent);
-  --sfm-light-accent: var(--accent);
-  --sfm-light-success: var(--success);
-  --sfm-light-success-soft: var(--success-soft);
-  --sfm-light-warning: var(--warning);
-  --sfm-light-warning-soft: var(--warning-soft);
-  --sfm-light-danger: var(--danger);
-  --sfm-light-danger-soft: var(--danger-soft);
-  --sfm-light-info: var(--info);
-  --sfm-light-info-soft: var(--info-soft);
-  --sfm-light-focus-color: var(--focus-ring);
-  --sfm-light-focus-ring: var(--focus-shadow);
-
-  --sfm-deep-navy: #0F2742;
-  --sfm-primary-dark: #123D68;
-  --sfm-midnight: #17466F;
-  --sfm-card-dark: #1D5688;
-  --sfm-primary: var(--primary);
-  --sfm-primary-hover: var(--primary-hover);
-  --sfm-primary-active: var(--primary-active);
-  --sfm-accent: var(--accent);
-  --sfm-soft-cyan: var(--accent);
-  --sfm-background: var(--background);
-  --sfm-card: var(--surface);
-  --sfm-card-bg: var(--surface);
-  --sfm-canvas: var(--background);
-  --sfm-surface: var(--surface-muted);
-  --sfm-secondary: var(--foreground-secondary);
-  --sfm-success: var(--success);
-  --sfm-card-elevated: var(--surface-elevated);
-  --sfm-card-foreground: var(--foreground);
-  --sfm-input-bg: var(--control-background);
-  --sfm-foreground: var(--foreground);
-  --sfm-heading: var(--foreground);
-  --sfm-body: var(--foreground-secondary);
-  --sfm-muted: var(--foreground-muted);
-  --sfm-muted-readable: var(--foreground-secondary);
-  --sfm-border: var(--border);
-  --sfm-border-strong: var(--border-strong);
-  --sfm-surface-hover: var(--surface-hover);
-  --sfm-focus-ring: var(--focus-shadow);
-  --sfm-focus-ring-strong: color-mix(in srgb, var(--focus-ring) 48%, transparent);
-  --sfm-interactive-shadow: var(--shadow-md);
-  --sfm-interactive-glow: var(--shadow-md);
-  --sfm-sidebar: var(--sidebar-background);
-  --sfm-sidebar-active: var(--sidebar-active);
-  --sfm-hero-gradient: var(--hero-gradient);
-  --sfm-page-gradient: var(--background);
-
-  --bg: var(--background);
-  --bg-2: var(--surface-muted);
-  --bg-card: var(--surface);
-  --bg-input: var(--control-background);
-  --bg-muted: var(--surface-muted);
-  --text-1: var(--foreground);
-  --text-2: var(--foreground-secondary);
-  --text-3: var(--foreground-muted);
-  --text-gold: var(--primary);
-  --text-white: var(--foreground-inverse);
-  --text-white-2: var(--hero-foreground-muted);
-  --text-white-3: var(--hero-foreground-muted);
-  --green: var(--success);
-  --green-bg: var(--success-soft);
-  --red: var(--danger);
-  --red-bg: var(--danger-soft);
-  --amber: var(--warning);
-  --amber-bg: var(--warning-soft);
-  --blue: var(--info);
-  --blue-bg: var(--info-soft);
-  --border-2: var(--border-strong);
-  --border-dark: var(--border);
-
-  /* Legacy names retained as semantic aliases, never as a legacy palette. */
-  --gold: var(--primary);
-  --gold-2: var(--accent);
-  --gold-3: var(--primary-hover);
-  --gold-pale: var(--primary-soft);
-  --gold-border: color-mix(in srgb, var(--primary) 28%, transparent);
-  --brown: var(--foreground);
-  --brown-2: var(--sfm-primary-dark);
-  --brown-3: var(--sfm-deep-navy);
-  --navy: var(--sfm-deep-navy);
-  --navy-2: var(--sfm-primary-dark);
-  --navy-3: var(--sfm-midnight);
-  --navy-light: var(--primary-soft);
-  --shadow-gold: var(--shadow-md);
 }
 
 .dark {
@@ -277,8 +156,6 @@
   --surface-hover: #132D47;
   --surface-active: #12365A;
   --surface-disabled: #14283B;
-  --popover: var(--surface-elevated);
-  --popover-foreground: var(--foreground);
   --tooltip: var(--surface-elevated);
   --tooltip-foreground: var(--foreground);
 
@@ -353,90 +230,4 @@
   --hero-foreground: #FFFFFF;
   --hero-foreground-muted: #CBD5E1;
 
-  /* Compatibility aliases that must follow the active theme. */
-  --sfm-light-background: var(--background);
-  --sfm-light-surface: var(--surface);
-  --sfm-light-surface-elevated: var(--surface-elevated);
-  --sfm-light-card: var(--surface);
-  --sfm-light-card-primary: var(--surface-muted);
-  --sfm-light-card-secondary: var(--surface-muted);
-  --sfm-light-sidebar: var(--sidebar-background);
-  --sfm-light-header: var(--surface);
-  --sfm-light-footer: var(--surface-muted);
-  --sfm-light-text-primary: var(--foreground);
-  --sfm-light-text-secondary: var(--foreground-secondary);
-  --sfm-light-text-muted: var(--foreground-muted);
-  --sfm-light-border-primary: var(--border);
-  --sfm-light-border-secondary: var(--border);
-  --sfm-light-divider: var(--divider);
-  --sfm-light-chart-grid: var(--chart-grid);
-  --sfm-light-primary: var(--primary);
-  --sfm-light-primary-hover: var(--primary-hover);
-  --sfm-light-primary-active: var(--primary-active);
-  --sfm-light-secondary: var(--accent);
-  --sfm-light-accent: var(--accent);
-  --sfm-light-success: var(--success);
-  --sfm-light-success-soft: var(--success-soft);
-  --sfm-light-warning: var(--warning);
-  --sfm-light-warning-soft: var(--warning-soft);
-  --sfm-light-danger: var(--danger);
-  --sfm-light-danger-soft: var(--danger-soft);
-  --sfm-light-info: var(--info);
-  --sfm-light-info-soft: var(--info-soft);
-  --sfm-light-focus-color: var(--focus-ring);
-  --sfm-light-focus-ring: var(--focus-shadow);
-
-  --sfm-deep-navy: #061526;
-  --sfm-primary-dark: #0A2138;
-  --sfm-midnight: #0D2A45;
-  --sfm-card-dark: var(--surface-elevated);
-  --sfm-primary: var(--primary);
-  --sfm-primary-hover: var(--primary-hover);
-  --sfm-primary-active: var(--primary-active);
-  --sfm-accent: var(--accent);
-  --sfm-soft-cyan: var(--accent);
-  --sfm-background: var(--background);
-  --sfm-card: var(--surface);
-  --sfm-card-elevated: var(--surface-elevated);
-  --sfm-card-foreground: var(--foreground);
-  --sfm-input-bg: var(--control-background);
-  --sfm-foreground: var(--foreground);
-  --sfm-heading: var(--foreground);
-  --sfm-body: var(--foreground-secondary);
-  --sfm-muted: var(--foreground-muted);
-  --sfm-muted-readable: var(--foreground-secondary);
-  --sfm-border: var(--border);
-  --sfm-border-strong: var(--border-strong);
-  --sfm-surface-hover: var(--surface-hover);
-  --sfm-focus-ring: var(--focus-shadow);
-  --sfm-focus-ring-strong: color-mix(in srgb, var(--focus-ring) 55%, transparent);
-  --sfm-interactive-shadow: var(--shadow-md);
-  --sfm-interactive-glow: var(--shadow-md);
-  --sfm-sidebar: var(--sidebar-background);
-  --sfm-sidebar-active: var(--sidebar-active);
-  --sfm-hero-gradient: var(--hero-gradient);
-  --sfm-page-gradient: var(--background);
-
-  --bg: var(--background);
-  --bg-2: var(--surface-muted);
-  --bg-card: var(--surface);
-  --bg-input: var(--control-background);
-  --bg-muted: var(--surface-muted);
-  --text-1: var(--foreground);
-  --text-2: var(--foreground-secondary);
-  --text-3: var(--foreground-muted);
-  --text-gold: var(--primary);
-  --text-white: #FFFFFF;
-  --text-white-2: var(--foreground-secondary);
-  --text-white-3: var(--foreground-muted);
-  --green: var(--success);
-  --green-bg: var(--success-soft);
-  --red: var(--danger);
-  --red-bg: var(--danger-soft);
-  --amber: var(--warning);
-  --amber-bg: var(--warning-soft);
-  --blue: var(--info);
-  --blue-bg: var(--info-soft);
-  --border-2: var(--border-strong);
-  --border-dark: var(--border);
 }

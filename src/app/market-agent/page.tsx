@@ -944,1614 +944,1159 @@ export default function MarketAgentPage() {
       </main>
 
       <style jsx global>{`
-        .market-agent-page{
-          --agent-page-max:1360px;
-          --agent-gutter:clamp(18px,2vw,32px);
-          --agent-bg:
-            radial-gradient(circle at 16% 6%,rgba(24,212,212,.15),transparent 30%),
-            linear-gradient(180deg,#eef7ff 0%,#f8fcff 48%,#edf6ff 100%);
-          --agent-surface:#ffffff;
-          --agent-surface-soft:#f7fbff;
-          --agent-border:rgba(29,140,255,.16);
-          --agent-border-strong:rgba(29,140,255,.28);
-          --agent-text:#0b172a;
-          --agent-heading:#061b33;
-          --agent-muted:#475569;
-          --agent-muted-soft:#64748b;
-          --agent-primary:#1d8cff;
-          --agent-accent:#18d4d4;
-          --agent-success:#047857;
-          --agent-warning:#b45309;
-          --agent-danger:#b91c1c;
-          --agent-shadow:0 18px 46px rgba(3,18,37,.08);
-          --agent-shadow-soft:0 10px 28px rgba(3,18,37,.055);
-          width:100%;
-          max-width:100%;
-          min-height:100vh;
-          background:var(--agent-bg);
-          color:var(--agent-text);
-          font-family:Tajawal,Arial,sans-serif;
-          color-scheme:light;
-          overflow-x:clip;
+        .market-agent-page {
+          width: 100%;
+          min-width: 0;
+          color: var(--foreground);
+          font-family: var(--font-ui);
         }
 
-        :global(.dark) .market-agent-page{
-          --agent-bg:
-            radial-gradient(circle at 18% 6%,rgba(24,212,212,.10),transparent 30%),
-            linear-gradient(180deg,#081625 0%,#0a1a2d 52%,#071421 100%);
-          --agent-surface:#0f1d31;
-          --agent-surface-soft:#13243a;
-          --agent-border:#1d3050;
-          --agent-border-strong:rgba(47,214,192,.36);
-          --agent-text:#e8eef6;
-          --agent-heading:#f8fbff;
-          --agent-muted:#b8c7d9;
-          --agent-muted-soft:#94a9c2;
-          --agent-primary:#2a98ff;
-          --agent-accent:#2fd6c0;
-          --agent-shadow:0 20px 54px rgba(0,0,0,.28);
-          --agent-shadow-soft:0 12px 30px rgba(0,0,0,.22);
-          color-scheme:dark;
+        .market-agent-main {
+          width: 100%;
+          min-width: 0;
+          display: grid;
+          gap: 18px;
         }
 
-        .market-agent-page *{box-sizing:border-box}
-
-        .market-agent-main{
-          width:100%;
-          max-width:100%;
-          min-height:100vh;
-          margin:0;
-          padding:var(--agent-gutter);
-          display:grid;
-          align-content:start;
-          gap:22px;
-          overflow-x:clip;
+        .agent-page-header {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          padding: clamp(22px, 4vw, 34px);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-panel);
+          background: var(--hero-gradient);
+          color: var(--hero-foreground);
+          box-shadow: var(--shadow-md);
+          overflow: hidden;
         }
 
-        .market-agent-main>*{
-          width:100%;
-          max-width:var(--agent-page-max);
-          min-width:0;
-          margin-inline:auto;
+        .agent-header-copy {
+          min-width: 0;
+          max-width: 820px;
         }
 
-        .market-agent-page[dir="rtl"] .market-agent-main{
-          padding-inline-start:calc(var(--sidebar-w,230px) + var(--agent-gutter));
-          padding-inline-end:var(--agent-gutter);
+        .agent-ai-badge {
+          width: max-content;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          padding: 6px 10px;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 26%, transparent);
+          border-radius: var(--radius-pill);
+          background: color-mix(in srgb, var(--surface) 12%, transparent);
+          color: var(--hero-foreground);
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: .04em;
         }
 
-        .market-agent-page[dir="ltr"] .market-agent-main{
-          padding-inline-start:var(--agent-gutter);
-          padding-inline-end:calc(var(--sidebar-w,230px) + var(--agent-gutter));
+        .agent-page-header h1 {
+          margin: 0;
+          color: var(--hero-foreground);
+          font-size: clamp(30px, 4vw, 44px);
+          font-weight: 600;
+          line-height: 1.25;
+          overflow-wrap: anywhere;
         }
 
-        .agent-page-header{
-          display:grid;
-          grid-template-columns:minmax(0,1fr) minmax(230px,320px);
-          align-items:end;
-          gap:18px;
-          padding:26px 28px;
-          border:1px solid rgba(167,243,240,.18);
-          border-radius:var(--r-2xl);
-          background:
-            radial-gradient(circle at 12% 8%,rgba(24,212,212,.18),transparent 32%),
-            linear-gradient(135deg,#061b33 0%,#08243f 56%,#0d4b61 100%);
-          box-shadow:var(--agent-shadow);
-          color:#fff;
+        .agent-page-header p {
+          max-width: 760px;
+          margin: 12px 0 0;
+          color: var(--hero-foreground-muted);
+          font-size: 15px;
+          font-weight: 400;
+          line-height: 1.9;
         }
 
-        .agent-header-copy{
-          display:grid;
-          gap:10px;
-          min-width:0;
+        .agent-service-chip {
+          min-width: min(100%, 210px);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent);
+          border-radius: var(--radius-card);
+          background: color-mix(in srgb, var(--surface) 12%, transparent);
+          color: var(--hero-foreground);
         }
 
-        .agent-ai-badge{
-          width:max-content;
-          max-width:100%;
-          display:inline-flex;
-          align-items:center;
-          gap:8px;
-          padding:7px 13px;
-          border-radius:999px;
-          border:1px solid rgba(119,232,229,.35);
-          background:rgba(32,212,207,.12);
-          color:#9ff6f0;
-          font-size:12px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-live-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: var(--radius-pill);
+          background: var(--success);
+          flex: 0 0 auto;
         }
 
-        .agent-page-header h1{
-          margin:0;
-          color:#fff;
-          font-size:clamp(32px,3.2vw,44px);
-          line-height:1.12;
-          font-weight:950;
-          letter-spacing:0;
+        .agent-service-chip small {
+          display: block;
+          color: var(--hero-foreground-muted);
+          font-size: 11px;
+          font-weight: 400;
         }
 
-        .agent-page-header p{
-          margin:0;
-          max-width:780px;
-          color:#d8e8f4;
-          font-size:15px;
-          line-height:1.8;
-          font-weight:800;
+        .agent-service-chip strong {
+          display: block;
+          margin-top: 2px;
+          color: var(--hero-foreground);
+          font-size: 13px;
+          font-weight: 600;
+          overflow-wrap: anywhere;
         }
 
-        .agent-service-chip{
-          justify-self:end;
-          width:100%;
-          display:flex;
-          align-items:center;
-          gap:12px;
-          min-height:64px;
-          padding:12px 14px;
-          border-radius:var(--r-xl);
-          border:1px solid rgba(167,243,240,.20);
-          background:rgba(255,255,255,.08);
-          color:#f8fcff;
-        }
-
-        .agent-live-dot{
-          width:11px;
-          height:11px;
-          border-radius:50%;
-          background:#34d399;
-          box-shadow:0 0 0 6px rgba(52,211,153,.14);
-        }
-
-        .agent-service-chip small{
-          display:block;
-          color:#b9d7e7;
-          font-size:12px;
-          font-weight:900;
-          line-height:1.2;
-        }
-
-        .agent-service-chip strong{
-          display:block;
-          margin-top:4px;
-          color:#fff;
-          font-size:13px;
-          font-weight:950;
-          line-height:1.35;
-        }
-
-        .agent-control-panel{
-          display:grid;
-          grid-template-columns:minmax(280px,1.35fr) minmax(190px,.5fr) minmax(300px,.72fr) minmax(170px,.4fr);
-          align-items:end;
-          gap:14px;
-          padding:22px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-2xl);
-          background:rgba(255,255,255,.96);
-          box-shadow:var(--agent-shadow);
-        }
-
-        :global(.dark) .agent-control-panel{
-          background:var(--agent-surface);
+        .agent-control-panel {
+          display: grid;
+          grid-template-columns: minmax(250px, 1.6fr) minmax(180px, .8fr) auto auto;
+          align-items: end;
+          gap: 14px;
+          padding: 18px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
+          min-width: 0;
         }
 
         .agent-field,
-        .agent-timeframe-group{
-          display:grid;
-          gap:8px;
-          min-width:0;
+        .agent-timeframe-group {
+          min-width: 0;
+          display: grid;
+          gap: 7px;
         }
 
-        .agent-field>span,
-        .agent-timeframe-group>span{
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-field > span,
+        .agent-timeframe-group > span {
+          color: var(--foreground-secondary);
+          font-size: 12px;
+          font-weight: 600;
         }
 
-        .agent-field small{
-          min-height:16px;
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:800;
-          line-height:1.35;
+        .agent-field > small {
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 400;
+          line-height: 1.55;
         }
 
         .agent-input-shell,
-        .agent-select-shell{
-          min-height:52px;
-          display:flex;
-          align-items:center;
-          gap:10px;
-          border:1px solid var(--agent-border-strong);
-          background:var(--agent-surface-soft);
-          color:var(--agent-text);
-          border-radius:var(--r-md);
-          padding:0 13px;
-          transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
-        }
-
-        .agent-input-shell.has-error{
-          border-color:rgba(185,28,28,.32);
-        }
-
-        .agent-input-shell svg,
-        .agent-select-shell svg{
-          flex:0 0 auto;
-          color:var(--agent-primary);
+        .agent-select-shell,
+        .agent-history-search {
+          min-width: 0;
+          min-height: var(--control-h);
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding-inline: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface-muted);
+          color: var(--foreground-muted);
+          transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease;
         }
 
         .agent-input-shell:focus-within,
-        .agent-select-shell:focus-within{
-          border-color:var(--agent-accent);
-          box-shadow:0 0 0 4px rgba(24,212,212,.16);
-          background:var(--agent-surface);
+        .agent-select-shell:focus-within,
+        .agent-history-search:focus-within {
+          border-color: var(--focus-ring);
+          background: var(--surface);
+          box-shadow: var(--focus-shadow);
         }
 
-        input,
-        select{
-          width:100%;
-          min-width:0;
-          height:100%;
-          border:0;
-          outline:0;
-          background:transparent;
-          color:var(--agent-text);
-          font:900 14px Tajawal,Arial,sans-serif;
-          -webkit-text-fill-color:var(--agent-text);
+        .agent-input-shell.has-error {
+          border-color: var(--danger);
+          background: var(--danger-soft);
         }
 
-        input{text-transform:uppercase}
-
-        input::placeholder{
-          color:var(--agent-muted-soft);
-          text-transform:none;
-          -webkit-text-fill-color:var(--agent-muted-soft);
+        .agent-input-shell input,
+        .agent-select-shell select,
+        .agent-history-search input {
+          width: 100%;
+          min-width: 0;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: var(--foreground);
+          font-family: var(--font-ui);
+          font-size: 14px;
+          font-weight: 400;
         }
 
-        select{
-          min-height:50px;
-          appearance:none;
-          cursor:pointer;
+        .agent-input-shell input {
+          direction: ltr;
+          unicode-bidi: plaintext;
         }
 
-        option{
-          background:var(--agent-surface);
-          color:var(--agent-text);
+        .agent-input-shell input::placeholder,
+        .agent-history-search input::placeholder {
+          color: var(--foreground-subtle);
         }
 
-        .agent-timeframe-options{
-          display:grid;
-          grid-template-columns:repeat(5,minmax(48px,1fr));
-          gap:6px;
-          padding:4px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-lg);
-          background:var(--agent-surface-soft);
+        .agent-select-shell select {
+          appearance: none;
+          cursor: pointer;
         }
 
-        .agent-timeframe-options button{
-          min-height:42px;
-          min-width:0;
-          border:1px solid transparent;
-          background:transparent;
-          color:var(--agent-muted);
-          border-radius:var(--r-md);
-          font:950 13px Arial,sans-serif;
-          cursor:pointer;
-          transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+        .agent-select-shell svg {
+          flex: 0 0 auto;
+          pointer-events: none;
         }
 
-        .agent-timeframe-options button:hover,
-        .agent-timeframe-options button:focus-visible{
-          outline:0;
-          background:rgba(29,140,255,.10);
-          color:var(--agent-heading);
+        .agent-timeframe-options {
+          min-height: var(--control-h);
+          display: inline-flex;
+          align-items: stretch;
+          gap: 4px;
+          padding: 4px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface-muted);
         }
 
-        .agent-timeframe-options button.active{
-          background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));
-          color:#fff;
-          box-shadow:0 10px 22px rgba(29,140,255,.20);
+        .agent-timeframe-options button {
+          min-width: 44px;
+          border: 1px solid transparent;
+          border-radius: var(--radius-sm);
+          background: transparent;
+          color: var(--foreground-muted);
+          font-family: var(--font-data);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .agent-timeframe-options button:hover {
+          background: var(--sidebar-hover);
+          color: var(--foreground);
+        }
+
+        .agent-timeframe-options button.active {
+          border-color: var(--primary);
+          background: var(--primary-soft);
+          color: var(--primary-hover);
         }
 
         .agent-primary-action,
         .agent-secondary-action,
-        .agent-row-action{
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          gap:8px;
-          border-radius:var(--r-md);
-          font-family:Tajawal,Arial,sans-serif;
-          font-weight:950;
-          line-height:1.2;
-          cursor:pointer;
-          transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease;
+        .agent-quick-actions button,
+        .agent-row-action,
+        .agent-example-row button {
+          min-height: var(--control-h);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          padding: 0 14px;
+          font-family: var(--font-ui);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease;
         }
 
-        .agent-primary-action{
-          min-height:52px;
-          width:100%;
-          border:0;
-          padding:0 18px;
-          background:linear-gradient(135deg,var(--agent-primary),var(--agent-accent));
-          color:#fff;
-          font-size:14px;
-          box-shadow:0 14px 34px rgba(29,140,255,.24);
-          white-space:nowrap;
+        .agent-primary-action {
+          border-color: var(--primary);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          white-space: nowrap;
         }
 
-        .agent-primary-action:not(:disabled):hover,
-        .agent-primary-action:not(:disabled):focus-visible{
-          outline:0;
-          transform:translateY(-1px);
-          box-shadow:0 18px 42px rgba(29,140,255,.30),0 0 0 4px rgba(24,212,212,.15);
+        .agent-primary-action:hover:not(:disabled) {
+          border-color: var(--primary-hover);
+          background: var(--primary-hover);
         }
 
-        .agent-primary-action:disabled{
-          opacity:.58;
-          cursor:not-allowed;
-          box-shadow:none;
+        .agent-primary-action:disabled {
+          cursor: not-allowed;
+          opacity: .62;
         }
 
-        .agent-legal-notice{
-          display:grid;
-          grid-template-columns:auto minmax(0,1fr);
-          gap:12px;
-          align-items:start;
-          padding:14px 16px;
-          border:1px solid rgba(180,83,9,.18);
-          border-radius:var(--r-xl);
-          background:linear-gradient(135deg,rgba(255,247,237,.92),rgba(255,255,255,.96));
-          box-shadow:0 10px 28px rgba(3,18,37,.045);
+        .agent-primary-action:focus-visible,
+        .agent-secondary-action:focus-visible,
+        .agent-quick-actions button:focus-visible,
+        .agent-row-action:focus-visible,
+        .agent-example-row button:focus-visible,
+        .agent-timeframe-options button:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          box-shadow: var(--focus-shadow);
         }
 
-        :global(.dark) .agent-legal-notice{
-          background:rgba(245,158,11,.10);
-          border-color:rgba(245,158,11,.24);
+        .agent-legal-notice {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 12px;
+          align-items: start;
+          padding: 14px 16px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--warning-soft);
+          color: var(--warning);
         }
 
-        .agent-legal-notice>span{
-          width:38px;
-          height:38px;
-          display:grid;
-          place-items:center;
-          border-radius:var(--r-md);
-          background:rgba(245,158,11,.12);
-          color:var(--agent-warning);
+        .agent-legal-notice > span {
+          width: 36px;
+          height: 36px;
+          display: grid;
+          place-items: center;
+          border-radius: var(--radius-control);
+          background: var(--surface);
         }
 
-        .agent-legal-notice strong{
-          display:block;
-          color:var(--agent-heading);
-          font-size:13px;
-          font-weight:950;
-          margin-bottom:2px;
+        .agent-legal-notice strong {
+          display: block;
+          color: var(--warning);
+          font-weight: 600;
         }
 
-        .agent-legal-notice p{
-          margin:0;
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:850;
-          line-height:1.75;
+        .agent-legal-notice p {
+          margin: 4px 0 0;
+          color: var(--foreground-secondary);
+          font-size: 12px;
+          font-weight: 400;
+          line-height: 1.75;
         }
-
-        .spin{animation:agentSpin 1s linear infinite}
-        @keyframes agentSpin{to{transform:rotate(360deg)}}
 
         .agent-loading-state,
-        .agent-result-panel,
         .agent-empty-state,
-        .agent-history-panel{
-          border:1px solid var(--agent-border);
-          background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
-          border-radius:var(--r-2xl);
-          padding:22px;
-          box-shadow:var(--agent-shadow);
+        .agent-workspace,
+        .agent-history-panel {
+          min-width: 0;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
         }
 
         .agent-loading-state,
-        .agent-empty-state{
-          display:grid;
-          grid-template-columns:auto minmax(0,1fr);
-          align-items:center;
-          gap:18px;
-          min-height:190px;
-        }
-
-        .agent-empty-icon{
-          width:58px;
-          height:58px;
-          display:grid;
-          place-items:center;
-          border-radius:var(--r-xl);
-          background:linear-gradient(135deg,rgba(29,140,255,.12),rgba(24,212,212,.16));
-          color:var(--agent-primary);
-          border:1px solid rgba(24,212,212,.20);
-        }
-
-        .agent-empty-state.error .agent-empty-icon{
-          background:rgba(239,68,68,.10);
-          color:var(--agent-danger);
-          border-color:rgba(239,68,68,.20);
-        }
-
-        .agent-empty-copy{
-          display:grid;
-          gap:10px;
-          min-width:0;
+        .agent-empty-state {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-items: center;
+          gap: 14px;
+          padding: clamp(20px, 4vw, 30px);
         }
 
         .agent-loading-state h2,
-        .agent-empty-state h2{
-          margin:0;
-          color:var(--agent-heading);
-          font-size:clamp(20px,2vw,25px);
-          font-weight:950;
-          line-height:1.35;
+        .agent-empty-state h2 {
+          margin: 0;
+          color: var(--foreground);
+          font-size: 20px;
+          font-weight: 600;
         }
 
         .agent-loading-state p,
-        .agent-empty-state p{
-          margin:0;
-          max-width:760px;
-          color:var(--agent-muted);
-          font-size:14px;
-          font-weight:850;
-          line-height:1.8;
+        .agent-empty-state p {
+          margin: 6px 0 0;
+          color: var(--foreground-muted);
+          font-size: 13px;
+          font-weight: 400;
+          line-height: 1.75;
         }
 
-        .agent-example-row{
-          display:flex;
-          align-items:center;
-          flex-wrap:wrap;
-          gap:8px;
-          margin-top:4px;
+        .agent-empty-state.error {
+          border-color: var(--danger);
+          background: var(--danger-soft);
         }
 
-        .agent-example-row>span{
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:950;
+        .agent-empty-icon {
+          width: 52px;
+          height: 52px;
+          display: grid;
+          place-items: center;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--primary-soft);
+          color: var(--primary);
+        }
+
+        .agent-empty-state.error .agent-empty-icon {
+          background: var(--danger-soft);
+          color: var(--danger);
+        }
+
+        .agent-skeleton-grid {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .agent-skeleton-grid span {
+          height: 82px;
+          border-radius: var(--radius-card);
+          background: var(--skeleton-gradient);
+          background-size: 220% 100%;
+          animation: agentShimmer 1.2s linear infinite;
+        }
+
+        @keyframes agentShimmer {
+          to { background-position: -220% 0; }
+        }
+
+        .agent-example-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 14px;
+        }
+
+        .agent-example-row > span {
+          color: var(--foreground-muted);
+          font-size: 12px;
+          font-weight: 500;
         }
 
         .agent-example-row button,
-        .agent-secondary-action{
-          min-height:38px;
-          border:1px solid var(--agent-border);
-          background:var(--agent-surface);
-          color:var(--agent-heading);
-          padding:0 12px;
-          border-radius:999px;
-          font:950 12px Tajawal,Arial,sans-serif;
-          cursor:pointer;
+        .agent-secondary-action,
+        .agent-quick-actions button,
+        .agent-row-action {
+          min-height: 38px;
+          background: var(--surface);
+          color: var(--foreground-secondary);
         }
 
-        .agent-secondary-action{
-          width:max-content;
-          min-height:42px;
-          padding:0 16px;
-          border-color:rgba(24,212,212,.26);
-          background:rgba(24,212,212,.10);
-          color:#047a8f;
+        .agent-example-row button {
+          font-family: var(--font-data);
         }
 
         .agent-example-row button:hover,
-        .agent-example-row button:focus-visible,
         .agent-secondary-action:hover,
-        .agent-secondary-action:focus-visible{
-          outline:0;
-          border-color:var(--agent-border-strong);
-          background:rgba(24,212,212,.14);
-          box-shadow:0 0 0 4px rgba(24,212,212,.12);
+        .agent-quick-actions button:hover,
+        .agent-row-action:hover {
+          border-color: var(--primary);
+          background: var(--sidebar-hover);
+          color: var(--primary-hover);
         }
 
-        .agent-skeleton-grid{
-          grid-column:1/-1;
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:10px;
+        .agent-secondary-action {
+          margin-top: 14px;
         }
 
-        .agent-skeleton-grid span{
-          height:84px;
-          border-radius:var(--r-lg);
-          background:linear-gradient(90deg,rgba(29,140,255,.08),rgba(24,212,212,.14),rgba(29,140,255,.08));
-          background-size:220% 100%;
-          animation:agentSkeleton 1.1s ease-in-out infinite;
+        .agent-workspace {
+          padding: 18px;
         }
 
-        @keyframes agentSkeleton{
-          to{background-position:-220% 0}
+        .agent-workspace-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid var(--border);
         }
 
-        .agent-result-panel>header{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:16px;
-          margin-bottom:18px;
+        .agent-workspace-header span {
+          color: var(--foreground-muted);
+          font-family: var(--font-data);
+          font-size: 12px;
+          font-weight: 500;
+          overflow-wrap: anywhere;
         }
 
-        .agent-result-panel>header span{
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:950;
+        .agent-workspace-header h2 {
+          margin: 5px 0 0;
+          color: var(--foreground);
+          font-size: 24px;
+          font-weight: 600;
+          line-height: 1.35;
         }
 
-        .agent-result-panel h2{
-          margin:5px 0 0;
-          color:var(--agent-heading);
-          font-size:clamp(28px,3vw,38px);
-          line-height:1.1;
-          font-weight:950;
-        }
-
-        .agent-result-panel.positive h2,
-        .agent-result-panel.positive .agent-score-ring strong{color:var(--agent-success)}
-
-        .agent-result-panel.negative h2,
-        .agent-result-panel.negative .agent-score-ring strong{color:var(--agent-danger)}
-
-        .agent-result-panel.neutral h2,
-        .agent-result-panel.neutral .agent-score-ring strong{color:var(--agent-warning)}
-
-        .agent-score-ring{
-          width:100px;
-          height:100px;
-          flex:0 0 auto;
-          border-radius:50%;
-          display:grid;
-          place-items:center;
-          text-align:center;
-          border:1px solid rgba(24,212,212,.28);
-          background:linear-gradient(145deg,rgba(29,140,255,.08),rgba(24,212,212,.12));
-        }
-
-        .agent-score-ring strong{
-          display:block;
-          font-size:27px;
-          font-weight:950;
-          line-height:1.1;
-        }
-
-        .agent-score-ring span{
-          display:block;
-          color:var(--agent-muted);
-          font-size:11px;
-          font-weight:950;
-        }
-
-        .agent-metric-grid{
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:12px;
-        }
-
-        .agent-metric{
-          min-height:112px;
-          display:grid;
-          align-content:space-between;
-          gap:10px;
-          padding:14px;
-          border:1px solid var(--agent-border);
-          background:var(--agent-surface);
-          border-radius:var(--r-xl);
-          box-shadow:var(--agent-shadow-soft);
-        }
-
-        .agent-metric svg{color:var(--agent-primary)}
-
-        .agent-metric span{
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:950;
-          line-height:1.35;
-        }
-
-        .agent-metric strong{
-          color:var(--agent-heading);
-          font-size:15px;
-          font-weight:950;
-          line-height:1.35;
-          overflow-wrap:anywhere;
-        }
-
-        .agent-workspace{
-          border:1px solid var(--agent-border);
-          background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(247,251,255,.96));
-          border-radius:var(--r-2xl);
-          padding:22px;
-          box-shadow:var(--agent-shadow);
-        }
-
-        :global(.dark) .agent-workspace{
-          background:linear-gradient(180deg,rgba(15,29,49,.96),rgba(11,25,43,.98));
-        }
-
-        .agent-workspace-header{
-          display:flex;
-          align-items:flex-start;
-          justify-content:space-between;
-          gap:16px;
-          margin-bottom:18px;
-        }
-
-        .agent-workspace-header span{
-          color:var(--agent-muted);
-          font-size:12px;
-          font-weight:950;
-          letter-spacing:0;
-        }
-
-        .agent-workspace-header h2{
-          margin:5px 0 0;
-          color:var(--agent-heading);
-          font-size:clamp(24px,2.5vw,34px);
-          line-height:1.2;
-          font-weight:950;
-        }
-
-        .agent-workspace-grid{
-          display:grid;
-          grid-template-columns:minmax(0,1fr) minmax(300px,360px);
-          gap:18px;
-          align-items:start;
+        .agent-workspace-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
+          gap: 16px;
+          align-items: start;
+          margin-top: 16px;
         }
 
         .agent-main-column,
-        .agent-side-rail{
-          min-width:0;
-          display:grid;
-          gap:16px;
-        }
-
-        .agent-side-rail{
-          position:sticky;
-          top:20px;
+        .agent-side-rail {
+          min-width: 0;
+          display: grid;
+          gap: 14px;
         }
 
         .agent-section-card,
-        .agent-side-card{
-          min-width:0;
-          border:1px solid var(--agent-border);
-          background:linear-gradient(180deg,var(--agent-surface),var(--agent-surface-soft));
-          border-radius:var(--r-2xl);
-          padding:18px;
-          box-shadow:var(--agent-shadow-soft);
+        .agent-side-card {
+          min-width: 0;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
+          padding: 15px;
         }
 
-        .agent-section-heading{
-          display:flex;
-          align-items:flex-start;
-          justify-content:space-between;
-          gap:14px;
-          margin-bottom:14px;
+        .agent-section-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 14px;
         }
 
-        .agent-section-heading span{
-          display:flex;
-          align-items:center;
-          gap:8px;
-          color:var(--agent-heading);
-          font-size:16px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-section-heading span,
+        .agent-history-panel > header span {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          color: var(--foreground);
+          font-size: 14px;
+          font-weight: 600;
         }
 
-        .agent-section-heading span svg{
-          color:var(--agent-primary);
+        .agent-section-heading span svg,
+        .agent-history-panel > header span svg {
+          color: var(--accent);
         }
 
-        .agent-section-heading p{
-          margin:4px 0 0;
-          color:var(--agent-muted);
-          font-size:12px;
-          font-weight:850;
-          line-height:1.65;
+        .agent-section-heading p,
+        .agent-history-panel > header p {
+          margin: 4px 0 0;
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 400;
+          line-height: 1.55;
         }
 
-        .agent-metric-grid.compact{
-          grid-template-columns:repeat(3,minmax(0,1fr));
+        .agent-metric-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
         }
 
-        .agent-chart-card{
-          overflow:hidden;
+        .agent-metric {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 4px 9px;
+          align-items: center;
+          padding: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface);
         }
 
-        .agent-level-chart{
-          display:grid;
-          gap:12px;
-          min-width:0;
+        .agent-metric svg {
+          grid-row: 1 / 3;
+          color: var(--accent);
         }
 
-        .agent-chart-track{
-          position:relative;
-          min-height:210px;
-          border:1px solid rgba(29,140,255,.14);
-          border-radius:var(--r-xl);
-          background:
-            linear-gradient(90deg,rgba(29,140,255,.08) 1px,transparent 1px),
-            linear-gradient(0deg,rgba(29,140,255,.08) 1px,transparent 1px),
-            linear-gradient(180deg,rgba(24,212,212,.08),rgba(29,140,255,.04));
-          background-size:64px 64px,64px 64px,100% 100%;
-          overflow:hidden;
+        .agent-metric span {
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 500;
         }
 
-        .agent-chart-track::before{
-          content:"";
-          position:absolute;
-          inset-inline:22px;
-          inset-block-start:50%;
-          height:3px;
-          border-radius:999px;
-          background:linear-gradient(90deg,rgba(29,140,255,.18),rgba(24,212,212,.8),rgba(29,140,255,.18));
-        }
-
-        .agent-entry-zone{
-          position:absolute;
-          inset-block:38px 32px;
-          border-radius:999px;
-          border:1px solid rgba(24,212,212,.32);
-          background:linear-gradient(180deg,rgba(24,212,212,.18),rgba(29,140,255,.08));
-          box-shadow:0 0 0 4px rgba(24,212,212,.06);
-        }
-
-        .agent-level-marker{
-          position:absolute;
-          inset-block-start:24px;
-          transform:translateX(-50%);
-          display:grid;
-          justify-items:center;
-          gap:5px;
-          min-width:76px;
-          max-width:118px;
-          text-align:center;
-          pointer-events:none;
-        }
-
-        .market-agent-page[dir="rtl"] .agent-level-marker{
-          transform:translateX(50%);
-        }
-
-        .agent-level-marker.price{
-          inset-block-start:84px;
-        }
-
-        .agent-level-marker.target{
-          inset-block-start:136px;
-        }
-
-        .agent-level-marker.stop{
-          inset-block-start:160px;
-        }
-
-        .agent-level-marker i{
-          width:11px;
-          height:11px;
-          border-radius:999px;
-          border:2px solid var(--agent-surface);
-          box-shadow:0 0 0 3px rgba(29,140,255,.12);
-          background:var(--agent-primary);
-        }
-
-        .agent-level-marker.support i{background:var(--agent-success)}
-        .agent-level-marker.resistance i{background:var(--agent-warning)}
-        .agent-level-marker.target i{background:var(--agent-primary)}
-        .agent-level-marker.stop i{background:var(--agent-danger)}
-
-        .agent-level-marker b{
-          color:var(--agent-muted);
-          font-size:11px;
-          font-weight:950;
-          line-height:1.25;
-        }
-
-        .agent-level-marker em{
-          padding:3px 7px;
-          border-radius:999px;
-          background:rgba(255,255,255,.9);
-          border:1px solid rgba(29,140,255,.14);
-          color:var(--agent-heading);
-          font-style:normal;
-          font-size:11px;
-          font-weight:950;
-          line-height:1.25;
-          box-shadow:0 8px 18px rgba(3,18,37,.06);
-        }
-
-        :global(.dark) .agent-level-marker em{
-          background:rgba(15,29,49,.92);
-        }
-
-        .agent-level-scale{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:10px;
-          color:var(--agent-muted);
-          font-size:12px;
-          font-weight:950;
+        .agent-metric strong {
+          min-width: 0;
+          color: var(--foreground);
+          font-family: var(--font-data);
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.4;
+          overflow-wrap: anywhere;
         }
 
         .agent-evidence-grid,
-        .agent-indicator-grid{
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:10px;
-        }
-
-        .agent-indicator-grid{
-          grid-template-columns:repeat(3,minmax(0,1fr));
+        .agent-indicator-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
         }
 
         .agent-trend-pill,
-        .agent-indicator-card{
-          min-width:0;
-          display:grid;
-          gap:8px;
-          padding:13px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-lg);
-          background:var(--agent-surface);
+        .agent-indicator-card {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 11px 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface);
         }
 
         .agent-trend-pill span,
-        .agent-indicator-card span{
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:950;
-          line-height:1.3;
+        .agent-indicator-card span {
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 500;
         }
 
         .agent-trend-pill strong,
-        .agent-indicator-card strong{
-          color:var(--agent-heading);
-          font-size:14px;
-          font-weight:950;
-          line-height:1.35;
-          overflow-wrap:anywhere;
+        .agent-indicator-card strong {
+          display: block;
+          margin-top: 3px;
+          color: var(--foreground);
+          font-family: var(--font-data);
+          font-size: 13px;
+          font-weight: 600;
+          overflow-wrap: anywhere;
         }
 
-        .agent-indicator-card{
-          min-height:108px;
-          align-content:space-between;
-        }
-
-        .agent-indicator-card div{
-          display:grid;
-          gap:5px;
-        }
-
-        .agent-indicator-card b{
-          width:max-content;
-          max-width:100%;
-          min-height:28px;
-          display:inline-flex;
-          align-items:center;
-          padding:0 9px;
-          border-radius:999px;
-          font-size:11px;
-          font-weight:950;
-          color:var(--agent-muted);
-          background:rgba(100,116,139,.10);
+        .agent-indicator-card b {
+          border-radius: var(--radius-pill);
+          padding: 5px 8px;
+          background: var(--surface-muted);
+          color: var(--foreground-secondary);
+          font-size: 11px;
+          font-weight: 600;
         }
 
         .agent-trend-pill.positive,
-        .agent-indicator-card.positive{
-          border-color:rgba(4,120,87,.22);
-          background:linear-gradient(180deg,rgba(236,253,245,.92),var(--agent-surface));
+        .agent-indicator-card.positive {
+          border-color: var(--success);
+          background: var(--success-soft);
         }
 
         .agent-trend-pill.negative,
-        .agent-indicator-card.negative{
-          border-color:rgba(185,28,28,.20);
-          background:linear-gradient(180deg,rgba(254,242,242,.92),var(--agent-surface));
+        .agent-indicator-card.negative {
+          border-color: var(--danger);
+          background: var(--danger-soft);
         }
 
         .agent-trend-pill.warning,
-        .agent-indicator-card.warning{
-          border-color:rgba(180,83,9,.22);
-          background:linear-gradient(180deg,rgba(255,251,235,.92),var(--agent-surface));
+        .agent-indicator-card.warning {
+          border-color: var(--warning);
+          background: var(--warning-soft);
         }
 
-        :global(.dark) .agent-trend-pill.positive,
-        :global(.dark) .agent-indicator-card.positive{
-          background:linear-gradient(180deg,rgba(4,120,87,.16),var(--agent-surface));
+        .agent-analysis-notes {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
         }
 
-        :global(.dark) .agent-trend-pill.negative,
-        :global(.dark) .agent-indicator-card.negative{
-          background:linear-gradient(180deg,rgba(185,28,28,.16),var(--agent-surface));
+        .agent-analysis-notes article {
+          min-width: 0;
+          padding: 13px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface);
         }
 
-        :global(.dark) .agent-trend-pill.warning,
-        :global(.dark) .agent-indicator-card.warning{
-          background:linear-gradient(180deg,rgba(180,83,9,.16),var(--agent-surface));
+        .agent-analysis-notes h3 {
+          margin: 0;
+          color: var(--foreground);
+          font-size: 13px;
+          font-weight: 600;
         }
 
-        .agent-analysis-notes{
-          display:grid;
-          grid-template-columns:repeat(2,minmax(0,1fr));
-          gap:12px;
+        .agent-analysis-notes p {
+          margin: 7px 0 0;
+          color: var(--foreground-muted);
+          font-size: 12px;
+          font-weight: 400;
+          line-height: 1.75;
+          overflow-wrap: anywhere;
         }
 
-        .agent-analysis-notes article{
-          min-width:0;
-          padding:15px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-lg);
-          background:var(--agent-surface);
+        .agent-side-rail {
+          position: sticky;
+          top: calc(var(--global-header-height) + 16px);
         }
 
-        .agent-analysis-notes h3{
-          margin:0 0 8px;
-          color:var(--agent-heading);
-          font-size:15px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-side-card h3,
+        .agent-signal-card > h3 {
+          margin: 0 0 12px;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          color: var(--foreground);
+          font-size: 15px;
+          font-weight: 600;
         }
 
-        .agent-analysis-notes p{
-          margin:0;
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:850;
-          line-height:1.8;
+        .agent-side-kicker {
+          display: block;
+          margin-bottom: 5px;
+          color: var(--primary);
+          font-family: var(--font-data);
+          font-size: 12px;
+          font-weight: 600;
         }
 
-        .agent-side-card{
-          display:grid;
-          gap:13px;
+        .agent-score-ring {
+          width: 116px;
+          height: 116px;
+          margin: 14px auto;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          border: 8px solid var(--accent);
+          border-radius: var(--radius-pill);
+          background: var(--accent-soft);
+          text-align: center;
         }
 
-        .agent-side-card h3{
-          margin:0;
-          display:flex;
-          align-items:center;
-          gap:8px;
-          color:var(--agent-heading);
-          font-size:15px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-score-ring strong {
+          display: block;
+          color: var(--foreground);
+          font-family: var(--font-data);
+          font-size: 24px;
+          font-weight: 600;
         }
 
-        .agent-side-card h3 svg{
-          color:var(--agent-primary);
+        .agent-score-ring span {
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 500;
         }
-
-        .agent-side-kicker{
-          width:max-content;
-          max-width:100%;
-          display:inline-flex;
-          min-height:30px;
-          align-items:center;
-          border-radius:999px;
-          padding:0 10px;
-          color:var(--agent-primary);
-          background:rgba(29,140,255,.10);
-          font-size:12px;
-          font-weight:950;
-        }
-
-        .agent-signal-card h3{
-          margin:0;
-          color:var(--agent-heading);
-          font-size:28px;
-          font-weight:950;
-          line-height:1.15;
-        }
-
-        .agent-side-rail.buy .agent-signal-card h3,
-        .agent-side-rail.buy .agent-score-ring strong{color:var(--agent-success)}
-
-        .agent-side-rail.sell .agent-signal-card h3,
-        .agent-side-rail.sell .agent-score-ring strong{color:var(--agent-danger)}
-
-        .agent-side-rail.wait .agent-signal-card h3,
-        .agent-side-rail.wait .agent-score-ring strong{color:var(--agent-warning)}
 
         .agent-signal-card dl,
-        .agent-data-list{
-          display:grid;
-          gap:9px;
-          margin:0;
+        .agent-data-list {
+          margin: 0;
+          display: grid;
+          gap: 8px;
         }
 
-        .agent-signal-card dl div,
-        .agent-data-list div{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-          padding-bottom:9px;
-          border-bottom:1px solid rgba(29,140,255,.12);
+        .agent-signal-card dl > div,
+        .agent-data-list > div {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding-top: 8px;
+          border-top: 1px solid var(--border);
         }
 
-        .agent-signal-card dl div:last-child,
-        .agent-data-list div:last-child{
-          border-bottom:0;
-          padding-bottom:0;
+        .agent-signal-card dt,
+        .agent-data-list dt {
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 500;
         }
 
-        .agent-data-list dd{
-          display:flex;
-          align-items:center;
-          gap:6px;
+        .agent-signal-card dd,
+        .agent-data-list dd {
+          margin: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: var(--foreground);
+          font-size: 12px;
+          font-weight: 600;
+          text-align: end;
+          overflow-wrap: anywhere;
         }
 
-        .agent-data-list dd svg{
-          color:var(--agent-success);
+        .agent-factor-list {
+          display: grid;
+          gap: 12px;
         }
 
-        .agent-factor-list{
-          display:grid;
-          gap:12px;
+        .agent-factor > div {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          color: var(--foreground-secondary);
+          font-size: 11px;
+          font-weight: 500;
         }
 
-        .agent-factor{
-          display:grid;
-          gap:7px;
+        .agent-factor strong {
+          color: var(--foreground);
+          font-family: var(--font-data);
+          font-weight: 600;
         }
 
-        .agent-factor div{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:10px;
+        .agent-factor > i {
+          display: block;
+          height: 6px;
+          margin-top: 6px;
+          border-radius: var(--radius-pill);
+          background: var(--accent);
         }
 
-        .agent-factor span,
-        .agent-factor small{
-          color:var(--agent-muted);
-          font-size:12px;
-          font-weight:850;
-          line-height:1.55;
+        .agent-factor small {
+          display: block;
+          margin-top: 5px;
+          color: var(--foreground-muted);
+          font-size: 10px;
+          font-weight: 400;
+          line-height: 1.5;
         }
 
-        .agent-factor strong{
-          color:var(--agent-heading);
-          font-size:13px;
-          font-weight:950;
+        .agent-quick-actions {
+          display: grid;
+          gap: 8px;
         }
 
-        .agent-factor i{
-          display:block;
-          max-width:100%;
-          height:7px;
-          border-radius:999px;
-          background:linear-gradient(90deg,var(--agent-primary),var(--agent-accent));
+        .agent-level-chart {
+          min-width: 0;
         }
 
-        .agent-quick-actions{
-          grid-template-columns:1fr;
+        .agent-chart-track {
+          position: relative;
+          height: 230px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface);
+          overflow: hidden;
         }
 
-        .agent-quick-actions button{
-          min-height:44px;
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          gap:8px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-md);
-          background:var(--agent-surface);
-          color:var(--agent-heading);
-          font:950 12px Tajawal,Arial,sans-serif;
-          cursor:pointer;
-          transition:transform .18s ease,border-color .18s ease,background .18s ease;
+        .agent-entry-zone {
+          position: absolute;
+          inset-block: 0;
+          border-inline: 1px solid var(--accent);
+          background: var(--accent-soft);
         }
 
-        .agent-quick-actions button:hover,
-        .agent-quick-actions button:focus-visible{
-          outline:0;
-          transform:translateY(-1px);
-          border-color:var(--agent-border-strong);
-          background:rgba(24,212,212,.12);
-          box-shadow:0 0 0 4px rgba(24,212,212,.10);
+        .agent-level-marker {
+          position: absolute;
+          inset-block: 15px;
+          width: max-content;
+          max-width: 116px;
+          display: grid;
+          grid-template-rows: 1fr auto auto;
+          justify-items: center;
+          gap: 4px;
+          translate: -50% 0;
+          color: var(--foreground-muted);
+          text-align: center;
         }
 
-        .agent-detail-grid{
-          display:grid;
-          grid-template-columns:1fr 1fr;
-          gap:14px;
-          margin-top:14px;
+        [dir='rtl'] .agent-level-marker {
+          translate: 50% 0;
         }
 
-        .agent-detail-grid section,
-        .agent-explanation{
-          border:1px solid var(--agent-border);
-          background:var(--agent-surface-soft);
-          border-radius:var(--r-xl);
-          padding:16px;
+        .agent-level-marker i {
+          width: 2px;
+          height: 100%;
+          background: var(--border-strong);
         }
 
-        .market-agent-page h3{
-          margin:0 0 12px;
-          color:var(--agent-heading);
-          font-size:16px;
-          font-weight:950;
-          display:flex;
-          align-items:center;
-          gap:8px;
+        .agent-level-marker b {
+          color: var(--foreground-secondary);
+          font-size: 10px;
+          font-weight: 600;
+          line-height: 1.3;
+          overflow-wrap: anywhere;
         }
 
-        .market-agent-page h3 svg{color:var(--agent-primary)}
-
-        .market-agent-page dl{
-          margin:0;
-          display:grid;
-          gap:8px;
+        .agent-level-marker em {
+          border: 1px solid var(--border);
+          border-radius: var(--radius-pill);
+          background: var(--surface-elevated);
+          color: var(--foreground);
+          padding: 4px 6px;
+          font-family: var(--font-data);
+          font-size: 10px;
+          font-style: normal;
+          font-weight: 600;
+          box-shadow: var(--shadow-xs);
         }
 
-        .market-agent-page dl div{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-          border-bottom:1px solid rgba(29,140,255,.12);
-          padding-bottom:8px;
+        .agent-level-marker.support i,
+        .agent-level-marker.target i {
+          background: var(--success);
         }
 
-        .market-agent-page dl div:last-child{
-          border-bottom:0;
-          padding-bottom:0;
+        .agent-level-marker.resistance i,
+        .agent-level-marker.stop i {
+          background: var(--danger);
         }
 
-        .market-agent-page dt{
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:950;
+        .agent-level-marker.price i {
+          background: var(--primary);
         }
 
-        .market-agent-page dd{
-          margin:0;
-          color:var(--agent-heading);
-          font-size:13px;
-          font-weight:950;
-          text-align:end;
+        .agent-level-scale {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 8px;
+          color: var(--foreground-muted);
+          font-size: 10px;
+          font-weight: 500;
         }
 
-        .agent-explanation{
-          margin-top:14px;
-          display:grid;
-          gap:10px;
+        .agent-level-scale span[dir='ltr'] {
+          font-family: var(--font-data);
         }
 
-        .agent-explanation p{
-          margin:0;
-          color:var(--agent-muted);
-          line-height:1.85;
-          font-size:14px;
-          font-weight:850;
+        .agent-signal-badge,
+        .agent-risk,
+        .agent-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: max-content;
+          max-width: 100%;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-pill);
+          padding: 6px 9px;
+          background: var(--surface-muted);
+          color: var(--foreground-secondary);
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1.25;
+          white-space: nowrap;
         }
 
-        .agent-history-panel{
-          display:grid;
-          gap:14px;
+        .agent-signal-badge.buy,
+        .agent-risk.risk-low {
+          border-color: var(--success);
+          background: var(--success-soft);
+          color: var(--success);
         }
 
-        .agent-history-panel>header{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:14px;
+        .agent-signal-badge.sell,
+        .agent-risk.risk-high {
+          border-color: var(--danger);
+          background: var(--danger-soft);
+          color: var(--danger);
         }
 
-        .agent-history-panel>header span{
-          display:flex;
-          align-items:center;
-          gap:8px;
-          color:var(--agent-heading);
-          font-size:20px;
-          font-weight:950;
-          line-height:1.35;
+        .agent-signal-badge.wait,
+        .agent-risk.risk-medium {
+          border-color: var(--warning);
+          background: var(--warning-soft);
+          color: var(--warning);
         }
 
-        .agent-history-panel>header span svg{color:var(--agent-primary)}
-
-        .agent-history-panel>header p{
-          margin:4px 0 0;
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:850;
+        .agent-history-panel {
+          padding: 18px;
+          overflow: hidden;
         }
 
-        .agent-history-search{
-          min-height:42px;
-          min-width:min(280px,100%);
-          display:flex;
-          align-items:center;
-          gap:9px;
-          padding:0 12px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-md);
-          background:var(--agent-surface-soft);
-          color:var(--agent-muted);
+        .agent-history-panel > header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          margin-bottom: 14px;
         }
 
-        .agent-history-search svg{
-          flex:0 0 auto;
-          color:var(--agent-primary);
+        .agent-history-search {
+          width: min(100%, 280px);
+          min-height: 40px;
         }
 
-        .agent-history-search input{
-          width:100%;
-          min-width:0;
-          border:0;
-          outline:0;
-          background:transparent;
-          color:var(--agent-heading);
-          font:900 13px Tajawal,Arial,sans-serif;
-        }
-
-        .agent-history-search input::placeholder{
-          color:var(--agent-muted-soft);
-        }
-
-        .agent-history-search:focus-within{
-          border-color:var(--agent-border-strong);
-          box-shadow:0 0 0 4px rgba(24,212,212,.12);
-        }
-
-        .agent-history-grid{
-          display:grid;
-          gap:8px;
+        .agent-history-grid {
+          min-width: 980px;
+          display: grid;
+          overflow-x: auto;
         }
 
         .agent-history-head,
-        .agent-history-row{
-          display:grid;
-          grid-template-columns:minmax(120px,1.1fr) minmax(100px,.8fr) 82px 92px 92px 100px minmax(150px,1fr) minmax(130px,.9fr);
-          align-items:center;
-          gap:10px;
+        .agent-history-row {
+          display: grid;
+          grid-template-columns: minmax(120px, 1.2fr) repeat(6, minmax(96px, 1fr)) minmax(100px, auto);
+          align-items: center;
+          gap: 10px;
+          min-width: 980px;
+          padding: 11px 12px;
         }
 
-        .agent-history-head{
-          min-height:40px;
-          padding:0 14px;
-          color:var(--agent-muted-soft);
-          font-size:12px;
-          font-weight:950;
+        .agent-history-head {
+          border-bottom: 1px solid var(--border);
+          background: var(--surface-muted);
+          color: var(--foreground-muted);
+          font-size: 11px;
+          font-weight: 600;
         }
 
-        .agent-history-row{
-          min-height:70px;
-          padding:12px 14px;
-          border:1px solid var(--agent-border);
-          border-radius:var(--r-lg);
-          background:var(--agent-surface);
-          color:var(--agent-text);
-          box-shadow:0 8px 20px rgba(3,18,37,.04);
-          transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+        .agent-history-row {
+          border-bottom: 1px solid var(--border);
+          color: var(--foreground-secondary);
+          font-size: 12px;
+          font-weight: 500;
         }
 
-        .agent-history-row:hover{
-          transform:translateY(-1px);
-          border-color:var(--agent-border-strong);
-          box-shadow:0 14px 30px rgba(3,18,37,.08);
+        .agent-history-row:last-child {
+          border-bottom: 0;
         }
 
-        .agent-history-row span,
-        .agent-history-row small{
-          color:var(--agent-muted);
-          font-size:13px;
-          font-weight:900;
-          line-height:1.45;
+        .agent-history-row:hover {
+          background: var(--sidebar-hover);
         }
 
-        .agent-history-asset{
-          display:grid;
-          gap:3px;
+        .agent-history-asset {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
         }
 
-        .agent-history-asset strong{
-          color:var(--agent-heading);
-          font-size:15px;
-          font-weight:950;
-          line-height:1.25;
+        .agent-history-asset strong,
+        .agent-history-asset small,
+        .agent-history-row > [role='cell']:nth-child(5) {
+          font-family: var(--font-data);
         }
 
-        .agent-pill,
-        .agent-signal-badge,
-        .agent-risk{
-          width:max-content;
-          max-width:100%;
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          min-height:30px;
-          border-radius:999px;
-          padding:0 10px;
-          font-size:12px;
-          font-weight:950;
-          line-height:1.2;
-          border:1px solid transparent;
+        .agent-history-asset strong {
+          color: var(--foreground);
+          font-weight: 600;
         }
 
-        .agent-pill.neutral{
-          background:rgba(29,140,255,.10);
-          border-color:rgba(29,140,255,.16);
-          color:#075985;
+        .agent-history-asset small {
+          color: var(--foreground-muted);
+          font-weight: 500;
         }
 
-        .agent-signal-badge.buy{
-          background:#ecfdf5;
-          color:#047857;
-          border-color:rgba(4,120,87,.18);
+        .agent-row-action {
+          min-height: 34px;
+          padding-inline: 10px;
         }
 
-        .agent-signal-badge.sell{
-          background:#fef2f2;
-          color:#b91c1c;
-          border-color:rgba(185,28,28,.16);
+        .agent-history-empty {
+          margin: 0;
+          padding: 24px 12px;
+          color: var(--foreground-muted);
+          text-align: center;
+          font-size: 13px;
+          line-height: 1.7;
         }
 
-        .agent-signal-badge.wait{
-          background:#fff7ed;
-          color:#b45309;
-          border-color:rgba(180,83,9,.18);
+        .spin {
+          animation: agentSpin .9s linear infinite;
         }
 
-        .agent-risk.risk-low{
-          background:rgba(16,185,129,.10);
-          border-color:rgba(16,185,129,.18);
-          color:#047857;
+        @keyframes agentSpin {
+          to { transform: rotate(360deg); }
         }
 
-        .agent-risk.risk-medium{
-          background:rgba(245,158,11,.12);
-          border-color:rgba(245,158,11,.20);
-          color:#b45309;
-        }
-
-        .agent-risk.risk-high{
-          background:rgba(239,68,68,.10);
-          border-color:rgba(239,68,68,.18);
-          color:#b91c1c;
-        }
-
-        .agent-row-action{
-          min-height:38px;
-          border:1px solid rgba(24,212,212,.24);
-          background:rgba(24,212,212,.10);
-          color:#047a8f;
-          padding:0 12px;
-          font-size:12px;
-        }
-
-        .agent-row-action:hover,
-        .agent-row-action:focus-visible{
-          outline:0;
-          background:rgba(24,212,212,.16);
-          box-shadow:0 0 0 4px rgba(24,212,212,.12);
-        }
-
-        .agent-history-empty{
-          margin:0;
-          padding:18px;
-          border:1px dashed var(--agent-border-strong);
-          border-radius:var(--r-lg);
-          background:var(--agent-surface-soft);
-          color:var(--agent-muted);
-          font-size:14px;
-          font-weight:900;
-          text-align:center;
-        }
-
-        :global(.dark) .agent-pill.neutral{
-          color:#a7d8ff;
-        }
-
-        :global(.dark) .agent-signal-badge.buy,
-        :global(.dark) .agent-risk.risk-low{
-          background:rgba(16,185,129,.16);
-          color:#86efac;
-          border-color:rgba(16,185,129,.26);
-        }
-
-        :global(.dark) .agent-signal-badge.sell,
-        :global(.dark) .agent-risk.risk-high{
-          background:rgba(239,68,68,.16);
-          color:#fca5a5;
-          border-color:rgba(239,68,68,.26);
-        }
-
-        :global(.dark) .agent-signal-badge.wait,
-        :global(.dark) .agent-risk.risk-medium{
-          background:rgba(245,158,11,.16);
-          color:#fcd34d;
-          border-color:rgba(245,158,11,.26);
-        }
-
-        @media(max-width:1280px){
-          .agent-control-panel{
-            grid-template-columns:minmax(0,1fr) minmax(180px,.55fr);
+        @media (max-width: 1180px) {
+          .agent-control-panel {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
-          .agent-timeframe-group,
-          .agent-primary-action{
-            grid-column:1/-1;
+
+          .agent-workspace-grid {
+            grid-template-columns: minmax(0, 1fr);
           }
-          .agent-metric-grid{
-            grid-template-columns:repeat(2,minmax(0,1fr));
-          }
-          .agent-history-head,
-          .agent-history-row{
-            grid-template-columns:minmax(120px,1fr) minmax(96px,.75fr) 76px 90px 88px 96px minmax(128px,.9fr) minmax(120px,.7fr);
-          }
-          .agent-workspace-grid{
-            grid-template-columns:minmax(0,1fr) minmax(280px,320px);
-          }
-          .agent-metric-grid.compact{
-            grid-template-columns:repeat(2,minmax(0,1fr));
-          }
-          .agent-evidence-grid,
-          .agent-indicator-grid{
-            grid-template-columns:repeat(2,minmax(0,1fr));
+
+          .agent-side-rail {
+            position: static;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
 
-        @media(max-width:1024px){
-          .market-agent-page{
-            overflow-x:clip;
+        @media (max-width: 820px) {
+          .agent-page-header {
+            align-items: flex-start;
+            flex-direction: column;
           }
-          .market-agent-page[dir="rtl"] .market-agent-main,
-          .market-agent-page[dir="ltr"] .market-agent-main,
-          .market-agent-main{
-            width:100%;
-            max-width:100%;
-            margin:0;
-            padding:calc(22px + env(safe-area-inset-top)) 18px 42px!important;
-          }
-          .market-agent-main>*{
-            max-width:100%;
-            margin-inline:0;
-          }
-          .agent-page-header{
-            grid-template-columns:1fr;
-            align-items:start;
-          }
-          .agent-service-chip{
-            justify-self:stretch;
-          }
-          .agent-history-head{
-            display:none;
-          }
-          .agent-history-row{
-            grid-template-columns:1fr 1fr;
-            align-items:start;
-          }
-          .agent-history-row [role="cell"]{
-            display:grid;
-            gap:3px;
-          }
-          .agent-history-row [role="cell"]::before{
-            content:attr(data-label);
-          }
-          .agent-workspace-grid{
-            grid-template-columns:1fr;
-          }
-          .agent-side-rail{
-            position:static;
-          }
-          .agent-history-panel>header{
-            display:grid;
-            align-items:stretch;
-          }
-          .agent-history-search{
-            width:100%;
-          }
-        }
 
-        @media(max-width:768px){
-          .market-agent-page[dir="rtl"] .market-agent-main,
-          .market-agent-page[dir="ltr"] .market-agent-main,
-          .market-agent-main{
-            padding-inline:14px!important;
+          .agent-service-chip {
+            width: 100%;
           }
-          .agent-page-header,
+
           .agent-control-panel,
-          .agent-loading-state,
-          .agent-empty-state,
-          .agent-workspace,
-          .agent-result-panel,
-          .agent-history-panel{
-            border-radius:var(--r-xl);
-            padding:18px;
-          }
-          .agent-workspace-header{
-            display:grid;
-          }
-          .agent-control-panel,
-          .agent-detail-grid,
-          .agent-analysis-notes{
-            grid-template-columns:1fr;
-          }
-          .agent-timeframe-group,
-          .agent-primary-action{
-            grid-column:auto;
-          }
-          .agent-timeframe-options{
-            display:flex;
-            overflow-x:auto;
-            scrollbar-width:none;
-            -webkit-overflow-scrolling:touch;
-          }
-          .agent-timeframe-options::-webkit-scrollbar{display:none}
-          .agent-timeframe-options button{
-            min-width:62px;
-            flex:0 0 auto;
-          }
-          .agent-loading-state,
-          .agent-empty-state{
-            grid-template-columns:1fr;
-            justify-items:start;
-          }
-          .agent-skeleton-grid,
           .agent-metric-grid,
-          .agent-metric-grid.compact,
           .agent-evidence-grid,
           .agent-indicator-grid,
-          .agent-history-row{
-            grid-template-columns:1fr;
+          .agent-analysis-notes,
+          .agent-side-rail {
+            grid-template-columns: 1fr;
           }
-          .agent-chart-track{
-            min-height:245px;
+
+          .agent-skeleton-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
-          .agent-level-marker{
-            min-width:66px;
+
+          .agent-workspace-header,
+          .agent-history-panel > header {
+            align-items: flex-start;
+            flex-direction: column;
           }
-          .agent-level-marker.target{
-            inset-block-start:150px;
+
+          .agent-history-search {
+            width: 100%;
           }
-          .agent-level-marker.stop{
-            inset-block-start:178px;
+
+          .agent-history-grid {
+            min-width: 0;
+            gap: 10px;
+            overflow: visible;
           }
-          .agent-result-panel>header{
-            align-items:flex-start;
+
+          .agent-history-head {
+            display: none;
           }
-          .agent-score-ring{
-            width:84px;
-            height:84px;
+
+          .agent-history-row {
+            min-width: 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            padding: 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
           }
-          .agent-secondary-action,
-          .agent-primary-action{
-            width:100%;
+
+          .agent-history-row > [role='cell'] {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+          }
+
+          .agent-history-row > [role='cell']::before {
+            content: attr(data-label);
+            color: var(--foreground-muted);
+            font-size: 10px;
+            font-weight: 500;
           }
         }
 
-        @media(max-width:420px){
-          .agent-page-header h1{
-            font-size:30px;
+        @media (max-width: 560px) {
+          .agent-page-header,
+          .agent-control-panel,
+          .agent-workspace,
+          .agent-history-panel {
+            padding: 14px;
           }
-          .agent-page-header p,
-          .agent-legal-notice p,
-          .agent-empty-state p{
-            font-size:13px;
-          }
-          .agent-control-panel{
-            gap:12px;
-          }
-        }
 
-        @media(prefers-reduced-motion:reduce){
-          .spin,
-          .agent-skeleton-grid span{
-            animation:none!important;
+          .agent-control-panel,
+          .agent-loading-state,
+          .agent-empty-state {
+            grid-template-columns: 1fr;
           }
+
+          .agent-empty-icon {
+            width: 46px;
+            height: 46px;
+          }
+
+          .agent-skeleton-grid,
+          .agent-history-row {
+            grid-template-columns: 1fr;
+          }
+
+          .agent-timeframe-options,
           .agent-primary-action,
-          .agent-secondary-action,
-          .agent-row-action,
-          .agent-timeframe-options button,
-          .agent-history-row{
-            transition:none!important;
+          .agent-secondary-action {
+            width: 100%;
           }
-          .agent-primary-action:hover,
-          .agent-history-row:hover{
-            transform:none!important;
+
+          .agent-timeframe-options button {
+            flex: 1;
+            min-height: 40px;
+          }
+
+          .agent-workspace-header .agent-signal-badge {
+            width: 100%;
+          }
+
+          .agent-chart-track {
+            height: 260px;
+            overflow-x: auto;
+          }
+
+          .agent-level-marker b {
+            max-width: 74px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .agent-skeleton-grid span,
+          .spin {
+            animation: none;
           }
         }
       `}</style>

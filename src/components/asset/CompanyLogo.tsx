@@ -28,16 +28,16 @@ const FALLBACK_TEXT_SIZE: Record<CompanyLogoSize, string> = {
 };
 
 const COMPANY_FALLBACKS: Record<string, { text: string; className: string }> = {
-  AAPL: { text: 'AAPL', className: 'border-neutral-200 bg-neutral-950 text-white dark:border-white/25 dark:bg-white dark:text-neutral-950' },
-  AMD: { text: 'AMD', className: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-300/25 dark:bg-emerald-400/12 dark:text-emerald-100' },
-  ASML: { text: 'ASML', className: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-300/25 dark:bg-sky-400/12 dark:text-sky-100' },
-  GOOGL: { text: 'GOOGL', className: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-300/25 dark:bg-blue-400/12 dark:text-blue-100' },
-  JNJ: { text: 'JNJ', className: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-300/25 dark:bg-rose-400/12 dark:text-rose-100' },
-  META: { text: 'META', className: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-300/25 dark:bg-blue-400/12 dark:text-blue-100' },
-  MSFT: { text: 'MSFT', className: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-300/25 dark:bg-slate-300/12 dark:text-slate-100' },
-  NVDA: { text: 'NVDA', className: 'border-lime-200 bg-lime-50 text-lime-700 dark:border-lime-300/25 dark:bg-lime-400/12 dark:text-lime-100' },
-  TSM: { text: 'TSM', className: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-300/25 dark:bg-blue-400/12 dark:text-blue-100' },
-  TSLA: { text: 'TSLA', className: 'border-red-200 bg-red-50 text-red-700 dark:border-red-300/25 dark:bg-red-400/12 dark:text-red-100' },
+  AAPL: { text: 'AAPL', className: 'border-border-strong bg-foreground text-background' },
+  AMD: { text: 'AMD', className: 'border-success/25 bg-success-soft text-success' },
+  ASML: { text: 'ASML', className: 'border-primary/25 bg-primary-soft text-primary' },
+  GOOGL: { text: 'GOOGL', className: 'border-primary/25 bg-primary-soft text-primary' },
+  JNJ: { text: 'JNJ', className: 'border-danger/25 bg-danger-soft text-danger' },
+  META: { text: 'META', className: 'border-primary/25 bg-primary-soft text-primary' },
+  MSFT: { text: 'MSFT', className: 'border-border bg-surface-muted text-foreground-secondary' },
+  NVDA: { text: 'NVDA', className: 'border-success/25 bg-success-soft text-success' },
+  TSM: { text: 'TSM', className: 'border-primary/25 bg-primary-soft text-primary' },
+  TSLA: { text: 'TSLA', className: 'border-danger/25 bg-danger-soft text-danger' },
 };
 
 function fallbackText(symbol: string, metaFallback: string) {
@@ -85,11 +85,11 @@ export function CompanyLogo({
   return (
     <span
       className={cn(
-        'company-logo-badge inline-flex shrink-0 items-center justify-center overflow-hidden border bg-white p-1.5 text-center font-black leading-none shadow-sm',
-        shape === 'circle' ? 'rounded-full' : 'rounded-xl',
+        'company-logo-badge inline-flex shrink-0 items-center justify-center overflow-hidden border bg-surface p-1.5 text-center font-semibold leading-none shadow-[var(--shadow-card)]',
+        shape === 'circle' ? 'rounded-[var(--radius-circle)]' : 'rounded-[var(--radius-card)]',
         showImage
-          ? 'border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-white dark:text-slate-700'
-          : brandFallback?.className ?? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-300/20 dark:bg-slate-300/10 dark:text-slate-100',
+          ? 'border-border bg-surface text-foreground-secondary'
+          : brandFallback?.className ?? 'border-border bg-surface-muted text-foreground-secondary',
         className,
       )}
       style={{
@@ -99,7 +99,6 @@ export function CompanyLogo({
         minHeight: dimension,
         maxWidth: dimension,
         maxHeight: dimension,
-        borderRadius: shape === 'circle' ? 999 : 12,
       }}
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : meta.alt}
@@ -125,7 +124,7 @@ export function CompanyLogo({
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <span className={cn('block tracking-normal', FALLBACK_TEXT_SIZE[size])}>
+        <span className={cn('block font-mono font-semibold tracking-normal', FALLBACK_TEXT_SIZE[size])}>
           {fallbackText(meta.symbol, meta.fallbackText)}
         </span>
       )}

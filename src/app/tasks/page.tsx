@@ -406,13 +406,11 @@ export default function TasksCenterPage() {
       <style jsx global>{`
         .tasks-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
+          background: var(--background);
         }
         .tasks-content {
           display: grid;
-          gap: var(--sfm-section-gap);
+          gap: var(--layout-section-gap);
         }
         .sfm-page-topbar {
           display: flex;
@@ -426,32 +424,33 @@ export default function TasksCenterPage() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           padding: 0 16px;
           text-decoration: none;
-          font: 950 13px Tajawal, Arial, sans-serif;
-          white-space: normal;
+          font: 600 13px var(--font-ui);
+          white-space: nowrap;
         }
         .sfm-primary-link {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
-          box-shadow: 0 12px 24px rgba(29, 140, 255, .2);
+          border: 1px solid var(--primary);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow: var(--shadow-sm);
         }
         .sfm-secondary-link {
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
+          border: 1px solid var(--border-strong);
+          background: var(--surface);
+          color: var(--foreground);
         }
         .tasks-warning {
           display: grid;
           gap: 10px;
           min-width: 0;
           padding: 12px 14px;
-          border-radius: var(--r-lg);
-          border: 1px solid rgba(245, 158, 11, .25);
-          background: rgba(245, 158, 11, .10);
-          color: #92400E;
-          font-weight: 850;
+          border-radius: var(--radius-card);
+          border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
+          background: var(--warning-soft);
+          color: var(--warning);
+          font-weight: 500;
         }
         .tasks-warning-main {
           display: flex;
@@ -464,20 +463,20 @@ export default function TasksCenterPage() {
           overflow-wrap: anywhere;
         }
         .tasks-warning small {
-          color: #B45309;
+          color: var(--warning);
           font-size: 11px;
           line-height: 1.6;
         }
         .tasks-warning button {
           width: fit-content;
           min-height: 34px;
-          border: 1px solid rgba(245, 158, 11, .28);
-          border-radius: var(--r-md);
-          background: #FFFFFF;
-          color: #92400E;
+          border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--border));
+          border-radius: var(--radius-control);
+          background: var(--surface);
+          color: var(--warning);
           padding: 0 12px;
           cursor: pointer;
-          font: 900 12px Tajawal, Arial, sans-serif;
+          font: 600 12px var(--font-ui);
         }
         .tasks-toolbar {
           display: grid;
@@ -489,10 +488,10 @@ export default function TasksCenterPage() {
           display: flex;
           align-items: center;
           gap: 10px;
-          border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: var(--r-lg);
-          background: #FFFFFF;
-          color: var(--sfm-primary);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-card);
+          background: var(--control-background);
+          color: var(--primary);
           padding: 0 14px;
         }
         .tasks-search input {
@@ -501,11 +500,11 @@ export default function TasksCenterPage() {
           border: 0;
           outline: 0;
           background: transparent;
-          color: var(--sfm-foreground);
-          font: 850 14px Tajawal, Arial, sans-serif;
+          color: var(--foreground);
+          font: 500 14px var(--font-ui);
         }
         .tasks-search input::placeholder {
-          color: var(--sfm-muted);
+          color: var(--control-placeholder);
         }
         .tasks-list {
           display: grid;
@@ -579,33 +578,34 @@ function TaskMetric({
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: var(--r-md);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
+          color: var(--primary);
         }
         :global(.task-metric-urgent > span) {
-          background: rgba(239, 68, 68, .12);
-          color: #DC2626;
+          background: var(--danger-soft);
+          color: var(--danger);
         }
         :global(.task-metric-high > span) {
-          background: rgba(245, 158, 11, .14);
-          color: #B45309;
+          background: var(--warning-soft);
+          color: var(--warning);
         }
         :global(.task-metric-done > span) {
-          background: rgba(16, 185, 129, .12);
-          color: #047857;
+          background: var(--success-soft);
+          color: var(--success);
         }
         p {
           margin: 0;
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
         }
         strong {
           display: block;
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 26px;
           line-height: 1.1;
+          font-family: var(--font-data);
         }
       `}</style>
     </AppCard>
@@ -672,25 +672,25 @@ function TaskCard({
           align-items: start;
           min-width: 0;
           padding: 16px;
-          border-radius: var(--sfm-card-radius);
-          border: 1px solid rgba(29, 140, 255, .14);
-          background: rgba(255, 255, 255, .94);
-          box-shadow: 0 12px 32px rgba(3, 18, 37, .07);
+          border-radius: var(--radius-card);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
         }
         .smart-task-card.priority-urgent {
-          border-color: rgba(239, 68, 68, .24);
+          border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
         }
         .smart-task-card.priority-high {
-          border-color: rgba(245, 158, 11, .28);
+          border-color: color-mix(in srgb, var(--warning) 32%, var(--border));
         }
         .smart-task-icon {
           width: 46px;
           height: 46px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-lg);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
+          color: var(--primary);
         }
         .smart-task-main {
           min-width: 0;
@@ -705,41 +705,41 @@ function TaskCard({
           min-width: 0;
         }
         .smart-task-meta span {
-          border-radius: 999px;
-          background: #F8FBFF;
-          border: 1px solid rgba(29, 140, 255, .12);
-          color: var(--sfm-muted);
+          border-radius: var(--radius-pill);
+          background: var(--surface-muted);
+          border: 1px solid var(--border);
+          color: var(--foreground-muted);
           padding: 4px 8px;
           font-size: 11px;
-          font-weight: 850;
+          font-weight: 500;
           overflow-wrap: anywhere;
         }
         .smart-task-meta .priority-badge {
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary-hover);
+          background: var(--primary-soft);
+          color: var(--primary-hover);
         }
         .priority-urgent .priority-badge {
-          background: rgba(239, 68, 68, .12);
-          color: #B91C1C;
+          background: var(--danger-soft);
+          color: var(--danger);
         }
         .priority-high .priority-badge {
-          background: rgba(245, 158, 11, .14);
-          color: #92400E;
+          background: var(--warning-soft);
+          color: var(--warning);
         }
         .smart-task-meta .done-badge {
-          background: rgba(16, 185, 129, .12);
-          color: #047857;
+          background: var(--success-soft);
+          color: var(--success);
         }
         h2 {
           margin: 0;
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 18px;
           line-height: 1.45;
           overflow-wrap: anywhere;
         }
         p {
           margin: 0;
-          color: var(--sfm-muted);
+          color: var(--foreground-secondary);
           line-height: 1.65;
           overflow-wrap: anywhere;
         }
@@ -758,32 +758,32 @@ function TaskCard({
           align-items: center;
           justify-content: center;
           gap: 7px;
-          border-radius: var(--r-md);
-          border: 1px solid rgba(29, 140, 255, .18);
-          background: #FFFFFF;
-          color: var(--sfm-primary-dark);
+          border-radius: var(--radius-control);
+          border: 1px solid var(--border-strong);
+          background: var(--surface);
+          color: var(--foreground);
           padding: 0 13px;
-          font: 950 12px Tajawal, Arial, sans-serif;
+          font: 600 12px var(--font-ui);
           text-decoration: none;
           cursor: pointer;
-          box-shadow: 0 8px 18px rgba(3, 18, 37, .05);
-          transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+          box-shadow: var(--shadow-xs);
+          transition: transform var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
         }
         .smart-task-actions a:hover,
         .smart-task-actions button:hover:not(:disabled) {
           transform: translateY(-1px);
-          border-color: rgba(24, 212, 212, .34);
-          background: rgba(24, 212, 212, .08);
-          box-shadow: 0 12px 24px rgba(3, 18, 37, .08);
+          border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+          background: var(--surface-hover);
+          box-shadow: var(--shadow-sm);
         }
         .smart-task-actions .view-action {
-          border: 1px solid rgba(24, 212, 212, .26);
-          background: linear-gradient(135deg, var(--sfm-primary-dark), var(--sfm-card-dark));
-          color: #EAF6FF;
+          border: 1px solid var(--primary);
+          background: var(--primary);
+          color: var(--primary-foreground);
         }
         .smart-task-actions .view-action:hover:not(:disabled) {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-card-dark));
-          color: #FFFFFF;
+          background: var(--primary-hover);
+          color: var(--primary-foreground);
         }
         .smart-task-actions button:disabled {
           opacity: .62;
@@ -792,7 +792,7 @@ function TaskCard({
         }
         .smart-task-actions a:focus-visible,
         .smart-task-actions button:focus-visible {
-          outline: 3px solid rgba(24, 212, 212, .22);
+          outline: 3px solid var(--focus-ring);
           outline-offset: 2px;
         }
         @media (max-width: 860px) {

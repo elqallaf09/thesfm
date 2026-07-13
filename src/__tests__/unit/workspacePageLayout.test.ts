@@ -18,6 +18,8 @@ describe('workspace page layout policy', () => {
     ['/business-operations', 'full'],
     ['/business/subscriptions/client-a', 'full'],
     ['/projects/project-a', 'full'],
+    ['/projects/ad-calculator', 'standard'],
+    ['/education/expenses', 'full'],
     ['/projects', 'wide'],
     ['/sharia-stocks', 'wide'],
     ['/banking-stocks', 'wide'],
@@ -33,10 +35,12 @@ describe('workspace page layout policy', () => {
     ['/investment-companies', 'wide'],
     ['/business-hub', 'wide'],
     ['/profile/companies', 'wide'],
+    ['/education/investments', 'wide'],
+    ['/education/savings', 'wide'],
+    ['/site-map', 'wide'],
     ['/profile', 'standard'],
     ['/company-listing/submit', 'standard'],
     ['/ebooks/candlestick-analysis', 'reading'],
-    ['/education/savings', 'reading'],
   ])('assigns %s to the %s container', (pathname, expected) => {
     expect(resolveWorkspacePageContainerVariant(pathname)).toBe(expected);
   });
@@ -60,12 +64,34 @@ describe('workspace page layout policy', () => {
     expect(source).not.toMatch(/100vw|calc\(100vw|translateX\(/);
   });
 
-  it('retires legacy route-level sidebar offsets inside the central shell', () => {
-    const css = readFileSync(resolve(root, 'src/app/globals.css'), 'utf8');
-    const compatibilityLayer = css.slice(css.indexOf('Legacy route hosts no longer'));
-    expect(compatibilityLayer).toContain('.sfm-app-main');
-    expect(compatibilityLayer).toContain('margin-inline: 0 !important');
-    expect(compatibilityLayer).not.toContain('margin-inline-start: var(--sidebar-w)');
+  it('keeps active route hosts parent-relative instead of masking legacy shell geometry', () => {
+    const activeRouteHostFiles = [
+      'src/app/globals.css',
+      'src/app/profile/page.tsx',
+      'src/app/financial-theories/financial-theories.css',
+      'src/components/energy-stocks/EnergyNewsPage.tsx',
+    ];
+
+    for (const file of activeRouteHostFiles) {
+      const source = readFileSync(resolve(root, file), 'utf8');
+      expect(source, file).not.toMatch(/100vw|calc\(\s*100v[wi]/i);
+      expect(source, file).not.toMatch(
+        /(?:margin|padding)-inline-start:\s*(?:230px|var\(--sidebar-w|calc\(\s*var\(--sidebar-w)/i,
+      );
+      expect(source, file).not.toMatch(/--sidebar-width:\s*var\(--sidebar-w/i);
+    }
+  });
+
+  it('documents viewport sizing only in true fixed-overlay components', () => {
+    const fixedOverlayFiles = [
+      'src/components/ui/AppModal.tsx',
+      'src/components/ui/LanguageSwitcher.tsx',
+    ];
+
+    for (const file of fixedOverlayFiles) {
+      const source = readFileSync(resolve(root, file), 'utf8');
+      expect(source, file).toMatch(/position:\s*['"]?fixed/i);
+    }
   });
 
   it('keeps the active shared news shell parent-relative', () => {
@@ -133,7 +159,7 @@ describe('workspace page layout policy', () => {
   it('keeps the trader canvas inside the shared header and sidebar tracks', () => {
     const source = readFileSync(resolve(root, 'src/app/thesfm-trader-own/TraderOwnFrame.tsx'), 'utf8');
     expect(source).toContain('width: 100%');
-    expect(source).toContain('var(--sfm-global-header-height');
+    expect(source).toContain('var(--global-header-height)');
     expect(source).toContain('var(--workspace-page-padding-block');
     expect(source).not.toMatch(/position:\s*fixed|inset:\s*0|100vw|2147483000/);
     expect(source).not.toMatch(/html,\s*\n\s*body\s*\{/);

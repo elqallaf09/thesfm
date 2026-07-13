@@ -83,22 +83,22 @@ export function SummaryCard({
   tone: 'currency' | 'income' | 'remaining' | 'saving' | 'count';
 }) {
   const iconColors: Record<string, {bg:string;color:string}> = {
-    currency: {bg:'#EEF2FF',color:'#3730A3'},
-    income: {bg:'#ECFDF5',color:'#047857'},
-    saving: {bg:'#FFFBEB',color:'#B45309'},
-    count: {bg:'rgba(29,140,255,.10)',color:'var(--sfm-primary)'},
-    remaining: {bg:'rgba(24,212,212,.12)',color:'#0E7490'},
+    currency: {bg:'var(--primary-soft)',color:'var(--primary)'},
+    income: {bg:'var(--success-soft)',color:'var(--success)'},
+    saving: {bg:'var(--warning-soft)',color:'var(--warning)'},
+    count: {bg:'var(--info-soft)',color:'var(--info)'},
+    remaining: {bg:'var(--accent-soft)',color:'var(--accent)'},
   };
   const ic = iconColors[tone] ?? iconColors.count;
   return (
-    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'var(--r-xl)',padding:'15px',minWidth:0,minHeight:'100px',boxShadow:'0 8px 22px rgba(3,18,37,.05)'}}>
-      <div style={{width:'40px',height:'40px',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',background:ic.bg,color:ic.color,flexShrink:0}} aria-hidden="true">
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid var(--border)',background:'var(--surface)',borderRadius:'var(--radius-card)',padding:'15px',minWidth:0,minHeight:'100px',boxShadow:'var(--shadow-xs)'}}>
+      <div style={{width:'40px',height:'40px',borderRadius:'var(--radius-control)',display:'grid',placeItems:'center',background:ic.bg,color:ic.color,flexShrink:0}} aria-hidden="true">
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:950,lineHeight:1.35}}>{label}</small>
-        <strong style={{display:'block',marginTop:'5px',color:'var(--sfm-midnight)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'5px 0 0',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:820,lineHeight:1.5}}>{description}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:950,lineHeight:1.35}}>{label}</small>
+        <strong style={{display:'block',marginTop:'5px',color:'var(--foreground)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'5px 0 0',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:820,lineHeight:1.5}}>{description}</p>
       </div>
     </article>
   );
@@ -106,14 +106,14 @@ export function SummaryCard({
 
 export function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideIcon; title: string; value: string; detail: string }) {
   return (
-    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid rgba(29,140,255,.10)',background:'linear-gradient(180deg,#FFFFFF,#F8FBFF)',borderRadius:'var(--r-lg)',padding:'14px',boxShadow:'0 6px 18px rgba(3,18,37,.05)'}}>
-      <div style={{width:'38px',height:'38px',borderRadius:'var(--r-md)',display:'grid',placeItems:'center',background:'rgba(29,140,255,.08)',color:'var(--sfm-primary)',flexShrink:0}} aria-hidden="true">
+    <article style={{display:'grid',gridTemplateColumns:'auto minmax(0,1fr)',gap:'12px',alignItems:'start',border:'1px solid var(--border)',background:'var(--surface)',borderRadius:'var(--radius-card)',padding:'14px',boxShadow:'var(--shadow-xs)'}}>
+      <div style={{width:'38px',height:'38px',borderRadius:'var(--radius-control)',display:'grid',placeItems:'center',background:'var(--primary-soft)',color:'var(--primary)',flexShrink:0}} aria-hidden="true">
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--sfm-muted-readable)',fontSize:'11px',fontWeight:950}}>{title}</small>
-        <strong style={{display:'block',marginTop:'4px',color:'var(--sfm-midnight)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'4px 0 0',color:'var(--sfm-muted-readable)',fontSize:'11px',lineHeight:1.5}}>{detail}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:950}}>{title}</small>
+        <strong style={{display:'block',marginTop:'4px',color:'var(--foreground)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'4px 0 0',color:'var(--foreground-secondary)',fontSize:'11px',lineHeight:1.5}}>{detail}</p>
       </div>
     </article>
   );
@@ -149,15 +149,15 @@ export function Stepper({
       <style jsx>{`
         .setup-stepper{display:flex;flex-wrap:wrap;gap:9px;overflow-x:visible;padding:2px 2px 16px;margin:0 0 18px;list-style:none;scrollbar-width:none;max-width:100%;min-width:0}
         .setup-stepper::-webkit-scrollbar{display:none}
-        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid rgba(29,140,255,.14);background:var(--sfm-light-card);color:var(--sfm-muted-readable);border-radius:var(--r-xl);padding:9px 11px;font-weight:900;font-size:12px;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-        .setup-stepper li.active{background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-card-dark));color:#FFFFFF;border-color:rgba(167,243,240,.30);box-shadow:0 12px 28px rgba(29,140,255,.18),inset 0 -2px 0 rgba(24,212,212,.50)}
-        .setup-stepper li.done{background:#ECFDF5;color:#047857;border-color:rgba(16,185,129,.22)}
-        .setup-stepper li.upcoming{background:#FFFFFF}
-        .setup-stepper span{grid-area:icon;width:28px;height:28px;border-radius:999px;background:rgba(29,140,255,.13);display:grid;place-items:center;flex:0 0 auto;color:var(--sfm-primary-dark)}
-        .setup-stepper li.active span{background:rgba(234,246,255,.14);color:var(--sfm-soft-cyan)}
-        .setup-stepper li.done span{background:#D1FAE5;color:#047857}
+        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);border-radius:var(--radius-card);padding:9px 11px;font-weight:500;font-size:12px;transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),box-shadow var(--duration) var(--ease),transform var(--duration) var(--ease)}
+        .setup-stepper li.active{background:var(--primary-soft);color:var(--primary-active);border-color:var(--primary);box-shadow:var(--active-indicator-inline-start)}
+        .setup-stepper li.done{background:var(--success-soft);color:var(--success);border-color:color-mix(in srgb,var(--success) 28%,var(--border))}
+        .setup-stepper li.upcoming{background:var(--surface)}
+        .setup-stepper span{grid-area:icon;width:28px;height:28px;border-radius:var(--radius-pill);background:var(--primary-soft);display:grid;place-items:center;flex:0 0 auto;color:var(--primary)}
+        .setup-stepper li.active span{background:var(--primary);color:var(--primary-foreground)}
+        .setup-stepper li.done span{background:var(--success);color:var(--foreground-inverse)}
         .setup-stepper b{grid-area:title;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-        .setup-stepper em{grid-area:state;font-style:normal;font-size:10px;font-weight:950;color:inherit;opacity:.78;line-height:1.15}
+        .setup-stepper em{grid-area:state;font-style:normal;font-size:10px;font-weight:500;color:inherit;line-height:1.15}
         @media(max-width:720px){.setup-stepper{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;padding-bottom:12px;margin-bottom:14px}.setup-stepper li{flex:0 0 min(78vw,250px)}}
       `}</style>
     </ol>
@@ -187,25 +187,25 @@ export function IncomeDecisionCard({
           justify-items: center;
           text-align: center;
           gap: 18px;
-          border: 1px solid rgba(29,140,255,.16);
-          background: linear-gradient(180deg,#FFFFFF,rgba(234,246,255,.72));
-          border-radius: var(--r-2xl);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          border-radius: var(--radius-panel);
           padding: clamp(22px,4vw,34px);
-          box-shadow: 0 18px 46px rgba(3,18,37,.08);
+          box-shadow: var(--shadow-card);
           min-width: 0;
           overflow: hidden;
         }
         .income-decision-icon {
-          width: 76px; height: 76px; border-radius: 999px;
+          width: 76px; height: 76px; border-radius: var(--radius-pill);
           display: grid; place-items: center;
-          background: linear-gradient(135deg,rgba(234,246,255,.95),rgba(24,212,212,.12));
-          border: 1px solid rgba(29,140,255,.16);
-          color: var(--sfm-primary);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 12px 28px rgba(29,140,255,.12);
+          background: var(--primary-soft);
+          border: 1px solid color-mix(in srgb,var(--primary) 24%,var(--border));
+          color: var(--primary);
+          box-shadow: var(--shadow-xs);
         }
         .income-decision-copy { display: grid; gap: 10px; max-width: 620px; }
-        .income-decision-copy h3 { margin: 0; color: var(--sfm-primary-dark); font-size: clamp(24px,3.5vw,34px); line-height: 1.25; font-weight: 950; }
-        .income-decision-copy p { margin: 0; color: var(--sfm-muted-readable); font-size: 15px; font-weight: 850; line-height: 1.9; }
+        .income-decision-copy h3 { margin: 0; color: var(--foreground); font-size: clamp(24px,3.5vw,34px); line-height: 1.25; font-weight: 700; }
+        .income-decision-copy p { margin: 0; color: var(--foreground-secondary); font-size: 15px; font-weight: 400; line-height: 1.9; }
         .income-decision-actions {
           margin-top: 8px;
           display: flex;
@@ -216,33 +216,27 @@ export function IncomeDecisionCard({
           max-width: 340px;
         }
         .income-action-btn {
-          width: 100%; min-height: 52px; border-radius: var(--r-xl); padding: 0 22px;
-          font: 950 15px Tajawal,Arial,sans-serif;
+          width: 100%; min-height: 52px; border-radius: var(--radius-control); padding: 0 22px;
+          font: 600 15px var(--font-ui);
           display: inline-flex; align-items: center; justify-content: center; gap: 10px;
           cursor: pointer; white-space: nowrap; min-width: 0;
-          border: 0;
-          background: linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));
-          color: #FFFFFF;
-          box-shadow: 0 18px 38px rgba(29,140,255,.24);
-          transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+          border: 1px solid var(--primary);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow: var(--shadow-sm);
+          transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);
         }
-        .income-action-btn:hover { transform: translateY(-2px); filter: saturate(1.08) brightness(1.04); box-shadow: 0 22px 48px rgba(24,212,212,.30); }
+        .income-action-btn:hover { transform: translateY(-2px); background:var(--primary-hover); border-color:var(--primary-hover); box-shadow:var(--shadow-md); }
         .income-action-btn:active { transform: translateY(0) scale(.985); }
+        .income-action-btn:focus-visible,.income-skip-link:focus-visible { outline:3px solid var(--focus-ring); outline-offset:3px; }
         .income-skip-link {
           display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-          background: none; border: none; padding: 6px 12px; border-radius: var(--r-sm);
-          font: 700 13px Tajawal,Arial,sans-serif;
-          color: var(--sfm-muted-readable);
+          background: none; border: none; padding: 6px 12px; border-radius: var(--radius-sm);
+          font: 600 13px var(--font-ui);
+          color: var(--foreground-secondary);
           cursor: pointer; transition: color .18s, background .18s; white-space: nowrap;
         }
-        .income-skip-link:hover { color: var(--sfm-primary); background: rgba(29,140,255,.07); }
-        :global(.dark) .income-decision-card { background: linear-gradient(180deg,#0F1E32,#0B1728); border-color: #1D3050; }
-        :global(.dark) .income-decision-icon { background: linear-gradient(135deg,rgba(47,214,192,.18),rgba(29,140,255,.12)); border-color: rgba(47,214,192,.24); color: #8EEAE5; }
-        :global(.dark) .income-decision-copy h3 { color: #F8FBFF; }
-        :global(.dark) .income-decision-copy p { color: #C7D3E1; }
-        :global(.dark) .income-action-btn { color: #061A2E; box-shadow: 0 18px 38px rgba(47,214,192,.20); }
-        :global(.dark) .income-skip-link { color: #8A9DB5; }
-        :global(.dark) .income-skip-link:hover { color: #8EEAE5; background: rgba(47,214,192,.10); }
+        .income-skip-link:hover { color: var(--primary); background: var(--primary-soft); }
       `}</style>
       <div className="income-decision-icon" aria-hidden="true">
         <CircleDollarSign size={30} />
@@ -320,22 +314,22 @@ export function ToggleRow({
   no: string;
 }) {
   const base: React.CSSProperties = {
-    minHeight: '48px', borderRadius: 'var(--r-md)', padding: '0 22px',
-    fontSize: '15px', fontWeight: 900, cursor: 'pointer',
-    fontFamily: 'Tajawal, Arial, sans-serif', display: 'inline-flex',
+    minHeight: '48px', borderRadius: 'var(--radius-control)', padding: '0 22px',
+    fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+    fontFamily: 'var(--font-ui)', display: 'inline-flex',
     alignItems: 'center', justifyContent: 'center', transition: 'all .18s ease',
     whiteSpace: 'nowrap',
   };
   const activeStyle: React.CSSProperties = {
     ...base,
-    background: 'linear-gradient(135deg, #0b76e0, #18d4d4)',
-    color: '#fff', border: '1px solid transparent',
-    boxShadow: '0 4px 14px rgba(11,118,224,.25)',
+    background: 'var(--primary)',
+    color: 'var(--primary-foreground)', border: '1px solid var(--primary)',
+    boxShadow: 'var(--shadow-sm)',
   };
   const inactiveStyle: React.CSSProperties = {
     ...base,
-    background: 'rgba(255,255,255,0.7)', color: 'var(--sfm-foreground)',
-    border: '1px solid rgba(29,140,255,.22)',
+    background: 'var(--surface)', color: 'var(--foreground)',
+    border: '1px solid var(--border-strong)',
   };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>

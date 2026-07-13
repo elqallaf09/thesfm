@@ -21,7 +21,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
   const src = `/thesfm-trader-own/app/index.html?route=${encodeURIComponent(appRoute)}`;
 
   return (
-    <section className="trader-shell-page" aria-label="SFM Smart Analyzer">
+    <main className="trader-shell-page" aria-label="SFM Smart Analyzer">
       <iframe
         title="SFM Smart Analyzer"
         src={src}
@@ -34,13 +34,13 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
           min-width: 0;
           width: 100%;
           height: calc(
-            100dvh - var(--sfm-global-header-height, 64px) -
+            100dvh - var(--global-header-height) -
             var(--workspace-page-padding-block, 24px) -
             var(--workspace-page-padding-block, 24px)
           );
           min-height: 520px;
           border: 1px solid var(--border);
-          border-radius: var(--radius-panel, 16px);
+          border-radius: var(--radius-panel);
           background: var(--background);
           overflow: hidden;
           color-scheme: light dark;
@@ -56,16 +56,16 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
         @media (max-width: 767px) {
           .trader-shell-page {
             height: calc(
-              100dvh - var(--sfm-global-header-height, 108px) -
+              100dvh - var(--global-header-height) -
               var(--workspace-page-padding-block, 16px) -
               var(--workspace-page-padding-block, 16px)
             );
             min-height: 480px;
-            border-radius: var(--radius-control, 10px);
+            border-radius: var(--radius-control);
           }
         }
       `}</style>
-    </section>
+    </main>
   );
 }
 

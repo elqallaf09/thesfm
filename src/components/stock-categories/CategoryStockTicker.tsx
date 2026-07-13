@@ -63,33 +63,34 @@ export function CategoryStockTicker({
 
   if (tickerItems.length === 0) {
     return (
-      <section className="rounded-[1.7rem] border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70" dir={direction}>
-        <div className="flex items-center gap-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+      <section className="category-stock-ticker empty" dir={direction}>
+        <div className="category-stock-ticker-empty-row">
           <AlertCircle size={18} />
           <span>{text.unavailable}</span>
         </div>
+        <CategoryStockTickerStyles />
       </section>
     );
   }
 
   return (
     <section
-      className="min-w-0 overflow-hidden rounded-[1.7rem] border border-cyan-200/70 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-cyan-500/20 dark:bg-slate-950/70"
+      className="category-stock-ticker"
       dir={direction}
       aria-label={text.title}
     >
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 shadow-sm dark:bg-cyan-950/40 dark:text-cyan-100">
+      <div className="category-stock-ticker-head">
+        <div className="category-stock-ticker-title-row">
+          <span className="category-stock-ticker-icon">
             <Activity size={18} />
           </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-black text-slate-950 dark:text-white">{text.title}</h2>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{text.subtitle}</p>
+          <div className="category-stock-ticker-copy">
+            <h2>{text.title}</h2>
+            <p>{text.subtitle}</p>
           </div>
         </div>
         {availablePrices.length === 0 && (
-          <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <span className="category-stock-ticker-note">
             {text.symbolsOnly}
           </span>
         )}
@@ -117,7 +118,26 @@ export function CategoryStockTicker({
         direction="ltr"
         durationSeconds={44}
       />
+      <CategoryStockTickerStyles />
     </section>
+  );
+}
+
+function CategoryStockTickerStyles() {
+  return (
+    <style jsx global>{`
+      .category-stock-ticker{min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:16px;box-shadow:var(--shadow-card);font-family:var(--font-ui);color:var(--foreground)}
+      .category-stock-ticker.empty{overflow:visible}
+      .category-stock-ticker-empty-row{display:flex;align-items:center;gap:12px;color:var(--foreground-secondary);font-size:14px;font-weight:500;line-height:1.6}
+      .category-stock-ticker-head{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+      .category-stock-ticker-title-row{display:flex;min-width:0;align-items:center;gap:12px}
+      .category-stock-ticker-icon{width:40px;height:40px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-control);background:var(--primary-soft);color:var(--primary)}
+      .category-stock-ticker-copy{min-width:0}
+      .category-stock-ticker-copy h2{margin:0;color:var(--foreground);font-size:14px;font-weight:600;line-height:1.45}
+      .category-stock-ticker-copy p{margin:2px 0 0;color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.55}
+      .category-stock-ticker-note{display:inline-flex;width:fit-content;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);color:var(--foreground-secondary);padding:6px 12px;font-size:12px;font-weight:500;line-height:1.45}
+      @media(min-width:640px){.category-stock-ticker-head{flex-direction:row;align-items:center;justify-content:space-between}}
+    `}</style>
   );
 }
 

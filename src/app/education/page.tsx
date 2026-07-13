@@ -41,7 +41,24 @@ export default function EducationPage() {
         </section>
       </section>
       <style>{`
-        .edu-shell{min-height:100vh;background:var(--sfm-light-card);color:var(--sfm-foreground);font-family:Tajawal,Arial,sans-serif}.edu-page{max-width:980px;margin:0 auto;padding:24px 20px 60px}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}header button{height:var(--control-h);border-radius:var(--r-md);border:1.5px solid rgba(167,243,240,.22);background:var(--sfm-card);color:var(--sfm-muted);padding:0 14px;font:800 13px Tajawal,Arial,sans-serif;cursor:pointer}.hero{background:linear-gradient(135deg,var(--sfm-foreground),var(--sfm-primary-dark) 62%,var(--sfm-soft-cyan) 140%);color:var(--sfm-card);border-radius:var(--r-2xl);padding:32px;margin-bottom:18px}.hero svg{color:var(--sfm-soft-cyan)}.hero h1{font-size:34px;margin:12px 0 8px}.hero p{margin:0;color:rgba(255,255,255,.68);line-height:1.8;max-width:620px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.cards button{text-align:start;background:var(--sfm-card);border:1px solid rgba(167,243,240,.14);border-radius:var(--r-xl);padding:20px;box-shadow:0 4px 22px rgba(3,18,37,.06);cursor:pointer;color:var(--sfm-foreground)}.cards svg{color:var(--sfm-soft-cyan);margin-bottom:12px}.cards strong{display:block;font-size:17px}.cards span{display:block;margin-top:8px;color:var(--sfm-muted);line-height:1.7;font-size:13px}@media(max-width:760px){.cards{grid-template-columns:1fr}.hero h1{font-size:28px}}
+        .edu-shell{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
+        .edu-page{max-width:var(--workspace-page-max-standard);margin:0 auto;padding:24px 20px 60px}
+        header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        header button{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);padding:0 14px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
+        header button:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+        header button:focus-visible,.cards button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+        .hero{background:var(--hero-gradient);color:var(--hero-foreground);border-radius:var(--radius-panel);padding:32px;margin-bottom:18px;box-shadow:var(--shadow-card)}
+        .hero svg{color:var(--hero-foreground-muted)}
+        .hero h1{font-size:34px;font-weight:600;line-height:1.25;margin:12px 0 8px}
+        .hero p{margin:0;color:var(--hero-foreground-muted);line-height:1.8;max-width:620px}
+        .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .cards button{text-align:start;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;box-shadow:var(--shadow-card);cursor:pointer;color:var(--foreground);min-width:0;transition:background-color .18s ease,border-color .18s ease,transform .18s ease}
+        .cards button:hover{background:var(--surface-hover);border-color:var(--border-strong);transform:translateY(-1px)}
+        .cards svg{color:var(--primary);margin-bottom:12px}
+        .cards strong{display:block;font-size:17px;font-weight:600;line-height:1.5}
+        .cards span{display:block;margin-top:8px;color:var(--foreground-secondary);line-height:1.7;font-size:13px;overflow-wrap:anywhere}
+        @media(max-width:760px){.cards{grid-template-columns:1fr}.hero h1{font-size:28px}}
+        @media(prefers-reduced-motion:reduce){.cards button{transition:none}.cards button:hover{transform:none}}
       `}</style>
     </main>
   );

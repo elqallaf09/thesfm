@@ -103,41 +103,38 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
   return (
     <>
       <style>{`
-        @keyframes wisdom-scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .wisdom-ticker {
-          animation: wisdom-scroll 120s linear infinite;
-          display: flex;
-          width: max-content;
-        }
-        .wisdom-ticker:hover {
-          animation-play-state: paused;
-        }
+        @keyframes wisdom-scroll-ltr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        @keyframes wisdom-scroll-rtl{from{transform:translateX(0)}to{transform:translateX(50%)}}
+        .wisdom-layout{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;font-family:var(--font-ui);color:var(--foreground)}
+        .wisdom-panel{order:2;min-width:0;min-height:44px;flex:1;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted);padding:8px 12px}
+        .wisdom-panel:focus-within{border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
+        .wisdom-ticker{display:flex;align-items:center;gap:24px;width:max-content;white-space:nowrap;font-size:12px;animation:wisdom-scroll-ltr 120s linear infinite}
+        .wisdom-layout[dir="rtl"] .wisdom-ticker{animation-name:wisdom-scroll-rtl}
+        .wisdom-ticker:hover,.wisdom-ticker:focus-within{animation-play-state:paused}
+        .wisdom-item{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;color:var(--foreground-secondary)}
+        .wisdom-mark{color:var(--accent);font-size:12px}
+        .wisdom-title{color:var(--foreground-muted);font-size:12px;font-style:italic}
+        .wisdom-copy{font-weight:500}
+        .wisdom-separator{margin:0 8px;color:var(--border-strong)}
+        .wisdom-language{order:1;flex:0 0 auto}
+        @media(min-width:640px){.wisdom-layout{flex-direction:row;align-items:center;justify-content:space-between}.wisdom-panel{order:1}.wisdom-language{order:2}}
+        @media(prefers-reduced-motion:reduce){.wisdom-ticker{animation:none}}
       `}</style>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ marginBottom: '8px' }}>
+      <div className="wisdom-layout" dir={isArabic ? 'rtl' : 'ltr'}>
         {/* شريط النصائح */}
-        <div
-          className="order-2 sm:order-1 overflow-hidden rounded-xl py-2 px-3 flex-1 min-w-0"
-          style={{ border: '1px solid rgba(29,140,255,0.35)', background: 'rgba(255,253,245,0.92)' }}
-        >
-          <div className="wisdom-ticker items-center gap-6 whitespace-nowrap text-xs">
+        <div className="wisdom-panel">
+          <div className="wisdom-ticker">
             {allTips.map((tip, index) => (
-              <span
-                key={`${index}`}
-                className="inline-flex items-center gap-2 shrink-0"
-                style={{ color: '#7a5c1a' }}
-              >
-                <span style={{ color: '#c4a35a', fontSize: '10px' }}>✦</span>
-                <span style={{ color: 'rgba(122,92,26,0.6)', fontStyle: 'italic', fontSize: '10px' }}>
+              <span key={`${index}`} className="wisdom-item">
+                <span className="wisdom-mark">✦</span>
+                <span className="wisdom-title">
                   {isArabic ? tip.titleAr : tip.titleEn}:
                 </span>
-                <span className="font-medium">
+                <span className="wisdom-copy">
                   {isArabic ? tip.contentAr : tip.contentEn}
                 </span>
-                <span style={{ color: 'rgba(29,140,255,0.4)', margin: '0 8px' }}>|</span>
+                <span className="wisdom-separator" aria-hidden="true">|</span>
               </span>
             ))}
           </div>
@@ -145,8 +142,8 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
 
         {/* اختيار اللغة */}
         {showLanguageSelector && onLanguageChange && (
-          <div className="order-1 sm:order-2 shrink-0">
-            <LanguageSwitcher value={language} onChange={onLanguageChange} variant="gold" compact />
+          <div className="wisdom-language">
+            <LanguageSwitcher value={language} onChange={onLanguageChange} variant="light" compact />
           </div>
         )}
       </div>

@@ -161,23 +161,22 @@ export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, '
           display:inline-flex;
           align-items:center;
           gap:6px;
-          border-radius:999px;
+          border-radius:var(--radius-pill);
           padding:4px 8px;
           font-size:11px;
-          font-weight:800;
+          font-weight:500;
           line-height:1;
           white-space:nowrap;
-          border:1px solid rgba(15,23,42,.12);
-          background:#f8fafc;
-          color:#334155;
+          border:1px solid var(--border);
+          background:var(--surface-muted);
+          color:var(--foreground-secondary);
         }
         .market-signal-mini b{font:inherit;color:inherit;direction:ltr}
-        .market-signal-mini.buy{background:#dcfce7;color:#166534;border-color:#86efac}
-        .market-signal-mini.cautious-buy{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
-        .market-signal-mini.sell{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-        .market-signal-mini.wait{background:#fef3c7;color:#92400e;border-color:#fde68a}
-        .market-signal-mini.watch{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
-        .market-signal-mini.insufficient{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+        .market-signal-mini.buy,.market-signal-mini.cautious-buy{background:var(--success-soft);color:var(--success);border-color:color-mix(in srgb,var(--success) 34%,var(--border))}
+        .market-signal-mini.sell{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 34%,var(--border))}
+        .market-signal-mini.wait{background:var(--warning-soft);color:var(--warning);border-color:color-mix(in srgb,var(--warning) 34%,var(--border))}
+        .market-signal-mini.watch{background:var(--info-soft);color:var(--info);border-color:color-mix(in srgb,var(--info) 34%,var(--border))}
+        .market-signal-mini.insufficient{background:var(--surface-muted);color:var(--foreground-muted);border-color:var(--border-strong)}
       `}</style>
     </span>
   );
@@ -290,14 +289,15 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
 
       <style jsx>{`
         .market-signal-panel{
-          border:1px solid rgba(15,23,42,.1);
-          border-radius:var(--r-lg);
-          background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
-          box-shadow:0 16px 40px rgba(15,23,42,.07);
+          border:1px solid var(--border);
+          border-radius:var(--radius-card);
+          background:var(--surface);
+          box-shadow:var(--shadow-card);
           padding:18px;
           display:grid;
           gap:16px;
-          color:#0f172a;
+          color:var(--foreground);
+          font-family:var(--font-ui);
         }
         .market-signal-header{
           display:flex;
@@ -309,9 +309,9 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           display:inline-flex;
           align-items:center;
           gap:6px;
-          color:#64748b;
+          color:var(--foreground-muted);
           font-size:12px;
-          font-weight:800;
+          font-weight:500;
         }
         .market-signal-header h2{
           margin:5px 0 0;
@@ -321,33 +321,29 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-badge{
           min-width:74px;
           text-align:center;
-          border-radius:999px;
+          border-radius:var(--radius-pill);
           padding:8px 12px;
           font-size:13px;
-          font-weight:900;
-          border:1px solid rgba(15,23,42,.1);
+          font-weight:600;
+          border:1px solid var(--border);
         }
-        .market-signal-badge.buy{background:#dcfce7;color:#166534;border-color:#86efac}
-        .market-signal-badge.cautious-buy{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
-        .market-signal-badge.sell{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-        .market-signal-badge.wait{background:#fef3c7;color:#92400e;border-color:#fde68a}
-        .market-signal-badge.watch{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
-        .market-signal-badge.insufficient{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
-        .market-signal-badge.loading{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
-        .market-signal-badge.empty{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
-        .market-signal-badge.error{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+        .market-signal-badge.buy,.market-signal-badge.cautious-buy{background:var(--success-soft);color:var(--success);border-color:color-mix(in srgb,var(--success) 34%,var(--border))}
+        .market-signal-badge.sell,.market-signal-badge.error{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 34%,var(--border))}
+        .market-signal-badge.wait{background:var(--warning-soft);color:var(--warning);border-color:color-mix(in srgb,var(--warning) 34%,var(--border))}
+        .market-signal-badge.watch,.market-signal-badge.loading{background:var(--info-soft);color:var(--info);border-color:color-mix(in srgb,var(--info) 34%,var(--border))}
+        .market-signal-badge.insufficient,.market-signal-badge.empty{background:var(--surface-muted);color:var(--foreground-muted);border-color:var(--border-strong)}
         .market-signal-loading,.market-signal-empty,.market-signal-error{
           display:flex;
           align-items:center;
           gap:8px;
           min-height:72px;
-          border:1px dashed rgba(100,116,139,.28);
-          border-radius:var(--r-md);
+          border:1px dashed var(--border-strong);
+          border-radius:var(--radius-control);
           padding:14px;
-          color:#475569;
-          background:#fff;
+          color:var(--foreground-secondary);
+          background:var(--surface-muted);
         }
-        .market-signal-error{color:#991b1b;border-color:#fecaca;background:#fff7f7}
+        .market-signal-error{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 34%,var(--border));background:var(--danger-soft)}
         .market-signal-main{
           display:grid;
           grid-template-columns:minmax(0,1fr) minmax(160px,.35fr);
@@ -355,42 +351,43 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           align-items:stretch;
         }
         .market-signal-confidence,.market-signal-price,.market-signal-metric{
-          border:1px solid rgba(15,23,42,.08);
-          border-radius:var(--r-md);
-          background:#fff;
+          border:1px solid var(--border);
+          border-radius:var(--radius-control);
+          background:var(--surface);
           padding:12px;
         }
         .market-signal-confidence span,.market-signal-price small,.market-signal-metric small{
           display:block;
-          color:#64748b;
+          color:var(--foreground-muted);
           font-size:12px;
-          font-weight:800;
+          font-weight:500;
         }
         .market-signal-confidence strong,.market-signal-price strong{
           display:block;
           margin-top:4px;
           font-size:24px;
           letter-spacing:0;
+          font-family:var(--font-data);
         }
         .market-signal-meter{
           height:8px;
           margin-top:10px;
-          border-radius:999px;
+          border-radius:var(--radius-pill);
           overflow:hidden;
-          background:#e2e8f0;
+          background:var(--chart-grid);
         }
         .market-signal-meter span{
           display:block;
           height:100%;
-          border-radius:999px;
-          background:linear-gradient(90deg,#2563eb,#16a34a);
+          border-radius:var(--radius-pill);
+          background:var(--primary);
         }
         .market-signal-explanation{
           margin:10px 0 0;
-          color:#475569;
+          color:var(--foreground-secondary);
           font-size:12px;
           line-height:1.6;
-          font-weight:800;
+          font-weight:400;
         }
         .market-signal-grid{
           display:grid;
@@ -405,18 +402,19 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-metric > span{
           width:34px;
           height:34px;
-          border-radius:var(--r-sm);
+          border-radius:var(--radius-sm);
           display:grid;
           place-items:center;
-          color:#2563eb;
-          background:#eff6ff;
+          color:var(--primary);
+          background:var(--primary-soft);
           flex:0 0 auto;
         }
         .market-signal-metric strong{
           display:block;
           margin-top:2px;
           font-size:13px;
-          color:#0f172a;
+          color:var(--foreground);
+          font-family:var(--font-data);
           overflow-wrap:anywhere;
         }
         .market-signal-details{
@@ -425,9 +423,9 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           gap:12px;
         }
         .market-signal-details section{
-          border:1px solid rgba(15,23,42,.08);
-          border-radius:var(--r-md);
-          background:#fff;
+          border:1px solid var(--border);
+          border-radius:var(--radius-control);
+          background:var(--surface);
           padding:12px;
           min-width:0;
         }
@@ -438,7 +436,7 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-details ul{
           margin:0;
           padding:0 18px 0 0;
-          color:#334155;
+          color:var(--foreground-secondary);
           font-size:13px;
           line-height:1.65;
         }
@@ -452,18 +450,19 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           display:flex;
           justify-content:space-between;
           gap:10px;
-          color:#334155;
+          color:var(--foreground-secondary);
         }
         .market-signal-score dt,.market-signal-score dd{margin:0}
+        .market-signal-score dd{font-family:var(--font-data)}
         .market-signal-disclaimer{
           margin:0;
-          border-radius:var(--r-md);
-          background:#fff7ed;
-          color:#7c2d12;
+          border-radius:var(--radius-control);
+          background:var(--warning-soft);
+          color:var(--warning);
           padding:11px 12px;
           font-size:12px;
           line-height:1.7;
-          border:1px solid #fed7aa;
+          border:1px solid color-mix(in srgb,var(--warning) 34%,var(--border));
         }
         .market-signal-disclaimer span{
           display:block;
@@ -472,7 +471,7 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         }
         .market-signal-panel.compact .market-signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
         @media (max-width: 780px){
-          .market-signal-panel{padding:14px;border-radius:var(--r-md)}
+          .market-signal-panel{padding:14px;border-radius:var(--radius-control)}
           .market-signal-header{align-items:center}
           .market-signal-main,.market-signal-grid,.market-signal-details{grid-template-columns:1fr}
           .market-signal-badge{min-width:64px}

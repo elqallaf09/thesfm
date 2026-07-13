@@ -392,8 +392,8 @@ export function CompanySubmitForm() {
         <style jsx>{`
           .company-submit-loading {
             min-height: 420px;
-            border-radius: var(--r-2xl);
-            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+            border-radius: var(--radius-panel);
+            background: var(--skeleton-gradient);
             background-size: 400% 100%;
             animation: shimmer 1.4s ease infinite;
           }
@@ -639,29 +639,30 @@ function SubmitStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border-radius: var(--r-lg);
-        border: 1px solid rgba(11, 118, 224, 0.18);
-        background: rgba(255, 255, 255, 0.94);
-        color: #0b2a4a;
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--foreground);
         padding: 0 16px;
         text-decoration: none;
         font-size: 14px;
-        font-weight: 950;
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+        font-weight: 600;
+        box-shadow: var(--shadow-xs);
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
         -webkit-tap-highlight-color: transparent;
       }
       .company-submit-back svg {
-        color: #0b76e0;
+        color: var(--primary);
         flex: 0 0 auto;
       }
       .company-submit-back:hover,
       .company-submit-back:focus-visible {
-        outline: none;
-        border-color: rgba(24, 212, 212, 0.52);
-        background: #f0fdff;
-        color: #07172a;
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, 0.14), 0 16px 34px rgba(15, 23, 42, 0.10);
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+        border-color: var(--primary);
+        background: var(--surface-hover);
+        color: var(--foreground);
+        box-shadow: var(--focus-shadow);
         transform: translateY(-1px);
       }
       .company-submit-back:active {
@@ -669,12 +670,10 @@ function SubmitStyles() {
       }
       .company-submit-hero,
       .company-submit-gate {
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: var(--r-2xl);
-        background:
-          linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10)),
-          #ffffff;
-        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
         padding: 24px;
       }
       .company-submit-hero {
@@ -684,24 +683,24 @@ function SubmitStyles() {
         gap: 16px;
       }
       .company-submit-hero span {
-        color: #0b76e0;
+        color: var(--primary);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .company-submit-hero h1,
       .company-submit-gate h1 {
         margin: 8px 0;
-        color: #0f172a;
+        color: var(--foreground);
         font-size: clamp(26px, 3vw, 38px);
         line-height: 1.2;
-        font-weight: 950;
+        font-weight: 700;
       }
       .company-submit-hero p,
       .company-submit-gate p {
         margin: 0;
-        color: #64748b;
+        color: var(--foreground-muted);
         line-height: 1.8;
-        font-weight: 750;
+        font-weight: 400;
       }
       .company-submit-gate {
         text-align: center;
@@ -709,7 +708,7 @@ function SubmitStyles() {
         margin: 0 auto;
       }
       .company-submit-gate svg {
-        color: #0b76e0;
+        color: var(--primary);
       }
       .company-submit-form {
         display: grid;
@@ -717,17 +716,17 @@ function SubmitStyles() {
         margin-top: 18px;
       }
       .submit-section {
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: var(--r-xl);
-        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
         padding: 18px;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        box-shadow: var(--shadow-card);
       }
       .submit-section h2 {
         margin: 0 0 14px;
-        color: #0f172a;
+        color: var(--foreground);
         font-size: 18px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .submit-grid {
         display: grid;
@@ -746,9 +745,9 @@ function SubmitStyles() {
         grid-column: 1 / -1;
         display: grid;
         gap: 12px;
-        border: 1px solid rgba(11, 118, 224, 0.14);
-        border-radius: var(--r-xl);
-        background: linear-gradient(135deg, rgba(11, 118, 224, 0.05), rgba(24, 212, 212, 0.08));
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 14px;
       }
       .map-location-head {
@@ -763,35 +762,36 @@ function SubmitStyles() {
       }
       .map-location-field span,
       .map-location-head span {
-        color: #0f172a;
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .map-location-head small {
-        color: #64748b;
-        font-weight: 800;
+        color: var(--foreground-muted);
+        font-weight: 400;
         line-height: 1.6;
       }
       .map-location-head button {
         min-height: 44px;
-        border: 1px solid rgba(11, 118, 224, 0.18);
-        border-radius: var(--r-md);
-        background: #ffffff;
-        color: #0b76e0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        background: var(--surface);
+        color: var(--primary);
         padding: 0 14px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font: 950 13px/1 Tajawal, Arial, sans-serif;
+        font: 600 13px/1.25 var(--font-ui);
         cursor: pointer;
-        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+        box-shadow: var(--shadow-xs);
       }
       .map-location-head button:hover,
       .map-location-head button:focus-visible {
-        outline: none;
-        border-color: rgba(24, 212, 212, 0.48);
-        background: #f0fdff;
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+        border-color: var(--focus-ring);
+        background: var(--surface-hover);
       }
       .map-location-field label {
         display: grid;
@@ -801,13 +801,13 @@ function SubmitStyles() {
         display: grid;
         grid-template-columns: 34px minmax(0, 1fr);
         align-items: center;
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: var(--r-md);
-        background: #f8fbff;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-control);
+        background: var(--control-background);
       }
       .map-url-input svg {
         justify-self: center;
-        color: #0b76e0;
+        color: var(--primary);
       }
       .map-url-input input {
         border: 0;
@@ -819,23 +819,23 @@ function SubmitStyles() {
         gap: 10px;
       }
       .submit-field span {
-        color: #475569;
+        color: var(--foreground-secondary);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 500;
       }
       .submit-field b {
-        color: #dc2626;
+        color: var(--danger);
       }
       .submit-field input,
       .submit-field textarea,
       .submit-field select {
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: var(--r-md);
-        background: #f8fbff;
-        color: #0f172a;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-control);
+        background: var(--control-background);
+        color: var(--foreground);
         padding: 12px;
-        font: 850 14px/1.5 Tajawal, Arial, sans-serif;
+        font: 500 14px/1.5 var(--font-ui);
         outline: 0;
       }
       .submit-field input,
@@ -855,9 +855,9 @@ function SubmitStyles() {
         align-content: start;
       }
       .image-preview {
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: var(--r-lg);
-        background: #f8fbff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 10px;
         display: grid;
         gap: 8px;
@@ -865,50 +865,50 @@ function SubmitStyles() {
       .image-preview img {
         width: 100%;
         max-height: 160px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         object-fit: contain;
-        background: #ffffff;
+        background: var(--surface);
       }
       .image-preview small {
-        color: #0f766e;
-        font-weight: 900;
+        color: var(--accent-hover);
+        font-weight: 500;
       }
       .image-preview-loader {
         min-height: 52px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         display: grid;
         place-items: center;
-        color: #0f766e;
-        background: rgba(20, 184, 166, 0.08);
+        color: var(--accent-hover);
+        background: var(--accent-soft);
         font-size: 24px;
-        font-weight: 950;
+        font-weight: 600;
         letter-spacing: 2px;
       }
       .image-preview.invalid {
-        border-color: rgba(220, 38, 38, 0.24);
-        background: rgba(254, 242, 242, 0.88);
+        border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+        background: var(--danger-soft);
       }
       .image-preview.invalid small {
-        color: #991b1b;
+        color: var(--danger);
       }
       .submit-message {
         margin-top: 14px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         padding: 12px 14px;
         display: flex;
         align-items: center;
         gap: 8px;
-        font-weight: 900;
+        font-weight: 500;
       }
       .submit-message.ok {
-        border: 1px solid rgba(22, 163, 74, 0.18);
-        background: rgba(240, 253, 244, 0.92);
-        color: #15803d;
+        border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+        background: var(--success-soft);
+        color: var(--success);
       }
       .submit-message.error {
-        border: 1px solid rgba(220, 38, 38, 0.18);
-        background: rgba(254, 242, 242, 0.92);
-        color: #991b1b;
+        border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+        background: var(--danger-soft);
+        color: var(--danger);
       }
       .submit-sticky {
         position: sticky;
@@ -917,31 +917,37 @@ function SubmitStyles() {
         display: flex;
         justify-content: flex-end;
         padding: 12px;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        background: rgba(255, 255, 255, 0.92);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        background: color-mix(in srgb, var(--surface) 92%, transparent);
         backdrop-filter: blur(12px);
       }
       .submit-sticky button,
       .company-submit-gate button {
         border: 0;
         min-height: 48px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
         padding: 0 20px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        color: #ffffff;
-        background: linear-gradient(135deg, #0b76e0, #18d4d4);
-        box-shadow: 0 14px 28px rgba(11, 118, 224, 0.20);
-        font: 950 14px/1 Tajawal, Arial, sans-serif;
+        color: var(--primary-foreground);
+        background: var(--primary);
+        box-shadow: var(--shadow-sm);
+        font: 600 14px/1.25 var(--font-ui);
         cursor: pointer;
       }
       .submit-sticky button:disabled,
       .company-submit-gate button:disabled {
         opacity: 0.72;
         cursor: not-allowed;
+      }
+      .submit-sticky button:focus-visible,
+      .company-submit-gate button:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+        box-shadow: var(--focus-shadow);
       }
       @media (max-width: 700px) {
         .company-submit-backbar {
@@ -977,87 +983,6 @@ function SubmitStyles() {
         .company-submit-gate button {
           width: 100%;
         }
-      }
-      /* ── Dark mode ── */
-      .dark .company-submit-hero,
-      .dark .company-submit-gate {
-        background: linear-gradient(135deg, rgba(29, 140, 255, 0.12), rgba(24, 212, 212, 0.08)), #0B2A4A;
-        border-color: rgba(47, 214, 192, 0.18);
-        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
-      }
-      .dark .company-submit-back {
-        background: rgba(11, 42, 74, 0.92);
-        border-color: rgba(92, 225, 230, 0.22);
-        color: #eefbff;
-        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.20);
-      }
-      .dark .company-submit-back:hover,
-      .dark .company-submit-back:focus-visible {
-        background: rgba(13, 62, 100, 0.94);
-        border-color: rgba(92, 225, 230, 0.44);
-      }
-      .dark .company-submit-hero h1,
-      .dark .company-submit-gate h1 {
-        color: #F8FAFC;
-      }
-      .dark .company-submit-hero > div > p,
-      .dark .company-submit-gate p {
-        color: #CBD5E1;
-      }
-      .dark .company-submit-hero > div > span {
-        color: #7DD3FC;
-      }
-      .dark .company-submit-hero svg,
-      .dark .company-submit-gate svg {
-        color: #2FD6C0;
-      }
-      .dark .submit-section {
-        background: #0B2A4A;
-        border-color: rgba(47, 214, 192, 0.14);
-        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
-      }
-      .dark .submit-section h2 {
-        color: #F8FAFC;
-      }
-      .dark .submit-field span {
-        color: #CBD5E1;
-      }
-      .dark .map-location-field {
-        background: linear-gradient(135deg, rgba(29, 140, 255, 0.10), rgba(24, 212, 212, 0.06));
-        border-color: rgba(92, 225, 230, 0.18);
-      }
-      .dark .map-location-field span,
-      .dark .map-location-head span {
-        color: #F8FAFC;
-      }
-      .dark .map-location-head small {
-        color: #CBD5E1;
-      }
-      .dark .map-location-head button,
-      .dark .map-url-input {
-        background: rgba(7, 23, 42, 0.72);
-        border-color: rgba(92, 225, 230, 0.18);
-      }
-      .dark .map-location-head button {
-        color: #8BE9F0;
-      }
-      .dark .submit-field input,
-      .dark .submit-field textarea,
-      .dark .submit-field select,
-      .dark .image-preview {
-        background: #0A1F36;
-        border-color: rgba(47, 214, 192, 0.16);
-        color: #F8FAFC;
-      }
-      .dark .image-preview img {
-        background: #07172A;
-      }
-      .dark .image-preview small {
-        color: #7DD3FC;
-      }
-      .dark .submit-sticky {
-        background: rgba(11, 42, 74, 0.92);
-        border-color: rgba(47, 214, 192, 0.16);
       }
     `}</style>
   );

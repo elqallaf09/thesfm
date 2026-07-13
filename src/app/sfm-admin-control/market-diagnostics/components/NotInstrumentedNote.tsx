@@ -32,14 +32,14 @@ export function NotInstrumentedNote({ value, label }: { value: NotInstrumented; 
       </div>
       <style jsx global>{`
         .ops-tab-section { display: grid; gap: 14px; min-width: 0; }
-        .ops-section-title { margin: 0; color: var(--sfm-heading); font-size: 14px; font-weight: 900; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--sfm-muted); font-size: 13px; border: 1px dashed var(--sfm-border); border-radius: var(--r-md); }
-        .ops-not-instrumented { display: flex; gap: 10px; border: 1px dashed var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-light-card); padding: 12px; }
-        .ops-not-instrumented-icon { flex: 0 0 auto; color: var(--sfm-muted); margin-top: 2px; }
+        .ops-section-title { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
+        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
+        .ops-not-instrumented { display: flex; gap: 10px; border: 1px dashed var(--border); border-radius: var(--radius-card); background: var(--surface-muted); padding: 12px; }
+        .ops-not-instrumented-icon { flex: 0 0 auto; color: var(--foreground-muted); margin-top: 2px; }
         .ops-not-instrumented-body { min-width: 0; display: grid; gap: 4px; }
-        .ops-not-instrumented-body strong { color: var(--sfm-heading); font-size: 12.5px; font-weight: 850; }
-        .ops-not-instrumented-badge { width: fit-content; border: 1px solid var(--sfm-border); border-radius: 999px; padding: 2px 9px; background: var(--sfm-card); color: var(--sfm-muted-readable); font-size: 10.5px; font-weight: 850; }
-        .ops-not-instrumented-body p { margin: 0; color: var(--sfm-muted-readable); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
+        .ops-not-instrumented-body strong { color: var(--foreground); font-size: 12.5px; font-weight: 600; }
+        .ops-not-instrumented-badge { width: fit-content; border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 2px 9px; background: var(--surface); color: var(--foreground-secondary); font-size: 10.5px; font-weight: 600; }
+        .ops-not-instrumented-body p { margin: 0; color: var(--foreground-secondary); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
       `}</style>
     </div>
   );

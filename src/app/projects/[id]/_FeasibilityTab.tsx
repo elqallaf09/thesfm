@@ -1,6 +1,5 @@
 'use client';
 
-import type { CSSProperties } from 'react';
 import { Bot, Coins, FileText, Save, Target } from 'lucide-react';
 import { CardTitle, Metric } from './_components';
 import type { FeasibilityForm, FeasibilitySection, FeasibilityStatus, MoneyFormatter } from './_types';
@@ -52,7 +51,11 @@ export function FeasibilityTab({
         <article className={`warm-card score-card ${feasibilityMetrics.status}`}>
           <CardTitle icon={<Target size={20} />} title={tr.feasibilitySummary} />
           <div className="score-row">
-            <div className="score-number" style={{ '--score-angle': `${feasibilityMetrics.score * 3.6}deg` } as CSSProperties}>
+            <div
+              className="score-number"
+              role="img"
+              aria-label={`${tr.feasibilityScore}: ${feasibilityMetrics.score}/100`}
+            >
               <strong>{feasibilityMetrics.score}</strong>
               <span>/100</span>
             </div>
