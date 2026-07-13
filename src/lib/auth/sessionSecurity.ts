@@ -83,10 +83,13 @@ function bytesToBase64Url(bytes: Uint8Array) {
 }
 
 function base64UrlToBytes(value: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error('Invalid Base64URL encoding');
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
   const binary = atob(padded);
-  return Uint8Array.from(binary, character => character.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  if (bytesToBase64Url(bytes) !== value) throw new Error('Non-canonical Base64URL encoding');
+  return bytes;
 }
 
 async function hmacKey(secret: string) {

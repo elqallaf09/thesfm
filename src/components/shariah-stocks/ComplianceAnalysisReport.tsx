@@ -745,7 +745,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         </div>
       </div>
 
-      <PageTabPanel idBase="compliance-report" value="result" active={activeReportTab === 'result'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="result" active={printAllTabs || activeReportTab === 'result'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<ListChecks size={20} />} title={tr('sharia_research_tab_result')} />
         <div className={styles.quickDecision}>
           <div className={styles.mainReason}><span>{tr('sharia_research_main_reason')}</span><strong>{primaryReason}</strong></div>
@@ -763,7 +763,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         </div>
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="business-activity" active={activeReportTab === 'business-activity'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="business-activity" active={printAllTabs || activeReportTab === 'business-activity'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<Building2 size={20} />} title={tr('sharia_research_tab_business_activity')} badge={<ComplianceStatusBadge status={businessStatus} tr={tr} />} />
         <div className={styles.businessGrid}>
           <dl className={styles.businessFacts}>
@@ -777,7 +777,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         {reportEvidence.length > 0 ? <button type="button" className={styles.viewDetailsButton} onClick={() => setActiveReportTab('evidence')}>{tr('sharia_research_detailed_evidence')}<ChevronDown size={17} /></button> : null}
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="financial-ratios" active={activeReportTab === 'financial-ratios'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="financial-ratios" active={printAllTabs || activeReportTab === 'financial-ratios'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<FileCheck2 size={20} />} title={tr('sharia_research_tab_financial_ratios')} badge={<span className={styles.panelCount}>{formatNumber(ratios.length, locale)}</span>} />
         <div className={styles.ratioGrid}>{ratios.map(ratio => <ComplianceRatioCard key={ratio.id} ratio={ratio} locale={locale} tr={tr} />)}</div>
         <ComplianceAccordion id="screening-calculations" title={tr('sharia_research_calculations_title')} icon={<Clipboard size={19} />} open={openSections.has('calculations')} onToggle={() => setSection('calculations', !openSections.has('calculations'))}>
@@ -795,7 +795,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         </ComplianceAccordion>
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="methodology" active={activeReportTab === 'methodology'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="methodology" active={printAllTabs || activeReportTab === 'methodology'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<BookOpenCheck size={20} />} title={tr('sharia_research_tab_methodology')} />
         <div className={styles.methodologyCard}>
           <dl>
@@ -812,7 +812,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         </ComplianceAccordion>
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="evidence" active={activeReportTab === 'evidence'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="evidence" active={printAllTabs || activeReportTab === 'evidence'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<ShieldCheck size={20} />} title={tr('sharia_research_tab_evidence')} badge={<span className={styles.panelCount}>{formatNumber(reportEvidence.length, locale)}</span>} />
         {reportEvidence.length > 0 ? (
           <div className={styles.evidenceGrid}>
@@ -821,12 +821,12 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
         ) : <p className={styles.panelEmptyState}>{tr('sharia_research_evidence_empty')}</p>}
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="sources" active={activeReportTab === 'sources'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="sources" active={printAllTabs || activeReportTab === 'sources'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<Link2 size={20} />} title={tr('sharia_research_tab_sources')} badge={<span className={styles.panelCount}>{formatNumber(flatSources.length, locale)}</span>} />
         <ComplianceSourcesList result={result} locale={locale} tr={tr} />
       </PageTabPanel>
 
-      <PageTabPanel idBase="compliance-report" value="diagnostics" active={activeReportTab === 'diagnostics'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
+      <PageTabPanel idBase="compliance-report" value="diagnostics" active={printAllTabs || activeReportTab === 'diagnostics'} keepMounted={printAllTabs} className={styles.reportTabPanel}>
         <ReportPanelHeading icon={<Database size={20} />} title={tr('sharia_research_tab_diagnostics')} badge={<span className={styles.panelCount}>{formatNumber(qualityIssueCount, locale)}</span>} />
         <div className={styles.diagnosticsSummary}>
           <div><span>{tr('sharia_research_sources_title')}</span><strong>{formatNumber(flatSources.length, locale)}</strong></div>

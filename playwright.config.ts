@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
+const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
+const baseURL = process.env.E2E_BASE_URL || (httpsLoopback ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3000');
 const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'pnpm run build && pnpm run start';
 
 export default defineConfig({
@@ -10,10 +11,12 @@ export default defineConfig({
     timeout: 8_000,
   },
   fullyParallel: false,
+  workers: process.env.CI ? 2 : undefined,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
+    ignoreHTTPSErrors: httpsLoopback,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -22,6 +25,7 @@ export default defineConfig({
     : {
         command: webServerCommand,
         url: baseURL,
+        ignoreHTTPSErrors: httpsLoopback,
         reuseExistingServer: !process.env.CI,
         timeout: 600_000,
       },

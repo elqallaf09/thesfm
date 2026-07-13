@@ -1,9 +1,21 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Response as PlaywrightResponse } from '@playwright/test';
 
 const userEmail = process.env.E2E_USER_EMAIL;
 const userPassword = process.env.E2E_USER_PASSWORD;
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+// Credentialed auth responses and prefilled identifiers can enter Playwright
+// traces/screenshots. Keep this file artifact-free while preserving every
+// assertion; the remaining smoke files still retain failure diagnostics.
+test.use({ trace: 'off', screenshot: 'off' });
+
+type SafeLoginPayload = {
+  ok?: boolean;
+  code?: string;
+  status?: string;
+  mfaType?: string;
+};
 
 async function expectUsablePage(page: Page, path: string) {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
@@ -20,6 +32,19 @@ async function expectNoHorizontalOverflow(page: Page) {
   })).toBeLessThanOrEqual(4);
 }
 
+async function safeLoginPayload(response: PlaywrightResponse | null): Promise<SafeLoginPayload | null> {
+  if (!response) return null;
+  const value = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+  const payload: SafeLoginPayload = {};
+  if (typeof value.ok === 'boolean') payload.ok = value.ok;
+  if (typeof value.code === 'string') payload.code = value.code.slice(0, 80);
+  if (typeof value.status === 'string') payload.status = value.status.slice(0, 80);
+  if (typeof value.mfaType === 'string') payload.mfaType = value.mfaType.slice(0, 40);
+  return payload;
+}
+
 async function signIn(page: Page, email: string, password: string) {
   await expectUsablePage(page, '/login');
   const loginInput = page
@@ -30,8 +55,48 @@ async function signIn(page: Page, email: string, password: string) {
   await expect(passwordInput).toBeVisible();
   await loginInput.fill(email);
   await passwordInput.fill(password);
+
+  const loginResponsePromise = page.waitForResponse(response => {
+    if (response.request().method() !== 'POST') return false;
+    try {
+      return new URL(response.url()).pathname === '/api/auth/login';
+    } catch {
+      return false;
+    }
+  }, { timeout: 20_000 }).catch(() => null);
+
   await page.locator('button[type="submit"]').first().click();
-  await page.waitForLoadState('domcontentloaded');
+  const loginError = page.locator('[role="alert"]').first();
+  await Promise.race([
+    page.waitForURL(url => url.pathname !== '/login', { timeout: 20_000 }),
+    loginError.waitFor({ state: 'visible', timeout: 20_000 }),
+  ]).catch(() => undefined);
+
+  const response = await Promise.race([
+    loginResponsePromise,
+    page.waitForTimeout(250).then(() => null),
+  ]);
+  const cookies = (await page.context().cookies())
+    .filter(cookie => cookie.name.startsWith('sfm_') || cookie.name.startsWith('sb-'))
+    .map(cookie => ({
+      name: cookie.name,
+      httpOnly: cookie.httpOnly,
+      secure: cookie.secure,
+      sameSite: cookie.sameSite,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const visibleError = await loginError.isVisible().catch(() => false)
+    ? (await loginError.textContent())?.trim().slice(0, 240) || null
+    : null;
+  const diagnostics = {
+    loginResponseStatus: response?.status() ?? 'not_observed',
+    loginResponse: await safeLoginPayload(response),
+    visibleError,
+    cookies,
+  };
+
+  await expect(page, `Sign-in did not leave /login. Safe diagnostics: ${JSON.stringify(diagnostics)}`)
+    .not.toHaveURL(/\/login(?:\?|$)/);
 }
 
 async function setLanguage(page: Page, lang: 'ar' | 'en') {
@@ -64,6 +129,9 @@ test.describe('launch smoke coverage', () => {
     await expect(guestButton).toBeVisible();
     await guestButton.click();
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
+    await expect(page.locator('main.dashboard-main')).toBeVisible();
+    await expect(page.locator('.sfm-user-chip').first()).toBeAttached();
+    await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
     await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('sfm_guest_mode'))).toBe('true');
     const cookie = await page.evaluate(() => document.cookie);
@@ -81,11 +149,14 @@ test.describe('launch smoke coverage', () => {
     await expectUsablePage(page, '/dashboard');
   });
 
-  test('admin page access is gated and sidebar shell is available for admins', async ({ page }) => {
+  test('admin page access is gated and responsive admin shell is available for admins', async ({ page, isMobile }) => {
     if (adminEmail && adminPassword) {
       await signIn(page, adminEmail, adminPassword);
       await expectUsablePage(page, '/sfm-admin-control');
-      await expect(page.locator('nav, aside').first()).toBeVisible();
+      await expect(page.locator('main.admin-dashboard').first()).toBeVisible();
+      await expect(isMobile
+        ? page.locator('header.sfm-global-header')
+        : page.locator('aside.sfm-shared-sidebar')).toBeVisible();
     } else {
       await expectUsablePage(page, '/sfm-admin-control');
       await expect(page).toHaveURL(/\/login|\/dashboard|\/sfm-admin-control/);

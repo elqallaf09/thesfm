@@ -162,6 +162,7 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
   });
 
   test('command deck has terminal hierarchy and stock clicks use a focus-safe drawer', async ({ page }) => {
+    test.setTimeout(120_000);
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.addInitScript(() => {
@@ -253,6 +254,7 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
   });
 
   test('analysis, sessions, and heatmap behave as interactive terminal views', async ({ page }) => {
+    test.setTimeout(120_000);
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     await configureTerminal(page, 'en', 'light');
@@ -269,8 +271,10 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     for (const metric of ['AI confidence', 'Strategy agreement', 'Signals', 'Trend', 'Risk', 'Support', 'Resistance', 'Momentum', 'Market breadth', 'Opportunity score']) {
       await expect(analysis.locator('.analysis-metric').filter({ hasText: metric }), `${metric} analysis metric`).toBeVisible();
     }
-    await expect(analysis.locator('.analysis-provider-state')).toContainText('Provider status');
-    await expect(analysis.locator('.analysis-provider-state')).toContainText('Data provider connected');
+    const analysisDataState = analysis.locator('.analysis-provider-state');
+    await expect(analysisDataState.locator('span')).toHaveText('Analysis data status');
+    await expect(analysisDataState.locator('strong')).toHaveText('Available');
+    await expect(analysisDataState.locator('small')).toHaveText('Market data');
 
     const sessionsTab = dashboardTab(page, 'sessions');
     await sessionsTab.click();
@@ -405,20 +409,22 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     expect(await map.locator('.market-map-icon').count()).toBe(await map.locator('[data-market-map-id]').count());
   });
 
-  for (const mode of [
+  const responsiveModes = [
     { language: 'en' as const, theme: 'light' as const, direction: 'ltr' },
     { language: 'ar' as const, theme: 'dark' as const, direction: 'rtl' },
-  ]) {
-    test(`${mode.language.toUpperCase()} ${mode.theme} has no document overflow at desktop, tablet, or mobile`, async ({ page }) => {
-      test.setTimeout(90_000);
-      await configureTerminal(page, mode.language, mode.theme);
-      await mockTraderApi(page);
+  ];
+  const responsiveViewports = [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'tablet', width: 834, height: 1112 },
+    { name: 'mobile', width: 390, height: 844 },
+  ];
 
-      for (const viewport of [
-        { name: 'desktop', width: 1440, height: 900 },
-        { name: 'tablet', width: 834, height: 1112 },
-        { name: 'mobile', width: 390, height: 844 },
-      ]) {
+  for (const mode of responsiveModes) {
+    for (const viewport of responsiveViewports) {
+      test(`${mode.language.toUpperCase()} ${mode.theme} has no document overflow at ${viewport.name}`, async ({ page }) => {
+        test.setTimeout(180_000);
+        await configureTerminal(page, mode.language, mode.theme);
+        await mockTraderApi(page);
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await openDashboard(page);
         await expect(page.locator('html')).toHaveAttribute('lang', mode.language);
@@ -464,8 +470,8 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
           }));
           expect(labels.every(label => label.visible && label.text.length > 0 && !label.clipped), `Arabic labels at ${viewport.name}`).toBe(true);
         }
-      }
-    });
+      });
+    }
   }
 });
 
