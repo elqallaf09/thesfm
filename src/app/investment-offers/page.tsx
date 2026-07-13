@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, BriefcaseBusiness, FolderKanban, Loader2, Presentation } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { PageHero } from '@/components/layout/PageHero';
@@ -220,7 +219,6 @@ export default function InvestmentOffersPage() {
 
   return (
     <div className={`investment-offers-shell ${styles.shell}`} dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="investment-offers-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

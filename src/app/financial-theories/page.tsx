@@ -25,7 +25,6 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
@@ -281,7 +280,6 @@ export default function FinancialTheoriesPage() {
 
   return (
     <div className="financial-theories-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="financial-theories-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

@@ -22,7 +22,6 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -311,7 +310,6 @@ export default function TasksCenterPage() {
 
   return (
     <div className="tasks-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="tasks-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

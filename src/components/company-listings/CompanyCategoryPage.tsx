@@ -23,6 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
@@ -286,6 +287,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
   return (
     <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={t(config.titleKey)} className="company-directory-shell" contentClassName="company-directory-content">
+        <WorkspacePageContainer variant="wide" className="company-directory-layout">
         <div className="company-directory-page" dir={dir}>
           <section className="company-directory-hero">
             <div className="company-hero-copy">
@@ -403,7 +405,9 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
 
         <style jsx>{`
           :global(.company-directory-content) {
-            width: min(100%, 1380px);
+            width: 100%;
+            max-width: none;
+            padding: 0;
           }
           .company-directory-page {
             display: grid;
@@ -768,6 +772,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             100% { background-position: 0 0; }
           }
         `}</style>
+        </WorkspacePageContainer>
       </DashboardPageShell>
     </CompanyDashboardFrame>
   );

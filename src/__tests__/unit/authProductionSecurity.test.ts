@@ -58,7 +58,8 @@ describe('production auth security contracts', () => {
   it('detects tampering in signed server MFA state', async () => {
     const signed = await signAuthPayload({ kind: 'email-proof', expiresAt: Math.floor(Date.now() / 1000) + 60 }, 'test-secret');
     await expect(verifyAuthPayload(signed, 'test-secret')).resolves.toMatchObject({ kind: 'email-proof' });
-    await expect(verifyAuthPayload(`${signed.slice(0, -1)}x`, 'test-secret')).resolves.toBeNull();
+    const replacement = signed.startsWith('x') ? 'y' : 'x';
+    await expect(verifyAuthPayload(`${replacement}${signed.slice(1)}`, 'test-secret')).resolves.toBeNull();
   });
 
   it('classifies sensitive APIs without redirecting all public APIs', () => {

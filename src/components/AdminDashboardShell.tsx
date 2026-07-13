@@ -1,7 +1,6 @@
 'use client';
 
 import type { CSSProperties, ReactNode } from 'react';
-import Sidebar from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 
 type AdminDashboardShellProps = {
@@ -23,7 +22,6 @@ export function AdminDashboardShell({
 }: AdminDashboardShellProps) {
   return (
     <>
-      <Sidebar />
       <DashboardPageShell
         ariaLabel={ariaLabel}
         className={className}

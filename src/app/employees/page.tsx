@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Edit3, FileDown, FileText, Grid2X2, Loader2, Plus, Search, Table2, Trash2, UsersRound } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -414,7 +413,6 @@ export default function EmployeesPage() {
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={text.employees}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -428,7 +426,6 @@ export default function EmployeesPage() {
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.employees} contentClassName="business-records-content">
         <div className="business-topbar">
           <LanguageSwitcher />

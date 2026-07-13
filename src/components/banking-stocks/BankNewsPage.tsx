@@ -39,6 +39,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -2166,7 +2167,7 @@ export function BankNewsPage() {
 
   return (
     <NewsPageShell category="banking" className="bankingShell" dir={dir} wide>
-      <main id="main-content" className="bankingWorkspace">
+      <WorkspacePageContainer as="main" variant="wide" className="bankingWorkspace">
         <BankingHeader
           text={text}
           locale={locale}
@@ -2266,7 +2267,7 @@ export function BankNewsPage() {
           <span>{text.sourceDisclaimer}</span>
           <span> · {text.newsSource}: {sources.slice(0, 3).map(item => item.source).join('، ') || text.unavailable}</span>
         </footer>
-      </main>
+      </WorkspacePageContainer>
 
       {quickState ? (
         <QuickAnalysisPanel
@@ -2298,11 +2299,7 @@ export function BankNewsPage() {
         }
 
         .bankingWorkspace {
-          width: calc(100% - var(--sidebar-w, 230px));
-          max-width: 1500px;
-          margin-inline-start: var(--sidebar-w, 230px);
-          margin-inline-end: auto;
-          padding: clamp(16px, 2vw, 32px);
+          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -3503,19 +3500,15 @@ export function BankNewsPage() {
         }
 
         @media (max-width: 860px) {
-          html,
-          body,
           .bankingShell {
-            width: 100vw;
-            max-width: 100vw;
+            width: 100%;
+            max-width: 100%;
             overflow-x: hidden;
           }
 
           .bankingWorkspace {
-            width: 100vw;
-            max-width: 100vw;
-            margin: 0 !important;
-            padding: 14px;
+            width: 100%;
+            max-width: 100%;
           }
 
           .bankHero {

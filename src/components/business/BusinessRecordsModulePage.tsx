@@ -3,7 +3,6 @@
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Edit3, FileDown, FileText, Loader2, Plus, ReceiptText, Search, Sparkles, Trash2, Truck, UploadCloud, UserRound, WalletCards, X } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -971,7 +970,6 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={config.title}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -985,7 +983,6 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={config.title} contentClassName="business-records-content">
         <div className="business-topbar">
           <LanguageSwitcher />

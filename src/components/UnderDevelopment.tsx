@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { ArrowRight, Construction } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { TR } from '@/lib/translations';
 
@@ -20,7 +19,6 @@ export function UnderDevelopment({ titleKey, descriptionKey, helperKey, statusKe
 
   return (
     <div className="sfm-under-shell" dir={dir}>
-      <Sidebar />
       <main className="sfm-under-main">
         <section className="sfm-under-card" aria-labelledby="under-development-title">
           <div className="sfm-under-icon">

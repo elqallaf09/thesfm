@@ -26,10 +26,10 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -694,11 +694,10 @@ export default function BusinessHubPage() {
   if (authLoading || loadingProjects) {
     return (
       <div className="business-hub-shell" dir={dir}>
-        <Sidebar />
-        <main className="business-hub-main loading-state">
+        <WorkspacePageContainer as="main" variant="wide" className="business-hub-main loading-state">
           <Loader2 className="spin" size={28} />
           <strong>{text.loading}</strong>
-        </main>
+        </WorkspacePageContainer>
         <style>{styles}</style>
       </div>
     );
@@ -707,14 +706,13 @@ export default function BusinessHubPage() {
   if (!user) {
     return (
       <div className="business-hub-shell" dir={dir}>
-        <Sidebar />
-        <main className="business-hub-main">
+        <WorkspacePageContainer as="main" variant="wide" className="business-hub-main">
           <section className="state-panel">
             <LockKeyhole size={30} />
             <h1>{text.title}</h1>
             <p>{text.signIn}</p>
           </section>
-        </main>
+        </WorkspacePageContainer>
         <style>{styles}</style>
       </div>
     );
@@ -722,8 +720,7 @@ export default function BusinessHubPage() {
 
   return (
     <div className="business-hub-shell" dir={dir}>
-      <Sidebar />
-      <main className="business-hub-main">
+      <WorkspacePageContainer as="main" variant="wide" className="business-hub-main">
         <div className="topbar">
           <div>
             <span>THE SFM</span>
@@ -1616,7 +1613,7 @@ export default function BusinessHubPage() {
           </article>
         </section>}
         </PageTabPanel>
-      </main>
+      </WorkspacePageContainer>
       <style>{styles}</style>
     </div>
   );
@@ -1709,8 +1706,7 @@ function SelectField({
 
 const styles = `
   .business-hub-shell{min-height:100vh;background:var(--sfm-background);color:var(--sfm-primary-dark);font-family:Tajawal,Arial,sans-serif;overflow-x:hidden}
-  .business-hub-main{width:calc(100% - 230px);max-width:1320px;margin:0 auto;margin-inline-start:230px;margin-inline-end:auto;padding:22px 24px 60px;display:grid;gap:18px;min-width:0;overflow-x:hidden}
-  [dir="ltr"] .business-hub-main{margin-inline-start:230px;margin-inline-end:auto}
+  .business-hub-main{width:100%;display:grid;gap:18px;min-width:0;overflow-x:hidden}
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px}.topbar span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:900}.topbar strong{display:block;color:var(--sfm-primary-dark);font-size:24px;font-weight:950}
   .loading-state{min-height:100vh;place-items:center;color:var(--sfm-primary);font-weight:950}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
   .business-hero{background:linear-gradient(135deg,var(--sfm-deep-navy),var(--sfm-primary-dark) 58%,var(--sfm-card-dark) 145%);color:var(--sfm-card);border-radius:30px;padding:clamp(24px,5vw,48px);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;box-shadow:0 24px 80px rgba(3,18,37,.22);min-width:0;overflow:hidden}
@@ -1742,6 +1738,6 @@ const styles = `
   .module-links{grid-template-columns:repeat(2,minmax(0,1fr))}.module-links a,.module-link-button{background:linear-gradient(135deg,#FFFFFF,var(--sfm-light-card));color:var(--sfm-midnight);border:1px solid rgba(29,140,255,.18);min-height:48px;box-shadow:0 10px 24px rgba(29,140,255,.08)}.module-link-button span{color:inherit;font-weight:950}.module-link-button svg{color:var(--sfm-primary);flex:0 0 auto}.module-links a:hover,.module-link-button:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(29,140,255,.14)}.dark .business-hub-shell .module-link-button,html.dark .business-hub-shell .module-link-button{background:linear-gradient(135deg,#16375C,#0F2A49)!important;color:#F8FBFF!important;border-color:rgba(47,214,192,.46)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 12px 28px rgba(0,0,0,.28)!important;opacity:1!important}.dark .business-hub-shell .module-link-button span,html.dark .business-hub-shell .module-link-button span{color:#F8FBFF!important;text-shadow:0 1px 0 rgba(0,0,0,.18)}.dark .business-hub-shell .module-link-button svg,html.dark .business-hub-shell .module-link-button svg{color:#67E8F9!important;stroke:currentColor!important;opacity:1!important}.dark .business-hub-shell .module-link-button:hover,html.dark .business-hub-shell .module-link-button:hover{background:linear-gradient(135deg,#1E4771,#123456)!important;border-color:rgba(103,232,249,.68)!important;box-shadow:0 16px 34px rgba(0,0,0,.32),0 0 0 3px rgba(47,214,192,.14)!important}.mini-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.mini-metrics p{margin:0;border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:var(--r-lg);padding:12px;min-width:0}.mini-metrics span{display:block;color:var(--sfm-muted);font-size:12px;font-weight:950}.mini-metrics strong{display:block;margin-top:5px;color:var(--sfm-primary-dark);overflow-wrap:anywhere}
   a:focus-visible,button:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(24,212,212,.18)}
   @media(max-width:1260px){.readiness-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hub-grid.two,.wizard-layout,.funding-layout,.documents-layout,.jurisdiction-layout,.directory-layout{grid-template-columns:1fr}.wizard-output,.funding-side,.documents-side,.directory-side{position:static}.directory-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:1024px){.business-hub-main{width:100%;max-width:100%;margin-inline-start:0;margin-inline-end:0;padding:calc(84px + env(safe-area-inset-top)) 16px 24px}.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header,.jurisdiction-header,.directory-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}.jurisdiction-header .status-badge,.directory-header .status-badge{width:max-content}.program-grid{grid-template-columns:1fr}}
+  @media(max-width:1024px){.business-hero{grid-template-columns:1fr}.hero-actions{justify-content:stretch}.hero-actions a,.hero-actions button{flex:1 1 180px}.selector-panel{grid-template-columns:1fr}.funding-header,.documents-header,.jurisdiction-header,.directory-header{display:grid}.funding-header .score-pill,.documents-header .score-pill{width:100%}.jurisdiction-header .status-badge,.directory-header .status-badge{width:max-content}.program-grid{grid-template-columns:1fr}}
   @media(max-width:720px){.topbar{align-items:flex-start}.business-hero{border-radius:var(--r-2xl)}.hero-actions{display:grid}.hero-actions a,.hero-actions button{width:100%}.readiness-head{display:grid}.score-pill{width:100%}.readiness-grid,.wizard-form,.module-links,.mini-metrics,.planner-grid,.planner-totals,.document-card-grid,.draft-sections,.jurisdiction-cards,.jurisdiction-columns,.choice-grid,.directory-filters,.program-meta,.funding-admin-form{grid-template-columns:1fr}.copilot-panel{grid-template-columns:1fr}.check-row,.document-link,.package-item,.dd-row{grid-template-columns:auto minmax(0,1fr)}.check-row small,.document-link small,.package-item small,.dd-row small{grid-column:2}.fund-row{grid-template-columns:1fr}.jurisdiction-summary p,.program-detail p{grid-template-columns:1fr}.section-title-row,.jurisdiction-card-head,.program-card-head{display:grid}.wizard-controls button,.program-actions button,.program-actions a{flex:1 1 140px}}
 `;

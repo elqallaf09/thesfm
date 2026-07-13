@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -1568,7 +1567,6 @@ export default function SetupPage() {
 
   return (
     <div className="setup-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell contentClassName="setup-content">
         <header className="setup-top">
           <div>

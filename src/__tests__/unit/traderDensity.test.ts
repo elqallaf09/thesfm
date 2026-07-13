@@ -62,8 +62,8 @@ describe('trader terminal density (phase 2.7)', () => {
   });
 
   it('busts stale caches with a bumped asset version', () => {
-    expect(indexHtml).toContain('/cinema.css?v=20260712-density');
+    expect(indexHtml).toContain('/cinema.css?v=20260712-visual-system');
     expect(indexHtml).toContain('/app.js?v=20260712-density');
-    expect(detailHtml).toContain('/cinema.css?v=20260712-density');
+    expect(detailHtml).toContain('/cinema.css?v=20260712-visual-system');
   });
 });

@@ -25,7 +25,6 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -661,7 +660,6 @@ export default function SecurityPage() {
 
   return (
     <div className="security-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="security-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

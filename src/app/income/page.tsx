@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, ExternalLink, FileDown, FileText, Gauge, LineChart, Paperclip, Plus, ReceiptText, Sparkles, Trash2, TrendingUp, Wallet, X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
-import { Sidebar } from '@/components/Sidebar';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -1500,7 +1499,6 @@ export default function IncomePage() {
 
   return (
     <div className="income-shell" dir={dir}>
-      <Sidebar />
       <main className="income-main">
         <header className="income-header">
           <div>

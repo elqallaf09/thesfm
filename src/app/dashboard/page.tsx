@@ -44,7 +44,6 @@ import {
   latestByDate, statusLabel, getRecordCurrency,
 } from '@/components/dashboard/DashboardSubComponents';
 
-const Sidebar = dynamic(() => import('@/components/Sidebar').then(mod => mod.Sidebar), { ssr: false });
 const LanguageSwitcher = dynamic(() => import('@/components/ui/LanguageSwitcher').then(mod => mod.LanguageSwitcher), { ssr: false });
 const UserChip = dynamic(() => import('@/components/UserChip').then(mod => mod.UserChip), { ssr: false });
 
@@ -795,7 +794,6 @@ export default function ExecutiveDashboardPage() {
   if (loading || isLoadingData) {
     return (
       <div className="dashboard-shell" dir={dir}>
-        <Sidebar />
         <main className="dashboard-main loading-main">
           <Loader2 className="loader" aria-hidden="true" />
           <p>{text.loading}</p>
@@ -807,7 +805,6 @@ export default function ExecutiveDashboardPage() {
 
   return (
     <div className="dashboard-shell" dir={dir}>
-      <Sidebar />
       <main className="dashboard-main">
         <div className="topbar">
           <LanguageSwitcher />

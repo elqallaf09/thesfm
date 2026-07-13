@@ -43,6 +43,23 @@ export function getWorkspaceDefaultRoute(id: WorkspaceId): string {
   return getWorkspaceById(id).defaultRoute;
 }
 
+/**
+ * Returns one centralized switcher destination for the current session.
+ * Business & Projects has public directory pages, while its primary hub is
+ * authenticated, so guests land on the directory without duplicating route
+ * decisions inside desktop and mobile navigation components.
+ */
+export function getWorkspaceEntryRoute(
+  id: WorkspaceId,
+  options: { isAuthenticated: boolean },
+): string {
+  const workspace = getWorkspaceById(id);
+  if (!options.isAuthenticated && workspace.guestDefaultRoute) {
+    return workspace.guestDefaultRoute;
+  }
+  return workspace.defaultRoute;
+}
+
 export function isWorkspaceRoute(pathname: string | null | undefined): boolean {
   return getWorkspaceForPathname(pathname) !== null;
 }

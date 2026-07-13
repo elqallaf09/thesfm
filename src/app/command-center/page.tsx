@@ -17,7 +17,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -322,7 +321,6 @@ export default function CommandCenterPage() {
 
   return (
     <div className="command-center-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} className="command-center-main" contentClassName="command-center-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

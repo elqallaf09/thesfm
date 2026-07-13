@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
@@ -1055,7 +1054,6 @@ export default function MonthlySubscriptionsPage() {
 
   return (
     <div className="subscriptions-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={copy.title} className="subscriptions-main" contentClassName="subscriptions-content">
         <section className="subscriptions-hero">
           <div className="subscriptions-hero-copy">

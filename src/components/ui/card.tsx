@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border bg-card text-card-foreground shadow-[var(--shadow-sm)] transition-[border-color,background-color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-md)] data-[state=active]:border-primary/40 data-[state=active]:shadow-[var(--shadow-md)] data-[state=empty]:border-dashed data-[state=empty]:shadow-none aria-selected:border-primary/40 aria-selected:bg-primary/[0.04] aria-busy:cursor-progress aria-busy:opacity-80 aria-invalid:border-destructive/50 aria-invalid:bg-destructive/[0.03] motion-reduce:transition-none motion-reduce:hover:transform-none dark:shadow-sm dark:shadow-black/25 dark:hover:translate-y-0 dark:hover:border-border dark:hover:shadow-sm dark:hover:shadow-black/25",
+      "rounded-[var(--radius-card)] border border-border bg-card text-card-foreground shadow-[var(--shadow-card)] transition-[border-color,background-color,box-shadow,opacity] duration-200 ease-out data-[state=active]:border-primary/40 data-[state=active]:bg-primary-soft data-[state=empty]:border-dashed data-[state=empty]:shadow-none aria-selected:border-primary/40 aria-selected:bg-primary-soft aria-busy:cursor-progress aria-busy:opacity-80 aria-invalid:border-destructive/50 aria-invalid:bg-danger-soft motion-reduce:transition-none",
       className
     )}
     {...props}
@@ -23,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col gap-1.5 p-5 sm:p-6 dark:p-6", className)}
+    className={cn("flex flex-col gap-1.5 p-5 sm:p-6", className)}
     {...props}
   />
 ))
@@ -36,7 +36,7 @@ const CardTitle = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "text-xl font-bold leading-tight tracking-tight text-card-foreground dark:text-2xl dark:font-semibold dark:leading-none",
+      "text-lg font-semibold leading-snug text-card-foreground",
       className
     )}
     {...props}
@@ -50,7 +50,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm leading-6 text-muted-foreground dark:leading-normal", className)}
+    className={cn("text-sm leading-6 text-muted-foreground", className)}
     {...props}
   />
 ))
@@ -60,7 +60,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-5 pt-0 sm:p-6 sm:pt-0 dark:p-6 dark:pt-0", className)} {...props} />
+  <div ref={ref} className={cn("p-5 pt-0 sm:p-6 sm:pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -70,7 +70,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center gap-2 p-5 pt-0 sm:p-6 sm:pt-0 dark:gap-0 dark:p-6 dark:pt-0", className)}
+    className={cn("flex items-center gap-2 p-5 pt-0 sm:p-6 sm:pt-0", className)}
     {...props}
   />
 ))

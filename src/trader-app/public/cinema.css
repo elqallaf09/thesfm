@@ -19,7 +19,7 @@
   --radius-xl: 22px;
   --radius-lg: 18px;
   --radius-md: 14px;
-  --font-ar: "IBM Plex Sans Arabic", "Cairo", sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
@@ -8040,7 +8040,7 @@ html[data-theme="light"] .terminal-app::after {
 html,
 body,
 .terminal-app {
-  font-family: "IBM Plex Sans Arabic", "Tajawal", "Noto Sans Arabic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-family: var(--font-ui, "IBM Plex Sans Arabic", system-ui, sans-serif) !important;
 }
 
 html[data-theme="light"],
@@ -13283,4 +13283,623 @@ html[data-theme="light"] .form-field-error {
 form[aria-busy="true"] button[type="submit"] {
   cursor: wait;
   opacity: 0.72;
+}
+
+/* ========================================================================== */
+/* Final semantic visual-system lock                                           */
+/* ========================================================================== */
+
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --font-ui: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-ar: var(--font-ui);
+  --font-mono: var(--font-data);
+
+  /* Mirrors the application semantic contract; this standalone document
+     cannot inherit CSS custom properties across its document boundary. */
+  --background: #071522;
+  --surface: #0B2035;
+  --surface-elevated: #102A44;
+  --surface-muted: #0D253C;
+  --surface-hover: #132D47;
+  --foreground: #F8FAFC;
+  --foreground-secondary: #CBD5E1;
+  --foreground-muted: #94A3B8;
+  --border: #243B53;
+  --border-strong: #39536C;
+  --primary: #4C96F5;
+  --primary-hover: #73ACF7;
+  --primary-soft: #102F50;
+  --primary-foreground: #071522;
+  --accent: #35BDB7;
+  --accent-soft: #0D3839;
+  --success: #4ADE80;
+  --success-soft: #103525;
+  --warning: #FBBF24;
+  --warning-soft: #3A2A0D;
+  --danger: #F87171;
+  --danger-soft: #3E1A20;
+  --info: #38BDF8;
+  --info-soft: #0B3046;
+  --focus-ring: #60A5FA;
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 34%, transparent);
+  --chart-grid: #294157;
+  --chart-label: #A8B6C7;
+  --chart-tooltip: #102A44;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-card: 0 8px 22px rgba(0, 0, 0, 0.22);
+  --shadow-popover: 0 18px 42px rgba(0, 0, 0, 0.30);
+  --hero-gradient: linear-gradient(135deg, #071522, #123D68 58%, #0B6664);
+  --hero-foreground: #FFFFFF;
+  --hero-muted: #CBD5E1;
+
+  /* Trader-prefixed names are compatibility aliases, not a second system. */
+  --trader-background: var(--background);
+  --trader-surface: var(--surface);
+  --trader-surface-elevated: var(--surface-elevated);
+  --trader-surface-muted: var(--surface-muted);
+  --trader-surface-hover: var(--surface-hover);
+  --trader-foreground: var(--foreground);
+  --trader-foreground-secondary: var(--foreground-secondary);
+  --trader-foreground-muted: var(--foreground-muted);
+  --trader-border: var(--border);
+  --trader-border-strong: var(--border-strong);
+  --trader-primary: var(--primary);
+  --trader-primary-hover: var(--primary-hover);
+  --trader-primary-soft: var(--primary-soft);
+  --trader-primary-foreground: var(--primary-foreground);
+  --trader-accent: var(--accent);
+  --trader-accent-soft: var(--accent-soft);
+  --trader-success: var(--success);
+  --trader-success-soft: var(--success-soft);
+  --trader-warning: var(--warning);
+  --trader-warning-soft: var(--warning-soft);
+  --trader-danger: var(--danger);
+  --trader-danger-soft: var(--danger-soft);
+  --trader-info: var(--info);
+  --trader-info-soft: var(--info-soft);
+  --trader-focus-ring: var(--focus-ring);
+  --trader-focus-shadow: var(--focus-shadow);
+  --trader-chart-grid: var(--chart-grid);
+  --trader-chart-label: var(--chart-label);
+  --trader-chart-tooltip: var(--chart-tooltip);
+  --trader-shadow-xs: var(--shadow-xs);
+  --trader-shadow-card: var(--shadow-card);
+  --trader-shadow-popover: var(--shadow-popover);
+  --trader-hero-gradient: var(--hero-gradient);
+  --trader-hero-foreground: var(--hero-foreground);
+  --trader-hero-muted: var(--hero-muted);
+
+  /* Active compatibility bridge for the legacy terminal layers above. */
+  --bg: var(--trader-background);
+  --bg-2: var(--trader-surface-muted);
+  --panel: var(--trader-surface);
+  --panel-strong: var(--trader-surface-elevated);
+  --panel-soft: var(--trader-surface-muted);
+  --line: var(--trader-border);
+  --line-strong: var(--trader-border-strong);
+  --text: var(--trader-foreground);
+  --muted: var(--trader-foreground-secondary);
+  --muted-2: var(--trader-foreground-muted);
+  --gold: var(--trader-warning);
+  --cyan: var(--trader-primary);
+  --green: var(--trader-success);
+  --red: var(--trader-danger);
+  --blue: var(--trader-primary);
+  --teal: var(--trader-accent);
+  --shadow: var(--trader-shadow-card);
+  --terminal-page-bg: var(--trader-background);
+  --terminal-bg-secondary: var(--trader-surface-muted);
+  --terminal-card: var(--trader-surface);
+  --terminal-card-elevated: var(--trader-surface-elevated);
+  --terminal-accent: var(--trader-primary);
+  --terminal-button: var(--trader-primary);
+  --terminal-teal: var(--trader-accent);
+  --terminal-text: var(--trader-foreground);
+  --terminal-text-secondary: var(--trader-foreground-secondary);
+  --terminal-text-muted: var(--trader-foreground-muted);
+  --terminal-border: var(--trader-border);
+  --terminal-border-strong: var(--trader-border-strong);
+  --terminal-success: var(--trader-success);
+  --terminal-warning: var(--trader-warning);
+  --terminal-danger: var(--trader-danger);
+  --terminal-soft-shadow: var(--trader-shadow-popover);
+  --terminal-card-shadow: var(--trader-shadow-card);
+  --terminal-focus: var(--trader-focus-shadow);
+  --terminal-chart-grid: var(--trader-chart-grid);
+  --terminal-chart-success: var(--trader-success);
+  --terminal-chart-danger: var(--trader-danger);
+  --terminal-glass: var(--trader-surface);
+  --terminal-glass-strong: var(--trader-surface-elevated);
+  --terminal-edge: var(--trader-border);
+  --terminal-edge-strong: var(--trader-border-strong);
+  --terminal-good: var(--trader-success);
+  --terminal-bad: var(--trader-danger);
+  --terminal-warn: var(--trader-warning);
+  --terminal-info: var(--trader-info);
+  --sfm-terminal-bg: var(--trader-background);
+  --sfm-panel: var(--trader-surface);
+  --sfm-panel-soft: var(--trader-surface-muted);
+  --sfm-card: var(--trader-surface);
+  --sfm-card-strong: var(--trader-surface-elevated);
+  --sfm-line: var(--trader-border);
+  --sfm-line-strong: var(--trader-border-strong);
+  --sfm-gold: var(--trader-warning);
+  --sfm-gold-soft: var(--trader-warning-soft);
+  --sfm-green: var(--trader-success);
+  --sfm-red: var(--trader-danger);
+  --sfm-blue: var(--trader-primary);
+  --sfm-text: var(--trader-foreground);
+  --sfm-muted: var(--trader-foreground-secondary);
+  --film-black: var(--trader-background);
+  --film-ink: var(--trader-surface-muted);
+  --film-panel: var(--trader-surface);
+  --film-panel-strong: var(--trader-surface-elevated);
+  --film-steel: var(--trader-surface-hover);
+  --film-cyan: var(--trader-primary);
+  --film-emerald: var(--trader-success);
+  --film-gold: var(--trader-warning);
+  --film-red: var(--trader-danger);
+  --film-violet: var(--trader-info);
+  --film-edge: var(--trader-border);
+  --film-edge-hot: var(--trader-border-strong);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #F4F7FB;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #F8FAFC;
+  --surface-hover: #F1F5F9;
+  --foreground: #0F2742;
+  --foreground-secondary: #334155;
+  --foreground-muted: #64748B;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --primary: #1769D2;
+  --primary-hover: #1258B3;
+  --primary-soft: #EAF3FF;
+  --primary-foreground: #FFFFFF;
+  --accent: #0F9F9A;
+  --accent-soft: #E6F8F6;
+  --success: #15803D;
+  --success-soft: #EAF7EE;
+  --warning: #B45309;
+  --warning-soft: #FFF7E6;
+  --danger: #C62828;
+  --danger-soft: #FDECEC;
+  --info: #0369A1;
+  --info-soft: #EAF6FC;
+  --focus-ring: #2563EB;
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
+  --chart-grid: #E2E8F0;
+  --chart-label: #64748B;
+  --chart-tooltip: #FFFFFF;
+  --shadow-xs: 0 1px 2px rgba(15, 39, 66, 0.07);
+  --shadow-card: 0 4px 12px rgba(15, 39, 66, 0.08);
+  --shadow-popover: 0 16px 36px rgba(15, 39, 66, 0.14);
+  --hero-gradient: linear-gradient(135deg, #0F2742, #1769D2 58%, #0F9F9A);
+  --hero-foreground: #FFFFFF;
+  --hero-muted: #DCE8F5;
+
+  --light-background: var(--trader-background);
+  --light-surface: var(--trader-surface);
+  --light-elevated-surface: var(--trader-surface-elevated);
+  --light-card: var(--trader-surface);
+  --light-primary-card: var(--trader-surface-muted);
+  --light-secondary-card: var(--trader-surface-muted);
+  --light-sidebar: var(--trader-surface);
+  --light-header: var(--trader-surface);
+  --light-footer: var(--trader-surface-muted);
+  --light-text-primary: var(--trader-foreground);
+  --light-text-secondary: var(--trader-foreground-secondary);
+  --light-text-muted: var(--trader-foreground-muted);
+  --light-border-primary: var(--trader-border-strong);
+  --light-border-secondary: var(--trader-border);
+  --light-divider: var(--trader-border);
+  --light-chart-grid: var(--trader-chart-grid);
+  --light-primary: var(--trader-primary);
+  --light-primary-hover: var(--trader-primary-hover);
+  --light-primary-active: var(--trader-primary-hover);
+  --light-secondary: var(--trader-accent);
+  --light-accent: var(--trader-accent);
+  --light-success: var(--trader-success);
+  --light-success-soft: var(--trader-success-soft);
+  --light-warning: var(--trader-warning);
+  --light-warning-soft: var(--trader-warning-soft);
+  --light-danger: var(--trader-danger);
+  --light-danger-soft: var(--trader-danger-soft);
+  --light-info: var(--trader-info);
+  --light-info-soft: var(--trader-info-soft);
+  --light-focus-ring: var(--trader-focus-shadow);
+  --terminal-light-background: var(--trader-background);
+  --terminal-light-background-soft: var(--trader-surface-muted);
+  --terminal-light-surface: var(--trader-surface);
+  --terminal-light-card: var(--trader-surface);
+  --terminal-light-card-elevated: var(--trader-surface-elevated);
+  --terminal-light-border: var(--trader-border);
+  --terminal-light-border-strong: var(--trader-border-strong);
+  --terminal-light-text-primary: var(--trader-foreground);
+  --terminal-light-text-secondary: var(--trader-foreground-secondary);
+  --terminal-light-text-muted: var(--trader-foreground-muted);
+  --terminal-light-accent: var(--trader-primary);
+  --terminal-light-accent-strong: var(--trader-primary-hover);
+  --terminal-light-button-bg: var(--trader-primary);
+  --terminal-light-button-text: var(--trader-primary-foreground);
+  --terminal-light-hover: var(--trader-surface-hover);
+  --terminal-light-disabled-bg: var(--trader-surface-muted);
+  --terminal-light-disabled-text: var(--trader-foreground-muted);
+  --terminal-light-success: var(--trader-success);
+  --terminal-light-warning: var(--trader-warning);
+  --terminal-light-error: var(--trader-danger);
+  --terminal-light-info: var(--trader-info);
+  --terminal-light-success-bg: var(--trader-success-soft);
+  --terminal-light-error-bg: var(--trader-danger-soft);
+  --terminal-light-warning-bg: var(--trader-warning-soft);
+}
+
+html[data-theme] body,
+html[data-theme] body * {
+  font-family: var(--font-ui) !important;
+}
+
+/* This follows the UI lock and has class/attribute specificity, so approved
+   numeric and market-data roles retain IBM Plex Mono. */
+html[data-theme] :is(
+  .mono,
+  .symbol-code,
+  .market-value,
+  [data-market-value],
+  [data-numeric="true"],
+  .amount,
+  .price,
+  .percentage,
+  .ticker-symbol,
+  .ticker-price,
+  .currency-code,
+  .st-axis,
+  .st-quote b,
+  .topbar-stats .sb-cell > strong,
+  .stock-card-price strong,
+  .stock-card-price span,
+  .heatmap-change,
+  .drawer-price strong,
+  .drawer-price b,
+  .chart-axis-label
+) {
+  font-family: var(--font-data) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+html[data-theme],
+html[data-theme] body {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] body::before,
+html[data-theme] body::after,
+html[data-theme] .terminal-app::before,
+html[data-theme] .terminal-app::after {
+  content: none !important;
+  display: none !important;
+}
+
+html[data-theme] .market-cinema {
+  display: none !important;
+}
+
+html[data-theme] .terminal-sidebar {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html[data-theme] :is(.brand-card, .profile-card, .ai-pro-card, .sidebar-status) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] :is(.brand-card strong, .brand-name strong) {
+  color: var(--primary) !important;
+}
+
+html[data-theme] :is(.nav-group-label, .brand-card small, .sidebar-nav small, .sidebar-status small) {
+  color: var(--foreground-muted) !important;
+}
+
+html[data-theme] .sidebar-nav a {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--foreground-secondary) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+html[data-theme] .sidebar-nav a:is(:hover, :focus-visible) {
+  border-color: var(--border) !important;
+  background: var(--surface-hover) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] .sidebar-nav a.is-active {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-hover) !important;
+  box-shadow: inset 3px 0 0 var(--primary) !important;
+}
+
+html[data-theme][dir="rtl"] .sidebar-nav a.is-active {
+  box-shadow: inset -3px 0 0 var(--primary) !important;
+}
+
+html[data-theme] .sidebar-nav a::before {
+  content: none !important;
+  display: none !important;
+}
+
+html[data-theme] :is(.sidebar-nav a .nav-ico, .collapse-btn) {
+  color: var(--foreground-muted) !important;
+  filter: none !important;
+}
+
+html[data-theme] :is(.sidebar-nav a:hover .nav-ico, .sidebar-nav a.is-active .nav-ico) {
+  color: var(--primary) !important;
+}
+
+html[data-theme] :is(
+  .terminal-topbar,
+  .ticker-strip,
+  .terminal-statusbar,
+  .loading-panel,
+  .empty-state,
+  .panel,
+  .market-overview-panel,
+  .sfm-market-data-status-panel,
+  .provider-status-banner,
+  .provider-metric-card,
+  .provider-diagnostics-panel,
+  .settings-panel,
+  .notification-panel,
+  .market-band,
+  .market-tabs
+) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-theme] :is(
+  .stat-card,
+  .market-tile,
+  .asset-card,
+  .rec-card,
+  .news-card,
+  .trade-column,
+  .lesson-card,
+  .status-card,
+  .detail-card,
+  .leadership-card,
+  .opportunity-cell,
+  .calendar-mobile-card,
+  .settings-card,
+  .notification-item
+) {
+  border-color: var(--border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+html[data-theme] :is(.page-hero, .command-hero) {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border)) !important;
+  background: var(--hero-gradient) !important;
+  color: var(--hero-foreground) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html[data-theme] :is(.page-hero, .command-hero) :is(h1, h2, h3, strong) {
+  color: var(--hero-foreground) !important;
+}
+
+html[data-theme] :is(.page-hero, .command-hero) :is(p, small, span) {
+  color: var(--hero-muted) !important;
+}
+
+html[data-theme] :is(.action-btn, .primary-button, .settings-save-btn, .symbol-search button, .retry-btn, .load-more-btn) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+html[data-theme] :is(.action-btn, .primary-button, .settings-save-btn, .symbol-search button, .retry-btn, .load-more-btn):not(:disabled):hover {
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-hover) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html[data-theme] :is(.ghost-btn, .text-button, .icon-button, .icon-btn, .collapse-btn, .topbar-chip, .theme-switcher-button, .calendar-ranges button, .calendar-pagination button, .market-timeframe-button, .settings-segment-btn) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+html[data-theme] :is(.ghost-btn, .text-button, .icon-button, .icon-btn, .collapse-btn, .topbar-chip, .theme-switcher-button, .calendar-ranges button, .calendar-pagination button, .market-timeframe-button, .settings-segment-btn):not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--primary) 36%, var(--border)) !important;
+  background: var(--surface-hover) !important;
+  color: var(--primary-hover) !important;
+}
+
+html[data-theme] :is(.danger-btn, .delete-btn) {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border)) !important;
+  background: var(--danger-soft) !important;
+  color: var(--danger) !important;
+}
+
+html[data-theme] :is(button:disabled, [aria-disabled="true"], input:disabled, select:disabled, textarea:disabled) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground-muted) !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] :is(input, select, textarea, .symbol-search, .earnings-search input, .earnings-controls select) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+  caret-color: var(--primary) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+html[data-theme] :is(input, textarea)::placeholder {
+  color: var(--foreground-muted) !important;
+  opacity: 1 !important;
+}
+
+html[data-theme] :is(a, button, input, select, textarea, summary, [role="button"], [role="option"], [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px !important;
+  box-shadow: var(--focus-shadow) !important;
+}
+
+html[data-theme] :is(.theme-menu, .ms-dropdown, .modal, .dialog, [role="dialog"], .mobile-more-menu) {
+  border-color: var(--border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-popover) !important;
+}
+
+html[data-theme] :is(.theme-choice, .ms-item, .market-button, .settings-check-row, .market-chip-shell, .settings-switch, .settings-preview, .settings-info-row) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground-secondary) !important;
+}
+
+html[data-theme] :is(.theme-choice:hover, .theme-choice:focus-visible, .ms-item:hover, .ms-item:focus-visible, .market-button:hover, .market-button:focus-visible) {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border)) !important;
+  background: var(--surface-hover) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] :is(.theme-choice.is-selected, .ms-item.is-active, .market-button.active, .settings-segment-btn.is-active, .market-toggle-chip input:checked + .market-chip-shell) {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border)) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-hover) !important;
+}
+
+html[data-theme] :is(.table-shell, .table-wrap, .calendar-table-wrap, .earnings-table-wrap, .watchlist-table-wrap) {
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+html[data-theme] :is(thead, thead tr, th, .calendar-table th) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground-secondary) !important;
+}
+
+html[data-theme] :is(tbody tr, .calendar-table tbody tr) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] :is(tbody tr:hover, .calendar-table tbody tr:hover) {
+  background: var(--surface-hover) !important;
+}
+
+html[data-theme] :is(.badge, .chip, .state-badge, .status-tag, .risk-pill, .currency-badge, .provider-badge, .quality-badge, .signal-badge, .watchlist-status) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground-secondary) !important;
+}
+
+html[data-theme] :is(.up, .success, .buy, .state-buy, .badge.ok, .state-badge.ok, .status-tag.ok, .status-tag.buy, .signal-badge.buy, .watchlist-status.ok) {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border)) !important;
+  background: var(--success-soft) !important;
+  color: var(--success) !important;
+}
+
+html[data-theme] :is(.warn, .warning, .wait, .state-watch, .state-wait, .badge.warn, .state-badge.warn, .status-tag.warn, .status-tag.wait) {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border)) !important;
+  background: var(--warning-soft) !important;
+  color: var(--warning) !important;
+}
+
+html[data-theme] :is(.down, .danger, .sell, .state-sell, .badge.bad, .state-badge.bad, .status-tag.bad, .status-tag.sell, .signal-badge.sell, .watchlist-status.bad) {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border)) !important;
+  background: var(--danger-soft) !important;
+  color: var(--danger) !important;
+}
+
+html[data-theme] :is(.info, .badge.info, .state-badge.info, .provider-badge, .connection-state) {
+  border-color: color-mix(in srgb, var(--info) 34%, var(--border)) !important;
+  background: var(--info-soft) !important;
+  color: var(--info) !important;
+}
+
+html[data-theme] :is(.empty-state, .market-card-empty, .trade-empty-state, .market-analysis-empty, .unavailable-panel, .calendar-empty, .news-empty) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground-secondary) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] :is(.detail-chart-wrap, .chart-shell, .chart-panel, .chart-empty) {
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] :is(.chart-grid line, .grid-line, .axis-line, .detail-chart .cg-grid) {
+  stroke: var(--chart-grid) !important;
+}
+
+html[data-theme] :is(.chart-label, .axis-label, .chart-axis text, .recharts-cartesian-axis-tick text) {
+  fill: var(--chart-label) !important;
+  color: var(--chart-label) !important;
+}
+
+html[data-theme] :is(.chart-tooltip, .tooltip, .recharts-default-tooltip) {
+  border-color: var(--border) !important;
+  background: var(--chart-tooltip) !important;
+  color: var(--foreground) !important;
+  box-shadow: var(--shadow-popover) !important;
+}
+
+html[data-theme] :is(.mobile-nav, .ios-tabbar) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--foreground-secondary) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html[data-theme] :is(.mobile-nav a.is-active, .ios-tab-link.active, .mobile-more-toggle.is-active, .mobile-more-toggle[aria-current="page"]) {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border)) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-hover) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] *,
+  html[data-theme] *::before,
+  html[data-theme] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -264,8 +264,8 @@ export function DebtStyles() {
       }
 
       .debts-main {
-        width: calc(100% - var(--sidebar-w, 230px));
-        margin-inline-start: var(--sidebar-w, 230px);
+        width: 100%;
+        margin-inline: 0;
         padding: 24px;
         display: grid;
         gap: 22px;

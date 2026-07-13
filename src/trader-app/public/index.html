@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#071522" />
     <script>
       // Apply the stored appearance before CSS paints to avoid a dark flash for
       // users who selected the daylight terminal in the parent application.
@@ -32,6 +33,7 @@
           document.documentElement.dataset.theme = resolved;
           document.documentElement.classList.add(resolved);
           document.documentElement.style.colorScheme = resolved;
+          document.querySelector('meta[name="theme-color"]').content = resolved === "light" ? "#F4F7FB" : "#071522";
         } catch (_) {}
         try {
           // Information-density preference shared with the parent app
@@ -54,8 +56,8 @@
     <title>اس اف ام المحلل الذكي | منصة التداول الذكية</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/cinema.css?v=20260712-density" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/cinema.css?v=20260712-visual-system" />
     <script>
       // إلغاء أي Service Worker قديم مسجّل سابقاً وتنظيف كاشه — كان يقدم
       // نسخاً قديمة من الواجهة حتى بعد النشر (تعطيل التسجيل لا يلغي المسجّل).

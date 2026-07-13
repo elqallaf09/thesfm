@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cairo, IBM_Plex_Sans_Arabic, Tajawal } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { DensityProvider } from '@/hooks/useDensity';
 import { Toaster } from '@/components/ui/sonner';
@@ -13,24 +13,17 @@ import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
 
-const cairo = Cairo({
-  variable: '--font-cairo',
-  subsets: ['arabic', 'latin'],
-  weight: ['300', '400', '500', '600', '700', '900'],
-  display: 'swap',
-});
-
-const tajawal = Tajawal({
-  variable: '--font-tajawal',
-  subsets: ['arabic', 'latin'],
-  weight: ['300', '400', '500', '700', '800', '900'],
-  display: 'swap',
-});
-
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   variable: '--font-ibm-plex-sans-arabic',
   subsets: ['arabic', 'latin'],
   weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: '--font-ibm-plex-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -56,8 +49,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`${cairo.variable} ${tajawal.variable} ${ibmPlexSansArabic.variable} font-cairo antialiased`}>
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${ibmPlexSansArabic.variable} ${ibmPlexMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

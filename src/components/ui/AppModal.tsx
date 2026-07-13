@@ -179,9 +179,9 @@ export function AppModal({
     padding: 'clamp(12px, 2vw, 24px)',
     overflow: 'hidden',
     isolation: 'isolate',
-    background: 'rgba(3, 18, 37, 0.56)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
+    background: 'var(--background-overlay)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
   };
   const panelStyle = {
     '--sfm-modal-width': WIDTHS[size],

@@ -28,8 +28,8 @@ export function isSharedNavGroup(groupId: string): boolean {
 
 /**
  * Keeps only the groups owned by the active workspace plus the shared
- * account group. Applied AFTER filterNavigationGroups, so view-mode and
- * admin-permission filtering keep working exactly as before.
+ * account group. Applied after permission filtering so workspace ownership
+ * and authorization concerns stay independent.
  */
 export function filterGroupsForWorkspace(groups: NavigationGroup[], workspaceId: WorkspaceId): NavigationGroup[] {
   return groups.filter(group =>

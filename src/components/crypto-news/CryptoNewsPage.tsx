@@ -28,6 +28,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip, type StockTickerStripItem } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { CryptoNewsCategory, CryptoNewsItem, CryptoNewsPayload, CryptoNewsSymbol } from '@/lib/market/fetchCryptoNews';
 import type { CryptoMarketCoin, CryptoMarketPayload } from '@/lib/market/fetchCryptoMarketData';
@@ -806,7 +807,7 @@ export function CryptoNewsPage() {
 
   return (
     <NewsPageShell category="crypto" className="crypto-news-shell" dir={dir}>
-      <main className="crypto-news-main">
+      <WorkspacePageContainer as="main" variant="wide" className="crypto-news-main">
         <header className="crypto-hero">
           <div className="crypto-hero-copy">
             <span className="crypto-kicker"><ShieldCheck size={15} />{text.badge}</span>
@@ -946,7 +947,7 @@ export function CryptoNewsPage() {
           <Info size={17} />
           <p>{text.disclaimer}</p>
         </footer>
-      </main>
+      </WorkspacePageContainer>
 
       <style jsx global>{`
         .crypto-news-shell{
@@ -981,17 +982,10 @@ export function CryptoNewsPage() {
         }
         .crypto-news-shell *{box-sizing:border-box}
         .crypto-news-main{
-          width:min(1440px,calc(100vw - var(--sidebar-w,230px) - 64px));
-          margin-inline-start:calc(var(--sidebar-w,230px) + 32px);
-          margin-inline-end:32px;
-          padding-block:24px 44px;
+          width:100%;
           display:grid;
           gap:24px;
           min-width:0;
-        }
-        [dir="ltr"].crypto-news-shell .crypto-news-main{
-          margin-inline-start:calc(var(--sidebar-w,230px) + 32px);
-          margin-inline-end:32px;
         }
         .crypto-hero,.crypto-ticker-panel,.crypto-panel,.crypto-featured,.crypto-movers,.crypto-filter-panel,.crypto-results-bar,.crypto-news-card,.crypto-compact-row,.crypto-side-card,.crypto-disclaimer,.crypto-state{
           border:1px solid var(--crypto-border);
@@ -1146,6 +1140,7 @@ export function CryptoNewsPage() {
         .crypto-results-bar span{color:var(--crypto-muted);font-size:13px;font-weight:850}
         .crypto-results-bar b{color:#075985}
         .crypto-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+        @media(min-width:1500px){.crypto-card-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
         .crypto-news-card{padding:17px;display:grid;gap:12px}
         .crypto-card-actions{justify-content:flex-end;border-top:1px solid var(--crypto-border);padding-top:12px}
         .crypto-compact-list{display:grid;gap:10px}
@@ -1180,13 +1175,11 @@ export function CryptoNewsPage() {
         .crypto-disclaimer p{margin:0;color:var(--crypto-muted);font-size:13px;font-weight:850;line-height:1.7}
 
         @media(max-width:1280px){
-          .crypto-news-main{width:calc(100vw - var(--sidebar-w,230px) - 48px);margin-inline-start:calc(var(--sidebar-w,230px) + 24px);margin-inline-end:24px}
           .crypto-snapshot-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
           .crypto-movers-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
           .crypto-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
         }
         @media(max-width:1024px){
-          .crypto-news-shell .crypto-news-main{width:calc(100% - 32px);margin-inline-start:auto;margin-inline-end:auto;padding-top:92px}
           .crypto-hero,.crypto-featured-grid,.crypto-content-grid{grid-template-columns:1fr}
           .crypto-side-panel{position:static}
           .crypto-lead-card{grid-template-columns:1fr}
@@ -1194,7 +1187,7 @@ export function CryptoNewsPage() {
           .crypto-card-grid{grid-template-columns:1fr}
         }
         @media(max-width:760px){
-          .crypto-news-shell .crypto-news-main{width:calc(100% - 24px);gap:18px;padding-top:84px}
+          .crypto-news-shell .crypto-news-main{gap:18px}
           .crypto-hero{grid-template-columns:1fr;padding:20px;border-radius:var(--r-2xl)}
           .crypto-refresh-btn{width:100%}
           .crypto-snapshot-grid,.crypto-movers-grid,.crypto-filter-grid,.crypto-skeleton-grid{grid-template-columns:1fr}
@@ -1205,7 +1198,6 @@ export function CryptoNewsPage() {
           .crypto-field input,.crypto-field select{font-size:16px}
         }
         @media(max-width:460px){
-          .crypto-news-shell .crypto-news-main{width:calc(100% - 20px)}
           .crypto-hero h1{font-size:32px}
           .crypto-snapshot-card strong{font-size:21px}
           .crypto-lead-card,.crypto-news-card,.crypto-compact-row{padding:14px}

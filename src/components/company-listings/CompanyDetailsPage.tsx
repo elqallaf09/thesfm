@@ -33,6 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
@@ -358,6 +359,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   return (
     <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={item?.company_name ?? t('company_listing_view_details')} contentClassName="company-details-content">
+        <WorkspacePageContainer variant="wide" className="company-details-layout">
         {loading ? <div className="details-skeleton" /> : null}
 
         {!loading && error && !item ? (
@@ -1716,6 +1718,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             border-color: rgba(47, 214, 192, 0.14);
           }
         `}</style>
+        </WorkspacePageContainer>
       </DashboardPageShell>
     </CompanyDashboardFrame>
   );

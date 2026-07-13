@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { AlertTriangle, BriefcaseBusiness, FileDown, FileText, FolderKanban, Loader2, Plus, ReceiptText, RefreshCw, ShoppingCart, Truck, UserRound, UsersRound } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -519,7 +518,6 @@ export default function BusinessOperationsPage() {
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={text.businessOperations}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -533,7 +531,6 @@ export default function BusinessOperationsPage() {
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.businessOperations} contentClassName="business-ops-content">
         <div className="business-topbar">
           <LanguageSwitcher />

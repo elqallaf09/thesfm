@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BookOpen, Download, FileText, Languages, Library } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/layout/DashboardPageShell';
@@ -76,7 +75,6 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
 
   return (
     <div className="ebook-reader-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={ebookText(book.title, locale)} contentClassName="ebook-reader-content">
         <div className="sfm-page-topbar ebook-reader-topbar">
           <LanguageSwitcher />

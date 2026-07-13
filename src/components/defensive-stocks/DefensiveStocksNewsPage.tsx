@@ -29,6 +29,7 @@ import {
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -1491,7 +1492,7 @@ export function DefensiveStocksNewsPage() {
 
   return (
     <NewsPageShell category="defensive" className="defensive-hub" dir={dir} wide>
-      <main className="def-main">
+      <WorkspacePageContainer as="main" variant="wide" className="def-main">
         <div className="def-container">
           <DefensiveTicker items={tickerItems} loading={loading} error={marketError} lang={activeLang} locale={locale} text={text} />
 
@@ -1548,7 +1549,7 @@ export function DefensiveStocksNewsPage() {
             </div>
           </section>
         </div>
-      </main>
+      </WorkspacePageContainer>
 
       <style jsx global>{`
         .defensive-hub{
@@ -1576,18 +1577,11 @@ export function DefensiveStocksNewsPage() {
         .defensive-hub *{box-sizing:border-box}
         .def-main{
           min-width:0;
-          padding-block:24px 56px;
         }
         .def-container{
-          width:min(1500px,calc(100vw - var(--sidebar-width,280px) - 56px));
-          margin-inline-start:calc(var(--sidebar-width,280px) + 24px);
-          margin-inline-end:24px;
+          width:100%;
           display:grid;
           gap:20px;
-        }
-        [dir="ltr"].defensive-hub .def-container{
-          margin-inline-start:calc(var(--sidebar-width,280px) + 24px);
-          margin-inline-end:24px;
         }
         .def-card,.def-hero,.def-tabs,.def-data-status,.def-disclaimer,.def-filter-card,.def-stock-card,.def-news-card,.def-sector-card{
           border:1px solid var(--def-border);
@@ -1752,21 +1746,18 @@ export function DefensiveStocksNewsPage() {
         @keyframes defShimmer{to{background-position:-220% 0}}
 
         @media(max-width:1280px){
-          .def-container{width:calc(100vw - var(--sidebar-width,280px) - 56px)}
           .def-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
           .def-grid-two,.def-news-card.featured{grid-template-columns:1fr}
           .def-stock-grid,.def-news-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
           .def-filter-card.news{grid-template-columns:1fr 1fr 1fr}
         }
         @media(max-width:1024px){
-          .defensive-hub .def-container{width:calc(100% - 28px);margin-inline-start:auto;margin-inline-end:auto}
-          .def-main{padding-top:94px}
           .def-hero{grid-template-columns:1fr}
           .def-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
           .def-filter-card,.def-filter-card.news{grid-template-columns:1fr 1fr}
         }
         @media(max-width:720px){
-          .defensive-hub .def-container{width:calc(100% - 24px);margin-inline-start:auto;margin-inline-end:auto;gap:16px}
+          .defensive-hub .def-container{gap:16px}
           .def-hero{padding:20px;border-radius:var(--r-2xl)}
           .def-hero h1{font-size:34px}
           .def-hero-side span{justify-content:flex-start;padding-inline:12px;text-align:start}

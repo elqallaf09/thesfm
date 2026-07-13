@@ -44,7 +44,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { MoneyAmount } from '@/components/finance/MoneyAmount';
@@ -2083,7 +2082,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
     return (
       <div className="sfm-shell expense-smart-shell" dir={dir}>
-        <Sidebar />
         <DashboardPageShell
           ariaLabel={expenseText('smartTitle', lang)}
           className="expense-smart-main"
@@ -2748,8 +2746,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   return (
     <div className={`sfm-shell${kind === 'savings' ? ' savings-shell' : ''}`} dir={dir}>
-      <Sidebar />
-
       <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}${kind === 'savings' ? ' savings-main' : ''}${kind === 'goals' ? ' goals-main' : ''}`}>
         <header className="sfm-header">
           <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label={t('accessibility_open_navigation')}>

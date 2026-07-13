@@ -33,6 +33,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -2439,7 +2440,7 @@ export function CyclicalStocksNewsPage() {
 
   return (
     <NewsPageShell category="cyclical" className="page" dir={dir} wide>
-      <main id="main-content" className="main">
+      <WorkspacePageContainer as="main" variant="wide" className="main">
         <div className="container">
           <header className="hero">
             <div className="hero-copy">
@@ -2575,7 +2576,7 @@ export function CyclicalStocksNewsPage() {
             </div>
           </footer>
         </div>
-      </main>
+      </WorkspacePageContainer>
 
       <style jsx global>{`
         .page {
@@ -2603,17 +2604,9 @@ export function CyclicalStocksNewsPage() {
           box-sizing: border-box;
           width: 100%;
           min-width: 0;
-          padding: 22px clamp(16px, 2.2vw, 34px) 56px;
-          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-        }
-        :global([dir="ltr"]) .main {
-          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-          padding-inline-end: clamp(16px, 2vw, 32px);
         }
         .container {
           width: 100%;
-          max-width: 1540px;
-          margin-inline: auto;
           display: grid;
           gap: 16px;
           min-width: 0;
@@ -4125,14 +4118,6 @@ export function CyclicalStocksNewsPage() {
           }
         }
         @media (max-width: 1280px) {
-          .main {
-            padding: 20px 18px 48px;
-            padding-inline-start: calc(var(--sidebar-w, 230px) + 18px);
-          }
-          :global([dir="ltr"]) .main {
-            padding-inline-start: calc(var(--sidebar-w, 230px) + 18px);
-            padding-inline-end: 18px;
-          }
           .hero {
             grid-template-columns: 1fr;
           }
@@ -4175,16 +4160,7 @@ export function CyclicalStocksNewsPage() {
             grid-template-columns: 1fr !important;
           }
         }
-        @media (max-width: 1024px) {
-          .main,
-          :global([dir="ltr"]) .main {
-            padding-inline: 18px;
-          }
-        }
         @media (max-width: 780px) {
-          .main {
-            padding: 16px 14px 42px;
-          }
           .container {
             gap: 16px;
           }

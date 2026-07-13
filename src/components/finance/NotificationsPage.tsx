@@ -19,7 +19,6 @@ import {
   Trash2,
   Wallet,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -885,7 +884,6 @@ export function NotificationsPage() {
   if (authLoading || isLoading) {
     return (
       <main className="notif-shell" dir={dir}>
-        <Sidebar />
         <section className="notif-page loading-state">
           <Loader2 className="spin" size={30} />
           <span>{tr.loading}</span>
@@ -898,7 +896,6 @@ export function NotificationsPage() {
   if (!user) {
     return (
       <main className="notif-shell" dir={dir}>
-        <Sidebar />
         <section className="notif-page">
           <section className="hero">
             <div>
@@ -915,7 +912,6 @@ export function NotificationsPage() {
 
   return (
     <main className="notif-shell" dir={dir}>
-      <Sidebar />
       <section className="notif-page">
         <header className="topbar">
           <div>

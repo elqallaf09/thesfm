@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -792,7 +793,7 @@ export function TechNewsPage() {
 
   return (
     <NewsPageShell category="tech" className="tech-news-shell" dir={dir}>
-      <main className="tech-news-main">
+      <WorkspacePageContainer as="main" variant="wide" className="tech-news-main">
         <TechNewsHeader
           title={ui.title}
           subtitle={ui.subtitle}
@@ -952,7 +953,7 @@ export function TechNewsPage() {
         )}
 
         <p className="tech-news-disclaimer">{ui.sourceNote}</p>
-      </main>
+      </WorkspacePageContainer>
 
       <style jsx global>{`
         .tech-news-shell{
@@ -992,26 +993,11 @@ export function TechNewsPage() {
         }
 
         [dir].tech-news-shell .tech-news-main{
-          width:min(1500px,calc(100% - 32px));
+          width:100%;
           margin-inline:auto;
-          padding:24px 0 48px;
           display:grid;
           gap:20px;
           min-width:0;
-        }
-
-        @media(min-width:1025px){
-          [dir="rtl"].tech-news-shell .tech-news-main{
-            margin-inline-start:calc(var(--sidebar-width, 280px) + 24px);
-            margin-inline-end:24px;
-            width:min(1500px,calc(100vw - var(--sidebar-width, 280px) - 56px));
-          }
-
-          [dir="ltr"].tech-news-shell .tech-news-main{
-            margin-inline-start:calc(var(--sidebar-width, 280px) + 24px);
-            margin-inline-end:24px;
-            width:min(1500px,calc(100vw - var(--sidebar-width, 280px) - 56px));
-          }
         }
 
         .tech-ticker-strip{
@@ -1480,6 +1466,7 @@ export function TechNewsPage() {
 
         .tech-news-feed{display:grid;gap:14px}
         .tech-news-feed.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        @media(min-width:1500px){.tech-news-feed.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
         .tech-news-feed.list{grid-template-columns:1fr}
 
         .tech-news-card{
@@ -1821,21 +1808,12 @@ export function TechNewsPage() {
           .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
         }
         @media(max-width:1024px){
-          [dir="rtl"].tech-news-shell .tech-news-main,
-          [dir="ltr"].tech-news-shell .tech-news-main,
-          [dir].tech-news-shell .tech-news-main{
-            width:calc(100% - 28px);
-            max-width:calc(100% - 28px);
-            margin-inline-start:auto;
-            margin-inline-end:auto;
-            padding:92px 0 34px;
-          }
           .tech-news-featured-grid{grid-template-columns:1fr}
           .tech-news-featured-side{grid-template-columns:repeat(2,minmax(0,1fr))}
           .tech-news-side-panel{grid-template-columns:1fr}
         }
         @media(max-width:760px){
-          [dir].tech-news-shell .tech-news-main{padding-inline:14px;gap:16px}
+          [dir].tech-news-shell .tech-news-main{gap:16px}
           .tech-news-header{grid-template-columns:1fr;padding:18px;border-radius:var(--r-2xl)}
           .tech-news-title-row{align-items:flex-start}
           .tech-news-title-icon{width:48px;height:48px;border-radius:var(--r-lg)}

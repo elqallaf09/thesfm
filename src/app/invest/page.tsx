@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, RefreshCw, ShieldAlert, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
@@ -986,7 +985,6 @@ export default function InvestPage() {
 
   return (
     <div className="invest-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell
         ariaLabel={labels.heroTitle}
         className="invest-main"

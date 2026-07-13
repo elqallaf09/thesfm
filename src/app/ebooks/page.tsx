@@ -18,7 +18,6 @@ import {
   Tags,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/layout/DashboardPageShell';
@@ -346,7 +345,6 @@ export default function EbooksPage() {
 
   return (
     <div className="ebooks-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="ebooks-content">
         <div className="sfm-page-topbar ebooks-topbar">
           <LanguageSwitcher />

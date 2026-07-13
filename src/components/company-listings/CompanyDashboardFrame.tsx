@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 
 export function CompanyDashboardFrame({ children }: { children: ReactNode }) {
@@ -9,7 +8,6 @@ export function CompanyDashboardFrame({ children }: { children: ReactNode }) {
 
   return (
     <div className="company-dashboard-frame" dir={dir}>
-      <Sidebar />
       {children}
       <style jsx>{`
         .company-dashboard-frame {
@@ -18,7 +16,7 @@ export function CompanyDashboardFrame({ children }: { children: ReactNode }) {
           overflow-x: clip;
           background: var(--sfm-background);
           color: var(--sfm-foreground);
-          font-family: Tajawal, Arial, sans-serif;
+          font-family: var(--font-ui);
         }
       `}</style>
     </div>

@@ -14,7 +14,6 @@ import {
   ShieldAlert,
   Trash2,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -553,7 +552,6 @@ export default function DecisionsPage() {
   if (authLoading || loading) {
     return (
       <div className="decisions-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={text.title}>
           <div className="decision-loading"><Loader2 className="spin" size={22} />{text.loading}</div>
         </DashboardPageShell>
@@ -563,7 +561,6 @@ export default function DecisionsPage() {
 
   return (
     <div className="decisions-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="decisions-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />

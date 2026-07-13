@@ -1,0 +1,31 @@
+.container {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  margin-inline: auto;
+  padding-block: var(--workspace-page-padding-block);
+  padding-inline: var(--workspace-page-padding-inline);
+}
+
+/* AppLayout supplies the outer gutter. Route-level semantic containers may
+   select a measure without creating a second ring of page padding. */
+.container .container {
+  padding-block: 0;
+  padding-inline: 0;
+}
+
+.full {
+  max-inline-size: var(--workspace-page-max-full);
+}
+
+.wide {
+  max-inline-size: var(--workspace-page-max-wide);
+}
+
+.standard {
+  max-inline-size: var(--workspace-page-max-standard);
+}
+
+.reading {
+  max-inline-size: var(--workspace-page-max-reading);
+}

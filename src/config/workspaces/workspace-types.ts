@@ -14,7 +14,7 @@ import type { ComponentType } from 'react';
 export type WorkspaceId =
   | 'personal-finance'
   | 'markets-trading'
-  | 'companies-services'
+  | 'business-projects'
   | 'administration';
 
 export type WorkspaceLabels = {
@@ -35,8 +35,10 @@ export type WorkspaceDefinition = {
   labels: WorkspaceLabels;
   description: WorkspaceLabels;
   icon: ComponentType<{ size?: number }>;
-  /** Where the switcher lands; must resolve back to this workspace. */
+  /** Authenticated switcher landing; must resolve back to this workspace. */
   defaultRoute: string;
+  /** Optional public/guest landing when the authenticated default is protected. */
+  guestDefaultRoute?: string;
   /** URL prefixes owned by this workspace (longest-prefix match wins). */
   routePrefixes: readonly string[];
   /** NAV_GROUPS ids (navigationConfig.ts) rendered inside this workspace. */

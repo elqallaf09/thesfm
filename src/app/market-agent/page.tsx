@@ -26,7 +26,6 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import type { MarketAgentAssetType, MarketAgentResponse, MarketAgentTimeframe } from '@/lib/market/marketAgent';
@@ -611,7 +610,6 @@ export default function MarketAgentPage() {
 
   return (
     <div className="market-agent-page" dir={dir}>
-      <Sidebar />
       <main className="market-agent-main">
         <section className="agent-page-header" aria-labelledby="market-agent-title">
           <div className="agent-header-copy">

@@ -19,7 +19,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { Sidebar } from '@/components/Sidebar';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
@@ -273,11 +273,11 @@ export function OwnerCompaniesPage() {
 
   return (
     <>
-      <Sidebar />
       <DashboardPageShell ariaLabel={t('company_my_companies')} className="owner-companies-shell" contentClassName="owner-companies-content">
+      <WorkspacePageContainer variant="wide" className="owner-companies-layout">
       <style>{`
         .owner-companies-shell{direction:${dir};}
-        .owner-companies-content{max-width:1180px;margin:0 auto;padding:clamp(1rem,3vw,2rem);display:flex;flex-direction:column;gap:1.25rem}
+        .owner-companies-content{max-width:none;margin:0;padding:0}.owner-companies-layout{display:flex;flex-direction:column;gap:1.25rem}
         .owner-hero{border:1px solid rgba(47,214,192,.24);border-radius:var(--r-2xl);padding:clamp(1.25rem,3vw,2rem);background:linear-gradient(135deg,#062238,#0b3150 52%,#0f6f78);color:#fff;box-shadow:0 18px 50px rgba(3,18,37,.16);display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
         .owner-hero h1{margin:0;font-size:clamp(2rem,5vw,3.4rem);font-weight:950;letter-spacing:0}
         .owner-hero p{margin:.5rem 0 0;color:rgba(255,255,255,.78);font-weight:800;line-height:1.8}
@@ -484,6 +484,7 @@ export function OwnerCompaniesPage() {
           </section>
         </div>
       ) : null}
+      </WorkspacePageContainer>
       </DashboardPageShell>
     </>
   );

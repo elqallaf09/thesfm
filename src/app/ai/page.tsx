@@ -28,7 +28,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -478,7 +477,6 @@ export default function AiPage() {
   if (loading || isLoading) {
     return (
       <div className="ai-page" dir={dir}>
-        <Sidebar />
         <main className="ai-main"><div className="ai-card ai-loading">...</div></main>
       </div>
     );
@@ -486,7 +484,6 @@ export default function AiPage() {
 
   return (
     <div className="ai-page" dir={dir}>
-      <Sidebar />
       <main className="ai-main">
         <header className="ai-topbar">
           <div>

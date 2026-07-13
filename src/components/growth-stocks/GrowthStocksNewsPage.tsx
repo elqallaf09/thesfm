@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -1618,7 +1619,7 @@ export function GrowthStocksNewsPage() {
 
   return (
     <NewsPageShell category="growth" className="page growth-stocks-page" dir={dir} wide>
-      <main className="main">
+      <WorkspacePageContainer as="main" variant="wide" className="main">
         <div className="container">
           <header className="hero">
             <div className="hero-copy">
@@ -1762,7 +1763,7 @@ export function GrowthStocksNewsPage() {
             </div>
           </footer>
         </div>
-      </main>
+      </WorkspacePageContainer>
 
       <ComparisonModal
         open={comparisonOpen}
@@ -1795,22 +1796,15 @@ export function GrowthStocksNewsPage() {
         }
         .main {
           width: 100%;
-          max-width: 100vw;
+          max-width: 100%;
           box-sizing: border-box;
           min-width: 0;
           overflow-x: clip;
-          padding: 24px clamp(16px, 2vw, 32px) 56px;
-          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-        }
-        :global([dir="ltr"]) .main {
-          padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-          padding-inline-end: clamp(16px, 2vw, 32px);
         }
         .container {
-          width: min(100%, 1500px);
+          width: 100%;
           max-width: 100%;
           min-width: 0;
-          margin-inline: auto;
           display: grid;
           gap: 22px;
         }
@@ -3098,13 +3092,6 @@ export function GrowthStocksNewsPage() {
           }
         }
         @media (max-width: 900px) {
-          .main {
-            padding-inline: 16px;
-            padding-top: 18px;
-          }
-          :global([dir="ltr"]) .main {
-            padding-inline: 16px;
-          }
           .hero {
             padding: 20px;
             border-radius: var(--r-xl);

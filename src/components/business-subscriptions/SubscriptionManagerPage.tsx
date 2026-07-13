@@ -28,7 +28,6 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
@@ -1243,7 +1242,6 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
 
   return (
     <div className="subscription-manager-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.pageTitle} contentClassName="subscription-manager-content">
         <div className="subscription-topbar">
           <LanguageSwitcher />

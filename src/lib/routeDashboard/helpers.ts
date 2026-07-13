@@ -1,5 +1,5 @@
 import {
-  BellIcon, Bot, ChartPie, FolderKanban, GraduationCap, HandHeart,
+  BellIcon, Bot, ChartPie, GraduationCap, HandHeart,
   Home, PiggyBank, Receipt, ReceiptText, Target, TrendingUp, Upload, Wallet,
 } from 'lucide-react';
 import { formatCurrency, normalizeDigits, toLatinNumberLocale } from '@/lib/format';
@@ -88,10 +88,8 @@ export const navItems = [
   { href: '/dashboard', label: { ar: 'الرئيسية', en: 'Dashboard', fr: 'Tableau de bord' }, icon: Home },
   { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' }, icon: ReceiptText },
   { href: '/income', label: { ar: 'الدخل', en: 'Income', fr: 'Revenus' }, icon: Wallet },
-  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments', fr: 'Investissements' }, icon: TrendingUp },
   { href: '/savings', label: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' }, icon: PiggyBank },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals', fr: 'Objectifs' }, icon: Target },
-  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects', fr: 'Mes projets' }, icon: FolderKanban },
   { href: '/reports-center', label: { ar: 'مركز التقارير', en: 'Reports Center', fr: 'Centre des rapports' }, icon: ChartPie },
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI', fr: 'IA' }, icon: Bot },
   { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity', fr: 'Charité' }, icon: HandHeart },

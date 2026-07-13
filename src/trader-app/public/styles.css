@@ -1,28 +1,54 @@
 :root {
   color-scheme: dark;
-  --bg: #080d12;
-  --page-top: #0a1118;
-  --page-bottom: #0c1014;
-  --surface: rgba(18, 25, 31, 0.9);
-  --surface-solid: #12191f;
-  --surface-strong: #1b2630;
-  --surface-soft: rgba(8, 13, 18, 0.7);
-  --line: rgba(135, 154, 172, 0.2);
-  --line-strong: rgba(135, 154, 172, 0.34);
-  --text: #f5f7f9;
-  --muted: #9ba9b5;
-  --accent: #35c2a4;
-  --accent-strong: #65d98d;
-  --danger: #ff6b6b;
-  --warn: #ffd166;
-  --hold: #91a7ff;
-  --blue: #5aa7ff;
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --background: #071522;
+  --surface: #0B2035;
+  --surface-elevated: #102A44;
+  --surface-muted: #0D253C;
+  --foreground: #F8FAFC;
+  --foreground-secondary: #CBD5E1;
+  --foreground-muted: #94A3B8;
+  --border: #243B53;
+  --border-strong: #39536C;
+  --primary: #4C96F5;
+  --primary-hover: #73ACF7;
+  --primary-soft: #102F50;
+  --accent: #35BDB7;
+  --accent-soft: #0D3839;
+  --success: #4ADE80;
+  --success-soft: #103525;
+  --warning: #FBBF24;
+  --warning-soft: #3A2A0D;
+  --danger: #F87171;
+  --danger-soft: #3E1A20;
+  --info: #38BDF8;
+  --info-soft: #0B3046;
+  --focus-ring: #60A5FA;
+  --chart-grid: #294157;
+  --chart-label: #A8B6C7;
+  --font-ui: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  /* Legacy detail-view aliases mapped to the semantic contract. */
+  --bg: var(--background);
+  --page-top: var(--surface-muted);
+  --page-bottom: var(--background);
+  --surface-solid: var(--surface);
+  --surface-strong: var(--surface-elevated);
+  --surface-soft: var(--surface-muted);
+  --line: var(--border);
+  --line-strong: var(--border-strong);
+  --text: var(--foreground);
+  --muted: var(--foreground-muted);
+  --accent-strong: var(--accent);
+  --warn: var(--warning);
+  --hold: var(--info);
+  --blue: var(--primary);
+  --shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
   --ios-safe-top: env(safe-area-inset-top, 0px);
   --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
   --ios-safe-left: env(safe-area-inset-left, 0px);
   --ios-safe-right: env(safe-area-inset-right, 0px);
-  font-family: "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: var(--font-ui);
 }
 
 html[dir="rtl"] body,
@@ -261,7 +287,7 @@ body:not(.intro-running) .topbar {
   color: #c9d4dd !important;
   background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  font: 700 11px/1 Inter, "Segoe UI", sans-serif !important;
+  font: 600 11px/1 var(--font-ui) !important;
 }
 
 .header-session-mini {

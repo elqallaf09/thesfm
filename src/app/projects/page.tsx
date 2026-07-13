@@ -3,7 +3,6 @@ import { useCallback, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -348,8 +347,6 @@ export default function ProjectsPage() {
     `}</style>
 
     <div className="pp" dir={dir}>
-      <Sidebar />
-
       {/* ── Main ── */}
       <DashboardPageShell className="main-ml" contentStyle={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 

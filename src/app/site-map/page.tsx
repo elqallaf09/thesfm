@@ -14,7 +14,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -383,7 +382,6 @@ export default function SiteMapPage() {
 
   return (
     <div className="site-map-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} contentClassName="site-map-content">
         <div className="sfm-page-topbar site-map-topbar">
           <LanguageSwitcher />

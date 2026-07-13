@@ -32,6 +32,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -1646,7 +1647,7 @@ export function DividendStocksNewsPage() {
 
   return (
     <NewsPageShell category="high-income" className="page" dir={dir} wide>
-      <main className="main">
+      <WorkspacePageContainer as="main" variant="wide" className="main">
         <div className="container">
           <header className="hero">
             <div className="hero-copy">
@@ -1819,7 +1820,7 @@ export function DividendStocksNewsPage() {
             </div>
           </footer>
         </div>
-      </main>
+      </WorkspacePageContainer>
       {selectedDetailsRow || detailsLoadingSymbol ? (
         <StockDetailsDrawer
           row={selectedDetailsRow}
@@ -3246,20 +3247,10 @@ function DividendStyles() {
         width: 100%;
         max-width: 100%;
         overflow-x: clip;
-        padding: 22px clamp(18px, 2.2vw, 36px) 52px;
-      }
-      .page[dir="rtl"] .main {
-        padding-inline-start: clamp(16px, 2vw, 32px);
-        padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-      }
-      .page[dir="ltr"] .main {
-        padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-        padding-inline-end: clamp(16px, 2vw, 32px);
       }
       .container {
-        width: min(100%, 1360px);
+        width: 100%;
         min-width: 0;
-        margin-inline: auto;
         display: grid;
         gap: 22px;
       }

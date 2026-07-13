@@ -22,7 +22,6 @@ import {
   Trash2,
   WalletCards,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
@@ -1015,7 +1014,6 @@ export default function ZakatPage() {
 
   return (
     <div className="zakat-page" data-charity-experience="zakat" dir={dir}>
-      <Sidebar />
       <DashboardPageShell contentClassName="zakat-content">
         <section className="zakat-hero">
           <div>

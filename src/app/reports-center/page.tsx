@@ -17,7 +17,6 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -2092,7 +2091,6 @@ export default function ReportsCenterPage() {
   if (authLoading || isLoading) {
     return (
       <div className="reports-center-shell" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={tr.title} className="reports-center-main loading-state" contentClassName="reports-center-content">
           <Loader2 className="spin" size={28} />
           <span>{tr.title}</span>
@@ -2105,7 +2103,6 @@ export default function ReportsCenterPage() {
   if (!user && !isGuest) {
     return (
       <div className="reports-center-shell" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={tr.title} className="reports-center-main" contentClassName="reports-center-content">
           <section className="reports-hero">
             <div>
@@ -2123,7 +2120,6 @@ export default function ReportsCenterPage() {
 
   return (
     <div className="reports-center-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={tr.title} className="reports-center-main" contentClassName="reports-center-content">
         <header className="topbar no-print">
           <div>

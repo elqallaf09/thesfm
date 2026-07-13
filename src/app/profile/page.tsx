@@ -41,7 +41,6 @@ import {
 } from 'lucide-react';
 import { formatDate, normalizeDigits } from '@/lib/locale';
 import { CurrencySelect } from '@/components/CurrencySelect';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyCurrentUserProfileChanged } from '@/hooks/useCurrentUserProfile';
@@ -1529,7 +1528,6 @@ export default function ProfilePage() {
 
   return (
     <div className="profile-page" dir={dir}>
-      <Sidebar />
       <main className="profile-main">
         <header className="profile-top">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

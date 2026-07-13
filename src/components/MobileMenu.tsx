@@ -1,32 +1,34 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { UserChip } from '@/components/UserChip';
-import { ViewModeSelector } from '@/components/ViewModeSelector';
+import { CommandMenuButton } from '@/components/CommandMenuButton';
+import { DensityToggle } from '@/components/DensityToggle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
-import { useViewMode } from '@/hooks/useViewMode';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
-import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { NavigationQueryObserver } from '@/components/NavigationQueryObserver';
 import { filterGroupsForWorkspace } from '@/config/workspaces/workspace-navigation';
 import { resolveActiveWorkspace } from '@/config/workspaces/workspace-resolver';
 import {
   filterNavigationGroups,
-  findActiveNavigationGroup,
   flattenNavigationItems,
-  isNavigationItemActive,
-  isNavigationItemOrChildActive,
   NAV_GROUPS,
   normalizeNavigationSource,
   SUPPORT_LINKS,
   type NavigationItem,
 } from '@/components/navigationConfig';
+import {
+  findSelectedNavigationItemId,
+  getExpandableNavigationItemState,
+  navigationGroupContainsId,
+} from '@/lib/navigation/workspaceNavigationState';
 
 export const NAV_ITEMS = flattenNavigationItems();
 
@@ -64,12 +66,13 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { signOut, user } = useAuth();
-  const { viewMode, setViewMode } = useViewMode();
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme !== 'light';
+  const isDark = resolvedTheme === 'dark';
   const [activeSource, setActiveSource] = useState(pathname);
-  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [openItemIds, setOpenItemIds] = useState<string[]>([]);
+  const [openGlobalGroupIds, setOpenGlobalGroupIds] = useState<string[]>(['account']);
+  const [supportOpen, setSupportOpen] = useState(false);
   const previousLang = useRef(lang);
   const layerRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -81,54 +84,49 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  const activeGroupId = useMemo(() => findActiveNavigationGroup(activeSource), [activeSource]);
-  const activeSupport = useMemo(
-    () => SUPPORT_LINKS.some(item => isNavigationItemActive(activeSource, item.href)),
-    [activeSource],
-  );
-  const activeSidebarGroupId = activeGroupId ?? (activeSupport ? 'support' : null);
   const { access: adminAccess } = useAdminAccess(user?.id);
   const activeWorkspace = resolveActiveWorkspace(pathname);
-  // Same rule as Sidebar: view-mode curation only applies inside the
-  // Personal Finance workspace (other workspaces carry no simple-mode tags).
-  const effectiveViewMode = activeWorkspace.id === 'personal-finance' ? viewMode : 'professional';
   const navGroups = useMemo(
-    () => filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, effectiveViewMode, adminAccess), activeWorkspace.id),
-    [effectiveViewMode, adminAccess, activeWorkspace.id],
+    () => filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, adminAccess), activeWorkspace.id),
+    [adminAccess, activeWorkspace.id],
   );
-  const activeParentItemIds = useMemo(
-    () => navGroups.flatMap(group =>
-      group.items
-        .filter(item => item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)))
-        .map(item => item.id),
-    ),
+  const primaryGroups = useMemo(() => navGroups.filter(group => group.id !== 'account'), [navGroups]);
+  const globalGroups = useMemo(() => navGroups.filter(group => group.id === 'account'), [navGroups]);
+  const selectedItemId = useMemo(
+    () => findSelectedNavigationItemId(activeSource, navGroups, SUPPORT_LINKS),
     [activeSource, navGroups],
   );
-  const preferredOpenGroupId = useMemo(() => {
-    if (activeSidebarGroupId) return activeSidebarGroupId;
-    const defaultGroup = navGroups.find(group => group.defaultOpen);
-    return defaultGroup?.id ?? navGroups[0]?.id ?? null;
-  }, [activeSidebarGroupId, navGroups]);
+  const activeSupport = SUPPORT_LINKS.some(item => item.id === selectedItemId);
+  const activeParentItemIds = useMemo(
+    () => navGroups.flatMap(group => group.items
+      .filter(item => item.children?.some(child => child.id === selectedItemId))
+      .map(item => item.id)),
+    [navGroups, selectedItemId],
+  );
 
   useEffect(() => {
-    const nextPath = typeof window === 'undefined'
-      ? null
-      : new URLSearchParams(window.location.search).get('next');
-    const basePath = pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname;
-    const hash = typeof window === 'undefined' ? '' : window.location.hash;
-    setActiveSource(normalizeNavigationSource(basePath, hash));
-  }, [pathname]);
-
-  useEffect(() => {
-    const updateHash = () => setActiveSource(normalizeNavigationSource(pathname, window.location.hash));
-    window.addEventListener('hashchange', updateHash);
-    return () => window.removeEventListener('hashchange', updateHash);
-  }, [pathname]);
+    const updateLocation = () => {
+      const browserSearch = search || window.location.search;
+      const nextPath = new URLSearchParams(browserSearch).get('next');
+      const basePath = pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname;
+      const routeSearch = basePath === pathname ? browserSearch : '';
+      setActiveSource(normalizeNavigationSource(basePath, window.location.hash, routeSearch));
+    };
+    updateLocation();
+    window.addEventListener('hashchange', updateLocation);
+    return () => window.removeEventListener('hashchange', updateLocation);
+  }, [pathname, search]);
 
   useEffect(() => {
     if (!open) return;
-    setOpenGroupId(preferredOpenGroupId);
-    setOpenItemIds(activeParentItemIds);
+    setOpenItemIds(current => Array.from(new Set([...current, ...activeParentItemIds])));
+    const activeGlobalGroup = globalGroups.find(group => navigationGroupContainsId(group, selectedItemId));
+    if (activeGlobalGroup) {
+      setOpenGlobalGroupIds(current => current.includes(activeGlobalGroup.id)
+        ? current
+        : [...current, activeGlobalGroup.id]);
+    }
+    if (activeSupport) setSupportOpen(true);
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('sfm-mobile-lock');
@@ -136,17 +134,17 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       document.body.style.overflow = original;
       document.body.classList.remove('sfm-mobile-lock');
     };
-  }, [activeParentItemIds, open, preferredOpenGroupId]);
+  }, [activeParentItemIds, activeSupport, globalGroups, open, selectedItemId]);
 
   useEffect(() => {
-    if (!open || !openGroupId) return;
-    const target = document.getElementById(`sfm-mobile-section-${openGroupId}`);
+    if (!open || !selectedItemId) return;
+    const target = dialogRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!target) return;
     const frame = window.requestAnimationFrame(() => {
       target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [open, openGroupId]);
+  }, [open, selectedItemId]);
 
   useEffect(() => {
     if (previousLang.current !== lang && open) onClose();
@@ -246,6 +244,10 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        const openDisclosure = dialog.querySelector<HTMLElement>(
+          '.sfm-language-trigger[aria-expanded="true"], .sfm-user-chip[aria-expanded="true"]',
+        );
+        if (openDisclosure) return;
         event.preventDefault();
         event.stopPropagation();
         onCloseRef.current();
@@ -316,11 +318,80 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     router.push(item.href);
   };
 
+  const renderMobileItem = (item: NavigationItem, groupId: string) => {
+    const Icon = item.icon;
+    const selected = item.id === selectedItemId;
+    const hasChildren = Boolean(item.children?.length);
+
+    if (hasChildren) {
+      const state = getExpandableNavigationItemState(item, selectedItemId, openItemIds.includes(item.id));
+      const nestedId = `${groupId}-item-${item.id}`;
+      return (
+        <li key={item.id} className="sfm-mobile-nested">
+          <button
+            type="button"
+            className={`sfm-mobile-parent-item${state.expanded ? ' expanded' : ''}`}
+            aria-expanded={state.expanded}
+            aria-controls={nestedId}
+            aria-label={t(item.labelKey)}
+            onClick={() => setOpenItemIds(current => current.includes(item.id)
+              ? current.filter(id => id !== item.id)
+              : [...current, item.id])}
+          >
+            <span className="sfm-mobile-nav-icon" aria-hidden="true"><Icon size={18} /></span>
+            <span className="sfm-mobile-item-label">{t(item.labelKey)}</span>
+            <ChevronDown className="sfm-mobile-nested-chevron" size={15} aria-hidden="true" />
+          </button>
+          {state.expanded ? (
+            <ul className="sfm-mobile-subitems" id={nestedId}>
+              {item.children?.map(child => {
+                const ChildIcon = child.icon;
+                const childSelected = child.id === selectedItemId;
+                return (
+                  <li key={child.id}>
+                    <button
+                      type="button"
+                      className={`sfm-mobile-subitem${childSelected ? ' active' : ''}`}
+                      aria-current={childSelected ? 'page' : undefined}
+                      aria-label={t(child.labelKey)}
+                      onClick={() => go(child)}
+                    >
+                      <span className="sfm-mobile-subitem-icon" aria-hidden="true"><ChildIcon size={16} /></span>
+                      <span className="sfm-mobile-item-label">{t(child.labelKey)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </li>
+      );
+    }
+
+    return (
+      <li key={item.id}>
+        <button
+          type="button"
+          className={`sfm-mobile-nav-item${selected ? ' active' : ''}`}
+          aria-current={selected ? 'page' : undefined}
+          aria-label={t(item.labelKey)}
+          onClick={() => go(item)}
+        >
+          <span className="sfm-mobile-nav-icon" aria-hidden="true"><Icon size={18} /></span>
+          <span className="sfm-mobile-item-label">{t(item.labelKey)}</span>
+        </button>
+      </li>
+    );
+  };
+
   const menuLabel = t('nav_mobile_menu');
   const closeLabel = t('nav_close_menu');
 
   return (
     <div ref={layerRef} className={`sfm-mobile-layer${open ? ' open' : ''}`} aria-hidden={!open} dir={dir}>
+      <Suspense fallback={null}>
+        <NavigationQueryObserver onQueryChange={setSearch} />
+      </Suspense>
       <button type="button" className="sfm-mobile-overlay" aria-label={closeLabel} aria-hidden="true" onClick={onClose} tabIndex={-1} />
       <aside
         ref={dialogRef}
@@ -340,6 +411,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
           </div>
           <div className="sfm-mobile-head-actions">
+            <DensityToggle />
             <ThemeToggle />
             <button ref={closeButtonRef} type="button" className="sfm-mobile-close" aria-label={closeLabel} onClick={onClose}>
               <X size={22} />
@@ -347,125 +419,76 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
         </div>
 
-        <div className="sfm-mobile-user">
-          <UserChip />
-        </div>
-
-        <div className="sfm-mobile-lang">
-          <LanguageSwitcher variant={isDark ? 'dark' : 'light'} compact />
-        </div>
-
-        <div className="sfm-mobile-view-mode">
-          <ViewModeSelector value={viewMode} onChange={setViewMode} variant={isDark ? 'dark' : 'light'} compact />
-        </div>
-
-        <div className="sfm-mobile-workspace">
-          <WorkspaceSwitcher isAdmin={adminAccess.isAdmin} onNavigate={onClose} />
+        <div className="sfm-mobile-search">
+          <CommandMenuButton dark={isDark} />
         </div>
 
         <nav className="sfm-mobile-nav" aria-label={menuLabel}>
-          {navGroups.map(group => {
-            const expanded = openGroupId === group.id;
-            const activeGroup = activeSidebarGroupId === group.id;
+          {primaryGroups.map(group => {
             const groupId = `sfm-mobile-group-${group.id}`;
+            const headingId = `${groupId}-heading`;
             return (
-              <section key={group.id} id={`sfm-mobile-section-${group.id}`} className="sfm-mobile-group">
+              <section
+                key={group.id}
+                className="sfm-mobile-group"
+                aria-labelledby={group.id === 'main' ? undefined : headingId}
+              >
+                {group.id === 'main' ? null : (
+                  <h2 className="sfm-mobile-group-label" id={headingId}>{t(group.labelKey)}</h2>
+                )}
+                <ul className="sfm-mobile-group-items" id={groupId}>
+                  {group.items.map(item => renderMobileItem(item, groupId))}
+                </ul>
+              </section>
+            );
+          })}
+
+          {globalGroups.map(group => {
+            const expanded = openGlobalGroupIds.includes(group.id);
+            const groupId = `sfm-mobile-global-${group.id}`;
+            return (
+              <section key={group.id} className="sfm-mobile-global-group" aria-label={t(group.labelKey)}>
                 <button
                   type="button"
-                  className={`sfm-mobile-section${activeGroup ? ' active' : ''}`}
+                  className={`sfm-mobile-global-toggle${expanded ? ' expanded' : ''}`}
                   aria-expanded={expanded}
                   aria-controls={groupId}
-                  onClick={() => setOpenGroupId(current => current === group.id ? null : group.id)}
+                  onClick={() => setOpenGlobalGroupIds(current => current.includes(group.id)
+                    ? current.filter(id => id !== group.id)
+                    : [...current, group.id])}
                 >
                   <span>{t(group.labelKey)}</span>
-                  <ChevronDown size={15} />
+                  <ChevronDown className="sfm-mobile-global-chevron" size={15} aria-hidden="true" />
                 </button>
-                {expanded && (
-                  <div className="sfm-mobile-group-items" id={groupId}>
-                    {group.items.map(item => {
-                      const Icon = item.icon;
-                      const active = isNavigationItemActive(activeSource, item.href);
-                      const childActive = Boolean(item.children?.some(child => isNavigationItemOrChildActive(activeSource, child)));
-                      const hasChildren = Boolean(item.children?.length);
-                      const itemOpen = childActive || openItemIds.includes(item.id);
-                      if (hasChildren) {
-                        const nestedId = `${groupId}-item-${item.id}`;
-                        return (
-                          <div key={item.id} className="sfm-mobile-nested">
-                            <button
-                              type="button"
-                              className={`sfm-mobile-parent-item${childActive ? ' active' : ''}`}
-                              aria-expanded={itemOpen}
-                              aria-controls={nestedId}
-                              onClick={() => setOpenItemIds(current =>
-                                current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id],
-                              )}
-                            >
-                              <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
-                              <span>{t(item.labelKey)}</span>
-                              <ChevronDown className="sfm-mobile-nested-chevron" size={15} />
-                            </button>
-                            {itemOpen && (
-                              <div className="sfm-mobile-subitems" id={nestedId}>
-                                {item.children?.map(child => {
-                                  const ChildIcon = child.icon;
-                                  const childItemActive = isNavigationItemActive(activeSource, child.href);
-                                  return (
-                                    <button
-                                      key={child.id}
-                                      type="button"
-                                      className={`sfm-mobile-subitem${childItemActive ? ' active' : ''}`}
-                                      aria-current={childItemActive ? 'page' : undefined}
-                                      onClick={() => go(child)}
-                                    >
-                                      <span className="sfm-mobile-subitem-icon"><ChildIcon size={15} /></span>
-                                      <span>{t(child.labelKey)}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={active ? 'active' : ''}
-                          aria-current={active ? 'page' : undefined}
-                          onClick={() => go(item)}
-                        >
-                          <span className="sfm-mobile-nav-icon"><Icon size={18} /></span>
-                          <span>{t(item.labelKey)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {expanded ? (
+                  <ul className="sfm-mobile-group-items" id={groupId}>
+                    {group.items.map(item => renderMobileItem(item, groupId))}
+                  </ul>
+                ) : null}
               </section>
             );
           })}
         </nav>
+
         <section className="sfm-mobile-support" aria-label={t('nav_group_support')}>
           <button
             type="button"
-            className={`sfm-mobile-section${activeSupport ? ' active' : ''}`}
-            aria-expanded={openGroupId === 'support'}
+            className={`sfm-mobile-global-toggle${supportOpen ? ' expanded' : ''}`}
+            aria-expanded={supportOpen}
             aria-controls="sfm-mobile-group-support"
-            onClick={() => setOpenGroupId(current => current === 'support' ? null : 'support')}
+            onClick={() => setSupportOpen(current => !current)}
           >
             <span>{t('nav_group_support')}</span>
-            <ChevronDown size={15} />
+            <ChevronDown className="sfm-mobile-global-chevron" size={15} aria-hidden="true" />
           </button>
-          {openGroupId === 'support' && (
+          {supportOpen ? (
             <div className="sfm-mobile-support-links" id="sfm-mobile-group-support">
               {SUPPORT_LINKS.map(item => {
                 const Icon = item.icon;
-                const active = isNavigationItemActive(activeSource, item.href);
+                const active = item.id === selectedItemId;
                 const content = (
                   <>
-                    <span className="sfm-mobile-support-icon"><Icon size={15} /></span>
+                    <span className="sfm-mobile-support-icon" aria-hidden="true"><Icon size={16} /></span>
                     <span className="sfm-mobile-support-copy">
                       <span>{t(item.labelKey)}</span>
                       {item.caption ? <small>{item.caption}</small> : null}
@@ -500,81 +523,83 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
                 );
               })}
             </div>
-          )}
+          ) : null}
         </section>
+
+        <div className="sfm-mobile-account-controls">
+          <div className="sfm-mobile-user"><UserChip /></div>
+          <div className="sfm-mobile-lang">
+            <LanguageSwitcher variant={isDark ? 'dark' : 'light'} compact />
+          </div>
+        </div>
       </aside>
 
       <style jsx global>{`
-        .sfm-mobile-layer{position:fixed;inset:0;z-index:9999;pointer-events:none;visibility:hidden;font-family:Tajawal,Arial,sans-serif;max-width:100%;overflow:hidden;isolation:isolate}
-        .sfm-mobile-layer.open{pointer-events:auto;visibility:visible}
-        .sfm-mobile-overlay{position:fixed;inset:0;z-index:9998;border:0;background:rgba(3,18,37,.68);opacity:0;cursor:pointer;transition:opacity .24s ease;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-        .sfm-mobile-layer.open .sfm-mobile-overlay{opacity:1}
-        .sfm-mobile-layer{--mobile-menu-bg:#F8FAFB;--mobile-menu-bg-2:#E8EEF4;--mobile-menu-card:#FAFBFC;--mobile-menu-card-hover:#E0E8F0;--mobile-menu-border:#C5D0DA;--mobile-menu-text:#10243B;--mobile-menu-secondary:#3F5369;--mobile-menu-muted:#566C80;--mobile-menu-accent:#1B5EC8}
-        .dark .sfm-mobile-layer,html.dark .sfm-mobile-layer,[data-theme="dark"] .sfm-mobile-layer{--mobile-menu-bg:#061A2E;--mobile-menu-bg-2:#071B2F;--mobile-menu-card:#102F52;--mobile-menu-card-hover:#163C62;--mobile-menu-border:rgba(167,243,240,.18);--mobile-menu-text:#F8FAFC;--mobile-menu-secondary:#D8E8F8;--mobile-menu-muted:#9FB4CC;--mobile-menu-accent:#2FD6C0}
-        .sfm-mobile-panel{position:fixed;top:0;right:0;height:100vh;height:100dvh;width:85%;max-width:min(420px,100%);z-index:9999;display:flex;flex-direction:column;min-height:0;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));overflow:hidden;background:radial-gradient(circle at 16% 10%,rgba(27,94,200,.09),transparent 30%),linear-gradient(180deg,var(--mobile-menu-bg),var(--mobile-menu-bg-2))!important;border-inline-start:1px solid var(--mobile-menu-border)!important;border-radius:var(--r-2xl) 0 0 var(--r-2xl);box-shadow:-24px 0 70px rgba(16,36,59,.18);color:var(--mobile-menu-text)!important;transform:translateX(104%);transition:transform .28s cubic-bezier(.2,.9,.2,1);will-change:transform;color-scheme:light}
-        .dark .sfm-mobile-panel,html.dark .sfm-mobile-panel,[data-theme="dark"] .sfm-mobile-panel{background:radial-gradient(circle at 16% 10%,rgba(47,214,192,.20),transparent 30%),linear-gradient(180deg,#061A2E,#071B2F)!important;border-color:rgba(167,243,240,.20)!important;color:#F8FAFC!important;box-shadow:-24px 0 70px rgba(0,0,0,.50)!important;color-scheme:dark}
-        [dir="ltr"] .sfm-mobile-panel{right:auto;left:0;border-inline-start:0;border-inline-end:1px solid var(--mobile-menu-border);border-radius:0 var(--r-2xl) var(--r-2xl) 0;box-shadow:24px 0 70px rgba(0,0,0,.42);transform:translateX(-104%)}
-        html.dark[dir="ltr"] .sfm-mobile-panel,.dark[dir="ltr"] .sfm-mobile-panel,html.dark [dir="ltr"] .sfm-mobile-panel,.dark [dir="ltr"] .sfm-mobile-panel{box-shadow:24px 0 70px rgba(0,0,0,.50)!important}
-        .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
-        .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-nav button{display:flex;align-items:center}
-        body.sfm-mobile-lock .sfm-language-dropdown,
-        body.sfm-mobile-lock .sfm-user-chip-wrap{visibility:hidden!important;pointer-events:none!important}
-        body.sfm-mobile-lock .sfm-mobile-panel .sfm-language-dropdown,
-        body.sfm-mobile-lock .sfm-mobile-panel .sfm-user-chip-wrap{visibility:visible!important;pointer-events:auto!important}
-        .sfm-mobile-panel-head{justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
-        .sfm-mobile-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-        .sfm-mobile-logo{min-width:0;gap:10px}.sfm-mobile-logo img{object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--mobile-menu-accent);font-size:17px;font-weight:900;letter-spacing:0}.sfm-mobile-logo span{display:block;color:var(--mobile-menu-secondary);font-size:12px;font-weight:800;margin-top:2px}
-        .sfm-mobile-close{flex:0 0 auto;width:42px;height:42px;border:1px solid var(--mobile-menu-border);border-radius:var(--r-md);display:grid;place-items:center;background:rgba(255,255,255,.08);color:var(--mobile-menu-text);cursor:pointer}
-        .sfm-mobile-user{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
-        .sfm-mobile-lang{display:flex;justify-content:center;padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
-        .sfm-mobile-view-mode{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
-        .sfm-mobile-workspace{padding:12px 0;border-bottom:1px solid var(--mobile-menu-border);flex:0 0 auto}
-        .sfm-mobile-nav{flex:1 1 auto;min-height:0;display:grid;align-content:start;gap:8px;margin-inline:-4px;padding:12px 4px 10px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-block:12px}
-        .sfm-mobile-group{display:grid;gap:5px;border-bottom:1px solid var(--mobile-menu-border);padding-bottom:7px}
-        .sfm-mobile-group:last-child{border-bottom:0}
-        .sfm-mobile-section{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;border:1px solid transparent;border-radius:var(--r-md);padding:6px 10px;background:transparent;color:var(--mobile-menu-secondary);cursor:pointer;font:900 11px Tajawal,Arial,sans-serif;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
-        .sfm-mobile-section:hover,.sfm-mobile-section:focus-visible{background:var(--mobile-menu-card-hover);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.18)}
-        .sfm-mobile-section.active{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.32);color:var(--mobile-menu-text)}
-        .sfm-mobile-section svg{transition:transform .18s ease}
-        .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(90deg)}
-        [dir="ltr"] .sfm-mobile-section[aria-expanded="false"] svg{transform:rotate(-90deg)}
-        .sfm-mobile-group-items{display:grid;gap:5px}
-        .sfm-mobile-nav .sfm-mobile-group-items button{position:relative;width:100%;min-height:44px;gap:11px;border:1px solid transparent;border-radius:var(--r-lg);padding:9px 12px;background:transparent;color:var(--mobile-menu-secondary);cursor:pointer;font:850 13.5px Tajawal,Arial,sans-serif;text-align:start;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease;min-width:0}
-        .sfm-mobile-nav .sfm-mobile-group-items button span:last-child{min-width:0;overflow-wrap:anywhere;white-space:normal}
-        .sfm-mobile-nav .sfm-mobile-group-items button:hover,.sfm-mobile-nav .sfm-mobile-group-items button:focus-visible{border-color:var(--mobile-menu-accent);background:var(--mobile-menu-card-hover);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.18);transform:translateY(-1px)}
-        .sfm-mobile-nav .sfm-mobile-group-items button.active{border-color:var(--mobile-menu-accent);background:linear-gradient(135deg,rgba(34,211,238,.22),rgba(56,189,248,.14)),var(--mobile-menu-card);color:var(--mobile-menu-text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 10px 26px rgba(0,0,0,.20)}
-        .sfm-mobile-nav .sfm-mobile-group-items button.active::before{content:"";position:absolute;inset-inline-start:5px;top:50%;width:5px;height:24px;border-radius:999px;background:var(--mobile-menu-accent);box-shadow:0 0 14px rgba(34,211,238,.72);transform:translateY(-50%)}.sfm-mobile-nav button:active{transform:scale(.99)}
-        .sfm-mobile-nav-icon{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:var(--r-sm);background:rgba(255,255,255,.08);color:var(--mobile-menu-secondary);transition:background .18s ease,color .18s ease}.sfm-mobile-nav button:hover .sfm-mobile-nav-icon,.sfm-mobile-nav button.active .sfm-mobile-nav-icon{background:rgba(34,211,238,.18);color:var(--mobile-menu-accent)}
-        .sfm-mobile-nested{display:grid;gap:5px}
-        .sfm-mobile-parent-item .sfm-mobile-nested-chevron{margin-inline-start:auto;flex:0 0 auto;opacity:.75;transition:transform .18s ease}
-        .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron{transform:rotate(90deg)}
-        [dir="ltr"] .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron{transform:rotate(-90deg)}
-        .sfm-mobile-subitems{display:grid;gap:4px;padding-inline-start:18px}
-        .sfm-mobile-nav .sfm-mobile-group-items .sfm-mobile-subitem{min-height:38px;border-radius:var(--r-md);padding:7px 10px;font-size:12px;background:rgba(255,255,255,.035)}
-        .sfm-mobile-subitem-icon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px;border-radius:var(--r-sm);background:rgba(255,255,255,.07);color:var(--mobile-menu-secondary)}
-        .sfm-mobile-subitem:hover .sfm-mobile-subitem-icon,.sfm-mobile-subitem.active .sfm-mobile-subitem-icon{background:rgba(34,211,238,.16);color:var(--mobile-menu-accent)}
-        .sfm-mobile-support{flex:0 0 auto;margin-top:0;padding-top:14px;border-top:1px solid rgba(34,211,238,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);display:grid;gap:8px}
-        .sfm-mobile-support-title{color:var(--mobile-menu-muted);font:950 11px Tajawal,Arial,sans-serif;padding-inline:4px}
-        .sfm-mobile-support-links{display:grid;gap:5px}
-        .sfm-mobile-support-links button,.sfm-mobile-support-links a{position:relative;width:100%;min-height:38px;border:1px solid transparent;border-radius:var(--r-md);background:transparent;color:var(--mobile-menu-secondary);display:flex;align-items:center;gap:9px;padding:7px 10px;text-align:start;text-decoration:none;font:850 12.5px Tajawal,Arial,sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-        .sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible,.sfm-mobile-support-links a:hover,.sfm-mobile-support-links a:focus-visible{background:var(--mobile-menu-card-hover);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text);outline:0;box-shadow:0 0 0 2px rgba(34,211,238,.16);transform:translateY(-1px)}
-        .sfm-mobile-support-links button.active,.sfm-mobile-support-links a.active{background:var(--mobile-menu-card);border-color:var(--mobile-menu-accent);color:var(--mobile-menu-text)}
-        .sfm-mobile-support-icon{width:22px;height:22px;display:grid;place-items:center;border-radius:var(--r-sm);background:rgba(255,255,255,.07);color:var(--mobile-menu-accent);flex:0 0 22px}
-        .sfm-mobile-support-copy{min-width:0;display:grid;gap:1px;line-height:1.2;overflow-wrap:anywhere}
-        .sfm-mobile-support-copy small{display:block;color:var(--mobile-menu-muted);font-size:11px;font-weight:900;direction:ltr;unicode-bidi:isolate}
-        .sfm-mobile-support-links button:hover .sfm-mobile-support-copy small,.sfm-mobile-support-links button:focus-visible .sfm-mobile-support-copy small,.sfm-mobile-support-links a:hover .sfm-mobile-support-copy small,.sfm-mobile-support-links a:focus-visible .sfm-mobile-support-copy small{color:var(--mobile-menu-text)}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-logo strong,.sfm-mobile-close,.sfm-mobile-section,.sfm-mobile-nav .sfm-mobile-group-items button,.sfm-mobile-support-links button,.sfm-mobile-support-links a),html.dark .sfm-mobile-panel :is(.sfm-mobile-logo strong,.sfm-mobile-close,.sfm-mobile-section,.sfm-mobile-nav .sfm-mobile-group-items button,.sfm-mobile-support-links button,.sfm-mobile-support-links a){color:#F8FAFC!important}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-logo span,.sfm-mobile-support-title,.sfm-mobile-support-copy small),html.dark .sfm-mobile-panel :is(.sfm-mobile-logo span,.sfm-mobile-support-title,.sfm-mobile-support-copy small){color:#9FB4CC!important}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-section,.sfm-mobile-nav .sfm-mobile-group-items button,.sfm-mobile-support-links button,.sfm-mobile-support-links a),html.dark .sfm-mobile-panel :is(.sfm-mobile-section,.sfm-mobile-nav .sfm-mobile-group-items button,.sfm-mobile-support-links button,.sfm-mobile-support-links a){background:transparent!important;border-color:transparent!important;opacity:1!important;text-shadow:none!important}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-section:hover,.sfm-mobile-section:focus-visible,.sfm-mobile-nav .sfm-mobile-group-items button:hover,.sfm-mobile-nav .sfm-mobile-group-items button:focus-visible,.sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible,.sfm-mobile-support-links a:hover,.sfm-mobile-support-links a:focus-visible),html.dark .sfm-mobile-panel :is(.sfm-mobile-section:hover,.sfm-mobile-section:focus-visible,.sfm-mobile-nav .sfm-mobile-group-items button:hover,.sfm-mobile-nav .sfm-mobile-group-items button:focus-visible,.sfm-mobile-support-links button:hover,.sfm-mobile-support-links button:focus-visible,.sfm-mobile-support-links a:hover,.sfm-mobile-support-links a:focus-visible){background:#163C62!important;border-color:#2FD6C0!important;color:#FFFFFF!important}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-section.active,.sfm-mobile-nav .sfm-mobile-group-items button.active,.sfm-mobile-support-links button.active,.sfm-mobile-support-links a.active),html.dark .sfm-mobile-panel :is(.sfm-mobile-section.active,.sfm-mobile-nav .sfm-mobile-group-items button.active,.sfm-mobile-support-links button.active,.sfm-mobile-support-links a.active){background:linear-gradient(135deg,rgba(47,214,192,.22),rgba(29,140,255,.15)),#102F52!important;border-color:rgba(47,214,192,.48)!important;color:#FFFFFF!important}
-        .dark .sfm-mobile-panel :is(.sfm-mobile-nav-icon,.sfm-mobile-subitem-icon,.sfm-mobile-support-icon),html.dark .sfm-mobile-panel :is(.sfm-mobile-nav-icon,.sfm-mobile-subitem-icon,.sfm-mobile-support-icon){background:rgba(248,250,252,.08)!important;color:#D8E8F8!important}
-        .dark .sfm-mobile-panel :is(.sfm-theme-toggle,.sfm-language-trigger,.sfm-user-chip),html.dark .sfm-mobile-panel :is(.sfm-theme-toggle,.sfm-language-trigger,.sfm-user-chip){background:#0F1D31!important;border-color:#1D3050!important;color:#E8EEF6!important;box-shadow:0 10px 24px rgba(0,0,0,.18)!important}
-        @media(max-width:640px){
-          .sfm-mobile-overlay{backdrop-filter:none;-webkit-backdrop-filter:none}
-          .sfm-mobile-panel{box-shadow:-14px 0 38px rgba(0,0,0,.34)}
-          [dir="ltr"] .sfm-mobile-panel{box-shadow:14px 0 38px rgba(0,0,0,.34)}
+        .sfm-mobile-layer{
+          --_mobile-bg:var(--sidebar-background,var(--sidebar,var(--surface,#fff)));
+          --_mobile-surface:var(--surface-elevated,var(--card,#fff));
+          --_mobile-text:var(--sidebar-foreground,var(--foreground,#0f2742));
+          --_mobile-secondary:var(--foreground-secondary,var(--_mobile-text));
+          --_mobile-muted:var(--foreground-muted,var(--muted-foreground,#64748b));
+          --_mobile-border:var(--sidebar-border,var(--border,#e2e8f0));
+          --_mobile-hover:var(--sidebar-hover,var(--surface-muted,var(--muted,#f8fafc)));
+          --_mobile-expanded:var(--sidebar-expanded,var(--_mobile-hover));
+          --_mobile-active:var(--sidebar-active,var(--primary-soft,#eaf3ff));
+          --_mobile-active-text:var(--sidebar-active-foreground,var(--_mobile-text));
+          --_mobile-primary:var(--primary,#1769d2);
+          --_mobile-focus:var(--focus-ring,var(--ring,#2563eb));
+          position:fixed;inset:0;z-index:9999;max-width:100%;overflow:hidden;isolation:isolate;
+          pointer-events:none;visibility:hidden;
+          font-family:var(--font-sans,var(--font-ibm-plex-sans-arabic),'IBM Plex Sans Arabic',sans-serif)
         }
+        .sfm-mobile-layer.open{pointer-events:auto;visibility:visible}
+        .sfm-mobile-overlay{position:fixed;inset:0;z-index:9998;border:0;background:var(--background-overlay,rgb(15 39 66 / .56));opacity:0;cursor:pointer;transition:opacity .2s ease}
+        .sfm-mobile-layer.open .sfm-mobile-overlay{opacity:1}
+        .sfm-mobile-panel{position:fixed;inset-block:0;inset-inline-start:0;z-index:9999;width:min(390px,92vw);height:100vh;height:100dvh;display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));background:var(--_mobile-bg)!important;border-inline-end:1px solid var(--_mobile-border)!important;border-radius:0 var(--radius-panel,var(--r-xl,18px)) var(--radius-panel,var(--r-xl,18px)) 0;box-shadow:var(--shadow-lg,0 0 28px rgb(15 39 66 / .16));color:var(--_mobile-text)!important;transform:translateX(-102%);transition:transform .22s ease;will-change:transform}
+        [dir="rtl"] .sfm-mobile-panel{transform:translateX(102%);border-radius:var(--radius-panel,var(--r-xl,18px)) 0 0 var(--radius-panel,var(--r-xl,18px))}
+        .sfm-mobile-layer.open .sfm-mobile-panel{transform:translateX(0)}
+        body.sfm-mobile-lock .sfm-language-dropdown,body.sfm-mobile-lock .sfm-user-chip-wrap{visibility:hidden!important;pointer-events:none!important}
+        body.sfm-mobile-lock .sfm-mobile-panel .sfm-language-dropdown,body.sfm-mobile-lock .sfm-mobile-panel .sfm-user-chip-wrap{visibility:visible!important;pointer-events:auto!important}
+        .sfm-mobile-panel-head,.sfm-mobile-logo,.sfm-mobile-head-actions{display:flex;align-items:center}
+        .sfm-mobile-panel-head{min-height:52px;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--_mobile-border);flex:0 0 auto}
+        .sfm-mobile-head-actions{gap:7px;flex:0 0 auto}
+        .sfm-mobile-logo{min-width:0;gap:9px}.sfm-mobile-logo img{width:36px;height:36px;flex:0 0 36px;object-fit:cover}.sfm-mobile-logo strong{display:block;color:var(--_mobile-text);font-size:15px;font-weight:600;line-height:1.3}.sfm-mobile-logo span{display:block;color:var(--_mobile-muted);font-size:11px;font-weight:400;line-height:1.4;margin-top:1px}
+        .sfm-mobile-close{width:44px;height:44px;min-width:44px;display:grid;place-items:center;border:1px solid var(--_mobile-border);border-radius:var(--radius-control,var(--r-md,10px));background:var(--_mobile-surface);color:var(--_mobile-text);cursor:pointer}
+        .sfm-mobile-close:hover{background:var(--_mobile-hover)}
+        .sfm-mobile-close:focus-visible{outline:2px solid var(--_mobile-focus);outline-offset:2px}
+        .sfm-mobile-panel .sfm-command-trigger,.sfm-mobile-panel .sfm-theme-toggle,.sfm-mobile-panel .sfm-language-trigger{min-height:44px}
+        .sfm-mobile-search{padding:8px 0;border-bottom:1px solid var(--_mobile-border);flex:0 0 auto}
+        .sfm-mobile-nav{flex:1 1 auto;min-height:0;display:grid;align-content:start;gap:12px;margin:0;padding:10px 2px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-block:10px}
+        .sfm-mobile-group{display:grid;gap:5px;padding-bottom:11px;border-bottom:1px solid var(--_mobile-border)}
+        .sfm-mobile-group-label{margin:0;padding-inline:8px;color:var(--_mobile-muted);font-size:11px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+        .sfm-mobile-group-items,.sfm-mobile-subitems{display:grid;gap:3px;margin:0;padding:0;list-style:none}
+        .sfm-mobile-group-items li,.sfm-mobile-subitems li{min-width:0;list-style:none}
+        .sfm-mobile-nav-item,.sfm-mobile-parent-item,.sfm-mobile-subitem,.sfm-mobile-support-links button,.sfm-mobile-support-links a{position:relative;width:100%;min-width:0;min-height:44px;display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid transparent;border-radius:var(--radius-control,var(--r-md,10px));background:transparent;color:var(--_mobile-secondary);text-align:start;text-decoration:none;font:500 13.5px/1.5 var(--font-sans,var(--font-ibm-plex-sans-arabic),'IBM Plex Sans Arabic',sans-serif);cursor:pointer;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+        .sfm-mobile-nav-item:hover,.sfm-mobile-parent-item:hover,.sfm-mobile-subitem:hover,.sfm-mobile-support-links button:hover,.sfm-mobile-support-links a:hover{background:var(--_mobile-hover);color:var(--_mobile-text)}
+        .sfm-mobile-nav-item:focus-visible,.sfm-mobile-parent-item:focus-visible,.sfm-mobile-subitem:focus-visible,.sfm-mobile-global-toggle:focus-visible,.sfm-mobile-support-links button:focus-visible,.sfm-mobile-support-links a:focus-visible{outline:2px solid var(--_mobile-focus);outline-offset:1px}
+        .sfm-mobile-nav-item.active,.sfm-mobile-subitem.active,.sfm-mobile-support-links button.active,.sfm-mobile-support-links a.active{background:var(--_mobile-active);color:var(--_mobile-active-text);font-weight:600}
+        .sfm-mobile-nav-item.active::before,.sfm-mobile-subitem.active::before,.sfm-mobile-support-links button.active::before,.sfm-mobile-support-links a.active::before{content:"";position:absolute;inset-inline-start:0;inset-block:8px;width:3px;border-radius:999px;background:var(--_mobile-primary)}
+        .sfm-mobile-parent-item.expanded{background:var(--_mobile-expanded);color:var(--_mobile-text)}
+        .sfm-mobile-nav-icon,.sfm-mobile-subitem-icon,.sfm-mobile-support-icon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px;color:var(--_mobile-muted)}
+        .active>.sfm-mobile-nav-icon,.sfm-mobile-subitem.active .sfm-mobile-subitem-icon,.sfm-mobile-support-links .active .sfm-mobile-support-icon{color:var(--_mobile-primary)}
+        .sfm-mobile-item-label,.sfm-mobile-support-copy{min-width:0;flex:1;overflow-wrap:anywhere;hyphens:auto}
+        .sfm-mobile-nested{display:grid;gap:3px}
+        .sfm-mobile-nested-chevron,.sfm-mobile-global-chevron{margin-inline-start:auto;flex:0 0 auto;color:var(--_mobile-muted);transition:transform .15s ease}
+        .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron,.sfm-mobile-global-toggle[aria-expanded="false"] .sfm-mobile-global-chevron{transform:rotate(90deg)}
+        [dir="ltr"] .sfm-mobile-parent-item[aria-expanded="false"] .sfm-mobile-nested-chevron,[dir="ltr"] .sfm-mobile-global-toggle[aria-expanded="false"] .sfm-mobile-global-chevron{transform:rotate(-90deg)}
+        .sfm-mobile-subitems{padding-inline-start:18px;margin-top:2px}.sfm-mobile-subitem{font-size:13px}
+        .sfm-mobile-global-group{display:grid;gap:4px;padding-top:2px}
+        .sfm-mobile-global-toggle{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;padding:7px 9px;border:0;border-radius:var(--radius-control,var(--r-md,10px));background:transparent;color:var(--_mobile-muted);text-align:start;font:500 11.5px/1.5 var(--font-sans,var(--font-ibm-plex-sans-arabic),'IBM Plex Sans Arabic',sans-serif);cursor:pointer}
+        .sfm-mobile-global-toggle:hover,.sfm-mobile-global-toggle.expanded{background:var(--_mobile-hover);color:var(--_mobile-text)}
+        .sfm-mobile-support{flex:0 0 auto;display:grid;gap:5px;padding:8px 2px;border-top:1px solid var(--_mobile-border);max-height:38vh;overflow-y:auto;overflow-x:hidden}
+        .sfm-mobile-support-links{display:grid;gap:3px}.sfm-mobile-support-links button,.sfm-mobile-support-links a{min-height:44px;font-size:13px}
+        .sfm-mobile-support-copy{display:grid;gap:1px}.sfm-mobile-support-copy small{display:block;color:var(--_mobile-muted);font-size:10.5px;font-weight:400;line-height:1.35;direction:ltr;unicode-bidi:isolate}
+        .sfm-mobile-account-controls{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--_mobile-border)}
+        .sfm-mobile-user,.sfm-mobile-lang{display:flex;min-width:0}.sfm-mobile-lang{justify-content:flex-end}
+        .sfm-mobile-panel .sfm-user-chip,.sfm-mobile-panel .sfm-language-trigger{min-width:44px;min-height:44px;height:44px!important;background:var(--_mobile-surface)!important;border-color:var(--_mobile-border)!important;color:var(--_mobile-text)!important;box-shadow:none!important;font-family:inherit!important;font-weight:500!important}
+        .sfm-mobile-panel .sfm-user-name{color:var(--_mobile-text)!important}.sfm-mobile-panel .sfm-user-chevron{color:var(--_mobile-muted)!important}
+        @media(max-width:430px){.sfm-mobile-panel{width:100%;border-radius:0!important;padding-inline:10px}.sfm-mobile-account-controls{grid-template-columns:1fr}.sfm-mobile-lang{justify-content:flex-start}.sfm-mobile-panel .sfm-user-chip-wrap{max-width:100%}}
+        @media(prefers-reduced-motion:reduce){.sfm-mobile-overlay,.sfm-mobile-panel,.sfm-mobile-nav-item,.sfm-mobile-parent-item,.sfm-mobile-subitem,.sfm-mobile-global-toggle,.sfm-mobile-global-chevron,.sfm-mobile-nested-chevron{transition:none}}
       `}</style>
     </div>
   );

@@ -1,112 +1,171 @@
 /*
- * Design tokens — primitive layer.
+ * The SFM foundation tokens.
  *
- * This file holds theme-agnostic primitives: the typography scale, and the handful of
- * genuinely-new color primitives needed by the Market/Provider/Shariah token families that
- * don't already exist as a CSS custom property anywhere in globals.css.
- *
- * Existing color/shadow/radius primitives (--sfm-*, --shadow-*, --r-*, shadcn --color-* bridge)
- * are NOT duplicated here — they remain authoritative in src/app/globals.css's :root{}/.dark{}
- * blocks. This file only adds what doesn't already exist. See src/styles/themes.css for how the
- * new semantic token groups (background/surface/text/border/brand/status/market/provider/shariah)
- * are composed from these primitives plus the existing ones.
+ * Keep non-colour decisions here. Theme colours live in themes.css so light
+ * and dark mode cannot drift into separate component systems.
  */
 
 :root {
-  /*
-   * Typography scale — 13 named steps (size / line-height / weight / letter-spacing).
-   * Reuses existing --sfm-light-type-* values where they already cover a step (title, section,
-   * card, body, caption, numeric) rather than inventing new sizes. Theme-agnostic: only color
-   * (via --text-* tokens in themes.css) differs between light and dark, not the scale itself.
-   *
-   * Arabic-safe rule: every line-height is floored at 1.15 — Tajawal/Cairo need headroom for
-   * diacritics/ascenders that Western display-type scales (which sometimes go to 1.0-1.05)
-   * would clip. --type-body keeps the existing 1.65 paragraph baseline (matches globals.css
-   * `body{line-height:1.65}`) — do not reduce it.
-   */
-  --type-display-size: clamp(2.1rem, 3.2vw, 3rem);
-  --type-display-leading: 1.15;
-  --type-display-weight: 900;
+  /* Typography */
+  --font-ui: var(--font-ibm-plex-sans-arabic, "IBM Plex Sans Arabic"),
+    "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: var(--font-ibm-plex-mono, "IBM Plex Mono"),
+    "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-cairo: var(--font-ui);
+  --font-tajawal: var(--font-ui);
+  --font-ibm-plex-arabic: var(--font-ui);
+
+  --type-display-size: clamp(2rem, 3.2vw, 3rem);
+  --type-display-leading: 1.2;
+  --type-display-weight: 700;
   --type-display-tracking: -0.01em;
 
-  --type-page-title-size: var(--sfm-light-type-title, clamp(1.85rem, 2.7vw, 2.55rem));
-  --type-page-title-leading: 1.2;
-  --type-page-title-weight: 900;
+  --type-page-title-size: clamp(1.75rem, 2.5vw, 2.4rem);
+  --type-page-title-leading: 1.28;
+  --type-page-title-weight: 700;
   --type-page-title-tracking: -0.01em;
 
-  --type-section-title-size: var(--sfm-light-type-section, clamp(1.28rem, 1.8vw, 1.6rem));
-  --type-section-title-leading: 1.25;
-  --type-section-title-weight: 850;
+  --type-section-title-size: clamp(1.25rem, 1.7vw, 1.55rem);
+  --type-section-title-leading: 1.35;
+  --type-section-title-weight: 600;
   --type-section-title-tracking: 0;
 
-  --type-card-title-size: var(--sfm-light-type-card, 1.0625rem);
-  --type-card-title-leading: 1.3;
-  --type-card-title-weight: 800;
+  --type-card-title-size: 1.0625rem;
+  --type-card-title-leading: 1.4;
+  --type-card-title-weight: 600;
   --type-card-title-tracking: 0;
 
-  --type-body-size: var(--sfm-light-type-body, 0.9375rem);
-  --type-body-leading: 1.65;
-  --type-body-weight: 500;
+  --type-body-size: 0.9375rem;
+  --type-body-leading: 1.7;
+  --type-body-weight: 400;
   --type-body-tracking: 0;
 
   --type-body-small-size: 0.8125rem;
-  --type-body-small-leading: 1.55;
-  --type-body-small-weight: 500;
+  --type-body-small-leading: 1.6;
+  --type-body-small-weight: 400;
   --type-body-small-tracking: 0;
 
-  --type-caption-size: var(--sfm-light-type-caption, 0.8125rem);
-  --type-caption-leading: 1.4;
-  --type-caption-weight: 700;
-  --type-caption-tracking: 0.01em;
+  --type-caption-size: 0.8125rem;
+  --type-caption-leading: 1.5;
+  --type-caption-weight: 400;
+  --type-caption-tracking: 0;
 
   --type-label-size: 0.8125rem;
-  --type-label-leading: 1.3;
-  --type-label-weight: 800;
-  --type-label-tracking: 0.02em;
+  --type-label-leading: 1.45;
+  --type-label-weight: 500;
+  --type-label-tracking: 0;
 
   --type-button-size: 0.875rem;
-  --type-button-leading: 1;
-  --type-button-weight: 800;
+  --type-button-leading: 1.25;
+  --type-button-weight: 600;
   --type-button-tracking: 0;
 
-  --type-numeric-value-size: var(--sfm-light-type-numeric, 1.35rem);
-  --type-numeric-value-leading: 1.15;
-  --type-numeric-value-weight: 900;
+  --type-numeric-value-size: 1.35rem;
+  --type-numeric-value-leading: 1.2;
+  --type-numeric-value-weight: 700;
   --type-numeric-value-tracking: -0.01em;
 
   --type-financial-value-size: 1.1rem;
-  --type-financial-value-leading: 1.2;
-  --type-financial-value-weight: 900;
-  --type-financial-value-tracking: -0.005em;
+  --type-financial-value-leading: 1.25;
+  --type-financial-value-weight: 600;
+  --type-financial-value-tracking: 0;
 
   --type-percentage-size: 0.9375rem;
-  --type-percentage-leading: 1.2;
-  --type-percentage-weight: 800;
+  --type-percentage-leading: 1.25;
+  --type-percentage-weight: 600;
   --type-percentage-tracking: 0;
 
   --type-table-header-size: 0.75rem;
-  --type-table-header-leading: 1.3;
-  --type-table-header-weight: 900;
-  --type-table-header-tracking: 0.02em;
+  --type-table-header-leading: 1.4;
+  --type-table-header-weight: 600;
+  --type-table-header-tracking: 0.01em;
 
   --type-table-cell-size: 0.8125rem;
-  --type-table-cell-leading: 1.45;
-  --type-table-cell-weight: 600;
+  --type-table-cell-leading: 1.5;
+  --type-table-cell-weight: 400;
   --type-table-cell-tracking: 0;
 
+  /* Spacing and component geometry */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+  --radius-pill: 999px;
+
+  --control-h-sm: 36px;
+  --control-h: 44px;
+  --control-h-lg: 48px;
+  --sidebar-w: 220px;
+  --sidebar-width-icon: 3rem;
+  --topbar-h: 64px;
+
   /*
-   * Genuinely-new color primitives — only values with no existing equivalent anywhere in
-   * globals.css. Everything else in the Market/Provider/Shariah/Status families in themes.css
-   * reuses an existing --sfm-*/market-status-badge/ShariaResearchPage.module.css value instead
-   * of inventing a new hue (see themes.css comments for the exact source of each).
+   * Workspace content geometry.
+   *
+   * The application shell owns the available inline size; page content only
+   * selects a maximum-width policy. These tokens intentionally contain no
+   * viewport or sidebar arithmetic, so they work for expanded/collapsed
+   * sidebars and for both inline directions.
    */
-  --new-market-stale-light: #0369A1; /* reuses the existing .info tone — no dedicated "stale" hue exists today */
-  --new-market-stale-dark: #7DD3FC;
-  --new-market-unavailable-light: #64748B; /* market-page.css:547 muted body tone */
-  --new-market-unavailable-dark: #8EA6C3; /* market-page.css:570 dark equivalent */
-  --new-shariah-conflict-light: #B4233B; /* reuses --sfm-light-danger — no distinct "conflict" tone exists */
-  --new-shariah-conflict-dark: #EF4444; /* reuses existing dark --red */
-  --new-divider-dark: rgba(255, 255, 255, 0.08); /* softer than dark --border (0.10), no existing token for this */
-  --new-background-overlay-light: rgba(16, 36, 59, 0.42); /* derived from --sfm-light-text-primary at 42% */
-  --new-background-overlay-dark: rgba(3, 18, 37, 0.62); /* derived from --sfm-deep-navy (dark) at 62% */
+  --workspace-page-max-full: none;
+  --workspace-page-max-wide: 100rem;
+  --workspace-page-max-standard: 80rem;
+  --workspace-page-max-reading: 52rem;
+  --workspace-page-padding-inline: clamp(1rem, 2.4vi, 2rem);
+  --workspace-page-padding-block: clamp(1rem, 1.8vi, 1.5rem);
+  --workspace-page-section-gap: clamp(1rem, 1.5vi, 1.5rem);
+
+  /* Depth and motion. --shadow-color is supplied by the active theme. */
+  --shadow-xs: 0 1px 2px color-mix(in srgb, var(--shadow-color) 7%, transparent);
+  --shadow-sm: 0 4px 12px color-mix(in srgb, var(--shadow-color) 8%, transparent);
+  --shadow-md: 0 12px 28px color-mix(in srgb, var(--shadow-color) 11%, transparent);
+  --shadow-lg: 0 20px 44px color-mix(in srgb, var(--shadow-color) 14%, transparent);
+  --shadow-card: var(--shadow-sm);
+  --shadow-popover: var(--shadow-md);
+
+  --duration-fast: 140ms;
+  --duration: 200ms;
+  --duration-slow: 280ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Compatibility geometry/type aliases for existing production screens. */
+  --sfm-light-space-1: var(--space-1);
+  --sfm-light-space-2: var(--space-2);
+  --sfm-light-space-3: var(--space-3);
+  --sfm-light-space-4: var(--space-4);
+  --sfm-light-space-5: var(--space-5);
+  --sfm-light-space-6: var(--space-6);
+  --sfm-light-radius-control: var(--radius-control);
+  --sfm-light-radius-card: var(--radius-card);
+  --sfm-light-radius-section: var(--radius-panel);
+  --sfm-light-radius-pill: var(--radius-pill);
+  --sfm-light-type-title: var(--type-page-title-size);
+  --sfm-light-type-section: var(--type-section-title-size);
+  --sfm-light-type-card: var(--type-card-title-size);
+  --sfm-light-type-body: var(--type-body-size);
+  --sfm-light-type-caption: var(--type-caption-size);
+  --sfm-light-type-status: var(--type-caption-size);
+  --sfm-light-type-numeric: var(--type-numeric-value-size);
+  --sfm-light-transition-fast: var(--duration-fast);
+  --sfm-light-transition-base: var(--duration);
+  --sfm-light-transition-slow: var(--duration-slow);
+  --sfm-light-ease: var(--ease);
+  --sfm-light-shadow-xs: var(--shadow-xs);
+  --sfm-light-shadow-sm: var(--shadow-sm);
+  --sfm-light-shadow-md: var(--shadow-md);
+  --sfm-light-shadow-lg: var(--shadow-lg);
+  --r-xs: var(--radius-xs);
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-control);
+  --r-lg: 12px;
+  --r-xl: var(--radius-card);
+  --r-2xl: var(--radius-panel);
 }

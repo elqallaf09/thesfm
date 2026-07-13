@@ -4,7 +4,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft, Edit3, FileDown, FileText, Loader2, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -407,7 +406,6 @@ export default function SalesPage() {
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={text.sales}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -421,7 +419,6 @@ export default function SalesPage() {
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.sales} contentClassName="business-records-content">
         <div className="business-topbar">
           <LanguageSwitcher />
