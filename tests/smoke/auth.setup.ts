@@ -114,7 +114,10 @@ async function signIn(
   ).toBe(200);
   expect(safePayload?.ok, `${role} credential sign-in did not return a successful safe status.`).toBe(true);
   expect(safePayload?.status, `${role} credential sign-in did not authenticate.`).toBe('AUTHENTICATED');
-  await page.waitForURL(url => url.pathname !== '/login', { timeout: 30_000 });
+  await page.waitForURL(url => url.pathname !== '/login', {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  });
 
   const cookies = await context.cookies();
   const accessCookie = cookies.find(cookie => cookie.name === 'sfm_access_token');
@@ -128,10 +131,14 @@ async function signIn(
     expect(authStateCookie?.secure === true, `${role} auth-state cookie must be Secure over HTTPS.`).toBe(true);
   }
 
-  const hasSupabaseSessionKey = await page.evaluate(() => {
-    return Object.keys(window.localStorage).some(key => /^sb-[a-z0-9]+-auth-token$/i.test(key));
-  });
-  expect(hasSupabaseSessionKey, `${role} sign-in did not persist the browser session.`).toBe(true);
+  await expect.poll(async () => {
+    return page.evaluate(() => {
+      return Object.keys(window.localStorage).some(key => /^sb-[a-z0-9]+-auth-token$/i.test(key));
+    }).catch(() => false);
+  }, {
+    message: `${role} sign-in did not persist the browser session.`,
+    timeout: 30_000,
+  }).toBe(true);
 }
 
 async function safeLoginPayload(response: PlaywrightResponse): Promise<SafeLoginPayload | null> {

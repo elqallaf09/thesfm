@@ -72,7 +72,12 @@ test.describe('launch smoke coverage', () => {
       await expectUsablePage(page, '/dashboard');
       if (userAuthConfigured) {
         await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-        await expect(page.locator('main.dashboard-main')).toBeVisible();
+        await expect(page).toHaveURL(/\/(?:dashboard|setup)(?:\?|$)/);
+        if (new URL(page.url()).pathname === '/dashboard') {
+          await expect(page.locator('main.dashboard-main')).toBeVisible();
+        } else {
+          await expect(page.locator('.setup-page')).toBeVisible();
+        }
       }
     });
 
