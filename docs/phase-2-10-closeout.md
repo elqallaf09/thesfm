@@ -1,0 +1,132 @@
+# Phase 2.10 — Final production verification & closeout
+
+Verification date: 2026-07-12
+Branch: `phase-2-10-final-verification`
+
+## Verdict
+
+**NOT READY FOR PHASE 3** by the strict criteria of this checklist — two
+items are blocked on access this environment does not have (see "Requires
+manual action"). Everything verifiable from the repository is green.
+
+Note on sequencing: the Phase 3 workspace-architecture commit (`26ae253e`)
+already exists on `main`. This closeout verifies the 2.10 surface as it
+lives on that main; no Phase 3 work was added here.
+
+## Verified in this pass (Completed)
+
+### Migration `20260712130000_create_investor_relations.sql` — static review
+- Creates exactly the five tables the code reads
+  (`project_investor_links`, `project_investor_events`, `project_risks`,
+  `project_investor_questions`, `project_due_diligence_items`).
+- Every column the application inserts/updates exists; the due-diligence
+  upsert's `onConflict: 'user_id,project_id,group_key,item_key'` matches
+  the migration's unique constraint exactly.
+- RLS enabled on all five tables with owner-scoped SELECT/INSERT/UPDATE/
+  DELETE (events has no UPDATE policy — the code never updates events;
+  public-viewer writes go through the service-role route only).
+- Foreign keys to `auth.users` and `public.projects` (cascade), link FK
+  `on delete set null`; `token_hash` unique; performance indexes on
+  `(user_id, project_id)` (+ `created_at desc` for events/questions).
+- Idempotent (29 `if [not] exists` guards), zero destructive statements,
+  no impact on existing production data (all tables are new).
+
+### Service-role key handling
+- 11 references, all in API routes / server libs / `integrations/supabase/server.ts`;
+  none in `'use client'` files or components.
+- Built client bundles (`.next/static`) contain **zero** occurrences.
+- Never logged, never returned in a response, never `NEXT_PUBLIC_`-prefixed.
+- Missing configuration returns a safe `503 not_configured` JSON error.
+
+### Repository checks (all passing locally)
+`pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`,
+`pnpm check:i18n`, `pnpm check:prod-endpoints` (after the fix below),
+`pnpm check:public-env`, `pnpm test:run`, `pnpm build`,
+`pnpm test:smoke` (public scope).
+
+### Fix applied in this pass
+- `src/app/api/auth/password-reset/request/route.ts`: the dev-only origin
+  fallback hardcoded `http://localhost:3000`, failing
+  `check:prod-endpoints`. It now falls back to the canonical trusted
+  origin — strictly safer (never a caller-influenced or localhost URL)
+  and the guard passes without any allowlist change.
+
+## Smoke tests and GitHub CI findings
+
+- Local `pnpm test:smoke` against the production build: **82 passed,
+  22 skipped (provider/credential-gated), 16 failed.** Every failure
+  asserts on LIVE market-provider state (e.g. "Data provider connected",
+  the smart-analysis status heading, calendar lazy-load) — the identical
+  suite passed twice earlier the same day on the same code; the upstream
+  quote provider is throttling this machine after a full day of runs
+  (`/api/recommendations` returns an empty quote payload while metadata
+  reports available). These are environment-dependent tests, not
+  regressions from this branch. Follow-up (separate task, not done here to
+  avoid weakening coverage): make provider-live assertions accept the
+  product's honest unavailable states.
+- GitHub CI on `main` (`26ae253e`): 6 of 8 jobs pass (TypeScript, ESLint,
+  i18n, unit/integration, build, Lighthouse). Failing:
+  1. **Production launch guards** — `check:prod-endpoints` flagged the
+     hardcoded localhost fallback in the password-reset route. **Fixed on
+     this branch.**
+  2. **Playwright smoke** — two compounding causes: the workflow installed
+     only chromium while the config declares a mobile-webkit project
+     (**fixed on this branch**: webkit now installed), and the same
+     provider-live assertions above, which on GitHub-runner IPs are
+     expected to hit provider blocks (documented follow-up).
+
+## PR #3 CI result (final)
+
+`phase-2-10-final-verification` → PR #3. Workflow jobs: **TypeScript,
+ESLint, i18n, Production launch guards (fixed by this branch), Unit &
+Integration tests, Production build, Lighthouse CI — all pass.**
+Playwright smoke: 74 passed / 22 skipped / **22 failed**, with zero
+webkit-executable errors (the webkit install fix works; that third of the
+suite now genuinely runs). Every remaining failure is in the
+provider-live family (terminal provider-state text across ar/en/fr,
+calendar lazy-load, sharia research fetches, trader provider views, and
+two webkit-only follow-ons) — pre-existing on every `main` run and
+environment-dependent. Follow-up task: harden these assertions to accept
+the product's honest unavailable states; do not merge the PR while the
+smoke check is red unless that check is explicitly accepted as known-red.
+
+## Update after adding smoke-job secrets (commit 08917c83)
+
+`SUPABASE_SERVICE_ROLE_KEY` and `SUPER_ADMIN_EMAILS` are now passed to the
+CI smoke step (plus the existing `E2E_*` variables). Result: the
+credential-gated tests **now execute** instead of skipping — and the
+sign-in step itself fails on every project (`launch-readiness.spec.ts:45`
+and `:84`: after submitting the E2E credentials the page never leaves
+`/login`). Login rate limits are not the cause (30/IP/10 min), and the MFA
+signing secret is satisfied via the service-role fallback. Remaining
+candidates only the secret owner can check: the E2E account does not exist
+in production Supabase, the password secret is wrong, or the account has
+MFA enabled (the smoke sign-in helper has no MFA step — if E2E accounts
+are MFA-enabled, the helper needs an MFA-aware path as a follow-up).
+Other smoke failures remain the documented provider-live family.
+
+## Requires manual action (Blocked here)
+
+1. **Apply the migration** — this environment has no Supabase access
+   token, no linked project, and no Docker for a local instance.
+   Supabase Dashboard → SQL Editor → run
+   `supabase/migrations/20260712130000_create_investor_relations.sql`
+   (idempotent; safe to re-run), or `supabase db push` from a linked CLI.
+2. **Configure the service-role key** — Vercel → Project Settings →
+   Environment Variables → add `SUPABASE_SERVICE_ROLE_KEY` (server-side
+   only, exact name, no `NEXT_PUBLIC_` prefix), then redeploy.
+3. **Provide E2E credentials** — `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`,
+   `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` as GitHub Actions secrets (the
+   smoke workflow already forwards them) and locally for authenticated
+   Playwright runs. Until then the credential-gated launch-readiness test
+   self-skips and authenticated/admin flows remain **untested**, not failed.
+
+## Requires production verification (after the manual steps)
+
+- Investor links end-to-end: create → open → password gate → expiry →
+  revocation → activity log rows → questions.
+- Cross-user isolation against real rows (RLS policies are owner-scoped by
+  design; verify with two real accounts).
+- Admin flows and `/sfm-admin-control` with a real admin account.
+- Authenticated visual QA (AR/EN/FR × light/dark × mobile widths) for
+  signed-in pages; public-scope QA was completed in earlier phases.

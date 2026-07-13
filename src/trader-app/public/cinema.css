@@ -8238,6 +8238,10 @@ html[data-theme="light"] :is(.state-badge.muted, .status-tag.muted, .signal-badg
     overflow-x: clip;
   }
 
+  html {
+    scroll-padding-block-end: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+
   .terminal-app,
   .terminal-stage,
   .terminal-content {
@@ -8248,6 +8252,33 @@ html[data-theme="light"] :is(.state-badge.muted, .status-tag.muted, .signal-badg
   .page-stack {
     padding-inline: max(14px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-right, 0px)) !important;
   }
+
+  .workspace-tabs button {
+    scroll-margin-block-end: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* The fixed cinematic backdrop is decorative. Running its large SVG and
+     map loops on narrow, software-composited WebKit views starves input and
+     makes controls appear unstable. Keep the artwork, but render it static. */
+  .market-cinema *,
+  body::before,
+  .terminal-app::before,
+  .world-map::before,
+  .mo-bar i::after,
+  .map-plane,
+  .map-arcs path,
+  .map-node i::after {
+    animation: none !important;
+  }
+
+  .mc-priceline .mc-line {
+    stroke-dashoffset: 0;
+    opacity: 0.6;
+  }
+
+  .mc-priceline .mc-area { opacity: 0.7; }
+  .mc-priceline .mc-line-dot,
+  .mc-p { display: none; }
 
   .ticker-strip {
     overflow: hidden !important;

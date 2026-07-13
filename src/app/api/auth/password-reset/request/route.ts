@@ -30,7 +30,10 @@ function resetOrigin(request: NextRequest) {
     const parsed = new URL(requestOrigin);
     if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return parsed.origin;
   } catch {}
-  return 'http://localhost:3000';
+  // Unexpected dev origin: fall back to the canonical trusted origin rather
+  // than any caller-influenced value (and never a hardcoded localhost URL —
+  // the production-endpoint guard rejects those in production paths).
+  return 'https://www.the-sfm.com';
 }
 
 export async function POST(request: NextRequest) {

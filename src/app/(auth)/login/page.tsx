@@ -1042,7 +1042,7 @@ function LoginContent() {
           <button
             type="submit"
             className="submit-btn"
-            disabled={submitting || !!socialLoading || guestSubmitting}
+            disabled={!hydrated || submitting || !!socialLoading || guestSubmitting}
             aria-busy={submitting || guestSubmitting}
           >
             {submitting

@@ -29,6 +29,7 @@ const ALLOWED_EVENTS = new Set([
 ]);
 
 const SENSITIVE_KEY_PATTERN = /(amount|value|salary|income|expense|saving|zakat|goal|note|description|phone|mobile|security|password|document|file|private|token|secret)/i;
+let incompleteConfigurationWarningEmitted = false;
 
 function ignored(code: string, status = 200) {
   return NextResponse.json({ ok: false, success: false, ignored: true, code }, { status });
@@ -40,6 +41,20 @@ function safeLog(level: 'warn' | 'error', message: string, details?: Record<stri
     : undefined;
   if (level === 'warn') console.warn(message, payload ?? '');
   else console.error(message, payload ?? '');
+}
+
+function warnIncompleteConfigurationOnce() {
+  if (incompleteConfigurationWarningEmitted) return;
+  incompleteConfigurationWarningEmitted = true;
+
+  const missing: string[] = [];
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY)?.trim()) {
+    missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  }
+  safeLog('warn', '[analytics] tracking disabled: incomplete Supabase configuration', {
+    missing: missing.join(', ') || 'server Supabase configuration',
+  });
 }
 
 async function safeSupabaseRequest<T extends { error?: unknown }>(request: PromiseLike<T>): Promise<T | { error: unknown }> {
@@ -154,7 +169,7 @@ export async function POST(request: Request) {
 
     const admin = createServerSupabaseAdmin();
     if (!admin) {
-      safeLog('warn', 'Analytics service role key is not configured');
+      warnIncompleteConfigurationOnce();
       return ignored('ANALYTICS_SERVICE_NOT_CONFIGURED');
     }
 

@@ -66,7 +66,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   const { signOut, user } = useAuth();
   const { viewMode, setViewMode } = useViewMode();
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme !== 'light';
+  const isDark = resolvedTheme === 'dark';
   const [activeSource, setActiveSource] = useState(pathname);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [openItemIds, setOpenItemIds] = useState<string[]>([]);

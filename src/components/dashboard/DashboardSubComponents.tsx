@@ -185,7 +185,12 @@ export function ActionLink({
   variant?: 'primary' | 'secondary';
 }) {
   return (
-    <Link className={`action-link action-link-${variant}`} href={href} aria-label={typeof children === 'string' ? children : undefined}>
+    <Link
+      className={`action-link action-link-${variant}`}
+      href={href}
+      prefetch={false}
+      aria-label={typeof children === 'string' ? children : undefined}
+    >
       <span className="action-link-label">{children}</span>
       <span className="action-link-icon" aria-hidden="true">
         <ArrowRight size={16} />

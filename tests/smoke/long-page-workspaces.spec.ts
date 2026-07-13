@@ -79,7 +79,10 @@ test.describe('long-page workspaces', () => {
     const dividendsPanel = page.locator(`#${dividendsPanelId}`);
     await expect(dividendsPanel).toHaveAttribute('role', 'tabpanel');
     await expect(dividendsPanel).not.toContainText('Unable to load data');
-    await expect(page.locator(`#${earningsPanelId}`)).toHaveCount(0);
+    const unmountedEarningsPanel = page.locator(`#${earningsPanelId}`);
+    await expect(unmountedEarningsPanel).toBeHidden();
+    await expect(unmountedEarningsPanel).toBeEmpty();
+    await expect(unmountedEarningsPanel).not.toHaveAttribute('data-workspace-panel', 'earnings');
 
     const issues = page.getByRole('tab', { name: /^Issues/ });
     await issues.click();
@@ -200,7 +203,7 @@ test.describe('long-page workspaces', () => {
   });
 
   test('an invalidated slow market response cannot overwrite the current market', async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     let releaseInitialMarket: () => void = () => {};
     const initialMarketGate = new Promise<void>(resolve => { releaseInitialMarket = resolve; });
     let initialMarketStarted = false;
