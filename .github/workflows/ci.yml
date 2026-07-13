@@ -202,6 +202,9 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
       - run: pnpm test:smoke
         env:
+          # Prevent Playwright's generated AI error context from copying a DOM
+          # snapshot containing filled auth fields into CI diagnostics.
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
@@ -217,14 +220,16 @@ jobs:
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      - name: Remove Playwright DOM error contexts
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: find test-results -type f -name 'error-context.md' -delete 2>/dev/null || true
       - name: Upload Playwright diagnostics
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-smoke-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            test-results/
-            playwright-report/
+          path: test-results/
           if-no-files-found: warn
           retention-days: 7
 

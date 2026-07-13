@@ -1,8 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Playwright's AI error context includes a full DOM snapshot by default. Auth
+// fields and signed-in identifiers must never be copied into CI artifacts.
+process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
+
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
 const baseURL = process.env.E2E_BASE_URL || (httpsLoopback ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3000');
 const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'pnpm run build && pnpm run start';
+const authProjectFiles = /auth\.(?:setup|teardown)\.ts/;
 
 export default defineConfig({
   testDir: './tests/smoke',
@@ -31,7 +36,21 @@ export default defineConfig({
       },
   projects: [
     {
+      name: 'auth-setup',
+      testMatch: /auth\.setup\.ts/,
+      teardown: 'auth-cleanup',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'auth-cleanup',
+      testMatch: /auth\.teardown\.ts/,
+    },
+    {
       name: 'chromium-desktop',
+      testIgnore: authProjectFiles,
+      dependencies: ['auth-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
@@ -39,12 +58,16 @@ export default defineConfig({
     },
     {
       name: 'mobile-chrome',
+      testIgnore: authProjectFiles,
+      dependencies: ['auth-setup'],
       use: {
         ...devices['Pixel 5'],
       },
     },
     {
       name: 'mobile-webkit',
+      testIgnore: authProjectFiles,
+      dependencies: ['auth-setup'],
       use: {
         ...devices['iPhone 13'],
         viewport: { width: 390, height: 844 },

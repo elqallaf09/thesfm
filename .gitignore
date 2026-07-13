@@ -16,6 +16,7 @@ artifacts/
 *.trace.zip
 test-results/
 playwright-report/
+playwright/.auth/
 
 # iOS / Xcode
 DerivedData/
