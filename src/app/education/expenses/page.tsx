@@ -86,7 +86,7 @@ export default function ExpensesPage() {
 
   return (<>
     <style>{`
-      *{box-sizing:border-box;margin:0;padding:0}
+      .ep,.ep *,.ep *::before,.ep *::after{box-sizing:border-box;margin:0;padding:0}
       @keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
       .ep{font-family:var(--font-ui);direction:inherit;background:var(--background);min-height:100vh;color:var(--foreground)}
       .ep ::-webkit-scrollbar{width:4px}.ep ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:var(--radius-pill)}
@@ -103,10 +103,13 @@ export default function ExpensesPage() {
       .ebtn-d{background:var(--danger);color:var(--danger-foreground)}.ebtn-d:hover{background:color-mix(in srgb,var(--danger) 88%,var(--foreground));transform:translateY(-1px)}
       .ebtn-o{background:transparent;border:1.5px solid var(--border-strong);color:var(--foreground-secondary)}.ebtn-o:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--foreground)}
       .row-h:hover{background:var(--surface-hover)!important}
+      .expense-table-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}
+      .expense-table-scroll:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+      .expense-table-scroll table{min-width:680px}
       @media(max-width:768px){.kg{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
     `}</style>
     <main className="ep" dir={dir}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 20px 60px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div style={{ width: '100%', minWidth: 0, margin: 0, padding: '0 0 36px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
         {/* Header */}
         <div style={S(0)}>
@@ -185,6 +188,7 @@ export default function ExpensesPage() {
               <p style={{ color: 'var(--foreground-muted)', fontSize: '14px' }}>{filter ? text.noResults : text.empty}</p>
             </div>
           ) : (
+            <div className="expense-table-scroll" role="region" tabIndex={0} aria-label={`${text.list} (${items.length})`}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
@@ -230,6 +234,7 @@ export default function ExpensesPage() {
                 </tr>
               </tfoot>
             </table>
+            </div>
           )}
         </div>
 

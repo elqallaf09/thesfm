@@ -492,7 +492,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
     >
       <style>{`
         .company-admin-dashboard-content{width:100%!important;max-width:none!important;min-width:0!important}
-        .ca-page{width:100%;max-width:min(1500px,100%);margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:var(--font-ui);color:var(--foreground);min-width:0}
+        .ca-page{width:100%;max-width:none;margin-inline:0;background:transparent;padding:0;direction:${dir};font-family:var(--font-ui);color:var(--foreground);min-width:0}
         .ca-header{margin-bottom:1.4rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);padding:1.25rem 1.35rem;box-shadow:var(--shadow-card);min-width:0}
         .ca-header-copy{min-width:0;max-width:820px}
         .ca-header h1{font-size:clamp(1.7rem,2.2vw,2.35rem);font-weight:700;color:var(--foreground);margin:0 0 .35rem;line-height:1.2}
@@ -505,6 +505,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;border-radius:var(--radius-pill);font-family:var(--font-data);font-size:.75rem;font-weight:500;padding:0 .35rem;background:var(--surface-active);color:var(--foreground);margin-inline-start:.35rem}
         .ca-tab:not(.active) .ca-badge{background:var(--primary-soft);color:var(--primary)}
         .ca-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);overflow:auto;box-shadow:var(--shadow-card);max-width:100%;min-width:0}
+        .ca-card:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
         .ca-table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:760px}.ca-table th{position:sticky;top:0;z-index:1;padding:.75rem 1rem;text-align:start;background:var(--table-header);color:var(--foreground-muted);font-weight:600;font-size:.78rem;border-bottom:1px solid var(--border)}
         .ca-table td{padding:.75rem 1rem;border-bottom:1px solid var(--border);color:var(--foreground);vertical-align:middle}
         .ca-table tr:last-child td{border-bottom:none}.ca-table tr:hover td{background:var(--table-row-hover)}
@@ -571,7 +572,12 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
           ))}
         </div>
 
-        <div className="ca-card">
+        <div
+          className="ca-card"
+          role="region"
+          tabIndex={filtered.length > 0 ? 0 : undefined}
+          aria-label={text.title as string}
+        >
           {filtered.length === 0 ? (
             <div className="ca-empty">{text.empty as string}</div>
           ) : (

@@ -534,35 +534,6 @@ export function TraderToolsDashboard({
       </header>
 
       <div className={`trader-premium-layout${subTab === 'performance' ? ' performance-layout' : ''}`}>
-        {subTab !== 'performance' ? (
-        <aside className="trader-support-column" aria-label={t('market_tool_summary')}>
-          <TraderSupportCard icon={<Calculator size={18} />} title={t('market_calculation_results')} highlight>
-            <div className="trader-side-result-grid">
-              {activeSummaryRows.map(([label, value, dir, icon]) => (
-                <TraderSideStat key={label} icon={icon} label={label} value={value} valueDir={dir} />
-              ))}
-            </div>
-          </TraderSupportCard>
-
-          <TraderSupportCard icon={<WalletCards size={18} />} title={t('market_tool_summary')}>
-            <p>{t('market_tool_summary_body')}</p>
-            <div className="trader-guidance-note">
-              <span><Sparkles size={14} /></span>
-              <div>
-                <strong>{t('market_quick_tip')}</strong>
-                <p>{t('market_quick_tip_body')}</p>
-              </div>
-            </div>
-            <ol className="trader-steps">
-              <li>{t('market_usage_step_balance')}</li>
-              <li>{t('market_usage_step_stop_loss')}</li>
-              <li>{t('market_usage_step_result')}</li>
-            </ol>
-          </TraderSupportCard>
-
-        </aside>
-        ) : null}
-
         <article className="trader-premium-main-card">
           <div className="trader-premium-main-head">
             <span className="trader-premium-tool-icon">{activeTool.icon}</span>
@@ -631,6 +602,34 @@ export function TraderToolsDashboard({
             {renderToolPanel(activeTool.id)}
           </div>
         </article>
+
+        {subTab !== 'performance' ? (
+          <aside className="trader-support-column" aria-label={t('market_tool_summary')}>
+            <TraderSupportCard icon={<Calculator size={18} />} title={t('market_calculation_results')} highlight>
+              <div className="trader-side-result-grid">
+                {activeSummaryRows.map(([label, value, dir, icon]) => (
+                  <TraderSideStat key={label} icon={icon} label={label} value={value} valueDir={dir} />
+                ))}
+              </div>
+            </TraderSupportCard>
+
+            <TraderSupportCard icon={<WalletCards size={18} />} title={t('market_tool_summary')}>
+              <p>{t('market_tool_summary_body')}</p>
+              <div className="trader-guidance-note">
+                <span><Sparkles size={14} /></span>
+                <div>
+                  <strong>{t('market_quick_tip')}</strong>
+                  <p>{t('market_quick_tip_body')}</p>
+                </div>
+              </div>
+              <ol className="trader-steps">
+                <li>{t('market_usage_step_balance')}</li>
+                <li>{t('market_usage_step_stop_loss')}</li>
+                <li>{t('market_usage_step_result')}</li>
+              </ol>
+            </TraderSupportCard>
+          </aside>
+        ) : null}
       </div>
 
       <section className="trader-premium-disclaimer">
@@ -643,13 +642,14 @@ export function TraderToolsDashboard({
 
       <style jsx global>{`
         .trader-premium-dashboard {
-          width: 100%;
-          max-width: 1400px;
-          margin-inline: auto;
+          inline-size: 100%;
+          max-inline-size: none;
+          margin-inline: 0;
           display: grid;
           gap: clamp(14px, 1.5vw, 20px);
           min-width: 0;
-          overflow: hidden;
+          overflow: visible;
+          container: trading-tools / inline-size;
           color: var(--foreground);
           font-family: var(--font-ui);
         }
@@ -741,17 +741,13 @@ export function TraderToolsDashboard({
         }
 
         .trader-premium-dashboard .trader-premium-layout {
-          direction: ltr;
+          direction: inherit;
           display: grid;
-          grid-template-columns: minmax(230px, .55fr) minmax(0, 2.45fr);
-          grid-template-areas: "support main";
+          grid-template-columns: minmax(0, 2.45fr) minmax(230px, .55fr);
+          grid-template-areas: "main support";
           gap: 18px;
           align-items: start;
           min-width: 0;
-        }
-
-        .trader-premium-dashboard[dir="rtl"] .trader-premium-layout > * {
-          direction: rtl;
         }
 
         .trader-premium-dashboard .trader-premium-layout.performance-layout {
@@ -1184,17 +1180,13 @@ export function TraderToolsDashboard({
         }
 
         .trader-premium-dashboard .trader-premium-panel-grid {
-          direction: ltr;
+          direction: inherit;
           display: grid;
-          grid-template-columns: minmax(420px, 1.12fr) minmax(315px, .88fr);
-          grid-template-areas: "result settings";
+          grid-template-columns: minmax(315px, .88fr) minmax(420px, 1.12fr);
+          grid-template-areas: "settings result";
           gap: 18px;
           align-items: start;
           min-width: 0;
-        }
-
-        .trader-premium-dashboard[dir="rtl"] .trader-premium-panel-grid > * {
-          direction: rtl;
         }
 
         .trader-premium-dashboard .trader-premium-result-stack {
@@ -1761,7 +1753,7 @@ export function TraderToolsDashboard({
         }
 
 
-        @media (max-width: 1280px) {
+        @container trading-tools (max-width: 1280px) {
           .trader-premium-dashboard .trader-tool-switcher {
             display: flex;
           }
@@ -1775,7 +1767,7 @@ export function TraderToolsDashboard({
           }
         }
 
-        @media (max-width: 1180px) {
+        @container trading-tools (max-width: 1180px) {
           .trader-premium-dashboard .trader-premium-layout {
             grid-template-columns: minmax(0, 1fr);
             grid-template-areas:
@@ -1802,20 +1794,16 @@ export function TraderToolsDashboard({
           }
         }
 
-        @media (max-width: 980px) {
+        @container trading-tools (max-width: 980px) {
           .trader-premium-dashboard .trader-premium-panel-grid {
             grid-template-columns: minmax(0, 1fr);
             grid-template-areas:
-              "result"
-              "settings";
+              "settings"
+              "result";
           }
         }
 
-        @media (max-width: 720px) {
-          .trader-premium-dashboard {
-            gap: 14px;
-          }
-
+        @container trading-tools (max-width: 720px) {
           .trader-premium-dashboard .trader-premium-header,
           .trader-premium-dashboard .trader-premium-main-card,
           .trader-premium-dashboard .trader-premium-disclaimer {
@@ -1890,7 +1878,7 @@ export function TraderToolsDashboard({
           }
         }
 
-        @media (max-width: 480px) {
+        @container trading-tools (max-width: 480px) {
           .trader-premium-dashboard .trader-premium-header,
           .trader-premium-dashboard .trader-premium-main-card,
           .trader-premium-dashboard .trader-support-card,
@@ -2113,7 +2101,12 @@ export function PerformanceTable({ t, locale, performance }: { t: (key: string) 
 
   return (
     <section className="performance-table-section" aria-label={t('market_asset_performance')}>
-      <div className="trader-table-wrap performance-table-wrap">
+      <div
+        className="trader-table-wrap performance-table-wrap"
+        role="region"
+        tabIndex={0}
+        aria-label={t('market_asset_performance')}
+      >
         <table className="trader-table performance-table">
           <thead>
             <tr>

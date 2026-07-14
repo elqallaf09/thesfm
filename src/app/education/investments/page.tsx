@@ -45,8 +45,8 @@ export default function InvestmentEducationPage() {
   return (
     <main className="investment-data-page" dir={dir}>
       <style>{`
-        .investment-data-page{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui);padding:22px}
-        .investment-wrap{width:min(1120px,100%);margin:0 auto;display:grid;gap:18px}
+        .investment-data-page{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
+        .investment-wrap{width:100%;max-width:none;min-width:0;margin:0;display:grid;gap:18px}
         .investment-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
         .investment-hero{background:var(--hero-gradient);border-radius:var(--radius-panel);padding:clamp(24px,5vw,54px);color:var(--hero-foreground);box-shadow:var(--shadow-md);overflow:hidden;position:relative}
         .investment-hero:after{content:'';position:absolute;inset:auto -80px -110px auto;width:260px;height:260px;border-radius:var(--radius-pill);background:color-mix(in srgb,var(--accent) 18%,transparent);pointer-events:none}
@@ -65,7 +65,7 @@ export default function InvestmentEducationPage() {
         .investment-card button{justify-self:start;background:var(--primary);color:var(--primary-foreground)}
         .investment-card button:hover{background:var(--primary-hover)}
         .investment-note{background:var(--surface-muted);border:1px dashed var(--border-strong);border-radius:var(--radius-card);padding:18px;color:var(--foreground-secondary);font-weight:500;line-height:1.7;text-align:center}
-        @media(max-width:820px){.investment-data-page{padding:14px}.investment-grid{grid-template-columns:1fr}.investment-hero{border-radius:var(--radius-panel)}.investment-actions button{width:100%}.investment-card button{width:100%}}
+        @media(max-width:820px){.investment-grid{grid-template-columns:1fr}.investment-hero{border-radius:var(--radius-panel)}.investment-actions button{width:100%}.investment-card button{width:100%}}
       `}</style>
 
       <div className="investment-wrap">

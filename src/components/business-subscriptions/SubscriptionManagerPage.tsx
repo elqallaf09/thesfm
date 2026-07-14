@@ -2319,8 +2319,10 @@ const subscriptionManagerStyles = `
   .subscription-manager-content {
     display: grid;
     gap: 18px;
-    max-width: 1480px;
-    margin-inline: auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-inline: 0;
   }
 
   .subscription-hero {

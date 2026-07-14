@@ -677,7 +677,7 @@ export default function InstagramAutomationClient({
     >
       <style>{`
         .instagram-admin-content{width:100%!important;max-width:none!important;min-width:0!important}
-        .ig-admin{width:100%;margin:0;padding:14px;display:grid;gap:14px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
+        .ig-admin{width:100%;margin:0;padding:0;display:grid;gap:14px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
         .ig-hero{
           border:1px solid var(--border);
           background:var(--hero-gradient);
@@ -873,7 +873,6 @@ export default function InstagramAutomationClient({
           .ig-form-grid{grid-template-columns:1fr}
         }
         @media(max-width:760px){
-          .ig-admin{padding:10px}
           .ig-hero{grid-template-columns:1fr;padding:16px}
           .ig-hero-tools{justify-content:stretch}
           .ig-hero-tools>*{width:100%}

@@ -45,8 +45,8 @@ export default function SavingsEducationPage() {
   return (
     <main className="savings-data-page" dir={dir}>
       <style>{`
-        .savings-data-page{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui);padding:22px}
-        .savings-wrap{width:min(1120px,100%);margin:0 auto;display:grid;gap:18px}
+        .savings-data-page{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
+        .savings-wrap{width:100%;max-width:none;min-width:0;margin:0;display:grid;gap:18px}
         .savings-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
         .savings-back{min-height:44px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);padding:10px 15px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
         .savings-back:hover{background:var(--surface-hover);border-color:var(--border-strong)}
@@ -66,7 +66,7 @@ export default function SavingsEducationPage() {
         .savings-card button{justify-self:start;background:var(--primary);color:var(--primary-foreground)}
         .savings-card button:hover{background:var(--primary-hover)}
         .savings-note{background:var(--surface-muted);border:1px dashed var(--border-strong);border-radius:var(--radius-card);padding:18px;color:var(--foreground-secondary);font-weight:500;line-height:1.7;text-align:center}
-        @media(max-width:820px){.savings-data-page{padding:14px}.savings-grid{grid-template-columns:1fr}.savings-hero{border-radius:var(--radius-panel)}.savings-actions button,.savings-card button{width:100%}}
+        @media(max-width:820px){.savings-grid{grid-template-columns:1fr}.savings-hero{border-radius:var(--radius-panel)}.savings-actions button,.savings-card button{width:100%}}
       `}</style>
 
       <div className="savings-wrap">

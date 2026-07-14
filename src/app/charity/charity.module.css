@@ -4,8 +4,9 @@
 }
 
 .shellContent {
-  width: min(100%, 1480px);
-  margin-inline: auto;
+  width: 100%;
+  min-width: 0;
+  margin-inline: 0;
 }
 
 .page {

@@ -232,7 +232,7 @@ describe('central visual-system contract', () => {
     expect(globals).toContain('mjx-container *');
     expect(globals).toContain('body :where(input, textarea, select):not(');
     expect(globals).not.toMatch(/\[class\*="(?:Button|Select|Card|Label)/);
-    expect(globals).toContain('button{\n  font-family: var(--font-ui);');
+    expect(normalizedGlobals).toContain('button{\n  font-family: var(--font-ui);');
     expect(globals.indexOf('font-family: var(--font-data) !important'))
       .toBeGreaterThan(globals.indexOf('.auth-input {'));
   });

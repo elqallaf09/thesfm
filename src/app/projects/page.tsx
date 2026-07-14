@@ -326,7 +326,7 @@ export default function ProjectsPage() {
 
   return (<>
     <style>{`
-      *{box-sizing:border-box;margin:0;padding:0}
+      .pp,.pp *,.pp *::before,.pp *::after{box-sizing:border-box;margin:0;padding:0}
       .pp{font-family:var(--font-ui);background:var(--background);min-height:100vh;color:var(--foreground)}
       .project-step-dot.active{box-shadow:var(--focus-shadow)}
       .pp ::-webkit-scrollbar{width:4px}.pp ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:var(--radius-pill)}
@@ -352,16 +352,15 @@ export default function ProjectsPage() {
       .need-chip:hover{border-color:var(--primary);background:var(--surface-hover);color:var(--primary-hover)}
       .need-chip.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-hover)}
       .project-card-header{min-width:0}.project-card-link{min-width:0}.project-card-actions{min-width:0}.project-card-actions>button{min-width:44px!important;min-height:44px!important}
-      @media(max-width:1024px){.sidebar{display:none!important}.main-ml{margin-inline-start:0!important}}
       @media(max-width:768px){.kpi-g{grid-template-columns:1fr 1fr!important}.g2{grid-template-columns:1fr!important}}
       @media(max-width:640px){.project-card-header{flex-wrap:wrap;padding:16px!important}.project-card-link{flex-basis:100%}.project-card-actions{width:100%;display:grid!important;grid-template-columns:44px 44px minmax(0,1fr) 44px;gap:8px!important}.project-card-actions>button{width:100%!important;min-width:0!important}.project-analysis-score{width:44px!important;height:44px!important}}
-      @media(max-width:560px){.kpi-g{grid-template-columns:1fr!important}.main-ml{padding-inline:14px!important}}
+      @media(max-width:560px){.kpi-g{grid-template-columns:1fr!important}}
       @media(prefers-reduced-motion:reduce){.pc,.pbtn,.prog-fill,.need-chip{transition:none!important}.pc:hover:not(.no-h),.pbtn-g:hover,.pbtn-d:hover{transform:none}}
     `}</style>
 
     <div className="pp" dir={dir}>
       {/* ── Main ── */}
-      <DashboardPageShell className="main-ml" contentStyle={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <DashboardPageShell contentStyle={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
           {/* Header */}
           <div style={S(0)}>

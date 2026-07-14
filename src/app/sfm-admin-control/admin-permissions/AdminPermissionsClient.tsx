@@ -341,7 +341,12 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
         <section className="ap-panel">
           <h2><ShieldCheck size={18} /> {t('admin_current_admins')}</h2>
-          <div className="ap-table-wrap">
+          <div
+            className="ap-table-wrap"
+            role="region"
+            tabIndex={0}
+            aria-label={t('admin_current_admins')}
+          >
             <table>
               <thead>
                 <tr>
@@ -392,7 +397,12 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
         <section className="ap-panel">
           <h2><Clock3 size={18} /> {t('admin_audit_log')}</h2>
-          <div className="ap-table-wrap audit">
+          <div
+            className="ap-table-wrap audit"
+            role="region"
+            tabIndex={0}
+            aria-label={t('admin_audit_log')}
+          >
             <table>
               <thead>
                 <tr>
@@ -420,7 +430,7 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
 
       <style jsx>{`
         :global(.admin-permissions-content){width:100%!important;max-width:none!important}
-        .admin-permissions{width:100%;max-width:1440px;margin:0 auto;padding:clamp(14px,2vw,28px);display:grid;gap:16px;font-family:var(--font-ui);color:var(--foreground)}
+        .admin-permissions{width:100%;max-width:none;margin:0;padding:0;display:grid;gap:16px;font-family:var(--font-ui);color:var(--foreground)}
         .ap-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border:1px solid var(--border);border-radius:var(--radius-panel);padding:22px;background:var(--hero-gradient);color:var(--hero-foreground);box-shadow:var(--shadow-card)}
         .ap-hero span{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:7px 11px;color:var(--hero-foreground);font-weight:600}
         .ap-hero h1{margin:12px 0 8px;font-size:clamp(28px,4vw,44px);font-weight:700;letter-spacing:0;line-height:1.15}
@@ -451,12 +461,12 @@ export default function AdminPermissionsClient({ actorEmail }: { actorEmail: str
         .ap-permissions label.checked{border-color:var(--success);background:var(--success-soft);color:var(--success)}
         .ap-permissions input{width:18px;height:18px;accent-color:var(--accent)}
         .ap-actions{display:flex;gap:10px;flex-wrap:wrap}.ap-actions button.danger{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}.ap-actions button:disabled{opacity:.55;cursor:not-allowed}
-        .ap-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card)}.ap-table-wrap.audit{max-height:420px}
+        .ap-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card)}.ap-table-wrap:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}.ap-table-wrap.audit{max-height:420px}
         table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:start;font-size:12.5px;line-height:1.5}th{position:sticky;top:0;background:var(--table-header);color:var(--foreground-muted);font-weight:600}td{font-weight:400}
         .ap-link-action{min-height:34px;background:var(--primary-soft);color:var(--primary);box-shadow:none}
         .ap-empty{border:1px dashed var(--border-strong);background:var(--surface-muted);border-radius:var(--radius-card);padding:14px;color:var(--foreground-muted);font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px}
         @media(max-width:1050px){.ap-grid{grid-template-columns:1fr}.ap-permissions{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:680px){.admin-permissions{padding:12px}.ap-hero{display:grid}.ap-hero strong{width:max-content;max-width:100%}.ap-search,.ap-selected,.ap-permissions{grid-template-columns:1fr}.ap-actions{display:grid}.ap-actions button{width:100%}table{min-width:680px}}
+        @media(max-width:680px){.ap-hero{display:grid}.ap-hero strong{width:max-content;max-width:100%}.ap-search,.ap-selected,.ap-permissions{grid-template-columns:1fr}.ap-actions{display:grid}.ap-actions button{width:100%}table{min-width:680px}}
       `}</style>
     </AdminDashboardShell>
   );

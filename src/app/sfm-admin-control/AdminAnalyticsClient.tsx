@@ -614,7 +614,12 @@ export default function AdminAnalyticsClient() {
               <CompactEmpty title={t('admin_company_no_requests')} body={t('admin_company_requests_desc')} />
             ) : null}
             {companyRequestsState === 'ready' && companyRequests.length > 0 ? (
-              <div className="admin-table-wrap compact-scroll">
+              <div
+                className="admin-table-wrap compact-scroll"
+                role="region"
+                tabIndex={0}
+                aria-label={t('admin_company_requests')}
+              >
                 <table>
                   <thead><tr><th>{t('company_listing_company_name')}</th><th>{t('company_listing_company_type')}</th><th>{t('company_listing_country')}</th><th>{t('company_listing_status')}</th><th>{t('admin_actions')}</th></tr></thead>
                   <tbody>
@@ -654,7 +659,12 @@ export default function AdminAnalyticsClient() {
           <Panel title={t('admin_most_used_pages')} icon={BarChart3}>
             <p className="admin-panel-copy">{copy.topPagesDescription}</p>
             {topPages.length > 0 ? (
-              <div className="admin-table-wrap compact-scroll">
+              <div
+                className="admin-table-wrap compact-scroll"
+                role="region"
+                tabIndex={0}
+                aria-label={t('admin_most_used_pages')}
+              >
                 <table>
                   <thead><tr><th>{t('admin_page_name')}</th><th>{t('admin_route')}</th><th>{t('admin_views')}</th><th>{t('admin_unique_visitors')}</th><th>{t('admin_percentage')}</th></tr></thead>
                   <tbody>
@@ -760,7 +770,12 @@ export default function AdminAnalyticsClient() {
                 )}
               </div>
               {filteredRecent.length > 0 ? (
-                <div className="admin-table-wrap admin-table-scroll">
+                <div
+                  className="admin-table-wrap admin-table-scroll"
+                  role="region"
+                  tabIndex={0}
+                  aria-label={t('admin_recent_activity')}
+                >
                   <table>
                     <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_language')}</th><th>{t('admin_date')}</th></tr></thead>
                     <tbody>
@@ -793,7 +808,12 @@ export default function AdminAnalyticsClient() {
         <Panel title={copy.detailedLogs} icon={Activity}>
           <p className="admin-panel-copy">{copy.detailedLogsDescription}</p>
           {hasAnalyticsRows && filteredRecent.length > 0 ? (
-            <div className="admin-table-wrap admin-table-scroll logs">
+            <div
+              className="admin-table-wrap admin-table-scroll logs"
+              role="region"
+              tabIndex={0}
+              aria-label={copy.detailedLogs}
+            >
               <table>
                 <thead><tr><th>{t('admin_event_type')}</th><th>{t('admin_route')}</th><th>{t('admin_module')}</th><th>{t('admin_device')}</th><th>{t('admin_date')}</th></tr></thead>
                 <tbody>
@@ -922,7 +942,7 @@ function Breakdown({
 
 const adminStyles = `
   :global(.admin-dashboard-content){max-width:none!important;width:100%!important;min-width:0!important}
-  .admin-dashboard{width:100%;max-width:1500px;margin:0 auto;padding:clamp(16px,2vw,32px);display:grid;gap:18px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
+  .admin-dashboard{width:100%;max-width:none;margin:0;padding:0;display:grid;gap:18px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
   .admin-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-radius:var(--radius-panel);padding:24px;background:var(--hero-gradient);color:var(--hero-foreground);box-shadow:var(--shadow-card)}
   .admin-eyebrow,.admin-privacy-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--hero-foreground) 28%,transparent);background:color-mix(in srgb,var(--hero-foreground) 9%,transparent);border-radius:var(--radius-pill);padding:8px 12px;color:var(--hero-foreground-muted);font-weight:var(--type-label-weight)}
   .admin-hero h1{margin:13px 0 8px;font-size:clamp(28px,4.2vw,48px);line-height:1.05;font-weight:var(--type-display-weight);letter-spacing:0}
@@ -966,6 +986,7 @@ const adminStyles = `
   .company-admin-actions button:focus-visible{outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
   .company-admin-actions button:disabled{opacity:.65;cursor:not-allowed}
   .admin-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);min-width:0}
+  .admin-table-wrap:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
   .admin-table-wrap.compact-scroll{max-height:430px}
   .admin-table-wrap.admin-table-scroll{max-height:520px}
   .admin-table-wrap.logs{max-height:420px}
@@ -1017,5 +1038,5 @@ const adminStyles = `
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
   @media(max-width:1200px){.admin-overview-grid{grid-template-columns:1fr}.admin-stat-grid,.admin-stat-grid.secondary,.admin-event-grid.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}.admin-table-tools{grid-template-columns:1fr 1fr}}
-  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-stat-grid.secondary,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact,.admin-event-grid.summary,.admin-table-tools{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}.admin-table-pager{display:grid}.admin-table-pager div{justify-content:stretch}.admin-table-pager button{width:100%}}
+  @media(max-width:720px){.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-stat-grid.secondary,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact,.admin-event-grid.summary,.admin-table-tools{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}.admin-table-pager{display:grid}.admin-table-pager div{justify-content:stretch}.admin-table-pager button{width:100%}}
 `;
