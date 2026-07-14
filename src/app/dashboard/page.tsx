@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -10,7 +10,6 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  CheckCircle2,
   ClipboardList,
   Coins,
   FileText,
@@ -38,11 +37,18 @@ import { currentMonthRange, personalExpenseRows, personalIncomeRows, safeDivide,
 import { formatDate } from '@/lib/formatDate';
 import { formatMoney } from '@/lib/formatMoney';
 import { calculateGoalProgress } from '@/lib/goalProgress';
-import { parseMoneyValue } from '@/lib/money';
+import {
+  buildLinePoints,
+  buildMonthlyCashFlow,
+  calculateFinancialHealth,
+  monthOverMonthChange,
+  realizedExpenseRows,
+  realizedIncomeRows,
+} from '@/lib/dashboard/financialMetrics';
 import {
   type DataRow, CardShell, MetricCard, SmallStat, ActionLink, EmptyState, ProgressBar,
   normalizeDashboardError, logDashboardFailure, isGlobalDashboardFailure,
-  numberValue, firstNumber, firstText, firstDate, parseRecordDate,
+  firstNumber, firstText, firstDate, parseRecordDate,
   isCurrentMonth, daysUntil, isOpenStatus, isTaskOverdue, goalProgress,
   latestByDate, statusLabel, getRecordCurrency,
 } from '@/components/dashboard/DashboardSubComponents';
@@ -53,6 +59,7 @@ type Lang = 'ar' | 'en' | 'fr';
 type DashboardKey =
   | 'income'
   | 'expenses'
+  | 'debts'
   | 'savings'
   | 'goals'
   | 'investments'
@@ -101,6 +108,7 @@ type PriorityItem = {
 const DASHBOARD_TABLES: DashboardTable[] = [
   { key: 'income', table: 'monthly_income_sources', limit: 1000 },
   { key: 'expenses', table: 'expense_items', limit: 1000 },
+  { key: 'debts', table: 'debts', limit: 1000 },
   { key: 'savings', table: 'savings_items', limit: 1000 },
   { key: 'goals', table: 'financial_goals', limit: 1000 },
   { key: 'investments', table: 'investment_items', limit: 1000 },
@@ -122,6 +130,7 @@ const DASHBOARD_TABLES: DashboardTable[] = [
 ];
 
 const OPTIONAL_DASHBOARD_SECTIONS = new Set<DashboardFailureSection>([
+  'debts',
   'projectTasks',
   'projectMilestones',
   'projectFinancialModels',
@@ -549,14 +558,16 @@ export default function ExecutiveDashboardPage() {
       getRecordCurrency(records.savings) ||
       'KWD';
 
-    const incomeTotal = sumAmounts(records.income, ['amount']);
-    const expenseTotal = sumAmounts(records.expenses, ['amount']);
+    const realizedIncome = realizedIncomeRows(records.income);
+    const realizedExpenses = realizedExpenseRows(records.expenses);
+    const incomeTotal = sumAmounts(realizedIncome, ['amount']);
+    const expenseTotal = sumAmounts(realizedExpenses, ['amount']);
     const savingsTotal = sumAmounts(records.savings, ['current_amount', 'balance', 'amount']);
     const investmentsTotal = sumAmounts(records.investments, ['converted_market_value', 'current_value', 'market_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
 
     const monthRange = currentMonthRange();
-    const monthIncomeRows = records.income.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'received_date', 'generated_for_date', 'created_at'], monthRange));
-    const monthExpenseRows = records.expenses.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'expense_date', 'created_at'], monthRange));
+    const monthIncomeRows = realizedIncome.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'received_date', 'generated_for_date', 'created_at'], monthRange));
+    const monthExpenseRows = realizedExpenses.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'expense_date', 'created_at'], monthRange));
     const currentMonthIncome = sumAmounts(monthIncomeRows, ['amount']);
     const currentMonthExpenses = sumAmounts(monthExpenseRows, ['amount']);
     const spendingRatio = safeDivide(currentMonthExpenses, currentMonthIncome);
@@ -626,16 +637,24 @@ export default function ExecutiveDashboardPage() {
     ].filter(Boolean).length;
     const reportsNeedData = 8 - readyReports;
 
-    const healthInputsAvailable = records.income.length > 0 && records.expenses.length > 0 && records.savings.length > 0;
+    const activeDebts = records.debts.filter((row) => {
+      const debtStatus = firstText(row, ['status'], 'active').toLowerCase();
+      const remaining = firstNumber(row, ['calculated_remaining_amount', 'remaining_amount']);
+      return debtStatus !== 'paid' && (remaining === null || remaining > 0);
+    });
+    const monthlyDebtPayments = sumAmounts(activeDebts, ['monthly_payment']);
+    const healthDetails = calculateFinancialHealth({
+      monthlyIncome: currentMonthIncome,
+      monthlyExpenses: currentMonthExpenses,
+      savingsBalance: savingsTotal,
+      monthlyDebtPayments,
+      hasIncomeData: monthIncomeRows.length > 0,
+      hasExpenseData: monthExpenseRows.length > 0,
+      hasSavingsData: records.savings.length > 0,
+      debtsLoaded: !errors.debts,
+    });
     const netBalance = incomeTotal - expenseTotal;
-    const healthScore = healthInputsAvailable
-      ? (records.income.length > 0 ? 15 : 0) +
-        (records.expenses.length > 0 ? 15 : 0) +
-        (netBalance > 0 ? 20 : 0) +
-        (savingsTotal > 0 ? 15 : 0) +
-        (goalProgressValues.length > 0 ? 15 : 0) +
-        (overdueTasks.length === 0 && highPriorityNotifications.length === 0 ? 20 : 0)
-      : null;
+    const cashFlowSeries = buildMonthlyCashFlow(realizedIncome, realizedExpenses);
 
     const priorityItems: PriorityItem[] = [];
     if (profile?.onboarding_completed === false) {
@@ -706,6 +725,9 @@ export default function ExecutiveDashboardPage() {
       currentMonthIncome,
       currentMonthExpenses,
       currentMonthNet,
+      realizedIncome,
+      realizedExpenses,
+      cashFlowSeries,
       spendingRatio,
       hasCurrentMonthData,
       activeGoals: records.goals.length,
@@ -730,10 +752,12 @@ export default function ExecutiveDashboardPage() {
       highPriorityNotifications: highPriorityNotifications.length,
       dueTodayNotifications: dueTodayNotifications.length,
       topNotifications: activeNotifications.slice(0, 3),
-      healthScore,
+      healthScore: healthDetails?.score ?? null,
+      healthDetails,
+      monthlyDebtPayments,
       priorityItem: priorityItems[0] ?? null,
     };
-  }, [profile?.default_currency, profile?.onboarding_completed, records, text]);
+  }, [errors.debts, profile?.default_currency, profile?.onboarding_completed, records, text]);
 
   const money = useCallback(
     (amount: number | null | undefined) => {
@@ -794,54 +818,75 @@ export default function ExecutiveDashboardPage() {
 
   const dashboardCopy = lang === 'ar'
     ? {
-        greeting: 'صباح الخير', overview: 'هذه نظرة شاملة على أدائك المالي', addTransaction: 'إضافة معاملة',
+        greeting: 'مرحباً', overview: 'هذه نظرة شاملة على أدائك المالي المسجل', addTransaction: 'إضافة معاملة',
         thisMonth: 'هذا الشهر', cashFlow: 'التدفق النقدي', income: 'الدخل', expenses: 'المصروفات',
-        financialHealth: 'الصحة المالية', savingsRatio: 'نسبة الادخار', expenseCoverage: 'تغطية المصروفات',
-        debtLevel: 'مستوى الديون', veryGood: 'جيدة جداً', excellent: 'ممتاز', low: 'منخفض', details: 'عرض التفاصيل',
+        financialHealth: 'الصحة المالية', savingsRatio: 'نسبة الادخار', expenseCoverage: 'أشهر تغطية المدخرات للمصروفات',
+        debtLevel: 'نسبة أقساط الديون إلى الدخل', details: 'عرض التفاصيل', healthMethod: 'المعادلة: 35 نقطة لفائض شهري يصل إلى 20%، و35 نقطة لمدخرات تغطي 6 أشهر، و30 نقطة لعبء دين لا يتجاوز 20%؛ وتنخفض نقاط الدين تدريجياً حتى 50%.',
         recentTransactions: 'آخر المعاملات', merchant: 'التاجر / الجهة', category: 'الفئة', date: 'التاريخ', amount: 'المبلغ',
         expenseDistribution: 'توزيع المصروفات', dailyActions: 'إجراءات اليوم', goals: 'الأهداف المالية',
-        viewAll: 'عرض الجميع', viewReport: 'عرض التقرير', annualGoal: 'الهدف السنوي', noTransactions: 'لا توجد معاملات حديثة',
-        reviewExpenses: 'مراجعة تقرير المصروفات', approveInvoices: 'اعتماد فواتير الموردين', updateBudget: 'تحديث الميزانية الشهرية',
+        viewAll: 'عرض الجميع', viewReport: 'عرض التقرير', annualGoal: 'هدف مالي', noTransactions: 'لا توجد معاملات فعلية حديثة', months12: '12 شهراً',
+        previousCompletedMonth: 'مقارنة بآخر شهر مكتمل', noComparison: 'لا تتوفر مقارنة شهرية', noDistribution: 'لا توجد مصروفات فعلية لتوزيعها',
       }
     : lang === 'fr'
       ? {
-          greeting: 'Bonjour', overview: 'Voici une vue complète de vos performances financières', addTransaction: 'Ajouter une transaction',
+          greeting: 'Bienvenue', overview: 'Vue de vos performances financières enregistrées', addTransaction: 'Ajouter une transaction',
           thisMonth: 'Ce mois', cashFlow: 'Flux de trésorerie', income: 'Revenus', expenses: 'Dépenses',
-          financialHealth: 'Santé financière', savingsRatio: "Taux d'épargne", expenseCoverage: 'Couverture des dépenses',
-          debtLevel: "Niveau d'endettement", veryGood: 'Très bon', excellent: 'Excellent', low: 'Faible', details: 'Voir les détails',
+          financialHealth: 'Santé financière', savingsRatio: "Taux d'épargne", expenseCoverage: "Mois de dépenses couverts par l'épargne",
+          debtLevel: "Mensualités de dette / revenu", details: 'Voir les détails', healthMethod: "Formule : 35 points pour un excédent mensuel allant jusqu'à 20 %, 35 pour six mois d'épargne et 30 pour une charge de dette jusqu'à 20 %, décroissant jusqu'à 50 %.",
           recentTransactions: 'Transactions récentes', merchant: 'Commerçant', category: 'Catégorie', date: 'Date', amount: 'Montant',
           expenseDistribution: 'Répartition des dépenses', dailyActions: "Actions du jour", goals: 'Objectifs financiers',
-          viewAll: 'Tout afficher', viewReport: 'Voir le rapport', annualGoal: 'Objectif annuel', noTransactions: 'Aucune transaction récente',
-          reviewExpenses: 'Examiner le rapport des dépenses', approveInvoices: 'Approuver les factures fournisseurs', updateBudget: 'Mettre à jour le budget mensuel',
+          viewAll: 'Tout afficher', viewReport: 'Voir le rapport', annualGoal: 'Objectif financier', noTransactions: 'Aucune transaction réalisée récente', months12: '12 mois',
+          previousCompletedMonth: 'Par rapport au dernier mois complet', noComparison: 'Comparaison mensuelle indisponible', noDistribution: 'Aucune dépense réalisée à répartir',
         }
       : {
-          greeting: 'Good morning', overview: 'Here is a complete view of your financial performance', addTransaction: 'Add transaction',
+          greeting: 'Welcome', overview: 'A view of your recorded financial performance', addTransaction: 'Add transaction',
           thisMonth: 'This month', cashFlow: 'Cash flow', income: 'Income', expenses: 'Expenses',
-          financialHealth: 'Financial health', savingsRatio: 'Savings ratio', expenseCoverage: 'Expense coverage',
-          debtLevel: 'Debt level', veryGood: 'Very good', excellent: 'Excellent', low: 'Low', details: 'View details',
+          financialHealth: 'Financial health', savingsRatio: 'Savings ratio', expenseCoverage: 'Months of expenses covered by savings',
+          debtLevel: 'Debt payments to income', details: 'View details', healthMethod: 'Formula: 35 points for monthly surplus up to 20%, 35 for six months of savings coverage, and 30 for debt burden up to 20%, tapering to zero at 50%.',
           recentTransactions: 'Recent transactions', merchant: 'Merchant', category: 'Category', date: 'Date', amount: 'Amount',
           expenseDistribution: 'Expense distribution', dailyActions: "Today's actions", goals: 'Financial goals',
-          viewAll: 'View all', viewReport: 'View report', annualGoal: 'Annual goal', noTransactions: 'No recent transactions',
-          reviewExpenses: 'Review expense report', approveInvoices: 'Approve supplier invoices', updateBudget: 'Update monthly budget',
+          viewAll: 'View all', viewReport: 'View report', annualGoal: 'Financial goal', noTransactions: 'No recent realized transactions', months12: '12 months',
+          previousCompletedMonth: 'Compared with the last completed month', noComparison: 'Monthly comparison unavailable', noDistribution: 'No realized expenses to distribute',
         };
 
-  const displayName = firstText(user?.user_metadata ?? {}, ['display_name', 'full_name', 'name'], lang === 'ar' ? 'محمد' : 'Mohammed');
+  const displayName = firstText(user?.user_metadata ?? {}, ['display_name', 'full_name', 'name']) || user?.email?.split('@')[0] || '';
+  const completedMonth = summary.cashFlowSeries.at(-2);
+  const priorCompletedMonth = summary.cashFlowSeries.at(-3);
+  const changeFor = (current: number, previous: number) => monthOverMonthChange(current, previous, current !== 0, previous !== 0);
+  const completedNet = (completedMonth?.income ?? 0) - (completedMonth?.expenses ?? 0);
+  const priorNet = (priorCompletedMonth?.income ?? 0) - (priorCompletedMonth?.expenses ?? 0);
+  const formatTrend = (value: number | null) => value === null ? null : `${Math.abs(value * 100).toFixed(1)}%`;
+  const sparklineFor = (values: number[]) => buildLinePoints(values, 118, 4, 28);
   const financialKpis = [
-    { label: text.netBalance, value: money(summary.netBalance), icon: <Wallet size={19} />, tone: 'blue', trend: '5.1%', path: 'M2 25 C15 22 17 29 29 22 S45 18 55 23 S70 5 84 15 S99 7 118 12' },
-    { label: text.totalIncome, value: money(summary.incomeTotal), icon: <Wallet size={19} />, tone: 'green', trend: '12.7%', path: 'M2 26 C13 14 21 27 31 18 S47 22 57 13 S72 18 82 9 S98 18 118 5' },
-    { label: text.totalExpenses, value: money(summary.expenseTotal), icon: <Coins size={19} />, tone: 'red', trend: '3.2%', path: 'M2 27 C15 14 20 27 33 17 S51 24 62 12 S78 9 87 22 S101 13 118 15' },
-    { label: text.investments, value: money(summary.investmentsTotal), icon: <TrendingUp size={19} />, tone: 'teal', trend: '8.4%', path: 'M2 25 C12 14 19 29 30 18 S45 25 55 10 S70 18 80 6 S96 19 118 7' },
+    { label: text.netBalance, value: summary.realizedIncome.length || summary.realizedExpenses.length ? money(summary.netBalance) : text.insufficientData, icon: <Wallet size={19} />, tone: 'blue', change: changeFor(completedNet, priorNet), path: sparklineFor(summary.cashFlowSeries.map(point => point.income - point.expenses)) },
+    { label: text.totalIncome, value: summary.realizedIncome.length ? money(summary.incomeTotal) : text.insufficientData, icon: <Wallet size={19} />, tone: 'green', change: changeFor(completedMonth?.income ?? 0, priorCompletedMonth?.income ?? 0), path: sparklineFor(summary.cashFlowSeries.map(point => point.income)) },
+    { label: text.totalExpenses, value: summary.realizedExpenses.length ? money(summary.expenseTotal) : text.insufficientData, icon: <Coins size={19} />, tone: 'red', change: changeFor(completedMonth?.expenses ?? 0, priorCompletedMonth?.expenses ?? 0), path: sparklineFor(summary.cashFlowSeries.map(point => point.expenses)) },
+    { label: text.investments, value: records.investments.length ? money(summary.investmentsTotal) : text.insufficientData, icon: <TrendingUp size={19} />, tone: 'teal', change: null, path: '' },
   ];
 
+  const cashFlowMaximum = Math.max(...summary.cashFlowSeries.flatMap((point) => [point.income, point.expenses]), 0);
+  const cashFlowHasData = cashFlowMaximum > 0;
+  const cashFlowIncomePoints = buildLinePoints(summary.cashFlowSeries.map((point) => point.income), 760, 18, 202, cashFlowMaximum);
+  const cashFlowExpensePoints = buildLinePoints(summary.cashFlowSeries.map((point) => point.expenses), 760, 18, 202, cashFlowMaximum);
+  const cashFlowScale = [1, 0.75, 0.5, 0.25, 0].map((factor) => cashFlowMaximum * factor);
+  const compactNumber = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
+  const cashFlowMonths = summary.cashFlowSeries.map((point) => new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(point.year, point.month, 1)));
+  const actualPercent = (value: number | null | undefined) => value === null || value === undefined || !Number.isFinite(value)
+    ? text.insufficientData
+    : `${(value * 100).toFixed(1)}%`;
+  const actualMonths = (value: number | null | undefined) => value === null || value === undefined || !Number.isFinite(value)
+    ? text.insufficientData
+    : `${value.toFixed(1)} ${lang === 'ar' ? 'شهر' : lang === 'fr' ? 'mois' : value === 1 ? 'month' : 'months'}`;
+
   const recentTransactions = [
-    ...records.expenses.map((row, index) => ({
+    ...summary.realizedExpenses.map((row, index) => ({
       id: firstText(row, ['id'], `expense-${index}`),
       merchant: firstText(row, ['merchant', 'name', 'title', 'description'], dashboardCopy.expenses),
       category: firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses),
       date: firstDate(row, ['transaction_date', 'expense_date', 'date', 'created_at']),
       amount: -(firstNumber(row, ['amount']) ?? 0),
     })),
-    ...records.income.map((row, index) => ({
+    ...summary.realizedIncome.map((row, index) => ({
       id: firstText(row, ['id'], `income-${index}`),
       merchant: firstText(row, ['source_name', 'name', 'title', 'description'], dashboardCopy.income),
       category: firstText(row, ['category', 'type'], dashboardCopy.income),
@@ -852,7 +897,7 @@ export default function ExecutiveDashboardPage() {
     .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime())
     .slice(0, 5);
 
-  const expenseGroups = Array.from(records.expenses.reduce((groups, row) => {
+  const expenseGroups = Array.from(summary.realizedExpenses.reduce((groups, row) => {
     const label = firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses);
     groups.set(label, (groups.get(label) ?? 0) + (firstNumber(row, ['amount']) ?? 0));
     return groups;
@@ -860,15 +905,19 @@ export default function ExecutiveDashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
   const expenseGroupTotal = expenseGroups.reduce((sum, [, value]) => sum + value, 0);
-  const expenseLegend = expenseGroups.length
-    ? expenseGroups.map(([label, value], index) => ({ label, percentage: expenseGroupTotal ? Math.round((value / expenseGroupTotal) * 100) : 0, index }))
-    : [
-        { label: lang === 'ar' ? 'الموظفون والرواتب' : 'Payroll', percentage: 35, index: 0 },
-        { label: lang === 'ar' ? 'التشغيل' : 'Operations', percentage: 25, index: 1 },
-        { label: lang === 'ar' ? 'التسويق والمبيعات' : 'Marketing', percentage: 15, index: 2 },
-        { label: lang === 'ar' ? 'الإيجار والمرافق' : 'Rent & utilities', percentage: 10, index: 3 },
-        { label: lang === 'ar' ? 'أخرى' : 'Other', percentage: 15, index: 4 },
-      ];
+  let expenseOffset = 0;
+  const expenseLegend = expenseGroups.map(([label, value], index) => {
+    const percentage = expenseGroupTotal ? (value / expenseGroupTotal) * 100 : 0;
+    const item = { label, percentage, index, offset: expenseOffset };
+    expenseOffset += percentage;
+    return item;
+  });
+  const taskPriorityLabels = {
+    urgent: lang === 'ar' ? 'عاجلة' : lang === 'fr' ? 'Urgente' : 'Urgent',
+    high: lang === 'ar' ? 'عالية' : lang === 'fr' ? 'Élevée' : 'High',
+    medium: lang === 'ar' ? 'متوسطة' : lang === 'fr' ? 'Moyenne' : 'Medium',
+    low: lang === 'ar' ? 'منخفضة' : lang === 'fr' ? 'Faible' : 'Low',
+  };
 
   if (loading || isLoadingData) {
     return (
@@ -888,14 +937,14 @@ export default function ExecutiveDashboardPage() {
         <section className="reference-hero" aria-labelledby="reference-dashboard-title">
           <div className="reference-hero-head">
             <div className="reference-hero-copy">
-              <h1 id="reference-dashboard-title">{dashboardCopy.greeting}، {displayName}</h1>
+              <h1 id="reference-dashboard-title">{dashboardCopy.greeting}{displayName ? `، ${displayName}` : ''}</h1>
               <p>{dashboardCopy.overview}</p>
             </div>
             <div className="reference-hero-actions">
-              <button type="button" className="reference-period-button">
+              <span className="reference-period-button">
                 <CalendarDays size={17} aria-hidden="true" />
                 <span>{dashboardCopy.thisMonth}</span>
-              </button>
+              </span>
               <Link href="/income" className="reference-primary-button">
                 <Plus size={18} aria-hidden="true" />
                 <span>{dashboardCopy.addTransaction}</span>
@@ -912,11 +961,12 @@ export default function ExecutiveDashboardPage() {
                 </div>
                 <strong data-financial-value="true">{item.value}</strong>
                 <div className="reference-kpi-foot">
-                  <span className="reference-trend">▲ {item.trend}</span>
-                  <small>{lang === 'ar' ? 'عن الشهر الماضي' : lang === 'fr' ? 'vs mois précédent' : 'vs last month'}</small>
-                  <svg viewBox="0 0 120 34" role="img" aria-label={`${item.label} trend`}>
-                    <path d={item.path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+                  {item.change === null ? (
+                    <small>{dashboardCopy.noComparison}</small>
+                  ) : (
+                    <><span className={`reference-trend ${item.change < 0 ? 'is-down' : 'is-up'}`}>{item.change < 0 ? '▼' : '▲'} {formatTrend(item.change)}</span><small>{dashboardCopy.previousCompletedMonth}</small></>
+                  )}
+                  {item.path ? <svg viewBox="0 0 120 34" aria-hidden="true"><polyline points={item.path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}
                 </div>
               </article>
             ))}
@@ -933,45 +983,43 @@ export default function ExecutiveDashboardPage() {
                   <span><i className="is-expense" />{dashboardCopy.expenses}</span>
                 </div>
               </div>
-              <button type="button" className="reference-icon-button" aria-label={dashboardCopy.thisMonth}>
-                <span>{lang === 'ar' ? '12 شهر' : '12 months'}</span>
+              <span className="reference-icon-button">
+                <span>{dashboardCopy.months12}</span>
                 <CalendarDays size={15} aria-hidden="true" />
-              </button>
+              </span>
             </header>
-            <div className="reference-line-chart" aria-label={dashboardCopy.cashFlow}>
-              <div className="reference-chart-scale" aria-hidden="true"><span>800k</span><span>600k</span><span>400k</span><span>200k</span><span>0</span></div>
+            {cashFlowHasData ? <div className="reference-line-chart" aria-label={dashboardCopy.cashFlow}>
+              <div className="reference-chart-scale" aria-hidden="true">{cashFlowScale.map((value, index) => <span key={index}>{compactNumber.format(value)}</span>)}</div>
               <svg viewBox="0 0 760 220" role="img" aria-label={dashboardCopy.cashFlow} preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="incomeArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--accent)" stopOpacity=".18"/><stop offset="1" stopColor="var(--accent)" stopOpacity="0"/></linearGradient>
-                  <linearGradient id="expenseArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--primary)" stopOpacity=".16"/><stop offset="1" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
-                </defs>
                 <g className="reference-grid-lines"><path d="M0 18H760M0 64H760M0 110H760M0 156H760M0 202H760" /></g>
-                <path className="reference-income-area" d="M0 150 C55 130 70 108 126 116 S190 150 246 88 S318 72 372 58 S448 82 500 66 S580 102 630 112 S710 142 760 118 L760 202 L0 202Z" />
-                <path className="reference-expense-area" d="M0 172 C48 152 85 142 126 150 S198 176 246 132 S326 128 372 112 S454 106 500 120 S568 146 630 142 S706 168 760 150 L760 202 L0 202Z" />
-                <path className="reference-income-line" d="M0 150 C55 130 70 108 126 116 S190 150 246 88 S318 72 372 58 S448 82 500 66 S580 102 630 112 S710 142 760 118" />
-                <path className="reference-expense-line" d="M0 172 C48 152 85 142 126 150 S198 176 246 132 S326 128 372 112 S454 106 500 120 S568 146 630 142 S706 168 760 150" />
+                <polygon className="reference-income-area" points={`${cashFlowIncomePoints} 760,202 0,202`} />
+                <polygon className="reference-expense-area" points={`${cashFlowExpensePoints} 760,202 0,202`} />
+                <polyline className="reference-income-line" points={cashFlowIncomePoints} />
+                <polyline className="reference-expense-line" points={cashFlowExpensePoints} />
               </svg>
-              <div className="reference-months" aria-hidden="true">{(lang === 'ar' ? ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).map(month => <span key={month}>{month}</span>)}</div>
-            </div>
+              <div className="reference-months" aria-hidden="true">{cashFlowMonths.map((month, index) => <span key={`${summary.cashFlowSeries[index].key}-${month}`}>{month}</span>)}</div>
+            </div> : <div className="reference-compact-empty">{text.insufficientData}</div>}
           </article>
 
           <article className="reference-panel reference-health">
             <header className="reference-panel-heading"><h2>{dashboardCopy.financialHealth}</h2><ShieldCheck size={19} aria-hidden="true" /></header>
             <div className="reference-health-body">
-              <div className="reference-score-ring" style={{ '--score': `${summary.healthScore ?? 0}%` } as CSSProperties}>
-                <div><strong>{summary.healthScore ?? 0}</strong><span>/100</span></div>
+              <div className="reference-score-ring">
+                <svg viewBox="0 0 42 42" aria-hidden="true"><circle className="ring-track" cx="21" cy="21" r="16" pathLength="100"/><circle className="ring-value" cx="21" cy="21" r="16" pathLength="100" strokeDasharray={`${summary.healthScore ?? 0} 100`}/></svg>
+                <div><strong>{summary.healthScore ?? '—'}</strong>{summary.healthScore === null ? null : <span>/100</span>}</div>
               </div>
               <strong className="reference-score-label">{summary.healthScore === null ? text.insufficientData : statusLabel(summary.healthScore, text)}</strong>
               <div className="reference-health-list">
                 {[
-                  [dashboardCopy.savingsRatio, dashboardCopy.veryGood],
-                  [dashboardCopy.expenseCoverage, dashboardCopy.excellent],
-                  [dashboardCopy.debtLevel, dashboardCopy.low],
+                  [dashboardCopy.savingsRatio, actualPercent(summary.healthDetails?.savingsRatio)],
+                  [dashboardCopy.expenseCoverage, actualMonths(summary.healthDetails?.emergencyFundMonths)],
+                  [dashboardCopy.debtLevel, actualPercent(summary.healthDetails?.debtToIncome)],
                 ].map(([label, value]) => (
-                  <div key={label}><CheckCircle2 size={18} aria-hidden="true" /><span>{label}<strong>{value}</strong></span></div>
+                  <div key={label}><Gauge size={18} aria-hidden="true" /><span>{label}<strong>{value}</strong></span></div>
                 ))}
               </div>
             </div>
+            <small className="reference-health-method">{dashboardCopy.healthMethod}</small>
             <Link href="/reports-center" className="reference-secondary-button">{dashboardCopy.details}<ArrowRight size={15} aria-hidden="true" /></Link>
           </article>
         </section>
@@ -989,22 +1037,18 @@ export default function ExecutiveDashboardPage() {
 
           <article className="reference-panel reference-expenses-card">
             <header className="reference-panel-heading"><h2>{dashboardCopy.expenseDistribution}</h2><BarChart3 size={19} aria-hidden="true" /></header>
-            <div className="reference-donut-layout">
-              <div className="reference-donut"><span><strong>{money(summary.expenseTotal)}</strong><small>{dashboardCopy.expenses}</small></span></div>
-              <div className="reference-expense-legend">{expenseLegend.map((item) => <div key={item.label}><i data-index={item.index} /><span>{item.label}</span><strong>{item.percentage}%</strong></div>)}</div>
-            </div>
+            {expenseLegend.length ? <div className="reference-donut-layout">
+              <div className="reference-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle className="donut-track" cx="21" cy="21" r="16" pathLength="100"/>{expenseLegend.map(item => <circle key={item.label} data-index={item.index} cx="21" cy="21" r="16" pathLength="100" strokeDasharray={`${item.percentage} ${100 - item.percentage}`} strokeDashoffset={-item.offset}/>)}</svg><span><strong>{money(summary.expenseTotal)}</strong><small>{dashboardCopy.expenses}</small></span></div>
+              <div className="reference-expense-legend">{expenseLegend.map((item) => <div key={item.label}><i data-index={item.index} /><span>{item.label}</span><strong>{item.percentage.toFixed(1)}%</strong></div>)}</div>
+            </div> : <div className="reference-compact-empty">{dashboardCopy.noDistribution}</div>}
             <Link href="/expenses" className="reference-text-link">{dashboardCopy.viewReport}<ArrowRight size={14} aria-hidden="true" /></Link>
           </article>
 
           <article className="reference-panel reference-actions-card">
             <header className="reference-panel-heading"><h2>{dashboardCopy.dailyActions}</h2><ClipboardList size={19} aria-hidden="true" /></header>
-            <div className="reference-action-list">
-              {[
-                [dashboardCopy.reviewExpenses, lang === 'ar' ? 'عالية' : 'High', '10:00', 'high'],
-                [dashboardCopy.approveInvoices, lang === 'ar' ? 'متوسطة' : 'Medium', '12:30', 'medium'],
-                [dashboardCopy.updateBudget, lang === 'ar' ? 'منخفضة' : 'Low', '03:00', 'low'],
-              ].map(([label, priority, time, tone], index) => <Link href={index === 0 ? '/reports-center' : index === 1 ? '/expenses' : '/goals'} key={label}><i className={`is-${tone}`}>{index === 0 ? <ReceiptText size={18}/> : index === 1 ? <CalendarDays size={18}/> : <BarChart3 size={18}/>}</i><span><strong>{label}</strong><small>{time}</small></span><em className={`is-${tone}`}>{priority}</em></Link>)}
-            </div>
+            {tasksLoading ? <div className="reference-compact-empty">{text.loading}</div> : topOpenTasks.length ? <div className="reference-action-list">
+              {topOpenTasks.map((task) => { const tone = task.priority === 'urgent' || task.priority === 'high' ? 'high' : task.priority; return <Link href={task.actionUrl || '/tasks'} key={task.id}><i className={`is-${tone}`}><ClipboardList size={18}/></i><span><strong>{task.title}</strong><small>{task.dueDate ? formatDate(task.dueDate, locale) : task.description || task.sourceModule}</small></span><em className={`is-${tone}`}>{taskPriorityLabels[task.priority]}</em></Link>; })}
+            </div> : <div className="reference-compact-empty">{text.noTasks}</div>}
             <Link href="/tasks" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
           </article>
 
@@ -1015,7 +1059,7 @@ export default function ExecutiveDashboardPage() {
                 const progress = Math.round((goalProgress(goal) ?? 0) * 100);
                 return <div key={firstText(goal, ['id'], `goal-${index}`)}><span><strong>{firstText(goal, ['name', 'title'], dashboardCopy.annualGoal)}</strong><small>{progress}%</small></span><div><i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div></div>;
               })}
-              {records.goals.length === 0 ? <div><span><strong>{dashboardCopy.annualGoal}</strong><small>0%</small></span><div><i style={{ width: '0%' }} /></div></div> : null}
+              {records.goals.length === 0 ? <div className="reference-compact-empty">{text.noGoals}</div> : null}
             </div>
             <Link href="/goals" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
           </article>
@@ -1092,11 +1136,11 @@ export default function ExecutiveDashboardPage() {
         ) : null}
 
         <section className="metrics-grid" aria-label={text.pageTitle}>
-          <MetricCard title={text.totalIncome} value={money(summary.incomeTotal)} detail={text.allRecords} icon={<Wallet size={22} />} tone="positive" />
-          <MetricCard title={text.totalExpenses} value={money(summary.expenseTotal)} detail={text.allRecords} icon={<Coins size={22} />} tone="warning" />
-          <MetricCard title={text.netBalance} value={money(summary.netBalance)} detail={text.allRecords} icon={<Gauge size={22} />} tone={summary.netBalance >= 0 ? 'positive' : 'warning'} />
-          <MetricCard title={text.savings} value={money(summary.savingsTotal)} detail={text.allRecords} icon={<PiggyBank size={22} />} />
-          <MetricCard title={text.investments} value={money(summary.investmentsTotal)} detail={text.allRecords} icon={<TrendingUp size={22} />} />
+          <MetricCard title={text.totalIncome} value={summary.realizedIncome.length ? money(summary.incomeTotal) : text.insufficientData} detail={text.allRecords} icon={<Wallet size={22} />} tone="positive" />
+          <MetricCard title={text.totalExpenses} value={summary.realizedExpenses.length ? money(summary.expenseTotal) : text.insufficientData} detail={text.allRecords} icon={<Coins size={22} />} tone="warning" />
+          <MetricCard title={text.netBalance} value={summary.realizedIncome.length || summary.realizedExpenses.length ? money(summary.netBalance) : text.insufficientData} detail={text.allRecords} icon={<Gauge size={22} />} tone={summary.netBalance >= 0 ? 'positive' : 'warning'} />
+          <MetricCard title={text.savings} value={records.savings.length ? money(summary.savingsTotal) : text.insufficientData} detail={text.allRecords} icon={<PiggyBank size={22} />} />
+          <MetricCard title={text.investments} value={records.investments.length ? money(summary.investmentsTotal) : text.insufficientData} detail={text.allRecords} icon={<TrendingUp size={22} />} />
           <MetricCard title={text.upcomingCommitments} value={`${summary.upcomingCommitments}`} detail={text.currentMonth} icon={<ClipboardList size={22} />} />
         </section>
 
@@ -1373,10 +1417,11 @@ const dashboardStyles = `
   .reference-kpi-foot { gap: 7px; margin-top: 9px; color: var(--foreground-muted); }
   .reference-kpi-foot small { font-size: 10px; white-space: nowrap; }
   .reference-kpi-foot svg { width: 35%; min-width: 74px; height: 30px; margin-inline-start: auto; }
-  .reference-trend { padding: 4px 7px; border-radius: var(--radius-sm); background: var(--success-soft); color: var(--success); font-size: 10px; font-weight: 700; direction: ltr; }
+  .reference-trend { padding: 4px 7px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 700; direction: ltr; }
+  .reference-trend.is-up { background: var(--success-soft); color: var(--success); }
+  .reference-trend.is-down { background: var(--danger-soft); color: var(--danger); }
   .reference-kpi-red .reference-kpi-title i { background: var(--danger-soft); color: var(--danger); }
   .reference-kpi-red .reference-kpi-foot svg { color: var(--danger); }
-  .reference-kpi-red .reference-trend { background: var(--danger-soft); color: var(--danger); }
   .reference-kpi-green .reference-kpi-title i, .reference-kpi-teal .reference-kpi-title i { background: var(--accent-soft); color: var(--accent); }
   .reference-kpi-green .reference-kpi-foot svg, .reference-kpi-teal .reference-kpi-foot svg { color: var(--accent); }
   .reference-kpi-blue .reference-kpi-foot svg { color: var(--primary); }
@@ -1398,8 +1443,8 @@ const dashboardStyles = `
   .reference-line-chart { position: relative; min-height: 245px; padding-inline-start: 42px; }
   .reference-line-chart > svg { width: 100%; height: 205px; overflow: visible; }
   .reference-grid-lines path { fill: none; stroke: var(--chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .reference-income-area { fill: url(#incomeArea); }
-  .reference-expense-area { fill: url(#expenseArea); }
+  .reference-income-area { fill: var(--accent); opacity: .12; }
+  .reference-expense-area { fill: var(--primary); opacity: .1; }
   .reference-income-line, .reference-expense-line { fill: none; stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .reference-income-line { stroke: var(--accent); }
   .reference-expense-line { stroke: var(--primary); }
@@ -1408,8 +1453,11 @@ const dashboardStyles = `
 
   .reference-health { display: flex; flex-direction: column; }
   .reference-health-body { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px 18px; align-items: center; flex: 1; }
-  .reference-score-ring { --score: 0%; width: 138px; height: 138px; display: grid; place-items: center; border-radius: var(--radius-pill); background: var(--primary); position: relative; }
-  .reference-score-ring::after { content: ''; position: absolute; inset: 12px; border-radius: var(--radius-pill); background: var(--surface); box-shadow: var(--shadow-xs); }
+  .reference-score-ring { width: 138px; height: 138px; display: grid; place-items: center; border-radius: var(--radius-pill); position: relative; }
+  .reference-score-ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .reference-score-ring circle { fill: none; stroke-width: 3.5; }
+  .reference-score-ring .ring-track { stroke: var(--surface-hover); }
+  .reference-score-ring .ring-value { stroke: var(--primary); stroke-linecap: round; }
   .reference-score-ring > div { position: relative; z-index: 1; display: grid; text-align: center; }
   .reference-score-ring strong { color: var(--foreground); font: 700 2.65rem/1 var(--font-data); }
   .reference-score-ring span { color: var(--foreground-secondary); font: 500 1rem/1.2 var(--font-data); }
@@ -1418,6 +1466,7 @@ const dashboardStyles = `
   .reference-health-list > div { min-height: 47px; display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-muted); color: var(--accent); }
   .reference-health-list span { display: grid; color: var(--foreground-secondary); font-size: 11px; }
   .reference-health-list strong { margin-top: 2px; color: var(--primary); font-size: 11px; }
+  .reference-health-method { display: block; margin-top: 8px; color: var(--foreground-muted); font-size: 10px; line-height: 1.6; }
   .reference-secondary-button { justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; border: 1px solid var(--border-strong); background: var(--hero-foreground); color: var(--primary); }
   .reference-secondary-button:hover { border-color: var(--primary); background: var(--primary-soft); }
   [dir='rtl'] .reference-secondary-button svg, [dir='rtl'] .reference-text-link svg { transform: scaleX(-1); }
@@ -1432,8 +1481,15 @@ const dashboardStyles = `
   .reference-compact-empty { display: grid; place-items: center; flex: 1; color: var(--foreground-muted); font-size: 12px; }
 
   .reference-donut-layout { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(130px, 1fr); gap: 14px; align-items: center; flex: 1; }
-  .reference-donut { width: min(100%, 145px); aspect-ratio: 1; display: grid; place-items: center; margin: auto; border-radius: var(--radius-pill); background: var(--primary); position: relative; }
-  .reference-donut::after { content: ''; position: absolute; inset: 27%; border-radius: var(--radius-pill); background: var(--surface); }
+  .reference-donut { width: min(100%, 145px); aspect-ratio: 1; display: grid; place-items: center; margin: auto; border-radius: var(--radius-pill); position: relative; }
+  .reference-donut > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .reference-donut circle { fill: none; stroke-width: 8; }
+  .reference-donut .donut-track { stroke: var(--surface-hover); }
+  .reference-donut circle[data-index='0'] { stroke: var(--primary); }
+  .reference-donut circle[data-index='1'] { stroke: var(--accent); }
+  .reference-donut circle[data-index='2'] { stroke: var(--chart-4); }
+  .reference-donut circle[data-index='3'] { stroke: var(--danger); }
+  .reference-donut circle[data-index='4'] { stroke: var(--chart-5); }
   .reference-donut span { position: relative; z-index: 1; display: grid; max-width: 70px; text-align: center; }
   .reference-donut strong { color: var(--foreground); font: 700 11px/1.3 var(--font-data); overflow: hidden; text-overflow: ellipsis; }
   .reference-donut small { color: var(--chart-5); font-size: 9px; }

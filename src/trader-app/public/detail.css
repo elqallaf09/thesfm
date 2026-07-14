@@ -626,6 +626,32 @@ html[data-theme] .detail-shell > .site-footer strong {
   }
 }
 
+html[data-theme] .evaluation-score {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 5px 9px;
+  background: var(--surface-muted);
+  color: var(--foreground);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] .evaluation-score-success {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+html[data-theme] .evaluation-score-danger {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-theme] .market-bg {
     display: none;

@@ -165,6 +165,33 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     await new Promise<void>(resolve => staticServer.close(() => resolve()));
   });
 
+  test('shared global preferences update the Trader without local global controls', async ({ page }) => {
+    await configureTerminal(page, 'en', 'light');
+    await mockTraderApi(page);
+    await page.goto(`${terminalPath}?route=dashboard`, { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+    await expect(page.locator('[data-language], #terminal-language-switcher, #theme-switcher, .workspace-exit-link, .workspace-exit-chip')).toHaveCount(0);
+
+    const search = page.locator('#symbol-input');
+    await search.focus();
+    await setGlobalTraderTheme(page, 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(search).toBeFocused();
+
+    await setGlobalTraderLanguage(page, 'ar');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await setGlobalTraderLanguage(page, 'en');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  });
+
   test('command deck has terminal hierarchy and stock clicks use a focus-safe drawer', async ({ page }) => {
     test.setTimeout(120_000);
     const pageErrors: string[] = [];
@@ -365,11 +392,11 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     await heatmap.locator('[data-heatmap-sector]').selectOption('Technology');
     await expect(heatmap.locator('[data-heatmap-group]')).toHaveCount(1);
     await expect(heatmap.locator('[data-heatmap-group="Technology"]')).toBeVisible();
-    await page.locator('[data-language="ar"]').click();
+    await setGlobalTraderLanguage(page, 'ar');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.locator('[data-heatmap-sector]')).toHaveValue('Technology');
     await expect(page.locator('[data-heatmap-group="Technology"]')).toBeVisible();
-    await page.locator('[data-language="en"]').click();
+    await setGlobalTraderLanguage(page, 'en');
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 
     await heatmap.locator('[data-heatmap-zoom="in"]').click();
@@ -513,19 +540,37 @@ async function openDashboard(page: Page) {
 
 async function configureTerminal(page: Page, language: 'ar' | 'en', theme: 'light' | 'dark') {
   await page.addInitScript(({ language: nextLanguage, theme: nextTheme }) => {
-    localStorage.setItem('sfm_lang', nextLanguage);
-    localStorage.setItem('the-sfm-theme', nextTheme);
-    localStorage.setItem('sfmTraderTheme', nextTheme);
+    if (!localStorage.getItem('sfm_lang')) localStorage.setItem('sfm_lang', nextLanguage);
+    if (!localStorage.getItem('the-sfm-theme')) localStorage.setItem('the-sfm-theme', nextTheme);
     localStorage.setItem('sfmTraderWatchlist:v3', JSON.stringify(['AAPL', 'MSFT']));
     localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({
-      lang: nextLanguage,
-      language: nextLanguage,
-      theme: nextTheme,
       defaultMarket: 'us-stocks',
       risk: 'balanced',
       quickTickerVisible: true,
     }));
   }, { language, theme });
+}
+
+async function setGlobalTraderLanguage(page: Page, language: 'ar' | 'en') {
+  await setGlobalTraderPreference(page, 'sfm_lang', language);
+}
+
+async function setGlobalTraderTheme(page: Page, theme: 'light' | 'dark') {
+  await setGlobalTraderPreference(page, 'the-sfm-theme', theme);
+}
+
+async function setGlobalTraderPreference(page: Page, key: 'sfm_lang' | 'the-sfm-theme', value: string) {
+  await page.evaluate(({ storageKey, nextValue }) => {
+    const oldValue = localStorage.getItem(storageKey);
+    localStorage.setItem(storageKey, nextValue);
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: storageKey,
+      oldValue,
+      newValue: nextValue,
+      storageArea: localStorage,
+      url: window.location.href,
+    }));
+  }, { storageKey: key, nextValue: value });
 }
 
 async function mockTraderApi(page: Page) {

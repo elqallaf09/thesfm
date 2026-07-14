@@ -60,6 +60,7 @@ function rewriteTraderTextAsset(content: string) {
     .replaceAll('href="/semantic-tokens.css', 'href="/thesfm-trader-own/app/semantic-tokens.css')
     .replaceAll('href="/cinema.css', 'href="/thesfm-trader-own/app/cinema.css')
     .replaceAll('href="/detail.css', 'href="/thesfm-trader-own/app/detail.css')
+    .replaceAll('src="/theme-bridge.js', 'src="/thesfm-trader-own/app/theme-bridge.js')
     .replaceAll('src="/recommendation.js', 'src="/thesfm-trader-own/app/recommendation.js')
     .replaceAll('src="/app.js', 'src="/thesfm-trader-own/app/app.js')
     .replaceAll('src="/detail.js', 'src="/thesfm-trader-own/app/detail.js')
@@ -128,13 +129,17 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
         manifest.theme_color = STATIC_LIGHT_VISUAL_TOKENS.primary;
         rewritten = JSON.stringify(manifest);
       }
-      return new NextResponse(rewritten, {
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': cacheControl,
-          'X-Robots-Tag': 'noindex, nofollow',
-        },
-      });
+      const headers: Record<string, string> = {
+        'Content-Type': contentType,
+        'Cache-Control': cacheControl,
+        'X-Robots-Tag': 'noindex, nofollow',
+      };
+      if (ext === '.html') {
+        headers['X-Frame-Options'] = 'SAMEORIGIN';
+        headers['Content-Security-Policy'] = "frame-ancestors 'self'";
+        headers['Permissions-Policy'] = 'microphone=(self), camera=(self)';
+      }
+      return new NextResponse(rewritten, { headers });
     }
 
     return new NextResponse(new Uint8Array(file), {

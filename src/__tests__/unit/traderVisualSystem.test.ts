@@ -9,6 +9,7 @@ const detailHtml = read('src/trader-app/public/detail.html');
 const serviceWorker = read('src/trader-app/public/service-worker.js');
 const themes = read('src/styles/themes.css');
 const tokens = read('src/styles/tokens.css');
+const themeBridge = read('src/trader-app/public/theme-bridge.js');
 const traderAssetRoute = read('src/app/thesfm-trader-own/app/[[...path]]/route.ts');
 const finalMarker = 'Final semantic visual-system lock';
 const finalLayer = cinema.slice(cinema.indexOf(finalMarker));
@@ -55,7 +56,7 @@ describe('standalone Trader visual-system contract', () => {
     expect(cinema).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(|oklch\(/i);
     expect(cinema).not.toMatch(/(?:linear|radial|conic)-gradient\(/i);
     expect(cinema).not.toMatch(/\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|JetBrains Mono)\b/i);
-    expect(fontFamilies.every(value => /^var\(--font-(?:ui|data)\)$/.test(value))).toBe(true);
+    expect(fontFamilies.every((value) => /^var\(--font-(?:ui|data)\)$/.test(value.replace(/\s*!important\s*$/, '')))).toBe(true);
     expect(radii.every((value) => {
       const normalized = value.replace(/\s*!important\s*$/, '').trim();
       return normalized === '0' || normalized === 'inherit' || /^var\(--[a-z0-9-]+\)$/i.test(normalized);
@@ -71,7 +72,7 @@ describe('standalone Trader visual-system contract', () => {
       'surface-muted': '#F8FAFC',
       foreground: '#0F2742',
       'foreground-secondary': '#334155',
-      'foreground-muted': '#627287',
+      'foreground-muted': '#5F6F84',
       border: '#E2E8F0',
       'border-strong': '#7C8A9E',
       primary: '#1769D2',
@@ -156,37 +157,40 @@ describe('standalone Trader visual-system contract', () => {
       /\.brand-fallback\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
       /\.nav-group-label\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
       /\.session-pill\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
-      /\.terminal-language-option\.topbar-chip\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
       /\.settings-section-label\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
       /\.brand-card small,\s*\.sidebar-nav small,\s*\.sidebar-status small,\s*\.card-kicker,\s*\.eyebrow\s*\{[^}]*font-family:\s*var\(--font-ui\)/,
     ]) expect(cinema).toMatch(uiRule);
 
-    expect(cinema).not.toMatch(/(?:\.brand-mark|\.brand-fallback|\.nav-group-label|\.session-pill|\.terminal-language-option\.topbar-chip|\.settings-section-label)\s*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(cinema).not.toMatch(/(?:\.brand-mark|\.brand-fallback|\.nav-group-label|\.session-pill|\.settings-section-label)\s*\{[^}]*font-family:\s*var\(--font-data\)/);
   });
 
   it('serves and loads the shared token source before the cache-busted cinema bridge', () => {
     for (const html of [indexHtml, detailHtml]) {
+      expect(html).toContain('/theme-bridge.js?v=20260714-phase34');
       expect(html).toContain('/semantic-tokens.css?v=20260713-central-system');
-      expect(html).toContain('/cinema.css?v=20260713-central-system');
+      expect(html).toContain('/cinema.css?v=20260714-phase34');
+      expect(html.indexOf('/theme-bridge.js')).toBeLessThan(html.indexOf('/semantic-tokens.css'));
       expect(html.indexOf('/semantic-tokens.css')).toBeLessThan(html.indexOf('/cinema.css'));
-      expect(html).toContain('getPropertyValue("--background")');
       expect(html).not.toMatch(/<meta name="theme-color" content="#[0-9a-f]+"/i);
       expect(html).not.toMatch(/\/(?:styles|desktop-balance)\.css/);
     }
+    expect(themeBridge).toContain('getPropertyValue("--background")');
     expect(traderAssetRoute).not.toContain('href="/styles.css');
     expect(traderAssetRoute).not.toContain('href="/desktop-balance.css');
     expect(traderAssetRoute).toContain("params.path?.join('/') === 'semantic-tokens.css'");
     expect(traderAssetRoute).toContain("path.join(process.cwd(), 'src', 'styles', 'tokens.css')");
     expect(traderAssetRoute).toContain("path.join(process.cwd(), 'src', 'styles', 'themes.css')");
+    expect(traderAssetRoute).toContain(".replaceAll('src=\"/theme-bridge.js', 'src=\"/thesfm-trader-own/app/theme-bridge.js')");
     expect(serviceWorker).toContain('/semantic-tokens.css?v=20260713-central-system');
-    expect(serviceWorker).toContain('/cinema.css?v=20260713-central-system');
+    expect(serviceWorker).toContain('/theme-bridge.js?v=20260714-phase34');
+    expect(serviceWorker).toContain('/cinema.css?v=20260714-phase34');
     expect(serviceWorker).not.toMatch(/\/(?:styles|desktop-balance)\.css/);
   });
 
   it('keeps ordinary high-impact surfaces flat while reserving a gradient for heroes', () => {
     expect(themes).toContain('--hero-gradient: linear-gradient');
     expect(finalLayer).not.toContain('--trader-hero-gradient');
-    for (const selector of ['.terminal-sidebar {', '.sidebar-nav a {', '.theme-menu,', '.table-shell,']) {
+    for (const selector of ['.terminal-sidebar {', '.sidebar-nav a {', '.terminal-topbar,', '.table-shell,']) {
       const start = finalLayer.indexOf(selector);
       expect(start, selector).toBeGreaterThanOrEqual(0);
       const block = finalLayer.slice(start, finalLayer.indexOf('}', start));
@@ -205,11 +209,7 @@ describe('standalone Trader visual-system contract', () => {
     expect(cinema).toMatch(/html\[data-theme\]\s+\.settings-section-label\s*\{[^}]*color:\s*var\(--foreground-secondary\)\s*!important;[^}]*font-family:\s*var\(--font-ui\)/);
     expect(finalLayer).toMatch(/html\[data-theme\]\s+\.detail-chart-wrap:is\(\.up,\s*\.down\)\s*\{[^}]*background:\s*var\(--surface-muted\)\s*!important/);
 
-    for (const activeControl of [
-      /html\[data-theme="light"\][^{]*\.terminal-language-option\.topbar-chip\.is-active[^{]*\{[^}]*background:\s*var\(--primary\)\s*!important;[^}]*color:\s*var\(--primary-foreground\)\s*!important/,
-      /html\[data-theme="light"\][^{]*\.theme-choice\.is-selected\s+\.theme-choice-check[^{]*\{[^}]*background:\s*var\(--primary\)\s*!important;[^}]*color:\s*var\(--primary-foreground\)\s*!important/,
-      /html\[data-theme="light"\]\s+\.market-overview\s+\.mo-timeframes button\.is-active\s*\{[^}]*background:\s*var\(--primary\)\s*!important;[^}]*color:\s*var\(--primary-foreground\)\s*!important/,
-    ]) expect(cinema).toMatch(activeControl);
+    expect(cinema).toMatch(/html\[data-theme="light"\]\s+\.market-overview\s+\.mo-timeframes button\.is-active\s*\{[^}]*background:\s*var\(--primary\)\s*!important;[^}]*color:\s*var\(--primary-foreground\)\s*!important/);
   });
 
   it('keeps ordinary provider diagnostics neutral and status colors explicit', () => {

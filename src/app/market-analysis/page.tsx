@@ -9,6 +9,7 @@ import { PageTabs, pageTabPanelId, pageTabTriggerId } from '@/components/layout/
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
 import { MarketSignalMiniBadge, MarketSignalPanel } from '@/components/market/MarketSignalPanel';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -64,6 +65,7 @@ import {
   canAnalyzeDirectNormalizedInput, hasUsableAnalysis, historyFromPricePoints,
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
+  evaluationScorePresentation,
   fetchMarketToolState,
   fetchJsonWithTimeout,
   type PriceHistoryResponse,
@@ -314,6 +316,9 @@ export default function MarketAnalysisPage() {
     legacyValueResolver: normalizeMarketTab,
     legacyHash: true,
   });
+  const { access: adminAccess } = useAdminAccess(activeTab === 'economicCalendar' ? user?.id : null);
+  const canViewMarketDiagnostics = adminAccess.isAdmin
+    && (adminAccess.isSuperAdmin || adminAccess.permissions.admin_dashboard === true);
   const hasAutoRunUrlAnalysisRef = useRef(false);
   const [traderToolTab, setTraderToolTab] = useState<TraderToolsSubTab>('risk');
   const activeToolRequirements = useMemo(
@@ -2040,6 +2045,8 @@ export default function MarketAnalysisPage() {
     + (aiInsight?.status === 'ready' ? 12 : ruleBasedSummary ? 6 : 0)
     + (Number.isFinite(selected.latestPrice) && selected.latestPrice > 0 ? 5 : 0),
   ))) : 0;
+  const analysisConfidencePresentation = evaluationScorePresentation(analysisConfidence);
+  const analysisConfidenceStatus = t(analysisConfidencePresentation.statusKey);
   const confidenceFactors = selected ? [
     {
       label: t('market_data_status'),
@@ -2162,7 +2169,7 @@ export default function MarketAnalysisPage() {
             <p>{t('market_hero_subtitle')}</p>
             <form className="market-search-panel" onSubmit={event => { event.preventDefault(); void analyzeSearchSelection(); }}>
               <div className="market-search-field">
-                <label htmlFor="market-asset-search">{t('market_search_label')}</label>
+                <label htmlFor="market-asset-search">{t('market_asset_symbol')}</label>
                 <div className="market-search-combobox">
                 <div className="market-search-input-shell">
                   <Search size={17} />
@@ -2250,6 +2257,16 @@ export default function MarketAnalysisPage() {
                   <option value="commodity">{t('market_asset_commodities')}</option>
                   <option value="gold">{t('market_asset_gold')}</option>
                   <option value="index">{t('market_asset_index')}</option>
+                </select>
+              </label>
+              <label className="market-timeframe-field">
+                <span>{t('market_timeframe')}</span>
+                <select
+                  value={timeframe}
+                  aria-label={t('market_timeframe')}
+                  onChange={event => loadHistory(event.target.value as MarketTimeframe)}
+                >
+                  {MARKET_TIMEFRAMES.map(item => <option value={item} key={item}>{item}</option>)}
                 </select>
               </label>
               <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && !canSearchMarketQuery(query, assetType))}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
@@ -2465,7 +2482,13 @@ export default function MarketAnalysisPage() {
         )}
 
         {activeTab === 'economicCalendar' && (
-          <EconomicCalendarPanel t={t} locale={lang} state={economicCalendar} onRefresh={loadEconomicCalendar} />
+          <EconomicCalendarPanel
+            t={t}
+            locale={lang}
+            state={economicCalendar}
+            onRefresh={loadEconomicCalendar}
+            canViewDiagnostics={canViewMarketDiagnostics}
+          />
         )}
 
         {activeTab === 'sessions' && (
@@ -2546,8 +2569,23 @@ export default function MarketAnalysisPage() {
               <div className={`analysis-reading-card ${decision?.tone ?? ''}`}>
                 <span>{analysisCopy.currentReading}</span>
                 <strong>{decision?.status ?? assetSnapshot.trendLabel}</strong>
-                <small>{analysisCopy.confidence}: <b dir="ltr">{analysisConfidence}%</b></small>
-                <div className="analysis-confidence-track" aria-hidden="true"><i style={{ width: `${analysisConfidence}%` }} /></div>
+                <small className={`analysis-score-summary ${analysisConfidencePresentation.tone}`}>
+                  <span>{analysisCopy.confidence}: <b dir="ltr">{analysisConfidence}%</b></span>
+                  <span className="analysis-score-status">
+                    {analysisConfidencePresentation.tone === 'success'
+                      ? <CheckCircle2 size={14} aria-hidden="true" />
+                      : <AlertTriangle size={14} aria-hidden="true" />}
+                    {analysisConfidenceStatus}
+                  </span>
+                </small>
+                <div
+                  className={`analysis-confidence-track ${analysisConfidencePresentation.tone}`}
+                  role="meter"
+                  aria-label={`${analysisCopy.confidence}: ${analysisConfidence}% - ${analysisConfidenceStatus}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={analysisConfidence}
+                ><i style={{ width: `${analysisConfidence}%` }} /></div>
               </div>
               <div className="analysis-hero-actions" aria-label={analysisCopy.quickActions}>
                 <button type="button" onClick={() => void requestAnalysis(assetSnapshot.providerSymbol, assetSnapshot.assetType, {
@@ -2637,21 +2675,6 @@ export default function MarketAnalysisPage() {
                   </div>
                 </div>
                 <div className="market-chart-controls">
-                  <div className="timeframe-row" role="group" aria-label={t('market_timeframe')}>
-                    {MARKET_TIMEFRAMES.map(item => (
-                      <button
-                        type="button"
-                        key={item}
-                        data-range={item}
-                        data-timeframe={item}
-                        aria-pressed={timeframe === item}
-                        aria-label={`${t('market_timeframe')} ${item}`}
-                        onClick={() => loadHistory(item)}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
                   <div className="chart-type-control">
                     <span>{t('market_chart_type')}</span>
                     <div className="chart-type-row" role="group" aria-label={t('market_chart_type')}>
@@ -3363,7 +3386,7 @@ export default function MarketAnalysisPage() {
         .market-hero:before{content:"";position:absolute;inset-inline-end:-70px;top:-80px;width:230px;height:230px;border-radius:var(--radius-pill);background:var(--accent-soft);filter:blur(18px)}
         .market-hero-copy,.market-hero-card{position:relative;z-index:1}.market-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--hero-foreground) 28%,transparent);background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);color:var(--hero-foreground);border-radius:var(--radius-pill);padding:6px 12px;font-size:12px;font-weight:600;margin-bottom:14px}
         .market-hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,52px);line-height:1.02;font-weight:600}.market-hero p{max-width:760px;margin:0;color:var(--hero-foreground-muted);line-height:1.8;font-size:14px}
-        .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr) 180px auto;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:600;color:var(--hero-foreground)}.market-search-field{position:relative}.market-search-panel label>div{height:var(--control-h-lg);display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:0 13px;color:var(--foreground);box-shadow:var(--shadow-card)}.market-search-panel label>div:focus-within{border-color:var(--accent);box-shadow:var(--focus-shadow)}.market-search-panel label>div svg{color:var(--primary);flex-shrink:0}.market-search-panel input,.market-search-panel select{width:100%;height:var(--control-h-lg);min-width:0;border:1px solid var(--border-strong);border-radius:var(--radius-card);background:var(--surface);color:var(--foreground);padding:0 13px;font:400 13px var(--font-ui);outline:0}.market-search-panel input{border:0;background:transparent;padding:0;color:var(--foreground)}.market-search-panel input::placeholder{color:var(--foreground-muted);opacity:1}.market-search-panel select{cursor:pointer;box-shadow:var(--shadow-card)}.market-search-panel select:focus{border-color:var(--accent);box-shadow:var(--shadow-card)}.market-search-panel select option{color:var(--foreground);background:var(--surface)}.market-search-panel button{height:var(--control-h-lg);border:0;border-radius:var(--radius-card);background:var(--surface);color:var(--foreground);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 13px var(--font-ui);cursor:pointer;box-shadow:var(--shadow-card)}.market-search-panel button svg{color:var(--foreground)}.market-search-panel button:disabled{opacity:.9;cursor:wait;background:var(--surface);color:var(--foreground)}.market-search-results{position:absolute;z-index:90;inset-inline:0;top:calc(100% + 12px);max-height:min(320px,48dvh);overflow-y:auto;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow-popover);padding:10px;display:grid;gap:8px;overscroll-behavior:contain}.market-search-results strong{color:var(--foreground);font-size:12px;font-weight:600;padding:5px 7px}.market-search-results p{margin:0;color:var(--foreground-muted);font-size:13px;font-weight:600;line-height:1.7;padding:12px}.market-search-results button{height:auto;min-height:58px;width:100%;border:1px solid var(--border-strong);background:var(--surface);color:var(--foreground);border-radius:var(--radius-control);padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:start;box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:var(--primary);border-color:var(--focus-ring);outline:none;box-shadow:var(--focus-shadow)}.market-search-results button span{display:grid;gap:4px;min-width:0}.market-search-results button b{font-size:15px;color:var(--foreground);letter-spacing:.02em;direction:ltr;unicode-bidi:isolate}.market-search-results button em{font-style:normal;color:var(--primary-hover);font-size:13px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:var(--primary-hover);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 8px;font-size:12px;font-weight:600;line-height:1.3;flex-shrink:0;white-space:nowrap}
+        .market-search-panel{margin-top:22px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(160px,.7fr) minmax(150px,.65fr) max-content;gap:10px;align-items:end}.market-search-panel label{display:grid;gap:7px}.market-search-panel label>span{font-size:12px;font-weight:600;color:var(--hero-foreground)}.market-search-field{position:relative}.market-search-panel label>div{height:var(--control-h-lg);display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:0 13px;color:var(--foreground);box-shadow:var(--shadow-card)}.market-search-panel label>div:focus-within{border-color:var(--accent);box-shadow:var(--focus-shadow)}.market-search-panel label>div svg{color:var(--primary);flex-shrink:0}.market-search-panel input,.market-search-panel select{width:100%;height:var(--control-h-lg);min-width:0;border:1px solid var(--border-strong);border-radius:var(--radius-card);background:var(--surface);color:var(--foreground);padding:0 13px;font:400 13px var(--font-ui);outline:0}.market-search-panel input{border:0;background:transparent;padding:0;color:var(--foreground)}.market-search-panel input::placeholder{color:var(--foreground-muted);opacity:1}.market-search-panel select{cursor:pointer;box-shadow:var(--shadow-card)}.market-search-panel select:focus{border-color:var(--accent);box-shadow:var(--shadow-card)}.market-search-panel select option{color:var(--foreground);background:var(--surface)}.market-search-panel button{height:var(--control-h-lg);border:0;border-radius:var(--radius-card);background:var(--surface);color:var(--foreground);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 13px var(--font-ui);cursor:pointer;box-shadow:var(--shadow-card)}.market-search-panel button svg{color:var(--foreground)}.market-search-panel button:disabled{opacity:.9;cursor:wait;background:var(--surface);color:var(--foreground)}.market-search-results{position:absolute;z-index:90;inset-inline:0;top:calc(100% + 12px);max-height:min(320px,48dvh);overflow-y:auto;background:var(--surface);color:var(--foreground);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow-popover);padding:10px;display:grid;gap:8px;overscroll-behavior:contain}.market-search-results strong{color:var(--foreground);font-size:12px;font-weight:600;padding:5px 7px}.market-search-results p{margin:0;color:var(--foreground-muted);font-size:13px;font-weight:600;line-height:1.7;padding:12px}.market-search-results button{height:auto;min-height:58px;width:100%;border:1px solid var(--border-strong);background:var(--surface);color:var(--foreground);border-radius:var(--radius-control);padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:start;box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:var(--primary);border-color:var(--focus-ring);outline:none;box-shadow:var(--focus-shadow)}.market-search-results button span{display:grid;gap:4px;min-width:0}.market-search-results button b{font-size:15px;color:var(--foreground);letter-spacing:.02em;direction:ltr;unicode-bidi:isolate}.market-search-results button em{font-style:normal;color:var(--primary-hover);font-size:13px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}.market-search-results button small{color:var(--primary-hover);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-pill);padding:4px 8px;font-size:12px;font-weight:600;line-height:1.3;flex-shrink:0;white-space:nowrap}
         .market-search-field{z-index:70;min-width:0}.market-search-panel .market-search-input-shell{position:relative;z-index:2}.market-search-results{z-index:9999;top:calc(100% + 10px);max-height:min(360px,52dvh);overflow-y:auto;overflow-x:hidden;background:var(--surface);border-color:var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-popover);padding:8px;gap:6px}.market-search-results strong{padding:6px 8px;color:var(--foreground);line-height:1.4}.market-search-results p{border-radius:var(--radius-control);background:var(--surface);text-align:start}.market-search-results button{min-height:68px;display:grid;grid-template-columns:1fr;align-items:center;justify-items:stretch;gap:7px;padding:11px 12px;border-radius:var(--radius-control);background:var(--surface);border-color:var(--border-strong);text-align:start;color:var(--foreground);box-shadow:none}.market-search-results button:hover,.market-search-results button:focus-visible,.market-search-results button[aria-selected="true"]{background:var(--primary);border-color:var(--focus-ring);box-shadow:var(--focus-shadow);outline:none}.market-search-result-main{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-width:0}.market-search-results button b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:inherit;unicode-bidi:normal;letter-spacing:0;color:var(--foreground);font-size:14px}.market-search-results button em{flex-shrink:0;border-radius:var(--radius-pill);border:1px solid var(--border-strong);background:var(--surface);color:var(--primary-hover);padding:4px 8px;font-style:normal;font-size:12px;font-weight:700;line-height:1.2;direction:ltr;unicode-bidi:isolate}.market-search-results button small{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0;border:0;background:transparent;color:var(--foreground-muted);font-size:12px;line-height:1.55;text-align:start}
         .market-search-field{position:relative;z-index:100;display:grid;gap:7px;min-width:0;overflow:visible}.market-search-field>label{font-size:12px;font-weight:600;color:var(--hero-foreground);line-height:1.4}.market-search-combobox{position:relative;width:100%;overflow:visible}.market-search-panel .market-search-input-shell{height:var(--control-h-lg);display:flex;align-items:center;gap:9px;border:1px solid var(--border-strong);border-radius:var(--radius-card);background:var(--surface);padding:0 13px;color:var(--foreground);box-shadow:var(--shadow-card)}.market-search-submit{height:var(--control-h-lg);border:0;border-radius:var(--radius-card);background:var(--primary);color:var(--foreground);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 13px var(--font-ui);cursor:pointer;box-shadow:var(--shadow-card)}.market-search-submit svg{color:var(--foreground)}.market-search-submit:disabled{opacity:.9;cursor:wait;background:var(--primary);color:var(--foreground)}.market-search-results{position:absolute!important;top:calc(100% + 10px)!important;right:0!important;left:0!important;z-index:9999!important;width:100%;max-height:min(320px,48dvh);overflow-y:auto!important;overflow-x:hidden!important;display:block!important;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-popover);padding:8px;overscroll-behavior:contain}.market-search-results button{width:100%;min-height:68px;height:auto!important;display:grid!important;grid-template-columns:1fr!important;gap:7px;margin:0 0 6px;padding:11px 12px;border-radius:var(--radius-control);text-align:start;cursor:pointer}.market-search-results button:last-of-type{margin-bottom:0}.market-search-results p{margin:0;padding:12px;border-radius:var(--radius-control);text-align:start}.market-search-result-main{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-width:0;width:100%}.market-search-result-identity{display:flex!important;align-items:center;gap:9px;min-width:0}.market-search-result-identity b{min-width:0}.market-search-results button b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.market-search-results button small{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .market-hero-card{background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);border:1px solid color-mix(in srgb,var(--hero-foreground) 28%,transparent);border-radius:var(--radius-card);padding:18px;display:grid;gap:8px;backdrop-filter:blur(14px)}.market-hero-card span{font-size:12px;color:var(--hero-foreground-muted);font-weight:600}.market-hero-card strong{font-size:42px;color:var(--accent);line-height:1}.market-hero-card p{margin:0;font-size:13px}.market-hero-card em{font-style:normal;color:var(--hero-foreground-muted);font-size:12px;font-weight:600;line-height:1.5}.risk{justify-self:start;border:1px solid transparent;border-radius:var(--radius-pill);padding:6px 10px;font-size:12px;font-weight:700;line-height:1.2}.risk.low{background:var(--success-soft);color:var(--success);border-color:var(--success)}.risk.medium{background:var(--warning-soft);color:var(--foreground-muted);border-color:var(--warning)}.risk.high{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
@@ -3464,7 +3487,7 @@ export default function MarketAnalysisPage() {
           font-weight:400!important}
         :global(.market-search-panel){
           display:grid!important;
-          grid-template-columns:minmax(320px,1fr) minmax(170px,220px) minmax(150px,190px)!important;
+          grid-template-columns:minmax(280px,1.6fr) minmax(160px,.7fr) minmax(150px,.65fr) max-content!important;
           align-items:end!important;
           gap:12px!important;
           margin-top:8px!important;
@@ -3497,6 +3520,11 @@ export default function MarketAnalysisPage() {
           background:var(--surface)!important;
           color:var(--foreground)!important;
           box-shadow:var(--shadow-card)!important}
+        :global(.market-search-panel .market-search-input-shell:focus-within),
+        :global(.market-search-panel select:focus-visible){
+          outline:none!important;
+          border-color:var(--focus-ring)!important;
+          box-shadow:var(--focus-shadow)!important}
         :global(.market-search-panel input){
           color:var(--foreground)!important;
           font-size:14px!important;
@@ -3508,6 +3536,7 @@ export default function MarketAnalysisPage() {
           background:var(--primary)!important;
           color:var(--primary-foreground)!important;
           font-weight:700!important;
+          white-space:nowrap!important;
           cursor:pointer!important;
           box-shadow:var(--shadow-card)!important;
           transition:transform .18s ease,box-shadow .18s ease,filter .18s ease!important}
@@ -3915,6 +3944,21 @@ export default function MarketAnalysisPage() {
           font-size:12px!important;
           font-weight:400!important;
           line-height:1.45!important}
+        :global(.analysis-score-summary){
+          display:flex!important;
+          align-items:center!important;
+          justify-content:space-between!important;
+          flex-wrap:wrap!important;
+          gap:6px 10px!important}
+        :global(.analysis-score-status){
+          display:inline-flex!important;
+          align-items:center!important;
+          gap:5px!important;
+          font-weight:700!important}
+        :global(.analysis-score-summary.success b),
+        :global(.analysis-score-summary.success .analysis-score-status){color:var(--success)!important}
+        :global(.analysis-score-summary.danger b),
+        :global(.analysis-score-summary.danger .analysis-score-status){color:var(--danger)!important}
         :global(.analysis-reading-card strong){
           color:var(--foreground)!important;
           font-size:22px!important;
@@ -3933,6 +3977,8 @@ export default function MarketAnalysisPage() {
           height:100%!important;
           border-radius:inherit!important;
           background:var(--surface-muted)!important}
+        :global(.analysis-confidence-track.success i){background:var(--success)!important}
+        :global(.analysis-confidence-track.danger i){background:var(--danger)!important}
         :global(.analysis-hero-actions){
           display:grid!important;
           align-content:center!important;
@@ -4293,9 +4339,7 @@ export default function MarketAnalysisPage() {
           :global(.market-quick-grid){
             grid-template-columns:repeat(2,minmax(0,1fr))!important}
           :global(.market-search-panel){
-            grid-template-columns:minmax(0,1fr) minmax(160px,220px)!important}
-          :global(.market-search-submit){
-            grid-column:1/-1!important}
+            grid-template-columns:repeat(2,minmax(0,1fr))!important}
         }
         @media(max-width:900px){
           :global(.analysis-asset-hero){
@@ -4376,7 +4420,6 @@ export default function MarketAnalysisPage() {
         :global(.market-search-submit),
         :global(.market-search-submit svg),
         :global(.ai-regenerate),
-        :global(.timeframe-row button[aria-pressed="true"]),
         :global(.economic-calendar-filters button[aria-pressed="true"]),
         :global(.tool-tabs button[aria-pressed="true"]),
         :global(.symbol-chip-row button[aria-pressed="true"]),

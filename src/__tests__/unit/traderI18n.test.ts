@@ -45,11 +45,15 @@ function objectKeys(sourceFile: ts.SourceFile, names: string[]) {
 }
 
 describe('trading terminal language isolation', () => {
-  it('supports Arabic, English, and French in the shared terminal selector', () => {
+  it('supports Arabic, English, and French from the authoritative global preference', () => {
     expect(appSource).toContain('const SUPPORTED_LANGUAGES = ["ar", "en", "fr"]');
-    expect(indexSource).toContain('data-language="ar"');
-    expect(indexSource).toContain('data-language="en"');
-    expect(indexSource).toContain('data-language="fr"');
+    expect(appSource).toContain('const LANG_STORAGE_KEY = "sfm_lang"');
+    expect(appSource).toContain('window.addEventListener("storage", (event) =>');
+    expect(appSource).toContain('window.addEventListener(LANG_EVENT, () =>');
+    expect(indexSource).not.toContain('data-language=');
+    expect(indexSource).not.toContain('terminal-language-switcher');
+    expect(appSource).not.toContain('function setTerminalLanguage');
+    expect(appSource).not.toContain('function syncLanguageButtons');
   });
 
   it('contains localized high-visibility dashboard and empty-state copy', () => {

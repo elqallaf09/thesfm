@@ -13,10 +13,13 @@ const traderAssetRoute = read('src/app/thesfm-trader-own/app/[[...path]]/route.t
 
 describe('standalone Trader detail visual-system contract', () => {
   it('loads its retained layout after the centralized token and terminal layers', () => {
+    const themeBridgeAt = detailHtml.indexOf('/theme-bridge.js?v=20260714-phase34');
     const tokensAt = detailHtml.indexOf('/semantic-tokens.css?v=20260713-central-system');
-    const cinemaAt = detailHtml.indexOf('/cinema.css?v=20260713-central-system');
-    const detailAt = detailHtml.indexOf('/detail.css?v=20260713-detail-shell');
+    const cinemaAt = detailHtml.indexOf('/cinema.css?v=20260714-phase34');
+    const detailAt = detailHtml.indexOf('/detail.css?v=20260714-phase34');
 
+    expect(themeBridgeAt).toBeGreaterThan(-1);
+    expect(tokensAt).toBeGreaterThan(themeBridgeAt);
     expect(tokensAt).toBeGreaterThan(-1);
     expect(cinemaAt).toBeGreaterThan(tokensAt);
     expect(detailAt).toBeGreaterThan(cinemaAt);
@@ -84,10 +87,31 @@ describe('standalone Trader detail visual-system contract', () => {
     expect(detailCss).not.toMatch(/padding-(?:left|right)|margin-(?:left|right)|\b(?:left|right)\s*:/);
   });
 
+  it('uses the exact 50 percent boundary and a non-color status for evaluation scores', () => {
+    expect(detailJs).toContain('return value < 50 ? "danger" : "success"');
+    expect(detailJs).toContain('const icon = state === "success" ? "✓" : "!"');
+    expect(detailJs).toContain('element.dataset.scoreState = state');
+    expect(detailJs).toContain('element.setAttribute("aria-label"');
+    expect(detailJs).toContain('element.removeAttribute("aria-label")');
+    expect(detailJs).toContain('Math.round(normalizedValue * 10) / 10');
+    expect(detailCss).toMatch(/\.evaluation-score-success\s*\{[\s\S]*?var\(--success-soft\)[\s\S]*?var\(--success\)/);
+    expect(detailCss).toMatch(/\.evaluation-score-danger\s*\{[\s\S]*?var\(--danger-soft\)[\s\S]*?var\(--danger\)/);
+  });
+
+  it('redraws theme-sensitive canvases without refetching market data', () => {
+    expect(detailJs).toContain('window.addEventListener("sfm-trader-theme-applied", redrawThemeSensitiveDetailCharts)');
+    expect(detailJs).toContain('drawSparkline(elements.sparkline, lastSparklineState.values, lastSparklineState.action)');
+    expect(detailJs).toContain('tone: index % 3 === 0 ? "accent" : index % 3 === 1 ? "danger" : "info"');
+    expect(detailJs).toContain('context.strokeStyle = palette[row.tone]');
+    expect(detailJs).not.toContain('context.strokeStyle = row.color');
+  });
+
   it('rewrites, precaches, and serves the scoped stylesheet as a public CSS asset', async () => {
     expect(traderAssetRoute).toContain(".replaceAll('href=\"/detail.css', 'href=\"/thesfm-trader-own/app/detail.css')");
-    expect(serviceWorker).toContain('the-sfm-trader-v20260713-detail-shell');
-    expect(serviceWorker).toContain('/detail.css?v=20260713-detail-shell');
+    expect(traderAssetRoute).toContain(".replaceAll('src=\"/theme-bridge.js', 'src=\"/thesfm-trader-own/app/theme-bridge.js')");
+    expect(serviceWorker).toContain('the-sfm-trader-v20260714-phase34');
+    expect(serviceWorker).toContain('/theme-bridge.js?v=20260714-phase34');
+    expect(serviceWorker).toContain('/detail.css?v=20260714-phase34');
 
     const response = await getTraderAsset(
       new Request('https://www.the-sfm.com/thesfm-trader-own/app/detail.css'),

@@ -15,7 +15,7 @@ export const STATIC_LIGHT_VISUAL_TOKENS = {
   surfaceMuted: '#F8FAFC',
   foreground: '#0F2742',
   foregroundSecondary: '#334155',
-  foregroundMuted: '#627287',
+  foregroundMuted: '#5F6F84',
   foregroundSubtle: '#7C8A9E',
   foregroundInverse: '#FFFFFF',
   border: '#E2E8F0',

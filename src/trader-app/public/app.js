@@ -5,7 +5,6 @@
   "use strict";
   const Recommendation = window.SFMRecommendation;
   let _marketSelectorOpen = false;
-  let _themeMenuOpen = false;
   let _mobileMoreOpen = false;
   let drawerReturnFocus = null;
   let drawerBodyOverflow = "";
@@ -291,7 +290,6 @@
     ["Buy", "شراء"],
     ["Sell", "بيع"],
     ["1-3 weeks", "1-3 أسابيع", "1 à 3 semaines"],
-    ["Back to platform", "العودة للمنصة", "Retour à la plateforme"],
     ["Neutral", "محايد"],
     ["Change", "التغير"],
     ["Recommendation", "التوصية"],
@@ -677,7 +675,7 @@
     "Showing {shown} of {total} funds": "Affichage de {shown} fonds sur {total}",
     "Showing {shown} of {total} rows": "Affichage de {shown} lignes sur {total}",
     "Deduped {count} duplicate rows": "{count} lignes en double fusionnées",
-    "Tune language, theme, signal preferences, and data-provider status in one clean workspace.": "Réglez la langue, le thème, les préférences de signaux et l’état du fournisseur de données dans un espace unifié.",
+    "Tune signal preferences and review data-provider status in one clean workspace.": "Réglez les préférences de signaux et consultez l’état du fournisseur de données dans un espace unifié.",
     "Data actions": "Actions sur les données", "Show quick price ticker": "Afficher le bandeau rapide des cours",
     "Buy alerts": "Alertes d’achat", "Sell alerts": "Alertes de vente", "Wait and watch alerts": "Alertes d’attente et de surveillance",
     "In-app alerts": "Alertes dans la plateforme", "Email when available": "E-mail lorsque disponible",
@@ -821,7 +819,7 @@
     "Notice: All content is for educational and informational purposes only and is not investment advice. Trading involves risk that may include the full loss of capital.": "Avis : tout le contenu est fourni à des fins pédagogiques et informatives uniquement et ne constitue pas un conseil en investissement. Le trading comporte un risque pouvant aller jusqu’à la perte totale du capital.",
     "System online": "Système opérationnel", "Waiting for provider": "En attente du fournisseur",
     "Local alert saved. A price provider is required to trigger it automatically.": "Alerte locale enregistrée. Un fournisseur de cours est nécessaire pour la déclencher automatiquement.",
-    "1-3 weeks": "1 à 3 semaines", "Back to platform": "Retour à la plateforme", "Trade added to trade performance.": "Transaction ajoutée au suivi des performances.",
+    "1-3 weeks": "1 à 3 semaines", "Trade added to trade performance.": "Transaction ajoutée au suivi des performances.",
     "Trade saved locally; sign in or apply migrations to save it in the database.": "Transaction enregistrée localement ; connectez-vous ou appliquez les migrations pour l’enregistrer dans la base de données.",
     "No saved recommendation was found for this symbol.": "Aucune recommandation enregistrée n’a été trouvée pour ce symbole.",
     "Followed trade prices were updated.": "Les cours des transactions suivies ont été actualisés.", "Followed trades cannot be updated right now.": "Les transactions suivies ne peuvent pas être actualisées pour le moment.",
@@ -830,9 +828,6 @@
     "Enter a symbol.": "Saisissez un symbole.", "Not computed": "Non calculé", "Complete": "Complet", "Live": "En direct",
     "Cached": "En cache", "Delayed": "Différé", "Partial": "Partiel", "Choose market": "Choisir un marché"
   });
-  const THEME_VALUES = ["dark", "light", "system"];
-  const DEFAULT_THEME = "dark";
-  let systemThemeQuery = null;
   const TRANSLATION_EN_TO_AR = new Map();
   const TRANSLATION_AR_TO_EN = new Map();
   const TRANSLATION_EN_TO_FR = new Map();
@@ -960,16 +955,13 @@
     settings: { ar: "الإعدادات", en: "Settings" },
     heroTitle: { ar: "إعدادات النظام", en: "System settings" },
     heroBody: {
-      ar: "اضبط اللغة والمظهر وتفضيلات الإشارات، وراجع حالة مزود البيانات بوضوح.",
-      en: "Tune language, theme, signal preferences, and data-provider status in one clean workspace."
+      ar: "اضبط تفضيلات الإشارات وراجع حالة مزود البيانات بوضوح.",
+      en: "Tune signal preferences and review data-provider status in one clean workspace."
     },
     provider: { ar: "مزود البيانات", en: "Data provider" },
     signalPreferences: { ar: "تفضيلات الإشارات", en: "Signal preferences" },
     dataPolicy: { ar: "سياسة البيانات", en: "Data policy" },
     about: { ar: "حول المنصة", en: "About" },
-    platformActions: { ar: "إجراءات المنصة", en: "Platform actions" },
-    language: { ar: "اللغة", en: "Language" },
-    theme: { ar: "المظهر", en: "Theme" },
     dataActions: { ar: "إجراءات البيانات", en: "Data actions" },
     defaultMarket: { ar: "السوق الافتراضي", en: "Default market" },
     riskProfile: { ar: "ملف المخاطر", en: "Risk profile" },
@@ -1344,14 +1336,13 @@
     marketUniverseActiveMarket: null,
     calendar: { earnings: {}, dividends: {}, ipos: {}, economic: {} },
     watch: read(keys.watch, []), alerts: read(keys.alerts, []), holdings: read(keys.holdings, []), localTrades: read(keys.followed, []),
-    settings: read(keys.settings, { lang: "ar", theme: DEFAULT_THEME, defaultMarket: "us-stocks", risk: "balanced", quickTickerVisible: true }),
+    settings: read(keys.settings, { lang: "ar", defaultMarket: "us-stocks", risk: "balanced", quickTickerVisible: true }),
     errors: {},
     cache: new Map(), marketCache: new Map()
   };
   state.settings.lang = currentLanguage();
   state.settings.language = state.settings.lang;
-  state.settings.theme = readStoredThemePreference();
-  applyThemePreference(state.settings.theme);
+  discardTraderThemePreference();
 
   function registerTranslationPair(ar, en, fr) {
     const arText = String(ar || "").trim();
@@ -1552,26 +1543,6 @@
     return /^[A-Z0-9]{1,8}([.\-=][A-Z0-9]{1,8})*$/.test(text) || /^[A-Z]{3,6}$/.test(text);
   }
 
-  function persistLanguage(lang) {
-    const normalized = normalizeLanguage(lang);
-    state.settings.lang = normalized;
-    state.settings.language = normalized;
-    write(keys.settings, state.settings);
-    try { localStorage.setItem(LANG_STORAGE_KEY, normalized); } catch (_e) {}
-    try {
-      const legacy = read(LEGACY_SETTINGS_STORAGE_KEY, {});
-      write(LEGACY_SETTINGS_STORAGE_KEY, { ...legacy, language: normalized, lang: normalized });
-    } catch (_e) {}
-    return normalized;
-  }
-
-  function setLanguage(lang) {
-    const normalized = persistLanguage(lang);
-    try { window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: normalized } })); } catch (_e) {}
-    applyTerminalLanguage();
-    render();
-  }
-
   function applyTerminalLanguage() {
     const lang = normalizeLanguage(state.settings.lang || currentLanguage());
     const dir = lang === "ar" ? "rtl" : "ltr";
@@ -1590,7 +1561,6 @@
     const shell = document.getElementById("app-shell");
     if (shell) shell.dir = dir;
     updateStaticLanguageLabels();
-    syncLanguageButtons();
   }
 
   function updateStaticLanguageLabels() {
@@ -1727,29 +1697,6 @@
 
   function setAttr(selector, attr, value) {
     document.querySelectorAll(selector).forEach((node) => { node.setAttribute(attr, value); });
-  }
-
-  function syncLanguageButtons() {
-    const lang = normalizeLanguage(state.settings.lang || currentLanguage());
-    const host = document.getElementById("terminal-language-switcher");
-    if (host) host.setAttribute("aria-label", terminalText("language.label"));
-    document.querySelectorAll("[data-language]").forEach((button) => {
-      const active = normalizeLanguage(button.dataset.language) === lang;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
-      if (button.dataset.language === "ar") {
-        button.textContent = "AR";
-        button.title = terminalText("language.arabic");
-      }
-      if (button.dataset.language === "en") {
-        button.textContent = "EN";
-        button.title = terminalText("language.english");
-      }
-      if (button.dataset.language === "fr") {
-        button.textContent = "FR";
-        button.title = terminalText("language.french");
-      }
-    });
   }
 
   function routeTitle(routeId) {
@@ -1996,170 +1943,16 @@
     return result.ok === true;
   }
 
-  function normalizeThemePreference(value) {
-    const theme = String(value || "").toLowerCase();
-    return THEME_VALUES.includes(theme) ? theme : null;
-  }
-
-  function readJsonStorage(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (_error) {
-      return null;
-    }
-  }
-
-  function readStoredThemePreference() {
-    const settingsTheme = normalizeThemePreference(state?.settings?.theme);
-    const storedSettings = readJsonStorage(keys.settings);
-    const legacySettings = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY);
-    const siteSettings = readJsonStorage("sfm_settings");
-    try {
-      return normalizeThemePreference(storedSettings?.theme)
-        || normalizeThemePreference(legacySettings?.theme)
-        || normalizeThemePreference(localStorage.getItem("the-sfm-theme"))
-        || normalizeThemePreference(localStorage.getItem("sfmTraderTheme"))
-        || normalizeThemePreference(localStorage.getItem("theme"))
-        || normalizeThemePreference(siteSettings?.theme)
-        || settingsTheme
-        || DEFAULT_THEME;
-    } catch (_error) {
-      return settingsTheme || DEFAULT_THEME;
-    }
-  }
-
-  function resolvedThemePreference(theme) {
-    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
-    if (preference !== "system") return preference;
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-  }
-
-  function syncSystemThemeListener(theme) {
-    if (!window.matchMedia) return;
-    if (!systemThemeQuery) systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    if (systemThemeQuery.removeEventListener) systemThemeQuery.removeEventListener("change", handleSystemThemeChange);
-    else if (systemThemeQuery.removeListener) systemThemeQuery.removeListener(handleSystemThemeChange);
-    if (theme === "system") {
-      if (systemThemeQuery.addEventListener) systemThemeQuery.addEventListener("change", handleSystemThemeChange);
-      else if (systemThemeQuery.addListener) systemThemeQuery.addListener(handleSystemThemeChange);
-    }
-  }
-
-  function handleSystemThemeChange() {
-    if (normalizeThemePreference(state.settings.theme) !== "system") return;
-    applyThemePreference("system");
-  }
-
-  function persistThemePreference(theme) {
-    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
-    state.settings.theme = preference;
-    write(keys.settings, state.settings);
-    try {
-      localStorage.setItem("the-sfm-theme", preference);
-      localStorage.setItem("sfmTraderTheme", preference);
-      localStorage.setItem("theme", preference);
-      const legacySettings = readJsonStorage(LEGACY_SETTINGS_STORAGE_KEY) || {};
-      localStorage.setItem(LEGACY_SETTINGS_STORAGE_KEY, JSON.stringify({ ...legacySettings, theme: preference }));
-      const siteSettings = readJsonStorage("sfm_settings") || {};
-      localStorage.setItem("sfm_settings", JSON.stringify({ ...siteSettings, theme: preference }));
-    } catch (_error) {}
-  }
-
-  function applyThemePreference(theme) {
-    const preference = normalizeThemePreference(theme) || DEFAULT_THEME;
-    const resolved = resolvedThemePreference(preference);
-    const root = document.documentElement;
-    root.dataset.themePreference = preference;
-    root.dataset.theme = resolved;
-    root.classList.toggle("dark", resolved === "dark");
-    root.classList.toggle("light", resolved === "light");
-    root.style.colorScheme = resolved;
-    if (document.body) {
-      document.body.dataset.themePreference = preference;
-      document.body.dataset.theme = resolved;
-    }
-    const meta = document.querySelector('meta[name="color-scheme"]');
-    if (meta) meta.setAttribute("content", resolved === "dark" ? "dark light" : "light dark");
-    syncSystemThemeListener(preference);
-    renderThemeSwitcher();
-  }
-
-  function selectThemePreference(theme) {
-    const preference = normalizeThemePreference(theme);
-    if (!preference) return;
-    _themeMenuOpen = false;
-    persistThemePreference(preference);
-    applyThemePreference(preference);
-    render();
-  }
-
-  function themeCopy() {
-    return {
-      title: textPair("المظهر", "Theme"),
-      choose: textPair("اختيار المظهر", "Choose theme", "Choisir le thème"),
-      options: {
-        dark: textPair("داكن", "Dark"),
-        light: textPair("فاتح", "Light"),
-        system: textPair("حسب النظام", "System")
-      },
-      descriptions: {
-        dark: textPair("الواجهة الداكنة الفاخرة", "Premium dark terminal", "Terminal sombre haut de gamme"),
-        light: textPair("واجهة فاتحة نظيفة", "Clean light terminal", "Terminal clair et épuré"),
-        system: textPair("يتبع مظهر الجهاز", "Follow device appearance", "Suit l’apparence de l’appareil")
-      }
-    };
-  }
-
-  function themeOptionsHtml(mode = "menu") {
-    const copy = themeCopy();
-    const selected = normalizeThemePreference(state.settings.theme) || DEFAULT_THEME;
-    return THEME_VALUES.map(theme => {
-      const active = theme === selected;
-      return `<button class="theme-choice${active ? " is-selected" : ""}" data-theme-option="${theme}" type="button" role="option" aria-selected="${active}">
-        <span class="theme-choice-check" aria-hidden="true">${active ? "✓" : ""}</span>
-        <span class="theme-choice-copy">
-          <strong>${h(copy.options[theme])}</strong>
-          ${mode === "settings" ? `<small>${h(copy.descriptions[theme])}</small>` : ""}
-        </span>
-      </button>`;
-    }).join("");
-  }
-
-  function themeSwitcherHtml() {
-    const copy = themeCopy();
-    const selected = normalizeThemePreference(state.settings.theme) || DEFAULT_THEME;
-    const resolved = resolvedThemePreference(selected);
-    return `<div class="theme-switcher" data-theme-switcher data-open="${_themeMenuOpen ? "true" : "false"}">
-      <button class="topbar-chip theme-switcher-button" data-theme-menu-toggle type="button" aria-haspopup="listbox" aria-expanded="${_themeMenuOpen}" aria-label="${h(copy.choose)}" title="${h(copy.choose)}">
-        <span class="theme-switcher-glyph theme-switcher-glyph-${resolved}" aria-hidden="true"></span>
-        <span class="theme-switcher-label">${h(copy.options[selected])}</span>
-        <span class="theme-switcher-chevron" aria-hidden="true">⌄</span>
-      </button>
-      ${_themeMenuOpen ? `<div class="theme-menu" role="listbox" aria-label="${h(copy.choose)}">${themeOptionsHtml("menu")}</div>` : ""}
-    </div>`;
-  }
-
-  function renderThemeSwitcher() {
-    const host = document.getElementById("theme-switcher");
-    if (!host) return;
-    host.innerHTML = themeSwitcherHtml();
-  }
-
-  function themeSettingsPanel() {
-    const copy = themeCopy();
-    return `<article class="panel theme-settings-panel">
-      <span class="eyebrow">${h(copy.title)}</span>
-      <h2>${h(copy.choose)}</h2>
-      <div class="settings-theme-grid" role="listbox" aria-label="${h(copy.choose)}">
-        ${themeOptionsHtml("settings")}
-      </div>
-    </article>`;
-  }
-
-  function setTerminalLanguage(lang) {
-    _themeMenuOpen = false;
-    setLanguage(lang);
+  function discardTraderThemePreference() {
+    delete state.settings.theme;
+    [keys.settings, LEGACY_SETTINGS_STORAGE_KEY].forEach((storageKey) => {
+      const stored = read(storageKey, null);
+      if (!stored || typeof stored !== "object" || !("theme" in stored)) return;
+      const next = { ...stored };
+      delete next.theme;
+      write(storageKey, next);
+    });
+    try { localStorage.removeItem("sfmTraderTheme"); } catch (_error) {}
   }
 
   /* ─────────────────────────── Router ─────────────────────────── */
@@ -2177,12 +1970,6 @@
         setMobileMoreOpen(!_mobileMoreOpen, { focusFirst: !_mobileMoreOpen });
         return;
       }
-      const languageOption = event.target.closest("[data-language]");
-      if (languageOption) { event.preventDefault(); setTerminalLanguage(languageOption.dataset.language); return; }
-      const themeToggle = event.target.closest("[data-theme-menu-toggle]");
-      if (themeToggle) { event.preventDefault(); _themeMenuOpen = !_themeMenuOpen; renderThemeSwitcher(); return; }
-      const themeOption = event.target.closest("[data-theme-option]");
-      if (themeOption) { event.preventDefault(); selectThemePreference(themeOption.dataset.themeOption); return; }
       const settingsAction = event.target.closest("[data-settings-action]");
       if (settingsAction) {
         event.preventDefault();
@@ -2420,41 +2207,11 @@
       const _msm = event.target.closest("[data-select-market]");
       if (_msm) { event.preventDefault(); const _mid = _msm.dataset.selectMarket; if (_mid) { selectMarket(_mid); } return; }
       if (_marketSelectorOpen && !event.target.closest(".ms-wrap")) { _marketSelectorOpen = false; renderMarketSelector(); }
-      if (_themeMenuOpen && !event.target.closest("[data-theme-switcher]")) { _themeMenuOpen = false; renderThemeSwitcher(); }
     });
     document.addEventListener("keydown", function(ev) {
       if (handleSymbolDrawerKeydown(ev)) return;
       if (dismissFocusedTooltip(ev)) return;
       if (handleMobileMoreKeydown(ev)) return;
-      if (_themeMenuOpen) {
-        const _themeItems = Array.prototype.slice.call(document.querySelectorAll("[data-theme-switcher] [data-theme-option]") || []);
-        const _themeIdx = _themeItems.indexOf(document.activeElement);
-        if (ev.key === "Escape") {
-          _themeMenuOpen = false;
-          renderThemeSwitcher();
-          const _themeButton = document.querySelector("[data-theme-menu-toggle]");
-          if (_themeButton) _themeButton.focus();
-          ev.preventDefault();
-          return;
-        }
-        if (_themeItems.length && ev.key === "ArrowDown") {
-          ev.preventDefault();
-          const _nextTheme = _themeIdx < 0 ? 0 : Math.min(_themeIdx + 1, _themeItems.length - 1);
-          if (_themeItems[_nextTheme]) _themeItems[_nextTheme].focus();
-          return;
-        }
-        if (_themeItems.length && ev.key === "ArrowUp") {
-          ev.preventDefault();
-          const _prevTheme = Math.max(_themeIdx - 1, 0);
-          if (_themeItems[_prevTheme]) _themeItems[_prevTheme].focus();
-          return;
-        }
-        if (ev.key === "Enter" && document.activeElement && document.activeElement.dataset && document.activeElement.dataset.themeOption) {
-          ev.preventDefault();
-          selectThemePreference(document.activeElement.dataset.themeOption);
-          return;
-        }
-      }
       if (handleWorkspaceTabKeydown(ev)) return;
       if (!_marketSelectorOpen) return;
       const _items = Array.prototype.slice.call(document.querySelectorAll("[data-select-market]") || []);
@@ -2587,11 +2344,6 @@
         state.settings.lang = currentLanguage();
         state.settings.language = state.settings.lang;
         applyTerminalLanguage();
-        render();
-      }
-      if (["the-sfm-theme", "sfmTraderTheme", "theme", "sfm_settings", LEGACY_SETTINGS_STORAGE_KEY, keys.settings].includes(event.key || "")) {
-        state.settings.theme = readStoredThemePreference();
-        applyThemePreference(state.settings.theme);
         render();
       }
       if (["sfm-density", "sfm_settings"].includes(event.key || "")) {
@@ -2872,7 +2624,7 @@
       skipLink.textContent = skipLabel;
       skipLink.setAttribute("aria-label", skipLabel);
     }
-    status(); ticker(); statusBar(); renderThemeSwitcher();
+    status(); ticker(); statusBar();
     const content = document.getElementById("terminal-content");
     if (!content) return;
     content.innerHTML = state.loading ? loading() : page();
@@ -3649,22 +3401,23 @@
     const rows = arr(response.data);
     const isOpen = options.forceOpen === true || (state.calendarOpen && state.calendarOpen[kind] === true);
     const count = response.resultCount ?? rows.length;
-    return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${isOpen ? "is-open" : "is-collapsed"}">
+    const compactState = !state.calendarLoading && rows.length === 0;
+    return `<article class="panel trader-calendar-panel calendar-${h(kind)} ${isOpen ? "is-open" : "is-collapsed"} ${compactState ? "has-compact-state" : ""}">
       <div class="panel-head calendar-panel-head">
         <div><span class="eyebrow">${h(eyebrow)}</span><h2>${h(title)}</h2></div>
         <div class="calendar-head-actions">
           ${providerBadge(response)}
           <span class="state-badge muted">${h(latinNumber(count))} ${h(terminalText("rows"))}</span>
           ${options.forceOpen ? "" : `<button class="ghost-btn compact-btn" data-calendar-section-toggle="${h(kind)}" aria-expanded="${isOpen ? "true" : "false"}">${h(isOpen ? terminalText("collapse") : terminalText("open"))}</button>`}
-          <button class="ghost-btn compact-btn" data-retry>${h(terminalText("retry"))}</button>
+          ${compactState ? "" : `<button class="ghost-btn compact-btn" data-retry>${h(terminalText("retry"))}</button>`}
         </div>
       </div>
       ${isOpen ? `<div class="calendar-section-body">
-      <div class="calendar-meta">
+      ${compactState ? "" : `<div class="calendar-meta">
         <span>${h(terminalText("lastUpdated"))}: <b>${h(latinDateTime(response.lastUpdated || response.lastSuccessfulUpdate))}</b></span>
         <span>${h(terminalText("period"))}: <b class="ltr">${h(rangeText(response.range))}</b></span>
         <span>${h(terminalText("results"))}: <b class="ltr">${h(latinNumber(count))}</b></span>
-      </div>
+      </div>`}
       ${state.calendarLoading ? calendarLoadingState() : rows.length ? rowRenderer(rows) : calendarEmptyState(response)}
       </div>` : ""}
     </article>`;
@@ -3685,6 +3438,7 @@
     let title = UNAVAILABLE_MESSAGE;
     let body = formatProviderError(response && response.message, { empty: textPair("اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.", "Connect a data provider to show events, dividends, and IPOs.") });
     let settings = true;
+    let rangeAction = false;
     if (response && response.routeUnavailable) {
       title = ROUTE_UNAVAILABLE_MESSAGE;
       body = textPair("تعذر الوصول إلى مسار البيانات المطلوب.", "The requested data route could not be reached.");
@@ -3697,12 +3451,14 @@
       title = textPair("لا توجد أحداث ضمن الفترة الحالية", "No events in the current range");
       body = textPair("جرّب تغيير الفترة أو السوق أو نوع الحدث.", "Try changing the range, market, or event type.");
       settings = false;
+      rangeAction = true;
     } else if (status === "not_configured" || status === "missing_provider") {
       title = textPair("لا يوجد مزود متصل", "No connected provider");
       body = textPair("اربط مزود بيانات لعرض الأحداث والتوزيعات والاكتتابات.", "Connect a data provider to show events, dividends, and IPOs.");
     } else if (["not_entitled", "forbidden", "unauthorized"].includes(status)) {
       title = textPair("الميزة غير متاحة ضمن صلاحية المزود الحالي", "Feature unavailable for the current provider entitlement");
       body = textPair("تحتاج هذه البيانات إلى خطة تدعم هذا النوع من التقويم.", "This data requires a plan that supports this calendar type.");
+      settings = false;
     } else if (status === "rate_limited") {
       title = UNAVAILABLE_MESSAGE;
       body = response && (response.cached || response.stale) ? textPair("يتم عرض أحدث بيانات متاحة إلى أن يعود التحديث المباشر.", "Showing the latest available data until live updates return.") : textPair("البيانات غير متاحة حالياً. حاول مرة أخرى بعد قليل.", "Data is currently unavailable. Try again shortly.");
@@ -3712,7 +3468,30 @@
       body = textPair("تعذر جلب البيانات من المزود الحالي. لم يتم عرض أي بيانات بديلة.", "The current provider could not fetch data. No fallback data was shown.");
       settings = false;
     }
-    return `<div class="empty-state compact calendar-empty"><span class="empty-glyph">◌</span><h3>${h(translateUiText(title))}</h3><p>${h(translateUiText(body))}</p><div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>${h(terminalText("settings"))}</a>` : ""}<button class="ghost-btn" data-retry>${h(terminalText("retry"))}</button></div></div>`;
+    const provider = providerName(response && (response.provider || response.source || response.providerName)) || terminalText("unavailable");
+    const checkedAt = response && (response.lastCheckedAt || response.checkedAt || response.fetchedAt || response.generatedAt);
+    const lastSuccessfulUpdate = response && (response.lastSuccessfulUpdate || (["success", "available", "connected", "healthy"].includes(status) ? response.lastUpdated : null));
+    const nextAction = rangeAction
+      ? textPair("وسّع نطاق التاريخ أو غيّر الفترة المحددة.", "Extend the date range or change the selected period.", "Élargissez la plage de dates ou modifiez la période sélectionnée.")
+      : settings
+        ? textPair("راجع إعدادات المزود ثم أعد فحص الحالة.", "Review provider settings, then refresh the status.", "Vérifiez les paramètres du fournisseur, puis actualisez l’état.")
+        : textPair("أعد فحص الحالة. إذا استمرت المشكلة، راجع صلاحية المزود.", "Refresh the status. If it persists, review provider access.", "Actualisez l’état. Si le problème persiste, vérifiez l’accès au fournisseur.");
+    return `<div class="empty-state compact calendar-empty trader-calendar-unavailable" role="status" data-calendar-status="${h(status)}">
+      <span class="empty-glyph" aria-hidden="true">${["provider_error", "invalid_request"].includes(status) ? "!" : "◌"}</span>
+      <div class="trader-calendar-unavailable-copy">
+        <span class="state-badge ${h(featureStatusTone(status))}">${h(featureStatusLabel(status))}</span>
+        <h3>${h(translateUiText(title))}</h3>
+        <p>${h(translateUiText(body))}</p>
+        <dl class="trader-calendar-diagnostics">
+          <div><dt>${h(textPair("المزود", "Provider", "Fournisseur"))}</dt><dd>${h(provider)}</dd></div>
+          <div><dt>${h(textPair("آخر فحص", "Last checked", "Dernière vérification"))}</dt><dd class="ltr">${h(latinDateTime(checkedAt))}</dd></div>
+          <div><dt>${h(textPair("آخر تحديث ناجح", "Last successful update", "Dernière mise à jour réussie"))}</dt><dd class="ltr">${h(latinDateTime(lastSuccessfulUpdate))}</dd></div>
+          <div><dt>${h(textPair("السبب الآمن", "Safe reason", "Motif sécurisé"))}</dt><dd>${h(translateUiText(body))}</dd></div>
+          <div><dt>${h(textPair("الخطوة التالية", "Next action", "Prochaine action"))}</dt><dd>${h(nextAction)}</dd></div>
+        </dl>
+        <div class="row-actions">${settings ? `<a class="ghost-btn" href="${ROOT}/settings" data-route-link>${h(terminalText("settings"))}</a>` : ""}${rangeAction ? `<button class="outline-btn" type="button" data-calendar-range="90">${h(textPair("توسيع النطاق", "Extend range", "Élargir la période"))}</button>` : ""}<button class="secondary-btn" type="button" data-retry>${h(textPair("تحديث الحالة", "Refresh status", "Actualiser l’état"))}</button></div>
+      </div>
+    </div>`;
   }
 
   const EARNINGS_COLUMNS = [
@@ -4058,7 +3837,6 @@
         </span>
       </label>`;
     }).join("");
-    const languageButtons = ["ar", "en", "fr"].map(language => `<button class="settings-segment-btn ${lang === language ? "is-active" : ""}" type="button" data-language="${language}" aria-pressed="${lang === language ? "true" : "false"}">${h(settingsT(language === "ar" ? "arabic" : language === "fr" ? "french" : "english", lang))}</button>`).join("");
     const tabs = [
       { id: "overview", label: textPair("نظرة المزود", "Provider Overview", "Vue du fournisseur") },
       { id: "capabilities", label: textPair("القدرات", "Capabilities", "Capacités") },
@@ -4091,17 +3869,6 @@
             <div class="settings-form-actions"><button class="action-btn settings-save-btn" type="submit">${h(settingsT("save", lang))}</button></div>
           </form>
         </article>`;
-    const appearancePanel = `<article class="panel settings-panel settings-actions-panel">
-          <div class="panel-head"><div><span class="eyebrow">${h(settingsT("platformActions", lang))}</span><h2>${h(settingsT("platformActions", lang))}</h2></div></div>
-          <div class="settings-action-group">
-            <span class="settings-section-label">${h(settingsT("language", lang))}</span>
-            <div class="settings-segment-group" role="group" aria-label="${h(settingsT("language", lang))}">${languageButtons}</div>
-          </div>
-          <div class="settings-action-group">
-            <span class="settings-section-label">${h(settingsT("theme", lang))}</span>
-            <div class="settings-theme-grid" role="listbox" aria-label="${h(settingsT("theme", lang))}">${themeOptionsHtml("settings")}</div>
-          </div>
-        </article>`;
     const policyPanel = `<article class="panel settings-panel settings-policy-panel">
           <div class="panel-head"><div><span class="eyebrow">${h(settingsT("dataPolicy", lang))}</span><h2>${h(settingsT("dataPolicy", lang))}</h2></div></div>
           <div class="settings-info-grid">
@@ -4115,7 +3882,7 @@
       ${workspacePanel("settings", "overview", providerSettingsOverview(lang), { keepMounted: true })}
       ${workspacePanel("settings", "capabilities", providerSettingsCapabilities(lang), { keepMounted: true })}
       ${workspacePanel("settings", "issues", providerSettingsIssues(lang), { keepMounted: true })}
-      ${workspacePanel("settings", "preferences", `<section class="settings-grid settings-grid-polished">${signalPanel}${appearancePanel}${policyPanel}</section>`, { keepMounted: true })}
+      ${workspacePanel("settings", "preferences", `<section class="settings-grid settings-grid-polished">${signalPanel}${policyPanel}</section>`, { keepMounted: true })}
       ${disclaimer()}</div>`;
   }
 
@@ -5223,7 +4990,9 @@
         ${metric(textPair("المقاومة", "Resistance", "Résistance"), evidenceReady && resistance !== null ? price(resistance, c) : terminalText("unavailable"))}
         ${metric(textPair("الزخم", "Momentum", "Momentum"), evidenceReady ? analysisDisplayValue(momentum) : terminalText("unavailable"))}
         ${metric(textPair("اتساع السوق", "Market breadth", "Amplitude du marché"), evidenceReady ? analysisDisplayValue(breadth) : terminalText("unavailable"))}
-        ${metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), evidenceReady && opportunityScore !== null ? latinNumber(opportunityScore) : terminalText("unavailable"))}
+        ${evidenceReady && opportunityScore !== null
+          ? evaluationScoreMetric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), opportunityScore)
+          : metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), terminalText("unavailable"))}
       </div>
       <div class="analysis-signal-strip">${evidenceReady && rawSignals.length ? rawSignals.slice(0, 6).map(item => `<span>${h(analysisDisplayValue(item && typeof item === "object" ? item.label || item.name || item.signal || item.value : item))}</span>`).join("") : `<span>${h(dataState.body)}</span>`}</div>
       <div class="analysis-provider-state ${dataState.tone || p.tone || ""}"><span>${h(textPair("حالة بيانات التحليل", "Analysis data status", "État des données d’analyse"))}</span><strong>${h(dataState.label)}</strong><small>${h(stockProviderValue(a))}</small></div>
@@ -5235,6 +5004,30 @@
     if (typeof value === "number") return latinNumber(value);
     if (typeof value === "object") return analysisDisplayValue(value.label ?? value.name ?? value.value ?? value.score ?? null);
     return translateUiText(String(value));
+  }
+
+  function evaluationScoreState(value) {
+    const score = Number(value);
+    if (!Number.isFinite(score)) return null;
+    return score < 50 ? "danger" : "success";
+  }
+
+  function evaluationScoreStatus(tone) {
+    return tone === "success"
+      ? textPair("نتيجة إيجابية", "Positive score", "Score positif")
+      : textPair("بحاجة للتحسين", "Needs attention", "À améliorer");
+  }
+
+  function evaluationScoreMetric(label, value) {
+    const tone = evaluationScoreState(value);
+    if (!tone) return "";
+    const statusLabel = evaluationScoreStatus(tone);
+    const icon = tone === "success" ? "✓" : "!";
+    return `<div class="analysis-metric evaluation-score-card ${tone}" data-score-state="${tone}" aria-label="${h(`${label}: ${latinNumber(value)} · ${statusLabel}`)}">
+      <span>${h(label)}</span>
+      <strong class="ltr market-value"><span aria-hidden="true">${icon}</span> ${h(latinNumber(value))}</strong>
+      <small>${h(statusLabel)}</small>
+    </div>`;
   }
   function commandMetric(kicker, value, label, tone) {
     return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(translateUiText(kicker))}</span><strong>${h(translateUiText(String(value)))}</strong><small>${h(translateUiText(label || terminalText("unavailable")))}</small></article>`;

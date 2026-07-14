@@ -94,8 +94,9 @@ describe('SFM Trader workspace experience', () => {
     expect(html).toContain('class="terminal-skip-link"');
     expect(html).toContain('id="symbol-drawer-host"');
     expect(html).toContain('semantic-tokens.css?v=20260713-central-system');
-    expect(html).toContain('cinema.css?v=20260713-central-system');
-    expect(html).toContain('app.js?v=20260712-density');
+    expect(html).toContain('theme-bridge.js?v=20260714-phase34');
+    expect(html).toContain('cinema.css?v=20260714-phase34');
+    expect(html).toContain('app.js?v=20260714-phase34');
   });
 
   it('includes mobile reflow, dark-mobile repair, RTL wrapping, and reduced motion', () => {

@@ -887,6 +887,7 @@ const elements = {
   backtest: document.querySelector("#backtest-detail"),
   back: document.querySelector(".detail-back")
 };
+let lastSparklineState = null;
 
 applyDetailLanguage();
 installLatinDigitNormalizer();
@@ -977,10 +978,18 @@ function renderDetail(data) {
   elements.riskReward.textContent = item.riskReward ? `${formatNumber(item.riskReward, { maximumFractionDigits: 2 })}:1` : unavailableText();
   elements.expectedMove.textContent = formatPercent(item.expectedMovePct);
   elements.duration.textContent = localizeDetailText(item.duration);
-  elements.score.textContent = `${finalScore.score}% · ${localizeScoreLabel(finalScore.label)}`;
+  renderEvaluationScore(elements.score, finalScore.score, localizeScoreLabel(finalScore.label));
   elements.risk.textContent = localizeRiskLabel(item.risk);
-  elements.quality.textContent = item.analysisQuality ? `${item.analysisQuality.score}% · ${localizeDetailText(item.analysisQuality.label)}` : unavailableText();
-  elements.dataHealth.textContent = item.dataHealth ? `${item.dataHealth.score}% · ${localizeDetailText(item.dataHealth.label || "صحة البيانات")}` : unavailableText();
+  renderEvaluationScore(
+    elements.quality,
+    item.analysisQuality?.score,
+    item.analysisQuality ? localizeDetailText(item.analysisQuality.label) : ""
+  );
+  renderEvaluationScore(
+    elements.dataHealth,
+    item.dataHealth?.score,
+    item.dataHealth ? localizeDetailText(item.dataHealth.label || "صحة البيانات") : ""
+  );
 
   elements.decisionPanel.className = `decision-panel decision-${decision.kind}`;
   elements.decisionTitle.textContent = localizeDetailText(decision.title);
@@ -994,7 +1003,11 @@ function renderDetail(data) {
   renderOutlook(item);
   renderReasons(item.reasons || []);
   renderBacktest(item);
-  drawSparkline(elements.sparkline, item.sparkline || [], normalizedRecommendation.status);
+  lastSparklineState = {
+    values: [...(item.sparkline || [])],
+    action: normalizedRecommendation.status
+  };
+  drawSparkline(elements.sparkline, lastSparklineState.values, lastSparklineState.action);
   applyDetailLanguage();
 }
 
@@ -1202,6 +1215,41 @@ function calculateFinalScore(item) {
   return { score, label };
 }
 
+function evaluationScoreState(score) {
+  const value = Number(score);
+  if (!Number.isFinite(value)) return null;
+  return value < 50 ? "danger" : "success";
+}
+
+function evaluationScoreStatus(state) {
+  return state === "success"
+    ? detailText("نتيجة إيجابية", "Positive score", "Score positif")
+    : detailText("بحاجة للتحسين", "Needs attention", "À améliorer");
+}
+
+function renderEvaluationScore(element, score, label) {
+  if (!element) return;
+  const state = evaluationScoreState(score);
+  if (!state) {
+    element.textContent = unavailableText();
+    element.className = "evaluation-score";
+    element.removeAttribute("data-score-state");
+    element.removeAttribute("aria-label");
+    return;
+  }
+  const normalizedValue = clamp(Number(score), 0, 100);
+  const value = Number.isInteger(normalizedValue)
+    ? normalizedValue
+    : Math.round(normalizedValue * 10) / 10;
+  const status = evaluationScoreStatus(state);
+  const icon = state === "success" ? "✓" : "!";
+  const suffix = label ? ` · ${label}` : "";
+  element.textContent = `${icon} ${value}%${suffix} · ${status}`;
+  element.className = `evaluation-score evaluation-score-${state}`;
+  element.dataset.scoreState = state;
+  element.setAttribute("aria-label", `${value}% · ${status}${suffix}`);
+}
+
 function resolveCanvasTokenColor(canvas, token) {
   const root = document.documentElement;
   const canvasStyles = getComputedStyle(canvas);
@@ -1257,6 +1305,15 @@ function drawSparkline(canvas, values = [], action) {
   });
   context.stroke();
 }
+
+function redrawThemeSensitiveDetailCharts() {
+  if (!lastSparklineState || !elements.sparkline) return;
+  window.requestAnimationFrame(() => {
+    drawSparkline(elements.sparkline, lastSparklineState.values, lastSparklineState.action);
+  });
+}
+
+window.addEventListener("sfm-trader-theme-applied", redrawThemeSensitiveDetailCharts);
 
 function getDetailSettings() {
   try {
@@ -1668,7 +1725,7 @@ function initMarketBackground() {
     y: 80 + index * 92,
     phase: Math.random() * 100,
     speed: 0.35 + Math.random() * 0.45,
-    color: index % 3 === 0 ? palette.accent : index % 3 === 1 ? palette.danger : palette.info
+    tone: index % 3 === 0 ? "accent" : index % 3 === 1 ? "danger" : "info"
   }));
 
   function resize() {
@@ -1696,7 +1753,7 @@ function initMarketBackground() {
     context.globalAlpha = 0.2;
     for (const row of rows) {
       row.phase += row.speed;
-      context.strokeStyle = row.color;
+      context.strokeStyle = palette[row.tone];
       context.beginPath();
       for (let x = -20; x <= window.innerWidth + 20; x += 18) {
         const wave = Math.sin((x + row.phase * 3) * 0.012) * 18 + Math.cos((x - row.phase) * 0.027) * 9;
