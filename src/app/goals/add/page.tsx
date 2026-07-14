@@ -6,7 +6,6 @@ import { ArrowLeft, Save, Target } from 'lucide-react';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { recordAccountActivity } from '@/lib/accountActivity';
 import { moneyNumber, normalizeNumberInput } from '@/lib/money';
 
@@ -179,7 +178,6 @@ export default function AddGoalPage() {
             <ArrowLeft size={17} />
             {text('رجوع', 'Back', 'Retour')}
           </button>
-          <LanguageSwitcher variant="gold" />
         </header>
 
         <div className="hero">

@@ -28,7 +28,6 @@ import type { LucideIcon } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useUrlTabState } from '@/hooks/useUrlTabState';
@@ -785,7 +784,6 @@ export default function KhumsPage() {
             <button className="dark-btn" type="button" onClick={resetDraft}>
               <Plus size={16} /> {t('khums_new_year')}
             </button>
-            <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
 
@@ -1444,12 +1442,12 @@ export default function KhumsPage() {
         .metric-evidence > summary{width:34px;height:32px;border-radius:var(--radius-sm);display:grid;place-items:center;cursor:pointer;list-style:none;color:var(--primary);background:color-mix(in srgb, var(--accent) 8%, transparent);border:1px solid color-mix(in srgb, var(--accent) 13%, transparent)}
         .metric-evidence > summary::-webkit-details-marker{display:none}
         .metric-evidence > div{display:grid;gap:7px;margin-top:9px;border-radius:var(--radius-control);background:var(--surface-muted);padding:10px}
-        .metric-evidence p{display:grid;gap:2px;margin:0;color:var(--foreground-muted);font-size:11px;line-height:1.55}
+        .metric-evidence p{display:grid;gap:2px;margin:0;color:var(--foreground-muted);font-size:12px;line-height:1.55}
         .metric-evidence b{color:var(--primary);font-weight:600}
         .metric-evidence span{width:auto;height:auto;display:block;background:none;color:inherit;border:0;border-radius:0}
         .calculation-evidence{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
         .calculation-evidence div{min-width:0;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);border-radius:var(--radius-card);background:var(--surface-muted);padding:12px}
-        .calculation-evidence small{display:block;color:var(--danger);font-size:11px;font-weight:600;line-height:1.45}
+        .calculation-evidence small{display:block;color:var(--danger);font-size:12px;font-weight:600;line-height:1.45}
         .calculation-evidence strong{display:block;margin-top:5px;color:var(--foreground);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
         .khums-page .formula-box{border-color:color-mix(in srgb, var(--foreground-secondary) 24%, transparent);background:var(--primary);box-shadow:var(--shadow-card)}
         .khums-page .formula-box :is(small,span){color:var(--foreground-secondary)}

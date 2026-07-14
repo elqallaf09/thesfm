@@ -12,17 +12,17 @@
   --font-data: var(--font-ibm-plex-mono, "IBM Plex Mono"),
     "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 
-  --type-display-size: clamp(2rem, 3.2vw, 3rem);
+  --type-display-size: clamp(2rem, 3vw, 2.75rem);
   --type-display-leading: 1.2;
   --type-display-weight: 700;
   --type-display-tracking: -0.01em;
 
-  --type-page-title-size: clamp(1.75rem, 2.5vw, 2.4rem);
+  --type-page-title-size: clamp(1.5rem, 2.25vw, 2rem);
   --type-page-title-leading: 1.28;
   --type-page-title-weight: 700;
   --type-page-title-tracking: -0.01em;
 
-  --type-section-title-size: clamp(1.25rem, 1.7vw, 1.55rem);
+  --type-section-title-size: clamp(1.25rem, 1.7vw, 1.5rem);
   --type-section-title-leading: 1.35;
   --type-section-title-weight: 600;
   --type-section-title-tracking: 0;
@@ -37,7 +37,7 @@
   --type-body-weight: 400;
   --type-body-tracking: 0;
 
-  --type-body-small-size: 0.8125rem;
+  --type-body-small-size: 0.875rem;
   --type-body-small-leading: 1.6;
   --type-body-small-weight: 400;
   --type-body-small-tracking: 0;
@@ -56,6 +56,11 @@
   --type-button-leading: 1.25;
   --type-button-weight: 600;
   --type-button-tracking: 0;
+
+  --type-navigation-size: 0.875rem;
+  --type-navigation-leading: 1.5;
+  --type-navigation-weight: 500;
+  --type-navigation-active-weight: 600;
 
   --type-numeric-value-size: 1.35rem;
   --type-numeric-value-leading: 1.2;
@@ -77,7 +82,7 @@
   --type-table-header-weight: 600;
   --type-table-header-tracking: 0.01em;
 
-  --type-table-cell-size: 0.8125rem;
+  --type-table-cell-size: 0.875rem;
   --type-table-cell-leading: 1.5;
   --type-table-cell-weight: 400;
   --type-table-cell-tracking: 0;
@@ -108,7 +113,7 @@
   --control-h-sm: 36px;
   --control-h: 44px;
   --control-h-lg: 48px;
-  --sidebar-w: 220px;
+  --sidebar-w: 240px;
   --sidebar-width-icon: 3rem;
   --topbar-h: 64px;
   --global-header-height: 64px;

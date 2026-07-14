@@ -27,7 +27,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
@@ -727,7 +726,6 @@ export default function BusinessHubPage() {
             <span>THE SFM</span>
             <strong>{text.title}</strong>
           </div>
-          <LanguageSwitcher variant="gold" compact />
         </div>
 
         <section className="business-hero">

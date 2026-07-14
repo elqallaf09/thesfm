@@ -24,8 +24,6 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -457,11 +455,6 @@ export default function DocumentsCenterPage() {
   return (
     <div className="documents-center-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="documents-center-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           eyebrow={text.eyebrow}
           title={text.title}
@@ -671,12 +664,6 @@ export default function DocumentsCenterPage() {
         .documents-center-content {
           display: grid;
           gap: var(--workspace-page-section-gap);
-        }
-        .sfm-page-topbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 10px;
         }
         .documents-upload-panel {
           position: relative;
@@ -1124,9 +1111,6 @@ export default function DocumentsCenterPage() {
           }
         }
         @media (max-width: 720px) {
-          .sfm-page-topbar {
-            display: none;
-          }
           .documents-upload-panel {
             padding: 14px;
             border-radius: var(--radius-card);

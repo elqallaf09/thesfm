@@ -144,19 +144,19 @@ export function AppHeader() {
 
         .sfm-global-brand strong {
           color: var(--foreground);
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 600;
-          line-height: 1.25;
+          line-height: 1.35;
           white-space: nowrap;
         }
 
         .sfm-global-brand-copy > span {
-          max-width: 140px;
+          max-width: 170px;
           overflow: hidden;
           color: var(--foreground-muted);
-          font-size: 10.5px;
+          font-size: var(--type-caption-size);
           font-weight: 400;
-          line-height: 1.4;
+          line-height: var(--type-caption-leading);
           text-overflow: ellipsis;
           white-space: nowrap;
         }
@@ -178,17 +178,19 @@ export function AppHeader() {
         .sfm-global-header .sfm-command-trigger {
           width: min(190px, 14vw);
           min-width: 132px;
-          min-height: 40px;
+          min-height: var(--control-h);
         }
 
         .sfm-global-header .sfm-language-trigger,
         .sfm-global-header .sfm-theme-toggle,
+        .sfm-global-header .sfm-density-toggle,
         .sfm-global-header .sfm-user-chip {
+          min-height: var(--control-h);
           box-shadow: none;
         }
 
         .sfm-global-header .sfm-user-chip {
-          min-height: 40px;
+          min-height: var(--control-h);
           border-color: var(--border-strong);
           background: var(--surface);
           color: var(--foreground);
@@ -282,7 +284,7 @@ export function AppHeader() {
           }
 
           .sfm-global-actions {
-            max-width: 40px;
+            max-width: 44px;
           }
 
           .sfm-global-actions > .sfm-command-trigger,
@@ -318,7 +320,7 @@ export function AppHeader() {
           }
 
           .sfm-global-brand strong {
-            font-size: 12.5px;
+            font-size: 14px;
           }
 
           .sfm-global-menu-button {

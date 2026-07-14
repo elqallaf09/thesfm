@@ -33,13 +33,12 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).not.toContain("resolveActiveWorkspace('/dashboard')");
   });
 
-  it('provides responsive trilingual labels and keeps the active tab visible', () => {
-    expect(switcher).toContain("'personal-finance': { ar: 'المالية', en: 'Finance', fr: 'Finances' }");
-    expect(switcher).toContain("'markets-trading': { ar: 'الأسواق', en: 'Markets', fr: 'Marchés' }");
-    expect(switcher).toContain("'business-projects': { ar: 'الأعمال', en: 'Business', fr: 'Affaires' }");
-    expect(switcher).toContain("administration: { ar: 'الإدارة', en: 'Admin', fr: 'Admin' }");
+  it('keeps full registry labels at every width and scrolls the active tab into view', () => {
+    expect(switcher).toContain('{workspace.labels[locale]}');
+    expect(switcher).toContain('className="sfm-workspace-label-full"');
+    expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
-    expect(switcher).toContain('min-height: 44px');
+    expect(switcher).toContain('min-height: var(--control-h)');
     expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
     expect(switcher).toContain('overflow-x: auto');
     expect(header).not.toMatch(/\.sfm-global-menu-button\s*\{[^}]*(?:width|min-width|height):\s*40px/);

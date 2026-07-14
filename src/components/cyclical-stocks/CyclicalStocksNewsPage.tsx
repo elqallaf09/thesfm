@@ -2874,7 +2874,7 @@ export function CyclicalStocksNewsPage() {
           height: 32px;
           overflow: hidden;
           color: var(--accent);
-          font-size: 10px;
+          font-size: 12px;
         }
         .ticker-item .ticker-logo span {
           display: inline-flex;
@@ -2894,7 +2894,7 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground-secondary);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
         .ticker-values {
@@ -2910,7 +2910,7 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground-muted);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 600;
         }
         .ticker-values b,

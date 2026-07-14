@@ -8,8 +8,6 @@ import { EmptyState } from '@/components/layout/EmptyState';
 import { PageHero } from '@/components/layout/PageHero';
 import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useUrlTabState } from '@/hooks/useUrlTabState';
@@ -220,11 +218,6 @@ export default function InvestmentOffersPage() {
   return (
     <div className={`investment-offers-shell ${styles.shell}`} dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="investment-offers-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           eyebrow={text.eyebrow}
           title={text.title}

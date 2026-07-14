@@ -510,7 +510,7 @@
 }
 
 @media print {
-  .page { max-width: none; padding: 0; color: var(--print-foreground); background: var(--print-background); font-size: 11px; overflow: visible; }
+  .page { max-width: none; padding: 0; color: var(--print-foreground); background: var(--print-background); font-size: 12px; overflow: visible; }
   .stickySearch, .reportActions, .reportTabsShell { display: none !important; }
   .report { margin: 0; }
   .summaryHero, .accordion, .finalVerdict, .reportTabPanel { border-color: var(--print-border); border-radius: 0; background: var(--print-surface) !important; box-shadow: none; break-inside: avoid; }

@@ -27,7 +27,7 @@ export default function BusinessOperationsChartCard({
   const hasData = data.some((item) => item.value > 0);
   const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
   const chartRows = data.map((item) => ({ ...item, label: item.label ?? item.name }));
-  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 11 };
+  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 12 };
   const tooltipStyle = {
     background: 'var(--surface-elevated)',
     border: '1px solid var(--border)',

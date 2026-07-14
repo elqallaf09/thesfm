@@ -95,8 +95,9 @@ describe('central visual-system contract', () => {
       foreground: '#0F2742',
       'foreground-secondary': '#334155',
       'foreground-muted': '#627287',
+      'foreground-subtle': '#64748B',
       border: '#E2E8F0',
-      'border-strong': '#CBD5E1',
+      'border-strong': '#7C8A9E',
       primary: '#1769D2',
       'primary-hover': '#1258B3',
       'primary-soft': '#EAF3FF',
@@ -121,6 +122,7 @@ describe('central visual-system contract', () => {
     expect(dark).toContain('--surface-hover: #132D47;');
     expect(dark).toContain('--surface-active: #12365A;');
     expect(dark).toContain('--surface-disabled: #14283B;');
+    expect(dark).toContain('--border-strong: #64748B;');
   });
 
   it('centralizes theme-safe skeleton and print-view colors', () => {
@@ -165,6 +167,11 @@ describe('central visual-system contract', () => {
           `hero-foreground-muted on ${heroStop}`,
         ).toBeGreaterThanOrEqual(4.5);
       }
+
+      expect(
+        contrastRatio(hexToken(block, 'border-strong'), hexToken(block, 'surface')),
+        'border-strong against surface',
+      ).toBeGreaterThanOrEqual(3);
     }
   });
 
@@ -224,7 +231,8 @@ describe('central visual-system contract', () => {
     expect(globals).toContain('.katex *,');
     expect(globals).toContain('mjx-container *');
     expect(globals).toContain('body :where(input, textarea, select):not(');
-    expect(globals).toContain('[class*="Button"]{font-family:var(--font-ui) !important;');
+    expect(globals).not.toMatch(/\[class\*="(?:Button|Select|Card|Label)/);
+    expect(globals).toContain('button{\n  font-family: var(--font-ui);');
     expect(globals.indexOf('font-family: var(--font-data) !important'))
       .toBeGreaterThan(globals.indexOf('.auth-input {'));
   });

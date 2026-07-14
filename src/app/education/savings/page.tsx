@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 
 export default function SavingsEducationPage() {
@@ -75,7 +74,6 @@ export default function SavingsEducationPage() {
           <button type="button" className="savings-back" onClick={() => router.push('/dashboard')}>
             {L('العودة للرئيسية', 'Back Home', 'Retour accueil')}
           </button>
-          <LanguageSwitcher variant="gold" compact />
         </header>
 
         <section className="savings-hero">

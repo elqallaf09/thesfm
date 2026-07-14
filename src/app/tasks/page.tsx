@@ -22,8 +22,6 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -311,11 +309,6 @@ export default function TasksCenterPage() {
   return (
     <div className="tasks-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="tasks-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           eyebrow={text.eyebrow}
           title={text.title}
@@ -412,12 +405,6 @@ export default function TasksCenterPage() {
           display: grid;
           gap: var(--layout-section-gap);
         }
-        .sfm-page-topbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 10px;
-        }
         .sfm-primary-link,
         .sfm-secondary-link {
           min-height: 42px;
@@ -464,7 +451,7 @@ export default function TasksCenterPage() {
         }
         .tasks-warning small {
           color: var(--warning);
-          font-size: 11px;
+          font-size: 12px;
           line-height: 1.6;
         }
         .tasks-warning button {
@@ -529,9 +516,6 @@ export default function TasksCenterPage() {
           to { transform: rotate(360deg); }
         }
         @media (max-width: 720px) {
-          .sfm-page-topbar {
-            display: none;
-          }
           .sfm-page-hero-actions {
             width: 100%;
           }
@@ -710,7 +694,7 @@ function TaskCard({
           border: 1px solid var(--border);
           color: var(--foreground-muted);
           padding: 4px 8px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           overflow-wrap: anywhere;
         }

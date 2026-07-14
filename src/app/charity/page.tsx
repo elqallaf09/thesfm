@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -450,9 +449,6 @@ export default function CharityCenterPage() {
               <span className={styles.eyebrow}>{tr.eyebrow}</span>
               <h1>{tr.centerTitle}</h1>
               <p>{tr.centerSubtitle}</p>
-            </div>
-            <div className={styles.languageControl}>
-              <LanguageSwitcher variant="dark" compact />
             </div>
             <div className={styles.heroPrinciple}>
               <ShieldCheck aria-hidden="true" size={22} />

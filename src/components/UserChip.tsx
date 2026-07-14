@@ -190,18 +190,18 @@ export function UserChip({ displayName }: { displayName?: string }) {
         .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:var(--surface-hover);border-color:color-mix(in srgb,var(--primary) 36%,var(--border));box-shadow:var(--shadow-card)}
         .sfm-user-chip:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
         .sfm-user-chip:active{transform:translateY(1px)}
-        .sfm-user-avatar{width:28px;height:28px;border-radius:var(--radius-pill);background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--primary-foreground);flex:0 0 auto;box-shadow:var(--shadow-xs);overflow:hidden;background-size:cover;background-position:center}
+        .sfm-user-avatar{width:28px;height:28px;border-radius:var(--radius-pill);background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--primary-foreground);flex:0 0 auto;box-shadow:var(--shadow-xs);overflow:hidden;background-size:cover;background-position:center}
         .sfm-user-identity{flex:1 1 auto;min-width:0;max-width:118px;display:block}
-        .sfm-user-name{display:block;min-width:0;font-size:12.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)}
+        .sfm-user-name{display:block;min-width:0;font-size:var(--type-navigation-size);font-weight:600;line-height:var(--type-navigation-leading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)}
         .sfm-user-chevron{color:var(--foreground-muted);transition:transform .18s ease,color .18s ease;flex:0 0 auto}
         .sfm-user-chip[aria-expanded="true"] .sfm-user-chevron{transform:rotate(180deg)}
-        .sfm-user-menu{background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-lg);padding:7px;animation:sfmUserMenuIn .16s ease-out;font-family:var(--font-ui)}
+        .sfm-user-menu{max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-lg);padding:7px;animation:sfmUserMenuIn .16s ease-out;font-family:var(--font-ui)}
         .sfm-user-menu-head{display:flex;align-items:center;gap:10px;padding:9px 10px 10px;margin-bottom:5px;border-radius:var(--radius-control);background:var(--surface-muted);border:1px solid var(--border);min-width:0}
         .sfm-user-avatar-lg{width:34px;height:34px;font-size:12px;color:var(--primary-foreground)}
         .sfm-user-menu-copy{display:grid;gap:2px;min-width:0}
-        .sfm-user-menu-copy strong{min-width:0;color:var(--foreground);font:600 13px var(--font-ui);line-height:1.35;overflow-wrap:anywhere}
-        .sfm-user-menu-copy small{min-width:0;color:var(--foreground-muted);font:400 11px var(--font-ui);line-height:1.35;overflow-wrap:anywhere}
-        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border:1px solid transparent;border-radius:var(--radius-control);background:transparent;color:var(--foreground);font:500 13px var(--font-ui);cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease,border-color .16s ease}
+        .sfm-user-menu-copy strong{min-width:0;color:var(--foreground);font:600 var(--type-navigation-size) var(--font-ui);line-height:var(--type-navigation-leading);overflow-wrap:anywhere}
+        .sfm-user-menu-copy small{min-width:0;color:var(--foreground-muted);font:400 var(--type-caption-size) var(--font-ui);line-height:var(--type-caption-leading);overflow-wrap:anywhere}
+        .sfm-user-menu-item{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--control-h);padding:0 12px;border:1px solid transparent;border-radius:var(--radius-control);background:transparent;color:var(--foreground);font:500 var(--type-navigation-size) var(--font-ui);cursor:pointer;text-align:start;transition:background .16s ease,color .16s ease,transform .16s ease,border-color .16s ease}
         .sfm-user-menu-item:hover,.sfm-user-menu-item:focus-visible{background:var(--surface-hover);color:var(--primary-hover);border-color:color-mix(in srgb,var(--primary) 28%,var(--border));outline:2px solid var(--focus-ring);outline-offset:1px;box-shadow:var(--focus-shadow)}
         .sfm-user-menu-item:active{transform:translateY(1px)}
         .sfm-user-menu-item svg{color:var(--foreground-muted);flex:0 0 auto}
@@ -209,7 +209,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
         .sfm-user-menu-item.danger:hover,.sfm-user-menu-item.danger:focus-visible{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 30%,var(--border))}
         .sfm-user-menu-item.danger svg{color:var(--danger)}
         @keyframes sfmUserMenuIn{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-        @media(max-width:640px){.sfm-user-chip-wrap{max-width:128px}.sfm-mobile-user .sfm-user-chip-wrap{max-width:min(190px,100%)}.sfm-user-chip{min-height:44px;padding:5px 8px 5px 6px}.sfm-user-avatar{width:28px;height:28px;font-size:10px}.sfm-user-identity{max-width:72px}.sfm-user-name{font-size:12px}.sfm-user-menu{border-radius:var(--radius-card)}.sfm-user-menu-item{min-height:48px;font-size:14px}}
+        @media(max-width:640px){.sfm-user-chip-wrap{max-width:128px}.sfm-mobile-user .sfm-user-chip-wrap{max-width:min(190px,100%)}.sfm-user-chip{min-height:var(--control-h);padding:5px 8px 5px 6px}.sfm-user-avatar{width:28px;height:28px;font-size:12px}.sfm-user-identity{max-width:72px}.sfm-user-name{font-size:var(--type-navigation-size)}.sfm-user-menu{border-radius:var(--radius-card)}.sfm-user-menu-item{min-height:48px;font-size:var(--type-navigation-size)}}
         @media(prefers-reduced-motion:reduce){.sfm-user-chip,.sfm-user-menu,.sfm-user-menu-item{animation:none;transition:none}}
       `}</style>
       <div className="sfm-user-chip-wrap">

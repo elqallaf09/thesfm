@@ -38,7 +38,7 @@ export function ShariahTab() {
         .ops-shariah-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
         .ops-shariah-counts article { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 14px; box-shadow: var(--shadow-sm); }
         .ops-shariah-counts strong { display: block; color: var(--foreground); font: 600 20px/1 var(--font-data); font-variant-numeric: tabular-nums; }
-        .ops-shariah-counts span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: 12px; font-weight: 750; }
+        .ops-shariah-counts span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
       `}</style>
     </section>
   );

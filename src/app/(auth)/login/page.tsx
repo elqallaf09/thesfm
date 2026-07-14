@@ -1299,11 +1299,11 @@ function LoginContent() {
         .strength-bar--medium span:nth-child(1),.strength-bar--medium span:nth-child(2){background:var(--warning)}
         .strength-bar--strong span{background:var(--success)}
         .strength-label{font-size:12px;font-weight:600;color:var(--foreground-secondary)}
-        .strength-hint{font-size:11px;color:var(--foreground-muted);font-weight:400}
+        .strength-hint{font-size:12px;color:var(--foreground-muted);font-weight:400}
         .pref-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         .country-select{height:var(--control-h-lg);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 14px;font:400 14px/1.5 var(--font-ui);color:var(--foreground);background:var(--control-background);outline:0;width:100%;cursor:pointer}
         .security-block{display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--surface-muted);border-radius:var(--radius-sm);border:1px solid var(--border)}
-        .field-hint{font-size:11px;color:var(--foreground-muted);font-weight:400;margin:0;line-height:1.6}
+        .field-hint{font-size:12px;color:var(--foreground-muted);font-weight:400;margin:0;line-height:1.6}
         .terms-row{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--foreground-secondary);font-weight:400;cursor:pointer;line-height:1.5}
         .terms-row input[type=checkbox]{width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;accent-color:var(--primary)}
         .terms-row a{color:var(--primary-hover);text-decoration:none;font-weight:600}
@@ -1346,7 +1346,7 @@ function LoginContent() {
           .login-card{width:100%;max-width:none;min-width:0;padding:22px 16px;border-radius:var(--radius-sm);gap:15px}
           .brand h1{font-size:24px}
           .brand p{width:100%;max-width:300px;font-size:12px;line-height:1.7}
-          .auth-label{font-size:11px}
+          .auth-label{font-size:12px}
           .actions{gap:6px 10px}
           .link-btn{font-size:12px}
           .pref-row{grid-template-columns:1fr}

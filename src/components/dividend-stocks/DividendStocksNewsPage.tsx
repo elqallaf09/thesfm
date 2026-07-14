@@ -3576,13 +3576,13 @@ function DividendStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 11px;
+        font-size: 12px;
         font-weight:500;
       }
       .ticker-metrics {
         justify-content: space-between;
         color: var(--foreground-secondary);
-        font-size: 10.5px;
+        font-size: 12px;
         gap: 6px;
         min-width: 0;
       }
@@ -3616,7 +3616,7 @@ function DividendStyles() {
       .ticker-item .badge {
         min-height: 22px;
         padding: 3px 7px;
-        font-size: 10px;
+        font-size: 12px;
       }
       .tone-positive { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); border-color: color-mix(in srgb, var(--success) 22%, transparent); }
       .tone-negative { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); border-color: color-mix(in srgb, var(--danger) 20%, transparent); }
@@ -3798,7 +3798,7 @@ function DividendStyles() {
       .mini-metric span {
         display: block;
         color: var(--foreground-secondary);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
       }
       .mini-metric strong {
@@ -3977,7 +3977,7 @@ function DividendStyles() {
       }
       .details-item span {
         color: var(--foreground-secondary);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
       }
       .details-item strong {
@@ -4241,7 +4241,7 @@ function DividendStyles() {
       }
       .event-date span {
         color: var(--primary);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
       }

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
   ArrowRight,
@@ -44,8 +43,6 @@ import {
   latestByDate, statusLabel, getRecordCurrency,
 } from '@/components/dashboard/DashboardSubComponents';
 
-const LanguageSwitcher = dynamic(() => import('@/components/ui/LanguageSwitcher').then(mod => mod.LanguageSwitcher), { ssr: false });
-const UserChip = dynamic(() => import('@/components/UserChip').then(mod => mod.UserChip), { ssr: false });
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -806,11 +803,6 @@ export default function ExecutiveDashboardPage() {
   return (
     <div className="dashboard-shell" dir={dir}>
       <main className="dashboard-main">
-        <div className="topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <section className="hero-card" aria-labelledby="dashboard-hero-title">
           <div className="hero-visual" aria-hidden="true">
             <span className="hero-grid-plane" />
@@ -841,7 +833,7 @@ export default function ExecutiveDashboardPage() {
               {heroKpis.map((item) => (
                 <article className="hero-kpi-card" key={item.label}>
                   <span>{item.label}</span>
-                  <strong>{item.value}</strong>
+                  <strong data-financial-value={/[0-9]/.test(item.value) ? 'true' : undefined}>{item.value}</strong>
                 </article>
               ))}
             </div>
@@ -1140,14 +1132,6 @@ const dashboardStyles = `
     max-width: 100%;
     min-width: 0;
     margin-inline: 0;
-  }
-
-  .topbar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 18px;
   }
 
   .loading-main {
@@ -1901,10 +1885,6 @@ const dashboardStyles = `
   }
 
   @media (max-width: 640px) {
-    .topbar {
-      justify-content: space-between;
-    }
-
     .hero-card {
       gap: 18px;
       padding: 22px 18px;
@@ -1953,6 +1933,10 @@ const dashboardStyles = `
 
     .hero-card {
       padding: 20px 16px;
+    }
+
+    .hero-actions .action-link {
+      padding-inline: 10px;
     }
 
     .metric-card {

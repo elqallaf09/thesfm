@@ -814,7 +814,7 @@ export default function SiteMapPage() {
           border-radius: var(--radius-pill);
           background: var(--primary-soft);
           color: var(--primary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -875,7 +875,7 @@ export default function SiteMapPage() {
           background: var(--accent-soft);
           color: var(--accent-hover);
           padding: 3px 8px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           line-height: 1.2;
           vertical-align: middle;
@@ -992,7 +992,7 @@ export default function SiteMapPage() {
           border-radius: var(--radius-pill);
           background: var(--primary-soft);
           color: var(--primary);
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .site-map-tabs button.active,
@@ -1041,7 +1041,7 @@ export default function SiteMapPage() {
           display: block;
           margin: 0 0 4px;
           color: var(--primary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1074,7 +1074,7 @@ export default function SiteMapPage() {
 
         .site-map-accordion-item > button small {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
           white-space: nowrap;
         }

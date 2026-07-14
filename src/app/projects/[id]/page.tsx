@@ -13,7 +13,6 @@ import {
   ProjectTasksTab, buildProjectTasksSummary, emptyProjectTasksSummary,
   type ProjectMilestoneRow, type ProjectTaskRow, type ProjectTasksSummary,
 } from '@/components/projects/ProjectTasksTab';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -729,7 +728,6 @@ export default function ProjectWorkspacePage() {
             <button className="hero-action-btn" type="button" onClick={() => router.push(`/business-hub?project=${project.id}#jurisdiction-wizard-module`)}>
               <Globe2 size={16} /> {tr.chooseJurisdiction}
             </button>
-            <LanguageSwitcher variant="dark" compact />
           </div>
           <div className="hero-metrics">
             {heroMetrics.map(item => (

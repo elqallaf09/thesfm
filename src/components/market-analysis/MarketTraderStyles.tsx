@@ -114,7 +114,7 @@ export function MarketTraderStyles() {
 
       .technical-selected-chip small {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35}
 
@@ -843,7 +843,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-tool-switcher small {
         margin-top: 3px;
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 400;
         line-height: 1.45}
 
@@ -1225,7 +1225,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .tool-result-card > span:not(.tool-result-icon) {
         grid-area: label;
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35}
 
@@ -1273,7 +1273,7 @@ export function MarketTraderStyles() {
         place-items: center;
         background: var(--surface);
         color: var(--foreground);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700}
 
       .trader-premium-dashboard .trader-tool-switcher-shell {
@@ -1346,7 +1346,7 @@ export function MarketTraderStyles() {
 
       .trader-premium-dashboard .trader-premium-save div small {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 400;
         line-height: 1.45}
 

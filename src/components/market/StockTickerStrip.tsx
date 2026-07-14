@@ -248,7 +248,7 @@ export function StockTickerStrip({
               .sfm-stock-ticker-title span,
               .sfm-stock-ticker-foot small {
                 color: var(--foreground-muted);
-                font-size: 11px;
+                font-size: var(--type-caption-size);
                 font-weight: 400;
                 line-height: 1.35;
                 overflow-wrap: anywhere;
@@ -279,7 +279,7 @@ export function StockTickerStrip({
                 gap: 4px;
                 border-radius: var(--radius-pill);
                 padding: 4px 7px;
-                font-size: 10.5px;
+                font-size: 12px;
                 font-style: normal;
                 font-weight: 600;
                 font-family: var(--font-data);

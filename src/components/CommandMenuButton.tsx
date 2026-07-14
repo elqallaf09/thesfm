@@ -35,8 +35,8 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
           gap: 9px;
           padding: 0 10px;
           font-family: var(--font-ui);
-          font-size: 12.5px;
-          font-weight: 500;
+          font-size: var(--type-navigation-size);
+          font-weight: var(--type-navigation-weight);
           cursor: pointer;
           overflow: hidden;
           transition: background-color .16s ease, border-color .16s ease, color .16s ease;
@@ -76,7 +76,7 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
           padding: 2px 5px;
           color: var(--foreground-muted);
           background: var(--surface-muted);
-          font-size: 10px;
+          font-size: 12px;
           font-family: var(--font-ui);
           font-weight: 500;
           line-height: 1.3;

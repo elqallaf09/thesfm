@@ -22,8 +22,8 @@ const LOGO_SIZE: Record<CompanyLogoSize, number> = {
 };
 
 const FALLBACK_TEXT_SIZE: Record<CompanyLogoSize, string> = {
-  sm: 'text-[9px]',
-  md: 'text-[10px]',
+  sm: 'text-xs',
+  md: 'text-xs',
   lg: 'text-xs',
 };
 

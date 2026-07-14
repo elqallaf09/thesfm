@@ -15,8 +15,6 @@ import {
   Loader2,
   Sparkles,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
@@ -461,11 +459,6 @@ export default function FinancialTodayPage() {
   return (
     <div className="today-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} className="today-main" contentClassName="today-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <section className="today-hero" aria-labelledby="financial-today-title">
           <div className="today-hero-copy">
             <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
@@ -579,13 +572,6 @@ export default function FinancialTodayPage() {
           margin-inline: 0;
           display: grid;
           gap: 24px;
-        }
-        .sfm-page-topbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
         }
         .today-hero {
           position: relative;
@@ -773,9 +759,6 @@ export default function FinancialTodayPage() {
           }
         }
         @media (max-width: 720px) {
-          .sfm-page-topbar {
-            display: none;
-          }
           .today-content {
             gap: 18px;
           }
@@ -1134,7 +1117,7 @@ function PriorityLane({
           padding: 4px 8px;
           background: color-mix(in srgb, var(--info) 8%, transparent);
           color: var(--primary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight:600;
         }
         .today-lane-badges .priority.urgent {

@@ -93,14 +93,22 @@ describe('rendered workspace switcher', () => {
     const adminAnchor = workspaceAnchor(reviewerMarkup, 'administration');
     expect(adminAnchor).toContain('href="/sfm-admin-control/companies"');
     expect(adminAnchor).toContain('aria-current="page"');
+    expect(reviewerMarkup).toContain('Administration');
   });
 
-  it('renders logical direction and concise translated labels without changing route ownership', () => {
+  it('renders logical direction and full translated labels without changing route ownership', () => {
+    const englishMarkup = renderSwitcher();
+    expect(englishMarkup).toContain('dir="ltr"');
+    expect(englishMarkup).toContain('Personal Finance');
+    expect(englishMarkup).toContain('Markets &amp; Trading');
+    expect(englishMarkup).toContain('Business &amp; Projects');
+
     navigationState.pathname = '/market-analysis';
     navigationState.lang = 'ar';
     navigationState.dir = 'rtl';
     const arabicMarkup = renderSwitcher();
     expect(arabicMarkup).toContain('dir="rtl"');
+    expect(arabicMarkup).toContain('الأسواق والتداول');
     expect(arabicMarkup).toContain('data-workspace-id="markets-trading"');
     expect(arabicMarkup).toContain('aria-current="page"');
 

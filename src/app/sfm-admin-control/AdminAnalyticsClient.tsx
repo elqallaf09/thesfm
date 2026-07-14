@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, LogIn, LogOut, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import { Activity, BarChart3, Building2, Clock3, Eye, Globe2, Languages, LockKeyhole, MonitorSmartphone, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, isCompanyCategory } from '@/lib/companyListings';
@@ -275,7 +272,7 @@ function displayValue(value: string | null | undefined, fallback: string) {
 }
 
 export default function AdminAnalyticsClient() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const { lang, dir, t } = useLanguage();
   const router = useRouter();
   const [range, setRange] = useState('30d');
@@ -296,33 +293,6 @@ export default function AdminAnalyticsClient() {
   const [activityVisibleCount, setActivityVisibleCount] = useState(15);
   const [companyVisibleCount, setCompanyVisibleCount] = useState(12);
   const [pageVisibleCount, setPageVisibleCount] = useState(10);
-  const loginLabel = lang === 'en' ? 'Sign in' : lang === 'fr' ? 'Connexion' : 'تسجيل الدخول';
-
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-    router.replace('/login?next=/sfm-admin-control');
-  }, [router, signOut]);
-
-  const adminControls = (
-    <div className="admin-topbar">
-      <div className="admin-user-chip">{user?.email ?? 'THE SFM Admin'}</div>
-      <div className="admin-control-actions">
-        <LanguageSwitcher variant="light" compact />
-        <ThemeToggle />
-        {user ? (
-          <button type="button" className="admin-auth-button secondary" onClick={() => void handleSignOut()} disabled={loading}>
-            <LogOut size={16} aria-hidden="true" />
-            {t('nav_logout')}
-          </button>
-        ) : (
-          <Link className="admin-auth-button" href="/login?next=/sfm-admin-control">
-            <LogIn size={16} aria-hidden="true" />
-            {loginLabel}
-          </Link>
-        )}
-      </div>
-    </div>
-  );
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login?next=/sfm-admin-control');
@@ -502,17 +472,16 @@ export default function AdminAnalyticsClient() {
   const secondaryStatCards = statCards.slice(4);
 
   if (loading || (!user && state === 'loading')) {
-    return <AdminShell dir={dir}>{adminControls}<StateCard icon={Clock3} text={t('admin_loading')} /></AdminShell>;
+    return <AdminShell dir={dir}><StateCard icon={Clock3} text={t('admin_loading')} /></AdminShell>;
   }
 
   if (state === 'forbidden') {
-    return <AdminShell dir={dir}>{adminControls}<StateCard icon={LockKeyhole} text={t('admin_unauthorized')} /></AdminShell>;
+    return <AdminShell dir={dir}><StateCard icon={LockKeyhole} text={t('admin_unauthorized')} /></AdminShell>;
   }
 
   if (state === 'code_required') {
     return (
       <AdminShell dir={dir}>
-        {adminControls}
         <section className="admin-code-card" aria-labelledby="admin-code-title">
           <div className="admin-code-icon" aria-hidden="true"><LockKeyhole size={24} /></div>
           <h1 id="admin-code-title">{t('admin_code_title')}</h1>
@@ -545,7 +514,6 @@ export default function AdminAnalyticsClient() {
       contentStyle={{ maxWidth: 'none', width: '100%' }}
     >
       <div className="admin-dashboard" dir={dir}>
-        {adminControls}
         <section className="admin-hero">
           <div>
             <span className="admin-eyebrow"><LockKeyhole size={16} aria-hidden="true" />THE SFM</span>
@@ -955,17 +923,6 @@ function Breakdown({
 const adminStyles = `
   :global(.admin-dashboard-content){max-width:none!important;width:100%!important;min-width:0!important}
   .admin-dashboard{width:100%;max-width:1500px;margin:0 auto;padding:clamp(16px,2vw,32px);display:grid;gap:18px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
-  .admin-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);padding:12px;box-shadow:var(--shadow-card)}
-  .admin-user-chip{min-height:42px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface-muted);color:var(--foreground);padding:0 14px;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:var(--type-label-weight);overflow-wrap:anywhere}
-  .admin-control-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .admin-control-actions :global(.sfm-language-trigger){background:var(--surface);border-color:var(--border-strong);color:var(--foreground);box-shadow:none}
-  .admin-control-actions :global(.sfm-language-trigger:hover){background:var(--surface-hover);border-color:var(--primary);color:var(--primary-hover)}
-  .admin-control-actions :global(.sfm-language-trigger:focus-visible){outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
-  .admin-auth-button{min-height:44px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-ui);font-size:13px;font-weight:var(--type-button-weight);text-decoration:none;cursor:pointer;box-shadow:none;transition:background var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease)}
-  .admin-auth-button:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
-  .admin-auth-button:focus-visible{outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
-  .admin-auth-button.secondary{background:var(--surface);color:var(--foreground);border-color:var(--border-strong);box-shadow:none}
-  .admin-auth-button.secondary:hover{background:var(--surface-hover);border-color:var(--primary);color:var(--primary-hover)}
   .admin-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-radius:var(--radius-panel);padding:24px;background:var(--hero-gradient);color:var(--hero-foreground);box-shadow:var(--shadow-card)}
   .admin-eyebrow,.admin-privacy-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--hero-foreground) 28%,transparent);background:color-mix(in srgb,var(--hero-foreground) 9%,transparent);border-radius:var(--radius-pill);padding:8px 12px;color:var(--hero-foreground-muted);font-weight:var(--type-label-weight)}
   .admin-hero h1{margin:13px 0 8px;font-size:clamp(28px,4.2vw,48px);line-height:1.05;font-weight:var(--type-display-weight);letter-spacing:0}
@@ -1060,5 +1017,5 @@ const adminStyles = `
   .admin-code-card button:disabled{opacity:.6;cursor:not-allowed}
   @media(max-width:1200px){.admin-overview-grid{grid-template-columns:1fr}.admin-stat-grid,.admin-stat-grid.secondary,.admin-event-grid.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:1100px){.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-section-grid,.admin-section-grid.two,.admin-filters{grid-template-columns:1fr 1fr}.admin-table-tools{grid-template-columns:1fr 1fr}}
-  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-topbar{align-items:stretch}.admin-user-chip,.admin-control-actions,.admin-auth-button{width:100%}.admin-control-actions{display:grid;grid-template-columns:1fr 44px}.admin-auth-button{grid-column:1/-1}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-stat-grid.secondary,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact,.admin-event-grid.summary,.admin-table-tools{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}.admin-table-pager{display:grid}.admin-table-pager div{justify-content:stretch}.admin-table-pager button{width:100%}}
+  @media(max-width:720px){.admin-dashboard{padding:14px}.admin-hero{display:grid;padding:20px}.admin-privacy-badge{width:max-content;max-width:100%}.admin-stat-grid,.admin-stat-grid.secondary,.admin-section-grid,.admin-section-grid.two,.admin-filters,.admin-event-grid.compact,.admin-event-grid.summary,.admin-table-tools{grid-template-columns:1fr}table{min-width:620px}.admin-stat-card strong{font-size:24px}.admin-table-pager{display:grid}.admin-table-pager div{justify-content:stretch}.admin-table-pager button{width:100%}}
 `;

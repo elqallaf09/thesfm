@@ -14,8 +14,6 @@ import {
   ShieldAlert,
   Trash2,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { useAuth } from '@/hooks/useAuth';
@@ -562,10 +560,6 @@ export default function DecisionsPage() {
   return (
     <div className="decisions-page" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="decisions-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
         <PageHero eyebrow={text.eyebrow} title={text.title} subtitle={text.subtitle} icon={<Landmark size={28} />} />
 
         {(message || error) && <div className={`decision-message ${error ? 'error' : ''}`}>{error || message}</div>}

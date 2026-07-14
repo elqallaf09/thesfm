@@ -57,7 +57,7 @@ export function ErrorCenterTable({ byCategory, notInstrumentedCategories }: {
         .ops-error-center-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
         .ops-error-center-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; display: grid; gap: 4px; }
         .ops-error-center-card strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
-        .ops-error-center-card span { color: var(--foreground-muted); font-size: 11.5px; font-weight: 700; }
+        .ops-error-center-card span { color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
         .ops-error-center-not-instrumented { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
       `}</style>
     </div>

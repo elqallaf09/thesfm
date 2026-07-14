@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BookOpen, Download, FileText, Languages, Library } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/layout/DashboardPageShell';
 import { AppCard } from '@/components/layout/AppCard';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -76,11 +74,6 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
   return (
     <div className="ebook-reader-shell" dir={dir}>
       <DashboardPageShell ariaLabel={ebookText(book.title, locale)} contentClassName="ebook-reader-content">
-        <div className="sfm-page-topbar ebook-reader-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <section className="ebook-reader-hero">
           <Link href="/ebooks" className="ebook-reader-back">
             <BackIcon size={17} aria-hidden="true" />
@@ -169,12 +162,6 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
           padding: 28px clamp(16px, 3vw, 36px) 64px;
           display: grid;
           gap: 20px;
-        }
-
-        .ebook-reader-topbar {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
         }
 
         .ebook-reader-hero,
@@ -380,10 +367,6 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         }
 
         @media (max-width: 980px) {
-          .ebook-reader-topbar {
-            display: none;
-          }
-
           .ebook-reader-hero {
             grid-template-columns: 1fr;
             align-items: stretch;

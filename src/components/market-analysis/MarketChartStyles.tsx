@@ -86,7 +86,7 @@ export function MarketChartStyles() {
 
       .chart-type-control > span {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -144,7 +144,7 @@ export function MarketChartStyles() {
         color: var(--warning);
         border-radius: var(--radius-pill);
         padding: 5px 9px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -214,7 +214,7 @@ export function MarketChartStyles() {
       .price-chart-x-label,
       .price-chart-level-label {
         fill: var(--chart-label);
-        font: 500 10px var(--font-data);
+        font: 500 12px var(--font-data);
         opacity: .78;
         direction: ltr;
         unicode-bidi: isolate;
@@ -222,7 +222,7 @@ export function MarketChartStyles() {
       }
 
       .price-chart-x-label {
-        font-size: 9.5px;
+        font-size: 12px;
         opacity: .68;
       }
 
@@ -257,7 +257,7 @@ export function MarketChartStyles() {
         paint-order: stroke;
         stroke: var(--surface-elevated);
         stroke-width: 4px;
-        font-size: 9.5px;
+        font-size: 12px;
       }
 
       .price-chart-crosshair line {
@@ -319,7 +319,7 @@ export function MarketChartStyles() {
       .price-chart-tooltip dt,
       .price-chart-tooltip dd {
         margin: 0;
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.25;
       }
 
@@ -455,7 +455,7 @@ export function MarketChartStyles() {
         color: var(--primary-hover);
         border-radius: var(--radius-pill);
         padding: 5px 9px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -480,7 +480,7 @@ export function MarketChartStyles() {
 
       .price-chart-summary-item span {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -578,7 +578,7 @@ export function MarketChartStyles() {
 
       .levels-strip-labels small {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -594,7 +594,7 @@ export function MarketChartStyles() {
 
       .levels-strip-labels em {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-style: normal;
         font-weight: 700;
         line-height: 1.3;
@@ -664,7 +664,7 @@ export function MarketChartStyles() {
         background: var(--surface-elevated);
         color: var(--foreground);
         padding: 3px 7px;
-        font-size: 10px;
+        font-size: 12px;
         font-style: normal;
         font-weight: 700;
         line-height: 1.2;

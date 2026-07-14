@@ -26,8 +26,6 @@ import {
   X,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -281,11 +279,6 @@ export default function FinancialTheoriesPage() {
   return (
     <div className="financial-theories-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="financial-theories-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           className="financial-theories-hero"
           eyebrow={text.badge}

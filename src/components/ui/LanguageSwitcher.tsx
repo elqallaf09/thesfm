@@ -237,7 +237,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           overflow: visible;
         }
         .sfm-language-trigger {
-          min-height: 40px;
+          min-height: var(--control-h);
           min-width: 132px;
           max-width: 100%;
           border-radius: var(--radius-control);
@@ -249,7 +249,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           justify-content: center;
           gap: 8px;
           padding: 0 13px;
-          font: 600 13px var(--font-ui);
+          font: 600 var(--type-navigation-size) var(--font-ui);
           cursor: pointer;
           box-shadow: var(--shadow-xs);
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
@@ -262,9 +262,9 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         }
         .sfm-language-dropdown[data-compact='true'] .sfm-language-trigger {
           min-width: 112px;
-          min-height: 36px;
+          min-height: var(--control-h);
           padding-inline: 11px;
-          font-size: 12px;
+          font-size: var(--type-navigation-size);
         }
         .sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger {
           background: var(--surface);
@@ -337,7 +337,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           justify-content: space-between;
           gap: 12px;
           padding: 0 11px;
-          font: 500 13px var(--font-ui);
+          font: 500 var(--type-navigation-size) var(--font-ui);
           cursor: pointer;
           text-align: start;
           transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
@@ -380,7 +380,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             max-width: 100%;
           }
           .sfm-language-trigger {
-            min-height: 40px;
+            min-height: var(--control-h);
           }
           .sfm-language-menu {
             min-width: 178px;
@@ -394,7 +394,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             min-width: 0;
             width: auto;
             max-width: 86px;
-            min-height: 40px;
+            min-height: var(--control-h);
             gap: 6px;
             border-radius: var(--radius-control);
             padding-inline: 10px;
@@ -404,7 +404,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           }
           .sfm-language-dropdown[data-compact='true'] .sfm-language-label-short {
             display: inline;
-            font-weight: 950;
+            font-weight: 600;
             letter-spacing: 0;
           }
           .sfm-language-dropdown[data-compact='true'] .sfm-language-chevron {

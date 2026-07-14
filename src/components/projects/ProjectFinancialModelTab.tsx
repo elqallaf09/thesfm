@@ -961,8 +961,8 @@ export function ProjectFinancialModelTab({
               <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={scenarios.map(item => ({ name: t[item.id], profit: Math.round(item.totalProfit), revenue: Math.round(item.totalRevenue) }))}>
                   <CartesianGrid stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 11 }} />
-                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 11 }} width={42} />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={42} />
                   <Tooltip />
                   <Bar dataKey="profit" name={t.totalProfit} fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
@@ -1032,12 +1032,12 @@ export function ProjectFinancialModelTab({
         .projection-primary{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-sm)}
         .projection-primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
         .projection-disabled{background:var(--surface-muted);color:var(--foreground-muted);cursor:not-allowed}
-        .projection-disabled span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:11px}
+        .projection-disabled span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:12px}
         .projection-view-toggle,.scenario-toggle-row{display:flex;flex-wrap:wrap;gap:8px}
         .projection-view-toggle button,.scenario-toggle-row button{min-height:36px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground-muted);padding:0 12px;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
         .projection-view-toggle button.active,.scenario-toggle-row button.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);box-shadow:var(--shadow-sm)}
         .projection-view-toggle button:disabled{cursor:not-allowed;opacity:.72}
-        .projection-view-toggle button span{border-radius:var(--radius-pill);background:var(--surface-muted);padding:2px 7px;font-size:10px}
+        .projection-view-toggle button span{border-radius:var(--radius-pill);background:var(--surface-muted);padding:2px 7px;font-size:12px}
         .forecast-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card);max-width:100%}
         .forecast-table-wrap.compact{max-height:420px}
         .forecast-table-wrap.full{max-height:min(62vh,680px)}
@@ -1057,14 +1057,14 @@ export function ProjectFinancialModelTab({
         .scenario-card.active{border-color:var(--accent-soft);box-shadow:var(--shadow-sm)}
         .scenario-card div{display:flex;justify-content:space-between;gap:10px;align-items:center}
         .scenario-card strong{color:var(--foreground)}.scenario-card small{color:var(--foreground-muted);font-weight:500}
-        .scenario-card span{border-radius:var(--radius-pill);padding:4px 9px;font-size:11px;font-weight:600}
+        .scenario-card span{border-radius:var(--radius-pill);padding:4px 9px;font-size:12px;font-weight:600}
         .scenario-card.low span{background:var(--success-soft);color:var(--success)}.scenario-card.medium span{background:var(--warning-soft);color:var(--warning)}.scenario-card.high span{background:var(--danger-soft);color:var(--danger)}
         .ai-card p{margin:0;color:var(--foreground-muted);line-height:1.7}
         .financial-actions button{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--border);font-family:inherit;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
         .primary-financial-btn{background:var(--primary);color:var(--primary-foreground)}
         .primary-financial-btn:disabled{opacity:.68;cursor:not-allowed}
         .disabled-financial-btn{background:var(--surface-muted);color:var(--foreground-muted);cursor:not-allowed}
-        .disabled-financial-btn span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:11px}
+        .disabled-financial-btn span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:12px}
         .financial-notice{border:1px solid var(--border-strong);background:var(--surface-muted);color:var(--foreground);border-radius:var(--radius-card);padding:12px 14px;font-weight:600}
         .financial-modal-backdrop{position:fixed;inset:0;z-index:90;background:var(--background-overlay);backdrop-filter:blur(8px);display:grid;place-items:center;padding:24px}
         .financial-modal{width:min(1180px,100%);max-height:calc(100vh - 48px);overflow:hidden;display:grid;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-panel);padding:18px;box-shadow:var(--shadow-popover);color:var(--foreground)}

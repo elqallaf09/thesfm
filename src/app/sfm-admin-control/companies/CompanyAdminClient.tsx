@@ -1,14 +1,9 @@
 'use client';
 
 import { type FormEvent, useMemo, useState, useTransition } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { CheckCircle2, LogIn, LogOut, Plus, Save, X } from 'lucide-react';
+import { CheckCircle2, Plus, Save, X } from 'lucide-react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORIES, type CompanyCategory, type CompanyListing } from '@/lib/companyListings';
 import type { Lang } from '@/lib/translations';
@@ -113,9 +108,6 @@ function createEmptyAdminCompanyForm(): AdminCompanyForm {
 
 const COPY = {
   ar: {
-    adminFallback: 'أدمن THE SFM',
-    signIn: 'تسجيل الدخول',
-    signOut: 'تسجيل الخروج',
     title: 'مراجعة طلبات الشركات',
     subtitle: 'مراجعة وإدارة طلبات إدراج الشركات في الدليل',
     addCompany: 'إضافة شركة',
@@ -187,9 +179,6 @@ const COPY = {
     acceptDeletion: 'قبول الحذف',
   },
   en: {
-    adminFallback: 'THE SFM Admin',
-    signIn: 'Sign in',
-    signOut: 'Sign out',
     title: 'Company Requests Review',
     subtitle: 'Review and manage company listing requests in the directory',
     addCompany: 'Add Company',
@@ -261,9 +250,6 @@ const COPY = {
     acceptDeletion: 'Approve deletion',
   },
   fr: {
-    adminFallback: 'Admin THE SFM',
-    signIn: 'Connexion',
-    signOut: 'Déconnexion',
     title: 'Révision des demandes de sociétés',
     subtitle: 'Réviser et gérer les demandes d’ajout de sociétés dans l’annuaire',
     addCompany: 'Ajouter une société',
@@ -362,8 +348,6 @@ function CompanyAdminLogo({ company }: { company: Company }) {
 }
 
 export default function CompanyAdminClient({ companies: initial, adminEmail }: Props) {
-  const router = useRouter();
-  const { user, signOut, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
   const text = COPY[lang] ?? COPY.ar;
   const [companies, setCompanies] = useState<Company[]>(initial);
@@ -387,11 +371,6 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
 
   const filtered = companies.filter(company => company.status === activeTab);
   const categoryLabels = CATEGORY_LABELS[lang] ?? CATEGORY_LABELS.ar;
-
-  async function handleSignOut() {
-    await signOut();
-    router.replace('/login?next=/sfm-admin-control/companies');
-  }
 
   function openPanel(company: Company) {
     setSelected(company);
@@ -514,15 +493,6 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
       <style>{`
         .company-admin-dashboard-content{width:100%!important;max-width:none!important;min-width:0!important}
         .ca-page{width:100%;max-width:min(1500px,100%);margin-inline:auto;background:transparent;padding:0;direction:${dir};font-family:var(--font-ui);color:var(--foreground);min-width:0}
-        .ca-topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.35rem;flex-wrap:wrap}
-        .ca-admin-chip{min-height:42px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--accent-soft);color:var(--foreground);padding:0 .95rem;display:inline-flex;align-items:center;gap:.45rem;font-size:.82rem;font-weight:500}
-        .ca-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
-        .ca-toolbar .sfm-language-trigger{background:var(--control-background);color:var(--foreground);border-color:var(--border);box-shadow:var(--shadow-xs)}
-        .ca-toolbar .sfm-language-trigger:hover{background:var(--control-hover);border-color:var(--border-strong)}.ca-toolbar .sfm-language-trigger:focus-visible{outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
-        .ca-auth-action{min-height:44px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:0 .95rem;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;font:600 .84rem var(--font-ui);text-decoration:none;cursor:pointer;box-shadow:var(--shadow-xs);transition:background .18s ease,border-color .18s ease}
-        .ca-auth-action:hover{background:var(--primary-hover)}.ca-auth-action:focus-visible{outline:none;box-shadow:var(--focus-shadow)}
-        .ca-auth-action.secondary{background:var(--surface);color:var(--foreground);border-color:var(--border-strong);box-shadow:none}
-        .ca-auth-action.secondary:hover{background:var(--surface-hover)}
         .ca-header{margin-bottom:1.4rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);padding:1.25rem 1.35rem;box-shadow:var(--shadow-card);min-width:0}
         .ca-header-copy{min-width:0;max-width:820px}
         .ca-header h1{font-size:clamp(1.7rem,2.2vw,2.35rem);font-weight:700;color:var(--foreground);margin:0 0 .35rem;line-height:1.2}
@@ -532,7 +502,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-tabs{display:flex;gap:.55rem;margin-bottom:1.2rem;overflow-x:auto;scrollbar-width:thin;padding:.15rem .1rem .55rem;min-width:0}
         .ca-tab{flex:0 0 auto;min-height:42px;padding:.45rem 1rem;border-radius:var(--radius-pill);border:1px solid var(--border);font-size:.85rem;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s;background:var(--surface);color:var(--foreground);white-space:nowrap}
         .ca-tab:hover{background:var(--surface-hover);border-color:var(--border-strong)}.ca-tab:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ca-tab.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-weight:600}
-        .ca-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;border-radius:var(--radius-pill);font-family:var(--font-data);font-size:.72rem;font-weight:500;padding:0 .35rem;background:var(--surface-active);color:var(--foreground);margin-inline-start:.35rem}
+        .ca-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.2rem;height:1.2rem;border-radius:var(--radius-pill);font-family:var(--font-data);font-size:.75rem;font-weight:500;padding:0 .35rem;background:var(--surface-active);color:var(--foreground);margin-inline-start:.35rem}
         .ca-tab:not(.active) .ca-badge{background:var(--primary-soft);color:var(--primary)}
         .ca-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);overflow:auto;box-shadow:var(--shadow-card);max-width:100%;min-width:0}
         .ca-table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:760px}.ca-table th{position:sticky;top:0;z-index:1;padding:.75rem 1rem;text-align:start;background:var(--table-header);color:var(--foreground-muted);font-weight:600;font-size:.78rem;border-bottom:1px solid var(--border)}
@@ -541,7 +511,7 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-logo{width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;background:var(--surface-muted)}
         .ca-logo-placeholder{width:36px;height:36px;border-radius:var(--radius-sm);background:var(--primary);display:flex;align-items:center;justify-content:center;color:var(--primary-foreground);font-size:.95rem;font-weight:600}
         .ca-status-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .7rem;border:1px solid currentColor;border-radius:var(--radius-pill);font-size:.78rem;font-weight:500}.ca-status-dot{width:6px;height:6px;border-radius:var(--radius-pill);background:currentColor;display:inline-block}.ca-status-badge.warning{background:var(--warning-soft);color:var(--warning)}.ca-status-badge.info{background:var(--info-soft);color:var(--info)}.ca-status-badge.success{background:var(--success-soft);color:var(--success)}.ca-status-badge.danger{background:var(--danger-soft);color:var(--danger)}.ca-status-badge.neutral{background:var(--surface-muted);color:var(--foreground-muted)}
-        .ca-request-badge{display:inline-flex;align-items:center;gap:.35rem;margin-top:.35rem;padding:.25rem .6rem;border-radius:var(--radius-pill);background:var(--warning-soft);color:var(--warning);font-size:.72rem;font-weight:500}
+        .ca-request-badge{display:inline-flex;align-items:center;gap:.35rem;margin-top:.35rem;padding:.25rem .6rem;border-radius:var(--radius-pill);background:var(--warning-soft);color:var(--warning);font-size:.75rem;font-weight:500}
         .ca-review-btn{min-height:36px;padding:.35rem .9rem;border-radius:var(--radius-sm);border:1px solid var(--primary);color:var(--primary);background:transparent;font-size:.82rem;font-weight:500;cursor:pointer;transition:background .15s,color .15s}.ca-review-btn:hover{background:var(--primary);color:var(--primary-foreground)}.ca-review-btn:focus-visible{outline:none;box-shadow:var(--focus-shadow)}
         .ca-empty{text-align:center;padding:3rem 1rem;color:var(--foreground-muted);font-size:.95rem;font-weight:400}
         .ca-overlay{position:fixed;inset:0;background:var(--background-overlay);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
@@ -577,29 +547,10 @@ export default function CompanyAdminClient({ companies: initial, adminEmail }: P
         .ca-secondary-btn:hover{background:var(--surface-hover)}.ca-save-btn:hover{background:var(--primary-hover)}.ca-secondary-btn:focus-visible,.ca-save-btn:focus-visible{outline:none;box-shadow:var(--focus-shadow)}
         .ca-save-btn:disabled,.ca-secondary-btn:disabled{opacity:.6;cursor:not-allowed}
         @media(max-width:900px){.ca-header{display:grid;align-items:start;padding:1rem}.ca-primary-add{width:100%}.ca-add-grid{grid-template-columns:1fr}}
-        @media(max-width:700px){.ca-topbar{align-items:stretch}.ca-toolbar,.ca-admin-chip,.ca-auth-action{width:100%}.ca-toolbar{display:grid;grid-template-columns:1fr 44px}.ca-auth-action{grid-column:1/-1}.ca-table{min-width:620px}.ca-add-actions{display:grid;grid-template-columns:1fr}.ca-save-btn,.ca-secondary-btn{width:100%}}
+        @media(max-width:700px){.ca-table{min-width:620px}.ca-add-actions{display:grid;grid-template-columns:1fr}.ca-save-btn,.ca-secondary-btn{width:100%}}
       `}</style>
 
       <div className="ca-page">
-        <div className="ca-topbar">
-          <div className="ca-admin-chip">{adminEmail || user?.email || text.adminFallback as string}</div>
-          <div className="ca-toolbar">
-            <LanguageSwitcher variant="light" compact />
-            <ThemeToggle />
-            {user ? (
-              <button type="button" className="ca-auth-action secondary" onClick={() => void handleSignOut()} disabled={authLoading}>
-                <LogOut size={16} />
-                {text.signOut as string}
-              </button>
-            ) : (
-              <Link className="ca-auth-action" href="/login?next=/sfm-admin-control/companies">
-                <LogIn size={16} />
-                {text.signIn as string}
-              </Link>
-            )}
-          </div>
-        </div>
-
         <div className="ca-header">
           <div className="ca-header-copy">
             <h1>{text.title as string}</h1>

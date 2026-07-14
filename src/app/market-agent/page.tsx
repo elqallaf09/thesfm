@@ -1034,7 +1034,7 @@ export default function MarketAgentPage() {
         .agent-service-chip small {
           display: block;
           color: var(--hero-foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 400;
         }
 
@@ -1076,7 +1076,7 @@ export default function MarketAgentPage() {
 
         .agent-field > small {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 400;
           line-height: 1.55;
         }
@@ -1458,7 +1458,7 @@ export default function MarketAgentPage() {
         .agent-history-panel > header p {
           margin: 4px 0 0;
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 400;
           line-height: 1.55;
         }
@@ -1488,7 +1488,7 @@ export default function MarketAgentPage() {
 
         .agent-metric span {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1525,7 +1525,7 @@ export default function MarketAgentPage() {
         .agent-trend-pill span,
         .agent-indicator-card span {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1545,7 +1545,7 @@ export default function MarketAgentPage() {
           padding: 5px 8px;
           background: var(--surface-muted);
           color: var(--foreground-secondary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
         }
 
@@ -1645,7 +1645,7 @@ export default function MarketAgentPage() {
 
         .agent-score-ring span {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1669,7 +1669,7 @@ export default function MarketAgentPage() {
         .agent-signal-card dt,
         .agent-data-list dt {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1696,7 +1696,7 @@ export default function MarketAgentPage() {
           justify-content: space-between;
           gap: 10px;
           color: var(--foreground-secondary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1718,7 +1718,7 @@ export default function MarketAgentPage() {
           display: block;
           margin-top: 5px;
           color: var(--foreground-muted);
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 400;
           line-height: 1.5;
         }
@@ -1774,7 +1774,7 @@ export default function MarketAgentPage() {
 
         .agent-level-marker b {
           color: var(--foreground-secondary);
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 600;
           line-height: 1.3;
           overflow-wrap: anywhere;
@@ -1787,7 +1787,7 @@ export default function MarketAgentPage() {
           color: var(--foreground);
           padding: 4px 6px;
           font-family: var(--font-data);
-          font-size: 10px;
+          font-size: 12px;
           font-style: normal;
           font-weight: 600;
           box-shadow: var(--shadow-xs);
@@ -1813,7 +1813,7 @@ export default function MarketAgentPage() {
           gap: 12px;
           margin-top: 8px;
           color: var(--foreground-muted);
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -1834,7 +1834,7 @@ export default function MarketAgentPage() {
           padding: 6px 9px;
           background: var(--surface-muted);
           color: var(--foreground-secondary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           line-height: 1.25;
           white-space: nowrap;
@@ -1899,7 +1899,7 @@ export default function MarketAgentPage() {
           border-bottom: 1px solid var(--border);
           background: var(--surface-muted);
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
         }
 
@@ -2039,7 +2039,7 @@ export default function MarketAgentPage() {
           .agent-history-row > [role='cell']::before {
             content: attr(data-label);
             color: var(--foreground-muted);
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 500;
           }
         }

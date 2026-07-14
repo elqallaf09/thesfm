@@ -10,7 +10,6 @@ import {
   Clock3,
   Edit3,
   ExternalLink,
-  Instagram,
   Loader2,
   Send,
   ShieldCheck,
@@ -20,8 +19,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Lang } from '@/lib/translations';
 
@@ -89,7 +86,6 @@ type FormState = {
 type Copy = {
   title: string;
   subtitle: string;
-  admin: string;
   newDraft: string;
   saveDraft: string;
   updateDraft: string;
@@ -149,7 +145,6 @@ const COPY: Record<Lang, Copy> = {
     title: 'لوحة أتمتة إنستغرام',
     subtitle:
       'إدارة نشر المحتوى بنظام واضح: إنشاء المسودات، مراجعتها، معالجتها، ثم النشر بعد الموافقة من نفس الشاشة.',
-    admin: 'المسؤول',
     newDraft: 'مسودة جديدة',
     saveDraft: 'حفظ كمسودة',
     updateDraft: 'تحديث المسودة',
@@ -208,7 +203,6 @@ const COPY: Record<Lang, Copy> = {
     title: 'Instagram Automation',
     subtitle:
       'Run a complete content workflow: drafting, review, status tracking, and approval-based publishing from one dashboard.',
-    admin: 'Admin',
     newDraft: 'New draft',
     saveDraft: 'Save draft',
     updateDraft: 'Update draft',
@@ -267,7 +261,6 @@ const COPY: Record<Lang, Copy> = {
     title: 'Automatisation Instagram',
     subtitle:
       'Gérez en une seule vue la création, la révision, le suivi des statuts et la publication approuvée.',
-    admin: 'Administrateur',
     newDraft: 'Nouveau brouillon',
     saveDraft: 'Enregistrer',
     updateDraft: 'Mettre Ã  jour',
@@ -406,7 +399,6 @@ function mapCodeToStatus(status: Status, copy: Copy) {
 }
 
 export default function InstagramAutomationClient({
-  adminEmail,
   contentStyle,
 }: {
   adminEmail: string;
@@ -696,17 +688,6 @@ export default function InstagramAutomationClient({
         .ig-hero p{margin:8px 0 0;max-width:800px;color:var(--hero-foreground-muted);line-height:1.75;font-weight:400}
         .ig-hero-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
         .ig-badge-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-        .ig-badge-chip{
-          border:1px solid var(--border-strong);
-          background:var(--surface-active);
-          border-radius:var(--radius-pill);
-          padding:8px 12px;
-          display:inline-flex;
-          align-items:center;
-          gap:8px;
-          font:500 12px var(--font-ui);
-          color:var(--foreground);
-        }
         .ig-panel{
           border:1px solid var(--border);
           background:var(--surface);
@@ -767,7 +748,7 @@ export default function InstagramAutomationClient({
           border-radius:var(--radius-pill);
           background:var(--surface-muted);
           padding:4px 10px;
-          font-size:11px;
+          font-size:12px;
           display:inline-flex;
           align-items:center;
           font-weight:500;
@@ -840,7 +821,7 @@ export default function InstagramAutomationClient({
         .ig-item:hover{border-color:var(--border-strong);background:var(--surface-hover)}
         .ig-item:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-item.active{border-color:var(--primary);box-shadow:var(--active-indicator-shadow);background:var(--primary-soft)}
         .ig-item strong{font-size:14px;display:block;overflow-wrap:anywhere;color:var(--foreground);font-weight:600}
-        .ig-item small{font-size:11px;color:var(--foreground-muted);font-weight:400}
+        .ig-item small{font-size:12px;color:var(--foreground-muted);font-weight:400}
         .ig-item .ig-item-top{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
         .ig-item .ig-item-top .left{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
         .ig-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -872,7 +853,7 @@ export default function InstagramAutomationClient({
         .ig-event-list{display:grid;gap:8px;max-height:230px;overflow:auto;padding-inline-end:2px}
         .ig-event{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:9px;display:grid;gap:5px}
         .ig-event strong{font-size:12px;color:var(--foreground);font-weight:600}
-        .ig-event small{font-size:11px;color:var(--foreground-muted);font-weight:400}
+        .ig-event small{font-size:12px;color:var(--foreground-muted);font-weight:400}
         .ig-code-card{
           border:1px solid var(--border);
           background:var(--surface);
@@ -885,7 +866,7 @@ export default function InstagramAutomationClient({
         .ig-code-card strong{color:var(--danger)}
         .ig-code-row{display:flex;gap:8px;flex-wrap:wrap}
         .ig-code-row input{flex:1;min-width:200px}
-        .ig-subtle{color:var(--foreground-muted);font-size:11px;font-weight:400;line-height:1.7}
+        .ig-subtle{color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.7}
         @media(max-width:1200px){
           .ig-grid{grid-template-columns:minmax(0,1fr)}
           .ig-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -907,9 +888,6 @@ export default function InstagramAutomationClient({
             <p>{text.subtitle}</p>
           </div>
           <div className="ig-hero-tools">
-            <span className="ig-badge-chip"><Instagram size={16} /> {text.admin}: <strong dir="ltr">{adminEmail}</strong></span>
-            <LanguageSwitcher compact variant="dark" />
-            <ThemeToggle />
             <button className="ig-action secondary" type="button" onClick={newDraft}>
               <Edit3 size={16} />
               {text.newDraft}

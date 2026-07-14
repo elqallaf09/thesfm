@@ -84,7 +84,7 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
         .ops-root-cause-item dl > div { display: grid; grid-template-columns: minmax(120px, 0.6fr) 1fr; gap: 8px; font-size: 12.5px; }
         .ops-root-cause-item dt { color: var(--foreground-muted); font-weight: 500; }
         .ops-root-cause-item dd { margin: 0; color: var(--foreground-secondary); overflow-wrap: anywhere; }
-        .ops-root-cause-item code { background: var(--surface-muted); border-radius: var(--radius-xs); padding: 1px 6px; font-size: 11.5px; }
+        .ops-root-cause-item code { background: var(--surface-muted); border-radius: var(--radius-xs); padding: 1px 6px; font-size: 12px; }
         @media (max-width: 560px) {
           .ops-root-cause-item dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
         }

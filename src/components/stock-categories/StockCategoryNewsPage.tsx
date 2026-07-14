@@ -333,7 +333,7 @@ function NewsEvidenceLine({ item, tr }: {
       <div className="flex items-start gap-2">
         {isConflicting ? <AlertTriangle className="mt-0.5 shrink-0" size={14} /> : <ShieldCheck className="mt-0.5 shrink-0" size={14} />}
         <div className="min-w-0">
-          <span className="font-black">{tr(evidenceLabelKey(item))}</span>
+          <span className="font-bold">{tr(evidenceLabelKey(item))}</span>
           <p className="mt-0.5 font-semibold">{detail}</p>
         </div>
       </div>
@@ -549,7 +549,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
       <div className="space-y-2">
         {rows.map(row => (
           <div key={`${row.rank}-${row.symbol}`} className="flex min-w-0 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 shadow-[var(--shadow-card)]  ">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-circle)] border border-[var(--primary)] bg-[var(--primary-soft)] text-xs font-black text-[var(--primary)]   ">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-circle)] border border-[var(--primary)] bg-[var(--primary-soft)] text-xs font-bold text-[var(--primary)]   ">
               {row.rank}
             </span>
             <div className="min-w-0 flex-1">
@@ -564,7 +564,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   showName={false}
                   symbolClassName="text-sm"
                 />
-                <span className={`rounded-[var(--radius-pill)] border px-2 py-0.5 text-[11px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
+                <span className={`rounded-[var(--radius-pill)] border px-2 py-0.5 text-[12px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
                   {formatPercent(row.changePercent)}
                 </span>
               </div>
@@ -572,7 +572,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             </div>
             <div className="shrink-0 text-end">
               <p dir="ltr" className="text-sm font-bold text-[var(--foreground)] ">{formatPrice(row.price, row.currency)}</p>
-              <p dir="ltr" className="text-[11px] text-[var(--foreground-muted)] ">{formatNumber(row.volume)}</p>
+              <p dir="ltr" className="text-[12px] text-[var(--foreground-muted)] ">{formatNumber(row.volume)}</p>
             </div>
           </div>
         ))}
@@ -619,7 +619,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     <Sparkles size={14} />
                     {tr(config.badgeKey)}
                   </span>
-                  <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--foreground)]  sm:text-4xl">
+                  <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--foreground)]  sm:text-4xl">
                     {tr(config.titleKey)}
                   </h1>
                   <p className="mt-3 max-w-4xl text-sm leading-7 text-[var(--foreground-secondary)]  sm:text-base">
@@ -670,7 +670,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-card)]  ">
                         <BookOpen size={19} />
                       </span>
-                      <h2 className="text-lg font-black text-[var(--foreground)] ">{tr(config.explanationTitleKey)}</h2>
+                      <h2 className="text-lg font-bold text-[var(--foreground)] ">{tr(config.explanationTitleKey)}</h2>
                     </div>
                     <p className="mt-4 text-sm leading-7 text-[var(--foreground-secondary)] ">{tr(config.explanationBodyKey)}</p>
                   </div>
@@ -679,7 +679,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--primary-soft)] text-[var(--primary)]  ">
                         <Info size={19} />
                       </span>
-                      <h3 className="font-black text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h3>
+                      <h3 className="font-bold text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h3>
                     </div>
                     <div className="mt-4 grid gap-2">
                       {(config.metricCards ?? config.filters.filter(filter => filter.key !== 'all').slice(0, 4).map(filter => ({ labelKey: filter.labelKey, bodyKey: filter.labelKey }))).map(card => (
@@ -697,7 +697,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--success-soft)] text-[var(--success)]  ">
                         <Layers size={19} />
                       </span>
-                      <h2 className="text-lg font-black text-[var(--foreground)] ">
+                      <h2 className="text-lg font-bold text-[var(--foreground)] ">
                         {normalizeText(guide.comparisonTitle[localizedLang])}
                       </h2>
                     </div>
@@ -714,12 +714,12 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               : 'border-[var(--warning)] bg-[var(--warning-soft)]  '
                           }`}
                         >
-                          <h3 className="text-base font-black text-[var(--foreground)] ">{card.title}</h3>
+                          <h3 className="text-base font-bold text-[var(--foreground)] ">{card.title}</h3>
                           <ul className="mt-4 grid gap-2">
                             {card.items.map(item => (
                               <li key={item} className="flex items-start gap-2 text-sm font-bold leading-7 text-[var(--foreground-secondary)] ">
                                 <span
-                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-circle)] text-[11px] font-black ${
+                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-circle)] text-[12px] font-bold ${
                                     card.tone === 'positive'
                                       ? 'bg-[var(--success-soft)] text-[var(--success)]  '
                                       : 'bg-[var(--warning-soft)] text-[var(--warning)]  '
@@ -742,10 +742,10 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]   sm:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-[var(--foreground)] ">{tr(config.titleKey)}</h2>
+                    <h2 className="text-xl font-bold text-[var(--foreground)] ">{tr(config.titleKey)}</h2>
                     <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{updatedLabel}</p>
                   </div>
-                  <span className="inline-flex h-10 w-fit items-center rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-4 text-sm font-black text-[var(--primary)]   ">
+                  <span className="inline-flex h-10 w-fit items-center rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-4 text-sm font-bold text-[var(--primary)]   ">
                     {new Intl.NumberFormat(locale).format(filteredItems.length)} {tr('stock_category_results_match')}
                   </span>
                   <label className="relative block w-full lg:max-w-md">
@@ -778,7 +778,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             }`}
                           >
                             {tr(filter.labelKey)}
-                            <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[11px] ${active ? 'bg-[var(--surface)] text-[var(--primary-foreground)]' : 'bg-[var(--surface-muted)] text-[var(--foreground-secondary)]  '}`}>
+                            <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${active ? 'bg-[var(--surface)] text-[var(--primary-foreground)]' : 'bg-[var(--surface-muted)] text-[var(--foreground-secondary)]  '}`}>
                               {categoryCounts[filter.key] ?? 0}
                             </span>
                           </button>
@@ -790,7 +790,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
                 {loading ? (
                   <div className="mt-6 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-4  " aria-live="polite">
-                    <div className="flex items-center gap-2 text-sm font-black text-[var(--foreground-secondary)] ">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[var(--foreground-secondary)] ">
                       <RefreshCcw size={16} className="animate-spin text-[var(--primary)] " />
                       {tr('stock_category_loading_news')}
                     </div>
@@ -808,14 +808,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           <AlertTriangle size={20} />
                         </span>
                         <div className="min-w-0">
-                          <h3 className="text-lg font-black text-[var(--warning)] ">{tr('stock_category_news_error_title')}</h3>
+                          <h3 className="text-lg font-bold text-[var(--warning)] ">{tr('stock_category_news_error_title')}</h3>
                           <p className="mt-1 text-sm font-semibold leading-7 text-[var(--warning)] ">{tr('stock_category_news_error_body')}</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => { void loadNews(true); }}
-                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--surface)] px-4 text-sm font-black text-[var(--warning)] transition hover:bg-[var(--warning-soft)] active:scale-[0.98]    "
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--warning)] transition hover:bg-[var(--warning-soft)] active:scale-[0.98]    "
                       >
                         <RefreshCcw size={16} />
                         {tr('market_refresh_news')}
@@ -825,7 +825,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 ) : visibleItems.length === 0 ? (
                   <div className="mt-6 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-8 text-center  ">
                     <Newspaper className="mx-auto mb-3 text-[var(--primary)] " size={30} />
-                    <h3 className="text-lg font-black text-[var(--foreground)] ">{tr('stock_category_empty')}</h3>
+                    <h3 className="text-lg font-bold text-[var(--foreground)] ">{tr('stock_category_empty')}</h3>
                     <p className="mt-2 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_empty_hint')}</p>
                   </div>
                 ) : (
@@ -843,7 +843,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               variant="badge"
                               className="max-w-full rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-2.5 py-1 text-[var(--primary)]   "
                               labelClassName="max-w-[11rem] text-xs"
-                              symbolClassName="text-[11px]"
+                              symbolClassName="text-[12px]"
                             />
                             <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
                               {item.source}
@@ -854,7 +854,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               </span>
                             )}
                           </div>
-                          <h3 className="mt-4 text-lg font-black leading-relaxed text-[var(--foreground)] ">
+                          <h3 className="mt-4 text-lg font-bold leading-relaxed text-[var(--foreground)] ">
                             {item.title}
                           </h3>
                           <p className="mt-3 line-clamp-3 text-sm leading-7 text-[var(--foreground-secondary)] ">
@@ -864,13 +864,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           <div className="mt-4 grid gap-2 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-3   sm:grid-cols-2">
                             <div>
                               <p className="text-xs text-[var(--foreground-muted)] ">{item.companyName}</p>
-                              <p dir="ltr" className="mt-1 text-sm font-black text-[var(--foreground)] ">
+                              <p dir="ltr" className="mt-1 text-sm font-bold text-[var(--foreground)] ">
                                 {formatPrice(price?.price ?? item.price, 'USD')}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-[var(--foreground-muted)] ">{tr('stock_category_change_percent')}</p>
-                              <p dir="ltr" className={`mt-1 text-sm font-black ${changeTone(price?.changePercent ?? item.changePercent)}`}>
+                              <p dir="ltr" className={`mt-1 text-sm font-bold ${changeTone(price?.changePercent ?? item.changePercent)}`}>
                                 {formatPercent(price?.changePercent ?? item.changePercent)}
                               </p>
                             </div>
@@ -878,13 +878,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           {item.shariaStatus && (
                             <div className="mt-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3 text-xs leading-6 text-[var(--foreground-secondary)]   ">
                               <p>
-                                <span className="font-black text-[var(--foreground)] ">{tr('stock_category_sharia_compliance_status')}: </span>
+                                <span className="font-bold text-[var(--foreground)] ">{tr('stock_category_sharia_compliance_status')}: </span>
                                 <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-[var(--danger)] ' : item.shariaStatus === 'needs_review' ? 'text-[var(--warning)] ' : 'text-[var(--foreground-secondary)] '}`}>
                                   {tr(shariaStatusLabelKey(item.shariaStatus))}
                                 </span>
                               </p>
                               <p className="mt-1">
-                                <span className="font-black text-[var(--foreground)] ">{tr('stock_category_sharia_note_label')}: </span>
+                                <span className="font-bold text-[var(--foreground)] ">{tr('stock_category_sharia_note_label')}: </span>
                                 {tr('stock_category_sharia_preliminary_note')}
                               </p>
                             </div>
@@ -916,7 +916,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <button
                         type="button"
                         onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}
-                        className="inline-flex h-12 items-center justify-center rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--surface)] px-6 text-sm font-black text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
+                        className="inline-flex h-12 items-center justify-center rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--surface)] px-6 text-sm font-bold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
                       >
                         {tr('tech_news_load_more')}
                       </button>
@@ -932,7 +932,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
             <aside className="grid min-w-0 gap-6 xl:sticky xl:top-24 xl:self-start">
               <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
-                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[var(--foreground)] ">
                   <Newspaper size={19} className="text-[var(--primary)] " />
                   {tr('stock_category_latest_news_title')}
                 </h2>
@@ -954,9 +954,9 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           variant="badge"
                           showName={false}
                           className="max-w-[8rem] rounded-[var(--radius-pill)] bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]  "
-                          symbolClassName="text-[11px]"
+                          symbolClassName="text-[12px]"
                         />
-                        <span className="truncate text-[11px] font-bold text-[var(--foreground-muted)] ">{item.source}</span>
+                        <span className="truncate text-[12px] font-bold text-[var(--foreground-muted)] ">{item.source}</span>
                       </div>
                       <p className="line-clamp-2 text-sm font-bold leading-6 text-[var(--foreground)] ">{item.title}</p>
                     </a>
@@ -971,7 +971,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-black text-[var(--foreground)] ">{tr(config.moversTitleKey)}</h2>
+                    <h2 className="text-lg font-bold text-[var(--foreground)] ">{tr(config.moversTitleKey)}</h2>
                     <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_movers_subtitle')}</p>
                   </div>
                   <BarChart3 className="text-[var(--primary)] " />
@@ -985,8 +985,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     {PRIMARY_MOVER_SECTIONS.map(section => (
                       <div key={section}>
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <h3 className="text-sm font-black text-[var(--foreground)] ">{sectionTitle(section)}</h3>
-                          <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[11px] font-bold text-[var(--foreground-secondary)]   ">
+                          <h3 className="text-sm font-bold text-[var(--foreground)] ">{sectionTitle(section)}</h3>
+                          <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[12px] font-bold text-[var(--foreground-secondary)]   ">
                             {tr('stock_category_movers_three_stocks')}
                           </span>
                         </div>
@@ -996,7 +996,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     <button
                       type="button"
                       onClick={() => setShowMoversDetails(true)}
-                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--primary-soft)] text-sm font-black text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--primary-soft)] text-sm font-bold text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
                     >
                       <Layers size={16} />
                       {tr('stock_category_movers_details')}
@@ -1010,14 +1010,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               </section>
 
               <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
-                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[var(--foreground)] ">
                   <TrendingUp size={19} className="text-[var(--primary)] " />
                   {tr(config.mentionedTitleKey)}
                 </h2>
                 <div className="mt-4 space-y-2">
                   {mentionedTickers.length > 0 ? mentionedTickers.map((item, index) => (
                     <div key={item.ticker} className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2  ">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-circle)] bg-[var(--primary-soft)] text-xs font-black text-[var(--primary)]  ">{index + 1}</span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-circle)] bg-[var(--primary-soft)] text-xs font-bold text-[var(--primary)]  ">{index + 1}</span>
                       <AssetIdentity
                         symbol={item.ticker}
                         name={item.companyName}
@@ -1041,7 +1041,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               </section>
 
               <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
-                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[var(--foreground)] ">
                   <FileText size={19} className="text-[var(--primary)] " />
                   {tr(config.sourcesTitleKey)}
                 </h2>
@@ -1063,7 +1063,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-1 shrink-0" />
                 <div>
-                  <h2 className="text-lg font-black">{tr(config.disclaimerTitleKey)}</h2>
+                  <h2 className="text-lg font-bold">{tr(config.disclaimerTitleKey)}</h2>
                   <p className="mt-2 text-sm leading-7">{tr(config.disclaimerBodyKey)}</p>
                   <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--warning)]   ">
                     <span>{tr('stock_category_sharia_classification_source')}:</span>
@@ -1078,8 +1078,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]   sm:p-6">
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <span className="text-sm font-black text-[var(--primary)] ">{tr('stock_category_educational_guide')}</span>
-                  <h2 className="mt-1 text-xl font-black text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h2>
+                  <span className="text-sm font-bold text-[var(--primary)] ">{tr('stock_category_educational_guide')}</span>
+                  <h2 className="mt-1 text-xl font-bold text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h2>
                 </div>
                 <p className="max-w-2xl text-sm leading-7 text-[var(--foreground-muted)] ">
                   {tr('stock_category_sector_guide_note')}
@@ -1092,7 +1092,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--primary-soft)] text-[var(--primary)]  ">
                         <BookOpen size={18} />
                       </span>
-                      <h3 className="font-black text-[var(--foreground)] ">{normalizeText(card.title[localizedLang])}</h3>
+                      <h3 className="font-bold text-[var(--foreground)] ">{normalizeText(card.title[localizedLang])}</h3>
                     </div>
                     <p className="text-sm leading-7 text-[var(--foreground-secondary)] ">{normalizeText(card.body[localizedLang])}</p>
                     {card.symbols?.length ? (
@@ -1118,7 +1118,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           )}
 
           <section className="rounded-[var(--radius-panel)] border border-[var(--primary)] bg-[var(--surface)] p-5 text-center shadow-[var(--shadow-card)]   sm:p-6">
-            <h2 className="text-lg font-black text-[var(--foreground)] ">{config.shariaCaution ? tr('defensive_news_disclaimer_title') : tr(config.disclaimerTitleKey)}</h2>
+            <h2 className="text-lg font-bold text-[var(--foreground)] ">{config.shariaCaution ? tr('defensive_news_disclaimer_title') : tr(config.disclaimerTitleKey)}</h2>
             <p className="mx-auto mt-2 max-w-4xl text-sm leading-7 text-[var(--foreground-secondary)] ">
               {config.shariaCaution ? tr('stock_category_standard_disclaimer') : tr(config.disclaimerBodyKey)}
             </p>
@@ -1131,7 +1131,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-popover)]  ">
             <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-5 ">
               <div>
-                <h2 className="text-xl font-black text-[var(--foreground)] ">{tr('stock_category_movers_full_title')}</h2>
+                <h2 className="text-xl font-bold text-[var(--foreground)] ">{tr('stock_category_movers_full_title')}</h2>
                 <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_movers_full_subtitle')}</p>
               </div>
               <button
@@ -1148,8 +1148,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 {ALL_MOVER_SECTIONS.map(section => (
                   <section key={section} className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-4  ">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="font-black text-[var(--foreground)] ">{sectionTitle(section)}</h3>
-                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--foreground-secondary)]   ">
+                      <h3 className="font-bold text-[var(--foreground)] ">{sectionTitle(section)}</h3>
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] font-bold text-[var(--foreground-secondary)]   ">
                         {tr('stock_category_movers_five_stocks')}
                       </span>
                     </div>

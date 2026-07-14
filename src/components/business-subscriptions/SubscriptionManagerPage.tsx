@@ -29,8 +29,6 @@ import {
   X,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
@@ -1243,11 +1241,6 @@ export default function SubscriptionManagerPage({ clientId }: Props) {
   return (
     <div className="subscription-manager-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.pageTitle} contentClassName="subscription-manager-content">
-        <div className="subscription-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <section className="subscription-hero">
           <div>
             <span className="subscription-eyebrow">{text.businessBadge}</span>
@@ -2330,13 +2323,6 @@ const subscriptionManagerStyles = `
     margin-inline: auto;
   }
 
-  .subscription-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-  }
-
   .subscription-hero {
     position: relative;
     overflow: hidden;
@@ -2832,7 +2818,7 @@ const subscriptionManagerStyles = `
     min-height: 28px;
     border-radius:var(--radius-pill);
     padding: 4px 10px;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     font-weight:600;
     white-space: nowrap;
     border: 1px solid transparent;
@@ -3093,7 +3079,7 @@ const subscriptionManagerStyles = `
   .subscription-calendar-legend span {
     border-radius:var(--radius-pill);
     padding: 5px 9px;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     font-weight:600;
     background: var(--surface-muted);
     border: 1px solid color-mix(in srgb, var(--info) 14%, transparent);
@@ -3125,7 +3111,7 @@ const subscriptionManagerStyles = `
   .calendar-dot {
     border-radius: var(--radius-sm);
     padding: 5px 6px;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight:600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3304,7 +3290,7 @@ const subscriptionManagerStyles = `
   .subscription-reminder-failure span {
     display: block;
     color: var(--foreground-secondary);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight:600;
   }
 
@@ -3347,7 +3333,7 @@ const subscriptionManagerStyles = `
   .subscription-reminder-recipient-card > span,
   .subscription-reminder-recipient-card dt {
     color: var(--foreground-secondary);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight:600;
   }
 
@@ -3528,7 +3514,6 @@ const subscriptionManagerStyles = `
   }
 
   @media (max-width: 720px) {
-    .subscription-topbar,
     .subscription-hero,
     .subscription-hero-actions,
     .subscription-form-actions {

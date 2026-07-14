@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Trash2, Plus, X } from 'lucide-react';
 import { formatCurrency, formatDate, normalizeDigits } from '@/lib/locale';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 
 interface ExpItem { id: string; name: string; amount: number; created_at?: string; }
@@ -119,7 +118,6 @@ export default function ExpensesPage() {
                 <p style={{ fontSize: '13px', color: 'var(--foreground-muted)', marginTop: '2px' }}>{text.subtitle}</p>
               </div>
             </div>
-            <LanguageSwitcher variant="gold" compact />
             <button className="ebtn ebtn-g" onClick={() => { setShowForm(!showForm); setEditId(null); setName(''); setAmount(''); }}>
               {showForm ? <><X className="w-4 h-4" />{text.close}</> : <><Plus className="w-4 h-4" />{text.add}</>}
             </button>
@@ -136,7 +134,7 @@ export default function ExpensesPage() {
           ].map((k, i) => (
             <div key={i} className="ec no-h" style={{ padding: '18px 20px' }}>
               <div style={{ width: '38px', height: '38px', background: `color-mix(in srgb, ${k.color} 10%, transparent)`, borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', marginBottom: '10px' }}>{k.icon}</div>
-              <div style={{ fontSize: '11px', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
+              <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
               <div style={{ fontSize: '20px', fontWeight: '600', color: k.color, fontFamily: 'var(--font-data)', lineHeight: 1 }}>
                 {(k as any).isN ? k.val : formatCurrency(k.val as number, 'KWD', lang)}
               </div>
@@ -190,7 +188,7 @@ export default function ExpensesPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {[text.nameColumn, text.amount, text.date, ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'start', fontSize: '11.5px', fontWeight: '600', color: 'var(--foreground-muted)' }}>{h}</th>)}
+                  {[text.nameColumn, text.amount, text.date, ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'start', fontSize: '12px', fontWeight: '600', color: 'var(--foreground-muted)' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -207,7 +205,7 @@ export default function ExpensesPage() {
                       <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '600', color: 'var(--danger)', fontFamily: 'var(--font-data)' }}>
                         <span dir="ltr">{formatCurrency(item.amount, 'KWD', lang)}</span>
                       </td>
-                      <td style={{ padding: '12px 10px', fontSize: '11.5px', color: 'var(--foreground-muted)' }}>
+                      <td style={{ padding: '12px 10px', fontSize: '12px', color: 'var(--foreground-muted)' }}>
                         {date ? formatDate(date, lang, { month: 'long', year: 'numeric' }) : '—'}
                       </td>
                       <td style={{ padding: '12px 10px' }}>
@@ -236,7 +234,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--foreground-muted)', paddingTop: '8px' }}>
+        <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--foreground-muted)', paddingTop: '8px' }}>
           {text.footer} • <span style={{ color: 'var(--primary)', fontWeight: '600' }}>THE SFM</span>
         </div>
       </div>

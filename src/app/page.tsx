@@ -1692,7 +1692,7 @@ const landingStyles = `
     background: var(--info-soft);
     color: var(--info);
     padding: 5px 9px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: var(--type-label-weight);
   }
   .tool-badge.smart {
