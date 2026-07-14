@@ -20,11 +20,11 @@ describe('workspace navigation selection state', () => {
     expect(findSelectedNavigationItemId('/sfm-admin-control/companies', NAV_GROUPS)).toBe('admin-companies');
   });
 
-  it('selects query-specific charity destinations ahead of the base page', () => {
+  it('keeps Charity Projects selected while its beneficiaries and reports tabs are active', () => {
     expect(findSelectedNavigationItemId('/charity-projects', NAV_GROUPS)).toBe('charity-projects');
-    expect(findSelectedNavigationItemId('/charity-projects?tab=beneficiaries', NAV_GROUPS)).toBe('beneficiaries');
-    expect(findSelectedNavigationItemId('/charity-projects?tab=reports', NAV_GROUPS)).toBe('charity-reports');
-    expect(findSelectedNavigationItemId('/charity-projects?tab=reports&year=2026', NAV_GROUPS)).toBe('charity-reports');
+    expect(findSelectedNavigationItemId('/charity-projects?tab=beneficiaries', NAV_GROUPS)).toBe('charity-projects');
+    expect(findSelectedNavigationItemId('/charity-projects?tab=reports', NAV_GROUPS)).toBe('charity-projects');
+    expect(findSelectedNavigationItemId('/charity-projects?tab=reports&year=2026', NAV_GROUPS)).toBe('charity-projects');
   });
 
   it('normalizes and matches query and hash navigation state independently', () => {

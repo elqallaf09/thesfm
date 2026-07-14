@@ -27,6 +27,25 @@ function flatten(items: NavigationItem[]): NavigationItem[] {
 }
 
 describe('Phase 3.3 workspace-navigation architecture', () => {
+  it('uses one trilingual Charity Projects sidebar destination', () => {
+    const charityItems = NAV_GROUPS.find(group => group.id === 'charity')?.items ?? [];
+    const charityProjectDestinations = charityItems.filter(item => item.href?.startsWith('/charity-projects'));
+
+    expect(charityProjectDestinations).toEqual([
+      expect.objectContaining({
+        id: 'charity-projects',
+        href: '/charity-projects',
+        labelKey: 'nav_charity_projects',
+      }),
+    ]);
+    expect(TR_NAV.nav_charity_projects).toEqual({
+      ar: 'المشاريع الخيرية',
+      en: 'Charity Projects',
+      fr: 'Projets caritatifs',
+    });
+    expect(charityItems.some(item => item.id === 'beneficiaries' || item.id === 'charity-reports')).toBe(false);
+  });
+
   it('keeps routes unique, workspace-scoped, and header-only', () => {
     const hrefs = NAV_GROUPS.flatMap(group => flatten(group.items))
       .map(item => item.href)
@@ -107,7 +126,7 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
   it('keeps primary navigation scrollable while Account and Support remain separately reachable', () => {
     expect(sidebar).toContain('ref={navigationScrollRef} className="sfm-shared-primary-scroll"');
     expect(sidebar).toContain('className="sfm-shared-utilities"');
-    expect(sidebar).toContain('<nav\n          className="sfm-shared-utilities"');
+    expect(sidebar).toMatch(/<nav\r?\n\s+className="sfm-shared-utilities"/);
     expect(sidebar).toContain('max-height:min(44dvh,370px)');
     expect(sidebar).toContain('target.scrollIntoView');
     expect(mobile).toContain('className="sfm-mobile-utilities"');
