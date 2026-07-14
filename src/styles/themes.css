@@ -64,14 +64,14 @@
   --shadow-color: #0F2742;
 
   /* Sidebar */
-  --sidebar-background: #FFFFFF;
-  --sidebar-foreground: #0F2742;
-  --sidebar-muted: #64748B;
-  --sidebar-border: #E2E8F0;
-  --sidebar-hover: #F1F5F9;
-  --sidebar-expanded: #F8FAFC;
-  --sidebar-active: #EAF3FF;
-  --sidebar-active-foreground: #0F4B99;
+  --sidebar-background: #071F3F;
+  --sidebar-foreground: #F7FBFF;
+  --sidebar-muted: #9FB3CA;
+  --sidebar-border: #315779;
+  --sidebar-hover: #123B63;
+  --sidebar-expanded: #0A2D50;
+  --sidebar-active: #0969E8;
+  --sidebar-active-foreground: #FFFFFF;
 
   /* Data visualisation */
   --chart-grid: #E2E8F0;

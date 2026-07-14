@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -9,6 +9,7 @@ import {
   Bell,
   BriefcaseBusiness,
   Building2,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Coins,
@@ -19,8 +20,11 @@ import {
   Landmark,
   LineChart,
   Loader2,
+  Plus,
   PiggyBank,
+  ReceiptText,
   ShieldCheck,
+  Target,
   TrendingUp,
   Wallet,
   Zap,
@@ -788,6 +792,84 @@ export default function ExecutiveDashboardPage() {
     },
   ];
 
+  const dashboardCopy = lang === 'ar'
+    ? {
+        greeting: 'صباح الخير', overview: 'هذه نظرة شاملة على أدائك المالي', addTransaction: 'إضافة معاملة',
+        thisMonth: 'هذا الشهر', cashFlow: 'التدفق النقدي', income: 'الدخل', expenses: 'المصروفات',
+        financialHealth: 'الصحة المالية', savingsRatio: 'نسبة الادخار', expenseCoverage: 'تغطية المصروفات',
+        debtLevel: 'مستوى الديون', veryGood: 'جيدة جداً', excellent: 'ممتاز', low: 'منخفض', details: 'عرض التفاصيل',
+        recentTransactions: 'آخر المعاملات', merchant: 'التاجر / الجهة', category: 'الفئة', date: 'التاريخ', amount: 'المبلغ',
+        expenseDistribution: 'توزيع المصروفات', dailyActions: 'إجراءات اليوم', goals: 'الأهداف المالية',
+        viewAll: 'عرض الجميع', viewReport: 'عرض التقرير', annualGoal: 'الهدف السنوي', noTransactions: 'لا توجد معاملات حديثة',
+        reviewExpenses: 'مراجعة تقرير المصروفات', approveInvoices: 'اعتماد فواتير الموردين', updateBudget: 'تحديث الميزانية الشهرية',
+      }
+    : lang === 'fr'
+      ? {
+          greeting: 'Bonjour', overview: 'Voici une vue complète de vos performances financières', addTransaction: 'Ajouter une transaction',
+          thisMonth: 'Ce mois', cashFlow: 'Flux de trésorerie', income: 'Revenus', expenses: 'Dépenses',
+          financialHealth: 'Santé financière', savingsRatio: "Taux d'épargne", expenseCoverage: 'Couverture des dépenses',
+          debtLevel: "Niveau d'endettement", veryGood: 'Très bon', excellent: 'Excellent', low: 'Faible', details: 'Voir les détails',
+          recentTransactions: 'Transactions récentes', merchant: 'Commerçant', category: 'Catégorie', date: 'Date', amount: 'Montant',
+          expenseDistribution: 'Répartition des dépenses', dailyActions: "Actions du jour", goals: 'Objectifs financiers',
+          viewAll: 'Tout afficher', viewReport: 'Voir le rapport', annualGoal: 'Objectif annuel', noTransactions: 'Aucune transaction récente',
+          reviewExpenses: 'Examiner le rapport des dépenses', approveInvoices: 'Approuver les factures fournisseurs', updateBudget: 'Mettre à jour le budget mensuel',
+        }
+      : {
+          greeting: 'Good morning', overview: 'Here is a complete view of your financial performance', addTransaction: 'Add transaction',
+          thisMonth: 'This month', cashFlow: 'Cash flow', income: 'Income', expenses: 'Expenses',
+          financialHealth: 'Financial health', savingsRatio: 'Savings ratio', expenseCoverage: 'Expense coverage',
+          debtLevel: 'Debt level', veryGood: 'Very good', excellent: 'Excellent', low: 'Low', details: 'View details',
+          recentTransactions: 'Recent transactions', merchant: 'Merchant', category: 'Category', date: 'Date', amount: 'Amount',
+          expenseDistribution: 'Expense distribution', dailyActions: "Today's actions", goals: 'Financial goals',
+          viewAll: 'View all', viewReport: 'View report', annualGoal: 'Annual goal', noTransactions: 'No recent transactions',
+          reviewExpenses: 'Review expense report', approveInvoices: 'Approve supplier invoices', updateBudget: 'Update monthly budget',
+        };
+
+  const displayName = firstText(user?.user_metadata ?? {}, ['display_name', 'full_name', 'name'], lang === 'ar' ? 'محمد' : 'Mohammed');
+  const financialKpis = [
+    { label: text.netBalance, value: money(summary.netBalance), icon: <Wallet size={19} />, tone: 'blue', trend: '5.1%', path: 'M2 25 C15 22 17 29 29 22 S45 18 55 23 S70 5 84 15 S99 7 118 12' },
+    { label: text.totalIncome, value: money(summary.incomeTotal), icon: <Wallet size={19} />, tone: 'green', trend: '12.7%', path: 'M2 26 C13 14 21 27 31 18 S47 22 57 13 S72 18 82 9 S98 18 118 5' },
+    { label: text.totalExpenses, value: money(summary.expenseTotal), icon: <Coins size={19} />, tone: 'red', trend: '3.2%', path: 'M2 27 C15 14 20 27 33 17 S51 24 62 12 S78 9 87 22 S101 13 118 15' },
+    { label: text.investments, value: money(summary.investmentsTotal), icon: <TrendingUp size={19} />, tone: 'teal', trend: '8.4%', path: 'M2 25 C12 14 19 29 30 18 S45 25 55 10 S70 18 80 6 S96 19 118 7' },
+  ];
+
+  const recentTransactions = [
+    ...records.expenses.map((row, index) => ({
+      id: firstText(row, ['id'], `expense-${index}`),
+      merchant: firstText(row, ['merchant', 'name', 'title', 'description'], dashboardCopy.expenses),
+      category: firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses),
+      date: firstDate(row, ['transaction_date', 'expense_date', 'date', 'created_at']),
+      amount: -(firstNumber(row, ['amount']) ?? 0),
+    })),
+    ...records.income.map((row, index) => ({
+      id: firstText(row, ['id'], `income-${index}`),
+      merchant: firstText(row, ['source_name', 'name', 'title', 'description'], dashboardCopy.income),
+      category: firstText(row, ['category', 'type'], dashboardCopy.income),
+      date: firstDate(row, ['transaction_date', 'received_date', 'date', 'created_at']),
+      amount: firstNumber(row, ['amount']) ?? 0,
+    })),
+  ]
+    .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime())
+    .slice(0, 5);
+
+  const expenseGroups = Array.from(records.expenses.reduce((groups, row) => {
+    const label = firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses);
+    groups.set(label, (groups.get(label) ?? 0) + (firstNumber(row, ['amount']) ?? 0));
+    return groups;
+  }, new Map<string, number>()).entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const expenseGroupTotal = expenseGroups.reduce((sum, [, value]) => sum + value, 0);
+  const expenseLegend = expenseGroups.length
+    ? expenseGroups.map(([label, value], index) => ({ label, percentage: expenseGroupTotal ? Math.round((value / expenseGroupTotal) * 100) : 0, index }))
+    : [
+        { label: lang === 'ar' ? 'الموظفون والرواتب' : 'Payroll', percentage: 35, index: 0 },
+        { label: lang === 'ar' ? 'التشغيل' : 'Operations', percentage: 25, index: 1 },
+        { label: lang === 'ar' ? 'التسويق والمبيعات' : 'Marketing', percentage: 15, index: 2 },
+        { label: lang === 'ar' ? 'الإيجار والمرافق' : 'Rent & utilities', percentage: 10, index: 3 },
+        { label: lang === 'ar' ? 'أخرى' : 'Other', percentage: 15, index: 4 },
+      ];
+
   if (loading || isLoadingData) {
     return (
       <div className="dashboard-shell" dir={dir}>
@@ -803,6 +885,142 @@ export default function ExecutiveDashboardPage() {
   return (
     <div className="dashboard-shell" dir={dir}>
       <main className="dashboard-main">
+        <section className="reference-hero" aria-labelledby="reference-dashboard-title">
+          <div className="reference-hero-head">
+            <div className="reference-hero-copy">
+              <h1 id="reference-dashboard-title">{dashboardCopy.greeting}، {displayName}</h1>
+              <p>{dashboardCopy.overview}</p>
+            </div>
+            <div className="reference-hero-actions">
+              <button type="button" className="reference-period-button">
+                <CalendarDays size={17} aria-hidden="true" />
+                <span>{dashboardCopy.thisMonth}</span>
+              </button>
+              <Link href="/income" className="reference-primary-button">
+                <Plus size={18} aria-hidden="true" />
+                <span>{dashboardCopy.addTransaction}</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="reference-kpi-grid">
+            {financialKpis.map((item) => (
+              <article className={`reference-kpi-card reference-kpi-${item.tone}`} key={item.label}>
+                <div className="reference-kpi-title">
+                  <span>{item.label}</span>
+                  <i aria-hidden="true">{item.icon}</i>
+                </div>
+                <strong data-financial-value="true">{item.value}</strong>
+                <div className="reference-kpi-foot">
+                  <span className="reference-trend">▲ {item.trend}</span>
+                  <small>{lang === 'ar' ? 'عن الشهر الماضي' : lang === 'fr' ? 'vs mois précédent' : 'vs last month'}</small>
+                  <svg viewBox="0 0 120 34" role="img" aria-label={`${item.label} trend`}>
+                    <path d={item.path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="reference-overview-grid" aria-label={dashboardCopy.cashFlow}>
+          <article className="reference-panel reference-cashflow">
+            <header className="reference-panel-heading">
+              <div>
+                <h2>{dashboardCopy.cashFlow}</h2>
+                <div className="reference-chart-legend">
+                  <span><i className="is-income" />{dashboardCopy.income}</span>
+                  <span><i className="is-expense" />{dashboardCopy.expenses}</span>
+                </div>
+              </div>
+              <button type="button" className="reference-icon-button" aria-label={dashboardCopy.thisMonth}>
+                <span>{lang === 'ar' ? '12 شهر' : '12 months'}</span>
+                <CalendarDays size={15} aria-hidden="true" />
+              </button>
+            </header>
+            <div className="reference-line-chart" aria-label={dashboardCopy.cashFlow}>
+              <div className="reference-chart-scale" aria-hidden="true"><span>800k</span><span>600k</span><span>400k</span><span>200k</span><span>0</span></div>
+              <svg viewBox="0 0 760 220" role="img" aria-label={dashboardCopy.cashFlow} preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="incomeArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--accent)" stopOpacity=".18"/><stop offset="1" stopColor="var(--accent)" stopOpacity="0"/></linearGradient>
+                  <linearGradient id="expenseArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--primary)" stopOpacity=".16"/><stop offset="1" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
+                </defs>
+                <g className="reference-grid-lines"><path d="M0 18H760M0 64H760M0 110H760M0 156H760M0 202H760" /></g>
+                <path className="reference-income-area" d="M0 150 C55 130 70 108 126 116 S190 150 246 88 S318 72 372 58 S448 82 500 66 S580 102 630 112 S710 142 760 118 L760 202 L0 202Z" />
+                <path className="reference-expense-area" d="M0 172 C48 152 85 142 126 150 S198 176 246 132 S326 128 372 112 S454 106 500 120 S568 146 630 142 S706 168 760 150 L760 202 L0 202Z" />
+                <path className="reference-income-line" d="M0 150 C55 130 70 108 126 116 S190 150 246 88 S318 72 372 58 S448 82 500 66 S580 102 630 112 S710 142 760 118" />
+                <path className="reference-expense-line" d="M0 172 C48 152 85 142 126 150 S198 176 246 132 S326 128 372 112 S454 106 500 120 S568 146 630 142 S706 168 760 150" />
+              </svg>
+              <div className="reference-months" aria-hidden="true">{(lang === 'ar' ? ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).map(month => <span key={month}>{month}</span>)}</div>
+            </div>
+          </article>
+
+          <article className="reference-panel reference-health">
+            <header className="reference-panel-heading"><h2>{dashboardCopy.financialHealth}</h2><ShieldCheck size={19} aria-hidden="true" /></header>
+            <div className="reference-health-body">
+              <div className="reference-score-ring" style={{ '--score': `${summary.healthScore ?? 0}%` } as CSSProperties}>
+                <div><strong>{summary.healthScore ?? 0}</strong><span>/100</span></div>
+              </div>
+              <strong className="reference-score-label">{summary.healthScore === null ? text.insufficientData : statusLabel(summary.healthScore, text)}</strong>
+              <div className="reference-health-list">
+                {[
+                  [dashboardCopy.savingsRatio, dashboardCopy.veryGood],
+                  [dashboardCopy.expenseCoverage, dashboardCopy.excellent],
+                  [dashboardCopy.debtLevel, dashboardCopy.low],
+                ].map(([label, value]) => (
+                  <div key={label}><CheckCircle2 size={18} aria-hidden="true" /><span>{label}<strong>{value}</strong></span></div>
+                ))}
+              </div>
+            </div>
+            <Link href="/reports-center" className="reference-secondary-button">{dashboardCopy.details}<ArrowRight size={15} aria-hidden="true" /></Link>
+          </article>
+        </section>
+
+        <section className="reference-detail-grid">
+          <article className="reference-panel reference-transactions">
+            <header className="reference-panel-heading"><h2>{dashboardCopy.recentTransactions}</h2><ReceiptText size={19} aria-hidden="true" /></header>
+            {recentTransactions.length ? (
+              <div className="reference-table-wrap"><table><thead><tr><th>{dashboardCopy.merchant}</th><th>{dashboardCopy.category}</th><th>{dashboardCopy.date}</th><th>{dashboardCopy.amount}</th></tr></thead><tbody>
+                {recentTransactions.map((transaction) => <tr key={transaction.id}><td>{transaction.merchant}</td><td>{transaction.category}</td><td>{transaction.date ? formatDate(transaction.date, locale) : '—'}</td><td className={transaction.amount >= 0 ? 'is-positive' : 'is-negative'}>{money(transaction.amount)}</td></tr>)}
+              </tbody></table></div>
+            ) : <div className="reference-compact-empty">{dashboardCopy.noTransactions}</div>}
+            <Link href="/reports-center" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
+          </article>
+
+          <article className="reference-panel reference-expenses-card">
+            <header className="reference-panel-heading"><h2>{dashboardCopy.expenseDistribution}</h2><BarChart3 size={19} aria-hidden="true" /></header>
+            <div className="reference-donut-layout">
+              <div className="reference-donut"><span><strong>{money(summary.expenseTotal)}</strong><small>{dashboardCopy.expenses}</small></span></div>
+              <div className="reference-expense-legend">{expenseLegend.map((item) => <div key={item.label}><i data-index={item.index} /><span>{item.label}</span><strong>{item.percentage}%</strong></div>)}</div>
+            </div>
+            <Link href="/expenses" className="reference-text-link">{dashboardCopy.viewReport}<ArrowRight size={14} aria-hidden="true" /></Link>
+          </article>
+
+          <article className="reference-panel reference-actions-card">
+            <header className="reference-panel-heading"><h2>{dashboardCopy.dailyActions}</h2><ClipboardList size={19} aria-hidden="true" /></header>
+            <div className="reference-action-list">
+              {[
+                [dashboardCopy.reviewExpenses, lang === 'ar' ? 'عالية' : 'High', '10:00', 'high'],
+                [dashboardCopy.approveInvoices, lang === 'ar' ? 'متوسطة' : 'Medium', '12:30', 'medium'],
+                [dashboardCopy.updateBudget, lang === 'ar' ? 'منخفضة' : 'Low', '03:00', 'low'],
+              ].map(([label, priority, time, tone], index) => <Link href={index === 0 ? '/reports-center' : index === 1 ? '/expenses' : '/goals'} key={label}><i className={`is-${tone}`}>{index === 0 ? <ReceiptText size={18}/> : index === 1 ? <CalendarDays size={18}/> : <BarChart3 size={18}/>}</i><span><strong>{label}</strong><small>{time}</small></span><em className={`is-${tone}`}>{priority}</em></Link>)}
+            </div>
+            <Link href="/tasks" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
+          </article>
+
+          <article className="reference-panel reference-goals-card">
+            <header className="reference-panel-heading"><h2>{dashboardCopy.goals}</h2><Target size={19} aria-hidden="true" /></header>
+            <div className="reference-goal-list">
+              {records.goals.slice(0, 2).map((goal, index) => {
+                const progress = Math.round((goalProgress(goal) ?? 0) * 100);
+                return <div key={firstText(goal, ['id'], `goal-${index}`)}><span><strong>{firstText(goal, ['name', 'title'], dashboardCopy.annualGoal)}</strong><small>{progress}%</small></span><div><i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div></div>;
+              })}
+              {records.goals.length === 0 ? <div><span><strong>{dashboardCopy.annualGoal}</strong><small>0%</small></span><div><i style={{ width: '0%' }} /></div></div> : null}
+            </div>
+            <Link href="/goals" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
+          </article>
+        </section>
+
         <section className="hero-card" aria-labelledby="dashboard-hero-title">
           <div className="hero-visual" aria-hidden="true">
             <span className="hero-grid-plane" />
@@ -1095,6 +1313,171 @@ const dashboardStyles = `
   body {
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  .dashboard-main > .hero-card,
+  .dashboard-main > .metrics-grid,
+  .dashboard-main > .dashboard-grid {
+    display: none;
+  }
+
+  .reference-hero {
+    overflow: hidden;
+    padding: 20px;
+    border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+    border-radius: var(--radius-panel);
+    background: var(--sidebar-background);
+    box-shadow: var(--shadow-md);
+    color: var(--hero-foreground);
+  }
+
+  .reference-hero-head,
+  .reference-panel-heading,
+  .reference-kpi-title,
+  .reference-kpi-foot,
+  .reference-text-link,
+  .reference-secondary-button {
+    display: flex;
+    align-items: center;
+  }
+
+  .reference-hero-head { justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+  .reference-hero-copy h1 { margin: 0; color: var(--hero-foreground); font-size: clamp(1.45rem, 2.3vw, 2rem); font-weight: 700; line-height: 1.25; }
+  .reference-hero-copy p { margin: 5px 0 0; color: var(--hero-foreground-muted); font-size: 13px; line-height: 1.7; }
+  .reference-hero-actions { display: flex; align-items: center; gap: 10px; }
+  .reference-primary-button,
+  .reference-period-button,
+  .reference-secondary-button,
+  .reference-icon-button {
+    min-height: 44px;
+    border-radius: var(--radius-control);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .reference-primary-button,
+  .reference-period-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; }
+  .reference-primary-button { border: 1px solid var(--primary); background: var(--primary); color: var(--hero-foreground); box-shadow: var(--shadow-sm); }
+  .reference-primary-button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+  .reference-period-button { border: 1px solid color-mix(in srgb, var(--hero-foreground) 34%, transparent); background: color-mix(in srgb, var(--hero-gradient-start) 54%, transparent); color: var(--hero-foreground); }
+  .reference-period-button:hover { background: color-mix(in srgb, var(--hero-gradient-mid) 82%, transparent); }
+
+  .reference-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .reference-kpi-card { min-width: 0; padding: 15px 16px 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--foreground); box-shadow: var(--shadow-card); }
+  .reference-kpi-title { justify-content: space-between; gap: 10px; color: var(--foreground-secondary); font-size: 12px; }
+  .reference-kpi-title i { width: 31px; height: 31px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--primary-soft); color: var(--primary); font-style: normal; }
+  .reference-kpi-card > strong { display: block; margin-top: 7px; color: var(--foreground); font-family:var(--font-data); font-size: clamp(1.15rem, 1.8vw, 1.55rem); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reference-kpi-foot { gap: 7px; margin-top: 9px; color: var(--foreground-muted); }
+  .reference-kpi-foot small { font-size: 10px; white-space: nowrap; }
+  .reference-kpi-foot svg { width: 35%; min-width: 74px; height: 30px; margin-inline-start: auto; }
+  .reference-trend { padding: 4px 7px; border-radius: var(--radius-sm); background: var(--success-soft); color: var(--success); font-size: 10px; font-weight: 700; direction: ltr; }
+  .reference-kpi-red .reference-kpi-title i { background: var(--danger-soft); color: var(--danger); }
+  .reference-kpi-red .reference-kpi-foot svg { color: var(--danger); }
+  .reference-kpi-red .reference-trend { background: var(--danger-soft); color: var(--danger); }
+  .reference-kpi-green .reference-kpi-title i, .reference-kpi-teal .reference-kpi-title i { background: var(--accent-soft); color: var(--accent); }
+  .reference-kpi-green .reference-kpi-foot svg, .reference-kpi-teal .reference-kpi-foot svg { color: var(--accent); }
+  .reference-kpi-blue .reference-kpi-foot svg { color: var(--primary); }
+
+  .reference-overview-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); gap: 14px; margin-top: 14px; }
+  .reference-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .reference-panel { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); color: var(--foreground); }
+  .reference-overview-grid .reference-panel { padding: 16px; }
+  .reference-detail-grid .reference-panel { display: flex; flex-direction: column; min-height: 318px; padding: 14px; }
+  .reference-panel-heading { justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .reference-panel-heading h2 { margin: 0; color: var(--foreground); font-size: 15px; font-weight: 700; }
+  .reference-panel-heading > svg { color: var(--foreground-secondary); }
+  .reference-chart-legend { display: flex; gap: 14px; margin-top: 8px; color: var(--foreground-secondary); font-size: 11px; }
+  .reference-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .reference-chart-legend i { width: 7px; height: 7px; border-radius: var(--radius-pill); }
+  .reference-chart-legend .is-income { background: var(--accent); }
+  .reference-chart-legend .is-expense { background: var(--primary); }
+  .reference-icon-button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 10px; border: 1px solid var(--border); background: var(--hero-foreground); color: var(--foreground-secondary); }
+  .reference-line-chart { position: relative; min-height: 245px; padding-inline-start: 42px; }
+  .reference-line-chart > svg { width: 100%; height: 205px; overflow: visible; }
+  .reference-grid-lines path { fill: none; stroke: var(--chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .reference-income-area { fill: url(#incomeArea); }
+  .reference-expense-area { fill: url(#expenseArea); }
+  .reference-income-line, .reference-expense-line { fill: none; stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .reference-income-line { stroke: var(--accent); }
+  .reference-expense-line { stroke: var(--primary); }
+  .reference-chart-scale { position: absolute; inset-inline-start: 0; top: 2px; bottom: 33px; display: flex; flex-direction: column; justify-content: space-between; color: var(--chart-label); font-family:var(--font-data); font-size: 10px; direction: ltr; }
+  .reference-months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; color: var(--chart-label); font-size: 10px; text-align: center; }
+
+  .reference-health { display: flex; flex-direction: column; }
+  .reference-health-body { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px 18px; align-items: center; flex: 1; }
+  .reference-score-ring { --score: 0%; width: 138px; height: 138px; display: grid; place-items: center; border-radius: var(--radius-pill); background: var(--primary); position: relative; }
+  .reference-score-ring::after { content: ''; position: absolute; inset: 12px; border-radius: var(--radius-pill); background: var(--surface); box-shadow: var(--shadow-xs); }
+  .reference-score-ring > div { position: relative; z-index: 1; display: grid; text-align: center; }
+  .reference-score-ring strong { color: var(--foreground); font: 700 2.65rem/1 var(--font-data); }
+  .reference-score-ring span { color: var(--foreground-secondary); font: 500 1rem/1.2 var(--font-data); }
+  .reference-score-label { grid-column: 1; text-align: center; color: var(--foreground); font-size: 14px; }
+  .reference-health-list { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 8px; }
+  .reference-health-list > div { min-height: 47px; display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-muted); color: var(--accent); }
+  .reference-health-list span { display: grid; color: var(--foreground-secondary); font-size: 11px; }
+  .reference-health-list strong { margin-top: 2px; color: var(--primary); font-size: 11px; }
+  .reference-secondary-button { justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; border: 1px solid var(--border-strong); background: var(--hero-foreground); color: var(--primary); }
+  .reference-secondary-button:hover { border-color: var(--primary); background: var(--primary-soft); }
+  [dir='rtl'] .reference-secondary-button svg, [dir='rtl'] .reference-text-link svg { transform: scaleX(-1); }
+
+  .reference-table-wrap { overflow-x: auto; flex: 1; }
+  .reference-transactions table { width: 100%; border-collapse: collapse; font-size: 10px; white-space: nowrap; }
+  .reference-transactions th { padding: 8px 6px; background: var(--table-header); color: var(--foreground-muted); font-weight: 600; text-align: start; }
+  .reference-transactions td { padding: 9px 6px; border-bottom: 1px solid var(--border); color: var(--foreground-secondary); text-align: start; }
+  .reference-transactions td.is-positive { color: var(--success); font-weight: 700; }
+  .reference-transactions td.is-negative { color: var(--danger); font-weight: 700; }
+  .reference-text-link { justify-content: center; gap: 7px; min-height: 40px; margin-top: auto; border-top: 1px solid var(--border); color: var(--primary); font-size: 11px; font-weight: 600; text-decoration: none; }
+  .reference-compact-empty { display: grid; place-items: center; flex: 1; color: var(--foreground-muted); font-size: 12px; }
+
+  .reference-donut-layout { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(130px, 1fr); gap: 14px; align-items: center; flex: 1; }
+  .reference-donut { width: min(100%, 145px); aspect-ratio: 1; display: grid; place-items: center; margin: auto; border-radius: var(--radius-pill); background: var(--primary); position: relative; }
+  .reference-donut::after { content: ''; position: absolute; inset: 27%; border-radius: var(--radius-pill); background: var(--surface); }
+  .reference-donut span { position: relative; z-index: 1; display: grid; max-width: 70px; text-align: center; }
+  .reference-donut strong { color: var(--foreground); font: 700 11px/1.3 var(--font-data); overflow: hidden; text-overflow: ellipsis; }
+  .reference-donut small { color: var(--chart-5); font-size: 9px; }
+  .reference-expense-legend { display: grid; gap: 10px; }
+  .reference-expense-legend > div { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 6px; align-items: center; color: var(--foreground-muted); font-size: 10px; }
+  .reference-expense-legend i { width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--primary); }
+  .reference-expense-legend i[data-index='1'] { background: var(--accent); }.reference-expense-legend i[data-index='2'] { background: var(--chart-4); }.reference-expense-legend i[data-index='3'] { background: var(--danger); }.reference-expense-legend i[data-index='4'] { background: var(--chart-5); }
+  .reference-expense-legend strong { color: var(--foreground-secondary); font-family:var(--font-data); }
+
+  .reference-action-list { display: grid; gap: 8px; flex: 1; }
+  .reference-action-list > a { min-height: 60px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); color: inherit; text-decoration: none; }
+  .reference-action-list > a > i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-style: normal; }
+  .reference-action-list > a > i.is-medium { background: var(--warning-soft); color: var(--warning); }.reference-action-list > a > i.is-low { background: var(--success-soft); color: var(--success); }
+  .reference-action-list span { display: grid; min-width: 0; }
+  .reference-action-list span strong { color: var(--foreground-secondary); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reference-action-list span small { margin-top: 3px; color: var(--foreground-muted); font-size: 9px; }
+  .reference-action-list em { padding: 4px 6px; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-size: 9px; font-style: normal; }.reference-action-list em.is-medium { background: var(--warning-soft); color: var(--warning); }.reference-action-list em.is-low { background: var(--success-soft); color: var(--success); }
+
+  .reference-goal-list { display: grid; gap: 20px; flex: 1; align-content: start; padding-top: 8px; }
+  .reference-goal-list > div > span { display: flex; justify-content: space-between; gap: 12px; color: var(--foreground-secondary); font-size: 11px; }
+  .reference-goal-list small { color: var(--primary); font-family:var(--font-data); }
+  .reference-goal-list > div > div { height: 7px; margin-top: 10px; overflow: hidden; border-radius: var(--radius-pill); background: var(--surface-muted); }
+  .reference-goal-list i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+
+  @media (max-width: 1180px) {
+    .reference-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .reference-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .reference-overview-grid { grid-template-columns: 1fr; }
+    .reference-health-body { grid-template-columns: 150px minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .reference-hero { padding: 16px; }
+    .reference-hero-head { align-items: stretch; flex-direction: column; }
+    .reference-hero-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    .reference-kpi-grid, .reference-detail-grid { grid-template-columns: 1fr; }
+    .reference-kpi-card > strong { white-space: normal; }
+    .reference-line-chart { min-height: 220px; padding-inline-start: 34px; }
+    .reference-months span:nth-child(even) { display: none; }
+    .reference-months { grid-template-columns: repeat(6, 1fr); }
+    .reference-health-body { grid-template-columns: 1fr; justify-items: center; }
+    .reference-health-list { width: 100%; grid-column: 1; grid-row: auto; }
+    .reference-score-label { grid-column: 1; }
   }
 
   .dashboard-shell,
