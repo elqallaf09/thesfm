@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, Search, ShieldAlert, Sparkles, Star, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, ShieldAlert, Star, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import { PageTabs, pageTabPanelId, pageTabTriggerId } from '@/components/layout/PageTabs';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
 import { MarketSignalMiniBadge, MarketSignalPanel } from '@/components/market/MarketSignalPanel';
@@ -27,7 +26,7 @@ import type { MarketAiInsight, MarketAnalysis, MarketAssetType, MarketHistoryPoi
 import { marketSymbolSuggestions, normalizeAssetType, normalizeMarketSymbolInput, validateSymbol } from '@/lib/market/marketService';
 import { findKnownMarketSymbol, isKnownExactMarketSymbol } from '@/lib/market/knownSymbols';
 import { calculateLotSizeByRisk, calculatePips, calculatePositionSize, type TradeDirection, type TradingInstrumentType } from '@/lib/trading/calculators';
-import { getActiveOverlapIds, getTradingSessionsState, isHighLiquidityPeriod, TRADING_OVERLAPS } from '@/lib/trading/sessions';
+import { URL_TAB_STATE_CHANGE_EVENT } from '@/lib/navigation/urlTabState';
 
 // â”€â”€ Local types (extracted to components/market-analysis/types.ts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import type {
@@ -58,10 +57,10 @@ import {
   technicalSignalStrength, formatFundamentalValue,
   assetTypeTranslationKey, fundamentalsReasonTranslationKey, cleanSearchText,
   normalizeSearchComparable, compactSearchComparable, normalizeSearchSymbol,
-  marketSearchMatchRank, normalizeAssetSearchResult, normalizeSearchItems,
+  normalizeAssetSearchResult, normalizeSearchItems,
   findExactSearchMatch, normalizeSearchItem, suggestionToMarketItem,
   normalizeErrorSuggestions, suggestionButtonLabel, normalizePublicMarketErrorCode,
-  normalizeMarketTab,
+  normalizeMarketTab, shouldOpenLegacySymbolAnalysis,
   canAnalyzeDirectNormalizedInput, hasUsableAnalysis, historyFromPricePoints,
   normalizeChartType, hasCompleteOhlc, pipAssetTypeTranslationKey, pipAssetName,
   getPipCalculatorAsset, pipCalculatorWarningKey, technicalEmptyStateCopy,
@@ -86,13 +85,27 @@ import {
 } from '@/components/market-analysis/utils';
 
 // â”€â”€ Extracted panel components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-import { MarketDefaultDashboard, MarketEmptyState, MarketStatusCard } from '@/components/market-analysis/MarketPanelPrimitives';
+import { MarketDefaultDashboard, MarketEmptyState } from '@/components/market-analysis/MarketPanelPrimitives';
 import { MarketAsyncToolStyles } from '@/components/market-analysis/MarketStyles';
 import { MarketMetric } from '@/components/market-analysis/MarketChartComponents';
+import { MarketCommandBar } from '@/components/market-analysis/MarketCommandBar';
+import { MarketCommandCenterHeader } from '@/components/market-analysis/MarketCommandCenterHeader';
+import { MarketCommandCenterStatus } from '@/components/market-analysis/MarketCommandCenterStatus';
+import { MarketCommandNavigation } from '@/components/market-analysis/MarketCommandNavigation';
+import { MarketCommandOverview } from '@/components/market-analysis/MarketCommandOverview';
+import {
+  type MarketOverviewAction,
+  type MarketOverviewAssetSnapshot,
+  type MarketOverviewCountPresentation,
+} from '@/components/market-analysis/MarketOverviewPanel';
+import {
+  marketCommandContentId,
+  marketCommandGroupForTab,
+  marketCommandGroupTriggerId,
+} from '@/components/market-analysis/marketCommandCenter';
 import { getMarketToolRequirements } from '@/components/market-analysis/toolRequirements';
 import type { MarketNewsServerQuery } from '@/components/market-analysis/NewsSentimentPanel';
 import { MarketSystemStateProvider } from '@/components/market/MarketSystemStateProvider';
-import { MarketHeaderSummary } from '@/components/market/MarketHeaderSummary';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
   return (
@@ -113,40 +126,42 @@ function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: num
     </div>
   );
 }
-function lazyMarketPanel(label: string, cards = 3) {
+function lazyMarketPanel(labelKey: Parameters<ReturnType<typeof useLanguage>['t']>[0], cards = 3) {
   function MarketPanelLoadingFallback() {
-    return <MarketSectionLoading label={label} cards={cards} />;
+    const { t } = useLanguage();
+    return <MarketSectionLoading label={t(labelKey)} cards={cards} />;
   }
-  MarketPanelLoadingFallback.displayName = `MarketPanelLoadingFallback(${label})`;
+  MarketPanelLoadingFallback.displayName = `MarketPanelLoadingFallback(${String(labelKey)})`;
   return MarketPanelLoadingFallback;
 }
 
 const TraderToolsDashboard = dynamic(
   () => import('@/components/market-analysis/TraderToolsDashboard').then(mod => mod.TraderToolsDashboard),
-  { ssr: false, loading: lazyMarketPanel('Loading Trading Tools...', 3) },
+  { ssr: false, loading: lazyMarketPanel('market_loading_short', 3) },
 );
 
 const EconomicCalendarPanel = dynamic(
   () => import('@/components/market-analysis/EconomicCalendarPanel').then(mod => mod.EconomicCalendarPanel),
-  { ssr: false, loading: lazyMarketPanel('Loading economic calendar...', 3) },
+  { ssr: false, loading: lazyMarketPanel('market_loading_economic_calendar', 3) },
 );
 
 const TradingSessionsPanel = dynamic(
   () => import('@/components/market-analysis/TradingSessionsPanel').then(mod => mod.TradingSessionsPanel),
-  { ssr: false, loading: lazyMarketPanel('Loading trading sessions...', 2) },
+  { ssr: false, loading: lazyMarketPanel('market_loading_short', 2) },
 );
 
 const TechnicalAnalysisPanel = dynamic(
   () => import('@/components/market-analysis/TechnicalAnalysisPanel').then(mod => mod.TechnicalAnalysisPanel),
-  { ssr: false, loading: lazyMarketPanel('Loading technical analysis...', 3) },
+  { ssr: false, loading: lazyMarketPanel('market_loading_technical_analysis', 3) },
 );
 
 const NewsSentimentPanel = dynamic(
   () => import('@/components/market-analysis/NewsSentimentPanel').then(mod => mod.NewsSentimentPanel),
-  { ssr: false, loading: lazyMarketPanel('Loading news and sentiment...', 3) },
+  { ssr: false, loading: lazyMarketPanel('market_loading_central_bank_news', 3) },
 );
 
 const MARKET_ANALYSIS_TAB_IDS = [
+  'overview',
   'analyze',
   'traderTools',
   'economicCalendar',
@@ -202,13 +217,7 @@ function formatProviderStatusForDebug(source?: string | null, fallback = false) 
 function findBestSearchMatch(items: MarketSearchSuggestion[], query: string) {
   const exact = findExactSearchMatch(items, query);
   if (exact) return exact;
-  const cleanQuery = query.trim();
-  if (!cleanQuery) return undefined;
-  const ranked = items
-    .map(item => ({ item, rank: marketSearchMatchRank(item, cleanQuery) }))
-    .filter(entry => entry.rank >= 70)
-    .sort((a, b) => b.rank - a.rank || a.item.symbol.localeCompare(b.item.symbol));
-  return ranked[0]?.item;
+  return items.length === 1 ? items[0] : undefined;
 }
 
 function knownMarketSuggestion(query: string, assetType: MarketAssetFilter = 'all'): MarketSearchSuggestion | undefined {
@@ -260,7 +269,7 @@ export default function MarketAnalysisPage() {
   const { dir, lang, t } = useLanguage();
   const { currency: userCurrency } = useCurrency();
   const currentUserProfile = useCurrentUserProfile();
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, loading: authLoading } = useAuth();
   const initialUrlStateRef = useRef<ReturnType<typeof readMarketAnalysisUrlState> | null>(null);
   if (initialUrlStateRef.current === null) initialUrlStateRef.current = readMarketAnalysisUrlState();
   const [query, setQuery] = useState(initialUrlStateRef.current.symbol);
@@ -275,12 +284,15 @@ export default function MarketAnalysisPage() {
   const searchRequestIdRef = useRef(0);
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistLoadState, setWatchlistLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [marketSignal, setMarketSignal] = useState<MarketSignal | null>(null);
   const [marketSignalLoading, setMarketSignalLoading] = useState(false);
   const [marketSignalError, setMarketSignalError] = useState(false);
   const [watchlistSignals, setWatchlistSignals] = useState<Record<string, MarketSignal>>({});
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
+  const [alertsLoadState, setAlertsLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [compare, setCompare] = useState<MarketAnalysis[]>([]);
+  const comparisonLoadedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [slowLoading, setSlowLoading] = useState(false);
   const [aiInsight, setAiInsight] = useState<MarketAiInsightView | null>(null);
@@ -311,7 +323,7 @@ export default function MarketAnalysisPage() {
   const [activeTab, setActiveTab] = useUrlTabState<MarketTab>({
     param: 'tab',
     values: MARKET_ANALYSIS_TAB_IDS,
-    defaultValue: 'analyze',
+    defaultValue: 'overview',
     omitDefault: true,
     legacyValueResolver: normalizeMarketTab,
     legacyHash: true,
@@ -327,6 +339,7 @@ export default function MarketAnalysisPage() {
   );
   const [performance, setPerformance] = useState<ApiListState<MarketPerformanceItem>>({ loading: false, items: [], message: '' });
   const [economicCalendar, setEconomicCalendar] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
+  const economicCalendarLoadedRef = useRef(false);
   const [centralBankNews, setCentralBankNews] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [marketSentiment, setMarketSentiment] = useState<ApiListState<Record<string, any>>>({ loading: false, items: [], message: '' });
   const [sentimentHealthLoading, setSentimentHealthLoading] = useState(false);
@@ -350,7 +363,10 @@ export default function MarketAnalysisPage() {
   const loadEconomicCalendar = useCallback((force = false) => {
     setEconomicCalendar(prev => ({ ...prev, loading: true, message: '', code: undefined }));
     const url = force ? '/api/market/economic-calendar?refresh=1' : '/api/market/economic-calendar';
-    void fetchMarketToolState<Record<string, any>>(url, 'economic-calendar').then(setEconomicCalendar);
+    void fetchMarketToolState<Record<string, any>>(url, 'economic-calendar').then((nextState) => {
+      economicCalendarLoadedRef.current = true;
+      setEconomicCalendar(nextState);
+    });
   }, []);
 
   const selectedSentimentSymbol = useMemo(() => (selectedAsset?.symbol ?? '').trim(), [selectedAsset]);
@@ -458,6 +474,8 @@ export default function MarketAnalysisPage() {
       } catch (error) {
         if (requestId !== marketNewsRequestIdRef.current) return;
         setCentralBankNews(marketToolFailureState<Record<string, any>>(error));
+        newsSentimentLoadedRef.current.news = true;
+        newsSentimentNewsKeyRef.current = JSON.stringify(query);
       } finally {
         window.clearTimeout(timeoutId);
         if (requestId === marketNewsRequestIdRef.current) {
@@ -993,6 +1011,13 @@ export default function MarketAnalysisPage() {
   }, [requestAnalysis, setActiveTab]);
 
   useEffect(() => {
+    const initial = initialUrlStateRef.current;
+    if (!initial?.symbol || initial.autoRun) return;
+    if (!shouldOpenLegacySymbolAnalysis(window.location.search, window.location.hash)) return;
+    setActiveTab('analyze', { history: 'replace' });
+  }, [setActiveTab]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const cleanSymbol = validateSymbol(query.trim().toUpperCase());
@@ -1014,10 +1039,11 @@ export default function MarketAnalysisPage() {
     params.delete('autoRun');
 
     const queryString = params.toString();
-    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     if (nextUrl !== currentUrl) {
-      window.history.replaceState(null, '', nextUrl);
+      window.history.replaceState(window.history.state, '', nextUrl);
+      window.dispatchEvent(new Event(URL_TAB_STATE_CHANGE_EVENT));
     }
   }, [assetType, query, timeframe]);
 
@@ -1223,31 +1249,37 @@ export default function MarketAnalysisPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadSupportingData() {
+    async function loadSearchDirectory() {
       try {
-        const [searchJson, compareJson] = await Promise.all([
-          fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>('/api/market/search', 8000),
-          fetchJsonWithTimeout<{ results?: MarketResult[] }>('/api/market/compare?symbols=SPY,QQQ,NVDA,MSFT&assetType=stock', 12000, true),
-        ]);
+        const searchJson = await fetchJsonWithTimeout<{ results?: MarketSearchItem[] }>('/api/market/search', 8000);
         if (cancelled) return;
         const apiExamples = (searchJson.results ?? []).slice(0, 10);
         const mergedExamples = [...QUICK_MARKET_EXAMPLES, ...apiExamples]
           .filter((asset, index, list) => list.findIndex(item => item.symbol === asset.symbol && item.assetType === asset.assetType) === index)
           .slice(0, 10);
         setSuggestedAssets(mergedExamples);
-        setCompare((compareJson.results ?? []).filter((item): item is MarketAnalysis => Boolean(item.success)));
       } catch {
-        if (!cancelled) {
-          setSuggestedAssets([]);
-          setCompare([]);
-        }
+        if (!cancelled) setSuggestedAssets([]);
       }
     }
-    void loadSupportingData();
+    void loadSearchDirectory();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'comparison' || comparisonLoadedRef.current) return;
+    comparisonLoadedRef.current = true;
+
+    void fetchJsonWithTimeout<{ results?: MarketResult[] }>(
+      '/api/market/compare?symbols=SPY,QQQ,NVDA,MSFT&assetType=stock',
+      12000,
+      true,
+    ).then((compareJson) => {
+      setCompare((compareJson.results ?? []).filter((item): item is MarketAnalysis => Boolean(item.success)));
+    }).catch(() => setCompare([]));
+  }, [activeTab]);
 
   useEffect(() => {
     if (!selectedAsset) {
@@ -1304,9 +1336,14 @@ export default function MarketAnalysisPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadUserMarketTools() {
+      setWatchlistLoadState('loading');
+      setAlertsLoadState('loading');
+      if (authLoading) return;
       if (!user || isGuest) {
         setWatchlist(readLocalList<WatchlistItem>(WATCHLIST_STORAGE_KEY));
         setAlerts(readLocalList<SavedAlert>(ALERTS_STORAGE_KEY));
+        setWatchlistLoadState('ready');
+        setAlertsLoadState('ready');
         return;
       }
 
@@ -1327,14 +1364,18 @@ export default function MarketAnalysisPage() {
 
       if (watchlistResult.status === 'fulfilled' && !watchlistResult.value.error) {
         setWatchlist((watchlistResult.value.data ?? []).map(row => normalizeWatchlistRow(row as Record<string, unknown>)));
+        setWatchlistLoadState('ready');
       } else {
         setWatchlist([]);
+        setWatchlistLoadState('error');
       }
 
       if (alertsResult.status === 'fulfilled' && !alertsResult.value.error) {
         setAlerts((alertsResult.value.data ?? []).map(row => normalizeAlertRow(row as Record<string, unknown>)));
+        setAlertsLoadState('ready');
       } else {
         setAlerts([]);
+        setAlertsLoadState('error');
       }
     }
 
@@ -1342,7 +1383,7 @@ export default function MarketAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, user]);
+  }, [authLoading, isGuest, user]);
 
   const saveWatchlist = useCallback(async (item: WatchlistItem) => {
     setNotice('');
@@ -1479,6 +1520,14 @@ export default function MarketAnalysisPage() {
     }
 
     if (!selectedItem) {
+      if (suggestionCandidates.length > 1) {
+        setSearchOpen(true);
+        setSearchMessage(t('market_command_ambiguous_search'));
+        setError('');
+        setErrorSuggestions([]);
+        return;
+      }
+
       const normalizedInput = normalizeMarketSymbolInput(cleanQuery, assetType);
       if (canAnalyzeDirectNormalizedInput(normalizedInput)) {
         const validInput = normalizedInput as Extract<ReturnType<typeof normalizeMarketSymbolInput>, { valid: true }>;
@@ -1523,6 +1572,7 @@ export default function MarketAnalysisPage() {
     setSearchMessage('');
     setError('');
     setErrorSuggestions([]);
+    setActiveTab('analyze');
     await requestAnalysis(selectedItem.providerSymbol ?? selectedItem.symbol, selectedItem.assetType, {
       symbol: selectedItem.symbol,
       providerSymbol: selectedItem.providerSymbol ?? selectedItem.symbol,
@@ -1532,7 +1582,7 @@ export default function MarketAnalysisPage() {
       country: selectedItem.country,
       currency: selectedItem.currency,
     });
-  }, [assetType, query, requestAnalysis, searchResults, t]);
+  }, [assetType, query, requestAnalysis, searchResults, setActiveTab, t]);
 
   const handleSearchKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
     const hasResults = searchResults.length > 0;
@@ -1544,8 +1594,10 @@ export default function MarketAnalysisPage() {
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      if (!searchOpen && canSearchMarketQuery(query, assetType)) setSearchOpen(true);
-      if (hasResults) {
+      if (!searchOpen && canSearchMarketQuery(query, assetType)) {
+        setSearchOpen(true);
+        setHighlightedSearchIndex(0);
+      } else if (hasResults) {
         setHighlightedSearchIndex(current => Math.min(current + 1, searchResults.length - 1));
       }
       return;
@@ -1553,7 +1605,10 @@ export default function MarketAnalysisPage() {
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      if (hasResults) {
+      if (!searchOpen && canSearchMarketQuery(query, assetType)) {
+        setSearchOpen(true);
+        setHighlightedSearchIndex(Math.max(searchResults.length - 1, 0));
+      } else if (hasResults) {
         setHighlightedSearchIndex(current => Math.max(current - 1, 0));
       }
       return;
@@ -1590,7 +1645,6 @@ export default function MarketAnalysisPage() {
       fallback: Boolean((selected as { fallback?: boolean }).fallback),
     });
   }, [selectedProviderStatus, selected, marketUnavailableBadge]);
-  const heroBadge = t('market_badge_live');
   const chartBadge = t('market_chart_live');
   const selectedDisplayName = selectedAsset && selectedAsset.symbol === selected?.symbol ? selectedAsset.name : undefined;
   const localizedAssetName = selectedDisplayName ?? (selected?.name?.includes('Market Asset') ? t('market_asset_generic').replace('{symbol}', selected.symbol) : selected?.name);
@@ -2136,239 +2190,203 @@ export default function MarketAnalysisPage() {
     `${t('market_report_levels')}: ${marketLevels.reliable && marketLevels.support !== null && marketLevels.resistance !== null ? `${t('market_support_zone')} ${selectedMoney(marketLevels.support)} / ${t('market_resistance_zone')} ${selectedMoney(marketLevels.resistance)}` : t('market_analysis_insufficient')}`,
     `${t('market_report_monitor')}: RSI ${selected.indicators.rsi}, SMA 20 ${selectedMoney(selected.indicators.sma20)}, SMA 50 ${selectedMoney(selected.indicators.sma50)}`,
   ] : [];
-  const marketTabs = useMemo(() => [
-    { id: 'analyze', label: t('market_analysis_tab') },
-    { id: 'traderTools', label: t('market_trader_tools') },
-    { id: 'economicCalendar', label: t('market_economic_calendar') },
-    { id: 'sessions', label: t('market_trading_sessions') },
-    { id: 'technicalAnalysis', label: t('market_daily_technical_analysis') },
-    { id: 'newsSentiment', label: t('market_news_sentiment') },
-    { id: 'watchlist', label: t('market_watchlist'), count: watchlist.length },
-    { id: 'alerts', label: t('market_price_alerts'), count: alerts.length },
-    { id: 'comparison', label: t('market_compare_assets'), count: compare.length },
-    { id: 'assetReport', label: t('market_ai_asset_report') },
-  ], [alerts.length, compare.length, t, watchlist.length]);
   const focusMarketSearch = useCallback(() => {
     setActiveTab('analyze');
     window.requestAnimationFrame(() => {
       const search = document.getElementById('market-asset-search');
-      search?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      search?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
       search?.focus({ preventScroll: true });
     });
   }, [setActiveTab]);
+  const openCommandPanel = useCallback((tab: MarketTab) => {
+    setActiveTab(tab);
+    window.requestAnimationFrame(() => {
+      document.getElementById(marketCommandContentId(MARKET_ANALYSIS_TABS_ID))?.focus({ preventScroll: true });
+    });
+  }, [setActiveTab]);
+  const activeCommandGroup = marketCommandGroupForTab(activeTab);
+  const translateMarketCommand = useCallback(
+    (key: string) => t(key as Parameters<typeof t>[0]),
+    [t],
+  );
+  const overviewAsset: MarketOverviewAssetSnapshot | null = selected && assetSnapshot ? {
+    symbol: assetSnapshot.symbol,
+    name: assetSnapshot.companyName,
+    statusLabel: assetSnapshot.dataStatusLabel,
+    statusTone: assetSnapshot.dataStatus === 'live' ? 'success' : assetSnapshot.dataStatus === 'delayed' ? 'warning' : 'neutral',
+    metadata: [assetSnapshot.exchange, assetSnapshot.currencyLabel]
+      .filter((value): value is string => Boolean(value))
+      .map((value, index) => ({ id: `asset-meta-${index}`, value })),
+    metrics: [
+      {
+        id: 'price',
+        label: t('market_current_price'),
+        value: assetSnapshot.currentPriceLabel,
+        valueKind: 'numeric',
+      },
+      {
+        id: 'change',
+        label: t('market_daily_change'),
+        value: assetSnapshot.priceChangeLabel,
+        valueKind: 'numeric',
+        tone: assetSnapshot.priceChangePercent >= 0 ? 'success' : 'danger',
+      },
+      {
+        id: 'trend',
+        label: t('market_trend'),
+        value: assetSnapshot.trendLabel,
+      },
+    ],
+  } : null;
+  const overviewWatchlist: MarketOverviewCountPresentation = watchlistLoadState === 'loading'
+    ? {
+        state: 'not-loaded',
+        label: t('market_watchlist'),
+        message: t('loading'),
+      }
+    : watchlistLoadState === 'error'
+      ? {
+          state: 'unavailable',
+          label: t('market_watchlist'),
+          message: t('market_command_data_state_unavailable'),
+        }
+      : {
+          state: 'available',
+          label: t('market_watchlist'),
+          count: watchlist.length,
+          helper: watchlist.length > 0 ? t('market_command_overview_saved_items') : t('market_command_overview_watchlist_empty'),
+        };
+  const overviewAlerts: MarketOverviewCountPresentation = alertsLoadState === 'loading'
+    ? {
+        state: 'not-loaded',
+        label: t('market_price_alerts'),
+        message: t('loading'),
+      }
+    : alertsLoadState === 'error'
+      ? {
+          state: 'unavailable',
+          label: t('market_price_alerts'),
+          message: t('market_command_data_state_unavailable'),
+        }
+      : {
+          state: 'available',
+          label: t('market_price_alerts'),
+          count: alerts.length,
+          helper: alerts.length > 0 ? t('market_command_overview_saved_items') : t('market_command_overview_alerts_empty'),
+        };
+  const overviewCalendar: MarketOverviewCountPresentation = !economicCalendarLoadedRef.current
+    ? {
+        state: 'not-loaded',
+        label: t('market_economic_calendar'),
+        message: t('market_command_overview_calendar_not_loaded'),
+      }
+    : economicCalendar.items.length > 0 || (!economicCalendar.message && !economicCalendar.code)
+      ? {
+          state: 'available',
+          label: t('market_economic_calendar'),
+          count: economicCalendar.items.length,
+          helper: t('market_command_overview_loaded_items'),
+        }
+      : {
+          state: 'unavailable',
+          label: t('market_economic_calendar'),
+          message: t('market_command_data_state_unavailable'),
+        };
+  const overviewNews: MarketOverviewCountPresentation = !newsSentimentLoadedRef.current.news
+    ? {
+        state: 'not-loaded',
+        label: t('market_news_sentiment'),
+        message: t('market_command_overview_news_not_loaded'),
+      }
+    : centralBankNews.items.length > 0 || (!centralBankNews.message && !centralBankNews.code)
+      ? {
+          state: 'available',
+          label: t('market_news_sentiment'),
+          count: centralBankNews.items.length,
+          helper: t('market_command_overview_loaded_items'),
+        }
+      : {
+          state: 'unavailable',
+          label: t('market_news_sentiment'),
+          message: t('market_command_data_state_unavailable'),
+        };
+  const overviewActions: readonly MarketOverviewAction[] = [
+    { id: 'analyze', kind: 'button', label: t('market_analysis_tab'), icon: <LineChart size={17} />, onClick: focusMarketSearch },
+    { id: 'technical', kind: 'button', label: t('market_daily_technical_analysis'), icon: <BarChart3 size={17} />, onClick: () => openCommandPanel('technicalAnalysis') },
+    { id: 'news', kind: 'button', label: t('market_command_open_news'), icon: <Newspaper size={17} />, onClick: () => openCommandPanel('newsSentiment') },
+    { id: 'calendar', kind: 'button', label: t('market_command_open_calendar'), icon: <CalendarDays size={17} />, onClick: () => openCommandPanel('economicCalendar') },
+    { id: 'tools', kind: 'button', label: t('market_command_open_tools'), icon: <Calculator size={17} />, onClick: () => openCommandPanel('traderTools') },
+  ];
   const primaryErrorSuggestion = errorSuggestions[0];
 
   return (
     <div className="market-shell" dir={dir}>
       <WorkspacePageContainer as="main" variant="full" className="market-main">
         <MarketAsyncToolStyles />
-        <section className={`market-hero ${assetSnapshot ? 'compact-result' : ''}`}>
-          <div className="market-hero-copy">
-            <span className="market-eyebrow"><Sparkles size={15} />{heroBadge}</span>
-            <h1>{t('market_title')}</h1>
-            <p>{t('market_hero_subtitle')}</p>
-            <form className="market-search-panel" onSubmit={event => { event.preventDefault(); void analyzeSearchSelection(); }}>
-              <div className="market-search-field">
-                <label htmlFor="market-asset-search">{t('market_asset_symbol')}</label>
-                <div className="market-search-combobox">
-                <div className="market-search-input-shell">
-                  <Search size={17} />
-                  <input
-                    id="market-asset-search"
-                    value={query}
-                    type="search"
-                    autoComplete="off"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-label={t('market_search_label')}
-                    aria-expanded={searchOpen && canSearchMarketQuery(query, assetType)}
-                    aria-controls="market-search-results"
-                    aria-activedescendant={searchOpen && searchResults[highlightedSearchIndex] ? `market-search-option-${highlightedSearchIndex}` : undefined}
-                    dir="ltr"
-                    onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
-                    onChange={event => {
-                      const nextQuery = event.target.value;
-                      const canSearchNextQuery = canSearchMarketQuery(nextQuery, assetType);
-                      searchRequestIdRef.current += 1;
-                      setQuery(nextQuery);
-                      setError('');
-                      setErrorSuggestions([]);
-                      setSearchResults([]);
-                      setSearchMessage('');
-                      setSearchLoading(canSearchNextQuery);
-                      setHighlightedSearchIndex(0);
-                      if (selectedAsset && nextQuery.trim().toUpperCase() !== selectedAsset.symbol) {
-                        setSelectedAsset(null);
-                      }
-                      setSearchOpen(canSearchNextQuery);
-                    }}
-                    onFocus={() => setSearchOpen(canSearchMarketQuery(query, assetType))}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder={t('market_search_placeholder')}
-                  />
-                </div>
-                {searchOpen && canSearchMarketQuery(query, assetType) && (
-                  <div id="market-search-results" className="market-search-results" role="listbox" aria-label={t('market_search_results')} dir={dir}>
-                    {searchLoading ? (
-                      <p role="status">{t('loading')}</p>
-                    ) : searchResults.length > 0 ? searchResults.map((item, index) => {
-                      const readableMeta = [
-                        item.symbol,
-                        item.exchange,
-                        marketCurrencyLabel(item.currency, lang),
-                        marketAssetTypeLabel(item.assetType, t),
-                      ].filter(Boolean).join(' · ');
-                      return (
-                      <button
-                        type="button"
-                        id={`market-search-option-${index}`}
-                        key={`${item.symbol}-${item.assetType}-${item.providerSymbol ?? item.symbol}`}
-                        onMouseDown={event => event.preventDefault()}
-                        onClick={() => void analyzeSearchSelection(item)}
-                        onMouseEnter={() => setHighlightedSearchIndex(index)}
-                        role="option"
-                        aria-selected={highlightedSearchIndex === index}
-                      >
-                        <span className="market-search-result-main">
-                          <span className="market-search-result-identity">
-                            <AssetIdentity symbol={item.symbol} name={item.name} assetType={item.assetType} exchange={item.exchange} size="sm" decorative />
-                            <b title={item.name}>{item.name || item.symbol}</b>
-                          </span>
-                          <em>{item.symbol}</em>
-                        </span>
-                        <small title={readableMeta}>{readableMeta}</small>
-                      </button>
-                      );
-                    }) : (
-                      <p>{searchMessage || t('command_no_results')}</p>
-                    )}
-                  </div>
-                )}
-                </div>
-              </div>
-              <label>
-                <span>{t('market_asset_type')}</span>
-                <select value={assetType} aria-label={t('market_asset_type')} onChange={event => setAssetType(event.target.value as MarketAssetFilter)}>
-                  <option value="all">{t('market_asset_all')}</option>
-                  <option value="stock">{t('market_asset_stocks')}</option>
-                  <option value="etf">{t('market_asset_etf')}</option>
-                  <option value="crypto">{t('market_asset_crypto')}</option>
-                  <option value="forex">{t('market_asset_forex')}</option>
-                  <option value="commodity">{t('market_asset_commodities')}</option>
-                  <option value="gold">{t('market_asset_gold')}</option>
-                  <option value="index">{t('market_asset_index')}</option>
-                </select>
-              </label>
-              <label className="market-timeframe-field">
-                <span>{t('market_timeframe')}</span>
-                <select
-                  value={timeframe}
-                  aria-label={t('market_timeframe')}
-                  onChange={event => loadHistory(event.target.value as MarketTimeframe)}
-                >
-                  {MARKET_TIMEFRAMES.map(item => <option value={item} key={item}>{item}</option>)}
-                </select>
-              </label>
-              <button className="market-search-submit" type="submit" disabled={loading || (!selectedAsset && !canSearchMarketQuery(query, assetType))}><Activity size={17} />{loading ? loadingLabel : t('market_analyze_now')}</button>
-            </form>
-          </div>
-          <div className={`market-hero-card ${assetSnapshot ? 'selected compact' : 'empty'}`}>
-            {assetSnapshot ? (
-                <>
-                  <span>{analysisCopy.quoteSnapshot}</span>
-                  <strong>{assetSnapshot.companyName}</strong>
-                  <p>{assetSnapshot.dataStatusLabel}</p>
-                  <em className="market-hero-card-meta" dir="ltr">{assetSnapshot.quoteTimestampLabel}</em>
-                  <b className={`risk ${selected?.riskLevel ?? 'medium'}`}>{assetSnapshot.currencyLabel}</b>
-                </>
-            ) : !activeToolRequirements.requiresAsset ? (
-              <>
-                <div className="market-hero-card-icon"><Calculator size={22} /></div>
-                <span>{t('market_active_tool')}</span>
-                <strong>{t('market_tool_no_asset_needed_title')}</strong>
-                <p>{activeTab === 'traderTools' && traderToolTab === 'risk' ? t('market_position_size_tool_empty_body') : t('market_tool_no_asset_needed_body')}</p>
-              </>
-            ) : (
-              <>
-                <div className="market-hero-card-icon"><LineChart size={22} /></div>
-                <span>{t('market_selected_asset')}</span>
-                <strong>{t('market_no_asset_selected_yet')}</strong>
-                <p>{t('market_selected_asset_empty_body')}</p>
-                <button type="button" onClick={focusMarketSearch}>{t('market_search_asset_action')}</button>
-              </>
-            )}
-          </div>
-        </section>
 
-        {activeToolRequirements.requiresMarketData ? (
-          <MarketSystemStateProvider>
-            <MarketHeaderSummary />
-          </MarketSystemStateProvider>
-        ) : null}
+        <MarketCommandCenterHeader
+          eyebrow={t('market_title')}
+          title={t('market_command_center_title')}
+          description={t('market_command_center_description')}
+          headingId="market-command-center-title"
+        />
 
-        <section className="market-status-grid">
-          {activeToolRequirements.requiresMarketData ? (
-            <>
-              <MarketStatusCard
-                icon={<WalletCards size={18} />}
-                label={t('market_selected_asset')}
-                value={selected?.symbol ?? selectedAsset?.symbol ?? t('market_no_asset_selected_yet')}
-                helper={selected?.symbol || selectedAsset?.symbol ? localizedAssetName ?? selected?.name ?? selectedAsset?.name ?? t('market_selected_asset') : t('market_status_select_asset_hint')}
-                tone={selected?.symbol || selectedAsset?.symbol ? undefined : 'muted'}
-                valueDir={selected?.symbol || selectedAsset?.symbol ? 'ltr' : undefined}
-              />
-              <MarketStatusCard
-                icon={<Clock3 size={18} />}
-                label={t('market_last_updated')}
-                value={selected && lastUpdated ? lastUpdated : t('market_unavailable')}
-                helper={selected && lastUpdated ? t('market_status_update_current_hint') : t('market_status_update_after_fetch')}
-                tone={selected && lastUpdated ? undefined : 'muted'}
-                valueDir={selected && lastUpdated ? 'ltr' : undefined}
-              />
-            </>
-          ) : (
-            <>
-              <MarketStatusCard
-                icon={<Calculator size={18} />}
-                label={t('market_tool_scope')}
-                value={t('market_independent_tool')}
-                helper={t('market_independent_tool_hint')}
-                tone="info"
-              />
-              <MarketStatusCard
-                icon={<WalletCards size={18} />}
-                label={t('market_account_balance')}
-                value={activeToolRequirements.requiresAccountBalance ? t('market_required') : t('market_not_required')}
-                helper={t('market_calculator_account_hint')}
-                tone={activeToolRequirements.requiresAccountBalance ? 'warning' : 'muted'}
-              />
-              <MarketStatusCard
-                icon={<Activity size={18} />}
-                label={t('market_data_source')}
-                value={t('market_market_data_not_required')}
-                helper={t('market_market_data_not_required_hint')}
-                tone="muted"
-              />
-              <MarketStatusCard
-                icon={<ShieldAlert size={18} />}
-                label={t('market_monthly_income_requirement')}
-                value={activeToolRequirements.requiresMonthlyIncome ? t('market_required') : t('market_not_required')}
-                helper={t('market_income_not_required_hint')}
-                tone="muted"
-              />
-            </>
-          )}
-        </section>
+        <MarketCommandBar
+          t={t}
+          lang={lang}
+          dir={dir}
+          query={query}
+          assetType={assetType}
+          timeframe={timeframe}
+          searchOpen={searchOpen}
+          searchLoading={searchLoading}
+          searchMessage={searchMessage}
+          searchResults={searchResults}
+          highlightedIndex={highlightedSearchIndex}
+          canSearch={canSearchMarketQuery(query, assetType)}
+          analysisLoading={loading}
+          submitDisabled={loading || (!selectedAsset && !canSearchMarketQuery(query, assetType))}
+          loadingLabel={loadingLabel}
+          onQueryChange={(nextQuery) => {
+            const canSearchNextQuery = canSearchMarketQuery(nextQuery, assetType);
+            searchRequestIdRef.current += 1;
+            setQuery(nextQuery);
+            setError('');
+            setErrorSuggestions([]);
+            setSearchResults([]);
+            setSearchMessage('');
+            setSearchLoading(canSearchNextQuery);
+            setHighlightedSearchIndex(0);
+            if (selectedAsset && nextQuery.trim().toUpperCase() !== selectedAsset.symbol) {
+              setSelectedAsset(null);
+            }
+            setSearchOpen(canSearchNextQuery);
+          }}
+          onInputBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
+          onInputFocus={() => setSearchOpen(canSearchMarketQuery(query, assetType))}
+          onInputKeyDown={handleSearchKeyDown}
+          onAssetTypeChange={setAssetType}
+          onTimeframeChange={loadHistory}
+          onHighlight={setHighlightedSearchIndex}
+          onSelectResult={(item) => void analyzeSearchSelection(item)}
+          onSubmit={() => void analyzeSearchSelection()}
+        />
 
-        <PageTabs
+        <MarketSystemStateProvider>
+          <MarketCommandCenterStatus selectedSymbol={selected?.symbol ?? selectedAsset?.symbol} />
+        </MarketSystemStateProvider>
+
+        <MarketCommandNavigation
           idBase={MARKET_ANALYSIS_TABS_ID}
-          tabs={marketTabs}
-          active={activeTab}
-          onChange={id => setActiveTab(id as MarketTab)}
-          ariaLabel={t('market_title')}
-          className="market-dashboard-tabs"
-          sticky
-          mobileMode="auto"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          translate={translateMarketCommand}
+          labelKeys={{
+            primaryNavigation: 'market_command_primary_navigation',
+            secondaryNavigation: 'market_command_secondary_navigation',
+          }}
+          dir={dir}
         />
 
         {notice && <div className="market-notice success" role="status">{notice}</div>}
@@ -2429,11 +2447,38 @@ export default function MarketAnalysisPage() {
 
         <section
           className="market-active-dashboard"
-          id={pageTabPanelId(MARKET_ANALYSIS_TABS_ID, activeTab)}
+          id={marketCommandContentId(MARKET_ANALYSIS_TABS_ID)}
           role="tabpanel"
-          aria-labelledby={pageTabTriggerId(MARKET_ANALYSIS_TABS_ID, activeTab)}
+          aria-labelledby={marketCommandGroupTriggerId(MARKET_ANALYSIS_TABS_ID, activeCommandGroup)}
           tabIndex={0}
         >
+        {activeTab === 'overview' && (
+          <MarketCommandOverview
+            dir={dir}
+            copy={{
+              eyebrow: t('market_command_group_overview'),
+              title: t('market_command_overview_title'),
+              description: t('market_command_overview_description'),
+              assetHeading: t('market_command_overview_asset_title'),
+              assetUnavailable: t('market_command_overview_asset_empty'),
+              activityHeading: t('market_command_overview_monitoring'),
+              sessionHeading: t('market_command_overview_sessions'),
+              actionsHeading: t('market_command_overview_quick_actions'),
+              actionsUnavailable: t('market_command_overview_actions_unavailable'),
+            }}
+            asset={overviewAsset}
+            watchlist={overviewWatchlist}
+            alerts={overviewAlerts}
+            upcomingEvents={overviewCalendar}
+            news={overviewNews}
+            sessionCopy={{
+              label: t('market_trading_sessions'),
+              noActiveSession: t('market_command_no_active_session'),
+              name: (sessionId) => t(`market_session_name_${sessionId}`),
+            }}
+            actions={overviewActions}
+          />
+        )}
         {activeTab === 'analyze' && !selected && <section className="market-card-grid" aria-label={t('market_analysis_cards')}>
           {loading ? (
             <MarketSectionLoading label={loadingLabel} cards={4} />
@@ -2538,7 +2583,7 @@ export default function MarketAnalysisPage() {
           />
         )}
 
-        {(['traderTools', 'economicCalendar', 'sessions', 'technicalAnalysis', 'newsSentiment'] as MarketTab[]).includes(activeTab) ? null : selected && activeTab === 'analyze' && assetSnapshot ? (
+        {(['overview', 'traderTools', 'economicCalendar', 'sessions', 'technicalAnalysis', 'newsSentiment'] as MarketTab[]).includes(activeTab) ? null : selected && activeTab === 'analyze' && assetSnapshot ? (
           <section className="market-analysis-result-workspace" aria-live="polite">
             <section className="market-stock-header analysis-asset-hero">
               <div className="analysis-asset-identity">
@@ -3173,7 +3218,7 @@ export default function MarketAnalysisPage() {
               </aside>
             </div>
           </section>
-        ) : selected ? (
+        ) : selected || activeTab === 'watchlist' ? (
           <section className="market-panel market-focused-tab">
             {activeTab === 'alerts' && (
               <>
@@ -3223,18 +3268,24 @@ export default function MarketAnalysisPage() {
                 <button
                   type="button"
                   className="inline-action"
-                  disabled={watchlistHasSelected}
-                  onClick={() => void saveWatchlist({
-                    symbol: selected.symbol,
-                    providerSymbol: selected.providerSymbol ?? selected.symbol,
-                    assetType: selected.assetType,
-                    name: localizedAssetName ?? selected.name,
-                    currency: selectedCurrency ?? undefined,
-                    exchange: selectedExchange ?? undefined,
-                    country: selectedCountry ?? undefined,
-                  })}
+                  disabled={Boolean(selected) && watchlistHasSelected}
+                  onClick={() => {
+                    if (!selected) {
+                      focusMarketSearch();
+                      return;
+                    }
+                    void saveWatchlist({
+                      symbol: selected.symbol,
+                      providerSymbol: selected.providerSymbol ?? selected.symbol,
+                      assetType: selected.assetType,
+                      name: localizedAssetName ?? selected.name,
+                      currency: selectedCurrency ?? undefined,
+                      exchange: selectedExchange ?? undefined,
+                      country: selectedCountry ?? undefined,
+                    });
+                  }}
                 >
-                  <Plus size={15} />{watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
+                  <Plus size={15} />{!selected ? t('market_search_asset_action') : watchlistHasSelected ? t('market_in_watchlist') : t('market_add_to_watchlist')}
                 </button>
                 <div className="watchlist">
                   {watchlist.length === 0 ? suggestedAssets.map(asset => (

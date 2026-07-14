@@ -25,7 +25,7 @@ export type PortfolioInvestment = {
   type?: string | null;
   riskLevel?: string | null;
 };
-export type MarketTab = 'analyze' | 'traderTools' | 'economicCalendar' | 'sessions' | 'technicalAnalysis' | 'newsSentiment' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
+export type MarketTab = 'overview' | 'analyze' | 'traderTools' | 'economicCalendar' | 'sessions' | 'technicalAnalysis' | 'newsSentiment' | 'watchlist' | 'alerts' | 'comparison' | 'assetReport';
 export type MarketAiInsightView = MarketAiInsight & { riskScore?: number };
 export type MarketSearchSuggestion = MarketSearchItem & { provider?: string };
 export type MarketResultWithMeta = MarketResult & {

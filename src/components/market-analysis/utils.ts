@@ -997,6 +997,7 @@ export function normalizeMarketTab(value: string | null | undefined): MarketTab 
     .replace(/_/g, '-')
     .toLowerCase();
 
+  if (normalized === 'overview' || normalized === 'command-center' || normalized === 'dashboard') return 'overview';
   if (normalized === 'analysis' || normalized === 'analyze') return 'analyze';
   if (normalized === 'trader-tools' || normalized === 'tradertools' || normalized === 'tools') return 'traderTools';
   if (normalized === 'economic-calendar' || normalized === 'calendar') return 'economicCalendar';
@@ -1008,6 +1009,14 @@ export function normalizeMarketTab(value: string | null | undefined): MarketTab 
   if (normalized === 'comparison' || normalized === 'compare') return 'comparison';
   if (normalized === 'asset-report' || normalized === 'assetreport' || normalized === 'report') return 'assetReport';
   return null;
+}
+
+export function shouldOpenLegacySymbolAnalysis(search: string, hash = '') {
+  const params = new URLSearchParams(search);
+  const symbol = params.get('symbol')?.trim();
+  const explicitTab = normalizeMarketTab(params.get('tab'));
+  const legacyHash = normalizeMarketTab(hash);
+  return Boolean(symbol && !explicitTab && !legacyHash);
 }
 
 export async function fetchJsonWithTimeout<T>(url: string, timeoutMs = MARKET_REQUEST_TIMEOUT_MS, allowErrorStatus = false, init?: RequestInit): Promise<T> {

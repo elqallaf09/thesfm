@@ -1,0 +1,180 @@
+.root {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--foreground);
+  font-family: var(--font-ui);
+}
+
+.primaryViewport {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.primaryViewport::-webkit-scrollbar,
+.secondaryList::-webkit-scrollbar {
+  block-size: var(--space-1);
+}
+
+.primaryViewport::-webkit-scrollbar-thumb,
+.secondaryList::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+}
+
+.primaryList {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(max-content, 1fr));
+  gap: var(--space-2);
+  min-width: 100%;
+  padding: var(--space-2);
+}
+
+.primaryTab {
+  min-width: 0;
+  min-height: var(--control-h);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--foreground-secondary);
+  padding: var(--space-2) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--type-navigation-size);
+  font-weight: var(--type-navigation-weight);
+  line-height: var(--type-navigation-leading);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.primaryTab span,
+.secondaryButton span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.primaryTab:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--foreground);
+}
+
+.primaryTab[aria-selected='true'] {
+  border-color: var(--border-strong);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  box-shadow: var(--active-indicator-shadow);
+  font-weight: var(--type-navigation-active-weight);
+}
+
+.primaryTab:active,
+.secondaryButton:active {
+  background: var(--surface-muted);
+}
+
+.primaryTab:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: var(--focus-shadow);
+}
+
+.groupPanel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.secondaryList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-muted);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.secondaryButton {
+  min-width: 0;
+  min-height: var(--control-h);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--foreground-secondary);
+  padding: var(--space-2) var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
+  line-height: var(--type-button-leading);
+  letter-spacing: var(--type-button-tracking);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.secondaryButton:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.secondaryButton[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--primary-hover);
+  box-shadow: var(--shadow-xs);
+  font-weight: var(--type-button-weight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryViewport,
+  .secondaryList {
+    scroll-behavior: auto;
+  }
+
+  .primaryTab,
+  .secondaryButton {
+    transition: none;
+  }
+}
