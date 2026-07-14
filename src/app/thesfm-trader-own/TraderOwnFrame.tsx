@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getTraderAccess } from '@/lib/server/traderAccess';
 import TraderAccessGate from './TraderAccessGate';
+import TraderThemeFrame from './TraderThemeFrame';
 
 type TraderOwnFrameProps = {
   appRoute?: string;
@@ -22,12 +23,7 @@ export default async function TraderOwnFrame({ appRoute = 'home' }: TraderOwnFra
 
   return (
     <main className="trader-shell-page" aria-label="SFM Smart Analyzer">
-      <iframe
-        title="SFM Smart Analyzer"
-        src={src}
-        allow="microphone; clipboard-write"
-        className="trader-shell-frame"
-      />
+      <TraderThemeFrame src={src} />
       <style>{`
         .trader-shell-page {
           position: relative;

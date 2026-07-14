@@ -57,14 +57,13 @@ async function openTerminal(page: Page, locale: Locale, route: string) {
   });
   await page.addInitScript((lang: Locale) => {
     localStorage.setItem('sfm_lang', lang);
-    localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ lang, language: lang }));
   }, locale);
   await page.goto(`${terminalPath}?route=${encodeURIComponent(route)}`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#terminal-content')).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', locale);
   await expect(page.locator('html')).toHaveAttribute('dir', localeExpectations[locale].dir);
   await expect(page.locator('body')).toHaveAttribute('dir', localeExpectations[locale].dir);
-  await expect(page.locator(`[data-language="${locale}"]`).first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-language], #terminal-language-switcher')).toHaveCount(0);
   await page.waitForFunction(() => !document.querySelector('#terminal-content .loading-panel'), undefined, { timeout: 12_000 });
 }
 

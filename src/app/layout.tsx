@@ -58,7 +58,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="system"
           storageKey="the-sfm-theme"
           enableSystem
           disableTransitionOnChange

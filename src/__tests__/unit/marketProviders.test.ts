@@ -639,20 +639,22 @@ describe('economic calendar provider normalization', () => {
     expect(second.messageCode).toBe('provider_rate_limited');
   });
 
-  it('keeps Arabic and English unavailable calendar copy localized', () => {
-    expect(TR_MARKET.market_calendar_not_configured_title.ar).toBe('التقويم الاقتصادي غير متوفر حالياً');
-    expect(TR_MARKET.market_calendar_not_configured_body.ar).toBe('تعذر جلب بيانات التقويم الاقتصادي من مزود البيانات الحالي. سيتم عرض الأحداث تلقائياً عند توفر مصدر بيانات يدعم هذه الخدمة.');
+  it('keeps Arabic, English, and French calendar diagnostics localized and cause-specific', () => {
+    expect(TR_MARKET.market_calendar_not_configured_title.ar).toBe('لم يتم إعداد مزود التقويم');
+    expect(TR_MARKET.market_calendar_not_configured_body.ar).toBe('لا يوجد مزود بيانات مفعّل يدعم التقويم الاقتصادي في البيئة الحالية.');
     expect(TR_MARKET.market_calendar_access_denied_title.ar).toBe('التقويم الاقتصادي غير متوفر حالياً');
     expect(TR_MARKET.market_calendar_access_denied_body.ar).toBe('مزود البيانات الحالي لا يملك صلاحية الوصول إلى التقويم الاقتصادي. سيتم عرض الأحداث تلقائياً عند ربط مزود يدعم هذه الخدمة.');
     expect(TR_MARKET.market_calendar_provider_label.ar).toBe('مزود البيانات');
     expect(TR_MARKET.market_calendar_provider_unavailable_badge.ar).toBe('غير متاح حالياً');
-    expect(TR_MARKET.market_calendar_not_configured_title.en).toBe('Economic calendar is currently unavailable');
-    expect(TR_MARKET.market_calendar_not_configured_body.en).toBe('Could not load economic calendar data from the current data provider. Events will appear automatically when a provider that supports this service is available.');
+    expect(TR_MARKET.market_calendar_not_configured_title.en).toBe('Calendar provider is not configured');
+    expect(TR_MARKET.market_calendar_not_configured_body.en).toBe('No enabled data provider supports the economic calendar in the current environment.');
     expect(TR_MARKET.market_calendar_access_denied_title.en).toBe('Economic calendar is currently unavailable');
     expect(TR_MARKET.market_calendar_access_denied_body.en).toBe('The current data provider is not entitled to access the economic calendar. Events will appear automatically when a provider that supports this service is connected.');
     expect(TR_MARKET.market_calendar_provider_label.en).toBe('Data provider');
     expect(TR_MARKET.market_calendar_provider_unavailable_badge.en).toBe('Unavailable now');
-    expect(TR_MARKET.market_calendar_setup_provider.ar).toBe('إعداد مزود التقويم');
+    expect(TR_MARKET.market_calendar_not_configured_title.fr).toBe('Le fournisseur du calendrier n’est pas configuré');
+    expect(TR_MARKET.market_calendar_open_diagnostics.fr).toBe('Ouvrir les diagnostics fournisseur');
+    expect(TR_MARKET.market_calendar_last_checked.fr).toBe('Dernière vérification');
   });
 });
 

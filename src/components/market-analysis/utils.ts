@@ -356,11 +356,14 @@ export function isAbortLikeError(error: unknown) {
 
 export function marketToolFailureState<T>(error: unknown): ApiListState<T> {
   const isTimeout = isAbortLikeError(error);
+  const checkedAt = new Date().toISOString();
   return {
     loading: false,
     items: [],
     message: isTimeout ? '' : error instanceof Error ? error.message : 'Data source is unavailable.',
     code: isTimeout ? 'MARKET_DATA_TIMEOUT' : 'MARKET_DATA_UNAVAILABLE',
+    lastCheckedAt: checkedAt,
+    checkedAt,
   };
 }
 
@@ -386,6 +389,7 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
       updated_at?: string | null;
       updatedAt?: string | null;
       lastSuccessfulUpdate?: string | null;
+      generatedAt?: string | null;
       code?: string | null;
       ok?: boolean;
       success?: boolean;
@@ -452,8 +456,11 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
       cacheStatus: payload.cacheStatus,
       cached: payload.cached,
       stale: payload.stale,
-      lastCheckedAt: payload.lastCheckedAt ?? payload.checkedAt ?? undefined,
-      checkedAt: payload.checkedAt ?? payload.lastCheckedAt ?? undefined,
+      lastSuccessfulUpdate: payload.lastSuccessfulUpdate
+        ?? payload.updated_at
+        ?? (sourceAvailable && items.length > 0 ? payload.updatedAt : null),
+      lastCheckedAt: payload.lastCheckedAt ?? payload.checkedAt ?? payload.generatedAt ?? undefined,
+      checkedAt: payload.checkedAt ?? payload.lastCheckedAt ?? payload.generatedAt ?? undefined,
       providerMessage: payload.providerMessage,
       buyPercent: payload.buyPercent,
       sellPercent: payload.sellPercent,
@@ -475,6 +482,21 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
   } finally {
     window.clearTimeout(timeoutId);
   }
+}
+
+export type EvaluationScorePresentation = {
+  tone: 'danger' | 'success';
+  statusKey: 'market_score_below_threshold' | 'market_score_meets_threshold';
+};
+
+/**
+ * Presentation-only threshold for evaluative scores. This deliberately does
+ * not alter the score calculation or apply to directional probabilities.
+ */
+export function evaluationScorePresentation(score: number): EvaluationScorePresentation {
+  return score < 50
+    ? { tone: 'danger', statusKey: 'market_score_below_threshold' }
+    : { tone: 'success', statusKey: 'market_score_meets_threshold' };
 }
 
 export function normalizeSummaryLanguage(lang: string): EducationalSummaryLanguage {

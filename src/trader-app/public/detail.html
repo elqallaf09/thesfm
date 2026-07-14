@@ -6,38 +6,9 @@
     <title>تفاصيل السهم - اس اف ام المحلل الذكي</title>
     <meta name="theme-color" content="" />
     <meta name="color-scheme" content="dark light" />
+    <script src="/theme-bridge.js?v=20260714-phase34"></script>
     <script>
       (function () {
-        try {
-          var parse = function (key) {
-            var value = localStorage.getItem(key);
-            if (!value) return null;
-            try { return JSON.parse(value); } catch (_) { return null; }
-          };
-          var trader = parse("sfmTraderSettings:v1");
-          var legacy = parse("the-sfm-trader-settings");
-          var site = parse("sfm_settings");
-          var preference = (trader && trader.theme)
-            || (legacy && legacy.theme)
-            || localStorage.getItem("the-sfm-theme")
-            || localStorage.getItem("sfmTraderTheme")
-            || localStorage.getItem("theme")
-            || (site && site.theme)
-            || "dark";
-          var resolved = preference === "system"
-            ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-            : preference;
-          if (resolved !== "light" && resolved !== "dark") resolved = "dark";
-          document.documentElement.dataset.themePreference = preference;
-          document.documentElement.dataset.theme = resolved;
-          document.documentElement.classList.add(resolved);
-          document.documentElement.style.colorScheme = resolved;
-          var syncThemeColor = function () {
-            var background = getComputedStyle(document.documentElement).getPropertyValue("--background").trim();
-            if (background) document.querySelector('meta[name="theme-color"]').content = background;
-          };
-          document.addEventListener("DOMContentLoaded", syncThemeColor, { once: true });
-        } catch (_) {}
         try {
           // Information-density preference shared with the parent app
           // (src/lib/ui/density.ts). Explicit choice wins; "auto" lets the
@@ -66,8 +37,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/semantic-tokens.css?v=20260713-central-system" />
-    <link rel="stylesheet" href="/cinema.css?v=20260713-central-system" />
-    <link rel="stylesheet" href="/detail.css?v=20260713-detail-shell" />
+    <link rel="stylesheet" href="/cinema.css?v=20260714-phase34" />
+    <link rel="stylesheet" href="/detail.css?v=20260714-phase34" />
     <script>
       // إلغاء أي Service Worker قديم وتنظيف كاشه (نفس معالجة index.html)
       (function () {
@@ -275,7 +246,7 @@
     </div>
 
     <script src="/recommendation.js?v=20260710-fr-i18n"></script>
-    <script src="/detail.js?v=20260710-fr-i18n" type="module"></script>
+    <script src="/detail.js?v=20260714-phase34" type="module"></script>
   </body>
 </html>
 

@@ -109,6 +109,16 @@ test.describe('launch smoke coverage', () => {
     });
 
     test('smart trading terminal access route loads or redirects safely', async ({ page }) => {
+      await page.addInitScript(() => {
+        if (window.localStorage.getItem('sfm-phase34-theme-seeded') === 'true') return;
+        window.localStorage.setItem('sfm-phase34-theme-seeded', 'true');
+        window.localStorage.setItem('the-sfm-theme', 'light');
+        window.localStorage.setItem('theme', 'light');
+        window.localStorage.setItem('sfm_settings', JSON.stringify({ theme: 'light' }));
+        window.localStorage.setItem('sfmTraderTheme', 'dark');
+        window.localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ theme: 'dark' }));
+        window.localStorage.setItem('the-sfm-trader-settings', JSON.stringify({ theme: 'dark' }));
+      });
       const response = await page.goto('/thesfm-trader-own', { waitUntil: 'domcontentloaded' });
       expect(response?.status() ?? 200).toBeLessThan(500);
 
@@ -122,7 +132,25 @@ test.describe('launch smoke coverage', () => {
         await expect(iframe).toHaveCount(1);
         await expect(iframe).toBeVisible();
         await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
-        await expect(traderShell.frameLocator(iframeSelector).locator('#app-shell')).toBeVisible();
+        const traderFrame = traderShell.frameLocator(iframeSelector);
+        await expect(traderFrame.locator('#app-shell')).toBeVisible();
+        await expect(page.locator('html')).toHaveClass(/light/);
+        await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'light');
+        await expect(traderFrame.locator('#theme-switcher, #terminal-language-switcher, .workspace-exit-link, .workspace-exit-chip')).toHaveCount(0);
+
+        const themeToggle = page.locator('.sfm-theme-toggle').first();
+        await expect(themeToggle).toBeVisible();
+        const stableFrameSrc = await iframe.getAttribute('src');
+        await themeToggle.click();
+        await expect(themeToggle).toBeFocused();
+        await expect(page.locator('html')).toHaveClass(/dark/);
+        await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
+        await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=home');
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        const reloadedFrame = page.frameLocator(iframeSelector);
+        await expect(page.locator('html')).toHaveClass(/dark/);
+        await expect(reloadedFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
         await expectNoHorizontalOverflow(page);
       } else {
         await expect(page.locator('body')).toBeVisible();

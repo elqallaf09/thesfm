@@ -80,6 +80,7 @@ export type ApiListState<T> = {
   cacheStatus?: string | null;
   cached?: boolean;
   stale?: boolean;
+  lastSuccessfulUpdate?: string | null;
   lastCheckedAt?: string | null;
   checkedAt?: string | null;
   providerMessage?: string | null;

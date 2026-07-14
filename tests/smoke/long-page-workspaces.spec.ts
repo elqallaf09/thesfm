@@ -12,8 +12,11 @@ async function configureTerminal(page: Page, language: 'ar' | 'en' | 'fr', theme
   await page.addInitScript(({ language: nextLanguage, theme: nextTheme }) => {
     localStorage.setItem('sfm_lang', nextLanguage);
     localStorage.setItem('the-sfm-theme', nextTheme);
-    localStorage.setItem('sfmTraderTheme', nextTheme);
-    localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ lang: nextLanguage, language: nextLanguage, theme: nextTheme }));
+    localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({
+      defaultMarket: 'us-stocks',
+      risk: 'balanced',
+      quickTickerVisible: true,
+    }));
   }, { language, theme });
 }
 
