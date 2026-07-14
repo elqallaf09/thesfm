@@ -45,32 +45,33 @@ function ReportsCenterShortcut() {
         .reports-center-shortcut{
           position:fixed;
           inset-block-end:22px;
-          left:max(24px, env(safe-area-inset-left));
-          right:auto;
+          inset-inline-start:max(24px, env(safe-area-inset-left));
           z-index:40;
-          width:min(520px, calc(100vw - 48px));
-          max-width:calc(100vw - 48px);
+          width:min(520px, calc(100% - 48px));
+          max-width:calc(100% - 48px);
           display:grid;
           grid-template-columns:auto minmax(0, 1fr);
           align-items:start;
           gap:12px;
           padding:14px;
-          border-radius:var(--r-xl);
-          border:1px solid rgba(29,140,255,.22);
-          background:rgba(234,246,255,.96);
-          box-shadow:0 16px 36px rgba(3,18,37,.16);
-          color:var(--sfm-primary-dark);
+          border-radius:var(--radius-panel);
+          border:1px solid var(--border-strong);
+          background:var(--surface-elevated);
+          box-shadow:var(--shadow-popover);
+          color:var(--foreground);
+          font-family:var(--font-ui);
           backdrop-filter:blur(12px);
           overflow:visible;
         }
+        .reports-center-shortcut:dir(rtl){inset-inline-start:max(24px, env(safe-area-inset-right))}
         .shortcut-icon{
           width:42px;
           height:42px;
-          border-radius:var(--r-md);
+          border-radius:var(--radius-control);
           display:grid;
           place-items:center;
-          color:var(--sfm-card);
-          background:linear-gradient(135deg,var(--sfm-primary-dark),var(--sfm-primary));
+          color:var(--primary-foreground);
+          background:var(--primary);
         }
         .shortcut-text{
           display:grid;
@@ -88,7 +89,7 @@ function ReportsCenterShortcut() {
         .shortcut-text span{
           font-size:.8rem;
           line-height:1.65;
-          color:#7A5A36;
+          color:var(--foreground-muted);
           white-space:normal;
           overflow:visible;
           overflow-wrap:anywhere;
@@ -98,39 +99,26 @@ function ReportsCenterShortcut() {
           grid-column:2;
           justify-self:start;
           border:0;
-          border-radius:var(--r-md);
+          min-height:44px;
+          border-radius:var(--radius-control);
           padding:10px 12px;
-          color:var(--sfm-card);
-          background:var(--sfm-primary);
-          font-weight:800;
+          color:var(--primary-foreground);
+          background:var(--primary);
+          font-weight:600;
           cursor:pointer;
           white-space:nowrap;
           max-width:100%;
         }
         .reports-center-shortcut button:focus-visible{
-          outline:3px solid rgba(24,212,212,.38);
+          outline:2px solid var(--focus-ring);
           outline-offset:2px;
         }
-        .dark .reports-center-shortcut{
-          background:rgba(15,29,49,.96);
-          border-color:#1d3050;
-          color:#e8eef6;
-          box-shadow:0 18px 46px rgba(0,0,0,.28);
-        }
-        .dark .shortcut-text span{
-          color:#b8c7d9;
-        }
-        .dark .reports-center-shortcut button{
-          color:#061a2e;
-          background:linear-gradient(135deg,#1d8cff,#18d4d4);
-        }
+        .reports-center-shortcut button:hover{background:var(--primary-hover)}
         @media(max-width:720px){
           .reports-center-shortcut{
             position:fixed;
             inset-inline:16px;
             inset-block-end:16px;
-            left:16px;
-            right:16px;
             width:auto;
             max-width:none;
             margin:0;

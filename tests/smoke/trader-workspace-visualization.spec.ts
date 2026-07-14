@@ -1,9 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import path from 'node:path';
 
 const publicRoot = path.join(process.cwd(), 'src', 'trader-app', 'public');
+const semanticTokensCss = [
+  path.join(process.cwd(), 'src', 'styles', 'tokens.css'),
+  path.join(process.cwd(), 'src', 'styles', 'themes.css'),
+].map(file => readFileSync(file, 'utf8')).join('\n');
 let staticServer: Server;
 let terminalPath = '';
 
@@ -313,14 +317,28 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     const lightTileVisual = await lightPositiveTile.evaluate(tile => {
       const selectors = ['.heatmap-tile-head strong', '.heatmap-tile-head small', '.heatmap-tile-meta em', '.heatmap-tile-meta b', '.heatmap-tile-performance'];
       const performance = tile.querySelector<HTMLElement>('.heatmap-tile-performance');
+      const semanticColor = (value: string) => {
+        const probe = document.createElement('span');
+        probe.style.position = 'fixed';
+        probe.style.opacity = '0';
+        probe.style.color = value;
+        document.body.append(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      };
       return {
-        background: getComputedStyle(tile).backgroundImage,
+        backgroundColor: getComputedStyle(tile).backgroundColor,
+        backgroundImage: getComputedStyle(tile).backgroundImage,
+        semanticSuccess: semanticColor('var(--success)'),
+        semanticHeroForeground: semanticColor('var(--hero-foreground)'),
         textColors: selectors.map(selector => getComputedStyle(tile.querySelector(selector) as Element).color),
         performanceBackground: performance ? getComputedStyle(performance).backgroundColor : '',
       };
     });
-    expect(lightTileVisual.background).toContain('rgb(7, 88, 63)');
-    expect(lightTileVisual.textColors.every(color => color === 'rgb(255, 255, 255)')).toBe(true);
+    expect(lightTileVisual.backgroundImage).toBe('none');
+    expect(lightTileVisual.backgroundColor).toBe(lightTileVisual.semanticSuccess);
+    expect(lightTileVisual.textColors.every(color => color === lightTileVisual.semanticHeroForeground)).toBe(true);
     expect(lightTileVisual.performanceBackground).toBe('rgba(0, 0, 0, 0)');
 
     const search = heatmap.locator('input[name="heatmapSearch"]');
@@ -669,6 +687,11 @@ function recommendationFixture(input: {
 function createStaticTraderServer() {
   const server = createServer((request, response) => {
     const url = new URL(request.url || '/', 'http://127.0.0.1');
+    if (url.pathname === '/semantic-tokens.css' || url.pathname.endsWith('/semantic-tokens.css')) {
+      response.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(semanticTokensCss);
+      return;
+    }
     const resolved = staticPathFor(url.pathname);
     if (!resolved) {
       response.writeHead(404);

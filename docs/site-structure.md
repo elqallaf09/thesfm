@@ -53,19 +53,16 @@ This document maps the main product routes after the navigation cleanup. Public 
 | `/site-map` | خريطة THE SFM | THE SFM Map | داعمة | `/command-center`, `/profile` |
 | `/setup` | إعداد الحساب | Account Setup | داعمة | `/dashboard`, `/profile` |
 
-## Sidebar Groups
+## Workspace Navigation
 
-- الرئيسية: الصفحة الرئيسية، مركز القيادة، اليوم المالي، المهام، المستندات، الإشعارات، مركز التقارير.
-- المال الشخصي: الدخل، المصروفات، الاشتراكات الشهرية، الديون، المدخرات، الأهداف.
-- الذكاء المالي: مساعدي الذكي، النظريات المالية، الأدوات التعليمية.
-- الاستثمار والسوق: الاستثمارات، تحليلات السوق، وكيل تحليل الأسواق، أخبار الأسواق.
-- الأعمال والمشاريع: المشاريع، مركز الأعمال، العروض الاستثمارية، مساحة المشروع.
-- الزكاة والأعمال الخيرية: الزكاة، الأعمال الخيرية، المشاريع الخيرية، المستفيدون، تقارير الخير.
-- الخدمات: شركات الاستثمار، المحاسبة، دراسة الجدوى، والاستشارات المالية.
-- الحساب: الملف الشخصي، الأمان والخصوصية، تسجيل الخروج.
+The primary workspaces are ordered consistently as Personal Finance, Markets & Trading,
+Business & Projects, and Administration. Administration is available only to authorized
+administrators. The Account group is shared at the bottom of every workspace.
 
-## Display Modes
+- Personal Finance: home and daily controls, personal finance, financial intelligence, zakat, and charity.
+- Markets & Trading: investments, market analysis, the market agent, and market news.
+- Business & Projects: projects, the Business Hub, investment offers, business operations, clients and subscriptions, company management and submission, and company services.
+- Administration: permission-filtered platform administration tools.
 
-- العرض الأساسي يركز على الصفحات اليومية الأساسية: الصفحة الرئيسية، اليوم المالي، الدخل، المصروفات، الاشتراكات، الديون، الأهداف، الإشعارات، الملف الشخصي.
-- العرض المتقدم يفتح كل الصفحات والأدوات المتخصصة.
-- يفضل حفظ اختيار المستخدم في `public.profiles.view_mode` عند توفر حقل قاعدة البيانات.
+Workspace ownership, route context, and permission configuration now determine navigation
+visibility. There is no separate Basic or Advanced navigation preference.

@@ -62,54 +62,30 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
           width: 44px;
           height: 44px;
           min-width: 44px;
-          border: 1px solid var(--sfm-light-border-primary, #788e9e);
-          border-radius: var(--r-md);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-control);
           display: inline-grid;
           place-items: center;
-          background: var(--sfm-light-surface-elevated, #fcfdfd);
-          color: var(--sfm-light-text-primary, #10243b);
-          box-shadow: var(--sfm-light-shadow-xs, 0 1px 2px rgba(16, 36, 59, 0.06));
+          background: var(--surface);
+          color: var(--foreground-secondary);
+          box-shadow: var(--shadow-xs);
           cursor: pointer;
           transition:
-            transform 0.18s ease,
-            border-color 0.18s ease,
-            color 0.18s ease,
-            box-shadow 0.18s ease,
-            background 0.18s ease;
+            border-color var(--duration-fast) ease,
+            color var(--duration-fast) ease,
+            box-shadow var(--duration-fast) ease,
+            background var(--duration-fast) ease;
         }
 
         .sfm-theme-toggle:hover,
         .sfm-theme-toggle:focus-visible {
           outline: none;
-          transform: translateY(-1px);
-          border-color: var(--sfm-light-primary, #1b5ec8);
-          color: var(--sfm-light-primary, #1b5ec8);
-          box-shadow: var(--sfm-light-focus-ring, 0 0 0 3px rgba(27, 94, 200, 0.22));
+          border-color: var(--primary);
+          background: var(--surface-hover);
+          color: var(--primary);
+          box-shadow: var(--focus-shadow);
         }
 
-        .sfm-theme-toggle:active {
-          transform: translateY(0);
-        }
-
-        .dark .sfm-theme-toggle,
-        .dark .sfm-shared-sidebar .sfm-theme-toggle,
-        .dark .sfm-mobile-panel .sfm-theme-toggle {
-          background: #0f1d31;
-          border-color: #1d3050;
-          color: #e8eef6;
-          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-        }
-
-        .dark .sfm-theme-toggle:hover,
-        .dark .sfm-theme-toggle:focus-visible,
-        .dark .sfm-shared-sidebar .sfm-theme-toggle:hover,
-        .dark .sfm-shared-sidebar .sfm-theme-toggle:focus-visible,
-        .dark .sfm-mobile-panel .sfm-theme-toggle:hover,
-        .dark .sfm-mobile-panel .sfm-theme-toggle:focus-visible {
-          border-color: #2fd6c0;
-          color: #2fd6c0;
-          box-shadow: 0 0 0 4px rgba(47, 214, 192, 0.14), 0 10px 24px rgba(0, 0, 0, 0.22);
-        }
       `}</style>
     </>
   );

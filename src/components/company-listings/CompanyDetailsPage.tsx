@@ -33,6 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ActionButtonLink } from '@/components/company-listings/ActionButtonLink';
 import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDashboardFrame';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
@@ -358,6 +359,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
   return (
     <CompanyDashboardFrame>
       <DashboardPageShell ariaLabel={item?.company_name ?? t('company_listing_view_details')} contentClassName="company-details-content">
+        <WorkspacePageContainer variant="wide" className="company-details-layout">
         {loading ? <div className="details-skeleton" /> : null}
 
         {!loading && error && !item ? (
@@ -660,18 +662,20 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
         <style jsx>{`
           .company-details-content {
-            width: min(100%, 1240px);
+            width: 100%;
+            max-width: none;
+            padding: 0;
           }
           .details-skeleton,
           .details-state {
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: var(--r-2xl);
-            background: #ffffff;
-            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-panel);
+            background: var(--surface);
+            box-shadow: var(--shadow-card);
           }
           .details-skeleton {
             min-height: 320px;
-            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+            background: var(--skeleton-gradient);
             background-size: 400% 100%;
             animation: shimmer 1.4s ease infinite;
           }
@@ -685,27 +689,27 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .details-state h1 {
             margin: 0;
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 28px;
-            font-weight: 950;
+            font-weight: 700;
           }
           .details-state p {
             margin: 0;
-            color: #64748b;
-            font-weight: 850;
+            color: var(--foreground-muted);
+            font-weight: 400;
           }
           .details-state a {
             min-height: 44px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             padding: 0 16px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            color: #ffffff;
-            background: linear-gradient(135deg, #0b76e0, #18d4d4);
+            color: var(--primary-foreground);
+            background: var(--primary);
             text-decoration: none;
-            font-weight: 950;
+            font-weight: 600;
           }
           .company-profile {
             display: grid;
@@ -713,14 +717,12 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-width: 0;
           }
           .company-hero-card {
-            border: 1px solid rgba(47, 214, 192, 0.20);
-            border-radius: var(--r-2xl);
+            border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+            border-radius: var(--radius-panel);
             padding: 24px;
-            background:
-              radial-gradient(circle at 12% 20%, rgba(47, 214, 192, 0.22), transparent 34%),
-              linear-gradient(135deg, #07172A 0%, #0B2A4A 58%, #0f5f72 128%);
-            box-shadow: 0 22px 60px rgba(3, 18, 37, 0.14);
-            color: #ffffff;
+            background: var(--hero-gradient);
+            box-shadow: var(--shadow-md);
+            color: var(--hero-foreground);
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             gap: 20px;
@@ -736,14 +738,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .company-logo {
             width: 98px;
             height: 98px;
-            border-radius: var(--r-2xl);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: rgba(255, 255, 255, 0.10);
+            border-radius: var(--radius-panel);
+            border: 1px solid color-mix(in srgb, var(--hero-foreground) 30%, transparent);
+            background: color-mix(in srgb, var(--surface) 12%, transparent);
             display: grid;
             place-items: center;
             overflow: hidden;
             flex: 0 0 auto;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 18px 42px rgba(0,0,0,.18);
+            box-shadow: var(--shadow-sm);
           }
           .company-logo img {
             width: 100%;
@@ -757,28 +759,28 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            border-radius: 999px;
+            border-radius: var(--radius-pill);
             padding: 7px 11px;
-            background: rgba(255, 255, 255, 0.12);
-            color: #EAF6FF;
+            background: color-mix(in srgb, var(--surface) 14%, transparent);
+            color: var(--hero-foreground);
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 600;
           }
           .status-pill.approved,
-          .status-card.approved { color: #15803d; background: rgba(220, 252, 231, 0.96); }
+          .status-card.approved { color: var(--success); background: var(--success-soft); }
           .status-pill.pending_review,
-          .status-card.pending_review { color: #b45309; background: rgba(254, 243, 199, 0.96); }
+          .status-card.pending_review { color: var(--warning); background: var(--warning-soft); }
           .status-pill.rejected,
-          .status-card.rejected { color: #b91c1c; background: rgba(254, 226, 226, 0.96); }
+          .status-card.rejected { color: var(--danger); background: var(--danger-soft); }
           .status-pill.needs_changes,
-          .status-card.needs_changes { color: #1d4ed8; background: rgba(219, 234, 254, 0.96); }
+          .status-card.needs_changes { color: var(--info); background: var(--info-soft); }
           .status-pill.inactive,
-          .status-card.inactive { color: #475569; background: rgba(241, 245, 249, 0.96); }
+          .status-card.inactive { color: var(--foreground-secondary); background: var(--surface-muted); }
           .hero-copy h1 {
             margin: 12px 0 8px;
             font-size: clamp(32px, 4vw, 56px);
             line-height: 1.08;
-            font-weight: 950;
+            font-weight: 700;
             overflow-wrap: anywhere;
           }
           .hero-meta {
@@ -790,18 +792,18 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            border-radius: 999px;
+            border-radius: var(--radius-pill);
             padding: 7px 10px;
-            background: rgba(255, 255, 255, 0.10);
-            color: rgba(234, 246, 255, 0.88);
+            background: color-mix(in srgb, var(--surface) 12%, transparent);
+            color: var(--hero-foreground-muted);
             font-size: 13px;
-            font-weight: 900;
+            font-weight: 500;
           }
           .hero-copy p {
             margin: 14px 0 0;
-            color: rgba(234, 246, 255, 0.78);
+            color: var(--hero-foreground-muted);
             line-height: 1.8;
-            font-weight: 850;
+            font-weight: 400;
             max-width: 760px;
           }
           .hero-actions {
@@ -815,10 +817,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-height: 46px;
           }
           .review-warning {
-            border: 1px solid rgba(245, 158, 11, 0.26);
-            border-radius: var(--r-xl);
-            background: #FFFBEB;
-            color: #92400E;
+            border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+            border-radius: var(--radius-card);
+            background: var(--warning-soft);
+            color: var(--warning);
             padding: 16px;
             display: flex;
             gap: 12px;
@@ -826,12 +828,12 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .review-warning strong {
             display: block;
-            font-weight: 950;
+            font-weight: 600;
           }
           .review-warning p {
             margin: 6px 0 0;
             line-height: 1.7;
-            font-weight: 850;
+            font-weight: 400;
           }
           .company-layout {
             display: grid;
@@ -846,10 +848,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-width: 0;
           }
           .profile-card {
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: var(--r-2xl);
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 16px 42px rgba(15, 23, 42, 0.07);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-panel);
+            background: var(--surface);
+            box-shadow: var(--shadow-card);
             padding: 18px;
             min-width: 0;
           }
@@ -862,24 +864,24 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .section-icon {
             width: 40px;
             height: 40px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            background: rgba(24, 212, 212, 0.12);
-            color: #0B9EAD;
+            background: var(--accent-soft);
+            color: var(--accent);
             flex: 0 0 auto;
           }
           .section-head small {
             display: block;
-            color: #0B9EAD;
+            color: var(--accent);
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 600;
           }
           .section-head h2 {
             margin: 2px 0 0;
-            color: #0F172A;
+            color: var(--foreground);
             font-size: 22px;
-            font-weight: 950;
+            font-weight: 600;
           }
           .overview-block {
             display: grid;
@@ -887,21 +889,21 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             margin-bottom: 14px;
           }
           .overview-block div {
-            border-radius: var(--r-xl);
-            border: 1px solid rgba(15, 23, 42, 0.07);
-            background: #F8FBFF;
+            border-radius: var(--radius-card);
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
             padding: 14px;
           }
           .overview-block span {
-            color: #0B9EAD;
+            color: var(--accent);
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 600;
           }
           .overview-block p {
             margin: 7px 0 0;
-            color: #0F172A;
+            color: var(--foreground);
             line-height: 1.9;
-            font-weight: 850;
+            font-weight: 400;
           }
           .details-grid,
           .status-list {
@@ -914,9 +916,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .detail-tile {
             min-width: 0;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: var(--r-lg);
-            background: #F8FBFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
             padding: 12px;
             display: flex;
             gap: 10px;
@@ -925,29 +927,29 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .detail-icon {
             width: 32px;
             height: 32px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            background: rgba(11, 118, 224, 0.08);
-            color: #0B76E0;
+            background: var(--primary-soft);
+            color: var(--primary);
             flex: 0 0 auto;
           }
           .detail-tile span:not(.detail-icon),
           .contact-action small,
           .status-card span {
             display: block;
-            color: #64748B;
+            color: var(--foreground-muted);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 500;
           }
           .detail-tile strong,
           .contact-action strong,
           .status-card strong {
             display: block;
             margin-top: 4px;
-            color: #0F172A;
+            color: var(--foreground);
             font-size: 15px;
-            font-weight: 950;
+            font-weight: 600;
             overflow-wrap: anywhere;
           }
           .services-grid {
@@ -957,9 +959,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .service-card {
             min-height: 86px;
-            border: 1px solid rgba(11, 118, 224, 0.12);
-            border-radius: var(--r-xl);
-            background: linear-gradient(135deg, rgba(11, 118, 224, 0.07), rgba(24, 212, 212, 0.09));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--primary-soft);
             padding: 14px;
             display: grid;
             align-content: start;
@@ -970,27 +972,27 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             height: 34px;
             display: grid;
             place-items: center;
-            border-radius: var(--r-md);
-            background: rgba(255,255,255,.72);
-            color: #0B9EAD;
+            border-radius: var(--radius-control);
+            background: var(--surface);
+            color: var(--accent);
           }
           .service-card strong {
-            color: #0C447C;
-            font-weight: 950;
+            color: var(--foreground);
+            font-weight: 600;
             overflow-wrap: anywhere;
           }
           .empty-card {
             min-height: 120px;
-            border: 1px dashed rgba(11, 118, 224, 0.20);
-            border-radius: var(--r-xl);
-            background: #F8FBFF;
-            color: #64748B;
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
+            color: var(--foreground-muted);
             display: grid;
             place-items: center;
             gap: 8px;
             padding: 18px;
             text-align: center;
-            font-weight: 850;
+            font-weight: 400;
           }
           .empty-card.compact {
             min-height: 96px;
@@ -1003,32 +1005,32 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .contact-action {
             min-height: 52px;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: var(--r-lg);
-            background: #F8FBFF;
-            color: #0F172A;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
+            color: var(--foreground);
             padding: 10px 12px;
             display: grid;
             grid-template-columns: auto minmax(0, 1fr);
             gap: 10px;
             align-items: center;
             text-decoration: none;
-            font-weight: 900;
+            font-weight: 500;
           }
           .contact-action > span {
             width: 34px;
             height: 34px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            background: rgba(24, 212, 212, 0.12);
-            color: #0B9EAD;
+            background: var(--accent-soft);
+            color: var(--accent);
           }
           .contact-action.static {
             pointer-events: none;
           }
           .status-card {
-            border-radius: var(--r-xl);
+            border-radius: var(--radius-card);
             padding: 14px;
             display: flex;
             gap: 12px;
@@ -1037,47 +1039,47 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .status-message {
             margin: 12px 0 0;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             padding: 12px;
             line-height: 1.8;
-            font-weight: 900;
+            font-weight: 500;
           }
           .status-message.approved {
-            color: #047857;
-            background: #ecfdf5;
+            color: var(--success);
+            background: var(--success-soft);
           }
           .status-message.pending_review {
-            color: #b45309;
-            background: #fffbeb;
+            color: var(--warning);
+            background: var(--warning-soft);
           }
           .status-message.rejected {
-            color: #b91c1c;
-            background: #fef2f2;
+            color: var(--danger);
+            background: var(--danger-soft);
           }
           .status-message.needs_changes {
-            color: #1d4ed8;
-            background: #eff6ff;
+            color: var(--info);
+            background: var(--info-soft);
           }
           .status-message.inactive {
-            color: #475569;
-            background: #f8fafc;
+            color: var(--foreground-secondary);
+            background: var(--surface-muted);
           }
           .admin-note {
             margin: 12px 0 0;
-            border-radius: var(--r-md);
-            background: #FFF7ED;
-            color: #9A3412;
+            border-radius: var(--radius-control);
+            background: var(--warning-soft);
+            color: var(--warning);
             padding: 12px;
             line-height: 1.7;
-            font-weight: 850;
+            font-weight: 500;
           }
           .admin-card button,
           .admin-card a {
             min-height: 46px;
-            border-radius: var(--r-lg);
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            background: #F8FBFF;
-            color: #0F172A;
+            border-radius: var(--radius-card);
+            border: 1px solid var(--border);
+            background: var(--surface-muted);
+            color: var(--foreground);
             padding: 0 14px;
             display: inline-flex;
             align-items: center;
@@ -1085,24 +1087,24 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             gap: 8px;
             text-decoration: none;
             cursor: pointer;
-            font: 950 14px/1.2 Tajawal, Arial, sans-serif;
+            font: 600 14px/1.25 var(--font-ui);
           }
           .admin-card button:disabled {
             opacity: .68;
             cursor: not-allowed;
           }
           .admin-card .approve {
-            background: #ECFDF5;
-            color: #047857;
+            background: var(--success-soft);
+            color: var(--success);
           }
           .admin-card .needs {
-            background: #EFF6FF;
-            color: #1D4ED8;
+            background: var(--info-soft);
+            color: var(--info);
           }
           .admin-card .reject,
           .admin-card .archive {
-            background: #FEF2F2;
-            color: #B91C1C;
+            background: var(--danger-soft);
+            color: var(--danger);
           }
           @media (max-width: 980px) {
             .company-hero-card,
@@ -1119,7 +1121,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           @media (max-width: 640px) {
             .company-hero-card,
             .profile-card {
-              border-radius: var(--r-xl);
+              border-radius: var(--radius-card);
               padding: 16px;
             }
             .hero-main {
@@ -1129,7 +1131,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             .company-logo {
               width: 78px;
               height: 78px;
-              border-radius: var(--r-xl);
+              border-radius: var(--radius-card);
             }
             .hero-actions {
               display: grid;
@@ -1142,50 +1144,11 @@ export function CompanyDetailsPage({ id }: { id: string }) {
               grid-template-columns: 1fr;
             }
           }
-          .dark .profile-card,
-          .dark .details-state {
-            background: #0B2A4A;
-            border-color: rgba(47, 214, 192, 0.14);
-            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
-          }
-          .dark .section-head h2,
-          .dark .overview-block p,
-          .dark .detail-tile strong,
-          .dark .contact-action strong,
-          .dark .details-state h1 {
-            color: #F8FAFC;
-          }
-          .dark .details-state p,
-          .dark .detail-tile span:not(.detail-icon),
-          .dark .contact-action small,
-          .dark .empty-card {
-            color: #CBD5E1;
-          }
-          .dark .overview-block div,
-          .dark .detail-tile,
-          .dark .contact-action,
-          .dark .empty-card,
-          .dark .status-message,
-          .dark .admin-card button,
-          .dark .admin-card a {
-            background: #0A1F36;
-            border-color: rgba(47, 214, 192, 0.14);
-          }
-          .dark .service-card {
-            background: rgba(29, 140, 255, 0.14);
-            border-color: rgba(47, 214, 192, 0.16);
-          }
-          .dark .service-card strong,
-          .dark .admin-card button,
-          .dark .admin-card a {
-            color: #F8FAFC;
-          }
-
           :global(.company-details-content) {
-            width: min(100%, 1500px) !important;
-            max-width: 1500px;
-            margin-inline: auto;
-            padding-inline: clamp(16px, 2vw, 32px);
+            width: 100% !important;
+            max-width: none;
+            margin-inline: 0;
+            padding-inline: 0;
           }
 
           .company-profile {
@@ -1199,11 +1162,11 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           .profile-back-row :global(.sfm-action-link) {
             min-height: 44px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #0b4f8a;
-            border-color: rgba(11, 118, 224, 0.16);
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+            border-radius: var(--radius-pill);
+            background: var(--surface);
+            color: var(--primary-hover);
+            border-color: var(--border);
+            box-shadow: var(--shadow-xs);
           }
 
           .company-hero-card {
@@ -1212,12 +1175,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             min-height: 300px;
             grid-template-columns: minmax(0, 1fr) minmax(280px, auto);
             align-items: center;
-            border-radius: 30px;
+            border-radius: var(--radius-panel);
             padding: clamp(22px, 3vw, 34px);
-            border-color: rgba(47, 214, 192, 0.26);
-            background:
-              radial-gradient(circle at 16% 12%, rgba(47, 214, 192, 0.28), transparent 30%),
-              linear-gradient(135deg, #07172a 0%, #0a2646 55%, #0d6375 135%);
+            border-color: color-mix(in srgb, var(--accent) 34%, transparent);
           }
 
           .company-hero-card :global(.hero-cover-image) {
@@ -1230,9 +1190,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             position: absolute;
             inset: 0;
             z-index: 1;
-            background:
-              linear-gradient(90deg, rgba(7, 23, 42, 0.78), rgba(7, 23, 42, 0.92)),
-              radial-gradient(circle at 88% 70%, rgba(24, 212, 212, 0.18), transparent 34%);
+            background: color-mix(in srgb, var(--hero-gradient-start) 72%, transparent);
             pointer-events: none;
           }
 
@@ -1249,8 +1207,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .company-logo {
             width: clamp(88px, 8vw, 112px);
             height: clamp(88px, 8vw, 112px);
-            border-radius: var(--r-2xl);
-            background: rgba(255, 255, 255, 0.14);
+            border-radius: var(--radius-panel);
+            background: color-mix(in srgb, var(--surface) 16%, transparent);
             backdrop-filter: blur(10px);
           }
 
@@ -1259,7 +1217,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             height: 100%;
             object-fit: contain;
             padding: 10px;
-            background: rgba(255, 255, 255, 0.94);
+            background: var(--surface);
           }
 
           .hero-copy h1 {
@@ -1271,7 +1229,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .hero-copy p {
             max-width: 780px;
             font-size: 15px;
-            color: rgba(234, 246, 255, 0.84);
+            color: var(--hero-foreground-muted);
           }
 
           .hero-actions {
@@ -1295,10 +1253,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.highlight-card) {
             min-width: 0;
             min-height: 92px;
-            border: 1px solid rgba(11, 118, 224, 0.11);
-            border-radius: var(--r-xl);
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface);
+            box-shadow: var(--shadow-card);
             padding: 16px;
             display: flex;
             gap: 12px;
@@ -1309,26 +1267,26 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             width: 40px;
             height: 40px;
             flex: 0 0 auto;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            color: #0b76e0;
-            background: linear-gradient(135deg, rgba(11, 118, 224, 0.10), rgba(24, 212, 212, 0.14));
+            color: var(--primary);
+            background: var(--primary-soft);
           }
 
           :global(.highlight-card small) {
             display: block;
-            color: #64748b;
+            color: var(--foreground-muted);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 500;
           }
 
           :global(.highlight-card strong) {
             display: block;
             margin-top: 4px;
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 16px;
-            font-weight: 950;
+            font-weight: 600;
             overflow-wrap: anywhere;
           }
 
@@ -1343,16 +1301,16 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           :global(.profile-card) {
-            border: 1px solid rgba(11, 118, 224, 0.10);
-            border-radius: var(--r-2xl);
-            background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.055);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-panel);
+            background: var(--surface);
+            box-shadow: var(--shadow-card);
             padding: 22px;
             min-width: 0;
           }
 
           :global(.side-card) {
-            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+            box-shadow: var(--shadow-xs);
           }
 
           :global(.section-head) {
@@ -1365,28 +1323,28 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.section-icon) {
             width: 42px;
             height: 42px;
-            border-radius: var(--r-lg);
+            border-radius: var(--radius-card);
             display: grid;
             place-items: center;
-            color: #0b9ead;
-            background: linear-gradient(135deg, rgba(24, 212, 212, 0.13), rgba(11, 118, 224, 0.09));
+            color: var(--accent);
+            background: var(--accent-soft);
             flex: 0 0 auto;
           }
 
           :global(.section-head small) {
             display: block;
-            color: #0b9ead;
+            color: var(--accent);
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 600;
             letter-spacing: 0.01em;
           }
 
           :global(.section-head h2) {
             margin: 3px 0 0;
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 23px;
             line-height: 1.2;
-            font-weight: 950;
+            font-weight: 600;
           }
 
           .overview-block {
@@ -1395,7 +1353,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           .overview-block div {
-            background: linear-gradient(180deg, #f8fbff, #ffffff);
+            background: var(--surface-muted);
             padding: 16px;
           }
 
@@ -1417,9 +1375,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           :global(.detail-tile) {
             min-width: 0;
-            border: 1px solid rgba(11, 118, 224, 0.10);
-            border-radius: var(--r-lg);
-            background: #f8fbff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
             padding: 13px;
             display: flex;
             gap: 11px;
@@ -1429,11 +1387,11 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.detail-icon) {
             width: 34px;
             height: 34px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            background: rgba(11, 118, 224, 0.09);
-            color: #0b76e0;
+            background: var(--primary-soft);
+            color: var(--primary);
             flex: 0 0 auto;
           }
 
@@ -1441,9 +1399,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.contact-action small),
           :global(.status-card span) {
             display: block;
-            color: #64748b;
+            color: var(--foreground-muted);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 500;
           }
 
           :global(.detail-tile strong),
@@ -1451,9 +1409,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.status-card strong) {
             display: block;
             margin-top: 4px;
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 15px;
-            font-weight: 950;
+            font-weight: 600;
             overflow-wrap: anywhere;
           }
 
@@ -1464,15 +1422,15 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           .service-card {
             min-height: 96px;
-            border-radius: var(--r-xl);
-            border-color: rgba(11, 118, 224, 0.14);
+            border-radius: var(--radius-card);
+            border-color: var(--border);
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
           }
 
           .service-card:hover {
             transform: translateY(-2px);
-            border-color: rgba(24, 212, 212, 0.34);
-            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+            border-color: var(--accent);
+            box-shadow: var(--shadow-sm);
           }
 
           .empty-card {
@@ -1482,9 +1440,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           .empty-card strong {
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 16px;
-            font-weight: 950;
+            font-weight: 600;
           }
 
           .empty-card p {
@@ -1500,40 +1458,41 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           :global(.contact-action) {
             min-height: 58px;
-            border: 1px solid rgba(11, 118, 224, 0.10);
-            border-radius: var(--r-lg);
-            background: #f8fbff;
-            color: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
+            color: var(--foreground);
             padding: 11px 12px;
             display: grid;
             grid-template-columns: auto minmax(0, 1fr) auto;
             gap: 10px;
             align-items: center;
             text-decoration: none;
-            font-weight: 900;
+            font-weight: 500;
             transition: transform .16s ease, border-color .16s ease, background .16s ease;
           }
 
           :global(.contact-action:hover),
           :global(.contact-action:focus-visible) {
-            outline: none;
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
             transform: translateY(-1px);
-            border-color: rgba(24, 212, 212, 0.38);
-            background: #f0fdff;
+            border-color: var(--focus-ring);
+            background: var(--surface-hover);
           }
 
           :global(.contact-action > span) {
             width: 36px;
             height: 36px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             display: grid;
             place-items: center;
-            background: rgba(24, 212, 212, 0.12);
-            color: #0b9ead;
+            background: var(--accent-soft);
+            color: var(--accent);
           }
 
           :global(.contact-external) {
-            color: #94a3b8;
+            color: var(--foreground-subtle);
           }
 
           :global(.metric-grid) {
@@ -1542,7 +1501,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           :global(.metric-grid .detail-tile:first-child) {
             grid-column: 1 / -1;
-            background: linear-gradient(135deg, rgba(11, 118, 224, 0.08), rgba(24, 212, 212, 0.10));
+            background: var(--primary-soft);
           }
 
           :global(.metric-grid .detail-tile:first-child strong) {
@@ -1550,7 +1509,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           :global(.status-card) {
-            border-radius: var(--r-xl);
+            border-radius: var(--radius-card);
             padding: 15px;
             display: flex;
             gap: 12px;
@@ -1560,20 +1519,20 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           :global(.status-message) {
             margin: 12px 0 0;
-            border-radius: var(--r-lg);
+            border-radius: var(--radius-card);
             padding: 13px;
             line-height: 1.8;
-            font-weight: 900;
+            font-weight: 500;
           }
 
           :global(.admin-note) {
             margin: 12px 0 0;
-            border-radius: var(--r-lg);
-            background: #fff7ed;
-            color: #9a3412;
+            border-radius: var(--radius-card);
+            background: var(--warning-soft);
+            color: var(--warning);
             padding: 12px;
             line-height: 1.7;
-            font-weight: 850;
+            font-weight: 500;
           }
 
           :global(.admin-card button),
@@ -1581,13 +1540,13 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.admin-card .sfm-action-link) {
             width: 100%;
             min-height: 46px;
-            border-radius: var(--r-lg);
+            border-radius: var(--radius-card);
           }
 
           .location-card {
-            border: 1px solid rgba(11, 118, 224, 0.10);
-            border-radius: var(--r-xl);
-            background: linear-gradient(135deg, #f8fbff, #ffffff);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            background: var(--surface-muted);
             padding: 16px;
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
@@ -1597,17 +1556,17 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           .location-card span {
             display: block;
-            color: #64748b;
+            color: var(--foreground-muted);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 500;
           }
 
           .location-card strong {
             display: block;
             margin-top: 5px;
-            color: #0f172a;
+            color: var(--foreground);
             font-size: 16px;
-            font-weight: 950;
+            font-weight: 600;
             overflow-wrap: anywhere;
           }
 
@@ -1622,10 +1581,6 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           @media (max-width: 820px) {
-            :global(.company-details-content) {
-              padding-inline: 14px;
-            }
-
             .company-hero-card {
               grid-template-columns: 1fr;
               min-height: 0;
@@ -1652,7 +1607,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           @media (max-width: 560px) {
             .company-hero-card,
             :global(.profile-card) {
-              border-radius: var(--r-2xl);
+              border-radius: var(--radius-panel);
               padding: 16px;
             }
 
@@ -1664,7 +1619,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             .company-logo {
               width: 82px;
               height: 82px;
-              border-radius: var(--r-2xl);
+              border-radius: var(--radius-panel);
             }
 
             .hero-copy h1 {
@@ -1677,45 +1632,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             }
           }
 
-          :global(.dark) :global(.highlight-card),
-          :global(.dark) :global(.profile-card),
-          :global(.dark) :global(.details-state) {
-            background: #0b2a4a;
-            border-color: rgba(47, 214, 192, 0.15);
-            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
-          }
-
-          :global(.dark) :global(.section-head h2),
-          :global(.dark) :global(.highlight-card strong),
-          :global(.dark) :global(.detail-tile strong),
-          :global(.dark) :global(.contact-action strong),
-          :global(.dark) :global(.status-card strong),
-          :global(.dark) .overview-block p,
-          :global(.dark) .location-card strong,
-          :global(.dark) .empty-card strong {
-            color: #f8fafc;
-          }
-
-          :global(.dark) :global(.highlight-card small),
-          :global(.dark) :global(.detail-tile span:not(.detail-icon)),
-          :global(.dark) :global(.contact-action small),
-          :global(.dark) .location-card span,
-          :global(.dark) .empty-card {
-            color: #cbd5e1;
-          }
-
-          :global(.dark) :global(.detail-tile),
-          :global(.dark) :global(.contact-action),
-          :global(.dark) .overview-block div,
-          :global(.dark) .location-card,
-          :global(.dark) .empty-card,
-          :global(.dark) :global(.status-message),
-          :global(.dark) :global(.admin-card button),
-          :global(.dark) :global(.admin-card a) {
-            background: #0a1f36;
-            border-color: rgba(47, 214, 192, 0.14);
-          }
         `}</style>
+        </WorkspacePageContainer>
       </DashboardPageShell>
     </CompanyDashboardFrame>
   );

@@ -196,13 +196,13 @@ describe('density.css compact layer', () => {
     const desktopBlocks = [...css.matchAll(/@media \(min-width: 1025px\)\s*{([\s\S]*?)\n}/g)]
       .map(([, body]) => body)
       .join('\n');
-    expect(desktopBlocks).toContain('--sfm-section-gap');
-    expect(desktopBlocks).toContain('--sfm-card-gap');
-    expect(desktopBlocks).toContain('--sfm-page-pad-y');
+    expect(desktopBlocks).toContain('--layout-section-gap');
+    expect(desktopBlocks).toContain('--layout-card-gap');
+    expect(desktopBlocks).toContain('--workspace-page-padding-block');
     // Token overrides never appear outside the desktop media query.
     const outside = css.replace(/@media \(min-width: 1025px\)\s*{[\s\S]*?\n}/g, '');
-    expect(outside).not.toContain('--sfm-section-gap');
-    expect(outside).not.toContain('--sfm-page-pad-y');
+    expect(outside).not.toContain('--layout-section-gap');
+    expect(outside).not.toContain('--workspace-page-padding-block');
   });
 
   it('re-declares tighter tokens on the trader/admin scope containers', () => {

@@ -1,7 +1,6 @@
 'use client';
 
 import type { HTMLAttributes, ReactNode } from 'react';
-import { Sidebar } from '@/components/Sidebar';
 import {
   getNewsPageBackground,
   type NewsPageBackgroundCategory,
@@ -38,7 +37,6 @@ export function NewsPageShell({
       data-news-wide={wide ? 'true' : undefined}
       dir={dir}
     >
-      <Sidebar />
       {children}
     </div>
   );

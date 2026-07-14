@@ -13,6 +13,7 @@ const traderApp = read('src/trader-app/public/app.js');
 const traderHtml = read('src/trader-app/public/index.html');
 const traderDetailHtml = read('src/trader-app/public/detail.html');
 const traderCss = read('src/trader-app/public/cinema.css');
+const visualTokens = read('src/styles/tokens.css');
 
 describe('phase 2.10 production UI hardening', () => {
   it('keeps the market signal lifecycle distinct from a real Watch recommendation', () => {
@@ -68,7 +69,12 @@ describe('phase 2.10 production UI hardening', () => {
   it('uses the approved fonts and exposes every mobile Trader route through an accessible More menu', () => {
     expect(traderHtml).toContain('family=IBM+Plex+Mono');
     expect(traderDetailHtml).toContain('family=IBM+Plex+Mono');
-    expect(traderCss).toContain('--font-mono: "IBM Plex Mono"');
+    expect(visualTokens).toContain('--font-data: var(--font-ibm-plex-mono');
+    expect(traderHtml).toContain('href="/semantic-tokens.css');
+    expect(traderDetailHtml).toContain('href="/semantic-tokens.css');
+    expect(traderCss).not.toContain('--font-mono:');
+    expect(traderCss).toContain('font-family: var(--font-data)');
+    expect(traderCss).not.toMatch(/--font-(?:mono|data)\s*:\s*["']/);
     expect(`${traderHtml}${traderDetailHtml}${traderCss}${traderApp}`).not.toContain('JetBrains Mono');
     expect(traderHtml).toContain('id="mobile-more-toggle"');
     expect(traderHtml).toContain('role="menu"');

@@ -50,18 +50,18 @@ const iconSize: Record<AssetAvatarSize, number> = {
 };
 
 const toneClass: Record<AssetVisualType, string> = {
-  stock: 'from-sky-100 to-cyan-50 text-sky-800 border-sky-200 dark:from-sky-400/15 dark:to-cyan-400/10 dark:text-cyan-100 dark:border-cyan-300/20',
-  crypto: 'from-amber-100 to-orange-50 text-amber-800 border-amber-200 dark:from-amber-400/15 dark:to-orange-400/10 dark:text-amber-100 dark:border-amber-300/20',
-  etf: 'from-indigo-100 to-sky-50 text-indigo-800 border-indigo-200 dark:from-indigo-400/15 dark:to-sky-400/10 dark:text-indigo-100 dark:border-indigo-300/20',
-  forex: 'from-emerald-100 to-teal-50 text-emerald-800 border-emerald-200 dark:from-emerald-400/15 dark:to-teal-400/10 dark:text-emerald-100 dark:border-emerald-300/20',
-  commodity: 'from-stone-100 to-slate-50 text-stone-800 border-stone-200 dark:from-stone-400/15 dark:to-slate-400/10 dark:text-stone-100 dark:border-stone-300/20',
-  gold: 'from-yellow-100 to-amber-50 text-yellow-800 border-yellow-200 dark:from-yellow-400/15 dark:to-amber-400/10 dark:text-yellow-100 dark:border-yellow-300/20',
-  silver: 'from-slate-100 to-zinc-50 text-slate-700 border-slate-200 dark:from-slate-300/15 dark:to-zinc-300/10 dark:text-slate-100 dark:border-slate-200/20',
-  oil: 'from-neutral-200 to-stone-100 text-neutral-900 border-neutral-300 dark:from-neutral-300/15 dark:to-stone-300/10 dark:text-neutral-100 dark:border-neutral-200/20',
-  gas: 'from-cyan-100 to-teal-50 text-cyan-800 border-cyan-200 dark:from-cyan-400/15 dark:to-teal-400/10 dark:text-cyan-100 dark:border-cyan-300/20',
-  index: 'from-blue-100 to-slate-50 text-blue-800 border-blue-200 dark:from-blue-400/15 dark:to-slate-400/10 dark:text-blue-100 dark:border-blue-300/20',
-  fund: 'from-violet-100 to-indigo-50 text-violet-800 border-violet-200 dark:from-violet-400/15 dark:to-indigo-400/10 dark:text-violet-100 dark:border-violet-300/20',
-  unknown: 'from-slate-100 to-slate-50 text-slate-700 border-slate-200 dark:from-slate-300/15 dark:to-slate-400/10 dark:text-slate-100 dark:border-slate-200/20',
+  stock: 'border-primary/25 bg-primary-soft text-primary',
+  crypto: 'border-warning/25 bg-warning-soft text-warning',
+  etf: 'border-primary/25 bg-primary-soft text-primary',
+  forex: 'border-accent/25 bg-accent-soft text-foreground-secondary',
+  commodity: 'border-border bg-surface-muted text-foreground-secondary',
+  gold: 'border-warning/25 bg-warning-soft text-warning',
+  silver: 'border-border bg-surface-muted text-foreground-secondary',
+  oil: 'border-border-strong bg-surface-muted text-foreground',
+  gas: 'border-accent/25 bg-accent-soft text-foreground-secondary',
+  index: 'border-primary/25 bg-primary-soft text-primary',
+  fund: 'border-primary/25 bg-primary-soft text-primary',
+  unknown: 'border-border bg-surface-muted text-foreground-secondary',
 };
 
 function IconForType({ meta, size }: { meta: AssetVisualMeta; size: AssetAvatarSize }) {
@@ -110,7 +110,7 @@ export function AssetAvatar({
   return (
     <span
       className={cn(
-        'asset-avatar relative inline-grid shrink-0 place-items-center overflow-hidden rounded-2xl border bg-gradient-to-br font-black leading-none shadow-sm',
+        'asset-avatar relative inline-grid shrink-0 place-items-center overflow-hidden rounded-[var(--radius-card)] border font-semibold leading-none shadow-[var(--shadow-card)]',
         sizeClass[size],
         toneClass[meta.tone],
         className,
@@ -186,12 +186,12 @@ export function AssetBadge({
       />
       <span className="grid min-w-0 gap-0.5">
         {showName ? (
-          <span className={cn('min-w-0 truncate font-black leading-tight', nameClassName)}>
+          <span className={cn('min-w-0 truncate font-semibold leading-tight', nameClassName)}>
             {meta.label}
           </span>
         ) : null}
         {showSymbol && meta.symbol ? (
-          <span className={cn('min-w-0 truncate font-black uppercase leading-tight tracking-normal text-current opacity-70', symbolClassName)} dir="ltr">
+          <span className={cn('min-w-0 truncate font-mono font-medium uppercase leading-tight tracking-normal text-current opacity-70', symbolClassName)} dir="ltr">
             {meta.symbol}
           </span>
         ) : null}

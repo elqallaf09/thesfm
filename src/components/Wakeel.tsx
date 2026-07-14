@@ -30,19 +30,31 @@ export default function Wakeel() {
   const copy = COPY[lang] ?? COPY.ar;
 
   return (
-    <main className="mx-auto flex min-h-[65vh] w-full max-w-3xl items-center px-4 py-10" dir={dir} lang={lang}>
-      <section className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-9" role="status" aria-live="polite">
-        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200" aria-hidden="true">
+    <main className="wakeel-page" dir={dir} lang={lang}>
+      <section className="wakeel-card" role="status" aria-live="polite">
+        <div className="wakeel-icon" aria-hidden="true">
           <ShieldAlert size={24} />
         </div>
-        <p className="mb-2 text-sm font-semibold text-teal-700 dark:text-teal-300">{copy.eyebrow}</p>
-        <h1 className="text-2xl font-bold leading-tight text-slate-950 dark:text-white sm:text-3xl">{copy.title}</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">{copy.body}</p>
-        <Link href="/ai" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white outline-none transition hover:bg-teal-800 focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:bg-teal-600 dark:hover:bg-teal-500">
+        <p className="wakeel-eyebrow">{copy.eyebrow}</p>
+        <h1>{copy.title}</h1>
+        <p className="wakeel-body">{copy.body}</p>
+        <Link href="/ai" className="wakeel-action">
           <Bot size={18} aria-hidden="true" />
           {copy.action}
         </Link>
       </section>
+      <style jsx>{`
+        .wakeel-page{width:100%;max-width:56rem;min-height:65vh;margin:0 auto;display:flex;align-items:center;padding:40px 16px;font-family:var(--font-ui);color:var(--foreground)}
+        .wakeel-card{width:100%;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);padding:32px;box-shadow:var(--shadow-card)}
+        .wakeel-icon{width:48px;height:48px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-card);background:var(--warning-soft);color:var(--warning)}
+        .wakeel-eyebrow{margin:0 0 8px;color:var(--foreground-secondary);font-size:14px;font-weight:500}
+        h1{margin:0;color:var(--foreground);font-size:clamp(24px,4vw,30px);line-height:1.35;font-weight:600}
+        .wakeel-body{max-width:42rem;margin:12px 0 0;color:var(--foreground-secondary);font-size:16px;line-height:1.75;font-weight:400}
+        .wakeel-action{min-height:44px;margin-top:24px;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--primary);border-radius:var(--radius-card);background:var(--primary);color:var(--primary-foreground);padding:10px 20px;font-weight:600;text-decoration:none;transition:background .18s ease,border-color .18s ease}
+        .wakeel-action:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+        .wakeel-action:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;box-shadow:var(--focus-shadow)}
+        @media(max-width:640px){.wakeel-card{padding:24px}}
+      `}</style>
     </main>
   );
 }

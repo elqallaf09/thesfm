@@ -9,6 +9,7 @@ import {
   smtpErrorUserMessage,
   validateMailPayload,
 } from '@/lib/server/smtpMail';
+import { STATIC_EMAIL_VISUAL_STYLES } from '@/styles/static-tokens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -146,11 +147,11 @@ export async function POST(request: NextRequest) {
     subject: 'THE SFM subscription reminder test',
     text: 'This is a test email from the Clients & Subscriptions reminder system.',
     html: `
-      <div style="font-family:Inter,Tajawal,Arial,sans-serif;background:#eef6ff;padding:24px;color:#0b172a">
-        <div style="max-width:560px;margin:auto;background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:24px">
-          <strong style="color:#0b3558">THE SFM</strong>
+      <div style="${STATIC_EMAIL_VISUAL_STYLES.canvas}">
+        <div style="${STATIC_EMAIL_VISUAL_STYLES.panel};max-width:560px;margin:auto">
+          <strong style="${STATIC_EMAIL_VISUAL_STYLES.brand}">THE SFM</strong>
           <h1 style="margin:10px 0 8px;font-size:22px">Subscription reminder test</h1>
-          <p style="margin:0;color:#475569">SMTP is configured and the reminder email channel can send messages.</p>
+          <p style="${STATIC_EMAIL_VISUAL_STYLES.supportingText};margin:0">SMTP is configured and the reminder email channel can send messages.</p>
         </div>
       </div>
     `,

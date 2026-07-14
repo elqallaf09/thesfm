@@ -135,28 +135,28 @@ export function LogsTab() {
 
       <style jsx global>{`
         .ops-logs-filter { display: flex; flex-wrap: wrap; gap: 8px; }
-        .ops-logs-filter button { min-height: 36px; border: 1px solid var(--sfm-border); border-radius: 999px; padding-inline: 14px; background: var(--sfm-card); color: var(--sfm-muted-readable); font: 850 12px Tajawal, Arial, sans-serif; cursor: pointer; }
-        .ops-logs-filter button.active { background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); color: #fff; border-color: transparent; }
+        .ops-logs-filter button { min-height: 36px; border: 1px solid var(--border); border-radius: var(--radius-pill); padding-inline: 14px; background: var(--surface); color: var(--foreground-secondary); font: 600 12px var(--font-ui); cursor: pointer; }
+        .ops-logs-filter button.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
         .ops-logs-filter button:focus-visible,
-        .ops-log-card summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--sfm-primary) 28%, transparent); outline-offset: 2px; }
+        .ops-log-card summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 28%, transparent); outline-offset: 2px; }
         .ops-logs-list { display: grid; gap: 8px; min-width: 0; }
-        .ops-log-card { min-width: 0; border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-card); overflow: hidden; }
-        .ops-log-card summary { list-style: none; min-width: 0; display: grid; grid-template-columns: minmax(150px, 1.25fr) auto minmax(150px, 1fr) auto 18px; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; color: var(--sfm-body); font-size: 12px; }
+        .ops-log-card { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
+        .ops-log-card summary { list-style: none; min-width: 0; display: grid; grid-template-columns: minmax(150px, 1.25fr) auto minmax(150px, 1fr) auto 18px; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; color: var(--foreground-secondary); font-size: 12px; }
         .ops-log-card summary::-webkit-details-marker { display: none; }
-        .ops-log-source { min-width: 0; color: var(--sfm-heading); font-weight: 900; overflow-wrap: anywhere; }
-        .ops-log-status { border-radius: 999px; padding: 4px 8px; background: var(--sfm-light-card); color: var(--sfm-muted-readable); font-size: 10.5px; font-weight: 900; }
-        .ops-log-status.tone-success { background: color-mix(in srgb, var(--green) 13%, transparent); color: var(--green); }
-        .ops-log-status.tone-warning { background: color-mix(in srgb, var(--amber) 13%, transparent); color: var(--amber); }
-        .ops-log-status.tone-danger { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); }
-        .ops-log-status.tone-info { background: color-mix(in srgb, var(--blue) 12%, transparent); color: var(--blue); }
-        .ops-log-time { min-width: 0; color: var(--sfm-muted-readable); overflow-wrap: anywhere; }
-        .ops-log-duration { color: var(--sfm-muted); font-variant-numeric: tabular-nums; }
-        .ops-log-chevron { color: var(--sfm-muted); font-size: 18px; line-height: 1; transition: transform .18s ease; }
+        .ops-log-source { min-width: 0; color: var(--foreground); font-weight: 600; overflow-wrap: anywhere; }
+        .ops-log-status { border-radius: var(--radius-pill); padding: 4px 8px; background: var(--surface-muted); color: var(--foreground-secondary); font-size: 10.5px; font-weight: 600; }
+        .ops-log-status.tone-success { background: color-mix(in srgb, var(--success) 13%, transparent); color: var(--success); }
+        .ops-log-status.tone-warning { background: color-mix(in srgb, var(--warning) 13%, transparent); color: var(--warning); }
+        .ops-log-status.tone-danger { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+        .ops-log-status.tone-info { background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info); }
+        .ops-log-time { min-width: 0; color: var(--foreground-secondary); overflow-wrap: anywhere; }
+        .ops-log-duration { color: var(--foreground-muted); font-variant-numeric: tabular-nums; }
+        .ops-log-chevron { color: var(--foreground-muted); font-size: 18px; line-height: 1; transition: transform .18s ease; }
         .ops-log-card[open] .ops-log-chevron { transform: rotate(180deg); }
         .ops-log-card dl { margin: 0; padding: 0 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        .ops-log-card dl > div { min-width: 0; border-radius: var(--r-sm); background: var(--sfm-light-card); padding: 9px 10px; }
-        .ops-log-card dt { color: var(--sfm-muted); font-size: 10.5px; font-weight: 850; }
-        .ops-log-card dd { margin: 3px 0 0; color: var(--sfm-body); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+        .ops-log-card dl > div { min-width: 0; border-radius: var(--radius-sm); background: var(--surface-muted); padding: 9px 10px; }
+        .ops-log-card dt { color: var(--foreground-muted); font-size: 10.5px; font-weight: 600; }
+        .ops-log-card dd { margin: 3px 0 0; color: var(--foreground-secondary); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
         .ops-log-card .ops-log-detail { grid-column: 1 / -1; }
         .ops-log-detail dd { white-space: pre-wrap; }
         @media (max-width: 640px) {

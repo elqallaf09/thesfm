@@ -408,7 +408,7 @@ export function AuthForm() {
               </div>
               <div style={{textAlign: isArabic ? 'left' : 'right', marginBottom:'20px'}}>
                 <button type="button" className="auth-link"
-                  style={{fontSize:'13px', color:'var(--sfm-accent)', fontWeight:'600'}}
+                  style={{fontSize:'13px', color:'var(--accent)', fontWeight:'600'}}
                   onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); setResetStep('username'); }}>
                   {isArabic ? 'نسيت كلمة المرور؟' : isFrench ? 'Mot de passe oublié?' : 'Forgot password?'}
                 </button>
@@ -422,13 +422,13 @@ export function AuthForm() {
               {/* Name row */}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
                 <div className="auth-field">
-                  <label className="auth-field-label">{isArabic ? 'الاسم الأول' : isFrench ? 'Prénom' : 'First name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{isArabic ? 'الاسم الأول' : isFrench ? 'Prénom' : 'First name'} <span style={{color:'var(--danger)'}}>*</span></label>
                   <input className="auth-input auth-input-no-pad"
                     value={firstName} onChange={e => setFirstName(e.target.value)}
                     placeholder={isArabic ? 'أدخل الاسم الأول' : isFrench ? 'Entrez le prénom' : 'Enter first name'} />
                 </div>
                 <div className="auth-field">
-                  <label className="auth-field-label">{isArabic ? 'الاسم الأخير' : isFrench ? 'Nom' : 'Last name'} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{isArabic ? 'الاسم الأخير' : isFrench ? 'Nom' : 'Last name'} <span style={{color:'var(--danger)'}}>*</span></label>
                   <input className="auth-input auth-input-no-pad"
                     value={lastName} onChange={e => setLastName(e.target.value)}
                     placeholder={isArabic ? 'أدخل الاسم الأخير' : isFrench ? 'Entrez le nom' : 'Enter last name'} />
@@ -436,7 +436,7 @@ export function AuthForm() {
               </div>
 
               <div className="auth-field">
-                <label className="auth-field-label">{t.username} <span style={{color:'#EF4444'}}>*</span></label>
+                <label className="auth-field-label">{t.username} <span style={{color:'var(--danger)'}}>*</span></label>
                 <div className="auth-input-wrap">
                   <i className="ti ti-user auth-input-icon" aria-hidden="true" />
                   <input className="auth-input" value={username}
@@ -446,7 +446,7 @@ export function AuthForm() {
               </div>
 
               <div className="auth-field">
-                <label className="auth-field-label">{t.email} <span style={{color:'#EF4444'}}>*</span></label>
+                <label className="auth-field-label">{t.email} <span style={{color:'var(--danger)'}}>*</span></label>
                 <div className="auth-input-wrap">
                   <i className="ti ti-mail auth-input-icon" aria-hidden="true" />
                   <input className="auth-input" type="email" value={email}
@@ -457,7 +457,7 @@ export function AuthForm() {
 
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px'}}>
                 <div className="auth-field">
-                  <label className="auth-field-label">{t.password} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{t.password} <span style={{color:'var(--danger)'}}>*</span></label>
                   <div className="auth-input-wrap">
                     <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
                     <input className="auth-input" type={showPassword ? 'text' : 'password'}
@@ -470,7 +470,7 @@ export function AuthForm() {
                   </div>
                 </div>
                 <div className="auth-field">
-                  <label className="auth-field-label">{t.confirmPassword} <span style={{color:'#EF4444'}}>*</span></label>
+                  <label className="auth-field-label">{t.confirmPassword} <span style={{color:'var(--danger)'}}>*</span></label>
                   <div className="auth-input-wrap">
                     <i className="ti ti-lock auth-input-icon" aria-hidden="true" />
                     <input className="auth-input" type={showConfirmPassword ? 'text' : 'password'}
@@ -496,11 +496,11 @@ export function AuthForm() {
                   <div style={{display:'flex', gap:'16px', height:'48px', alignItems:'center'}}>
                     {['male','female'].map(g => (
                       <label key={g} style={{display:'flex', alignItems:'center', gap:'6px', cursor:'pointer',
-                        fontSize:'14px', fontWeight:'500', color: gender === g ? 'var(--sfm-foreground)' : 'var(--sfm-muted)',
-                        fontFamily:'Tajawal,sans-serif'}}>
+                        fontSize:'14px', fontWeight:'500', color: gender === g ? 'var(--foreground)' : 'var(--foreground-muted)',
+                        fontFamily:'var(--font-ui)'}}>
                         <input type="radio" name="gender" value={g}
                           checked={gender === g} onChange={() => setGender(g)}
-                          style={{accentColor:'var(--sfm-primary)', width:'16px', height:'16px'}} />
+                          style={{accentColor:'var(--primary)', width:'16px', height:'16px'}} />
                         {g === 'male' ? t.male : t.female}
                       </label>
                     ))}
@@ -509,8 +509,8 @@ export function AuthForm() {
               </div>
 
               {/* Security Questions */}
-              <div style={{background:'var(--sfm-light-card)', border:'1.5px solid var(--sfm-border)', borderRadius:'var(--r-md)', padding:'16px', marginBottom:'4px'}}>
-                <p style={{fontSize:'12.5px', fontWeight:'700', color:'var(--sfm-foreground)', marginBottom:'12px', fontFamily:'Tajawal,sans-serif'}}>
+              <div style={{background:'var(--surface-muted)', border:'1.5px solid var(--border)', borderRadius:'var(--radius-control)', padding:'16px', marginBottom:'4px'}}>
+                <p style={{fontSize:'12.5px', fontWeight:'700', color:'var(--foreground)', marginBottom:'12px', fontFamily:'var(--font-ui)'}}>
                   🔐 {isArabic ? 'أسئلة الأمان (الأول والثاني إجباري)' : 'Security Questions (1st & 2nd required)'}
                 </p>
                 {[
@@ -519,9 +519,9 @@ export function AuthForm() {
                   {q:securityQuestion3, setQ:setSecurityQuestion3, a:securityAnswer3, setA:setSecurityAnswer3, label: isArabic?'السؤال الثالث (اختياري)':'3rd Question (optional)', filter:[securityQuestion,securityQuestion2]},
                 ].map((sq, idx) => (
                   <div key={idx} style={{marginBottom: idx < 2 ? '12px' : '0'}}>
-                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? 'var(--sfm-muted)' : 'var(--sfm-muted)', display:'block', marginBottom:'6px', fontFamily:'Tajawal,sans-serif'}}>{sq.label}</label>
+                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? 'var(--foreground-muted)' : 'var(--foreground-muted)', display:'block', marginBottom:'6px', fontFamily:'var(--font-ui)'}}>{sq.label}</label>
                     <Select value={sq.q} onValueChange={sq.setQ}>
-                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'var(--sfm-border)', marginBottom:'6px'}}>
+                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'var(--border)', marginBottom:'6px'}}>
                         <SelectValue placeholder={t.selectQuestion} />
                       </SelectTrigger>
                       <SelectContent>
@@ -547,7 +547,7 @@ export function AuthForm() {
           {/* ══ PRIMARY BUTTON ══ */}
           <button type="submit" className="auth-btn-primary" style={{marginTop:'20px', marginBottom:'16px'}} disabled={loading || guestLoading}>
             {loading ? (
-              <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'50%', border:'2px solid rgba(27,36,48,0.2)', borderTopColor:'var(--sfm-foreground)', width:'18px', height:'18px'}} />{t.processing}</>
+              <><span style={{display:'inline-block', animation:'spin 1s linear infinite', borderRadius:'var(--radius-pill)', border:'2px solid color-mix(in srgb, var(--primary-foreground) 35%, transparent)', borderTopColor:'var(--primary-foreground)', width:'18px', height:'18px'}} />{t.processing}</>
             ) : showForgotPassword
               ? (resetStep === 'username' ? (isArabic ? 'التالي ←' : 'Next →') : (isArabic ? 'تحقق وأرسل رابط الاستعادة' : 'Verify & Send Reset'))
               : isRegister ? t.createBtn : t.loginBtn}
@@ -596,8 +596,8 @@ export function AuthForm() {
 
       {/* Footer */}
       <p style={{position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
-        fontSize:'11.5px', color:'var(--sfm-muted)', whiteSpace:'nowrap',
-        fontFamily:'Tajawal,sans-serif'}}>
+        fontSize:'11.5px', color:'var(--foreground-muted)', whiteSpace:'nowrap',
+        fontFamily:'var(--font-ui)'}}>
         المدير المالي الذكي — SFM © 2026
       </p>
 

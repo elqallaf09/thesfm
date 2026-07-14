@@ -44,7 +44,7 @@ function OperationsCenterContent() {
   ];
 
   return (
-    <main className="market-diagnostics-admin ops-center-admin" dir={dir}>
+    <section className="market-diagnostics-admin ops-center-admin" dir={dir}>
       <header className="market-diagnostics-hero">
         <div>
           <h1>{t('ops_center_title')}</h1>
@@ -91,16 +91,15 @@ function OperationsCenterContent() {
       </PageTabPanel>
 
       <style jsx global>{`
-        .market-diagnostics-admin { max-width: 1160px; margin: 0 auto; padding: clamp(18px,3vw,30px) 16px 48px; display: grid; gap: 18px; color: var(--sfm-foreground); }
+        .market-diagnostics-admin { width: 100%; max-width: none; margin: 0; padding: 0; display: grid; gap: 18px; color: var(--foreground); }
         .market-diagnostics-hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
         .market-diagnostics-hero > div { min-width: 0; }
-        .market-diagnostics-hero h1 { color: var(--sfm-heading); font-size: clamp(26px,3vw,38px); line-height: 1.15; font-weight: 900; margin: 0; }
-        .market-diagnostics-hero p { margin: 6px 0 0; color: var(--sfm-muted); font-size: 13px; }
+        .market-diagnostics-hero h1 { color: var(--foreground); font-size: clamp(26px,3vw,38px); line-height: 1.15; font-weight: 600; margin: 0; }
+        .market-diagnostics-hero p { margin: 6px 0 0; color: var(--foreground-muted); font-size: 13px; }
         .ops-center-tab-panel { min-width: 0; display: grid; gap: 16px; }
-        .ops-center-loading { margin: 0; padding: 20px; text-align: center; color: var(--sfm-muted); font-size: 13px; }
-        @media (max-width: 420px) { .market-diagnostics-admin { padding-inline: 12px; } }
+        .ops-center-loading { margin: 0; padding: 20px; text-align: center; color: var(--foreground-muted); font-size: 13px; }
       `}</style>
-    </main>
+    </section>
   );
 }
 

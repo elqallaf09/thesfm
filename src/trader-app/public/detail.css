@@ -1,0 +1,655 @@
+/* Standalone Trader instrument detail layout.
+   Loaded after cinema.css so this document keeps its own compact page shell
+   while consuming the shared semantic token source. */
+
+html[data-theme] body {
+  min-width: 0;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme] .detail-shell,
+html[data-theme] .detail-shell *,
+html[data-theme] .detail-shell *::before,
+html[data-theme] .detail-shell *::after {
+  box-sizing: border-box;
+}
+
+html[data-theme] .detail-shell,
+html[data-theme] .detail-shell * {
+  font-family: var(--font-ui);
+}
+
+html[data-theme] .market-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0.24;
+  pointer-events: none;
+}
+
+html[data-theme] .app-shell.detail-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 18px;
+  width: min(1320px, 100%);
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: clamp(16px, 2.4vw, 32px);
+}
+
+html[data-theme] .detail-shell > .topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-theme] .brand-lockup {
+  display: grid;
+  min-width: 0;
+  max-width: 760px;
+  gap: 4px;
+}
+
+html[data-theme] .brand-lockup h1,
+html[data-theme] .detail-title-block h2,
+html[data-theme] .section-head h2,
+html[data-theme] .decision-panel h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] .brand-lockup h1 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  line-height: 1.3;
+}
+
+html[data-theme] .brand-subtitle {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font-size: 0.94rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] .eyebrow {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--foreground-muted) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+html[data-theme] .detail-symbol-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-height: 30px;
+  width: fit-content;
+  margin-block: 3px;
+  padding-inline: 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  font-family: var(--font-data) !important;
+  font-size: 0.8rem;
+  font-weight: 600;
+  direction: ltr;
+}
+
+html[data-theme] .detail-symbol-chip[hidden] {
+  display: none;
+}
+
+html[data-theme] .top-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-theme] .text-button.detail-back,
+html[data-theme] .status-pill {
+  min-height: 44px !important;
+  padding-inline: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--foreground-secondary);
+  box-shadow: var(--shadow-xs);
+}
+
+html[data-theme] .text-button.detail-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+html[data-theme] .text-button.detail-back:is(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background: var(--surface-hover);
+  color: var(--primary-hover);
+}
+
+html[data-theme] .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+html[data-theme] .status-pill .pulse {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+}
+
+html[data-theme] .detail-content {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 18px;
+}
+
+html[data-theme] :is(.decision-panel, .detail-hero, .detail-panel) {
+  min-width: 0;
+  padding: clamp(18px, 2.2vw, 24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-theme] .decision-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+html[data-theme] .decision-panel h2 {
+  margin-block-end: 6px;
+  font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+}
+
+html[data-theme] .decision-panel p,
+html[data-theme] .detail-title-block p,
+html[data-theme] .detail-action-card p,
+html[data-theme] .section-head p {
+  margin: 0;
+  color: var(--foreground-secondary);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] .decision-panel.decision-buy {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: var(--success-soft);
+}
+
+html[data-theme] .decision-panel.decision-sell {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+  background: var(--danger-soft);
+}
+
+html[data-theme] .decision-panel:is(.decision-hold, .decision-avoid) {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+}
+
+html[data-theme] .decision-badge {
+  display: grid;
+  place-items: center;
+  min-width: 150px;
+  min-height: 58px;
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--info) 30%, var(--border));
+  border-radius: var(--radius-control);
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+html[data-theme] .decision-badge.decision-buy {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+html[data-theme] .decision-badge.decision-sell {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+html[data-theme] .decision-badge:is(.decision-hold, .decision-avoid) {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+html[data-theme] .detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  align-items: stretch;
+  gap: 18px;
+}
+
+html[data-theme] .detail-title-block {
+  min-width: 0;
+}
+
+html[data-theme] .detail-title-block h2 {
+  margin-block-end: 10px;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.25;
+}
+
+html[data-theme] .detail-action-card {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  text-align: center;
+}
+
+html[data-theme] .detail-action-card strong {
+  color: var(--foreground);
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+}
+
+html[data-theme] .action-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding-inline: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-elevated);
+  color: var(--foreground-secondary);
+  font-weight: 600;
+}
+
+html[data-theme] .action-badge.action-buy {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+html[data-theme] .action-badge.action-sell {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+html[data-theme] .action-badge.action-hold {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+html[data-theme] .detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+html[data-theme] :is(.detail-metrics > div, .info-row, .timeframe-detail, .outlook-detail-item) {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  box-shadow: var(--shadow-xs);
+}
+
+html[data-theme] :is(.detail-metrics span, .info-row span, .timeframe-detail span, .outlook-detail-item span) {
+  display: block;
+  color: var(--foreground-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] :is(.detail-metrics strong, .info-row strong, .timeframe-detail strong, .outlook-detail-item strong) {
+  display: block;
+  min-width: 0;
+  margin-block-start: 7px;
+  color: var(--foreground);
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] :is(
+  #detail-current-price,
+  #detail-expected-price,
+  #detail-target-one,
+  #detail-target-two,
+  #detail-stop-loss,
+  #detail-support,
+  #detail-resistance,
+  #detail-risk-reward,
+  #detail-expected-move,
+  .outlook-detail-item strong
+) {
+  font-family: var(--font-data) !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+html[data-theme] .detail-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  min-width: 0;
+}
+
+html[data-theme] .section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block-end: 16px;
+}
+
+html[data-theme] .section-head h2 {
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  line-height: 1.35;
+}
+
+html[data-theme] :is(.info-list, .sharia-detail-box, .outlook-detail-list) {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+html[data-theme] .sharia-status-detail {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+}
+
+html[data-theme] .sharia-status-detail strong,
+html[data-theme] .sharia-status-detail span {
+  display: block;
+}
+
+html[data-theme] .sharia-status-detail strong {
+  color: var(--foreground);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+html[data-theme] .sharia-status-detail span {
+  margin-block-start: 8px;
+  color: var(--foreground-secondary);
+  line-height: 1.7;
+}
+
+html[data-theme] .sharia-status-detail.buy {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border)) !important;
+  background: var(--success-soft) !important;
+}
+
+html[data-theme] .sharia-status-detail.sell {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border)) !important;
+  background: var(--danger-soft) !important;
+}
+
+html[data-theme] .sharia-status-detail.hold {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+}
+
+html[data-theme] .detail-timeframes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+html[data-theme] .timeframe-detail {
+  display: grid;
+  gap: 10px;
+}
+
+html[data-theme] .timeframe-detail.buy {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border)) !important;
+  background: var(--success-soft) !important;
+}
+
+html[data-theme] .timeframe-detail.sell {
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border)) !important;
+  background: var(--danger-soft) !important;
+}
+
+html[data-theme] .timeframe-detail.hold {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: var(--warning-soft);
+}
+
+html[data-theme] .outlook-detail-item {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.65fr) minmax(120px, 1fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: 10px;
+}
+
+html[data-theme] .outlook-detail-item em {
+  min-width: 0;
+  color: var(--foreground-secondary);
+  font-style: normal;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme] .detail-sparkline {
+  display: block;
+  width: 100%;
+  height: 260px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+}
+
+html[data-theme] .reasons {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  color: var(--foreground-secondary);
+  line-height: 1.8;
+}
+
+html[data-theme] .reasons li + li {
+  margin-block-start: 6px;
+}
+
+html[data-theme] .detail-reasons {
+  margin-block-start: 0;
+}
+
+html[data-theme] .empty {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 88px;
+  padding: 20px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
+  line-height: 1.7;
+  text-align: center;
+}
+
+html[data-theme] .detail-shell > .site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
+  box-shadow: var(--shadow-xs);
+  font-size: 0.85rem;
+}
+
+html[data-theme] .detail-shell > .site-footer strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  html[data-theme] .detail-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  html[data-theme] .detail-hero,
+  html[data-theme] .detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-theme] .detail-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme] .detail-shell {
+    gap: 12px;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  html[data-theme] .detail-shell > .topbar,
+  html[data-theme] .decision-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-theme] .detail-shell > .topbar {
+    display: grid;
+    gap: 14px;
+  }
+
+  html[data-theme] .top-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  html[data-theme] .top-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  html[data-theme] .decision-badge {
+    width: 100%;
+    min-width: 0;
+  }
+
+  html[data-theme] .outlook-detail-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-theme] :is(.decision-panel, .detail-hero, .detail-panel) {
+    padding: 16px;
+  }
+
+  html[data-theme] .detail-sparkline {
+    height: 220px;
+  }
+
+  html[data-theme] .detail-shell > .site-footer {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  html[data-theme] .detail-metrics,
+  html[data-theme] .top-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] .market-bg {
+    display: none;
+  }
+}
+
+@media print {
+  html[data-theme] body {
+    background: var(--surface) !important;
+  }
+
+  html[data-theme] .market-bg,
+  html[data-theme] .top-actions {
+    display: none !important;
+  }
+
+  html[data-theme] .detail-shell {
+    width: 100%;
+    min-height: auto;
+    padding: 0;
+  }
+
+  html[data-theme] :is(.detail-shell > .topbar, .decision-panel, .detail-hero, .detail-panel, .detail-shell > .site-footer) {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

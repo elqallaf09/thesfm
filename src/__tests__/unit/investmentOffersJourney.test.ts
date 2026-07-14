@@ -111,12 +111,16 @@ describe('Investor Experience journey (phase 2.9)', () => {
     expect(tabsMaterials).toContain('levelLabels[severity] ?? severity');
   });
 
-  it('keeps the workspace styles RTL-safe and dark-mode aware', () => {
+  it('keeps the workspace styles RTL-safe and theme-token aware', () => {
     expect(moduleCss).not.toMatch(/(?:^|[;{\s])(?:padding|margin)-(?:left|right)\s*:/);
     expect(moduleCss).not.toMatch(/text-align\s*:\s*(left|right)\b/);
-    expect(moduleCss).toContain(':global(.dark)');
+    expect(moduleCss).not.toContain(':global(.dark)');
+    expect(moduleCss).toContain('var(--surface)');
+    expect(moduleCss).toContain('var(--foreground)');
     expect(moduleCss).toContain('min-block-size: 44px');
-    expect(viewerCss).toContain(':global(.dark)');
+    expect(viewerCss).not.toContain(':global(.dark)');
+    expect(viewerCss).toContain('var(--surface)');
+    expect(viewerCss).toContain('var(--foreground)');
     expect(viewerCss).toContain('min-block-size: 44px');
   });
 });

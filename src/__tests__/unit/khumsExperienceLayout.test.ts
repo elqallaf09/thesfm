@@ -95,11 +95,10 @@ describe('Phase 2.8 Khums experience', () => {
     }
   });
 
-  it('uses only a route-scoped Islamic-finance palette layer', () => {
-    expect(khumsPage).toContain('--khums-deep-green:#123F35');
-    expect(khumsPage).toContain('--khums-emerald:#087A5F');
-    expect(khumsPage).toContain('--khums-gold:#C8993D');
-    expect(khumsPage).toContain('--khums-warm-white:#FCFAF5');
-    expect(khumsPage).toContain('.dark .khums-page');
+  it('uses the centralized semantic visual system for Islamic finance', () => {
+    expect(khumsPage).not.toMatch(/#[0-9a-f]{3,8}\b|--khums-|(?:^|\s)\.dark\s+\.khums-page/i);
+    expect(khumsPage).toContain('background:var(--hero-gradient)');
+    expect(khumsPage).toContain('color:var(--foreground)');
+    expect(khumsPage).toContain('font-family:var(--font-data)');
   });
 });

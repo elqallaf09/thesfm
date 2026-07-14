@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Bot, Coins, ClipboardList, FileText, Globe2, Pencil, Plus, Target } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import {
   ProjectKpisTab, buildProjectKpiSummary, emptyProjectKpiSummary, type ProjectKpiSummary,
@@ -681,7 +680,6 @@ export default function ProjectWorkspacePage() {
   if (loading || loadingProject) {
     return (
       <div className="project-workspace" dir={dir}>
-        <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
           <div className="state-card">{tr.workspace}</div>
         </DashboardPageShell>
@@ -692,7 +690,6 @@ export default function ProjectWorkspacePage() {
   if (!user) {
     return (
       <div className="project-workspace" dir={dir}>
-        <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
           <EmptyState title={tr.signIn} button={tr.back} onClick={() => router.push('/projects')} />
         </DashboardPageShell>
@@ -703,7 +700,6 @@ export default function ProjectWorkspacePage() {
   if (!project) {
     return (
       <div className="project-workspace" dir={dir}>
-        <Sidebar />
         <DashboardPageShell contentClassName="workspace-content">
           <EmptyState title={tr.notFound} button={tr.back} onClick={() => router.push('/projects')} />
         </DashboardPageShell>
@@ -715,7 +711,6 @@ export default function ProjectWorkspacePage() {
   // ── Main render ───────────────────────────────────────────────────────
   return (
     <div className="project-workspace" dir={dir}>
-      <Sidebar />
       <DashboardPageShell contentClassName="workspace-content">
         <section className="workspace-hero">
           <div className="hero-copy">

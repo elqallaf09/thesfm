@@ -26,8 +26,8 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4" dir={dir}>
-      <div className="text-2xl font-semibold text-red-500">{t('error_generic_title')}</div>
+    <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-background p-4 text-foreground" dir={dir}>
+      <div className="text-2xl font-semibold text-danger" role="alert">{t('error_generic_title')}</div>
       <Button
         onClick={() => {
           if (window.parent && window.parent !== window) {

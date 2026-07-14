@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
@@ -75,6 +75,17 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
   const { t, dir } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
   const [dynamicResults, setDynamicResults] = useState<CommandResult[]>([]);
+  const focusOriginRef = useRef<HTMLElement | null>(null);
+
+  const changeOpen = useCallback((nextOpen: boolean) => {
+    if (nextOpen && typeof document !== 'undefined') {
+      focusOriginRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    setOpen(nextOpen);
+    if (!nextOpen && typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => focusOriginRef.current?.focus());
+    }
+  }, []);
 
   const staticResults = useMemo(() => pageResults([...flattenNavigationItems(), ...SUPPORT_LINKS], t), [t]);
 
@@ -166,17 +177,17 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        setOpen(value => !value);
+        changeOpen(!open);
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = () => changeOpen(true);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('sfm:open-command-menu', onOpen);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('sfm:open-command-menu', onOpen);
     };
-  }, []);
+  }, [changeOpen, open]);
 
   useEffect(() => {
     if (open) void loadUserResults();
@@ -195,7 +206,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
   }, [dynamicResults, staticResults]);
 
   const openResult = (item: CommandResult) => {
-    setOpen(false);
+    changeOpen(false);
     if (item.external) {
       window.open(item.href, '_blank', 'noopener,noreferrer');
       return;
@@ -225,7 +236,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={changeOpen}>
       <div className="sfm-command-dialog" dir={dir}>
         <div className="sfm-command-heading">
           <Sparkles size={18} aria-hidden="true" />
@@ -247,63 +258,61 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
           z-index: 10000;
         }
         .sfm-command-dialog {
-          font-family: Tajawal, Arial, sans-serif;
-          background:
-            radial-gradient(circle at 10% 0%, rgba(167, 243, 240, .22), transparent 32%),
-            linear-gradient(180deg, #FFFFFF, #F8FBFF);
-          color: var(--sfm-primary-dark);
+          font-family: var(--font-ui);
+          background: var(--surface-elevated);
+          color: var(--foreground);
         }
         .sfm-command-heading {
           display: flex;
           align-items: center;
           gap: 8px;
           padding: 14px 16px 2px;
-          color: var(--sfm-primary-dark);
-          font-weight: 950;
+          color: var(--foreground);
+          font-weight: 600;
         }
         .sfm-command-heading svg,
         .sfm-command-icon {
-          color: var(--sfm-primary);
+          color: var(--primary);
         }
         .sfm-command-dialog [cmdk-input-wrapper] {
-          border-bottom-color: rgba(29, 140, 255, .14);
+          border-bottom-color: var(--border);
         }
         .sfm-command-dialog [cmdk-input] {
-          color: var(--sfm-primary-dark);
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 850;
+          color: var(--foreground);
+          font-family: var(--font-ui);
+          font-weight: 500;
         }
         .sfm-command-dialog [cmdk-list] {
           max-height: min(62vh, 520px);
           padding: 8px;
         }
         .sfm-command-dialog [cmdk-group-heading] {
-          color: var(--sfm-muted);
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 950;
+          color: var(--foreground-muted);
+          font-family: var(--font-ui);
+          font-weight: 500;
           padding: 10px 8px 6px;
         }
         .sfm-command-dialog [cmdk-item] {
           border: 1px solid transparent;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           padding: 10px;
+          min-height: 44px;
           margin: 2px 0;
           cursor: pointer;
           transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
         }
         .sfm-command-dialog [cmdk-item][data-selected="true"] {
-          background: rgba(29, 140, 255, .10);
-          border-color: rgba(24, 212, 212, .26);
-          box-shadow: 0 8px 22px rgba(3, 18, 37, .08);
-          transform: translateY(-1px);
+          background: var(--primary-soft);
+          border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+          box-shadow: var(--active-indicator-shadow);
         }
         .sfm-command-icon {
           width: 34px;
           height: 34px;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           display: grid;
           place-items: center;
-          background: rgba(29, 140, 255, .10);
+          background: var(--primary-soft);
           flex: 0 0 34px;
         }
         .sfm-command-copy {
@@ -313,26 +322,34 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
           flex: 1;
         }
         .sfm-command-copy strong {
-          color: var(--sfm-primary-dark);
+          color: var(--foreground);
           font-size: 13.5px;
-          font-weight: 950;
+          font-weight: 600;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
         .sfm-command-copy small {
-          color: var(--sfm-muted);
+          color: var(--foreground-secondary);
           font-size: 11.5px;
-          font-weight: 850;
+          font-weight: 400;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
         .sfm-command-dialog [cmdk-item] span[cmdk-shortcut] {
-          color: var(--sfm-primary);
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 950;
+          color: var(--primary);
+          font-family: var(--font-ui);
+          font-weight: 500;
           letter-spacing: 0;
+        }
+        .sfm-command-dialog :is([cmdk-input],[cmdk-item]):focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          box-shadow: var(--focus-shadow);
+        }
+        @media(prefers-reduced-motion:reduce) {
+          .sfm-command-dialog [cmdk-item] { transition: none; }
         }
       `}</style>
     </CommandDialog>

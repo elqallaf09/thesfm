@@ -43,6 +43,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -2633,11 +2634,6 @@ export function EnergyNewsPage() {
   const [newsPeriod, setNewsPeriod] = useState<TimeFilter>(initialUrlState.newsPeriod);
   const [newsSort, setNewsSort] = useState<NewsSort>(initialUrlState.newsSort);
 
-  useEffect(() => {
-    document.body.classList.add('energy-route-active');
-    return () => document.body.classList.remove('energy-route-active');
-  }, []);
-
   const setActiveTab = useCallback((tab: TabId) => {
     setActiveTabState(tab);
     updateUrl({ tab }, 'push');
@@ -2897,7 +2893,7 @@ export function EnergyNewsPage() {
 
   return (
     <NewsPageShell category="energy" className="energyShell" dir={dir} wide>
-      <main className="energyWorkspace" dir={dir}>
+      <WorkspacePageContainer as="main" variant="wide" className="energyWorkspace" dir={dir}>
         <div className="energyContainer">
           <EnergyCenterHeader
             text={text}
@@ -2923,7 +2919,7 @@ export function EnergyNewsPage() {
             </div>
           </section>
         </div>
-      </main>
+      </WorkspacePageContainer>
 
 
     </NewsPageShell>

@@ -41,11 +41,66 @@ export default function TraderAccessGate({ reason }: { reason: GateReason }) {
 }
 
 const gateStyles = `
-  .trader-gate { min-height:100vh;display:grid;place-items:center;padding:24px;color:#f8fafc;background:radial-gradient(circle at 18% 12%,rgba(34,211,238,.14),transparent 34%),radial-gradient(circle at 82% 18%,rgba(20,184,166,.12),transparent 30%),linear-gradient(135deg,#06111F,#0A1728 52%,#06111F) }
-  .trader-gate-card { width:min(620px,100%);border:1px solid #24486F;border-radius:var(--r-2xl);padding:34px;background:linear-gradient(180deg,rgba(15,34,56,.96),rgba(10,23,40,.94));box-shadow:0 24px 64px rgba(0,0,0,.34);text-align:start }
-  .trader-gate-eyebrow { display:inline-flex;margin-bottom:14px;color:#22D3EE;font-size:12px;font-weight:900;letter-spacing:.08em }
-  .trader-gate-card h1 { margin:0 0 12px;font-size:clamp(28px,4vw,44px);line-height:1.15 }
-  .trader-gate-card p { margin:0;color:#a9b6c8;font-size:16px;line-height:1.9 }
+  .trader-gate {
+    min-height:calc(100dvh - var(--global-header-height) - var(--workspace-page-padding-block) - var(--workspace-page-padding-block));
+    display:grid;
+    place-items:center;
+    padding:24px;
+    color:var(--foreground);
+    background:var(--background);
+  }
+  .trader-gate-card {
+    width:min(620px,100%);
+    border:1px solid var(--border);
+    border-radius:var(--radius-panel,var(--radius-card));
+    padding:clamp(24px,4vw,34px);
+    background:var(--surface-elevated);
+    box-shadow:var(--shadow-card);
+    text-align:start;
+  }
+  .trader-gate-eyebrow {
+    display:inline-flex;
+    margin-bottom:14px;
+    color:var(--info);
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.04em;
+  }
+  .trader-gate-card h1 {
+    margin:0 0 12px;
+    color:var(--foreground);
+    font-size:clamp(28px,4vw,40px);
+    line-height:1.2;
+    font-weight:700;
+  }
+  .trader-gate-card p {
+    margin:0;
+    color:var(--foreground-secondary);
+    font-size:16px;
+    line-height:1.8;
+  }
   .trader-gate-actions { display:flex;flex-wrap:wrap;gap:12px;margin-top:26px }
-  .trader-gate-actions a { border:1px solid rgba(45,212,191,.35);border-radius:999px;padding:10px 16px;color:#f8fafc;text-decoration:none;font-weight:900;background:rgba(59,130,246,.16) }
+  .trader-gate-actions a {
+    min-height:44px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-control,var(--radius-control));
+    padding:8px 16px;
+    color:var(--foreground);
+    text-decoration:none;
+    font-weight:600;
+    background:var(--surface);
+    transition:background-color var(--duration-fast) ease-out,border-color var(--duration-fast) ease-out,color var(--duration-fast) ease-out;
+  }
+  .trader-gate-actions a:first-child {
+    border-color:var(--primary);
+    background:var(--primary);
+    color:var(--primary-foreground);
+  }
+  .trader-gate-actions a:hover { border-color:color-mix(in srgb,var(--primary) 36%,var(--border));background:var(--surface-hover);color:var(--primary-hover) }
+  .trader-gate-actions a:first-child:hover { border-color:var(--primary-hover);background:var(--primary-hover);color:var(--primary-foreground) }
+  .trader-gate-actions a:focus-visible { outline:2px solid var(--focus-ring);outline-offset:2px }
+  @media (max-width:520px) { .trader-gate{padding:16px}.trader-gate-actions a{width:100%} }
 `;

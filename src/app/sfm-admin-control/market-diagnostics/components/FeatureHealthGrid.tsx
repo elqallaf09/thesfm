@@ -23,14 +23,14 @@ export function FeatureHealthGrid({ rows }: { rows: FeatureHealthRow[] }) {
       })}
       <style jsx global>{`
         .ops-feature-health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .ops-feature-health-cell { display: grid; gap: 6px; border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: var(--sfm-card); padding: 12px; }
+        .ops-feature-health-cell { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; }
         .ops-feature-health-icon { display: inline-flex; }
-        .ops-feature-health-cell.tone-success .ops-feature-health-icon { color: var(--green); }
-        .ops-feature-health-cell.tone-warning .ops-feature-health-icon { color: var(--amber); }
-        .ops-feature-health-cell.tone-danger .ops-feature-health-icon { color: var(--red); }
-        .ops-feature-health-cell.tone-info .ops-feature-health-icon { color: var(--blue); }
-        .ops-feature-health-cell.tone-muted .ops-feature-health-icon { color: var(--sfm-muted); }
-        .ops-feature-health-cell strong { color: var(--sfm-heading); font-size: 12.5px; font-weight: 850; }
+        .ops-feature-health-cell.tone-success .ops-feature-health-icon { color: var(--success); }
+        .ops-feature-health-cell.tone-warning .ops-feature-health-icon { color: var(--warning); }
+        .ops-feature-health-cell.tone-danger .ops-feature-health-icon { color: var(--danger); }
+        .ops-feature-health-cell.tone-info .ops-feature-health-icon { color: var(--info); }
+        .ops-feature-health-cell.tone-muted .ops-feature-health-icon { color: var(--foreground-muted); }
+        .ops-feature-health-cell strong { color: var(--foreground); font-size: 12.5px; font-weight: 600; }
       `}</style>
     </div>
   );

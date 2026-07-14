@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { ShariaResearchPage } from '@/components/shariah-stocks/ShariaResearchPage';
@@ -1211,16 +1212,16 @@ export function ShariahStocksNewsPage() {
   if (!hydrated) {
     return (
       <NewsPageShell category="sharia" className={styles.page} dir={dir} wide>
-        <main id="main-content" className={styles.main}>
+        <WorkspacePageContainer as="main" variant="wide" className={styles.main}>
           <div className={styles.container}><div className={styles.hydrationSkeleton} aria-hidden="true"><span /><span /><span /></div></div>
-        </main>
+        </WorkspacePageContainer>
       </NewsPageShell>
     );
   }
 
   return (
     <NewsPageShell category="sharia" className={styles.page} dir={dir} wide>
-      <main id="main-content" className={styles.main}>
+      <WorkspacePageContainer as="main" variant="wide" className={styles.main}>
         <div className={styles.container}>
           {activeTab !== 'research' ? <>
             <ShariaStocksHeader
@@ -1396,7 +1397,7 @@ export function ShariahStocksNewsPage() {
             </div>
           </footer> : null}
         </div>
-      </main>
+      </WorkspacePageContainer>
 
       <ScreeningDetailsDrawer
         c={c}

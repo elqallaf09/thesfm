@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
+import { STATIC_EMAIL_VISUAL_STYLES } from '@/styles/static-tokens';
 import {
   COMPANY_LISTING_SELECT_COLUMNS,
   PUBLIC_COMPANY_LISTING_SELECT_COLUMNS,
@@ -140,21 +141,21 @@ async function notifyCompanyReviewRequest(request: NextRequest, listing: Company
   ].join('\n');
 
   const html = `
-    <div dir="rtl" style="font-family:Arial,Tahoma,sans-serif;background:#f4fbff;padding:24px;color:#0b1b34">
-      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #cfeefa;border-radius:18px;padding:24px">
-        <p style="margin:0 0 8px;color:#0b9ead;font-weight:700">THE SFM</p>
+    <div dir="rtl" style="${STATIC_EMAIL_VISUAL_STYLES.canvas}">
+      <div style="${STATIC_EMAIL_VISUAL_STYLES.panel};max-width:620px;margin:0 auto">
+        <p style="${STATIC_EMAIL_VISUAL_STYLES.brand};margin:0 0 8px">THE SFM</p>
         <h1 style="margin:0 0 14px;font-size:24px">طلب إدراج شركة جديد</h1>
         <p style="margin:0 0 20px;line-height:1.8">يوجد شركة تريد إضافة بياناتها إلى دليل الشركات. الرجاء مراجعة الطلب من لوحة الأدمن.</p>
         <table style="width:100%;border-collapse:collapse;margin:0 0 22px">
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">اسم الشركة</td><td style="padding:8px;border-bottom:1px solid #e6f4f8;font-weight:700">${escapeHtml(listing.company_name)}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">التصنيف</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.category)}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الدولة / المدينة</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.country || 'غير محدد')} - ${escapeHtml(listing.city || 'غير محدد')}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">البريد</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.email || submitterEmail || 'غير محدد')}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الهاتف</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.phone || 'غير محدد')}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #e6f4f8;color:#64748b">الموقع</td><td style="padding:8px;border-bottom:1px solid #e6f4f8">${escapeHtml(listing.website_url || 'غير محدد')}</td></tr>
-          <tr><td style="padding:8px;color:#64748b">وقت الإرسال</td><td style="padding:8px">${escapeHtml(submittedAt)}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">اسم الشركة</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px;font-weight:700">${escapeHtml(listing.company_name)}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">التصنيف</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px">${escapeHtml(listing.category)}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">الدولة / المدينة</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px">${escapeHtml(listing.country || 'غير محدد')} - ${escapeHtml(listing.city || 'غير محدد')}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">البريد</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px">${escapeHtml(listing.email || submitterEmail || 'غير محدد')}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">الهاتف</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px">${escapeHtml(listing.phone || 'غير محدد')}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:8px">الموقع</td><td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:8px">${escapeHtml(listing.website_url || 'غير محدد')}</td></tr>
+          <tr><td style="${STATIC_EMAIL_VISUAL_STYLES.supportingText};padding:8px">وقت الإرسال</td><td style="padding:8px">${escapeHtml(submittedAt)}</td></tr>
         </table>
-        <a href="${escapeHtml(reviewUrl)}" style="display:inline-block;background:linear-gradient(135deg,#22c7d8,#1689f2);color:#ffffff;text-decoration:none;font-weight:700;border-radius:999px;padding:13px 22px">مراجعة الطلب</a>
+        <a href="${escapeHtml(reviewUrl)}" style="${STATIC_EMAIL_VISUAL_STYLES.primaryAction};padding:13px 22px">مراجعة الطلب</a>
       </div>
     </div>
   `;

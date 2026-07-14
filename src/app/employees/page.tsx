@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Edit3, FileDown, FileText, Grid2X2, Loader2, Plus, Search, Table2, Trash2, UsersRound } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -414,7 +413,6 @@ export default function EmployeesPage() {
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={text.employees}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -428,7 +426,6 @@ export default function EmployeesPage() {
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.employees} contentClassName="business-records-content">
         <div className="business-topbar">
           <LanguageSwitcher />
@@ -632,66 +629,65 @@ export default function EmployeesPage() {
 }
 
 const employeeStyles = `
-  .business-ops-page{min-height:100vh;background:var(--sfm-background);color:var(--sfm-foreground)}
+  .business-ops-page{min-height:100vh;background:var(--background);color:var(--foreground)}
   .business-records-content{display:grid;gap:18px}
   .business-topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px}
-  .business-back-link{width:max-content;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(24,212,212,.28);background:rgba(29,140,255,.08);color:var(--sfm-primary);border-radius:var(--r-lg);padding:0 16px;text-decoration:none;font-size:.92rem;font-weight:950;box-shadow:0 12px 28px rgba(29,140,255,.08);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease}
+  .business-back-link{width:max-content;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--border);background:var(--primary-soft);color:var(--primary);border-radius:var(--radius-card);padding:0 16px;text-decoration:none;font-size:.92rem;font-weight:600;box-shadow:var(--shadow-xs);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease}
   .business-back-link svg{flex-shrink:0}
   [dir="rtl"] .business-back-link svg{transform:scaleX(-1)}
-  .business-back-link:hover,.business-back-link:focus-visible{transform:translateY(-1px);border-color:rgba(24,212,212,.46);background:rgba(24,212,212,.14);color:var(--sfm-primary-dark);box-shadow:0 16px 34px rgba(29,140,255,.14);outline:2px solid rgba(24,212,212,.20);outline-offset:2px}
-  .business-back-link:active{transform:translateY(0);box-shadow:0 8px 18px rgba(29,140,255,.10)}
-  .business-loading{min-height:60vh;display:grid;place-items:center;align-content:center;gap:10px;color:var(--sfm-muted);font-weight:800}
-  .business-spin{color:var(--sfm-primary);animation:business-spin .9s linear infinite}@keyframes business-spin{to{transform:rotate(360deg)}}
-  .business-alert,.business-form-error{border:1px solid rgba(239,68,68,.24);background:rgba(239,68,68,.10);color:#B91C1C;border-radius:var(--r-lg);padding:12px 14px;font-weight:850}
-  .business-notice{border:1px solid rgba(16,185,129,.24);background:rgba(16,185,129,.10);color:#047857;border-radius:var(--r-lg);padding:12px 14px;font-weight:850}
+  .business-back-link:hover,.business-back-link:focus-visible{transform:translateY(-1px);border-color:var(--primary);background:var(--surface-hover);color:var(--primary-hover);box-shadow:var(--shadow-sm);outline:2px solid color-mix(in srgb,var(--focus-ring) 32%,transparent);outline-offset:2px}
+  .business-back-link:active{transform:translateY(0);box-shadow:var(--shadow-xs)}
+  .business-loading{min-height:60vh;display:grid;place-items:center;align-content:center;gap:10px;color:var(--foreground-muted);font-weight:500}
+  .business-spin{color:var(--primary);animation:business-spin .9s linear infinite}@keyframes business-spin{to{transform:rotate(360deg)}}
+  .business-alert,.business-form-error{border:1px solid color-mix(in srgb,var(--danger) 28%,transparent);background:var(--danger-soft);color:var(--danger);border-radius:var(--radius-card);padding:12px 14px;font-weight:500}
+  .business-notice{border:1px solid color-mix(in srgb,var(--success) 28%,transparent);background:var(--success-soft);color:var(--success);border-radius:var(--radius-card);padding:12px 14px;font-weight:500}
   .business-hero-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
-  .business-primary-btn,.business-ghost-btn{min-height:42px;border-radius:var(--r-md);padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:950;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
-  .business-primary-btn{border:1px solid rgba(167,243,240,.34);background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff;box-shadow:0 14px 30px rgba(29,140,255,.18)}
-  .business-ghost-btn{border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-primary)}
-  .business-primary-btn:hover,.business-primary-btn:focus-visible,.business-ghost-btn:hover,.business-ghost-btn:focus-visible{transform:translateY(-1px);outline:2px solid rgba(24,212,212,.22);outline-offset:2px}
+  .business-primary-btn,.business-ghost-btn{min-height:42px;border-radius:var(--radius-control);padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:600;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+  .business-primary-btn{border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-sm)}
+  .business-ghost-btn{border:1px solid var(--border);background:var(--surface);color:var(--primary)}
+  .business-primary-btn:hover,.business-primary-btn:focus-visible,.business-ghost-btn:hover,.business-ghost-btn:focus-visible{transform:translateY(-1px);outline:2px solid color-mix(in srgb,var(--focus-ring) 32%,transparent);outline-offset:2px}
   .business-primary-btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
   .business-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-  .business-stat-grid article,.business-form-card,.business-table-card,.employee-card{border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);border-radius:var(--r-2xl);box-shadow:0 16px 38px rgba(3,18,37,.07)}
+  .business-stat-grid article,.business-form-card,.business-table-card,.employee-card{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);box-shadow:var(--shadow-card)}
   .business-stat-grid article{padding:16px;min-width:0}
-  .business-stat-grid span{display:block;color:var(--sfm-muted);font-size:.88rem;font-weight:850}
-  .business-stat-grid strong{display:block;margin-top:8px;color:var(--sfm-foreground);font-size:1.25rem;overflow-wrap:anywhere}
+  .business-stat-grid span{display:block;color:var(--foreground-muted);font-size:.88rem;font-weight:500}
+  .business-stat-grid strong{display:block;margin-top:8px;color:var(--foreground);font-family:var(--font-data);font-size:1.25rem;overflow-wrap:anywhere}
   .business-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,210px) minmax(160px,210px) auto;gap:12px;align-items:center}
-  .business-search{min-height:48px;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);border-radius:var(--r-lg);display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--sfm-muted)}
-  .business-search input,.business-toolbar select,.business-form-grid input,.business-form-grid select,.business-form-grid textarea{width:100%;min-width:0;border:1px solid rgba(29,140,255,.18);background:var(--sfm-card);color:var(--sfm-foreground);border-radius:var(--r-md);padding:11px 12px;font-family:inherit;font-weight:800;outline:none}
+  .business-search{min-height:48px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-card);display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--foreground-muted)}
+  .business-search input,.business-toolbar select,.business-form-grid input,.business-form-grid select,.business-form-grid textarea{width:100%;min-width:0;border:1px solid var(--border-strong);background:var(--control-background);color:var(--foreground);border-radius:var(--radius-control);padding:11px 12px;font-family:inherit;font-weight:500;outline:none}
   .business-search input{border:0;background:transparent;height:var(--control-h);padding:0}
-  .business-search input:focus,.business-toolbar select:focus,.business-form-grid input:focus,.business-form-grid select:focus,.business-form-grid textarea:focus{box-shadow:0 0 0 3px rgba(24,212,212,.16);border-color:var(--sfm-accent)}
-  .business-view-toggle{display:flex;gap:8px;padding:4px;border-radius:var(--r-lg);background:rgba(29,140,255,.08);border:1px solid rgba(29,140,255,.12)}
-  .business-view-toggle button{min-height:38px;border:0;border-radius:var(--r-md);background:transparent;color:var(--sfm-muted);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-family:inherit;font-weight:900;cursor:pointer;white-space:nowrap}
-  .business-view-toggle button.active{background:linear-gradient(135deg,var(--sfm-primary),var(--sfm-accent));color:#fff}
+  .business-search input:focus,.business-toolbar select:focus,.business-form-grid input:focus,.business-form-grid select:focus,.business-form-grid textarea:focus{box-shadow:var(--focus-shadow);border-color:var(--focus-ring)}
+  .business-view-toggle{display:flex;gap:8px;padding:4px;border-radius:var(--radius-card);background:var(--surface-muted);border:1px solid var(--border)}
+  .business-view-toggle button{min-height:38px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--foreground-muted);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-family:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+  .business-view-toggle button.active{background:var(--primary);color:var(--primary-foreground);font-weight:600}
   .business-form-card{padding:18px}
   .business-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-  .business-section-heading h2{margin:0;color:var(--sfm-foreground)}
+  .business-section-heading h2{margin:0;color:var(--foreground)}
   .business-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .business-form-grid label{display:grid;gap:7px;min-width:0}
-  .business-form-grid label span{color:var(--sfm-muted);font-weight:900}
+  .business-form-grid label span{color:var(--foreground-muted);font-weight:500}
   .business-full-field,.business-form-actions{grid-column:1 / -1}
   .business-form-grid textarea{resize:vertical;line-height:1.7}
   .business-form-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
   .employee-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:14px}
   .employee-card{padding:16px;display:grid;gap:14px}
   .employee-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-  .employee-card h2{margin:0;color:var(--sfm-foreground);font-size:1.08rem}.employee-card p{margin:6px 0 0;color:var(--sfm-muted);font-weight:800}
+  .employee-card h2{margin:0;color:var(--foreground);font-size:1.08rem}.employee-card p{margin:6px 0 0;color:var(--foreground-muted);font-weight:400}
   .employee-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
-  .employee-card dl div{padding:11px;border-radius:var(--r-md);background:var(--sfm-light-card);border:1px solid rgba(29,140,255,.10);min-width:0}
-  .employee-card dt{color:var(--sfm-muted);font-weight:900;font-size:.82rem}.employee-card dd{margin:5px 0 0;color:var(--sfm-foreground);font-weight:950;overflow-wrap:anywhere}
+  .employee-card dl div{padding:11px;border-radius:var(--radius-control);background:var(--surface-muted);border:1px solid var(--border);min-width:0}
+  .employee-card dt{color:var(--foreground-muted);font-weight:500;font-size:.82rem}.employee-card dd{margin:5px 0 0;color:var(--foreground);font-weight:600;overflow-wrap:anywhere}
   .business-table-card{padding:0;overflow:hidden}
   .business-table-wrap{overflow:auto;max-width:100%}
   table{width:100%;border-collapse:collapse;min-width:920px}
-  th,td{padding:14px 13px;text-align:start;border-bottom:1px solid rgba(29,140,255,.10);vertical-align:middle}
-  th{background:rgba(29,140,255,.08);color:var(--sfm-muted);font-size:.82rem;font-weight:950;position:sticky;top:0;z-index:1}
-  td{color:var(--sfm-foreground);font-weight:760}
-  .business-status{display:inline-flex;border-radius:999px;padding:5px 10px;font-size:.78rem;font-weight:950;background:rgba(16,185,129,.14);color:#047857;white-space:nowrap}
-  .status-on_leave{background:rgba(245,158,11,.16);color:#B45309}.status-inactive{background:rgba(239,68,68,.14);color:#B91C1C}
+  th,td{padding:14px 13px;text-align:start;border-bottom:1px solid var(--border);vertical-align:middle}
+  th{background:var(--surface-muted);color:var(--foreground-muted);font-size:.82rem;font-weight:600;position:sticky;top:0;z-index:1}
+  td{color:var(--foreground);font-weight:400}
+  .business-status{display:inline-flex;border-radius:var(--radius-pill);padding:5px 10px;font-size:.78rem;font-weight:600;background:var(--success-soft);color:var(--success);white-space:nowrap}
+  .status-on_leave{background:var(--warning-soft);color:var(--warning)}.status-inactive{background:var(--danger-soft);color:var(--danger)}
   .business-row-actions{display:flex;flex-wrap:wrap;gap:8px}
-  .business-row-actions button{border:1px solid rgba(29,140,255,.16);background:var(--sfm-card);color:var(--sfm-primary);border-radius:var(--r-md);min-height:34px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-weight:900;cursor:pointer}
-  .business-row-actions button.danger{color:#DC2626;border-color:rgba(239,68,68,.20)}
-  .business-row-actions button:focus-visible{outline:2px solid rgba(24,212,212,.22);outline-offset:2px}
-  .dark .business-alert,.dark .business-form-error{color:#FCA5A5}.dark .business-notice{color:#86EFAC}.dark .business-status{color:#86EFAC}.dark .status-on_leave{color:#FCD34D}.dark .status-inactive{color:#FCA5A5}
+  .business-row-actions button{border:1px solid var(--border);background:var(--surface);color:var(--primary);border-radius:var(--radius-control);min-height:34px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-weight:600;cursor:pointer}
+  .business-row-actions button.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .business-row-actions button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
   @media(max-width:980px){.business-toolbar{grid-template-columns:1fr 1fr}.business-view-toggle{grid-column:1 / -1}.business-view-toggle button{flex:1;justify-content:center}}
-  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-back-link{width:100%;min-height:46px}.business-toolbar,.business-form-grid,.employee-card dl{grid-template-columns:1fr}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:var(--r-xl)}table{min-width:780px}.employee-card-head{display:grid}}
+  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-back-link{width:100%;min-height:46px}.business-toolbar,.business-form-grid,.employee-card dl{grid-template-columns:1fr}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:var(--radius-card)}table{min-width:780px}.employee-card-head{display:grid}}
 `;

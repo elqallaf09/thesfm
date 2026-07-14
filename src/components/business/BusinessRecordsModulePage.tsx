@@ -3,7 +3,6 @@
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Edit3, FileDown, FileText, Loader2, Plus, ReceiptText, Search, Sparkles, Trash2, Truck, UploadCloud, UserRound, WalletCards, X } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
@@ -971,7 +970,6 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   if (authLoading || loading || roleLoading) {
     return (
       <div className="business-ops-page" dir={dir}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={config.title}>
           <div className="business-loading">
             <Loader2 className="business-spin" size={24} aria-hidden="true" />
@@ -985,7 +983,6 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
   return (
     <div className="business-ops-page" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={config.title} contentClassName="business-records-content">
         <div className="business-topbar">
           <LanguageSwitcher />
@@ -1327,9 +1324,11 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
 
 const businessRecordsModuleStyles = `
   .business-ops-page {
-    min-height: 100vh;
-    background: var(--sfm-background);
-    color: var(--sfm-foreground);
+    width: 100%;
+    min-width: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-ui);
   }
 
   .business-records-content {
@@ -1357,8 +1356,8 @@ const businessRecordsModuleStyles = `
     place-items: center;
     align-content: center;
     gap: 10px;
-    color: var(--sfm-muted);
-    font-weight: 800;
+    color: var(--foreground-muted);
+    font-weight: 500;
   }
 
   .business-spin {
@@ -1378,12 +1377,12 @@ const businessRecordsModuleStyles = `
   .business-form-head button {
     font-family: inherit;
     min-height: 42px;
-    border-radius: var(--r-md);
+    border-radius: var(--radius-control);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-weight: 950;
+    font-weight: 600;
     cursor: pointer;
     text-decoration: none;
     transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
@@ -1393,22 +1392,22 @@ const businessRecordsModuleStyles = `
   .business-ghost-btn,
   .business-empty-action,
   .business-form-head button {
-    border: 1px solid rgba(29, 140, 255, 0.18);
-    background: var(--sfm-card);
-    color: var(--sfm-primary);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--primary);
     padding: 0 14px;
   }
 
   .business-back-link {
     width: max-content;
     min-height: 44px;
-    border-color: rgba(24, 212, 212, 0.28);
-    background: rgba(29, 140, 255, 0.08);
-    color: var(--sfm-primary);
-    border-radius: var(--r-lg);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-radius: var(--radius-card);
     padding: 0 16px;
     font-size: 0.92rem;
-    box-shadow: 0 12px 28px rgba(29, 140, 255, 0.08);
+    box-shadow: var(--shadow-xs);
   }
 
   .business-back-link svg {
@@ -1421,10 +1420,10 @@ const businessRecordsModuleStyles = `
 
   .business-primary-btn {
     border: 0;
-    background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-    color: white;
+    background: var(--primary);
+    color: var(--primary-foreground);
     padding: 0 16px;
-    box-shadow: 0 16px 32px rgba(29, 140, 255, 0.18);
+    box-shadow: var(--shadow-sm);
   }
 
   .business-back-link:hover,
@@ -1436,42 +1435,43 @@ const businessRecordsModuleStyles = `
   .business-primary-btn:hover,
   .business-primary-btn:focus-visible {
     transform: translateY(-1px);
-    outline: 2px solid rgba(24, 212, 212, 0.22);
+    outline: 2px solid var(--focus-ring);
+    box-shadow: var(--focus-shadow);
     outline-offset: 2px;
   }
 
   .business-back-link:hover,
   .business-back-link:focus-visible {
-    border-color: rgba(24, 212, 212, 0.46);
-    background: rgba(24, 212, 212, 0.14);
-    color: var(--sfm-primary-dark);
-    box-shadow: 0 16px 34px rgba(29, 140, 255, 0.14);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--primary-hover);
+    box-shadow: var(--focus-shadow);
   }
 
   .business-back-link:active {
     transform: translateY(0);
-    box-shadow: 0 8px 18px rgba(29, 140, 255, 0.10);
+    box-shadow: var(--shadow-xs);
   }
 
   .business-alert,
   .business-notice,
   .business-form-error {
-    border-radius: var(--r-lg);
+    border-radius: var(--radius-card);
     padding: 12px 14px;
-    font-weight: 850;
+    font-weight: 500;
   }
 
   .business-alert,
   .business-form-error {
-    border: 1px solid rgba(239, 68, 68, 0.24);
-    background: rgba(239, 68, 68, 0.10);
-    color: #B91C1C;
+    border: 1px solid var(--danger);
+    background: var(--danger-soft);
+    color: var(--danger);
   }
 
   .business-notice {
-    border: 1px solid rgba(16, 185, 129, 0.24);
-    background: rgba(16, 185, 129, 0.10);
-    color: #047857;
+    border: 1px solid var(--success);
+    background: var(--success-soft);
+    color: var(--success);
   }
 
   .business-stat-grid {
@@ -1484,10 +1484,10 @@ const businessRecordsModuleStyles = `
   .business-record-card,
   .business-form-modal {
     min-width: 0;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    background: var(--sfm-card);
-    border-radius: var(--r-2xl);
-    box-shadow: 0 16px 38px rgba(3, 18, 37, 0.07);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-card);
   }
 
   .business-stat-grid article {
@@ -1498,16 +1498,17 @@ const businessRecordsModuleStyles = `
   .business-record-meta-grid span,
   .business-form-field span,
   .business-form-head span {
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
     font-size: 0.86rem;
-    font-weight: 850;
+    font-weight: 500;
   }
 
   .business-stat-grid strong,
   .business-record-meta-grid strong {
+    font-family: var(--font-data);
     display: block;
     margin-top: 7px;
-    color: var(--sfm-foreground);
+    color: var(--foreground);
     font-size: 1.08rem;
     overflow-wrap: anywhere;
   }
@@ -1517,23 +1518,23 @@ const businessRecordsModuleStyles = `
     gap: 12px;
     flex-wrap: wrap;
     align-items: center;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    background: var(--sfm-card);
-    border-radius: var(--r-2xl);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-panel);
     padding: 12px;
   }
 
   .business-search {
     flex: 1 1 260px;
     min-height: 46px;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: var(--r-lg);
-    background: var(--sfm-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface-muted);
     padding: 0 13px;
     display: inline-flex;
     align-items: center;
     gap: 9px;
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
   }
 
   .business-search input,
@@ -1544,13 +1545,13 @@ const businessRecordsModuleStyles = `
   .business-form-field select {
     width: 100%;
     min-width: 0;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: var(--r-md);
-    background: var(--sfm-surface);
-    color: var(--sfm-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-muted);
+    color: var(--foreground);
     padding: 11px 12px;
     font-family: inherit;
-    font-weight: 750;
+    font-weight: 500;
   }
 
   .business-search input {
@@ -1570,9 +1571,9 @@ const businessRecordsModuleStyles = `
     display: grid;
     gap: 5px;
     min-width: 160px;
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
     font-size: 0.78rem;
-    font-weight: 850;
+    font-weight: 500;
   }
 
   .business-form-field input:focus,
@@ -1581,8 +1582,9 @@ const businessRecordsModuleStyles = `
   .business-toolbar select:focus,
   .business-date-filter input:focus,
   .business-search:focus-within {
-    border-color: rgba(24, 212, 212, 0.45);
-    outline: 2px solid rgba(24, 212, 212, 0.18);
+    border-color: var(--focus-ring);
+    outline: 2px solid var(--focus-ring);
+    box-shadow: var(--focus-shadow);
     outline-offset: 2px;
   }
 
@@ -1607,29 +1609,29 @@ const businessRecordsModuleStyles = `
   .business-record-card h2,
   .business-form-head h2 {
     margin: 0;
-    color: var(--sfm-foreground);
+    color: var(--foreground);
     font-size: 1.05rem;
-    font-weight: 950;
+    font-weight: 600;
   }
 
   .business-record-card p {
     margin: 5px 0 0;
-    color: var(--sfm-muted);
-    font-weight: 760;
+    color: var(--foreground-muted);
+    font-weight: 400;
   }
 
   .business-record-actions button {
     width: 40px;
     min-height: 40px;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    background: var(--sfm-surface);
-    color: var(--sfm-primary);
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    color: var(--primary);
     padding: 0;
   }
 
   .business-record-actions button.danger {
-    color: #DC2626;
-    border-color: rgba(220, 38, 38, 0.20);
+    color: var(--danger);
+    border-color: var(--danger);
   }
 
   .business-record-meta-grid {
@@ -1640,9 +1642,9 @@ const businessRecordsModuleStyles = `
 
   .business-record-meta-grid div {
     min-width: 0;
-    border: 1px solid rgba(29, 140, 255, 0.12);
-    background: var(--sfm-surface);
-    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    border-radius: var(--radius-card);
     padding: 12px;
   }
 
@@ -1653,7 +1655,7 @@ const businessRecordsModuleStyles = `
     display: grid;
     place-items: center;
     padding: 18px;
-    background: rgba(2, 8, 23, 0.58);
+    background: var(--background-overlay);
     backdrop-filter: blur(10px);
   }
 
@@ -1673,7 +1675,7 @@ const businessRecordsModuleStyles = `
     align-items: flex-start;
     gap: 12px;
     padding: 20px 20px 14px;
-    border-bottom: 1px solid rgba(29, 140, 255, 0.12);
+    border-bottom: 1px solid var(--border);
   }
 
   .business-form-scroll {
@@ -1703,15 +1705,15 @@ const businessRecordsModuleStyles = `
     align-content: end;
     grid-template-columns: auto 1fr;
     align-items: center;
-    border: 1px solid rgba(29, 140, 255, 0.16);
-    border-radius: var(--r-md);
-    background: var(--sfm-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-muted);
     padding: 11px 12px;
   }
 
   .business-form-field.checkbox span {
     order: 2;
-    color: var(--sfm-foreground);
+    color: var(--foreground);
   }
 
   .business-form-field.checkbox input {
@@ -1729,18 +1731,16 @@ const businessRecordsModuleStyles = `
   .business-form-actions {
     justify-content: flex-end;
     padding: 14px 20px;
-    border-top: 1px solid rgba(29, 140, 255, 0.12);
-    background: color-mix(in srgb, var(--sfm-surface) 94%, transparent);
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-muted) 94%, transparent);
   }
 
   .business-ai-invoice-panel {
-    border: 1px solid rgba(29, 140, 255, 0.18);
-    background:
-      linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(45, 212, 191, 0.05)),
-      var(--sfm-surface);
-    border-radius: var(--r-xl);
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    border-radius: var(--radius-card);
     padding: 14px;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+    box-shadow: var(--shadow-card);
   }
 
   .business-ai-invoice-head,
@@ -1757,8 +1757,8 @@ const businessRecordsModuleStyles = `
   .business-ai-result-head h4 {
     margin: 3px 0 0;
     font-size: 1rem;
-    font-weight: 950;
-    color: var(--sfm-foreground);
+    font-weight: 600;
+    color: var(--foreground);
   }
 
   .business-ai-invoice-head span,
@@ -1768,7 +1768,7 @@ const businessRecordsModuleStyles = `
   .business-ai-result-grid em,
   .business-ai-invoice-head p,
   .business-ai-summary p {
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
   }
 
   .business-ai-invoice-head p,
@@ -1778,24 +1778,24 @@ const businessRecordsModuleStyles = `
   }
 
   .business-ai-invoice-toggle {
-    border: 1px solid rgba(29, 140, 255, 0.22);
-    background: rgba(14, 165, 233, 0.1);
-    color: var(--sfm-primary);
+    border: 1px solid var(--border);
+    background: var(--primary-soft);
+    color: var(--primary);
     min-height: 40px;
-    border-radius: var(--r-md);
+    border-radius: var(--radius-control);
     padding: 0 12px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-weight: 950;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
   }
 
   .business-ai-invoice-toggle:hover {
     transform: translateY(-1px);
-    border-color: rgba(29, 140, 255, 0.38);
-    background: rgba(14, 165, 233, 0.16);
+    border-color: var(--border);
+    background: var(--primary-soft);
   }
 
   .business-ai-invoice-body {
@@ -1807,9 +1807,9 @@ const businessRecordsModuleStyles = `
   .business-ai-upload-box {
     position: relative;
     min-height: 128px;
-    border: 1px dashed rgba(29, 140, 255, 0.34);
-    border-radius: var(--r-lg);
-    background: rgba(255, 255, 255, 0.68);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
     display: grid;
     place-items: center;
     align-content: center;
@@ -1828,27 +1828,27 @@ const businessRecordsModuleStyles = `
   }
 
   .business-ai-upload-box strong {
-    font-weight: 950;
-    color: var(--sfm-foreground);
+    font-weight: 600;
+    color: var(--foreground);
   }
 
   .business-ai-upload-box span,
   .business-ai-upload-box em {
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
     font-style: normal;
     font-size: 0.88rem;
   }
 
   .business-ai-upload-box em {
     margin-top: 3px;
-    color: var(--sfm-primary);
-    font-weight: 950;
+    color: var(--primary);
+    font-weight: 600;
   }
 
   .business-ai-file-row {
-    border: 1px solid rgba(29, 140, 255, 0.13);
-    background: var(--sfm-card);
-    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-control);
     padding: 10px 12px;
   }
 
@@ -1867,29 +1867,29 @@ const businessRecordsModuleStyles = `
 
   .business-ai-file-row button {
     border: 0;
-    background: rgba(239, 68, 68, 0.1);
-    color: #b91c1c;
+    background: var(--danger-soft);
+    color: var(--danger);
     min-height: 34px;
-    border-radius: var(--r-md);
+    border-radius: var(--radius-control);
     padding: 0 10px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-weight: 900;
+    font-weight: 600;
     cursor: pointer;
   }
 
   .business-ai-alert,
   .business-ai-note {
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    background: rgba(245, 158, 11, 0.1);
-    color: #92400e;
-    border-radius: var(--r-md);
+    border: 1px solid var(--warning);
+    background: var(--warning-soft);
+    color: var(--warning);
+    border-radius: var(--radius-control);
     padding: 10px 12px;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-weight: 850;
+    font-weight: 500;
   }
 
   .business-ai-note {
@@ -1902,19 +1902,20 @@ const businessRecordsModuleStyles = `
   }
 
   .business-ai-result-card {
-    border: 1px solid rgba(16, 185, 129, 0.22);
-    background: linear-gradient(180deg, rgba(240, 253, 250, 0.8), rgba(255, 255, 255, 0.9));
-    border-radius: var(--r-xl);
+    border: 1px solid var(--success);
+    background: var(--success-soft);
+    border-radius: var(--radius-card);
     padding: 14px;
     display: grid;
     gap: 12px;
   }
 
   .business-ai-result-head strong {
-    border-radius: 999px;
+    font-family: var(--font-data);
+    border-radius: var(--radius-pill);
     padding: 7px 10px;
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
+    background: var(--success-soft);
+    color: var(--success);
     font-size: 0.78rem;
     white-space: nowrap;
   }
@@ -1927,17 +1928,18 @@ const businessRecordsModuleStyles = `
 
   .business-ai-result-grid div {
     min-width: 0;
-    border: 1px solid rgba(29, 140, 255, 0.11);
-    background: rgba(255, 255, 255, 0.72);
-    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-control);
     padding: 10px;
     display: grid;
     gap: 3px;
   }
 
   .business-ai-result-grid strong {
+    font-family: var(--font-data);
     overflow-wrap: anywhere;
-    color: var(--sfm-foreground);
+    color: var(--foreground);
   }
 
   .business-ai-result-grid em {
@@ -1947,16 +1949,16 @@ const businessRecordsModuleStyles = `
 
   .business-ai-summary,
   .business-ai-line-items {
-    border: 1px solid rgba(29, 140, 255, 0.11);
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-control);
     padding: 11px 12px;
   }
 
   .business-ai-summary ul {
     margin: 8px 0 0;
     padding-inline-start: 18px;
-    color: var(--sfm-muted);
+    color: var(--foreground-muted);
     line-height: 1.55;
   }
 
@@ -1973,16 +1975,26 @@ const businessRecordsModuleStyles = `
 
   .business-ai-line-items span {
     max-width: 100%;
-    border: 1px solid rgba(29, 140, 255, 0.13);
-    background: rgba(14, 165, 233, 0.08);
-    color: var(--sfm-foreground);
-    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--primary-soft);
+    color: var(--foreground);
+    border-radius: var(--radius-pill);
     padding: 6px 9px;
-    font-weight: 850;
+    font-weight: 500;
     font-size: 0.82rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .business-record-actions button:focus-visible,
+  .business-form-head button:focus-visible,
+  .business-ai-invoice-toggle:focus-visible,
+  .business-ai-upload-box:focus-within,
+  .business-ai-file-row button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: var(--focus-shadow);
   }
 
   @media (max-width: 720px) {
@@ -2012,7 +2024,7 @@ const businessRecordsModuleStyles = `
     .business-form-modal {
       width: 100%;
       max-height: 92vh;
-      border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+      border-radius: var(--radius-panel) var(--radius-panel) 0 0;
     }
 
     .business-form-head,

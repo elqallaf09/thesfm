@@ -68,12 +68,12 @@ export function PerformanceTab() {
 
       <style jsx global>{`
         .ops-performance-process { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-        .ops-performance-process article { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 14px); background: linear-gradient(180deg, var(--sfm-card-elevated), var(--sfm-card)); padding: 12px; display: grid; gap: 4px; }
-        .ops-performance-process strong { color: var(--sfm-heading); font-size: 16px; font-weight: 900; }
-        .ops-performance-process span { color: var(--sfm-muted); font-size: 11.5px; font-weight: 750; }
-        .ops-performance-process em { color: var(--sfm-muted); font-size: 10px; font-style: normal; opacity: .8; }
+        .ops-performance-process article { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 12px; display: grid; gap: 4px; }
+        .ops-performance-process strong { color: var(--foreground); font: 600 16px var(--font-data); }
+        .ops-performance-process span { color: var(--foreground-muted); font-size: 11.5px; font-weight: 750; }
+        .ops-performance-process em { color: var(--foreground-muted); font-size: 10px; font-style: normal; opacity: .8; }
         .ops-performance-slowest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--sfm-border); border-radius: var(--r-sm); padding: 8px 12px; background: var(--sfm-light-card); font-size: 12.5px; }
+        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; background: var(--surface-muted); font-size: 12.5px; }
         .ops-performance-not-instrumented { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
       `}</style>
     </section>

@@ -19,17 +19,26 @@ export default function GuestPage() {
   }, [continueAsGuest, session, t]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" dir={dir}>
-      <div className="text-center">
+    <main className="guest-page" dir={dir} aria-live="polite">
+      <div className="guest-status">
         {!error ? (
           <>
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-[var(--sfm-soft-cyan)] border-t-transparent mx-auto mb-4" />
-            <p className="text-[var(--sfm-muted)]">{t('guest_loading')}</p>
+            <div className="guest-spinner" aria-hidden="true" />
+            <p>{t('guest_loading')}</p>
           </>
         ) : (
-          <p className="text-red-600" role="alert">{error}</p>
+          <p className="guest-error" role="alert">{error}</p>
         )}
       </div>
-    </div>
+      <style jsx>{`
+        .guest-page{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
+        .guest-status{text-align:center}
+        .guest-spinner{width:48px;height:48px;margin:0 auto 16px;border:4px solid var(--border-strong);border-block-start-color:var(--primary);border-radius:var(--radius-pill);animation:guest-spin .8s linear infinite}
+        .guest-status p{margin:0;color:var(--foreground-secondary);font-weight:400}
+        .guest-status .guest-error{color:var(--danger);font-weight:500}
+        @keyframes guest-spin{to{transform:rotate(360deg)}}
+        @media(prefers-reduced-motion:reduce){.guest-spinner{animation-duration:1.8s}}
+      `}</style>
+    </main>
   );
 }

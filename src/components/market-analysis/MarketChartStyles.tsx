@@ -29,7 +29,7 @@ export function MarketChartStyles() {
         .trader-premium-dashboard .trader-switcher-arrow {
           width: 40px;
           height: 40px;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-card);
         }
 
         .trader-premium-dashboard .trader-premium-save {
@@ -54,11 +54,10 @@ export function MarketChartStyles() {
       .price-history-chart {
         height: clamp(360px, 32vw, 420px);
         min-height: 0;
-        border-color: rgba(47, 214, 192, .18);
+        border-color: var(--border);
         background:
-          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 36%),
-          linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(239, 248, 255, .76));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .58), 0 12px 30px rgba(3, 18, 37, .055);
+          var(--surface-elevated);
+        box-shadow: var(--shadow-xs);
         padding: 14px;
         gap: 8px;
         align-content: stretch;
@@ -86,9 +85,9 @@ export function MarketChartStyles() {
       }
 
       .chart-type-control > span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
@@ -102,12 +101,12 @@ export function MarketChartStyles() {
       .chart-type-row button {
         flex: 0 0 auto;
         min-height: 34px;
-        border: 1px solid rgba(29, 140, 255, .18);
-        background: var(--sfm-light-card);
-        color: var(--sfm-foreground);
-        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        color: var(--foreground);
+        border-radius: var(--radius-pill);
         padding: 7px 11px;
-        font: 900 12px Tajawal, Arial, sans-serif;
+        font: 600 12px var(--font-ui);
         cursor: pointer;
         transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease;
         white-space: nowrap;
@@ -116,11 +115,11 @@ export function MarketChartStyles() {
       .chart-type-row button[aria-pressed="true"],
       .chart-type-row button:hover,
       .chart-type-row button:focus-visible {
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+        background: var(--primary);
         border-color: transparent;
-        color: #FFFFFF;
+        color: var(--primary-foreground);
         outline: none;
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, .16);
+        box-shadow: var(--focus-shadow);
       }
 
       .chart-type-row button:active {
@@ -130,9 +129,9 @@ export function MarketChartStyles() {
       .chart-type-row button:disabled {
         cursor: not-allowed;
         opacity: .62;
-        background: rgba(226, 232, 240, .72);
-        color: #64748B;
-        border-color: rgba(148, 163, 184, .22);
+        background: var(--surface-muted);
+        color: var(--foreground-muted);
+        border-color: var(--border);
         box-shadow: none;
       }
 
@@ -140,13 +139,13 @@ export function MarketChartStyles() {
         display: inline-flex;
         width: max-content;
         max-width: 100%;
-        border: 1px solid rgba(245, 158, 11, .24);
-        background: rgba(245, 158, 11, .10);
-        color: #92400E;
-        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
+        background: var(--warning-soft);
+        color: var(--warning);
+        border-radius: var(--radius-pill);
         padding: 5px 9px;
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
@@ -162,16 +161,17 @@ export function MarketChartStyles() {
 
       .price-chart-values strong {
         font-size: 18px;
+        font-family: var(--font-data) !important;
       }
 
       .price-chart-grid-line {
-        stroke: rgba(15, 118, 110, .13);
+        stroke: var(--chart-grid);
         stroke-width: 1;
         vector-effect: non-scaling-stroke;
       }
 
       .price-chart-grid-line.vertical {
-        stroke: rgba(29, 140, 255, .07);
+        stroke: var(--chart-grid);
       }
 
       .price-chart-area-path {
@@ -185,16 +185,16 @@ export function MarketChartStyles() {
         stroke-linecap: round;
         stroke-linejoin: round;
         vector-effect: non-scaling-stroke;
-        filter: drop-shadow(0 7px 14px rgba(29, 140, 255, .18));
+        filter: none;
         pointer-events: none;
       }
 
       .price-chart-last-dot {
-        fill: #FFFFFF;
-        stroke: #2FD6C0;
+        fill: var(--surface-elevated);
+        stroke: var(--accent);
         stroke-width: 3;
         vector-effect: non-scaling-stroke;
-        filter: drop-shadow(0 5px 12px rgba(29, 140, 255, .20));
+        filter: none;
         pointer-events: none;
       }
 
@@ -213,8 +213,8 @@ export function MarketChartStyles() {
       .price-chart-y-label,
       .price-chart-x-label,
       .price-chart-level-label {
-        fill: var(--sfm-muted);
-        font: 850 10px Tajawal, Arial, sans-serif;
+        fill: var(--chart-label);
+        font: 500 10px var(--font-data);
         opacity: .78;
         direction: ltr;
         unicode-bidi: isolate;
@@ -235,41 +235,41 @@ export function MarketChartStyles() {
 
       .price-chart-level.support line,
       .price-chart-level-label.support {
-        stroke: #10B981;
-        fill: #047857;
+        stroke: var(--success);
+        fill: var(--success);
       }
 
       .price-chart-level.resistance line,
       .price-chart-level-label.resistance {
-        stroke: #EF4444;
-        fill: #B91C1C;
+        stroke: var(--danger);
+        fill: var(--danger);
       }
 
       .price-chart-level.current line,
       .price-chart-level-label.current {
-        stroke: var(--sfm-primary);
-        fill: var(--sfm-primary-hover);
+        stroke: var(--primary);
+        fill: var(--primary-hover);
         stroke-dasharray: none;
-        font-weight: 950;
+        font-weight: 700;
       }
 
       .price-chart-level-label {
         paint-order: stroke;
-        stroke: rgba(255, 255, 255, .88);
+        stroke: var(--surface-elevated);
         stroke-width: 4px;
         font-size: 9.5px;
       }
 
       .price-chart-crosshair line {
-        stroke: rgba(15, 23, 42, .26);
+        stroke: var(--chart-label);
         stroke-width: 1;
         vector-effect: non-scaling-stroke;
         pointer-events: none;
       }
 
       .price-chart-crosshair circle {
-        fill: #FFFFFF;
-        stroke: var(--sfm-primary);
+        fill: var(--surface-elevated);
+        stroke: var(--primary);
         stroke-width: 2;
         vector-effect: non-scaling-stroke;
         pointer-events: none;
@@ -280,10 +280,10 @@ export function MarketChartStyles() {
         z-index: 4;
         width: min(230px, calc(100% - 28px));
         transform: translate(-50%, -104%);
-        border: 1px solid rgba(47, 214, 192, .26);
-        border-radius: var(--r-md);
-        background: rgba(255, 255, 255, .94);
-        box-shadow: 0 18px 44px rgba(3, 18, 37, .16);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        background: var(--surface-elevated);
+        box-shadow: var(--shadow-popover);
         backdrop-filter: blur(12px);
         padding: 10px;
         pointer-events: none;
@@ -295,9 +295,9 @@ export function MarketChartStyles() {
 
       .price-chart-tooltip strong {
         display: block;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
         margin-bottom: 7px;
       }
@@ -324,13 +324,13 @@ export function MarketChartStyles() {
       }
 
       .price-chart-tooltip dt {
-        color: var(--sfm-muted);
-        font-weight: 900;
+        color: var(--foreground-muted);
+        font-weight: 600;
       }
 
       .price-chart-tooltip dd {
-        color: var(--sfm-foreground);
-        font-weight: 950;
+        color: var(--foreground);
+        font-weight: 700;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -356,22 +356,22 @@ export function MarketChartStyles() {
       .price-candle.up .price-candle-body,
       .price-ohlc.up .price-ohlc-line,
       .price-ohlc.up .price-ohlc-tick {
-        stroke: #0F766E;
+        stroke: var(--success);
       }
 
       .price-candle.up .price-candle-body {
-        fill: rgba(20, 184, 166, .72);
+        fill: color-mix(in srgb, var(--success) 72%, transparent);
       }
 
       .price-candle.down .price-candle-wick,
       .price-candle.down .price-candle-body,
       .price-ohlc.down .price-ohlc-line,
       .price-ohlc.down .price-ohlc-tick {
-        stroke: #DC2626;
+        stroke: var(--danger);
       }
 
       .price-candle.down .price-candle-body {
-        fill: rgba(239, 68, 68, .70);
+        fill: color-mix(in srgb, var(--danger) 70%, transparent);
       }
 
       .price-chart-state {
@@ -387,39 +387,37 @@ export function MarketChartStyles() {
         gap: 14px;
         place-items: stretch;
         text-align: start;
-        border: 1px solid rgba(47, 214, 192, .22);
+        border: 1px solid var(--border);
         background:
-          radial-gradient(circle at 10% 0%, rgba(47, 214, 192, .12), transparent 34%),
-          linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(239, 248, 255, .88));
-        box-shadow: 0 18px 44px rgba(3, 18, 37, .09);
-        border-radius: var(--r-xl);
-        color: var(--sfm-muted);
+          var(--surface-muted);
+        box-shadow: var(--shadow-xs);
+        border-radius: var(--radius-card);
+        color: var(--foreground-muted);
         padding: 18px;
         line-height: 1.8;
       }
 
       .price-chart-state.error {
-        border-color: rgba(245, 158, 11, .28);
+        border-color: color-mix(in srgb, var(--warning) 28%, var(--border));
         background:
-          radial-gradient(circle at 10% 0%, rgba(245, 158, 11, .12), transparent 34%),
-          linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(255, 251, 235, .88));
+          var(--warning-soft);
       }
 
       .price-chart-state-icon {
         width: 48px;
         height: 48px;
-        border-radius: var(--r-xl);
+        border-radius: var(--radius-card);
         display: grid;
         place-items: center;
-        background: rgba(47, 214, 192, .12);
-        border: 1px solid rgba(47, 214, 192, .24);
-        color: var(--sfm-primary-hover);
+        background: var(--primary-soft);
+        border: 1px solid var(--border);
+        color: var(--primary-hover);
       }
 
       .price-chart-state.error .price-chart-state-icon {
-        background: rgba(245, 158, 11, .12);
-        border-color: rgba(245, 158, 11, .24);
-        color: #B45309;
+        background: var(--warning-soft);
+        border-color: color-mix(in srgb, var(--warning) 28%, var(--border));
+        color: var(--warning);
       }
 
       .price-chart-state-icon svg {
@@ -435,30 +433,30 @@ export function MarketChartStyles() {
       }
 
       .price-chart-state-copy strong {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(16px, 2vw, 21px);
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
       .price-chart-state-copy p {
         margin: 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.8;
       }
 
       .price-chart-state-copy small {
         width: max-content;
         max-width: 100%;
-        border: 1px solid rgba(29, 140, 255, .16);
-        background: rgba(29, 140, 255, .08);
-        color: var(--sfm-primary-hover);
-        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        color: var(--primary-hover);
+        border-radius: var(--radius-pill);
         padding: 5px 9px;
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
@@ -472,35 +470,36 @@ export function MarketChartStyles() {
       .price-chart-summary-item {
         min-width: 0;
         overflow: hidden;
-        border: 1px solid rgba(167, 243, 240, .16);
-        background: rgba(255, 255, 255, .74);
-        border-radius: var(--r-lg);
+        border: 1px solid var(--border);
+        background: var(--surface-elevated);
+        border-radius: var(--radius-card);
         padding: 10px 11px;
         display: grid;
         gap: 5px;
       }
 
       .price-chart-summary-item span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
       .price-chart-summary-item b {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
         overflow-wrap: normal;
+        font-family: var(--font-data) !important;
       }
 
       .price-chart-summary-item.up b {
-        color: #047857;
+        color: var(--success);
       }
 
       .price-chart-summary-item.down b {
-        color: #DC2626;
+        color: var(--danger);
       }
 
       .price-chart-state-actions {
@@ -514,30 +513,30 @@ export function MarketChartStyles() {
       .price-chart-state-actions button {
         min-height: 40px;
         border: 0;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        color: #FFFFFF;
+        border-radius: var(--radius-pill);
+        background: var(--primary);
+        color: var(--primary-foreground);
         padding: 0 15px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 7px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 700 12px var(--font-ui);
         cursor: pointer;
-        box-shadow: 0 12px 24px rgba(29, 140, 255, .18);
+        box-shadow: var(--shadow-xs);
       }
 
       .price-chart-state-actions button:hover,
       .price-chart-state-actions button:focus-visible {
         outline: none;
         transform: translateY(-1px);
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, .16), 0 14px 28px rgba(29, 140, 255, .20);
+        box-shadow: var(--focus-shadow);
       }
 
       .price-chart-state-actions > span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.6;
       }
 
@@ -545,11 +544,10 @@ export function MarketChartStyles() {
         margin-top: 16px;
         display: grid;
         gap: 12px;
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-xl);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
         background:
-          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .10), transparent 34%),
-          linear-gradient(135deg, rgba(255, 255, 255, .84), rgba(239, 248, 255, .68));
+          var(--surface-muted);
         padding: 13px;
       }
 
@@ -562,9 +560,9 @@ export function MarketChartStyles() {
       .levels-strip-labels > span {
         min-width: 0;
         overflow: hidden;
-        border: 1px solid rgba(167, 243, 240, .16);
-        background: rgba(255, 255, 255, .74);
-        border-radius: var(--r-lg);
+        border: 1px solid var(--border);
+        background: var(--surface-elevated);
+        border-radius: var(--radius-card);
         padding: 12px;
         display: grid;
         gap: 6px;
@@ -579,48 +577,49 @@ export function MarketChartStyles() {
       }
 
       .levels-strip-labels small {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
       .levels-strip-labels b {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 15px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.25;
         overflow-wrap: normal;
+        font-family: var(--font-data) !important;
       }
 
       .levels-strip-labels em {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
         font-style: normal;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.3;
+        font-family: var(--font-data) !important;
       }
 
       .levels-strip-labels .support b {
-        color: #047857;
+        color: var(--success);
       }
 
       .levels-strip-labels .current b {
-        color: var(--sfm-primary-hover);
+        color: var(--primary-hover);
       }
 
       .levels-strip-labels .resistance b {
-        color: #B91C1C;
+        color: var(--danger);
       }
 
       .levels-bar {
         position: relative;
         height: 46px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         background:
-          linear-gradient(90deg, rgba(16, 185, 129, .22), rgba(47, 214, 192, .32), rgba(239, 68, 68, .22)),
-          rgba(255, 255, 255, .72);
-        border: 1px solid rgba(167, 243, 240, .16);
+          var(--surface-muted);
+        border: 1px solid var(--border);
       }
 
       .levels-bar > span {
@@ -640,34 +639,34 @@ export function MarketChartStyles() {
       .levels-bar i {
         width: 13px;
         height: 13px;
-        border-radius: 999px;
-        border: 3px solid #FFFFFF;
-        box-shadow: 0 8px 16px rgba(3, 18, 37, .16);
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
       }
 
       .levels-bar .support i {
-        background: #10B981;
+        background: var(--success);
       }
 
       .levels-bar .current i {
         width: 18px;
         height: 18px;
-        background: var(--sfm-primary);
+        background: var(--primary);
       }
 
       .levels-bar .resistance i {
-        background: #EF4444;
+        background: var(--danger);
       }
 
       .levels-bar em {
-        border: 1px solid rgba(167, 243, 240, .16);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, .92);
-        color: var(--sfm-foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        background: var(--surface-elevated);
+        color: var(--foreground);
         padding: 3px 7px;
         font-size: 10px;
         font-style: normal;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.2;
         white-space: nowrap;
       }
@@ -679,9 +678,9 @@ export function MarketChartStyles() {
       }
 
       .price-chart-loading strong {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 700;
       }
 
       .price-chart-skeleton {
@@ -693,8 +692,8 @@ export function MarketChartStyles() {
       .price-chart-skeleton span {
         display: block;
         height: 14px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, rgba(29, 140, 255, .10), rgba(47, 214, 192, .24), rgba(29, 140, 255, .10));
+        border-radius: var(--radius-pill);
+        background: var(--surface-hover);
         background-size: 200% 100%;
         animation: marketSkeleton 1.2s ease-in-out infinite;
       }
@@ -709,134 +708,6 @@ export function MarketChartStyles() {
 
       .price-chart-skeleton span:nth-child(3) {
         width: 54%;
-      }
-
-      .dark .price-history-chart {
-        border-color: #1D3050;
-        background:
-          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .13), transparent 36%),
-          linear-gradient(180deg, rgba(15, 29, 49, .94), rgba(10, 20, 34, .82));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 16px 34px rgba(0, 0, 0, .25);
-      }
-
-      .dark .chart-type-row button {
-        background: #13243A;
-        border-color: #1D3050;
-        color: #B8C7D9;
-      }
-
-      .dark .chart-type-row button[aria-pressed="true"],
-      .dark .chart-type-row button:hover,
-      .dark .chart-type-row button:focus-visible {
-        background: linear-gradient(135deg, #1D8CFF, #2FD6C0);
-        border-color: transparent;
-        color: #FFFFFF;
-      }
-
-      .dark .chart-type-row button:disabled {
-        background: rgba(15, 29, 49, .74);
-        border-color: #1D3050;
-        color: #8EA6C3;
-        opacity: .66;
-      }
-
-      .dark .chart-type-helper {
-        background: rgba(245, 185, 66, .12);
-        border-color: rgba(245, 185, 66, .26);
-        color: #F5B942;
-      }
-
-      .dark .price-chart-state {
-        border-color: #1D3050;
-        background:
-          radial-gradient(circle at 10% 0%, rgba(47, 214, 192, .12), transparent 34%),
-          linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(10, 20, 34, .92));
-        box-shadow: 0 20px 52px rgba(0, 0, 0, .26);
-      }
-
-      .dark .price-chart-state.error {
-        border-color: rgba(245, 185, 66, .26);
-        background:
-          radial-gradient(circle at 10% 0%, rgba(245, 185, 66, .12), transparent 34%),
-          linear-gradient(135deg, rgba(15, 29, 49, .96), rgba(10, 20, 34, .92));
-      }
-
-      .dark .price-chart-summary-item {
-        background: rgba(10, 20, 34, .74);
-        border-color: #1D3050;
-      }
-
-      .dark .market-chart .levels-strip {
-        background:
-          radial-gradient(circle at 12% 0%, rgba(47, 214, 192, .12), transparent 34%),
-          linear-gradient(135deg, rgba(15, 29, 49, .92), rgba(10, 20, 34, .82));
-        border-color: #1D3050;
-      }
-
-      .dark .levels-strip-labels > span,
-      .dark .levels-bar {
-        background: rgba(10, 20, 34, .74);
-        border-color: #1D3050;
-      }
-
-      .dark .levels-bar em {
-        background: rgba(15, 29, 49, .94);
-        border-color: #1D3050;
-        color: #E8EEF6;
-      }
-
-      .dark .price-chart-grid-line {
-        stroke: rgba(184, 199, 217, .14);
-      }
-
-      .dark .price-chart-grid-line.vertical {
-        stroke: rgba(47, 214, 192, .08);
-      }
-
-      .dark .price-chart-y-label {
-        fill: #8EA6C3;
-        opacity: .88;
-      }
-
-      .dark .price-chart-x-label {
-        fill: #8EA6C3;
-        opacity: .72;
-      }
-
-      .dark .price-chart-level-label {
-        stroke: rgba(15, 29, 49, .92);
-      }
-
-      .dark .price-chart-crosshair line {
-        stroke: rgba(184, 199, 217, .28);
-      }
-
-      .dark .price-chart-tooltip {
-        background: rgba(15, 29, 49, .94);
-        border-color: #1D3050;
-        box-shadow: 0 18px 44px rgba(0, 0, 0, .34);
-      }
-
-      .dark .price-candle.up .price-candle-wick,
-      .dark .price-candle.up .price-candle-body,
-      .dark .price-ohlc.up .price-ohlc-line,
-      .dark .price-ohlc.up .price-ohlc-tick {
-        stroke: #2FD6C0;
-      }
-
-      .dark .price-candle.up .price-candle-body {
-        fill: rgba(47, 214, 192, .58);
-      }
-
-      .dark .price-candle.down .price-candle-wick,
-      .dark .price-candle.down .price-candle-body,
-      .dark .price-ohlc.down .price-ohlc-line,
-      .dark .price-ohlc.down .price-ohlc-tick {
-        stroke: #FF5B6E;
-      }
-
-      .dark .price-candle.down .price-candle-body {
-        fill: rgba(255, 91, 110, .56);
       }
 
       @media (max-width: 1024px) {
@@ -893,7 +764,7 @@ export function MarketChartStyles() {
         .price-chart-state-icon {
           width: 42px;
           height: 42px;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-card);
         }
 
         .price-chart-summary-grid {
@@ -942,6 +813,7 @@ export function MarketChartStyles() {
         hyphens: none !important;
         font-variant-numeric: tabular-nums;
         letter-spacing: 0 !important;
+        font-family: var(--font-data) !important;
       }
 
       .metric strong.market-numeric-value,
@@ -952,6 +824,7 @@ export function MarketChartStyles() {
         align-items: center;
         width: auto;
         max-width: 100%;
+        font-family: var(--font-data) !important;
       }
 
       .market-stat-row,
@@ -965,6 +838,7 @@ export function MarketChartStyles() {
 
       .metric strong.market-numeric-value {
         min-width: 0;
+        font-family: var(--font-data) !important;
       }
 
       .levels-strip-labels {
@@ -982,6 +856,7 @@ export function MarketChartStyles() {
       .levels-strip-labels em[dir="ltr"] {
         min-width: 0;
         justify-self: inherit;
+        font-family: var(--font-data) !important;
       }
 
       .levels-bar {

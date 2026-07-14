@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "relative inline-flex min-w-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold leading-none ring-offset-background transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none disabled:transform-none aria-busy:pointer-events-none aria-busy:cursor-wait aria-busy:opacity-80 aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 motion-reduce:transition-none motion-reduce:transform-none dark:leading-normal dark:transition-all dark:duration-150 dark:ease-in-out dark:hover:translate-y-0 dark:active:scale-100 dark:focus-visible:ring-2 dark:focus-visible:ring-ring dark:disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative inline-flex min-w-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] text-sm font-semibold leading-tight ring-offset-background transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none aria-busy:pointer-events-none aria-busy:cursor-wait aria-busy:opacity-80 aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 motion-reduce:transition-none motion-reduce:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -21,10 +21,10 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-11 px-4 py-2 dark:h-10",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-12 rounded-xl px-8 dark:h-11 dark:rounded-md",
-        icon: "h-11 w-11 p-0 dark:h-10 dark:w-10",
+        default: "h-11 px-4 py-2",
+        sm: "h-9 rounded-[var(--radius-sm)] px-3",
+        lg: "h-12 px-8",
+        icon: "h-11 w-11 p-0",
       },
     },
     defaultVariants: {

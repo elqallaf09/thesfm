@@ -51,10 +51,11 @@ describe('Phase 2.8 Zakat experience', () => {
     expect(zakatPage).toContain('/charity-projects?tab=documents&scope=zakat');
   });
 
-  it('keeps the Islamic finance palette route-scoped and responsive', () => {
-    expect(zakatPage).toContain('--zakat-primary:#0F766E');
-    expect(zakatPage).toContain('--zakat-gold:#D4A037');
-    expect(zakatPage).toContain(':global(.dark) .zakat-page');
+  it('uses the shared semantic palette and remains responsive', () => {
+    expect(zakatPage).not.toMatch(/#[0-9a-f]{3,8}\b|--zakat-|:global\(\.dark\)/i);
+    expect(zakatPage).toContain('background:var(--hero-gradient)');
+    expect(zakatPage).toContain('color:var(--foreground)');
+    expect(zakatPage).toContain('font-family:var(--font-data)');
     expect(zakatPage).toContain('@media(max-width:560px)');
     expect(zakatPage).toContain('@media(max-width:360px)');
     expect(zakatPage).toContain('@media(prefers-reduced-motion:reduce)');

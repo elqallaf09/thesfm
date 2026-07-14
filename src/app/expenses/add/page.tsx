@@ -22,9 +22,9 @@ const EXPENSE_CATEGORIES = [
 ];
 
 const NECESSITIES = [
-  { id: 'essential', ar: 'ضروري', en: 'Essential', fr: 'Essentiel', color: '#EF4444', hintAr: 'الإيجار، الفواتير', hintEn: 'Rent, bills', hintFr: 'Loyer, factures' },
-  { id: 'important', ar: 'مهم', en: 'Important', fr: 'Important', color: '#F59E0B', hintAr: 'التأمين، التعليم', hintEn: 'Insurance, education', hintFr: 'Assurance, éducation' },
-  { id: 'optional', ar: 'اختياري', en: 'Optional', fr: 'Facultatif', color: '#22C55E', hintAr: 'الترفيه، التسوق', hintEn: 'Entertainment, shopping', hintFr: 'Divertissement, achats' },
+  { id: 'essential', ar: 'ضروري', en: 'Essential', fr: 'Essentiel', color: 'var(--danger)', hintAr: 'الإيجار، الفواتير', hintEn: 'Rent, bills', hintFr: 'Loyer, factures' },
+  { id: 'important', ar: 'مهم', en: 'Important', fr: 'Important', color: 'var(--warning)', hintAr: 'التأمين، التعليم', hintEn: 'Insurance, education', hintFr: 'Assurance, éducation' },
+  { id: 'optional', ar: 'اختياري', en: 'Optional', fr: 'Facultatif', color: 'var(--success)', hintAr: 'الترفيه، التسوق', hintEn: 'Entertainment, shopping', hintFr: 'Divertissement, achats' },
 ];
 
 export default function AddExpensePage() {
@@ -102,11 +102,11 @@ export default function AddExpensePage() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', background: 'var(--sfm-light-card)'
+        minHeight: '100vh', background: 'var(--surface-muted)'
       }}>
         <div style={{
-          width: '44px', height: '44px', borderRadius: '50%',
-          border: '3px solid rgba(167,243,240,.2)', borderTopColor: 'var(--sfm-soft-cyan)',
+          width: '44px', height: '44px', borderRadius: 'var(--radius-pill)',
+          border: '3px solid var(--border)', borderTopColor: 'var(--primary)',
           animation: 'spin 1s linear infinite'
         }} />
       </div>
@@ -117,50 +117,57 @@ export default function AddExpensePage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Tajawal', sans-serif; background: var(--sfm-light-card); }
+        body { font-family: var(--font-ui); background: var(--background); }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .page-container { min-height: 100vh; background: var(--sfm-light-card); padding: 24px; }
-        .form-card { background: var(--sfm-card); border-radius: var(--r-2xl); max-width: 600px; margin: 0 auto; padding: 32px; box-shadow: 0 8px 40px rgba(3,18,37,.08); border: 1px solid rgba(167,243,240,.12); }
-        .form-title { font-size: 24px; font-weight: 900; color: var(--sfm-foreground); margin-bottom: 8px; text-align: center; }
-        .form-subtitle { font-size: 14px; color: var(--sfm-muted); text-align: center; margin-bottom: 28px; }
+        .page-container { min-height: 100vh; background: var(--background); padding: 24px; color: var(--foreground); }
+        .form-card { background: var(--surface); border-radius: var(--radius-panel); max-width: 600px; margin: 0 auto; padding: 32px; box-shadow: var(--shadow-md); border: 1px solid var(--border); }
+        .form-title { font-size: 24px; font-weight: 700; color: var(--foreground); margin-bottom: 8px; text-align: center; }
+        .form-subtitle { font-size: 14px; color: var(--foreground-secondary); text-align: center; margin-bottom: 28px; }
         .form-group { margin-bottom: 20px; }
-        .form-label { display: block; font-size: 13px; font-weight: 700; color: var(--sfm-muted); margin-bottom: 8px; }
-        .form-input { width: 100%; padding: 14px 16px; border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); font-size: 15px; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; }
-        .form-input:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.12); }
-        .form-input::placeholder { color: #BFB5A8; }
-        .form-select { width: 100%; padding: 14px 16px; border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); font-size: 15px; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%231D8CFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 14px center; }
-        .form-select:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.12); }
+        .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--foreground-secondary); margin-bottom: 8px; }
+        .form-input,
+        .form-select,
+        .amount-input { width: 100%; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: 15px; font-family: var(--font-ui); background: var(--control-background); color: var(--foreground); transition: border-color var(--duration), box-shadow var(--duration), background var(--duration); outline: none; }
+        .form-input:focus,
+        .form-select:focus,
+        .amount-input:focus { border-color: var(--focus-ring); box-shadow: var(--focus-shadow); }
+        .form-input::placeholder,
+        .amount-input::placeholder { color: var(--control-placeholder); }
+        .form-select { cursor: pointer; }
         .amount-input-wrapper { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 200px); gap: 12px; align-items: end; }
-        .amount-input { width: 100%; min-width: 0; padding: 14px 16px; border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); font-size: 18px; font-weight: 700; font-family: 'Tajawal', sans-serif; background: var(--sfm-card); color: var(--sfm-foreground); transition: all .2s; outline: none; text-align: center; }
-        .amount-input:focus { border-color: var(--sfm-soft-cyan); box-shadow: 0 0 0 3px rgba(167,243,240,.12); }
+        .amount-input { min-width: 0; font-size: 18px; font-weight: 600; font-family: var(--font-data); text-align: center; }
         .currency-select { width: 100%; min-width: 170px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; outline: none; }
-        .btn-submit { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent)); border: none; border-radius: var(--r-lg); font-size: 16px; font-weight: 800; color: var(--sfm-foreground); cursor: pointer; font-family: 'Tajawal', sans-serif; transition: all .25s; margin-top: 24px; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(167,243,240,.35); }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); border: none; border-radius: var(--radius-card); font-size: 16px; font-weight: 600; color: var(--primary-foreground); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), transform var(--duration); margin-top: 24px; }
+        .btn-submit:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-submit:focus-visible,
+        .btn-cancel:focus-visible,
+        .category-btn:focus-visible,
+        .necessity-btn:focus-visible,
+        .back-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-cancel { width: 100%; padding: 14px; background: transparent; border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); font-size: 14px; font-weight: 600; color: var(--sfm-muted); cursor: pointer; font-family: 'Tajawal', sans-serif; transition: all .2s; margin-top: 12px; }
-        .btn-cancel:hover { background: rgba(167,243,240,.08); border-color: var(--sfm-soft-cyan); }
+        .btn-cancel { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: 14px; font-weight: 600; color: var(--foreground-secondary); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), border-color var(--duration); margin-top: 12px; }
+        .btn-cancel:hover { background: var(--control-hover); border-color: var(--border-strong); }
         .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .category-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border: 1.5px solid rgba(167,243,240,.2); border-radius: var(--r-md); background: var(--sfm-card); cursor: pointer; transition: all .2s; }
-        .category-btn:hover { border-color: var(--sfm-soft-cyan); background: rgba(167,243,240,.05); }
-        .category-btn.selected { border-color: var(--sfm-soft-cyan); background: rgba(167,243,240,.1); box-shadow: 0 0 0 3px rgba(167,243,240,.15); }
+        .category-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); cursor: pointer; transition: background var(--duration), border-color var(--duration); }
+        .category-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+        .category-btn.selected { border-color: var(--primary); background: var(--primary-soft); box-shadow: var(--active-indicator-shadow); }
         .necessity-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .necessity-btn { border: 1.5px solid rgba(167,243,240,.2); border-radius: var(--r-md); background: var(--sfm-card); padding: 12px; cursor: pointer; text-align: center; font-family: 'Tajawal', sans-serif; transition: all .2s; }
-        .necessity-btn.selected { box-shadow: 0 0 0 3px rgba(167,243,240,.12); }
+        .necessity-btn { border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); padding: 12px; cursor: pointer; text-align: center; font-family: var(--font-ui); transition: background var(--duration), border-color var(--duration); }
+        .necessity-btn:hover { background: var(--surface-hover); }
+        .necessity-btn.selected { background: var(--surface-active); box-shadow: var(--active-indicator-shadow); }
         .category-icon { font-size: 24px; }
-        .category-label { font-size: 12px; font-weight: 600; color: var(--sfm-muted); text-align: center; }
-        .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeUp .3s ease; }
-        .success-card { background: var(--sfm-card); border-radius: var(--r-2xl); padding: 40px; text-align: center; max-width: 320px; margin: 20px; }
-        .success-icon { width: 80px; height: 80px; background: linear-gradient(135deg, #22C55E, #16A34A); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
-        .success-title { font-size: 20px; font-weight: 800; color: var(--sfm-foreground); margin-bottom: 8px; }
-        .success-msg { font-size: 14px; color: var(--sfm-muted); }
+        .category-label { font-size: 12px; font-weight: 500; color: var(--foreground-secondary); text-align: center; }
+        .success-overlay { position: fixed; inset: 0; background: var(--background-overlay); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeUp .3s ease; }
+        .success-card { background: var(--surface-elevated); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 40px; text-align: center; max-width: 320px; margin: 20px; }
+        .success-icon { width: 80px; height: 80px; background: var(--success); color: var(--primary-foreground); border-radius: var(--radius-pill); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
+        .success-title { font-size: 20px; font-weight: 600; color: var(--foreground); margin-bottom: 8px; }
+        .success-msg { font-size: 14px; color: var(--foreground-secondary); }
         .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-        .back-btn { width: 44px; height: var(--control-h); background: var(--sfm-card); border: 1.5px solid rgba(167,243,240,.25); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: all .2s; }
-        .back-btn:hover { background: rgba(167,243,240,.08); }
-        .header-title { font-size: 20px; font-weight: 800; color: var(--sfm-foreground); }
+        .back-btn { width: 44px; height: var(--control-h); background: var(--control-background); color: var(--foreground); border: 1px solid var(--border); border-radius: var(--radius-control); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background var(--duration), border-color var(--duration); }
+        .back-btn:hover { background: var(--control-hover); }
+        .header-title { font-size: 20px; font-weight: 600; color: var(--foreground); }
         @media (max-width: 640px) {
           .page-container { padding: 16px; }
           .form-card { padding: 22px; }
@@ -220,10 +227,10 @@ export default function AddExpensePage() {
                       type="button"
                       className={`necessity-btn ${necessity === item.id ? 'selected' : ''}`}
                       onClick={() => setNecessity(item.id)}
-                      style={{ borderColor: necessity === item.id ? item.color : 'rgba(167,243,240,.2)' }}
+                      style={{ borderColor: necessity === item.id ? item.color : 'var(--border)' }}
                     >
                       <div style={{ fontWeight: 800, color: item.color }}>{isAr ? item.ar : isFr ? item.fr : item.en}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--sfm-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--foreground-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
                     </button>
                   ))}
                 </div>
@@ -301,7 +308,7 @@ export default function AddExpensePage() {
               >
                 {loading ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid rgba(0,0,0,.2)', borderTopColor: 'var(--sfm-foreground)', animation: 'spin 1s linear infinite' }} />
+                    <div style={{ width: '20px', height: '20px', borderRadius: 'var(--radius-pill)', border: '2px solid color-mix(in srgb, var(--primary-foreground) 35%, transparent)', borderTopColor: 'var(--primary-foreground)', animation: 'spin 1s linear infinite' }} />
                     {isAr ? 'جاري الحفظ...' : isFr ? 'Enregistrement...' : 'Saving...'}
                   </span>
                 ) : (

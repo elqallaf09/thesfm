@@ -1,5 +1,5 @@
 import {
-  BellIcon, Bot, ChartPie, FolderKanban, GraduationCap, HandHeart,
+  BellIcon, Bot, ChartPie, GraduationCap, HandHeart,
   Home, PiggyBank, Receipt, ReceiptText, Target, TrendingUp, Upload, Wallet,
 } from 'lucide-react';
 import { formatCurrency, normalizeDigits, toLatinNumberLocale } from '@/lib/format';
@@ -88,10 +88,8 @@ export const navItems = [
   { href: '/dashboard', label: { ar: 'الرئيسية', en: 'Dashboard', fr: 'Tableau de bord' }, icon: Home },
   { href: '/expenses', label: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' }, icon: ReceiptText },
   { href: '/income', label: { ar: 'الدخل', en: 'Income', fr: 'Revenus' }, icon: Wallet },
-  { href: '/invest', label: { ar: 'الاستثمارات', en: 'Investments', fr: 'Investissements' }, icon: TrendingUp },
   { href: '/savings', label: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' }, icon: PiggyBank },
   { href: '/goals', label: { ar: 'الأهداف', en: 'Goals', fr: 'Objectifs' }, icon: Target },
-  { href: '/projects', label: { ar: 'مشاريعي', en: 'My Projects', fr: 'Mes projets' }, icon: FolderKanban },
   { href: '/reports-center', label: { ar: 'مركز التقارير', en: 'Reports Center', fr: 'Centre des rapports' }, icon: ChartPie },
   { href: '/ai', label: { ar: 'الذكاء المالي', en: 'AI', fr: 'IA' }, icon: Bot },
   { href: '/charity', label: { ar: 'الأعمال الخيرية', en: 'Charity', fr: 'Charité' }, icon: HandHeart },
@@ -324,47 +322,57 @@ export const expenseUi = {
   saveFailed: { ar: 'تعذر إضافة المصروف. حاول مرة أخرى.', en: 'Could not add expense. Please try again.', fr: 'Impossible d ajouter la depense. Veuillez reessayer.' },
 };
 
+const PAGE_ACCENT_TOKENS = {
+  expenses: 'var(--danger)',
+  income: 'var(--success)',
+  invest: 'var(--primary)',
+  savings: 'var(--success)',
+  goals: 'var(--accent)',
+  reports: 'var(--info)',
+  ai: 'var(--accent)',
+} as const satisfies Record<PageKind, `var(--${string})`>;
+
 export const pageMeta: Record<PageKind, { title: LangText; subtitle: LangText; accent: string; icon: typeof ReceiptText }> = {
   expenses: {
     title: { ar: 'المصروفات', en: 'Expenses', fr: 'Dépenses' },
     subtitle: { ar: 'راقب الصرف الشهري، التصنيفات، وآخر العمليات في مكان واحد.', en: 'Track monthly spend, categories, and recent expense activity in one place.', fr: 'Suivez vos dépenses mensuelles, catégories et activités récentes en un seul endroit.' },
-    accent: '#EF4444',
+    accent: PAGE_ACCENT_TOKENS.expenses,
     icon: ReceiptText,
   },
   income: {
     title: { ar: 'الدخل', en: 'Income', fr: 'Revenus' },
     subtitle: { ar: 'نظرة واضحة على الراتب، الدخل الجانبي، ومصادر الدخل الشهرية.', en: 'A clean view of salary, side income, and monthly income sources.', fr: 'Vue claire du salaire, revenus annexes et sources de revenus mensuels.' },
-    accent: '#22C55E',
+    accent: PAGE_ACCENT_TOKENS.income,
     icon: Wallet,
   },
   invest: {
     title: { ar: 'الاستثمار', en: 'Investments', fr: 'Investissements' },
     subtitle: { ar: 'تابع المحفظة، فئات الاستثمار، المخاطر، والمساهمة الشهرية.', en: 'Follow portfolio value, investment categories, risk level, and monthly contribution.', fr: 'Suivez la valeur du portefeuille, les catégories, le risque et la contribution mensuelle.' },
-    accent: '#3B82F6',
+    accent: PAGE_ACCENT_TOKENS.invest,
     icon: TrendingUp,
   },
   savings: {
     title: { ar: 'الإدخار', en: 'Savings', fr: 'Épargne' },
     subtitle: { ar: 'تتبّع مدخراتك وحقّق أهدافك المالية بخطوات واضحة ومنتظمة.', en: 'Track your savings and reach your financial goals with clear, consistent steps.', fr: 'Suivez votre épargne et atteignez vos objectifs financiers étape par étape.' },
-    accent: '#22C55E',
+    accent: PAGE_ACCENT_TOKENS.savings,
     icon: PiggyBank,
   },
   goals: {
     title: { ar: 'الأهداف المالية', en: 'Financial Goals', fr: 'Objectifs financiers' },
     subtitle: { ar: 'حوّل أهدافك إلى بطاقات تقدم بمبلغ مستهدف ومتبقي واضح.', en: 'Turn targets into progress cards with clear target and remaining amounts.', fr: 'Transformez vos objectifs en cartes de progression avec montant cible et restant.' },
-    accent: 'var(--sfm-soft-cyan)',
+    accent: PAGE_ACCENT_TOKENS.goals,
     icon: Target,
   },
   reports: {
     title: { ar: 'التقارير', en: 'Reports', fr: 'Rapports' },
     subtitle: { ar: 'ملخص مالي قابل للطباعة للتدفقات، الادخار، الاستثمار، والتوازن الشهري.', en: 'Printable financial summaries for cash flow, savings, investments, and monthly balance.', fr: 'Résumés financiers imprimables : flux, épargne, investissements et solde mensuel.' },
-    accent: '#8B5CF6',
+    accent: PAGE_ACCENT_TOKENS.reports,
     icon: ChartPie,
   },
   ai: {
     title: { ar: 'المساعد المالي الذكي', en: 'AI Financial Assistant', fr: 'Assistant financier IA' },
     subtitle: { ar: 'اقتراحات ذكية، رؤى فورية، وبطاقات عمل لتحسين قراراتك المالية.', en: 'Smart suggestions, instant insights, and action cards for better financial decisions.', fr: 'Suggestions intelligentes, insights instantanés et actions pour améliorer vos décisions.' },
-    accent: '#06B6D4',
+    accent: PAGE_ACCENT_TOKENS.ai,
     icon: Bot,
   },
 };
@@ -1260,7 +1268,7 @@ export function goalFromRow(item: GoalRow): GoalItem {
     currency: item.currency || (typeof notes.currency === 'string' ? notes.currency : 'KWD'),
     ai_enabled: typeof notes.aiEnabled === 'boolean' ? notes.aiEnabled : true,
     icon: '🎯',
-    color: 'var(--sfm-soft-cyan)',
+    color: 'var(--accent)',
     deadline,
     notes: item.notes,
     created_at: item.created_at,

@@ -20,6 +20,25 @@ type ProjectionPoint = {
   value: number;
 };
 
+const chartTooltipStyle = {
+  background: 'var(--chart-tooltip)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-control)',
+  boxShadow: 'var(--shadow-popover)',
+  color: 'var(--foreground)',
+  fontFamily: 'var(--font-ui)',
+};
+
+const chartTooltipLabelStyle = {
+  color: 'var(--foreground)',
+  fontWeight: 600,
+};
+
+const chartTooltipItemStyle = {
+  color: 'var(--foreground-secondary)',
+  fontFamily: 'var(--font-data)',
+};
+
 export default function InvestPerformanceCharts({
   distribution,
   values,
@@ -49,17 +68,17 @@ export default function InvestPerformanceCharts({
             <Pie data={distribution} dataKey="value" nameKey="name" innerRadius={62} outerRadius={95} paddingAngle={3}>
               {distribution.map(item => <Cell key={item.name} fill={item.color} />)}
             </Pie>
-            <Tooltip formatter={(value: number) => money(Number(value))} />
+            <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} formatter={(value: number) => money(Number(value))} />
           </PieChart>
         </ResponsiveContainer>
       </ChartCard>
       <ChartCard icon={<BarChart3 size={18} />} title={titles.byInvestment}>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={values}>
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(value: number) => money(Number(value))} />
-            <Bar dataKey="value" fill="var(--sfm-soft-cyan)" radius={[10, 10, 0, 0]} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} formatter={(value: number) => money(Number(value))} />
+            <Bar dataKey="value" fill="var(--chart-2)" radius={[10, 10, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -67,10 +86,10 @@ export default function InvestPerformanceCharts({
         {canShowProjection ? (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={projection}>
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: number) => money(Number(value))} />
-              <Line type="monotone" dataKey="value" stroke="var(--sfm-muted)" strokeWidth={3} dot={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} formatter={(value: number) => money(Number(value))} />
+              <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={3} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (

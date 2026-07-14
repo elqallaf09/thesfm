@@ -6,12 +6,12 @@ export function MarketBaseStyles() {
       .market-section-refresh {
         margin-inline-start: auto;
         min-height: 38px;
-        border: 1px solid rgba(47, 214, 192, .24);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .10);
-        color: var(--sfm-primary-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        background: var(--primary-soft);
+        color: var(--primary-hover);
         padding: 0 12px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 700 12px var(--font-ui);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -24,9 +24,10 @@ export function MarketBaseStyles() {
       .market-section-refresh:hover,
       .market-section-refresh:focus-visible {
         outline: none;
-        background: rgba(47, 214, 192, .16);
-        border-color: var(--sfm-accent);
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+        background: var(--primary);
+        border-color: var(--accent);
+        color: var(--primary-foreground);
+        box-shadow: var(--focus-shadow);
       }
 
       .market-section-refresh:disabled {
@@ -43,9 +44,9 @@ export function MarketBaseStyles() {
         grid-column: 1 / -1;
         display: grid;
         gap: 14px;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: var(--r-2xl);
-        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .07)), var(--sfm-light-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--surface-muted);
         padding: 16px;
         min-width: 0;
       }
@@ -54,17 +55,17 @@ export function MarketBaseStyles() {
         display: flex;
         align-items: center;
         gap: 9px;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 700;
       }
 
       .market-loading-dot {
         width: 10px;
         height: 10px;
-        border-radius: 50%;
-        background: var(--sfm-soft-cyan);
-        box-shadow: 0 0 0 5px rgba(47, 214, 192, .12);
+        border-radius: var(--radius-pill);
+        background: var(--accent);
+        box-shadow: none;
         animation: marketPulse 1.1s ease-in-out infinite;
       }
 
@@ -77,9 +78,9 @@ export function MarketBaseStyles() {
       .market-loading-card {
         display: grid;
         gap: 9px;
-        border: 1px solid rgba(167, 243, 240, .14);
-        border-radius: var(--r-lg);
-        background: var(--sfm-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
         padding: 12px;
       }
 
@@ -87,8 +88,8 @@ export function MarketBaseStyles() {
       .market-loading-card b,
       .market-loading-card em {
         display: block;
-        border-radius: 999px;
-        background: linear-gradient(90deg, rgba(148, 163, 184, .16), rgba(47, 214, 192, .18), rgba(148, 163, 184, .16));
+        border-radius: var(--radius-pill);
+        background: var(--surface-hover);
         background-size: 220% 100%;
         animation: marketSkeleton 1.25s ease-in-out infinite;
       }
@@ -112,14 +113,13 @@ export function MarketBaseStyles() {
         grid-column: 1 / -1;
         display: grid;
         gap: 14px;
-        border: 1px solid rgba(245, 158, 11, .26);
-        border-radius: var(--r-2xl);
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
+        border-radius: var(--radius-panel);
         background:
-          linear-gradient(135deg, rgba(245, 158, 11, .10), rgba(47, 214, 192, .06)),
-          var(--sfm-light-card);
+          var(--warning-soft);
         padding: 18px;
-        color: var(--sfm-foreground);
-        box-shadow: 0 18px 46px rgba(15, 23, 42, .08);
+        color: var(--foreground);
+        box-shadow: var(--shadow-xs);
         min-width: 0;
       }
 
@@ -133,21 +133,21 @@ export function MarketBaseStyles() {
       .technical-partial-state-head > span {
         width: 38px;
         height: 38px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        color: #b45309;
-        background: rgba(245, 158, 11, .14);
-        border: 1px solid rgba(245, 158, 11, .22);
+        color: var(--warning);
+        background: var(--warning-soft);
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
       }
 
       .technical-partial-state-head strong {
         display: block;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 15px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.5;
       }
 
@@ -155,7 +155,7 @@ export function MarketBaseStyles() {
       .technical-partial-note p,
       .technical-partial-note small {
         margin: 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
         line-height: 1.75;
       }
@@ -169,38 +169,39 @@ export function MarketBaseStyles() {
       .technical-partial-metric {
         display: grid;
         gap: 6px;
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-xl);
-        background: rgba(255, 255, 255, .74);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-elevated);
         padding: 12px;
         min-width: 0;
       }
 
       .technical-partial-metric small {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 600;
       }
 
       .technical-partial-metric b {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 14px;
-        font-weight: 950;
+        font-weight: 700;
         overflow-wrap: anywhere;
+        font-family: var(--font-data);
       }
 
       .technical-partial-note {
         display: grid;
         gap: 4px;
-        border: 1px solid rgba(148, 163, 184, .18);
-        border-radius: var(--r-xl);
-        background: rgba(15, 23, 42, .035);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 12px;
       }
 
       .technical-partial-note p {
-        color: var(--sfm-foreground);
-        font-weight: 850;
+        color: var(--foreground);
+        font-weight: 500;
       }
 
       .technical-partial-action {
@@ -210,12 +211,12 @@ export function MarketBaseStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border: 1px solid rgba(47, 214, 192, .28);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .12);
-        color: var(--sfm-primary-hover);
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, var(--border));
+        border-radius: var(--radius-pill);
+        background: var(--warning-soft);
+        color: var(--primary-hover);
         padding: 0 15px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 700 12px var(--font-ui);
         cursor: pointer;
         transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
       }
@@ -223,27 +224,14 @@ export function MarketBaseStyles() {
       .technical-partial-action:hover,
       .technical-partial-action:focus-visible {
         outline: none;
-        background: rgba(47, 214, 192, .18);
-        border-color: var(--sfm-accent);
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+        background: var(--primary);
+        border-color: var(--accent);
+        color: var(--primary-foreground);
+        box-shadow: var(--focus-shadow);
       }
 
       .technical-partial-action:active {
         transform: translateY(1px);
-      }
-
-      .dark .technical-partial-state {
-        background:
-          linear-gradient(135deg, rgba(245, 158, 11, .12), rgba(47, 214, 192, .08)),
-          rgba(15, 29, 49, .86);
-        border-color: rgba(245, 158, 11, .32);
-        box-shadow: 0 18px 46px rgba(0, 0, 0, .22);
-      }
-
-      .dark .technical-partial-metric,
-      .dark .technical-partial-note {
-        background: rgba(19, 36, 58, .78);
-        border-color: rgba(148, 163, 184, .18);
       }
 
       .technical-analysis-panel {
@@ -259,55 +247,55 @@ export function MarketBaseStyles() {
         grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 14px;
         align-items: center;
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-2xl);
-        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .08)), var(--sfm-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--surface);
         padding: clamp(15px, 2vw, 20px);
-        box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        box-shadow: var(--shadow-xs);
         min-width: 0;
       }
 
       .technical-dashboard-icon {
         width: 54px;
         height: 54px;
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
-        background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-        color: #fff;
-        box-shadow: 0 16px 30px rgba(29, 140, 255, .18);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: var(--shadow-xs);
       }
 
       .technical-dashboard-head h2 {
         margin: 0;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(22px, 2.3vw, 34px);
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.2;
       }
 
       .technical-dashboard-head p {
         margin: 6px 0 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.7;
       }
 
       .technical-refresh-button,
       .technical-empty-state button {
         min-height: 42px;
-        border: 1px solid rgba(47, 214, 192, .28);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .12);
-        color: var(--sfm-primary-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        background: var(--primary-soft);
+        color: var(--primary-hover);
         padding: 0 15px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font: 950 12px Tajawal, Arial, sans-serif;
+        font: 700 12px var(--font-ui);
         cursor: pointer;
         white-space: nowrap;
         transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
@@ -318,9 +306,10 @@ export function MarketBaseStyles() {
       .technical-empty-state button:hover,
       .technical-empty-state button:focus-visible {
         outline: none;
-        background: rgba(47, 214, 192, .18);
-        border-color: var(--sfm-accent);
-        box-shadow: 0 0 0 3px rgba(24, 212, 212, .12);
+        background: var(--primary);
+        border-color: var(--accent);
+        color: var(--primary-foreground);
+        box-shadow: var(--focus-shadow);
       }
 
       .technical-refresh-button:active,
@@ -350,24 +339,24 @@ export function MarketBaseStyles() {
         display: grid;
         align-content: center;
         gap: 5px;
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-xl);
-        background: var(--sfm-light-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 12px 14px;
         min-width: 0;
       }
 
       .technical-selector-head span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.3;
       }
 
       .technical-selector-head strong {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 18px;
-        font-weight: 950;
+        font-weight: 700;
         letter-spacing: .02em;
         line-height: 1.25;
         overflow-wrap: anywhere;
@@ -383,42 +372,42 @@ export function MarketBaseStyles() {
       }
 
       .technical-data-card.support .technical-data-card-head span {
-        color: #16A34A;
-        background: rgba(34, 197, 94, .12);
-        border-color: rgba(34, 197, 94, .20);
+        color: var(--success);
+        background: var(--success-soft);
+        border-color: color-mix(in srgb, var(--success) 28%, var(--border));
       }
 
       .technical-data-card.resistance .technical-data-card-head span {
-        color: #DC2626;
-        background: rgba(239, 68, 68, .12);
-        border-color: rgba(239, 68, 68, .20);
+        color: var(--danger);
+        background: var(--danger-soft);
+        border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
       }
 
       .technical-data-card.signal {
-        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .08)), var(--sfm-card);
+        background: var(--surface);
       }
 
       .technical-data-card-foot {
         margin: 0;
         width: fit-content;
         max-width: 100%;
-        border: 1px solid rgba(47, 214, 192, .18);
-        border-radius: 999px;
-        background: rgba(47, 214, 192, .10);
-        color: var(--sfm-primary-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        background: var(--primary-soft);
+        color: var(--primary-hover);
         padding: 7px 10px;
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
       }
 
       .technical-range-card,
       .technical-education-card,
       .technical-tab-disclaimer {
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-2xl);
-        background: var(--sfm-card);
-        box-shadow: 0 14px 34px rgba(3, 18, 37, .06);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-panel);
+        background: var(--surface);
+        box-shadow: var(--shadow-xs);
         padding: clamp(15px, 2vw, 20px);
         min-width: 0;
       }
@@ -439,39 +428,39 @@ export function MarketBaseStyles() {
       .technical-education-head strong,
       .technical-tab-disclaimer strong {
         display: block;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 15px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.45;
       }
 
       .technical-range-head p,
       .technical-tab-disclaimer p {
         margin: 5px 0 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.75;
       }
 
       .technical-range-head > span {
         width: 40px;
         height: 40px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         display: grid;
         place-items: center;
-        background: rgba(47, 214, 192, .12);
-        color: var(--sfm-soft-cyan);
-        border: 1px solid rgba(47, 214, 192, .20);
+        background: var(--primary-soft);
+        color: var(--accent);
+        border: 1px solid var(--border);
         flex: 0 0 auto;
       }
 
       .technical-range-track {
         position: relative;
         height: 92px;
-        border-radius: var(--r-2xl);
-        background: linear-gradient(90deg, rgba(34, 197, 94, .08), rgba(29, 140, 255, .08), rgba(239, 68, 68, .08));
-        border: 1px solid rgba(148, 163, 184, .16);
+        border-radius: var(--radius-panel);
+        background: var(--surface-muted);
+        border: 1px solid var(--border);
         overflow: visible;
       }
 
@@ -479,25 +468,25 @@ export function MarketBaseStyles() {
         position: absolute;
         top: 46px;
         height: 4px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
       }
 
       .technical-range-fill.support {
         inset-inline-start: 0;
         width: 45%;
-        background: #16A34A;
+        background: var(--success);
       }
 
       .technical-range-fill.pivot {
         inset-inline-start: 44%;
         width: 12%;
-        background: #1D8CFF;
+        background: var(--primary);
       }
 
       .technical-range-fill.resistance {
         inset-inline-end: 0;
         width: 45%;
-        background: #DC2626;
+        background: var(--danger);
       }
 
       .technical-range-marker {
@@ -518,44 +507,47 @@ export function MarketBaseStyles() {
         content: "";
         width: 14px;
         height: 14px;
-        border-radius: 50%;
+        border-radius: var(--radius-pill);
         background: currentColor;
-        box-shadow: 0 0 0 5px rgba(255, 255, 255, .82);
+        box-shadow: var(--focus-shadow);
         order: 2;
       }
 
       .technical-range-marker b,
       .technical-range-marker small {
-        border-radius: 999px;
-        background: var(--sfm-card);
-        border: 1px solid rgba(167, 243, 240, .16);
+        border-radius: var(--radius-pill);
+        background: var(--surface);
+        border: 1px solid var(--border);
         padding: 5px 8px;
         line-height: 1.2;
-        box-shadow: 0 8px 18px rgba(3, 18, 37, .06);
+        box-shadow: var(--shadow-xs);
+        font-family: var(--font-data);
       }
 
       .technical-range-marker b {
         color: currentColor;
         font-size: 11px;
-        font-weight: 950;
+        font-weight: 700;
+        font-family: var(--font-data);
       }
 
       .technical-range-marker small {
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 600;
+        font-family: var(--font-data);
       }
 
       .technical-range-marker.support {
-        color: #16A34A;
+        color: var(--success);
       }
 
       .technical-range-marker.pivot {
-        color: #1D8CFF;
+        color: var(--primary);
       }
 
       .technical-range-marker.resistance {
-        color: #DC2626;
+        color: var(--danger);
       }
 
       .technical-education-card {
@@ -573,12 +565,12 @@ export function MarketBaseStyles() {
       .technical-tab-disclaimer > svg {
         width: 38px;
         height: 38px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         display: grid;
         place-items: center;
-        background: rgba(29, 140, 255, .10);
-        color: var(--sfm-primary-hover);
-        border: 1px solid rgba(29, 140, 255, .18);
+        background: var(--info-soft);
+        color: var(--info);
+        border: 1px solid color-mix(in srgb, var(--info) 28%, var(--border));
         flex: 0 0 auto;
       }
 
@@ -596,23 +588,23 @@ export function MarketBaseStyles() {
         grid-template-columns: auto minmax(0, 1fr);
         align-items: start;
         gap: 9px;
-        border: 1px solid rgba(167, 243, 240, .14);
-        border-radius: var(--r-xl);
-        background: var(--sfm-light-card);
+        border: 1px solid color-mix(in srgb, var(--info) 28%, var(--border));
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
         padding: 11px;
         min-width: 0;
       }
 
       .technical-education-list b {
-        color: var(--sfm-primary-hover);
+        color: var(--primary-hover);
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 700;
       }
 
       .technical-education-list span {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.7;
       }
 
@@ -620,48 +612,21 @@ export function MarketBaseStyles() {
         display: flex;
         align-items: flex-start;
         gap: 12px;
-        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .06)), var(--sfm-card);
+        background: var(--info-soft);
       }
 
       .technical-empty-state button {
         margin-top: 12px;
       }
 
-      .dark .technical-dashboard-head,
-      .dark .technical-selector-head > div:first-child,
-      .dark .technical-range-card,
-      .dark .technical-education-card,
-      .dark .technical-tab-disclaimer,
-      .dark .technical-data-card.signal {
-        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0f1d31;
-        border-color: #1d3050;
-      }
-
-      .dark .technical-range-track,
-      .dark .technical-education-list li {
-        background: #0a1422;
-        border-color: #1d3050;
-      }
-
-      .dark .technical-range-marker b,
-      .dark .technical-range-marker small {
-        background: #0f1d31;
-        border-color: #1d3050;
-      }
-
-      .dark .technical-range-marker::after {
-        box-shadow: 0 0 0 5px rgba(15, 29, 49, .88);
-      }
-
       .portfolio-card {
         gap: 18px !important;
         padding: clamp(18px, 2.2vw, 26px) !important;
-        border-radius: 30px !important;
+        border-radius: var(--radius-panel) !important;
         background:
-          linear-gradient(135deg, rgba(255, 255, 255, .86), rgba(234, 246, 255, .62)),
-          var(--sfm-card) !important;
-        border-color: rgba(47, 214, 192, .18) !important;
-        box-shadow: 0 18px 48px rgba(3, 18, 37, .08) !important;
+          var(--surface) !important;
+        border-color: var(--border) !important;
+        box-shadow: var(--shadow-xs) !important;
       }
 
       .portfolio-card-head {
@@ -670,7 +635,7 @@ export function MarketBaseStyles() {
         justify-content: space-between;
         gap: 16px;
         min-width: 0;
-        border-bottom: 1px solid rgba(47, 214, 192, .14);
+        border-bottom: 1px solid var(--border);
         padding-bottom: 16px;
       }
 
@@ -684,14 +649,14 @@ export function MarketBaseStyles() {
       .portfolio-card-title > span {
         width: 58px;
         height: 58px;
-        border-radius: var(--r-2xl);
+        border-radius: var(--radius-panel);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
-        color: var(--sfm-soft-cyan);
-        background: linear-gradient(135deg, rgba(47, 214, 192, .20), rgba(29, 140, 255, .10));
-        border: 1px solid rgba(47, 214, 192, .24);
-        box-shadow: 0 14px 28px rgba(47, 214, 192, .12);
+        color: var(--accent);
+        background: var(--primary-soft);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-xs);
       }
 
       .portfolio-card-title div {
@@ -702,25 +667,25 @@ export function MarketBaseStyles() {
 
       .portfolio-card-title h2 {
         margin: 0;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(24px, 2.4vw, 36px);
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.2;
       }
 
       .portfolio-card-title p {
         margin: 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 14px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.7;
       }
 
       .portfolio-card-title i {
         width: 84px;
         height: 5px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, var(--sfm-primary), var(--sfm-accent));
+        border-radius: var(--radius-pill);
+        background: var(--primary);
       }
 
       .portfolio-card-status {
@@ -730,32 +695,32 @@ export function MarketBaseStyles() {
         align-items: center;
         justify-content: center;
         gap: 7px;
-        border: 1px solid rgba(148, 163, 184, .24);
-        background: rgba(148, 163, 184, .10);
-        color: var(--sfm-muted);
-        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        color: var(--foreground-muted);
+        border-radius: var(--radius-pill);
         padding: 8px 12px;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.35;
         text-align: center;
       }
 
       .portfolio-card-status.available {
-        color: #047857;
-        background: rgba(16, 185, 129, .12);
-        border-color: rgba(16, 185, 129, .24);
+        color: var(--success);
+        background: var(--success-soft);
+        border-color: color-mix(in srgb, var(--success) 28%, var(--border));
       }
 
       .portfolio-empty-note {
         display: flex;
         align-items: flex-start;
         gap: 11px;
-        border: 1px solid rgba(47, 214, 192, .18);
-        background: rgba(47, 214, 192, .08);
-        border-radius: var(--r-xl);
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        border-radius: var(--radius-card);
         padding: 13px 14px;
-        color: var(--sfm-primary-hover);
+        color: var(--primary-hover);
       }
 
       .portfolio-empty-note svg {
@@ -765,27 +730,27 @@ export function MarketBaseStyles() {
 
       .portfolio-empty-note strong {
         display: block;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.5;
       }
 
       .portfolio-empty-note p {
         margin: 4px 0 0;
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 850;
+        font-weight: 500;
         line-height: 1.75;
       }
 
       .portfolio-comparison-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        border: 1px solid rgba(47, 214, 192, .16);
-        border-radius: var(--r-2xl);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-panel);
         overflow: hidden;
-        background: rgba(255, 255, 255, .45);
+        background: var(--surface-muted);
       }
 
       .portfolio-comparison-metric {
@@ -796,13 +761,12 @@ export function MarketBaseStyles() {
         gap: 14px;
         padding: 18px;
         background:
-          linear-gradient(135deg, rgba(255, 255, 255, .66), rgba(234, 246, 255, .42)),
-          var(--sfm-card);
-        border-bottom: 1px solid rgba(47, 214, 192, .12);
+          var(--surface);
+        border-bottom: 1px solid var(--border);
       }
 
       .portfolio-comparison-metric:nth-child(odd) {
-        border-inline-end: 1px solid rgba(47, 214, 192, .12);
+        border-inline-end: 1px solid var(--border);
       }
 
       .portfolio-comparison-metric:nth-last-child(-n + 2) {
@@ -812,12 +776,12 @@ export function MarketBaseStyles() {
       .portfolio-metric-icon {
         width: 44px;
         height: 44px;
-        border-radius: var(--r-xl);
+        border-radius: var(--radius-card);
         display: grid;
         place-items: center;
-        color: var(--sfm-primary-hover);
-        background: rgba(47, 214, 192, .12);
-        border: 1px solid rgba(47, 214, 192, .20);
+        color: var(--primary-hover);
+        background: var(--primary-soft);
+        border: 1px solid var(--border);
       }
 
       .portfolio-comparison-metric div {
@@ -827,21 +791,22 @@ export function MarketBaseStyles() {
       }
 
       .portfolio-comparison-metric small {
-        color: var(--sfm-muted);
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.45;
       }
 
       .portfolio-comparison-metric strong {
         width: max-content;
         max-width: 100%;
-        color: var(--sfm-foreground);
+        color: var(--foreground);
         font-size: clamp(18px, 1.7vw, 25px);
-        font-weight: 950;
+        font-weight: 700;
         line-height: 1.25;
         overflow-wrap: anywhere;
         font-variant-numeric: tabular-nums;
+        font-family: var(--font-data);
       }
 
       .portfolio-comparison-metric.success strong,
@@ -851,84 +816,34 @@ export function MarketBaseStyles() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         padding: 7px 11px;
         border: 1px solid transparent;
         font-size: 14px;
       }
 
       .portfolio-comparison-metric.success strong {
-        color: #047857;
-        background: rgba(16, 185, 129, .12);
-        border-color: rgba(16, 185, 129, .24);
+        color: var(--success);
+        background: var(--success-soft);
+        border-color: color-mix(in srgb, var(--success) 28%, var(--border));
       }
 
       .portfolio-comparison-metric.warning strong {
-        color: #B45309;
-        background: rgba(245, 158, 11, .13);
-        border-color: rgba(245, 158, 11, .25);
+        color: var(--warning);
+        background: var(--warning-soft);
+        border-color: color-mix(in srgb, var(--warning) 28%, var(--border));
       }
 
       .portfolio-comparison-metric.danger strong {
-        color: #DC2626;
-        background: rgba(239, 68, 68, .12);
-        border-color: rgba(239, 68, 68, .24);
+        color: var(--danger);
+        background: var(--danger-soft);
+        border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
       }
 
       .portfolio-comparison-metric.unavailable strong {
-        color: var(--sfm-muted);
-        background: rgba(148, 163, 184, .11);
-        border-color: rgba(148, 163, 184, .22);
-      }
-
-      .dark .portfolio-card {
-        background: linear-gradient(135deg, rgba(29, 140, 255, .08), rgba(47, 214, 192, .07)), #0f1d31 !important;
-        border-color: #1d3050 !important;
-        box-shadow: 0 18px 48px rgba(0, 0, 0, .24) !important;
-      }
-
-      .dark .portfolio-card-title > span,
-      .dark .portfolio-metric-icon {
-        color: #2FD6C0;
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .25);
-      }
-
-      .dark .portfolio-card-status.available,
-      .dark .portfolio-comparison-metric.success strong {
-        color: #2FD6C0;
-        background: rgba(47, 214, 192, .12);
-        border-color: rgba(47, 214, 192, .25);
-      }
-
-      .dark .portfolio-empty-note,
-      .dark .portfolio-comparison-grid {
-        background: #0a1422;
-        border-color: #1d3050;
-      }
-
-      .dark .portfolio-comparison-metric {
-        background: linear-gradient(135deg, rgba(29, 140, 255, .06), rgba(47, 214, 192, .05)), #0f1d31;
-        border-color: #1d3050;
-      }
-
-      .dark .portfolio-comparison-metric.warning strong {
-        color: #F5B942;
-        background: rgba(245, 185, 66, .12);
-        border-color: rgba(245, 185, 66, .25);
-      }
-
-      .dark .portfolio-comparison-metric.danger strong {
-        color: #FF5B6E;
-        background: rgba(255, 91, 110, .12);
-        border-color: rgba(255, 91, 110, .25);
-      }
-
-      .dark .portfolio-comparison-metric.unavailable strong,
-      .dark .portfolio-card-status.unavailable {
-        color: #8ea6c3;
-        background: rgba(142, 166, 195, .12);
-        border-color: rgba(142, 166, 195, .22);
+        color: var(--foreground-muted);
+        background: var(--surface-muted);
+        border-color: var(--border);
       }
 
       .news-tool-card-head .market-section-refresh {
@@ -964,7 +879,7 @@ export function MarketBaseStyles() {
         .technical-dashboard-icon {
           width: 48px;
           height: 48px;
-          border-radius: var(--r-xl);
+          border-radius: var(--radius-card);
         }
 
         .technical-refresh-button {
@@ -1014,7 +929,7 @@ export function MarketBaseStyles() {
 
         .technical-analysis-panel {
           padding: 14px !important;
-          border-radius: var(--r-2xl) !important;
+          border-radius: var(--radius-panel) !important;
         }
 
         .technical-selected-summary {
@@ -1050,6 +965,7 @@ export function MarketBaseStyles() {
           max-width: 100%;
           width: 100%;
         }
+      }
     `}</style>
   );
 }

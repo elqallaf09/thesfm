@@ -97,8 +97,10 @@ describe('Charity Center experience', () => {
     expect(CHARITY_TEXT.fr.centerSubtitle).toContain('Zakat');
   });
 
-  it('includes focused, dark-mode, reduced-motion, and 320px reflow safeguards', () => {
-    expect(charityStyles).toContain(':global(.dark) .page');
+  it('includes focused, theme-token, reduced-motion, and 320px reflow safeguards', () => {
+    expect(charityStyles).not.toContain(':global(.dark) .page');
+    expect(charityStyles).toContain('var(--background)');
+    expect(charityStyles).toContain('var(--foreground)');
     expect(charityStyles).toContain(':focus-visible');
     expect(charityStyles).toContain('@media (max-width: 360px)');
     expect(charityStyles).toContain('@media (prefers-reduced-motion: reduce)');

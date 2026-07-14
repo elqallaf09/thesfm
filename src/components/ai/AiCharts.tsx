@@ -51,6 +51,15 @@ export function AiCharts({
   };
   money: (value: number) => string;
 }) {
+  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 11 };
+  const tooltipStyle = {
+    background: 'var(--surface-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-control)',
+    color: 'var(--foreground)',
+    fontFamily: 'var(--font-ui)',
+  };
+
   return (
     <div className="ai-chart-grid">
       <ChartBox title={labels.expenses}>
@@ -59,28 +68,28 @@ export function AiCharts({
             <Pie data={categoryTotals} dataKey="value" nameKey="name" innerRadius={52} outerRadius={82}>
               {categoryTotals.map(item => <Cell key={item.name} fill={item.color} />)}
             </Pie>
-            <Tooltip formatter={(value: number) => money(Number(value))} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => money(Number(value))} />
           </PieChart>
         </ResponsiveContainer>
       </ChartBox>
       <ChartBox title={`${labels.income} / ${labels.expenses}`}>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={monthlyData}>
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(value: number) => money(Number(value))} />
-            <Area dataKey="income" stroke="#22C55E" fill="#22C55E33" />
-            <Area dataKey="expenses" stroke="#EF4444" fill="#EF444433" />
+            <XAxis dataKey="name" tick={tick} axisLine={false} tickLine={false} />
+            <YAxis tick={tick} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => money(Number(value))} />
+            <Area dataKey="income" stroke="var(--success)" fill="var(--success-soft)" />
+            <Area dataKey="expenses" stroke="var(--danger)" fill="var(--danger-soft)" />
           </AreaChart>
         </ResponsiveContainer>
       </ChartBox>
       <ChartBox title={labels.goals}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={goals.map(goal => ({ name: goal.name, value: goal.target > 0 ? Math.round((goal.current / goal.target) * 100) : 0 }))}>
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: 'var(--sfm-muted)' }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(value: number) => `${Number(value)}%`} />
-            <Bar dataKey="value" fill="var(--sfm-soft-cyan)" radius={[10, 10, 0, 0]} />
+            <XAxis dataKey="name" tick={tick} axisLine={false} tickLine={false} />
+            <YAxis tick={tick} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => `${Number(value)}%`} />
+            <Bar dataKey="value" fill="var(--primary)" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartBox>

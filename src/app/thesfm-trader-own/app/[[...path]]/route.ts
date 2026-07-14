@@ -1,11 +1,16 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { NextResponse } from 'next/server';
+import { STATIC_LIGHT_VISUAL_TOKENS } from '@/styles/static-tokens';
 
 export const dynamic = 'force-dynamic';
 
 const traderPublicRoot = path.join(process.cwd(), 'src', 'trader-app', 'public');
 const traderPublicRootWithSeparator = `${traderPublicRoot}${path.sep}`;
+const sharedVisualSystemFiles = [
+  path.join(process.cwd(), 'src', 'styles', 'tokens.css'),
+  path.join(process.cwd(), 'src', 'styles', 'themes.css'),
+];
 const allowLocalTraderQa = process.env.SFM_LOCAL_TRADER_QA === '1' && process.env.VERCEL !== '1';
 
 const mimeTypes: Record<string, string> = {
@@ -52,9 +57,9 @@ function safeAssetPath(parts: string[] = []) {
 function rewriteTraderTextAsset(content: string) {
   return content
     .replaceAll('href="/manifest.webmanifest"', 'href="/thesfm-trader-own/app/manifest.webmanifest"')
-    .replaceAll('href="/styles.css', 'href="/thesfm-trader-own/app/styles.css')
-    .replaceAll('href="/desktop-balance.css', 'href="/thesfm-trader-own/app/desktop-balance.css')
+    .replaceAll('href="/semantic-tokens.css', 'href="/thesfm-trader-own/app/semantic-tokens.css')
     .replaceAll('href="/cinema.css', 'href="/thesfm-trader-own/app/cinema.css')
+    .replaceAll('href="/detail.css', 'href="/thesfm-trader-own/app/detail.css')
     .replaceAll('src="/recommendation.js', 'src="/thesfm-trader-own/app/recommendation.js')
     .replaceAll('src="/app.js', 'src="/thesfm-trader-own/app/app.js')
     .replaceAll('src="/detail.js', 'src="/thesfm-trader-own/app/detail.js')
@@ -78,6 +83,18 @@ function rewriteTraderTextAsset(content: string) {
 
 export async function GET(_request: Request, context: { params: Promise<{ path?: string[] }> }) {
   const params = await context.params;
+  if (params.path?.join('/') === 'semantic-tokens.css') {
+    const sharedCss = (await Promise.all(
+      sharedVisualSystemFiles.map(file => readFile(file, 'utf8')),
+    )).join('\n');
+    return new NextResponse(sharedCss, {
+      headers: {
+        'Content-Type': 'text/css; charset=utf-8',
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
   const assetPath = safeAssetPath(params.path);
   if (!assetPath) return new NextResponse('Not found', { status: 404 });
   const ext = path.extname(assetPath).toLowerCase();
@@ -104,7 +121,13 @@ export async function GET(_request: Request, context: { params: Promise<{ path?:
     const cacheControl = isPublicAsset ? 'public, max-age=60, stale-while-revalidate=300' : 'no-store';
 
     if (['.html', '.js', '.css', '.webmanifest', '.json'].includes(ext)) {
-      const rewritten = rewriteTraderTextAsset(file.toString('utf8'));
+      let rewritten = rewriteTraderTextAsset(file.toString('utf8'));
+      if (ext === '.webmanifest') {
+        const manifest = JSON.parse(rewritten) as Record<string, unknown>;
+        manifest.background_color = STATIC_LIGHT_VISUAL_TOKENS.background;
+        manifest.theme_color = STATIC_LIGHT_VISUAL_TOKENS.primary;
+        rewritten = JSON.stringify(manifest);
+      }
       return new NextResponse(rewritten, {
         headers: {
           'Content-Type': contentType,

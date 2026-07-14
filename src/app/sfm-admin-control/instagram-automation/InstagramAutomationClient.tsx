@@ -685,34 +685,34 @@ export default function InstagramAutomationClient({
     >
       <style>{`
         .instagram-admin-content{width:100%!important;max-width:none!important;min-width:0!important}
-        .ig-admin{width:100%;margin:0;padding:14px;display:grid;gap:14px;color:var(--sfm-foreground);min-width:0}
+        .ig-admin{width:100%;margin:0;padding:14px;display:grid;gap:14px;color:var(--foreground);font-family:var(--font-ui);min-width:0}
         .ig-hero{
-          border:1px solid rgba(29,140,255,.18);
-          background:linear-gradient(135deg,#04152D,#0A2F4F 56%,#0F6B67);
-          color:#fff;border-radius:var(--r-2xl);padding:20px;display:grid;gap:16px;grid-template-columns:1fr auto;align-items:center;
-          min-width:0;box-shadow:0 18px 45px rgba(3,18,37,.18)
+          border:1px solid var(--border);
+          background:var(--hero-gradient);
+          color:var(--hero-foreground);border-radius:var(--radius-panel);padding:20px;display:grid;gap:16px;grid-template-columns:1fr auto;align-items:center;
+          min-width:0;box-shadow:var(--shadow-card)
         }
-        .ig-hero h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.05;font-weight:900}
-        .ig-hero p{margin:8px 0 0;max-width:800px;color:rgba(232,245,255,.85);line-height:1.75;font-weight:700}
+        .ig-hero h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.15;font-weight:700}
+        .ig-hero p{margin:8px 0 0;max-width:800px;color:var(--hero-foreground-muted);line-height:1.75;font-weight:400}
         .ig-hero-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
         .ig-badge-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
         .ig-badge-chip{
-          border:1px solid rgba(255,255,255,.2);
-          background:rgba(255,255,255,.1);
-          border-radius:999px;
+          border:1px solid var(--border-strong);
+          background:var(--surface-active);
+          border-radius:var(--radius-pill);
           padding:8px 12px;
           display:inline-flex;
           align-items:center;
           gap:8px;
-          font:900 12px Tajawal,Arial,sans-serif;
-          color:#fff;
+          font:500 12px var(--font-ui);
+          color:var(--foreground);
         }
         .ig-panel{
-          border:1px solid rgba(29,140,255,.14);
-          background:var(--sfm-card);
-          border-radius:var(--r-xl);
+          border:1px solid var(--border);
+          background:var(--surface);
+          border-radius:var(--radius-card);
           padding:14px;
-          box-shadow:0 14px 32px rgba(3,18,37,.05);
+          box-shadow:var(--shadow-card);
           min-width:0;
           display:grid;
           gap:12px;
@@ -724,7 +724,8 @@ export default function InstagramAutomationClient({
           align-items:center;
           gap:8px;
           font-size:18px;
-          color:var(--sfm-midnight);
+          color:var(--foreground);
+          font-weight:600;
         }
         .ig-grid{
           display:grid;
@@ -741,62 +742,64 @@ export default function InstagramAutomationClient({
           min-width:0;
         }
         .ig-stat{
-          border:1px solid rgba(29,140,255,.16);
-          background:var(--sfm-card);
-          border-radius:var(--r-lg);
+          border:1px solid var(--border);
+          background:var(--surface);
+          border-radius:var(--radius-card);
           padding:12px;
           min-width:0;
         }
-        .ig-stat span{color:var(--sfm-muted);font-size:12px;font-weight:900}
-        .ig-stat strong{display:block;margin-top:4px;font-size:26px;font-weight:950;color:var(--sfm-primary-dark)}
+        .ig-stat span{color:var(--foreground-muted);font-size:12px;font-weight:500}
+        .ig-stat strong{display:block;margin-top:4px;font-family:var(--font-data);font-size:26px;font-weight:600;color:var(--foreground)}
         .ig-banner{
-          border-radius:var(--r-md);
+          border-radius:var(--radius-control);
           padding:12px 14px;
           display:grid;
           gap:6px;
-          font-weight:800;
+          font-weight:500;
           font-size:13px;
           min-width:0;
         }
-        .ig-banner.ok{background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0}
-        .ig-banner.error{background:#FFF1F2;color:#991B1B;border:1px solid #FECDD3}
-        .ig-banner.warn{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A}
+        .ig-banner.ok{background:var(--success-soft);color:var(--success);border:1px solid var(--success)}
+        .ig-banner.error{background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger)}
+        .ig-banner.warn{background:var(--warning-soft);color:var(--warning);border:1px solid var(--warning)}
         .ig-badge{
-          border:1px solid rgba(29,140,255,.2);
-          border-radius:999px;
-          background:var(--sfm-light-card);
+          border:1px solid var(--border);
+          border-radius:var(--radius-pill);
+          background:var(--surface-muted);
           padding:4px 10px;
           font-size:11px;
           display:inline-flex;
           align-items:center;
-          font-weight:900;
-          color:var(--sfm-muted);
+          font-weight:500;
+          color:var(--foreground-muted);
           white-space:nowrap;
         }
-        .ig-badge.good{background:#ECFDF5;color:#065F46;border-color:#A7F3D0}
-        .ig-badge.warn{background:#FFFBEB;color:#92400E;border-color:#FDE68A}
-        .ig-badge.bad{background:#FFF1F2;color:#991B1B;border-color:#FECDD3}
-        .ig-badge.neutral{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE}
+        .ig-badge.good{background:var(--success-soft);color:var(--success);border-color:var(--success)}
+        .ig-badge.warn{background:var(--warning-soft);color:var(--warning);border-color:var(--warning)}
+        .ig-badge.bad{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+        .ig-badge.neutral{background:var(--info-soft);color:var(--info);border-color:var(--info)}
         .ig-action{
-          border:1px solid rgba(29,140,255,.18);
-          border-radius:var(--r-md);
+          border:1px solid var(--border-strong);
+          border-radius:var(--radius-control);
           min-height:42px;
           padding:0 12px;
-          background:var(--sfm-card);
-          color:var(--sfm-foreground);
+          background:var(--surface);
+          color:var(--foreground);
           display:inline-flex;
           align-items:center;
           justify-content:center;
           gap:8px;
           cursor:pointer;
-          font:900 13px Tajawal,Arial,sans-serif;
-          transition:transform .16s ease,box-shadow .16s ease;
+          font:600 13px var(--font-ui);
+          transition:background .16s ease,border-color .16s ease;
         }
-        .ig-action.primary{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;border:0}
-        .ig-action.secondary{background:var(--sfm-light-card)}
-        .ig-action.danger{background:#FFF1F2;color:#B91C1C;border-color:#FECACA}
+        .ig-action.primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+        .ig-action.primary:hover:not(:disabled){background:var(--primary-hover)}
+        .ig-action.secondary{background:var(--surface-muted)}
+        .ig-action.secondary:hover:not(:disabled){background:var(--surface-hover)}
+        .ig-action.danger{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
         .ig-action:disabled{opacity:.6;cursor:not-allowed}
-        .ig-action:hover:not(:disabled),.ig-action:focus-visible:not(:disabled){transform:translateY(-1px);box-shadow:0 0 0 3px rgba(24,212,212,.14);outline:0}
+        .ig-action:focus-visible:not(:disabled){box-shadow:var(--focus-shadow);outline:0}
         .ig-form{display:grid;gap:10px}
         .ig-form-grid{
           display:grid;
@@ -806,88 +809,83 @@ export default function InstagramAutomationClient({
         }
         .ig-field{display:grid;gap:6px;min-width:0}
         .ig-field.wide{grid-column:1/-1}
-        .ig-field span{font-size:12px;font-weight:900;color:var(--sfm-muted)}
+        .ig-field span{font-size:12px;font-weight:500;color:var(--foreground-muted)}
         .ig-field input,.ig-field textarea,.ig-field select{
           width:100%;
           min-width:0;
-          border:1px solid rgba(29,140,255,.16);
-          background:var(--sfm-light-card);
-          color:var(--sfm-foreground);
-          border-radius:var(--r-md);
+          border:1px solid var(--border-strong);
+          background:var(--control-background);
+          color:var(--foreground);
+          border-radius:var(--radius-control);
           min-height:42px;
           padding:10px 12px;
-          font:900 13px Tajawal,Arial,sans-serif;
+          font:400 13px var(--font-ui);
         }
+        .ig-field input:focus-visible,.ig-field textarea:focus-visible,.ig-field select:focus-visible{outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
         .ig-field textarea{min-height:100px;resize:vertical;line-height:1.6}
         .ig-tabs{display:flex;gap:8px;flex-wrap:wrap}
         .ig-tabs button{
           min-height:36px;
-          border-radius:999px;
-          border:1px solid rgba(29,140,255,.18);
-          background:var(--sfm-light-card);
-          color:var(--sfm-primary-hover);
+          border-radius:var(--radius-pill);
+          border:1px solid var(--border);
+          background:var(--surface-muted);
+          color:var(--primary);
           padding:0 11px;
-          font:900 12px Tajawal,Arial,sans-serif;
+          font:500 12px var(--font-ui);
         }
-        .ig-tabs button.active{background:linear-gradient(135deg,#1D8CFF,#18D4D4);color:#fff;border:0}
+        .ig-tabs button:hover{background:var(--surface-hover)}.ig-tabs button:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-tabs button.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-weight:600}
         .ig-actions{display:flex;gap:8px;flex-wrap:wrap}
         .ig-list{display:grid;gap:8px;max-height:640px;overflow:auto;padding-inline-end:2px}
-        .ig-item{display:grid;gap:8px;border:1px solid rgba(29,140,255,.13);background:var(--sfm-light-card);border-radius:var(--r-md);padding:10px;text-align:start;min-width:0}
-        .ig-item:hover{border-color:rgba(29,140,255,.45)}
-        .ig-item.active{border-color:rgba(24,212,212,.55);box-shadow:0 0 0 3px rgba(24,212,212,.12);background:linear-gradient(135deg,rgba(47,214,192,.11),rgba(29,140,255,.05))}
-        .ig-item strong{font-size:14px;display:block;overflow-wrap:anywhere;color:var(--sfm-midnight)}
-        .ig-item small{font-size:11px;color:var(--sfm-muted);font-weight:900}
+        .ig-item{display:grid;gap:8px;border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:10px;text-align:start;min-width:0;color:var(--foreground)}
+        .ig-item:hover{border-color:var(--border-strong);background:var(--surface-hover)}
+        .ig-item:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-item.active{border-color:var(--primary);box-shadow:var(--active-indicator-shadow);background:var(--primary-soft)}
+        .ig-item strong{font-size:14px;display:block;overflow-wrap:anywhere;color:var(--foreground);font-weight:600}
+        .ig-item small{font-size:11px;color:var(--foreground-muted);font-weight:400}
         .ig-item .ig-item-top{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
         .ig-item .ig-item-top .left{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
         .ig-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
         .ig-media{
-          border:1px solid rgba(29,140,255,.14);
-          border-radius:var(--r-lg);
+          border:1px solid var(--border);
+          border-radius:var(--radius-card);
           min-height:210px;
-          background:var(--sfm-light-card);
+          background:var(--surface-muted);
           display:grid;
           place-items:center;
           overflow:hidden;
           position:relative;
         }
         .ig-media img,.ig-media video{width:100%;height:100%;object-fit:cover;max-height:360px}
-        .ig-media-placeholder{display:grid;place-items:center;gap:8px;color:var(--sfm-muted);text-align:center}
+        .ig-media-placeholder{display:grid;place-items:center;gap:8px;color:var(--foreground-muted);text-align:center}
         .ig-empty{
-          border:1px dashed rgba(29,140,255,.28);
-          background:var(--sfm-light-card);
-          border-radius:var(--r-md);
+          border:1px dashed var(--border-strong);
+          background:var(--surface-muted);
+          border-radius:var(--radius-control);
           min-height:180px;
           display:grid;
           place-items:center;
           padding:18px;
           text-align:center;
-          color:var(--sfm-muted);
+          color:var(--foreground-muted);
           gap:8px;
         }
-        .ig-empty strong{color:var(--sfm-midnight)}
+        .ig-empty strong{color:var(--foreground)}
         .ig-event-list{display:grid;gap:8px;max-height:230px;overflow:auto;padding-inline-end:2px}
-        .ig-event{border:1px solid rgba(29,140,255,.12);background:var(--sfm-light-card);border-radius:var(--r-md);padding:9px;display:grid;gap:5px}
-        .ig-event strong{font-size:12px;color:var(--sfm-midnight)}
-        .ig-event small{font-size:11px;color:var(--sfm-muted);font-weight:900}
+        .ig-event{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:9px;display:grid;gap:5px}
+        .ig-event strong{font-size:12px;color:var(--foreground);font-weight:600}
+        .ig-event small{font-size:11px;color:var(--foreground-muted);font-weight:400}
         .ig-code-card{
-          border:1px solid rgba(29,140,255,.22);
-          background:var(--sfm-card);
-          border-radius:var(--r-lg);
+          border:1px solid var(--border);
+          background:var(--surface);
+          border-radius:var(--radius-card);
           padding:12px;
           display:grid;
           gap:10px;
         }
-        .ig-code-card p{margin:0;color:var(--sfm-muted);line-height:1.6;font-weight:800}
-        .ig-code-card strong{color:#B91C1C}
+        .ig-code-card p{margin:0;color:var(--foreground-muted);line-height:1.6;font-weight:400}
+        .ig-code-card strong{color:var(--danger)}
         .ig-code-row{display:flex;gap:8px;flex-wrap:wrap}
         .ig-code-row input{flex:1;min-width:200px}
-        .ig-subtle{color:var(--sfm-muted);font-size:11px;font-weight:900;line-height:1.7}
-        .dark .ig-admin,.dark .ig-admin *{color:inherit}
-        .dark .ig-hero,.dark .ig-admin .ig-panel{background:#0F1D31;border-color:#1D3050;box-shadow:none}
-        .dark .ig-field input,.dark .ig-field textarea,.dark .ig-field select,.dark .ig-media,.dark .ig-stat,.dark .ig-action.secondary,.dark .ig-item,.dark .ig-event,.dark .ig-code-card,.dark .ig-empty{
-          background:#101B2D;border-color:#1D3050}
-        .dark .ig-hero p,.dark .ig-stat strong,.dark .ig-panel h2,.dark .ig-item strong,.dark .ig-event strong{color:#F8FCFF}
-        .dark .ig-panel h2{color:#EAF1FF}
+        .ig-subtle{color:var(--foreground-muted);font-size:11px;font-weight:400;line-height:1.7}
         @media(max-width:1200px){
           .ig-grid{grid-template-columns:minmax(0,1fr)}
           .ig-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -902,7 +900,7 @@ export default function InstagramAutomationClient({
           .ig-stats .ig-stat strong{font-size:30px}
         }
       `}</style>
-      <main className="ig-admin" dir={dir}>
+      <div className="ig-admin" dir={dir}>
         <section className="ig-hero">
           <div>
             <h1>{text.title}</h1>
@@ -975,7 +973,7 @@ export default function InstagramAutomationClient({
               </div>
               <div style={{ display: 'grid', gap: 8 }}>
                 <strong>{form.titles[activeLanguage] || form.topic || text.titleField}</strong>
-                <p style={{ margin: 0, color: 'var(--sfm-muted)', fontWeight: 900, lineHeight: 1.7 }}>
+                <p style={{ margin: 0, color: 'var(--foreground-muted)', fontWeight: 400, lineHeight: 1.7 }}>
                   {form.captions[activeLanguage] || form.descriptions[activeLanguage] || '-'}
                 </p>
                 {form.assetUrl ? (
@@ -1229,7 +1227,7 @@ export default function InstagramAutomationClient({
             )}
           </section>
         </section>
-      </main>
+      </div>
     </AdminDashboardShell>
   );
 }

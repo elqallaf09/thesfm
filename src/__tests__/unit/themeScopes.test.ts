@@ -91,10 +91,9 @@ describe('scopes.css finance restoration', () => {
     expect(css).toContain("--finance-field-h: 50px");
   });
 
-  it('restores the approved finance radius scale', () => {
-    expect(css).toContain('--r-sm: 9px');
-    expect(css).toContain('--r-xl: 18px');
-    expect(css).toContain('--r-2xl: 22px');
+  it('keeps finance on the shared semantic radius scale', () => {
+    expect(css).not.toMatch(/--r-(xs|sm|md|lg|xl|2xl)\s*:/);
+    expect(css).not.toMatch(/--radius-(xs|sm|control|card|panel)\s*:/);
   });
 
   it('keeps trader, admin and shariah scopes free of metric overrides', () => {

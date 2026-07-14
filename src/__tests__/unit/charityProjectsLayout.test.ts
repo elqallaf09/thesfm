@@ -9,17 +9,18 @@ const charityPage = readFileSync(join(projectRoot, 'src/app/charity-projects/pag
 const pageTabs = readFileSync(join(projectRoot, 'src/components/layout/PageTabs.tsx'), 'utf8');
 
 describe('charity projects page layout regression guard', () => {
-  it('keeps the page inside a readable sidebar-safe content container', () => {
-    expect(charityStyles).toContain('max-inline-size: min(1520px, 100%)');
-    expect(charityStyles).toContain('margin-inline-start: var(--sidebar-w)');
-    expect(charityStyles).toContain('margin-inline:auto');
-    expect(charityStyles).toContain('grid-template-columns:minmax(0,1fr) auto');
+  it('lets the workspace shell own width without viewport or sidebar arithmetic', () => {
+    expect(charityStyles).toContain('max-width: 100%');
+    expect(charityStyles).toContain('margin-inline: 0');
+    expect(charityStyles).toContain('grid-template-columns: minmax(0, 1fr) auto');
+    expect(charityStyles).not.toContain('var(--sidebar-w)');
+    expect(charityStyles).not.toContain('100vw');
   });
 
   it('keeps KPI cards compact, complete, and dashboard-like', () => {
     expect(charityStyles).toContain('grid-template-columns: repeat(5, minmax(0, 1fr))');
     expect(charityStyles).toContain('min-height: 112px');
-    expect(charityStyles).toContain('font-size: clamp(20px, 1.6vw, 25px)');
+    expect(charityStyles).toContain('font-size: clamp(1.2rem, 1.6vw, 1.55rem)');
     expect(charityPage).toContain('tr.nextDueDateKpi');
     expect(charityPage).toContain('tr.beneficiariesCountKpi');
   });
@@ -29,7 +30,8 @@ describe('charity projects page layout regression guard', () => {
     expect(charityPage).toContain('className="season-card"');
     expect(charityPage).toContain('className="charity-empty-state compact"');
     expect(charityStyles).toContain('.charity-projects-page .season-card');
-    expect(charityStyles).toContain('min-height: 136px !important');
+    expect(charityStyles).toContain('min-height: 116px');
+    expect(charityStyles).toContain('background: var(--surface-muted)');
     expect(charityStyles).not.toMatch(/\.empty-state(?:\.compact)?\{[^}]*min-height:\s*(?:[3-9]\d{2}|[1-9]\d{3})px/);
   });
 
@@ -37,8 +39,8 @@ describe('charity projects page layout regression guard', () => {
     expect(charityPage).toContain('className="charity-tabs"');
     expect(charityPage).toContain("const CHARITY_PROJECTS_TABS = ['overview', 'projects', 'beneficiaries', 'donations', 'reports', 'impact', 'reminders', 'documents'] as const;");
     expect(pageTabs).toContain('.page-section-tabs.charity-tabs button');
-    expect(charityStyles).toContain('grid-template-columns: repeat(8,minmax(0,1fr)) !important');
-    expect(charityStyles).toContain('.page-section-tabs-shell.mobile-select .page-section-tabs.charity-tabs { display: none !important; }');
+    expect(charityStyles).toContain('grid-template-columns: repeat(8, minmax(0, 1fr))');
+    expect(charityStyles).toMatch(/\.page-section-tabs-shell\.mobile-select \.page-section-tabs\.charity-tabs \{\s+display: none;/);
     expect(pageTabs).toContain('font-size: 13.5px');
   });
 
@@ -48,8 +50,8 @@ describe('charity projects page layout regression guard', () => {
     expect(charityPage).toContain('selectedYearHasReportData');
     expect(charityPage).toContain('<table className="phase28-report-register">');
     expect(charityPage).toContain('<th scope="col">');
-    expect(charityStyles).toMatch(/@media \(max-width: 1180px\) \{\s+\.donation-record/);
-    expect(charityStyles).toContain('.phase28-report-row > td::before { content: attr(data-label)');
+    expect(charityStyles).toContain('@media (max-width: 1024px)');
+    expect(charityStyles).toMatch(/\.phase28-report-row > td::before \{\s+content: attr\(data-label\);/);
     expect(charityPage).not.toContain('referenceBenchmark}: 2.5% / 10%');
   });
 
@@ -101,9 +103,27 @@ describe('charity projects page layout regression guard', () => {
     expect(charityPage).toContain('className="beneficiary-meta"');
     expect(charityPage).toContain('<small>{tr.country}</small>');
     expect(charityPage).toContain('<small>{tr.renewalPriority}</small>');
-    expect(charityStyles).toContain('.charity-projects-page :is(.project-card, .beneficiary-card) .project-top');
-    expect(charityStyles).toContain('.charity-projects-page .beneficiary-meta > div');
+    expect(charityStyles).toContain('.phase28-project-meta,');
+    expect(charityStyles).toContain('.beneficiary-meta,');
+    expect(charityStyles).toContain(') > div {');
     expect(charityStyles).toContain('.charity-projects-page .project-support-grid');
-    expect(charityStyles).toContain('@media (max-width: 640px)');
+    expect(charityStyles).toContain('@media (max-width: 720px)');
+  });
+
+  it('consumes the centralized visual system without a feature-local palette', () => {
+    expect(charityStyles).toContain('font-family: var(--font-ui)');
+    expect(charityStyles).toContain('font-family: var(--font-data)');
+    expect(charityStyles).toContain('background: var(--hero-gradient)');
+    expect(charityStyles).toContain('background: var(--surface)');
+    expect(charityStyles).toContain('border: 1px solid var(--border)');
+    expect(charityStyles).toContain('box-shadow: var(--shadow-card)');
+    expect(charityStyles).toContain('background: var(--success-soft)');
+    expect(charityStyles).toContain('background: var(--danger-soft)');
+    expect(charityStyles).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(charityStyles).not.toMatch(/(?:rgb|hsl)a?\(/i);
+    expect(charityStyles).not.toMatch(/(?:linear|radial)-gradient\(/i);
+    expect(charityStyles).not.toMatch(/font-family:\s*[^;]*(?:Tajawal|Cairo|Arial)/i);
+    expect(charityStyles).not.toContain('--charity-');
+    expect(charityStyles).not.toContain('.dark .charity-projects-page');
   });
 });

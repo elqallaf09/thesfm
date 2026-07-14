@@ -32,6 +32,7 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
 
@@ -1646,7 +1647,7 @@ export function DividendStocksNewsPage() {
 
   return (
     <NewsPageShell category="high-income" className="page" dir={dir} wide>
-      <main className="main">
+      <WorkspacePageContainer as="main" variant="wide" className="main">
         <div className="container">
           <header className="hero">
             <div className="hero-copy">
@@ -1819,7 +1820,7 @@ export function DividendStocksNewsPage() {
             </div>
           </footer>
         </div>
-      </main>
+      </WorkspacePageContainer>
       {selectedDetailsRow || detailsLoadingSymbol ? (
         <StockDetailsDrawer
           row={selectedDetailsRow}
@@ -3236,30 +3237,18 @@ function DividendStyles() {
     <style jsx global>{`
       .page {
         min-height: 100dvh;
-        background:
-          radial-gradient(circle at top left, rgba(34, 211, 238, 0.13), transparent 34rem),
-          linear-gradient(180deg, #f5fbff 0%, #eef7ff 48%, #f8fbff 100%);
-        color: #0f1f35;
+        background: var(--background);
+        color: var(--foreground);
       }
       .main {
         min-width: 0;
         width: 100%;
         max-width: 100%;
         overflow-x: clip;
-        padding: 22px clamp(18px, 2.2vw, 36px) 52px;
-      }
-      .page[dir="rtl"] .main {
-        padding-inline-start: clamp(16px, 2vw, 32px);
-        padding-inline-end: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-      }
-      .page[dir="ltr"] .main {
-        padding-inline-start: calc(var(--sidebar-w, 230px) + clamp(16px, 2vw, 32px));
-        padding-inline-end: clamp(16px, 2vw, 32px);
       }
       .container {
-        width: min(100%, 1360px);
+        width: 100%;
         min-width: 0;
-        margin-inline: auto;
         display: grid;
         gap: 22px;
       }
@@ -3269,13 +3258,11 @@ function DividendStyles() {
         gap: 22px;
         align-items: stretch;
         padding: clamp(20px, 2.4vw, 26px);
-        border: 1px solid rgba(63, 127, 158, 0.22);
-        border-radius: var(--r-2xl);
-        background:
-          linear-gradient(135deg, rgba(8, 28, 52, 0.98), rgba(8, 92, 103, 0.9)),
-          radial-gradient(circle at 14% 20%, rgba(45, 212, 191, 0.26), transparent 21rem);
-        color: #f8fdff;
-        box-shadow: 0 24px 60px rgba(10, 42, 75, 0.16);
+        border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+        border-radius: var(--radius-panel);
+        background: var(--hero-gradient);
+        color: var(--hero-foreground);
+        box-shadow: var(--shadow-card);
         overflow: hidden;
         min-width: 0;
       }
@@ -3298,12 +3285,12 @@ function DividendStyles() {
       .eyebrow {
         width: fit-content;
         padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(35, 211, 231, 0.14);
-        border: 1px solid rgba(141, 242, 255, 0.28);
-        color: #b8f6ff;
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
       }
       .hero h1 {
         margin: 0;
@@ -3314,7 +3301,7 @@ function DividendStyles() {
       .hero p {
         margin: 0;
         max-width: 850px;
-        color: rgba(239, 251, 255, 0.83);
+        color: color-mix(in srgb, var(--hero-foreground) 83%, transparent);
         font-size: 15px;
         line-height: 1.85;
       }
@@ -3326,37 +3313,37 @@ function DividendStyles() {
       .hero-meta span {
         min-height: 34px;
         padding: 7px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.09);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        color: rgba(255, 255, 255, 0.9);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--hero-foreground) 9%, transparent);
+        border: 1px solid color-mix(in srgb, var(--hero-foreground) 14%, transparent);
+        color: color-mix(in srgb, var(--hero-foreground) 90%, transparent);
         font-size: 12px;
-        font-weight: 760;
+        font-weight: 400;
       }
       .status-dot::before {
         content: '';
         width: 8px;
         height: 8px;
-        border-radius: 50%;
-        background: #94a3b8;
+        border-radius: var(--radius-pill);
+        background: var(--primary);
       }
-      .status-ok::before { background: #2dd4bf; }
-      .status-warn::before { background: #f59e0b; }
+      .status-ok::before { background: var(--success); }
+      .status-warn::before { background: var(--danger); }
       .hero-panel {
         display: grid;
         gap: 18px;
         align-content: space-between;
         padding: 20px;
-        border-radius: var(--r-xl);
-        background: rgba(255, 255, 255, 0.11);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--hero-foreground) 11%, transparent);
+        border: 1px solid color-mix(in srgb, var(--hero-foreground) 20%, transparent);
         backdrop-filter: blur(8px);
         min-width: 0;
       }
       .hero-panel span {
-        color: #a8f3ff;
+        color: var(--hero-foreground);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
       }
       .hero-panel strong {
         display: block;
@@ -3373,8 +3360,8 @@ function DividendStyles() {
       .link-button,
       .guide-button {
         min-height: 44px;
-        border-radius: var(--r-md);
-        border: 1px solid rgba(53, 116, 146, 0.18);
+        border-radius: var(--radius-control);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
         font: inherit;
         transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
       }
@@ -3384,19 +3371,19 @@ function DividendStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        background: linear-gradient(135deg, #1f7eea, #18c4d4);
-        color: #fff;
+        background: var(--primary);
+        color: var(--foreground);
         border: 0;
-        font-weight: 900;
+        font-weight: 600;
         cursor: pointer;
         text-decoration: none;
-        box-shadow: 0 14px 26px rgba(24, 139, 202, 0.25);
+        box-shadow: var(--shadow-card);
       }
       .refresh-button:hover:not(:disabled),
       .primary-button:hover:not(:disabled),
       .card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 18px 34px rgba(20, 78, 118, 0.14);
+        box-shadow: var(--shadow-md);
       }
       .refresh-button:disabled,
       .primary-button:disabled,
@@ -3411,24 +3398,24 @@ function DividendStyles() {
         gap: 10px;
         overflow-x: auto;
         padding: 8px;
-        border: 1px solid rgba(69, 132, 159, 0.16);
-        border-radius: var(--r-xl);
-        background: rgba(255, 255, 255, 0.78);
-        box-shadow: 0 14px 36px rgba(15, 61, 92, 0.08);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--surface) 78%, transparent);
+        box-shadow: var(--shadow-card);
       }
       .tab {
         flex: 0 0 auto;
         padding: 0 18px;
-        background: #fff;
-        color: #456176;
-        font-weight: 900;
+        background: var(--surface);
+        color: var(--foreground-secondary);
+        font-weight: 600;
         cursor: pointer;
       }
       .tab.active {
-        color: #fff;
+        color: var(--foreground);
         border-color: transparent;
-        background: linear-gradient(135deg, #1768d4, #19c7d6);
-        box-shadow: 0 12px 24px rgba(25, 138, 204, 0.22);
+        background: var(--primary);
+        box-shadow: var(--shadow-card);
       }
       .section,
       .panel,
@@ -3438,10 +3425,10 @@ function DividendStyles() {
       .state-box {
         max-width: 100%;
         min-width: 0;
-        border: 1px solid rgba(58, 124, 154, 0.16);
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: var(--r-2xl);
-        box-shadow: 0 16px 40px rgba(24, 62, 92, 0.08);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
+        border-radius: var(--radius-panel);
+        box-shadow: var(--shadow-card);
       }
       .section,
       .panel { padding: 22px; min-width: 0; }
@@ -3460,13 +3447,13 @@ function DividendStyles() {
       .section-title h2,
       .section-title h3 {
         margin: 0;
-        color: #102742;
+        color: var(--foreground);
         font-size: clamp(20px, 2.4vw, 26px);
         line-height: 1.25;
       }
       .section-title p {
         margin: 0;
-        color: #5f7388;
+        color: var(--foreground-secondary);
         font-size: 14px;
         line-height: 1.8;
       }
@@ -3480,32 +3467,32 @@ function DividendStyles() {
         gap: 10px;
         min-width: 0;
         padding: 18px;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: linear-gradient(180deg, #ffffff, #f8fcff);
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface-muted);
       }
       .metric-icon {
         display: inline-grid;
         place-items: center;
         width: 38px;
         height: 38px;
-        border-radius: var(--r-md);
-        background: rgba(25, 190, 213, 0.12);
-        color: #138da6;
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--primary);
       }
       .metric-label {
-        color: #64748b;
+        color: var(--foreground-secondary);
         font-size: 12px;
-        font-weight: 850;
+        font-weight: 600;
       }
       .metric-value {
-        color: #0f253f;
+        color: var(--foreground);
         font-size: 24px;
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.1;
       }
       .metric-help {
-        color: #64748b;
+        color: var(--foreground-muted);
         font-size: 12px;
         line-height: 1.5;
       }
@@ -3518,7 +3505,7 @@ function DividendStyles() {
         width: 100%;
         min-width: 0;
         overflow: hidden;
-        mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+        mask-image: none;
       }
       .ticker-track,
       .ticker-set {
@@ -3541,9 +3528,9 @@ function DividendStyles() {
         display: grid;
         gap: 5px;
         padding: 9px 10px;
-        border-radius: var(--r-lg);
-        background: #fff;
-        border: 1px solid rgba(58, 124, 154, 0.13);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        border: 1px solid color-mix(in srgb, var(--accent) 13%, transparent);
         min-width: 0;
       }
       .ticker-skeleton-track {
@@ -3556,9 +3543,9 @@ function DividendStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        color: #526579;
+        color: var(--foreground-muted);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
         text-align: center;
       }
       .ticker-top,
@@ -3582,7 +3569,7 @@ function DividendStyles() {
       }
       .ticker-name,
       .muted {
-        color: #64748b;
+        color: var(--foreground-muted);
       }
       .ticker-name {
         min-width: 0;
@@ -3590,11 +3577,11 @@ function DividendStyles() {
         text-overflow: ellipsis;
         white-space: nowrap;
         font-size: 11px;
-        font-weight: 820;
+        font-weight:500;
       }
       .ticker-metrics {
         justify-content: space-between;
-        color: #526579;
+        color: var(--foreground-secondary);
         font-size: 10.5px;
         gap: 6px;
         min-width: 0;
@@ -3612,8 +3599,8 @@ function DividendStyles() {
         font-variant-numeric: tabular-nums;
       }
       .symbol {
-        color: #0f253f;
-        font-weight: 950;
+        color: var(--foreground);
+        font-weight: 600;
       }
       .ticker-item .symbol {
         max-width: 72px;
@@ -3624,18 +3611,18 @@ function DividendStyles() {
       }
       .ticker-item .numeric {
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .ticker-item .badge {
         min-height: 22px;
         padding: 3px 7px;
         font-size: 10px;
       }
-      .tone-positive { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.22); }
-      .tone-negative { color: #b42318; background: rgba(239, 68, 68, 0.09); border-color: rgba(239, 68, 68, 0.2); }
-      .tone-warning { color: #a16207; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.24); }
-      .tone-neutral { color: #526579; background: rgba(100, 116, 139, 0.1); border-color: rgba(100, 116, 139, 0.18); }
-      .tone-info { color: #075985; background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.22); }
+      .tone-positive { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); border-color: color-mix(in srgb, var(--success) 22%, transparent); }
+      .tone-negative { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); border-color: color-mix(in srgb, var(--danger) 20%, transparent); }
+      .tone-warning { color: var(--warning); background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 24%, var(--border)); }
+      .tone-neutral { color: var(--foreground-muted); background: var(--surface-muted); border-color: var(--border); }
+      .tone-info { color: var(--info); background: var(--info-soft); border-color: color-mix(in srgb, var(--info) 22%, var(--border)); }
       .badge,
       .pill {
         display: inline-flex;
@@ -3645,10 +3632,10 @@ function DividendStyles() {
         width: fit-content;
         min-height: 28px;
         padding: 5px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(58, 124, 154, 0.16);
+        border-radius: var(--radius-pill);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
         font-size: 12px;
-        font-weight: 850;
+        font-weight: 600;
         white-space: nowrap;
       }
       .workspace-grid {
@@ -3689,10 +3676,8 @@ function DividendStyles() {
         grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
         gap: 15px;
         padding: 20px;
-        border-radius: var(--r-xl);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 252, 255, 0.94)),
-          radial-gradient(circle at 12% 0%, rgba(20, 184, 166, 0.11), transparent 16rem);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
       }
       .featured-card .stock-head {
         align-items: flex-start;
@@ -3726,21 +3711,21 @@ function DividendStyles() {
         width: 52px;
         height: 52px;
         flex: 0 0 52px;
-        border-radius: var(--r-lg);
-        color: #0e7490;
-        background: linear-gradient(135deg, rgba(34, 211, 238, 0.17), rgba(37, 99, 235, 0.12));
-        border: 1px solid rgba(14, 165, 233, 0.16);
-        font-weight: 950;
+        border-radius: var(--radius-card);
+        color: var(--primary);
+        background: var(--surface-muted);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        font-weight: 600;
       }
       .stock-logo.asset-avatar,
       .event-identity .asset-avatar,
       .asset-mini-metric .asset-avatar,
       .compact-asset-badge .asset-avatar,
       .sfm-stock-ticker-logo .asset-avatar {
-        background: #ffffff;
-        border-color: rgba(148, 163, 184, 0.24);
-        color: #0f253f;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 8px 18px rgba(15, 61, 92, 0.08);
+        background: var(--surface);
+        border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+        color: var(--primary);
+        box-shadow: var(--shadow-card);
       }
       .stock-logo img,
       .event-identity .asset-avatar img,
@@ -3764,7 +3749,7 @@ function DividendStyles() {
       .stock-logo.small {
         width: 40px;
         height: 40px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
       }
       .stock-title {
         min-width: 0;
@@ -3774,15 +3759,15 @@ function DividendStyles() {
       .article-title,
       .strategy-card h3 {
         margin: 0;
-        color: #102742;
+        color: var(--foreground);
         font-size: 17px;
         line-height: 1.45;
-        font-weight: 950;
+        font-weight: 600;
       }
       .stock-title p,
       .event-row p {
         margin: 4px 0 0;
-        color: #64748b;
+        color: var(--foreground-secondary);
         font-size: 13px;
       }
       .score-band {
@@ -3790,13 +3775,13 @@ function DividendStyles() {
         align-items: center;
         justify-content: space-between;
         padding: 12px 14px;
-        border-radius: var(--r-lg);
-        background: linear-gradient(135deg, rgba(6, 78, 59, 0.08), rgba(14, 165, 233, 0.08));
-        border: 1px solid rgba(20, 184, 166, 0.14);
+        border-radius: var(--radius-card);
+        background: var(--surface-muted);
+        border: 1px solid color-mix(in srgb, var(--success) 14%, transparent);
       }
       .score-band strong {
         font-size: 24px;
-        color: #0f766e;
+        color: var(--success);
       }
       .metric-grid {
         display: grid;
@@ -3806,22 +3791,22 @@ function DividendStyles() {
       .mini-metric {
         min-width: 0;
         padding: 12px;
-        border-radius: var(--r-md);
-        background: #f7fbff;
-        border: 1px solid rgba(58, 124, 154, 0.12);
+        border-radius: var(--radius-control);
+        background: var(--surface);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
       }
       .mini-metric span {
         display: block;
-        color: #697b8d;
+        color: var(--foreground-secondary);
         font-size: 11px;
-        font-weight: 850;
+        font-weight: 600;
       }
       .mini-metric strong {
         display: block;
         margin-top: 5px;
-        color: #102742;
+        color: var(--foreground);
         font-size: 14px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .asset-mini-metric {
         display: grid;
@@ -3832,20 +3817,20 @@ function DividendStyles() {
         margin: 0;
       }
       .asset-mini-name {
-        color: #102742;
+        color: var(--foreground);
         font-size: 13px;
       }
       .asset-mini-symbol,
       .compact-asset-symbol {
-        color: #1768a8;
+        color: var(--foreground-secondary);
       }
       .compact-asset-badge {
         max-width: 160px;
-        border: 1px solid rgba(14, 165, 233, 0.18);
-        border-radius: 999px;
-        background: rgba(14, 165, 233, 0.08);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
         padding: 4px 8px;
-        color: #075985;
+        color: var(--primary);
       }
       .dividend-data-notice,
       .dividend-empty-inline {
@@ -3853,22 +3838,22 @@ function DividendStyles() {
         align-items: center;
         gap: 7px;
         min-width: 0;
-        border: 1px solid rgba(14, 165, 233, 0.18);
-        background: rgba(14, 165, 233, 0.08);
-        color: #075985;
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--info);
         font-size: 12px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.55;
       }
       .dividend-data-notice {
         padding: 12px 13px;
-        border-radius: var(--r-md);
+        border-radius: var(--radius-control);
       }
       .dividend-empty-inline {
         width: fit-content;
         max-width: 100%;
         padding: 6px 9px;
-        border-radius: 999px;
+        border-radius: var(--radius-pill);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -3878,7 +3863,7 @@ function DividendStyles() {
         align-items: flex-start;
         gap: 8px;
         margin: 0;
-        color: #92400e;
+        color: var(--danger);
         font-size: 13px;
         line-height: 1.7;
       }
@@ -3889,7 +3874,7 @@ function DividendStyles() {
         display: flex;
         justify-content: flex-end;
         padding: 18px;
-        background: rgba(8, 22, 38, 0.46);
+        background: color-mix(in srgb, var(--accent) 46%, transparent);
         backdrop-filter: blur(5px);
       }
       .page[dir="rtl"] .details-overlay {
@@ -3903,10 +3888,10 @@ function DividendStyles() {
         align-content: start;
         gap: 16px;
         padding: 20px;
-        border-radius: var(--r-2xl);
-        border: 1px solid rgba(58, 124, 154, 0.18);
-        background: #ffffff;
-        box-shadow: 0 24px 70px rgba(8, 22, 38, 0.26);
+        border-radius: var(--radius-panel);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
       }
       .details-head,
       .details-identity {
@@ -3926,7 +3911,7 @@ function DividendStyles() {
       }
       .details-identity h2 {
         margin: 5px 0 0;
-        color: #102742;
+        color: var(--foreground);
         font-size: clamp(21px, 2.8vw, 30px);
         line-height: 1.25;
         overflow-wrap: anywhere;
@@ -3940,10 +3925,10 @@ function DividendStyles() {
         height: 42px;
         display: inline-grid;
         place-items: center;
-        border-radius: var(--r-md);
-        border: 1px solid rgba(58, 124, 154, 0.16);
-        background: #f8fbff;
-        color: #1768a8;
+        border-radius: var(--radius-control);
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        background: var(--surface);
+        color: var(--primary);
         cursor: pointer;
         transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
       }
@@ -3951,8 +3936,8 @@ function DividendStyles() {
       .details-close:focus-visible {
         outline: none;
         transform: translateY(-1px);
-        border-color: rgba(20, 184, 216, 0.5);
-        background: rgba(14, 165, 233, 0.1);
+        border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
       }
       .details-loading,
       .details-alert {
@@ -3960,21 +3945,21 @@ function DividendStyles() {
         align-items: center;
         gap: 9px;
         padding: 12px 13px;
-        border-radius: var(--r-lg);
+        border-radius: var(--radius-card);
         font-size: 13px;
-        font-weight: 900;
+        font-weight: 600;
         line-height: 1.6;
       }
       .details-loading {
-        border: 1px solid rgba(14, 165, 233, 0.18);
-        background: rgba(14, 165, 233, 0.08);
-        color: #075985;
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--info);
       }
       .details-alert {
         flex-wrap: wrap;
-        border: 1px solid rgba(245, 158, 11, 0.24);
-        background: rgba(245, 158, 11, 0.11);
-        color: #92400e;
+        border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+        background: color-mix(in srgb, var(--danger) 11%, transparent);
+        color: var(--danger);
       }
       .details-grid {
         display: grid;
@@ -3986,18 +3971,18 @@ function DividendStyles() {
         display: grid;
         gap: 6px;
         padding: 12px;
-        border-radius: var(--r-lg);
-        border: 1px solid rgba(58, 124, 154, 0.12);
-        background: #f8fbff;
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        background: var(--surface);
       }
       .details-item span {
-        color: #64748b;
+        color: var(--foreground-secondary);
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 600;
       }
       .details-item strong {
         min-width: 0;
-        color: #102742;
+        color: var(--foreground);
         font-size: 14px;
         line-height: 1.55;
         overflow-wrap: anywhere;
@@ -4006,18 +3991,18 @@ function DividendStyles() {
         display: grid;
         gap: 7px;
         padding: 14px;
-        border-radius: var(--r-lg);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.07), rgba(20, 184, 166, 0.07));
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface-muted);
       }
       .details-disclaimer strong {
-        color: #102742;
+        color: var(--foreground);
       }
       .details-disclaimer p {
         margin: 0;
-        color: #5f7388;
+        color: var(--foreground-secondary);
         font-size: 12.5px;
-        font-weight: 800;
+        font-weight: 500;
         line-height: 1.8;
       }
       .filter-panel {
@@ -4026,9 +4011,9 @@ function DividendStyles() {
         gap: 10px;
         align-items: end;
         padding: 16px;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: #fff;
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface);
       }
       .news-filter-panel {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -4041,10 +4026,10 @@ function DividendStyles() {
         gap: 12px;
         margin-bottom: 16px;
         padding: 14px;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: #ffffff;
-        box-shadow: 0 12px 30px rgba(10, 42, 75, 0.07);
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
       }
       .provider-status-head {
         display: flex;
@@ -4068,9 +4053,9 @@ function DividendStyles() {
         min-width: 0;
       }
       .field label {
-        color: #50677c;
+        color: var(--foreground-secondary);
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
       }
       .input-wrap {
         position: relative;
@@ -4081,14 +4066,14 @@ function DividendStyles() {
         inset-inline-start: 12px;
         top: 50%;
         transform: translateY(-50%);
-        color: #7b90a4;
+        color: var(--foreground-muted);
         pointer-events: none;
       }
       .filter-input,
       .filter-select {
         width: 100%;
-        background: #f8fbff;
-        color: #102742;
+        background: var(--surface);
+        color: var(--foreground);
         padding: 0 13px;
         outline: none;
       }
@@ -4107,9 +4092,9 @@ function DividendStyles() {
       .guide-button:focus-visible,
       .link-button:focus-visible,
       .chip:focus-visible {
-        outline: 3px solid rgba(20, 184, 216, 0.24);
+        outline: 3px solid color-mix(in srgb, var(--accent) 24%, transparent);
         outline-offset: 2px;
-        border-color: rgba(20, 184, 216, 0.55);
+        border-color: color-mix(in srgb, var(--accent) 55%, transparent);
       }
       .ghost-button,
       .chip,
@@ -4119,9 +4104,9 @@ function DividendStyles() {
         align-items: center;
         justify-content: center;
         gap: 7px;
-        background: #fff;
-        color: #1768a8;
-        font-weight: 900;
+        background: var(--surface);
+        color: var(--primary);
+        font-weight: 600;
         cursor: pointer;
         text-decoration: none;
       }
@@ -4130,25 +4115,25 @@ function DividendStyles() {
       .guide-button:hover:not(:disabled),
       .chip:hover:not(:disabled) {
         transform: translateY(-1px);
-        border-color: rgba(20, 184, 216, 0.42);
-        background: rgba(14, 165, 233, 0.08);
-        box-shadow: 0 10px 22px rgba(20, 78, 118, 0.1);
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        box-shadow: var(--shadow-md);
       }
       .chip {
         min-height: 38px;
         padding: 0 13px;
       }
       .chip.active {
-        color: #fff;
+        color: var(--foreground);
         border-color: transparent;
-        background: linear-gradient(135deg, #1768d4, #19c7d6);
+        background: var(--primary);
       }
       .table-wrap {
         margin-top: 16px;
         overflow-x: auto;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: #fff;
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface);
       }
       .stock-table {
         width: 100%;
@@ -4160,7 +4145,7 @@ function DividendStyles() {
       .stock-table td {
         padding: 14px;
         text-align: start;
-        border-bottom: 1px solid rgba(58, 124, 154, 0.11);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 11%, transparent);
         font-size: 13px;
         vertical-align: middle;
       }
@@ -4168,9 +4153,9 @@ function DividendStyles() {
         position: sticky;
         top: 0;
         z-index: 1;
-        background: #f1f8fd;
-        color: #345169;
-        font-weight: 950;
+        background: var(--surface);
+        color: var(--foreground-secondary);
+        font-weight: 600;
       }
       .company-cell {
         display: flex;
@@ -4210,9 +4195,9 @@ function DividendStyles() {
         gap: 12px;
         align-items: center;
         padding: 13px;
-        border-radius: var(--r-lg);
-        border: 1px solid rgba(58, 124, 154, 0.13);
-        background: #fff;
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 13%, transparent);
+        background: var(--surface);
       }
       .dividend-calendar-row {
         grid-template-columns: minmax(150px, 190px) minmax(220px, 1fr) auto;
@@ -4222,14 +4207,12 @@ function DividendStyles() {
         grid-template-columns: 1fr;
         gap: 10px;
         padding: 14px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 255, 0.94)),
-          radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.09), transparent 12rem);
+        background: var(--surface-muted);
       }
       .dividend-calendar-row.compact .event-date {
         justify-content: space-between;
         padding-bottom: 10px;
-        border-bottom: 1px solid rgba(58, 124, 154, 0.1);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
       }
       .dividend-calendar-row.compact .event-date strong {
         font-size: 14px;
@@ -4242,14 +4225,14 @@ function DividendStyles() {
       }
       .dividend-calendar-row.compact > .numeric {
         justify-self: start;
-        color: #0f766e;
-        font-weight: 950;
+        color: var(--success);
+        font-weight: 600;
       }
       .event-date {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #0e7490;
+        color: var(--foreground);
       }
       .event-date > div {
         display: grid;
@@ -4257,9 +4240,9 @@ function DividendStyles() {
         min-width: 0;
       }
       .event-date span {
-        color: #64748b;
+        color: var(--primary);
         font-size: 11px;
-        font-weight: 900;
+        font-weight: 600;
         text-transform: uppercase;
       }
       .event-identity {
@@ -4302,15 +4285,15 @@ function DividendStyles() {
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         margin: 0;
-        color: #5b7085;
+        color: var(--foreground-secondary);
         font-size: 14px;
         line-height: 1.75;
       }
       .article-meta {
         flex-wrap: wrap;
-        color: #60758a;
+        color: var(--foreground-muted);
         font-size: 12px;
-        font-weight: 750;
+        font-weight: 400;
       }
       .article-actions {
         margin-top: auto;
@@ -4346,9 +4329,9 @@ function DividendStyles() {
         display: grid;
         gap: 10px;
         padding: 15px;
-        border-radius: var(--r-lg);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background: linear-gradient(180deg, #ffffff, #f8fcff);
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface-muted);
       }
       .compact-row .article-title {
         font-size: 14.5px;
@@ -4360,7 +4343,7 @@ function DividendStyles() {
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         margin: 0;
-        color: #5f7388;
+        color: var(--foreground-secondary);
         font-size: 12.5px;
         line-height: 1.65;
       }
@@ -4370,25 +4353,23 @@ function DividendStyles() {
       }
       .strategy-card {
         padding: 18px;
-        border-radius: var(--r-xl);
-        border: 1px solid rgba(58, 124, 154, 0.14);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.96)),
-          radial-gradient(circle at 8% 0%, rgba(14, 165, 233, 0.1), transparent 14rem);
+        border-radius: var(--radius-card);
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        background: var(--surface-muted);
       }
       .strategy-card p {
         margin: 8px 0 0;
-        color: #64748b;
+        color: var(--foreground-secondary);
         line-height: 1.75;
       }
       .comparison-table {
         display: grid;
         margin-top: 14px;
-        border-radius: var(--r-xl);
+        border-radius: var(--radius-card);
         overflow: hidden;
-        border: 1px solid rgba(58, 124, 154, 0.12);
-        background: #ffffff;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
       }
       .comparison-row {
         display: grid;
@@ -4396,26 +4377,26 @@ function DividendStyles() {
         gap: 12px;
         align-items: center;
         padding: 15px;
-        background: #fff;
-        border-bottom: 1px solid rgba(58, 124, 154, 0.1);
+        background: var(--surface);
+        border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
       }
       .comparison-row:nth-child(even) {
-        background: #f8fbff;
+        background: var(--surface);
       }
       .comparison-row strong {
-        color: #102742;
+        color: var(--foreground);
         font-size: 13px;
-        font-weight: 950;
+        font-weight: 600;
       }
       .comparison-row span {
         min-width: 0;
         padding: 10px 12px;
-        border: 1px solid rgba(58, 124, 154, 0.1);
-        border-radius: var(--r-md);
-        background: rgba(255, 255, 255, 0.72);
-        color: #41566b;
+        border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--surface) 72%, transparent);
+        color: var(--foreground-secondary);
         font-size: 13px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.55;
       }
       .methodology-box {
@@ -4443,7 +4424,7 @@ function DividendStyles() {
       }
       .guide-content {
         margin-top: 10px;
-        color: #5b7085;
+        color: var(--foreground-secondary);
         font-size: 14px;
         line-height: 1.8;
         overflow-wrap: anywhere;
@@ -4464,12 +4445,12 @@ function DividendStyles() {
         align-items: flex-start;
         gap: 12px;
         padding: 18px;
-        color: #50677c;
+        color: var(--foreground-muted);
         line-height: 1.8;
       }
       .footer-note strong {
         display: block;
-        color: #102742;
+        color: var(--foreground);
         margin-bottom: 2px;
       }
       .footer-note p {
@@ -4489,11 +4470,11 @@ function DividendStyles() {
         justify-content: space-between;
         gap: 14px;
         padding: 16px;
-        border: 1px solid rgba(14, 116, 144, 0.16);
-        border-radius: var(--r-lg);
-        background: #ffffff;
+        border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+        border-radius: var(--radius-card);
+        background: var(--surface);
         text-align: start;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow: var(--shadow-card);
       }
       .dividend-event-empty.compact {
         padding: 14px;
@@ -4504,9 +4485,9 @@ function DividendStyles() {
         width: 44px;
         height: 44px;
         flex: 0 0 44px;
-        border-radius: var(--r-md);
-        background: rgba(14, 165, 233, 0.1);
-        color: #0e7490;
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        color: var(--primary);
       }
       .event-empty-copy {
         flex: 1;
@@ -4514,16 +4495,16 @@ function DividendStyles() {
       }
       .event-empty-copy strong {
         display: block;
-        color: #102742;
+        color: var(--foreground);
         font-size: 15px;
-        font-weight: 950;
+        font-weight: 600;
         line-height: 1.35;
       }
       .event-empty-copy p {
         margin: 4px 0 0;
-        color: #5f7388;
+        color: var(--foreground-secondary);
         font-size: 14px;
-        font-weight: 850;
+        font-weight: 600;
         line-height: 1.8;
       }
       .event-empty-actions {
@@ -4540,61 +4521,24 @@ function DividendStyles() {
         gap: 8px;
       }
       .event-empty-hints span {
-        border: 1px solid rgba(14, 116, 144, 0.14);
-        border-radius: 999px;
-        background: rgba(248, 251, 255, 0.9);
-        color: #0e7490;
+        border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+        border-radius: var(--radius-pill);
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
+        color: var(--info);
         padding: 6px 10px;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 600;
       }
-      .dark .dividend-event-empty {
-        border-color: rgba(125, 211, 252, 0.18);
-        background:
-          linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 184, 166, 0.1)),
-          #0f172a;
-      }
-      .dark .provider-status-card {
-        border-color: rgba(125, 211, 252, 0.18);
-        background: rgba(15, 23, 42, 0.9);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
-      }
-      .dark .event-empty-copy strong,
-      .dark .asset-mini-name {
-        color: #f8fafc;
-      }
-      .dark .event-empty-copy p {
-        color: #cbd5e1;
-      }
-      .dark .event-empty-hints span,
-      .dark .compact-asset-badge {
-        border-color: rgba(125, 211, 252, 0.2);
-        background: rgba(14, 116, 144, 0.2);
-        color: #bae6fd;
-      }
-      .dark .details-drawer {
-        border-color: rgba(125, 211, 252, 0.18);
-        background: #0f172a;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
-      }
-      .dark .details-identity h2,
-      .dark .details-item strong,
-      .dark .details-disclaimer strong {
-        color: #f8fafc;
-      }
-      .dark .details-close,
-      .dark .details-item {
-        border-color: rgba(125, 211, 252, 0.16);
-        background: rgba(15, 23, 42, 0.82);
-      }
-      .dark .details-item span,
-      .dark .details-disclaimer p {
-        color: #cbd5e1;
-      }
-      .dark .details-disclaimer {
-        border-color: rgba(125, 211, 252, 0.16);
-        background: rgba(14, 116, 144, 0.16);
-      }
+
+
+
+
+
+
+
+
+
+
       .state-copy {
         display: flex;
         align-items: flex-start;
@@ -4602,21 +4546,21 @@ function DividendStyles() {
       }
       .state-copy p {
         margin: 4px 0 0;
-        color: #60758a;
+        color: var(--foreground-secondary);
       }
       .skeleton {
         position: relative;
         overflow: hidden;
         min-height: 120px;
-        border-radius: var(--r-xl);
-        background: #eaf4fb;
+        border-radius: var(--radius-card);
+        background: var(--surface);
       }
       .skeleton::after {
         content: '';
         position: absolute;
         inset: 0;
         transform: translateX(-100%);
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+        background: transparent;
         animation: shimmer 1.4s infinite;
       }
       @keyframes dividendTickerMarquee {
@@ -4655,7 +4599,7 @@ function DividendStyles() {
         }
         .hero {
           padding: 20px;
-          border-radius: var(--r-xl);
+          border-radius: var(--radius-card);
         }
         .section,
         .panel {
@@ -4706,7 +4650,7 @@ function DividendStyles() {
         .details-drawer {
           width: 100%;
           max-height: 90vh;
-          border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+          border-radius: var(--radius-panel) var(--radius-panel) 0 0;
         }
         .details-head {
           gap: 10px;
@@ -4733,7 +4677,7 @@ function DividendStyles() {
         .event-empty-icon {
           width: 50px;
           height: 50px;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-card);
         }
         .event-empty-hints {
           justify-content: flex-start;
@@ -4745,7 +4689,7 @@ function DividendStyles() {
           padding: 8px;
         }
         .ticker-viewport {
-          mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+          mask-image: none;
         }
         .ticker-track,
         .ticker-set {
@@ -4765,6 +4709,39 @@ function DividendStyles() {
           gap: 3px;
         }
       }
+      .page { color: var(--foreground); font-family: var(--font-ui); }
+      .hero { color: var(--hero-foreground); box-shadow: var(--shadow-md); }
+      .hero h1 { color: var(--hero-foreground); font-weight: 600; }
+      .hero .eyebrow { color: var(--hero-foreground-muted); }
+      .section,
+      .panel,
+      .card,
+      .stock-card,
+      .news-card,
+      .filter-panel,
+      .details-panel {
+        background: var(--surface);
+        border-color: var(--border);
+        color: var(--foreground);
+        box-shadow: var(--shadow-card);
+      }
+      .page :is(h2, h3) { color: var(--foreground); font-weight: 600; }
+      .page :is(button, input, select) { font-family: var(--font-ui); }
+      .page :is(button, a, input, select):focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+        box-shadow: var(--focus-shadow);
+      }
+      .numeric,
+      .metric-value,
+      .ticker-metrics,
+      .stock-metrics strong,
+      .details-grid dd { font-family: var(--font-data); }
+      @media (min-width: 1500px) {
+        .news-grid,
+        .stock-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+
       @media (max-width: 640px) {
         .featured-grid {
           grid-template-columns: 1fr;
@@ -4775,4 +4752,3 @@ function DividendStyles() {
 }
 
 export default DividendStocksNewsPage;
-

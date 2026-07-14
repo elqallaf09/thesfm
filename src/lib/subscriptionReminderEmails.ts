@@ -1,3 +1,5 @@
+import { STATIC_EMAIL_VISUAL_STYLES } from '@/styles/static-tokens';
+
 export type ReminderRecipientType = 'customer' | 'subscriber';
 export type ReminderEmailStatus = 'sent' | 'skipped' | 'failed';
 
@@ -119,20 +121,20 @@ function statusLabel(status: ReminderEmailStatus) {
 
 function emailShell(title: string, intro: string, rows: Array<[string, unknown]>, footer: string) {
   return `
-    <div dir="rtl" style="font-family:Arial,Tahoma,sans-serif;background:#f4fbff;padding:24px;color:#0b1b34">
-      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #cfeefa;border-radius:18px;padding:24px">
-        <p style="margin:0 0 8px;color:#0b9ead;font-weight:700">THE SFM</p>
+    <div dir="rtl" style="${STATIC_EMAIL_VISUAL_STYLES.canvas}">
+      <div style="${STATIC_EMAIL_VISUAL_STYLES.panel};max-width:640px;margin:0 auto">
+        <p style="${STATIC_EMAIL_VISUAL_STYLES.brand};margin:0 0 8px">THE SFM</p>
         <h1 style="margin:0 0 14px;font-size:24px">${escapeHtml(title)}</h1>
         <p style="margin:0 0 20px;line-height:1.8">${escapeHtml(intro)}</p>
         <table style="width:100%;border-collapse:collapse;margin:0 0 18px">
           ${rows.map(([label, value]) => `
             <tr>
-              <td style="padding:9px;border-bottom:1px solid #e6f4f8;color:#64748b">${escapeHtml(label)}</td>
-              <td style="padding:9px;border-bottom:1px solid #e6f4f8;font-weight:700;text-align:left;direction:ltr">${escapeHtml(displayValue(value))}</td>
+              <td style="${STATIC_EMAIL_VISUAL_STYLES.dividerLabel};padding:9px">${escapeHtml(label)}</td>
+              <td style="${STATIC_EMAIL_VISUAL_STYLES.dividerValue};padding:9px;font-weight:700;text-align:left;direction:ltr">${escapeHtml(displayValue(value))}</td>
             </tr>
           `).join('')}
         </table>
-        <p style="margin:0;color:#64748b;line-height:1.8">${escapeHtml(footer)}</p>
+        <p style="${STATIC_EMAIL_VISUAL_STYLES.supportingText};margin:0;line-height:1.8">${escapeHtml(footer)}</p>
       </div>
     </div>
   `;

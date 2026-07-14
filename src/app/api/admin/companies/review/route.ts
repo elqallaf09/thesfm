@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
+import { STATIC_EMAIL_VISUAL_STYLES } from '@/styles/static-tokens';
 
 type CompanyReviewStatus = 'approved' | 'rejected' | 'needs_changes' | 'inactive' | 'pending_review';
 
@@ -49,13 +50,13 @@ function buildReviewMessage(status: CompanyReviewStatus, companyName: string, ad
 
 function buildReviewEmailHtml(input: { title: string; companyName: string; message: string; actionUrl: string }) {
   return `
-    <div dir="rtl" style="font-family:Arial,Tahoma,sans-serif;line-height:1.8;color:#0f172a;background:#f1f8ff;padding:24px">
-      <div style="max-width:620px;margin:auto;background:#ffffff;border:1px solid #dbeafe;border-radius:20px;padding:24px">
-        <p style="margin:0 0 8px;color:#0b76e0;font-weight:800">THE SFM</p>
+    <div dir="rtl" style="${STATIC_EMAIL_VISUAL_STYLES.canvas}">
+      <div style="${STATIC_EMAIL_VISUAL_STYLES.panel};max-width:620px;margin:auto">
+        <p style="${STATIC_EMAIL_VISUAL_STYLES.brand};margin:0 0 8px">THE SFM</p>
         <h1 style="margin:0 0 12px;font-size:24px">${input.title}</h1>
         <p style="margin:0 0 12px"><strong>${input.companyName}</strong></p>
         <p style="white-space:pre-line;margin:0 0 20px">${input.message}</p>
-        <a href="${input.actionUrl}" style="display:inline-block;background:linear-gradient(135deg,#0b76e0,#18d4d4);color:#ffffff;text-decoration:none;font-weight:800;border-radius:14px;padding:12px 18px">مراجعة الطلب</a>
+        <a href="${input.actionUrl}" style="${STATIC_EMAIL_VISUAL_STYLES.primaryAction};padding:12px 18px">مراجعة الطلب</a>
       </div>
     </div>
   `;

@@ -25,8 +25,16 @@ export default function BusinessOperationsChartCard({
 }) {
   const text = BUSINESS_TEXT[lang];
   const hasData = data.some((item) => item.value > 0);
-  const colors = ['#1D8CFF', '#18D4D4', '#10B981', '#F59E0B', '#8B5CF6'];
+  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
   const chartRows = data.map((item) => ({ ...item, label: item.label ?? item.name }));
+  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 11 };
+  const tooltipStyle = {
+    background: 'var(--surface-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-control)',
+    color: 'var(--foreground)',
+    fontFamily: 'var(--font-ui)',
+  };
 
   return (
     <article className="business-chart-card">
@@ -50,15 +58,23 @@ export default function BusinessOperationsChartCard({
               <Pie data={chartRows} dataKey="value" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={3}>
                 {chartRows.map((_, index) => <Cell key={index} fill={colors[index % colors.length]} />)}
               </Pie>
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: 'var(--foreground-secondary)' }}
+                formatter={(value) => formatMoney(Number(value), currency, lang)}
+              />
             </PieChart>
           ) : (
             <BarChart data={chartRows}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
-              <Bar dataKey="value" fill="#1D8CFF" radius={[10, 10, 0, 0]} />
+              <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={tick} />
+              <YAxis tickLine={false} axisLine={false} tick={tick} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: 'var(--foreground-secondary)' }}
+                formatter={(value) => formatMoney(Number(value), currency, lang)}
+              />
+              <Bar dataKey="value" fill="var(--primary)" radius={[8, 8, 0, 0]} />
             </BarChart>
           )}
         </ResponsiveContainer>

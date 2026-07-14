@@ -196,23 +196,16 @@ export function PageTabs({
 
         .page-section-tabs-shell.sticky {
           position: sticky;
-          inset-block-start: var(--sfm-sticky-subnav-offset, 0px);
+          inset-block-start: var(--sticky-subnav-offset, calc(var(--global-header-height) + 8px));
           z-index: 30;
           padding-block: 4px;
-          background: var(--sfm-card);
-          background: color-mix(in srgb, var(--sfm-card) 94%, transparent);
+          background: color-mix(in srgb, var(--surface) 94%, transparent);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
         }
 
         .page-section-tabs-select {
           display: none;
-        }
-
-        @media (max-width: 1024px) {
-          .page-section-tabs-shell.sticky {
-            inset-block-start: var(--sfm-sticky-subnav-offset, calc(74px + env(safe-area-inset-top)));
-          }
         }
 
         .page-section-tabs-sentinel {
@@ -231,42 +224,11 @@ export function PageTabs({
         }
 
         .page-section-tabs-fade {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 28px;
-          pointer-events: none;
-          z-index: 2;
-          opacity: 0;
-          transition: opacity 0.18s ease;
+          display: none;
         }
 
         .page-section-tabs-fade.visible {
-          opacity: 1;
-        }
-
-        :global(html[dir='rtl']) .page-section-tabs-fade.lead {
-          right: 0;
-          border-radius: 0 var(--r-2xl) var(--r-2xl) 0;
-          background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
-        }
-
-        :global(html[dir='rtl']) .page-section-tabs-fade.trail {
-          left: 0;
-          border-radius: var(--r-2xl) 0 0 var(--r-2xl);
-          background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
-        }
-
-        :global(html[dir='ltr']) .page-section-tabs-fade.lead {
-          left: 0;
-          border-radius: var(--r-2xl) 0 0 var(--r-2xl);
-          background: linear-gradient(to right, var(--sfm-card), rgba(255, 255, 255, 0));
-        }
-
-        :global(html[dir='ltr']) .page-section-tabs-fade.trail {
-          right: 0;
-          border-radius: 0 var(--r-2xl) var(--r-2xl) 0;
-          background: linear-gradient(to left, var(--sfm-card), rgba(255, 255, 255, 0));
+          display: none;
         }
 
         .page-section-tabs-shell:has(.page-section-tabs.charity-tabs) .page-section-tabs-fade {
@@ -289,10 +251,10 @@ export function PageTabs({
           overflow-x: auto;
           overflow-y: hidden;
           padding: 8px;
-          border: 1px solid rgba(47, 214, 192, .14);
-          border-radius: var(--r-2xl);
-          background: linear-gradient(135deg, rgba(29, 140, 255, .05), rgba(47, 214, 192, .06)), var(--sfm-card);
-          box-shadow: 0 10px 28px rgba(3, 18, 37, .05);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface);
+          box-shadow: var(--shadow-xs);
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
           overscroll-behavior-inline: contain;
@@ -304,16 +266,16 @@ export function PageTabs({
           flex: 0 0 auto;
           max-width: 100%;
           min-height: 44px;
-          border: 1px solid rgba(29, 140, 255, .20);
-          border-radius: var(--r-xl);
-          background: var(--sfm-card);
-          color: var(--sfm-muted-readable);
+          border: 1px solid transparent;
+          border-radius: var(--radius-control);
+          background: transparent;
+          color: var(--foreground-secondary);
           padding: 0 16px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 950 12px Tajawal, Arial, sans-serif;
+          font: 500 13px/1.45 var(--font-ui);
           cursor: pointer;
           transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
           white-space: nowrap;
@@ -323,7 +285,7 @@ export function PageTabs({
           grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 8px;
           padding: 8px;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-card);
           overflow: visible;
         }
         .page-section-tabs.charity-tabs button {
@@ -342,31 +304,37 @@ export function PageTabs({
         }
         .page-section-tabs button:hover,
         .page-section-tabs button:focus-visible {
-          border-color: rgba(24, 212, 212, .42);
-          color: var(--sfm-primary-hover);
+          border-color: var(--border);
+          color: var(--foreground);
           outline: none;
-          background: var(--sfm-surface-hover);
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .14), 0 10px 24px rgba(3, 18, 37, .08);
-          transform: translateY(-1px);
+          background: var(--surface-hover);
+          box-shadow: none;
+        }
+        .page-section-tabs button:focus-visible,
+        .page-section-tabs-select select:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          box-shadow: var(--focus-shadow);
         }
         .page-section-tabs button.active {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
-          border-color: rgba(167, 243, 240, .24);
-          box-shadow: 0 12px 28px rgba(29, 140, 255, .22), inset 0 -2px 0 rgba(255, 255, 255, .18);
+          background: var(--primary-soft);
+          color: var(--primary-hover);
+          border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+          box-shadow: var(--active-indicator-shadow);
+          font-weight: 600;
         }
         .page-section-tabs b {
           min-width: 24px;
-          border-radius: 999px;
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary-hover);
+          border-radius: var(--radius-pill);
+          background: var(--surface-muted);
+          color: var(--foreground-secondary);
           padding: 3px 7px;
           font-size: 11px;
           line-height: 1;
         }
         .page-section-tabs button.active b {
-          background: rgba(255, 255, 255, .18);
-          color: #FFFFFF;
+          background: var(--primary);
+          color: var(--primary-foreground);
         }
         .page-section-tabs button:disabled {
           opacity: .62;
@@ -382,7 +350,7 @@ export function PageTabs({
             overflow-y: hidden;
             gap: 8px;
             padding: 8px;
-            border-radius: var(--r-xl);
+            border-radius: var(--radius-control);
           }
           .page-section-tabs button {
             max-width: none;
@@ -415,19 +383,19 @@ export function PageTabs({
           }
 
           .page-section-tabs-select-label {
-            color: var(--sfm-muted-readable);
-            font: 850 12px Tajawal, Arial, sans-serif;
+            color: var(--foreground-muted);
+            font: 500 12px/1.5 var(--font-ui);
           }
 
           .page-section-tabs-select select {
             width: 100%;
             min-height: 48px;
-            border: 1px solid rgba(29, 140, 255, .24);
-            border-radius: var(--r-lg);
-            background: var(--sfm-card);
-            color: var(--sfm-heading);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-control);
+            background: var(--surface);
+            color: var(--foreground);
             padding-inline: 14px 40px;
-            font: 850 14px Tajawal, Arial, sans-serif;
+            font: 500 14px/1.5 var(--font-ui);
           }
         }
         @media (max-width: 1180px) and (min-width: 721px) {

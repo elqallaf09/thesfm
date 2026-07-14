@@ -44,7 +44,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { MoneyAmount } from '@/components/finance/MoneyAmount';
@@ -701,25 +700,25 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         title: { ar: 'إجمالي المصروفات', en: 'Total expenses', fr: 'Total des dépenses' },
         body: { ar: expensePeriodBadge(expensePeriod, lang), en: expensePeriodBadge(expensePeriod, lang), fr: expensePeriodBadge(expensePeriod, lang) },
         value: money(total, lang, expenseBaseCurrency),
-        tone: '#EF4444',
+        tone: 'var(--danger)',
       },
       {
         title: { ar: 'عدد المصروفات', en: 'Expense count', fr: 'Nombre de dépenses' },
         body: { ar: 'سجلات داخل الفترة المحددة فقط.', en: 'Records in the selected period only.', fr: 'Enregistrements de la période sélectionnée.' },
         value: String(expenseDisplayRecords.length),
-        tone: 'var(--sfm-soft-cyan)',
+        tone: 'var(--info)',
       },
       {
         title: { ar: 'المصروفات المتكررة', en: 'Recurring expenses', fr: 'Dépenses récurrentes' },
         body: { ar: 'اشتراكات وفواتير وقروض نشطة داخل الفترة.', en: 'Subscriptions, bills, and loans active in the period.', fr: 'Abonnements, factures et prêts actifs sur la période.' },
         value: money(recurringTotal, lang, expenseBaseCurrency),
-        tone: '#3B82F6',
+        tone: 'var(--primary)',
       },
       {
         title: { ar: 'متوسط المصروف اليومي', en: 'Daily average', fr: 'Moyenne quotidienne' },
         body: { ar: 'محسوب على أيام الفترة المعروضة.', en: 'Calculated over the displayed period days.', fr: 'Calculé sur les jours de la période affichée.' },
         value: money(dailyAverage, lang, expenseBaseCurrency),
-        tone: '#F59E0B',
+        tone: 'var(--warning)',
       },
       {
         title: { ar: 'أعلى تصنيف', en: 'Top category', fr: 'Catégorie principale' },
@@ -729,13 +728,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           fr: topCategory ? money(topCategory[1], lang, expenseBaseCurrency) : 'Aucune dépense sur cette période.',
         },
         value: topCategory ? categoryLabel(topCategory[0], lang) : '-',
-        tone: '#22C55E',
+        tone: 'var(--success)',
       },
       {
         title: { ar: 'مقارنة مع الفترة السابقة', en: 'Previous period comparison', fr: 'Comparaison période précédente' },
         body: { ar: 'الفرق مقارنة بالفترة السابقة المماثلة.', en: 'Difference versus the matching previous period.', fr: 'Écart par rapport à la période précédente équivalente.' },
         value: comparisonValue,
-        tone: comparisonDelta > 0 ? '#EF4444' : '#22C55E',
+        tone: comparisonDelta > 0 ? 'var(--danger)' : 'var(--success)',
       },
     ];
   }, [expenseBaseCurrency, expenseDisplayRecords, expensePeriod, expensePeriodTotal, lang, previousExpensePeriodTotal, previousExpenseRange, selectedExpenseRange]);
@@ -782,7 +781,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     ai_enabled: goalForm.aiEnabled,
     deadline: goalForm.deadline || null,
     icon: '🎯',
-    color: 'var(--sfm-soft-cyan)',
+    color: 'var(--accent)',
     notes: goalForm.notes,
   }, data, lang, goalForm.currency || currency, t), [currency, data, goalForm, lang, t]);
 
@@ -2083,7 +2082,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
     return (
       <div className="sfm-shell expense-smart-shell" dir={dir}>
-        <Sidebar />
         <DashboardPageShell
           ariaLabel={expenseText('smartTitle', lang)}
           className="expense-smart-main"
@@ -2122,7 +2120,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               </article>
             ))}
             <article className="kpi-card expense-obligations-card">
-              <span style={{ background: '#14B8A6' }} />
+              <span style={{ background: 'var(--accent)' }} />
               <p>{pick({ ar: 'الاشتراكات وأقساط الديون', en: 'Subscriptions and debt payments', fr: 'Abonnements et mensualités' }, lang)}</p>
               <strong>{money(fixedCommitmentsTotal, lang, expenseBaseCurrency)}</strong>
               <small className="expense-obligation-lines">
@@ -2748,8 +2746,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   return (
     <div className={`sfm-shell${kind === 'savings' ? ' savings-shell' : ''}`} dir={dir}>
-      <Sidebar />
-
       <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}${kind === 'savings' ? ' savings-main' : ''}${kind === 'goals' ? ' goals-main' : ''}`}>
         <header className="sfm-header">
           <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label={t('accessibility_open_navigation')}>

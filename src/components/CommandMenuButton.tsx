@@ -25,25 +25,21 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
       <style jsx>{`
         .sfm-command-trigger {
           width: 100%;
-          min-height: 42px;
-          border: 1px solid rgba(167, 243, 240, 0.20);
-          border-radius: var(--r-md);
-          background: rgba(255, 255, 255, 0.07);
-          color: #EAF6FF;
+          min-height: 44px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface-elevated);
+          color: var(--foreground);
           display: flex;
           align-items: center;
           gap: 9px;
-          padding: 0 12px;
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 900;
+          padding: 0 10px;
+          font-family: var(--font-ui);
+          font-size: 12.5px;
+          font-weight: 500;
           cursor: pointer;
-          transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
-        }
-        .sfm-command-trigger:not(.dark) {
-          background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
-          border-color: rgba(29, 140, 255, .18);
-          color: var(--sfm-primary-dark);
-          box-shadow: 0 8px 20px rgba(3, 18, 37, .10);
+          overflow: hidden;
+          transition: background-color .16s ease, border-color .16s ease, color .16s ease;
         }
         .sfm-command-trigger.compact {
           width: 44px;
@@ -52,39 +48,44 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
           justify-content: center;
           padding: 0;
         }
-        .sfm-command-trigger:hover,
+        .sfm-command-trigger:hover {
+          background: var(--sidebar-hover);
+          border-color: var(--border-strong);
+        }
         .sfm-command-trigger:focus-visible {
-          outline: none;
-          transform: translateY(-1px);
-          border-color: rgba(24, 212, 212, .42);
-          box-shadow: 0 0 0 3px rgba(24, 212, 212, .16), 0 12px 26px rgba(3, 18, 37, .14);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+          box-shadow: var(--focus-shadow);
         }
         .sfm-command-trigger svg {
-          color: var(--sfm-soft-cyan);
+          color: var(--primary);
           flex: 0 0 auto;
-        }
-        .sfm-command-trigger:not(.dark) svg {
-          color: var(--sfm-primary);
         }
         .sfm-command-trigger span {
           flex: 1;
+          min-width: 0;
           text-align: start;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .sfm-command-trigger kbd {
-          border: 1px solid rgba(167, 243, 240, .20);
-          border-radius: var(--r-sm);
-          padding: 3px 7px;
-          color: #A7C7E7;
-          background: rgba(255, 255, 255, .06);
-          font-size: 11px;
-          font-family: Tajawal, Arial, sans-serif;
-          font-weight: 950;
+          flex: 0 0 auto;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-sm);
+          padding: 2px 5px;
+          color: var(--foreground-muted);
+          background: var(--surface-muted);
+          font-size: 10px;
+          font-family: var(--font-ui);
+          font-weight: 500;
+          line-height: 1.3;
         }
-        .sfm-command-trigger:not(.dark) kbd {
-          color: var(--sfm-muted);
-          background: rgba(29, 140, 255, .08);
-          border-color: rgba(29, 140, 255, .14);
-        }
+        .sfm-shared-sidebar[data-collapsed="true"] .sfm-command-trigger{width:44px;padding:0;justify-content:center}
+        .sfm-shared-sidebar[data-collapsed="true"] .sfm-command-trigger span,
+        .sfm-shared-sidebar[data-collapsed="true"] .sfm-command-trigger kbd{display:none}
+        @media(max-width:360px){.sfm-command-trigger kbd{display:none}}
+        @media(prefers-reduced-motion:reduce){.sfm-command-trigger{transition:none}}
       `}</style>
     </button>
   );

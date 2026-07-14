@@ -16,7 +16,10 @@ export default defineConfig({
     timeout: 8_000,
   },
   fullyParallel: false,
-  workers: process.env.CI ? 2 : undefined,
+  // The production server is intentionally single-process. Keeping local smoke
+  // concurrency aligned with CI prevents route-navigation timeouts caused by a
+  // large workstation core count overwhelming that one server process.
+  workers: 2,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {

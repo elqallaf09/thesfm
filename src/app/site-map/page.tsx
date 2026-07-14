@@ -14,11 +14,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { Sidebar } from '@/components/Sidebar';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { NAV_GROUPS, SUPPORT_LINKS, type TranslationKey } from '@/components/navigationConfig';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -383,13 +381,8 @@ export default function SiteMapPage() {
 
   return (
     <div className="site-map-shell" dir={dir}>
-      <Sidebar />
-      <DashboardPageShell ariaLabel={text.title} contentClassName="site-map-content">
-        <div className="sfm-page-topbar site-map-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
+      <DashboardPageShell ariaLabel={text.title}>
+        <WorkspacePageContainer variant="wide" className="site-map-content">
         <PageHero
           className="site-map-hero"
           eyebrow={text.eyebrow}
@@ -574,82 +567,22 @@ export default function SiteMapPage() {
             <p>{text.searchPlaceholder}</p>
           </section>
         )}
+        </WorkspacePageContainer>
       </DashboardPageShell>
 
       <style jsx global>{`
         .site-map-shell {
-          --background: #F5FAFF;
-          --card: rgba(255, 255, 255, 0.94);
-          --card-foreground: #0B1F38;
-          --muted: #EAF3FC;
-          --muted-foreground: #5E738B;
-          --border: rgba(226, 238, 248, 0.96);
-          --primary: #1D8CFF;
-          --site-map-page-background:
-            radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
-            linear-gradient(160deg, var(--background), #F8FBFF 62%, #E7F1FF 100%);
-          --site-map-section-background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 252, 255, 0.86)),
-            radial-gradient(circle at 0 0, rgba(24, 212, 212, 0.10), transparent 42%);
-          --site-map-card-hover-background: #FFFFFF;
-          --site-map-card-hover-border: rgba(24, 212, 212, 0.62);
-          --site-map-icon-background: rgba(29, 140, 255, 0.10);
-          --site-map-shadow: 0 18px 44px rgba(15, 37, 64, 0.08);
-          --site-map-card-shadow: 0 14px 30px rgba(15, 37, 64, 0.07);
-          --site-map-card-hover-shadow: 0 22px 46px rgba(15, 37, 64, 0.12);
           min-height: 100vh;
-          background: var(--site-map-page-background);
-          color: var(--card-foreground);
+          background: var(--background);
+          color: var(--foreground);
+          font-family: var(--font-ui);
           overflow-x: hidden;
-        }
-
-        .dark .site-map-shell {
-          --background: #061A2E;
-          --card: #102F52;
-          --card-foreground: #F8FAFC;
-          --muted: #0B2A4A;
-          --muted-foreground: #CBD5E1;
-          --border: rgba(255, 255, 255, 0.10);
-          --primary: #22D3EE;
-          --site-map-page-background:
-            radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.10), transparent 34%),
-            linear-gradient(160deg, #061A2E 0%, #071B2F 58%, #061A2E 100%);
-          --site-map-section-background:
-            linear-gradient(180deg, rgba(11, 42, 74, 0.98), rgba(8, 32, 57, 0.96)),
-            radial-gradient(circle at 0 0, rgba(34, 211, 238, 0.12), transparent 42%);
-          --site-map-card-hover-background: #143B63;
-          --site-map-card-hover-border: #22D3EE;
-          --site-map-icon-background: rgba(34, 211, 238, 0.14);
-          --site-map-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-          --site-map-card-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
-          --site-map-card-hover-shadow: 0 22px 48px rgba(0, 0, 0, 0.30);
-        }
-
-        .site-map-shell .sfm-dashboard-page-shell {
-          box-sizing: border-box !important;
-          width: auto !important;
-          max-width: none !important;
-          margin: 0 !important;
-          margin-inline-start: var(--sidebar-w) !important;
-          margin-inline-end: 0 !important;
-          padding: 24px !important;
-          overflow-x: clip !important;
         }
 
         .site-map-content {
           display: grid;
           gap: 24px;
-          width: 100%;
-          max-width: 1280px !important;
-          margin-inline: auto !important;
           min-width: 0;
-        }
-
-        .site-map-topbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 10px;
         }
 
         .site-map-search-panel,
@@ -657,13 +590,12 @@ export default function SiteMapPage() {
         .site-map-main-section,
         .site-map-no-results {
           border: 1px solid var(--border);
-          background: var(--site-map-section-background);
-          box-shadow: var(--site-map-shadow);
-          backdrop-filter: blur(12px);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
         }
 
         .site-map-search-panel {
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 14px;
         }
 
@@ -674,10 +606,10 @@ export default function SiteMapPage() {
           min-height: 56px;
           padding: 0 16px;
           border: 1px solid var(--border);
-          border-radius: var(--r-xl);
-          background: var(--card);
+          border-radius: var(--radius-card);
+          background: var(--surface);
           color: var(--primary);
-          box-shadow: 0 10px 26px rgba(15, 37, 64, 0.06);
+          box-shadow: var(--shadow-xs);
         }
 
         .site-map-search-field input {
@@ -686,26 +618,26 @@ export default function SiteMapPage() {
           border: 0;
           outline: 0;
           background: transparent;
-          color: var(--card-foreground);
+          color: var(--foreground);
           font: inherit;
-          font-weight: 850;
+          font-weight: 500;
         }
 
         .site-map-search-field input::placeholder {
-          color: var(--muted-foreground);
+          color: var(--foreground-muted);
           opacity: 1;
         }
 
         .site-map-search-field:focus-within {
           border-color: var(--primary);
-          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.14);
+          box-shadow: var(--focus-shadow);
         }
 
         .site-map-featured,
         .site-map-main-section {
           display: grid;
           gap: 18px;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 20px;
         }
 
@@ -725,24 +657,24 @@ export default function SiteMapPage() {
         .site-map-section-head p {
           color: var(--primary);
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
           letter-spacing: 0;
         }
 
         .site-map-section-head h2 {
           margin-top: 5px;
-          color: var(--card-foreground);
+          color: var(--foreground);
           font-size: clamp(22px, 3vw, 30px);
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-section-head span {
           display: block;
           max-width: 760px;
           margin-top: 7px;
-          color: var(--muted-foreground);
+          color: var(--foreground-secondary);
           line-height: 1.7;
-          font-weight: 750;
+          font-weight: 400;
         }
 
         .site-map-featured-grid {
@@ -756,10 +688,10 @@ export default function SiteMapPage() {
         .site-map-group,
         .site-map-route-card {
           border: 1px solid var(--border);
-          background: var(--card);
-          color: var(--card-foreground);
+          background: var(--surface);
+          color: var(--foreground);
           text-decoration: none;
-          box-shadow: var(--site-map-card-shadow);
+          box-shadow: var(--shadow-card);
           transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
         }
 
@@ -770,7 +702,7 @@ export default function SiteMapPage() {
           grid-template-rows: auto minmax(0, 1fr) auto;
           gap: 10px;
           padding: 15px;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
         }
 
         .site-map-feature-card:hover,
@@ -778,9 +710,9 @@ export default function SiteMapPage() {
         .site-map-route-card:hover,
         .site-map-route-card:focus-visible {
           transform: translateY(-4px);
-          border-color: var(--site-map-card-hover-border);
-          background: var(--site-map-card-hover-background);
-          box-shadow: var(--site-map-card-hover-shadow);
+          border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+          background: var(--surface-hover);
+          box-shadow: var(--shadow-md);
           outline: none;
         }
 
@@ -789,25 +721,25 @@ export default function SiteMapPage() {
           height: 44px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-xl);
-          color: #EAF6FF;
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          box-shadow: 0 16px 32px rgba(29, 140, 255, 0.18);
+          border-radius: var(--radius-card);
+          color: var(--primary-foreground);
+          background: var(--primary);
+          box-shadow: var(--shadow-md);
         }
 
         .site-map-feature-card strong {
           display: block;
-          color: var(--card-foreground);
+          color: var(--foreground);
           font-size: 1.02rem;
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-feature-card p {
           margin: 8px 0 0;
-          color: var(--muted-foreground);
+          color: var(--foreground-secondary);
           line-height: 1.5;
           font-size: 0.84rem;
-          font-weight: 700;
+          font-weight: 400;
           display: -webkit-box;
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
@@ -822,7 +754,7 @@ export default function SiteMapPage() {
           gap: 6px;
           color: var(--primary);
           font-style: normal;
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-grid {
@@ -838,7 +770,7 @@ export default function SiteMapPage() {
           gap: 16px;
           min-width: 0;
           min-height: 0;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 16px;
         }
 
@@ -854,36 +786,36 @@ export default function SiteMapPage() {
           height: 42px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-card);
           color: var(--primary);
-          background: var(--site-map-icon-background);
+          background: var(--primary-soft);
           border: 1px solid var(--border);
         }
 
         .site-map-group h3 {
           margin: 0;
-          color: var(--card-foreground);
+          color: var(--foreground);
           font-size: 1.1rem;
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-group-head p {
           margin: 6px 0 0;
-          color: var(--muted-foreground);
+          color: var(--foreground-secondary);
           font-size: 0.84rem;
           line-height: 1.55;
-          font-weight: 750;
+          font-weight: 400;
         }
 
         .site-map-group small {
           display: inline-flex;
           margin-top: 10px;
           padding: 4px 9px;
-          border-radius: 999px;
-          background: rgba(34, 211, 238, 0.12);
+          border-radius: var(--radius-pill);
+          background: var(--primary-soft);
           color: var(--primary);
           font-size: 11px;
-          font-weight: 950;
+          font-weight: 500;
         }
 
         .site-map-routes {
@@ -899,15 +831,15 @@ export default function SiteMapPage() {
           min-width: 0;
           min-height: 72px;
           padding: 11px;
-          border-radius: var(--r-lg);
-          box-shadow: 0 8px 22px rgba(15, 37, 64, 0.045);
+          border-radius: var(--radius-card);
+          box-shadow: var(--shadow-xs);
         }
 
         .site-map-route-card:hover .route-icon,
         .site-map-route-card:focus-visible .route-icon {
-          color: #EAF6FF;
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          box-shadow: 0 12px 24px rgba(29, 140, 255, 0.18);
+          color: var(--primary-foreground);
+          background: var(--primary);
+          box-shadow: var(--shadow-md);
         }
 
         .route-icon {
@@ -915,8 +847,8 @@ export default function SiteMapPage() {
           height: 38px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-md);
-          background: var(--site-map-icon-background);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
           color: var(--primary);
           transition: all 0.2s ease;
         }
@@ -930,30 +862,30 @@ export default function SiteMapPage() {
         }
 
         .site-map-routes strong {
-          color: var(--card-foreground);
+          color: var(--foreground);
           font-size: 0.94rem;
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-soon-badge {
           display: inline-flex;
           margin-inline-start: 8px;
-          border-radius: 999px;
-          border: 1px solid rgba(47, 214, 192, 0.28);
-          background: rgba(47, 214, 192, 0.12);
-          color: var(--primary);
+          border-radius: var(--radius-pill);
+          border: 1px solid color-mix(in srgb,var(--accent) 30%,var(--border));
+          background: var(--accent-soft);
+          color: var(--accent-hover);
           padding: 3px 8px;
           font-size: 11px;
-          font-weight: 950;
+          font-weight: 500;
           line-height: 1.2;
           vertical-align: middle;
         }
 
         .site-map-routes p {
-          color: var(--muted-foreground);
+          color: var(--foreground-secondary);
           font-size: 0.8rem;
           line-height: 1.45;
-          font-weight: 700;
+          font-weight: 400;
           margin-top: 3px;
           display: -webkit-box;
           -webkit-line-clamp: 2;
@@ -976,16 +908,16 @@ export default function SiteMapPage() {
           place-items: center;
           gap: 10px;
           text-align: center;
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
           padding: 24px;
-          color: var(--muted-foreground);
-          font-weight: 900;
+          color: var(--foreground-muted);
+          font-weight: 500;
         }
 
         .site-map-empty {
           min-height: 88px;
-          border: 1px dashed rgba(29, 140, 255, 0.24);
-          background: var(--card);
+          border: 1px dashed color-mix(in srgb,var(--primary) 30%,var(--border));
+          background: var(--surface);
         }
 
         .site-map-no-results h2,
@@ -994,25 +926,25 @@ export default function SiteMapPage() {
         }
 
         .site-map-no-results h2 {
-          color: var(--card-foreground);
+          color: var(--foreground);
           font-size: 1.35rem;
-          font-weight: 950;
+          font-weight: 600;
         }
 
         .site-map-no-results p {
-          color: var(--muted-foreground);
+          color: var(--foreground-secondary);
         }
 
         .site-map-hero {
           min-height: 0 !important;
           padding: 22px !important;
-          border-radius: var(--r-2xl) !important;
+          border-radius: var(--radius-panel) !important;
         }
 
         .site-map-hero .sfm-page-hero-icon {
           width: 54px !important;
           height: 54px !important;
-          border-radius: var(--r-xl) !important;
+          border-radius: var(--radius-card) !important;
         }
 
         .site-map-hero h1 {
@@ -1035,16 +967,16 @@ export default function SiteMapPage() {
 
         .site-map-tabs button {
           flex: 0 0 auto;
-          min-height: 42px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           gap: 8px;
           border: 1px solid var(--border);
-          border-radius: 999px;
-          background: var(--card);
-          color: var(--muted-foreground);
+          border-radius: var(--radius-pill);
+          background: var(--surface);
+          color: var(--foreground-muted);
           padding: 0 13px;
-          font: 900 12px Tajawal, Arial, sans-serif;
+          font: 500 12px var(--font-ui);
           cursor: pointer;
           transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
           white-space: nowrap;
@@ -1057,8 +989,8 @@ export default function SiteMapPage() {
           min-width: 22px;
           height: 22px;
           place-items: center;
-          border-radius: 999px;
-          background: var(--site-map-icon-background);
+          border-radius: var(--radius-pill);
+          background: var(--primary-soft);
           color: var(--primary);
           font-size: 11px;
         }
@@ -1067,20 +999,20 @@ export default function SiteMapPage() {
         .site-map-tabs button:hover,
         .site-map-tabs button:focus-visible {
           outline: none;
-          border-color: var(--site-map-card-hover-border);
-          color: var(--card-foreground);
-          box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.10);
+          border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+          color: var(--foreground);
+          box-shadow: var(--focus-shadow);
         }
 
         .site-map-tabs button.active {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
+          background: var(--primary);
           border-color: transparent;
-          color: #FFFFFF;
+          color: var(--primary-foreground);
         }
 
         .site-map-tabs button.active span {
-          background: rgba(255, 255, 255, 0.18);
-          color: #FFFFFF;
+          background: color-mix(in srgb,var(--primary-foreground) 18%,transparent);
+          color: var(--primary-foreground);
         }
 
         .site-map-routes-grid {
@@ -1110,7 +1042,7 @@ export default function SiteMapPage() {
           margin: 0 0 4px;
           color: var(--primary);
           font-size: 11px;
-          font-weight: 950;
+          font-weight: 500;
         }
 
         .site-map-mobile-accordion {
@@ -1119,8 +1051,8 @@ export default function SiteMapPage() {
 
         .site-map-accordion-item {
           border: 1px solid var(--border);
-          background: var(--card);
-          border-radius: var(--r-xl);
+          background: var(--surface);
+          border-radius: var(--radius-card);
           overflow: hidden;
         }
 
@@ -1133,17 +1065,17 @@ export default function SiteMapPage() {
           gap: 10px;
           border: 0;
           background: transparent;
-          color: var(--card-foreground);
+          color: var(--foreground);
           padding: 12px;
-          font: 900 14px Tajawal, Arial, sans-serif;
+          font: 500 14px var(--font-ui);
           text-align: start;
           cursor: pointer;
         }
 
         .site-map-accordion-item > button small {
-          color: var(--muted-foreground);
+          color: var(--foreground-muted);
           font-size: 11px;
-          font-weight: 900;
+          font-weight: 500;
           white-space: nowrap;
         }
 
@@ -1154,19 +1086,6 @@ export default function SiteMapPage() {
 
         .site-map-accordion-item .site-map-routes-grid {
           padding: 12px;
-        }
-
-        @media (max-width: 1024px) {
-          .site-map-shell .sfm-dashboard-page-shell {
-            width: 100% !important;
-            margin-inline-start: 0 !important;
-            margin-inline-end: 0 !important;
-            padding: calc(78px + env(safe-area-inset-top)) 16px 52px !important;
-          }
-
-          .site-map-content {
-            max-width: 100% !important;
-          }
         }
 
         @media (min-width: 721px) and (max-width: 1080px) {
@@ -1181,14 +1100,10 @@ export default function SiteMapPage() {
         }
 
         @media (max-width: 720px) {
-          .site-map-topbar {
-            display: none;
-          }
-
           .site-map-featured,
           .site-map-main-section,
           .site-map-search-panel {
-            border-radius: var(--r-xl);
+            border-radius: var(--radius-card);
             padding: 16px;
           }
 

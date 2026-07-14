@@ -48,7 +48,6 @@ import { TR } from '@/lib/translations';
 export type TranslationKey = keyof typeof TR;
 
 export type NavigationAction = 'logout';
-export type NavigationViewMode = 'simple' | 'professional';
 
 export type NavigationItem = {
   id: string;
@@ -58,7 +57,6 @@ export type NavigationItem = {
   action?: NavigationAction;
   external?: boolean;
   caption?: string;
-  viewModes?: NavigationViewMode[];
   children?: NavigationItem[];
   adminOnly?: boolean;
   adminPermission?: AdminPermission;
@@ -79,31 +77,30 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_main',
     defaultOpen: true,
     items: [
-      { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home', viewModes: ['simple', 'professional'] },
-      { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center', viewModes: ['simple', 'professional'] },
-      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions', viewModes: ['simple', 'professional'] },
-      { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today', viewModes: ['simple', 'professional'] },
-      { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories', viewModes: ['simple', 'professional'] },
-      { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks', viewModes: ['simple', 'professional'] },
-      { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks', viewModes: ['simple', 'professional'] },
-      { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif', viewModes: ['simple', 'professional'] },
-      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center', viewModes: ['simple', 'professional'] },
-      { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center', viewModes: ['simple', 'professional'] },
+      { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
+      { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center' },
+      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions' },
+      { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today' },
+      { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
+      { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks' },
+      { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks' },
+      { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif' },
+      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
+      { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center' },
     ],
   },
   {
     id: 'personal-finance',
     labelKey: 'nav_group_personal_finance',
     items: [
-      { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income', viewModes: ['simple', 'professional'] },
+      { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income' },
       {
         id: 'expenses',
         icon: ReceiptText,
         labelKey: 'nav_expenses',
-        viewModes: ['simple', 'professional'],
         children: [
-          { id: 'expenses-overview', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses', viewModes: ['simple', 'professional'] },
-          { id: 'monthly-subscriptions', icon: CreditCard, href: '/expenses/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions', viewModes: ['simple', 'professional'] },
+          { id: 'expenses-overview', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses' },
+          { id: 'monthly-subscriptions', icon: CreditCard, href: '/expenses/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions' },
         ],
       },
       {
@@ -111,10 +108,9 @@ export const NAV_GROUPS: NavigationGroup[] = [
         icon: Landmark,
         href: '/debts',
         labelKey: 'nav_debts',
-        viewModes: ['simple', 'professional'],
       },
       { id: 'savings', icon: PiggyBank, href: '/savings', labelKey: 'nav_savings' },
-      { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals', viewModes: ['simple', 'professional'] },
+      { id: 'goals', icon: Target, href: '/goals', labelKey: 'nav_goals' },
     ],
   },
   {
@@ -122,7 +118,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_financial_ai',
     defaultOpen: true,
     items: [
-      { id: 'smart-assistant', icon: Bot, href: '/ai', labelKey: 'nav_smart_assistant', viewModes: ['simple', 'professional'] },
+      { id: 'smart-assistant', icon: Bot, href: '/ai', labelKey: 'nav_smart_assistant' },
     ],
   },
   {
@@ -132,6 +128,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
       { id: 'market-agent', icon: Bot, href: '/market-agent', labelKey: 'nav_market_agent' },
+      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', adminOnly: true, superAdminOnly: true },
     ],
   },
   {
@@ -158,8 +155,10 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'projects', icon: FolderKanban, href: '/projects', labelKey: 'nav_projects' },
       { id: 'business-hub', icon: BriefcaseBusiness, href: '/business-hub', labelKey: 'nav_business_hub' },
       { id: 'investment-offers', icon: Presentation, href: '/investment-offers', labelKey: 'nav_pitch_decks' },
-      { id: 'business-subscriptions', icon: CreditCard, href: '/business/subscriptions', labelKey: 'nav_clients_subscriptions', viewModes: ['simple', 'professional'] },
+      { id: 'business-subscriptions', icon: CreditCard, href: '/business/subscriptions', labelKey: 'nav_clients_subscriptions' },
       { id: 'business-operations', icon: BriefcaseBusiness, href: '/business-operations', labelKey: 'nav_business_operations' },
+      { id: 'my-companies', icon: Building2, href: '/profile/companies', labelKey: 'nav_my_companies' },
+      { id: 'company-submission', icon: FileText, href: '/company-listing/submit', labelKey: 'nav_company_submission' },
     ],
   },
   {
@@ -190,14 +189,13 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_admin',
     adminOnly: true,
     items: [
-      { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'company_reviews' },
-      { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
-      { id: 'admin-operations-center', icon: BarChart3, href: '/sfm-admin-control/market-diagnostics', labelKey: 'ops_center_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
-      { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
-      { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'admin_dashboard' },
-      { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', viewModes: ['simple', 'professional'], adminOnly: true, adminPermission: 'instagram_automation' },
-      { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },
-      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', viewModes: ['simple', 'professional'], adminOnly: true, superAdminOnly: true },
+      { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', adminOnly: true, adminPermission: 'company_reviews' },
+      { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-operations-center', icon: BarChart3, href: '/sfm-admin-control/market-diagnostics', labelKey: 'ops_center_title', adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', adminOnly: true, adminPermission: 'instagram_automation' },
+      { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', adminOnly: true, superAdminOnly: true },
     ],
   },
   {
@@ -205,10 +203,9 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_account',
     defaultOpen: true,
     items: [
-      { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile', viewModes: ['simple', 'professional'] },
-      { id: 'my-companies', icon: Building2, href: '/profile/companies', labelKey: 'nav_my_companies', viewModes: ['simple', 'professional'] },
-      { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security', viewModes: ['simple', 'professional'] },
-      { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout', viewModes: ['simple', 'professional'] },
+      { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile' },
+      { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
+      { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout' },
     ],
   },
 ];
@@ -221,13 +218,12 @@ export const SUPPORT_LINKS: NavigationItem[] = [
     labelKey: 'nav_support_instagram',
     external: true,
     caption: '@the_sfm',
-    viewModes: ['simple', 'professional'],
   },
-  { id: 'support-help-center', icon: Info, href: '/about', labelKey: 'nav_support_help_center', viewModes: ['simple', 'professional'] },
-  { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact', viewModes: ['simple', 'professional'] },
-  { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq', viewModes: ['simple', 'professional'] },
-  { id: 'support-privacy', icon: ShieldCheck, href: '/privacy', labelKey: 'nav_support_privacy', viewModes: ['simple', 'professional'] },
-  { id: 'support-terms', icon: FileText, href: '/terms', labelKey: 'nav_support_terms', viewModes: ['simple', 'professional'] },
+  { id: 'support-help-center', icon: Info, href: '/about', labelKey: 'nav_support_help_center' },
+  { id: 'support-contact', icon: Mail, href: '/contact', labelKey: 'nav_support_contact' },
+  { id: 'support-faq', icon: CircleHelp, href: '/#faq', labelKey: 'nav_support_faq' },
+  { id: 'support-privacy', icon: ShieldCheck, href: '/privacy', labelKey: 'nav_support_privacy' },
+  { id: 'support-terms', icon: FileText, href: '/terms', labelKey: 'nav_support_terms' },
 ];
 
 export type NavigationAdminAccess = {
@@ -246,31 +242,54 @@ function canShowAdminItem(item: NavigationItem, adminAccess: boolean | Navigatio
   return false;
 }
 
+function hasAdminAccess(adminAccess: boolean | NavigationAdminAccess) {
+  return adminAccess === true || (typeof adminAccess === 'object' && adminAccess.isAdmin === true);
+}
+
+function filterNavigationItems(
+  items: NavigationItem[],
+  adminAccess: boolean | NavigationAdminAccess,
+): NavigationItem[] {
+  return items.flatMap(item => {
+    if (!canShowAdminItem(item, adminAccess)) return [];
+
+    if (!item.children) return [item];
+    const children = filterNavigationItems(item.children, adminAccess);
+    if (children.length === 0 && !item.href && !item.action) return [];
+    return [{ ...item, children }];
+  });
+}
+
 export function filterNavigationGroups(
   groups: NavigationGroup[],
-  viewMode: NavigationViewMode,
   adminAccess: boolean | NavigationAdminAccess = false,
 ) {
-  const visibleGroups = groups
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => canShowAdminItem(item, adminAccess)),
-    }))
-    .filter(group => !group.adminOnly || group.items.length > 0);
+  return groups.flatMap(group => {
+    if (group.adminOnly && !hasAdminAccess(adminAccess)) return [];
+    const items = filterNavigationItems(group.items, adminAccess);
+    return items.length > 0 ? [{ ...group, items }] : [];
+  });
+}
 
-  if (viewMode === 'professional') return visibleGroups;
-  return visibleGroups
-    .map(group => ({
-      ...group,
-      items: group.items
-        .map(item => {
-          const children = item.children?.filter(child => canShowAdminItem(child, adminAccess) && (child.action || child.viewModes?.includes('simple')));
-          if (children?.length) return { ...item, children };
-          return item.action || item.viewModes?.includes('simple') ? item : null;
-        })
-        .filter((item): item is NavigationItem => Boolean(item)),
-    }))
-    .filter(group => group.items.length > 0);
+/**
+ * Resolves the Administration workspace entry from the same permission-filtered
+ * navigation used by the sidebar. A limited administrator therefore lands on
+ * the first page they can actually open, while an administrator with no
+ * permitted admin pages receives no workspace entry at all.
+ */
+export function getFirstAccessibleAdminRoute(
+  adminAccess: boolean | NavigationAdminAccess = false,
+): string | null {
+  const adminGroup = filterNavigationGroups(NAV_GROUPS, adminAccess)
+    .find(group => group.id === 'admin');
+  if (!adminGroup) return null;
+
+  const routableItems = adminGroup.items
+    .flatMap(item => [item, ...(item.children ?? [])])
+    .filter(item => item.href && !item.external);
+  const workspaceDashboard = routableItems.find(item => item.href === '/sfm-admin-control');
+  const firstRoutableItem = workspaceDashboard ?? routableItems[0];
+  return firstRoutableItem?.href ?? null;
 }
 
 export function flattenNavigationItems(options: { includeActions?: boolean } = {}) {
@@ -279,19 +298,45 @@ export function flattenNavigationItems(options: { includeActions?: boolean } = {
   return NAV_GROUPS.flatMap(group => flatten(group.items)).filter(item => options.includeActions || !item.action);
 }
 
-export function normalizeNavigationSource(pathname: string, hash = '') {
-  return `${pathname || '/'}${hash || ''}`;
+export function normalizeNavigationSource(pathname: string, hash = '', search = '') {
+  const normalizedSearch = search && search !== '?'
+    ? (search.startsWith('?') ? search : `?${search}`)
+    : '';
+  const normalizedHash = hash && hash !== '#'
+    ? (hash.startsWith('#') ? hash : `#${hash}`)
+    : '';
+  return `${pathname || '/'}${normalizedSearch}${normalizedHash}`;
 }
 
 export function isNavigationItemActive(activeSource: string, href?: string) {
   if (!href) return false;
-  const [itemPath = '/', itemHashPart] = href.split('#');
-  const itemHash = itemHashPart ? `#${itemHashPart}` : '';
-  const [activePath = '/', activeHashPart] = activeSource.split('#');
-  const activeHash = activeHashPart ? `#${activeHashPart}` : '';
+  if (/^[a-z][a-z\d+.-]*:/i.test(href)) return false;
 
-  if (itemHash) return activePath === itemPath && activeHash === itemHash;
-  return itemPath === '/' ? activePath === '/' : activePath === itemPath || activePath.startsWith(`${itemPath}/`);
+  const parseSource = (source: string) => {
+    const [beforeHash = '/', hashPart = ''] = source.split('#', 2);
+    const [path = '/', queryPart = ''] = beforeHash.split('?', 2);
+    return {
+      path: path || '/',
+      query: new URLSearchParams(queryPart),
+      hash: hashPart ? `#${hashPart}` : '',
+    };
+  };
+
+  const item = parseSource(href);
+  const active = parseSource(activeSource);
+  const pathMatches = item.path === '/'
+    ? active.path === '/'
+    : active.path === item.path || active.path.startsWith(`${item.path}/`);
+  if (!pathMatches) return false;
+  if (item.hash && item.hash !== active.hash) return false;
+
+  const requiredQueryEntries = Array.from(item.query.entries());
+  if (requiredQueryEntries.length > 0) {
+    if (active.path !== item.path) return false;
+    return requiredQueryEntries.every(([key, value]) => active.query.get(key) === value);
+  }
+
+  return true;
 }
 
 export function isNavigationItemOrChildActive(activeSource: string, item: NavigationItem): boolean {

@@ -291,7 +291,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             currency: 'KWD',
             preferred_theme: 'light',
             theme: 'light',
-            view_mode: 'simple',
             onboarding_completed: false,
             security_question_2: shouldSaveSecurityQuestion ? cleanSecurityQuestion : null,
             security_answer_2: shouldSaveSecurityQuestion ? cleanSecurityAnswer : null,

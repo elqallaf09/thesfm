@@ -391,17 +391,15 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 18px;
           min-width: 0;
           padding: clamp(18px, 2.2vw, 26px);
-          border: 1px solid rgba(29, 140, 255, .18);
-          border-radius: var(--r-2xl);
-          background:
-            radial-gradient(circle at 10% 10%, rgba(24, 212, 212, .10), transparent 28%),
-            var(--sfm-card);
-          box-shadow: 0 18px 46px rgba(3, 18, 37, .08);
-          color: var(--sfm-foreground);
-          font-family: Tajawal, Arial, sans-serif;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-panel);
+          background: var(--surface);
+          box-shadow: var(--shadow-card);
+          color: var(--foreground);
+          font-family: var(--font-ui);
         }
         .account-completion-card.compact {
-          border-radius: var(--r-2xl);
+          border-radius: var(--radius-panel);
         }
         .account-completion-loading {
           min-height: 150px;
@@ -409,8 +407,8 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           align-items: center;
           justify-content: center;
           gap: 10px;
-          color: var(--sfm-muted);
-          font-weight: 900;
+          color: var(--foreground-muted);
+          font-weight: 500;
         }
         .account-completion-loading svg {
           animation: spin 1s linear infinite;
@@ -429,25 +427,25 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .account-completion-eyebrow {
           width: fit-content;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           padding: 5px 10px;
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          background: var(--primary-soft);
+          color: var(--primary);
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
         }
         .account-completion-main h2 {
           margin: 0;
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: clamp(24px, 3vw, 34px);
           line-height: 1.15;
         }
         .account-completion-main p {
           max-width: 760px;
           margin: 0;
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           line-height: 1.75;
-          font-weight: 800;
+          font-weight: 400;
         }
         .account-completion-next {
           display: grid;
@@ -455,7 +453,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           min-width: 0;
         }
         .account-completion-next > strong {
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 14px;
         }
         .account-completion-next-list {
@@ -469,28 +467,29 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           align-items: center;
           min-width: 0;
           padding: 11px;
-          border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: var(--r-lg);
-          background: rgba(255, 255, 255, .62);
-          color: var(--sfm-foreground);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
+          color: var(--foreground);
           text-decoration: none;
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .account-next-step:hover,
         .account-next-step:focus-visible {
-          border-color: rgba(24, 212, 212, .34);
-          box-shadow: 0 14px 28px rgba(29, 140, 255, .10);
+          border-color: var(--focus-ring);
+          box-shadow: var(--focus-shadow);
           transform: translateY(-1px);
-          outline: none;
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .account-next-icon {
           width: 34px;
           height: 34px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-md);
-          background: rgba(245, 158, 11, .12);
-          color: #B45309;
+          border-radius: var(--radius-control);
+          background: var(--warning-soft);
+          color: var(--warning);
         }
         .account-next-copy {
           min-width: 0;
@@ -498,12 +497,12 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 3px;
         }
         .account-next-copy b {
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 14px;
           line-height: 1.35;
         }
         .account-next-copy small {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
           line-height: 1.45;
           overflow-wrap: anywhere;
@@ -511,12 +510,12 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         .account-next-action,
         .account-detail-button,
         .step-action {
-          border-radius: 999px;
-          border: 1px solid rgba(29, 140, 255, .20);
-          background: var(--sfm-card);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-pill);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--primary);
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 600;
           white-space: nowrap;
         }
         .account-next-action {
@@ -532,11 +531,11 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 8px;
           width: fit-content;
           max-width: 100%;
-          border-radius: var(--r-lg);
+          border-radius: var(--radius-card);
           padding: 12px 14px;
-          background: rgba(16, 185, 129, .10);
-          color: #047857;
-          font-weight: 950;
+          background: var(--success-soft);
+          color: var(--success);
+          font-weight: 600;
         }
         .account-detail-button {
           width: fit-content;
@@ -554,9 +553,10 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .account-detail-button:hover,
         .account-detail-button:focus-visible {
-          border-color: rgba(24, 212, 212, .42);
-          box-shadow: 0 0 0 4px rgba(24, 212, 212, .10);
-          outline: none;
+          border-color: var(--focus-ring);
+          box-shadow: var(--focus-shadow);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .account-completion-score {
           display: grid;
@@ -564,31 +564,31 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           gap: 10px;
           min-width: 0;
           padding: 18px;
-          border-radius: var(--r-2xl);
-          border: 1px solid rgba(24, 212, 212, .16);
-          background:
-            radial-gradient(circle at 50% 0%, rgba(24, 212, 212, .14), transparent 45%),
-            rgba(255, 255, 255, .64);
+          border-radius: var(--radius-panel);
+          border: 1px solid var(--border);
+          background: var(--surface-muted);
         }
         .account-completion-ring {
           width: 112px;
           height: 112px;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           display: grid;
           place-items: center;
-          background: conic-gradient(var(--sfm-accent) var(--completion), rgba(29, 140, 255, .12) 0deg);
-          box-shadow: inset 0 0 0 1px rgba(29, 140, 255, .12), 0 12px 26px rgba(29, 140, 255, .12);
+          border: 8px solid var(--accent);
+          background: var(--accent-soft);
+          box-shadow: var(--shadow-sm);
         }
         .account-completion-ring strong {
           width: 82px;
           height: 82px;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           display: grid;
           place-items: center;
-          background: var(--sfm-card);
-          color: var(--sfm-foreground);
+          background: var(--surface);
+          color: var(--foreground);
           font-size: 24px;
-          font-weight: 950;
+          font-family: var(--font-data);
+          font-weight: 600;
         }
         .account-completion-score-copy {
           display: grid;
@@ -597,27 +597,27 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           text-align: center;
         }
         .account-completion-score-copy b {
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 15px;
         }
         .account-completion-score-copy span {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
         }
         .account-completion-bar {
           width: 100%;
           height: 10px;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           overflow: hidden;
-          background: rgba(29, 140, 255, .10);
-          border: 1px solid rgba(29, 140, 255, .10);
+          background: var(--surface-muted);
+          border: 1px solid var(--border);
         }
         .account-completion-bar span {
           display: block;
           height: 100%;
           border-radius: inherit;
-          background: linear-gradient(90deg, var(--sfm-primary), var(--sfm-accent));
+          background: var(--primary);
         }
         .account-completion-details {
           display: grid;
@@ -633,37 +633,38 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           min-width: 0;
           min-height: 96px;
           padding: 12px;
-          border: 1px solid rgba(29, 140, 255, .14);
-          border-radius: var(--r-lg);
-          background: rgba(248, 251, 255, .78);
-          color: var(--sfm-foreground);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-card);
+          background: var(--surface-muted);
+          color: var(--foreground);
           text-decoration: none;
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .account-completion-details a:hover,
         .account-completion-details a:focus-visible {
-          border-color: rgba(24, 212, 212, .38);
-          box-shadow: 0 14px 28px rgba(29, 140, 255, .10);
+          border-color: var(--focus-ring);
+          box-shadow: var(--focus-shadow);
           transform: translateY(-1px);
-          outline: none;
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .account-completion-details a.done {
-          border-color: rgba(16, 185, 129, .2);
-          background: rgba(16, 185, 129, .08);
+          border-color: color-mix(in srgb, var(--success) 28%, transparent);
+          background: var(--success-soft);
         }
         .step-icon {
           width: 38px;
           height: 38px;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           display: grid;
           place-items: center;
           flex: 0 0 auto;
-          color: var(--sfm-primary);
-          background: rgba(29, 140, 255, .10);
+          color: var(--primary);
+          background: var(--primary-soft);
         }
         .account-completion-details a.done .step-icon {
-          color: #10B981;
-          background: rgba(16, 185, 129, .12);
+          color: var(--success);
+          background: var(--success-soft);
         }
         .step-copy {
           min-width: 0;
@@ -672,36 +673,36 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .step-copy b {
           min-width: 0;
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 14px;
           line-height: 1.4;
           overflow-wrap: anywhere;
         }
         .step-copy small {
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-size: 12px;
-          font-weight: 800;
+          font-weight: 400;
           line-height: 1.5;
         }
         .step-state {
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           padding: 5px 9px;
-          border: 1px solid rgba(29, 140, 255, .14);
-          background: var(--sfm-card);
-          color: var(--sfm-muted);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--foreground-muted);
           font-size: 11px;
-          font-weight: 950;
+          font-weight: 600;
           white-space: nowrap;
         }
         .step-state.complete {
-          border-color: rgba(16, 185, 129, .22);
-          background: rgba(16, 185, 129, .10);
-          color: #047857;
+          border-color: color-mix(in srgb, var(--success) 28%, transparent);
+          background: var(--success-soft);
+          color: var(--success);
         }
         .step-state.missing {
-          border-color: rgba(245, 158, 11, .22);
-          background: rgba(245, 158, 11, .10);
-          color: #B45309;
+          border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+          background: var(--warning-soft);
+          color: var(--warning);
         }
         .step-action {
           grid-column: 2 / -1;
@@ -711,22 +712,6 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           align-items: center;
           justify-content: center;
           padding: 0 11px;
-        }
-        :global(.dark) .account-next-step,
-        :global(.dark) .account-completion-score,
-        :global(.dark) .account-completion-details a {
-          background: rgba(15, 51, 92, .72);
-          border-color: rgba(167, 243, 240, .16);
-        }
-        :global(.dark) .account-completion-done {
-          color: #86EFAC;
-        }
-        :global(.dark) .step-state.complete {
-          color: #86EFAC;
-        }
-        :global(.dark) .step-state.missing,
-        :global(.dark) .account-next-icon {
-          color: #FCD34D;
         }
         @keyframes spin {
           to { transform: rotate(360deg); }

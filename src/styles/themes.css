@@ -1,156 +1,233 @@
 /*
- * Design tokens — semantic layer, mapped separately for Light Mode and Dark Mode.
+ * The SFM semantic colour system.
  *
- * These are the 9 semantic token groups: background, surface, text, border, brand, status,
- * market, provider, shariah. Every token is defined in BOTH :root{} (light) and .dark{} (dark)
- * with a distinct, purpose-picked value per theme — never a value copied from one theme into
- * the other.
- *
- * This file is purely additive: it does not replace, move, or rename anything in
- * src/app/globals.css's existing :root{}/.dark{} blocks (the --sfm-*, shadcn --color-*, and
- * legacy --green/--red/--amber/--gold alias tiers stay exactly as they are — several are live
- * consumers, e.g. src/app/sfm-admin-control/shariah/ShariahAdminClient.tsx reads var(--green)
- * directly). Wherever an existing color already carries the right meaning, these new tokens
- * simply repoint to it via var() instead of duplicating the hex value.
+ * Components consume these intent-based tokens directly so light and dark
+ * mode share one auditable visual language.
  */
 
 :root {
-  /* Background */
-  --background-page: var(--sfm-light-background);
-  --background-subtle: var(--sfm-light-card-secondary);
-  --background-muted: var(--sfm-light-card-primary);
-  --background-overlay: var(--new-background-overlay-light);
+  color-scheme: light;
 
-  /* Surface */
-  --surface: var(--sfm-light-surface);
-  --surface-raised: var(--sfm-light-surface-elevated);
-  --surface-hover: var(--sfm-surface-hover);
-  --surface-active: color-mix(in srgb, var(--sfm-light-primary) 10%, var(--sfm-light-surface));
-  --surface-disabled: var(--muted);
+  /* Canvas and surfaces */
+  --background: #F4F7FB;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #F8FAFC;
+  --surface-hover: #F1F5F9;
+  --surface-active: #EAF3FF;
+  --surface-disabled: #F1F5F9;
+  --popover: var(--surface-elevated);
+  --popover-foreground: var(--foreground);
+  --tooltip: var(--surface-elevated);
+  --tooltip-foreground: var(--foreground);
 
   /* Text */
-  --text-primary: var(--sfm-light-text-primary);
-  --text-secondary: var(--sfm-light-text-secondary);
-  --text-muted: var(--sfm-light-text-muted);
-  --text-disabled: color-mix(in srgb, var(--sfm-light-text-muted) 60%, transparent);
-  --text-inverse: var(--text-white);
+  --foreground: #0F2742;
+  --foreground-secondary: #334155;
+  --foreground-muted: #627287;
+  --foreground-subtle: #7C8A9E;
+  --foreground-inverse: #FFFFFF;
 
-  /* Border */
-  --border-default: var(--sfm-light-border-primary);
-  --border-subtle: var(--sfm-light-border-secondary);
-  --border-strong: var(--sfm-border-strong);
-  --divider: var(--sfm-light-divider);
-  --focus-ring: var(--sfm-light-focus-ring);
+  /* Borders */
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --divider: #E2E8F0;
 
   /* Brand */
-  --brand-primary: var(--sfm-light-primary);
-  --brand-primary-hover: var(--sfm-light-primary-hover);
-  --brand-primary-active: var(--sfm-light-primary-active);
-  --brand-secondary: var(--sfm-light-secondary);
-  --brand-accent: var(--sfm-light-accent);
+  --primary: #1769D2;
+  --primary-hover: #1258B3;
+  --primary-active: #0F4B99;
+  --primary-soft: #EAF3FF;
+  --primary-foreground: #FFFFFF;
+  --accent: #0F9F9A;
+  --accent-hover: #0B7F7A;
+  --accent-soft: #E6F8F6;
+  --accent-foreground: #052B2A;
 
-  /* Status — repoints to the already-correct --sfm-light-success/warning/danger/info(+soft) tier */
-  --success: var(--sfm-light-success);
-  --success-muted: var(--sfm-light-success-soft);
-  --warning: var(--sfm-light-warning);
-  --warning-muted: var(--sfm-light-warning-soft);
-  --danger: var(--sfm-light-danger);
-  --danger-muted: var(--sfm-light-danger-soft);
-  --info: var(--sfm-light-info);
-  --info-muted: var(--sfm-light-info-soft);
-  --neutral: #475569; /* market-page.css:540 .market-status-badge.muted light color */
-  --neutral-muted: #F1F5F9; /* market-page.css:541 */
+  /* Status */
+  --success: #15803D;
+  --success-soft: #EAF7EE;
+  --warning: #B45309;
+  --warning-soft: #FFF7E6;
+  --danger: #C62828;
+  --danger-soft: #FDECEC;
+  --danger-foreground: #FFFFFF;
+  --info: #0369A1;
+  --info-soft: #EAF6FC;
 
-  /* Market — consolidates market-page.css's .market-status-badge.* light colors */
-  --market-positive: #047857; /* market-page.css:516 .success */
-  --market-negative: #B91C1C; /* market-page.css:534 .danger */
-  --market-neutral: var(--neutral);
-  --market-delayed: #92400E; /* market-page.css:528 .warning */
-  --market-stale: var(--new-market-stale-light);
-  --market-unavailable: var(--new-market-unavailable-light);
+  /* Interaction */
+  --focus-ring: #2563EB;
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
+  --selection-background: #D7E8FF;
+  --selection-foreground: var(--foreground);
+  --background-overlay: rgba(15, 39, 66, 0.48);
+  --shadow-color: #0F2742;
 
-  /* Provider — resolved through the Market family per statusPresentation.ts's existing tone map
-     (connected:success, degraded/rate_limited:warning, disconnected:danger, disabled:muted) */
-  --provider-connected: var(--market-positive);
-  --provider-degraded: var(--market-delayed);
-  --provider-disconnected: var(--market-negative);
-  --provider-rate-limited: var(--market-delayed);
-  --provider-disabled: var(--market-neutral);
+  /* Sidebar */
+  --sidebar-background: #FFFFFF;
+  --sidebar-foreground: #0F2742;
+  --sidebar-muted: #64748B;
+  --sidebar-border: #E2E8F0;
+  --sidebar-hover: #F1F5F9;
+  --sidebar-expanded: #F8FAFC;
+  --sidebar-active: #EAF3FF;
+  --sidebar-active-foreground: #0F4B99;
 
-  /* Shariah — seeded from ShariaResearchPage.module.css's local .page{} light palette */
-  --shariah-compliant: #16755E; /* ShariaResearchPage.module.css:12 */
-  --shariah-non-compliant: #B63D49; /* :13 */
-  --shariah-review: #A66C16; /* :14 */
-  --shariah-insufficient: #65737F; /* :15 */
-  --shariah-conflict: var(--new-shariah-conflict-light);
+  /* Data visualisation */
+  --chart-grid: #E2E8F0;
+  --chart-label: #64748B;
+  --chart-tooltip: #FFFFFF;
+  --chart-1: #1769D2;
+  --chart-2: #0F9F9A;
+  --chart-3: #15803D;
+  --chart-4: #B45309;
+  --chart-5: #64748B;
+
+  /* Shared component surfaces */
+  --control-background: var(--surface);
+  --control-hover: var(--surface-hover);
+  --control-disabled: var(--surface-disabled);
+  --control-placeholder: var(--foreground-muted);
+  --table-header: var(--surface-muted);
+  --table-row-hover: #F3F7FC;
+  --table-row-selected: var(--primary-soft);
+  --skeleton-base: #E2E8F0;
+  --skeleton-highlight: #F8FAFC;
+  --skeleton-gradient: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+
+  /* Print views stay legible even when the active application theme is dark. */
+  --print-background: #FFFFFF;
+  --print-surface: #FFFFFF;
+  --print-foreground: #0F2742;
+  --print-foreground-secondary: #334155;
+  --print-foreground-muted: #64748B;
+  --print-border: #CBD5E1;
+
+  /* Intentional brand hero only. Normal controls and cards remain flat. */
+  --hero-gradient-start: #0F2742;
+  --hero-gradient-mid: #1258B3;
+  --hero-gradient-end: #0B6664;
+  --hero-foreground: #FFFFFF;
+  --hero-foreground-muted: #DCE8F5;
+  --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
+
+  /* Domain semantics */
+  --market-positive: var(--success);
+  --market-negative: var(--danger);
+  --market-neutral: var(--foreground-muted);
+  --market-delayed: var(--warning);
+  --market-stale: var(--info);
+  --market-unavailable: var(--foreground-muted);
+  --provider-connected: var(--success);
+  --provider-degraded: var(--warning);
+  --provider-disconnected: var(--danger);
+  --provider-rate-limited: var(--warning);
+  --provider-disabled: var(--foreground-muted);
+  --shariah-compliant: var(--success);
+  --shariah-non-compliant: var(--danger);
+  --shariah-review: var(--warning);
+  --shariah-insufficient: var(--foreground-muted);
+  --shariah-conflict: var(--danger);
+
+  /* shadcn/Tailwind semantic bridge */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--foreground-muted);
+  --input: var(--border-strong);
+  --ring: var(--focus-ring);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --sidebar: var(--sidebar-background);
+  --sidebar-accent: var(--sidebar-hover);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+
 }
 
 .dark {
-  /* Background */
-  --background-page: var(--background);
-  --background-subtle: var(--bg-2);
-  --background-muted: var(--bg-muted);
-  --background-overlay: var(--new-background-overlay-dark);
+  color-scheme: dark;
 
-  /* Surface */
-  --surface: var(--card);
-  --surface-raised: var(--sfm-card-elevated);
-  --surface-hover: var(--sfm-surface-hover);
-  --surface-active: color-mix(in srgb, var(--sfm-primary) 16%, var(--card));
-  --surface-disabled: var(--muted);
+  --background: #071522;
+  --surface: #0B2035;
+  --surface-elevated: #102A44;
+  --surface-muted: #0D253C;
+  --surface-hover: #132D47;
+  --surface-active: #12365A;
+  --surface-disabled: #14283B;
+  --tooltip: var(--surface-elevated);
+  --tooltip-foreground: var(--foreground);
 
-  /* Text */
-  --text-primary: var(--foreground);
-  --text-secondary: var(--text-2);
-  --text-muted: var(--text-3);
-  --text-disabled: color-mix(in srgb, var(--text-3) 55%, transparent);
-  --text-inverse: var(--sfm-light-text-primary, #10243B);
+  --foreground: #F8FAFC;
+  --foreground-secondary: #CBD5E1;
+  --foreground-muted: #94A3B8;
+  --foreground-subtle: #7C8DA3;
+  --foreground-inverse: #071522;
 
-  /* Border */
-  --border-default: var(--border);
-  --border-subtle: var(--new-divider-dark);
-  --border-strong: var(--sfm-border-strong);
-  --divider: var(--new-divider-dark);
-  --focus-ring: 0 0 0 3px rgba(24, 212, 212, 0.36), 0 0 0 1px var(--sfm-accent);
+  --border: #243B53;
+  --border-strong: #39536C;
+  --divider: #243B53;
 
-  /* Brand */
-  --brand-primary: var(--sfm-primary);
-  --brand-primary-hover: var(--sfm-primary-hover);
-  --brand-primary-active: var(--sfm-primary-active);
-  --brand-secondary: var(--sfm-accent);
-  --brand-accent: var(--accent);
+  --primary: #4C96F5;
+  --primary-hover: #73ACF7;
+  --primary-active: #2F7DDF;
+  --primary-soft: #102F50;
+  --primary-foreground: #071522;
+  --accent: #35BDB7;
+  --accent-hover: #5CCBC6;
+  --accent-soft: #0D3839;
+  --accent-foreground: #061B1B;
 
-  /* Status — repoints to the existing dark --green/--red/--amber/--blue(+ -bg) tier */
-  --success: var(--green);
-  --success-muted: var(--green-bg);
-  --warning: var(--amber);
-  --warning-muted: var(--amber-bg);
-  --danger: var(--red);
-  --danger-muted: var(--red-bg);
-  --info: var(--blue);
-  --info-muted: var(--blue-bg);
-  --neutral: #B8C7D9; /* market-page.css:606 .dark .market-status-badge.muted */
-  --neutral-muted: rgba(142, 166, 195, 0.12); /* market-page.css:607 */
+  --success: #4ADE80;
+  --success-soft: #103525;
+  --warning: #FBBF24;
+  --warning-soft: #3A2A0D;
+  --danger: #F87171;
+  --danger-soft: #3E1A20;
+  --danger-foreground: #071522;
+  --info: #38BDF8;
+  --info-soft: #0B3046;
 
-  /* Market — consolidates market-page.css's .dark .market-status-badge.* colors */
-  --market-positive: #2FD6C0; /* market-page.css:582 */
-  --market-negative: #FF5B6E; /* market-page.css:600 */
-  --market-neutral: var(--neutral);
-  --market-delayed: #F5B942; /* market-page.css:594 */
-  --market-stale: var(--new-market-stale-dark);
-  --market-unavailable: var(--new-market-unavailable-dark);
+  --focus-ring: #60A5FA;
+  --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 34%, transparent);
+  --selection-background: #174A77;
+  --selection-foreground: #FFFFFF;
+  --background-overlay: rgba(2, 10, 18, 0.72);
+  --shadow-color: #000000;
 
-  /* Provider */
-  --provider-connected: var(--market-positive);
-  --provider-degraded: var(--market-delayed);
-  --provider-disconnected: var(--market-negative);
-  --provider-rate-limited: var(--market-delayed);
-  --provider-disabled: var(--market-neutral);
+  --sidebar-background: #081A2C;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-muted: #A8B6C7;
+  --sidebar-border: #243B53;
+  --sidebar-hover: #102A44;
+  --sidebar-expanded: #0D253C;
+  --sidebar-active: #12365A;
+  --sidebar-active-foreground: #DCEBFF;
 
-  /* Shariah — seeded from ShariaResearchPage.module.css's local :global(.dark) .page{} palette */
-  --shariah-compliant: #55C99E; /* ShariaResearchPage.module.css:497 */
-  --shariah-non-compliant: #FF8790; /* :498 */
-  --shariah-review: #E5B45F; /* :499 */
-  --shariah-insufficient: #A8B4BC; /* :500 */
-  --shariah-conflict: var(--new-shariah-conflict-dark);
+  --chart-grid: #294157;
+  --chart-label: #A8B6C7;
+  --chart-tooltip: #102A44;
+  --chart-1: #60A5FA;
+  --chart-2: #35BDB7;
+  --chart-3: #4ADE80;
+  --chart-4: #FBBF24;
+  --chart-5: #A8B6C7;
+
+  --control-background: var(--surface);
+  --control-hover: var(--surface-hover);
+  --control-disabled: var(--surface-disabled);
+  --control-placeholder: var(--foreground-muted);
+  --table-header: var(--surface-muted);
+  --table-row-hover: #102A44;
+  --table-row-selected: var(--primary-soft);
+  --skeleton-base: #18324A;
+  --skeleton-highlight: #27445E;
+
+  --hero-gradient-start: #071522;
+  --hero-gradient-mid: #123D68;
+  --hero-gradient-end: #0B6664;
+  --hero-foreground: #FFFFFF;
+  --hero-foreground-muted: #CBD5E1;
+
 }

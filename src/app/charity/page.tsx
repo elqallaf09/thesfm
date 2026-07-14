@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -430,7 +429,6 @@ export default function CharityCenterPage() {
   if (authLoading || !ready) {
     return (
       <div dir={dir} lang={lang}>
-        <Sidebar />
         <DashboardPageShell ariaLabel={tr.centerAria} className={styles.shell} contentClassName={styles.shellContent}>
           <div className={styles.page} dir={dir} lang={lang} data-charity-experience="center">
             <div className={styles.loadingState} role="status" aria-live="polite">
@@ -445,7 +443,6 @@ export default function CharityCenterPage() {
 
   return (
     <div dir={dir} lang={lang}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={tr.centerAria} className={styles.shell} contentClassName={styles.shellContent}>
         <div className={styles.page} dir={dir} lang={lang} data-charity-experience="center">
           <header className={styles.hero}>

@@ -20,7 +20,6 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel } from '@/components/layout/PageTabs';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -1240,7 +1239,6 @@ export default function CharityProjectsPage() {
 
   return (
     <div className="charity-projects-page" dir={dir} data-charity-experience="projects">
-      <Sidebar />
       <DashboardPageShell contentClassName="charity-projects-content">
         <section className="cp-hero">
           <div>

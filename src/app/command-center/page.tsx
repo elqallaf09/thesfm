@@ -17,7 +17,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -322,7 +321,6 @@ export default function CommandCenterPage() {
 
   return (
     <div className="command-center-shell" dir={dir}>
-      <Sidebar />
       <DashboardPageShell ariaLabel={text.title} className="command-center-main" contentClassName="command-center-content">
         <div className="sfm-page-topbar">
           <LanguageSwitcher />
@@ -425,26 +423,15 @@ export default function CommandCenterPage() {
       <style jsx global>{`
         .command-center-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at 18% 12%, rgba(29, 140, 255, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #F8FBFF 62%, #E7F1FF 100%);
-        }
-        .dark .command-center-shell {
-          background:
-            radial-gradient(circle at 18% 12%, rgba(24, 212, 212, .10), transparent 34%),
-            linear-gradient(160deg, var(--sfm-background), #061B33 62%, #031225 100%);
+          background: var(--background);
         }
         .command-center-main {
-          width: calc(100% - var(--sidebar-w, 230px)) !important;
-          max-width: none !important;
-          margin-inline-start: var(--sidebar-w, 230px) !important;
-          margin-inline-end: 0 !important;
-          padding-inline: 24px !important;
+          width: 100%;
+          min-width: 0;
         }
         .command-center-content {
           width: 100%;
-          max-width: 1180px;
-          margin-inline: auto;
+          max-width: none;
           display: grid;
           gap: 24px;
         }
@@ -464,13 +451,11 @@ export default function CommandCenterPage() {
           align-items: center;
           gap: 24px;
           padding: clamp(24px, 4vw, 40px);
-          border: 1px solid rgba(167, 243, 240, .18);
-          border-radius: var(--r-2xl);
-          background:
-            radial-gradient(circle at 18% 18%, rgba(24, 212, 212, .20), transparent 30%),
-            linear-gradient(135deg, #031225 0%, #061B33 52%, #0B3A66 100%);
-          box-shadow: 0 24px 60px rgba(3, 18, 37, .18);
-          color: #EAF6FF;
+          border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+          border-radius: var(--radius-panel);
+          background: var(--hero-gradient);
+          box-shadow: var(--shadow-md);
+          color: var(--hero-foreground);
         }
         .command-hero::after {
           content: '';
@@ -478,9 +463,8 @@ export default function CommandCenterPage() {
           inset: auto -80px -120px auto;
           width: 280px;
           height: 280px;
-          border-radius: 999px;
-          background: rgba(24, 212, 212, .12);
-          filter: blur(8px);
+          border-radius: var(--radius-pill);
+          background: color-mix(in srgb, var(--accent) 18%, transparent);
         }
         .command-hero-copy {
           position: relative;
@@ -491,24 +475,24 @@ export default function CommandCenterPage() {
         }
         .command-hero-copy > span {
           width: fit-content;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           padding: 6px 11px;
-          background: rgba(24, 212, 212, .14);
-          border: 1px solid rgba(167, 243, 240, .22);
-          color: #A7F3F0;
-          font: 950 12px Tajawal, Arial, sans-serif;
+          background: color-mix(in srgb, var(--accent) 22%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+          color: var(--hero-foreground);
+          font: 600 12px/1.4 var(--font-ui);
         }
         .command-hero h1 {
           margin: 0;
-          color: #FFFFFF;
-          font: 950 clamp(34px, 5vw, 56px)/1.05 Tajawal, Arial, sans-serif;
+          color: var(--hero-foreground);
+          font: 700 clamp(34px, 5vw, 56px)/1.16 var(--font-ui);
           letter-spacing: 0;
         }
         .command-hero p {
           max-width: 680px;
           margin: 0;
-          color: #C7DBF5;
-          font: 800 clamp(15px, 1.7vw, 18px)/1.8 Tajawal, Arial, sans-serif;
+          color: var(--hero-foreground-muted);
+          font: 400 clamp(15px, 1.7vw, 18px)/1.8 var(--font-ui);
         }
         .command-hero-actions {
           display: flex;
@@ -523,17 +507,17 @@ export default function CommandCenterPage() {
           height: clamp(112px, 14vw, 150px);
           display: grid;
           place-items: center;
-          border-radius: 32px;
-          border: 1px solid rgba(167, 243, 240, .22);
-          background: rgba(255, 255, 255, .08);
-          color: #A7F3F0;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 20px 44px rgba(0, 0, 0, .16);
+          border-radius: var(--radius-panel);
+          border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+          background: color-mix(in srgb, var(--surface) 12%, transparent);
+          color: var(--hero-foreground);
+          box-shadow: var(--shadow-sm);
         }
         .command-hero-spark {
           position: absolute;
           inset-block-start: 22px;
           inset-inline-end: 24px;
-          color: #18D4D4;
+          color: var(--accent);
         }
         .sfm-primary-link,
         .sfm-secondary-link,
@@ -543,22 +527,22 @@ export default function CommandCenterPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          border-radius: 999px;
+          border-radius: var(--radius-pill);
           padding: 0 16px;
           text-decoration: none;
-          font: 950 13px Tajawal, Arial, sans-serif;
+          font: 600 13px/1.25 var(--font-ui);
           white-space: nowrap;
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .sfm-primary-link {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
-          box-shadow: 0 12px 24px rgba(29, 140, 255, .22);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow: var(--shadow-sm);
         }
         .sfm-secondary-link {
-          border: 1px solid rgba(167, 243, 240, .24);
-          background: rgba(255, 255, 255, .10);
-          color: #EAF6FF;
+          border: 1px solid color-mix(in srgb, var(--hero-foreground) 30%, transparent);
+          background: color-mix(in srgb, var(--surface) 12%, transparent);
+          color: var(--hero-foreground);
         }
         .sfm-primary-link:hover,
         .sfm-primary-link:focus-visible,
@@ -567,8 +551,9 @@ export default function CommandCenterPage() {
         .command-action-link:hover,
         .command-action-link:focus-visible {
           transform: translateY(-1px);
-          box-shadow: 0 0 0 4px rgba(24, 212, 212, .12), 0 16px 28px rgba(29, 140, 255, .16);
-          outline: none;
+          box-shadow: var(--focus-shadow);
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .command-summary-grid {
           grid-template-columns: repeat(3, minmax(220px, 1fr)) !important;
@@ -595,14 +580,14 @@ export default function CommandCenterPage() {
         }
         .command-section-head h2 {
           margin: 0;
-          color: var(--sfm-foreground);
-          font: 950 clamp(24px, 3vw, 34px)/1.2 Tajawal, Arial, sans-serif;
+          color: var(--foreground);
+          font: 600 clamp(24px, 3vw, 34px)/1.3 var(--font-ui);
         }
         .command-section-head p {
           margin: 0;
           max-width: 720px;
-          color: var(--sfm-muted);
-          font: 800 15px/1.7 Tajawal, Arial, sans-serif;
+          color: var(--foreground-muted);
+          font: 400 15px/1.7 var(--font-ui);
         }
         .command-action-grid {
           grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)) !important;
@@ -614,34 +599,32 @@ export default function CommandCenterPage() {
           grid-template-rows: auto 1fr auto;
           gap: 16px;
           min-height: 230px;
-          border-color: rgba(29, 140, 255, .15) !important;
+          border-color: var(--border) !important;
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
         .command-action-card:hover,
         .command-action-card:focus-within {
           transform: translateY(-2px);
-          border-color: rgba(24, 212, 212, .36) !important;
-          box-shadow: 0 20px 44px rgba(3, 18, 37, .10);
+          border-color: var(--accent) !important;
+          box-shadow: var(--shadow-md);
         }
         .command-action-card.featured {
-          background:
-            radial-gradient(circle at 12% 10%, rgba(24, 212, 212, .12), transparent 34%),
-            var(--sfm-card) !important;
+          background: var(--primary-soft) !important;
         }
         .command-action-icon {
           width: 48px;
           height: 48px;
           display: grid;
           place-items: center;
-          border-radius: var(--r-lg);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
-          box-shadow: inset 0 0 0 1px rgba(29, 140, 255, .08);
+          border-radius: var(--radius-card);
+          background: var(--primary-soft);
+          color: var(--primary);
+          box-shadow: none;
         }
         .command-action-card.featured .command-action-icon {
-          background: linear-gradient(135deg, var(--sfm-primary), var(--sfm-accent));
-          color: #FFFFFF;
-          box-shadow: 0 14px 26px rgba(29, 140, 255, .18);
+          background: var(--primary);
+          color: var(--primary-foreground);
+          box-shadow: var(--shadow-sm);
         }
         .command-action-copy {
           display: grid;
@@ -651,19 +634,19 @@ export default function CommandCenterPage() {
         }
         .command-action-copy h3 {
           margin: 0;
-          color: var(--sfm-foreground);
-          font: 950 21px/1.3 Tajawal, Arial, sans-serif;
+          color: var(--foreground);
+          font: 600 21px/1.3 var(--font-ui);
         }
         .command-action-copy p {
           margin: 0;
-          color: var(--sfm-muted);
-          font: 800 14px/1.7 Tajawal, Arial, sans-serif;
+          color: var(--foreground-muted);
+          font: 400 14px/1.7 var(--font-ui);
         }
         .command-action-link {
           justify-self: start;
-          border: 1px solid rgba(29, 140, 255, .20);
-          background: var(--sfm-card);
-          color: var(--sfm-primary);
+          border: 1px solid var(--border);
+          background: var(--surface);
+          color: var(--primary);
         }
         .command-lower-grid {
           display: grid;
@@ -691,9 +674,9 @@ export default function CommandCenterPage() {
           display: grid;
           place-items: center;
           flex: 0 0 48px;
-          border-radius: var(--r-lg);
-          background: rgba(24, 212, 212, .12);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-card);
+          background: var(--accent-soft);
+          color: var(--primary);
         }
         .command-priority-head div {
           min-width: 0;
@@ -702,19 +685,19 @@ export default function CommandCenterPage() {
         }
         .command-priority-head p {
           margin: 0;
-          color: var(--sfm-primary);
-          font: 950 12px/1.4 Tajawal, Arial, sans-serif;
+          color: var(--primary);
+          font: 600 12px/1.4 var(--font-ui);
         }
         .command-priority-head h2,
         .command-quick-card h2 {
           margin: 0;
-          color: var(--sfm-foreground);
-          font: 950 22px/1.35 Tajawal, Arial, sans-serif;
+          color: var(--foreground);
+          font: 600 22px/1.35 var(--font-ui);
         }
         .command-priority-description {
           margin: 0;
-          color: var(--sfm-muted);
-          font: 800 14px/1.7 Tajawal, Arial, sans-serif;
+          color: var(--foreground-muted);
+          font: 400 14px/1.7 var(--font-ui);
         }
         .command-priority-card .sfm-primary-link {
           justify-self: start;
@@ -731,32 +714,21 @@ export default function CommandCenterPage() {
           justify-content: space-between;
           gap: 10px;
           padding: 0 13px;
-          border-radius: var(--r-md);
-          border: 1px solid rgba(29, 140, 255, .14);
-          background: rgba(29, 140, 255, .06);
-          color: var(--sfm-foreground);
+          border-radius: var(--radius-control);
+          border: 1px solid var(--border);
+          background: var(--surface-muted);
+          color: var(--foreground);
           text-decoration: none;
-          font: 900 13px Tajawal, Arial, sans-serif;
+          font: 500 13px/1.25 var(--font-ui);
           transition: border-color .18s ease, background .18s ease, transform .18s ease;
         }
         .command-quick-links a:hover,
         .command-quick-links a:focus-visible {
-          border-color: rgba(24, 212, 212, .34);
-          background: rgba(24, 212, 212, .10);
+          border-color: var(--accent);
+          background: var(--surface-hover);
           transform: translateY(-1px);
-          outline: none;
-        }
-        .dark .command-summary-grid .sfm-app-card,
-        .dark .command-action-card,
-        .dark .command-priority-card,
-        .dark .command-quick-card {
-          border-color: rgba(167, 243, 240, .16) !important;
-        }
-        .dark .command-action-link,
-        .dark .command-quick-links a {
-          background: rgba(15, 51, 92, .72);
-          border-color: rgba(167, 243, 240, .16);
-          color: #EAF6FF;
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -765,11 +737,6 @@ export default function CommandCenterPage() {
           to { transform: rotate(360deg); }
         }
         @media (max-width: 1024px) {
-          .command-center-main {
-            width: 100% !important;
-            margin-inline: 0 !important;
-            padding-inline: 16px !important;
-          }
           .command-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
@@ -788,12 +755,12 @@ export default function CommandCenterPage() {
             min-height: 0;
             grid-template-columns: 1fr;
             padding: 22px;
-            border-radius: var(--r-2xl);
+            border-radius: var(--radius-panel);
           }
           .command-hero-mark {
             width: 86px;
             height: 86px;
-            border-radius: var(--r-2xl);
+            border-radius: var(--radius-panel);
             order: -1;
           }
           .command-hero-actions,
@@ -834,9 +801,9 @@ function Metric({ label, value, hint, icon }: { label: string; value: string; hi
           display: grid;
           place-items: center;
           flex: 0 0 42px;
-          border-radius: var(--r-md);
-          background: rgba(29, 140, 255, .10);
-          color: var(--sfm-primary);
+          border-radius: var(--radius-control);
+          background: var(--primary-soft);
+          color: var(--primary);
         }
         .command-metric div {
           min-width: 0;
@@ -846,17 +813,19 @@ function Metric({ label, value, hint, icon }: { label: string; value: string; hi
         .command-metric p,
         .command-metric em {
           margin: 0;
-          color: var(--sfm-muted);
+          color: var(--foreground-muted);
           font-style: normal;
           line-height: 1.45;
         }
         .command-metric p {
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
         }
         .command-metric strong {
-          color: var(--sfm-foreground);
+          color: var(--foreground);
           font-size: 24px;
+          font-family: var(--font-data);
+          font-weight: 600;
           line-height: 1.1;
         }
         .command-metric em {

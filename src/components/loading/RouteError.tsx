@@ -32,7 +32,7 @@ export function RouteError({ error, reset, title }: RouteErrorProps) {
     >
       <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>⚠️</div>
       <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{title || t('error_generic_title')}</h2>
-      <p style={{ color: 'var(--muted-foreground, #888)', margin: 0, maxWidth: '30ch', lineHeight: 1.6 }}>
+      <p style={{ color: 'var(--foreground-muted)', margin: 0, maxWidth: '30ch', lineHeight: 1.6 }}>
         {t('error_generic_body')}
       </p>
       <button
@@ -40,10 +40,10 @@ export function RouteError({ error, reset, title }: RouteErrorProps) {
         style={{
           marginTop: '0.5rem',
           padding: '0.6rem 1.6rem',
-          borderRadius: 'var(--r-sm)',
-          border: '1px solid var(--border, #e2e8f0)',
-          background: 'var(--primary, #1d8cff)',
-          color: '#fff',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--primary)',
+          background: 'var(--primary)',
+          color: 'var(--primary-foreground)',
           cursor: 'pointer',
           fontSize: '0.9rem',
           fontWeight: 500,

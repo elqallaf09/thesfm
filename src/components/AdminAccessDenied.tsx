@@ -7,37 +7,37 @@ export function AdminAccessDenied() {
   const { t, dir } = useLanguage();
   return (
     <AdminDashboardShell contentStyle={{ width: '100%', maxWidth: '100%' }}>
-      <main
+      <section
         dir={dir}
         style={{
           minHeight: '60vh',
           display: 'grid',
           placeItems: 'center',
           padding: '24px',
-          fontFamily: 'Tajawal, Arial, sans-serif',
+          fontFamily: 'var(--font-ui)',
         }}
       >
         <section
           style={{
             width: 'min(100%, 560px)',
-            border: '1px solid rgba(29,140,255,.14)',
-            borderRadius: 'var(--r-2xl)',
-            background: 'var(--sfm-card-bg, #fff)',
-            boxShadow: '0 18px 50px rgba(3,18,37,.10)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-panel)',
+            background: 'var(--surface)',
+            boxShadow: 'var(--shadow-card)',
             padding: 24,
             textAlign: 'center',
             display: 'grid',
             gap: 10,
           }}
         >
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 950, color: 'var(--sfm-foreground, #0f172a)' }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--foreground)' }}>
             {t('admin_access_denied_title')}
           </h1>
-          <p style={{ margin: 0, color: 'var(--sfm-muted, #64748b)', fontWeight: 800, lineHeight: 1.8 }}>
+          <p style={{ margin: 0, color: 'var(--foreground-secondary)', fontWeight: 400, lineHeight: 1.8 }}>
             {t('admin_access_denied_body')}
           </p>
         </section>
-      </main>
+      </section>
     </AdminDashboardShell>
   );
 }

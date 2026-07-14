@@ -200,6 +200,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
         type="button"
         className="sfm-language-trigger"
         aria-label={SWITCHER_LABEL[selected]}
+        title={SWITCHER_LABEL[selected]}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-menu`}
@@ -231,7 +232,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           width: max-content;
           max-width: 100%;
           flex-shrink: 0;
-          font-family: Tajawal, Arial, sans-serif;
+          font-family: var(--font-ui);
           z-index: 2147483647;
           overflow: visible;
         }
@@ -239,18 +240,18 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           min-height: 40px;
           min-width: 132px;
           max-width: 100%;
-          border-radius: 999px;
-          border: 1px solid rgba(29,140,255,.22);
-          background: #FFFFFF;
-          color: #061B33;
+          border-radius: var(--radius-control);
+          border: 1px solid var(--border-strong);
+          background: var(--surface);
+          color: var(--foreground);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           padding: 0 13px;
-          font: 900 13px Tajawal, Arial, sans-serif;
+          font: 600 13px var(--font-ui);
           cursor: pointer;
-          box-shadow: 0 10px 26px rgba(3,18,37,.08);
+          box-shadow: var(--shadow-xs);
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
           white-space: nowrap;
           -webkit-tap-highlight-color: transparent;
@@ -266,28 +267,29 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           font-size: 12px;
         }
         .sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger {
-          background: rgba(255,255,255,.08);
-          color: #EAF6FF;
-          border-color: rgba(167,243,240,.22);
-          box-shadow: 0 12px 28px rgba(0,0,0,.18);
+          background: var(--surface);
+          color: var(--foreground);
+          border-color: var(--border-strong);
+          box-shadow: var(--shadow-xs);
         }
         .sfm-language-dropdown[data-variant='gold'] .sfm-language-trigger {
-          background: rgba(255,255,255,.92);
-          color: #061B33;
-          border-color: rgba(29,140,255,.28);
+          background: var(--surface);
+          color: var(--foreground);
+          border-color: var(--border-strong);
         }
         .sfm-language-trigger:hover {
           transform: translateY(-1px);
-          border-color: rgba(24,212,212,.48);
-          box-shadow: 0 16px 38px rgba(29,140,255,.16);
+          border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+          background: var(--surface-hover);
+          box-shadow: var(--shadow-sm);
         }
         .sfm-language-trigger:active {
           transform: translateY(0) scale(.98);
         }
         .sfm-language-trigger:focus-visible,
         .sfm-language-option:focus-visible {
-          outline: 3px solid rgba(24,212,212,.34);
-          outline-offset: 3px;
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
         }
         .sfm-language-chevron {
           transition: transform .18s ease;
@@ -302,12 +304,12 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           overflow-y: auto;
           overflow-x: hidden;
           overscroll-behavior: contain;
-          border-radius: var(--r-xl);
-          border: 1px solid rgba(29,140,255,.20);
-          background: #FFFFFF;
-          color: #061B33;
+          border-radius: var(--radius-card);
+          border: 1px solid var(--border);
+          background: var(--popover);
+          color: var(--popover-foreground);
           padding: 7px;
-          box-shadow: 0 20px 50px rgba(3,18,37,.18);
+          box-shadow: var(--shadow-popover);
           display: grid;
           gap: 4px;
           z-index: 2147483647 !important;
@@ -316,18 +318,18 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           -webkit-overflow-scrolling: touch;
           -webkit-transform: translateZ(0);
           transform: translateZ(0);
-          font-family: Tajawal, Arial, sans-serif;
+          font-family: var(--font-ui);
         }
         .sfm-language-menu[data-variant='dark'] {
-          background: #061B33;
-          color: #EAF6FF;
-          border-color: rgba(167,243,240,.22);
-          box-shadow: 0 20px 50px rgba(0,0,0,.30);
+          background: var(--popover);
+          color: var(--popover-foreground);
+          border-color: var(--border);
+          box-shadow: var(--shadow-popover);
         }
         .sfm-language-option {
           min-height: 40px;
           border: 1px solid transparent;
-          border-radius: var(--r-md);
+          border-radius: var(--radius-control);
           background: transparent;
           color: inherit;
           display: flex;
@@ -335,7 +337,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           justify-content: space-between;
           gap: 12px;
           padding: 0 11px;
-          font: 900 13px Tajawal, Arial, sans-serif;
+          font: 500 13px var(--font-ui);
           cursor: pointer;
           text-align: start;
           transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
@@ -343,25 +345,25 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           touch-action: manipulation;
         }
         .sfm-language-option:hover {
-          background: rgba(29,140,255,.08);
-          border-color: rgba(29,140,255,.14);
+          background: var(--surface-hover);
+          border-color: var(--border);
           transform: translateY(-1px);
         }
         .sfm-language-menu[data-variant='dark'] .sfm-language-option:hover {
-          background: rgba(24,212,212,.11);
-          border-color: rgba(167,243,240,.14);
+          background: var(--surface-hover);
+          border-color: var(--border);
         }
         .sfm-language-option.active {
-          background: rgba(24,212,212,.13);
-          border-color: rgba(24,212,212,.24);
-          color: #061B33;
+          background: var(--primary-soft);
+          border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+          color: var(--primary-hover);
         }
         .sfm-language-menu[data-variant='dark'] .sfm-language-option.active {
-          color: #EAF6FF;
-          background: rgba(24,212,212,.16);
+          color: var(--primary-hover);
+          background: var(--primary-soft);
         }
         .sfm-language-check {
-          color: #18D4D4;
+          color: var(--primary);
           flex: 0 0 auto;
         }
         .sfm-language-check-placeholder {
@@ -394,7 +396,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             max-width: 86px;
             min-height: 40px;
             gap: 6px;
-            border-radius: var(--r-md);
+            border-radius: var(--radius-control);
             padding-inline: 10px;
           }
           .sfm-language-dropdown[data-compact='true'] .sfm-language-label-full {
@@ -423,7 +425,6 @@ export function FloatingLangSwitcher({ value, onChange }: Pick<Props, 'value' | 
       left: 'max(20px, env(safe-area-inset-left))',
       zIndex: 9999,
       maxWidth: 'calc(100vw - 40px)',
-      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.12))',
     }}>
       <LanguageSwitcher value={value} onChange={onChange} variant="light" />
     </div>

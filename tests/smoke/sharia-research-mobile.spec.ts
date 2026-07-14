@@ -114,11 +114,9 @@ test.describe('Arabic Sharia screening and documented research page', () => {
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
-      mainPaddingBottom: Number.parseFloat(getComputedStyle(document.querySelector('[data-news-page-shell][dir="rtl"] main')!).paddingBottom),
     }));
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewport + 1);
     expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewport + 1);
-    expect(layout.mainPaddingBottom).toBeGreaterThanOrEqual(100);
     await page.screenshot({ path: 'artifacts/sharia-integrated-mobile-ar.png', fullPage: true });
   });
 

@@ -37,18 +37,18 @@ export function JobSourceCard({ title, stats }: { title: string; stats: JobSourc
         {t('ops_center_job_avg_duration')}: {stats.averageDurationMs === null ? t('market_state_catalog_not_measured') : `${(stats.averageDurationMs / 1000).toFixed(1)}s`}
       </p>
       <style jsx global>{`
-        .ops-job-source-card { border: 1px solid var(--sfm-border); border-radius: var(--sfm-light-radius-card, 16px); background: var(--sfm-card); padding: 14px; box-shadow: var(--shadow-sm); display: grid; gap: 10px; }
-        .ops-job-source-card header strong { color: var(--sfm-heading); font-size: 13.5px; font-weight: 900; }
+        .ops-job-source-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 14px; box-shadow: var(--shadow-sm); display: grid; gap: 10px; }
+        .ops-job-source-card header strong { color: var(--foreground); font-size: 13.5px; font-weight: 600; }
         .ops-job-source-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; }
-        .ops-job-source-count { display: grid; justify-items: center; gap: 3px; border: 1px solid var(--sfm-border); border-radius: var(--r-md); padding: 8px 6px; background: var(--sfm-light-card); }
-        .ops-job-source-count strong { font-size: 16px; font-weight: 900; color: var(--sfm-heading); }
-        .ops-job-source-count span:last-child { font-size: 10.5px; color: var(--sfm-muted); font-weight: 750; text-align: center; }
-        .ops-job-source-count.tone-success .ops-job-source-count-icon { color: var(--green); }
-        .ops-job-source-count.tone-warning .ops-job-source-count-icon { color: var(--amber); }
-        .ops-job-source-count.tone-danger .ops-job-source-count-icon { color: var(--red); }
-        .ops-job-source-count.tone-info .ops-job-source-count-icon { color: var(--blue); }
-        .ops-job-source-count.tone-muted .ops-job-source-count-icon { color: var(--sfm-muted); }
-        .ops-job-source-avg { margin: 0; color: var(--sfm-muted-readable); font-size: 12px; font-weight: 750; }
+        .ops-job-source-count { display: grid; justify-items: center; gap: 3px; border: 1px solid var(--border); border-radius: var(--radius-control); padding: 8px 6px; background: var(--surface-muted); }
+        .ops-job-source-count strong { font: 600 16px var(--font-data); color: var(--foreground); }
+        .ops-job-source-count span:last-child { font-size: 10.5px; color: var(--foreground-muted); font-weight: 750; text-align: center; }
+        .ops-job-source-count.tone-success .ops-job-source-count-icon { color: var(--success); }
+        .ops-job-source-count.tone-warning .ops-job-source-count-icon { color: var(--warning); }
+        .ops-job-source-count.tone-danger .ops-job-source-count-icon { color: var(--danger); }
+        .ops-job-source-count.tone-info .ops-job-source-count-icon { color: var(--info); }
+        .ops-job-source-count.tone-muted .ops-job-source-count-icon { color: var(--foreground-muted); }
+        .ops-job-source-avg { margin: 0; color: var(--foreground-secondary); font-size: 12px; font-weight: 750; }
       `}</style>
     </article>
   );

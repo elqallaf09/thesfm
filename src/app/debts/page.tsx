@@ -24,7 +24,6 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
@@ -576,7 +575,6 @@ export default function DebtsPage() {
   if (authLoading || loading) {
     return (
       <div className="debts-shell" dir={dir}>
-        <Sidebar />
         <main className="debts-main">
           <div className="debts-loading">{t('loading')}</div>
         </main>
@@ -588,7 +586,6 @@ export default function DebtsPage() {
   if (!user) {
     return (
       <div className="debts-shell" dir={dir}>
-        <Sidebar />
         <main className="debts-main">
           <section className="debts-empty">
             <CreditCard size={28} />
@@ -603,7 +600,6 @@ export default function DebtsPage() {
 
   return (
     <div className="debts-shell" dir={dir}>
-      <Sidebar />
       <main className="debts-main">
         <section className="debts-hero">
           <div>

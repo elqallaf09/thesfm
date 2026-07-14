@@ -223,39 +223,39 @@ function localeFor(lang: string) {
 }
 
 function changeTone(value: number | null) {
-  if (value === null || value === 0) return 'text-slate-500 dark:text-slate-300';
-  return value > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300';
+  if (value === null || value === 0) return 'text-[var(--foreground-muted)] ';
+  return value > 0 ? 'text-[var(--success)] ' : 'text-[var(--danger)] ';
 }
 
 function StockNewsCardSkeleton() {
   return (
-    <article className="min-h-[260px] rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+    <article className="min-h-[260px] rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
       <div className="flex items-center gap-2">
-        <span className="h-7 w-16 animate-pulse rounded-full bg-cyan-100 dark:bg-cyan-900/40" />
-        <span className="h-7 w-24 animate-pulse rounded-full bg-emerald-100 dark:bg-emerald-900/40" />
+        <span className="h-7 w-16 animate-pulse rounded-[var(--radius-pill)] bg-[var(--primary-soft)] " />
+        <span className="h-7 w-24 animate-pulse rounded-[var(--radius-pill)] bg-[var(--success-soft)] " />
       </div>
       <div className="mt-5 space-y-3">
-        <div className="h-4 w-11/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-        <div className="h-4 w-9/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-        <div className="h-4 w-7/12 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-11/12 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
+        <div className="h-4 w-9/12 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
+        <div className="h-4 w-7/12 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
       </div>
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
-        <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-        <div className="mt-3 h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+      <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-3  ">
+        <div className="h-3 w-24 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
+        <div className="mt-3 h-4 w-32 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
       </div>
       <div className="mt-5 flex items-center justify-between">
-        <span className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-        <span className="h-10 w-28 animate-pulse rounded-xl bg-cyan-100 dark:bg-cyan-900/40" />
+        <span className="h-4 w-28 animate-pulse rounded-[var(--radius-pill)] bg-[var(--surface-hover)] " />
+        <span className="h-10 w-28 animate-pulse rounded-[var(--radius-control)] bg-[var(--primary-soft)] " />
       </div>
     </article>
   );
 }
 
 function changeBadgeClass(value: number | null) {
-  if (value === null || value === 0) return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200';
+  if (value === null || value === 0) return 'border-[var(--border)] bg-[var(--surface-muted)] text-[var(--foreground-secondary)]   ';
   return value > 0
-    ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100'
-    : 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-100';
+    ? 'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]   '
+    : 'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)]   ';
 }
 
 function shariaStatusLabelKey(status: StockCategoryNewsItem['shariaStatus']): keyof typeof TR {
@@ -266,12 +266,12 @@ function shariaStatusLabelKey(status: StockCategoryNewsItem['shariaStatus']): ke
 
 function shariaStatusBadgeClass(status: StockCategoryNewsItem['shariaStatus']) {
   if (status === 'needs_review') {
-    return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-100';
+    return 'border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]   ';
   }
   if (status === 'non_compliant') {
-    return 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-100';
+    return 'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)]   ';
   }
-  return 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100';
+  return 'border-[var(--border-strong)] bg-[var(--surface-muted)] text-[var(--foreground-secondary)]   ';
 }
 
 function itemSearchText(item: StockCategoryNewsItem) {
@@ -323,12 +323,12 @@ function NewsEvidenceLine({ item, tr }: {
         : tr('news_single_source_detail');
 
   return (
-    <div className={`mt-3 rounded-2xl border px-3 py-2.5 text-xs leading-5 ${
+    <div className={`mt-3 rounded-[var(--radius-card)] border px-3 py-2.5 text-xs leading-5 ${
       isConflicting
-        ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100'
+        ? 'border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]   '
         : isOfficial
-          ? 'border-cyan-200 bg-cyan-50/70 text-cyan-950 dark:border-cyan-500/25 dark:bg-cyan-950/25 dark:text-cyan-100'
-          : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-950/55 dark:text-slate-200'
+          ? 'border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]   '
+          : 'border-[var(--border)] bg-[var(--surface-muted)] text-[var(--foreground-secondary)]   '
     }`}>
       <div className="flex items-start gap-2">
         {isConflicting ? <AlertTriangle className="mt-0.5 shrink-0" size={14} /> : <ShieldCheck className="mt-0.5 shrink-0" size={14} />}
@@ -539,7 +539,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
   const renderMoverRows = (rows: StockCategoryMoverItem[]) => {
     if (rows.length === 0) {
       return (
-        <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+        <p className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--foreground-secondary)]   ">
           {tr('stock_category_movers_no_section_data')}
         </p>
       );
@@ -548,8 +548,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
     return (
       <div className="space-y-2">
         {rows.map(row => (
-          <div key={`${row.rank}-${row.symbol}`} className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white/85 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-xs font-black text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
+          <div key={`${row.rank}-${row.symbol}`} className="flex min-w-0 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 shadow-[var(--shadow-card)]  ">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-circle)] border border-[var(--primary)] bg-[var(--primary-soft)] text-xs font-black text-[var(--primary)]   ">
               {row.rank}
             </span>
             <div className="min-w-0 flex-1">
@@ -560,19 +560,19 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   name={row.name}
                   assetType="stock"
                   size="sm"
-                  className="min-w-0 text-slate-950 dark:text-white"
+                  className="min-w-0 text-[var(--foreground)] "
                   showName={false}
                   symbolClassName="text-sm"
                 />
-                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
+                <span className={`rounded-[var(--radius-pill)] border px-2 py-0.5 text-[11px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
                   {formatPercent(row.changePercent)}
                 </span>
               </div>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{row.name}</p>
+              <p className="truncate text-xs text-[var(--foreground-muted)] ">{row.name}</p>
             </div>
             <div className="shrink-0 text-end">
-              <p dir="ltr" className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(row.price, row.currency)}</p>
-              <p dir="ltr" className="text-[11px] text-slate-500 dark:text-slate-400">{formatNumber(row.volume)}</p>
+              <p dir="ltr" className="text-sm font-bold text-[var(--foreground)] ">{formatPrice(row.price, row.currency)}</p>
+              <p dir="ltr" className="text-[11px] text-[var(--foreground-muted)] ">{formatNumber(row.volume)}</p>
             </div>
           </div>
         ))}
@@ -590,40 +590,39 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
   if (!config) {
     return (
-      <NewsPageShell category="defensive" className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white" dir={dir}>
-        <main className="stock-category-main">
-          <div className="mx-auto max-w-3xl rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-sm dark:border-rose-500/30 dark:bg-slate-900">
-            <AlertTriangle className="mx-auto mb-3 text-rose-500" />
+      <NewsPageShell category="defensive" className="min-h-screen bg-[var(--surface-muted)] text-[var(--foreground)]  " dir={dir}>
+        <div className="stock-category-main">
+          <div className="mx-auto max-w-3xl rounded-[var(--radius-panel)] border border-[var(--danger)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow-card)]  ">
+            <AlertTriangle className="mx-auto mb-3 text-[var(--danger)]" />
             <p className="font-bold">{tr('stock_category_error')}</p>
           </div>
-        </main>
+        </div>
         <style jsx global>{`
-          .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;padding:6rem 1rem 2.5rem}
-          @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
+          .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:clip;padding:0}
         `}</style>
       </NewsPageShell>
     );
   }
 
   return (
-    <NewsPageShell category={config.id} className="min-h-screen text-slate-950 dark:text-white" dir={dir} wide>
-      <main className="stock-category-main">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-6">
-          <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 shadow-[0_24px_70px_rgba(15,118,110,.12)] backdrop-blur dark:border-cyan-400/20 dark:bg-slate-950/72 dark:shadow-[0_24px_90px_rgba(0,0,0,.35)] sm:p-7">
+    <NewsPageShell category={config.id} className="min-h-screen text-[var(--foreground)] " dir={dir} wide>
+      <div className="stock-category-main">
+        <div className="grid w-full gap-6">
+          <section className="rounded-[var(--radius-panel)] border border-[var(--primary)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] backdrop-blur    sm:p-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-500/25">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-panel)] bg-[var(--primary)]   text-[var(--primary-foreground)] shadow-[var(--shadow-card)]">
                   {config.shariaCaution ? <ShieldCheck size={26} /> : <Newspaper size={26} />}
                 </div>
                 <div className="min-w-0">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
+                  <span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary)]   ">
                     <Sparkles size={14} />
                     {tr(config.badgeKey)}
                   </span>
-                  <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+                  <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--foreground)]  sm:text-4xl">
                     {tr(config.titleKey)}
                   </h1>
-                  <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-base">
+                  <p className="mt-3 max-w-4xl text-sm leading-7 text-[var(--foreground-secondary)]  sm:text-base">
                     {tr(config.subtitleKey)}
                   </p>
                 </div>
@@ -632,7 +631,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 type="button"
                 onClick={() => { void loadNews(false); void loadMovers(); }}
                 disabled={refreshing}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-white px-5 text-sm font-bold text-cyan-800 shadow-sm transition hover:bg-cyan-50 active:scale-[0.98] disabled:opacity-60 dark:border-cyan-500/30 dark:bg-slate-900/70 dark:text-cyan-100 dark:hover:bg-cyan-950/50"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--surface)] px-5 text-sm font-bold text-[var(--primary)] shadow-[var(--shadow-card)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98] disabled:opacity-60    "
               >
                 <RefreshCcw size={17} className={refreshing ? 'animate-spin' : ''} />
                 {refreshing ? tr('tech_news_refreshing') : tr('market_refresh_news')}
@@ -641,14 +640,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           </section>
 
           {coverageNotice ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+            <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--warning)]   " role="status">
               <AlertTriangle className="mt-0.5 shrink-0" size={18} />
               <p>{coverageNotice}</p>
             </div>
           ) : null}
 
           {error && items.length > 0 ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/25 dark:text-amber-100" role="status">
+            <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--warning)]   " role="status">
               <AlertTriangle className="mt-0.5 shrink-0" size={18} />
               <p>{tr('stock_category_news_stale_notice')}</p>
             </div>
@@ -664,41 +663,41 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
 
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-6">
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]   sm:p-6">
                 <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
-                  <div className="rounded-3xl border border-cyan-200 bg-cyan-50/70 p-5 dark:border-cyan-500/25 dark:bg-cyan-950/25">
+                  <div className="rounded-[var(--radius-panel)] border border-[var(--primary)] bg-[var(--primary-soft)] p-5  ">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-card)]  ">
                         <BookOpen size={19} />
                       </span>
-                      <h2 className="text-lg font-black text-slate-950 dark:text-white">{tr(config.explanationTitleKey)}</h2>
+                      <h2 className="text-lg font-black text-[var(--foreground)] ">{tr(config.explanationTitleKey)}</h2>
                     </div>
-                    <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">{tr(config.explanationBodyKey)}</p>
+                    <p className="mt-4 text-sm leading-7 text-[var(--foreground-secondary)] ">{tr(config.explanationBodyKey)}</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5  ">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--primary-soft)] text-[var(--primary)]  ">
                         <Info size={19} />
                       </span>
-                      <h3 className="font-black text-slate-950 dark:text-white">{tr(config.sectorGuideTitleKey)}</h3>
+                      <h3 className="font-black text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h3>
                     </div>
                     <div className="mt-4 grid gap-2">
                       {(config.metricCards ?? config.filters.filter(filter => filter.key !== 'all').slice(0, 4).map(filter => ({ labelKey: filter.labelKey, bodyKey: filter.labelKey }))).map(card => (
-                        <div key={`${card.labelKey}-${card.bodyKey}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/60">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white">{tr(card.labelKey)}</p>
-                          <p className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{tr(card.bodyKey)}</p>
+                        <div key={`${card.labelKey}-${card.bodyKey}`} className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3  ">
+                          <p className="text-sm font-bold text-[var(--foreground)] ">{tr(card.labelKey)}</p>
+                          <p className="mt-1 text-xs leading-6 text-[var(--foreground-muted)] ">{tr(card.bodyKey)}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
                 {guide && (
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/55">
+                  <div className="mt-5 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-4  ">
                     <div className="mb-4 flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--success-soft)] text-[var(--success)]  ">
                         <Layers size={19} />
                       </span>
-                      <h2 className="text-lg font-black text-slate-950 dark:text-white">
+                      <h2 className="text-lg font-black text-[var(--foreground)] ">
                         {normalizeText(guide.comparisonTitle[localizedLang])}
                       </h2>
                     </div>
@@ -709,21 +708,21 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       ].map(card => (
                         <article
                           key={card.title}
-                          className={`rounded-3xl border p-5 ${
+                          className={`rounded-[var(--radius-panel)] border p-5 ${
                             card.tone === 'positive'
-                              ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-950/20'
-                              : 'border-amber-200 bg-amber-50/70 dark:border-amber-500/25 dark:bg-amber-950/20'
+                              ? 'border-[var(--success)] bg-[var(--success-soft)]  '
+                              : 'border-[var(--warning)] bg-[var(--warning-soft)]  '
                           }`}
                         >
-                          <h3 className="text-base font-black text-slate-950 dark:text-white">{card.title}</h3>
+                          <h3 className="text-base font-black text-[var(--foreground)] ">{card.title}</h3>
                           <ul className="mt-4 grid gap-2">
                             {card.items.map(item => (
-                              <li key={item} className="flex items-start gap-2 text-sm font-bold leading-7 text-slate-700 dark:text-slate-200">
+                              <li key={item} className="flex items-start gap-2 text-sm font-bold leading-7 text-[var(--foreground-secondary)] ">
                                 <span
-                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
+                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-circle)] text-[11px] font-black ${
                                     card.tone === 'positive'
-                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-100'
-                                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-100'
+                                      ? 'bg-[var(--success-soft)] text-[var(--success)]  '
+                                      : 'bg-[var(--warning-soft)] text-[var(--warning)]  '
                                   }`}
                                   aria-hidden="true"
                                 >
@@ -740,29 +739,29 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 )}
               </section>
 
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]   sm:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-950 dark:text-white">{tr(config.titleKey)}</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{updatedLabel}</p>
+                    <h2 className="text-xl font-black text-[var(--foreground)] ">{tr(config.titleKey)}</h2>
+                    <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{updatedLabel}</p>
                   </div>
-                  <span className="inline-flex h-10 w-fit items-center rounded-full border border-cyan-200 bg-cyan-50 px-4 text-sm font-black text-cyan-800 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-100">
+                  <span className="inline-flex h-10 w-fit items-center rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-4 text-sm font-black text-[var(--primary)]   ">
                     {new Intl.NumberFormat(locale).format(filteredItems.length)} {tr('stock_category_results_match')}
                   </span>
                   <label className="relative block w-full lg:max-w-md">
                     <span className="sr-only">{tr(config.searchPlaceholderKey)}</span>
-                    <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 rtl:right-4 ltr:left-4" size={18} />
+                    <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] rtl:right-4 ltr:left-4" size={18} />
                     <input
                       value={query}
                       onChange={event => setQuery(event.target.value)}
                       placeholder={tr(config.searchPlaceholderKey)}
-                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-11 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:ring-cyan-900/30"
+                      className="h-12 w-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-11 text-sm font-semibold text-[var(--foreground)] outline-none transition placeholder:text-[var(--foreground-muted)] focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--focus-ring)]    "
                     />
                   </label>
                 </div>
 
                 <div className="mt-5">
-                  <p className="mb-3 text-sm font-bold text-slate-600 dark:text-slate-300">{tr(config.filterLabelKey)}</p>
+                  <p className="mb-3 text-sm font-bold text-[var(--foreground-secondary)] ">{tr(config.filterLabelKey)}</p>
                   <div className="w-full overflow-x-auto no-scrollbar">
                     <div className="flex min-w-max gap-2">
                       {config.filters.map(filter => {
@@ -772,14 +771,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             key={filter.key}
                             type="button"
                             onClick={() => setCategory(filter.key)}
-                            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold transition active:scale-[0.98] ${
+                            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--radius-pill)] border px-4 text-sm font-bold transition active:scale-[0.98] ${
                               active
-                                ? 'border-cyan-500 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-cyan-500/20'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-950/30'
+                                ? 'border-[var(--primary)] bg-[var(--primary)]   text-[var(--primary-foreground)] shadow-[var(--shadow-card)]'
+                                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground-secondary)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]     '
                             }`}
                           >
                             {tr(filter.labelKey)}
-                            <span className={`rounded-full px-2 py-0.5 text-[11px] ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                            <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[11px] ${active ? 'bg-[var(--surface)] text-[var(--primary-foreground)]' : 'bg-[var(--surface-muted)] text-[var(--foreground-secondary)]  '}`}>
                               {categoryCounts[filter.key] ?? 0}
                             </span>
                           </button>
@@ -790,9 +789,9 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 </div>
 
                 {loading ? (
-                  <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50" aria-live="polite">
-                    <div className="flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
-                      <RefreshCcw size={16} className="animate-spin text-cyan-600 dark:text-cyan-300" />
+                  <div className="mt-6 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-4  " aria-live="polite">
+                    <div className="flex items-center gap-2 text-sm font-black text-[var(--foreground-secondary)] ">
+                      <RefreshCcw size={16} className="animate-spin text-[var(--primary)] " />
                       {tr('stock_category_loading_news')}
                     </div>
                     <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -802,21 +801,21 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     </div>
                   </div>
                 ) : error && visibleItems.length === 0 ? (
-                  <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-950/25" role="alert">
+                  <div className="mt-6 rounded-[var(--radius-panel)] border border-[var(--warning)] bg-[var(--warning-soft)] p-6  " role="alert">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-start gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm dark:bg-slate-900 dark:text-amber-200">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-card)] bg-[var(--surface)] text-[var(--warning)] shadow-[var(--shadow-card)]  ">
                           <AlertTriangle size={20} />
                         </span>
                         <div className="min-w-0">
-                          <h3 className="text-lg font-black text-amber-950 dark:text-amber-100">{tr('stock_category_news_error_title')}</h3>
-                          <p className="mt-1 text-sm font-semibold leading-7 text-amber-900 dark:text-amber-100">{tr('stock_category_news_error_body')}</p>
+                          <h3 className="text-lg font-black text-[var(--warning)] ">{tr('stock_category_news_error_title')}</h3>
+                          <p className="mt-1 text-sm font-semibold leading-7 text-[var(--warning)] ">{tr('stock_category_news_error_body')}</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => { void loadNews(true); }}
-                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-white px-4 text-sm font-black text-amber-800 transition hover:bg-amber-100 active:scale-[0.98] dark:border-amber-500/30 dark:bg-slate-900 dark:text-amber-100 dark:hover:bg-amber-950/50"
+                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--surface)] px-4 text-sm font-black text-[var(--warning)] transition hover:bg-[var(--warning-soft)] active:scale-[0.98]    "
                       >
                         <RefreshCcw size={16} />
                         {tr('market_refresh_news')}
@@ -824,17 +823,17 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     </div>
                   </div>
                 ) : visibleItems.length === 0 ? (
-                  <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-900/60">
-                    <Newspaper className="mx-auto mb-3 text-cyan-600 dark:text-cyan-300" size={30} />
-                    <h3 className="text-lg font-black text-slate-950 dark:text-white">{tr('stock_category_empty')}</h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{tr('stock_category_empty_hint')}</p>
+                  <div className="mt-6 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-8 text-center  ">
+                    <Newspaper className="mx-auto mb-3 text-[var(--primary)] " size={30} />
+                    <h3 className="text-lg font-black text-[var(--foreground)] ">{tr('stock_category_empty')}</h3>
+                    <p className="mt-2 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_empty_hint')}</p>
                   </div>
                 ) : (
                   <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                     {visibleItems.map(item => {
                       const price = priceMap.get(item.ticker);
                       return (
-                        <article key={item.id} className="group flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/80">
+                        <article key={item.id} className="group flex min-w-0 flex-col rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]  ">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
                             <AssetIdentity
                               symbol={item.ticker}
@@ -842,56 +841,56 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               assetType="stock"
                               size="sm"
                               variant="badge"
-                              className="max-w-full rounded-full border border-cyan-300 bg-cyan-100 px-2.5 py-1 text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-900/40 dark:text-cyan-100"
+                              className="max-w-full rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-2.5 py-1 text-[var(--primary)]   "
                               labelClassName="max-w-[11rem] text-xs"
                               symbolClassName="text-[11px]"
                             />
-                            <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100">
+                            <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
                               {item.source}
                             </span>
                             {item.shariaStatus && (
-                              <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${shariaStatusBadgeClass(item.shariaStatus)}`}>
+                              <span className={`rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-bold ${shariaStatusBadgeClass(item.shariaStatus)}`}>
                                 {tr(shariaStatusLabelKey(item.shariaStatus))}
                               </span>
                             )}
                           </div>
-                          <h3 className="mt-4 text-lg font-black leading-relaxed text-slate-950 dark:text-white">
+                          <h3 className="mt-4 text-lg font-black leading-relaxed text-[var(--foreground)] ">
                             {item.title}
                           </h3>
-                          <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                          <p className="mt-3 line-clamp-3 text-sm leading-7 text-[var(--foreground-secondary)] ">
                             {item.summary || item.title}
                           </p>
                           <NewsEvidenceLine item={item} tr={tr} />
-                          <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60 sm:grid-cols-2">
+                          <div className="mt-4 grid gap-2 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-3   sm:grid-cols-2">
                             <div>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{item.companyName}</p>
-                              <p dir="ltr" className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                              <p className="text-xs text-[var(--foreground-muted)] ">{item.companyName}</p>
+                              <p dir="ltr" className="mt-1 text-sm font-black text-[var(--foreground)] ">
                                 {formatPrice(price?.price ?? item.price, 'USD')}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">{tr('stock_category_change_percent')}</p>
+                              <p className="text-xs text-[var(--foreground-muted)] ">{tr('stock_category_change_percent')}</p>
                               <p dir="ltr" className={`mt-1 text-sm font-black ${changeTone(price?.changePercent ?? item.changePercent)}`}>
                                 {formatPercent(price?.changePercent ?? item.changePercent)}
                               </p>
                             </div>
                           </div>
                           {item.shariaStatus && (
-                            <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-3 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-300">
+                            <div className="mt-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3 text-xs leading-6 text-[var(--foreground-secondary)]   ">
                               <p>
-                                <span className="font-black text-slate-900 dark:text-white">{tr('stock_category_sharia_compliance_status')}: </span>
-                                <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-rose-700 dark:text-rose-200' : item.shariaStatus === 'needs_review' ? 'text-amber-700 dark:text-amber-200' : 'text-slate-700 dark:text-slate-200'}`}>
+                                <span className="font-black text-[var(--foreground)] ">{tr('stock_category_sharia_compliance_status')}: </span>
+                                <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-[var(--danger)] ' : item.shariaStatus === 'needs_review' ? 'text-[var(--warning)] ' : 'text-[var(--foreground-secondary)] '}`}>
                                   {tr(shariaStatusLabelKey(item.shariaStatus))}
                                 </span>
                               </p>
                               <p className="mt-1">
-                                <span className="font-black text-slate-900 dark:text-white">{tr('stock_category_sharia_note_label')}: </span>
+                                <span className="font-black text-[var(--foreground)] ">{tr('stock_category_sharia_note_label')}: </span>
                                 {tr('stock_category_sharia_preliminary_note')}
                               </p>
                             </div>
                           )}
                           <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
-                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] ">
                               <Clock3 size={14} />
                               {formatDateTime(item.publishedAt)}
                             </span>
@@ -899,7 +898,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 text-sm font-bold text-white shadow-sm transition hover:shadow-lg active:scale-[0.98]"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--primary)]   px-4 text-sm font-bold text-[var(--primary-foreground)] shadow-[var(--shadow-card)] transition hover:shadow-[var(--shadow-md)] active:scale-[0.98]"
                             >
                               {tr('defensive_news_read_article')}
                               <ExternalLink size={15} />
@@ -917,12 +916,12 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <button
                         type="button"
                         onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}
-                        className="inline-flex h-12 items-center justify-center rounded-2xl border border-cyan-300 bg-white px-6 text-sm font-black text-cyan-800 transition hover:bg-cyan-50 active:scale-[0.98] dark:border-cyan-500/30 dark:bg-slate-900 dark:text-cyan-100"
+                        className="inline-flex h-12 items-center justify-center rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--surface)] px-6 text-sm font-black text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
                       >
                         {tr('tech_news_load_more')}
                       </button>
                     ) : (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-bold text-[var(--foreground-muted)]   ">
                         {tr('tech_news_all_loaded')}
                       </span>
                     )}
@@ -932,9 +931,9 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             </div>
 
             <aside className="grid min-w-0 gap-6 xl:sticky xl:top-24 xl:self-start">
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-                <h2 className="flex items-center gap-2 text-lg font-black text-slate-950 dark:text-white">
-                  <Newspaper size={19} className="text-cyan-600 dark:text-cyan-300" />
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
+                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                  <Newspaper size={19} className="text-[var(--primary)] " />
                   {tr('stock_category_latest_news_title')}
                 </h2>
                 <div className="mt-4 space-y-2">
@@ -944,7 +943,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-950/30"
+                      className="block rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 transition hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]    "
                     >
                       <div className="mb-1 flex items-center gap-2">
                         <AssetIdentity
@@ -954,31 +953,31 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           size="xs"
                           variant="badge"
                           showName={false}
-                          className="max-w-[8rem] rounded-full bg-cyan-100 px-2 py-0.5 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-100"
+                          className="max-w-[8rem] rounded-[var(--radius-pill)] bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]  "
                           symbolClassName="text-[11px]"
                         />
-                        <span className="truncate text-[11px] font-bold text-slate-500 dark:text-slate-400">{item.source}</span>
+                        <span className="truncate text-[11px] font-bold text-[var(--foreground-muted)] ">{item.source}</span>
                       </div>
-                      <p className="line-clamp-2 text-sm font-bold leading-6 text-slate-800 dark:text-slate-100">{item.title}</p>
+                      <p className="line-clamp-2 text-sm font-bold leading-6 text-[var(--foreground)] ">{item.title}</p>
                     </a>
                   )) : (
-                    <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
+                    <p className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--foreground-muted)]   ">
                       {tr('stock_category_latest_empty')}
                     </p>
                   )}
                 </div>
               </section>
 
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-black text-slate-950 dark:text-white">{tr(config.moversTitleKey)}</h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tr('stock_category_movers_subtitle')}</p>
+                    <h2 className="text-lg font-black text-[var(--foreground)] ">{tr(config.moversTitleKey)}</h2>
+                    <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_movers_subtitle')}</p>
                   </div>
-                  <BarChart3 className="text-cyan-600 dark:text-cyan-300" />
+                  <BarChart3 className="text-[var(--primary)] " />
                 </div>
                 {moversLoading ? (
-                  <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <p className="mt-5 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--foreground-secondary)]   ">
                     {tr('stock_category_movers_loading')}
                   </p>
                 ) : movers?.ok && movers.data ? (
@@ -986,8 +985,8 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     {PRIMARY_MOVER_SECTIONS.map(section => (
                       <div key={section}>
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">{sectionTitle(section)}</h3>
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                          <h3 className="text-sm font-black text-[var(--foreground)] ">{sectionTitle(section)}</h3>
+                          <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[11px] font-bold text-[var(--foreground-secondary)]   ">
                             {tr('stock_category_movers_three_stocks')}
                           </span>
                         </div>
@@ -997,62 +996,62 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                     <button
                       type="button"
                       onClick={() => setShowMoversDetails(true)}
-                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300 bg-cyan-50 text-sm font-black text-cyan-800 transition hover:bg-cyan-100 active:scale-[0.98] dark:border-cyan-500/30 dark:bg-cyan-950/30 dark:text-cyan-100"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-card)] border border-[var(--primary)] bg-[var(--primary-soft)] text-sm font-black text-[var(--primary)] transition hover:bg-[var(--primary-soft)] active:scale-[0.98]   "
                     >
                       <Layers size={16} />
                       {tr('stock_category_movers_details')}
                     </button>
                   </div>
                 ) : (
-                  <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+                  <p className="mt-5 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--warning-soft)] p-4 text-sm font-semibold text-[var(--warning)]   ">
                     {tr('stock_category_movers_empty')}
                   </p>
                 )}
               </section>
 
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-                <h2 className="flex items-center gap-2 text-lg font-black text-slate-950 dark:text-white">
-                  <TrendingUp size={19} className="text-cyan-600 dark:text-cyan-300" />
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
+                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                  <TrendingUp size={19} className="text-[var(--primary)] " />
                   {tr(config.mentionedTitleKey)}
                 </h2>
                 <div className="mt-4 space-y-2">
                   {mentionedTickers.length > 0 ? mentionedTickers.map((item, index) => (
-                    <div key={item.ticker} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-100 text-xs font-black text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-100">{index + 1}</span>
+                    <div key={item.ticker} className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2  ">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-circle)] bg-[var(--primary-soft)] text-xs font-black text-[var(--primary)]  ">{index + 1}</span>
                       <AssetIdentity
                         symbol={item.ticker}
                         name={item.companyName}
                         assetType="stock"
                         size="sm"
                         variant="badge"
-                        className="min-w-0 flex-1 text-slate-950 dark:text-white"
+                        className="min-w-0 flex-1 text-[var(--foreground)] "
                         labelClassName="text-sm"
-                        symbolClassName="text-xs text-slate-500 dark:text-slate-400"
+                        symbolClassName="text-xs text-[var(--foreground-muted)] "
                       />
-                      <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100">
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
                         {tr('tech_news_mentions_count').replace('{count}', String(item.count))}
                       </span>
                     </div>
                   )) : (
-                    <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
+                    <p className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--foreground-muted)]   ">
                       {tr('stock_category_empty')}
                     </p>
                   )}
                 </div>
               </section>
 
-              <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-                <h2 className="flex items-center gap-2 text-lg font-black text-slate-950 dark:text-white">
-                  <FileText size={19} className="text-cyan-600 dark:text-cyan-300" />
+              <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]  ">
+                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--foreground)] ">
+                  <FileText size={19} className="text-[var(--primary)] " />
                   {tr(config.sourcesTitleKey)}
                 </h2>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {sourceCounts.length > 0 ? sourceCounts.map(([source, count]) => (
-                    <span key={source} className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-100">
+                    <span key={source} className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
                       {source} · {count}
                     </span>
                   )) : (
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{tr('stock_category_empty')}</span>
+                    <span className="text-sm text-[var(--foreground-muted)] ">{tr('stock_category_empty')}</span>
                   )}
                 </div>
               </section>
@@ -1060,13 +1059,13 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           </section>
 
           {config.shariaCaution && (
-            <section className="rounded-[2rem] border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100 sm:p-6">
+            <section className="rounded-[var(--radius-panel)] border border-[var(--warning)] bg-[var(--warning-soft)] p-5 text-[var(--warning)] shadow-[var(--shadow-card)]    sm:p-6">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-1 shrink-0" />
                 <div>
                   <h2 className="text-lg font-black">{tr(config.disclaimerTitleKey)}</h2>
                   <p className="mt-2 text-sm leading-7">{tr(config.disclaimerBodyKey)}</p>
-                  <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300/80 bg-white/60 px-4 py-3 text-sm font-bold text-amber-950 dark:border-amber-500/30 dark:bg-slate-950/30 dark:text-amber-100">
+                  <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-[var(--warning)] bg-[var(--surface)] px-4 py-3 text-sm font-bold text-[var(--warning)]   ">
                     <span>{tr('stock_category_sharia_classification_source')}:</span>
                     <span>{tr('stock_category_sharia_source_unavailable')}</span>
                   </div>
@@ -1076,26 +1075,26 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
           )}
 
           {sectorGuideCards.length > 0 && (
-            <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 sm:p-6">
+            <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]   sm:p-6">
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <span className="text-sm font-black text-cyan-700 dark:text-cyan-200">{tr('stock_category_educational_guide')}</span>
-                  <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-white">{tr(config.sectorGuideTitleKey)}</h2>
+                  <span className="text-sm font-black text-[var(--primary)] ">{tr('stock_category_educational_guide')}</span>
+                  <h2 className="mt-1 text-xl font-black text-[var(--foreground)] ">{tr(config.sectorGuideTitleKey)}</h2>
                 </div>
-                <p className="max-w-2xl text-sm leading-7 text-slate-500 dark:text-slate-400">
+                <p className="max-w-2xl text-sm leading-7 text-[var(--foreground-muted)] ">
                   {tr('stock_category_sector_guide_note')}
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {sectorGuideCards.map(card => (
-                  <article key={normalizeText(card.title[localizedLang])} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/70">
+                  <article key={normalizeText(card.title[localizedLang])} className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-5  ">
                     <div className="mb-3 flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 dark:bg-cyan-900/45 dark:text-cyan-100">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-card)] bg-[var(--primary-soft)] text-[var(--primary)]  ">
                         <BookOpen size={18} />
                       </span>
-                      <h3 className="font-black text-slate-950 dark:text-white">{normalizeText(card.title[localizedLang])}</h3>
+                      <h3 className="font-black text-[var(--foreground)] ">{normalizeText(card.title[localizedLang])}</h3>
                     </div>
-                    <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{normalizeText(card.body[localizedLang])}</p>
+                    <p className="text-sm leading-7 text-[var(--foreground-secondary)] ">{normalizeText(card.body[localizedLang])}</p>
                     {card.symbols?.length ? (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {card.symbols.map(symbol => (
@@ -1106,7 +1105,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             assetType="stock"
                             size="xs"
                             showName={false}
-                            className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-cyan-800 dark:border-cyan-500/30 dark:bg-slate-950 dark:text-cyan-100"
+                            className="rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--surface)] px-3 py-1 text-[var(--primary)]   "
                             symbolClassName="text-xs"
                           />
                         ))}
@@ -1118,27 +1117,27 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             </section>
           )}
 
-          <section className="rounded-[2rem] border border-cyan-200/70 bg-white/90 p-5 text-center shadow-sm dark:border-cyan-500/20 dark:bg-slate-950/70 sm:p-6">
-            <h2 className="text-lg font-black text-slate-950 dark:text-white">{config.shariaCaution ? tr('defensive_news_disclaimer_title') : tr(config.disclaimerTitleKey)}</h2>
-            <p className="mx-auto mt-2 max-w-4xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+          <section className="rounded-[var(--radius-panel)] border border-[var(--primary)] bg-[var(--surface)] p-5 text-center shadow-[var(--shadow-card)]   sm:p-6">
+            <h2 className="text-lg font-black text-[var(--foreground)] ">{config.shariaCaution ? tr('defensive_news_disclaimer_title') : tr(config.disclaimerTitleKey)}</h2>
+            <p className="mx-auto mt-2 max-w-4xl text-sm leading-7 text-[var(--foreground-secondary)] ">
               {config.shariaCaution ? tr('stock_category_standard_disclaimer') : tr(config.disclaimerBodyKey)}
             </p>
           </section>
         </div>
-      </main>
+      </div>
 
       {showMoversDetails && movers?.ok && movers.data && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true">
-          <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--background-overlay)] p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-popover)]  ">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-5 ">
               <div>
-                <h2 className="text-xl font-black text-slate-950 dark:text-white">{tr('stock_category_movers_full_title')}</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{tr('stock_category_movers_full_subtitle')}</p>
+                <h2 className="text-xl font-black text-[var(--foreground)] ">{tr('stock_category_movers_full_title')}</h2>
+                <p className="mt-1 text-sm text-[var(--foreground-muted)] ">{tr('stock_category_movers_full_subtitle')}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMoversDetails(false)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 active:scale-[0.98] dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-card)] border border-[var(--border)] text-[var(--foreground-secondary)] transition hover:bg-[var(--surface-muted)] active:scale-[0.98]   "
                 aria-label={tr('common_close')}
               >
                 <X size={18} />
@@ -1147,10 +1146,10 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
             <div className="max-h-[calc(92vh-100px)] overflow-y-auto p-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {ALL_MOVER_SECTIONS.map(section => (
-                  <section key={section} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                  <section key={section} className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-4  ">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="font-black text-slate-950 dark:text-white">{sectionTitle(section)}</h3>
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                      <h3 className="font-black text-[var(--foreground)] ">{sectionTitle(section)}</h3>
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--foreground-secondary)]   ">
                         {tr('stock_category_movers_five_stocks')}
                       </span>
                     </div>
@@ -1163,13 +1162,10 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
         </div>
       )}
       <style jsx global>{`
-        .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;padding:6rem 1rem 2.5rem}
-        @media(min-width:640px){.stock-category-main{padding-inline:1.5rem}}
-        @media(min-width:1025px){.stock-category-main{width:100%;margin:0;padding:1.5rem 2rem 3rem;padding-right:calc(var(--sidebar-w,230px) + 2rem)}[dir="ltr"] .stock-category-main{padding-left:calc(var(--sidebar-w,230px) + 2rem);padding-right:2rem}}
+        .stock-category-main{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:clip;padding:0}
       `}</style>
     </NewsPageShell>
   );
 }
 
 export default StockCategoryNewsPage;
-

@@ -97,7 +97,9 @@ test.describe('launch smoke coverage', () => {
       await expectUsablePage(page, '/sfm-admin-control');
       if (adminAuthConfigured) {
         await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-        await expect(page.locator('main.admin-dashboard').first()).toBeVisible();
+        const adminShell = page.locator('main[data-sfm-shell="dashboard"]');
+        await expect(adminShell).toBeVisible();
+        await expect(adminShell.locator('.admin-dashboard')).toBeVisible();
         await expect(isMobile
           ? page.locator('header.sfm-global-header')
           : page.locator('aside.sfm-shared-sidebar')).toBeVisible();
@@ -112,10 +114,15 @@ test.describe('launch smoke coverage', () => {
 
       if (adminAuthConfigured) {
         await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-        const iframe = page.locator('iframe.trader-shell-frame[title="SFM Smart Analyzer"]');
+        const traderShell = page.getByRole('main', { name: 'SFM Smart Analyzer' });
+        await expect(traderShell).toBeVisible();
+        const iframeSelector = 'iframe.trader-shell-frame[title="SFM Smart Analyzer"]';
+        await expect(page.locator(iframeSelector)).toHaveCount(1);
+        const iframe = traderShell.locator(iframeSelector);
+        await expect(iframe).toHaveCount(1);
         await expect(iframe).toBeVisible();
         await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
-        await expect(page.frameLocator('iframe.trader-shell-frame').locator('#app-shell')).toBeVisible();
+        await expect(traderShell.frameLocator(iframeSelector).locator('#app-shell')).toBeVisible();
         await expectNoHorizontalOverflow(page);
       } else {
         await expect(page.locator('body')).toBeVisible();

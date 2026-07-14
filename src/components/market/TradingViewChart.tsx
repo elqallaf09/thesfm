@@ -47,6 +47,9 @@ export function TradingViewChart({ symbol, assetType, exchange, theme = 'light' 
       target.style.height = '100%';
       target.style.width = '100%';
       containerRef.current.appendChild(target);
+      const toolbarBackground = getComputedStyle(document.documentElement)
+        .getPropertyValue('--surface')
+        .trim();
 
       new window.TradingView.widget({
         autosize: true,
@@ -56,7 +59,7 @@ export function TradingViewChart({ symbol, assetType, exchange, theme = 'light' 
         theme,
         style: '1',
         locale: 'en',
-        toolbar_bg: theme === 'dark' ? '#061B33' : '#FFFFFF',
+        toolbar_bg: toolbarBackground,
         enable_publishing: false,
         hide_top_toolbar: false,
         hide_side_toolbar: false,
@@ -101,9 +104,9 @@ export function TradingViewChart({ symbol, assetType, exchange, theme = 'light' 
     <div className="tradingview-shell" aria-label={`TradingView chart for ${symbol}`}>
       <div ref={containerRef} className="tradingview-container" />
       <style jsx>{`
-        .tradingview-shell{position:relative;width:100%;height:420px;min-height:320px;border-radius:var(--r-xl);overflow:hidden;background:var(--sfm-light-card);border:1px solid rgba(167,243,240,.14)}
+        .tradingview-shell{position:relative;width:100%;height:420px;min-height:320px;border-radius:var(--radius-card);overflow:hidden;background:var(--surface);border:1px solid var(--border)}
         .tradingview-container{position:absolute;inset:0;width:100%;height:100%}
-        @media(max-width:720px){.tradingview-shell{height:360px;border-radius:var(--r-lg)}}
+        @media(max-width:720px){.tradingview-shell{height:360px;border-radius:var(--radius-control)}}
       `}</style>
     </div>
   );
