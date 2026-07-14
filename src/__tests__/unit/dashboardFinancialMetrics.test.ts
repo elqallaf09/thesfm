@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLinePoints,
   buildMonthlyCashFlow,
-  buildMonthlyHealthSnapshot,
   calculateFinancialHealth,
-  calculateFinancialHealthIndicators,
   monthOverMonthChange,
   realizedIncomeRows,
 } from '@/lib/dashboard/financialMetrics';
@@ -60,33 +58,5 @@ describe('dashboard financial metrics', () => {
     expect(monthOverMonthChange(120, 100, true, true)).toBeCloseTo(0.2);
     expect(monthOverMonthChange(120, 0, true, true)).toBeNull();
     expect(buildLinePoints([100, 200, 150])).not.toBe('');
-  });
-
-  it('uses active recurring plans for the current health snapshot without counting generated income children twice', () => {
-    const snapshot = buildMonthlyHealthSnapshot(
-      [
-        { id: 'salary', amount: 1000, status: 'expected', is_recurring: true, frequency: 'monthly', start_date: '2026-05-01' },
-        { id: 'salary-july', parent_recurring_income_id: 'salary', amount: 1000, status: 'expected', is_recurring: true, frequency: 'monthly', start_date: '2026-05-01', generated_for_date: '2026-07-01' },
-      ],
-      [
-        { id: 'rent', amount: 600, is_recurring: true, frequency: 'monthly', start_date: '2026-01-01', date: '2026-01-01' },
-      ],
-      now,
-    );
-
-    expect(snapshot).toEqual({ monthlyIncome: 1000, monthlyExpenses: 600, hasIncomeData: true, hasExpenseData: true });
-  });
-
-  it('keeps available health indicators visible when another required score input is missing', () => {
-    expect(calculateFinancialHealthIndicators({
-      monthlyIncome: 1000,
-      monthlyExpenses: 500,
-      savingsBalance: 0,
-      monthlyDebtPayments: 100,
-      hasIncomeData: true,
-      hasExpenseData: true,
-      hasSavingsData: false,
-      debtsLoaded: true,
-    })).toEqual({ savingsRatio: 0.5, expenseCoverage: 2, emergencyFundMonths: null, debtToIncome: 0.1 });
   });
 });

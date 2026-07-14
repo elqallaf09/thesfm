@@ -9,24 +9,6 @@ export type CashFlowPoint = {
   expenses: number;
 };
 
-export type MonthlyHealthSnapshot = {
-  monthlyIncome: number;
-  monthlyExpenses: number;
-  hasIncomeData: boolean;
-  hasExpenseData: boolean;
-};
-
-export type FinancialHealthInput = {
-  monthlyIncome: number;
-  monthlyExpenses: number;
-  savingsBalance: number;
-  monthlyDebtPayments: number;
-  hasIncomeData: boolean;
-  hasExpenseData: boolean;
-  hasSavingsData: boolean;
-  debtsLoaded: boolean;
-};
-
 const INCOME_DATE_KEYS = ['transaction_date', 'received_date', 'generated_for_date', 'date', 'created_at'];
 const EXPENSE_DATE_KEYS = ['transaction_date', 'expense_date', 'date', 'recorded_at', 'created_at'];
 const UNREALIZED_INCOME_STATUSES = new Set(['expected', 'pending', 'late', 'draft', 'cancelled', 'canceled', 'void']);
@@ -68,158 +50,6 @@ function endOfDay(date: Date) {
   const value = new Date(date);
   value.setHours(23, 59, 59, 999);
   return value;
-}
-
-function isTruthy(value: unknown) {
-  return value === true || value === 'true' || value === 1 || value === '1';
-}
-
-function isActive(row: FinancialRow) {
-  return row.is_active !== false && row.is_active !== 'false' && row.is_active !== 0 && row.is_active !== '0';
-}
-
-function monthRange(now: Date) {
-  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { start, end, days: end.getDate() };
-}
-
-function overlapsMonth(row: FinancialRow, startKeys: string[], endKeys: string[], now: Date) {
-  const range = monthRange(now);
-  const startsAt = firstDate(row, startKeys);
-  const endsAt = firstDate(row, endKeys);
-  return (!startsAt || startsAt <= range.end) && (!endsAt || endsAt >= range.start);
-}
-
-function activeDaysInMonth(row: FinancialRow, startKeys: string[], endKeys: string[], now: Date) {
-  const range = monthRange(now);
-  const startsAt = firstDate(row, startKeys);
-  const endsAt = firstDate(row, endKeys);
-  if ((startsAt && startsAt > range.end) || (endsAt && endsAt < range.start)) return 0;
-  const activeStart = startsAt && startsAt > range.start ? startsAt : range.start;
-  const activeEnd = endsAt && endsAt < range.end ? endsAt : range.end;
-  const startDay = new Date(activeStart.getFullYear(), activeStart.getMonth(), activeStart.getDate()).getTime();
-  const endDay = new Date(activeEnd.getFullYear(), activeEnd.getMonth(), activeEnd.getDate()).getTime();
-  return Math.max(0, Math.round((endDay - startDay) / 86_400_000) + 1);
-}
-
-function frequency(row: FinancialRow) {
-  const enhanced = row.enhanced && typeof row.enhanced === 'object'
-    ? row.enhanced as Record<string, unknown>
-    : {};
-  return String(
-    row.frequency ??
-    row.expense_type ??
-    enhanced.billing_frequency ??
-    enhanced.frequency ??
-    enhanced.recurring_frequency ??
-    '',
-  ).trim().toLowerCase();
-}
-
-function isRecurringIncome(row: FinancialRow) {
-  return isTruthy(row.is_recurring) || Boolean(row.parent_recurring_income_id) || ['daily', 'weekly', 'monthly', 'yearly', 'annual'].includes(frequency(row));
-}
-
-function isRecurringExpense(row: FinancialRow) {
-  return isTruthy(row.is_recurring) || isTruthy(row.recurring) || ['daily', 'weekly', 'monthly', 'recurring', 'yearly', 'annual'].includes(frequency(row));
-}
-
-function recurringRows(rows: FinancialRow[], kind: 'income' | 'expense') {
-  const isRecurring = kind === 'income' ? isRecurringIncome : isRecurringExpense;
-  const parentKey = kind === 'income' ? 'parent_recurring_income_id' : 'parent_recurring_expense_id';
-  const parentIds = new Set(
-    rows
-      .filter((row) => isRecurring(row) && !row[parentKey] && row.id)
-      .map((row) => String(row.id)),
-  );
-  const seen = new Set<string>();
-  return rows.filter((row, index) => {
-    if (!isRecurring(row) || !isActive(row)) return false;
-    const parentId = row[parentKey] ? String(row[parentKey]) : '';
-    if (parentId && parentIds.has(parentId)) return false;
-    const key = parentId || String(row.id ?? `${kind}-${index}`);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function recurrenceCount(row: FinancialRow, startKeys: string[], endKeys: string[], now: Date) {
-  if (!overlapsMonth(row, startKeys, endKeys, now)) return 0;
-  const rowFrequency = frequency(row) || 'monthly';
-  const range = monthRange(now);
-  const startsAt = firstDate(row, startKeys) ?? range.start;
-  const endsAt = firstDate(row, endKeys);
-
-  if (rowFrequency === 'daily') return activeDaysInMonth(row, startKeys, endKeys, now);
-  if (rowFrequency === 'weekly') {
-    let cursor = new Date(startsAt);
-    let guard = 0;
-    while (cursor < range.start && guard < 540) {
-      cursor.setDate(cursor.getDate() + 7);
-      guard += 1;
-    }
-    let count = 0;
-    while (cursor <= range.end && (!endsAt || cursor <= endsAt) && guard < 620) {
-      count += 1;
-      cursor.setDate(cursor.getDate() + 7);
-      guard += 1;
-    }
-    return count;
-  }
-  if (rowFrequency === 'yearly' || rowFrequency === 'annual') {
-    const occurrence = new Date(now.getFullYear(), startsAt.getMonth(), startsAt.getDate(), 12);
-    return occurrence >= range.start && occurrence <= range.end && (!endsAt || occurrence <= endsAt) ? 1 : 0;
-  }
-  return 1;
-}
-
-function recurringAmount(row: FinancialRow, startKeys: string[], endKeys: string[], now: Date) {
-  const rowAmount = amount(row.amount);
-  const count = recurrenceCount(row, startKeys, endKeys, now);
-  if (rowAmount <= 0 || count <= 0) return 0;
-  const rowFrequency = frequency(row) || 'monthly';
-  if (rowFrequency !== 'monthly' && rowFrequency !== 'recurring') return rowAmount * count;
-  if (row.calculation_mode !== 'prorated_current_month') return rowAmount;
-  return rowAmount * (activeDaysInMonth(row, startKeys, endKeys, now) / monthRange(now).days);
-}
-
-function rowIsInMonth(row: FinancialRow, keys: string[], now: Date) {
-  const date = firstDate(row, keys);
-  if (!date) return false;
-  const range = monthRange(now);
-  return date >= range.start && date <= range.end;
-}
-
-export function buildMonthlyHealthSnapshot(incomeRows: FinancialRow[], expenseRows: FinancialRow[], now = new Date()): MonthlyHealthSnapshot {
-  const incomeRecurring = recurringRows(incomeRows, 'income');
-  const expenseRecurring = recurringRows(expenseRows, 'expense');
-  const recurringIncomeSet = new Set(incomeRows.filter(isRecurringIncome));
-  const recurringExpenseSet = new Set(expenseRows.filter(isRecurringExpense));
-
-  const oneTimeIncome = realizedIncomeRows(incomeRows, now).filter((row) =>
-    !recurringIncomeSet.has(row) && rowIsInMonth(row, INCOME_DATE_KEYS, now),
-  );
-  const oneTimeExpenses = realizedExpenseRows(expenseRows, now).filter((row) =>
-    !recurringExpenseSet.has(row) && rowIsInMonth(row, EXPENSE_DATE_KEYS, now),
-  );
-
-  const monthlyIncome = oneTimeIncome.reduce((total, row) => total + amount(row.amount), 0) + incomeRecurring.reduce(
-    (total, row) => total + recurringAmount(row, ['start_date', 'recurrence_start_date', 'received_date', 'generated_for_date', 'created_at'], ['end_date', 'recurrence_end_date'], now),
-    0,
-  );
-  const monthlyExpenses = oneTimeExpenses.reduce((total, row) => total + amount(row.amount), 0) + expenseRecurring.reduce(
-    (total, row) => total + recurringAmount(row, ['start_date', 'date', 'expense_date', 'created_at'], ['end_date'], now),
-    0,
-  );
-
-  return {
-    monthlyIncome,
-    monthlyExpenses,
-    hasIncomeData: monthlyIncome > 0,
-    hasExpenseData: monthlyExpenses > 0,
-  };
 }
 
 export function realizedIncomeRows(rows: FinancialRow[], now = new Date()) {
@@ -269,7 +99,16 @@ export function monthOverMonthChange(current: number, previous: number, hasCurre
   return (current - previous) / Math.abs(previous);
 }
 
-export function calculateFinancialHealthIndicators(input: FinancialHealthInput) {
+export function calculateFinancialHealth(input: {
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  savingsBalance: number;
+  monthlyDebtPayments: number;
+  hasIncomeData: boolean;
+  hasExpenseData: boolean;
+  hasSavingsData: boolean;
+  debtsLoaded: boolean;
+}) {
   const {
     monthlyIncome,
     monthlyExpenses,
@@ -280,46 +119,31 @@ export function calculateFinancialHealthIndicators(input: FinancialHealthInput) 
     hasSavingsData,
     debtsLoaded,
   } = input;
-
-  const incomeAvailable = hasIncomeData && Number.isFinite(monthlyIncome) && monthlyIncome > 0;
-  const expensesAvailable = hasExpenseData && Number.isFinite(monthlyExpenses) && monthlyExpenses > 0;
-  const savingsAvailable = hasSavingsData && Number.isFinite(savingsBalance) && savingsBalance >= 0;
-  const debtAvailable = debtsLoaded && Number.isFinite(monthlyDebtPayments) && monthlyDebtPayments >= 0;
-
-  return {
-    savingsRatio: incomeAvailable && expensesAvailable ? (monthlyIncome - monthlyExpenses) / monthlyIncome : null,
-    expenseCoverage: incomeAvailable && expensesAvailable ? monthlyIncome / monthlyExpenses : null,
-    emergencyFundMonths: expensesAvailable && savingsAvailable ? savingsBalance / monthlyExpenses : null,
-    debtToIncome: incomeAvailable && debtAvailable ? monthlyDebtPayments / monthlyIncome : null,
-  };
-}
-
-export function calculateFinancialHealth(input: FinancialHealthInput) {
-  const indicators = calculateFinancialHealthIndicators(input);
-  const { savingsRatio, expenseCoverage, emergencyFundMonths, debtToIncome } = indicators;
-  if ([savingsRatio, expenseCoverage, emergencyFundMonths, debtToIncome].some((value) => value === null)) return null;
+  if (!hasIncomeData || !hasExpenseData || !hasSavingsData || !debtsLoaded) return null;
+  if (![monthlyIncome, monthlyExpenses, savingsBalance, monthlyDebtPayments].every(Number.isFinite)) return null;
+  if (monthlyIncome <= 0 || monthlyExpenses <= 0 || savingsBalance < 0 || monthlyDebtPayments < 0) return null;
 
   const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
-  const actualSavingsRatio = savingsRatio as number;
-  const actualExpenseCoverage = expenseCoverage as number;
-  const actualEmergencyFundMonths = emergencyFundMonths as number;
-  const actualDebtToIncome = debtToIncome as number;
+  const savingsRatio = (monthlyIncome - monthlyExpenses) / monthlyIncome;
+  const expenseCoverage = monthlyIncome / monthlyExpenses;
+  const emergencyFundMonths = savingsBalance / monthlyExpenses;
+  const debtToIncome = monthlyDebtPayments / monthlyIncome;
 
   const model = FINANCIAL_HEALTH_MODEL;
-  const surplusPoints = clamp(actualSavingsRatio / model.surplusTarget) * model.surplusWeight;
-  const liquidityPoints = clamp(actualEmergencyFundMonths / model.liquidityTargetMonths) * model.liquidityWeight;
-  const debtPoints = actualDebtToIncome <= model.debtHealthyMaximum
+  const surplusPoints = clamp(savingsRatio / model.surplusTarget) * model.surplusWeight;
+  const liquidityPoints = clamp(emergencyFundMonths / model.liquidityTargetMonths) * model.liquidityWeight;
+  const debtPoints = debtToIncome <= model.debtHealthyMaximum
     ? model.debtWeight
-    : actualDebtToIncome >= model.debtZeroScoreAt
+    : debtToIncome >= model.debtZeroScoreAt
       ? 0
-      : ((model.debtZeroScoreAt - actualDebtToIncome) / (model.debtZeroScoreAt - model.debtHealthyMaximum)) * model.debtWeight;
+      : ((model.debtZeroScoreAt - debtToIncome) / (model.debtZeroScoreAt - model.debtHealthyMaximum)) * model.debtWeight;
 
   return {
     score: Math.round(surplusPoints + liquidityPoints + debtPoints),
-    savingsRatio: actualSavingsRatio,
-    expenseCoverage: actualExpenseCoverage,
-    emergencyFundMonths: actualEmergencyFundMonths,
-    debtToIncome: actualDebtToIncome,
+    savingsRatio,
+    expenseCoverage,
+    emergencyFundMonths,
+    debtToIncome,
   };
 }
 
