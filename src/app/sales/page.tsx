@@ -7,8 +7,6 @@ import { ArrowLeft, Edit3, FileDown, FileText, Loader2, Plus, Search, ShoppingCa
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
@@ -420,11 +418,6 @@ export default function SalesPage() {
   return (
     <div className="business-ops-page" dir={dir}>
       <DashboardPageShell ariaLabel={text.sales} contentClassName="business-records-content">
-        <div className="business-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <Link className="business-back-link" href="/business-operations">
           <ArrowLeft size={16} aria-hidden="true" />
           {text.backToOperations}
@@ -593,7 +586,6 @@ export default function SalesPage() {
 const salesStyles = `
   .business-ops-page{min-height:100vh;background:var(--background);color:var(--foreground)}
   .business-records-content{display:grid;gap:18px}
-  .business-topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px}
   .business-back-link{width:max-content;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--border);background:var(--primary-soft);color:var(--primary);border-radius:var(--radius-card);padding:0 16px;text-decoration:none;font-size:.92rem;font-weight:600;box-shadow:var(--shadow-xs);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease}
   .business-back-link svg{flex-shrink:0}
   [dir="rtl"] .business-back-link svg{transform:scaleX(-1)}
@@ -648,5 +640,5 @@ const salesStyles = `
   .business-row-actions button.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
   .business-row-actions button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
   @media(max-width:980px){.business-toolbar{grid-template-columns:1fr 1fr}.business-search{grid-column:1 / -1}}
-  @media(max-width:760px){.business-topbar{justify-content:space-between;align-items:flex-start}.business-back-link{width:100%;min-height:46px}.business-toolbar,.business-form-grid{grid-template-columns:1fr}.business-search{grid-column:auto}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:var(--radius-card)}table{min-width:720px}}
+  @media(max-width:760px){.business-back-link{width:100%;min-height:46px}.business-toolbar,.business-form-grid{grid-template-columns:1fr}.business-search{grid-column:auto}.business-hero-actions,.business-primary-btn,.business-ghost-btn,.business-form-actions{width:100%}.business-form-actions{display:grid}.business-table-card{border-radius:var(--radius-card)}table{min-width:720px}}
 `;

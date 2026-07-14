@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeDigits } from '@/lib/locale';
 
@@ -141,7 +140,6 @@ export default function AdCampaignCalculatorPage() {
       <div className="wrap">
         <div className="top">
           <button type="button" className="home" onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '→' : '←'} {t('ad_home')}</button>
-          <LanguageSwitcher compact />
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>🎯 {t('ad_title')}</h1>

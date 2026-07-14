@@ -1084,10 +1084,10 @@ export function CryptoNewsPage() {
         .crypto-coin-logo{width:34px;height:34px;border-radius:var(--radius-pill);display:grid;place-items:center;background:var(--info-soft);color:var(--info);font-size:12px;font-weight:600;overflow:hidden}
         .crypto-coin-id{display:grid;gap:2px;min-width:0}
         .crypto-coin-id strong{color:var(--foreground);font-size:13px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-        .crypto-coin-id small{color:var(--foreground-muted);font-size:11px;font-weight:400}
+        .crypto-coin-id small{color:var(--foreground-muted);font-size:12px;font-weight:400}
         .crypto-coin-values{display:grid;gap:3px;justify-items:end;text-align:end}
         .crypto-coin-values b{color:var(--foreground);font-size:12px;font-weight:600;white-space:nowrap}
-        .crypto-tone{border-radius:var(--radius-pill);padding:4px 7px;font-size:11px;font-weight:600}
+        .crypto-tone{border-radius:var(--radius-pill);padding:4px 7px;font-size:12px;font-weight:600}
         .crypto-tone.up{background:var(--success-soft);color:var(--market-positive)}.crypto-tone.down{background:var(--danger-soft);color:var(--danger)}.crypto-tone.neutral{background:var(--surface-muted);color:var(--foreground-secondary)}
 
         .crypto-filter-panel{padding:16px;display:grid;gap:13px}
@@ -1136,7 +1136,7 @@ export function CryptoNewsPage() {
         .crypto-side-item strong{color:var(--foreground);font-size:12.5px;font-weight:600;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
         .crypto-side-symbol,.crypto-side-source{display:flex;align-items:center;justify-content:space-between;gap:10px}
         .crypto-side-symbol b,.crypto-side-source b{color:var(--foreground);font-size:12px;font-weight:600}
-        .crypto-side-symbol small,.crypto-side-source small{color:var(--foreground-muted);font-size:11px;font-weight:400}
+        .crypto-side-symbol small,.crypto-side-source small{color:var(--foreground-muted);font-size:12px;font-weight:400}
         .crypto-mini-story:hover,.crypto-coin-row:hover,.crypto-compact-row:hover,.crypto-side-item:hover,.crypto-side-symbol:hover,.crypto-side-source:hover{background:var(--surface-hover);border-color:var(--border-strong)}
 
         .crypto-state{min-height:240px;padding:34px;display:grid;place-items:center;gap:10px;text-align:center;color:var(--foreground-muted)}

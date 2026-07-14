@@ -23,7 +23,6 @@ import {
   Home,
   FolderKanban,
   LineChart,
-  Menu,
   PiggyBank,
   Plus,
   Printer,
@@ -43,7 +42,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabs } from '@/components/layout/PageTabs';
 import { MoneyAmount } from '@/components/finance/MoneyAmount';
@@ -69,7 +67,7 @@ import type {
 } from '@/lib/routeDashboard/types';
 import {
   emptySnapshot, todayInputDate, emptyEntryForm, emptyExpenseForm, emptyGoalForm,
-  entryTitleKeys, deleteConfirmKeys, navItems, EXPENSE_CATEGORIES, PAYMENT_METHODS,
+  entryTitleKeys, deleteConfirmKeys, EXPENSE_CATEGORIES, PAYMENT_METHODS,
   SAVING_TYPES, SAVING_METHODS, RECEIPT_SCANNING_REQUIRES_PAID_PLAN,
   EXPENSE_OPTIONAL_SAVE_COLUMNS, EXPENSE_PAGE_SIZE, EXPENSE_PERIOD_PRESETS, savingModalText, expenseUi, pageMeta,
   normalizeSavingsOption, normalizeSavingsDate, normalizeCurrencyCode,
@@ -328,7 +326,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [dataLoading, setDataLoading] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [chatValue, setChatValue] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -2748,9 +2745,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     <div className={`sfm-shell${kind === 'savings' ? ' savings-shell' : ''}`} dir={dir}>
       <main className={`sfm-main${kind === 'reports' ? ' reports-main' : ''}${kind === 'savings' ? ' savings-main' : ''}${kind === 'goals' ? ' goals-main' : ''}`}>
         <header className="sfm-header">
-          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label={t('accessibility_open_navigation')}>
-            <Menu size={20} />
-          </button>
           <div className="title-wrap">
             <div className="title-icon" style={{ '--accent': meta.accent } as CSSProperties}>
               <Icon size={22} />
@@ -2760,34 +2754,8 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <h1>{pick(meta.title, lang)}</h1>
             </div>
           </div>
-          <div className="finance-header-lang">
-            <LanguageSwitcher variant="gold" compact />
-          </div>
           {isGuest && <span className="guest-pill">{t('guest_mode')}</span>}
         </header>
-
-        {menuOpen && (
-          <div className="mobile-panel">
-            <div className="mobile-head">
-              <span className="mobile-brand">
-                <Image src="/sfm-logo.png" alt="THE SFM" width={32} height={32} priority className="sfm-brand-mark sfm-brand-mark--header" />
-                <strong>THE SFM</strong>
-              </span>
-              <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label={t('accessibility_close_navigation')}>
-                <X size={19} />
-              </button>
-            </div>
-            {navItems.map(item => {
-              const NavIcon = item.icon;
-              return (
-                <button key={item.href} onClick={() => { setMenuOpen(false); router.push(item.href); }}>
-                  <NavIcon size={18} />
-                  {pick(item.label, lang)}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         <section className="hero">
           <div>

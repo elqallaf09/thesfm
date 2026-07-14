@@ -596,7 +596,7 @@ export function AuthForm() {
 
       {/* Footer */}
       <p style={{position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
-        fontSize:'11.5px', color:'var(--foreground-muted)', whiteSpace:'nowrap',
+        fontSize:'12px', color:'var(--foreground-muted)', whiteSpace:'nowrap',
         fontFamily:'var(--font-ui)'}}>
         المدير المالي الذكي — SFM © 2026
       </p>

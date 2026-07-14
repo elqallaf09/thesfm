@@ -449,7 +449,7 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
         .market-movers-header,.market-movers-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
         .market-movers-title{display:flex;align-items:center;gap:12px;min-width:0}
         .market-movers-icon{width:48px;height:48px;flex:0 0 auto;border-radius:var(--radius-card);display:grid;place-items:center;background:var(--accent-soft);border:1px solid var(--border);color:var(--accent)}
-        .market-movers-title p{margin:0;color:var(--accent);font-size:11px;font-weight:600;line-height:1.4}
+        .market-movers-title p{margin:0;color:var(--accent);font-size:12px;font-weight:600;line-height:1.4}
         .market-movers-title h2{margin:3px 0;color:var(--foreground);font-size:20px;font-weight:600;line-height:1.2}
         .market-movers-title span{display:block;color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.55}
         .market-movers-refresh,.market-movers-close,.market-movers-details-button{border:1px solid var(--border-strong);background:var(--surface-muted);color:var(--foreground);display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 12px/1.25 var(--font-ui);cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease,color .18s ease}
@@ -459,7 +459,7 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
         .market-movers-refresh:hover:not(:disabled),.market-movers-refresh:focus-visible:not(:disabled),.market-movers-close:hover,.market-movers-close:focus-visible,.market-movers-details-button:hover:not(:disabled),.market-movers-details-button:focus-visible:not(:disabled){outline:2px solid var(--focus-ring);outline-offset:2px;transform:translateY(-1px);border-color:var(--focus-ring);background:var(--surface-hover);color:var(--foreground);box-shadow:var(--focus-shadow)}
         .market-movers-details-button:hover:not(:disabled),.market-movers-details-button:focus-visible:not(:disabled){background:var(--primary-hover);color:var(--primary-foreground)}
         .market-movers-refresh:disabled,.market-movers-details-button:disabled{opacity:.62;cursor:not-allowed;transform:none}
-        .market-movers-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--foreground-muted);font-size:11px;font-weight:500}
+        .market-movers-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--foreground-muted);font-size:12px;font-weight:500}
         .market-movers-meta span,.market-movers-meta em{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);padding:6px 9px;font-style:normal;line-height:1.2}
         .market-movers-meta strong{color:var(--foreground);font-family:var(--font-data);font-weight:600}
         .market-movers-meta em{color:var(--warning);background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 28%,transparent)}
@@ -469,19 +469,19 @@ export function MarketMoversCard({ market, marketLabel, locale, labels, indexDat
         .market-movers-list-title{display:flex;align-items:center;gap:8px;min-width:0}
         .market-movers-list-title span{width:32px;height:32px;border-radius:var(--radius-control);display:grid;place-items:center;flex:0 0 auto;background:var(--accent-soft);color:var(--accent)}
         .market-movers-list-title strong{min-width:0;color:var(--foreground);font-size:13px;font-weight:600;line-height:1.35}
-        .market-movers-list-title em{margin-inline-start:auto;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);color:var(--foreground-muted);padding:5px 8px;font-size:10px;font-style:normal;font-weight:500;white-space:nowrap}
+        .market-movers-list-title em{margin-inline-start:auto;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);color:var(--foreground-muted);padding:5px 8px;font-size:12px;font-style:normal;font-weight:500;white-space:nowrap}
         .market-movers-list-body{display:grid;gap:8px;min-width:0}
         .market-movers-row{min-width:0;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);padding:9px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center}
         .market-movers-row.compact{padding:8px}
-        .market-movers-rank{width:26px;height:26px;border-radius:var(--radius-pill);background:var(--info-soft);color:var(--info);display:grid;place-items:center;font-family:var(--font-data);font-size:11px;font-weight:600;line-height:1}
+        .market-movers-rank{width:26px;height:26px;border-radius:var(--radius-pill);background:var(--info-soft);color:var(--info);display:grid;place-items:center;font-family:var(--font-data);font-size:12px;font-weight:600;line-height:1}
         .market-movers-identity{min-width:0;display:inline-flex;align-items:center;gap:8px}
         .market-movers-identity .asset-identity-name{color:var(--foreground);font-size:12px;font-weight:600;line-height:1.25}
-        .market-movers-identity .asset-identity-symbol{color:var(--foreground-muted);font-size:10.5px;font-weight:500;line-height:1.45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .market-movers-identity .asset-identity-symbol{color:var(--foreground-muted);font-size:12px;font-weight:500;line-height:1.45;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .market-movers-values{grid-column:1/-1;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
         .market-movers-row.compact .market-movers-values{grid-template-columns:repeat(2,minmax(0,1fr))}
         .market-movers-values div{min-width:0;border-radius:var(--radius-control);background:var(--surface-muted);padding:6px}
-        .market-movers-values dt{color:var(--foreground-muted);font-size:9.5px;font-weight:500;line-height:1.4}
-        .market-movers-values dd{margin:2px 0 0;color:var(--foreground);font-family:var(--font-data);font-size:10.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .market-movers-values dt{color:var(--foreground-muted);font-size:12px;font-weight:500;line-height:1.4}
+        .market-movers-values dd{margin:2px 0 0;color:var(--foreground);font-family:var(--font-data);font-size:12px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .market-movers-values dd.up{color:var(--success)}.market-movers-values dd.down{color:var(--danger)}.market-movers-values dd.neutral{color:var(--foreground-muted)}
         .tone-up .market-movers-list-title span{background:var(--success-soft);color:var(--success)}.tone-down .market-movers-list-title span{background:var(--danger-soft);color:var(--danger)}.tone-price .market-movers-list-title span{background:var(--info-soft);color:var(--info)}.tone-volume .market-movers-list-title span{background:var(--accent-soft);color:var(--accent)}
         .market-movers-list-empty{margin:0;color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.7;padding:14px 6px;text-align:center}

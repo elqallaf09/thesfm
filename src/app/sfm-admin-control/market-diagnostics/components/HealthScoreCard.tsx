@@ -50,7 +50,7 @@ export function HealthScoreCard({ overview }: { overview: OperationsCenterState[
         .ops-health-score-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
         .ops-health-score-stats > div { text-align: center; border: 1px solid var(--border); border-radius: var(--radius-control); padding: 8px; background: var(--surface-muted); }
         .ops-health-score-stats strong { display: block; font: 600 18px var(--font-data); color: var(--foreground); }
-        .ops-health-score-stats span { display: block; margin-top: 2px; font-size: 10.5px; color: var(--foreground-muted); font-weight: 750; }
+        .ops-health-score-stats span { display: block; margin-top: 2px; font-size: 12px; color: var(--foreground-muted); font-weight: 700; }
         .ops-health-score-meta { margin: 0; color: var(--foreground-secondary); font-size: 12px; }
       `}</style>
     </div>

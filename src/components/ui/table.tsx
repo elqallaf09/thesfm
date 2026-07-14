@@ -77,7 +77,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "sticky top-0 z-10 h-11 whitespace-nowrap border-b border-border bg-[var(--table-header)] px-4 text-start align-middle text-xs font-semibold tracking-normal text-foreground-secondary data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
+      "sticky top-0 z-10 h-11 whitespace-nowrap border-b border-border bg-[var(--table-header)] px-4 text-start align-middle text-[13px] font-semibold leading-5 tracking-normal text-foreground-secondary data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
       className
     )}
     {...props}
@@ -92,7 +92,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3.5 align-middle data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:font-medium data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
+      "px-4 py-3.5 align-middle leading-6 data-[numeric=true]:text-end data-[numeric=true]:font-mono data-[numeric=true]:font-medium data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pe-0",
       className
     )}
     {...props}

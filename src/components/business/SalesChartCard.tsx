@@ -42,8 +42,8 @@ export default function SalesChartCard({
           ) : (
             <BarChart data={chartRows}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(value) => formatMoney(Number(value), currency, lang)} />
               <Bar dataKey="value" fill="var(--chart-1)" radius={[10, 10, 0, 0]} />
             </BarChart>

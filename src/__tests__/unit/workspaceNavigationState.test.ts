@@ -148,7 +148,7 @@ describe('workspace navigation direction and presentation contract', () => {
     expect(header).toContain('<ThemeToggle />');
     expect(header).toContain('<UserChip />');
     expect(header).toContain('.sfm-global-actions > .sfm-language-dropdown');
-    expect(header).toContain('max-width: 40px');
+    expect(header).toContain('max-width: 44px');
     expect(mobile).toContain('<DensityToggle />');
   });
 

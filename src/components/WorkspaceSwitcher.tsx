@@ -21,13 +21,6 @@ const WORKSPACE_NAV_COPY = {
   fr: { label: 'Espaces de travail' },
 } as const;
 
-const MOBILE_WORKSPACE_LABELS = {
-  'personal-finance': { ar: 'المالية', en: 'Finance', fr: 'Finances' },
-  'markets-trading': { ar: 'الأسواق', en: 'Markets', fr: 'Marchés' },
-  'business-projects': { ar: 'الأعمال', en: 'Business', fr: 'Affaires' },
-  administration: { ar: 'الإدارة', en: 'Admin', fr: 'Admin' },
-} as const;
-
 type WorkspaceSwitcherProps = {
   /** Permission-filtered client access curates links; the server still enforces admin routes. */
   adminAccess: NavigationAdminAccess;
@@ -86,7 +79,6 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
             >
               <Icon size={16} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
-              <span className="sfm-workspace-label-mobile">{MOBILE_WORKSPACE_LABELS[workspace.id][locale]}</span>
             </Link>
           );
         })}
@@ -120,7 +112,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         .sfm-workspace-tab {
           position: relative;
           min-width: max-content;
-          min-height: 42px;
+          min-height: var(--control-h);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -132,9 +124,9 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           color: var(--foreground-secondary);
           text-decoration: none;
           white-space: nowrap;
-          font-size: 12.5px;
-          font-weight: 500;
-          line-height: 1.3;
+          font-size: var(--type-navigation-size);
+          font-weight: var(--type-navigation-weight);
+          line-height: var(--type-navigation-leading);
           transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
           -webkit-tap-highlight-color: transparent;
         }
@@ -158,7 +150,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
           background: var(--sidebar-active);
           color: var(--sidebar-active-foreground);
-          font-weight: 600;
+          font-weight: var(--type-navigation-active-weight);
         }
 
         .sfm-workspace-tab[data-active='true']::after {
@@ -175,23 +167,11 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           color: var(--primary);
         }
 
-        .sfm-workspace-label-mobile {
-          display: none;
-        }
-
         @media (max-width: 900px) {
           .sfm-workspace-tab {
-            min-height: 44px;
+            min-height: var(--control-h);
             padding-inline: 13px;
-            font-size: 13px;
-          }
-
-          .sfm-workspace-label-full {
-            display: none;
-          }
-
-          .sfm-workspace-label-mobile {
-            display: inline;
+            font-size: var(--type-navigation-size);
           }
         }
 

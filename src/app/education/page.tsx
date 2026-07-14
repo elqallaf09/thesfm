@@ -2,7 +2,6 @@
 
 import { BookOpen, Coins, GraduationCap, LineChart, ReceiptText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 
 export default function EducationPage() {
@@ -20,7 +19,6 @@ export default function EducationPage() {
       <section className="edu-page">
         <header>
           <button onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '←' : '→'} {pick({ ar: 'الرئيسية', en: 'Home', fr: 'Accueil' })}</button>
-          <LanguageSwitcher variant="gold" compact />
         </header>
         <section className="hero">
           <GraduationCap size={42} />

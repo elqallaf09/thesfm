@@ -513,7 +513,7 @@ export function ProjectSelector({
 
         .project-selector-kicker span {
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 500;
         }
 
@@ -525,7 +525,7 @@ export function ProjectSelector({
           background: var(--surface-muted);
           color: var(--foreground-secondary);
           padding: 4px 7px;
-          font-size: 11px;
+          font-size: 12px;
           font-style: normal;
           font-weight: 500;
           line-height: 1.2;
@@ -702,7 +702,7 @@ export function ProjectSelector({
         }
 
         .option-copy small {
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .option-badges {

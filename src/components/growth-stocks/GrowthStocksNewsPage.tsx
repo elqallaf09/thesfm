@@ -2433,7 +2433,7 @@ export function GrowthStocksNewsPage() {
           min-width: 0;
           overflow: hidden;
           color: var(--foreground-muted);
-          font-size: 11.5px;
+          font-size: 12px;
           font-weight: 500;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -2628,7 +2628,7 @@ export function GrowthStocksNewsPage() {
         .mini-metric span {
           display: block;
           color: var(--foreground-secondary);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
         }
         .mini-metric strong {

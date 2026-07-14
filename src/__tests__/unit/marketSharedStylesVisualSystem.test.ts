@@ -32,7 +32,8 @@ describe('shared market style visual-system contract', () => {
     expect(chartStyles).toMatch(/\.price-chart-level\.support[\s\S]*?var\(--success\)/);
     expect(chartStyles).toMatch(/\.price-chart-level\.resistance[\s\S]*?var\(--danger\)/);
     expect(chartStyles).toMatch(/\.price-chart-state\.error[\s\S]*?var\(--warning-soft\)/);
-    expect(chartStyles).toContain('font: 500 10px var(--font-data)');
+    expect(chartStyles).toContain('font: 500 12px var(--font-data)');
+    expect(chartStyles).not.toContain('font: 500 10px var(--font-data)');
     expect(chartStyles).not.toContain('drop-shadow(');
   });
 

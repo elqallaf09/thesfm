@@ -331,7 +331,7 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
         }
         .sfm-command-copy small {
           color: var(--foreground-secondary);
-          font-size: 11.5px;
+          font-size: 12px;
           font-weight: 400;
           overflow: hidden;
           text-overflow: ellipsis;

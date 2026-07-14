@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel } from '@/components/layout/PageTabs';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -1259,7 +1258,6 @@ export default function CharityProjectsPage() {
             <CharityActionButton variant="ghost" type="button" onClick={() => { resetDocumentForm(); setDocumentOpen(true); }}>
               <FileUp size={17} /> {tr.uploadDocument}
             </CharityActionButton>
-            <LanguageSwitcher variant="dark" compact />
           </div>
         </section>
 

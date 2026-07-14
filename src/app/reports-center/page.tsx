@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs, type PageTabItem } from '@/components/layout/PageTabs';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -2119,7 +2118,6 @@ export default function ReportsCenterPage() {
             <span>THE SFM</span>
             <strong>{tr.title}</strong>
           </div>
-          <LanguageSwitcher compact />
         </header>
 
         <section className="reports-hero no-print">

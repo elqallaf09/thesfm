@@ -18,8 +18,6 @@ import {
   Tags,
   X,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/layout/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -346,11 +344,6 @@ export default function EbooksPage() {
   return (
     <div className="ebooks-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="ebooks-content">
-        <div className="sfm-page-topbar ebooks-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           className="ebooks-hero"
           eyebrow={text.eyebrow}
@@ -577,13 +570,6 @@ export default function EbooksPage() {
           padding: 28px clamp(16px, 3vw, 36px) 64px;
           display: grid;
           gap: 24px;
-        }
-
-        .ebooks-topbar {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          min-width: 0;
         }
 
         .ebooks-hero {
@@ -922,7 +908,7 @@ export default function EbooksPage() {
           background: var(--accent-soft);
           color: var(--accent-hover);
           padding: 6px 10px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           line-height: 1.3;
         }
@@ -1163,12 +1149,6 @@ export default function EbooksPage() {
           .ebooks-grid,
           .ebooks-path-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-
-        @media (max-width: 1024px) {
-          .ebooks-topbar {
-            display: none;
           }
         }
 

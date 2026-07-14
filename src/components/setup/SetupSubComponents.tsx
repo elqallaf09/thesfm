@@ -96,9 +96,9 @@ export function SummaryCard({
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:950,lineHeight:1.35}}>{label}</small>
-        <strong style={{display:'block',marginTop:'5px',color:'var(--foreground)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'5px 0 0',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:820,lineHeight:1.5}}>{description}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700,lineHeight:1.35}}>{label}</small>
+        <strong style={{display:'block',marginTop:'5px',color:'var(--foreground)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:700,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'5px 0 0',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700,lineHeight:1.5}}>{description}</p>
       </div>
     </article>
   );
@@ -111,9 +111,9 @@ export function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideI
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'11px',fontWeight:950}}>{title}</small>
-        <strong style={{display:'block',marginTop:'4px',color:'var(--foreground)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:950,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'4px 0 0',color:'var(--foreground-secondary)',fontSize:'11px',lineHeight:1.5}}>{detail}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700}}>{title}</small>
+        <strong style={{display:'block',marginTop:'4px',color:'var(--foreground)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:700,overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'4px 0 0',color:'var(--foreground-secondary)',fontSize:'12px',lineHeight:1.5}}>{detail}</p>
       </div>
     </article>
   );
@@ -157,7 +157,7 @@ export function Stepper({
         .setup-stepper li.active span{background:var(--primary);color:var(--primary-foreground)}
         .setup-stepper li.done span{background:var(--success);color:var(--foreground-inverse)}
         .setup-stepper b{grid-area:title;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-        .setup-stepper em{grid-area:state;font-style:normal;font-size:10px;font-weight:500;color:inherit;line-height:1.15}
+        .setup-stepper em{grid-area:state;font-style:normal;font-size:12px;font-weight:500;color:inherit;line-height:1.15}
         @media(max-width:720px){.setup-stepper{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;padding-bottom:12px;margin-bottom:14px}.setup-stepper li{flex:0 0 min(78vw,250px)}}
       `}</style>
     </ol>

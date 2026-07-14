@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, RefreshCw, ShieldAlert, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { EmptyState } from '@/components/invest/EmptyState';
@@ -1001,7 +1000,6 @@ export default function InvestPage() {
             <span>{labels.activeBadge}</span>
             <h1>{labels.heroTitle}</h1>
           </div>
-          <LanguageSwitcher variant="gold" compact />
         </header>
 
         <section className="invest-hero">

@@ -647,7 +647,7 @@ export function EconomicCalendarPanel({
         .economic-calendar-table-card td:first-child{white-space:normal;min-width:270px}
         .economic-calendar-table-card td[dir="ltr"]{font-family:var(--font-data);font-variant-numeric:tabular-nums}
         .economic-calendar-table-card td strong{display:block;color:var(--foreground);font-size:14px;font-weight: 700;line-height:1.5}
-        .economic-calendar-table-card td small{display:block;margin-top:4px;color:var(--foreground-muted);font-size:11px;font-weight: 700}
+        .economic-calendar-table-card td small{display:block;margin-top:4px;color:var(--foreground-muted);font-size:12px;font-weight: 700}
         .economic-calendar-mobile-list{display:none;gap:12px}
         .economic-calendar-event-card{display:grid;gap:13px;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:15px;box-shadow: var(--shadow-sm)}
         .economic-calendar-event-head{display:grid;gap:10px}
@@ -655,7 +655,7 @@ export function EconomicCalendarPanel({
         .economic-calendar-event-badges{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
         .economic-calendar-event-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
         .economic-calendar-metric{display:grid;gap:5px;min-width:0;border:1px solid color-mix(in srgb, var(--accent) 12%, transparent);background:var(--surface-muted);border-radius:var(--radius-card);padding:10px}
-        .economic-calendar-metric small{color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.35}
+        .economic-calendar-metric small{color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.35}
         .economic-calendar-metric b{color:var(--foreground);font-family:var(--font-data);font-size:12px;font-weight:700;line-height:1.45;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
         .economic-calendar-featured>.economic-event-explanation{grid-column:1/-1}
         .economic-calendar-table-card .economic-event-explanation{margin-top:10px;max-width:520px;white-space:normal}
@@ -670,10 +670,10 @@ export function EconomicCalendarPanel({
         .economic-event-explanation-panel>p{margin:0;color:var(--foreground-muted);font-size:13px;font-weight: 500;line-height:1.8}
         .economic-event-explanation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
         .economic-event-explanation-item{display:grid;gap:5px;min-width:0;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface);border-radius:var(--radius-card);padding:11px}
-        .economic-event-explanation-item span{color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.35}
+        .economic-event-explanation-item span{color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.35}
         .economic-event-explanation-item b{color:var(--foreground);font-size:13px;font-weight: 700;line-height:1.45;overflow-wrap:anywhere}
         .economic-event-explanation-item p{margin:0;color:var(--foreground-muted);font-size:12px;font-weight: 500;line-height:1.7}
-        .economic-event-explanation-panel>small{display:block;color:var(--foreground-muted);font-size:11px;font-weight: 700;line-height:1.7;border-top:1px solid color-mix(in srgb, var(--accent) 14%, transparent);padding-top:9px}
+        .economic-event-explanation-panel>small{display:block;color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.7;border-top:1px solid color-mix(in srgb, var(--accent) 14%, transparent);padding-top:9px}
         @keyframes economicExplanationIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
         .calendar-impact-badge{display:inline-flex;align-items:center;width:max-content;border-radius: var(--radius-pill);border:1px solid color-mix(in srgb, var(--foreground-muted) 18%, transparent);background:color-mix(in srgb, var(--foreground-muted) 8%, transparent);color:var(--foreground-muted);padding:7px 10px;font-size:12px;font-weight: 700;line-height:1.2}
         .calendar-impact-badge.high{border-color:color-mix(in srgb, var(--danger) 22%, transparent);background:color-mix(in srgb, var(--danger) 10%, transparent);color:var(--danger)}

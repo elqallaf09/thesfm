@@ -178,7 +178,7 @@ export function MarketBaseStyles() {
 
       .technical-partial-metric small {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
       }
 
@@ -348,7 +348,7 @@ export function MarketBaseStyles() {
 
       .technical-selector-head span {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.3;
       }
@@ -396,7 +396,7 @@ export function MarketBaseStyles() {
         background: var(--primary-soft);
         color: var(--primary-hover);
         padding: 7px 10px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.35;
       }
@@ -526,14 +526,14 @@ export function MarketBaseStyles() {
 
       .technical-range-marker b {
         color: currentColor;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         font-family: var(--font-data);
       }
 
       .technical-range-marker small {
         color: var(--foreground);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         font-family: var(--font-data);
       }

@@ -25,8 +25,6 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
@@ -661,11 +659,6 @@ export default function SecurityPage() {
   return (
     <div className="security-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="security-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           eyebrow={text.eyebrow}
           title={text.title}
@@ -901,7 +894,6 @@ export default function SecurityPage() {
       <style jsx global>{`
         .security-shell{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
         .security-content{display:grid;gap:22px}
-        .sfm-page-topbar{display:flex;justify-content:flex-end;align-items:center;gap:10px}
         .sfm-primary-link,.ghost-action,.solid-action,.danger-action{min-height:var(--control-h);display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-pill);padding:0 16px;text-decoration:none;font:600 13px/1.4 var(--font-ui);cursor:pointer;transition:transform var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease),background-color var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),color var(--duration-fast) var(--ease)}
         .sfm-primary-link,.solid-action{border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-xs)}
         .sfm-primary-link:hover,.solid-action:hover:not(:disabled){border-color:var(--primary-hover);background:var(--primary-hover);color:var(--primary-foreground);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
@@ -986,7 +978,7 @@ export default function SecurityPage() {
         .manual-secret span{font-weight:600;color:var(--foreground)}
         .manual-secret code{direction:ltr;text-align:left;white-space:normal;overflow-wrap:anywhere;color:var(--accent-hover);font:600 13px/1.5 var(--font-data)}
         @media(max-width:900px){.security-score-grid,.security-main-grid{grid-template-columns:1fr}.security-section.wide{grid-column:auto}.security-score-copy h2{font-size:44px}}
-        @media(max-width:640px){.sfm-page-topbar{display:none}.security-score-card{display:grid}.score-ring{width:112px;height:112px}.control-row,.coming-row{display:grid}.sfm-primary-link,.ghost-action,.solid-action,.danger-action{width:100%}.modal-actions{display:grid;grid-template-columns:1fr}.security-content{gap:16px}}
+        @media(max-width:640px){.security-score-card{display:grid}.score-ring{width:112px;height:112px}.control-row,.coming-row{display:grid}.sfm-primary-link,.ghost-action,.solid-action,.danger-action{width:100%}.modal-actions{display:grid;grid-template-columns:1fr}.security-content{gap:16px}}
       `}</style>
     </div>
   );

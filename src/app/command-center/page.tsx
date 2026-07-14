@@ -17,8 +17,6 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
@@ -322,11 +320,6 @@ export default function CommandCenterPage() {
   return (
     <div className="command-center-shell" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} className="command-center-main" contentClassName="command-center-content">
-        <div className="sfm-page-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <section className="command-hero" aria-labelledby="command-center-title">
           <div className="command-hero-copy">
             <span>{text.eyebrow}</span>
@@ -434,13 +427,6 @@ export default function CommandCenterPage() {
           max-width: none;
           display: grid;
           gap: 24px;
-        }
-        .sfm-page-topbar {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
         }
         .command-hero {
           position: relative;
@@ -745,9 +731,6 @@ export default function CommandCenterPage() {
           }
         }
         @media (max-width: 720px) {
-          .sfm-page-topbar {
-            display: none;
-          }
           .command-center-content {
             gap: 18px;
           }

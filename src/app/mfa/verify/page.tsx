@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { KeyRound, ShieldCheck } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,9 +147,6 @@ export default function MfaVerifyPage() {
   return (
     <main className="mfa-page" dir={dir}>
       <section className="mfa-card">
-        <div className="mfa-top">
-          <LanguageSwitcher />
-        </div>
         <div className="mfa-icon"><ShieldCheck size={28} /></div>
         <h1>{text.title}</h1>
         <p>{text.subtitle}</p>
@@ -204,7 +200,6 @@ export default function MfaVerifyPage() {
           padding: 24px;
           box-shadow: var(--shadow-lg);
         }
-        .mfa-top { display: flex; justify-content: flex-end; }
         .mfa-icon {
           width: 58px;
           height: 58px;

@@ -690,7 +690,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           white-space: nowrap;
         }

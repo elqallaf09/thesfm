@@ -159,7 +159,7 @@ export function MetricCard({
       </div>
       <div>
         <p>{title}</p>
-        <strong>{value}</strong>
+        <strong data-financial-value={/[0-9]/.test(value) ? 'true' : undefined}>{value}</strong>
         <span>{detail}</span>
       </div>
     </article>
@@ -170,7 +170,7 @@ export function SmallStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="small-stat">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong data-financial-value={/[0-9]/.test(value) ? 'true' : undefined}>{value}</strong>
     </div>
   );
 }

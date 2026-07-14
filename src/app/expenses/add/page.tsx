@@ -229,8 +229,8 @@ export default function AddExpensePage() {
                       onClick={() => setNecessity(item.id)}
                       style={{ borderColor: necessity === item.id ? item.color : 'var(--border)' }}
                     >
-                      <div style={{ fontWeight: 800, color: item.color }}>{isAr ? item.ar : isFr ? item.fr : item.en}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--foreground-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
+                      <div style={{ fontWeight: 700, color: item.color }}>{isAr ? item.ar : isFr ? item.fr : item.en}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
                     </button>
                   ))}
                 </div>

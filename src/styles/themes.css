@@ -25,12 +25,12 @@
   --foreground: #0F2742;
   --foreground-secondary: #334155;
   --foreground-muted: #627287;
-  --foreground-subtle: #7C8A9E;
+  --foreground-subtle: #64748B;
   --foreground-inverse: #FFFFFF;
 
   /* Borders */
   --border: #E2E8F0;
-  --border-strong: #CBD5E1;
+  --border-strong: #7C8A9E;
   --divider: #E2E8F0;
 
   /* Brand */
@@ -166,7 +166,7 @@
   --foreground-inverse: #071522;
 
   --border: #243B53;
-  --border-strong: #39536C;
+  --border-strong: #64748B;
   --divider: #243B53;
 
   --primary: #4C96F5;

@@ -58,12 +58,12 @@ export function AssetIdentity({
         />
         <span className="asset-identity-copy grid min-w-0 gap-0.5">
           {showName ? (
-            <span className={cn('asset-identity-name min-w-0 truncate font-black leading-tight', labelClassName)}>
+            <span className={cn('asset-identity-name min-w-0 truncate font-semibold leading-tight', labelClassName)}>
               {meta.label}
             </span>
           ) : null}
           {showSymbol && meta.symbol ? (
-            <span className={cn('asset-identity-symbol min-w-0 truncate font-black uppercase leading-tight tracking-normal text-current opacity-70', symbolClassName)} dir="ltr">
+            <span className={cn('asset-identity-symbol min-w-0 truncate font-mono font-medium uppercase leading-tight tracking-normal text-current opacity-70', symbolClassName)} dir="ltr">
               {meta.symbol}
             </span>
           ) : null}

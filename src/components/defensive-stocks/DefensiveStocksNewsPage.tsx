@@ -1584,13 +1584,13 @@ export function DefensiveStocksNewsPage() {
         .def-ticker-track{display:flex;align-items:center;gap:9px;width:max-content;animation:defTicker 48s linear infinite;will-change:transform}
         .def-ticker-strip:focus-within .def-ticker-track,.def-ticker-strip.is-paused .def-ticker-track{animation-play-state:paused}
         .def-ticker-set{display:flex;align-items:center;gap:9px;flex:none}
-        .def-ticker-status{display:inline-flex;align-items:center;gap:6px;padding:0 10px;min-height:28px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);font-size:11px;font-weight:600;white-space:nowrap}
+        .def-ticker-status{display:inline-flex;align-items:center;gap:6px;padding:0 10px;min-height:28px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:600;white-space:nowrap}
         .def-ticker-item{width:196px;max-width:196px;min-width:196px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 9px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
         .def-ticker-copy{display:grid;gap:1px;min-width:0}
         .def-ticker-item strong{font-size:13px;font-weight:600;color:var(--foreground);line-height:1.15}
-        .def-ticker-item small{font-size:10px;font-weight:600;color:var(--foreground-secondary);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .def-ticker-item small{font-size:12px;font-weight:600;color:var(--foreground-secondary);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .def-ticker-item b{font-size:12px;font-weight:600;color:var(--foreground);line-height:1.15}
-        .def-ticker-item em{grid-column:3;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:var(--radius-pill);padding:4px 7px;font-style:normal;font-size:10px;font-weight:600;line-height:1}
+        .def-ticker-item em{grid-column:3;display:inline-flex;align-items:center;gap:4px;justify-self:end;border-radius:var(--radius-pill);padding:4px 7px;font-style:normal;font-size:12px;font-weight:600;line-height:1}
         .def-ticker-item.up em,.up{background:var(--success-soft);color:var(--success)}
         .def-ticker-item.down em,.down{background:var(--danger-soft);color:var(--danger)}
         .def-ticker-item.neutral em,.neutral{background:var(--surface-muted);color:var(--foreground-secondary)}
@@ -1684,7 +1684,7 @@ export function DefensiveStocksNewsPage() {
         .def-stock-card > small{color:var(--foreground-secondary);font-size:12px;font-weight:600}
         .def-stock-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
         .def-stock-metrics span{padding:10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);display:grid;gap:4px}
-        .def-stock-metrics small{color:var(--foreground-secondary);font-size:11px;font-weight:600}
+        .def-stock-metrics small{color:var(--foreground-secondary);font-size:12px;font-weight:600}
         .def-stock-metrics strong{color:var(--foreground);font-size:12px;font-weight:600}
         .def-stock-card a,.def-news-card footer a,.def-load-more button,.def-state button{min-height:42px;border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 13px;text-decoration:none;font-size:12px;font-weight:600;border:0;cursor:pointer}
         .def-news-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
@@ -1693,14 +1693,14 @@ export function DefensiveStocksNewsPage() {
         .def-news-card.featured{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;padding:18px}
         .def-news-art{min-height:210px;border-radius:var(--radius-card);background:var(--surface);display:grid;place-items:center;color:var(--foreground-secondary)}
         .def-news-meta,.def-news-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .def-news-meta span,.def-news-tags span{display:inline-flex;align-items:center;gap:5px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);padding:5px 9px;font-size:11px;font-weight:600}
+        .def-news-meta span,.def-news-tags span{display:inline-flex;align-items:center;gap:5px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);padding:5px 9px;font-size:12px;font-weight:600}
         .def-news-card h3{margin:0;color:var(--foreground);font-size:18px;font-weight:600;line-height:1.55}
         .def-news-card p{margin:0;color:var(--foreground-secondary);font-size:13px;font-weight:500;line-height:1.75;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
         .def-stock-context{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted);padding:11px;display:grid;gap:7px}
-        .def-stock-context small{color:var(--foreground-secondary);font-size:11px;font-weight:600}
+        .def-stock-context small{color:var(--foreground-secondary);font-size:12px;font-weight:600}
         .def-stock-context div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
         .def-stock-context b,.def-stock-context strong{color:var(--foreground);font-weight:600;font-size:12px}
-        .def-stock-context em{border-radius:var(--radius-pill);padding:4px 8px;font-style:normal;font-size:11px;font-weight:600}
+        .def-stock-context em{border-radius:var(--radius-pill);padding:4px 8px;font-style:normal;font-size:12px;font-weight:600}
         .def-news-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
         .def-news-card footer button{min-height:38px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);font-size:12px;font-weight:600;cursor:pointer}
         .def-disabled-link{color:var(--foreground-secondary);font-size:12px;font-weight:600}
@@ -1765,15 +1765,15 @@ export function DefensiveStocksNewsPage() {
           .def-stock-metrics,.def-sector-card div{grid-template-columns:1fr}
           .def-ticker-panel{padding:7px 8px}
           .def-ticker-strip{gap:7px}
-          .def-ticker-status{min-height:26px;padding:0 8px;font-size:10px}
+          .def-ticker-status{min-height:26px;padding:0 8px;font-size:12px}
           .def-ticker-viewport{overflow:hidden}
           .def-ticker-track{gap:8px;animation-duration:42s}
           .def-ticker-set{gap:8px}
           .def-ticker-item{width:178px;max-width:178px;min-width:178px;padding:7px 9px;border-radius:var(--radius-control)}
           .def-ticker-item strong{font-size:12px}
-          .def-ticker-item small{font-size:9.5px}
-          .def-ticker-item b{font-size:11px}
-          .def-ticker-item em{font-size:9.5px;padding:3px 6px}
+          .def-ticker-item small{font-size:12px}
+          .def-ticker-item b{font-size:12px}
+          .def-ticker-item em{font-size:12px;padding:3px 6px}
           .def-tabs{overflow-x:auto}
         }
         @media(prefers-reduced-motion:reduce){

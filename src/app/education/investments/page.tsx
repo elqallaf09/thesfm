@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 
 export default function InvestmentEducationPage() {
@@ -74,7 +73,6 @@ export default function InvestmentEducationPage() {
           <button type="button" className="investment-secondary" onClick={() => router.push('/dashboard')} style={{ color: 'var(--foreground)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
             {L('العودة للرئيسية', 'Back Home', 'Retour accueil')}
           </button>
-          <LanguageSwitcher variant="gold" compact />
         </header>
 
         <section className="investment-hero">

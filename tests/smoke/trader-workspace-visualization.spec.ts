@@ -234,7 +234,15 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     const chartPoint = drawer.locator('.detail-chart-point').first();
     await chartPoint.focus();
     await expect(chartPoint).toBeFocused();
-    await expect(chartPoint.locator('+ .detail-chart-value')).toHaveCSS('opacity', '1');
+    const chartValue = chartPoint.locator('+ .detail-chart-value');
+    await expect(chartValue).toHaveCSS('opacity', '1');
+    const renderedChartValueSize = await chartValue.evaluate(element => {
+      const fontSize = Number.parseFloat(getComputedStyle(element).fontSize);
+      const matrix = (element as SVGGraphicsElement).getScreenCTM();
+      return fontSize * Math.hypot(matrix?.c ?? 0, matrix?.d ?? 1);
+    });
+    expect(renderedChartValueSize).toBeGreaterThanOrEqual(12);
+    expect(renderedChartValueSize).toBeLessThanOrEqual(24);
     expect(page.url()).toBe(urlBeforeClick);
 
     await page.keyboard.press('Escape');

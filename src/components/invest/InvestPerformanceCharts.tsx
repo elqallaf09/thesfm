@@ -75,8 +75,8 @@ export default function InvestPerformanceCharts({
       <ChartCard icon={<BarChart3 size={18} />} title={titles.byInvestment}>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={values}>
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 12, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} formatter={(value: number) => money(Number(value))} />
             <Bar dataKey="value" fill="var(--chart-2)" radius={[10, 10, 0, 0]} />
           </BarChart>
@@ -86,8 +86,8 @@ export default function InvestPerformanceCharts({
         {canShowProjection ? (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={projection}>
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 11, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={value => String(Math.round(Number(value)))} tick={{ fontSize: 12, fill: 'var(--chart-label)' }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} formatter={(value: number) => money(Number(value))} />
               <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={3} dot={false} />
             </LineChart>

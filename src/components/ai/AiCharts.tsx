@@ -51,7 +51,7 @@ export function AiCharts({
   };
   money: (value: number) => string;
 }) {
-  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 11 };
+  const tick = { fill: 'var(--chart-label)', fontFamily: 'var(--font-data)', fontSize: 12 };
   const tooltipStyle = {
     background: 'var(--surface-elevated)',
     border: '1px solid var(--border)',

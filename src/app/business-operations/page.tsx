@@ -8,8 +8,6 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -532,11 +530,6 @@ export default function BusinessOperationsPage() {
   return (
     <div className="business-ops-page" dir={dir}>
       <DashboardPageShell ariaLabel={text.businessOperations} contentClassName="business-ops-content">
-        <div className="business-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <PageHero
           eyebrow={text.operationsBadge}
           title={text.businessOperations}
@@ -695,13 +688,6 @@ const businessOperationsStyles = `
   .business-ops-content {
     display: grid;
     gap: 18px;
-  }
-
-  .business-topbar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 12px;
   }
 
   .business-loading {
@@ -1111,11 +1097,6 @@ const businessOperationsStyles = `
   }
 
   @media (max-width: 720px) {
-    .business-topbar {
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
     .business-card-foot {
       display: grid;
     }

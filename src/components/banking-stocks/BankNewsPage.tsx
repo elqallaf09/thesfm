@@ -2722,7 +2722,7 @@ export function BankNewsPage() {
 
         .bankMetricDetail {
           color: var(--foreground-muted);
-          font-size: 0.74rem;
+          font-size: 0.75rem;
           line-height: 1.45;
         }
 
@@ -3600,7 +3600,7 @@ export function BankNewsPage() {
           }
 
           .bankMetricLabel {
-            font-size: 0.72rem;
+            font-size: 0.75rem;
           }
 
           .bankStockMetrics,

@@ -7,8 +7,6 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { CurrencySelect } from '@/components/CurrencySelect';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { UserChip } from '@/components/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import { useBusinessRole } from '@/hooks/useBusinessRole';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -984,11 +982,6 @@ export default function BusinessRecordsModulePage({ module }: { module: Business
   return (
     <div className="business-ops-page" dir={dir}>
       <DashboardPageShell ariaLabel={config.title} contentClassName="business-records-content">
-        <div className="business-topbar">
-          <LanguageSwitcher />
-          <UserChip />
-        </div>
-
         <Link className="business-back-link" href="/business-operations">
           <ArrowLeft size={16} aria-hidden="true" />
           {text.backToOperations}
@@ -1336,7 +1329,6 @@ const businessRecordsModuleStyles = `
     gap: 18px;
   }
 
-  .business-topbar,
   .business-hero-actions,
   .business-form-actions,
   .business-record-actions {
@@ -1344,10 +1336,6 @@ const businessRecordsModuleStyles = `
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-  }
-
-  .business-topbar {
-    justify-content: flex-end;
   }
 
   .business-loading {

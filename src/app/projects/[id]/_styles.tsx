@@ -51,7 +51,7 @@ export function WorkspaceStyles() {
         .transaction-main{display:grid;gap:4px;min-width:0}
         .transaction-main strong{color:var(--foreground);font-weight:600;overflow-wrap:anywhere}
         .transaction-main span{color:var(--foreground-muted);font-size:12px;font-weight:500}
-        .transaction-main small{justify-self:start;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:4px 8px;font-weight:600;font-size:11px}
+        .transaction-main small{justify-self:start;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:4px 8px;font-weight:600;font-size:12px}
         .transaction-amount{color:var(--foreground);font-weight:600;white-space:nowrap}
         .transaction-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
         .transaction-actions button{min-height:34px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);padding:0 10px;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
@@ -88,7 +88,7 @@ export function WorkspaceStyles() {
         .project-expense-ai-copy small{display:block;color:var(--foreground-muted);font-size:12px;font-weight:500;line-height:1.7;overflow-wrap:anywhere}
         .project-expense-ai-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
         .project-expense-ai-actions.compact{justify-content:flex-start}
-        .project-expense-ai-actions button{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;line-height:1;font-weight:600;padding:0 14px;white-space:nowrap}
+        .project-expense-ai-actions button{min-height:var(--control-h);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;line-height:1.5;font-weight:600;padding:0 14px;white-space:nowrap}
         .project-expense-ai-alert{border:1px solid var(--warning-soft);background:var(--warning-soft);color:var(--warning);border-radius:var(--radius-control);padding:11px 12px;font-size:13px;font-weight:600;line-height:1.65}
         .project-expense-ai-result{display:grid;gap:11px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-card);padding:13px}
         .project-expense-ai-result-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}

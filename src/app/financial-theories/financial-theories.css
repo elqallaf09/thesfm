@@ -570,7 +570,7 @@
           margin: 0;
           color: var(--foreground-secondary);
           line-height: 1.7;
-          font-weight: 780;
+          font-weight: 700;
         }
 
         .why-list {
@@ -745,7 +745,7 @@
           background: color-mix(in srgb, var(--primary) 10%, transparent);
           color: var(--primary-hover);
           padding: 5px 9px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           line-height: 1;
           overflow-wrap: anywhere;
@@ -775,7 +775,7 @@
           background: color-mix(in srgb, var(--success) 12%, transparent);
           color: var(--success);
           padding: 0 9px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           line-height: 1;
         }
@@ -808,7 +808,7 @@
         .practical-example-card small {
           display: block;
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           margin-bottom: 3px;
         }
@@ -926,7 +926,7 @@
           margin: 0;
           color: var(--foreground-secondary);
           line-height: 1.72;
-          font-weight: 760;
+          font-weight: 700;
         }
 
         .detail-block ul {
@@ -1078,7 +1078,7 @@
           background: color-mix(in srgb, var(--accent) 8%, transparent);
           color: var(--primary-hover);
           padding: 0 9px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           overflow-wrap: anywhere;
         }
@@ -1114,7 +1114,7 @@
           background: color-mix(in srgb, var(--accent) 9%, transparent);
           color: var(--primary-hover);
           padding: 0 10px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
         }
 
@@ -1144,7 +1144,7 @@
           align-items: center;
           border-radius: var(--radius-pill);
           padding: 0 10px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
         }
 
@@ -1662,10 +1662,6 @@
             width: 100%;
             max-width: 100%;
             overflow-x: hidden;
-          }
-
-          .financial-theories-shell .sfm-page-topbar {
-            display: none;
           }
 
           .learning-overview,

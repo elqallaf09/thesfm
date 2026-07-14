@@ -968,7 +968,7 @@ export function DebtStyles() {
         border-radius: var(--radius-pill);
         padding: 4px 9px;
         font-style: normal;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--accent);
         background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1249,7 +1249,7 @@ export function DebtStyles() {
         display: block;
         margin-top: 5px;
         color: var(--foreground-secondary);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         line-height: 1.6;
       }
@@ -1702,7 +1702,7 @@ export function DebtStyles() {
       .strategy-tag {
         border-radius: var(--radius-pill);
         padding: 4px 10px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         background: color-mix(in srgb, var(--foreground-muted) 12%, transparent);
         border: 1px solid color-mix(in srgb, var(--foreground-muted) 20%, transparent);
@@ -1746,7 +1746,7 @@ export function DebtStyles() {
       .strategy-stat small {
         display: block;
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
       }
 
@@ -1827,7 +1827,7 @@ export function DebtStyles() {
 
       .strategy-debt-detail small {
         color: var(--foreground-muted);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 500;
       }
 

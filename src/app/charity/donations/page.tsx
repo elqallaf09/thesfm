@@ -12,7 +12,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,7 +176,6 @@ export default function DonationsPage() {
           <header className={styles.donationHero}>
             <div className={styles.donationHeroTop}>
               <Link href="/charity" className={styles.backLink}><ArrowLeft aria-hidden="true" size={17} />{tr.backToCenter}</Link>
-              <LanguageSwitcher variant="dark" compact />
             </div>
             <div className={styles.donationHeaderCopy}>
               <span className={styles.eyebrow}>{tr.donationEyebrow}</span>
