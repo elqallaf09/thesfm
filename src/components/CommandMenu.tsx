@@ -69,23 +69,51 @@ function pageResults(items: NavigationItem[], t: (key: any) => string): CommandR
     }));
 }
 
-export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) {
+function isVisibleFocusTarget(element: HTMLElement | null): element is HTMLElement {
+  if (!element?.isConnected || element.closest('[inert], [aria-hidden="true"]')) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none'
+    && style.visibility !== 'hidden'
+    && element.getClientRects().length > 0;
+}
+
+export function CommandMenu({
+  defaultOpen = false,
+  initialFocusOrigin = null,
+}: {
+  defaultOpen?: boolean;
+  initialFocusOrigin?: HTMLElement | null;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const { t, dir } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
   const [dynamicResults, setDynamicResults] = useState<CommandResult[]>([]);
-  const focusOriginRef = useRef<HTMLElement | null>(null);
+  const focusOriginRef = useRef<HTMLElement | null>(initialFocusOrigin);
 
-  const changeOpen = useCallback((nextOpen: boolean) => {
+  const changeOpen = useCallback((nextOpen: boolean, requestedFocusOrigin?: HTMLElement | null) => {
     if (nextOpen && typeof document !== 'undefined') {
-      focusOriginRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      focusOriginRef.current = requestedFocusOrigin
+        ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     }
     setOpen(nextOpen);
     if (!nextOpen && typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => focusOriginRef.current?.focus());
+      window.requestAnimationFrame(() => {
+        const focusOrigin = focusOriginRef.current;
+        const fallback = [
+          document.querySelector<HTMLElement>('.sfm-global-menu-button'),
+          document.querySelector<HTMLElement>('.sfm-global-header .sfm-command-trigger'),
+          document.getElementById('main-content'),
+        ].find(isVisibleFocusTarget) ?? null;
+        const focusTarget = isVisibleFocusTarget(focusOrigin) ? focusOrigin : fallback;
+        focusTarget?.focus({ preventScroll: true });
+      });
     }
   }, []);
+
+  useEffect(() => {
+    if (initialFocusOrigin) focusOriginRef.current = initialFocusOrigin;
+  }, [initialFocusOrigin]);
 
   const staticResults = useMemo(() => pageResults([...flattenNavigationItems(), ...SUPPORT_LINKS], t), [t]);
 
@@ -180,7 +208,10 @@ export function CommandMenu({ defaultOpen = false }: { defaultOpen?: boolean }) 
         changeOpen(!open);
       }
     };
-    const onOpen = () => changeOpen(true);
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ focusOrigin?: HTMLElement | null }>).detail;
+      changeOpen(true, detail?.focusOrigin);
+    };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('sfm:open-command-menu', onOpen);
     return () => {

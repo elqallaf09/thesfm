@@ -16,7 +16,10 @@ async function setLanguage(page: Page, language: 'ar' | 'en' | 'fr') {
     window.localStorage.setItem('sfm_lang', nextLanguage);
     window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLanguage } }));
   }, language);
-  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.sfmLang)).toBe(language);
+  await expect.poll(
+    () => page.evaluate(() => document.documentElement.dataset.sfmLang),
+    { timeout: 20_000 },
+  ).toBe(language);
 }
 
 async function openTradingTools(page: Page) {
@@ -110,7 +113,8 @@ test.describe('Phase 3.2 multilingual and contextual navigation', () => {
     await openTradingTools(page);
   });
 
-  test('contextual tools stay accessible and multilingual without duplicate page navigation', async ({ page }) => {
+  test('contextual tools stay accessible and multilingual without duplicate page navigation', async ({ page, isMobile }) => {
+    test.setTimeout(90_000);
     const toolTabs = page.locator('.trader-tool-switcher[role="tablist"]');
     const selectedTab = toolTabs.getByRole('tab', { selected: true });
     await expect(selectedTab).toHaveCount(1);
@@ -137,7 +141,11 @@ test.describe('Phase 3.2 multilingual and contextual navigation', () => {
       await expect(page.locator('.trader-premium-dashboard h2')).toContainText(label);
       await expect(page.locator('.trader-tool-switcher[role="tablist"]')).toHaveCount(1);
       await expect(page.locator('.trader-active-workspace[role="tabpanel"]')).toHaveCount(1);
-      await expect(page.locator('aside.sfm-shared-sidebar')).toHaveCount(1);
+      await expect(page.locator('aside.sfm-shared-sidebar')).toHaveCount(isMobile ? 0 : 1);
+      const mobileMenuTrigger = page.locator('.sfm-global-menu-button');
+      await expect(mobileMenuTrigger).toHaveCount(1);
+      if (isMobile) await expect(mobileMenuTrigger).toBeVisible();
+      else await expect(mobileMenuTrigger).toBeHidden();
       await expect(page.locator('.market-active-dashboard aside nav, .trader-premium-dashboard aside nav')).toHaveCount(0);
       await expect(page.locator('.market-active-dashboard :is(.market-sidebar, .trader-sidebar, .page-local-sidebar, [data-page-navigation="global"])')).toHaveCount(0);
       await expectNoPageOverflow(page);

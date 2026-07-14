@@ -50,6 +50,25 @@ export function navigationGroupContainsId(
   return Boolean(itemId && group.items.some(item => navigationItemContainsId(item, itemId)));
 }
 
+/**
+ * Keeps secondary navigation groups user-collapsible without allowing the
+ * current route to become hidden. Non-collapsible groups always remain open;
+ * a selected descendant always reveals its group; otherwise an explicit user
+ * choice wins over the configured initial state.
+ */
+export function getNavigationGroupDisclosureState(
+  group: Pick<NavigationGroup, 'items' | 'collapsible' | 'defaultOpen'>,
+  selectedItemId: string | null,
+  manuallyExpanded?: boolean,
+) {
+  const active = navigationGroupContainsId(group, selectedItemId);
+  const expanded = !group.collapsible
+    || active
+    || (manuallyExpanded ?? Boolean(group.defaultOpen));
+
+  return { active, expanded };
+}
+
 export function getExpandableNavigationItemState(
   item: NavigationItem,
   selectedItemId: string | null,

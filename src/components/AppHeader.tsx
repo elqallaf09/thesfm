@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -27,10 +27,46 @@ export function AppHeader() {
   const { user } = useAuth();
   const { access: adminAccess } = useAdminAccess(user?.id);
   const [open, setOpen] = useState(false);
+  const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
   const [effectivePathname, setEffectivePathname] = useState(pathname);
+  const openingFrameRef = useRef<number | null>(null);
+  const closingTimerRef = useRef<number | null>(null);
+
+  const openMobileMenu = useCallback(() => {
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    setMobileMenuMounted(true);
+    openingFrameRef.current = window.requestAnimationFrame(() => {
+      openingFrameRef.current = window.requestAnimationFrame(() => setOpen(true));
+    });
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+    setOpen(false);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    closingTimerRef.current = window.setTimeout(
+      () => {
+        closingTimerRef.current = null;
+        setMobileMenuMounted(false);
+      },
+      reducedMotion ? 0 : 200,
+    );
+  }, []);
+
+  useEffect(() => () => {
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+  }, []);
 
   useEffect(() => {
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+    openingFrameRef.current = null;
+    closingTimerRef.current = null;
     setOpen(false);
+    setMobileMenuMounted(false);
     const nextPath = typeof window === 'undefined'
       ? null
       : new URLSearchParams(window.location.search).get('next');
@@ -81,14 +117,14 @@ export function AppHeader() {
             aria-label={t('nav_open_menu')}
             aria-expanded={open}
             aria-controls="sfm-mobile-menu"
-            onClick={() => setOpen(true)}
+            onClick={openMobileMenu}
           >
             <Menu size={22} aria-hidden="true" />
           </button>
         </div>
       </header>
 
-      {open && <MobileMenu open={open} onClose={() => setOpen(false)} />}
+      {mobileMenuMounted && <MobileMenu open={open} onClose={closeMobileMenu} />}
 
       <style jsx global>{`
         :root {

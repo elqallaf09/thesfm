@@ -63,7 +63,7 @@ describe('Phase 3.1 global-controls contract', () => {
     expect(renderCount(appHeader, 'UserChip')).toBe(1);
     expect(renderCount(mobileMenu, 'LanguageSwitcher')).toBe(1);
     expect(renderCount(mobileMenu, 'UserChip')).toBe(1);
-    expect(appHeader).toContain('{open && <MobileMenu open={open}');
+    expect(appHeader).toContain('{mobileMenuMounted && <MobileMenu open={open}');
 
     const userChipRenderers = [...appFiles, ...componentFiles]
       .filter(file => renderCount(read(file), 'UserChip') > 0);

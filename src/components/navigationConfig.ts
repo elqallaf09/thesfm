@@ -67,6 +67,7 @@ export type NavigationGroup = {
   id: string;
   labelKey: TranslationKey;
   defaultOpen?: boolean;
+  collapsible?: boolean;
   items: NavigationItem[];
   adminOnly?: boolean;
 };
@@ -132,13 +133,23 @@ export const NAV_GROUPS: NavigationGroup[] = [
     ],
   },
   {
-    id: 'stock-news',
-    labelKey: 'nav_stock_news_menu',
+    id: 'market-news',
+    labelKey: 'nav_group_market_news',
+    collapsible: true,
+    defaultOpen: true,
     items: [
       { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
       { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
       { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
       { id: 'crypto-news', icon: CircleDollarSign, href: '/crypto-news', labelKey: 'nav_crypto_news' },
+    ],
+  },
+  {
+    id: 'stock-categories',
+    labelKey: 'nav_group_stock_categories',
+    collapsible: true,
+    defaultOpen: false,
+    items: [
       { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks' },
       { id: 'banking-stocks', icon: Landmark, href: '/banking-stocks', labelKey: 'nav_banking_stocks' },
       { id: 'sharia-stocks', icon: ShieldCheck, href: '/sharia-stocks', labelKey: 'nav_sharia_stocks' },

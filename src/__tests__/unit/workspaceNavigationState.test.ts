@@ -10,6 +10,7 @@ import {
 import {
   findSelectedNavigationItemId,
   getExpandableNavigationItemState,
+  getNavigationGroupDisclosureState,
 } from '@/lib/navigation/workspaceNavigationState';
 
 describe('workspace navigation selection state', () => {
@@ -55,6 +56,60 @@ describe('workspace navigation selection state', () => {
     expect(getExpandableNavigationItemState(expenses!, null, true)).toEqual({
       selected: false,
       descendantSelected: false,
+      expanded: true,
+    });
+  });
+
+  it('keeps market-news and stock categories distinct and collapsible', () => {
+    const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
+    const stockCategories = NAV_GROUPS.find(group => group.id === 'stock-categories');
+
+    expect(NAV_GROUPS.some(group => group.id === 'stock-news')).toBe(false);
+    expect(marketNews).toMatchObject({
+      labelKey: 'nav_group_market_news',
+      collapsible: true,
+      defaultOpen: true,
+    });
+    expect(marketNews?.items.map(item => item.id)).toEqual([
+      'tech-news',
+      'europe-news',
+      'gulf-news',
+      'crypto-news',
+    ]);
+    expect(stockCategories).toMatchObject({
+      labelKey: 'nav_group_stock_categories',
+      collapsible: true,
+      defaultOpen: false,
+    });
+    expect(stockCategories?.items.map(item => item.id)).toEqual([
+      'energy-stocks',
+      'banking-stocks',
+      'sharia-stocks',
+      'growth-stocks',
+      'defensive-stocks',
+      'cyclical-stocks',
+      'dividend-stocks',
+    ]);
+  });
+
+  it('automatically reveals a collapsed group containing the active page', () => {
+    const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
+    const stockCategories = NAV_GROUPS.find(group => group.id === 'stock-categories');
+
+    expect(getNavigationGroupDisclosureState(marketNews!, 'tech-news')).toEqual({
+      active: true,
+      expanded: true,
+    });
+    expect(getNavigationGroupDisclosureState(stockCategories!, 'energy-stocks', false)).toEqual({
+      active: true,
+      expanded: true,
+    });
+    expect(getNavigationGroupDisclosureState(stockCategories!, null)).toEqual({
+      active: false,
+      expanded: false,
+    });
+    expect(getNavigationGroupDisclosureState(stockCategories!, null, true)).toEqual({
+      active: false,
       expanded: true,
     });
   });

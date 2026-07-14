@@ -68,7 +68,8 @@ describe('auth, legal, and global controls visual-system contract', () => {
 
     const commandMenu = read('src/components/CommandMenu.tsx');
     expect(commandMenu).toContain('focusOriginRef');
-    expect(commandMenu).toContain('focusOriginRef.current?.focus()');
+    expect(commandMenu).toContain('isVisibleFocusTarget(focusOrigin)');
+    expect(commandMenu).toContain('focusTarget?.focus({ preventScroll: true })');
 
     const currencySelect = read('src/components/CurrencySelect.tsx');
     expect(currencySelect).toContain('role="combobox"');

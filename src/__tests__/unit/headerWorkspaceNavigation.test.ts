@@ -66,7 +66,8 @@ describe('global header workspace navigation contract', () => {
     expect(mobile).toContain('onCloseRef.current()');
     expect(mobile).toContain("if (event.key !== 'Tab') return");
     expect(mobile).toContain("element.setAttribute('inert', '')");
-    expect(mobile).toContain("previouslyFocused.focus({ preventScroll: true })");
+    expect(mobile).toContain('isVisibleFocusable(previouslyFocused)');
+    expect(mobile).toContain('focusTarget?.focus({ preventScroll: true })');
     expect(mobile).toContain("aria-modal={open ? 'true' : undefined}");
   });
 });
