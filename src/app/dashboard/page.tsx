@@ -40,7 +40,9 @@ import { calculateGoalProgress } from '@/lib/goalProgress';
 import {
   buildLinePoints,
   buildMonthlyCashFlow,
+  buildMonthlyHealthSnapshot,
   calculateFinancialHealth,
+  calculateFinancialHealthIndicators,
   monthOverMonthChange,
   realizedExpenseRows,
   realizedIncomeRows,
@@ -643,16 +645,19 @@ export default function ExecutiveDashboardPage() {
       return debtStatus !== 'paid' && (remaining === null || remaining > 0);
     });
     const monthlyDebtPayments = sumAmounts(activeDebts, ['monthly_payment']);
-    const healthDetails = calculateFinancialHealth({
-      monthlyIncome: currentMonthIncome,
-      monthlyExpenses: currentMonthExpenses,
+    const healthMonth = buildMonthlyHealthSnapshot(records.income, records.expenses);
+    const healthInput = {
+      monthlyIncome: healthMonth.monthlyIncome,
+      monthlyExpenses: healthMonth.monthlyExpenses,
       savingsBalance: savingsTotal,
       monthlyDebtPayments,
-      hasIncomeData: monthIncomeRows.length > 0,
-      hasExpenseData: monthExpenseRows.length > 0,
+      hasIncomeData: healthMonth.hasIncomeData,
+      hasExpenseData: healthMonth.hasExpenseData,
       hasSavingsData: records.savings.length > 0,
       debtsLoaded: !errors.debts,
-    });
+    };
+    const healthScoreDetails = calculateFinancialHealth(healthInput);
+    const healthDetails = healthScoreDetails ?? calculateFinancialHealthIndicators(healthInput);
     const netBalance = incomeTotal - expenseTotal;
     const cashFlowSeries = buildMonthlyCashFlow(realizedIncome, realizedExpenses);
 
@@ -752,7 +757,7 @@ export default function ExecutiveDashboardPage() {
       highPriorityNotifications: highPriorityNotifications.length,
       dueTodayNotifications: dueTodayNotifications.length,
       topNotifications: activeNotifications.slice(0, 3),
-      healthScore: healthDetails?.score ?? null,
+      healthScore: healthScoreDetails?.score ?? null,
       healthDetails,
       monthlyDebtPayments,
       priorityItem: priorityItems[0] ?? null,
@@ -1057,7 +1062,7 @@ export default function ExecutiveDashboardPage() {
             <div className="reference-goal-list">
               {records.goals.slice(0, 2).map((goal, index) => {
                 const progress = Math.round((goalProgress(goal) ?? 0) * 100);
-                return <div key={firstText(goal, ['id'], `goal-${index}`)}><span><strong>{firstText(goal, ['name', 'title'], dashboardCopy.annualGoal)}</strong><small>{progress}%</small></span><div><i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div></div>;
+                return <div key={firstText(goal, ['id'], `goal-${index}`)}><span><strong>{firstText(goal, ['goal', 'name', 'title'], dashboardCopy.annualGoal)}</strong><small>{progress}%</small></span><div><i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div></div>;
               })}
               {records.goals.length === 0 ? <div className="reference-compact-empty">{text.noGoals}</div> : null}
             </div>

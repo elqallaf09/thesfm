@@ -22,9 +22,14 @@ describe('dashboard no-fabricated-data contract', () => {
   });
 
   it('shows a health result only from the audited financial-health calculation', () => {
-    expect(dashboard).toContain('calculateFinancialHealth({');
+    expect(dashboard).toContain('calculateFinancialHealth(healthInput)');
+    expect(dashboard).toContain('buildMonthlyHealthSnapshot(records.income, records.expenses)');
     expect(dashboard).toContain("debtsLoaded: !errors.debts");
     expect(dashboard).toContain("summary.healthScore ?? '—'");
     expect(dashboard).not.toMatch(/healthScore\s*=\s*healthInputsAvailable/);
+  });
+
+  it('uses the persisted legacy goal field in the dashboard goal card', () => {
+    expect(dashboard).toContain("['goal', 'name', 'title']");
   });
 });
