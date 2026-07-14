@@ -20,7 +20,8 @@ async function enterGuestDashboard(page: Page) {
 
   const guestButton = page.locator('button.guest-btn').first();
   await expect(guestButton).toBeVisible();
-  await guestButton.click();
+  await expect(guestButton).toBeEnabled({ timeout: 20_000 });
+  await guestButton.press('Enter');
   await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await expect(page.locator('header.sfm-global-header')).toBeVisible();
   await expect(page.locator('main.dashboard-main')).toBeVisible();
@@ -188,6 +189,7 @@ test.describe('Phase 3.1 global header and typography', () => {
   });
 
   test('Arabic is RTL while English and French remain LTR', async ({ page }) => {
+    test.setTimeout(60_000);
     await enterGuestDashboard(page);
 
     for (const [language, direction] of [

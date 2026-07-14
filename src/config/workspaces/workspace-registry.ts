@@ -57,7 +57,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
       '/energy-stocks', '/banking-stocks', '/sharia-stocks', '/growth-stocks',
       '/defensive-stocks', '/cyclical-stocks', '/dividend-stocks',
     ],
-    navGroupIds: ['investment-market', 'stock-news'],
+    navGroupIds: ['investment-market', 'market-news', 'stock-categories'],
     access: { authenticationRequired: true, guestAllowed: true },
     enabled: true,
   },

@@ -9,8 +9,10 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { getThemeScope } from '@/lib/navigation/themeScopes';
 import { isPublicShellRoute } from '@/config/workspaces/workspace-resolver';
 import { resolveWorkspacePageContainerVariant } from '@/config/workspaces/workspace-page-layout';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function AppLayout({ children }: { children: ReactNode }) {
+  const isMobile = useIsMobile();
   const pathname = usePathname() || '/';
   // Single source of truth for chrome-free public pages (phase 3):
   // src/config/workspaces/workspace-resolver.ts.
@@ -30,9 +32,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="sfm-app-layout" data-workspace-shell="true">
       <AppHeader />
       <div className="sfm-app-shell-grid">
-        <div className="sfm-app-sidebar-slot" aria-hidden="false">
-          <Sidebar />
-        </div>
+        {!isMobile && (
+          <div className="sfm-app-sidebar-slot" aria-hidden="false">
+            <Sidebar />
+          </div>
+        )}
         <WorkspacePageContainer
           id="main-content"
           tabIndex={-1}
@@ -57,7 +61,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
           align-items: start;
           min-height: calc(100dvh - var(--global-header-height));
-          transition: grid-template-columns var(--duration-fast) ease-out;
+          transition: grid-template-columns var(--duration-fast) var(--ease);
         }
 
         .sfm-app-sidebar-slot {

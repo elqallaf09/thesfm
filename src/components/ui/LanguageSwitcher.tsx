@@ -412,6 +412,15 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
             height: 13px;
           }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .sfm-language-trigger,
+          .sfm-language-chevron,
+          .sfm-language-option,
+          .sfm-language-menu {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
       `}</style>
     </div>
   );

@@ -1,28 +1,69 @@
 'use client';
 
+import { forwardRef, type ButtonHTMLAttributes, type MouseEvent } from 'react';
 import { Search } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 
-export function openCommandMenu() {
+type CommandMenuOpenDetail = {
+  focusOrigin: HTMLElement | null;
+};
+
+export function openCommandMenu(focusOrigin?: HTMLElement | null) {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new Event('sfm:open-command-menu'));
+  const resolvedFocusOrigin = focusOrigin ?? (
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  );
+  window.dispatchEvent(new CustomEvent<CommandMenuOpenDetail>('sfm:open-command-menu', {
+    detail: { focusOrigin: resolvedFocusOrigin },
+  }));
 }
 
-export function CommandMenuButton({ compact = false, dark = false }: { compact?: boolean; dark?: boolean }) {
-  const { t, dir } = useLanguage();
+export interface CommandMenuButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+  compact?: boolean;
+  dark?: boolean;
+  onBeforeOpen?: () => void;
+  focusReturnTarget?: () => HTMLElement | null;
+}
 
-  return (
-    <button
-      type="button"
-      className={`sfm-command-trigger${compact ? ' compact' : ''}${dark ? ' dark' : ''}`}
-      onClick={openCommandMenu}
-      aria-label={t('command_open')}
-      dir={dir}
-    >
-      <Search size={compact ? 18 : 16} aria-hidden="true" />
-      {!compact && <span>{t('command_open')}</span>}
-      {!compact && <kbd>{t('command_shortcut')}</kbd>}
-      <style jsx>{`
+export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButtonProps>(
+  function CommandMenuButton(
+    {
+      compact = false,
+      dark = false,
+      onBeforeOpen,
+      focusReturnTarget,
+      onClick,
+      className,
+      ...buttonProps
+    },
+    ref,
+  ) {
+    const { t, dir } = useLanguage();
+
+    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+      onClick?.(event);
+      if (event.defaultPrevented) return;
+
+      const focusOrigin = focusReturnTarget?.()
+        ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      onBeforeOpen?.();
+      openCommandMenu(focusOrigin);
+    };
+
+    return (
+      <button
+        {...buttonProps}
+        ref={ref}
+        type="button"
+        className={`sfm-command-trigger${compact ? ' compact' : ''}${dark ? ' dark' : ''}${className ? ` ${className}` : ''}`}
+        onClick={handleClick}
+        aria-label={buttonProps['aria-label'] ?? t('command_open')}
+        dir={buttonProps.dir ?? dir}
+      >
+        <Search size={compact ? 18 : 16} aria-hidden="true" />
+        {!compact && <span>{t('command_open')}</span>}
+        {!compact && <kbd>{t('command_shortcut')}</kbd>}
+        <style jsx>{`
         .sfm-command-trigger {
           width: 100%;
           min-height: 44px;
@@ -39,7 +80,10 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
           font-weight: var(--type-navigation-weight);
           cursor: pointer;
           overflow: hidden;
-          transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+          transition:
+            background-color var(--duration-fast) var(--ease),
+            border-color var(--duration-fast) var(--ease),
+            color var(--duration-fast) var(--ease);
         }
         .sfm-command-trigger.compact {
           width: 44px;
@@ -87,7 +131,10 @@ export function CommandMenuButton({ compact = false, dark = false }: { compact?:
         @media(max-width:360px){.sfm-command-trigger kbd{display:none}}
         @media(prefers-reduced-motion:reduce){.sfm-command-trigger{transition:none}}
       `}</style>
-    </button>
-  );
-}
+      </button>
+    );
+  },
+);
+
+CommandMenuButton.displayName = 'CommandMenuButton';
 
