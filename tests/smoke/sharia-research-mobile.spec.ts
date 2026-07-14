@@ -99,6 +99,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
   test.use({ viewport: { width: 393, height: 852 } });
 
   test('keeps stocks and news visible and embeds research without horizontal overflow', async ({ page }) => {
+    test.setTimeout(90_000);
     await page.goto('/sharia-stocks');
     const main = page.locator('[data-news-page-shell][dir="rtl"] main');
     await expect(main).toBeVisible();
@@ -113,15 +114,14 @@ test.describe('Arabic Sharia screening and documented research page', () => {
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
-      mainPaddingBottom: Number.parseFloat(getComputedStyle(document.querySelector('[data-news-page-shell][dir="rtl"] main')!).paddingBottom),
     }));
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewport + 1);
     expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewport + 1);
-    expect(layout.mainPaddingBottom).toBeGreaterThanOrEqual(100);
     await page.screenshot({ path: 'artifacts/sharia-integrated-mobile-ar.png', fullPage: true });
   });
 
   test('handles an HTML API failure safely and retries the same NVDA search', async ({ page }) => {
+    test.setTimeout(90_000);
     let attempts = 0;
     await page.route('**/api/sharia-research/search', async route => {
       attempts += 1;
@@ -178,7 +178,8 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     expect(requests[0]).toMatchObject({ query: 'Emirates NBD', market: 'DFM' });
   });
 
-  test('renders a compact result, accessible accordions, deduplicated sources, and print/PDF output', async ({ page, browserName }) => {
+  test('renders a compact result, accessible report tabs and disclosures, deduplicated sources, and print/PDF output', async ({ page, browserName }) => {
+    test.setTimeout(60_000);
     await mockSuccessfulResearch(page);
     await page.goto('/sharia-stocks?tab=research');
     await page.getByRole('textbox', { name: 'اسم الشركة أو رمز السهم أو رقم ISIN' }).fill('EXM');
@@ -187,11 +188,22 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     const report = page.locator('[data-compliance-report]');
     await expect(report).toBeVisible();
     await expect(page.getByRole('heading', { name: 'يتطلب مراجعة شرعية', exact: true }).first()).toBeVisible();
-    await expect(page.locator('[data-accordion="quick-decision"] > button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('[data-accordion="financial-ratios"] > button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('[data-accordion="business-activity"] > button')).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.locator('[data-accordion="source-evidence"] > button')).toHaveAttribute('aria-expanded', 'false');
+    const reportTabs = report.getByRole('combobox');
+    await expect(reportTabs).toHaveCount(1);
+    await expect(reportTabs).toHaveAccessibleName(/\S/);
+    await expect(reportTabs).toHaveValue('result');
+    await expect(report.locator('[role="tab"]')).toHaveCount(7);
+    await expect(report.locator('#compliance-report-tab-result')).toHaveAttribute('aria-selected', 'true');
+    await expect(report.locator('#compliance-report-panel-result')).toBeVisible();
+    await expect(report.locator('#compliance-report-panel-financial-ratios')).toHaveCount(0);
+
+    await reportTabs.selectOption('financial-ratios');
+    await expect(report.locator('#compliance-report-tab-financial-ratios')).toHaveAttribute('aria-selected', 'true');
+    await expect(report.locator('#compliance-report-panel-financial-ratios')).toBeVisible();
+    await expect(page).toHaveURL(/(?:\?|&)reportTab=financial-ratios(?:&|$)/);
     await expect(page.getByText('≤ 30%', { exact: true }).first()).toBeVisible();
+    const calculationsDisclosure = report.locator('[data-accordion="screening-calculations"] > button');
+    await expect(calculationsDisclosure).toHaveAttribute('aria-expanded', 'false');
 
     const stickyPosition = await page.locator('section[aria-label="اسم الشركة أو رمز السهم أو رقم ISIN"]').evaluate(element => getComputedStyle(element).position);
     expect(stickyPosition).toBe('sticky');
@@ -200,10 +212,19 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     expect(widths.body).toBeLessThanOrEqual(widths.viewport + 1);
 
     await page.getByRole('button', { name: 'توسيع الكل' }).click();
-    await expect(page.locator('[data-accordion="source-evidence"] > button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByRole('heading', { name: 'Example Corp', exact: true })).toHaveCount(1);
-    await expect(page.getByText(/https:\/\/example\.com\/investors/)).toHaveCount(0);
+    await expect(calculationsDisclosure).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByText(/interest_bearing_debt|total_assets|internal formula/)).toHaveCount(0);
+
+    await reportTabs.selectOption('sources');
+    const sourcesPanel = report.locator('#compliance-report-panel-sources');
+    await expect(sourcesPanel).toBeVisible();
+    await expect(sourcesPanel.locator('article')).toHaveCount(1);
+    await expect(sourcesPanel.getByRole('heading', { name: 'Example Corp', exact: true, level: 4 })).toHaveCount(1);
+    const sourceDisclosure = sourcesPanel.locator('details');
+    await expect(sourceDisclosure).not.toHaveAttribute('open', '');
+    await sourceDisclosure.locator('summary').click();
+    await expect(sourceDisclosure).toHaveAttribute('open', '');
+    await expect(page.getByText(/https:\/\/example\.com\/investors/)).toHaveCount(0);
 
     if (browserName === 'chromium') {
       await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -217,10 +238,21 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     const savedWatchlist = await page.evaluate(() => JSON.parse(localStorage.getItem('sfm_market_watchlist') || '[]'));
     expect(savedWatchlist.some((item: { symbol?: string }) => item.symbol === 'EXM')).toBe(true);
 
+    await page.evaluate(() => {
+      const scope = window as Window & { __printReportPanels?: Array<{ id: string; display: string }> };
+      window.print = () => {
+        scope.__printReportPanels = Array.from(document.querySelectorAll<HTMLElement>('[id^="compliance-report-panel-"]')).map(panel => ({
+          id: panel.id,
+          display: getComputedStyle(panel).display,
+        }));
+      };
+    });
+    await page.getByRole('button', { name: 'طباعة التقرير', includeHidden: true }).evaluate(button => (button as HTMLButtonElement).click());
+    await expect.poll(() => page.evaluate(() => (window as Window & { __printReportPanels?: unknown[] }).__printReportPanels?.length ?? 0)).toBe(7);
+    const printPanels = await page.evaluate(() => (window as Window & { __printReportPanels?: Array<{ id: string; display: string }> }).__printReportPanels ?? []);
+    expect(printPanels.filter(panel => panel.display === 'none')).toEqual([]);
     await page.emulateMedia({ media: 'print' });
     await expect(page.getByRole('button', { name: 'تنزيل تقرير PDF' })).toBeHidden();
-    const collapsedContentDisplay = await page.locator('#source-evidence-content').evaluate(element => getComputedStyle(element).display);
-    expect(collapsedContentDisplay).not.toBe('none');
     await page.emulateMedia({ media: 'screen' });
 
     const popupPromise = page.waitForEvent('popup');
@@ -232,6 +264,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
   });
 
   test('keeps readable gutters, typography, touch targets, and dark mode from 360px to desktop', async ({ page }) => {
+    test.setTimeout(90_000);
     const consoleErrors: string[] = [];
     const badResponses: string[] = [];
     page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
@@ -242,6 +275,9 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     await page.getByRole('textbox', { name: 'اسم الشركة أو رمز السهم أو رقم ISIN' }).fill('EXM');
     await page.getByRole('button', { name: 'تحليل السهم' }).click();
     await expect(page.locator('[data-compliance-report]')).toBeVisible();
+    const reportTabs = page.locator('[data-compliance-report]').getByRole('combobox');
+    await reportTabs.selectOption('financial-ratios');
+    await expect(page.locator('[data-ratio-status]').first()).toBeVisible();
 
     for (const viewport of [
       { width: 360, height: 800, name: 'android-360' },

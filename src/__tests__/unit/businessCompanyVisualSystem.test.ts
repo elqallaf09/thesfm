@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
+const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8').replace(/\r\n?/g, '\n');
 
 const businessRoutes = {
   operations: read('src/app/business-operations/page.tsx'),

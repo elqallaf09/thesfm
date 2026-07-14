@@ -57,9 +57,16 @@ describe('production auth security contracts', () => {
 
   it('detects tampering in signed server MFA state', async () => {
     const signed = await signAuthPayload({ kind: 'email-proof', expiresAt: Math.floor(Date.now() / 1000) + 60 }, 'test-secret');
+    const [encodedPayload, encodedSignature] = signed.split('.');
+    const base64UrlAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const signatureLastIndex = base64UrlAlphabet.indexOf(encodedSignature.at(-1) ?? '');
+    const nonCanonicalSignature = `${encodedSignature.slice(0, -1)}${base64UrlAlphabet.charAt(signatureLastIndex + 1)}`;
+
     await expect(verifyAuthPayload(signed, 'test-secret')).resolves.toMatchObject({ kind: 'email-proof' });
-    const replacement = signed.startsWith('x') ? 'y' : 'x';
-    await expect(verifyAuthPayload(`${replacement}${signed.slice(1)}`, 'test-secret')).resolves.toBeNull();
+    await expect(verifyAuthPayload(`A${encodedPayload.slice(1)}.${encodedSignature}`, 'test-secret')).resolves.toBeNull();
+    expect(signatureLastIndex).toBeGreaterThanOrEqual(0);
+    expect(signatureLastIndex % 4).toBe(0);
+    await expect(verifyAuthPayload(`${encodedPayload}.${nonCanonicalSignature}`, 'test-secret')).resolves.toBeNull();
   });
 
   it('classifies sensitive APIs without redirecting all public APIs', () => {

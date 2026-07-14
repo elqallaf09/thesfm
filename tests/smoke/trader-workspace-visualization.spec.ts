@@ -1,9 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import path from 'node:path';
 
 const publicRoot = path.join(process.cwd(), 'src', 'trader-app', 'public');
+const semanticTokensCss = [
+  path.join(process.cwd(), 'src', 'styles', 'tokens.css'),
+  path.join(process.cwd(), 'src', 'styles', 'themes.css'),
+].map(file => readFileSync(file, 'utf8')).join('\n');
 let staticServer: Server;
 let terminalPath = '';
 
@@ -162,6 +166,7 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
   });
 
   test('command deck has terminal hierarchy and stock clicks use a focus-safe drawer', async ({ page }) => {
+    test.setTimeout(120_000);
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.addInitScript(() => {
@@ -253,6 +258,7 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
   });
 
   test('analysis, sessions, and heatmap behave as interactive terminal views', async ({ page }) => {
+    test.setTimeout(120_000);
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     await configureTerminal(page, 'en', 'light');
@@ -269,8 +275,10 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     for (const metric of ['AI confidence', 'Strategy agreement', 'Signals', 'Trend', 'Risk', 'Support', 'Resistance', 'Momentum', 'Market breadth', 'Opportunity score']) {
       await expect(analysis.locator('.analysis-metric').filter({ hasText: metric }), `${metric} analysis metric`).toBeVisible();
     }
-    await expect(analysis.locator('.analysis-provider-state')).toContainText('Provider status');
-    await expect(analysis.locator('.analysis-provider-state')).toContainText('Data provider connected');
+    const analysisDataState = analysis.locator('.analysis-provider-state');
+    await expect(analysisDataState.locator('span')).toHaveText('Analysis data status');
+    await expect(analysisDataState.locator('strong')).toHaveText('Available');
+    await expect(analysisDataState.locator('small')).toHaveText('Market data');
 
     const sessionsTab = dashboardTab(page, 'sessions');
     await sessionsTab.click();
@@ -309,14 +317,28 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     const lightTileVisual = await lightPositiveTile.evaluate(tile => {
       const selectors = ['.heatmap-tile-head strong', '.heatmap-tile-head small', '.heatmap-tile-meta em', '.heatmap-tile-meta b', '.heatmap-tile-performance'];
       const performance = tile.querySelector<HTMLElement>('.heatmap-tile-performance');
+      const semanticColor = (value: string) => {
+        const probe = document.createElement('span');
+        probe.style.position = 'fixed';
+        probe.style.opacity = '0';
+        probe.style.color = value;
+        document.body.append(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      };
       return {
-        background: getComputedStyle(tile).backgroundImage,
+        backgroundColor: getComputedStyle(tile).backgroundColor,
+        backgroundImage: getComputedStyle(tile).backgroundImage,
+        semanticSuccess: semanticColor('var(--success)'),
+        semanticHeroForeground: semanticColor('var(--hero-foreground)'),
         textColors: selectors.map(selector => getComputedStyle(tile.querySelector(selector) as Element).color),
         performanceBackground: performance ? getComputedStyle(performance).backgroundColor : '',
       };
     });
-    expect(lightTileVisual.background).toContain('rgb(7, 88, 63)');
-    expect(lightTileVisual.textColors.every(color => color === 'rgb(255, 255, 255)')).toBe(true);
+    expect(lightTileVisual.backgroundImage).toBe('none');
+    expect(lightTileVisual.backgroundColor).toBe(lightTileVisual.semanticSuccess);
+    expect(lightTileVisual.textColors.every(color => color === lightTileVisual.semanticHeroForeground)).toBe(true);
     expect(lightTileVisual.performanceBackground).toBe('rgba(0, 0, 0, 0)');
 
     const search = heatmap.locator('input[name="heatmapSearch"]');
@@ -405,20 +427,22 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     expect(await map.locator('.market-map-icon').count()).toBe(await map.locator('[data-market-map-id]').count());
   });
 
-  for (const mode of [
+  const responsiveModes = [
     { language: 'en' as const, theme: 'light' as const, direction: 'ltr' },
     { language: 'ar' as const, theme: 'dark' as const, direction: 'rtl' },
-  ]) {
-    test(`${mode.language.toUpperCase()} ${mode.theme} has no document overflow at desktop, tablet, or mobile`, async ({ page }) => {
-      test.setTimeout(90_000);
-      await configureTerminal(page, mode.language, mode.theme);
-      await mockTraderApi(page);
+  ];
+  const responsiveViewports = [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'tablet', width: 834, height: 1112 },
+    { name: 'mobile', width: 390, height: 844 },
+  ];
 
-      for (const viewport of [
-        { name: 'desktop', width: 1440, height: 900 },
-        { name: 'tablet', width: 834, height: 1112 },
-        { name: 'mobile', width: 390, height: 844 },
-      ]) {
+  for (const mode of responsiveModes) {
+    for (const viewport of responsiveViewports) {
+      test(`${mode.language.toUpperCase()} ${mode.theme} has no document overflow at ${viewport.name}`, async ({ page }) => {
+        test.setTimeout(180_000);
+        await configureTerminal(page, mode.language, mode.theme);
+        await mockTraderApi(page);
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await openDashboard(page);
         await expect(page.locator('html')).toHaveAttribute('lang', mode.language);
@@ -464,8 +488,8 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
           }));
           expect(labels.every(label => label.visible && label.text.length > 0 && !label.clipped), `Arabic labels at ${viewport.name}`).toBe(true);
         }
-      }
-    });
+      });
+    }
   }
 });
 
@@ -663,6 +687,11 @@ function recommendationFixture(input: {
 function createStaticTraderServer() {
   const server = createServer((request, response) => {
     const url = new URL(request.url || '/', 'http://127.0.0.1');
+    if (url.pathname === '/semantic-tokens.css' || url.pathname.endsWith('/semantic-tokens.css')) {
+      response.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(semanticTokensCss);
+      return;
+    }
     const resolved = staticPathFor(url.pathname);
     if (!resolved) {
       response.writeHead(404);

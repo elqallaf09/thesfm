@@ -25,10 +25,15 @@ function resetOrigin(request: NextRequest) {
     }
   }
   if (process.env.NODE_ENV === 'production') return 'https://www.the-sfm.com';
-  // In development, NextRequest already exposes the active dev-server origin.
-  // Production never reaches this branch, so caller-controlled hosts cannot
-  // influence recovery links sent by the deployed application.
-  return request.nextUrl.origin;
+  const requestOrigin = request.nextUrl.origin;
+  try {
+    const parsed = new URL(requestOrigin);
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return parsed.origin;
+  } catch {}
+  // Unexpected dev origin: fall back to the canonical trusted origin rather
+  // than any caller-influenced value (and never a hardcoded localhost URL —
+  // the production-endpoint guard rejects those in production paths).
+  return 'https://www.the-sfm.com';
 }
 
 export async function POST(request: NextRequest) {

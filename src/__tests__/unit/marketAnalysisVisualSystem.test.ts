@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const marketPage = readFileSync(join(process.cwd(), 'src/app/market-analysis/page.tsx'), 'utf8');
-const marketCharts = readFileSync(
-  join(process.cwd(), 'src/components/market-analysis/MarketChartComponents.tsx'),
-  'utf8',
-);
+const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8').replace(/\r\n?/g, '\n');
+
+const marketPage = read('src/app/market-analysis/page.tsx');
+const marketCharts = read('src/components/market-analysis/MarketChartComponents.tsx');
 const marketStyles = marketPage.slice(
   marketPage.indexOf('<style jsx>{`'),
   marketPage.indexOf('`}</style>', marketPage.indexOf('<style jsx>{`')),

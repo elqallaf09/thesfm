@@ -1,9 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
+import { adminAuthStatePath, userAuthStatePath } from './auth-state';
 
-const userEmail = process.env.E2E_USER_EMAIL;
-const userPassword = process.env.E2E_USER_PASSWORD;
-const adminEmail = process.env.E2E_ADMIN_EMAIL;
-const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
+const adminAuthConfigured = Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
+
+// Credentialed auth responses and prefilled identifiers can enter Playwright
+// traces/screenshots. Keep this file artifact-free while preserving every
+// assertion; the remaining smoke files still retain failure diagnostics.
+test.use({ trace: 'off', screenshot: 'off' });
 
 async function expectUsablePage(page: Page, path: string) {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
@@ -20,20 +24,6 @@ async function expectNoHorizontalOverflow(page: Page) {
   })).toBeLessThanOrEqual(4);
 }
 
-async function signIn(page: Page, email: string, password: string) {
-  await expectUsablePage(page, '/login');
-  const loginInput = page
-    .locator('input[type="email"], input[autocomplete="username"], input[name="email"], input[name="username"]')
-    .first();
-  const passwordInput = page.locator('input[type="password"]').first();
-  await expect(loginInput).toBeVisible();
-  await expect(passwordInput).toBeVisible();
-  await loginInput.fill(email);
-  await passwordInput.fill(password);
-  await page.locator('button[type="submit"]').first().click();
-  await page.waitForLoadState('domcontentloaded');
-}
-
 async function setLanguage(page: Page, lang: 'ar' | 'en') {
   await page.evaluate(nextLang => {
     window.localStorage.setItem('sfm_lang', nextLang);
@@ -42,15 +32,11 @@ async function setLanguage(page: Page, lang: 'ar' | 'en') {
 }
 
 test.describe('launch smoke coverage', () => {
-  test('login/auth page renders and supports credential smoke when configured', async ({ page }) => {
-    if (userEmail && userPassword) {
-      await signIn(page, userEmail, userPassword);
-      await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-    } else {
-      await expectUsablePage(page, '/login');
-      await expect(page.locator('input[type="password"]').first()).toBeVisible();
-      await expect(page.locator('button[type="submit"]').first()).toBeVisible();
-    }
+  test('login/auth page renders and is interactive after hydration', async ({ page }) => {
+    await expectUsablePage(page, '/login');
+    await expect(page.locator('input[autocomplete="username"]').first()).toBeVisible();
+    await expect(page.locator('input[type="password"]').first()).toBeVisible();
+    await expect(page.locator('button[type="submit"]').first()).toBeEnabled();
   });
 
   test('continue as guest works from the registration view', async ({ page }) => {
@@ -64,6 +50,9 @@ test.describe('launch smoke coverage', () => {
     await expect(guestButton).toBeVisible();
     await guestButton.click();
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
+    await expect(page.locator('main.dashboard-main')).toBeVisible();
+    await expect(page.locator('.sfm-user-chip').first()).toBeAttached();
+    await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
     await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('sfm_guest_mode'))).toBe('true');
     const cookie = await page.evaluate(() => document.cookie);
@@ -76,25 +65,63 @@ test.describe('launch smoke coverage', () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test('dashboard route loads or redirects safely', async ({ page }) => {
-    if (userEmail && userPassword) await signIn(page, userEmail, userPassword);
-    await expectUsablePage(page, '/dashboard');
+  test.describe('authenticated user routes', () => {
+    test.use({ storageState: userAuthStatePath });
+
+    test('dashboard route loads or redirects safely', async ({ page }) => {
+      await expectUsablePage(page, '/dashboard');
+      if (userAuthConfigured) {
+        await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+        await expect(page).toHaveURL(/\/(?:dashboard|setup)(?:\?|$)/);
+        if (new URL(page.url()).pathname === '/dashboard') {
+          await expect(page.locator('main.dashboard-main')).toBeVisible();
+        } else {
+          await expect(page.locator('.setup-page')).toBeVisible();
+        }
+      }
+    });
+
+    test('company submission flow route loads without server failure', async ({ page }) => {
+      await expectUsablePage(page, '/company-listing/submit');
+      if (userAuthConfigured) {
+        await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+        await expect(page.locator('.company-submit-shell')).toBeVisible();
+      }
+    });
   });
 
-  test('admin page access is gated and sidebar shell is available for admins', async ({ page }) => {
-    if (adminEmail && adminPassword) {
-      await signIn(page, adminEmail, adminPassword);
-      await expectUsablePage(page, '/sfm-admin-control');
-      await expect(page.locator('nav, aside').first()).toBeVisible();
-    } else {
-      await expectUsablePage(page, '/sfm-admin-control');
-      await expect(page).toHaveURL(/\/login|\/dashboard|\/sfm-admin-control/);
-    }
-  });
+  test.describe('authenticated admin routes', () => {
+    test.use({ storageState: adminAuthStatePath });
 
-  test('company submission flow route loads without server failure', async ({ page }) => {
-    if (userEmail && userPassword) await signIn(page, userEmail, userPassword);
-    await expectUsablePage(page, '/company-listing/submit');
+    test('admin page access is gated and responsive admin shell is available for admins', async ({ page, isMobile }) => {
+      await expectUsablePage(page, '/sfm-admin-control');
+      if (adminAuthConfigured) {
+        await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+        await expect(page.locator('main.admin-dashboard').first()).toBeVisible();
+        await expect(isMobile
+          ? page.locator('header.sfm-global-header')
+          : page.locator('aside.sfm-shared-sidebar')).toBeVisible();
+      } else {
+        await expect(page).toHaveURL(/\/login|\/dashboard|\/sfm-admin-control/);
+      }
+    });
+
+    test('smart trading terminal access route loads or redirects safely', async ({ page }) => {
+      const response = await page.goto('/thesfm-trader-own', { waitUntil: 'domcontentloaded' });
+      expect(response?.status() ?? 200).toBeLessThan(500);
+
+      if (adminAuthConfigured) {
+        await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+        const iframe = page.locator('iframe.trader-shell-frame[title="SFM Smart Analyzer"]');
+        await expect(iframe).toBeVisible();
+        await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
+        await expect(page.frameLocator('iframe.trader-shell-frame').locator('#app-shell')).toBeVisible();
+        await expectNoHorizontalOverflow(page);
+      } else {
+        await expect(page.locator('body')).toBeVisible();
+        await expect(page).toHaveURL(/\/login|\/thesfm-trader-own/);
+      }
+    });
   });
 
   test('Stripe checkout session route returns a safe API response', async ({ request }) => {
@@ -110,11 +137,6 @@ test.describe('launch smoke coverage', () => {
 
   test('market-analysis page loads', async ({ page }) => {
     await expectUsablePage(page, '/market-analysis');
-  });
-
-  test('smart trading terminal access route loads or redirects safely', async ({ page }) => {
-    if (adminEmail && adminPassword) await signIn(page, adminEmail, adminPassword);
-    await expectUsablePage(page, '/thesfm-trader-own');
   });
 
   test('Arabic RTL and English LTR basics are applied', async ({ page }) => {
