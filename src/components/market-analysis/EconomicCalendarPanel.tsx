@@ -592,7 +592,7 @@ export function EconomicCalendarPanel({
         </>
       )}
       <style jsx global>{`
-        .economic-calendar-dashboard{width:100%;max-width:1400px;margin-inline:auto;display:grid;gap:18px;overflow:hidden;border-radius:var(--radius-panel);font-family:var(--font-ui)}
+        .economic-calendar-dashboard{width:100%;max-width:none;margin-inline:0;display:grid;gap:18px;overflow:hidden;border-radius:var(--radius-panel);font-family:var(--font-ui)}
         .economic-calendar-dashboard-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
         .economic-calendar-head-icon{width:54px;height:54px;border-radius:var(--radius-panel);display:grid;place-items:center;background:var(--surface-muted);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);color:var(--primary-hover)}
         .economic-calendar-dashboard-head small{display:block;color:var(--primary-hover);font-size:12px;font-weight: 700;line-height:1.4}

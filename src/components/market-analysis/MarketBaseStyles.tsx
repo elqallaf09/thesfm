@@ -236,8 +236,8 @@ export function MarketBaseStyles() {
 
       .technical-analysis-panel {
         width: 100%;
-        max-width: 1400px !important;
-        margin-inline: auto;
+        max-width: none !important;
+        margin-inline: 0;
         gap: 18px !important;
         overflow: hidden;
       }

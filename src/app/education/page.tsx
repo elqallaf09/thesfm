@@ -17,15 +17,15 @@ export default function EducationPage() {
   return (
     <main className="edu-shell" dir={dir}>
       <section className="edu-page">
-        <header>
+        <header className="edu-header">
           <button onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '←' : '→'} {pick({ ar: 'الرئيسية', en: 'Home', fr: 'Accueil' })}</button>
         </header>
-        <section className="hero">
+        <section className="edu-hero">
           <GraduationCap size={42} />
           <h1>{pick({ ar: 'التعليم المالي', en: 'Financial education', fr: 'Formation financière' })}</h1>
           <p>{pick({ ar: 'اختر مسارًا تعليميًا لمراجعة المصروفات، الادخار، أو الاستثمار بتجربة متوافقة مع THE SFM.', en: 'Choose a learning path for expenses, savings, or investing in an experience designed for THE SFM.', fr: 'Choisissez un parcours sur les dépenses, l’épargne ou l’investissement dans une expérience conçue pour THE SFM.' })}</p>
         </section>
-        <section className="cards">
+        <section className="edu-cards">
           {cards.map(card => {
             const Icon = card.icon;
             return (
@@ -40,23 +40,23 @@ export default function EducationPage() {
       </section>
       <style>{`
         .edu-shell{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
-        .edu-page{max-width:var(--workspace-page-max-standard);margin:0 auto;padding:24px 20px 60px}
-        header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-        header button{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);padding:0 14px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
-        header button:hover{background:var(--surface-hover);border-color:var(--border-strong)}
-        header button:focus-visible,.cards button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
-        .hero{background:var(--hero-gradient);color:var(--hero-foreground);border-radius:var(--radius-panel);padding:32px;margin-bottom:18px;box-shadow:var(--shadow-card)}
-        .hero svg{color:var(--hero-foreground-muted)}
-        .hero h1{font-size:34px;font-weight:600;line-height:1.25;margin:12px 0 8px}
-        .hero p{margin:0;color:var(--hero-foreground-muted);line-height:1.8;max-width:620px}
-        .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-        .cards button{text-align:start;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;box-shadow:var(--shadow-card);cursor:pointer;color:var(--foreground);min-width:0;transition:background-color .18s ease,border-color .18s ease,transform .18s ease}
-        .cards button:hover{background:var(--surface-hover);border-color:var(--border-strong);transform:translateY(-1px)}
-        .cards svg{color:var(--primary);margin-bottom:12px}
-        .cards strong{display:block;font-size:17px;font-weight:600;line-height:1.5}
-        .cards span{display:block;margin-top:8px;color:var(--foreground-secondary);line-height:1.7;font-size:13px;overflow-wrap:anywhere}
-        @media(max-width:760px){.cards{grid-template-columns:1fr}.hero h1{font-size:28px}}
-        @media(prefers-reduced-motion:reduce){.cards button{transition:none}.cards button:hover{transform:none}}
+        .edu-page{width:100%;max-width:none;min-width:0;margin:0;padding-block-end:36px}
+        .edu-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .edu-header button{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);padding:0 14px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
+        .edu-header button:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+        .edu-header button:focus-visible,.edu-cards button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+        .edu-hero{background:var(--hero-gradient);color:var(--hero-foreground);border-radius:var(--radius-panel);padding:32px;margin-bottom:18px;box-shadow:var(--shadow-card)}
+        .edu-hero svg{color:var(--hero-foreground-muted)}
+        .edu-hero h1{font-size:34px;font-weight:600;line-height:1.25;margin:12px 0 8px}
+        .edu-hero p{margin:0;color:var(--hero-foreground-muted);line-height:1.8;max-width:620px}
+        .edu-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+        .edu-cards button{text-align:start;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;box-shadow:var(--shadow-card);cursor:pointer;color:var(--foreground);min-width:0;transition:background-color .18s ease,border-color .18s ease,transform .18s ease}
+        .edu-cards button:hover{background:var(--surface-hover);border-color:var(--border-strong);transform:translateY(-1px)}
+        .edu-cards svg{color:var(--primary);margin-bottom:12px}
+        .edu-cards strong{display:block;font-size:17px;font-weight:600;line-height:1.5}
+        .edu-cards span{display:block;margin-top:8px;color:var(--foreground-secondary);line-height:1.7;font-size:13px;overflow-wrap:anywhere}
+        @media(max-width:760px){.edu-cards{grid-template-columns:1fr}.edu-hero h1{font-size:28px}}
+        @media(prefers-reduced-motion:reduce){.edu-cards button{transition:none}.edu-cards button:hover{transform:none}}
       `}</style>
     </main>
   );

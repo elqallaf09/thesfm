@@ -31,12 +31,14 @@ describe('market trader tools visual system', () => {
 
   it('retains trader geometry, interactions, and responsive rules', () => {
     expect(traderStyles).toContain('.market-active-dashboard > .technical-dashboard');
-    expect(traderStyles).toContain('max-width: 1400px');
+    expect(traderStyles).toContain('max-width: none');
+    expect(traderStyles).not.toContain('max-width: 1400px');
     expect(traderStyles).toContain('.technical-dashboard .technical-search-apply:hover');
     expect(traderStyles).toContain('.trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"]');
-    expect(traderStyles).toContain('@media (max-width: 1180px)');
+    expect(traderStyles).toContain('@container trading-tools (max-width: 1180px)');
+    expect(traderStyles).toContain('@container trading-tools (max-width: 980px)');
     expect(traderStyles).toContain('@media (max-width: 780px)');
-    expect(traderStyles).toContain('@media (max-width: 720px)');
+    expect(traderStyles).toContain('@container trading-tools (max-width: 720px)');
     expect(traderStyles).toContain('@media (max-width: 460px)');
   });
 });

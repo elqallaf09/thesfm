@@ -221,7 +221,7 @@ export const TR_MARKET: Record<string, TranslationEntry> = {
   market_pip_value_warning_crypto: { ar:'تنبيه: العملات الرقمية تختلف في حجم النقطة وقيمة العقد بين المنصات. عدّل القيم بما يناسب شروط منصتك.', en:'Note: crypto point size and contract value differ between platforms. Adjust the values to match your platform terms.', fr:'Remarque : la taille du point et la valeur du contrat crypto diffèrent selon les plateformes. Ajustez les valeurs aux conditions de votre plateforme.' },
   market_title: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
   market_analysis_tab: { ar:'التحليل', en:'Analysis', fr:'Analyse' },
-  market_trader_tools: { ar:'أدوات المتداول', en:'Trader Tools', fr:'Outils du trader' },
+  market_trader_tools: { ar:'أدوات التداول', en:'Trading Tools', fr:'Outils de trading' },
   market_trader_tools_subtitle: { ar:'حاسبات وأدوات عملية للقرار قبل الصفقة', en:'Practical calculators and tools before a trade', fr:'Calculateurs et outils pratiques avant une transaction' },
   market_trading_calculators: { ar:'حاسبات التداول', en:'Trading calculators', fr:'Calculateurs de trading' },
   market_live_calculation_note: { ar:'تتحدث النتائج تلقائيًا عند تعديل المدخلات.', en:'Results update automatically as you edit the inputs.', fr:'Les résultats se mettent à jour automatiquement lorsque vous modifiez les champs.' },

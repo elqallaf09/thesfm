@@ -24,8 +24,9 @@ describe('administration analytics visual system', () => {
     expect(adminStyles).not.toMatch(/font(?:-weight|):\s*(?:[89]00|[7-9][5-9]0)/);
   });
 
-  it('retains the analytics geometry and responsive table behavior', () => {
-    expect(adminStyles).toContain('max-width:1500px');
+  it('lets the shared shell own page width while retaining responsive table behavior', () => {
+    expect(adminStyles).toContain('.admin-dashboard{width:100%;max-width:none;margin:0;padding:0');
+    expect(adminStyles).not.toContain('max-width:1500px');
     expect(adminStyles).toContain('table{width:100%;border-collapse:collapse;min-width:680px}');
     expect(adminStyles).toContain('@media(max-width:1200px)');
     expect(adminStyles).toContain('@media(max-width:1100px)');

@@ -20,9 +20,9 @@ export function MarketTraderStyles() {
 
       .market-active-dashboard > .technical-dashboard {
         width: 100%;
-        max-width: 1400px;
+        max-width: none;
         min-width: 0;
-        margin-inline: auto}
+        margin-inline: 0}
 
       .technical-dashboard {
         display: grid;
@@ -695,15 +695,15 @@ export function MarketTraderStyles() {
 
       .market-active-dashboard > .trader-premium-dashboard {
         width: 100%;
-        max-width: 1400px;
+        max-width: none;
         min-width: 0;
-        margin-inline: auto;
+        margin-inline: 0;
         justify-self: stretch;
         align-self: start}
 
       .trader-premium-dashboard {
         width: 100%;
-        max-width: 1400px;
+        max-width: none;
         min-width: 0;
         display: grid;
         gap: clamp(16px, 2vw, 22px);
@@ -767,10 +767,10 @@ export function MarketTraderStyles() {
         min-width: 0}
 
       .trader-premium-dashboard .trader-premium-layout {
-        direction: ltr;
+        direction: inherit;
         display: grid;
-        grid-template-columns: minmax(300px, .68fr) minmax(0, 1.32fr);
-        grid-template-areas: "support main";
+        grid-template-columns: minmax(0, 2.45fr) minmax(230px, .55fr);
+        grid-template-areas: "main support";
         gap: clamp(16px, 2vw, 22px);
         align-items: start}
 
@@ -900,8 +900,10 @@ export function MarketTraderStyles() {
         min-width: 0}
 
       .trader-premium-dashboard .trader-premium-panel-grid {
+        direction: inherit;
         display: grid;
-        grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr);
+        grid-template-columns: minmax(315px, .88fr) minmax(420px, 1.12fr);
+        grid-template-areas: "settings result";
         gap: clamp(14px, 1.6vw, 18px);
         align-items: start}
 
@@ -1013,15 +1015,11 @@ export function MarketTraderStyles() {
         unicode-bidi: isolate;
         overflow-wrap: anywhere}
 
-      @media (max-width: 1180px) {
+      @container trading-tools (max-width: 1180px) {
         .trader-premium-dashboard .trader-premium-layout {
-          direction: inherit;
           grid-template-columns: 1fr;
           grid-template-areas: "main"
             "support"}
-
-        .trader-premium-dashboard .trader-premium-panel-grid {
-          grid-template-columns: 1fr}
 
         .trader-premium-dashboard .trader-premium-main-head {
           grid-template-columns: auto minmax(0, 1fr)}
@@ -1032,7 +1030,14 @@ export function MarketTraderStyles() {
           min-width: 0}
       }
 
-      @media (max-width: 720px) {
+      @container trading-tools (max-width: 980px) {
+        .trader-premium-dashboard .trader-premium-panel-grid {
+          grid-template-columns: 1fr;
+          grid-template-areas: "settings"
+            "result"}
+      }
+
+      @container trading-tools (max-width: 720px) {
         .trader-premium-dashboard .trader-premium-header {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
@@ -1075,10 +1080,6 @@ export function MarketTraderStyles() {
           display: block}
       }
 
-      .trader-premium-dashboard .trader-premium-layout {
-        grid-template-columns: minmax(280px, .58fr) minmax(0, 1.42fr);
-        gap: clamp(14px, 1.6vw, 20px)}
-
       .trader-premium-dashboard .trader-premium-main-card,
       .trader-premium-dashboard .trader-support-column,
       .trader-premium-dashboard .trader-tool-card,
@@ -1119,10 +1120,6 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-active-workspace {
         padding: clamp(12px, 1.4vw, 16px);
         overflow: visible}
-
-      .trader-premium-dashboard .trader-premium-panel-grid {
-        grid-template-columns: minmax(0, 1.02fr) minmax(300px, .98fr);
-        gap: clamp(14px, 1.5vw, 18px)}
 
       .trader-premium-dashboard .trader-field-groups {
         display: grid;

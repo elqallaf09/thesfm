@@ -13,13 +13,26 @@ describe('workspace page layout policy', () => {
   it.each([
     ['/dashboard', 'full'],
     ['/market-analysis', 'full'],
+    ['/market-analysis?tab=traderTools', 'full'],
+    ['/market-analysis#trader-tools', 'full'],
+    ['/market-watchlist', 'full'],
+    ['/market-alerts', 'full'],
+    ['/watchlist', 'full'],
+    ['/alerts', 'full'],
     ['/sfm-admin-control/companies', 'full'],
     ['/thesfm-trader-own/market-analysis/us', 'full'],
     ['/business-operations', 'full'],
     ['/business/subscriptions/client-a', 'full'],
+    ['/business', 'full'],
+    ['/charity', 'full'],
+    ['/charity/donations', 'full'],
     ['/projects/project-a', 'full'],
     ['/projects/ad-calculator', 'standard'],
     ['/education/expenses', 'full'],
+    ['/expenses/add', 'standard'],
+    ['/income/add', 'standard'],
+    ['/invest/add', 'standard'],
+    ['/goals/add', 'standard'],
     ['/projects', 'wide'],
     ['/sharia-stocks', 'wide'],
     ['/banking-stocks', 'wide'],
@@ -38,7 +51,11 @@ describe('workspace page layout policy', () => {
     ['/education/investments', 'wide'],
     ['/education/savings', 'wide'],
     ['/site-map', 'wide'],
+    ['/services/investment-firms', 'wide'],
     ['/profile', 'standard'],
+    ['/mfa/verify', 'standard'],
+    ['/wakeel', 'standard'],
+    ['/guest', 'standard'],
     ['/company-listing/submit', 'standard'],
     ['/ebooks/candlestick-analysis', 'reading'],
   ])('assigns %s to the %s container', (pathname, expected) => {
@@ -46,11 +63,21 @@ describe('workspace page layout policy', () => {
   });
 
   it('uses a standard container for an unmapped authenticated route', () => {
-    expect(resolveWorkspacePageContainerVariant('/wakeel')).toBe('standard');
+    expect(resolveWorkspacePageContainerVariant('/future-workspace-route')).toBe('standard');
+  });
+
+  it('matches route segments without leaking prefixes into unrelated routes', () => {
+    expect(resolveWorkspacePageContainerVariant('/business-tools')).toBe('standard');
+    expect(resolveWorkspacePageContainerVariant('/ebookstore')).toBe('standard');
+    expect(resolveWorkspacePageContainerVariant('/projects/')).toBe('wide');
+    expect(resolveWorkspacePageContainerVariant('/projects/example')).toBe('full');
+    expect(resolveWorkspacePageContainerVariant('/projects/ad-calculator')).toBe('standard');
   });
 
   it('keeps every route rule on the shared variant contract', () => {
     expect(WORKSPACE_PAGE_LAYOUT_RULES.length).toBeGreaterThan(40);
+    expect(new Set(WORKSPACE_PAGE_LAYOUT_RULES.map(rule => rule.prefix)).size)
+      .toBe(WORKSPACE_PAGE_LAYOUT_RULES.length);
     expect(new Set(WORKSPACE_PAGE_LAYOUT_RULES.map(rule => rule.variant)))
       .toEqual(new Set(['full', 'wide', 'standard', 'reading']));
   });
