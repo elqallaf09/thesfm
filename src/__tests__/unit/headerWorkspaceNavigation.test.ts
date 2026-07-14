@@ -47,7 +47,7 @@ describe('global header workspace navigation contract', () => {
   it('keeps the required global controls in a predictable header order', () => {
     const brandIndex = header.indexOf('className="sfm-global-brand"');
     const workspaceIndex = header.indexOf('<WorkspaceSwitcher');
-    const searchIndex = header.indexOf('<CommandMenuButton />');
+    const searchIndex = header.indexOf("<CommandMenuButton aria-label={t('command_open')} />");
     const languageIndex = header.indexOf('<LanguageSwitcher');
     const themeIndex = header.indexOf('<ThemeToggle />');
     const notificationsIndex = header.indexOf('className="sfm-global-notifications"');

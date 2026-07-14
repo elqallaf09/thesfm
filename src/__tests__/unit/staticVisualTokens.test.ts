@@ -35,7 +35,7 @@ describe('static visual-token adapter', () => {
     for (const [name, value] of [
       ['surface', '#FFFFFF'],
       ['foregroundSecondary', '#334155'],
-      ['foregroundMuted', '#627287'],
+      ['foregroundMuted', '#5F6F84'],
       ['border', '#E2E8F0'],
       ['primary', '#1769D2'],
       ['primaryForeground', '#FFFFFF'],

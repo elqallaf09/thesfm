@@ -34,6 +34,7 @@ export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButton
       focusReturnTarget,
       onClick,
       className,
+      'aria-label': ariaLabel,
       ...buttonProps
     },
     ref,
@@ -57,12 +58,12 @@ export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButton
         type="button"
         className={`sfm-command-trigger${compact ? ' compact' : ''}${dark ? ' dark' : ''}${className ? ` ${className}` : ''}`}
         onClick={handleClick}
-        aria-label={buttonProps['aria-label'] ?? t('command_open')}
+        aria-label={ariaLabel ?? (compact ? t('command_open') : undefined)}
         dir={buttonProps.dir ?? dir}
       >
         <Search size={compact ? 18 : 16} aria-hidden="true" />
         {!compact && <span>{t('command_open')}</span>}
-        {!compact && <kbd>{t('command_shortcut')}</kbd>}
+        {!compact && <kbd aria-hidden="true">{t('command_shortcut')}</kbd>}
         <style jsx>{`
         .sfm-command-trigger {
           width: 100%;

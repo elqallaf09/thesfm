@@ -98,7 +98,7 @@ export function AppHeader() {
         <WorkspaceSwitcher adminAccess={adminAccess} className="sfm-global-workspaces" />
 
         <div className="sfm-global-actions">
-          <CommandMenuButton />
+          <CommandMenuButton aria-label={t('command_open')} />
           <LanguageSwitcher variant="light" compact />
           <ThemeToggle />
           <DensityToggle />

@@ -71,7 +71,7 @@ describe('standalone Trader visual-system contract', () => {
       'surface-muted': '#F8FAFC',
       foreground: '#0F2742',
       'foreground-secondary': '#334155',
-      'foreground-muted': '#627287',
+      'foreground-muted': '#5F6F84',
       border: '#E2E8F0',
       'border-strong': '#7C8A9E',
       primary: '#1769D2',
