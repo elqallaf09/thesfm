@@ -51,6 +51,13 @@ const CRYPTO_LOGO_SLUGS: Record<string, string> = {
   ADA: 'cardano/0133AD',
 };
 
+const VERIFIED_ASSET_LOGOS: Record<string, string> = {
+  AMD: 'https://cdn.simpleicons.org/amd',
+  NVDA: 'https://cdn.simpleicons.org/nvidia',
+  KFH: 'https://www.google.com/s2/favicons?domain_url=https://www.kfh.com&sz=128',
+  'KFH.KW': 'https://www.google.com/s2/favicons?domain_url=https://www.kfh.com&sz=128',
+};
+
 const CURRENCY_FLAGS: Record<string, string> = {
   AED: '🇦🇪',
   AUD: '🇦🇺',
@@ -105,6 +112,8 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
   if (explicitUrl) return explicitUrl;
 
   const symbol = normalizeSymbol(input.symbol);
+  const verifiedAssetLogo = VERIFIED_ASSET_LOGOS[symbol];
+  if (verifiedAssetLogo) return verifiedAssetLogo;
   const rawType = cleanText(input.assetType ?? input.market ?? input.exchange).toLowerCase();
   const compactCryptoSymbol = symbol.replace(/(?:-?USD|-?USDT)$/i, '');
   const cryptoSlug = CRYPTO_LOGO_SLUGS[compactCryptoSymbol];
