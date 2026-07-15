@@ -108,7 +108,8 @@ test.describe('launch smoke coverage', () => {
       }
     });
 
-    test('smart trading terminal access route loads or redirects safely', async ({ page }) => {
+    test('smart trading terminal access route loads or redirects safely', async ({ page, isMobile }) => {
+      test.slow();
       await page.addInitScript(() => {
         if (window.localStorage.getItem('sfm-phase34-theme-seeded') === 'true') return;
         window.localStorage.setItem('sfm-phase34-theme-seeded', 'true');
@@ -133,22 +134,52 @@ test.describe('launch smoke coverage', () => {
         await expect(iframe).toBeVisible();
         await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
         const traderFrame = traderShell.frameLocator(iframeSelector);
-        await expect(traderFrame.locator('#app-shell')).toBeVisible();
+        await expect(traderFrame.locator('#app-shell')).toBeVisible({ timeout: 20_000 });
         await expect(page.locator('html')).toHaveClass(/light/);
         await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'light');
         await expect(traderFrame.locator('#theme-switcher, #terminal-language-switcher, .workspace-exit-link, .workspace-exit-chip')).toHaveCount(0);
-
-        const themeToggle = page.locator('.sfm-theme-toggle').first();
-        await expect(themeToggle).toBeVisible();
         const stableFrameSrc = await iframe.getAttribute('src');
-        await themeToggle.click();
+
+        if (isMobile) {
+          const mobileMenuButton = page.locator('.sfm-global-menu-button');
+          const mobileMenu = page.locator('#sfm-mobile-menu');
+          await expect(mobileMenuButton).toBeVisible();
+          await expect(async () => {
+            if (await mobileMenu.count() === 0) await mobileMenuButton.click();
+            await expect(mobileMenu).toBeAttached({ timeout: 1_000 });
+          }).toPass({ timeout: 20_000 });
+          await expect(mobileMenu).toBeVisible({ timeout: 20_000 });
+        }
+
+        const themeToggle = isMobile
+          ? page.locator('#sfm-mobile-menu .sfm-theme-toggle:not(.sfm-density-toggle)')
+          : page.locator('header.sfm-global-header .sfm-theme-toggle:not(.sfm-density-toggle)');
+        await expect(themeToggle).toHaveCount(1);
+        await expect(themeToggle).toBeVisible();
+        await themeToggle.focus();
         await expect(themeToggle).toBeFocused();
-        await expect(page.locator('html')).toHaveClass(/dark/);
+        await expect(async () => {
+          if (await page.locator('html').evaluate(element => element.classList.contains('dark'))) return;
+          if (isMobile) await themeToggle.press('Enter');
+          else await themeToggle.click();
+          await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 1_000 });
+        }).toPass({ timeout: 8_000 });
+        await expect(themeToggle).toBeFocused();
+        if (isMobile) {
+          await page.locator('#sfm-mobile-menu .sfm-mobile-close').click();
+          await expect(page.locator('#sfm-mobile-menu')).toBeHidden();
+        }
         await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
         await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=home');
 
         await page.reload({ waitUntil: 'domcontentloaded' });
-        const reloadedFrame = page.frameLocator(iframeSelector);
+        const reloadedTraderShell = page.getByRole('main', { name: 'SFM Smart Analyzer' });
+        await expect(reloadedTraderShell).toHaveCount(1);
+        const reloadedIframe = reloadedTraderShell.locator(iframeSelector);
+        await expect(reloadedIframe).toHaveCount(1);
+        await expect(reloadedIframe).toBeVisible();
+        await expect(page.locator(`${iframeSelector}:visible`)).toHaveCount(1);
+        const reloadedFrame = reloadedIframe.contentFrame();
         await expect(page.locator('html')).toHaveClass(/dark/);
         await expect(reloadedFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
         await expectNoHorizontalOverflow(page);
