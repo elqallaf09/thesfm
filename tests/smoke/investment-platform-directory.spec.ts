@@ -68,7 +68,8 @@ test('purchase platform remains distinct, keyboard-selectable, persistent, and v
   await expect(details.getByText('XTB', { exact: true })).toBeVisible();
   await details.getByRole('button', { name: 'Close' }).click();
 
-  await restored.getByRole('button', { name: 'Edit' }).click();
+  await restored.getByRole('button', { name: 'More actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
   const editDialog = page.getByRole('dialog', { name: 'Edit Investment' });
   await expect(editDialog.getByText('XTB', { exact: true })).toBeVisible();
   await editDialog.getByRole('button', { name: 'Cancel' }).click();
