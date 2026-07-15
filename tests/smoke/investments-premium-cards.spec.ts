@@ -154,10 +154,12 @@ test('offline manual metal refresh recovers without issuing an upstream request'
   });
 
   await enterPremiumPortfolio(page, 390, { investments: [goldInvestment], lang: 'en' });
-  await page.context().setOffline(true);
   const card = page.locator('.invest-holding-card').first();
   await card.getByRole('button', { name: 'More actions' }).click();
-  await page.getByRole('menuitem', { name: 'Refresh price' }).click();
+  const refreshAction = page.getByRole('menuitem', { name: 'Refresh price' });
+  await expect(refreshAction).toBeVisible();
+  await page.context().setOffline(true);
+  await refreshAction.click();
   await expect(page.getByText('You are offline').last()).toBeVisible();
   expect(metalsRequests).toBe(0);
   await page.context().setOffline(false);
