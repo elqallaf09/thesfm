@@ -114,6 +114,7 @@
   --control-h: 44px;
   --control-h-lg: 48px;
   --sidebar-w: 240px;
+  --sidebar-w-collapsed: 72px;
   --sidebar-width-icon: 3rem;
   --topbar-h: 64px;
   --global-header-height: 64px;
@@ -154,4 +155,9 @@
   --duration: 200ms;
   --duration-slow: 280ms;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Sidebar glass geometry and motion; theme-specific colour lives in themes.css. */
+  --sidebar-glass-filter: blur(20px) saturate(125%);
+  --sidebar-mobile-glass-filter: blur(14px) saturate(118%);
+  --sidebar-item-hover-lift: -1px;
 }
