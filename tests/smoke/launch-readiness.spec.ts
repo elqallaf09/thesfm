@@ -50,7 +50,7 @@ test.describe('launch smoke coverage', () => {
     await expect(guestButton).toBeVisible();
     await guestButton.click();
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
-    await expect(page.locator('main.dashboard-main')).toBeVisible();
+    await expect(page.locator('main[data-dashboard-executive="true"]')).toBeVisible();
     await expect(page.locator('.sfm-user-chip').first()).toBeAttached();
     await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
@@ -74,7 +74,7 @@ test.describe('launch smoke coverage', () => {
         await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
         await expect(page).toHaveURL(/\/(?:dashboard|setup)(?:\?|$)/);
         if (new URL(page.url()).pathname === '/dashboard') {
-          await expect(page.locator('main.dashboard-main')).toBeVisible();
+          await expect(page.locator('main[data-dashboard-executive="true"]')).toBeVisible();
         } else {
           await expect(page.locator('.setup-page')).toBeVisible();
         }
