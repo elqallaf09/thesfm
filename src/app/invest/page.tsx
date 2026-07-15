@@ -296,6 +296,7 @@ export default function InvestPage() {
     details: t('invest_list_details'),
     expandDetails: t('invest_list_expand_details'),
     collapseDetails: t('invest_list_collapse_details'),
+    moreActions: L('المزيد من الإجراءات', 'More actions', 'Plus d’actions'),
     edit: t('invest_list_edit'),
     delete: t('invest_list_delete'),
     monthly: t('invest_form_monthly'),
@@ -320,6 +321,9 @@ export default function InvestPage() {
     currentPrice: t('invest_asset_currentPrice'),
     purchasePrice: L('سعر الشراء', 'Purchase price', 'Prix d’achat'),
     totalInvested: L('إجمالي الاستثمار', 'Total invested', 'Total investi'),
+    investedValue: L('القيمة المستثمرة', 'Invested value', 'Valeur investie'),
+    averageCost: L('متوسط التكلفة', 'Average cost', 'Coût moyen'),
+    todayChange: L('تغير اليوم', 'Today change', 'Variation du jour'),
     profitLoss: L('الربح / الخسارة', 'Profit / loss', 'Profit / perte'),
     profitLossPercent: L('نسبة الربح / الخسارة', 'Profit / loss %', 'Profit / perte %'),
     priceStatus: L('حالة السعر', 'Price status', 'Statut du prix'),
@@ -349,6 +353,9 @@ export default function InvestPage() {
     brokerNotes: t('invest_card_broker_notes'),
     transactions: t('invest_card_transactions'),
     priceHistory: t('invest_card_price_history'),
+    historyLoading: L('جارٍ تحميل سجل السعر', 'Loading historical prices', 'Chargement de l’historique des prix'),
+    historyUnavailable: L('سجل السعر غير متاح من مزود البيانات', 'Historical prices are unavailable from the data provider', 'L’historique des prix est indisponible auprès du fournisseur'),
+    period30Days: L('30 يومًا', '30D', '30 j'),
     documents: t('invest_card_documents'),
     noData: t('invest_card_no_data'),
     lifetime: t('invest_card_lifetime'),
@@ -598,7 +605,7 @@ export default function InvestPage() {
   }, [L, currency, lang]);
   const accountCurrency = currency.toUpperCase();
   const accountValue = useCallback((item: Investment) => accountMarketValueOf(item, accountCurrency), [accountCurrency]);
-  const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null) => {
+  const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return labels.unavailable;
     const resolvedCurrency = resolveMarketCurrency({
       providerCurrency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
@@ -613,6 +620,9 @@ export default function InvestPage() {
         minimumFractionDigits: 0,
         maximumFractionDigits: Math.abs(amount) >= 1000 ? 2 : 4,
       });
+    }
+    if (!options?.unitPrice) {
+      return formatCurrency(amount, resolvedCurrency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
     }
     return formatMarketPrice({
       price: amount,
