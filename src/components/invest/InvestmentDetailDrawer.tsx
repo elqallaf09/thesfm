@@ -37,6 +37,10 @@ interface Props {
     profitLoss?: string;
     currentPriceUnavailable?: string;
     purchasePriceMissing?: string;
+    purchasePlatform?: string;
+    purchasePlatformPending?: string;
+    purchasePlatformNotSpecified?: string;
+    platformTypeLabels?: Record<string, string>;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -115,6 +119,9 @@ export function InvestmentDetailDrawer({
           <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`} />
           {linkedSymbol && <Info label={labels.symbol || t('invest_detail_symbol')} value={linkedSymbol} ltr />}
           {investment.market && <Info label={labels.market || t('invest_detail_market')} value={investment.market} />}
+          <Info label={labels.purchasePlatform || t('invest_platform_detail_label')} value={investment.purchasePlatformName || labels.purchasePlatformNotSpecified || t('invest_platform_not_specified')} />
+          {investment.purchasePlatformType && <Info label={t('invest_platform_type')} value={labels.platformTypeLabels?.[investment.purchasePlatformType] || investment.purchasePlatformType} />}
+          {investment.purchasePlatformStatus === 'pending' && <Info label={t('invest_platform_detail_label')} value={labels.purchasePlatformPending || t('invest_platform_pending')} />}
           {investment.type === 'project' && investment.projectId && <Info label={t('invest_detail_linked_project')} value={investment.projectName || investment.name} />}
           {!isMetal && metrics.quantity !== null && <Info label={quantityLabel(investment, labels, t)} value={formatPreciseNumber(metrics.quantity, lang)} ltr />}
           {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (

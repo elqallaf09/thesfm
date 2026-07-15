@@ -48,6 +48,12 @@ interface Props {
     unavailable?: string;
     approxUserCurrency?: string;
     currency?: string;
+    allPlatforms?: string;
+    purchasePlatform?: string;
+    purchasePlatformBadgeTitle?: string;
+    purchasePlatformPending?: string;
+    purchasePlatformNotSpecified?: string;
+    platformTypeLabels?: Record<string, string>;
   };
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;
@@ -85,9 +91,18 @@ export function InvestmentList({
 }: Props) {
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
+  const [filterPlatform, setFilterPlatform] = useState('all');
   const [sort, setSort] = useState<SortMode>('valueDesc');
 
   const total = useMemo(() => investments.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0), [accountValue, investments]);
+  const platformOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    investments.forEach(item => {
+      if (!item.purchasePlatformName) return;
+      options.set(platformKey(item), item.purchasePlatformName);
+    });
+    return Array.from(options.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [investments]);
   const filtered = useMemo(() => {
     const riskRank = { low: 0, medium: 1, high: 2 };
     let list = [...investments];
@@ -95,6 +110,7 @@ export function InvestmentList({
     const term = query.trim().toLowerCase();
     if (term) list = list.filter(item => item.name.toLowerCase().includes(term));
     if (filterType !== 'all') list = list.filter(item => item.type === filterType);
+    if (filterPlatform !== 'all') list = list.filter(item => platformKey(item) === filterPlatform);
 
     switch (sort) {
       case 'valueDesc':
@@ -115,7 +131,7 @@ export function InvestmentList({
     }
 
     return list;
-  }, [accountValue, filterType, investments, query, sort]);
+  }, [accountValue, filterPlatform, filterType, investments, query, sort]);
 
   return (
     <section className="invest-panel">
@@ -125,6 +141,10 @@ export function InvestmentList({
           <select value={filterType} onChange={event => setFilterType(event.target.value as 'all' | InvestmentType)}>
             <option value="all">{labels.allTypes}</option>
             {types.map(type => <option key={type} value={type}>{typeLabel(type)}</option>)}
+          </select>
+          <select value={filterPlatform} onChange={event => setFilterPlatform(event.target.value)} aria-label={labels.purchasePlatform}>
+            <option value="all">{labels.allPlatforms || 'All platforms'}</option>
+            {platformOptions.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
           </select>
           <select value={sort} onChange={event => setSort(event.target.value as SortMode)} aria-label={labels.sortBy}>
             <option value="valueDesc">{labels.valueDesc}</option>
@@ -170,4 +190,8 @@ export function InvestmentList({
       </div>
     </section>
   );
+}
+
+function platformKey(item: Investment) {
+  return item.purchasePlatformId || item.purchasePlatformName?.trim().toLocaleLowerCase('en-US') || '';
 }

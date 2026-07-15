@@ -363,6 +363,63 @@ export type Database = {
         }
         Relationships: []
       }
+      investment_platforms: {
+        Row: {
+          id: string
+          canonical_name: string
+          normalized_name: string
+          slug: string
+          platform_type: string
+          website_url: string | null
+          logo_url: string | null
+          country_code: string | null
+          aliases: string[]
+          status: string
+          is_seeded: boolean
+          created_by: string | null
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          canonical_name: string
+          normalized_name: string
+          slug: string
+          platform_type: string
+          website_url?: string | null
+          logo_url?: string | null
+          country_code?: string | null
+          aliases?: string[]
+          status?: string
+          is_seeded?: boolean
+          created_by?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          canonical_name?: string
+          normalized_name?: string
+          slug?: string
+          platform_type?: string
+          website_url?: string | null
+          logo_url?: string | null
+          country_code?: string | null
+          aliases?: string[]
+          status?: string
+          is_seeded?: boolean
+          created_by?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       investment_items: {
         Row: {
           id: string
@@ -430,6 +487,9 @@ export type Database = {
           expected_monthly_income: number | null
           expected_monthly_expense: number | null
           investment_snapshot: Json | null
+          purchase_platform_id: string | null
+          purchase_platform_name: string | null
+          purchase_platform_type: string | null
         }
         Insert: {
           id?: string
@@ -497,6 +557,9 @@ export type Database = {
           expected_monthly_income?: number | null
           expected_monthly_expense?: number | null
           investment_snapshot?: Json | null
+          purchase_platform_id?: string | null
+          purchase_platform_name?: string | null
+          purchase_platform_type?: string | null
         }
         Update: {
           id?: string
@@ -564,8 +627,18 @@ export type Database = {
           expected_monthly_income?: number | null
           expected_monthly_expense?: number | null
           investment_snapshot?: Json | null
+          purchase_platform_id?: string | null
+          purchase_platform_name?: string | null
+          purchase_platform_type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "investment_items_purchase_platform_id_fkey"
+            columns: ["purchase_platform_id"]
+            isOneToOne: false
+            referencedRelation: "investment_platforms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "investment_items_project_id_fkey"
             columns: ["project_id"]
@@ -1954,6 +2027,18 @@ export type Database = {
         Relationships: []
       }
     Functions: {
+      merge_investment_platforms: {
+        Args: {
+          source_platform_id: string
+          target_platform_id: string
+          actor_user_id: string
+        }
+        Returns: undefined
+      }
+      normalize_investment_platform_name: {
+        Args: { value: string }
+        Returns: string
+      }
       make_unique_username: {
         Args: { base_username: string }
         Returns: string

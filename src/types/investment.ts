@@ -1,3 +1,5 @@
+import type { InvestmentPlatformStatus, InvestmentPlatformType } from './investmentPlatform';
+
 export type InvestmentType =
   | 'stocks'
   | 'realEstate'
@@ -68,6 +70,10 @@ export interface Investment {
   grams?: number;
   pureMetalGrams?: number;
   priceSource?: string;
+  purchasePlatformId?: string;
+  purchasePlatformName?: string;
+  purchasePlatformType?: InvestmentPlatformType;
+  purchasePlatformStatus?: InvestmentPlatformStatus | 'local';
   createdAt: string;
   updatedAt: string;
 }

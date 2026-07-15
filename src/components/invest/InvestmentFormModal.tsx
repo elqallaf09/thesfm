@@ -16,11 +16,13 @@ import {
   X,
 } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { InvestmentPlatformSelector } from '@/components/invest/InvestmentPlatformSelector';
 import { currencyDisplayName, getCurrency, getCurrencyOptions, type CurrencyLocale } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
 import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
+import type { InvestmentPlatformSelection, InvestmentPlatformType } from '@/types/investmentPlatform';
 
 type Mode = 'create' | 'edit';
 type SearchState = 'idle' | 'loading' | 'ready' | 'error';
@@ -198,6 +200,32 @@ interface Props {
     goldUnits: Record<string, string>;
     silverUnits: Record<string, string>;
     propertyTypes: Record<string, string>;
+    platform: {
+      sectionTitle: string;
+      contextual: Record<InvestmentType, string>;
+      optional: string;
+      type: string;
+      allTypes: string;
+      search: string;
+      noResults: string;
+      loadFailed: string;
+      addNew: string;
+      addTitle: string;
+      name: string;
+      website: string;
+      websiteOptional: string;
+      add: string;
+      adding: string;
+      cancel: string;
+      clear: string;
+      selected: string;
+      pending: string;
+      localOnly: string;
+      notSpecified: string;
+      submissionFailed: string;
+      validationInvalid: string;
+      typeLabels: Record<InvestmentPlatformType, string>;
+    };
     errors: {
       nameRequired: string;
       valuePositive: string;
@@ -222,6 +250,8 @@ interface Props {
   riskLabel: (risk: RiskLevel) => string;
   initialValues?: Investment | null;
   saving: boolean;
+  authToken?: string | null;
+  isGuest?: boolean;
   onClose: () => void;
   onSave: (data: InvestmentInput, options?: { addAnother?: boolean }) => Promise<void> | void;
 }
@@ -404,6 +434,8 @@ export function InvestmentFormModal({
   riskLabel,
   initialValues,
   saving,
+  authToken,
+  isGuest = false,
   onClose,
   onSave,
 }: Props) {
@@ -447,6 +479,7 @@ export function InvestmentFormModal({
   });
   const [fx, setFx] = useState<FxState>({ state: 'idle', from: '', to: '', rate: null });
   const [fxReloadKey, setFxReloadKey] = useState(0);
+  const [purchasePlatform, setPurchasePlatform] = useState<InvestmentPlatformSelection | null>(null);
 
   const formCurrency = normalizedCurrency(investmentCurrency, accountCurrency);
   const currencyOptions = useMemo(() => {
@@ -613,6 +646,7 @@ export function InvestmentFormModal({
     setSearchResults([]);
     setSearchState('idle');
     setSearchMessage(null);
+    setPurchasePlatform(null);
   }, [accountCurrency]);
 
   useEffect(() => {
@@ -663,6 +697,12 @@ export function InvestmentFormModal({
       setMetalGrams(toInputNumber(initialValues.grams && initialValues.quantity ? initialValues.grams / initialValues.quantity : initialValues.grams, 10));
       setSelectedAsset(initialAsset);
       setSelectedExchange(normalizeMarketExchange(initialValues.market) ?? '');
+      setPurchasePlatform(initialValues.purchasePlatformName && initialValues.purchasePlatformType ? {
+        id: initialValues.purchasePlatformId,
+        name: initialValues.purchasePlatformName,
+        type: initialValues.purchasePlatformType,
+        status: initialValues.purchasePlatformStatus ?? (initialValues.purchasePlatformId ? 'approved' : 'local'),
+      } : null);
       return;
     }
 
@@ -1064,6 +1104,10 @@ export function InvestmentFormModal({
       grams: metalTotalGrams ?? undefined,
       pureMetalGrams: metalTotalGrams ?? undefined,
       priceSource,
+      purchasePlatformId: purchasePlatform?.id,
+      purchasePlatformName: purchasePlatform?.name,
+      purchasePlatformType: purchasePlatform?.type,
+      purchasePlatformStatus: purchasePlatform?.status,
     };
 
     await onSave(input, { addAnother });
@@ -1289,6 +1333,15 @@ export function InvestmentFormModal({
               ))}
             </select>
           </Field>
+
+          <InvestmentPlatformSelector
+            investmentType={type}
+            labels={labels.platform}
+            value={purchasePlatform}
+            onChange={setPurchasePlatform}
+            authToken={authToken}
+            isGuest={isGuest}
+          />
 
           <FormSection title={labels.sectionQuantityCost} icon={<Coins size={17} />} />
 
