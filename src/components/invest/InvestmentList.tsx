@@ -1,15 +1,14 @@
 'use client';
 
 import { RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Investment, InvestmentType } from '@/types/investment';
-import { InvestmentRow, type InvestmentPriceRefreshStatus } from './InvestmentRow';
+import type { InvestmentPlatformDirectoryItem } from '@/types/investmentPlatform';
+import { InvestmentRow, type InvestmentCardLabels, type InvestmentPriceRefreshStatus } from './InvestmentRow';
 
 type SortMode = 'valueDesc' | 'valueAsc' | 'monthlyDesc' | 'riskDesc' | 'newest';
 
-interface Props {
-  investments: Investment[];
-  labels: {
+type ListLabels = InvestmentCardLabels & {
     search: string;
     allTypes: string;
     sortBy: string;
@@ -18,43 +17,15 @@ interface Props {
     monthlyDesc: string;
     riskDesc: string;
     newest: string;
-    details: string;
-    edit: string;
-    delete: string;
-    monthly: string;
-    startDate?: string;
-    risk: string;
-    expectedReturn: string;
-    ofPortfolio: string;
-    refreshPrice?: string;
-    refreshingPrice?: string;
     lastPrice?: string;
     refreshAllPrices?: string;
     refreshingPrices?: string;
-    purchasePrice?: string;
-    totalInvested?: string;
-    quantity?: string;
-    numberOfUnits?: string;
-    assetQuantity?: string;
-    metalCount?: string;
-    metalWeight?: string;
-    profitLoss?: string;
-    profitLossPercent?: string;
-    priceStatus?: string;
-    priceUpdated?: string;
-    priceUpdateFailed?: string;
-    currentPriceUnavailable?: string;
-    purchasePriceMissing?: string;
-    unavailable?: string;
-    approxUserCurrency?: string;
-    currency?: string;
     allPlatforms?: string;
-    purchasePlatform?: string;
-    purchasePlatformBadgeTitle?: string;
-    purchasePlatformPending?: string;
-    purchasePlatformNotSpecified?: string;
-    platformTypeLabels?: Record<string, string>;
-  };
+};
+
+interface Props {
+  investments: Investment[];
+  labels: ListLabels;
   types: InvestmentType[];
   typeLabel: (type: InvestmentType) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -93,6 +64,24 @@ export function InvestmentList({
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [sort, setSort] = useState<SortMode>('valueDesc');
+  const [platformLogos, setPlatformLogos] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!investments.some(item => item.purchasePlatformId)) return;
+    const controller = new AbortController();
+    void fetch('/api/investment-platforms?limit=50', { cache: 'no-store', signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then((payload: { items?: InvestmentPlatformDirectoryItem[] } | null) => {
+        const entries = (payload?.items ?? [])
+          .filter(item => item.logoUrl)
+          .map(item => [item.id, item.logoUrl as string] as const);
+        setPlatformLogos(Object.fromEntries(entries));
+      })
+      .catch(error => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setPlatformLogos({});
+      });
+    return () => controller.abort();
+  }, [investments]);
 
   const total = useMemo(() => investments.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0), [accountValue, investments]);
   const platformOptions = useMemo(() => {
@@ -137,8 +126,8 @@ export function InvestmentList({
     <section className="invest-panel">
       <div className="invest-list-toolbar">
         <div className="invest-controls">
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder={labels.search} />
-          <select value={filterType} onChange={event => setFilterType(event.target.value as 'all' | InvestmentType)}>
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder={labels.search} aria-label={labels.search} />
+          <select value={filterType} onChange={event => setFilterType(event.target.value as 'all' | InvestmentType)} aria-label={labels.allTypes}>
             <option value="all">{labels.allTypes}</option>
             {types.map(type => <option key={type} value={type}>{typeLabel(type)}</option>)}
           </select>
@@ -185,6 +174,7 @@ export function InvestmentList({
             onRefreshPrice={onRefreshPrice}
             refreshing={refreshingPriceId === item.id}
             priceRefreshStatus={priceRefreshStatuses?.[item.id]}
+            platformLogoUrl={item.purchasePlatformId ? platformLogos[item.purchasePlatformId] : null}
           />
         ))}
       </div>

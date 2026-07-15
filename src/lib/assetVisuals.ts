@@ -10,6 +10,9 @@ export type AssetVisualType =
   | 'gas'
   | 'index'
   | 'fund'
+  | 'real-estate'
+  | 'cash'
+  | 'project'
   | 'unknown';
 
 export type AssetVisualInput = {
@@ -37,6 +40,16 @@ export type AssetVisualMeta = {
 
 const IMAGE_EXTENSION_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
 const SAFE_IMAGE_URL_PATTERN = /^https?:\/\//i;
+
+const CRYPTO_LOGO_SLUGS: Record<string, string> = {
+  BTC: 'bitcoin/F7931A',
+  ETH: 'ethereum/627EEA',
+  SOL: 'solana/14F195',
+  XRP: 'xrp/23292F',
+  BNB: 'binance/F0B90B',
+  DOGE: 'dogecoin/C2A633',
+  ADA: 'cardano/0133AD',
+};
 
 const CURRENCY_FLAGS: Record<string, string> = {
   AED: '🇦🇪',
@@ -93,6 +106,11 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
 
   const symbol = normalizeSymbol(input.symbol);
   const rawType = cleanText(input.assetType ?? input.market ?? input.exchange).toLowerCase();
+  const compactCryptoSymbol = symbol.replace(/(?:-?USD|-?USDT)$/i, '');
+  const cryptoSlug = CRYPTO_LOGO_SLUGS[compactCryptoSymbol];
+  if ((rawType.includes('crypto') || cryptoSlug) && cryptoSlug) {
+    return `https://cdn.simpleicons.org/${cryptoSlug}`;
+  }
   const stockLikeType = !rawType
     || rawType.includes('stock')
     || rawType.includes('equity')
@@ -112,6 +130,9 @@ function normalizeAssetType(value: unknown, symbol: string, label: string): Asse
   if (raw.includes('forex') || raw.includes('currency') || /^[A-Z]{6}(?:=X)?$/.test(symbol)) return 'forex';
   if (raw.includes('etf')) return 'etf';
   if (raw.includes('fund')) return 'fund';
+  if (raw.includes('real estate') || raw.includes('realestate') || raw.includes('property')) return 'real-estate';
+  if (raw.includes('cash') || raw.includes('deposit')) return 'cash';
+  if (raw.includes('project') || raw.includes('private investment')) return 'project';
   if (raw.includes('index') || raw.includes('indices') || symbol.startsWith('^')) return 'index';
   if (raw.includes('gold')) return 'gold';
   if (raw.includes('silver')) return 'silver';
