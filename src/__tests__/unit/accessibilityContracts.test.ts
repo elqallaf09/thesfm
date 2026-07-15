@@ -31,8 +31,8 @@ describe('accessibility contracts', () => {
     expect(header).toContain("<CommandMenuButton aria-label={t('command_open')} />");
   });
 
-  it('uses the shared sidebar foreground token for utility group labels', () => {
-    expect(sidebar).toMatch(/\.sfm-shared-global-toggle\{[^}]*color:var\(--sidebar-foreground\)/);
+  it('uses the semantic glass sidebar text token for utility group labels', () => {
+    expect(sidebar).toMatch(/\.sfm-shared-global-toggle\{[^}]*color:var\(--sidebar-item-text\)/);
   });
 
   it('meets WCAG AA normal-text contrast in both themes', () => {

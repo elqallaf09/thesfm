@@ -154,7 +154,8 @@ describe('workspace navigation direction and presentation contract', () => {
     expect(sidebar).toContain('dir={dir}');
     expect(mobile).toContain('dir={dir}');
     expect(sidebar).toContain('inset-inline-start');
-    expect(sidebar).toContain('border-inline-end');
+    expect(sidebar).toContain('border:1px solid var(--sidebar-glass-border)');
+    expect(sidebar).toContain('border-radius:var(--radius-panel)');
     expect(mobile).toContain('inset-inline-start');
     expect(mobile).toContain('border-inline-end');
   });

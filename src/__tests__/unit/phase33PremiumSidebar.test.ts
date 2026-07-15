@@ -21,6 +21,8 @@ const commandMenu = read('src/components/CommandMenu.tsx');
 const lazyCommandMenu = read('src/components/LazyCommandMenu.tsx');
 const tooltip = read('src/components/ui/tooltip.tsx');
 const languageSwitcher = read('src/components/ui/LanguageSwitcher.tsx');
+const themes = read('src/styles/themes.css');
+const tokens = read('src/styles/tokens.css');
 
 function flatten(items: NavigationItem[]): NavigationItem[] {
   return items.flatMap(item => [item, ...(item.children ? flatten(item.children) : [])]);
@@ -151,15 +153,45 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
   });
 
   it('uses semantic premium surfaces and distinct hover, focus, active, and expanded states', () => {
-    for (const source of [sidebar, mobile, commandButton]) {
-      expect(source).toContain('var(--sidebar-hover)');
+    for (const source of [sidebar, mobile]) {
+      expect(source).toContain('var(--sidebar-item-bg-hover)');
       expect(source).toContain('var(--focus-ring)');
       expect(source).not.toMatch(/#[\da-f]{3,8}\b|rgba?\(|hsla?\(|linear-gradient\(|radial-gradient\(/i);
     }
-    expect(sidebar).toContain('var(--sidebar-active)');
-    expect(sidebar).toContain('var(--sidebar-expanded)');
+    expect(commandButton).toContain('var(--sidebar-hover)');
+    expect(sidebar).toContain('var(--sidebar-item-bg-active)');
+    expect(sidebar).toContain('var(--sidebar-item-bg)');
     expect(sidebar).toContain('var(--duration-fast) var(--ease)');
     expect(sidebar).toContain('font-weight:var(--type-navigation-active-weight)');
+  });
+
+  it('centralizes the layered glass system for light and dark modes with resilient fallbacks', () => {
+    for (const token of [
+      '--sidebar-glass-bg',
+      '--sidebar-glass-bg-elevated',
+      '--sidebar-glass-border',
+      '--sidebar-glass-border-highlight',
+      '--sidebar-glass-shadow',
+      '--sidebar-glass-inner-shadow',
+      '--sidebar-glass-glow',
+      '--sidebar-item-bg',
+      '--sidebar-item-bg-hover',
+      '--sidebar-item-bg-active',
+      '--sidebar-item-border-active',
+      '--sidebar-item-text-active',
+      '--sidebar-search-bg',
+      '--sidebar-search-border',
+      '--sidebar-footer-bg',
+    ]) {
+      expect(themes.match(new RegExp(`${token}:`, 'g')) ?? [], token).toHaveLength(2);
+    }
+
+    expect(tokens).toContain('--sidebar-glass-filter: blur(20px) saturate(125%)');
+    expect(tokens).toContain('--sidebar-mobile-glass-filter: blur(14px) saturate(118%)');
+    expect(sidebar).toContain('backdrop-filter:var(--sidebar-glass-filter)');
+    expect(mobile).toContain('backdrop-filter:var(--sidebar-mobile-glass-filter)');
+    expect(sidebar).toContain('@supports not ((-webkit-backdrop-filter:blur(1px))');
+    expect(mobile).toContain('@media(prefers-reduced-transparency:reduce)');
   });
 
   it('preserves logical RTL/LTR geometry and removes continuous motion', () => {
