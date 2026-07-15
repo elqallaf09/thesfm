@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, Clock3, Gauge } from 'lucide-react';
 import type { ApiListState } from './types';
@@ -108,11 +108,23 @@ function formatUtcHourRange(startHourUtc: number, endHourUtc: number, referenceD
 }
 
 export function TradingSessionsPanel({ t, locale }: { t: (key: string) => string; locale: string }) {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    setNow(new Date());
     const id = window.setInterval(() => setNow(new Date()), 60000);
     return () => window.clearInterval(id);
   }, []);
+
+  if (now === null) {
+    return (
+      <section className="market-panel trading-sessions-dashboard">
+        <div className="market-empty" role="status">
+          {t('market_command_data_state_loading')}
+        </div>
+      </section>
+    );
+  }
+
   const sessions = getTradingSessionsState(now);
   const activeOverlapIds = getActiveOverlapIds(now);
   const formatter = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-KW-u-nu-latn' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });

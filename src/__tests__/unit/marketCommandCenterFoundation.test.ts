@@ -241,6 +241,9 @@ describe('market command center translation contract', () => {
 
 describe('market command center presentation and loading contracts', () => {
   const overviewSource = read('src/components/market-analysis/MarketOverviewPanel.tsx');
+  const commandOverviewSource = read('src/components/market-analysis/MarketCommandOverview.tsx');
+  const commandStatusSource = read('src/components/market-analysis/MarketCommandCenterStatus.tsx');
+  const sessionsSource = read('src/components/market-analysis/TradingSessionsPanel.tsx');
   const pageSource = read('src/app/market-analysis/page.tsx');
 
   it('keeps overview data caller-owned and never fabricates or fetches presentation values', () => {
@@ -278,6 +281,20 @@ describe('market command center presentation and loading contracts', () => {
     expect(activeTabGate).toBeGreaterThan(-1);
     expect(comparisonRequest).toBeGreaterThan(activeTabGate);
     expect(comparisonRequest - activeTabGate).toBeLessThan(800);
+  });
+
+  it('keeps time-dependent session state deterministic during hydration', () => {
+    for (const source of [commandOverviewSource, commandStatusSource, sessionsSource]) {
+      expect(source).not.toContain('useState(() => new Date())');
+      expect(source).toContain('useState<Date | null>(null)');
+    }
+
+    expect(commandOverviewSource).toContain('setNow(new Date())');
+    expect(commandStatusSource).toContain('setSessionNow(new Date())');
+    expect(sessionsSource).toContain('setNow(new Date())');
+    expect(commandOverviewSource).toContain("state: 'not-loaded' as const");
+    expect(sessionsSource).toContain('role="status"');
+    expect(pageSource).toContain("loading: t('market_command_data_state_loading')");
   });
 });
 

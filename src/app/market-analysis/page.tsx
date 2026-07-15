@@ -2473,6 +2473,7 @@ export default function MarketAnalysisPage() {
             news={overviewNews}
             sessionCopy={{
               label: t('market_trading_sessions'),
+              loading: t('market_command_data_state_loading'),
               noActiveSession: t('market_command_no_active_session'),
               name: (sessionId) => t(`market_session_name_${sessionId}`),
             }}

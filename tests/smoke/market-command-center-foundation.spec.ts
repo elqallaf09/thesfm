@@ -213,6 +213,18 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
   });
 
   test('renders the command-center header, six groups, status strip, and one set of global controls', async ({ page }) => {
+    const hydrationErrors: string[] = [];
+    page.on('console', message => {
+      if (message.type() === 'error' && /hydration|react error #418|server rendered html/i.test(message.text())) {
+        hydrationErrors.push(message.text());
+      }
+    });
+    page.on('pageerror', error => {
+      if (/hydration|react error #418|server rendered html/i.test(error.message)) {
+        hydrationErrors.push(error.message);
+      }
+    });
+
     await prepareGuestMarket(page);
 
     await expect(page.getByRole('heading', {
@@ -243,6 +255,7 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
     await expect(statusRegion.getByRole('button', {
       name: TR_MARKET.market_command_refresh_status.en,
     })).toBeVisible();
+    expect(hydrationErrors).toEqual([]);
 
     const globalHeader = page.locator('header.sfm-global-header');
     await expect(globalHeader).toHaveCount(1);
