@@ -136,6 +136,26 @@ type InvestmentHistoryState =
   | { status: 'ready'; points: InvestmentHistoryPoint[] };
 
 const investmentHistoryCache = new Map<string, InvestmentHistoryState>();
+const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function normalizeRollingHistoryPoints(points: Array<{ time?: unknown; close?: unknown }>) {
+  const normalized: Array<InvestmentHistoryPoint & { timestamp: number }> = [];
+  for (const point of points) {
+    const time = String(point.time ?? '');
+    const close = Number(point.close);
+    const timestamp = Date.parse(time);
+    if (!time || !Number.isFinite(close) || !Number.isFinite(timestamp)) continue;
+    normalized.push({ time, close, timestamp });
+  }
+  if (normalized.length === 0) return [];
+
+  const latestTimestamp = Math.max(...normalized.map(point => point.timestamp));
+  const windowStart = latestTimestamp - HISTORY_WINDOW_MS;
+  return normalized
+    .filter(point => point.timestamp >= windowStart)
+    .sort((left, right) => left.timestamp - right.timestamp)
+    .map(({ time, close }) => ({ time, close }));
+}
 
 export const InvestmentRow = memo(function InvestmentRow({
   investment,
@@ -226,9 +246,7 @@ export const InvestmentRow = memo(function InvestmentRow({
       .then(response => response.ok ? response.json() : null)
       .then((payload: { points?: Array<{ time?: unknown; close?: unknown }> } | null) => {
         if (controller.signal.aborted) return;
-        const points = (payload?.points ?? [])
-          .map(point => ({ time: String(point.time ?? ''), close: Number(point.close) }))
-          .filter(point => point.time && Number.isFinite(point.close));
+        const points = normalizeRollingHistoryPoints(payload?.points ?? []);
         const next: InvestmentHistoryState = points.length >= 2
           ? { status: 'ready', points }
           : { status: 'unavailable', points: [] };
