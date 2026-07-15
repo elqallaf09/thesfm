@@ -3063,7 +3063,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               <div className="savings-guide-steps">
                 {savingsGuide.steps.map((step, index) => (
                   <div className="savings-guide-step" key={step}>
-                    <b>{String(index + 1).padStart(2, '0')}</b>
+                    <b className="sfm-on-primary">{String(index + 1).padStart(2, '0')}</b>
                     <span>{step}</span>
                   </div>
                 ))}

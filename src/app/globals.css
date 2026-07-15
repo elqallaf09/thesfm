@@ -2490,7 +2490,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   .site-map-shell,
   .ai-main,
   .zakat-page
-) :is(h1, h2, h3, h4, h5, strong, b, label) {
+) :is(h1, h2, h3, h4, h5, strong, b, label):not(.sfm-on-primary) {
   color: var(--foreground) !important;
 }
 

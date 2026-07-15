@@ -79,4 +79,22 @@ describe('legacy finance and charity visual-system contract', () => {
     expect(combined).toContain('var(--print-foreground)');
     expect(combined).toContain('var(--print-border)');
   });
+
+  it('keeps savings step markers readable across the legacy dark-theme cascade', () => {
+    const helperSource = readFileSync(
+      join(process.cwd(), 'src/components/finance/_helpers.ts'),
+      'utf8',
+    );
+    const pageSource = readFileSync(
+      join(process.cwd(), 'src/components/finance/RouteDashboardPage.tsx'),
+      'utf8',
+    );
+    const globalStyles = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+
+    expect(helperSource).toMatch(
+      /\.savings-guide-step b\{[^}]*background:var\(--primary\);[^}]*color:var\(--button-primary-foreground\);/,
+    );
+    expect(pageSource).toContain('<b className="sfm-on-primary">');
+    expect(globalStyles).toContain(':not(.sfm-on-primary)');
+  });
 });
