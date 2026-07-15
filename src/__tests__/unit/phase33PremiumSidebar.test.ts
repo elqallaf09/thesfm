@@ -161,6 +161,7 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
     expect(commandButton).toContain('var(--sidebar-hover)');
     expect(sidebar).toContain('var(--sidebar-item-bg-active)');
     expect(sidebar).toContain('var(--sidebar-item-bg)');
+    expect(sidebar).toContain('.sfm-shared-tools{position:relative;z-index:3');
     expect(sidebar).toContain('var(--duration-fast) var(--ease)');
     expect(sidebar).toContain('font-weight:var(--type-navigation-active-weight)');
   });

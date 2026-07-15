@@ -364,7 +364,7 @@ export function Sidebar() {
           .sfm-sidebar-brand-copy{min-width:0;display:grid;gap:2px}
           .sfm-sidebar-brand-copy strong{font-size:15px;font-weight:700;letter-spacing:.035em;direction:ltr;unicode-bidi:isolate}
           .sfm-sidebar-brand-copy small{color:var(--sidebar-item-text-muted);font-size:10px;font-weight:500;line-height:1.4}
-          .sfm-shared-tools{position:relative;z-index:1;display:grid;gap:8px;padding:8px;border-bottom:1px solid var(--sidebar-divider);background:transparent;flex:0 0 auto}
+          .sfm-shared-tools{position:relative;z-index:3;display:grid;gap:8px;padding:8px;border-bottom:1px solid var(--sidebar-divider);background:transparent;flex:0 0 auto}
           .sfm-shared-quick-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:7px;align-items:center}
           .sfm-sidebar-collapse{width:44px;height:44px;min-width:44px;display:grid;place-items:center;border:1px solid var(--sidebar-search-border);border-radius:var(--radius-control);background:var(--sidebar-search-bg);color:var(--sidebar-icon);box-shadow:var(--sidebar-search-shadow);cursor:pointer;transition:background-color var(--duration-fast) var(--ease),color var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease),transform var(--duration-fast) var(--ease)}
           .sfm-sidebar-collapse:hover{background:var(--sidebar-item-bg-hover);color:var(--sidebar-icon-hover);border-color:var(--sidebar-item-border-hover);transform:translateY(var(--sidebar-item-hover-lift))}
