@@ -99,7 +99,10 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     await collapse.click();
     await expect(sidebar).toHaveAttribute('data-collapsed', 'true');
     await expect(sidebar.getByRole('button', { name: 'Expand sidebar' })).toBeFocused();
+    await expect.poll(() => sidebar.evaluate(element => element.getBoundingClientRect().width))
+      .toBeLessThanOrEqual(73.5);
     const activeLink = sidebar.locator('[aria-current="page"]');
+    await expect(activeLink).toBeVisible();
     await activeLink.focus();
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
@@ -107,8 +110,6 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     await expect(page.getByRole('tooltip', { name: 'High Income Stocks News' })).toBeVisible();
     await expect(sidebar.locator('#sfm-sidebar-group-support a')).not.toHaveCount(0);
 
-    await expect.poll(() => sidebar.evaluate(element => element.getBoundingClientRect().width))
-      .toBeLessThanOrEqual(73.5);
     const railGeometry = await sidebar.evaluate(element => ({
       width: element.getBoundingClientRect().width,
       overflow: element.scrollWidth - element.clientWidth,

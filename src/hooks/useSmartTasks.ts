@@ -16,7 +16,7 @@ import {
 } from '@/lib/tasks/generateSmartTasks';
 
 type SmartTaskTableKey = keyof SmartTaskSourceData;
-export type SmartTaskSourceId = 'personal' | 'projects' | 'zakatCharity' | 'market' | 'notifications';
+export type SmartTaskSourceId = 'personal' | 'projects' | 'zakatCharity' | 'market';
 export type SmartTaskSourceStatus = 'ok_with_data' | 'ok_empty' | 'failed';
 export type SmartTaskSourceDiagnostic = {
   ok: boolean;
@@ -32,6 +32,8 @@ export type SmartTaskSourceDiagnostic = {
 const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; source: SmartTaskSourceId; limit?: number }> = [
   { key: 'income', table: 'monthly_income_sources', source: 'personal', limit: 1000 },
   { key: 'expenses', table: 'expense_items', source: 'personal', limit: 1000 },
+  { key: 'debts', table: 'debts', source: 'personal', limit: 1000 },
+  { key: 'debtPayments', table: 'debt_payments', source: 'personal', limit: 1000 },
   { key: 'goals', table: 'financial_goals', source: 'personal', limit: 1000 },
   { key: 'savings', table: 'savings_items', source: 'personal', limit: 1000 },
   { key: 'investments', table: 'investment_items', source: 'market', limit: 1000 },
@@ -54,10 +56,9 @@ const SMART_TASK_TABLES: Array<{ key: SmartTaskTableKey; table: string; source: 
   { key: 'charityContributors', table: 'charity_project_contributors', source: 'zakatCharity', limit: 1000 },
   { key: 'charityCommitments', table: 'charity_commitments', source: 'zakatCharity', limit: 1000 },
   { key: 'charityDocuments', table: 'charity_documents', source: 'zakatCharity', limit: 1000 },
-  { key: 'notifications', table: 'notifications', source: 'notifications', limit: 1000 },
 ];
 
-const SOURCE_IDS: SmartTaskSourceId[] = ['personal', 'projects', 'zakatCharity', 'market', 'notifications'];
+const SOURCE_IDS: SmartTaskSourceId[] = ['personal', 'projects', 'zakatCharity', 'market'];
 const OPTIONAL_ZAKAT_CHARITY_KEYS: SmartTaskTableKey[] = [
   'zakatCalculations',
   'zakatAssets',
@@ -73,6 +74,17 @@ type TaskOverride = {
   status: SmartTaskStatus;
   updatedAt: string;
 };
+
+type SmartTaskLoadCache = {
+  profile: SmartTaskProfile | null;
+  records: SmartTaskSourceData;
+  errors: Partial<Record<SmartTaskTableKey, string>>;
+  sourceDiagnostics: Record<SmartTaskSourceId, SmartTaskSourceDiagnostic>;
+  cachedAt: number;
+};
+
+const SMART_TASK_CACHE_TTL_MS = 30_000;
+const smartTaskLoadCache = new Map<string, SmartTaskLoadCache>();
 
 function normalizeLang(value: string): SmartTaskLang {
   return value === 'en' || value === 'fr' ? value : 'ar';
@@ -196,13 +208,23 @@ export function useSmartTasks() {
     setOverrides(readOverrides(key));
   }, [key]);
 
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async (force = false) => {
     if (authLoading) return;
     if (!user) {
       setProfile(null);
       setRecords({});
       setErrors({});
       setSourceDiagnostics(buildSourceDiagnostics({}, {}));
+      setLoading(false);
+      return;
+    }
+
+    const cached = smartTaskLoadCache.get(user.id);
+    if (!force && cached && Date.now() - cached.cachedAt < SMART_TASK_CACHE_TTL_MS) {
+      setProfile(cached.profile);
+      setRecords(cached.records);
+      setErrors(cached.errors);
+      setSourceDiagnostics(cached.sourceDiagnostics);
       setLoading(false);
       return;
     }
@@ -214,11 +236,10 @@ export function useSmartTasks() {
       loadUserDataTables<SmartTaskTableKey>(db, user.id, SMART_TASK_TABLES),
     ]);
 
-    if (profileResult.status === 'fulfilled' && !profileResult.value.error) {
-      setProfile(profileResult.value.data ?? null);
-    } else {
-      setProfile(null);
-    }
+    const nextProfile = profileResult.status === 'fulfilled' && !profileResult.value.error
+      ? profileResult.value.data ?? null
+      : null;
+    setProfile(nextProfile);
 
     if (dataResult.status === 'fulfilled') {
       const nextRecords = {
@@ -230,6 +251,13 @@ export function useSmartTasks() {
       setErrors(dataResult.value.errors);
       const nextDiagnostics = buildSourceDiagnostics(nextRecords, dataResult.value.errors);
       setSourceDiagnostics(nextDiagnostics);
+      smartTaskLoadCache.set(user.id, {
+        profile: nextProfile,
+        records: nextRecords,
+        errors: dataResult.value.errors,
+        sourceDiagnostics: nextDiagnostics,
+        cachedAt: Date.now(),
+      });
       if (process.env.NODE_ENV === 'development') {
         const diagnostic = nextDiagnostics.zakatCharity;
         console.log('source status', {
@@ -295,7 +323,7 @@ export function useSmartTasks() {
     loading: authLoading || loading,
     errors,
     sourceDiagnostics,
-    reload: loadTasks,
+    reload: () => loadTasks(true),
     setTaskStatus,
     resetTaskStatus,
   };
