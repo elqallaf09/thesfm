@@ -72,6 +72,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               key={workspace.id}
               ref={current ? activeLinkRef : undefined}
               href={destination}
+              prefetch={false}
               className="sfm-workspace-tab"
               data-workspace-id={workspace.id}
               data-active={current ? 'true' : 'false'}
