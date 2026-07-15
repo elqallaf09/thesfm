@@ -10,7 +10,9 @@ const investPage = readSource('src/app/invest/page.tsx');
 const investCharts = readSource('src/components/invest/InvestPerformanceCharts.tsx');
 const investmentModal = readSource('src/components/invest/InvestmentFormModal.tsx');
 const investmentRow = readSource('src/components/invest/InvestmentRow.tsx');
-const activeVisualSources = [investCss, investPage, investCharts, investmentModal, investmentRow].join('\n');
+const investmentSparkline = readSource('src/components/invest/InvestmentSparkline.tsx');
+const platformIdentity = readSource('src/components/invest/PlatformIdentity.tsx');
+const activeVisualSources = [investCss, investPage, investCharts, investmentModal, investmentRow, investmentSparkline, platformIdentity].join('\n');
 
 describe('investments visual system', () => {
   it('uses only the centralized semantic palette on the active production route', () => {
@@ -26,6 +28,14 @@ describe('investments visual system', () => {
     expect(investCss).toMatch(/\.invest-hero\s*\{[\s\S]*?background:\s*var\(--hero-gradient\);/);
     expect(investCss).toMatch(/\.invest-panel,[\s\S]*?background:\s*var\(--surface\);/);
     expect(investCss).toContain('box-shadow: var(--shadow-card);');
+  });
+
+  it('reuses the merged sidebar glass language for investment cards', () => {
+    expect(investCss).toContain('background: var(--sidebar-glass-bg);');
+    expect(investCss).toContain('border: 1px solid var(--sidebar-glass-border);');
+    expect(investCss).toContain('box-shadow: var(--sidebar-glass-inner-shadow), var(--sidebar-glass-shadow);');
+    expect(investCss).toContain('backdrop-filter: var(--sidebar-glass-filter);');
+    expect(investCss).toContain('background: var(--sidebar-glass-reflection);');
   });
 
   it('maps status, control, and chart roles to shared semantic tokens', () => {
@@ -54,7 +64,18 @@ describe('investments visual system', () => {
     expect(investmentModal).not.toMatch(/\.dark\b|:global\(\.dark\)/);
     expect(investmentRow).not.toContain('style={{');
     expect(investmentRow).toContain('className="invest-holding-summary"');
-    expect(investmentRow).toContain('invest-summary-chip--${gainState}');
+    expect(investmentRow).toContain('invest-holding-metric--${tone}');
+    expect(investmentRow).toContain('<AssetAvatar');
+    expect(investmentRow).toContain('<PlatformIdentity');
+    expect(investmentRow).toContain('<InvestmentSparkline');
+  });
+
+  it('exposes the complete premium expansion without manufacturing financial records', () => {
+    for (const label of ['aiSummary', 'allocation', 'performance', 'dividends', 'notes', 'attachments', 'brokerNotes', 'transactions', 'priceHistory', 'documents']) {
+      expect(investmentRow).toContain(`labels.${label}`);
+    }
+    expect(investmentRow).toContain('labels.noData');
+    expect(investmentRow).not.toMatch(/Math\.random|mock|samplePrice|fake/i);
   });
 
   it('retains responsive, directional, focus, and reduced-motion behavior', () => {
@@ -65,6 +86,6 @@ describe('investments visual system', () => {
     expect(investCss).toContain('@media (max-width: 47.5rem)');
     expect(investCss).toContain('@media (prefers-reduced-motion: reduce)');
     expect(investCss).toContain('outline: 3px solid var(--focus-ring);');
-    expect(investCss).not.toMatch(/100vw|margin-(?:left|right)|var\(--sidebar/i);
+    expect(investCss).not.toMatch(/100vw|margin-(?:left|right)|var\(--sidebar-(?:w|width)/i);
   });
 });
