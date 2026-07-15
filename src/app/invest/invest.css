@@ -1066,6 +1066,10 @@
   color: var(--foreground);
 }
 
+.invest-card-menu [role="menuitem"] {
+  min-height: 2.75rem;
+}
+
 .invest-card-menu-danger {
   color: var(--danger);
 }

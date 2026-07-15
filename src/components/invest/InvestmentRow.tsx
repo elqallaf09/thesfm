@@ -68,6 +68,7 @@ export type InvestmentCardLabels = {
   metalCount?: string;
   metalWeight?: string;
   currentMarketValue?: string;
+  currentValue?: string;
   currentPrice?: string;
   purchasePrice?: string;
   totalInvested?: string;
@@ -157,6 +158,7 @@ export const InvestmentRow = memo(function InvestmentRow({
   const [isExpanded, setIsExpanded] = useState(false);
   const [historyState, setHistoryState] = useState<InvestmentHistoryState>({ status: 'idle', points: [] });
   const expansionId = useId();
+  const cardTitleId = `${expansionId}-title`;
   const expansionButtonId = `${expansionId}-trigger`;
   const nativeCurrency = investmentNativeCurrency(investment);
   const isMetal = investment.type === 'gold' || investment.type === 'silver';
@@ -244,7 +246,7 @@ export const InvestmentRow = memo(function InvestmentRow({
   }, [historyKey, historySymbol, investment.assetType, investment.symbol, investment.type, isExpanded, metrics.isMarketLinked, metrics.linkedSymbol]);
 
   return (
-    <article className={`invest-row invest-holding-card invest-holding-card--${gainState}${isExpanded ? ' is-expanded' : ''}`}>
+    <article className={`invest-row invest-holding-card invest-holding-card--${gainState}${isExpanded ? ' is-expanded' : ''}`} aria-labelledby={cardTitleId}>
       <header className="invest-holding-head">
         <div className="invest-holding-identity">
           <span className="invest-asset-lens">
@@ -260,7 +262,7 @@ export const InvestmentRow = memo(function InvestmentRow({
           </span>
           <div className="invest-holding-copy">
             <div className="invest-holding-title-line">
-              <h3>{investment.name}</h3>
+              <h3 id={cardTitleId}>{investment.name}</h3>
               <span className="invest-status-pill"><span aria-hidden="true" />{labels.activeStatus || labels.priceUpdated}</span>
             </div>
             {(metrics.linkedSymbol || investment.market) && <div className="invest-asset-meta">
@@ -321,7 +323,7 @@ export const InvestmentRow = memo(function InvestmentRow({
       <div className="invest-holding-overview">
         <div className="invest-holding-summary">
           <Metric
-            label={labels.currentMarketValue || 'Current market value'}
+            label={labels.currentValue || labels.currentMarketValue || 'Current value'}
             value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment) : labels.unavailable || '-'}
             tone={metrics.currentValue === null ? 'warning' : 'default'}
             icon={<WalletCards size={15} />}
