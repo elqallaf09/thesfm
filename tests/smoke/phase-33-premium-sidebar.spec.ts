@@ -117,6 +117,36 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     expect(railGeometry.overflow).toBeLessThanOrEqual(16);
     await expectNoHorizontalOverflow(page);
   });
+
+  test('stays unclipped across the required responsive widths and French LTR', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'The full responsive-width matrix runs once in desktop Chromium.');
+    test.setTimeout(90_000);
+    await enterGuestDashboard(page);
+
+    for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
+      await expectNoHorizontalOverflow(page);
+
+      if (width < 768) {
+        await expect(page.locator('.sfm-global-menu-button')).toBeVisible();
+        await expect(page.locator('aside.sfm-shared-sidebar')).toHaveCount(0);
+        continue;
+      }
+
+      const sidebar = page.locator('aside.sfm-shared-sidebar');
+      await expect(sidebar).toBeVisible();
+      await expect(sidebar.locator('[aria-current="page"]')).toHaveCount(1);
+      const clippedLabels = await sidebar.locator('.sfm-shared-label:visible').evaluateAll(elements =>
+        elements.filter(element => element.scrollWidth > element.clientWidth + 1).length);
+      expect(clippedLabels).toBe(0);
+    }
+
+    await setLanguage(page, 'fr');
+    const sidebar = page.locator('aside.sfm-shared-sidebar');
+    await expect(sidebar).toHaveAttribute('dir', 'ltr');
+    await expect(sidebar.getByRole('link', { name: "Page d'accueil" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
 });
 
 test.describe('Phase 3.3 premium mobile drawer', () => {
